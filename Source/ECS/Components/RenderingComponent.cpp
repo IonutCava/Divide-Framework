@@ -13,7 +13,7 @@
 
 #include "Editor/Headers/Editor.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"
 
 #include "Graphs/Headers/SceneGraphNode.h"
@@ -784,7 +784,7 @@ namespace Divide
         _envProbes.resize( 0 );
         _reflectionProbeIndex = SceneEnvironmentProbePool::SkyProbeLayerIndex();
 
-        const SceneEnvironmentProbePool* probePool = _context.kernel().sceneManager()->getEnvProbes();
+        const SceneEnvironmentProbePool* probePool = _context.kernel().projectManager()->getEnvProbes();
         if ( probePool != nullptr )
         {
             probePool->lockProbeList();

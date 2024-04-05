@@ -47,8 +47,8 @@ class PXDevice;
 class GFXDevice;
 class SFXDevice;
 class Application;
-class SceneManager;
 class ResourceCache;
+class ProjectManager;
 class PlatformContext;
 class SceneRenderState;
 class RenderPassManager;
@@ -120,7 +120,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     PROPERTY_RW(LoopTimingData, timingData);
     PROPERTY_RW(bool, keepAlive, true);
     POINTER_R(ResourceCache, resourceCache, nullptr);
-    POINTER_R(SceneManager, sceneManager, nullptr);
+    POINTER_R(ProjectManager, projectManager, nullptr);
     POINTER_R(RenderPassManager, renderPassManager, nullptr);
 
     PROPERTY_R_IW(size_t, totalThreadCount, 0u);

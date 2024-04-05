@@ -20,7 +20,7 @@
 #include "GUI/Headers/GUISplash.h"
 #include "Managers/Headers/FrameListenerManager.h"
 #include "Managers/Headers/RenderPassManager.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"
 #include "Physics/Headers/PXDevice.h"
 #include "Platform/Audio/Headers/SFXDevice.h"
@@ -79,14 +79,14 @@ Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
     _flushToScreenTimer.addChildTimer(_postRenderTimer);
     _sceneUpdateTimer.addChildTimer(_sceneUpdateLoopTimer);
 
-    _sceneManager = MemoryManager_NEW SceneManager(*this); // Scene Manager
+    _projectManager = MemoryManager_NEW ProjectManager(*this); // Scene Manager
     _resourceCache = MemoryManager_NEW ResourceCache(_platformContext);
     _renderPassManager = MemoryManager_NEW RenderPassManager(*this, _platformContext.gfx());
 }
 
 Kernel::~Kernel()
 {
-    DIVIDE_ASSERT(sceneManager() == nullptr && resourceCache() == nullptr && renderPassManager() == nullptr,
+    DIVIDE_ASSERT(projectManager() == nullptr && resourceCache() == nullptr && renderPassManager() == nullptr,
                   "Kernel destructor: not all resources have been released properly!");
 }
 
@@ -116,9 +116,9 @@ void Kernel::startSplashScreen() {
             const U64 deltaTimeUS = Time::App::ElapsedMicroseconds() - previousTimeUS;
             previousTimeUS += deltaTimeUS;
 
-            _platformContext.gfx().drawToWindow(window);
+            _platformContext.app().windowManager().drawToWindow(window);
             splash.render(_platformContext.gfx());
-            _platformContext.gfx().flushWindow(window);
+            _platformContext.app().windowManager().flushWindow();
             std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
             break;
@@ -154,7 +154,7 @@ void Kernel::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTim
 
     _platformContext.idle(fast, deltaTimeUSGame, deltaTimeUSApp );
 
-    _sceneManager->idle();
+    _projectManager->idle();
     Script::idle();
 
     if (!fast && --g_printTimer == 0) {
@@ -180,7 +180,9 @@ void Kernel::onLoop()
         if (!keepAlive()) {
             // exiting the rendering loop will return us to the last control point
             _platformContext.app().mainLoopActive(false);
-            if (!sceneManager()->saveActiveScene(true, false)) {
+
+            if (!projectManager()->saveActiveScene(true, false))
+            {
                 DIVIDE_UNEXPECTED_CALL();
             }
             return;
@@ -283,9 +285,9 @@ void Kernel::onLoop()
 
                 F32 fps = 0.f, frameTime = 0.f;
                 _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
-                const Str<256>& activeSceneName = _sceneManager->getActiveScene().resourceName();
+                const Str<256>& activeSceneName = _projectManager->activeProject()->getActiveScene().resourceName();
                 constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
-                constexpr const char* titleString = "[%s - %s] - %s - %s - %5.2f FPS - %3.2f ms - FrameIndex: %d - Update Calls : %d - Alpha : %1.2f";
+                constexpr const char* titleString = "[{} - {}] - {} - {} - {:5.2f} FPS - {:3.2f} ms - FrameIndex: {} - Update Calls : {} - Alpha : {:1.2f}";
                 window.title(titleString,
                              buildType,
                              Names::renderAPI[to_base(_platformContext.gfx().renderAPI())],
@@ -347,7 +349,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         {
             Time::ScopedTimer timer2(_sceneUpdateTimer);
 
-            const U8 playerCount = _sceneManager->getActivePlayerCount();
+            const U8 playerCount = _projectManager->activePlayerCount();
 
             _timingData.updateLoops(0u);
 
@@ -355,7 +357,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 
             {
                 PROFILE_SCOPE("GUI Update", Profiler::Category::IO );
-                _sceneManager->getActiveScene().processGUI( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+                _projectManager->activeProject()->getActiveScene().processGUI( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
             }
 
             while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US)
@@ -381,18 +383,18 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                     PROFILE_SCOPE("Process input", Profiler::Category::IO );
                     for (U8 i = 0u; i < playerCount; ++i) {
                         PROFILE_TAG("Player index", i);
-                        _sceneManager->getActiveScene().processInput(i, evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+                        _projectManager->activeProject()->getActiveScene().processInput(i, evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                     }
                 }
 
                 // process all scene events
                 {
                     PROFILE_SCOPE("Process scene events", Profiler::Category::IO );
-                    _sceneManager->getActiveScene().processTasks( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+                    _projectManager->activeProject()->getActiveScene().processTasks( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                 }
 
                 // Update the scene state based on current time (e.g. animation matrices)
-                _sceneManager->updateSceneState( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+                _projectManager->updateSceneState( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                 // Update visual effect timers as well
                 Attorney::GFXDeviceKernel::update(_platformContext.gfx(), evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
 
@@ -416,7 +418,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
     if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / Config::Networking::NETWORK_SEND_FREQUENCY_HZ) == 0)
     {
         U32 retryCount = 0;
-        while (!Attorney::SceneManagerKernel::networkUpdate(_sceneManager, GFXDevice::FrameCount()))
+        while (!Attorney::ProjectManagerKernel::networkUpdate(_projectManager, GFXDevice::FrameCount()))
         {
             if (retryCount++ > Config::Networking::NETWORK_SEND_RETRY_COUNT)
             {
@@ -543,7 +545,7 @@ static void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& t
 
 static Time::ProfileTimer& GetTimer(Time::ProfileTimer& parentTimer, vector<Time::ProfileTimer*>& timers, const U8 index, const char* name) {
     while (timers.size() < to_size(index) + 1) {
-        timers.push_back(&Time::ADD_TIMER(Util::StringFormat("%s %d", name, timers.size()).c_str()));
+        timers.push_back(&Time::ADD_TIMER(Util::StringFormat("{} {}", name, timers.size()).c_str()));
         parentTimer.addChildTimer(*timers.back());
     }
 
@@ -562,7 +564,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         }
     }
 
-    const U8 playerCount = _sceneManager->getActivePlayerCount();
+    const U8 playerCount = _projectManager->activePlayerCount();
 
     const auto& backBufferRT = _platformContext.gfx().renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER );
     const Rect<I32> mainViewport{0, 0, to_I32(backBufferRT->getWidth()), to_I32(backBufferRT->getHeight())};
@@ -575,10 +577,10 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 
 
     RenderPassManager::RenderParams renderParams{};
-    renderParams._sceneRenderState = &_sceneManager->getActiveScene().state()->renderState();
+    renderParams._sceneRenderState = &_projectManager->activeProject()->getActiveScene().state()->renderState();
 
     for (U8 i = 0u; i < playerCount; ++i) {
-        Attorney::SceneManagerKernel::currentPlayerPass(_sceneManager, i);
+        Attorney::ProjectManagerKernel::currentPlayerPass(_projectManager, i);
         renderParams._playerPass = i;
 
         if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_START, evt))
@@ -632,7 +634,7 @@ void Kernel::warmup()
 
     stopSplashScreen();
 
-    Attorney::SceneManagerKernel::initPostLoadState(_sceneManager);
+    Attorney::ProjectManagerKernel::initPostLoadState(_projectManager);
 }
 
 ErrorCode Kernel::initialize(const string& entryPoint)
@@ -649,7 +651,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     _platformContext.paramHandler().setDebugOutput(false);
     // Load info from XML files
     Configuration& config = _platformContext.config();
-    loadFromXML( config, (Paths::g_rootPath + Paths::g_xmlDataLocation.c_str() + entryPoint).c_str());
+    loadFromXML( config, Paths::g_xmlDataLocation, entryPoint.c_str() );
 
     if (Util::FindCommandLineArgument(_argc, _argv, "disableRenderAPIDebugging"))
     {
@@ -675,7 +677,6 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
     }
 
-
     DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
 
     const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : to_I32(HardwareThreadCount());
@@ -692,7 +693,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         }
     });
 
-    Console::printfn( LOCALE_STR( "START_APPLICATION_WORKING_DIRECTORY" ) , Paths::g_rootPath.c_str() );
+    Console::printfn( LOCALE_STR( "START_APPLICATION_WORKING_DIRECTORY" ) , systemInfo._workingDirectory.string() );
 
     Console::printfn( LOCALE_STR( "START_RENDER_INTERFACE" ) ) ;
 
@@ -702,8 +703,6 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         _platformContext.client().connect("127.0.0.1", 443);
     }
-
-    Paths::updatePaths(_platformContext);
 
     Locale::ChangeLanguage(config.language.c_str());
     ECS::Initialize();
@@ -718,7 +717,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         return initError;
     }
 
-    Attorney::TextureKernel::UseTextureDDSCache(config.debug.useTextureDDSCache);
+    Attorney::TextureKernel::UseTextureDDSCache( config.debug.cache.enabled && config.debug.cache.textureDDS );
 
     Camera::InitPool();
     initError = _platformContext.gfx().initRenderingAPI(_argc, _argv, renderingAPI);
@@ -771,7 +770,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     _inputConsumers[to_base(InputConsumerType::GUI)] = &_platformContext.gui();
-    _inputConsumers[to_base(InputConsumerType::Scene)] = _sceneManager;
+    _inputConsumers[to_base(InputConsumerType::Scene)] = _projectManager;
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
     _renderPassManager->setRenderPass(RenderStage::SHADOW,       {   });
@@ -783,17 +782,17 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Console::printfn(LOCALE_STR("SCENE_ADD_DEFAULT_CAMERA"));
 
     WindowManager& winManager = _platformContext.app().windowManager();
-    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
+    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& ) {
         mgr->onChangeFocus(false);
         return true;
     });
-    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _sceneManager](const DisplayWindow::WindowEventArgs& ) {
+    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& ) {
         mgr->onChangeFocus(true);
         return true;
     });
 
-    Script::OnStartup(_platformContext);
-    SceneManager::OnStartup(_platformContext);
+    Script::OnStartup();
+    ProjectManager::OnStartup(_platformContext);
     // Initialize GUI with our current resolution
     initError = _platformContext.gui().init(_platformContext, resourceCache());
     if ( initError != ErrorCode::NO_ERR )
@@ -805,17 +804,75 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     Console::printfn(LOCALE_STR("START_SOUND_INTERFACE"));
     initError = _platformContext.sfx().initAudioAPI();
-    if (initError != ErrorCode::NO_ERR) {
+    if (initError != ErrorCode::NO_ERR)
+    {
         return initError;
     }
 
     Console::printfn(LOCALE_STR("START_PHYSICS_INTERFACE"));
     initError = _platformContext.pfx().initPhysicsAPI(Config::TARGET_FRAME_RATE, config.runtime.simSpeed);
-    if (initError != ErrorCode::NO_ERR) {
+    if (initError != ErrorCode::NO_ERR)
+    {
         return initError;
     }
 
-    _platformContext.gui().addText("ProfileData",                                 // Unique ID
+    Str<256> startupProject = config.startupProject.c_str();
+    if constexpr ( Config::Build::IS_EDITOR_BUILD )
+    {
+        startupProject = Config::DEFAULT_PROJECT_NAME;
+        Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject.c_str() );
+    }
+    else
+    {
+        Console::printfn( LOCALE_STR( "START_FRAMEWORK_GAME" ), startupProject.c_str() );
+    }
+
+    ProjectIDs& projects = Attorney::ProjectManagerKernel::init(_projectManager);
+    if ( projects.empty() )
+    {
+        Console::errorfn( LOCALE_STR( "ERROR_PROJECTS_LOAD" ) );
+        return ErrorCode::MISSING_PROJECT_DATA;
+    }
+
+    ProjectID targetProject{};
+    for ( auto& project : projects )
+    {
+        if (project._name == startupProject)
+        {
+            targetProject = project;
+            break;
+        }
+    }
+
+    while ( targetProject._guid == 0 )
+    {
+        targetProject = projects.front();
+        Console::warnfn( LOCALE_STR( "WARN_PROJECT_NOT_FOUND" ), startupProject.c_str(), targetProject._name.c_str() );
+        startupProject = targetProject._name;
+    }
+
+    if ( targetProject._guid == 0 )
+    {
+        Console::errorfn( LOCALE_STR( "WARN_PROJECT_NOT_FOUND" ), startupProject.c_str(), targetProject._name.c_str() );
+        return ErrorCode::MISSING_PROJECT_DATA;
+    }
+
+    initError = _projectManager->loadProject( targetProject, false );
+
+    if ( initError != ErrorCode::NO_ERR )
+    {
+        return initError;
+    }
+
+    idle(true, 0u, 0u);
+
+    if (!_projectManager->loadComplete())
+    {
+        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD_NOT_CALLED"), startupProject.c_str() );
+        return ErrorCode::MISSING_SCENE_LOAD_CALL;
+    }
+
+    _platformContext.gui().addText("ProfileData",           // Unique ID
                                     RelativePosition2D{
                                          ._x = RelativeValue{
                                              ._scale = 0.75f, 
@@ -825,38 +882,14 @@ ErrorCode Kernel::initialize(const string& entryPoint)
                                              ._scale = 0.2f,
                                              ._offset = 0.0f
                                          }
-                                    }, // Position
-                                    Font::DROID_SERIF_BOLD,                        // Font
-                                    UColour4(255,  50, 0, 255),                    // Colour
-                                    "",                                            // Text
-                                    true,                                          // Multiline
-                                    12);                                           // Font size
+                                    },                           // Position
+                                    Font::DROID_SERIF_BOLD,      // Font
+                                    UColour4(255,  50, 0, 255),  // Colour
+                                    "",                     // Text
+                                    true,               // Multiline
+                                    12);                 // Font size
 
     ShadowMap::initShadowMaps(_platformContext.gfx());
-    _sceneManager->init(_platformContext, resourceCache());
-    _platformContext.gfx().idle(true, 0u, 0u);
-
-    const char* startupProject = config.startupProject.c_str();
-
-    if constexpr ( Config::Build::IS_EDITOR_BUILD )
-    {
-        startupProject = Config::DEFAULT_PROJECT_NAME;
-        Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject );
-    }
-    else
-    {
-        Console::printfn( LOCALE_STR( "START_FRAMEWORK_GAME" ), startupProject );
-    }
-
-    if (!_sceneManager->switchScene( Config::DEFAULT_SCENE_NAME, true, false, false)) {
-        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD"), startupProject );
-        return ErrorCode::MISSING_SCENE_DATA;
-    }
-
-    if (!_sceneManager->loadComplete()) {
-        Console::errorfn(LOCALE_STR("ERROR_SCENE_LOAD_NOT_CALLED"), startupProject );
-        return ErrorCode::MISSING_SCENE_LOAD_CALL;
-    }
 
     _renderPassManager->postInit();
 
@@ -866,30 +899,36 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         {
             return ErrorCode::EDITOR_INIT_ERROR;
         }
-        _sceneManager->addSelectionCallback([ctx = &_platformContext](const PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes) {
+        _projectManager->addSelectionCallback([ctx = &_platformContext](const PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes)
+        {
             ctx->editor().selectionChangeCallback(idx, nodes);
         });
     }
+
     Console::printfn(LOCALE_STR("INITIAL_DATA_LOADED"));
 
     return initError;
 }
 
-void Kernel::shutdown() {
+void Kernel::shutdown()
+{
     Console::printfn(LOCALE_STR("STOP_KERNEL"));
 
     _platformContext.config().save();
 
-    for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i) {
+    for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
+    {
         _platformContext.taskPool(static_cast<TaskPoolType>(i)).waitForAllTasks(true);
     }
     
-    if constexpr (Config::Build::ENABLE_EDITOR) {
+    if constexpr (Config::Build::ENABLE_EDITOR)
+    {
         _platformContext.editor().toggle(false);
     }
-    SceneManager::OnShutdown(_platformContext);
-    Script::OnShutdown(_platformContext);
-    MemoryManager::SAFE_DELETE(_sceneManager);
+
+    ProjectManager::OnShutdown(_platformContext);
+    Script::OnShutdown();
+    MemoryManager::SAFE_DELETE(_projectManager);
     ECS::Terminate();
 
     ShadowMap::destroyShadowMaps(_platformContext.gfx());
@@ -913,7 +952,7 @@ void Kernel::onWindowSizeChange(const SizeChangeParams & params) {
 }
 
 void Kernel::onResolutionChange(const SizeChangeParams& params) {
-    _sceneManager->onResolutionChange(params);
+    _projectManager->onResolutionChange(params);
 
     Attorney::GFXDeviceKernel::onResolutionChange(_platformContext.gfx(), params);
 
@@ -957,7 +996,7 @@ void Kernel::remapAbsolutePosition( Input::MouseEvent& eventInOut ) const noexce
 bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg)
 {
     if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
-        !_sceneManager->wantsMouse() &&
+        !_projectManager->wantsMouse() &&
         _inputConsumers[to_base(InputConsumerType::Editor)]->mouseMoved(arg))
     {
         return true;
@@ -979,7 +1018,7 @@ bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg)
 
 bool Kernel::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
     if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
-        !_sceneManager->wantsMouse() &&
+        !_projectManager->wantsMouse() &&
         _inputConsumers[to_base(InputConsumerType::Editor)]->mouseButtonPressed(arg))
     {
         return true;
@@ -1001,7 +1040,7 @@ bool Kernel::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
 
 bool Kernel::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
-        !_sceneManager->wantsMouse() &&
+        !_projectManager->wantsMouse() &&
         _inputConsumers[to_base(InputConsumerType::Editor)]->mouseButtonReleased(arg))
     {
         return true;

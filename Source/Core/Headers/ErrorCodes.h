@@ -37,6 +37,7 @@ namespace Divide {
     enum class ErrorCode : I8 {
         NO_ERR = 0,
         MISSING_SCENE_DATA,
+        MISSING_PROJECT_DATA,
         MISSING_SCENE_LOAD_CALL,
         CPU_NOT_SUPPORTED,
         GFX_NOT_SUPPORTED,
@@ -67,6 +68,7 @@ namespace Divide {
         WRONG_WORKING_DIRECTORY,
         PLATFORM_INIT_ERROR,
         PLATFORM_CLOSE_ERROR,
+        PATHS_ERROR,
         EDITOR_INIT_ERROR,
         GUI_INIT_ERROR,
         COUNT
@@ -77,6 +79,7 @@ namespace Divide {
         static const char* errorCode[] = {
             "NO ERROR",
             "MISSING SCENE DATA",
+            "MISSING PROJECT DATA",
             "MISSING SCENE LOAD CALL",
             "CPU NOT SUPPORTED",
             "RENDERING API NOT SUPPORTED",
@@ -107,6 +110,7 @@ namespace Divide {
             "WRONG WORKING DIRECTORY",
             "PLATFORM INIT ERROR",
             "PLATFORM CLOSE ERROR",
+            "PATHS ERROR",
             "EDITOR INIT ERROR",
             "GUI INIT ERROR",
             "UNKNOWN"

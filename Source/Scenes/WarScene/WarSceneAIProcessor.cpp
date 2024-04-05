@@ -9,7 +9,7 @@
 #include "AI/Sensors/Headers/VisualSensor.h"
 #include "AI/ActionInterface/Headers/AITeam.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Core/Headers/StringHelper.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
@@ -88,7 +88,7 @@ void WarSceneAIProcessor::reset()
 
 void WarSceneAIProcessor::initInternal() {
 #if defined(PRINT_AI_TO_FILE)
-    _WarAIOutputStream.open(Util::StringFormat((Paths::g_logPath + "AILogs/%s_.txt").c_str(), _entity->name().c_str()).c_str(), std::ofstream::out | std::ofstream::trunc);
+    _WarAIOutputStream.open(Util::StringFormat((Paths::g_logPath + "AILogs/{}_.txt").c_str(), _entity->name().c_str()).c_str(), std::ofstream::out | std::ofstream::trunc);
 #endif
 
     _visualSensor =
@@ -321,7 +321,7 @@ void WarSceneAIProcessor::requestOrders() {
     GOAPGoal* goal = findRelevantGoal();
     
     if (goal != nullptr) {
-        _planStatus = Util::StringFormat("Current goal: [ %s ]\n", goal->name().c_str());
+        _planStatus = Util::StringFormat("Current goal: [ {} ]\n", goal->name().c_str());
 
         // Hack to loop in idle
         worldState().setVariable(GOAPFact(Fact::IDLING), GOAPValue(false));
@@ -329,14 +329,14 @@ void WarSceneAIProcessor::requestOrders() {
 
         if (replanGoal()) {
             _planStatus += Util::StringFormat(
-                "The plan for goal [ %s ] involves [ %d ] actions.\n",
+                "The plan for goal [ {} ] involves [ {} ] actions.\n",
                 goal->name().c_str(),
                 goal->getCurrentPlan().size());
             _planStatus += printPlan();
             beginPlan(*goal);
         } else {
-            _planStatus += Util::StringFormat("%s\n", getPlanLog().c_str());
-            _planStatus += Util::StringFormat("Can't generate plan for goal [ %s ]\n",
+            _planStatus += Util::StringFormat("{}\n", getPlanLog().c_str());
+            _planStatus += Util::StringFormat("Can't generate plan for goal [ {} ]\n",
                   goal->name().c_str());
             invalidateCurrentPlan();
         }
@@ -863,7 +863,7 @@ bool WarSceneAIProcessor::performActionStep(const GOAPAction::operationsIterator
     const GOAPValue newVal = step->second;
     const GOAPValue oldVal = worldState().getVariable(crtFact);
     if (oldVal != newVal) {
-        PRINT("\t\t Changing \"%s\" from \"%s\" to \"%s\"",
+        PRINT("\t\t Changing \"{}\" from \"{}\" to \"{}\"",
                          WarSceneFactName(crtFact).c_str(),
                          GOAPValueName(oldVal),
                          GOAPValueName(newVal));
@@ -873,7 +873,7 @@ bool WarSceneAIProcessor::performActionStep(const GOAPAction::operationsIterator
 }
 
 const string& WarSceneAIProcessor::printActionStats(const GOAPAction& planStep) const {
-    PRINT("Action [ %s ]", planStep.name().c_str());
+    PRINT("Action [ {} ]", planStep.name().c_str());
     return planStep.name();
 }
 
@@ -887,56 +887,48 @@ string WarSceneAIProcessor::toString( [[maybe_unused]] bool state) const
     const U32 ownTeamID = currentTeam->getTeamID();
     const U32 enemyTeamID = 1 - ownTeamID;
 
-    string ret(Util::StringFormat("Unit: [ %s ]\n", _entity->name().c_str()));
+    string ret(Util::StringFormat("Unit: [ {} ]\n", _entity->name().c_str()));
     ret.append("--------------- Working memory state BEGIN ----------------------------\n");
-    ret.append(Util::StringFormat(
-        "        Current position: - [ %4.1f , %4.1f, %4.1f]\n",
+    ret.append(Util::StringFormat("        Current position: - [ {:4.1f} , {:4.1f}, {:4.1f}]\n",
         _entity->getPosition().x, _entity->getPosition().y,
         _entity->getPosition().z));
-    ret.append(Util::StringFormat(
-        "        Current destination: - [ %4.1f , %4.1f, %4.1f]\n",
+    ret.append(Util::StringFormat("        Current destination: - [ {:4.1f} , {:4.1f}, {:4.1f}]\n",
         _entity->getDestination().x, _entity->getDestination().y,
         _entity->getDestination().z));
-    ret.append(Util::StringFormat(
-        "        Flag Positions - OwnTeam : [ %4.1f , %4.1f, %4.1f] | Enemy Team : [ %4.1f , "
-        "%4.1f, %4.1f]\n",
+    ret.append(Util::StringFormat("        Flag Positions - OwnTeam : [ {:4.1f} , {:4.1f}, {:4.1f}] | Enemy Team : [ {:4.1f} , {:4.1f}, {:4.1f}]\n",
         _globalWorkingMemory._teamFlagPosition[ownTeamID].value().x,
         _globalWorkingMemory._teamFlagPosition[ownTeamID].value().y,
         _globalWorkingMemory._teamFlagPosition[ownTeamID].value().z,
         _globalWorkingMemory._teamFlagPosition[enemyTeamID].value().x,
         _globalWorkingMemory._teamFlagPosition[enemyTeamID].value().y,
         _globalWorkingMemory._teamFlagPosition[enemyTeamID].value().z));
-    ret.append(Util::StringFormat(
-        "        Flags at base - OwnTeam : [ %s ] | Enemy Team : [ %s ]\n",
+    ret.append(Util::StringFormat("        Flags at base - OwnTeam : [ {} ] | Enemy Team : [ {} ]\n",
         _globalWorkingMemory._flagsAtBase[ownTeamID].value() ? "true" : "false",
         _globalWorkingMemory._flagsAtBase[enemyTeamID].value() ? "true" : "false"));
-    ret.append(Util::StringFormat(
-        "        Flags carriers - OwnTeam : [ %s ] | Enemy Team : [ %s ]\n",
+    ret.append(Util::StringFormat("        Flags carriers - OwnTeam : [ {} ] | Enemy Team : [ {} ]\n",
         _globalWorkingMemory._flagCarriers[ownTeamID].value() ? _globalWorkingMemory._flagCarriers[ownTeamID].value()->name().c_str() : "none",
         _globalWorkingMemory._flagCarriers[enemyTeamID].value() ? _globalWorkingMemory._flagCarriers[enemyTeamID].value()->name().c_str() : "none"));
-    ret.append(Util::StringFormat(
-        "        Score - OwnTeam : [ %d ] | Enemy Team : [ %d ]\n",
+    ret.append(Util::StringFormat("        Score - OwnTeam : [ {} ] | Enemy Team : [ {} ]\n",
         _globalWorkingMemory._score[ownTeamID].value(),
         _globalWorkingMemory._score[enemyTeamID].value()));
-    ret.append(Util::StringFormat(
-        "        Has enemy flag: [ %s ]\n",
+    ret.append(Util::StringFormat("        Has enemy flag: [ {} ]\n",
         _localWorkingMemory._hasEnemyFlag.value() ? "true" : "false"));
     ret.append(Util::StringFormat(
-        "        Enemy has flag: [ %s ]\n",
+        "        Enemy has flag: [ {} ]\n",
         _localWorkingMemory._enemyHasFlag.value() ? "true" : "false"));
     ret.append(Util::StringFormat(
-        "        Is flag retriever: [ %s ]\n",
+        "        Is flag retriever: [ {} ]\n",
         _localWorkingMemory._isFlagRetriever.value() ? "true" : "false"));
     ret.append(Util::StringFormat(
-        "        Flag retriever count - Own Team: [ %d ] Enemy Team: [ %d]\n",
+        "        Flag retriever count - Own Team: [ {} ] Enemy Team: [ {} ]\n",
         _globalWorkingMemory._flagRetrieverCount[ownTeamID].value(),
         _globalWorkingMemory._flagRetrieverCount[enemyTeamID].value()));
     ret.append(Util::StringFormat(
-        "       Team count - Own Team: [ %d ] Enemy Team: [ %d]\n",
+        "       Team count - Own Team: [ {} ] Enemy Team: [ {} ]\n",
         _globalWorkingMemory._teamAliveCount[ownTeamID].value(),
         _globalWorkingMemory._teamAliveCount[enemyTeamID].value()));
     for (const auto&[fact, value] : worldState().vars_) {
-        ret.append(Util::StringFormat("        World state fact [ %s ] : [ %s ]\n",
+        ret.append(Util::StringFormat("        World state fact [ {} ] : [ {} ]\n",
                                   WarSceneFactName(fact).c_str(),
                                   value ? "true" : "false"));
     }

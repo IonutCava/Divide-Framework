@@ -456,7 +456,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(const U16 layerID,
         {
             PROFILE_SCOPE( "Generate Mipmaps", Profiler::Category::Graphics );
 
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #%d-MipMapsSource", layerID).c_str()));
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #{}-MipMapsSource", layerID).c_str()));
             RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
             GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
@@ -491,7 +491,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     const Texture* sourceTex = sourceAtt->texture().get();
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #%d", layerID).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #{}", layerID).c_str()));
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcPrefiltered });
 
@@ -559,7 +559,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #%d", layerID).c_str()));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #{}", layerID).c_str()));
 
     GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcIrradiance });
 
@@ -703,11 +703,11 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
         probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, layerIndex);
         probeView->_shaderData.set(_ID("face"), PushConstantType::INT, i % 6u);
         if (i > 11) {
-            probeView->_name = Util::StringFormat("Probe_%d_Filtered_face_%d", layerIndex, i % 6u);
+            probeView->_name = Util::StringFormat("Probe_{}_Filtered_face_{}", layerIndex, i % 6u);
         } else if (i > 5) {
-            probeView->_name = Util::StringFormat("Probe_%d_Irradiance_face_%d", layerIndex, i % 6u);
+            probeView->_name = Util::StringFormat("Probe_{}_Irradiance_face_{}", layerIndex, i % 6u);
         } else {
-            probeView->_name = Util::StringFormat("Probe_%d_Reference_face_%d", layerIndex, i % 6u);
+            probeView->_name = Util::StringFormat("Probe_{}_Reference_face_{}", layerIndex, i % 6u);
         }
         probeView->_groupID = g_debugViewBase + layerIndex;
         probeView->_enabled = true;

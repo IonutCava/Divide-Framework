@@ -8,29 +8,34 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Utility/Headers/Localization.h"
 
-namespace Divide {
- 
-namespace {
-    
-    SDL_SystemCursor CursorToSDL(const CursorStyle style) noexcept {
-        switch (style) {
-            case CursorStyle::ARROW: return SDL_SYSTEM_CURSOR_ARROW;
-            case CursorStyle::HAND: return SDL_SYSTEM_CURSOR_HAND;
-            case CursorStyle::NONE: return SDL_SYSTEM_CURSOR_NO;
-            case CursorStyle::RESIZE_ALL: return SDL_SYSTEM_CURSOR_SIZEALL;
-            case CursorStyle::RESIZE_EW: return SDL_SYSTEM_CURSOR_SIZEWE;
-            case CursorStyle::RESIZE_NS: return SDL_SYSTEM_CURSOR_SIZENS;
+namespace Divide
+{
+
+namespace
+{
+    [[nodiscard]] SDL_SystemCursor CursorToSDL(const CursorStyle style) noexcept
+    {
+        switch (style)
+        {
+            case CursorStyle::ARROW:       return SDL_SYSTEM_CURSOR_ARROW;
+            case CursorStyle::HAND:        return SDL_SYSTEM_CURSOR_HAND;
+            case CursorStyle::NONE:        return SDL_SYSTEM_CURSOR_NO;
+            case CursorStyle::RESIZE_ALL:  return SDL_SYSTEM_CURSOR_SIZEALL;
+            case CursorStyle::RESIZE_EW:   return SDL_SYSTEM_CURSOR_SIZEWE;
+            case CursorStyle::RESIZE_NS:   return SDL_SYSTEM_CURSOR_SIZENS;
             case CursorStyle::RESIZE_NESW: return SDL_SYSTEM_CURSOR_SIZENESW;
             case CursorStyle::RESIZE_NWSE: return SDL_SYSTEM_CURSOR_SIZENWSE;
-            case CursorStyle::TEXT_INPUT: return SDL_SYSTEM_CURSOR_IBEAM;
-            case CursorStyle::COUNT: break;
+            case CursorStyle::TEXT_INPUT:  return SDL_SYSTEM_CURSOR_IBEAM;
+            case CursorStyle::COUNT:       break;
         }
 
         return SDL_SYSTEM_CURSOR_NO;
     }
 
-    bool Validate(const I32 errCode) {
-        if (errCode != 0) {
+    bool Validate(const I32 errCode)
+    {
+        if (errCode != 0)
+        {
             Console::errorfn(LOCALE_STR("SDL_ERROR"), SDL_GetError());
             return false;
         }
@@ -38,8 +43,10 @@ namespace {
         return true;
     }
 
-    bool ValidateAssert(const I32 errCode) {
-        if (!Validate(errCode)) {
+    bool ValidateAssert(const I32 errCode)
+    {
+        if (!Validate(errCode))
+        {
             assert(errCode == 0);
             return false;
         }
@@ -61,7 +68,8 @@ WindowManager::~WindowManager()
     DIVIDE_ASSERT( _windows.empty(), "WindowManager::~WindowManager(): close() was not called before destruction!" );
 }
 
-vec2<U16> WindowManager::GetFullscreenResolution() noexcept {
+vec2<U16> WindowManager::GetFullscreenResolution() noexcept
+{
     return vec2<U16>( s_mainDisplayMode.w, s_mainDisplayMode.h);
 }
 
@@ -72,12 +80,14 @@ ErrorCode WindowManager::init(PlatformContext& context,
                               const WindowMode windowMode,
                               const I32 targetDisplayIndex)
 {
-    if (!_monitors.empty()) {
+    if (!_monitors.empty())
+    {
         // Double init
         return ErrorCode::WINDOW_INIT_ERROR;
     }
 
-    if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
+    {
         return ErrorCode::WINDOW_INIT_ERROR;
     }
 
@@ -85,7 +95,8 @@ ErrorCode WindowManager::init(PlatformContext& context,
 
     efficient_clear( _monitors );
     const I32 displayCount = SDL_GetNumVideoDisplays();
-    for (I32 i = 0; i < displayCount; ++i) {
+    for (I32 i = 0; i < displayCount; ++i)
+    {
         MonitorData data = {};
 
         SDL_Rect r;
@@ -138,20 +149,24 @@ ErrorCode WindowManager::init(PlatformContext& context,
     ErrorCode err = ErrorCode::NO_ERR;
     DisplayWindow* window = createWindow(descriptor, err);
 
-    if (err == ErrorCode::NO_ERR) {
+    if (err == ErrorCode::NO_ERR)
+    {
         _mainWindowGUID = window->getGUID();
 
         Application& app = _context->app();
 
-        window->addEventListener(WindowEvent::MINIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
+        window->addEventListener(WindowEvent::MINIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+        {
             app.mainLoopPaused(true);
             return true;
         });
-        window->addEventListener(WindowEvent::MAXIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
+        window->addEventListener(WindowEvent::MAXIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+        {
             app.mainLoopPaused(false);
             return true;
         });
-        window->addEventListener(WindowEvent::RESTORED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept {
+        window->addEventListener(WindowEvent::RESTORED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+        {
             app.mainLoopPaused(false);
             return true;
         });
@@ -168,9 +183,11 @@ ErrorCode WindowManager::init(PlatformContext& context,
         }
 
         DisplayManager::OutputDisplayProperties tempDisplayMode = {};
-        for (U8 display = 0u; display < numDisplays; ++display) {
+        for (U8 display = 0u; display < numDisplays; ++display)
+        {
             // Register the display modes with the GFXDevice object
-            for (I32 mode = 0; mode < numberOfDisplayModes[display]; ++mode) {
+            for (I32 mode = 0; mode < numberOfDisplayModes[display]; ++mode)
+            {
                 SDL_GetDisplayMode(display, mode, &s_mainDisplayMode );
                 tempDisplayMode._maxRefreshRate = to_U8( s_mainDisplayMode.refresh_rate);
                 tempDisplayMode._resolution.set( s_mainDisplayMode.w, s_mainDisplayMode.h);
@@ -182,29 +199,35 @@ ErrorCode WindowManager::init(PlatformContext& context,
         }
     }
 
-    for (U8 i = 0; i < to_U8(CursorStyle::COUNT); ++i) {
+    for (U8 i = 0; i < to_U8(CursorStyle::COUNT); ++i)
+    {
         s_cursors[i] = SDL_CreateSystemCursor(CursorToSDL(static_cast<CursorStyle>(i)));
     }
 
     return err;
 }
 
-void WindowManager::close() {
-    for (DisplayWindow* window : _windows) {
+void WindowManager::close()
+{
+    for (DisplayWindow* window : _windows)
+    {
         window->destroyWindow();
     }
+
     MemoryManager::DELETE_CONTAINER(_windows);
 
-    for (SDL_Cursor* it : s_cursors) {
+    for (SDL_Cursor* it : s_cursors)
+    {
         SDL_FreeCursor(it);
     }
+
     s_cursors.fill(nullptr);
+
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
 DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, ErrorCode& err )
 {
-
     if ( descriptor.targetAPI == RenderAPI::COUNT )
     {
         err = ErrorCode::GFX_NON_SPECIFIED;
@@ -214,12 +237,16 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
     DisplayWindow* window = MemoryManager_NEW DisplayWindow(*this, *_context);
     DIVIDE_ASSERT(window != nullptr);
 
-    if (err != ErrorCode::NO_ERR) {
+    if (err != ErrorCode::NO_ERR)
+    {
         MemoryManager::SAFE_DELETE(window);
         return nullptr;
     }
 
-    if (_mainWindow == nullptr) {
+    const bool isMainWindow = _mainWindow == nullptr;
+    if ( isMainWindow )
+    {
+        DIVIDE_ASSERT(descriptor.parentWindow == nullptr);
         _mainWindow = window;
     }
 
@@ -245,6 +272,10 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
     {
         windowFlags |= SDL_WINDOW_ALWAYS_ON_TOP;
     }
+    if (descriptor.flags & to_base(WindowDescriptor::Flags::NO_TASKBAR_ICON))
+    {
+        windowFlags |= SDL_WINDOW_SKIP_TASKBAR;
+    }
 
     WindowType winType = WindowType::WINDOW;
     if (descriptor.flags & to_base(WindowDescriptor::Flags::FULLSCREEN))
@@ -258,30 +289,57 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
 
-    if (err == ErrorCode::NO_ERR) {
-        err = configureAPISettings(descriptor.targetAPI, descriptor.flags);
+    if (err == ErrorCode::NO_ERR)
+    {
+        err = ConfigureAPISettings( *_context, descriptor );
     }
 
-    if (err != ErrorCode::NO_ERR) {
+    if (err != ErrorCode::NO_ERR)
+    {
         MemoryManager::SAFE_DELETE(window);
         return nullptr;
     }
 
-    err = window->init(windowFlags,
-                       winType,
-                       descriptor);
+    DisplayWindow* crtWindow = activeWindow();
 
-    if (err == ErrorCode::NO_ERR) {
-        err = applyAPISettings(descriptor.targetAPI, window);
+    if ( !isMainWindow )
+    {
+        DIVIDE_ASSERT(descriptor.parentWindow != nullptr, "Secondary windows must have a parent window (usually the main app window!");
+        ValidateAssert( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
     }
 
-    if (err != ErrorCode::NO_ERR) {
+    bool contextChanged = false;
+    if ( descriptor.parentWindow != nullptr )
+    {
+        Validate( SDL_GL_MakeCurrent( descriptor.parentWindow->getRawWindow(), descriptor.parentWindow->userData()._glContext ) );
+        contextChanged = true;
+    }
+
+    err = window->init(windowFlags, winType, descriptor);
+
+    if ( crtWindow != nullptr && contextChanged )
+    {
+        Validate( SDL_GL_MakeCurrent( crtWindow->getRawWindow(), crtWindow->userData()._glContext ) );
+    }
+
+    if (err != ErrorCode::NO_ERR)
+    {
         MemoryManager::SAFE_DELETE(window);
+        return nullptr;
+    }
+
+    err = ApplyAPISettings( *_context, descriptor.targetAPI, window, crtWindow != nullptr ? crtWindow : mainWindow() );
+
+    if ( err != ErrorCode::NO_ERR )
+    {
+        MemoryManager::SAFE_DELETE( window );
         return nullptr;
     }
  
     _windows.emplace_back(window);
-    window->addEventListener(WindowEvent::SIZE_CHANGED, [&](const DisplayWindow::WindowEventArgs& args) {
+
+    window->addEventListener(WindowEvent::SIZE_CHANGED, [&](const DisplayWindow::WindowEventArgs& args)
+    {
         SizeChangeParams params{};
         params.width = to_U16(args.x);
         params.height = to_U16(args.y);
@@ -292,16 +350,24 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         return _context->app().onWindowSizeChange(params);
     });
 
-    if (!descriptor.externalClose) {
-        window->addEventListener(WindowEvent::CLOSE_REQUESTED, [this](const DisplayWindow::WindowEventArgs& args) {
+    if (!descriptor.externalClose)
+    {
+        window->addEventListener(WindowEvent::CLOSE_REQUESTED, [this](const DisplayWindow::WindowEventArgs& args)
+        {
             Console::d_printfn(LOCALE_STR("WINDOW_CLOSE_EVENT"), args._windowGUID);
 
-            if (_mainWindowGUID == args._windowGUID) {
+            if (_mainWindowGUID == args._windowGUID)
+            {
                 _context->app().RequestShutdown(false);
-            } else {
-                for (DisplayWindow*& win : _windows) {
-                    if (win->getGUID() == args._windowGUID) {
-                        if (!destroyWindow(win)) {
+            }
+            else
+            {
+                for (DisplayWindow*& win : _windows)
+                {
+                    if (win->getGUID() == args._windowGUID)
+                    {
+                        if (!destroyWindow(win))
+                        {
                             Console::errorfn(LOCALE_STR("WINDOW_CLOSE_EVENT_ERROR"), args._windowGUID);
                             win->hidden(true);
                         }
@@ -317,17 +383,22 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
     return window;
 }
 
-bool WindowManager::destroyWindow(DisplayWindow*& window) {
-    if (window == nullptr) {
+bool WindowManager::destroyWindow(DisplayWindow*& window)
+{
+    if (window == nullptr)
+    {
         return true;
     }
 
     SDL_HideWindow(window->getRawWindow());
-    if (window->destroyWindow() == ErrorCode::NO_ERR) {
+
+    if (window->destroyWindow() == ErrorCode::NO_ERR)
+    {
         erase_if(_windows, [targetGUID = window->getGUID()](DisplayWindow* win) noexcept { return win->getGUID() == targetGUID;});
         MemoryManager::SAFE_DELETE(window);
         return true;
     }
+
     return false;
 }
 
@@ -338,15 +409,21 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
         return;
     }
 
-    if (window->_flags & to_base(WindowFlags::OWNS_RENDER_CONTEXT))
+    if ( window->_userData._glContext  != nullptr)
     {
-        SDL_GL_DeleteContext(static_cast<SDL_GLContext>(window->_userData));
-        window->_userData = nullptr;
+        if ( window->_userData._ownsContext)
+        {
+            SDL_GL_DeleteContext( window->_userData._glContext );
+        }
+
+        window->_userData._glContext = nullptr;
     }
 }
 
-ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 descriptorFlags) const
+ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor )
 {
+    const RenderAPI api = descriptor.targetAPI;
+
     if (api == RenderAPI::Vulkan || api == RenderAPI::None)
     {
         NOP();
@@ -360,7 +437,7 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         {
             // OpenGL error handling is available in any build configuration if the proper defines are in place.
             OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
-            if (_context->config().debug.renderer.enableRenderAPIDebugging || _context->config().debug.renderer.enableRenderAPIBestPractices)
+            if (context.config().debug.renderer.enableRenderAPIDebugging || context.config().debug.renderer.enableRenderAPIBestPractices)
             {
                 useDebugContext = true;
                 OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
@@ -390,15 +467,11 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
         {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5));
         }
-        if (descriptorFlags & to_base(WindowDescriptor::Flags::SHARE_CONTEXT))
+
+        if ( context.config().rendering.MSAASamples > 0u)
         {
-            Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), mainWindow()->userData()->_glContext));
-        }
-        else
-        {
-            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
-            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4));
-            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1));
+            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_MULTISAMPLEBUFFERS, 1 ) );
+            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_MULTISAMPLESAMPLES, std::min( context.config().rendering.MSAASamples, to_U8(4u)) ) ); // Cap to 4xMSAA as we can't query HW support yet
         }
     }
     else
@@ -409,71 +482,204 @@ ErrorCode WindowManager::configureAPISettings(const RenderAPI api, const U16 des
     return ErrorCode::NO_ERR;
 }
 
-ErrorCode WindowManager::applyAPISettings(const RenderAPI api, DisplayWindow* window)
+ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const RenderAPI api, DisplayWindow* targetWindow, DisplayWindow* activeWindow )
 {
     // Create a context and make it current
-    if (window->_flags & to_base(WindowFlags::OWNS_RENDER_CONTEXT))
+    if ( targetWindow->parentWindow() != nullptr)
     {
-        if (api == RenderAPI::OpenGL) {
-            _globalUserData._glContext = SDL_GL_CreateContext(window->getRawWindow());
+        targetWindow->_userData = targetWindow->parentWindow()->userData();
+        targetWindow->_userData._ownsContext = false;
+    }
+
+    if (api == RenderAPI::OpenGL)
+    {
+        if ( targetWindow->_userData._glContext == nullptr )
+        {
+            targetWindow->_userData._glContext = SDL_GL_CreateContext( targetWindow->getRawWindow() );
+            targetWindow->_userData._ownsContext = true;
         }
-        window->_userData = &_globalUserData;
-    }
-    else
-    {
-        window->_userData = mainWindow()->userData();
-    }
 
-    if (window->_userData == nullptr) {
-        Console::errorfn(LOCALE_STR("ERROR_GFX_DEVICE"), SDL_GetError());
-        Console::warnfn(LOCALE_STR("WARN_SWITCH_API"));
-        Console::warnfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
-        return ErrorCode::GL_OLD_HARDWARE;
-    }
+        if ( targetWindow->_userData._glContext == nullptr)
+        {
+            Console::errorfn(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError());
+            Console::warnfn(LOCALE_STR("WARN_SWITCH_API"));
+            Console::warnfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
+            return ErrorCode::GL_OLD_HARDWARE;
+        }
 
-    if (api == RenderAPI::OpenGL) {
-        Validate(SDL_GL_MakeCurrent(window->getRawWindow(), window->userData()->_glContext));
+        Validate(SDL_GL_MakeCurrent( targetWindow->getRawWindow(), targetWindow->userData()._glContext));
 
-        if (window->_flags & to_base(WindowFlags::VSYNC))
+        if ( targetWindow->_flags & to_base(WindowFlags::VSYNC))
         {
             // Vsync is toggled on or off via the external config file
             bool vsyncSet = false;
             // Late swap may fail
-            if (_context->config().runtime.adaptiveSync) {
+            if (context.config().runtime.adaptiveSync)
+            {
                 vsyncSet = SDL_GL_SetSwapInterval(-1) != -1;
-                if (!vsyncSet) {
+                if (!vsyncSet)
+                {
                     Console::warnfn(LOCALE_STR("WARN_ADAPTIVE_SYNC_NOT_SUPPORTED"));
                 }
             }
 
-            if (!vsyncSet) {
+            if (!vsyncSet)
+            {
                 vsyncSet = SDL_GL_SetSwapInterval(1) != -1;
             }
+
             DIVIDE_ASSERT(vsyncSet, "VSync change failed!");
-        } else {
+        }
+        else
+        {
             SDL_GL_SetSwapInterval(0);
         }
 
-        // Switch back to the main render context (may be the same window ...)
-        Validate(SDL_GL_MakeCurrent(mainWindow()->getRawWindow(), mainWindow()->userData()->_glContext));
+        Validate(SDL_GL_MakeCurrent( activeWindow->getRawWindow(), activeWindow->userData()._glContext));
     }
+
     return ErrorCode::NO_ERR;
 }
 
-void WindowManager::CaptureMouse(const bool state) noexcept {
+void WindowManager::drawToWindow( DisplayWindow& window )
+{
+
+    if ( window.parentWindow() == nullptr && _resolutionChangeQueued.second )
+    {
+        SizeChangeParams params{};
+        params.isFullScreen = window.fullscreen();
+        params.width = _resolutionChangeQueued.first.width;
+        params.height = _resolutionChangeQueued.first.height;
+        params.winGUID = mainWindow()->getGUID();
+        params.isMainWindow = window.getGUID() == mainWindow()->getGUID();
+
+        if ( _context->app().onResolutionChange( params ) )
+        {
+            NOP();
+        }
+
+        _resolutionChangeQueued.second = false;
+    }
+
+    pushActiveWindow(&window);
+
+    Attorney::GFXDeviceWindowManager::drawToWindow( _context->gfx(), window);
+}
+
+void WindowManager::flushWindow()
+{
+    DisplayWindow* window = activeWindow();
+    DIVIDE_ASSERT( window != nullptr );
+
+    Attorney::GFXDeviceWindowManager::flushWindow( _context->gfx(), *window );
+
+    const size_t remainingWindows = popActiveWindow();
+
+    if ( remainingWindows > 0 )
+    {
+        // Switch back to the previous window we were drawing to
+        window = activeWindow();
+        DIVIDE_ASSERT( window != nullptr );
+        popActiveWindow();
+
+        drawToWindow( *window );
+    }
+}
+
+void WindowManager::toggleFullScreen() const
+{
+    switch ( mainWindow()->type() )
+    {
+        case WindowType::WINDOW:
+            mainWindow()->changeType( WindowType::FULLSCREEN_WINDOWED );
+            break;
+        case WindowType::FULLSCREEN_WINDOWED:
+            mainWindow()->changeType( WindowType::FULLSCREEN );
+            break;
+        case WindowType::FULLSCREEN:
+            mainWindow()->changeType( WindowType::WINDOW );
+            break;
+        default: break;
+    };
+}
+
+void WindowManager::increaseResolution()
+{
+    stepResolution( true );
+}
+
+void WindowManager::decreaseResolution()
+{
+    stepResolution( false );
+}
+
+void WindowManager::stepResolution( const bool increment )
+{
+    const auto compare = []( const vec2<U16> a, const vec2<U16> b ) noexcept -> bool
+    {
+        return a.x > b.x || a.y > b.y;
+    };
+
+    const auto& displayModes = DisplayManager::GetDisplayModes( mainWindow()->currentDisplayIndex() );
+
+    const auto renderingResolution = _context->gfx().renderingResolution();
+
+    bool found = false;
+    vec2<U16> foundRes;
+    if ( increment )
+    {
+        for ( auto it = displayModes.rbegin(); it != displayModes.rend(); ++it )
+        {
+            const vec2<U16> res = it->_resolution;
+            if ( compare( res, renderingResolution ) )
+            {
+                found = true;
+                foundRes.set( res );
+                break;
+            }
+        }
+    }
+    else
+    {
+        for ( const auto& mode : displayModes )
+        {
+            const vec2<U16> res = mode._resolution;
+            if ( compare( renderingResolution, res ) )
+            {
+                found = true;
+                foundRes.set( res );
+                break;
+            }
+        }
+    }
+
+    if ( found )
+    {
+        _resolutionChangeQueued.first.set( foundRes );
+        _resolutionChangeQueued.second = true;
+    }
+}
+
+void WindowManager::CaptureMouse(const bool state) noexcept
+{
     SDL_CaptureMouse(state ? SDL_TRUE : SDL_FALSE);
 }
 
-bool WindowManager::setCursorPosition(I32 x, I32 y) noexcept {
+bool WindowManager::setCursorPosition(I32 x, I32 y) noexcept
+{
     const DisplayWindow* focusedWindow = getFocusedWindow();
-    if (focusedWindow == nullptr) {
+    if (focusedWindow == nullptr)
+    {
         focusedWindow = mainWindow();
     }
 
-    if (x == -1) {
+    if (x == -1)
+    {
         x = SDL_WINDOWPOS_CENTERED_DISPLAY(focusedWindow->currentDisplayIndex());
     }
-    if (y == -1) {
+
+    if (y == -1)
+    {
         y = SDL_WINDOWPOS_CENTERED_DISPLAY(focusedWindow->currentDisplayIndex());
     }
 
@@ -481,18 +687,23 @@ bool WindowManager::setCursorPosition(I32 x, I32 y) noexcept {
     return true;
 }
 
-bool WindowManager::SetGlobalCursorPosition(I32 x, I32 y) noexcept {
-    if (x == -1) {
+bool WindowManager::SetGlobalCursorPosition(I32 x, I32 y) noexcept
+{
+    if (x == -1)
+    {
         x = SDL_WINDOWPOS_CENTERED;
     }
-    if (y == -1) {
+
+    if (y == -1)
+    {
         y = SDL_WINDOWPOS_CENTERED;
     }
 
     return SDL_WarpMouseGlobal(x, y) == 0;
 }
 
-void WindowManager::SetCursorStyle(const CursorStyle style) {
+void WindowManager::SetCursorStyle(const CursorStyle style)
+{
     static CursorStyle s_CurrentStyle = CursorStyle::NONE;
     if (style != s_CurrentStyle )
     {
@@ -501,42 +712,51 @@ void WindowManager::SetCursorStyle(const CursorStyle style) {
     }
 }
 
-void WindowManager::ToggleRelativeMouseMode(const bool state) noexcept {
+void WindowManager::ToggleRelativeMouseMode(const bool state) noexcept
+{
     [[maybe_unused]] const I32 result = SDL_SetRelativeMouseMode(state ? SDL_TRUE : SDL_FALSE);
     assert(result != -1);
 }
 
-bool WindowManager::IsRelativeMouseMode() noexcept {
+bool WindowManager::IsRelativeMouseMode() noexcept
+{
     return SDL_GetRelativeMouseMode() == SDL_TRUE;
 }
 
-vec2<I32> WindowManager::GetGlobalCursorPosition() noexcept {
+vec2<I32> WindowManager::GetGlobalCursorPosition() noexcept
+{
     vec2<I32> ret(-1);
     SDL_GetGlobalMouseState(&ret.x, &ret.y);
     return ret;
 }
 
-vec2<I32> WindowManager::GetCursorPosition() noexcept {
+vec2<I32> WindowManager::GetCursorPosition() noexcept
+{
     vec2<I32> ret(-1);
     SDL_GetMouseState(&ret.x, &ret.y);
     return ret;
 }
 
-U32 WindowManager::GetMouseState(vec2<I32>& pos, const bool global) noexcept {
-    if (global) {
+U32 WindowManager::GetMouseState(vec2<I32>& pos, const bool global) noexcept
+{
+    if (global)
+    {
         return to_U32(SDL_GetGlobalMouseState(&pos.x, &pos.y));
     }
     
     return to_U32(SDL_GetMouseState(&pos.x, &pos.y));
 }
 
-void WindowManager::SetCaptureMouse(const bool state) noexcept {
+void WindowManager::SetCaptureMouse(const bool state) noexcept
+{
     SDL_CaptureMouse(state ? SDL_TRUE : SDL_FALSE);
 }
 
-void WindowManager::snapCursorToCenter() {
+void WindowManager::snapCursorToCenter()
+{
     const DisplayWindow* focusedWindow = getFocusedWindow();
-    if (focusedWindow == nullptr) {
+    if (focusedWindow == nullptr)
+    {
         focusedWindow = mainWindow();
     }
 
@@ -544,8 +764,10 @@ void WindowManager::snapCursorToCenter() {
     setCursorPosition(to_I32(center.x * 0.5f), to_I32(center.y * 0.5f));
 }
 
-void WindowManager::hideAll() noexcept {
-    for (DisplayWindow* win : _windows) {
+void WindowManager::hideAll() noexcept
+{
+    for (DisplayWindow* win : _windows)
+    {
         win->hidden(true);
     }
 }

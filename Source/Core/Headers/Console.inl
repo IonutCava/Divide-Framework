@@ -146,7 +146,7 @@ NO_INLINE void Console::warnf(const char* format, Args&&... args)
 template <typename... Args>
 NO_INLINE void Console::errorfn(const char* format, Args&&... args)
 {
-    Output( Util::StringFormat( format, FWD(args)...), true, EntryType::ERR);
+    Output( Util::StringFormat( format, FWD( args )...), true, EntryType::ERR);
 }
 
 template <typename... Args>

@@ -138,7 +138,7 @@ class MemoryTracker {
             } else {
                 msg = "memory leaks detected";
             }
-            output.append(Util::StringFormat("%d %s\n", _allocations.size(), msg.c_str()));
+            output.append(Util::StringFormat("{} {}\n", _allocations.size(), msg.c_str()));
             size_t totalUsage = 0;
             for (hashMap<void*, Entry>::const_iterator it = std::cbegin(_allocations);
                            it != std::cend(_allocations);
@@ -151,7 +151,7 @@ class MemoryTracker {
                 output.append(entry.File());
                 output.append(", ");
                 output.append(Util::to_string(entry.Line()));
-                output.append(Util::StringFormat("( %d bytes / %d bytes (%5.2f Mb)) \n", crtSize, totalUsage, totalUsage / 1024.0f / 1024));
+                output.append(Util::StringFormat("( {} bytes / {} bytes ({:5.2f} Mb)) \n", crtSize, totalUsage, totalUsage / 1024.0f / 1024));
                 sizeLeaked += entry.Size();
             }
             leakDetected = true;

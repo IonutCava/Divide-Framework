@@ -21,8 +21,9 @@ NavMeshDebugDraw::NavMeshDebugDraw(GFXDevice& context) noexcept
 
 NavMeshDebugDraw::~NavMeshDebugDraw()
 {
-    if (_primitive) {
-        _context.destroyIMP(_primitive);
+    if (_primitive && !_context.destroyIMP(_primitive) )
+    {
+        DebugBreak();
     }
 }
 

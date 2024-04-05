@@ -11,7 +11,7 @@
 #include "Geometry/Material/Headers/Material.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneNode.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -130,7 +130,7 @@ namespace Divide
             }
             if ( tex != nullptr && ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
             {
-                ImGui::SetTooltip( Util::StringFormat( "Preview texture : %s", tex->assetName().c_str() ).c_str() );
+                ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", tex->assetName()).c_str() );
             }
             if ( readOnly )
             {
@@ -452,7 +452,7 @@ namespace Divide
         // always keep transforms open by default for convenience
         const bool fieldAlwaysOpen = comp->parentComponentType() == ComponentType::TRANSFORM;
 
-        const string fieldNameStr = fieldWasOpen ? Util::StringFormat( "%s (%s)", comp->name().c_str(), _lockedComponent._parentSGN->name().c_str() ) : comp->name().c_str();
+        const string fieldNameStr = fieldWasOpen ? Util::StringFormat( "{} ({})", comp->name().c_str(), _lockedComponent._parentSGN->name().c_str() ) : comp->name().c_str();
         const char* fieldName = fieldNameStr.c_str();
         const U64 fieldHash = _ID( fieldName );
         if ( !isLockedField )
@@ -616,8 +616,8 @@ namespace Divide
 
                     if ( ImGui::CollapsingHeader( "Scene Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth ) )
                     {
-                        SceneManager* sceneManager = context().kernel().sceneManager();
-                        auto& activeSceneState = sceneManager->getActiveScene().state();
+                        ProjectManager* projectManager = context().kernel().projectManager();
+                        auto& activeSceneState = projectManager->activeProject()->getActiveScene().state();
 
                         {
                             F32 bleedBias = activeSceneState->lightBleedBias();
@@ -704,7 +704,7 @@ namespace Divide
                     ImGui::PushID( sgnNode->name().c_str() );
 
                     bool enabled = sgnNode->hasFlag( SceneGraphNode::Flags::ACTIVE );
-                    if ( ImGui::Checkbox( Util::StringFormat( "%s %s", getIconForNode( sgnNode ), sgnNode->name().c_str() ).c_str(), &enabled ) )
+                    if ( ImGui::Checkbox( Util::StringFormat( "{} {}", getIconForNode( sgnNode ), sgnNode->name().c_str() ).c_str(), &enabled ) )
                     {
                         if ( enabled )
                         {
@@ -863,7 +863,7 @@ namespace Divide
 
         if ( _previewTexture != nullptr )
         {
-            if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: %s", _previewTexture->resourceName().c_str() ).c_str(), _previewTexture, vec2<F32>( 512, 512 ), true, false ) )
+            if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", _previewTexture->resourceName().c_str() ).c_str(), _previewTexture, vec2<F32>( 512, 512 ), true, false ) )
             {
                 _previewTexture = nullptr;
             }
@@ -879,13 +879,13 @@ namespace Divide
 
     const Selections& PropertyWindow::selections() const
     {
-        const Scene& activeScene = context().kernel().sceneManager()->getActiveScene();
+        const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
         return activeScene.getCurrentSelection();
     }
 
     SceneGraphNode* PropertyWindow::node( const I64 guid ) const
     {
-        const Scene& activeScene = context().kernel().sceneManager()->getActiveScene();
+        const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
 
         return activeScene.sceneGraph()->findNode( guid );
     }
@@ -1084,7 +1084,7 @@ namespace Divide
                 for ( U8 i = 0; i < 3; ++i )
                 {
                     EditorComponentField bbField = {};
-                    bbField._name = Util::StringFormat( "Axis [ %d ]", i ).c_str();
+                    bbField._name = Util::StringFormat( "Axis [ {} ]", i ).c_str();
                     bbField._basicType = PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = true;
@@ -1374,7 +1374,7 @@ namespace Divide
                 for ( const ShaderModuleDescriptor& module : descriptor._modules )
                 {
                     const char* stages[] = { "PS", "VS", "GS", "HS", "DS","CS" };
-                    if ( ImGui::CollapsingHeader( Util::StringFormat( "%s: File [ %s ] Variant [ %s ]",
+                    if ( ImGui::CollapsingHeader( Util::StringFormat( "{}: File [ {} ] Variant [ {} ]",
                                                                       stages[to_base( module._moduleType )],
                                                                       module._sourceFile.data(),
                                                                       module._variant.empty() ? "-" : module._variant.c_str() ).c_str() ) )
@@ -1387,14 +1387,14 @@ namespace Divide
                         }
                         if ( ImGui::Button( "Open Source File" ) )
                         {
-                            const string& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath( _context.editor() );
+                            const ResourcePath& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath( _context.editor() );
                             if ( textEditor.empty() )
                             {
                                 Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>( 3 ), true );
                             }
                             else
                             {
-                                if ( openFile( textEditor.c_str(), (program->assetLocation() + Paths::Shaders::GLSL::g_GLSLShaderLoc).c_str(), module._sourceFile.data() ) != FileError::NONE )
+                                if ( openFile( textEditor.string().c_str(), Paths::Shaders::GLSL::g_GLSLShaderLoc, module._sourceFile.c_str() ) != FileError::NONE )
                                 {
                                     Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>( 3 ), true );
                                 }
@@ -1433,7 +1433,7 @@ namespace Divide
 
         const size_t stateHash = GetHash(stateBlock);
         static bool renderStateWasOpen = false;
-        if ( !ImGui::CollapsingHeader( Util::StringFormat( "Render State: %zu", stateHash ).c_str(), (renderStateWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u) | ImGuiTreeNodeFlags_SpanAvailWidth ) )
+        if ( !ImGui::CollapsingHeader( Util::StringFormat( "Render State: {}", stateHash ).c_str(), (renderStateWasOpen ? ImGuiTreeNodeFlags_DefaultOpen : 0u) | ImGuiTreeNodeFlags_SpanAvailWidth ) )
         {
             renderStateWasOpen = false;
         }
@@ -2001,7 +2001,7 @@ namespace Divide
                     }
                     else
                     {
-                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : %s", detailTex->assetName().c_str() ).c_str() );
+                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", detailTex->assetName() ).c_str() );
                     }
                     skipAutoTooltip( true );
                 }
@@ -2037,7 +2037,7 @@ namespace Divide
                     }
                     else
                     {
-                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : %s", normalTex->assetName().c_str() ).c_str() );
+                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", normalTex->assetName() ).c_str() );
                     }
                     skipAutoTooltip( true );
                 }
@@ -2721,7 +2721,7 @@ namespace Divide
             return node( nodes._selections[0] )->name().c_str();
         }
 
-        return Util::StringFormat( "%s, %s, ...", node( nodes._selections[0] )->name().c_str(), node( nodes._selections[1] )->name().c_str() );
+        return Util::StringFormat( "{}, {}, ...", node( nodes._selections[0] )->name().c_str(), node( nodes._selections[1] )->name().c_str() );
     }
 } //namespace Divide
 

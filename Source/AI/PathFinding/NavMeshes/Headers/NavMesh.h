@@ -160,7 +160,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
                                    const vec3<F32>& extents, vec3<F32>& result,
                                    U8 maxIters = 15) const;
 
-    NavigationMesh(PlatformContext& context, DivideRecast& recastInterface);
+    NavigationMesh(PlatformContext& context, DivideRecast& recastInterface, Scene& parentScene);
     ~NavigationMesh() override;
 
    private:
@@ -187,6 +187,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     /// Create a unique mesh name using the given root node
     static Str<256> GenerateMeshName(const SceneGraphNode* sgn);
    private:
+    Scene& _parentScene;
     bool _saveIntermediates = false;
     NavigationMeshConfig _configParams;
     /// @name NavigationMesh build
@@ -217,7 +218,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     CreationCallback _loadCompleteClbk;
     /// Data file to store this nav mesh in.
     Str<256> _fileName;
-    Str<256> _filePath;
+    ResourcePath _filePath;
     /// Configuration file
     string _configFile;
     /// NavMesh extents

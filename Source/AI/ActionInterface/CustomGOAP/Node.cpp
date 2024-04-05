@@ -34,7 +34,7 @@ bool operator<(const Node& lhs, const Node& rhs) noexcept {
 
 string Node::toString() const
 {
-    return Util::StringFormat( "Node { id: %d parent: %d F: %d G: %d H: %d, %s\n", id_, parent_id_, f(), g_, h_, ws_.toString().c_str());
+    return Util::StringFormat("Node { id: {} parent: {} F: {} G: {} H: {}, {}\n", id_, parent_id_, f(), g_, h_, ws_.toString());
 }
 
 } //namespace Divide::goap

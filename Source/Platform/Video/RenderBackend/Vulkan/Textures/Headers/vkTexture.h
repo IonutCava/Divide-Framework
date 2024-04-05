@@ -152,8 +152,8 @@ namespace Divide
 
         vkTexture( GFXDevice& context,
                    const size_t descriptorHash,
-                   const Str<256>& name,
-                   const ResourcePath& assetNames,
+                   const std::string_view name,
+                   std::string_view assetNames,
                    const ResourcePath& assetLocations,
                    const TextureDescriptor& texDescriptor,
                    ResourceCache& parentCache );

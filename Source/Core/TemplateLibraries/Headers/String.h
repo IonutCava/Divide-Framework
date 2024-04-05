@@ -35,13 +35,73 @@
 
 #include "STLString.h"
 
+#include <fmt/format.h>
+
 namespace Divide
 {
     template<size_t N>
-    using Str  = eastl::fixed_string<char, N, true>;
+    class Str : public eastl::fixed_string<char, N, true>
+    {
+       public:
+        using Base = eastl::fixed_string<char, N, true>;
+        using Base::Base;
+
+        Str(const string& str) : Base(str.c_str()) {}
+        Str(const std::string_view str) : Base(str.data(), str.size()) {}
+
+        operator std::string_view() const noexcept
+        {
+            return std::string_view( Base::c_str(), Base::size() );
+        }
+    };
+
+    template<size_t N>
+    Str<N> operator+( const char* other, const Str<N>& base )
+    {
+        Str<N> ret( other );
+        ret.append( base );
+        return ret;
+
+    }
+
+    template<size_t N>
+    Str<N> operator+( const std::string_view other, const Str<N>& base )
+    {
+        Str<N> ret( other );
+        ret.append( base );
+        return ret;
+    }
+
+    template<size_t N>
+    Str<N> operator+( const Str<N>& base, const char* other )
+    {
+        Str<N> ret = base;
+        ret.append( other );
+        return ret;
+    }
+
+    template<size_t N>
+    Str<N> operator+( const Str<N>& base, const std::string_view other )
+    {
+        Str<N> ret = base;
+        ret.append( other.data(), other.size() );
+        return ret;
+    }
 
     template<typename T>
     concept is_string = is_stl_string<T> || is_eastl_string<T>;
 }//namespace Divide
+
+template<size_t N>
+struct fmt::formatter<Divide::Str<N>>
+{
+    constexpr auto parse( format_parse_context& ctx ) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format( const Divide::Str<N>& str, FormatContext& ctx ) -> decltype(ctx.out())
+    {
+        return fmt::format_to( ctx.out(), "{}", str.c_str() );
+    }
+};
 
 #endif //DVD_STRING_H_

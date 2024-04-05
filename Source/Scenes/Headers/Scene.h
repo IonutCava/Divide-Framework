@@ -47,13 +47,14 @@ namespace Divide {
 class Sky;
 class GUI;
 class Light;
+class Project;
 class Object3D;
 class LoadSave;
 class ByteBuffer;
 class IMPrimitive;
 class ParticleData;
 class ParamHandler;
-class SceneManager;
+class ProjectManager;
 class ResourceCache;
 class SceneGraphNode;
 class ParticleEmitter;
@@ -64,6 +65,8 @@ class TerrainDescriptor;
 class ResourceDescriptor;
 class DirectionalLightComponent;
 class EnvironmentProbeComponent;
+
+struct SceneEntry;
 
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Player);
@@ -83,7 +86,7 @@ namespace GFX
 }
 
 namespace Attorney {
-    class SceneManager;
+    class SceneProjectManager;
     class SceneGraph;
     class SceneRenderPass;
     class SceneLoadSave;
@@ -107,8 +110,16 @@ struct DragSelectData
     bool _isDragging = false;
 };
 
+struct SceneEntry
+{
+    Str<256> _name{};
+};
+
+using SceneEntries = vector<SceneEntry>;
+using PlayerList = eastl::array<Player_ptr, Config::MAX_LOCAL_PLAYER_COUNT>;
+
 class Scene : public Resource, public PlatformContextComponent {
-    friend class Attorney::SceneManager;
+    friend class Attorney::SceneProjectManager;
     friend class Attorney::SceneGraph;
     friend class Attorney::SceneRenderPass;
     friend class Attorney::SceneLoadSave;
@@ -133,6 +144,11 @@ class Scene : public Resource, public PlatformContextComponent {
             bool _resetTime = true;
         };
 
+        /// Return the full path to the scene's location on disk. It's equivalent to GetSceneRootFolder(scene.parent()) + scene.name(). (e.g. ./Projects/Foo/Scenes/MyScene/ for project "Foo" and scene "MyScene")
+        [[nodiscard]] static ResourcePath GetSceneFullPath( const Scene& scene );
+        /// Return the full path to the location of Scenes folder in the project (e.g. ./Projects/Foo/Scenes/ for project "Foo")
+        [[nodiscard]] static ResourcePath GetSceneRootFolder( const Project& project );
+
     protected:
         static Mutex s_perFrameArenaMutex;
         static MyArena<TO_MEGABYTES(64)> s_perFrameArena;
@@ -144,11 +160,14 @@ class Scene : public Resource, public PlatformContextComponent {
 
     public:
 
-        explicit Scene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name);
+        explicit Scene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry);
         virtual ~Scene() override;
 
         /// Scene is rendering, so add intensive tasks here to save CPU cycles
         [[nodiscard]] bool idle();
+
+        [[nodiscard]] inline Project& parent() noexcept { return _parent; }
+        [[nodiscard]] inline const Project& parent() const noexcept { return _parent; }
 
 #pragma region Logic Loop
         /// Get all input commands from the user
@@ -182,12 +201,12 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
 #pragma region Entity Management
-                      void            addMusic(MusicType type, const Str<256>& name, const ResourcePath& srcFile) const;
+                      void            addMusic(MusicType type, const std::string_view name, const ResourcePath& srcFile) const;
         [[nodiscard]] SceneGraphNode* addSky(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
         [[nodiscard]] SceneGraphNode* addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
                       void            addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
                       void            addTerrain(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
-        [[nodiscard]] SceneGraphNode* addParticleEmitter(const Str<256>& name, std::shared_ptr<ParticleData> data,SceneGraphNode* parentNode) const;
+        [[nodiscard]] SceneGraphNode* addParticleEmitter(const std::string_view name, std::shared_ptr<ParticleData> data,SceneGraphNode* parentNode) const;
 #pragma endregion
 
 #pragma region Time Of Day
@@ -229,6 +248,7 @@ class Scene : public Resource, public PlatformContextComponent {
         PROPERTY_R(SceneEnvironmentProbePool_uptr, envProbePool);
         PROPERTY_R_IW(bool, loadComplete, false);
         PROPERTY_R_IW(U64, sceneRuntimeUS, 0ULL);
+        PROPERTY_R(SceneEntry, entry);
 
     protected:
         enum class TimerClass : U8
@@ -262,7 +282,7 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] virtual bool load(ByteBuffer& inputBuffer);
 
         /// Can save at any time, I guess?
-        [[nodiscard]] virtual bool saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") const;
+        [[nodiscard]] virtual bool saveXML(const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback) const;
 
         [[nodiscard]]         bool saveNodeToXML(const SceneGraphNode* node) const;
         [[nodiscard]]         bool loadNodeFromXML(SceneGraphNode* node) const;
@@ -286,6 +306,7 @@ class Scene : public Resource, public PlatformContextComponent {
         void onPlayerRemove(const Player_ptr& player);
         void currentPlayerPass( PlayerIndex idx);
 
+        [[nodiscard]] U8      playerCount() const noexcept;
         [[nodiscard]] U8      getSceneIndexForPlayer(PlayerIndex idx) const;
         [[nodiscard]] Player* getPlayerForIndex(PlayerIndex idx) const;
         [[nodiscard]] U8      getPlayerIndexForDevice(U8 deviceIndex) const;
@@ -314,8 +335,10 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
 
     protected:
-        SceneManager&    _parent;
-        vector<Player*>  _scenePlayers;
+        Project&         _parent;
+
+        PlayerList _scenePlayers;
+
         std::atomic_uint _loadingTasks{0u};
         XML::SceneNode   _xmlSceneGraphRootNode;
         IMPrimitive*     _linesPrimitive = nullptr;
@@ -338,7 +361,8 @@ class Scene : public Resource, public PlatformContextComponent {
 };
 
 namespace Attorney {
-class SceneManager {
+class SceneProjectManager
+{
    private:
     static bool loadComplete(const Scene& scene) noexcept {
         return scene.loadComplete();
@@ -424,7 +448,18 @@ class SceneManager {
         return scene._envProbePool.get();
     }
 
-    friend class Divide::SceneManager;
+    [[nodiscard]] static PlayerList& getPlayers( Scene& scene) noexcept
+    {
+        return scene._scenePlayers;
+    }
+
+    [[nodiscard]] static U8 playerCount( const Scene& scene ) noexcept
+    {
+        return scene.playerCount();
+    }
+
+    friend class Divide::Project;
+    friend class Divide::ProjectManager;
 };
 
 class SceneRenderPass {
@@ -462,8 +497,8 @@ class SceneLoadSave {
         return scene.loadNodeFromXML(node);
     }  
     
-    static bool saveXML(const Scene& scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "") {
-        return scene.saveXML(msgCallback, finishCallback, sceneNameOverride);
+    static bool saveXML(const Scene& scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) {
+        return scene.saveXML(msgCallback, finishCallback);
     }
 
     friend class Divide::LoadSave;
@@ -511,7 +546,7 @@ class SceneInput {
 namespace SceneList {
     template<typename T>
     using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
-    using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name)>;
+    using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& name)>;
     using SceneFactoryMap = std::unordered_map<U64, ScenePtrFactory>;
     using SceneNameMap = std::unordered_map<U64, Str<256>>;
 

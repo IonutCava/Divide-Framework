@@ -15,8 +15,9 @@ namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     namespace {
-        string GetFullFieldName(const char* componentName, const Str<32>& fieldName) {
-            return Util::StringFormat("%s.%s", componentName, Util::MakeXMLSafe(fieldName).c_str());
+        string GetFullFieldName(const char* componentName, const Str<32>& fieldName)
+        {
+            return Util::StringFormat("{}.{}", componentName, Util::MakeXMLSafe(fieldName.c_str()).c_str());
         }
     }
 

@@ -51,25 +51,109 @@ namespace Divide
 
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-    bool ProjectManager::OnStartup( PlatformContext& context )
+    bool operator==( const SceneEntry& lhs, const SceneEntry& rhs ) noexcept
     {
-        return Attorney::ProjectManager::onStartup( context );
+        return Util::CompareIgnoreCase(lhs._name.c_str(), rhs._name.c_str());
     }
 
-    bool ProjectManager::OnShutdown( PlatformContext& context )
+    bool Project::CreateNewProject( const ProjectID& projectID )
     {
-        return Attorney::ProjectManager::onShutdown( context );
+        const ResourcePath sourceProjectPath = Paths::g_projectsLocation / Config::DEFAULT_PROJECT_NAME;
+        const ResourcePath targetProjectPath = Paths::g_projectsLocation / projectID._name;
+        const FileError ret = copyDirectory( sourceProjectPath, targetProjectPath, true, true );
+
+        return ret == FileError::NONE;
+
     }
 
-    Project::Project( ProjectManager& parentMgr, const Str<256>& name )
+    bool Project::CreateNewScene( const SceneEntry& scene, const ProjectID& projectID )
+    {
+        const ResourcePath scenePath = Paths::g_projectsLocation / projectID._name / Paths::g_scenesLocation;
+        
+        FileError ret = copyDirectory( scenePath / Config::DEFAULT_SCENE_NAME, scenePath / scene._name, true, false );
+        if ( ret != FileError::NONE )
+        {
+            return false;
+        }
+
+        ret = copyFile( scenePath,
+                        (Config::DEFAULT_SCENE_NAME + string( ".xml" )).c_str(),
+                        scenePath,
+                        (scene._name + ".xml").c_str(),
+                        true );
+
+        if ( ret != FileError::NONE )
+        {
+            ret = removeDirectory( scenePath / scene._name );
+            if (ret != FileError::NONE) 
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    Project::Project( ProjectManager& parentMgr, const ProjectID& projectID )
         : _parentManager( parentMgr )
-        , _name( name )
+        , _id( projectID )
         , _scenePool( *this )
     {
+        const std::filesystem::directory_iterator end;
+        for ( std::filesystem::directory_iterator iter{ (Paths::g_projectsLocation / projectID._name / Paths::g_scenesLocation).fileSystemPath() }; iter != end; ++iter )
+        {
+            if ( std::filesystem::is_directory( *iter )  &&
+                 iter->path().filename().string().compare( Config::DELETED_FOLDER_NAME ) != 0 )
+            {
+                string name = iter->path().filename().string();
+                if ( name.length() > 255 )
+                {
+                    name = name.substr( 0, 255 );
+                }
+
+                _sceneEntries.emplace_back( SceneEntry
+                {
+                    ._name = name.c_str()
+                });
+            }
+        }
     }
 
     Project::~Project()
     {
+        Console::printfn( LOCALE_STR( "SCENE_MANAGER_REMOVE_SCENES" ) );
+        // ScenePool destruction should unload our active scene
+    }
+
+    void Project::idle()
+    {
+    
+        if ( getActiveScene().idle() )
+        {
+            NOP();
+        }
+    }
+
+    bool Project::onFrameStart()
+    {
+        if ( IsSet( _sceneSwitchTarget ) )
+        {
+            parent().platformContext().gfx().getRenderer().postFX().setFadeOut( UColour3( 0 ), 1000.0, 0.0 );
+            if ( !switchSceneInternal() )
+            {
+                return false;
+            }
+            WaitForAllTasks( getActiveScene().context(), true );
+            parent().platformContext().gfx().getRenderer().postFX().setFadeIn( 2750.0 );
+        }
+
+        return true;
+    }
+
+    bool Project::onFrameEnd()
+    {
+        return true;
     }
 
     Scene& Project::getActiveScene() noexcept
@@ -80,6 +164,154 @@ namespace Divide
     const Scene& Project::getActiveScene() const noexcept
     {
         return _scenePool.activeScene();
+    }
+
+    bool Project::switchScene( const SwitchSceneTarget& scene )
+    {
+        const ResourcePath scenePath = Paths::g_projectsLocation / id()._name / Paths::g_scenesLocation / scene._targetScene._name;
+        if ( !pathExists( scenePath ) )
+        {
+            if (!scene._createIfNotExist || !CreateNewScene( scene._targetScene, id() ) )
+            {
+                return false;
+            }
+        }
+
+        if ( !fileExists( ResourcePath{ scenePath.string() + ".xml" } ) )
+        {
+            return false;
+        }
+
+        _sceneSwitchTarget = scene;
+
+        if ( !_sceneSwitchTarget._deferToStartOfFrame )
+        {
+            return switchSceneInternal();
+        }
+
+        return true;
+    }
+
+    bool Project::switchSceneInternal()
+    {
+        SwitchSceneTarget target = _sceneSwitchTarget;
+        _sceneSwitchTarget = {};
+        
+        const SceneEntry& scene = target._targetScene;
+
+        STUBBED("ToDo: Threaded scene load is currently disabled -Ionut");
+
+        const bool threaded = false;//target._loadInSeparateThread;
+        bool unloadPrevious = target._unloadPreviousScene;
+
+        DIVIDE_ASSERT( !scene._name.empty() );
+
+        Scene* sceneToUnload = &_scenePool.activeScene();
+        if ( sceneToUnload != nullptr && sceneToUnload->resourceName().compare( scene._name ) == 0 )
+        {
+            unloadPrevious = false;
+        }
+
+        // We use our rendering task pool for scene changes because we might be creating / loading GPU assets (shaders, textures, buffers, etc)
+        Start( *CreateTask([this, unloadPrevious, &scene, &sceneToUnload]( const Task& /*parentTask*/ )
+            {
+                // Load first, unload after to make sure we don't reload common resources
+                if ( loadScene( scene ) != nullptr )
+                {
+                    if ( unloadPrevious && sceneToUnload )
+                    {
+                        Attorney::SceneProjectManager::onRemoveActive( *sceneToUnload );
+                        if ( !unloadScene( sceneToUnload )) 
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                    }
+                }
+            }),
+             parent().platformContext().taskPool( TaskPoolType::HIGH_PRIORITY ),
+             threaded ? TaskPriority::DONT_CARE : TaskPriority::REALTIME,
+             [this, scene, unloadPrevious, &sceneToUnload]()
+             {
+                 bool foundInCache = false;
+                 Scene* loadedScene = _scenePool.getOrCreateScene( parent().platformContext(), parent().resourceCache(), *this, scene, foundInCache );
+                 assert( loadedScene != nullptr && foundInCache );
+                 
+                 if ( loadedScene->getState() == ResourceState::RES_LOADING )
+                 {
+                     Attorney::SceneProjectManager::postLoadMainThread( *loadedScene );
+                 }
+                 assert( loadedScene->getState() == ResourceState::RES_LOADED );
+                 setActiveScene( loadedScene );
+                 
+                 if ( unloadPrevious && sceneToUnload != nullptr )
+                 {
+                     _scenePool.deleteScene( sceneToUnload->getGUID() );
+                 }
+                 
+                 parent().platformContext().app().timer().resetFPSCounter();
+             }
+        );
+
+        return true;
+    }
+
+    Scene* Project::loadScene( const SceneEntry& sceneEntry )
+    {
+        bool foundInCache = false;
+        Scene* loadingScene = _scenePool.getOrCreateScene( parent().platformContext(), parent().resourceCache(), *this, sceneEntry, foundInCache );
+
+        if ( !loadingScene )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_XML_LOAD_INVALID_SCENE" ) );
+            return nullptr;
+        }
+
+        if ( loadingScene->getState() != ResourceState::RES_LOADED && !Attorney::SceneProjectManager::load( *loadingScene ) )
+        {
+            return nullptr;
+        }
+
+        return loadingScene;
+    }
+
+    bool Project::unloadScene( Scene* scene )
+    {
+        assert( scene != nullptr );
+        Attorney::ProjectManagerProject::waitForSaveTask( parent() );
+
+        parent().platformContext().gui().onUnloadScene( scene );
+        Attorney::SceneProjectManager::onRemoveActive( *scene );
+        return Attorney::SceneProjectManager::unload( *scene );
+    }
+
+    void Project::setActiveScene( Scene* const scene )
+    {
+        assert( scene != nullptr );
+
+        Attorney::ProjectManagerProject::waitForSaveTask( parent() );
+        Attorney::SceneProjectManager::onRemoveActive( _scenePool.defaultSceneActive() ? _scenePool.defaultScene()
+                                                                                         : getActiveScene() );
+
+        _scenePool.activeScene( *scene );
+
+        Attorney::SceneProjectManager::onSetActive( *scene );
+        if ( !LoadSave::loadScene( *scene ) )
+        {
+            //corrupt save
+        }
+
+        parent().platformContext().gui().onChangeScene( scene );
+        parent().platformContext().editor().onChangeScene( scene );
+    }
+
+    bool ProjectManager::OnStartup( PlatformContext& context )
+    {
+        return Attorney::SceneProjectManager::onStartup( context );
+    }
+
+    bool ProjectManager::OnShutdown( PlatformContext& context )
+    {
+        return Attorney::SceneProjectManager::onShutdown( context );
     }
 
     ProjectManager::ProjectManager( Kernel& parentKernel )
@@ -102,87 +334,69 @@ namespace Divide
             return false;
         }
 
-        return Attorney::ProjectManager::loadComplete( activeProject()->scenePool().activeScene() );
+        return Attorney::SceneProjectManager::loadComplete( activeProject()->scenePool().activeScene() );
     }
 
     void ProjectManager::idle()
     {
-        if ( _sceneSwitchTarget._isSet )
+        if ( _playerQueueDirty )
         {
-            parent().platformContext().gfx().getRenderer().postFX().setFadeOut( UColour3( 0 ), 1000.0, 0.0 );
-            if ( !switchSceneInternal() )
+            while ( !_playerAddQueue.empty() )
             {
-                DIVIDE_UNEXPECTED_CALL();
+                auto& [targetScene, playerSGN] = _playerAddQueue.front();
+                addPlayerInternal( *targetScene, playerSGN );
+                _playerAddQueue.pop();
             }
-            WaitForAllTasks( getActiveScene().context(), true );
-            parent().platformContext().gfx().getRenderer().postFX().setFadeIn( 2750.0 );
+            while ( !_playerRemoveQueue.empty() )
+            {
+                auto& [targetScene, playerSGN] = _playerRemoveQueue.front();
+                removePlayerInternal( *targetScene, playerSGN );
+                _playerRemoveQueue.pop();
+            }
+            _playerQueueDirty = false;
         }
         else
         {
-            if ( _playerQueueDirty )
-            {
-                while ( !_playerAddQueue.empty() )
-                {
-                    auto& [targetScene, playerSGN] = _playerAddQueue.front();
-                    addPlayerInternal( *targetScene, playerSGN );
-                    _playerAddQueue.pop();
-                }
-                while ( !_playerRemoveQueue.empty() )
-                {
-                    auto& [targetScene, playerSGN] = _playerRemoveQueue.front();
-                    removePlayerInternal( *targetScene, playerSGN );
-                    _playerRemoveQueue.pop();
-                }
-                _playerQueueDirty = false;
-            }
-
-            if ( getActiveScene().idle() )
-            {
-                NOP();
-            }
+            Attorney::ProjectManagerProject::idle( *activeProject() );
         }
     }
 
-    bool ProjectManager::init( PlatformContext& platformContext, ResourceCache* cache )
+    ProjectIDs& ProjectManager::init()
     {
-        if ( _platformContext == nullptr )
+        if (!_init)
         {
-            _platformContext = &platformContext;
-            _resourceCache = cache;
-            platformContext.kernel().frameListenerMgr().registerFrameListener( this, 1 );
+            _init = true;
+            DIVIDE_ASSERT( _availableProjects.empty() );
+            parent().frameListenerMgr().registerFrameListener( this, 1 );
 
             _recast = eastl::make_unique<AI::Navigation::DivideRecast>();
 
-            _scenePool = MemoryManager_NEW ScenePool( *this );
-
             for ( U8 i = 0u; i < to_base( RenderStage::COUNT ); ++i )
             {
-                _sceneGraphCullTimers[i] = &Time::ADD_TIMER( Util::StringFormat( "SceneGraph cull timer: %s", TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ) ).c_str() );
+                _sceneGraphCullTimers[i] = &Time::ADD_TIMER( Util::StringFormat( "SceneGraph cull timer: {}", TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ) ).c_str() );
             }
-            _init = true;
-        }
-        else
-        {
-            _init = false;
         }
 
-        efficient_clear( _availableProjects );
-
+        efficient_clear(_availableProjects);
         const std::filesystem::directory_iterator end;
-        for ( std::filesystem::directory_iterator iter{ Paths::g_projectsLocation }; iter != end; ++iter )
+        for ( std::filesystem::directory_iterator iter{ Paths::g_projectsLocation.fileSystemPath() }; iter != end; ++iter )
         {
             if ( !std::filesystem::is_directory( *iter ) ||
-                 iter->path().filename().string().compare( DELETED_FOLDER_NAME ) == 0 )
+                 iter->path().filename().string().compare( Config::DELETED_FOLDER_NAME ) == 0 )
             {
                 continue;
             }
 
-            const string projectName = iter->path().filename().string().substr(0, 255);
+            const string projectName = iter->path().filename().string();
 
-            _availableProjects.emplace_back(_ID(projectName.c_str()), projectName );
+            _availableProjects.emplace_back( ProjectID
+            {
+                ._guid = _ID( projectName ),
+                ._name = projectName
+            });
         }
 
-        return _init;
+        return _availableProjects;
     }
 
     void ProjectManager::destroy()
@@ -192,144 +406,58 @@ namespace Divide
             Vegetation::destroyStaticData();
             Console::printfn( LOCALE_STR( "STOP_SCENE_MANAGER" ) );
             // Console::printfn(Locale::Get("SCENE_MANAGER_DELETE"));
-            Console::printfn( LOCALE_STR( "SCENE_MANAGER_REMOVE_SCENES" ) );
-            MemoryManager::DELETE( _scenePool );
             _recast.reset();
-            _platformContext = nullptr;
             _init = false;
         }
     }
 
-    Scene* ProjectManager::load( const Str<256>& sceneName )
+    ErrorCode ProjectManager::loadProject( const ProjectID& targetProject, const bool deferToStartOfFrame )
     {
-        bool foundInCache = false;
-        Scene* loadingScene = _scenePool->getOrCreateScene( *_platformContext, parent().resourceCache(), *this, sceneName, foundInCache );
+        _projectSwitchTarget._targetProject = targetProject;
 
-        if ( !loadingScene )
+        if (!deferToStartOfFrame)
         {
-            Console::errorfn( LOCALE_STR( "ERROR_XML_LOAD_INVALID_SCENE" ) );
-            return nullptr;
+            return loadProjectInternal();
         }
 
-        _platformContext->paramHandler().setParam( _ID( "currentScene" ), string( sceneName.c_str() ) );
-
-        if ( loadingScene->getState() != ResourceState::RES_LOADED &&
-            !Attorney::ProjectManager::load( *loadingScene ) )
-        {
-            return nullptr;
-        }
-
-        return loadingScene;
+        return ErrorCode::NO_ERR;
     }
 
-    bool ProjectManager::unloadScene( Scene* scene )
+
+    ErrorCode ProjectManager::loadProjectInternal()
     {
-        assert( scene != nullptr );
-        waitForSaveTask();
+        SwitchProjectTarget target = _projectSwitchTarget;
+        _projectSwitchTarget = {};
 
-        _platformContext->gui().onUnloadScene( scene );
-        Attorney::ProjectManager::onRemoveActive( *scene );
-        return Attorney::ProjectManager::unload( *scene );
-    }
-
-    void ProjectManager::setActiveScene( Scene* const scene )
-    {
-        assert( scene != nullptr );
-
-        Attorney::ProjectManager::waitForSaveTask();
-        Attorney::ProjectManager::onRemoveActive( _scenePool->defaultSceneActive() ? _scenePool->defaultScene()
-                                                                                : getActiveScene() );
-
-        _scenePool->activeScene( *scene );
-        Attorney::ProjectManager::onSetActive( *scene );
-        if ( !LoadSave::loadScene( *scene ) )
+        if ( _activeProject != nullptr )
         {
-            //corrupt save
+            Console::warnfn( LOCALE_STR( "WARN_PROJECT_CHANGE" ), _activeProject->id()._name, target._targetProject._name );
         }
 
-        _platformContext->gui().onChangeScene( scene );
-        _platformContext->editor().onChangeScene( scene );
-    }
+        _activeProject = eastl::make_unique<Project>( *this, target._targetProject );
 
-    bool ProjectManager::switchScene( const Str<256>& name, bool unloadPrevious, bool deferToIdle, const bool threaded )
-    {
-        const ResourcePath scenePath = Paths::g_scenesLocation + name;
-        const ResourcePath sceneFile = scenePath + ".xml";
-        if ( !pathExists( scenePath ) || !fileExists( sceneFile ) )
+        if ( _activeProject == nullptr || _activeProject->getSceneEntries().empty() )
         {
-            return false;
+            Console::errorfn( LOCALE_STR( "ERROR_PROJECT_LOAD" ), target._targetProject._name );
+            return ErrorCode::MISSING_PROJECT_DATA;
         }
 
-        _sceneSwitchTarget = { name, unloadPrevious, threaded, true };
-
-        if ( !deferToIdle )
+        SwitchSceneTarget sceneTarget
         {
-            return switchSceneInternal();
+            ._targetScene = _activeProject->getSceneEntries().front(),
+            ._unloadPreviousScene = true,
+            ._loadInSeparateThread = false,
+            ._deferToStartOfFrame = false,
+            ._createIfNotExist = false
+        };
+
+        if ( !_activeProject->switchScene( sceneTarget ) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), _activeProject->getSceneEntries().front()._name.c_str() );
+            return ErrorCode::MISSING_SCENE_DATA;
         }
 
-        return true;
-    }
-
-    bool ProjectManager::switchSceneInternal()
-    {
-        assert( _sceneSwitchTarget._isSet );
-
-        const Str<256> name = _sceneSwitchTarget._targetSceneName;
-        const bool threaded = _sceneSwitchTarget._loadInSeparateThread;
-        bool unloadPrevious = _sceneSwitchTarget._unloadPreviousScene;
-        _sceneSwitchTarget = {};
-
-        assert( !name.empty() );
-
-        Scene* sceneToUnload = &_scenePool->activeScene();
-        if ( sceneToUnload != nullptr && sceneToUnload->resourceName().compare( name ) == 0 )
-        {
-            unloadPrevious = false;
-        }
-        // We use our rendering task pool for scene changes because we might be creating / loading GPU assets (shaders, textures, buffers, etc)
-        Start( *CreateTask([this, unloadPrevious, &name, &sceneToUnload]( const Task& /*parentTask*/ )
-            {
-                // Load first, unload after to make sure we don't reload common resources
-                if ( load( name ) != nullptr )
-                {
-                    if ( unloadPrevious && sceneToUnload )
-                    {
-                        Attorney::ProjectManager::onRemoveActive( *sceneToUnload );
-                        unloadScene( sceneToUnload );
-                    }
-                }
-            }),
-            _platformContext->taskPool( TaskPoolType::HIGH_PRIORITY ),
-                                        threaded ? TaskPriority::DONT_CARE : TaskPriority::REALTIME,
-                                        [this, name, unloadPrevious, &sceneToUnload]()
-            {
-                bool foundInCache = false;
-                Scene* loadedScene = _scenePool->getOrCreateScene( *_platformContext, parent().resourceCache(), *this, name, foundInCache );
-                assert( loadedScene != nullptr && foundInCache );
-
-                if ( loadedScene->getState() == ResourceState::RES_LOADING )
-                {
-                    Attorney::ProjectManager::postLoadMainThread( *loadedScene );
-                }
-                assert( loadedScene->getState() == ResourceState::RES_LOADED );
-                setActiveScene( loadedScene );
-
-                if ( unloadPrevious )
-                {
-                    _scenePool->deleteScene( sceneToUnload != nullptr ? sceneToUnload->getGUID() : -1 );
-                }
-
-                _parent.platformContext().app().timer().resetFPSCounter();
-
-            }
-        );
-
-        return true;
-    }
-
-    vector<Str<256>> ProjectManager::sceneNameList( const bool sorted ) const
-    {
-        return _scenePool->sceneNameList( sorted );
+        return ErrorCode::NO_ERR;
     }
 
     void ProjectManager::waitForSaveTask()
@@ -348,13 +476,13 @@ namespace Divide
         if constexpr( Config::Build::IS_EDITOR_BUILD )
         {
             static_assert(Config::Build::ENABLE_EDITOR);
-            DisplayWindow& window = _platformContext->mainWindow();
+            DisplayWindow& window = platformContext().mainWindow();
             if ( window.type() == WindowType::WINDOW )
             {
                 window.maximized( true );
             }
 
-            _platformContext->editor().toggle( true );
+            platformContext().editor().toggle( true );
         }
     }
 
@@ -363,14 +491,15 @@ namespace Divide
         if ( _init )
         {
             const F32 aspectRatio = to_F32( params.width ) / params.height;
-            const F32 vFoV = Angle::to_VerticalFoV( _platformContext->config().runtime.horizontalFOV, to_D64( aspectRatio ) );
-            const vec2<F32> zPlanes( Camera::s_minNearZ, _platformContext->config().runtime.cameraViewDistance );
+            const F32 vFoV = Angle::to_VerticalFoV( platformContext().config().runtime.horizontalFOV, to_D64( aspectRatio ) );
+            const vec2<F32> zPlanes( Camera::s_minNearZ, platformContext().config().runtime.cameraViewDistance );
 
-            for ( const UnitComponent* player : _players )
+            auto& players = Attorney::SceneProjectManager::getPlayers( activeProject()->getActiveScene() );
+            for ( const auto& crtPlayer : players )
             {
-                if ( player != nullptr )
+                if ( crtPlayer != nullptr )
                 {
-                    player->getUnit<Player>()->camera()->setProjection( aspectRatio, vFoV, zPlanes );
+                    crtPlayer->camera()->setProjection( aspectRatio, vFoV, zPlanes );
                 }
             }
         }
@@ -392,9 +521,12 @@ namespace Divide
     void ProjectManager::addPlayerInternal( Scene& parentScene, SceneGraphNode* playerNode )
     {
         const I64 sgnGUID = playerNode->getGUID();
-        for ( const UnitComponent* crtPlayer : _players )
+
+        auto& players = Attorney::SceneProjectManager::getPlayers( parentScene );
+
+        for ( const auto& crtPlayer : players )
         {
-            if ( crtPlayer && crtPlayer->parentSGN()->getGUID() == sgnGUID )
+            if ( crtPlayer && crtPlayer->getBoundNode()->getGUID() == sgnGUID )
             {
                 return;
             }
@@ -403,7 +535,7 @@ namespace Divide
         U32 i = 0u;
         for ( ; i < Config::MAX_LOCAL_PLAYER_COUNT; ++i )
         {
-            if ( _players[i] == nullptr )
+            if ( players[i] == nullptr )
             {
                 break;
             }
@@ -411,25 +543,20 @@ namespace Divide
 
         if ( i < Config::MAX_LOCAL_PLAYER_COUNT )
         {
-            const Player_ptr player = std::make_shared<Player>( to_U8( i ) );
-            player->camera()->fromCamera( *Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT ) );
-            player->camera()->setFixedYawAxis( true );
+            players[i] = std::make_shared<Player>( to_U8( i ) );
+            players[i]->camera()->fromCamera( *Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT ) );
+            players[i]->camera()->setFixedYawAxis( true );
 
             {
                 boost::property_tree::ptree pt;
-                const ResourcePath scenePath = Paths::g_scenesLocation;
-                const ResourcePath sceneLocation( scenePath + "/" + parentScene.resourceName().c_str() );
-                const ResourcePath sceneDataFile( sceneLocation + ".xml" );
-                XML::readXML( sceneDataFile.c_str(), pt );
-                player->camera()->loadFromXML( pt );
+
+                const ResourcePath sceneDataFile = Scene::GetSceneRootFolder( parentScene.parent() ) / (parentScene.resourceName() + ".xml");
+                XML::readXML( sceneDataFile, pt );
+                players[i]->camera()->loadFromXML( pt );
             }
 
-            _players[i] = playerNode->get<UnitComponent>();
-            _players[i]->setUnit( player );
-
-            ++_activePlayerCount;
-
-            Attorney::ProjectManager::onPlayerAdd( parentScene, player );
+            playerNode->get<UnitComponent>()->setUnit( players[i] );
+            Attorney::SceneProjectManager::onPlayerAdd( parentScene, players[i] );
         }
     }
 
@@ -454,13 +581,14 @@ namespace Divide
         }
 
         const I64 targetGUID = playerNode->getGUID();
+
+        auto& players = Attorney::SceneProjectManager::getPlayers( parentScene );
         for ( U32 i = 0; i < Config::MAX_LOCAL_PLAYER_COUNT; ++i )
         {
-            if ( _players[i] != nullptr && _players[i]->parentSGN()->getGUID() == targetGUID )
+            if ( players[i] != nullptr && players[i]->getBoundNode()->getGUID() == targetGUID )
             {
-                --_activePlayerCount;
-                Attorney::ProjectManager::onPlayerRemove( parentScene, _players[i]->getUnit<Player>() );
-                _players[i] = nullptr;
+                Attorney::SceneProjectManager::onPlayerRemove( parentScene, players[i] );
+                players[i] = nullptr;
                 break;
             }
         }
@@ -487,7 +615,7 @@ namespace Divide
         LoSList.reset();
         rayResults.clear();
 
-        const auto& sceneGraph = getActiveScene().sceneGraph();
+        const auto& sceneGraph = activeProject()->getActiveScene().sceneGraph();
         const vec3<F32>& eye = camera.snapshot()._eye;
         const vec2<F32>  zPlanes = camera.snapshot()._zPlanes;
 
@@ -638,7 +766,17 @@ namespace Divide
     {
         if ( _init )
         {
-            return Attorney::ProjectManager::frameStarted( getActiveScene() );
+            if ( IsSet(_projectSwitchTarget) && loadProjectInternal() != ErrorCode::NO_ERR )
+            {
+                return false;
+            }
+
+            if ( !Attorney::ProjectManagerProject::onFrameStart( *activeProject() ) )
+            {
+                return false;
+            }
+
+            return Attorney::SceneProjectManager::frameStarted( activeProject()->getActiveScene() );
         }
 
         return true;
@@ -648,7 +786,12 @@ namespace Divide
     {
         if ( _init )
         {
-            return Attorney::ProjectManager::frameEnded( getActiveScene() );
+            if (!Attorney::ProjectManagerProject::onFrameEnd( *activeProject() ))
+            {
+                return false;
+            }
+
+            return Attorney::SceneProjectManager::frameEnded( activeProject()->getActiveScene() );
         }
 
         return true;
@@ -658,7 +801,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        Scene& activeScene = getActiveScene();
+        Scene& activeScene = activeProject()->getActiveScene();
         assert( activeScene.getState() == ResourceState::RES_LOADED );
         // Update internal timers
         _elapsedGameTime += deltaGameTimeUS;
@@ -682,7 +825,7 @@ namespace Divide
         FogDetails fog = activeScene.state()->renderState().fogDetails();
         fog._colourSunScatter.rgb = sunColour;
 
-        if ( !_platformContext->config().rendering.enableFog )
+        if ( !platformContext().config().rendering.enableFog )
         {
             fog._colourAndDensity.a = 0.f;
         }
@@ -727,17 +870,17 @@ namespace Divide
         GFX::EnqueueCommand( bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
         GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ targetViewport } );
 
-        Attorney::ProjectManager::drawCustomUI( getActiveScene(), targetViewport, bufferInOut, memCmdInOut );
+        Attorney::SceneProjectManager::drawCustomUI( activeProject()->getActiveScene(), targetViewport, bufferInOut, memCmdInOut );
     }
 
     void ProjectManager::postRender( GFX::CommandBuffer& bufferInOut, [[maybe_unused]] GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        Scene& activeScene = getActiveScene();
+        Scene& activeScene = activeProject()->getActiveScene();
         if ( activeScene.state()->screenshotRequestQueued() )
         {
-            _platformContext->gfx().screenshot( ResourcePath{ Util::StringFormat("Frame_%d", GFXDevice::FrameCount())}, bufferInOut);
+            platformContext().gfx().screenshot( Util::StringFormat("Frame_{}", GFXDevice::FrameCount()), bufferInOut);
             activeScene.state()->screenshotRequestQueued(false);
         }
     }
@@ -746,30 +889,31 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        Scene& activeScene = getActiveScene();
+        Scene& activeScene = activeProject()->getActiveScene();
 
-        Attorney::ProjectManager::debugDraw( activeScene, bufferInOut, memCmdInOut );
+        Attorney::SceneProjectManager::debugDraw( activeScene, bufferInOut, memCmdInOut );
         // Draw bounding boxes, skeletons, axis gizmo, etc.
-        _platformContext->gfx().debugDraw( activeScene.state()->renderState(), bufferInOut, memCmdInOut );
+        platformContext().gfx().debugDraw( activeScene.state()->renderState(), bufferInOut, memCmdInOut );
     }
 
     Camera* ProjectManager::playerCamera( const PlayerIndex idx, const bool skipOverride ) const noexcept
     {
-        if ( getActivePlayerCount() <= idx )
+        if ( activePlayerCount() <= idx )
         {
             return nullptr;
         }
 
+        Scene& activeScene = activeProject()->getActiveScene();
         if ( !skipOverride )
         {
-            Camera* overrideCamera = getActiveScene().state()->playerState( idx ).overrideCamera();
+            Camera* overrideCamera = activeScene.state()->playerState( idx ).overrideCamera();
             if ( overrideCamera != nullptr )
             {
                 return overrideCamera;
             }
         }
 
-        return _players[idx]->getUnit<Player>()->camera();
+        return Attorney::SceneProjectManager::getPlayers(activeScene)[idx]->camera();
     }
 
     Camera* ProjectManager::playerCamera( const bool skipOverride ) const noexcept
@@ -782,13 +926,13 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         _currentPlayerPass = idx;
-        Attorney::ProjectManager::currentPlayerPass( getActiveScene(), _currentPlayerPass );
+        Attorney::SceneProjectManager::currentPlayerPass( activeProject()->getActiveScene(), _currentPlayerPass );
         playerCamera()->updateLookAt();
     }
 
     void ProjectManager::editorPreviewNode( const I64 editorPreviewNode ) noexcept
     {
-        getActiveScene().state()->renderState().singleNodeRenderGUID( editorPreviewNode );
+        activeProject()->getActiveScene().state()->renderState().singleNodeRenderGUID( editorPreviewNode );
     }
 
     BoundingSphere ProjectManager::moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const
@@ -823,12 +967,12 @@ namespace Divide
 
     bool ProjectManager::saveNode( const SceneGraphNode* targetNode ) const
     {
-        return LoadSave::saveNodeToXML( getActiveScene(), targetNode );
+        return LoadSave::saveNodeToXML( activeProject()->getActiveScene(), targetNode );
     }
 
     bool ProjectManager::loadNode( SceneGraphNode* targetNode ) const
     {
-        return LoadSave::loadNodeFromXML( getActiveScene(), targetNode );
+        return LoadSave::loadNodeFromXML( activeProject()->getActiveScene(), targetNode );
     }
 
     
@@ -837,7 +981,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         static vector<SceneGraphNode*> allNodes = {};
-        getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
+        activeProject()->getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
 
         erase_if( allNodes,
                  []( SceneGraphNode* node ) noexcept ->  bool
@@ -849,7 +993,7 @@ namespace Divide
         if ( inView )
         {
             NodeCullParams cullParams = {};
-            cullParams._lodThresholds = getActiveScene().state()->renderState().lodThresholds();
+            cullParams._lodThresholds = activeProject()->getActiveScene().state()->renderState().lodThresholds();
             cullParams._stage = stage;
             cullParams._cameraEyePos = camera->snapshot()._eye;
             cullParams._frustum = &camera->getFrustum();
@@ -868,7 +1012,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         static vector<SceneGraphNode*> allNodes = {};
-        getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
+        activeProject()->getActiveScene().sceneGraph()->getNodesByType( { SceneNodeType::TYPE_WATER, SceneNodeType::TYPE_SUBMESH, SceneNodeType::TYPE_SPHERE_3D, SceneNodeType::TYPE_BOX_3D, SceneNodeType::TYPE_QUAD_3D }, allNodes );
 
         erase_if( allNodes,
                  []( SceneGraphNode* node ) noexcept ->  bool
@@ -879,7 +1023,7 @@ namespace Divide
         if ( inView )
         {
             NodeCullParams cullParams = {};
-            cullParams._lodThresholds = getActiveScene().state()->renderState().lodThresholds();
+            cullParams._lodThresholds = activeProject()->getActiveScene().state()->renderState().lodThresholds();
             cullParams._stage = stage;
             cullParams._cameraEyePos = camera->snapshot()._eye;
             cullParams._frustum = &camera->getFrustum();
@@ -900,7 +1044,7 @@ namespace Divide
 
     void ProjectManager::initDefaultCullValues( const RenderStage stage, NodeCullParams& cullParamsInOut ) noexcept
     {
-        const Scene& activeScene = getActiveScene();
+        const Scene& activeScene = activeProject()->getActiveScene();
 
         cullParamsInOut._stage = stage;
         cullParamsInOut._lodThresholds = activeScene.state()->renderState().lodThresholds( stage );
@@ -920,7 +1064,7 @@ namespace Divide
 
         Time::ScopedTimer timer( *_sceneGraphCullTimers[to_U32( params._stage )] );
 
-        const Scene& activeScene = getActiveScene();
+        const Scene& activeScene = activeProject()->getActiveScene();
         RenderPassCuller::FrustumCull( params, cullFlags, *activeScene.sceneGraph(), *activeScene.state(), _parent.platformContext(), nodesOut );
 
         if ( params._stage == RenderStage::DISPLAY )
@@ -935,7 +1079,7 @@ namespace Divide
 
         if ( nodeGUID != -1 )
         {
-            SceneGraphNode* sgn = getActiveScene().sceneGraph()->findNode( nodeGUID );
+            SceneGraphNode* sgn = activeProject()->getActiveScene().sceneGraph()->findNode( nodeGUID );
             if ( sgn != nullptr )
             {
                 const auto appendNode = [&nodesOut, &cameraEye]( SceneGraphNode* sgn )
@@ -971,8 +1115,8 @@ namespace Divide
 
         if ( stage != RenderStage::SHADOW )
         {
-            getActiveScene().lightPool()->sortLightData( stage, cameraSnapshot );
-            getActiveScene().lightPool()->uploadLightData( stage, cameraSnapshot, memCmdInOut );
+            activeProject()->getActiveScene().lightPool()->sortLightData( stage, cameraSnapshot );
+            activeProject()->getActiveScene().lightPool()->uploadLightData( stage, cameraSnapshot, memCmdInOut );
         }
     }
 
@@ -983,14 +1127,14 @@ namespace Divide
             return;
         }
 
-        getActiveScene().onChangeFocus( hasFocus );
+        activeProject()->getActiveScene().onChangeFocus( hasFocus );
     }
 
     bool ProjectManager::resetSelection( const PlayerIndex idx, const bool resetIfLocked )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        if ( Attorney::ProjectManager::resetSelection( getActiveScene(), idx, resetIfLocked ) )
+        if ( Attorney::SceneProjectManager::resetSelection( activeProject()->getActiveScene(), idx, resetIfLocked ) )
         {
             for ( auto& cbk : _selectionChangeCallbacks )
             {
@@ -1006,18 +1150,19 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        Attorney::ProjectManager::setSelected( getActiveScene(), idx, SGNs, recursive );
+        Attorney::SceneProjectManager::setSelected( activeProject()->getActiveScene(), idx, SGNs, recursive );
         for ( auto& cbk : _selectionChangeCallbacks )
         {
             cbk.second( idx, SGNs );
         }
     }
 
-    void ProjectManager::onNodeDestroy( [[maybe_unused]] SceneGraphNode* node )
+    void ProjectManager::onNodeDestroy( Scene& parentScene, [[maybe_unused]] SceneGraphNode* node )
     {
-        for ( PlayerIndex p = 0; p < _activePlayerCount; ++p )
+        auto& players = Attorney::SceneProjectManager::getPlayers( parentScene );
+        for ( U32 i = 0; i < Config::MAX_LOCAL_PLAYER_COUNT; ++i )
         {
-            if ( !resetSelection( p, true ) )
+            if ( players[i] != nullptr && !resetSelection( players[i]->index(), true ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
@@ -1026,22 +1171,27 @@ namespace Divide
 
     void ProjectManager::mouseMovedExternally( const Input::MouseMoveEvent& arg )
     {
-        Attorney::ProjectManager::clearHoverTarget( getActiveScene(), arg );
+        Attorney::SceneProjectManager::clearHoverTarget( activeProject()->getActiveScene(), arg );
     }
 
     SceneNode_ptr ProjectManager::createNode( const SceneNodeType type, const ResourceDescriptor& descriptor )
     {
-        return Attorney::ProjectManager::createNode( getActiveScene(), type, descriptor );
+        return Attorney::SceneProjectManager::createNode( activeProject()->getActiveScene(), type, descriptor );
     }
 
     SceneEnvironmentProbePool* ProjectManager::getEnvProbes() const noexcept
     {
-        return Attorney::ProjectManager::getEnvProbes( getActiveScene() );
+        return Attorney::SceneProjectManager::getEnvProbes( activeProject()->getActiveScene() );
+    }
+
+    U8 ProjectManager::activePlayerCount() const noexcept
+    {
+        return Attorney::SceneProjectManager::playerCount( activeProject()->getActiveScene() );
     }
 
     std::pair<Texture_ptr, SamplerDescriptor> ProjectManager::getSkyTexture() const
     {
-        const auto& skies = getActiveScene().sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
+        const auto& skies = activeProject()->getActiveScene().sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
         if ( !skies.empty() )
         {
             const Sky& sky = skies.front()->getNode<Sky>();
@@ -1063,7 +1213,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->onKeyDown( key );
+        return activeProject()->getActiveScene().input()->onKeyDown( key );
     }
 
     bool ProjectManager::onKeyUp( const Input::KeyEvent& key )
@@ -1073,7 +1223,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->onKeyUp( key );
+        return activeProject()->getActiveScene().input()->onKeyUp( key );
     }
 
     bool ProjectManager::mouseMoved( const Input::MouseMoveEvent& arg )
@@ -1084,7 +1234,7 @@ namespace Divide
 
         }
 
-        return getActiveScene().input()->mouseMoved( arg );
+        return activeProject()->getActiveScene().input()->mouseMoved( arg );
     }
 
     bool ProjectManager::mouseButtonPressed( const Input::MouseButtonEvent& arg )
@@ -1094,7 +1244,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->mouseButtonPressed( arg );
+        return activeProject()->getActiveScene().input()->mouseButtonPressed( arg );
     }
 
     bool ProjectManager::mouseButtonReleased( const Input::MouseButtonEvent& arg )
@@ -1104,7 +1254,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->mouseButtonReleased( arg );
+        return activeProject()->getActiveScene().input()->mouseButtonReleased( arg );
     }
 
     bool ProjectManager::joystickAxisMoved( const Input::JoystickEvent& arg )
@@ -1114,7 +1264,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->joystickAxisMoved( arg );
+        return activeProject()->getActiveScene().input()->joystickAxisMoved( arg );
     }
 
     bool ProjectManager::joystickPovMoved( const Input::JoystickEvent& arg )
@@ -1124,7 +1274,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->joystickPovMoved( arg );
+        return activeProject()->getActiveScene().input()->joystickPovMoved( arg );
     }
 
     bool ProjectManager::joystickButtonPressed( const Input::JoystickEvent& arg )
@@ -1134,7 +1284,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->joystickButtonPressed( arg );
+        return activeProject()->getActiveScene().input()->joystickButtonPressed( arg );
     }
 
     bool ProjectManager::joystickButtonReleased( const Input::JoystickEvent& arg )
@@ -1144,7 +1294,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->joystickButtonReleased( arg );
+        return activeProject()->getActiveScene().input()->joystickButtonReleased( arg );
     }
 
     bool ProjectManager::joystickBallMoved( const Input::JoystickEvent& arg )
@@ -1154,7 +1304,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->joystickBallMoved( arg );
+        return activeProject()->getActiveScene().input()->joystickBallMoved( arg );
     }
 
     bool ProjectManager::joystickAddRemove( const Input::JoystickEvent& arg )
@@ -1164,7 +1314,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->joystickAddRemove( arg );
+        return activeProject()->getActiveScene().input()->joystickAddRemove( arg );
     }
 
     bool ProjectManager::joystickRemap( const Input::JoystickEvent& arg )
@@ -1174,7 +1324,7 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->joystickRemap( arg );
+        return activeProject()->getActiveScene().input()->joystickRemap( arg );
     }
 
     bool ProjectManager::onTextEvent( const Input::TextEvent& arg )
@@ -1184,7 +1334,33 @@ namespace Divide
             return false;
         }
 
-        return getActiveScene().input()->onTextEvent( arg );
+        return activeProject()->getActiveScene().input()->onTextEvent( arg );
+    }
+
+    PlatformContext& ProjectManager::platformContext() noexcept
+    {
+        return parent().platformContext();
+    }
+
+    const PlatformContext& ProjectManager::platformContext() const noexcept
+    {
+        return parent().platformContext();
+    }
+
+    const ResourceCache& ProjectManager::resourceCache() const noexcept
+    {
+        return *parent().resourceCache();
+    }
+
+    ResourceCache& ProjectManager::resourceCache() noexcept
+    {
+        return *parent().resourceCache();
+    }
+
+    namespace
+    {
+        constexpr const char* g_saveFile = "current_save.sav";
+        constexpr const char* g_bakSaveFile = "save.bak";
     }
 
     bool LoadSave::loadScene( Scene& activeScene )
@@ -1196,20 +1372,18 @@ namespace Divide
 
         const Str<256>& sceneName = activeScene.resourceName();
 
-        const ResourcePath path = Paths::g_saveLocation + sceneName + "/";
-        const ResourcePath saveFile = ResourcePath( "current_save.sav" );
-        const ResourcePath bakSaveFile = ResourcePath( "save.bak" );
+        const ResourcePath path = Paths::g_saveLocation / sceneName;
 
         bool isLoadFromBackup = false;
         // If file is missing, restore from bak
-        if ( !fileExists( path + saveFile ) )
+        if ( !fileExists( path / g_saveFile ) )
         {
             isLoadFromBackup = true;
 
             // Save file might be deleted if it was corrupted
-            if ( fileExists( path + bakSaveFile ) )
+            if ( fileExists( path / g_bakSaveFile ) )
             {
-                if ( copyFile( path, bakSaveFile, path, saveFile, false ) != FileError::NONE )
+                if ( copyFile( path, g_bakSaveFile, path, g_saveFile, false ) != FileError::NONE )
                 {
                     NOP();
                 }
@@ -1217,7 +1391,7 @@ namespace Divide
         }
 
         ByteBuffer save;
-        if ( save.loadFromFile( path.c_str(), saveFile.c_str() ) )
+        if ( save.loadFromFile( path, g_saveFile ) )
         {
             auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
             save >> tempVer;
@@ -1226,7 +1400,7 @@ namespace Divide
                 if ( !Attorney::SceneLoadSave::load( activeScene, save ) )
                 {
                     //Remove the save and try the backup
-                    if ( deleteFile( path, saveFile ) != FileError::NONE )
+                    if ( deleteFile( path, g_saveFile ) != FileError::NONE )
                     {
                         NOP();
                     }
@@ -1251,11 +1425,11 @@ namespace Divide
         return Attorney::SceneLoadSave::loadNodeFromXML( activeScene, node );
     }
 
-    bool LoadSave::saveScene( const Scene& activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride )
+    bool LoadSave::saveScene( const Scene& activeScene, const bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
     {
         if ( !toCache )
         {
-            return Attorney::SceneLoadSave::saveXML( activeScene, msgCallback, finishCallback, sceneNameOverride );
+            return Attorney::SceneLoadSave::saveXML( activeScene, msgCallback, finishCallback );
         }
 
         bool ret = false;
@@ -1266,13 +1440,11 @@ namespace Divide
         else
         {
             const Str<256>& sceneName = activeScene.resourceName();
-            const ResourcePath path = Paths::g_saveLocation + sceneName + "/";
-            const ResourcePath saveFile = ResourcePath( "current_save.sav" );
-            const ResourcePath bakSaveFile = ResourcePath( "save.bak" );
+            const ResourcePath path = Paths::g_saveLocation / sceneName;
 
-            if ( fileExists( path + saveFile ) )
+            if ( fileExists( path / g_saveFile) )
             {
-                if ( copyFile( path, saveFile, path, bakSaveFile, true ) != FileError::NONE )
+                if ( copyFile( path, g_saveFile, path, g_bakSaveFile, true ) != FileError::NONE )
                 {
                     return false;
                 }
@@ -1282,7 +1454,7 @@ namespace Divide
             save << BYTE_BUFFER_VERSION;
             if ( Attorney::SceneLoadSave::save( activeScene, save ) )
             {
-                ret = save.dumpToFile( path.c_str(), saveFile.c_str() );
+                ret = save.dumpToFile( path, g_saveFile );
                 assert( ret );
             }
         }
@@ -1293,14 +1465,14 @@ namespace Divide
         return ret;
     }
 
-    bool ProjectManager::saveActiveScene( bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride )
+    bool ProjectManager::saveActiveScene( bool toCache, const bool deferred, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        const Scene& activeScene = getActiveScene();
+        const Scene& activeScene = activeProject()->getActiveScene();
 
         // Ignore any auto-save (or manual saves) on the default scene
-        if ( Util::IsEmptyOrNull( sceneNameOverride ) && activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID )
+        if ( activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID )
         {
             return true;
         }
@@ -1320,9 +1492,9 @@ namespace Divide
         }
 
         _saveTask = CreateTask( nullptr,
-                               [&activeScene, msgCallback, finishCallback, sceneNameStr = string( sceneNameOverride ), toCache]( const Task& /*parentTask*/ )
+                               [&activeScene, msgCallback, finishCallback, toCache]( const Task& /*parentTask*/ )
         {
-            LoadSave::saveScene( activeScene, toCache, msgCallback, finishCallback, sceneNameStr.c_str() );
+            LoadSave::saveScene( activeScene, toCache, msgCallback, finishCallback );
         },
                                false );
         Start( *_saveTask, pool, deferred ? TaskPriority::DONT_CARE : TaskPriority::REALTIME );

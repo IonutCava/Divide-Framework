@@ -44,18 +44,22 @@ void ByteBuffer::append(const Byte *src, const size_t cnt) {
 }
 
 
-bool ByteBuffer::dumpToFile(const char* path, const char* fileName, const U8 version) {
-    if (!_storage.empty() && to_U8(_storage.back()) != version) {
+bool ByteBuffer::dumpToFile(const ResourcePath& path, const std::string_view fileName, const U8 version)
+{
+    if (!_storage.empty() && to_U8(_storage.back()) != version)
+    {
         append(version);
     }
 
     return writeFile(path, fileName, _storage.data(), _storage.size(), FileType::BINARY) == FileError::NONE;
 }
 
-bool ByteBuffer::loadFromFile(const char* path, const char* fileName, const U8 version) {
+bool ByteBuffer::loadFromFile(const ResourcePath& path, const std::string_view fileName, const U8 version)
+{
     clear();
     _storage.reserve(DEFAULT_SIZE);
-    if (readFile(path, fileName, _storage, FileType::BINARY) == FileError::NONE) {
+    if (readFile(path, fileName, _storage, FileType::BINARY) == FileError::NONE)
+    {
         _wpos = storageSize();
         return version == 0u || to_U8(_storage.back()) == version;
     }

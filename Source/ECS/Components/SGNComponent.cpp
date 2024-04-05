@@ -59,7 +59,7 @@ namespace Divide {
     }
 
     U64 SGNComponent::uniqueID() const {
-        return _ID(Util::StringFormat("%s_%s", _parentSGN->name().c_str(), _editorComponent.name().c_str()).c_str());
+        return _ID(Util::StringFormat("{}_{}", _parentSGN->name().c_str(), _editorComponent.name().c_str()).c_str());
     }
 
     bool SGNComponent::enabled() const {

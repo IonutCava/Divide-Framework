@@ -11,7 +11,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/RenderPassManager.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Scenes/Headers/SceneShaderData.h"
@@ -189,7 +189,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
         }
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ %d ]", rtLayerIndex()).c_str(), to_U32(rtLayerIndex())));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ {} ]", rtLayerIndex()).c_str(), to_U32(rtLayerIndex())));
 
     RenderPassParams params;
 

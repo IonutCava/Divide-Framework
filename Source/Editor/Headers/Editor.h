@@ -42,11 +42,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/TemplateLibraries/Headers/CircularBuffer.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Editor/Widgets/Headers/Gizmo.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
+
 #include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
 
 struct ImDrawData;
@@ -296,11 +298,9 @@ namespace Divide
         void renderDrawList( ImDrawData* pDrawData, I64 bufferGUID, const Rect<I32>& targetViewport, bool editorPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
         /// Saves all new changes to the current scene and uses the provided callbacks to return progress messages. msgCallback gets called per save-step/process, finishCallback gets called once at the end
-        /// sceneNameOverride should be left empty to save the scene in its own folder. Any string passed will create a new scene with the name specified and save everything to that folder instead, leaving the original scene untouched
-        /// This is usefull for creating a new scene from the editor's default one.
-        [[nodiscard]] bool saveSceneChanges( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "" ) const;
-        [[nodiscard]] bool switchScene( const char* scenePath );
-
+        [[nodiscard]] bool saveSceneChanges( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) const;
+        [[nodiscard]] bool switchScene( const SceneEntry& scene, bool createIfNotExists = false );
+        [[nodiscard]] bool openProject( const ProjectID& projectID );
         /// Returns true if the window was closed
         [[nodiscard]] bool modalTextureView( const char* modalName, Texture* tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
         /// Returns true if the model was queued
@@ -312,6 +312,8 @@ namespace Divide
 
         void onRemoveComponent( const EditorComponent& comp ) const;
 
+        [[nodiscard]] const ProjectIDs& getProjectList() const noexcept;
+        [[nodiscard]] const SceneEntries& getSceneList() const noexcept;
         [[nodiscard]] LightPool& getActiveLightPool() const;
         [[nodiscard]] SceneEnvironmentProbePool* getActiveEnvProbePool() const noexcept;
 
@@ -329,10 +331,10 @@ namespace Divide
 
         GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut );
 
-        protected:
+    protected:
         SceneGraphNode* _previewNode{ nullptr };
 
-        private:
+    private:
         Time::ProfileTimer& _editorUpdateTimer;
         Time::ProfileTimer& _editorRenderTimer;
 
@@ -359,11 +361,11 @@ namespace Divide
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};
         std::array<DockedWindow*, to_base( WindowType::COUNT )> _dockedWindows = {};
 
-        string _externalTextEditorPath = "";
+        ResourcePath _externalTextEditorPath;
 
         SamplerDescriptor _editorSampler{};
 
-        string          _lastOpenSceneName{ "" };
+        string         _lastOpenSceneName{ "" };
         U32            _stepQueue = 1u;
         F32            _queuedDPIValue = -1.f;
         bool           _simulationPaused = true;
@@ -373,7 +375,7 @@ namespace Divide
         bool           _showMemoryEditor = false;
         bool           _isScenePaused = false;
         bool           _gridSettingsDirty = true;
-        CircularBuffer<Str<256>> _recentSceneList;
+        CircularBuffer<SceneEntry> _recentSceneList;
         CameraSnapshot _render2DSnapshot;
         RenderTargetHandle _nodePreviewRTHandle{};
         struct QueueModelSpawn
@@ -539,12 +541,12 @@ namespace Divide
                 editor._currentTheme = newTheme;
             }
 
-            [[nodiscard]] static const string& externalTextEditorPath( const Editor& editor ) noexcept
+            [[nodiscard]] static const ResourcePath& externalTextEditorPath( const Editor& editor ) noexcept
             {
                 return editor._externalTextEditorPath;
             }
 
-            static void externalTextEditorPath( Editor& editor, const string& path )
+            static void externalTextEditorPath( Editor& editor, const ResourcePath& path )
             {
                 editor._externalTextEditorPath = path;
             }
@@ -574,9 +576,24 @@ namespace Divide
                 return editor._showOptionsWindow;
             }
 
-            [[nodiscard]] static const CircularBuffer<Str<256>>& getRecentSceneList( const Editor& editor ) noexcept
+            [[nodiscard]] static const CircularBuffer<SceneEntry>& getRecentSceneList( const Editor& editor ) noexcept
             {
                 return editor._recentSceneList;
+            }    
+            
+            [[nodiscard]] static const SceneEntries& getSceneList( const Editor& editor ) noexcept
+            {
+                return editor.getSceneList();
+            }
+
+            [[nodiscard]] static const ProjectIDs& getProjectList( Editor& editor ) noexcept
+            {
+                return editor.getProjectList();
+            }
+
+            [[nodiscard]] static bool openProject( Editor& editor, const ProjectID& projectID ) noexcept
+            {
+                return editor.openProject( projectID );
             }
 
             friend class Divide::MenuBar;
@@ -644,14 +661,14 @@ namespace Divide
                 editor.unsavedSceneChanges( true );
             }
 
-            [[nodiscard]] static bool saveSceneChanges( const Editor& editor, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "" )
+            [[nodiscard]] static bool saveSceneChanges( const Editor& editor, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback )
             {
-                return editor.saveSceneChanges( msgCallback, finishCallback, sceneNameOverride );
+                return editor.saveSceneChanges( msgCallback, finishCallback );
             }
 
-            static bool switchScene( Editor& editor, const char* scenePath )
+            static bool switchScene( Editor& editor, const SceneEntry& scene, bool createIfNotExists )
             {
-                return editor.switchScene( scenePath );
+                return editor.switchScene( scene, createIfNotExists );
             }
 
             static void inspectMemory( Editor& editor, const std::pair<bufferPtr, size_t> data ) noexcept
@@ -699,7 +716,7 @@ namespace Divide
                 editor.showStatusMessage( message, durationMS, error );
             }
 
-            [[nodiscard]] static const string& externalTextEditorPath( const Editor& editor ) noexcept
+            [[nodiscard]] static const ResourcePath& externalTextEditorPath( const Editor& editor ) noexcept
             {
                 return editor._externalTextEditorPath;
             }

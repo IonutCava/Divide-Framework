@@ -39,6 +39,7 @@ enum class FileError : U8 {
     NONE = 0,
     FILE_NOT_FOUND,
     FILE_EMPTY,
+    FILE_CREATE_ERROR,
     FILE_READ_ERROR,
     FILE_OPEN_ERROR,
     FILE_WRITE_ERROR,
@@ -51,14 +52,20 @@ enum class FileError : U8 {
 namespace Names
 {
     static const char* fileError[] = {
-            "NONE", "FILE_NOT_FOUND", "FILE_EMPTY", "FILE_READ_ERROR", "FILE_OPEN_ERROR", "FILE_WRITE_ERROR", "FILE_DELETE_ERROR", "FILE_OVERWRITE_ERROR", "FILE_COPY_ERROR", "UNKNOWN"
+            "NONE", "FILE_NOT_FOUND", "FILE_EMPTY", "FILE_CREATE_ERROR","FILE_READ_ERROR", "FILE_OPEN_ERROR", "FILE_WRITE_ERROR", "FILE_DELETE_ERROR", "FILE_OVERWRITE_ERROR", "FILE_COPY_ERROR", "UNKNOWN"
     };
 }
 
 struct SysInfo;
 class PlatformContext;
 struct Paths {
-    static ResourcePath g_rootPath;
+    constexpr static const char g_pathSeparator =
+#if defined(IS_WINDOWS_BUILD)
+        '\\';
+#else //IS_WINDOWS_BUILD
+        '/';
+#endif //IS_WINDOWS_BUILD
+
     static ResourcePath g_logPath;
     static ResourcePath g_screenshotPath;
     static ResourcePath g_assetsLocation;
@@ -78,8 +85,10 @@ struct Paths {
     static ResourcePath g_scenesLocation;
     static ResourcePath g_projectsLocation;
     static ResourcePath g_saveLocation;
+    static ResourcePath g_nodesSaveLocation;
     static ResourcePath g_GUILocation;
     static ResourcePath g_fontsPath;
+    static ResourcePath g_iconsPath;
     static ResourcePath g_localisationPath;
     static ResourcePath g_cacheLocation;
     static ResourcePath g_buildTypeLocation;
@@ -89,8 +98,6 @@ struct Paths {
 
     struct Editor {
         static ResourcePath g_saveLocation;
-        static ResourcePath g_tabLayoutFile;
-        static ResourcePath g_panelLayoutFile;
     };
 
     struct Scripts {
@@ -100,6 +107,7 @@ struct Paths {
 
     struct Textures {
         static ResourcePath g_metadataLocation;
+        static Str<8> g_ddsExtension;
     };
 
     struct Shaders {
@@ -139,16 +147,17 @@ struct Paths {
     }; //class Shaders
 
     // include command regex pattern
-    static constexpr auto g_includePattern = ctll::fixed_string{ R"(^\s*#\s*include\s+["<]([^">]+)*[">])" };
+    static constexpr auto g_includePattern = ctll::fixed_string{ R"(\s*#\s*include\s+["<]([^">]+)*[">])" };
     // define regex pattern
     static constexpr auto g_definePattern = ctll::fixed_string{ R"(([#!][A-z]{2,}[\s]{1,}?([A-z]{2,}[\s]{1,}?)?)([\\(]?[^\s\\)]{1,}[\\)]?)?)" };
     // use command regex pattern
-    static constexpr auto g_usePattern = ctll::fixed_string{ R"(^\s*use\s*\(\s*\"(.*)\"\s*\))" };
+    static constexpr auto g_usePattern = ctll::fixed_string{ R"(\s*use\s*\(\s*\"(.+)\"\s*\).*)" };
     // shader uniform patter
-    static constexpr auto g_uniformPattern = ctll::fixed_string{ R"(^\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+).*)" };
-    
-    static void initPaths(const SysInfo& info);
-    static void updatePaths(const PlatformContext& context);
+    static constexpr auto g_uniformPattern = ctll::fixed_string{ R"(\s*uniform\s+\s*([^),^;^\s]*)\s+([^),^;^\s]*\[*\s*\]*)\s*(?:=*)\s*(?:\d*.*)\s*(?:;+).*)" };
+    // project specifying command line argument
+    static constexpr auto g_useProjectPattern = ctll::fixed_string{ R"((--project\s*=\s*)([0-9a-zA-Z]*))" };
+
+    static void initPaths();
 }; //class Paths
 
 struct FileEntry
@@ -158,78 +167,66 @@ struct FileEntry
 };
 using FileList = vector<FileEntry>;
 
-[[nodiscard]] std::string getWorkingDirectory();
+[[nodiscard]] ResourcePath getWorkingDirectory();
 
-///Returns true if both paths are identical regardless of number of slashes and capitalization
-[[nodiscard]] bool pathCompare(const char* filePathA, const char* filePathB);
-
-[[nodiscard]] bool pathExists(const char* filePath);
 [[nodiscard]] bool pathExists(const ResourcePath& filePath);
-[[nodiscard]] bool fileExists(const char* filePathAndName);
+
 [[nodiscard]] bool fileExists(const ResourcePath& filePathAndName);
-[[nodiscard]] bool fileExists(const char* filePath, const char* fileName);
-[[nodiscard]] bool fileIsEmpty(const char* filePathAndName);
+[[nodiscard]] bool fileExists(const ResourcePath& filePath, std::string_view fileName);
+
 [[nodiscard]] bool fileIsEmpty(const ResourcePath& filePathAndName);
-[[nodiscard]] bool fileIsEmpty(const char* filePath, const char* fileName);
-[[nodiscard]] bool createDirectory(const char* path);
-[[nodiscard]] bool createDirectory(const ResourcePath& path);
-[[nodiscard]] bool createFile(const char* filePathAndName, bool overwriteExisting);
-[[nodiscard]] bool deleteAllFiles(const char* filePath, const char* extensionNoDot = nullptr, const char* extensionToSkip = nullptr );
+[[nodiscard]] bool fileIsEmpty(const ResourcePath& filePath, std::string_view fileName);
+
+[[nodiscard]] FileError createDirectory(const ResourcePath& path);
+[[nodiscard]] FileError removeDirectory( const ResourcePath& path );
+
+[[nodiscard]] bool createFile(const ResourcePath& filePathAndName, bool overwriteExisting);
+
 [[nodiscard]] bool deleteAllFiles(const ResourcePath& filePath, const char* extensionNoDot = nullptr, const char* extensionToSkip = nullptr);
-[[nodiscard]] bool getAllFilesInDirectory(const char* filePath, FileList& listInOut, const char* extensionNoDot = nullptr);
+
 [[nodiscard]] bool getAllFilesInDirectory(const ResourcePath& filePath, FileList& listInOut, const char* extensionNoDot = nullptr);
-[[nodiscard]] FileError fileLastWriteTime(const char* filePathAndName, U64& timeOutSec);
+
 [[nodiscard]] FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec);
-[[nodiscard]] FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& timeOutSec);
-[[nodiscard]] size_t numberOfFilesInDirectory(const char* path);
+[[nodiscard]] FileError fileLastWriteTime(const ResourcePath& filePath, std::string_view fileName, U64& timeOutSec);
+
 [[nodiscard]] size_t numberOfFilesInDirectory(const ResourcePath& path);
 
 template<typename T> requires has_assign<T> || is_vector<T>
-[[nodiscard]] FileError readFile(const char* filePath, const char* fileName, T& contentOut, FileType fileType);
-template<typename T> requires has_assign<T> || is_vector<T>
-[[nodiscard]] FileError readFile(const ResourcePath& filePath, const ResourcePath& fileName, T& contentOut, FileType fileType);
+[[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, T& contentOut, FileType fileType);
 
-[[nodiscard]] FileError openFile(const char* filePath, const char* fileName);
-[[nodiscard]] FileError openFile(const ResourcePath& filePath, const ResourcePath& fileName);
+[[nodiscard]] FileError openFile(const ResourcePath& filePath, std::string_view fileName);
+[[nodiscard]] FileError openFile(const char* cmd, const ResourcePath& filePath, std::string_view fileName);
 
-[[nodiscard]] FileError openFile(const char* cmd, const char* filePath, const char* fileName);
-[[nodiscard]] FileError openFile(const char* cmd, const ResourcePath& filePath, const ResourcePath& fileName);
+[[nodiscard]] FileError writeFile(const ResourcePath& filePath, std::string_view fileName, bufferPtr content, size_t length, FileType fileType);
+[[nodiscard]] FileError writeFile(const ResourcePath& filePath, std::string_view fileName, const char* content, size_t length, FileType fileType);
 
-[[nodiscard]] FileError writeFile(const ResourcePath& filePath, const ResourcePath& fileName, const char* content, size_t length, FileType fileType);
-[[nodiscard]] FileError writeFile(const ResourcePath& filePath, const ResourcePath& fileName, bufferPtr content, size_t length, FileType fileType);
-[[nodiscard]] FileError writeFile(const char* filePath, const char* fileName, bufferPtr content, size_t length, FileType fileType);
-[[nodiscard]] FileError writeFile(const char* filePath, const char* fileName, const char* content, size_t length, FileType fileType);
+[[nodiscard]] FileError deleteFile(const ResourcePath& filePath, std::string_view fileName);
 
-[[nodiscard]] FileError deleteFile(const char* filePath, const char* fileName);
-[[nodiscard]] FileError deleteFile(const ResourcePath& filePath, const ResourcePath& fileName);
+[[nodiscard]] FileError copyFile(const ResourcePath& sourcePath, std::string_view sourceName, const ResourcePath& targetPath, std::string_view targetName, bool overwrite);
 
-[[nodiscard]] FileError copyFile(const char* sourcePath, const char* sourceName, const char* targetPath, const char* targetName, bool overwrite);
-[[nodiscard]] FileError copyFile(const ResourcePath& sourcePath, const ResourcePath&  sourceName, const ResourcePath&  targetPath, const ResourcePath& targetName, bool overwrite);
-
-[[nodiscard]] FileError copyDirectory(const char* sourcePath, const char* targetPath, bool recursively, bool overwrite);
 [[nodiscard]] FileError copyDirectory(const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite);
 
-[[nodiscard]] FileError findFile(const char* filePath, const char* fileName, string& foundPath);
-[[nodiscard]] FileError findFile(const ResourcePath& filePath, const char* fileName, string& foundPath);
+[[nodiscard]] FileError findFile(const ResourcePath& filePath, std::string_view fileName, string& foundPath);
 
-[[nodiscard]] bool hasExtension(const char* filePath, const char* extensionNoDot);
-[[nodiscard]] bool hasExtension(const ResourcePath& filePath, const char* extensionNoDot);
+[[nodiscard]] bool hasExtension(std::string_view fileName, std::string_view extensionNoDot);
 
-[[nodiscard]] string getExtension(const char* filePath);
-[[nodiscard]] string getExtension(const ResourcePath& filePath);
+[[nodiscard]] bool hasExtension(const ResourcePath& filePath, std::string_view extensionNoDot);
 
-[[nodiscard]] string getTopLevelFolderName(const char* filePath);
-[[nodiscard]] string getTopLevelFolderName(const ResourcePath& filePath);
+[[nodiscard]] string getExtension(std::string_view fileName );
 
-[[nodiscard]] ResourcePath stripExtension(const char* filePath) noexcept;
+[[nodiscard]] string getExtension(const ResourcePath& filePath );
+
+[[nodiscard]] ResourcePath getTopLevelFolderName(const ResourcePath& filePath);
+
+[[nodiscard]] string stripExtension(std::string_view fileName ) noexcept;
+
 [[nodiscard]] ResourcePath stripExtension(const ResourcePath& filePath) noexcept;
 
-[[nodiscard]] string stripQuotes(const char* input);
+[[nodiscard]] string stripQuotes( std::string_view input);
 
-[[nodiscard]] FileAndPath splitPathToNameAndLocation(const char* input);
-[[nodiscard]] FileAndPath splitPathToNameAndLocation(const ResourcePath& input);
+[[nodiscard]] FileNameAndPath splitPathToNameAndLocation(const ResourcePath& input);
 
-[[nodiscard]] std::string extractFilePathAndName(char* argv0);
+[[nodiscard]] string extractFilePathAndName(char* argv0);
 
 }; //namespace Divide
 

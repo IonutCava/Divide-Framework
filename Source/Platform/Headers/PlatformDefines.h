@@ -37,6 +37,7 @@
 #include "PlatformMemoryDefines.h"
 #include "Core/Headers/ErrorCodes.h"
 #include "Core/Headers/NonMovable.h"
+#include "Platform/File/Headers/ResourcePath.h"
 
 #define EXP( x ) x
 
@@ -51,7 +52,7 @@ do {                                                  \
     static bool seen_this = false;                    \
     if (!seen_this) {                                 \
         seen_this = true;                             \
-        Console::errorfn("[ STUBBED ] %s (%s : %d)\n",\
+        Console::errorfn("[ STUBBED ] {} ({} : {})\n",\
                          x, __FILE__, __LINE__);      \
     }                                                 \
 } while (0)
@@ -163,22 +164,30 @@ constexpr U32 prime_32_const = 0x1000193;
 constexpr U64 val_64_const = 0xcbf29ce484222325;
 constexpr U64 prime_64_const = 0x100000001b3;
 
-[[nodiscard]] constexpr U64 _ID(const char* const str, const U64 value = val_64_const) noexcept {
-    return str[0] == '\0' ? value : _ID(&str[1], (value ^ to_U64(str[0])) * prime_64_const);
-}
-
-[[nodiscard]] constexpr U64 _ID_VIEW(const char* const str, const size_t len, const U64 value = val_64_const) noexcept {
+[[nodiscard]] constexpr U64 _ID_VIEW(const char* const str, const size_t len, const U64 value = val_64_const) noexcept
+{
     return len == 0 ? value : _ID_VIEW(&str[1], len - 1, (value ^ to_U64(str[0])) * prime_64_const);
 }
 
-[[nodiscard]] constexpr U64 operator ""_id(const char* str, const size_t len) {
+[[nodiscard]] constexpr U64 _ID(const char* const str, const U64 value = val_64_const) noexcept
+{
+    return str[0] == '\0' ? value : _ID(&str[1], (value ^ to_U64(str[0])) * prime_64_const);
+}
+
+[[nodiscard]] constexpr U64 _ID( const std::string_view str, const U64 value = val_64_const ) noexcept
+{
+    return _ID_VIEW(str.data(), str.size(), value);
+}
+
+[[nodiscard]] constexpr U64 operator ""_id(const char* str, const size_t len)
+{
     return _ID_VIEW(str, len);
 }
 
 struct SysInfo
 {
     size_t _availableRamInBytes{0u};
-    std::string _workingDirectory;
+    ResourcePath _workingDirectory;
 };
 
 [[nodiscard]] SysInfo& sysInfo() noexcept;
@@ -204,14 +213,10 @@ enum class ThreadPriority : U8 {
 extern void SetThreadPriority(std::thread* thread, ThreadPriority priority);
 extern void SetThreadPriority(ThreadPriority priority);
 
-extern void SetThreadName(std::thread* thread, const char* threadName);
-extern void SetThreadName(const char* threadName) noexcept;
+extern void SetThreadName(std::thread* thread, std::string_view threadName);
+extern void SetThreadName(std::string_view threadName) noexcept;
 
-extern bool CallSystemCmd(const char* cmd, const char* args);
-
-struct ResourcePath;
-[[nodiscard]] bool CreateDirectories(const char* path);
-[[nodiscard]] bool CreateDirectories(const ResourcePath& path);
+extern bool CallSystemCmd(std::string_view cmd, std::string_view args);
 
 bool DebugBreak(bool condition = true) noexcept;
 
@@ -221,8 +226,8 @@ bool DebugBreak(bool condition = true) noexcept;
 
 void EnforceDPIScaling() noexcept;
 
-[[nodiscard]] const char* GetClipboardText(void* user_data) noexcept;
-void SetClipboardText(void* user_data, const char* text) noexcept;
+[[nodiscard]] const char* GetClipboardText() noexcept;
+void SetClipboardText(const char* text) noexcept;
 
 void ToggleCursor(bool state) noexcept;
 

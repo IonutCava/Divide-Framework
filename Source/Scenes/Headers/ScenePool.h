@@ -35,41 +35,52 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class Scene;
-class SceneManager;
+class Project;
 class ResourceCache;
 class PlatformContext;
-class ScenePool {
-protected:
+
+struct SceneEntry;
+
+FWD_DECLARE_MANAGED_CLASS( Scene );
+
+class ScenePool
+{
+  protected:
     SET_DELETE_FRIEND
-    friend class SceneManager;
-    ScenePool(SceneManager& parentMgr);
+    friend class Project;
+    ScenePool(Project& parentProject);
     ~ScenePool();
 
-    Scene* getOrCreateScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name, bool& foundInCache);
+    Scene* getOrCreateScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& sceneEntry, bool& foundInCache);
     bool   deleteScene(I64 targetGUID);
 
+  public:
     bool   defaultSceneActive() const noexcept;
 
     Scene&       defaultScene() noexcept;
     const Scene& defaultScene() const noexcept;
+
     Scene&       activeScene() noexcept;
     const Scene& activeScene() const noexcept;
     void         activeScene(Scene& scene) noexcept;
 
-    vector<Str<256>> sceneNameList(bool sorted) const;
+    vector<Str<256>> customCodeScenes(bool sorted) const;
 
-private:
-    /// Pointer to the currently active scene
+  private:
+    mutable SharedMutex _sceneLock;
+
+    Project& _parentProject;
+
     Scene* _activeScene = nullptr;
     Scene* _loadedScene = nullptr;
     Scene* _defaultScene = nullptr;
-    vector<std::shared_ptr<Scene>> _createdScenes;
+    
+    vector<Scene_ptr> _createdScenes;
 
-    SceneManager& _parentMgr;
-
-    mutable SharedMutex _sceneLock;
 };
+
+FWD_DECLARE_MANAGED_CLASS(ScenePool);
+
 } //namespace Divide
 
 #endif //DVD_SCENE_POOL_H_

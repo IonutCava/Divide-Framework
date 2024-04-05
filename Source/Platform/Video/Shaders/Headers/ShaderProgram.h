@@ -77,7 +77,7 @@ namespace Divide
         static constexpr U32 MAX_FRAME_LIFETIME = Config::TARGET_FRAME_RATE * 10;
 
     public:
-        explicit ShaderModule( GFXDevice& context, const Str<256>& name, U32 generation );
+        explicit ShaderModule( GFXDevice& context, const std::string_view name, U32 generation );
         virtual ~ShaderModule() override;
 
         void registerParent(ShaderProgram* parent);
@@ -93,14 +93,14 @@ namespace Divide
     public:
         // ======================= static data ========================= //
         /// Returns a reference to an already loaded shader, null otherwise
-        static ShaderModule* GetShader( const Str<256>& name );
+        static ShaderModule* GetShader( const std::string_view name );
 
         static void Idle(bool fast);
         static void InitStaticData();
         static void DestroyStaticData();
 
     protected:
-        static ShaderModule* GetShaderLocked( const Str<256>& name );
+        static ShaderModule* GetShaderLocked( const std::string_view name );
 
     protected:
         Mutex _parentLock;
@@ -181,8 +181,8 @@ namespace Divide
     public:
         explicit ShaderProgram( GFXDevice& context,
                                 size_t descriptorHash,
-                                const Str<256>& shaderName,
-                                const Str<256>& shaderFileName,
+                                std::string_view shaderName,
+                                std::string_view shaderFileName,
                                 const ResourcePath& shaderFileLocation,
                                 ShaderProgramDescriptor descriptor,
                                 ResourceCache& parentCache );
@@ -215,7 +215,7 @@ namespace Divide
         static void OnEndFrame( GFXDevice& gfx );
 
         /// Queue a shaderProgram recompile request
-        static bool RecompileShaderProgram( const Str<256>& name );
+        static bool RecompileShaderProgram( const std::string_view name );
         /// Remove a shaderProgram from the program cache
         static bool UnregisterShaderProgram( ShaderProgramHandle shaderHandle );
         /// Add a shaderProgram to the program cache
@@ -304,10 +304,10 @@ namespace Divide
         static void EraseAtom(const U64 atomHash);
         static void EraseAtomLocked(const U64 atomHash);
 
-        static const eastl::string& ShaderFileRead( const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
-        static const eastl::string& ShaderFileReadLocked( const ResourcePath& filePath, const ResourcePath& atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
+        static const eastl::string& ShaderFileRead( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
+        static const eastl::string& ShaderFileReadLocked( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
 
-        static eastl::string PreprocessIncludes( const ResourcePath& name,
+        static eastl::string PreprocessIncludes( std::string_view name,
                                                  const eastl::string& source,
                                                  I32 level,
                                                  eastl::set<U64>& foundAtomIDsInOut,

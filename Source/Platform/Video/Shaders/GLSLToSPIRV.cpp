@@ -4,24 +4,15 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 #include <glslang/SPIRV/GlslangToSpv.h>
+
+#include <glslang/Include/ResourceLimits.h>
+
+#include <glslang/Public/ShaderLang.h>
+
 #include <spirv_reflect.h>
 
 namespace
 {
-    Divide::PushConstantType GetGFXType( const  glslang::TBasicType type ) noexcept
-    {
-        switch ( type )
-        {
-            case glslang::TBasicType::EbtFloat:  return Divide::PushConstantType::FLOAT;
-            case glslang::TBasicType::EbtDouble: return Divide::PushConstantType::DOUBLE;
-            case glslang::TBasicType::EbtInt:    return Divide::PushConstantType::INT;
-            case glslang::TBasicType::EbtUint:   return Divide::PushConstantType::UINT;
-            default: Divide::DIVIDE_UNEXPECTED_CALL(); break;
-        }
-
-        return Divide::PushConstantType::COUNT;
-    }
-
     EShLanguage FindLanguage( const Divide::ShaderType shader_type ) noexcept
     {
         switch ( shader_type )
@@ -40,6 +31,7 @@ namespace
 };
 
 bool SpirvHelper::s_isInit = false;
+
 void SpirvHelper::Init()
 {
     assert( !s_isInit );
@@ -200,7 +192,7 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
         Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY,  false );
 
         Console::errorfn( "-------------------------------------------------------\n\n" );
-        Console::errorfn( "%s", pshader );
+        Console::errorfn( "{}", pshader );
         Console::errorfn( "\n\n-------------------------------------------------------" );
 
         Console::ToggleFlag( Console::Flags::DECORATE_TIMESTAMP, decorations[0] );

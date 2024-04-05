@@ -43,7 +43,7 @@ FWD_DECLARE_MANAGED_CLASS(Quad3D);
 
 class InfinitePlane final : public SceneNode {
 public:
-    explicit InfinitePlane(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, vec2<U32> dimensions);
+    explicit InfinitePlane(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, vec2<U32> dimensions);
 
 protected:
     void postLoad(SceneGraphNode* sgn) override;

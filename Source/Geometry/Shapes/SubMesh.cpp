@@ -15,7 +15,7 @@
 
 namespace Divide {
 
-SubMesh::SubMesh(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name)
+SubMesh::SubMesh(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
     : Object3D(context, parentCache, descriptorHash, name, {}, {}, SceneNodeType::TYPE_SUBMESH, Object3D::ObjectFlag::OBJECT_FLAG_NO_VB)
 {
 }

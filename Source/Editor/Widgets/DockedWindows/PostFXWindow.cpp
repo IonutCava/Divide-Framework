@@ -8,7 +8,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Editor/Headers/Editor.h"
 #include "Editor/Headers/Utils.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/CustomOperators/Headers/BloomPreRenderOperator.h"
@@ -21,20 +21,25 @@
 
 namespace Divide {
 namespace {
-    bool PreviewTextureButton(I32 &id, Texture* tex, const bool readOnly) {
+    bool PreviewTextureButton(I32 &id, Texture* tex, const bool readOnly)
+    {
         bool ret = false;
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 15);
         ImGui::PushID(4321234 + id++);
-        if (readOnly) {
+        if (readOnly)
+        {
             PushReadOnly();
         }
-        if (ImGui::SmallButton("T")) {
+        if (ImGui::SmallButton("T"))
+        {
             ret = true;
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(Util::StringFormat("Preview texture : %s", tex->assetName().c_str()).c_str());
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(Util::StringFormat("Preview texture : {}", tex->assetName()).c_str());
         }
-        if (readOnly) {
+        if (readOnly)
+        {
             PopReadOnly();
         }
         ImGui::PopID();
@@ -84,8 +89,8 @@ namespace {
 
         if (ImGui::CollapsingHeader("Fog Settings")) {
             bool sceneChanged = false;
-            SceneManager* sceneManager = context().kernel().sceneManager();
-            auto& activeSceneState = sceneManager->getActiveScene().state();
+            ProjectManager* projectManager = context().kernel().projectManager();
+            auto& activeSceneState = projectManager->activeProject()->getActiveScene().state();
             bool fogEnabled = context().config().rendering.enableFog;
             if (ImGui::Checkbox("Enabled", &fogEnabled)) {
                 context().config().rendering.enableFog = fogEnabled;
@@ -471,7 +476,7 @@ namespace {
         }
 
         if (_previewTexture != nullptr) {
-            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), Util::StringFormat("Image Preview: %s", _previewTexture->resourceName().c_str()).c_str(), _previewTexture, vec2<F32>(512, 512), true, false)) {
+            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), Util::StringFormat("Image Preview: {}", _previewTexture->resourceName().c_str()).c_str(), _previewTexture, vec2<F32>(512, 512), true, false)) {
                 _previewTexture = nullptr;
             }
         }

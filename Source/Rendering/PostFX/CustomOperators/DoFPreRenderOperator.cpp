@@ -36,9 +36,9 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     fragModule._defines.emplace_back("USER_NOISE");
     //use pentagon as bokeh shape?
     //fragModule._defines.emplace_back("USE_PENTAGON");
-    fragModule._defines.emplace_back(Util::StringFormat("RING_COUNT %d", g_ringCount));
-    fragModule._defines.emplace_back(Util::StringFormat("FIRST_RING_SAMPLES %d", g_samplesOnFirstRing));
-    fragModule._defines.emplace_back( Util::StringFormat( "FIRST_RING_SAMPLES %d", g_samplesOnFirstRing ) );
+    fragModule._defines.emplace_back(Util::StringFormat("RING_COUNT {}", g_ringCount));
+    fragModule._defines.emplace_back(Util::StringFormat("FIRST_RING_SAMPLES {}", g_samplesOnFirstRing));
+    fragModule._defines.emplace_back( Util::StringFormat( "FIRST_RING_SAMPLES {}", g_samplesOnFirstRing ) );
 
     fragModule._defines.emplace_back("size PushData0[0].xy");
     // autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)

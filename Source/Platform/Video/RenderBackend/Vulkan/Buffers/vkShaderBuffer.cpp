@@ -30,7 +30,7 @@ namespace Divide
 
         _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset( _params._elementCount * _params._elementSize, _alignmentRequirement ));
 
-        const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_SHADER_BUFFER_%zu", getGUID() ) : (_name + "_SHADER_BUFFER");
+        const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_SHADER_BUFFER_{}", getGUID() ) : (_name + "_SHADER_BUFFER");
 
         _bufferImpl = eastl::make_unique<vkBufferImpl>( _params,
                                                         _alignedBufferSize,

@@ -82,7 +82,7 @@ namespace Divide
         string file;
         p >> file;
 
-        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_SEND_FILE"), file.c_str()).c_str() );
+        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_SEND_FILE"), file).c_str() );
         WorldPacket r( OPCodesEx::SMSG_SEND_FILE );
         r << (U8)0;
         sendPacket( r );

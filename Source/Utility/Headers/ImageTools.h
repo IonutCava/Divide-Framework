@@ -118,7 +118,8 @@ private:
     vector<LayerData_uptr> _mips;
 };
 
-struct ImageData final : NonCopyable {
+struct ImageData final : NonCopyable
+{
     /// image origin information
     void requestedFormat(const GFXDataFormat format) noexcept { _requestedDataFormat = format; }
 
@@ -151,7 +152,7 @@ struct ImageData final : NonCopyable {
     /// image depth information
     [[nodiscard]] U8 bpp() const noexcept { return _bpp; }
     /// the filename from which the image is created
-    [[nodiscard]] const ResourcePath& name() const noexcept { return _name; }
+    [[nodiscard]] const std::string_view name() const noexcept { return _name; }
     /// the image format as given by STB
     [[nodiscard]] GFXImageFormat format() const noexcept { return _format; }
 
@@ -168,8 +169,8 @@ struct ImageData final : NonCopyable {
 
     [[nodiscard]] bool loadFromMemory(const Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
     /// creates this image instance from the specified data
-    [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
-    [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name, ImportOptions options);
+    [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
+    [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
 
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
@@ -178,17 +179,25 @@ struct ImageData final : NonCopyable {
 
   protected:
     friend class ImageDataInterface;
-    [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
-    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, const ResourcePath& name);
+    [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
+    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
 
    private:
+    struct LoadingData
+    {
+        U16 _fileIndex = 0u;
+        bool _loadedDDSData = false;
+        bool _createdDDSData = false;
+    };
+
     //Each entry is a separate mip map.
     vector<ImageLayer> _layers{};
     vector<U8> _decompressedData{};
+    LoadingData _loadingData{};
     /// the image path
     ResourcePath _path{};
     /// the actual image filename
-    ResourcePath _name{};
+    Str<256> _name{};
     /// the image format
     GFXImageFormat _format = GFXImageFormat::COUNT;
     /// the image data type
@@ -197,7 +206,7 @@ struct ImageData final : NonCopyable {
     GFXDataFormat _requestedDataFormat = GFXDataFormat::COUNT;
     /// image's bits per pixel
     U8 _bpp = 0;
-   
+
     enum class SourceDataType : U8
     {
         BYTE,

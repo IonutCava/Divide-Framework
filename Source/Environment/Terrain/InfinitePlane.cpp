@@ -6,7 +6,7 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Core/Resources/Headers/ResourceCache.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 #include "Rendering/Camera/Headers/Camera.h"
@@ -17,8 +17,8 @@
 namespace Divide
 {
 
-    InfinitePlane::InfinitePlane( GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name, vec2<U32> dimensions )
-        : SceneNode( parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_INFINITEPLANE, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) ),
+    InfinitePlane::InfinitePlane( GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, vec2<U32> dimensions )
+        : SceneNode( parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_INFINITEPLANE, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) ),
         _context( context ),
         _dimensions( dimensions )
     {
@@ -63,8 +63,8 @@ namespace Divide
         miscTexDescriptor.textureOptions()._alphaChannelTransparency = false;
 
         ResourceDescriptor textureWaterCaustics( "Plane Water Caustics" );
-        textureWaterCaustics.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation );
-        textureWaterCaustics.assetName( ResourcePath{ "terrain_water_caustics.jpg" } );
+        textureWaterCaustics.assetLocation( Paths::g_imagesLocation );
+        textureWaterCaustics.assetName( "terrain_water_caustics.jpg" );
         textureWaterCaustics.propertyDescriptor( miscTexDescriptor );
 
         planeMaterial->setTexture( TextureSlot::UNIT0, CreateResource<Texture>( _parentCache, textureWaterCaustics ), albedoSampler, TextureOperation::REPLACE );

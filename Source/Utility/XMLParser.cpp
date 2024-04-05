@@ -5,7 +5,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/StringHelper.h"
 #include "Geometry/Material/Headers/Material.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Scenes/Headers/SceneInput.h"
 #include "Utility/Headers/Localization.h"
@@ -15,74 +15,91 @@ namespace Divide::XML {
 
 using boost::property_tree::ptree;
 
-bool loadFromXML(IXMLSerializable& object, const char* file) {
-    return object.fromXML(file);
+bool loadFromXML(IXMLSerializable& object, const ResourcePath& filePath, const char* fileName )
+{
+    return object.fromXML(filePath, fileName);
 }
 
-bool saveToXML(const IXMLSerializable& object, const char* file) {
-    return object.toXML(file);
+bool saveToXML(const IXMLSerializable& object, const ResourcePath& filePath, const char* fileName )
+{
+    return object.toXML(filePath, fileName);
 }
 
-namespace {
+namespace
+{
     ptree g_emptyPtree;
 }
 
-namespace detail {
-    bool LoadSave::read(const string& loadPath, const string& rootNode) {
-        _loadPath = loadPath;
+namespace detail
+{
+    bool LoadSave::read(const ResourcePath& filePath, const char* fileName, const string& rootNode)
+    {
+        _loadPath = filePath / fileName;
         _rootNodePath = rootNode;
 
         const ResourcePath testPath(_loadPath);
-        if (!fileExists(testPath) || fileIsEmpty(testPath)) {
-            const auto [path, file] = splitPathToNameAndLocation(testPath);
-            const FileError backupReturnCode = copyFile(path, file + ".bak", path, file, true);
+        if (!fileExists(testPath) || fileIsEmpty(testPath))
+        {
+            const FileNameAndPath data = splitPathToNameAndLocation(testPath);
+            const FileError backupReturnCode = copyFile( data._path, (data._fileName + ".bak"), data._path, data._fileName, true);
             if (backupReturnCode != FileError::NONE &&
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY)
             {
-                if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+                if constexpr(!Config::Build::IS_SHIPPING_BUILD)
+                {
                     DIVIDE_UNEXPECTED_CALL();
                 }
             }
         }
-        read_xml(_loadPath, XmlTree, boost::property_tree::xml_parser::trim_whitespace);
+
+        read_xml(_loadPath.string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace);
         return !XmlTree.empty();
     }
 
-    bool LoadSave::prepareSaveFile(const string& path) const {
-        _savePath = path;
+    bool LoadSave::prepareSaveFile(const ResourcePath& filePath, const char* fileName) const
+    {
+        _savePath = filePath / fileName;
         return true;
     }
 
-    void LoadSave::write() const {
-        if (fileExists(_savePath.c_str())) {
-            const auto[file, path] = splitPathToNameAndLocation(_savePath.c_str());
+    void LoadSave::write() const
+    {
+        if (fileExists(_savePath))
+        {
+            const auto[file, path] = splitPathToNameAndLocation(_savePath);
 
-            const FileError backupReturnCode = copyFile(path, file, path, file + ".bak", true);
+            const FileError backupReturnCode = copyFile(path, file, path, (file + ".bak"), true);
             if (backupReturnCode != FileError::NONE &&
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY)
             {
-                if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+                if constexpr(!Config::Build::IS_SHIPPING_BUILD)
+                {
                     DIVIDE_UNEXPECTED_CALL();
                 }
-            } else {
-                if (!createFile(_savePath.c_str(), true)) {
-                    if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+            }
+            else
+            {
+                if (!createFile(_savePath, true))
+                {
+                    if constexpr(!Config::Build::IS_SHIPPING_BUILD)
+                    {
                         DIVIDE_UNEXPECTED_CALL();
                     }
                 }
             }
         }
 
-        write_xml(_savePath,
+        write_xml(_savePath.string(),
             XmlTree,
             std::locale(),
             boost::property_tree::xml_writer_make_settings<boost::property_tree::iptree::key_type>('\t', 1));
     }
 }
 
-void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& entryOut) {
+void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& entryOut)
+{
     static vector<std::string> modifiersOut, actionsUpOut, actionsDownOut;
 
     entryOut.clear();
@@ -134,10 +151,10 @@ void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& 
     }
 }
 
-void loadDefaultKeyBindings(const string &file, const Scene* scene) {
+void loadDefaultKeyBindings(const ResourcePath& file, const Scene* scene) {
     ptree pt;
-    Console::printfn(LOCALE_STR("XML_LOAD_DEFAULT_KEY_BINDINGS"), file.c_str());
-    read_xml(file, pt);
+    Console::printfn(LOCALE_STR("XML_LOAD_DEFAULT_KEY_BINDINGS"), file);
+    read_xml(file.string(), pt);
 
     for(const auto & [tag, data] : pt.get_child("actions", g_emptyPtree))
     {
@@ -194,36 +211,45 @@ void loadDefaultKeyBindings(const string &file, const Scene* scene) {
     }
 }
 
-void loadMusicPlaylist(const Str<256>& scenePath, const Str<64>& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config) {
-    const string file = (scenePath + "/" + fileName).c_str();
+void loadMusicPlaylist(const ResourcePath& scenePath, const Str<64>& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config)
+{
+    const ResourcePath file = scenePath / fileName;
 
-    if (!fileExists(file.c_str())) {
+    if (!fileExists(file))
+    {
         return;
     }
-    Console::printfn(LOCALE_STR("XML_LOAD_MUSIC"), file.c_str());
+
+    Console::printfn(LOCALE_STR("XML_LOAD_MUSIC"), file);
+
     ptree pt;
-    read_xml(file, pt);
+    read_xml(file.string(), pt);
 
     for (const auto & [tag, data] : pt.get_child("backgroundThemes", g_emptyPtree))
     {
         const ptree & attributes = data.get_child("<xmlattr>", g_emptyPtree);
         scene->addMusic(MusicType::TYPE_BACKGROUND,
                         attributes.get<string>("name", "").c_str(),
-                        Paths::g_assetsLocation + attributes.get<string>("src", ""));
+                        Paths::g_assetsLocation / attributes.get<string>("src", "") );
     }
 }
 
-void writeXML(const string& path, const ptree& tree) {
+void writeXML(const ResourcePath& path, const ptree& tree)
+{
     static boost::property_tree::xml_writer_settings<std::string> settings(' ', 4);
 
-    write_xml(path, tree, std::locale(), settings);
+    write_xml(path.string(), tree, std::locale(), settings);
 }
 
-void readXML(const string& path, ptree& tree) {
-    try {
-        read_xml(path, tree);
-    } catch (const boost::property_tree::xml_parser_error& e) {
-        Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path.c_str(), e.what());
+void readXML(const ResourcePath& path, ptree& tree)
+{
+    try
+    {
+        read_xml(path.string(), tree);
+    }
+    catch (const boost::property_tree::xml_parser_error& e)
+    {
+        Console::errorfn(LOCALE_STR("ERROR_XML_INVALID_FILE"), path, e.what());
     }
 }
 }  // namespace Divide::XML

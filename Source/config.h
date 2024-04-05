@@ -33,6 +33,8 @@
 #ifndef DVD_CONFIG_H_
 #define DVD_CONFIG_H_
 
+#include "Platform/Headers/PlatformDataTypes.h"
+
 namespace Divide {
 namespace Config {
 
@@ -79,17 +81,17 @@ namespace Assert {
 
 namespace Profile {
     /// How many profiling timers are we allowed to use in our applications. We allocate them upfront, so a max limit is needed
-    constexpr U16 MAX_PROFILE_TIMERS = 1 << 10;
+    constexpr unsigned short MAX_PROFILE_TIMERS = 1 << 10;
 
     /// Enable function level profiling
     constexpr bool ENABLE_FUNCTION_PROFILING = !Build::IS_SHIPPING_BUILD;
 } // namespace Profile
 
 
-constexpr F32 ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
+constexpr float ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
 
-constexpr U8 MINIMUM_VULKAN_MINOR_VERSION = 3u;
-constexpr U8 DESIRED_VULKAN_MINOR_VERSION = 3u;
+constexpr unsigned char MINIMUM_VULKAN_MINOR_VERSION = 3u;
+constexpr unsigned char DESIRED_VULKAN_MINOR_VERSION = 3u;
 
 /// Application desired framerate for physics and input simulations
 constexpr U16 TARGET_FRAME_RATE = 60;
@@ -191,7 +193,7 @@ constexpr bool ENABLE_LOCALE_FILE_WATCHER = !Build::IS_SHIPPING_BUILD && Build::
 
 constexpr char DEFAULT_PROJECT_NAME[] = "Default";
 constexpr char DEFAULT_SCENE_NAME[] = "Default";
-
+constexpr char DELETED_FOLDER_NAME[] = "Deleted";
 constexpr char ENGINE_NAME[] = "Divide Framework";
 constexpr auto ENGINE_VERSION_MAJOR = 0u;
 constexpr auto ENGINE_VERSION_MINOR = 1u;

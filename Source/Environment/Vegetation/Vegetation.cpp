@@ -9,7 +9,7 @@
 #include "Core/Headers/EngineTaskPool.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
@@ -75,7 +75,7 @@ namespace Divide
         : SceneNode( context.context().kernel().resourceCache(),
                      parentChunk.parent().descriptorHash() + parentChunk.ID(),
                      details.name,
-                     ResourcePath{ details.name + "_" + Util::to_string( parentChunk.ID() ) },
+                     Util::StringFormat("{}_{}", details.name.c_str(), parentChunk.ID() ),
                      {},
                      SceneNodeType::TYPE_VEGETATION,
                      to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::RENDERING ) ),
@@ -394,7 +394,7 @@ namespace Divide
         s_treeMaterial->baseShaderData( treeShaderData );
         s_treeMaterial->properties().shadingMode( ShadingMode::BLINN_PHONG );
         s_treeMaterial->properties().isInstanced( true );
-        s_treeMaterial->addShaderDefine( ShaderType::COUNT, Util::StringFormat( "MAX_TREE_INSTANCES %d", s_maxTreeInstances ).c_str() );
+        s_treeMaterial->addShaderDefine( ShaderType::COUNT, Util::StringFormat( "MAX_TREE_INSTANCES {}", s_maxTreeInstances ).c_str() );
 
         SamplerDescriptor grassSampler = {};
         grassSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -405,8 +405,8 @@ namespace Divide
         const TextureDescriptor grassTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
 
         ResourceDescriptor vegetationBillboards( "Vegetation Billboards" );
-        vegetationBillboards.assetLocation( Paths::g_assetsLocation + terrain->descriptor()->getVariable( "vegetationTextureLocation" ) );
-        vegetationBillboards.assetName( ResourcePath{ vegDetails.billboardTextureArray } );
+        vegetationBillboards.assetLocation( ResourcePath { terrain->descriptor()->getVariable( "vegetationTextureLocation" ) } );
+        vegetationBillboards.assetName(vegDetails.billboardTextureArray );
         vegetationBillboards.propertyDescriptor( grassTexDescriptor );
         vegetationBillboards.waitForReady( false );
         Texture_ptr grassBillboardArray = CreateResource<Texture>( terrain->parentResourceCache(), vegetationBillboards, loadTasks );
@@ -425,9 +425,9 @@ namespace Divide
         ShaderModuleDescriptor compModule = {};
         compModule._moduleType = ShaderType::COMPUTE;
         compModule._sourceFile = "instanceCullVegetation.glsl";
-        compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE %d", WORK_GROUP_SIZE ) );
-        compModule._defines.emplace_back( Util::StringFormat( "MAX_TREE_INSTANCES %d", s_maxTreeInstances ) );
-        compModule._defines.emplace_back( Util::StringFormat( "MAX_GRASS_INSTANCES %d", s_maxGrassInstances ) );
+        compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE {}", WORK_GROUP_SIZE ) );
+        compModule._defines.emplace_back( Util::StringFormat( "MAX_TREE_INSTANCES {}", s_maxTreeInstances ) );
+        compModule._defines.emplace_back( Util::StringFormat( "MAX_GRASS_INSTANCES {}", s_maxGrassInstances ) );
         ShaderProgramDescriptor shaderCompDescriptor = {};
         shaderCompDescriptor._modules.push_back( compModule );
 
@@ -453,7 +453,7 @@ namespace Divide
                                            ShaderProgramDescriptor shaderDescriptor = {};
                                            shaderDescriptor._modules.emplace_back( ShaderType::VERTEX, "grass.glsl" );
                                            shaderDescriptor._globalDefines.emplace_back( "ENABLE_TBN" );
-                                           shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "MAX_GRASS_INSTANCES %d", s_maxGrassInstances ) );
+                                           shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "MAX_GRASS_INSTANCES {}", s_maxGrassInstances ) );
 
                                            ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "grass.glsl" };
                                            if ( IsDepthPass( stagePass ) )
@@ -614,17 +614,17 @@ namespace Divide
             LockGuard<SharedMutex> w_lock( g_treeMeshLock );
             if ( s_treeMeshes.empty() )
             {
-                for ( const ResourcePath& meshName : _treeMeshNames )
+                for ( const auto& meshName : _treeMeshNames )
                 {
                     if ( !eastl::any_of( eastl::cbegin( s_treeMeshes ),
                                          eastl::cend( s_treeMeshes ),
                                          [&meshName]( const Mesh_ptr& ptr ) noexcept
                                          {
-                                             return Util::CompareIgnoreCase( ptr->assetName(), meshName );
-                                         } ) )
+                                             return ptr->assetName() == meshName;
+                                         }))
                     {
                         ResourceDescriptor model( "Tree" );
-                        model.assetLocation( Paths::g_assetsLocation + Paths::g_modelsLocation );
+                        model.assetLocation( Paths::g_modelsLocation );
                         model.flag( true );
                         model.waitForReady( true );
                         model.assetName( meshName );
@@ -646,7 +646,7 @@ namespace Divide
             {
                 SharedLock<SharedMutex> r_lock( g_treeMeshLock );
                 crtMesh = s_treeMeshes.front();
-                const ResourcePath& meshName = _treeMeshNames[meshID];
+                const auto& meshName = _treeMeshNames[meshID];
                 for ( const Mesh_ptr& mesh : s_treeMeshes )
                 {
                     if ( mesh->assetName() == meshName )
@@ -667,7 +667,7 @@ namespace Divide
             nodeDescriptor._serialize = false;
             nodeDescriptor._instanceCount = _instanceCountTrees;
             nodeDescriptor._node = crtMesh;
-            nodeDescriptor._name = Util::StringFormat( "Trees_chunk_%d", ID ).c_str();
+            nodeDescriptor._name = Util::StringFormat( "Trees_chunk_{}", ID ).c_str();
             _treeParentNode = sgn->addChildNode( nodeDescriptor );
 
             TransformComponent* tComp = _treeParentNode->get<TransformComponent>();
@@ -940,12 +940,12 @@ namespace Divide
     void Vegetation::computeVegetationTransforms( bool treeData )
     {
         // Grass disabled
-        if ( !treeData && !_context.context().config().debug.enableGrassInstances )
+        if ( !treeData && !_context.context().config().debug.renderFilter.grassInstances )
         {
             return;
         }
         // Trees disabled
-        if ( treeData && !_context.context().config().debug.enableTreeInstances )
+        if ( treeData && !_context.context().config().debug.renderFilter.treeInstances )
         {
             return;
         }
@@ -953,13 +953,15 @@ namespace Divide
         const Terrain& terrain = _terrainChunk.parent();
         const U32 ID = _terrainChunk.ID();
 
-        const string cacheFileName = Util::StringFormat( "%s_%s_%s_%d.cache", terrain.resourceName().c_str(), resourceName().c_str(), treeData ? "trees" : "grass", ID );
+        const string cacheFileName = Util::StringFormat( "{}_{}_{}_{}.cache", terrain.resourceName().c_str(), resourceName().c_str(), treeData ? "trees" : "grass", ID );
         Console::printfn( Locale::Get( treeData ? _ID( "CREATE_TREE_START" ) : _ID( "CREATE_GRASS_BEGIN" ) ), ID );
 
         vector<VegetationData>& container = treeData ? _tempTreeData : _tempGrassData;
 
         ByteBuffer chunkCache;
-        if ( _context.context().config().debug.useVegetationCache && chunkCache.loadFromFile( (Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), cacheFileName.c_str() ) )
+        if ( _context.context().config().debug.cache.enabled &&
+             _context.context().config().debug.cache.vegetation &&
+             chunkCache.loadFromFile( Paths::g_terrainCacheLocation, cacheFileName ) )
         {
             auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
             chunkCache >> tempVer;
@@ -1075,7 +1077,7 @@ namespace Divide
             chunkCache << BYTE_BUFFER_VERSION;
             chunkCache << container.size();
             chunkCache.append( container.data(), container.size() );
-            if ( !chunkCache.dumpToFile( (Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), cacheFileName.c_str() ) )
+            if ( !chunkCache.dumpToFile(Paths::g_terrainCacheLocation, cacheFileName ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }

@@ -45,39 +45,35 @@ namespace Divide {
         bool ReplaceStringInPlace(T_str& subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);
 
         template<size_t N, typename T_str = string>  requires valid_replace_string<T_str>
-        T_str ReplaceString(std::string_view subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);
+        [[nodiscard]] T_str ReplaceString(std::string_view subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);
 
         template<typename T_str = string> requires valid_replace_string<T_str>
         bool ReplaceStringInPlace(T_str& subject, std::string_view search, std::string_view replace, bool recursive = false);
         
         template<typename T_str = string> requires valid_replace_string<T_str>
-        T_str ReplaceString(std::string_view subject, std::string_view search, std::string_view replace, bool recursive = false);
+        [[nodiscard]] T_str ReplaceString(std::string_view subject, std::string_view search, std::string_view replace, bool recursive = false);
         
-        template<typename T_str = string> requires valid_replace_string<T_str>
-        T_str MakeXMLSafe(std::string_view subject); 
-        
-        ResourcePath MakeXMLSafe(const ResourcePath& subject);
+        [[nodiscard]] string MakeXMLSafe(std::string_view subject);
+        [[nodiscard]] ResourcePath MakeXMLSafe(const ResourcePath& subject);
 
         template<typename T_str = string> requires valid_replace_string<T_str>
         void GetPermutations(std::string_view subject, vector<T_str>& permutationContainer);
 
         template<typename T_str = string> requires is_string<T_str>
-        bool IsNumber(const T_str& s);
+        [[nodiscard]] bool IsNumber(const T_str& s);
 
-        bool IsNumber(const char* s);
+        [[nodiscard]] bool IsNumber(const char* s);
 
-        bool BeginsWith(std::string_view input, std::string_view compare, bool ignoreWhitespace);
-
-        template<typename T_str = string> requires is_string<T_str>
-        T_str GetTrailingCharacters(const T_str& input, size_t count);
+        [[nodiscard]] bool BeginsWith(std::string_view input, std::string_view compare, bool ignoreWhitespace);
 
         template<typename T_str = string> requires is_string<T_str>
-        T_str GetStartingCharacters(const T_str& input, size_t count);
+        [[nodiscard]] T_str GetTrailingCharacters(const T_str& input, size_t count);
 
-        template<typename T_strA = string, typename T_strB = string> requires valid_replace_string<T_strA> && valid_replace_string<T_strB>
-        bool CompareIgnoreCase(const T_strA& a, const T_strB& b) noexcept;
+        template<typename T_str = string> requires is_string<T_str>
+        [[nodiscard]] T_str GetStartingCharacters(const T_str& input, size_t count);
 
-        bool CompareIgnoreCase(const char* a, const char* b) noexcept;
+        [[nodiscard]] bool CompareIgnoreCase(const char* a, const char* b) noexcept;
+        [[nodiscard]] bool CompareIgnoreCase(std::string_view a, std::string_view b) noexcept;
 
         /// http://stackoverflow.com/questions/236129/split-a-string-in-c
         template<typename T_vec, typename T_str> requires is_vector<T_vec, T_str> && is_string<T_str>
@@ -91,31 +87,38 @@ namespace Divide {
         T_str& Ltrim(T_str& s);
 
         template<typename T_str = string>  requires is_string<T_str>
-        T_str Ltrim(const T_str& s);
+        [[nodiscard]] T_str Ltrim(const T_str& s);
 
         template<typename T_str = string>  requires is_string<T_str>
         T_str& Rtrim(T_str& s);
 
         template<typename T_str = string>  requires is_string<T_str>
-        T_str Rtrim(const T_str& s);
+        [[nodiscard]] T_str Rtrim(const T_str& s);
 
         template<typename T_str = string>  requires is_string<T_str>
         T_str& Trim(T_str& s);
 
         template<typename T_str = string>  requires is_string<T_str>
-        T_str  Trim(const T_str& s);
+        [[nodiscard]] T_str  Trim(const T_str& s);
+        
+        template<typename T_str = string>  requires is_string<T_str>
+        [[nodiscard]] bool GetLine(istringstream& input, T_str& line, char delimiter = '\n');
 
-        ALIAS_TEMPLATE_FUNCTION(StringFormat, fmt::sprintf)
+        template <typename... Args>
+        [[nodiscard]] FORCE_INLINE string StringFormat(const std::string_view fmt, Args&& ...args)
+        {
+            return fmt::vformat(fmt, fmt::make_format_args( args... ) );
+        }
 
         template<typename T>
-        string to_string(T value);
+        [[nodiscard]] string to_string(T value);
 
         template<typename T_str = string> requires is_string<T_str>
-        U32 LineCount(const T_str& str);
+        [[nodiscard]] U32 LineCount(const T_str& str);
 
         void CStringRemoveChar(char* str, char charToRemove) noexcept;
 
-        bool IsEmptyOrNull(const char* str) noexcept;
+        [[nodiscard]] bool IsEmptyOrNull(const char* str) noexcept;
 
         [[nodiscard]] char *commaprint(U64 number) noexcept;
     } //namespace Util

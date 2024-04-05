@@ -10,6 +10,8 @@ namespace Divide
 // We are using third party string libraries (STL, Boost, EASTL) that went through proper testing
 // This list of tests only verifies utility functions
 
+namespace detail
+{
 template<bool include>
 constexpr std::string getFile(std::string_view sv)
 {
@@ -30,6 +32,7 @@ constexpr std::string getFile(std::string_view sv)
 
     return "";
 }
+} //detail
 
 template<bool include>
 vector<string> getFiles( const std::string& sv )
@@ -37,15 +40,18 @@ vector<string> getFiles( const std::string& sv )
     istringstream inputStream( sv );
     string line;
     vector<string> includeFiles;
-    while (std::getline(inputStream, line))
+    while ( Util::GetLine(inputStream, line))
     {
-        auto str = getFile<include>(line);
+        auto str = detail::getFile<include>(line);
         if (!str.empty() )
         {
             includeFiles.emplace_back(str);
         }
     }
-
+    if (includeFiles.empty())
+    {
+        includeFiles.emplace_back(detail::getFile<include>(sv));
+    }
     return includeFiles;
 }
 
@@ -56,7 +62,7 @@ TEST_CASE("Regex Test", "[string_tests]")
     SECTION("Success")
     {
         {
-            const string& inputInclude1("#include \"blaBla.h\"");
+            const string& inputInclude1("#include \"blaBla.h\"\r");
             const string& inputInclude2("#include <blaBla.h>");
             const string& inputInclude3("# include \"blaBla.h\"");
             const string& inputInclude4("   #include <  blaBla.h>");
@@ -65,16 +71,16 @@ TEST_CASE("Regex Test", "[string_tests]")
             const string& resultInclude2("blaBla2.h");
             const string& resultInclude3("blaBla3.h");
 
-            const string temp1 = getFile<true>(inputInclude1);
+            const string temp1 = getFiles<true>(inputInclude1).front();
             CHECK_EQUAL(resultInclude, temp1);
 
-            const string temp2 = getFile<true>(inputInclude2);
+            const string temp2 = getFiles<true>(inputInclude2).front();
             CHECK_EQUAL(resultInclude, temp2);
  
-            const string temp3 = getFile<true>(inputInclude3);
+            const string temp3 = getFiles<true>(inputInclude3).front();
             CHECK_EQUAL(resultInclude, temp3);
 
-            const string temp4 = getFile<true>(inputInclude4);
+            const string temp4 = getFiles<true>(inputInclude4).front();
             CHECK_EQUAL(resultInclude, temp4);
             
             const vector<string> temp5 = getFiles<true>( inputInclude5 );
@@ -92,16 +98,16 @@ TEST_CASE("Regex Test", "[string_tests]")
             const string& resultUse("blaBla.h");
             const string& resultUse2("blaBla2.h");
 
-            const string temp1 = getFile<false>(inputUse1);
+            const string temp1 = getFiles<false>(inputUse1).front();
             CHECK_EQUAL(resultUse, temp1);
 
-            const string temp2 = getFile<false>(inputUse2);
+            const string temp2 = getFiles<false>(inputUse2).front();
             CHECK_EQUAL(resultUse, temp2);
  
-            const string temp3 = getFile<false>(inputUse3);
+            const string temp3 = getFiles<false>(inputUse3).front();
             CHECK_EQUAL(resultUse, temp3);
  
-            const string temp4 = getFile<false>(inputUse4);
+            const string temp4 = getFiles<false>(inputUse4).front();
             CHECK_EQUAL(resultUse, temp4);
             
             vector<string> temp5 = getFiles<false>(inputUse5);
@@ -119,13 +125,13 @@ TEST_CASE("Regex Test", "[string_tests]")
             const string& inputInclude3("# include \"blaBla.h");
             const string& inputInclude4("   include <  blaBla.h>");
 
-            const string temp1 = getFile<true>(inputInclude1);
+            const string temp1 = getFiles<true>(inputInclude1).front();
             CHECK_TRUE(temp1.empty());
-            const string temp2 = getFile<true>(inputInclude2);
+            const string temp2 = getFiles<true>(inputInclude2).front();
             CHECK_TRUE(temp2.empty() );
-            const string temp3 = getFile<true>(inputInclude3);
+            const string temp3 = getFiles<true>(inputInclude3).front();
             CHECK_TRUE(temp3.empty() );
-            const string temp4 = getFile<true>(inputInclude4);
+            const string temp4 = getFiles<true>(inputInclude4).front();
             CHECK_TRUE(temp4.empty() );
         }
         {
@@ -133,11 +139,11 @@ TEST_CASE("Regex Test", "[string_tests]")
             const string& inputUse2("usadfse( \"blaBla.h\")");
             const string& inputUse3("      use    ---   (\"blaBla.h\")");
 
-            const string temp1 = getFile<false>(inputUse1);
+            const string temp1 = getFiles<false>(inputUse1).front();
             CHECK_TRUE(temp1.empty() );
-            const string temp2 = getFile<false>(inputUse2);
+            const string temp2 = getFiles<false>(inputUse2).front();
             CHECK_TRUE(temp2.empty() );
-            const string temp3 = getFile<false>(inputUse3);
+            const string temp3 = getFiles<false>(inputUse3).front();
             CHECK_TRUE(temp3.empty() );
         }
     }
@@ -205,7 +211,7 @@ TEST_CASE( "Compare (case-insensitive) Test", "[string_tests]" )
 
 TEST_CASE( "Has Extension Test", "[string_tests]" )
 {
-    const char* input = "something.ext";
+    const ResourcePath input{ "something.ext" };
     const char* ext1 = "ext";
     const char* ext2 = "bak";
     CHECK_TRUE(hasExtension(input, ext1));
@@ -227,13 +233,21 @@ TEST_CASE( "Split Test", "[string_tests]" )
 
 TEST_CASE( "Path Split Test", "[string_tests]" )
 {
-    const char* input = "/path/path2/path4/file.test";
-    const string result1("file.test");
-    const string result2("/path/path2/path4");
+    const ResourcePath input { "/path/path2/path4/file.test" };
+    const Str<256> result1("file.test");
+    const ResourcePath result2("/path/path2/path4");
 
-    const auto[name, path] = splitPathToNameAndLocation(input);
-    CHECK_EQUAL(path, result2);
-    CHECK_EQUAL(name, result1);
+    const FileNameAndPath result3 =
+    {
+        ._fileName = result1,
+        ._path = result2
+    };
+
+    const FileNameAndPath ret = splitPathToNameAndLocation(input);
+
+    CHECK_EQUAL(ret, result3);
+    CHECK_EQUAL(ret._fileName, result1);
+    CHECK_EQUAL(ret._path, result2);
 }
 
 TEST_CASE( "Line Count Test", "[string_tests]" )
@@ -273,8 +287,8 @@ TEST_CASE( "Trim Test", "[string_tests]" )
 
 TEST_CASE( "Format Test", "[string_tests]" )
 {
-    const char* input1("A %s b is %d %s");
-    const char* input2("%2.2f");
+    const char* input1("A {} b is {} {}");
+    const char* input2("{:2.2f}");
     const string result1("A is ok, b is 2 \n");
     const string result2("12.21");
 

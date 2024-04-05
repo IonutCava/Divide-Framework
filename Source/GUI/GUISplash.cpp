@@ -12,7 +12,7 @@
 namespace Divide {
 
 GUISplash::GUISplash(ResourceCache* cache,
-                     const Str<64>& splashImageName,
+                     const std::string_view splashImageName,
                      vec2<U16> dimensions) 
     : _dimensions(MOV(dimensions))
 {
@@ -20,8 +20,8 @@ GUISplash::GUISplash(ResourceCache* cache,
     splashDescriptor.textureOptions()._alphaChannelTransparency = false;
 
     ResourceDescriptor splashImage("SplashScreen Texture");
-    splashImage.assetName(ResourcePath(splashImageName));
-    splashImage.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
+    splashImage.assetName(splashImageName);
+    splashImage.assetLocation(Paths::g_imagesLocation);
     splashImage.propertyDescriptor(splashDescriptor);
 
     _splashImage = CreateResource<Texture>(cache, splashImage);

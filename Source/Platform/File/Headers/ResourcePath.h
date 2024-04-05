@@ -33,6 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_FILE_WITH_PATH_H_
 #define DVD_FILE_WITH_PATH_H_
 
+#include <filesystem>
+
 namespace Divide {
 
 enum class FileType : U8 {
@@ -45,42 +47,50 @@ struct ResourcePath
 {
     ResourcePath() = default;
 
-    template<int N>
-    ResourcePath(const Str<N>& string) : ResourcePath(string.c_str()) {}
+    template<size_t N>
+    explicit ResourcePath(const Str<N>& path) : ResourcePath(path.c_str()) {}
 
-    ResourcePath(std::string_view path);
+    explicit ResourcePath(const char* path) : _fileSystemPath(path) {}
+
+    explicit ResourcePath(std::string_view path) : _fileSystemPath(path) {}
+
+    explicit ResourcePath(const string& path) : _fileSystemPath(path) {}
+
+    explicit ResourcePath(const std::filesystem::path& path) : _fileSystemPath(path) {}
 
     [[nodiscard]] size_t length() const noexcept;
     [[nodiscard]] bool empty() const noexcept;
-    [[nodiscard]] const char* c_str() const noexcept;
 
-    ResourcePath& pop_back() noexcept;
     ResourcePath& append(std::string_view str);
 
-    [[nodiscard]] const string& str() const noexcept { return _str; }
+    ResourcePath& makeRelative(const ResourcePath& base);
+    ResourcePath getRelative(const ResourcePath& base) const;
 
-    const string& convertToLower() noexcept
-    { 
-        std::transform(_str.begin(), _str.end(), _str.begin(), [](unsigned char c) noexcept { return std::tolower(c); });
-        return str();
+    template<size_t N = 0>
+    std::conditional_t<(N > 0), Str<N>, Divide::string> string() const noexcept
+    {
+        return std::conditional_t<(N > 0), Str<N>, Divide::string>( _fileSystemPath.string().c_str() );
     }
 
-private:
-    string _str;
+    PROPERTY_R_IW(std::filesystem::path, fileSystemPath);
 };
 
-ResourcePath  operator+  (const ResourcePath& lhs, const ResourcePath& rhs);
-ResourcePath  operator+  (const ResourcePath& lhs, std::string_view rhs);
+ResourcePath  operator/ (const ResourcePath& lhs, const ResourcePath& rhs);
+ResourcePath& operator/=(ResourcePath& lhs, const ResourcePath& rhs);
+
+ResourcePath  operator/ ( const ResourcePath& lhs, std::string_view rhs );
+ResourcePath& operator/=( ResourcePath& lhs, std::string_view rhs );
+
 template<size_t N>
-ResourcePath  operator+  (const ResourcePath& lhs, const Str<N>& rhs) {
-    return lhs + rhs.c_str();
+ResourcePath  operator/ ( const ResourcePath& lhs, const Str<N>& rhs )
+{
+    return lhs / ResourcePath( rhs );
 }
 
-ResourcePath& operator+= (ResourcePath& lhs, const ResourcePath& rhs);
-ResourcePath& operator+= (ResourcePath& lhs, std::string_view rhs);
 template<size_t N>
-ResourcePath& operator+= (ResourcePath& lhs, const Str<N>& rhs) {
-    return lhs += rhs.c_str();
+ResourcePath& operator/=( ResourcePath& lhs, const Str<N>& rhs )
+{
+    return lhs /= ResourcePath( rhs );
 }
 
 bool operator== (const ResourcePath& lhs, std::string_view rhs);
@@ -89,17 +99,27 @@ bool operator!= (const ResourcePath& lhs, std::string_view rhs);
 bool operator== (const ResourcePath& lhs, const ResourcePath& rhs);
 bool operator!= (const ResourcePath& lhs, const ResourcePath& rhs);
 
-template<size_t N>
-bool operator== (const ResourcePath& lhs, const Str<N>& rhs) {
-    return lhs == rhs.c_str();
-}
-template<size_t N>
-bool operator!= (const ResourcePath& lhs, const Str<N>& rhs) {
-    return lhs != rhs.c_str();
-}
+struct FileNameAndPath
+{
+    Str<256> _fileName;
+    ResourcePath _path;
+};
 
-using FileAndPath = std::pair<ResourcePath, ResourcePath>;
+bool operator==(const FileNameAndPath& lhs, const FileNameAndPath& rhs);
+bool operator!=(const FileNameAndPath& lhs, const FileNameAndPath& rhs);
 
 }; //namespace Divide
+
+template<>
+struct fmt::formatter<Divide::ResourcePath>
+{
+    constexpr auto parse( format_parse_context& ctx ) { return ctx.begin(); }
+
+    template<typename FormatContext>
+    auto format( Divide::ResourcePath const& path, FormatContext& ctx ) -> decltype(ctx.out())
+    {
+        return fmt::format_to( ctx.out(), "{}", path.string() );
+    }
+};
 
 #endif //DVD_FILE_WITH_PATH_H_

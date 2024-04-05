@@ -41,7 +41,7 @@ namespace {
     }
 }
 
-glShader::glShader(GFXDevice& context, const Str<256>& name, const U32 generation)
+glShader::glShader(GFXDevice& context, const std::string_view name, const U32 generation)
     : ShaderModule(context, name, generation)
 {
 }
@@ -226,7 +226,7 @@ ShaderResult glShader::uploadToGPU()
         U64 maxHotspotTimer = 0u;
         string perStageTiming = "";
         for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i) {
-            perStageTiming.append(Util::StringFormat("---- [ %s ] - [%5.5f  ms] - [%5.5f  ms]\n",
+            perStageTiming.append(Util::StringFormat("---- [ {} ] - [{:5.5f} ms] - [{:5.5f}  ms]\n",
                                                      Names::shaderTypes[i],
                                                      Time::MicrosecondsToMilliseconds<F32>(timingData._stageCompileTime[i]),
                                                      Time::MicrosecondsToMilliseconds<F32>(timingData._stageCompileLogRetrievalTime[i])));
@@ -286,14 +286,14 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data) {
 /// Load a shader by name, source code and stage
 glShaderEntry glShader::LoadShader(GFXDevice& context,
                                    glShaderProgram* program,
-                                   const Str<256>& name,
+                                   const std::string_view name,
                                    const U32 targetGeneration,
                                    ShaderProgram::ShaderLoadData& data)
 {
 
     glShaderEntry ret
     {
-        ._fileHash = _ID( name.c_str() ),
+        ._fileHash = _ID( name ),
         ._generation = targetGeneration
     };
     {

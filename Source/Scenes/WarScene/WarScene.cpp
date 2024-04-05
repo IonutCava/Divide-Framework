@@ -15,7 +15,7 @@
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
@@ -36,14 +36,16 @@
 
 namespace Divide {
 
-WarScene::WarScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name)
-   : Scene(context, cache, parent, name),
+WarScene::WarScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry)
+   : Scene(context, cache, parent, entry),
     _timeLimitMinutes(5),
     _scoreLimit(3)
 {
-    const size_t idx = parent.addSelectionCallback([&](PlayerIndex /*idx*/, const vector_fast<SceneGraphNode*>& node) {
+    const size_t idx = parent.parent().addSelectionCallback([&](PlayerIndex /*idx*/, const vector_fast<SceneGraphNode*>& node)
+    {
         string selectionText;
-        for (SceneGraphNode* it : node) {
+        for (SceneGraphNode* it : node)
+        {
             selectionText.append("\n");
             selectionText.append(it->name().c_str());
         }
@@ -56,8 +58,9 @@ WarScene::WarScene(PlatformContext& context, ResourceCache* cache, SceneManager&
 
 WarScene::~WarScene()
 {
-    if (_targetLines) {
-        _context.gfx().destroyIMP(_targetLines);
+    if (_targetLines && !_context.gfx().destroyIMP(_targetLines) )
+    {
+        DebugBreak();
     }
 }
 
@@ -68,19 +71,28 @@ void WarScene::toggleTerrainMode() {
 void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut,
                          GFX::MemoryBarrierCommand& memCmdInOut )
 {
-    if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES)) {
-        if (!_targetLines) {
+    if (state()->renderState().isEnabledOption(SceneRenderState::RenderOptions::RENDER_CUSTOM_PRIMITIVES))
+    {
+        if (!_targetLines)
+        {
             _targetLines = _context.gfx().newIMP("WarScene Target Lines");
             PipelineDescriptor pipelineDescriptor = {};
             pipelineDescriptor._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture()->handle();
 
             pipelineDescriptor._stateBlock = _context.gfx().getNoDepthTestBlock();
             _targetLines->setPipelineDescriptor(pipelineDescriptor);
-        } else {
+        }
+        else
+        {
             _targetLines->getCommandBuffer(bufferInOut, memCmdInOut);
         }
-    } else if (_targetLines) {
-        _context.gfx().destroyIMP(_targetLines);
+    }
+    else if (_targetLines)
+    {
+        if (!_context.gfx().destroyIMP(_targetLines))
+        {
+            DebugBreak();
+        }
     }
     Scene::debugDraw(bufferInOut, memCmdInOut);
 }
@@ -301,7 +313,7 @@ bool WarScene::load() {
             lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
         }
         {
-            ResourceDescriptor tempLight(Util::StringFormat("Light_point_%s_2", currentName.c_str()));
+            ResourceDescriptor tempLight(Util::StringFormat("Light_point_{}_2", currentName.c_str()));
             tempLight.setEnumValue(to_base(LightType::POINT));
             tempLight.setUserPtr(_lightPool);
             std::shared_ptr<Light> light = CreateResource<Light>(_resCache, tempLight);
@@ -313,7 +325,7 @@ bool WarScene::load() {
             lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
         }
         {
-            ResourceDescriptor tempLight(Util::StringFormat("Light_spot_%s", currentName.c_str()));
+            ResourceDescriptor tempLight(Util::StringFormat("Light_spot_{}", currentName.c_str()));
             tempLight.setEnumValue(to_base(LightType::SPOT));
             tempLight.setUserPtr(_lightPool);
             std::shared_ptr<Light> light = CreateResource<Light>(_resCache, tempLight);
@@ -430,7 +442,7 @@ bool WarScene::load() {
     constexpr U8 colCount = 10;
     for (U8 row = 0; row < rowCount; row++) {
         for (U8 col = 0; col < colCount; col++) {
-            lightNodeDescriptor._name = Util::StringFormat("Light_point_%d_%d", row, col).c_str();
+            lightNodeDescriptor._name = Util::StringFormat("Light_point_{}_{}", row, col).c_str();
             SceneGraphNode* lightSGN = pointLightNode->addChildNode(lightNodeDescriptor);
             PointLightComponent* pointLight = lightSGN->get<PointLightComponent>();
             pointLight->castsShadows(false);
@@ -572,12 +584,12 @@ void WarScene::postLoadMainThread() {
                   pixelPosition(60, 83),
                   Font::DIVIDE_DEFAULT,
                   UColour4(164, 50, 50, 255),
-                  Util::StringFormat("Number of items in Render Bin: %d", 0));
+                  Util::StringFormat("Number of items in Render Bin: {}", 0));
 
     _GUI->addText("camPosition", pixelPosition(60, 103),
                   Font::DIVIDE_DEFAULT,
                   UColour4(50, 192, 50, 255),
-                  Util::StringFormat("Position [ X: %5.0f | Y: %5.0f | Z: %5.0f ] [Pitch: %5.2f | Yaw: %5.2f]",
+                  Util::StringFormat("Position [ X: {:5.0f} | Y: {:5.0f} | Z: {:5.0f} ] [Pitch: {:5.2f} | Yaw: {:5.2f}]",
                   0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
 
 
@@ -585,7 +597,7 @@ void WarScene::postLoadMainThread() {
                   pixelPosition(60, 123),  // Position
                   Font::DIVIDE_DEFAULT,  // Font
                   UColour4(50, 192, 50, 255),// Colour
-                  Util::StringFormat("Score: A -  %d B - %d", 0, 0));  // Text and arguments
+                  Util::StringFormat("Score: A -  {} B - {}", 0, 0));  // Text and arguments
 
     _GUI->addText("terrainInfoDisplay",
                   pixelPosition(60, 163),  // Position
@@ -695,11 +707,11 @@ void WarScene::postLoadMainThread() {
                      const vec3<F32>& euler = cam.euler();
      
                      _GUI->modifyText("RenderBinCount",
-                                         Util::StringFormat("Number of items in Render Bin: %d.",
+                                         Util::StringFormat("Number of items in Render Bin: {}.",
                                          _context.kernel().renderPassManager()->getLastTotalBinSize(RenderStage::DISPLAY)), false);
      
                      _GUI->modifyText("camPosition",
-                                         Util::StringFormat("Position [ X: %5.2f | Y: %5.2f | Z: %5.2f ] [Pitch: %5.2f | Yaw: %5.2f]",
+                                         Util::StringFormat("Position [ X: {:5.2f} | Y: {:5.2f} | Z: {:5.2f} ] [Pitch: {:5.2f} | Yaw: {:5.2f}]",
                                                          eyePos.x, eyePos.y, eyePos.z, euler.pitch, euler.yaw), false); 
          
                      static SceneGraphNode* terrain = nullptr;
@@ -728,7 +740,7 @@ void WarScene::postLoadMainThread() {
                          const vec3<F32>& terNorm = terVert._normal;
                          const vec3<F32>& terTan = terVert._tangent;
                          _GUI->modifyText("terrainInfoDisplay",
-                                             Util::StringFormat("Position [ X: %5.2f | Y: %5.2f | Z: %5.2f ]\nNormal [ X: %5.2f | Y: %5.2f | Z: %5.2f ]\nTangent [ X: %5.2f | Y: %5.2f | Z: %5.2f ]",
+                                             Util::StringFormat("Position [ X: {:5.2f} | Y: {:5.2f} | Z: {:5.2f} ]\nNormal [ X: {:5.2f} | Y: {:5.2f} | Z: {:5.2f} ]\nTangent [ X: {:5.2f} | Y: {:5.2f} | Z: {:5.2f} ]",
                                                  terPos.x, terPos.y, terPos.z, 
                                                  terNorm.x, terNorm.y, terNorm.z,
                                                  terTan.x, terTan.y, terTan.z),
@@ -771,7 +783,7 @@ void WarScene::postLoadMainThread() {
                     U32 limitTimeMilliseconds = 0;
 
                     _GUI->modifyText("scoreDisplay",
-                        Util::StringFormat("Score: A -  %d B - %d [Limit: %d]\nElapsed game time [ %d:%d:%d / %d:%d:%d]",
+                        Util::StringFormat("Score: A -  {} B - {} [Limit: {}]\nElapsed game time [ {}:{}:{} / {}:{}:{}]",
                                             AI::WarSceneAIProcessor::getScore(0),
                                             AI::WarSceneAIProcessor::getScore(1),
                                             _scoreLimit,
@@ -793,7 +805,7 @@ void WarScene::onSetActive() {
 }
 
 void WarScene::weaponCollision(const RigidBodyComponent& collider) {
-    Console::d_printfn("Weapon touched [ %s ]", collider.parentSGN()->name().c_str());
+    Console::d_printfn("Weapon touched [ {} ]", collider.parentSGN()->name().c_str());
 }
 
 }

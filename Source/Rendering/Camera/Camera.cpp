@@ -51,9 +51,16 @@ namespace Divide
         }
     }
 
+    struct CameraEntry
+    {
+        Camera_uptr _camera;
+        std::atomic_size_t _useCount{0u};
+    };
+
     namespace
     {
-        using CameraPool = eastl::list<Camera>;
+
+        using CameraPool = eastl::list<CameraEntry>;
 
         std::array<Camera*, to_base( Camera::UtilityCamera::COUNT )> _utilityCameras;
         U32 s_changeCameraId = 0u;
@@ -104,9 +111,9 @@ namespace Divide
         s_lastFrameTimeSec = Time::MicrosecondsToSeconds<F32>( deltaTimeUS );
 
         SharedLock<SharedMutex> r_lock( s_cameraPoolLock );
-        for ( Camera& cam : s_cameraPool )
+        for ( auto& cameEntry : s_cameraPool )
         {
-            cam.update();
+            cameEntry._camera->update();
         }
     }
 
@@ -139,42 +146,87 @@ namespace Divide
 
     Camera* Camera::CreateCamera( const Str<256>& cameraName, const Camera::Mode mode )
     {
+        const U64 targetHash = _ID( cameraName.c_str() );
+
+        CameraEntry* camera = FindCameraEntry( targetHash );
+        if ( camera != nullptr )
+        {
+            camera->_useCount.fetch_add( 1u );
+            return camera->_camera.get();
+        }
+
+        // Cache miss
         LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
-        s_cameraPool.emplace_back( cameraName, mode );
-        return &s_cameraPool.back();
+        // Search again in case another thread created it in the meantime
+        camera = FindCameraEntryLocked( targetHash );
+        if ( camera != nullptr )
+        {
+            camera->_useCount.fetch_add( 1u );
+            return camera->_camera.get();
+        }
+
+        // No such luck. Create it ourselves.
+        s_cameraPool.emplace_back( nullptr, 1u);
+        s_cameraPool.back()._camera.reset( new Camera( cameraName, mode ));
+
+        return s_cameraPool.back()._camera.get();
     }
 
     bool Camera::DestroyCamera( Camera*& camera )
     {
-        if ( camera != nullptr )
+        if ( camera == nullptr )
         {
-            const U64 targetHash = _ID( camera->resourceName().c_str() );
-            LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
-            erase_if( s_cameraPool, [targetHash]( Camera& cam )
-                      {
-                          return _ID( cam.resourceName().c_str() ) == targetHash;
-                      } );
-            camera = nullptr;
-            return true;
+            return true; //??
         }
 
-        return false;
+        const U64 targetHash = _ID( camera->resourceName().c_str() );
+        camera = nullptr;
+
+        LockGuard<SharedMutex> w_lock( s_cameraPoolLock );
+
+        return erase_if( s_cameraPool,
+                         [targetHash]( CameraEntry& camEntry )
+                         {
+                            if (_ID( camEntry._camera->resourceName().c_str() ) == targetHash)
+                            {
+                                camEntry._useCount.fetch_sub( 1u );
+                                return camEntry._useCount == 0u;
+                            }
+
+                            return false;
+                         }) > 0;
     }
 
-    Camera* Camera::FindCamera( U64 nameHash )
+    CameraEntry* Camera::FindCameraEntry( const U64 nameHash )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         SharedLock<SharedMutex> r_lock( s_cameraPoolLock );
+        return FindCameraEntryLocked( nameHash );
+    }
+
+    CameraEntry* Camera::FindCameraEntryLocked( const U64 nameHash )
+    {
         auto it = eastl::find_if( begin( s_cameraPool ),
                                   end( s_cameraPool ),
-                                  [nameHash]( Camera& cam )
+                                  [nameHash]( CameraEntry& camEntry )
                                   {
-                                      return _ID( cam.resourceName().c_str() ) == nameHash;
+                                      return _ID( camEntry._camera->resourceName().c_str() ) == nameHash;
                                   } );
         if ( it != std::end( s_cameraPool ) )
         {
             return &(*it);
+        }
+
+        return nullptr;
+    }
+
+    Camera* Camera::FindCamera( U64 nameHash )
+    {
+        CameraEntry* entry = FindCameraEntry( nameHash );
+        if ( entry != nullptr )
+        {
+            return entry->_camera.get();
         }
 
         return nullptr;
@@ -202,7 +254,7 @@ namespace Divide
         return s_changeCameraId;
     }
 
-    Camera::Camera( const Str<256>& name, const Mode mode, const vec3<F32>& eye )
+    Camera::Camera( const std::string_view name, const Mode mode, const vec3<F32>& eye )
         : Resource( ResourceType::DEFAULT, name ),
          _mode( mode )
     {
@@ -915,7 +967,7 @@ namespace Divide
         const vec4<F32> orientation = _data._orientation.asVec4();
 
         string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
-        savePath.append(Util::MakeXMLSafe(resourceName()).c_str());
+        savePath.append(Util::MakeXMLSafe(resourceName().c_str()));
 
         pt.put( savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x );
         pt.put( savePath + ".reflectionPlane.normal.<xmlattr>.y", _reflectionPlane._normal.y );
@@ -963,7 +1015,7 @@ namespace Divide
         const vec4<F32> orientation = _data._orientation.asVec4();
 
         string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
-        savePath.append(Util::MakeXMLSafe(resourceName()).c_str());
+        savePath.append(Util::MakeXMLSafe(resourceName().c_str()));
 
         _reflectionPlane.set(
             pt.get( savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x ),

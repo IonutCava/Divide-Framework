@@ -179,8 +179,8 @@ namespace Divide
 
     vkTexture::vkTexture( GFXDevice& context,
                           const size_t descriptorHash,
-                          const Str<256>& name,
-                          const ResourcePath& assetNames,
+                          const std::string_view name,
+                          std::string_view assetNames,
                           const ResourcePath& assetLocations,
                           const TextureDescriptor& texDescriptor,
                           ResourceCache& parentCache )
@@ -440,7 +440,7 @@ namespace Divide
                                       &_image->_allocation,
                                       &_image->_allocInfo ) );
 
-            auto imageName = Util::StringFormat( "%s_%d", resourceName().c_str(), _testRefreshCounter );
+            auto imageName = Util::StringFormat( "{}_{}", resourceName().c_str(), _testRefreshCounter );
             vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _image->_allocation, imageName.c_str() );
             Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_image->_image, VK_OBJECT_TYPE_IMAGE, imageName.c_str() );
         }
@@ -965,7 +965,7 @@ namespace Divide
 
             VK_CHECK( vkCreateImageView( VK_API::GetStateTracker()._device->getVKDevice(), &imageInfo, nullptr, &newView._view ) );
 
-            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)newView._view, VK_OBJECT_TYPE_IMAGE_VIEW, Util::StringFormat("%s_view_%zu", resourceName().c_str(), _imageViewCache.size()).c_str() );
+            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)newView._view, VK_OBJECT_TYPE_IMAGE_VIEW, Util::StringFormat("{}_view_{}", resourceName().c_str(), _imageViewCache.size()).c_str() );
             hashAlg::emplace(_imageViewCache, viewHash, newView);
             return newView._view;
         }

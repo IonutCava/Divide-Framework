@@ -424,11 +424,10 @@ namespace Divide
 
         newActor->_actor->userData = node;
         SceneNode& sNode = node->getNode();
-        const string meshName = sNode.assetName().empty() ? sNode.resourceName().c_str() : sNode.assetName().str();
+        const auto meshName = sNode.assetName().empty() ? sNode.resourceName() : sNode.assetName();
         const U64 nameHash = _ID( meshName.c_str() );
 
-        const ResourcePath collMeshPath = Paths::g_cacheLocation + Paths::g_collisionMeshCacheLocation;
-        const ResourcePath cachePath = collMeshPath + meshName + "." + g_collisionMeshExtension;
+        ResourcePath cachePath = Paths::g_collisionMeshCacheLocation / meshName; cachePath.append("."); cachePath.append(g_collisionMeshExtension);
 
         if ( Is3DObject( sNode.type() ) )
         {
@@ -441,7 +440,7 @@ namespace Divide
                 if ( it != s_gMeshCache.end() )
                 {
                     nodeGeometry = it->second;
-                    Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_RAM" ), meshName.c_str() );
+                    Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_RAM" ), meshName );
                 }
             }
 
@@ -453,7 +452,7 @@ namespace Divide
                 if ( it != s_gMeshCache.end() )
                 {
                     nodeGeometry = it->second;
-                    Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_RAM" ), meshName.c_str() );
+                    Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_RAM" ), meshName );
                 }
                 else
                 {
@@ -469,9 +468,9 @@ namespace Divide
                     }
 
                     const bool collisionMeshFileExists = fileExists( cachePath );
-                    if ( !collisionMeshFileExists && !pathExists( collMeshPath ) )
+                    if ( !collisionMeshFileExists && !pathExists( Paths::g_collisionMeshCacheLocation ) )
                     {
-                        if ( !createDirectory( collMeshPath ) )
+                        if ( createDirectory( Paths::g_collisionMeshCacheLocation ) != FileError::NONE)
                         {
                             DIVIDE_UNEXPECTED_CALL();
                         }
@@ -485,7 +484,7 @@ namespace Divide
                         meshDesc.triangles.stride = sizeof( triangles.front() );
                         meshDesc.triangles.data = triangles.data();
 
-                        physx::PxDefaultFileOutputStream outputStream( cachePath.c_str() );
+                        physx::PxDefaultFileOutputStream outputStream( cachePath.string().c_str() );
                         if ( obj.type() == SceneNodeType::TYPE_TERRAIN )
                         {
                             const auto& verts = node->getNode<Terrain>().getVerts();
@@ -534,10 +533,10 @@ namespace Divide
                     }
                     else
                     {
-                        Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_FILE" ), meshName.c_str() );
+                        Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_FILE" ), meshName );
                     }
 
-                    physx::PxDefaultFileInputData inData( cachePath.c_str() );
+                    physx::PxDefaultFileInputData inData( cachePath.string().c_str() );
                     nodeGeometry = _gPhysicsSDK->createTriangleMesh( inData );
                     if ( nodeGeometry )
                     {

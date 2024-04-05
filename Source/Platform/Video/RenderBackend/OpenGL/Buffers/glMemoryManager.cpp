@@ -69,7 +69,7 @@ Chunk::Chunk(const bool poolAllocations,
     if (_poolAllocations)
     {
         static U32 g_bufferIndex = 0u;
-        _memory = createAndAllocPersistentBuffer(block._size, storageMask, accessMask, block._bufferHandle, { nullptr, 0u }, Util::StringFormat("DVD_BUFFER_CHUNK_%d", g_bufferIndex++).c_str());
+        _memory = createAndAllocPersistentBuffer(block._size, storageMask, accessMask, block._bufferHandle, { nullptr, 0u }, Util::StringFormat("DVD_BUFFER_CHUNK_{}", g_bufferIndex++).c_str());
         block._ptr = _memory;
     }
 
@@ -282,7 +282,7 @@ Byte* createAndAllocPersistentBuffer(const size_t bufferSize,
         glObjectLabel(GL_BUFFER, bufferIdOut, -1,
                       name != nullptr
                            ? name
-                           : Util::StringFormat("DVD_PERSISTENT_BUFFER_%d", bufferIdOut).c_str());
+                           : Util::StringFormat("DVD_PERSISTENT_BUFFER_{}", bufferIdOut).c_str());
     }
 
     assert(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
@@ -311,7 +311,7 @@ void createBuffer(GLuint& bufferIdOut, const char* name)
         glObjectLabel(GL_BUFFER, bufferIdOut, -1,
                       name != nullptr
                            ? name
-                           : Util::StringFormat("DVD_GENERAL_BUFFER_%d", bufferIdOut).c_str());
+                           : Util::StringFormat("DVD_GENERAL_BUFFER_{}", bufferIdOut).c_str());
     }
 
 }

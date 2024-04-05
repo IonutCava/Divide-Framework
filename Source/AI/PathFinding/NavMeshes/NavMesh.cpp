@@ -8,7 +8,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Headers/EngineTaskPool.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 
@@ -23,20 +23,16 @@
 namespace Divide::AI::Navigation
 {
 
-    NavigationMesh::NavigationMesh( PlatformContext& context, DivideRecast& recastInterface )
-        : GUIDWrapper(),
-        PlatformContextComponent( context ),
-        _recastInterface( recastInterface )
+    NavigationMesh::NavigationMesh( PlatformContext& context, DivideRecast& recastInterface, Scene& parentScene )
+        : GUIDWrapper()
+        , PlatformContextComponent( context )
+        , _parentScene(parentScene)
+        , _recastInterface( recastInterface )
     {
-        const ParamHandler& par = context.paramHandler();
-        ResourcePath path( Paths::g_xmlDataLocation + Paths::g_scenesLocation );
-        path.append( par.getParam<string>( _ID( "currentScene" ) ) );
+        _filePath =  Scene::GetSceneFullPath( _parentScene ) / Paths::g_navMeshesLocation;
+        _configFile = (_filePath / "navMeshConfig.ini").string();
 
         _debugDrawInterface = MemoryManager_NEW NavMeshDebugDraw( context.gfx() );
-        _filePath = (path.str() + "/" + Paths::g_navMeshesLocation.str()).c_str();
-
-        _configFile.append( path.str() );
-        _configFile.append( "/navMeshConfig.ini" );
         _buildThreaded = true;
         _debugDraw = false;
         _renderConnections = false;
@@ -328,7 +324,7 @@ namespace Divide::AI::Navigation
         data.clear( false );
         data.name( nodeName );
 
-        if ( !NavigationMeshLoader::LoadMeshFile( data, _filePath.c_str(), geometrySaveFile.c_str() ) )
+        if ( !NavigationMeshLoader::LoadMeshFile( data, _filePath, geometrySaveFile.c_str() ) )
         {
             if ( !NavigationMeshLoader::Parse( _sgn->get<BoundsComponent>()->getBoundingBox(), data, _sgn ) )
             {
@@ -340,7 +336,7 @@ namespace Divide::AI::Navigation
         // Check for no geometry
         if ( !data.getVertCount() )
         {
-            data.isValid( false );
+            data.valid( false );
             return false;
         }
 
@@ -380,7 +376,7 @@ namespace Divide::AI::Navigation
 
         if ( !createPolyMesh( cfg, data, &ctx ) )
         {
-            data.isValid( false );
+            data.valid( false );
             return false;
         }
 
@@ -429,14 +425,14 @@ namespace Divide::AI::Navigation
 
         if ( _navMesh == nullptr )
         {
-            data.isValid( false );
+            data.valid( false );
             return false;
         }
 
-        data.isValid( true );
+        data.valid( true );
         save( _sgn );
 
-        return NavigationMeshLoader::SaveMeshFile( data, _filePath.c_str(), geometrySaveFile.c_str() );  // input geometry;
+        return NavigationMeshLoader::SaveMeshFile( data, _filePath, geometrySaveFile.c_str() );  // input geometry;
     }
 
     bool NavigationMesh::createNavigationQuery( const U32 maxNodes )
@@ -711,16 +707,14 @@ namespace Divide::AI::Navigation
             return false;
         }
 
-        Str<256> file = _fileName;
 
-        const Str<256> nodeName( GenerateMeshName( sgn ) );
-
-        // Parse objects from level into RC-compatible format
-        file.append( nodeName );
-        file.append( ".nm" );
+        const Str<256> nodeName =  GenerateMeshName( sgn );
 
         // Parse objects from level into RC-compatible format
-        FILE* fp = fopen( (_filePath + file).c_str(), "rb" );
+        const ResourcePath file{ Util::StringFormat("{}{}.nm", _filePath, nodeName ) };
+
+        // Parse objects from level into RC-compatible format
+        FILE* fp = fopen( (_filePath / file ).string().c_str(), "rb" );
         if ( !fp )
         {
             return false;
@@ -794,14 +788,13 @@ namespace Divide::AI::Navigation
             return false;
         }
 
-        Str<256> file = _fileName;
-        // Parse objects from level into RC-compatible format
-        file.append( GenerateMeshName( sgn ).c_str() );
-        file.append( ".nm" );
+        const Str<256> nodeName = GenerateMeshName( sgn );
 
+        // Parse objects from level into RC-compatible format
+        const ResourcePath file{ Util::StringFormat( "{}{}.nm", _filePath, nodeName.c_str() ) };
 
         // Save our NavigationMesh into a file to load from next time
-        FILE* fp = fopen( (_filePath + file).c_str(), "wb" );
+        FILE* fp = fopen( (_filePath / file).string().c_str(), "wb" );
         if ( !fp )
         {
             return false;
@@ -857,7 +850,7 @@ namespace Divide::AI::Navigation
     Str<256> NavigationMesh::GenerateMeshName( const SceneGraphNode* sgn )
     {
         return sgn->parent() != nullptr
-                              ? Str<256>( ("_node_[_" + sgn->name() + "_]").c_str() )
+                              ? Str<256>(Util::StringFormat("_node_[_{}_]", sgn->name() ) )
                               : Str<256>( "_root_node" );
     }
 

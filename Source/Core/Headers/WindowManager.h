@@ -67,6 +67,14 @@ public:
     DisplayWindow* createWindow(const WindowDescriptor& descriptor, ErrorCode& err);
     bool destroyWindow(DisplayWindow*& window);
 
+    void drawToWindow( DisplayWindow& window );
+    void flushWindow();
+
+    void toggleFullScreen() const;
+    void increaseResolution();
+    void decreaseResolution();
+    void stepResolution( bool increment );
+
     bool setCursorPosition(I32 x, I32 y) noexcept;
     void snapCursorToCenter();
 
@@ -104,6 +112,12 @@ public:
     static void ToggleRelativeMouseMode(bool state) noexcept;
     static bool IsRelativeMouseMode() noexcept;
 
+    [[nodiscard]] DisplayWindow* activeWindow() const noexcept;
+    /// Returns the total number of active windows after the push
+    size_t pushActiveWindow( DisplayWindow* window );
+    /// Returns the remaining number of windows after the pop
+    size_t popActiveWindow();
+
     POINTER_R(DisplayWindow, mainWindow, nullptr);
 
 protected:
@@ -121,20 +135,19 @@ protected:
 
 protected:
     friend class DisplayWindow;
-    [[nodiscard]] ErrorCode configureAPISettings(RenderAPI api, U16 descriptorFlags) const;
-    [[nodiscard]] ErrorCode applyAPISettings(RenderAPI api, DisplayWindow* window);
+    [[nodiscard]] static ErrorCode ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor );
+    [[nodiscard]] static ErrorCode ApplyAPISettings( const PlatformContext& context, RenderAPI api, DisplayWindow* targetWindow, DisplayWindow* activeWindow );
     static void DestroyAPISettings(DisplayWindow* window) noexcept;
 
 protected:
     I64 _mainWindowGUID{ -1 };
-
+    std::pair<vec2<U16>, bool> _resolutionChangeQueued;
     PlatformContext* _context{ nullptr };
     vector<MonitorData> _monitors;
     vector<DisplayWindow*> _windows;
-    DisplayWindow::UserData _globalUserData{};
-
     static SDL_DisplayMode s_mainDisplayMode;
     static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
+    eastl::stack<DisplayWindow*> _activeWindows;
 };
 
 struct WindowDescriptor
@@ -149,10 +162,11 @@ struct WindowDescriptor
         ALLOW_HIGH_DPI = toBit( 6 ),
         ALWAYS_ON_TOP = toBit( 7 ),
         VSYNC = toBit( 8 ),
-        SHARE_CONTEXT = toBit( 9 )
+        NO_TASKBAR_ICON = toBit( 9 )
     };
 
     string title = "";
+    DisplayWindow* parentWindow = nullptr;
     vec2<I16> position = {};
     vec2<U16> dimensions = {};
     U32 targetDisplay = 0u;

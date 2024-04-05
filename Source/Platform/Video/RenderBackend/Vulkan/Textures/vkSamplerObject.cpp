@@ -93,7 +93,7 @@ namespace Divide {
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret, VK_OBJECT_TYPE_SAMPLER, Util::StringFormat( "SAMPLER_%zu", GetHash(descriptor) ).c_str() );
+            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret, VK_OBJECT_TYPE_SAMPLER, Util::StringFormat( "SAMPLER_{}", GetHash(descriptor) ).c_str() );
         }
         return ret;
     }

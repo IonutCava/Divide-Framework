@@ -3,7 +3,7 @@
 #include "Headers/Gizmo.h"
 #include "Editor/Headers/Utils.h"
 #include "Editor/Headers/Editor.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "Rendering/Camera/Headers/Camera.h"
 

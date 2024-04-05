@@ -76,7 +76,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
      };
 
    public:
-    GenericVertexData(GFXDevice& context, U16 ringBufferLength, const bool renderIndirect, const Str<256>& name);
+    GenericVertexData(GFXDevice& context, U16 ringBufferLength, const bool renderIndirect, const std::string_view name);
 
     virtual BufferLock setIndexBuffer(const IndexBuffer& indices) = 0;
 

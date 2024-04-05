@@ -67,7 +67,7 @@ static std::string GetLastErrorAsString()
 
 [[nodiscard]] std::pair<std::string, bool> Startup( const char* lpApplicationName, const char* params, const std::filesystem::path& workingDir )
 {
-    const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir.string().c_str() , SW_SHOWNORMAL );
+    const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir.c_str() , SW_SHOWNORMAL );
     if (int(ret) <= 32)
     {
         return {fmt::format( ERRORS[0], lpApplicationName, GetLastErrorAsString() ), true };
@@ -79,7 +79,7 @@ static std::string GetLastErrorAsString()
 #else //IS_WINDOWS_BUILD
 constexpr const char* OS_PREFIX = "unixlike";
 constexpr bool WINDOWS_BUILD = false;
-std::pair<std::string, bopol> Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const std::filesystem::path& workingDir )
+std::pair<std::string, bool> Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const std::filesystem::path& workingDir )
 {
     return {"Not implemented!", false};
 }
@@ -88,7 +88,7 @@ std::pair<std::string, bopol> Startup( [[maybe_unused]] const char* lpApplicatio
 Image::Image( const std::filesystem::path& path, SDL_Renderer* renderer )
     : _path( path )
 {
-    _surface = IMG_Load( path.string().c_str() );
+    _surface = IMG_Load( path.c_str() );
     assert( _surface );
     _texture = SDL_CreateTextureFromSurface( renderer, _surface );
     assert( _texture );
@@ -176,7 +176,7 @@ static void SetTooltip( const char* text )
     }
     catch ( std::exception& )
     {
-        g_globalMessage = fmt::format( ERRORS[1], search_path.string().c_str() );
+        g_globalMessage = fmt::format( ERRORS[1], search_path.c_str() );
     }
 
     return std::nullopt;
@@ -247,7 +247,7 @@ static boost::property_tree::iptree GetXmlTree(std::filesystem::path filePath)
     }
     catch ( boost::property_tree::xml_parser_error& e )
     {
-        g_globalMessage = fmt::format( ERRORS[7], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string().c_str(), e.what() );
+        g_globalMessage = fmt::format( ERRORS[7], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).c_str(), e.what() );
     }
 
     return XmlTree;
@@ -283,7 +283,7 @@ static void saveConfig()
     }
     catch ( boost::property_tree::xml_parser_error& e )
     {
-        g_globalMessage = fmt::format( ERRORS[8], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string().c_str(), e.what() );
+        g_globalMessage = fmt::format( ERRORS[8], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).c_str(), e.what() );
     }
 }
 
@@ -338,7 +338,7 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
     }
     catch ( std::exception& e)
     {
-        g_globalMessage = fmt::format( ERRORS[2], (g_projectPath / PROJECTS_FOLDER_NAME).string().c_str(), e.what() );
+        g_globalMessage = fmt::format( ERRORS[2], (g_projectPath / PROJECTS_FOLDER_NAME).c_str(), e.what() );
         if (!retry)
         {
             std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
@@ -487,7 +487,7 @@ int main( int, char** )
     bool haveMissingBuildTargets = false;
     auto OnSelectionChanged = [&](bool isComboBox = false)
     {
-        g_globalMessage = fmt::format( CURRENT_DIR_MSG, g_projectPath.string().c_str() );
+        g_globalMessage = fmt::format( CURRENT_DIR_MSG, g_projectPath.c_str() );
 
         if (isComboBox)
         {
@@ -1060,7 +1060,7 @@ int main( int, char** )
                         {
                             case 0:
                             {
-                                 const auto[msg, error] = Startup( g_ideLaunchCommand.c_str(), g_projectPath.string().c_str(), g_projectPath ); 
+                                 const auto[msg, error] = Startup( g_ideLaunchCommand.c_str(), g_projectPath.c_str(), g_projectPath ); 
                                  g_globalMessage = msg;
                                  if (!error)
                                  {

@@ -3,7 +3,7 @@
 #include "Headers/SSAOPreRenderOperator.h"
 
 #include "Core/Resources/Headers/ResourceCache.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
@@ -154,7 +154,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     { //Calc Full
         fragModule._variant = "SSAOCalc";
         fragModule._defines.resize(0);
-        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT %d", _kernelSampleCount[0]));
+        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT {}", _kernelSampleCount[0]));
 
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);
@@ -168,7 +168,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     { //Calc Half
         fragModule._variant = "SSAOCalc";
         fragModule._defines.resize(0);
-        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT %d", _kernelSampleCount[1]));
+        fragModule._defines.emplace_back(Util::StringFormat("SSAO_SAMPLE_COUNT {}", _kernelSampleCount[1]));
         fragModule._defines.emplace_back("COMPUTE_HALF_RES");
 
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
@@ -184,7 +184,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     { //Blur
         fragModule._variant = "SSAOBlur.Nvidia";
         fragModule._defines.resize(0);
-        fragModule._defines.emplace_back(Util::StringFormat("BLUR_SIZE %d", SSAO_BLUR_SIZE));
+        fragModule._defines.emplace_back(Util::StringFormat("BLUR_SIZE {}", SSAO_BLUR_SIZE));
 
         ShaderProgramDescriptor ssaoShaderDescriptor = {};
         ssaoShaderDescriptor._modules.push_back(vertModule);

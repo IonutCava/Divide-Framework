@@ -177,11 +177,11 @@ class ByteBuffer {
     void put(size_t pos, const Byte *src, size_t cnt);
 
     /// Saves the entire buffer contents to file. Always appends the version at the end of the file
-    [[nodiscard]] bool dumpToFile(const char* path, const char* fileName, const U8 version = BUFFER_FORMAT_VERSION);
+    [[nodiscard]] bool dumpToFile(const ResourcePath& path, std::string_view fileName, const U8 version = BUFFER_FORMAT_VERSION);
     /// Reads the specified file and loads its contents as raw data into the buffer. Returns FALSE if reading of the file failed OR if the version doesn't match
     /// To skip version checking, pass 0u as the version!
     /// This will erase any existing data inside of the buffer
-    [[nodiscard]] bool loadFromFile(const char* path, const char* fileName, const U8 version = BUFFER_FORMAT_VERSION);
+    [[nodiscard]] bool loadFromFile(const ResourcePath& path, std::string_view fileName, const U8 version = BUFFER_FORMAT_VERSION);
 
    private:
     /// Limited for internal use because can "append" any unexpected type (e.g. a pointer) with hard detection problem

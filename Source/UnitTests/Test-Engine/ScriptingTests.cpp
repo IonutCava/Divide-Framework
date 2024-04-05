@@ -7,6 +7,8 @@ namespace Divide
 
 TEST_CASE("Simple Inline Script Test", "[scripting]")
 {
+    platformInitRunListener::PlatformInit();
+
     Script input("5.3 + 2.1");
     constexpr D64 result = 7.4;
 
@@ -17,9 +19,16 @@ TEST_CASE( "External Function Script Test", "[scripting]" )
 {
     platformInitRunListener::PlatformInit();
 
-    Script input("use(\"utility.chai\");"
-        "var my_fun = fun(x) { return x + 2; };"
-        "something(my_fun)");
+    Script input
+    (R"(
+        use("utility.chai");
+        var my_fun = fun(x)
+        {
+            return x + 2;
+        };
+
+        something(my_fun)
+    )");
 
     I32 variable = 0;
     const auto testFunc = [&variable](const DELEGATE_STD<I32, I32>& t_func) {

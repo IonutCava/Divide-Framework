@@ -22,13 +22,12 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
 
     if ( !_descriptor.assetName().empty() )
     {
-        std::string resourceLocation = _descriptor.assetLocation().str();
 
         const bool isCubeMap = IsCubeTexture( texDescriptor->texType() );
 
-        const U16 numCommas = to_U16(std::count(std::cbegin(_descriptor.assetName().str()),
-                                                std::cend(_descriptor.assetName().str()),
-                                                ','));
+        const string resourceLocation = _descriptor.assetLocation().string();
+
+        const U16 numCommas = to_U16(std::count(std::cbegin( _descriptor.assetName() ), std::cend( _descriptor.assetName()), ','));
         if ( numCommas > 0u )
         {
             const U16 targetLayers = numCommas + 1u;
@@ -64,7 +63,7 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
 
         if (resourceLocation.empty())
         {
-            _descriptor.assetLocation( Paths::g_assetsLocation + Paths::g_texturesLocation );
+            _descriptor.assetLocation( Paths::g_texturesLocation );
         }
         else
         {
@@ -84,11 +83,12 @@ CachedResource_ptr ImplResourceLoader<Texture>::operator()() {
                                                 *texDescriptor,
                                                 *_cache);
 
-    if (!Load(ptr)) {
+    if (!Load(ptr))
+    {
         Console::errorfn(LOCALE_STR("ERROR_TEXTURE_LOADER_FILE"),
-                         _descriptor.assetLocation().c_str(),
-                         _descriptor.assetName().c_str(),
-                         _descriptor.resourceName().c_str());
+                         _descriptor.assetLocation(),
+                         _descriptor.assetName(),
+                         _descriptor.resourceName());
         ptr.reset();
     }
 

@@ -50,7 +50,7 @@ namespace Divide {
 
     class vkShader final : public ShaderModule {
     public:
-        explicit vkShader(GFXDevice& context, const Str<256>& name, U32 generation);
+        explicit vkShader(GFXDevice& context, const std::string_view name, U32 generation);
         ~vkShader();
 
         [[nodiscard]] bool load(const ShaderProgram::LoadData& data);
@@ -77,12 +77,12 @@ namespace Divide {
         using vkShaders = eastl::fixed_vector<vkShaderEntry, to_base( ShaderType::COUNT ), false>;
     public:
         vkShaderProgram(GFXDevice& context,
-            const size_t descriptorHash,
-            const Str<256>& name,
-            const Str<256>& assetName,
-            const ResourcePath& assetLocation,
-            const ShaderProgramDescriptor& descriptor,
-            ResourceCache& parentCache);
+                        const size_t descriptorHash,
+                        const std::string_view name,
+                        std::string_view assetName,
+                        const ResourcePath& assetLocation,
+                        const ShaderProgramDescriptor& descriptor,
+                        ResourceCache& parentCache);
         ~vkShaderProgram();
 
         [[nodiscard]] const vkShaders& shaderStages() const noexcept;

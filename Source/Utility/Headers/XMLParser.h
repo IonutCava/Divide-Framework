@@ -49,20 +49,23 @@ namespace Divide
 
     namespace XML
     {
-
         namespace detail
         {
             struct LoadSave
             {
                 bool _saveFileOK = false;
-                string _loadPath = "";
-                string _rootNodePath = "";
+                ResourcePath _loadPath;
+                string _loadFile;
 
-                mutable string _savePath = "";
+                mutable ResourcePath _savePath;
+                mutable string _saveFile;
+
+                string _rootNodePath = {};
+
                 mutable boost::property_tree::iptree XmlTree;
 
-                bool read( const string& path, const string& rootNode );
-                bool prepareSaveFile( const string& path ) const;
+                bool read( const ResourcePath& filePath, const char* fileName, const string& rootNode );
+                bool prepareSaveFile( const ResourcePath& filePath, const char* fileName ) const;
                 void write() const;
             };
         }
@@ -91,23 +94,23 @@ namespace Divide
             virtual ~IXMLSerializable() = default;
 
             protected:
-            friend bool loadFromXML( IXMLSerializable& object, const char* file );
-            friend bool saveToXML( const IXMLSerializable& object, const char* file );
+            friend bool loadFromXML( IXMLSerializable& object, const ResourcePath& filePath, const char* fileName );
+            friend bool saveToXML( const IXMLSerializable& object, const ResourcePath& filePath, const char* fileName );
 
-            virtual bool fromXML( const char* xmlFile ) = 0;
-            virtual bool toXML( const char* xmlFile ) const = 0;
+            virtual bool fromXML( const ResourcePath& xmlFilePath, const char* fileName ) = 0;
+            virtual bool toXML( const ResourcePath& xmlFilePath, const char* fileName ) const = 0;
 
             detail::LoadSave LoadSave;
         };
 
-        bool loadFromXML( IXMLSerializable& object, const char* file );
-        bool saveToXML( const IXMLSerializable& object, const char* file );
+        bool loadFromXML( IXMLSerializable& object, const ResourcePath& filePath, const char* fileName );
+        bool saveToXML( const IXMLSerializable& object, const ResourcePath& filePath, const char* fileName );
 
-        void writeXML( const string& path, const boost::property_tree::ptree& tree );
-        void readXML( const string& path, boost::property_tree::ptree& tree );
+        void writeXML( const ResourcePath& path, const boost::property_tree::ptree& tree );
+        void readXML( const ResourcePath& path, boost::property_tree::ptree& tree );
         /// Child Functions
-        void loadDefaultKeyBindings( const string& file, const Scene* scene );
-        void loadMusicPlaylist( const Str<256>& scenePath, const Str<64>& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config );
+        void loadDefaultKeyBindings( const ResourcePath& file, const Scene* scene );
+        void loadMusicPlaylist( const ResourcePath& scenePath, const Str<64>& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config );
 
         struct SceneNode
         {

@@ -184,7 +184,7 @@ namespace Divide
 
         if ( !_isMemoryMappable )
         {
-            const auto scopeName = Util::StringFormat( "Immediate Buffer Upload [ %s ]", bufferName );
+            const auto scopeName = Util::StringFormat( "Immediate Buffer Upload [ {} ]", bufferName );
 
             // Queue a command to copy from the staging buffer to the vertex buffer
             VKTransferQueue::TransferRequest request{};
@@ -316,7 +316,7 @@ namespace Divide
                                        &ret->_allocation,
                                        &ret->_allocInfo ) );
 
-            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret->_buffer, VK_OBJECT_TYPE_BUFFER, Util::StringFormat( "%s_staging_buffer", bufferName.data() ).c_str() );
+            Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret->_buffer, VK_OBJECT_TYPE_BUFFER, Util::StringFormat( "{}_staging_buffer", bufferName.data() ).c_str() );
 
             return ret;
         }

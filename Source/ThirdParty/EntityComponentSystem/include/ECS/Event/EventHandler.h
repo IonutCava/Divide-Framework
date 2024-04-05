@@ -115,7 +115,7 @@ namespace ECS { namespace Event {
 			{
 				this->m_EventStorage.push_back(new (pMem)E(engine, FWD(eventArgs)...));
 
-				LOG_INFO("\'%s\' event buffered.", typeid(E).name());
+				LOG_INFO("\'{}\' event buffered.", typeid(E).name());
 			}
 			else
 			{
@@ -153,7 +153,7 @@ namespace ECS { namespace Event {
                         lastIndex = this->m_EventStorage.size();
                     }
                 } else {
-					LOG_ERROR("Skip corrupted event [ %zu ]", event->GetEventTypeID());
+					LOG_ERROR("Skip corrupted event [ {} ]", event->GetEventTypeID());
                     continue;
                 }
 			}

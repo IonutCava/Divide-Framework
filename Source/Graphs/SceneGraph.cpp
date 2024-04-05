@@ -8,7 +8,7 @@
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/FrameListenerManager.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Utility/Headers/Localization.h"
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
@@ -63,7 +63,7 @@ namespace Divide
 
         SceneGraphNodeDescriptor rootDescriptor = {};
         rootDescriptor._name = "ROOT";
-        rootDescriptor._node = std::make_shared<SceneNode>( parentScene.resourceCache(), generateGUID(), "ROOT", ResourcePath{ "ROOT" }, ResourcePath{ "" }, SceneNodeType::TYPE_TRANSFORM, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) );
+        rootDescriptor._node = std::make_shared<SceneNode>( parentScene.resourceCache(), generateGUID(), "ROOT", "ROOT", ResourcePath{ "" }, SceneNodeType::TYPE_TRANSFORM, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) );
         rootDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS );
         rootDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
 
@@ -642,16 +642,16 @@ namespace Divide
         }
     };
 
-    void SceneGraph::saveToXML( const char* assetsFile, DELEGATE<void, std::string_view> msgCallback, const char* overridePath ) const
+    void SceneGraph::saveToXML( const ResourcePath& assetsFile, DELEGATE<void, std::string_view> msgCallback ) const
     {
-        ResourcePath sceneLocation = (Paths::g_scenesLocation + (strlen( overridePath ) > 0 ? Str<256>( overridePath ) : parentScene().resourceName()));
+        const ResourcePath sceneLocation = Scene::GetSceneFullPath(parentScene());
 
         {
             boost::property_tree::ptree pt;
             pt.put( "version", g_sceneGraphVersion );
             pt.add_child( "entities.node", dumpSGNtoAssets( _root ) );
 
-            const FileError backupReturnCode = copyFile( sceneLocation + "/", ResourcePath( assetsFile ), sceneLocation + "/", ResourcePath( "assets.xml.bak" ), true );
+            const FileError backupReturnCode = copyFile( sceneLocation, assetsFile.string(), sceneLocation, Util::StringFormat("{}.bak", assetsFile.string()), true );
             if ( backupReturnCode != FileError::NONE &&
                  backupReturnCode != FileError::FILE_NOT_FOUND &&
                  backupReturnCode != FileError::FILE_EMPTY )
@@ -663,7 +663,7 @@ namespace Divide
             }
             else
             {
-                XML::writeXML( (sceneLocation + "/" + assetsFile).str(), pt );
+                XML::writeXML(sceneLocation / assetsFile, pt );
             }
         }
 
@@ -672,7 +672,7 @@ namespace Divide
         const U32 childCount = children._count;
         for ( U32 i = 0u; i < childCount; ++i )
         {
-            children._data[i]->saveToXML( sceneLocation.c_str(), msgCallback );
+            children._data[i]->saveToXML( sceneLocation, msgCallback );
         }
     }
 
@@ -681,22 +681,23 @@ namespace Divide
         boost::property_tree::ptree g_emptyPtree;
     }
 
-    void SceneGraph::loadFromXML( const char* assetsFile, const char* overridePath )
+    void SceneGraph::loadFromXML( const ResourcePath& assetsFile )
     {
         using boost::property_tree::ptree;
-        ResourcePath sceneLocation = (Paths::g_scenesLocation + (strlen( overridePath ) > 0 ? Str<256>( overridePath ) : parentScene().resourceName()));
 
-        const ResourcePath file = sceneLocation + "/" + assetsFile;
+        const ResourcePath sceneLocation = Scene::GetSceneFullPath( parentScene() );
+
+        const ResourcePath file = sceneLocation / assetsFile;
 
         if ( !fileExists( file ) )
         {
             return;
         }
 
-        Console::printfn( LOCALE_STR( "XML_LOAD_GEOMETRY" ), file.c_str() );
+        Console::printfn( LOCALE_STR( "XML_LOAD_GEOMETRY" ), file );
 
         ptree pt = {};
-        XML::readXML( file.str(), pt );
+        XML::readXML( file, pt );
         if ( pt.get( "version", g_sceneGraphVersion ) != g_sceneGraphVersion )
         {
             // ToDo: Scene graph version mismatch. Handle condition - Ionut
@@ -746,15 +747,13 @@ namespace Divide
 
     bool SceneGraph::saveNodeToXML( const SceneGraphNode* node ) const
     {
-        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + parentScene().resourceName() );
-        node->saveToXML( sceneLocation.c_str() );
+        node->saveToXML( Scene::GetSceneFullPath( parentScene() ) );
         return true;
     }
 
-    bool SceneGraph::loadNodeFromXML( [[maybe_unused]] const char* assetsFile, SceneGraphNode* node ) const
+    bool SceneGraph::loadNodeFromXML( [[maybe_unused]] const ResourcePath& assetsFile, SceneGraphNode* node ) const
     {
-        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + parentScene().resourceName() );
-        node->loadFromXML( sceneLocation.c_str() );
+        node->loadFromXML( Scene::GetSceneFullPath( parentScene() ) );
         return true;
     }
 

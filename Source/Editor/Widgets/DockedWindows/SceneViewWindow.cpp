@@ -54,7 +54,7 @@ namespace Divide
 
         if (button(enableStepButtons,
             ICON_FK_FAST_FORWARD,
-            Util::StringFormat("When playback is paused, advanced the simulation by %d full frame", Config::TARGET_FRAME_RATE).c_str()))
+            Util::StringFormat("When playback is paused, advanced the simulation by {} full frame", Config::TARGET_FRAME_RATE).c_str()))
         {
             Attorney::EditorSceneViewWindow::editorStepQueue(_parent, Config::TARGET_FRAME_RATE + 1);
         }

@@ -102,7 +102,7 @@ namespace DVDConverter {
 
         void LoadSubMeshMaterial(Import::MaterialData& material,
                                  const aiScene* source,
-                                 const string& modelDirectoryName,
+                                 const ResourcePath& modelDirectoryName,
                                  U16 materialIndex,
                                  const Str<128>& materialName,
                                  GeometryFormat format,

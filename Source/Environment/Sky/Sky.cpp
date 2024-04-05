@@ -8,7 +8,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Headers/Sun.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -47,15 +47,15 @@ namespace Divide
 
         const auto procLocation = []()
         {
-            return Paths::g_assetsLocation + Paths::g_texturesLocation + Paths::g_proceduralTexturesLocation + (g_useGroundTruthTextures ? "ground_truth/" : "");
+            return Paths::g_proceduralTexturesLocation / (g_useGroundTruthTextures ? "ground_truth" : "");
         };
 
-        const char* curlTexName = "curlnoise.bmp";
-        const char* weatherTexName = "weather.bmp";
-        const char* worlTexName = "worlnoise.bmp";
-        const char* perlWorlTexName = "perlworlnoise.tga";
+        const string curlTexName{ "curlnoise.bmp" };
+        const string weatherTexName{ "weather.bmp" };
+        const string worlTexName{ "worlnoise.bmp" };
+        const string perlWorlTexName{ "perlworlnoise.tga" };
 
-        void GenerateCurlNoise( const char* fileName, const I32 width, const I32 height )
+        void GenerateCurlNoise( const ResourcePath& fileName, const I32 width, const I32 height )
         {
             Byte* data = MemoryManager_NEW Byte[width * height * 4];
             memset( data, 255, width * height * 4u );
@@ -81,10 +81,11 @@ namespace Divide
                 }
             }
 
-            stbi_write_bmp( fileName, width, height, 4, data );
+            stbi_write_bmp( fileName.string().c_str(), width, height, 4, data );
             MemoryManager::SAFE_DELETE( data );
         }
-        void GeneratePerlinNoise( const char* fileName, const I32 width, const I32 height )
+
+        void GeneratePerlinNoise( const ResourcePath& fileName, const I32 width, const I32 height )
         {
             const auto smoothstep = []( const F32 edge0, const F32 edge1, const F32 x )
             {
@@ -114,11 +115,11 @@ namespace Divide
                 data[i + 1] = to_byte( smoothstep( 0.5f, 0.7f, perlinNoise2 ) * 255.f );
                 data[i + 2] = to_byte( perlinNoise3 * 255.f );
             }
-            stbi_write_bmp( fileName, width, height, 4, data );
+            stbi_write_bmp( fileName.string().c_str(), width, height, 4, data );
             MemoryManager::SAFE_DELETE( data );
         }
 
-        void GenerateWorleyNoise( const char* fileName, const I32 width, const I32 height, const I32 slices )
+        void GenerateWorleyNoise( const ResourcePath& fileName, const I32 width, const I32 height, const I32 slices )
         {
             Byte* worlNoiseArray = MemoryManager_NEW Byte[slices * width * height * 4];
             memset( worlNoiseArray, 255, slices * width * height * 4u );
@@ -140,11 +141,11 @@ namespace Divide
                 worlNoiseArray[i + 1] = to_byte( cellFBM1 * 255 );
                 worlNoiseArray[i + 2] = to_byte( cellFBM2 * 255 );
             }
-            stbi_write_bmp( fileName, width * slices, height, 4, worlNoiseArray );
+            stbi_write_bmp( fileName.string().c_str(), width * slices, height, 4, worlNoiseArray );
             MemoryManager::SAFE_DELETE( worlNoiseArray );
         }
 
-        void GeneratePerlinWorleyNoise( PlatformContext& context, const char* fileName, const I32 width, const I32 height, const I32 slices )
+        void GeneratePerlinWorleyNoise( PlatformContext& context, const ResourcePath& fileName, const I32 width, const I32 height, const I32 slices )
         {
             constexpr bool s_parallelBuild = false;
 
@@ -205,7 +206,7 @@ namespace Divide
                 }
             }
         
-            stbi_write_tga( fileName, width * slices, height, 4, perlWorlNoiseArray );
+            stbi_write_tga( fileName.string().c_str(), width * slices, height, 4, perlWorlNoiseArray );
             MemoryManager::DELETE_ARRAY( perlWorlNoiseArray );
         }
     }
@@ -223,17 +224,17 @@ void Sky::OnStartup( PlatformContext& context )
     //ref: https://github.com/clayjohn/realtime_clouds/blob/master/gen_noise.cpp
     std::array<Task*, 3> tasks{ nullptr };
 
-    const ResourcePath curlNoise = procLocation() + curlTexName;
-    const ResourcePath weather = procLocation() + weatherTexName;
-    const ResourcePath worlNoise = procLocation() + worlTexName;
-    const ResourcePath perWordNoise = procLocation() + perlWorlTexName;
+    const ResourcePath curlNoise = procLocation() / curlTexName;
+    const ResourcePath weather = procLocation() / weatherTexName;
+    const ResourcePath worlNoise = procLocation() / worlTexName;
+    const ResourcePath perWordNoise = procLocation() / perlWorlTexName;
 
     if ( g_alwaysGenerateWeatherTextures || !fileExists( curlNoise ) )
     {
         Console::printfn( "Generating Curl Noise 128x128 RGB" );
         tasks[0] = CreateTask( [&curlNoise]( const Task& )
                                {
-                                   GenerateCurlNoise( curlNoise.c_str(), 128, 128 );
+                                   GenerateCurlNoise( curlNoise, 128, 128 );
                                } );
         Start( *tasks[0], context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
         Console::printfn( "Done!" );
@@ -245,7 +246,7 @@ void Sky::OnStartup( PlatformContext& context )
         Console::printfn( "Generating weather Noise 512x512 RGB" );
         tasks[1] = CreateTask( [&weather]( const Task& )
                                {
-                                   GeneratePerlinNoise( weather.c_str(), 512, 512 );
+                                   GeneratePerlinNoise( weather, 512, 512 );
                                } );
         Start( *tasks[1], context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
         Console::printfn( "Done!" );
@@ -258,7 +259,7 @@ void Sky::OnStartup( PlatformContext& context )
         Console::printfn( "Generating Worley Noise 32x32x32 RGB" );
         tasks[2] = CreateTask( [&worlNoise]( const Task& )
                                {
-                                   GenerateWorleyNoise( worlNoise.c_str(), 32, 32, 32 );
+                                   GenerateWorleyNoise( worlNoise, 32, 32, 32 );
                                } );
         Start( *tasks[2], context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
         Console::printfn( "Done!" );
@@ -267,7 +268,7 @@ void Sky::OnStartup( PlatformContext& context )
     if ( g_alwaysGenerateWeatherTextures || !fileExists( perWordNoise ) )
     {
         Console::printfn( "Generating Perlin-Worley Noise 128x128x128 RGBA" );
-        GeneratePerlinWorleyNoise( context, perWordNoise.c_str(), 128, 128, 128 );
+        GeneratePerlinWorleyNoise( context, perWordNoise, 128, 128, 128 );
         Console::printfn( "Done!" );
     }
 
@@ -286,8 +287,8 @@ void Sky::OnStartup( PlatformContext& context )
     }
 }
 
-Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, U32 diameter )
-    : SceneNode( parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_SKY, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::SCRIPT ) ),
+Sky::Sky( GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name, U32 diameter )
+    : SceneNode( parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_SKY, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::SCRIPT ) ),
     _context( context ),
     _diameter( diameter )
 {
@@ -568,7 +569,7 @@ bool Sky::load()
 
     std::atomic_uint loadTasks = 0u;
     I32 x, y, n;
-    Byte* perlWorlData = (Byte*)stbi_load( (procLocation() + perlWorlTexName).c_str(), &x, &y, &n, STBI_rgb_alpha );
+    Byte* perlWorlData = (Byte*)stbi_load( (procLocation() / perlWorlTexName).string().c_str(), &x, &y, &n, STBI_rgb_alpha );
     ImageTools::ImageData imgDataPerl = {};
     if ( !imgDataPerl.loadFromMemory( perlWorlData, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) )
     {
@@ -576,7 +577,7 @@ bool Sky::load()
     }
     stbi_image_free( perlWorlData );
 
-    Byte* worlNoise = (Byte*)stbi_load( (procLocation() + worlTexName).c_str(), &x, &y, &n, STBI_rgb_alpha );
+    Byte* worlNoise = (Byte*)stbi_load( (procLocation() / worlTexName).string().c_str(), &x, &y, &n, STBI_rgb_alpha );
     ImageTools::ImageData imgDataWorl = {};
     if ( !imgDataWorl.loadFromMemory( worlNoise, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) )
     {
@@ -623,14 +624,14 @@ bool Sky::load()
         textureDescriptor.texType( TextureType::TEXTURE_2D_ARRAY );
 
         ResourceDescriptor weatherDescriptor( "Weather" );
-        weatherDescriptor.assetName( ResourcePath( weatherTexName ) );
+        weatherDescriptor.assetName( weatherTexName );
         weatherDescriptor.assetLocation( procLocation() );
         weatherDescriptor.propertyDescriptor( textureDescriptor );
         weatherDescriptor.waitForReady( false );
         _weatherTex = CreateResource<Texture>( _parentCache, weatherDescriptor );
 
         ResourceDescriptor curlDescriptor( "CurlNoise" );
-        curlDescriptor.assetName( ResourcePath( curlTexName ) );
+        curlDescriptor.assetName( curlTexName );
         curlDescriptor.assetLocation( procLocation() );
         curlDescriptor.propertyDescriptor( textureDescriptor );
         curlDescriptor.waitForReady( false );
@@ -641,11 +642,11 @@ bool Sky::load()
         skyboxTexture.textureOptions()._alphaChannelTransparency = false;
 
         ResourceDescriptor skyboxTextures( "SkyTextures" );
-        skyboxTextures.assetName( ResourcePath{
+        skyboxTextures.assetName(
             "skyboxDay_FRONT.jpg, skyboxDay_BACK.jpg, skyboxDay_UP.jpg, skyboxDay_DOWN.jpg, skyboxDay_LEFT.jpg, skyboxDay_RIGHT.jpg," //Day
             "Milkyway_posx.jpg, Milkyway_negx.jpg, Milkyway_posy.jpg, Milkyway_negy.jpg, Milkyway_posz.jpg, Milkyway_negz.jpg"  //Night
-        } );
-        skyboxTextures.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation + "/SkyBoxes/" );
+        );
+        skyboxTextures.assetLocation( Paths::g_imagesLocation / "SkyBoxes" );
         skyboxTextures.propertyDescriptor( skyboxTexture );
         skyboxTextures.waitForReady( false );
         _skybox = CreateResource<Texture>( _parentCache, skyboxTextures, loadTasks );

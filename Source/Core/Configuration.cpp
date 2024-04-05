@@ -6,18 +6,20 @@
 
 namespace Divide {
 
-bool Configuration::fromXML(const char* xmlFile) {
-    Console::printfn(LOCALE_STR("XML_LOAD_CONFIG"), xmlFile);
-    if (LoadSave.read(xmlFile, "config.")) {
+bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileName )
+{
+    Console::printfn(LOCALE_STR("XML_LOAD_CONFIG"), (xmlFilePath.string() + fileName).c_str());
+    if (LoadSave.read(xmlFilePath, fileName, "config."))
+    {
         GET_PARAM(debug.renderer.enableRenderAPIDebugging);
         GET_PARAM(debug.renderer.enableRenderAPIBestPractices);
         GET_PARAM(debug.renderer.assertOnRenderAPIError);
         GET_PARAM(debug.renderer.useExtensions);
-        GET_PARAM(debug.useGeometryCache);
-        GET_PARAM(debug.useVegetationCache);
-        GET_PARAM(debug.useShaderCache);
-        GET_PARAM(debug.enableTreeInstances);
-        GET_PARAM(debug.enableGrassInstances);
+        GET_PARAM(debug.cache.enabled);
+        GET_PARAM(debug.cache.geometry);
+        GET_PARAM(debug.cache.vegetation);
+        GET_PARAM(debug.cache.shaders);
+        GET_PARAM(debug.cache.textureDDS);
         GET_PARAM(debug.renderFilter.primitives);
         GET_PARAM(debug.renderFilter.meshes);
         GET_PARAM(debug.renderFilter.terrain);
@@ -26,10 +28,9 @@ bool Configuration::fromXML(const char* xmlFile) {
         GET_PARAM(debug.renderFilter.sky);
         GET_PARAM(debug.renderFilter.particles);
         GET_PARAM(debug.renderFilter.decals);
-        GET_PARAM(debug.useTextureDDSCache);
+        GET_PARAM(debug.renderFilter.treeInstances);
+        GET_PARAM(debug.renderFilter.grassInstances);
         GET_PARAM(language);
-        GET_PARAM(assetsLocation);
-        GET_PARAM(scenesLocation);
         GET_PARAM(startupProject);
         GET_PARAM(runtime.title);
         GET_PARAM(runtime.targetDisplay);
@@ -169,17 +170,19 @@ bool Configuration::fromXML(const char* xmlFile) {
     return false;
 }
 
-bool Configuration::toXML(const char* xmlFile) const {
-    if (LoadSave.prepareSaveFile(xmlFile)) {
+bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName ) const
+{
+    if (LoadSave.prepareSaveFile(xmlFilePath, fileName ))
+    {
         PUT_PARAM(debug.renderer.enableRenderAPIDebugging);
         PUT_PARAM(debug.renderer.enableRenderAPIBestPractices);
         PUT_PARAM(debug.renderer.assertOnRenderAPIError);
         PUT_PARAM(debug.renderer.useExtensions);
-        PUT_PARAM(debug.useGeometryCache);
-        PUT_PARAM(debug.useShaderCache);
-        PUT_PARAM(debug.useVegetationCache);
-        PUT_PARAM(debug.enableTreeInstances);
-        PUT_PARAM(debug.enableGrassInstances);
+        PUT_PARAM(debug.cache.enabled);
+        PUT_PARAM(debug.cache.geometry);
+        PUT_PARAM(debug.cache.vegetation);
+        PUT_PARAM(debug.cache.shaders);
+        PUT_PARAM(debug.cache.textureDDS);
         PUT_PARAM(debug.renderFilter.primitives);
         PUT_PARAM(debug.renderFilter.meshes);
         PUT_PARAM(debug.renderFilter.terrain);
@@ -188,10 +191,9 @@ bool Configuration::toXML(const char* xmlFile) const {
         PUT_PARAM(debug.renderFilter.sky);
         PUT_PARAM(debug.renderFilter.particles);
         PUT_PARAM(debug.renderFilter.decals);
-        PUT_PARAM(debug.useTextureDDSCache);
+        PUT_PARAM(debug.renderFilter.treeInstances);
+        PUT_PARAM(debug.renderFilter.grassInstances);
         PUT_PARAM(language);
-        PUT_PARAM(assetsLocation);
-        PUT_PARAM(scenesLocation);
         PUT_PARAM(startupProject);
         PUT_PARAM(runtime.title);
         PUT_PARAM(runtime.targetDisplay);
@@ -323,8 +325,10 @@ bool Configuration::toXML(const char* xmlFile) const {
     return false;
 }
 
-void Configuration::save() {
-    if (changed() && toXML(LoadSave._loadPath.c_str())) {
+void Configuration::save()
+{
+    if (changed() && toXML(LoadSave._loadPath, LoadSave._loadFile.c_str()))
+    {
         changed(false);
     }
 }

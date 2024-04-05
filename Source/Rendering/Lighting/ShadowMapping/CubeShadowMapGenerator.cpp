@@ -6,7 +6,7 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Graphs/Headers/SceneGraph.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/Light.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -31,7 +31,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
 
     const vec3<F32> lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cube Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cube Shadow Pass Light: [ {} ]", lightIndex).c_str(), lightIndex));
 
     RenderPassParams params = {};
     params._target = ShadowMap::getShadowMap(_type)._targetID;

@@ -70,12 +70,15 @@ namespace Divide
             bool _inUse = false;
         };
 
-        inline bool ValidateSDL( const I32 errCode )
+        inline bool ValidateSDL( const I32 errCode, bool assert = true )
         {
             if ( errCode != 0 )
             {
                 Console::errorfn( LOCALE_STR( "SDL_ERROR" ), SDL_GetError() );
-                DIVIDE_UNEXPECTED_CALL();
+                if (assert)
+                {
+                    DIVIDE_UNEXPECTED_CALL_MSG( SDL_GetError() );
+                }
                 return false;
             }
 
@@ -88,6 +91,8 @@ namespace Divide
             {
                 SDL_Window* raw = window.getRawWindow();
                 _contexts.resize( size );
+                ValidateSDL( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
+                ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
                 for ( SDLContextEntry& contextEntry : _contexts )
                 {
                     contextEntry._context = SDL_GL_CreateContext( raw );
@@ -141,7 +146,7 @@ namespace Divide
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
         g_ContextPool.init( _context.context().kernel().totalThreadCount(), window );
 
-        ValidateSDL(SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()->_glContext ));
+        ValidateSDL(SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
 
         GLUtil::s_glMainRenderWindow = &window;
 
@@ -546,7 +551,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()->_glContext ) );
+        if (!ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ), false ))
+        {
+            auto test = SDL_GetWindowPixelFormat(window.getRawWindow());
+            assert(test == SDL_PIXELFORMAT_RGB888);
+        }
+
         return true;
     }
 
@@ -1965,17 +1975,17 @@ namespace Divide
         return eastl::make_unique<glFramebuffer>( _context, descriptor );
     }
 
-    GenericVertexData_ptr GL_API::newGVD( U32 ringBufferLength, bool renderIndirect, const Str<256>& name ) const
+    GenericVertexData_ptr GL_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
     {
-        return std::make_shared<glGenericVertexData>( _context, ringBufferLength, renderIndirect, name.c_str() );
+        return std::make_shared<glGenericVertexData>( _context, ringBufferLength, renderIndirect, name );
     }
 
-    Texture_ptr GL_API::newTexture( size_t descriptorHash, const Str<256>& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
+    Texture_ptr GL_API::newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
     {
         return std::make_shared<glTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
     }
 
-    ShaderProgram_ptr GL_API::newShaderProgram( size_t descriptorHash, const Str<256>& resourceName, const Str<256>& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
+    ShaderProgram_ptr GL_API::newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
     {
         return std::make_shared<glShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
     }

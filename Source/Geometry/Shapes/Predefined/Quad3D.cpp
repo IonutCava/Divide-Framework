@@ -7,7 +7,7 @@ namespace Divide {
 Quad3D::Quad3D(GFXDevice& context,
                ResourceCache* parentCache,
                const size_t descriptorHash,
-               const Str<256>& name,
+               const std::string_view name,
                const bool doubleSided,
                const vec3<F32>& sideLength)
     : Object3D(context,

@@ -117,7 +117,7 @@ class Terrain final : public Object3D {
        };
 
    public:
-    explicit Terrain(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name);
+    explicit Terrain(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
 
     void toggleBoundingBoxes();
 

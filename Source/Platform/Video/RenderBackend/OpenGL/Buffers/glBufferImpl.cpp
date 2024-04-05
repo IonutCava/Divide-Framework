@@ -212,7 +212,7 @@ namespace Divide
                                               GL_STREAM_READ,
                                               _copyBufferTarget,
                                               { nullptr, 0u },
-                                              Util::StringFormat( "COPY_BUFFER_%d", _memoryBlock._bufferHandle ).c_str() );
+                                              Util::StringFormat( "COPY_BUFFER_{}", _memoryBlock._bufferHandle ).c_str() );
 
                 _context.getPerformanceMetrics()._bufferVRAMUsage += _copyBufferSize;
             }

@@ -64,6 +64,8 @@ namespace Navigation {
 
 // This struct contains the vertices and triangles in recast coords
 class NavModelData {
+    friend class NavigationMesh;
+
    public:
        NavModelData() = default;
 
@@ -90,20 +92,14 @@ class NavModelData {
             _normals = nullptr;
         }
         _triangleAreaType.clear();
-        _navMeshName = "";
+        name("");
     }
 
-    [[nodiscard]] bool isValid() const noexcept { return _valid; }
-    void isValid(const bool state) noexcept { _valid = state; }
-
-    void name(const Str<256>& name) noexcept { _navMeshName = name; }
-    [[nodiscard]] const Str<256>& name() const noexcept { return _navMeshName; }
-
-    [[nodiscard]] const F32* getVerts() const noexcept { return _vertices; }
-    [[nodiscard]] const F32* getNormals() const noexcept { return _normals; }
-    [[nodiscard]] const I32* getTris() const noexcept { return _triangles; }
-    [[nodiscard]] U32 getVertCount() const noexcept { return _vertexCount; }
-    [[nodiscard]] U32 getTriCount() const noexcept { return _triangleCount; }
+    [[nodiscard]] const F32* getVerts()     const noexcept { return _vertices; }
+    [[nodiscard]] const F32* getNormals()    const noexcept { return _normals; }
+    [[nodiscard]] const I32* getTris()      const noexcept { return _triangles; }
+    [[nodiscard]]       U32  getVertCount() const noexcept { return _vertexCount; }
+    [[nodiscard]]       U32  getTriCount()  const noexcept { return _triangleCount; }
 
     [[nodiscard]] vector<SamplePolyAreas>& getAreaTypes() noexcept { return _triangleAreaType; }
 
@@ -115,9 +111,10 @@ class NavModelData {
     U32 _triangleCount = 0u;
     U32 _triangleCapacity = 0u;
 
+    PROPERTY_RW(Str<256>, name, "");
+    PROPERTY_R_IW(bool, valid, false);
+
    private:
-    bool _valid = false;
-    Str<256> _navMeshName;
     vector<SamplePolyAreas> _triangleAreaType;
 };
 
@@ -128,9 +125,9 @@ enum class MeshDetailLevel : U8 {
 };
 
 /// Load the input geometry from file (Wavefront OBJ format) and save it in 'outData'
-[[nodiscard]] bool LoadMeshFile(NavModelData& outData, const char* filepath, const char* fileName);
+[[nodiscard]] bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const char* fileName);
 /// Save the navigation input geometry in Wavefront OBJ format
-[[nodiscard]] bool SaveMeshFile(const NavModelData& inData, const char* filepath, const char* filename);
+[[nodiscard]] bool SaveMeshFile(const NavModelData& inData, const ResourcePath& filePath, const char* filename);
 /// Merge the data from two navigation geometry sources
 [[nodiscard]] NavModelData MergeModels(NavModelData& a, NavModelData& b, bool delOriginals = false);
 /// Parsing method that calls itself recursively until all geometry has been parsed

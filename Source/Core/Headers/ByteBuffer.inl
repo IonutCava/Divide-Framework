@@ -350,8 +350,7 @@ inline void ByteBuffer::append(const string& str) {
 
 template<>
 inline void ByteBuffer::append(const ResourcePath& str) {
-    append(str.c_str(), str.str().length());
-    append( U8_ZERO );
+    append(str.string() );
 }
 
 template<>
@@ -613,8 +612,7 @@ inline ByteBuffer &operator>>(ByteBuffer &b, eastl::map<K, V>& m) {
 
 inline ByteBuffer& operator<<( ByteBuffer& b, const ResourcePath& p )
 {
-    const string temp{p.c_str()};
-    b << temp;
+    b << p.string();
 
     return b;
 }

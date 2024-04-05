@@ -58,7 +58,7 @@ enum class RebuildCommandsState : U8 {
 
 class Sky final : public SceneNode {
    public:
-    explicit Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, U32 diameter = 2);
+    explicit Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name, U32 diameter = 2);
 
     static void OnStartup(PlatformContext& context);
     // Returns the sun position and intensity details for the specified date-time

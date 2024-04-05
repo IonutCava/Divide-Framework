@@ -13,7 +13,7 @@
 
 #include "GUI/Headers/GUI.h"
 #include "Geometry/Material/Headers/Material.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
@@ -49,7 +49,7 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
 
     for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i)
     {
-        const string timerName = Util::StringFormat("Process Command Buffers [ %s ]", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+        const string timerName = Util::StringFormat("Process Command Buffers [ {} ]", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
         _processCommandBufferTimer[i] = &Time::ADD_TIMER(timerName.c_str());
         _flushCommandBufferTimer->addChildTimer(*_processCommandBufferTimer[i]);
     }
@@ -112,7 +112,7 @@ void RenderPassManager::postInit()
         const Configuration& config = _parent.platformContext().config();
 
         ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "display.glsl", "ResolveGBuffer"};
-        fragModule._defines.emplace_back(Util::StringFormat("NUM_SAMPLES %d", config.rendering.MSAASamples));
+        fragModule._defines.emplace_back(Util::StringFormat("NUM_SAMPLES {}", config.rendering.MSAASamples));
 
         ShaderProgramDescriptor shaderDescriptor = {};
         shaderDescriptor._modules.push_back(vertModule);
@@ -207,11 +207,11 @@ void RenderPassManager::render(const RenderParams& params)
 
     GFXDevice& gfx = _context;
     PlatformContext& context = parent().platformContext();
-    SceneManager* sceneManager = parent().sceneManager();
+    ProjectManager* projectManager = parent().projectManager();
 
-    const Camera* cam = Attorney::SceneManagerRenderPass::playerCamera(sceneManager);
+    const Camera* cam = Attorney::ProjectManagerRenderPass::playerCamera(projectManager);
 
-    LightPool& activeLightPool = Attorney::SceneManagerRenderPass::lightPool(sceneManager);
+    LightPool& activeLightPool = Attorney::ProjectManagerRenderPass::lightPool(projectManager);
 
     const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(params._playerPass);
     _context.setPreviousViewProjectionMatrix(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix);
@@ -248,26 +248,27 @@ void RenderPassManager::render(const RenderParams& params)
 
            {
                Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
-               Attorney::SceneManagerRenderPass::drawCustomUI(sceneManager, targetViewport, buf, memCmd);
+               Attorney::ProjectManagerRenderPass::drawCustomUI(projectManager, targetViewport, buf, memCmd);
                if constexpr(Config::Build::ENABLE_EDITOR)
                {
                    context.editor().drawScreenOverlay(cam, targetViewport, buf, memCmd);
                }
                context.gui().draw(gfx, targetViewport, buf, memCmd);
-               sceneManager->getEnvProbes()->prepareDebugData();
+               projectManager->getEnvProbes()->prepareDebugData();
                gfx.renderDebugUI(targetViewport, buf, memCmd);
            }
 
            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(buf);
        }
 
-        Attorney::SceneManagerRenderPass::postRender( sceneManager, buf, memCmd );
+        Attorney::ProjectManagerRenderPass::postRender( projectManager, buf, memCmd );
         GFX::EnqueueCommand( buf, memCmd );
     }
 
     TaskPool& pool = context.taskPool(TaskPoolType::HIGH_PRIORITY);
     Task* renderTask = CreateTask( TASK_NOP );
     startRenderTasks(params, pool, renderTask);
+    Start( *renderTask, pool );
     
     GFX::MemoryBarrierCommand flushMemCmd{};
     {
@@ -284,14 +285,13 @@ void RenderPassManager::render(const RenderParams& params)
             Time::ScopedTimer time( *_postFxRenderTimer );
             _context.getRenderer().postFX().apply( params._playerPass, cam->snapshot(), *_postFXCmdBuffer );
         }
+        Wait( *renderTask, pool );
 
-        Start( *renderTask, pool );
         if constexpr ( Config::Build::ENABLE_EDITOR )
         {
             Attorney::EditorRenderPassExecutor::getCommandBuffer(context.editor(), *_postRenderBuffer, flushMemCmd);
         }
         _parent.platformContext().idle();
-        Wait( *renderTask, pool );
 
         for ( RenderPassData& passData : _renderPassData )
         {
@@ -363,7 +363,7 @@ const RenderPass& RenderPassManager::getPassForStage(const RenderStage renderSta
 }
 
 void RenderPassManager::doCustomPass(Camera* const camera, const RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
-    const PlayerIndex playerPass = _parent.sceneManager()->playerPass();
+    const PlayerIndex playerPass = _parent.projectManager()->playerPass();
     _executors[to_base(params._stagePass._stage)]->doCustomPass(playerPass, camera, params, bufferInOut, memCmdInOut);
 }
 }

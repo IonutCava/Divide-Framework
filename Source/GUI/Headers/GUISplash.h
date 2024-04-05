@@ -42,7 +42,7 @@ class GFXDevice;
 class ResourceCache;
 class GUISplash {
    public:
-    GUISplash(ResourceCache* cache, const Str<64>& splashImageName, vec2<U16> dimensions);
+    GUISplash(ResourceCache* cache, std::string_view splashImageName, vec2<U16> dimensions);
 
     void render(GFXDevice& context) const;
 

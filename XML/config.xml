@@ -5,14 +5,16 @@
 		<renderer>
 			<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
 			<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
-			<assertOnRenderAPIError>true</assertOnRenderAPIError>
+			<assertOnRenderAPIError>false</assertOnRenderAPIError>
 			<useExtensions>true</useExtensions>
 		</renderer>
-		<useGeometryCache>true</useGeometryCache>
-		<useVegetationCache>true</useVegetationCache>
-		<useShaderCache>true</useShaderCache>
-		<enableTreeInstances>false</enableTreeInstances>
-		<enableGrassInstances>true</enableGrassInstances>
+		<cache>
+			<enabled>true</enabled>
+			<geometry>true</geometry>
+			<vegetation>true</vegetation>
+			<shaders>true</shaders>
+			<textureDDS>true</textureDDS>
+		</cache>
 		<renderFilter>
 			<primitives>true</primitives>
 			<meshes>true</meshes>
@@ -22,12 +24,11 @@
 			<sky>true</sky>
 			<particles>true</particles>
 			<decals>true</decals>
+			<treeInstances>false</treeInstances>
+			<grassInstances>true</grassInstances>
 		</renderFilter>
-		<useTextureDDSCache>true</useTextureDDSCache>
 	</debug>
 	<language>enGB</language>
-	<scenesLocation>Scenes</scenesLocation>
-	<assetsLocation>Assets</assetsLocation>
 	<serverAddress>127.0.0.1</serverAddress>
 	<startupProject>Default</startupProject>
 	<!-- RUNTIME: Values use by the application after loading is complete -->
@@ -230,7 +231,7 @@
 		</shadowMapping>
 	</rendering>
 	<defaultAssetLocation>
-		<textures>Textures</textures>
-		<shaders>Shaders</shaders>
+		<textures>textures/</textures>
+		<shaders>shaders/</shaders>
 	</defaultAssetLocation>
 </config>

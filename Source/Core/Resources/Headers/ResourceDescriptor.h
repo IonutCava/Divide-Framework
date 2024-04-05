@@ -66,9 +66,10 @@ class ResourceDescriptor final : public Hashable {
     using CBK = DELEGATE<void, CachedResource_wptr>;
 
     ///resourceName is the name of the resource instance, not an actual asset name! Use "assetName" for that
-    explicit ResourceDescriptor(const string& resourceName) : ResourceDescriptor(resourceName.c_str()) {}
-    explicit ResourceDescriptor(const char* resourceName)  : ResourceDescriptor(Str<256>(resourceName)) {}
-    explicit ResourceDescriptor(const Str<256>& resourceName);
+    explicit ResourceDescriptor( std::string_view resourceName);
+
+    template<size_t N>
+    explicit ResourceDescriptor(const Str<N>& resourceName) : ResourceDescriptor(resourceName.c_str()) {}
 
     template <typename T> requires std::is_base_of_v<PropertyDescriptor, T>
     [[nodiscard]] std::shared_ptr<T> propertyDescriptor() const noexcept { return std::dynamic_pointer_cast<T>(_propertyDescriptor); }
@@ -79,7 +80,7 @@ class ResourceDescriptor final : public Hashable {
     [[nodiscard]] size_t getHash() const override;
 
     PROPERTY_RW(ResourcePath, assetLocation); ///< Can't be fixed size due to the need to handle array textures, cube maps, etc
-    PROPERTY_RW(ResourcePath, assetName); ///< Resource instance name (for lookup)
+    PROPERTY_RW(Str<256>, assetName);     ///< Resource instance name (for lookup)
     PROPERTY_RW(Str<256>, resourceName);
     PROPERTY_RW(vec3<U32>, data, VECTOR3_ZERO); ///< general data
     PROPERTY_RW(U32, enumValue, 0u);

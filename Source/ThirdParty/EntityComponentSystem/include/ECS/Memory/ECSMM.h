@@ -61,7 +61,7 @@ namespace Internal {
 
 		inline void* Allocate(size_t memSize, const char* user = nullptr)
 		{
-			LOG_DEBUG("%s allocated %d bytes of global memory.", user != nullptr ? user : "Unknown", memSize);
+			LOG_DEBUG("{} allocated {} bytes of global memory.", user != nullptr ? user : "Unknown", memSize);
 			void* pMemory = m_MemoryAllocator->allocate(memSize, alignof(u8));
 
 			this->m_PendingMemory.push_back(std::pair<const char*, void*>(user, pMemory));

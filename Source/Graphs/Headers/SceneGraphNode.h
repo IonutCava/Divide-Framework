@@ -264,8 +264,8 @@ namespace Divide
         [[nodiscard]] bool HasComponents( ComponentType componentType ) const;
         [[nodiscard]] bool HasComponents( U32 componentMask ) const;
         /// Serialization: save to XML file
-        void saveToXML( const Str<256>& sceneLocation, DELEGATE<void, std::string_view> msgCallback = {} ) const;
-        void loadFromXML( const Str<256>& sceneLocation );
+        void saveToXML( const ResourcePath& sceneLocation, DELEGATE<void, std::string_view> msgCallback = {} ) const;
+        void loadFromXML( const ResourcePath& sceneLocation );
         /// Serialization: load from XML file (expressed as a boost property_tree)
         void loadFromXML( const boost::property_tree::ptree& pt );
 

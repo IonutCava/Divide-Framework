@@ -589,7 +589,7 @@ namespace Divide
             const CEGUI::Sizef size( static_cast<float>(renderSize.width), static_cast<float>(renderSize.height) );
             _ceguiRenderer = &CEGUI::CEGUIRenderer::create( context.gfx(), _ceguiRenderShader, size );
 
-            CEGUI::System::create( *_ceguiRenderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath + "CEGUI.log").c_str() );
+            CEGUI::System::create( *_ceguiRenderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath / "CEGUI.log").string() );
             if constexpr ( Config::Build::IS_DEBUG_BUILD )
             {
                 CEGUI::Logger::getSingleton().setLoggingLevel( CEGUI::Informative );
@@ -597,10 +597,10 @@ namespace Divide
 
             CEGUI::DefaultResourceProvider* rp = static_cast<CEGUI::DefaultResourceProvider*>(CEGUI::System::getSingleton().getResourceProvider());
 
-            const CEGUI::String CEGUIInstallSharePath( (Paths::g_assetsLocation + Paths::g_GUILocation).c_str() );
+            const CEGUI::String CEGUIInstallSharePath( Paths::g_GUILocation.string() + Paths::g_pathSeparator );
             rp->setResourceGroupDirectory( "schemes", CEGUIInstallSharePath + "schemes/" );
             rp->setResourceGroupDirectory( "imagesets", CEGUIInstallSharePath + "imagesets/" );
-            rp->setResourceGroupDirectory( "fonts", CEGUIInstallSharePath + Paths::g_fontsPath.c_str() );
+            rp->setResourceGroupDirectory( "fonts", CEGUIInstallSharePath + "fonts/" );
             rp->setResourceGroupDirectory( "layouts", CEGUIInstallSharePath + "layouts/" );
             rp->setResourceGroupDirectory( "looknfeels", CEGUIInstallSharePath + "looknfeel/" );
             rp->setResourceGroupDirectory( "lua_scripts", CEGUIInstallSharePath + "lua_scripts/" );
@@ -892,8 +892,7 @@ namespace Divide
             {
                 // Fonts are stored in the general asset directory -> in the GUI
                 // subfolder -> in the fonts subfolder
-                ResourcePath fontPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath );
-                fontPath += fontName.c_str();
+                const string fontPath = (Paths::g_fontsPath / fontName.c_str()).string();
                 // We use FontStash to load the font file
                 _fontCache.second = fonsAddFont( _fonsContext->_impl, fontName.c_str(), fontPath.c_str());
                 // If the font is invalid, inform the user, but map it anyway, to avoid

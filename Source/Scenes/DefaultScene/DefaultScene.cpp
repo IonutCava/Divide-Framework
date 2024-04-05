@@ -5,7 +5,7 @@
 #include "GUI/Headers/GUIButton.h"
 
 #include "Core/Headers/PlatformContext.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
@@ -25,8 +25,8 @@ namespace Divide
 {
 
 
-DefaultScene::DefaultScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name)
-    : Scene(context, cache, parent, name)
+DefaultScene::DefaultScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry)
+    : Scene(context, cache, parent, entry)
 {
     Scene::DEFAULT_SCENE_GUID = getGUID();
 }
@@ -40,7 +40,7 @@ bool DefaultScene::load() {
                  [this]( [[maybe_unused]] const U64 elapsedTimeUS )
                  {
                      _GUI->modifyText( "RenderBinCount",
-                                       Util::StringFormat( "Number of items in Render Bin: %d.", _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ),
+                                       Util::StringFormat( "Number of items in Render Bin: {}.", _context.kernel().renderPassManager()->getLastTotalBinSize( RenderStage::DISPLAY ) ),
                                        false );
                  });
 
@@ -49,7 +49,7 @@ bool DefaultScene::load() {
                  [this]( const U64 elapsedTimeUS )
                  {
                      _GUI->modifyText( "timeDisplay",
-                                      Util::StringFormat( "Elapsed time: %5.0f", Time::MicrosecondsToSeconds(elapsedTimeUS)),
+                                      Util::StringFormat( "Elapsed time: {:5.0f}", Time::MicrosecondsToSeconds(elapsedTimeUS)),
                                       false);
                  });
 

@@ -10,7 +10,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
 #include "Graphs/Headers/SceneGraph.h"
@@ -73,7 +73,7 @@ bool GUIConsoleCommandParser::processCommand(const string& commandString) {
             }
         } else {
             // no commands, just output what was typed
-            Console::printfn("%s", commandString .c_str());  
+            Console::printfn({}, commandString .c_str());  
         }
     }
     return true;
@@ -98,14 +98,14 @@ void GUIConsoleCommandParser::handleHelpCommand(const string& args) {
         for (const CommandMap::value_type& it : _commands) {
             if (it.first != _ID("invalidhelp") &&
                 it.first != _ID("invalidcommand")) {
-                Console::printfn("%s", _commandHelp[it.first]);
+                Console::printfn("{}", _commandHelp[it.first]);
             }
         }
     } else {
         if (_commandHelp.find(_ID(args.c_str())) != std::end(_commandHelp)) {
-            Console::printfn("%s", _commandHelp[_ID(args.c_str())]);
+            Console::printfn("{}", _commandHelp[_ID(args.c_str())]);
         } else {
-            Console::printfn("%s", _commandHelp[_ID("invalidhelp")]);
+            Console::printfn("{}", _commandHelp[_ID("invalidhelp")]);
         }
     }
 }
@@ -120,9 +120,9 @@ void GUIConsoleCommandParser::handleEditParamCommand(const string& args) {
 }
 
 void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
-    const ResourcePath filename(Paths::g_assetsLocation + args);
+    const ResourcePath filename(Paths::g_assetsLocation / args);
 
-    const std::ifstream soundfile(filename.str());
+    const std::ifstream soundfile(filename.string());
     if (soundfile) {
         // Check extensions (not really, musicwav.abc would still be valid, but
         // still ...)
@@ -133,14 +133,14 @@ void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
             return;
         }
 
-        const auto[name, path] = splitPathToNameAndLocation(filename);
+        const FileNameAndPath data = splitPathToNameAndLocation(filename);
 
         // The file is valid, so create a descriptor for it
         ResourceDescriptor sound("consoleFilePlayback");
-        sound.assetName(name);
-        sound.assetLocation(path);
+        sound.assetName(data._fileName);
+        sound.assetLocation(data._path);
         _sound = CreateResource<AudioDescriptor>(_resCache, sound);
-        if (filename.str().find("music") != string::npos) {
+        if (filename.string().find("music") != string::npos) {
             // play music
             _context.sfx().playMusic(_sound);
         } else {
@@ -149,14 +149,13 @@ void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
             _context.sfx().playSound(_sound);
         }
     } else {
-        Console::errorfn(LOCALE_STR("CONSOLE_PLAY_SOUND_INVALID_FILE"),
-                         filename.c_str());
+        Console::errorfn(LOCALE_STR("CONSOLE_PLAY_SOUND_INVALID_FILE"),filename.string());
     }
 }
 
 void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
-    SceneManager* sMgr = _context.kernel().sceneManager();
-    auto& sceneGraph = sMgr->getActiveScene().sceneGraph();
+    ProjectManager* sMgr = _context.kernel().projectManager();
+    auto& sceneGraph = sMgr->activeProject()->getActiveScene().sceneGraph();
     if (!args.empty()) {
         const SceneGraphNode* sgn = sceneGraph->findNode(args.c_str());
         if (!sgn) {
@@ -169,10 +168,10 @@ void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
     AI::Navigation::NavigationMesh* temp = aiManager->getNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL);
     // Create a new NavMesh if we don't currently have one
     if (!temp) {
-        temp = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *sMgr->recast());
+        temp = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *sMgr->recast(), sceneGraph->parentScene());
     }
     // Set it's file name
-    temp->setFileName( sMgr->getActiveScene().resourceName());
+    temp->setFileName( sMgr->activeProject()->getActiveScene().resourceName());
     // Try to load it from file
     bool loaded = temp->load(sceneGraph->getRoot());
     if (!loaded) {
@@ -201,7 +200,7 @@ void GUIConsoleCommandParser::handleFOVCommand(const string& args) {
 
     const I32 FoV = CLAMPED<I32>(atoi(args.c_str()), 40, 140);
 
-    Attorney::SceneManagerCameraAccessor::playerCamera(_context.kernel().sceneManager())->setHorizontalFoV(Angle::DEGREES<F32>(FoV));
+    Attorney::ProjectManagerCameraAccessor::playerCamera(_context.kernel().projectManager())->setHorizontalFoV(Angle::DEGREES<F32>(FoV));
 }
 
 void GUIConsoleCommandParser::handleInvalidCommand(const string& args) {

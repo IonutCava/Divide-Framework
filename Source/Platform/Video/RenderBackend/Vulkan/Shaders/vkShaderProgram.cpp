@@ -10,7 +10,7 @@
 
 namespace Divide {
 
-    vkShader::vkShader(GFXDevice& context, const Str<256>& name, const U32 generation)
+    vkShader::vkShader(GFXDevice& context, const std::string_view name, const U32 generation)
         : ShaderModule(context, name, generation)
     {
     }
@@ -105,8 +105,8 @@ namespace Divide {
 
     vkShaderProgram::vkShaderProgram(GFXDevice& context,
                                      const size_t descriptorHash,
-                                     const Str<256>& name,
-                                     const Str<256>& assetName,
+                                     const std::string_view name,
+                                     std::string_view assetName,
                                      const ResourcePath& assetLocation,
                                      const ShaderProgramDescriptor& descriptor,
                                      ResourceCache& parentCache)

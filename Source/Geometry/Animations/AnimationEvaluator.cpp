@@ -23,7 +23,7 @@ AnimEvaluator::AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept
                           : ANIMATION_TICKS_PER_SECOND);
 
     duration(pAnim->mDuration);
-    name(pAnim->mName.length > 0 ? pAnim->mName.data : Util::StringFormat("unnamed_anim_%d", idx));
+    name(pAnim->mName.length > 0 ? pAnim->mName.data : Util::StringFormat("unnamed_anim_{}", idx));
 
     Console::d_printfn(LOCALE_STR("CREATE_ANIMATION_BEGIN"), name().c_str());
 
@@ -78,7 +78,7 @@ bool AnimEvaluator::initBuffers(GFXDevice& context)
     {
         ShaderBufferDescriptor bufferDescriptor{};
         bufferDescriptor._ringBufferLength = 1;
-        bufferDescriptor._name = Util::StringFormat("BONE_BUFFER_%s", name().c_str());
+        bufferDescriptor._name = Util::StringFormat("BONE_BUFFER_{}", name().c_str());
         bufferDescriptor._bufferParams._elementCount = to_U32(animationData.size());
         bufferDescriptor._bufferParams._elementSize = sizeof(mat4<F32>);
         bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;

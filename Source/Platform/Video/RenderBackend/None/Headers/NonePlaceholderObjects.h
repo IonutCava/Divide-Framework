@@ -50,7 +50,7 @@ namespace Divide {
 
     class noGenericVertexData final : public GenericVertexData {
      public:
-        noGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const Str<256>& name)
+        noGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const std::string_view name)
             : GenericVertexData(context, ringBufferLength, renderIndirect, name)
         {}
 
@@ -69,8 +69,8 @@ namespace Divide {
     public:
         noTexture(GFXDevice& context,
                   const size_t descriptorHash,
-                  const Str<256>& name,
-                  const ResourcePath& assetNames,
+                  const std::string_view name,
+                  const std::string_view assetNames,
                   const ResourcePath& assetLocations,
                   const TextureDescriptor& texDescriptor,
                   ResourceCache& parentCache)
@@ -87,8 +87,8 @@ namespace Divide {
     class noShaderProgram final : public ShaderProgram {
     public:
         noShaderProgram(GFXDevice& context, const size_t descriptorHash,
-                        const Str<256>& name,
-                        const Str<256>& assetName,
+                        const std::string_view name,
+                        const std::string_view assetName,
                         const ResourcePath& assetLocation,
                         const ShaderProgramDescriptor& descriptor,
                         ResourceCache& parentCache)

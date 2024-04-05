@@ -279,7 +279,7 @@ void DVDTexture::generateDVDTexture()
     texDescriptor.allowRegionUpdates(true);
     texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-    ResourceDescriptor resDescriptor( Util::StringFormat("CEGUI_texture_%d", TEXTURE_IDX++).c_str() );
+    ResourceDescriptor resDescriptor( Util::StringFormat("CEGUI_texture_{}", TEXTURE_IDX++).c_str() );
     resDescriptor.propertyDescriptor( texDescriptor );
     resDescriptor.waitForReady( true );
     ResourceCache* parentCache = _owner.context().context().kernel().resourceCache();

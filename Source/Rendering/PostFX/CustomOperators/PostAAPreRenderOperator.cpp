@@ -116,15 +116,15 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         textureDescriptor.textureOptions()._alphaChannelTransparency = false;
 
         ResourceDescriptor searchDescriptor("SMAA_Search");
-        searchDescriptor.assetName(ResourcePath("smaa_search.png"));
-        searchDescriptor.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
+        searchDescriptor.assetName("smaa_search.png");
+        searchDescriptor.assetLocation(Paths::g_imagesLocation);
         searchDescriptor.propertyDescriptor(textureDescriptor);
         searchDescriptor.waitForReady(false);
         _searchTexture = CreateResource<Texture>(cache, searchDescriptor);
 
         ResourceDescriptor areaDescriptor("SMAA_Area");
-        areaDescriptor.assetName(ResourcePath("smaa_area.png"));
-        areaDescriptor.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
+        areaDescriptor.assetName("smaa_area.png");
+        areaDescriptor.assetLocation(Paths::g_imagesLocation);
         areaDescriptor.propertyDescriptor(textureDescriptor);
         areaDescriptor.waitForReady(false);
         _areaTexture = CreateResource<Texture>(cache, areaDescriptor);

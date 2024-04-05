@@ -3,7 +3,7 @@
 #include "Headers/ShaderProgram.h"
 #include "Headers/GLSLToSPIRV.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Rendering/Headers/Renderer.h"
 #include "Geometry/Material/Headers/Material.h"
@@ -289,37 +289,37 @@ namespace Divide
 
         [[nodiscard]] ResourcePath ShaderBuildCacheLocation()
         {
-            return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocation + Paths::g_buildTypeLocation;
+            return Paths::Shaders::g_cacheLocation / Paths::g_buildTypeLocation;
         }
 
         [[nodiscard]] ResourcePath ShaderParentCacheLocation()
         {
-            return ShaderBuildCacheLocation() + ShaderAPILocation();
+            return ShaderBuildCacheLocation() / ShaderAPILocation();
         }
 
         [[nodiscard]] ResourcePath SpvCacheLocation()
         {
-            return ShaderParentCacheLocation() + Paths::Shaders::g_cacheLocationSpv;
+            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationSpv;
         }
 
         [[nodiscard]] ResourcePath ReflCacheLocation()
         {
-            return ShaderParentCacheLocation() + Paths::Shaders::g_cacheLocationRefl;
+            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationRefl;
         }
 
         [[nodiscard]] ResourcePath TxtCacheLocation()
         {
-            return ShaderParentCacheLocation() + Paths::Shaders::g_cacheLocationText;
+            return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationText;
         }
 
         [[nodiscard]] ResourcePath SpvTargetName( const Str<256>& fileName )
         {
-            return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt };
+            return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt.c_str() };
         }
 
         [[nodiscard]] ResourcePath ReflTargetName( const Str<256>& fileName )
         {
-            return ResourcePath{ fileName + "." + Paths::Shaders::g_ReflectionExt };
+            return ResourcePath { fileName + "." + Paths::Shaders::g_ReflectionExt.c_str() };
         }
 
         [[nodiscard]] bool ValidateCacheLocked( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& sourceFileName, const Str<256>& fileName )
@@ -334,7 +334,7 @@ namespace Divide
 
             // Get our source file's "last written" timestamp. Every cache file that's older than this is automatically out-of-date
             U64 lastWriteTime = 0u, lastWriteTimeCache = 0u;
-            const ResourcePath sourceShaderFullPath = Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc + sourceFileName;
+            const ResourcePath sourceShaderFullPath = Paths::Shaders::GLSL::g_GLSLShaderLoc / sourceFileName;
             if ( fileLastWriteTime( sourceShaderFullPath, lastWriteTime ) != FileError::NONE )
             {
                 return false;
@@ -343,9 +343,9 @@ namespace Divide
             ResourcePath filePath;
             switch ( type )
             {
-                case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: filePath = ReflCacheLocation() + ReflTargetName( fileName ); break;
-                case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() + ResourcePath{ fileName }; break;
-                case ShaderProgram::LoadData::ShaderCacheType::SPIRV: filePath = SpvCacheLocation() + SpvTargetName( fileName ); break;
+                case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: filePath = ReflCacheLocation() / ReflTargetName( fileName ); break;
+                case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() / fileName; break;
+                case ShaderProgram::LoadData::ShaderCacheType::SPIRV: filePath = SpvCacheLocation() / SpvTargetName( fileName ); break;
                 default: return false;
             }
 
@@ -370,9 +370,9 @@ namespace Divide
             FileError err = FileError::NONE;
             switch ( type )
             {
-                case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: err = deleteFile( ReflCacheLocation(), ReflTargetName( fileName ) ); break;
-                case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), ResourcePath{ fileName } ); break;
-                case ShaderProgram::LoadData::ShaderCacheType::SPIRV: err = deleteFile( SpvCacheLocation(), SpvTargetName( fileName ) ); break;
+                case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: err = deleteFile( ReflCacheLocation(), ReflTargetName( fileName ).string() ); break;
+                case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), fileName.c_str() ); break;
+                case ShaderProgram::LoadData::ShaderCacheType::SPIRV: err = deleteFile( SpvCacheLocation(), SpvTargetName( fileName ).string() ); break;
                 default: return false;
             }
 
@@ -419,7 +419,7 @@ namespace Divide
                     for ( U8 i = 0u; i < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++i )
                     {
                         const U8 glSlot = ShaderProgram::GetGLBindingForDescriptorSlot( setUsage, i );
-                        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define %s_%d %d",
+                        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define {}_{} {}",
                                                                                      TypeUtil::DescriptorSetUsageToString( setUsage ),
                                                                                      i,
                                                                                      glSlot ).c_str() );
@@ -439,7 +439,7 @@ namespace Divide
             {
                 for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
                 {
-                    AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define %s %d", TypeUtil::DescriptorSetUsageToString( static_cast<DescriptorSetUsage>(i) ), i ).c_str() );
+                    AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define {} {}", TypeUtil::DescriptorSetUsageToString( static_cast<DescriptorSetUsage>(i) ), i ).c_str() );
                 }
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(set = SET, binding = BINDING)" );
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(set = SET, binding = BINDING, offset = OFFSET)" );
@@ -471,10 +471,10 @@ namespace Divide
 
         const auto getPassData = [&]( const ShaderType type ) -> string
         {
-            string baseString = "     _out.%s = _in[index].%s;";
+            string baseString = "     _out.{} = _in[index].{};";
             if ( type == ShaderType::TESSELLATION_CTRL )
             {
-                baseString = "    _out[gl_InvocationID].%s = _in[index].%s;";
+                baseString = "    _out[gl_InvocationID].{} = _in[index].{};";
             }
 
             string passData( "void PassData(in int index) {" );
@@ -502,7 +502,7 @@ namespace Divide
         {
             for ( const auto& [varType, name] : shaderVaryings )
             {
-                AppendToShaderHeader( type, Util::StringFormat( "    %s %s;", varType, name ) );
+                AppendToShaderHeader( type, Util::StringFormat( "    {} {};", varType, name ) );
             }
             AppendToShaderHeader( type, "#if defined(HAS_VELOCITY)" );
             AppendToShaderHeader( type, "    vec4 _prevVertexWVP;" );
@@ -618,11 +618,11 @@ namespace Divide
 
         for ( U8 i = 0u; i < to_base( TextureOperation::COUNT ); ++i )
         {
-            AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define TEX_%s %d", TypeUtil::TextureOperationToString( static_cast<TextureOperation>(i) ), i ).c_str() );
+            AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define TEX_{} {}", TypeUtil::TextureOperationToString( static_cast<TextureOperation>(i) ), i ).c_str() );
         }
-        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_X_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_X_AXIS.x, WORLD_X_AXIS.y, WORLD_X_AXIS.z ) );
-        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_Y_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Y_AXIS.x, WORLD_Y_AXIS.y, WORLD_Y_AXIS.z ) );
-        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_Z_AXIS vec3(%1.1f,%1.1f,%1.1f)", WORLD_Z_AXIS.x, WORLD_Z_AXIS.y, WORLD_Z_AXIS.z ) );
+        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_X_AXIS vec3({:1.1f},{:1.1f},{:1.1f})", WORLD_X_AXIS.x, WORLD_X_AXIS.y, WORLD_X_AXIS.z ) );
+        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_Y_AXIS vec3({:1.1f},{:1.1f},{:1.1f})", WORLD_Y_AXIS.x, WORLD_Y_AXIS.y, WORLD_Y_AXIS.z ) );
+        AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_Z_AXIS vec3({:1.1f},{:1.1f},{:1.1f})", WORLD_Z_AXIS.x, WORLD_Z_AXIS.y, WORLD_Z_AXIS.z ) );
 
 
         AppendToShaderHeader( ShaderType::COUNT, "#define M_EPSILON 1e-5f" );
@@ -688,15 +688,15 @@ namespace Divide
         for ( U8 i = 0u; i < to_U8( ShadingMode::COUNT ) + 1u; ++i )
         {
             const ShadingMode mode = static_cast<ShadingMode>(i);
-            AppendToShaderHeader( ShaderType::FRAGMENT, Util::StringFormat( "#define SHADING_%s %d", TypeUtil::ShadingModeToString( mode ), i ) );
+            AppendToShaderHeader( ShaderType::FRAGMENT, Util::StringFormat( "#define SHADING_{} {}", TypeUtil::ShadingModeToString( mode ), i ) );
         }
 
-        AppendToShaderHeader( ShaderType::FRAGMENT, Util::StringFormat( "#define SHADING_COUNT %d", to_base( ShadingMode::COUNT ) ) );
+        AppendToShaderHeader( ShaderType::FRAGMENT, Util::StringFormat( "#define SHADING_COUNT {}", to_base( ShadingMode::COUNT ) ) );
 
         for ( U8 i = 0u; i < to_U8( MaterialDebugFlag::COUNT ) + 1u; ++i )
         {
             const MaterialDebugFlag flag = static_cast<MaterialDebugFlag>(i);
-            AppendToShaderHeader( ShaderType::FRAGMENT, Util::StringFormat( "#define DEBUG_%s %d", TypeUtil::MaterialDebugFlagToString( flag ), i ) );
+            AppendToShaderHeader( ShaderType::FRAGMENT, Util::StringFormat( "#define DEBUG_{} {}", TypeUtil::MaterialDebugFlagToString( flag ), i ) );
         }
 
         AppendToShaderHeader( ShaderType::COUNT, "#if defined(PRE_PASS) || defined(SHADOW_PASS)" );
@@ -864,16 +864,16 @@ namespace Divide
         s_shaderNameMap.clear();
     }
 
-    ShaderModule* ShaderModule::GetShader( const Str<256>& name )
+    ShaderModule* ShaderModule::GetShader( const std::string_view name )
     {
         SharedLock<SharedMutex> r_lock( s_shaderNameLock );
         return GetShaderLocked( name );
     }
 
-    ShaderModule* ShaderModule::GetShaderLocked( const Str<256>& name )
+    ShaderModule* ShaderModule::GetShaderLocked( const std::string_view name )
     {
         // Try to find the shader
-        const ShaderMap::iterator it = s_shaderNameMap.find( _ID( name.c_str() ) );
+        const ShaderMap::iterator it = s_shaderNameMap.find( _ID( name ) );
         if ( it != std::end( s_shaderNameMap ) )
         {
             return it->second.get();
@@ -882,9 +882,9 @@ namespace Divide
         return nullptr;
     }
 
-    ShaderModule::ShaderModule( GFXDevice& context, const Str<256>& name, const U32 generation )
+    ShaderModule::ShaderModule( GFXDevice& context, const std::string_view name, const U32 generation )
         : GUIDWrapper()
-        , GraphicsResource( context, Type::SHADER, getGUID(), _ID( name.c_str() ) )
+        , GraphicsResource( context, Type::SHADER, getGUID(), _ID( name ) )
         , _name( name )
         , _generation( generation )
     {
@@ -934,20 +934,20 @@ namespace Divide
 
     ShaderProgram::ShaderProgram( GFXDevice& context,
                                   const size_t descriptorHash,
-                                  const Str<256>& shaderName,
-                                  const Str<256>& shaderFileName,
+                                  const std::string_view shaderName,
+                                  const std::string_view shaderFileName,
                                   const ResourcePath& shaderFileLocation,
                                   ShaderProgramDescriptor descriptor,
                                   ResourceCache& parentCache )
-        : CachedResource( ResourceType::GPU_OBJECT, descriptorHash, shaderName, ResourcePath( shaderFileName ), shaderFileLocation )
-        , GraphicsResource( context, Type::SHADER_PROGRAM, getGUID(), _ID( shaderName.c_str() ) )
+        : CachedResource( ResourceType::GPU_OBJECT, descriptorHash, shaderName, shaderFileName, shaderFileLocation )
+        , GraphicsResource( context, Type::SHADER_PROGRAM, getGUID(), _ID_VIEW( shaderName.data(), shaderName.size() ) )
         , _useShaderCache( descriptor._useShaderCache )
         , _parentCache( parentCache )
         , _descriptor( MOV( descriptor ) )
     {
         if ( shaderFileName.empty() )
         {
-            assetName( ResourcePath( resourceName().c_str() ) );
+            assetName( resourceName() );
         }
         s_shaderCount.fetch_add( 1, std::memory_order_relaxed );
     }
@@ -1067,7 +1067,7 @@ namespace Divide
     }
 
     /// Calling this will force a recompilation of all shader stages for the program that matches the name specified
-    bool ShaderProgram::RecompileShaderProgram( const Str<256>& name )
+    bool ShaderProgram::RecompileShaderProgram( const std::string_view name )
     {
         bool state = false;
 
@@ -1080,8 +1080,8 @@ namespace Divide
             ShaderProgram* program = entry._program;
             assert( program != nullptr );
 
-            const Str<256>& shaderName = program->resourceName();
-            // Check if the name matches any of the program's name components    
+            const string shaderName{ program->resourceName().c_str() };
+            // Check if the name matches any of the program's name components
             if ( shaderName.find( name ) != Str<256>::npos || shaderName.compare( name ) == 0 )
             {
                 // We process every partial match. So add it to the recompilation queue
@@ -1093,7 +1093,7 @@ namespace Divide
         // If no shaders were found, show an error
         if ( !state )
         {
-            Console::errorfn( LOCALE_STR( "ERROR_RECOMPILE_NOT_FOUND" ), name.c_str() );
+            Console::errorfn( LOCALE_STR( "ERROR_RECOMPILE_NOT_FOUND" ), name );
         }
 
         return state;
@@ -1113,31 +1113,29 @@ namespace Divide
             const vector<ResourcePath> atomLocations = GetAllAtomLocations();
             for ( const ResourcePath& loc : atomLocations )
             {
-                if ( !CreateDirectories( loc ) )
+                if ( createDirectory( loc ) != FileError::NONE )
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
-                watcher().addWatch( loc.c_str(), &g_sFileWatcherListener );
+                watcher().addWatch( loc.string(), &g_sFileWatcherListener );
             }
         }
 
-        const ResourcePath locPrefix{ Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc };
+        shaderAtomLocationPrefix[to_base( ShaderType::FRAGMENT )]          = Paths::Shaders::GLSL::g_fragAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::VERTEX )]            = Paths::Shaders::GLSL::g_vertAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::GEOMETRY )]          = Paths::Shaders::GLSL::g_geomAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_CTRL )] = Paths::Shaders::GLSL::g_tescAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_EVAL )] = Paths::Shaders::GLSL::g_teseAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::COMPUTE )]           = Paths::Shaders::GLSL::g_compAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::COUNT )]             = Paths::Shaders::GLSL::g_comnAtomLoc;
 
-        shaderAtomLocationPrefix[to_base( ShaderType::FRAGMENT )] = locPrefix + Paths::Shaders::GLSL::g_fragAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::VERTEX )] = locPrefix + Paths::Shaders::GLSL::g_vertAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::GEOMETRY )] = locPrefix + Paths::Shaders::GLSL::g_geomAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_CTRL )] = locPrefix + Paths::Shaders::GLSL::g_tescAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_EVAL )] = locPrefix + Paths::Shaders::GLSL::g_teseAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::COMPUTE )] = locPrefix + Paths::Shaders::GLSL::g_compAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::COUNT )] = locPrefix + Paths::Shaders::GLSL::g_comnAtomLoc;
-
-        shaderAtomExtensionName[to_base( ShaderType::FRAGMENT )] = Paths::Shaders::GLSL::g_fragAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::VERTEX )] = Paths::Shaders::GLSL::g_vertAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::GEOMETRY )] = Paths::Shaders::GLSL::g_geomAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::FRAGMENT )]          = Paths::Shaders::GLSL::g_fragAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::VERTEX )]            = Paths::Shaders::GLSL::g_vertAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::GEOMETRY )]          = Paths::Shaders::GLSL::g_geomAtomExt;
         shaderAtomExtensionName[to_base( ShaderType::TESSELLATION_CTRL )] = Paths::Shaders::GLSL::g_tescAtomExt;
         shaderAtomExtensionName[to_base( ShaderType::TESSELLATION_EVAL )] = Paths::Shaders::GLSL::g_teseAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::COMPUTE )] = Paths::Shaders::GLSL::g_compAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::COUNT )] = "." + Paths::Shaders::GLSL::g_comnAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::COMPUTE )]           = Paths::Shaders::GLSL::g_compAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::COUNT )]             = "." + Paths::Shaders::GLSL::g_comnAtomExt;
 
         for ( U8 i = 0u; i < to_base( ShaderType::COUNT ) + 1; ++i )
         {
@@ -1146,7 +1144,7 @@ namespace Divide
 
         const PlatformContext& ctx = parentCache->context();
         const Configuration& config = ctx.config();
-        s_useShaderCache = config.debug.useShaderCache;
+        s_useShaderCache = config.debug.cache.enabled && config.debug.cache.shaders;
         s_targetVulkan = ctx.gfx().renderAPI() == RenderAPI::Vulkan;
 
         FileList list{};
@@ -1438,59 +1436,35 @@ namespace Divide
         if ( atomLocations.empty() )
         {
             // General
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation );
+            atomLocations.emplace_back( Paths::g_shadersLocation );
             // GLSL
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_GLSLShaderLoc );
 
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc +
-                                        Paths::Shaders::GLSL::g_comnAtomLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_comnAtomLoc );
 
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc +
-                                        Paths::Shaders::GLSL::g_compAtomLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_compAtomLoc );
 
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc +
-                                        Paths::Shaders::GLSL::g_fragAtomLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_fragAtomLoc );
 
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc +
-                                        Paths::Shaders::GLSL::g_geomAtomLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_geomAtomLoc );
 
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc +
-                                        Paths::Shaders::GLSL::g_tescAtomLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_tescAtomLoc );
 
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc +
-                                        Paths::Shaders::GLSL::g_teseAtomLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_teseAtomLoc );
 
-            atomLocations.emplace_back( Paths::g_assetsLocation +
-                                        Paths::g_shadersLocation +
-                                        Paths::Shaders::GLSL::g_GLSLShaderLoc +
-                                        Paths::Shaders::GLSL::g_vertAtomLoc );
+            atomLocations.emplace_back( Paths::Shaders::GLSL::g_vertAtomLoc );
         }
 
         return atomLocations;
     }
 
-    const eastl::string& ShaderProgram::ShaderFileRead( const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
+    const eastl::string& ShaderProgram::ShaderFileRead( const ResourcePath& filePath, const std::string_view atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
     {
         LockGuard<Mutex> w_lock( s_atomLock );
         return ShaderFileReadLocked( filePath, atomName, recurse, foundAtomIDsInOut, wasParsed );
     }
 
-    eastl::string ShaderProgram::PreprocessIncludes( const ResourcePath& name,
+    eastl::string ShaderProgram::PreprocessIncludes( const std::string_view name,
                                                      const eastl::string& source,
                                                      const I32 level,
                                                      eastl::set<U64>& foundAtomIDsInOut,
@@ -1507,7 +1481,7 @@ namespace Divide
         eastl::string output, includeString;
         istringstream input( source.c_str() );
 
-        while ( std::getline( input, line ) )
+        while ( Util::GetLine( input, line ) )
         {
             const std::string_view directive = !line.empty() ? std::string_view{ line }.substr( 1 ) : "";
 
@@ -1528,14 +1502,14 @@ namespace Divide
                 {
                     skip = true;
 
-                    const ResourcePath includeFile = ResourcePath( Util::Trim( m.get<1>().str() ) );
+                    const auto includeFile = Util::Trim( m.get<1>().str() );
 
                     foundAtomIDsInOut.insert( _ID( includeFile.c_str() ) );
 
                     ShaderType typeIndex = ShaderType::COUNT;
                     bool found = false;
                     // switch will throw warnings due to promotion to int
-                    const U64 extHash = _ID( Util::GetTrailingCharacters( includeFile.str(), 4 ).c_str() );
+                    const U64 extHash = _ID( Util::GetTrailingCharacters( includeFile, 4 ).c_str() );
                     for ( U8 i = 0; i < to_base( ShaderType::COUNT ) + 1; ++i )
                     {
                         if ( extHash == shaderAtomExtensionHash[i] )
@@ -1558,7 +1532,7 @@ namespace Divide
                     }
                     if ( includeString.empty() )
                     {
-                        Console::errorfn( LOCALE_STR( "ERROR_GLSL_NO_INCLUDE_FILE" ), name.c_str(), lineNumber, includeFile.c_str() );
+                        Console::errorfn( LOCALE_STR( "ERROR_GLSL_NO_INCLUDE_FILE" ), name, lineNumber, includeFile );
                     }
                     if ( wasParsed )
                     {
@@ -1584,9 +1558,9 @@ namespace Divide
     }
 
     /// Open the file found at 'filePath' matching 'atomName' and return it's source code
-    const eastl::string& ShaderProgram::ShaderFileReadLocked( const ResourcePath& filePath, const ResourcePath& atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
+    const eastl::string& ShaderProgram::ShaderFileReadLocked( const ResourcePath& filePath, const std::string_view atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
     {
-        const U64 atomNameHash = _ID( atomName.c_str() );
+        const U64 atomNameHash = _ID( atomName );
         // See if the atom was previously loaded and still in cache
         const AtomMap::iterator it = s_atoms.find( atomNameHash );
 
@@ -1644,7 +1618,7 @@ namespace Divide
                 {
                     {
                         err = writeFile( TxtCacheLocation(),
-                                         ResourcePath( dataIn._shaderName ),
+                                         dataIn._shaderName.c_str(),
                                          dataIn._sourceCodeGLSL.c_str(),
                                          dataIn._sourceCodeGLSL.length(),
                                          FileType::TEXT );
@@ -1665,7 +1639,7 @@ namespace Divide
                 if ( !dataIn._sourceCodeSpirV.empty() )
                 {
                     err = writeFile( SpvCacheLocation(),
-                                     SpvTargetName( dataIn._shaderName ),
+                                     SpvTargetName( dataIn._shaderName ).string(),
                                      (bufferPtr)dataIn._sourceCodeSpirV.data(),
                                      dataIn._sourceCodeSpirV.size() * sizeof( U32 ),
                                      FileType::BINARY );
@@ -1726,7 +1700,7 @@ namespace Divide
             case LoadData::ShaderCacheType::GLSL:
             {
                 err = readFile( TxtCacheLocation(),
-                                ResourcePath{ dataInOut._shaderName },
+                                dataInOut._shaderName.c_str(),
                                 dataInOut._sourceCodeGLSL, FileType::TEXT );
                 return err == FileError::NONE;
             } break;
@@ -1735,7 +1709,7 @@ namespace Divide
                 vector<Byte> tempData;
                 {
                     err = readFile( SpvCacheLocation(),
-                                    SpvTargetName( dataInOut._shaderName ),
+                                    SpvTargetName( dataInOut._shaderName ).string(),
                                     tempData,
                                     FileType::BINARY );
                 }
@@ -1766,7 +1740,7 @@ namespace Divide
         {
             glswClearCurrentContext();
         }
-        glswSetPath( (Paths::g_assetsLocation + Paths::g_shadersLocation + Paths::Shaders::GLSL::g_GLSLShaderLoc).c_str(), ".glsl" );
+        glswSetPath(( Paths::Shaders::GLSL::g_GLSLShaderLoc.string() + Paths::g_pathSeparator).c_str(), ".glsl" );
 
         _usedAtomIDs.clear();
 
@@ -2108,7 +2082,7 @@ namespace Divide
             }
             // And replace in place with our program's headers created earlier
             Util::ReplaceStringInPlace( glslCodeOut, "_CUSTOM_DEFINES__", header );
-            glslCodeOut = PreprocessIncludes( ResourcePath( resourceName() ), glslCodeOut, 0, atomIDsInOut, true );
+            glslCodeOut = PreprocessIncludes( resourceName(), glslCodeOut, 0, atomIDsInOut, true );
             glslCodeOut = Preprocessor::PreProcess( glslCodeOut, loadDataInOut._shaderName.c_str() );
             glslCodeOut = Reflection::GatherUniformDeclarations( glslCodeOut, loadDataInOut._uniforms );
         }
@@ -2129,20 +2103,21 @@ namespace Divide
             uniformBlock = "layout( ";
             if ( _context.renderAPI() == RenderAPI::Vulkan )
             {
-                uniformBlock.append( Util::StringFormat( "set = %d, ", to_base( DescriptorSetUsage::PER_DRAW ) ) );
+                uniformBlock.append( Util::StringFormat( "set = {}, ", to_base( DescriptorSetUsage::PER_DRAW ) ) );
             }
-            uniformBlock.append( "binding = %d, std140 ) uniform %s {" );
+            uniformBlock.append( "binding = {}, std140 ) uniform {} {{" );
 
             for ( const Reflection::UniformDeclaration& uniform : loadDataInOut._uniforms )
             {
-                uniformBlock.append( Util::StringFormat( "\n    %s %s;", uniform._type.c_str(), uniform._name.c_str() ) );
+                uniformBlock.append( Util::StringFormat( "\n    {} {};", uniform._type.c_str(), uniform._name.c_str() ) );
             }
-            uniformBlock.append( Util::StringFormat( "\n} %s;", UNIFORM_BLOCK_NAME ) );
+            uniformBlock.append( "\n}} ");
+            uniformBlock.append(Util::StringFormat("{};", UNIFORM_BLOCK_NAME));
 
             for ( const Reflection::UniformDeclaration& uniform : loadDataInOut._uniforms )
             {
                 const string rawName = uniform._name.substr( 0, uniform._name.find_first_of( "[" ) ).c_str();
-                uniformBlock.append( Util::StringFormat( "\n#define %s %s.%s", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str() ) );
+                uniformBlock.append( Util::StringFormat( "\n#define {} {}.{}", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str() ) );
             }
 
             const U8 layoutIndex = _context.renderAPI() == RenderAPI::Vulkan
@@ -2150,7 +2125,7 @@ namespace Divide
                 : ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_DRAW,
                                                                 loadDataInOut._reflectionData._uniformBlockBindingIndex );
 
-            uniformBlock = Util::StringFormat( uniformBlock, layoutIndex, Util::StringFormat( "dvd_UniformBlock_%lld", blockIndexInOut ).c_str() );
+            uniformBlock = Util::StringFormat( uniformBlock, layoutIndex, Util::StringFormat( "dvd_UniformBlock_{}", blockIndexInOut ).c_str() );
 
             previousUniformsInOut = loadDataInOut._uniforms;
         }
@@ -2175,7 +2150,7 @@ namespace Divide
                 "#define PushData1 PushConstantData[1]";
         }
 
-        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PROGRAM_NAME_\\", Util::StringFormat("/*[ %s ]*/", loadDataInOut._shaderName.c_str()));
+        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PROGRAM_NAME_\\", Util::StringFormat("/*[ {} ]*/", loadDataInOut._shaderName.c_str()));
         Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataInOut._uniformBlock );
         Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PUSH_CONSTANTS_DEFINE_\\", pushConstantCodeBlock );
     }

@@ -41,7 +41,7 @@ namespace Divide {
 
 class glGenericVertexData final : public GenericVertexData {
    public:
-    glGenericVertexData(GFXDevice& context, U16 ringBufferLength, bool renderIndirect, const Str<256>& name);
+    glGenericVertexData(GFXDevice& context, U16 ringBufferLength, bool renderIndirect, const std::string_view name);
     ~glGenericVertexData() = default;
 
     void reset() override;

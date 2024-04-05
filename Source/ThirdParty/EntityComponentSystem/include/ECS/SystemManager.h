@@ -127,11 +127,11 @@ namespace ECS
 				system = new (pSystemMem)T(engine, std::forward<ARGS>(systemArgs)...);
 				this->m_Systems[STID] = system;
 
-				LOG_INFO("System \'%s\' (%d bytes) created.", typeid(T).name(), sizeof(T));
+				LOG_INFO("System \'{}\' ({} bytes) created.", typeid(T).name(), sizeof(T));
 			}
 			else
 			{
-				LOG_ERROR("Unable to create system \'%s\' (%d bytes).", typeid(T).name(), sizeof(T));
+				LOG_ERROR("Unable to create system \'{}\' ({} bytes).", typeid(T).name(), sizeof(T));
 				assert(true);
 			}
 
@@ -177,7 +177,7 @@ namespace ECS
 			if (this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] != true)
 			{
 				this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] = true;
-				LOG_INFO("added '%s' as dependency to '%s'", dependency->GetSystemTypeName(), target->GetSystemTypeName())
+				LOG_INFO("added '{}' as dependency to '{}'", dependency->GetSystemTypeName(), target->GetSystemTypeName())
 			}
 
 			//this->UpdateSystemWorkOrder();
@@ -192,7 +192,7 @@ namespace ECS
 			if (this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] != true)
 			{
 				this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] = true;
-				LOG_INFO("added '%s' as dependency to '%s'", dependency->GetSystemTypeName(), target->GetSystemTypeName())
+				LOG_INFO("added '{}' as dependency to '{}'", dependency->GetSystemTypeName(), target->GetSystemTypeName())
 			}
 
 			this->AddSystemDependency(target, FWD(dependencies)...);
@@ -252,7 +252,7 @@ namespace ECS
 			}
 			else
 			{
-				LOG_WARNING("Trying to enable system [%d], but system is not registered yet.", STID);
+				LOG_WARNING("Trying to enable system [{}], but system is not registered yet.", STID);
 			}
 		}
 
@@ -274,7 +274,7 @@ namespace ECS
 			}
 			else
 			{
-				LOG_WARNING("Trying to disable system [%d], but system is not registered yet.", STID);
+				LOG_WARNING("Trying to disable system [{}], but system is not registered yet.", STID);
 			}
 		}
 
@@ -291,7 +291,7 @@ namespace ECS
 			}
 			else
 			{
-				LOG_WARNING("Trying to change system's [%d] update interval, but system is not registered yet.", STID);
+				LOG_WARNING("Trying to change system's [{}] update interval, but system is not registered yet.", STID);
 			}
 		}
 
@@ -316,7 +316,7 @@ namespace ECS
 			}
 			else
 			{
-				LOG_WARNING("Trying to change system's [%d] priority, but system is not registered yet.", STID);
+				LOG_WARNING("Trying to change system's [{}] priority, but system is not registered yet.", STID);
 			}
 		}
 

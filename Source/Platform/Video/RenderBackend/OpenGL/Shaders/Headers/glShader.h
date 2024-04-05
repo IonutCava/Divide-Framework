@@ -60,7 +60,7 @@ class glShader final : public ShaderModule
    public:
     /// The shader's name is the period-separated list of properties, type is
     /// the render stage this shader is used for
-    explicit glShader(GFXDevice& context, const Str<256>& name, const U32 generation);
+    explicit glShader(GFXDevice& context, const std::string_view name, const U32 generation);
     ~glShader();
 
     [[nodiscard]] bool load(const ShaderProgram::ShaderLoadData& data);
@@ -68,7 +68,7 @@ class glShader final : public ShaderModule
     /// Add or refresh a shader from the cache
     [[nodiscard]] static glShaderEntry LoadShader(GFXDevice& context,
                                                   glShaderProgram* parent,
-                                                  const Str<256>& name,
+                                                  const std::string_view name,
                                                   U32 targetGeneration,
                                                   ShaderProgram::ShaderLoadData& data);
 

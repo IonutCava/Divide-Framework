@@ -167,7 +167,7 @@ class LightPool final : public FrameListener,
     friend class RenderPass;
     void generateShadowMaps(const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
 
-    friend class SceneManager;
+    friend class ProjectManager;
     [[nodiscard]] LightList::const_iterator findLight(const I64 GUID, const LightType type) const {
         SharedLock<SharedMutex> r_lock(_lightLock);
         return findLightLocked(GUID, type);

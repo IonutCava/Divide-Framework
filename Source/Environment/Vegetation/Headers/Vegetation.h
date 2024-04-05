@@ -80,7 +80,7 @@ struct VegetationDetails {
     std::shared_ptr<ImageTools::ImageData> grassMap;
     std::shared_ptr<ImageTools::ImageData> treeMap;
     Terrain_wptr parentTerrain;
-    vector<ResourcePath> treeMeshes;
+    vector<Str<256>> treeMeshes;
     vec4<F32> grassScales, treeScales;
     std::array<vec3<F32>, 4> treeRotations;
 };
@@ -143,7 +143,7 @@ class Vegetation final : public SceneNode {
     std::array<vec3<F32>, 4> _treeRotations;
     vec4<F32> _grassExtents = VECTOR4_UNIT;
     vec4<F32> _treeExtents = VECTOR4_UNIT;
-    vector<ResourcePath> _treeMeshNames;
+    vector<Str<256>> _treeMeshNames;
     std::shared_ptr<ImageTools::ImageData> _grassMap = nullptr;  ///< Dispersion map for grass placement
     std::shared_ptr<ImageTools::ImageData> _treeMap = nullptr;  ///< Dispersion map for tree placement
 

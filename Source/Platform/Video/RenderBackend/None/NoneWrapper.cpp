@@ -82,7 +82,7 @@ namespace Divide
             return ErrorCode::SDL_WINDOW_INIT_ERROR;
         }
 
-        _background = SDL_LoadBMP( (Paths::g_assetsLocation + Paths::g_imagesLocation + "/divideLogo.bmp").c_str() );
+        _background = SDL_LoadBMP( (Paths::g_imagesLocation / "divideLogo.bmp").string().c_str() );
         if ( _background == nullptr )
         {
             return ErrorCode::PLATFORM_INIT_ERROR;
@@ -158,17 +158,17 @@ namespace Divide
         return eastl::make_unique<noRenderTarget>( _context, descriptor );
     }
 
-    GenericVertexData_ptr NONE_API::newGVD( U32 ringBufferLength, bool renderIndirect, const Str<256>& name ) const
+    GenericVertexData_ptr NONE_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
     {
-        return std::make_shared<noGenericVertexData>( _context, ringBufferLength, renderIndirect, name.c_str() );
+        return std::make_shared<noGenericVertexData>( _context, ringBufferLength, renderIndirect, name );
     }
 
-    Texture_ptr NONE_API::newTexture( size_t descriptorHash, const Str<256>& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
+    Texture_ptr NONE_API::newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
     {
         return std::make_shared<noTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
     }
 
-    ShaderProgram_ptr NONE_API::newShaderProgram( size_t descriptorHash, const Str<256>& resourceName, const Str<256>& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
+    ShaderProgram_ptr NONE_API::newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
     {
         return std::make_shared<noShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
     }

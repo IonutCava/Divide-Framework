@@ -158,7 +158,8 @@ namespace Divide
         ImGui::EndChild();
         ImGui::Separator();
 
-        if ( ImGui::InputText( "Input",
+        ImGui::Text( "Input:" ); ImGui::SameLine();
+        if ( ImGui::InputText( "##Input:",
                                _inputBuf,
                                IM_ARRAYSIZE( _inputBuf ),
                                ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory,
@@ -213,7 +214,7 @@ namespace Divide
     {
         PrintText(
             {
-                Util::StringFormat( "# %s\n", command_line ),
+                Util::StringFormat( "# {}\n", command_line ),
                 Console::EntryType::COMMAND
             }
         );

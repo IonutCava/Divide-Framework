@@ -43,9 +43,13 @@ public:
 
     virtual void resize(U16 queueLength);
 
-    [[nodiscard]] U16 queueLength() const noexcept { return _queueLength; }
+    [[nodiscard]] U16 queueLength() const noexcept
+    {
+        return _queueLength;
+    }
 
-    [[nodiscard]] I32 queueWriteIndex() const noexcept {
+    [[nodiscard]] I32 queueWriteIndex() const noexcept
+    {
         const I32 ret = _queueIndex.load();
 
         if (_separateReadWrite)
@@ -56,19 +60,27 @@ public:
         return ret;
     }
 
-    [[nodiscard]] I32 queueReadIndex() const noexcept { return _queueIndex; }
+    [[nodiscard]] I32 queueReadIndex() const noexcept
+    {
+        return _queueIndex;
+    }
 
-    I32 incQueue() noexcept {
-        if (queueLength() > 1) {
+    I32 incQueue() noexcept
+    {
+        if (queueLength() > 1)
+        {
             _queueIndex = (_queueIndex + 1) % to_I32( _queueLength );
         }
 
         return queueWriteIndex();
     }
 
-    I32 decQueue() noexcept {
-        if (queueLength() > 1) {
-            if (_queueIndex == 0) {
+    I32 decQueue() noexcept
+    {
+        if (queueLength() > 1)
+        {
+            if (_queueIndex == 0)
+            {
                 _queueIndex = to_I32( _queueLength );
             }
 
@@ -85,15 +97,23 @@ private:
     std::atomic_int _queueIndex = 0;
 };
 
-class RingBuffer : public NonCopyable {
+class RingBuffer : public NonCopyable
+{
 public:
     explicit RingBuffer(U16 queueLength) noexcept;
     virtual ~RingBuffer() = default;
 
     virtual void resize(U16 queueLength) noexcept;
 
-    [[nodiscard]] U16 queueLength() const noexcept { return _queueLength; }
-    [[nodiscard]] I32 queueIndex() const noexcept { return _queueIndex; }
+    [[nodiscard]] U16 queueLength() const noexcept
+    {
+        return _queueLength;
+    }
+
+    [[nodiscard]] I32 queueIndex() const noexcept
+    {
+        return _queueIndex;
+    }
 
     void incQueue() noexcept
     {

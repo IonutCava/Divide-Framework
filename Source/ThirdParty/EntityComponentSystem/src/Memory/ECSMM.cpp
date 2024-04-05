@@ -23,11 +23,11 @@ namespace ECS { namespace Memory { namespace Internal {
 		this->m_GlobalMemory = malloc(MemoryManager::MEMORY_CAPACITY);
 		if (this->m_GlobalMemory != nullptr)
 		{
-			LOG_INFO("%d bytes of memory allocated.", MemoryManager::MEMORY_CAPACITY);
+			LOG_INFO("{} bytes of memory allocated.", MemoryManager::MEMORY_CAPACITY);
 		}
 		else
 		{
-			LOG_FATAL("Failed to allocate %d bytes of memory!", MemoryManager::MEMORY_CAPACITY);
+			LOG_FATAL("Failed to allocate {} bytes of memory!", MemoryManager::MEMORY_CAPACITY);
 			assert(this->m_GlobalMemory != nullptr && "Failed to allocate global memory.");
 		}
 
@@ -77,7 +77,7 @@ namespace ECS { namespace Memory { namespace Internal {
 
 				if (isFreed == false)
 				{
-					LOG_FATAL("\'%s\' memory user didn't release allocated memory %p!", i.first, i.second)
+					LOG_FATAL("\'{}\' memory user didn't release allocated memory {}!", i.first, i.second)
 				}
 			}
 		}

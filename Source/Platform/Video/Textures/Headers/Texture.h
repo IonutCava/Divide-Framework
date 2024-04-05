@@ -90,8 +90,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
     public:
         explicit Texture( GFXDevice& context,
                           size_t descriptorHash,
-                          const Str<256>& name,
-                          const ResourcePath& assetNames,
+                          const std::string_view name,
+                          const std::string_view assetNames,
                           const ResourcePath& assetLocations,
                           const TextureDescriptor& texDescriptor,
                           ResourceCache& parentCache );
@@ -100,7 +100,6 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
 
         static void OnStartup( GFXDevice& gfx );
         static void OnShutdown() noexcept;
-        static ResourcePath GetCachePath( ResourcePath originalPath ) noexcept;
         [[nodiscard]] static bool UseTextureDDSCache() noexcept;
         [[nodiscard]] static const Texture_ptr& DefaultTexture2D() noexcept;
         [[nodiscard]] static const Texture_ptr& DefaultTexture2DArray() noexcept;
@@ -144,8 +143,8 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
 
      protected:
         /// Use STB to load a file into a Texture Object
-        bool loadFile( const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData );
-        bool checkTransparency( const ResourcePath& path, const ResourcePath& name, ImageTools::ImageData& fileData );
+        bool loadFile( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
+        bool checkTransparency( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
         /// Load texture data using the specified file name
         bool load() override;
         virtual void threadedLoad();
@@ -162,14 +161,13 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
 
     protected:
         ResourceCache& _parentCache;
-        TextureType _type{ TextureType::COUNT };
 
     protected:
         static bool s_useDDSCache;
         static SamplerDescriptor s_defaultSampler;
         static Texture_ptr s_defaultTexture2D;
         static Texture_ptr s_defaultTexture2DArray;
-        static ResourcePath s_missingTextureFileName;
+        static Str<64> s_missingTextureFileName;
 };
 
 namespace Attorney

@@ -8,36 +8,29 @@
 
 namespace Divide {
 
-std::string getWorkingDirectory() {
-    return std::filesystem::current_path().generic_string();
+ResourcePath getWorkingDirectory()
+{
+    return ResourcePath { std::filesystem::current_path().lexically_normal() };
 }
 
-FileError writeFile(const ResourcePath& filePath, const ResourcePath& fileName, const bufferPtr content, const size_t length, const FileType fileType) {
-    return writeFile(filePath.c_str(), fileName.c_str(), static_cast<const char*>(content), length, fileType);
-}
-
-FileError writeFile(const char* filePath, const char* fileName, const bufferPtr content, const size_t length, const FileType fileType) {
-    return writeFile(filePath, fileName, static_cast<const char*>(content), length, fileType);
-}
-
-FileError writeFile(const ResourcePath & filePath, const ResourcePath & fileName, const char* content, const size_t length, const FileType fileType) {
-    return writeFile(filePath.c_str(), fileName.c_str(), content, length, fileType);
-}
-
-FileError writeFile(const char* filePath, const char* fileName, const char* content, const size_t length, const FileType fileType) {
-    if (!Util::IsEmptyOrNull(filePath) && content != nullptr && length > 0) {
-        if (!pathExists(filePath) && !CreateDirectories(filePath)) {
+FileError writeFile(const ResourcePath& filePath, const std::string_view fileName, const char* content, const size_t length, const FileType fileType)
+{
+    if (!filePath.empty() && content != nullptr && length > 0)
+    {
+        if (!pathExists(filePath) && createDirectory(filePath) != FileError::NONE)
+        {
             return FileError::FILE_NOT_FOUND;
         }
 
-        std::ofstream outputFile(string{ filePath } +fileName,
+        std::ofstream outputFile((filePath / fileName).string(),
                                  fileType == FileType::BINARY
                                            ? std::ios::out | std::ios::binary
                                            : std::ios::out);
 
         outputFile.write(content, length);
         outputFile.close();
-        if (!outputFile) {
+        if (!outputFile)
+        {
             return FileError::FILE_WRITE_ERROR;
         }
 
@@ -47,155 +40,102 @@ FileError writeFile(const char* filePath, const char* fileName, const char* cont
     return FileError::FILE_NOT_FOUND;
 }
 
-string stripQuotes(const char* input) {
-    string ret = input;
+string stripQuotes( const std::string_view input)
+{
 
-    if (!ret.empty()) {
-        ret.erase(std::remove(std::begin(ret), std::end(ret), '\"'), std::end(ret));
+    if (input.empty())
+    {
+        return "";
     }
 
+    string ret { input };
+    ret.erase(std::remove(std::begin(ret), std::end(ret), '\"'), std::end(ret));
     return ret;
 }
 
-FileAndPath splitPathToNameAndLocation(const ResourcePath& input) {
-    return splitPathToNameAndLocation(input.c_str());
-}
-
-FileAndPath splitPathToNameAndLocation(const char* input) {
-    const auto targetPath = std::filesystem::path(input).lexically_normal();
-
-    FileAndPath ret = {
-      ResourcePath(targetPath.filename().generic_string()),
-      ResourcePath(targetPath.parent_path().generic_string())
+FileNameAndPath splitPathToNameAndLocation(const ResourcePath& input)
+{
+    return FileNameAndPath
+    {
+        input.fileSystemPath().filename().generic_string(),
+        ResourcePath( input.fileSystemPath().parent_path().generic_string())
     };
-
-    return ret;
 }
 
-bool pathCompare(const char* filePathA, const char* filePathB) {
-    auto pathA = std::filesystem::path{filePathA}.lexically_normal();
-    auto pathB = std::filesystem::path{filePathB}.lexically_normal();
-
-    const bool ret = pathA.compare(pathB) == 0;
-    if (!ret) {
-        if (pathA.empty() || pathB.empty()) {
-            return pathA.empty() == pathB.empty();
-        }
-
-        const bool pathATrailingSlash = filePathA[strlen(filePathA) - 1] == '/';
-        const bool pathBTrailingSlash = filePathB[strlen(filePathB) - 1] == '/';
-        if (pathATrailingSlash != pathBTrailingSlash) {
-           if (pathATrailingSlash) {
-               pathB += '/';
-           } else {
-               pathA += '/';
-           }
-
-           return pathA.compare(pathB) == 0;
-        }
-
-        return false;
-    }
-    
-    return true;
-}
-
-bool pathExists(const ResourcePath& filePath) {
-    return pathExists(filePath.c_str());
-}
-
-bool pathExists(const char* filePath) {
+bool pathExists(const ResourcePath& filePath)
+{
     std::error_code ec;
-    const bool ret = is_directory(std::filesystem::path(filePath), ec);
-    if (ec) {
-        return false;
-    }
-
-    return ret;
+    const bool ret = is_directory(filePath.fileSystemPath(), ec);
+    return ec ? false : ret;
 }
 
-bool createDirectory(const ResourcePath& path) {
-    return createDirectory(path.c_str());
-}
+FileError createDirectory(const ResourcePath& path)
+{
+    static Mutex s_DirectoryLock;
+    LockGuard<Mutex> w_lock( s_DirectoryLock );
 
-bool createDirectory(const char* path) {
-    if (!pathExists(path)) {
-        const auto targetPath = std::filesystem::path(path);
+    if (!pathExists(path))
+    {
         std::error_code ec;
-        const bool ret = create_directories(targetPath, ec);
-        if (ec) {
-            return false;
+        const bool ret = create_directories(path.fileSystemPath(), ec);
+        if (ec)
+        {
+            return FileError::FILE_CREATE_ERROR;
         }
 
-        if (!ret) {
-            return pathExists(path);
+        if (!ret)
+        {
+            return pathExists(path) ? FileError::NONE : FileError::FILE_CREATE_ERROR;
         }
-        return true;
     }
 
-    return true;
+    return FileError::NONE;
 }
 
-bool fileExists(const ResourcePath& filePathAndName) {
-    return fileExists(filePathAndName.c_str());
+FileError removeDirectory( const ResourcePath& path )
+{
+    if ( pathExists(path) )
+    {
+        std::error_code ec;
+        if (std::filesystem::remove_all(path.fileSystemPath(), ec) == 0)
+        {
+            NOP();
+        }
+
+        if (ec)
+        {
+            return FileError::FILE_DELETE_ERROR;
+        }
+    }
+
+    return FileError::NONE;
 }
 
-bool fileExists(const char* filePathAndName) {
+bool fileExists(const ResourcePath& filePathAndName)
+{
     std::error_code ec;
-    const bool result = is_regular_file(std::filesystem::path(filePathAndName), ec);
-    if (ec) {
-        return false;
-    }
-
-    return result;
+    const bool result = is_regular_file(filePathAndName.fileSystemPath(), ec);
+    return ec ? false : result;
 }
 
-bool fileExists(const char* filePath, const char* fileName) {
+bool fileIsEmpty(const ResourcePath& filePathAndName)
+{
     std::error_code ec;
-    const bool result = is_regular_file(std::filesystem::path(string{ filePath } + fileName), ec);
-    if (ec) {
-        return false;
-    }
-
-    return result;
+    const bool result = std::filesystem::is_empty(filePathAndName.fileSystemPath(), ec);
+    return ec ? false : result;
 }
 
-bool fileIsEmpty(const ResourcePath& filePathAndName) {
-    return fileIsEmpty(filePathAndName.c_str());
-}
-
-bool fileIsEmpty(const char* filePathAndName) {
-    std::error_code ec;
-    const bool result = std::filesystem::is_empty(std::filesystem::path(filePathAndName), ec);
-    if (ec) {
-        return true;
-    }
-
-    return result;
-}
-
-bool fileIsEmpty(const char* filePath, const char* fileName) {
-    std::error_code ec;
-    const bool result = std::filesystem::is_empty(std::filesystem::path(string{ filePath } + fileName), ec);
-    if (ec) {
-        return true;
-    }
-
-    return result;
-}
-
-FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec) {
-    return fileLastWriteTime(filePathAndName.c_str(), timeOutSec);
-}
-
-FileError fileLastWriteTime(const char* filePathAndName, U64& timeOutSec) {
-    if (Util::IsEmptyOrNull(filePathAndName) || !fileExists(filePathAndName)) {
+FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec)
+{
+    if (filePathAndName.empty() || !fileExists(filePathAndName))
+    {
         return FileError::FILE_NOT_FOUND;
     }
 
     std::error_code ec;
-    const auto timeStamp = std::filesystem::last_write_time(std::filesystem::path(filePathAndName), ec).time_since_epoch();
-    if (ec) {
+    const auto timeStamp = std::filesystem::last_write_time(filePathAndName.fileSystemPath(), ec).time_since_epoch();
+    if (ec)
+    {
         return FileError::FILE_READ_ERROR;
     }
 
@@ -204,169 +144,149 @@ FileError fileLastWriteTime(const char* filePathAndName, U64& timeOutSec) {
     return FileError::NONE;
 }
 
-FileError fileLastWriteTime(const char* filePath, const char* fileName, U64& timeOutSec) {
-    return fileLastWriteTime((string{ filePath } + "/" + fileName).c_str(), timeOutSec);
-}
-
 size_t numberOfFilesInDirectory( const ResourcePath& path )
 {
-    return numberOfFilesInDirectory(path.c_str());
-}
-
-size_t numberOfFilesInDirectory( const char* path )
-{
-    const std::filesystem::path directoryPath( string{ path });
-
-    return std::count_if( std::filesystem::directory_iterator( path ),
+     return std::count_if( std::filesystem::directory_iterator( path.fileSystemPath() ),
                           std::filesystem::directory_iterator{},
                           [](const std::filesystem::path& p){ return std::filesystem::is_regular_file( p ); });
 }
 
-
-bool createFile(const char* filePathAndName, const bool overwriteExisting) {
-    if (overwriteExisting && fileExists(filePathAndName)) {
-        const bool ret = std::ofstream(filePathAndName, std::fstream::in | std::fstream::trunc).good();
-        return ret;
+bool createFile(const ResourcePath& filePathAndName, const bool overwriteExisting)
+{
+    if (overwriteExisting && fileExists(filePathAndName))
+    {
+        return std::ofstream(filePathAndName.string(), std::fstream::in | std::fstream::trunc).good();
     }
 
-    if (!CreateDirectories((const_sysInfo()._workingDirectory + splitPathToNameAndLocation(filePathAndName).second.str()).c_str())) {
+    if (createDirectory(const_sysInfo()._workingDirectory / splitPathToNameAndLocation(filePathAndName)._path) != FileError::NONE )
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    return std::ifstream(filePathAndName, std::fstream::in).good();
+    return std::ifstream(filePathAndName.string(), std::fstream::in).good();
 }
 
-FileError openFile(const ResourcePath& filePath, const ResourcePath& fileName) {
-    return openFile(filePath.c_str(), fileName.c_str());
-}
-
-FileError openFile(const char* filePath, const char* fileName) {
-    return openFile("", filePath, fileName);
-}
-
-FileError openFile(const char* cmd, const ResourcePath& filePath, const ResourcePath& fileName) {
-    return openFile(cmd, filePath.c_str(), fileName.c_str());
-}
-
-FileError openFile(const char* cmd, const char* filePath, const char* fileName) {
-    if (Util::IsEmptyOrNull(fileName) || !fileExists(filePath, fileName)) {
+FileError openFile(const char* cmd, const ResourcePath& filePath, const std::string_view fileName)
+{
+    if (fileName.empty() || !fileExists(filePath, fileName))
+    {
         return FileError::FILE_NOT_FOUND;
     }
 
-    constexpr std::array<std::string_view, 2> searchPattern = {
-        "//", "\\"
-    };
+    const ResourcePath file = const_sysInfo()._workingDirectory / filePath / fileName;
 
-    const string file = "\"" + Util::ReplaceString(
-        ResourcePath{ const_sysInfo()._workingDirectory + filePath + fileName }.str(),
-        searchPattern, 
-        "/", 
-        true) + "\"";
-
-    if (strlen(cmd) == 0) {
-        const bool ret = CallSystemCmd(file.c_str(), "");
-        return ret ? FileError::NONE : FileError::FILE_OPEN_ERROR;
+    bool ret = false;
+    if (strlen(cmd) == 0)
+    {
+        ret = CallSystemCmd(file.string(), "");
+    }
+    else
+    {
+        ret = CallSystemCmd( cmd, file.string() );
     }
 
-    const bool ret = CallSystemCmd(cmd, file.c_str());
     return ret ? FileError::NONE : FileError::FILE_OPEN_ERROR;
 }
 
-FileError deleteFile(const ResourcePath& filePath, const ResourcePath& fileName) {
-    return deleteFile(filePath.c_str(), fileName.c_str());
-}
-
-FileError deleteFile(const char* filePath, const char* fileName) {
-    if (Util::IsEmptyOrNull(fileName)) {
+FileError deleteFile(const ResourcePath& filePath, const std::string_view fileName)
+{
+    if ( fileName.empty() )
+    {
         return FileError::FILE_NOT_FOUND;
     }
-    const string fullPath{string{ filePath } + fileName};
-    if (!fileExists(fullPath.c_str())) {
+
+    const ResourcePath fullPath{ filePath / fileName };
+    if (!fileExists(fullPath))
+    {
         return FileError::FILE_NOT_FOUND;
     }
 
     std::error_code ec;
-    if (std::filesystem::remove(std::filesystem::path(fullPath), ec) && !ec) {
+    if (std::filesystem::remove(fullPath.fileSystemPath(), ec))
+    {
         return FileError::NONE;
     }
 
     return FileError::FILE_DELETE_ERROR;
 }
 
-FileError copyFile(const ResourcePath& sourcePath, const ResourcePath&  sourceName, const ResourcePath&  targetPath, const ResourcePath& targetName, const bool overwrite) {
-    return copyFile(sourcePath.c_str(), sourceName.c_str(), targetPath.c_str(), targetName.c_str(), overwrite);
-}
-
-FileError copyFile(const char* sourcePath, const char* sourceName, const char* targetPath, const char* targetName, const bool overwrite) {
-    if (Util::IsEmptyOrNull(sourceName) || Util::IsEmptyOrNull(targetName)) {
-        return FileError::FILE_NOT_FOUND;
-    }
-    string source{ sourcePath };
-    source.append("/");
-    source.append(sourceName);
-
-    if (!fileExists(source.c_str())) {
+FileError copyFile(const ResourcePath& sourcePath, const std::string_view sourceName, const ResourcePath&  targetPath, const std::string_view targetName, const bool overwrite)
+{
+    if (sourceName.empty() || targetName.empty())
+    {
         return FileError::FILE_NOT_FOUND;
     }
 
-    string target{ targetPath };
-    target.append(targetName);
+    const ResourcePath source{ sourcePath / sourceName };
 
-    if (!overwrite && fileExists(target.c_str())) {
+    if (!fileExists(source))
+    {
+        return FileError::FILE_NOT_FOUND;
+    }
+
+    const ResourcePath target{ targetPath / targetName };
+
+    if (!overwrite && fileExists(target))
+    {
         return FileError::FILE_OVERWRITE_ERROR;
     }
 
     std::error_code ec;
-    if (copy_file(std::filesystem::path(source),
-                  std::filesystem::path(target),
+    if (copy_file(source.fileSystemPath(),
+                  target.fileSystemPath(),
                   std::filesystem::copy_options::overwrite_existing,
-                  ec) && !ec) {
+                  ec) && !ec)
+    {
         return FileError::NONE;
     }
 
     return FileError::FILE_COPY_ERROR;
 }
 
-FileError copyDirectory(const char* sourcePath, const char* targetPath, bool recursively, bool overwrite) {
-    if (Util::IsEmptyOrNull(sourcePath) || Util::IsEmptyOrNull(targetPath)) {
+FileError copyDirectory( const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite )
+{
+    if (!pathExists(sourcePath))
+    {
         return FileError::FILE_NOT_FOUND;
     }
-    if (!pathExists(sourcePath)) {
-        return FileError::FILE_NOT_FOUND;
-    }
-    if (!overwrite && pathExists(targetPath)) {
+
+    if (!overwrite && pathExists(targetPath))
+    {
         return FileError::FILE_OVERWRITE_ERROR;
     }
     
     std::error_code ec;
-    std::filesystem::copy(sourcePath, 
-                            targetPath,
-                            (overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none) | 
-                            (recursively ? std::filesystem::copy_options::recursive : std::filesystem::copy_options::none),
-                          ec);
+    if ( !std::filesystem::exists( targetPath.fileSystemPath(), ec ) )
+    {
+        std::filesystem::create_directories( targetPath.fileSystemPath(), ec );
+    }
+
+    if ( !ec ) 
+    {
+        std::filesystem::copy(sourcePath.fileSystemPath(), 
+                              targetPath.fileSystemPath(),
+                                (overwrite ? std::filesystem::copy_options::overwrite_existing : std::filesystem::copy_options::none) | 
+                                (recursively ? std::filesystem::copy_options::recursive : std::filesystem::copy_options::none),
+                              ec);
+    }
 
     return ec ? FileError::FILE_COPY_ERROR: FileError::NONE;
 }
 
-FileError copyDirectory(const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite) {
-    return copyDirectory(sourcePath.c_str(), targetPath.c_str(), recursively, overwrite);
-}
-
-FileError findFile(const ResourcePath& filePath, const char* fileName, string& foundPath) {
-    return findFile(filePath.c_str(), fileName, foundPath);
-}
-
-FileError findFile(const char* filePath, const char* fileName, string& foundPath) {
-    const std::filesystem::path dir_path(filePath);
-    std::filesystem::path file_name(fileName);
+FileError findFile(const ResourcePath& filePath, const std::string_view fileName, string& foundPath)
+{
+    const std::filesystem::path file_name(fileName);
 
     const std::filesystem::recursive_directory_iterator end;
-    const auto it = std::find_if(std::filesystem::recursive_directory_iterator(dir_path), end,
-                                    [&file_name](const std::filesystem::directory_entry& e) {
-                                        const bool ret = e.path().filename() == file_name;
-                                        return ret;
-                                    });
-    if (it == end) {
+    const auto it = std::find_if(std::filesystem::recursive_directory_iterator( filePath.fileSystemPath()),
+                                 end,
+                                 [&file_name](const std::filesystem::directory_entry& e)
+                                 {
+                                    const bool ret = e.path().filename() == file_name;
+                                    return ret;
+                                 });
+    if (it == end)
+    {
         return FileError::FILE_NOT_FOUND;
     }
 
@@ -374,76 +294,89 @@ FileError findFile(const char* filePath, const char* fileName, string& foundPath
     return FileError::NONE;
 }
 
-string getExtension(const ResourcePath& filePath) {
-    return getExtension(filePath.c_str());
+string getExtension(const std::string_view fileName)
+{
+    return getExtension(ResourcePath{ fileName });
 }
 
-string getExtension(const char* filePath) {
-    return std::filesystem::path{filePath}.extension().string();
+string getExtension(const ResourcePath& fileName )
+{
+    return fileName.fileSystemPath().extension().string();
 }
 
-string getTopLevelFolderName(const char* filePath) {
-    return std::filesystem::path{ filePath }.parent_path().filename().generic_string();
+ResourcePath getTopLevelFolderName(const ResourcePath& filePath)
+{
+    return ResourcePath { filePath.fileSystemPath().filename() };
 }
 
-string getTopLevelFolderName(const ResourcePath& filePath) {
-    return getTopLevelFolderName(filePath.c_str());
+string stripExtension( const std::string_view fileName ) noexcept
+{
+    return stripExtension(ResourcePath{fileName}).string();
 }
 
-ResourcePath stripExtension(const char* filePath) noexcept {
-    return ResourcePath{ std::filesystem::path{ filePath }.stem().string() };
+ResourcePath stripExtension( const ResourcePath& filePath ) noexcept
+{
+    return ResourcePath{ filePath.fileSystemPath().stem() };
 }
 
-ResourcePath stripExtension(const ResourcePath& filePath) noexcept {
-    return stripExtension(filePath.c_str());
+bool hasExtension(const ResourcePath& filePath, const std::string_view extensionNoDot)
+{
+    return hasExtension(filePath.string(), extensionNoDot);
 }
 
-bool hasExtension(const ResourcePath& filePath, const char* extensionNoDot) {
-    return hasExtension(filePath.c_str(), extensionNoDot);
-}
-
-bool hasExtension(const char* filePath, const char* extensionNoDot) {
+bool hasExtension(const std::string_view filePath, const std::string_view extensionNoDot)
+{
     const string targetExt = getExtension(filePath);
-    if (extensionNoDot == nullptr || strlen(extensionNoDot) == 0) {
+    if (extensionNoDot.empty())
+    {
         return targetExt.empty();
     }
-    if (targetExt.empty()) {
+
+    if (targetExt.empty())
+    {
         return false;
     }
 
-    return Util::CompareIgnoreCase(targetExt.substr(1).c_str(), extensionNoDot);
+    return Util::CompareIgnoreCase(targetExt.substr(1), extensionNoDot);
 }
 
-bool deleteAllFiles(const ResourcePath& filePath, const char* extension, const char* extensionToSkip) {
-    return deleteAllFiles(filePath.c_str(), extension, extensionToSkip );
-}
-
-bool deleteAllFiles(const char* filePath, const char* extension, const char* extensionToSkip ) {
+bool deleteAllFiles(const ResourcePath& filePath, const char* extension, const char* extensionToSkip)
+{
     bool ret = false;
 
-    if (pathExists(filePath)) {
-        const std::filesystem::path pathIn(filePath);
-        for (const auto& p : std::filesystem::directory_iterator(pathIn)) {
-            try {
-                if (is_regular_file(p.status())) {
+    if (pathExists(filePath))
+    {
+        for (const auto& p : std::filesystem::directory_iterator(filePath.fileSystemPath()))
+        {
+            try
+            {
+                if (is_regular_file(p.status()))
+                {
                     const auto extensionString = p.path().extension().string().substr( 1 );
                     if (extensionToSkip && Util::CompareIgnoreCase( extensionString.c_str(), extensionToSkip) )
                     {
                         continue;
                     }
 
-                    if (!extension || Util::CompareIgnoreCase( extensionString.c_str(), extension )) {
-                        if (std::filesystem::remove(p.path())) {
+                    if (!extension || Util::CompareIgnoreCase( extensionString.c_str(), extension ))
+                    {
+                        if (std::filesystem::remove(p.path()))
+                        {
                             ret = true;
                         }
                     }
-                } else {
+                }
+                else
+                {
                     //ToDo: check if this recurse in subfolders actually works
-                    if (!deleteAllFiles(p.path().string().c_str(), extension , extensionToSkip)) {
+                    if (!deleteAllFiles(ResourcePath{ p.path() }, extension , extensionToSkip))
+                    {
                         NOP();
                     }
                 }
-            } catch ([[maybe_unused]] const std::exception &ex) {
+            }
+            catch ([[maybe_unused]] const std::exception &ex)
+            {
                 NOP();
             }
         }
@@ -452,30 +385,41 @@ bool deleteAllFiles(const char* filePath, const char* extension, const char* ext
     return ret;
 }
 
-bool getAllFilesInDirectory(const char* filePath, FileList& listInOut, const char* extensionNoDot) {
+bool getAllFilesInDirectory( const ResourcePath& filePath, FileList& listInOut, const char* extensionNoDot )
+{
     bool ret = false;
-    if (pathExists(filePath)) {
-        const std::filesystem::path pathIn(filePath);
-        for (const auto& p : std::filesystem::directory_iterator(pathIn)) {
-            try {
-                if (is_regular_file(p.status())) {
+    if (pathExists(filePath))
+    {
+        for (const auto& p : std::filesystem::directory_iterator( filePath.fileSystemPath() ))
+        {
+            try
+            {
+                if (is_regular_file(p.status()))
+                {
                     const auto extensionString = p.path().extension().string().substr( 1 );
 
-                    if (!extensionNoDot || Util::CompareIgnoreCase(extensionString.c_str(), extensionNoDot)) {
+                    if (!extensionNoDot || Util::CompareIgnoreCase(extensionString.c_str(), extensionNoDot))
+                    {
                         const U64 timeOutSec = std::chrono::duration_cast<std::chrono::seconds>(p.last_write_time().time_since_epoch()).count();
 
-                        listInOut.emplace_back(FileEntry{
-                            ResourcePath{p.path().filename().string().c_str()},
-                            timeOutSec
+                        listInOut.emplace_back(FileEntry
+                        {
+                            ._name = ResourcePath{p.path().filename()},
+                            ._lastWriteTime = timeOutSec
                         });
                         ret = true;
                     }
-                } else {
-                    if (!getAllFilesInDirectory(p.path().string().c_str(), listInOut, extensionNoDot)) {
+                }
+                else
+                {
+                    if (!getAllFilesInDirectory(ResourcePath{ p.path() }, listInOut, extensionNoDot))
+                    {
                         NOP();
                     }
                 }
-            } catch ([[maybe_unused]] const std::exception& ex) {
+            }
+            catch ([[maybe_unused]] const std::exception& ex)
+            {
                 NOP();
             }
         }
@@ -484,11 +428,8 @@ bool getAllFilesInDirectory(const char* filePath, FileList& listInOut, const cha
     return ret;
 }
 
-bool getAllFilesInDirectory(const ResourcePath& filePath, FileList& listInOut, const char* extension) {
-    return getAllFilesInDirectory(filePath.c_str(), listInOut, extension);
-}
-
-std::string extractFilePathAndName(char* argv0) {
+string extractFilePathAndName(char* argv0)
+{
     auto currentPath = std::filesystem::current_path();
     currentPath.append(argv0);
 

@@ -48,22 +48,17 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
                               const WindowType initialType,
                               const WindowDescriptor& descriptor)
 {
+    _parentWindow = descriptor.parentWindow;
+
     const bool vsync = descriptor.flags & to_base(WindowDescriptor::Flags::VSYNC);
-    if (vsync) {
+
+    if (vsync)
+    {
         _flags |= to_base( WindowFlags::VSYNC );
     }
     else
     {
         _flags &= ~to_base( WindowFlags::VSYNC );
-    }
-
-    if( descriptor.flags & to_base( WindowDescriptor::Flags::SHARE_CONTEXT ) )
-    {
-        _flags &= ~to_base( WindowFlags::OWNS_RENDER_CONTEXT );
-    }
-    else
-    {
-        _flags |= to_base( WindowFlags::OWNS_RENDER_CONTEXT );
     }
 
     _previousType = _type = initialType;
@@ -72,21 +67,26 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
 
     _initialDisplay = descriptor.targetDisplay;
 
-    if (position.x == -1) {
+    if (position.x == -1)
+    {
         position.x = SDL_WINDOWPOS_CENTERED_DISPLAY(descriptor.targetDisplay);
     }
-    if (position.y == -1) {
+    if (position.y == -1)
+    {
         position.y = SDL_WINDOWPOS_CENTERED_DISPLAY(descriptor.targetDisplay);
     }
 
-    _sdlWindow = SDL_CreateWindow(descriptor.title.c_str(),
+    _title = descriptor.title;
+
+    _sdlWindow = SDL_CreateWindow(_title.c_str(),
                                   position.x,
                                   position.y,
                                   descriptor.dimensions.width,
                                   descriptor.dimensions.height,
                                   windowFlags);
     // Check if we have a valid window
-    if (_sdlWindow == nullptr) {
+    if (_sdlWindow == nullptr)
+    {
         Console::errorfn(LOCALE_STR("ERROR_GFX_DEVICE"),
                          Util::StringFormat(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError()).c_str());
         Console::printfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
@@ -95,7 +95,7 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
 
     _windowID = SDL_GetWindowID(_sdlWindow);
     _drawableSize = descriptor.dimensions;
-
+    
     return ErrorCode::NO_ERR;
 }
 

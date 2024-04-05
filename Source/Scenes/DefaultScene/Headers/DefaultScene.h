@@ -38,7 +38,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 BEGIN_SCENE(DefaultScene)
-    explicit DefaultScene(PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name);
+    explicit DefaultScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry);
 
     bool load() override;
     void postLoadMainThread() override;

@@ -11,7 +11,7 @@
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/File/Headers/FileManagement.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 
 #include "Rendering/Camera/Headers/Camera.h"
@@ -31,8 +31,8 @@ namespace Divide
         constexpr F32 g_reflectionPlaneCorrectionHeight = -1.0f;
     }
 
-    WaterPlane::WaterPlane( ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name )
-        : SceneNode( parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_WATER, to_base( ComponentType::TRANSFORM ) )
+    WaterPlane::WaterPlane( ResourceCache* parentCache, size_t descriptorHash, const std::string_view name )
+        : SceneNode( parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_WATER, to_base( ComponentType::TRANSFORM ) )
     {
         _fogStartEnd = { 648.f, 1300.f };
         _noiseTile = { 15.0f, 15.0f };
@@ -174,7 +174,7 @@ namespace Divide
 
         _reflectionCam = Camera::CreateCamera( resourceName() + "_reflectionCam", Camera::Mode::STATIC );
 
-        const Str<256>& name = resourceName();
+        const auto name = resourceName();
 
         ResourceDescriptor waterPlane( "waterPlane" );
         waterPlane.flag( true );  // No default material
@@ -193,8 +193,8 @@ namespace Divide
         std::atomic_uint loadTasks = 0u;
 
         ResourceDescriptor waterTexture( "waterTexture_" + name );
-        waterTexture.assetName( ResourcePath{ "terrain_water_NM_old.jpg" } );
-        waterTexture.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation );
+        waterTexture.assetName( "terrain_water_NM_old.jpg" );
+        waterTexture.assetLocation( Paths::g_imagesLocation );
         waterTexture.propertyDescriptor( texDescriptor );
         waterTexture.waitForReady( false );
 

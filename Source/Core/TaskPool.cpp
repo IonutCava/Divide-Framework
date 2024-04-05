@@ -51,7 +51,7 @@ namespace Divide
         const string threadName = _threadNamePrefix + Util::to_string( threadIndex );
 
         Profiler::OnThreadStart( threadName );
-        SetThreadName( threadName.c_str() );
+        SetThreadName( threadName );
         if ( _threadCreateCbk )
         {
             _threadCreateCbk( threadID );

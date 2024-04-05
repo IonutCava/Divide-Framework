@@ -36,7 +36,7 @@ void UpdateListener::handleFileAction([[maybe_unused]] const FW::WatchID watchid
         eastl::any_of(cbegin(_ignoredExtensions),
                       cend(_ignoredExtensions),
                       [filename](const Str<8>& extension) {
-                          return hasExtension(filename.c_str(), extension.c_str());
+                          return hasExtension(filename, extension);
                       }))
     {
         return;

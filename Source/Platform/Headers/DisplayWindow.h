@@ -89,7 +89,6 @@ enum class WindowFlags : U16 {
     MAXIMIZED = toBit(5),
     HIDDEN = toBit(6),
     DECORATED = toBit(7),
-    OWNS_RENDER_CONTEXT = toBit(8), //BAD
     COUNT = 8
 };
 
@@ -106,8 +105,10 @@ class DisplayWindow final : public GUIDWrapper,
                             public SDLEventListener {
 public:
 
-    struct UserData {
+    struct UserData
+    {
         SDL_GLContext _glContext{ nullptr };
+        bool _ownsContext{ false };
     };
 
     struct WindowEventArgs {
@@ -159,12 +160,10 @@ public:
 
     [[nodiscard]] inline bool fullscreen() const noexcept;
 
-    [[nodiscard]] inline WindowType type() const noexcept;
     inline void changeType(WindowType newType);
     inline void changeToPreviousType();
 
                          void opacity(U8 opacity) noexcept;
-    [[nodiscard]] inline U8   opacity() const noexcept;
     [[nodiscard]] inline U8   prevOpacity() const noexcept;
 
     /// width and height get adjusted to the closest supported value
@@ -204,8 +203,6 @@ public:
     [[nodiscard]] inline const Rect<I32>& renderingViewport() const noexcept;
     void renderingViewport(const Rect<I32>& viewport) noexcept;
 
-    [[nodiscard]] inline UserData* userData() const noexcept;
-
     [[nodiscard]] bool grabState() const noexcept;
     void grabState(bool state) const noexcept;
 
@@ -217,6 +214,10 @@ public:
     /// The display on which this window was initially created on
     PROPERTY_R(U32, initialDisplay, 0u);
     PROPERTY_R(U32, flags, 0u);
+    PROPERTY_R(WindowType, type, WindowType::COUNT);
+    PROPERTY_R(U8, opacity, U8_MAX);
+    PROPERTY_RW(UserData, userData);
+    POINTER_R(DisplayWindow, parentWindow, nullptr);
 
 private:
     void restore() noexcept;
@@ -229,7 +230,7 @@ private:
     using EventListeners = vector<DELEGATE<bool, WindowEventArgs>>;
     std::array<EventListeners, to_base(WindowEvent::COUNT)> _eventListeners;
     DELEGATE<void> _destroyCbk;
-
+    Str<256>  _title{Config::DEFAULT_SCENE_NAME};
     FColour4  _clearColour;
     Rect<I32> _renderingViewport;
 
@@ -239,12 +240,8 @@ private:
 
     WindowManager& _parent;
     SDL_Window* _sdlWindow = nullptr;
-    UserData* _userData = nullptr;
 
-    /// The current rendering window type
-    WindowType _type = WindowType::COUNT;
     WindowType _previousType = WindowType::COUNT;
-    U8 _opacity = 255u;
     U8 _prevOpacity = 255u;
     
     std::array<GFX::CommandBuffer, Config::MAX_FRAMES_IN_FLIGHT> _commandBuffers;

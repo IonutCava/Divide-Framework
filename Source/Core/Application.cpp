@@ -50,7 +50,7 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     {
         for (I32 i = 1; i < argc; ++i)
         {
-            Console::printfn("%s", argv[i]);
+            Console::printfn("{}", argv[i]);
         }
     }
     else
@@ -69,7 +69,7 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     // failed to start, so cleanup
     if (err != ErrorCode::NO_ERR)
     {
-        stop(StepResult::ERROR);
+        stop( AppStepResult::ERROR );
     }
     else
     {
@@ -125,7 +125,7 @@ ErrorCode Application::setRenderingAPI( const RenderAPI api )
                                 config.runtime.targetDisplay );
 }
 
-void Application::stop( const StepResult stepResult )
+void Application::stop( const AppStepResult stepResult )
 {
     Console::printfn( LOCALE_STR( "STOP_APPLICATION" ) );
 
@@ -140,7 +140,7 @@ void Application::stop( const StepResult stepResult )
     MemoryManager::DELETE(_kernel);
     Attorney::DisplayManagerApplication::Reset();
 
-    if ( stepResult == StepResult::RESTART_CLEAR_CACHE || stepResult == StepResult::STOP_CLEAR_CACHE )
+    if ( stepResult == AppStepResult::RESTART_CLEAR_CACHE || stepResult == AppStepResult::STOP_CLEAR_CACHE )
     {
         if ( !deleteAllFiles( Paths::g_cacheLocation, nullptr, "keep") )
         {
@@ -160,16 +160,15 @@ void Application::stop( const StepResult stepResult )
             Console::errorfn(LOCALE_STR("ERROR_MEMORY_NEW_DELETE_MISMATCH"), to_I32(std::ceil(sizeLeaked / 1024.0f)));
         }
 
-        std::ofstream memLog;
-        memLog.open((Paths::g_logPath + MEM_LOG_FILE).str());
+        std::ofstream memLog{ (Paths::g_logPath / MEM_LOG_FILE).string() };
         memLog << allocLog;
         memLog.close();
     }
 }
 
-Application::StepResult Application::step()
+AppStepResult Application::step()
 {
-    StepResult result = StepResult::OK;
+    AppStepResult result = AppStepResult::OK;
 
     if ( mainLoopActive() )
     {
@@ -180,15 +179,15 @@ Application::StepResult Application::step()
     {
         if ( RestartRequested() )
         {
-            result = _clearCacheOnExit ? StepResult::RESTART_CLEAR_CACHE : StepResult::RESTART;
+            result = _clearCacheOnExit ? AppStepResult::RESTART_CLEAR_CACHE : AppStepResult::RESTART;
         }
         else if ( ShutdownRequested() )
         {
-            result = _clearCacheOnExit ? StepResult::STOP_CLEAR_CACHE : StepResult::STOP;
+            result = _clearCacheOnExit ? AppStepResult::STOP_CLEAR_CACHE : AppStepResult::STOP;
         }
         else
         {
-            result = StepResult::ERROR;
+            result = AppStepResult::ERROR;
         }
 
         _clearCacheOnExit = false;

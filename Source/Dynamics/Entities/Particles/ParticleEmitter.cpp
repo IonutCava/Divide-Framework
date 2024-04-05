@@ -33,19 +33,21 @@ namespace {
     constexpr U64 g_updateInterval = Time::MillisecondsToMicroseconds(33);
 }
 
-ParticleEmitter::ParticleEmitter(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name)
+ParticleEmitter::ParticleEmitter(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
     : SceneNode(parentCache,
                 descriptorHash,
                 name,
-                ResourcePath(name),
+                name,
                 {},
                 SceneNodeType::TYPE_PARTICLE_EMITTER,
-                to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS) | to_base(ComponentType::RENDERING)),
-      _context(context)
+                to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS) | to_base(ComponentType::RENDERING))
+    , _context(context)
 {
-    for (U8 i = 0u; i < s_MaxPlayerBuffers; ++i) {
-        for (U8 j = 0u; j < to_base(RenderStage::COUNT); ++j) {
-            _particleGPUBuffers[i][j] = _context.newGVD(g_particleBufferSizeFactor, true, Util::StringFormat("%s_buffer_%d_%d", name.c_str(), i,j).c_str());
+    for (U8 i = 0u; i < s_MaxPlayerBuffers; ++i)
+    {
+        for (U8 j = 0u; j < to_base(RenderStage::COUNT); ++j)
+        {
+            _particleGPUBuffers[i][j] = _context.newGVD(g_particleBufferSizeFactor, true, Util::StringFormat("{}_buffer_{}_{}", name, i,j).c_str());
         }
     }
 

@@ -2,6 +2,8 @@
 
 #include "Headers/StringHelper.h"
 
+#include "Platform/File/Headers/FileManagement.h"
+
 namespace Divide::Util {
 
 bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg, const char* arg_prefix)
@@ -24,7 +26,7 @@ bool ExtractStartupProject( int argc, char** argv, string& projectOut, const cha
 
     for(int i = 0; i < argc; ++i)
     {
-        if (auto m = ctre::match<"(--project\s*=\s*)([0-9a-zA-Z]*)">(argv[i]))
+        if (auto m = ctre::match<Paths::g_useProjectPattern>(argv[i]))
         {
             projectOut = m.get<2>();
             return true;

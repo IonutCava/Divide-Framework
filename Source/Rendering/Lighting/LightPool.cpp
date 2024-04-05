@@ -5,7 +5,7 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -140,8 +140,8 @@ namespace Divide
         const TextureDescriptor iconDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
 
         ResourceDescriptor iconImage( "LightIconTexture" );
-        iconImage.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation );
-        iconImage.assetName( ResourcePath( "lightIcons.png" ) );
+        iconImage.assetLocation( Paths::g_imagesLocation );
+        iconImage.assetName( "lightIcons.png" );
         iconImage.propertyDescriptor( iconDescriptor );
         iconImage.waitForReady( false );
 

@@ -4,7 +4,7 @@
 #include "Headers/Terrain.h"
 #include "Quadtree/Headers/QuadtreeNode.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Environment/Vegetation/Headers/Vegetation.h"
 

@@ -25,22 +25,24 @@ namespace Divide {
     }
 
     bool TerrainDescriptor::loadFromXML(const boost::property_tree::ptree& pt, const string& name) {
-        const string terrainDescriptor = pt.get<string>("descriptor", "");
-        if (terrainDescriptor.empty()) {
+        const ResourcePath terrainDescriptorPath = ResourcePath{ pt.get<string>("descriptor", "") };
+
+        if ( terrainDescriptorPath.empty())
+        {
             return false;
         }
 
         addVariable("terrainName", name);
-        addVariable("descriptor", terrainDescriptor);
+        addVariable("descriptor", terrainDescriptorPath.string());
         addVariable("waterCaustics", pt.get<string>("waterCaustics"));
         addVariable("underwaterAlbedoTexture", pt.get<string>("underwaterAlbedoTexture", "sandfloor009a.jpg"));
         addVariable("underwaterDetailTexture", pt.get<string>("underwaterDetailTexture", "terrain_detail_NM.png"));
         addVariable("tileNoiseTexture", pt.get<string>("tileNoiseTexture", "bruit_gaussien_2.jpg"));
         addVariable("underwaterTileScale", pt.get<F32>("underwaterTileScale", 1.0f));
-        string alphaMapDescriptor;
+        ResourcePath alphaMapDescriptor;
         {
             boost::property_tree::ptree descTree = {};
-            XML::readXML((Paths::g_assetsLocation + Paths::g_heightmapLocation + terrainDescriptor.c_str() + "/descriptor.xml").c_str(), descTree);
+            XML::readXML(Paths::g_heightmapLocation / terrainDescriptorPath / "descriptor.xml", descTree);
 
             addVariable("heightfield", descTree.get<string>("heightfield", ""));
             addVariable("heightfieldTex", descTree.get<string>("heightfieldTex", ""));
@@ -52,28 +54,27 @@ namespace Divide {
 
             U8 prevSize = 8u;
             for (U8 i = 1; i < ringCount(); ++i) {
-                _ringTileCount[i] = (descTree.get<U8>(Util::StringFormat("tileSettings.<xmlattr>.ring%d", i).c_str(), prevSize));
+                _ringTileCount[i] = (descTree.get<U8>(Util::StringFormat("tileSettings.<xmlattr>.ring{}", i).c_str(), prevSize));
                 prevSize = _ringTileCount[i];
             }
             if (dimensions().minComponent() < g_minTerrainSideLength) {
                 return false;
             }
             altitudeRange(vec2<F32>(descTree.get<F32>("altitudeRange.<xmlattr>.min", 0.0f), descTree.get<F32>("altitudeRange.<xmlattr>.max", 255.0f)));
-            addVariable("vegetationTextureLocation", descTree.get<string>("vegetation.vegetationTextureLocation", Paths::g_imagesLocation.c_str()));
             addVariable("grassMap", descTree.get<string>("vegetation.grassMap"));
             addVariable("treeMap", descTree.get<string>("vegetation.treeMap"));
 
             for (I32 j = 1; j < 5; ++j) {
-                addVariable(Util::StringFormat("grassBillboard%d", j), descTree.get<string>(Util::StringFormat("vegetation.grassBillboard%d", j), ""));
-                addVariable(Util::StringFormat("grassScale%d", j), descTree.get<F32>(Util::StringFormat("vegetation.grassBillboard%d.<xmlattr>.scale", j), 1.0f));
+                addVariable(Util::StringFormat("grassBillboard{}", j), descTree.get<string>(Util::StringFormat("vegetation.grassBillboard{}", j), ""));
+                addVariable(Util::StringFormat("grassScale{}", j), descTree.get<F32>(Util::StringFormat("vegetation.grassBillboard{}.<xmlattr>.scale", j), 1.0f));
 
-                addVariable(Util::StringFormat("treeMesh%d", j), descTree.get<string>(Util::StringFormat("vegetation.treeMesh%d", j), ""));
-                addVariable(Util::StringFormat("treeScale%d", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh%d.<xmlattr>.scale", j), 1.0f));
-                addVariable(Util::StringFormat("treeRotationX%d", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh%d.<xmlattr>.rotate_x", j), 0.0f));
-                addVariable(Util::StringFormat("treeRotationY%d", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh%d.<xmlattr>.rotate_y", j), 0.0f));
-                addVariable(Util::StringFormat("treeRotationZ%d", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh%d.<xmlattr>.rotate_z", j), 0.0f));
+                addVariable(Util::StringFormat("treeMesh{}", j), descTree.get<string>(Util::StringFormat("vegetation.treeMesh{}", j), ""));
+                addVariable(Util::StringFormat("treeScale{}", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh{}.<xmlattr>.scale", j), 1.0f));
+                addVariable(Util::StringFormat("treeRotationX{}", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh{}.<xmlattr>.rotate_x", j), 0.0f));
+                addVariable(Util::StringFormat("treeRotationY{}", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh{}.<xmlattr>.rotate_y", j), 0.0f));
+                addVariable(Util::StringFormat("treeRotationZ{}", j), descTree.get<F32>(Util::StringFormat("vegetation.treeMesh{}.<xmlattr>.rotate_z", j), 0.0f));
             }
-            alphaMapDescriptor = descTree.get<string>("alphaMaps.<xmlattr>.file", "");
+            alphaMapDescriptor = ResourcePath{ descTree.get<string>("alphaMaps.<xmlattr>.file", "") };
             for (boost::property_tree::ptree::iterator itLayerData= std::begin(descTree.get_child("alphaMaps"));
                 itLayerData != std::end(descTree.get_child("alphaMaps"));
                 ++itLayerData)
@@ -96,13 +97,14 @@ namespace Divide {
             }
         }
 
-        if (alphaMapDescriptor.empty()) {
+        if (alphaMapDescriptor.empty())
+        {
             return false;
         }
 
         {
             boost::property_tree::ptree alphaTree = {};
-            XML::readXML((Paths::g_assetsLocation + Paths::g_heightmapLocation + terrainDescriptor + "/" + alphaMapDescriptor).str(), alphaTree);
+            XML::readXML(Paths::g_heightmapLocation / terrainDescriptorPath / alphaMapDescriptor, alphaTree);
 
             const U8 numLayers = alphaTree.get<U8>("AlphaData.nImages");
             const U8 numImages = alphaTree.get<U8>("AlphaData.nLayers");

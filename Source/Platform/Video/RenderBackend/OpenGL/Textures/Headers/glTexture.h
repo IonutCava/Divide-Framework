@@ -44,8 +44,8 @@ class glTexture final : public Texture {
    public:
     explicit glTexture(GFXDevice& context,
                        size_t descriptorHash,
-                       const Str<256>& name,
-                       const ResourcePath& resourceName,
+                       const std::string_view name,
+                       const std::string_view resourceName,
                        const ResourcePath& resourceLocation,
                        const TextureDescriptor& texDescriptor,
                        ResourceCache& parentCache);

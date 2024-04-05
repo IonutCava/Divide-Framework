@@ -63,8 +63,8 @@ class glShaderProgram final : public ShaderProgram {
    public:
     explicit glShaderProgram(GFXDevice& context,
                              size_t descriptorHash,
-                             const Str<256>& name,
-                             const Str<256>& assetName,
+                             const std::string_view name,
+                             std::string_view assetName,
                              const ResourcePath& assetLocation,
                              const ShaderProgramDescriptor& descriptor,
                              ResourceCache& parentCache);

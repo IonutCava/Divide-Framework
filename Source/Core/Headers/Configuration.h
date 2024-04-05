@@ -48,12 +48,14 @@ struct Configuration final : XML::IXMLSerializable {
             bool assertOnRenderAPIError = false;
             bool useExtensions = true;
         } renderer = {};
-        bool useGeometryCache = true;
-        bool useVegetationCache = true;
-        bool useShaderCache = true;
-        bool useTextureDDSCache = true;
-        bool enableTreeInstances = true;
-        bool enableGrassInstances = true;
+        struct Cache
+        {
+            bool enabled = true;
+            bool geometry = true;
+            bool vegetation = true;
+            bool shaders = true;
+            bool textureDDS = true;
+        } cache = {};
         struct RenderFilter
         {
             bool primitives = true;
@@ -64,12 +66,12 @@ struct Configuration final : XML::IXMLSerializable {
             bool sky = true;
             bool particles = true;
             bool decals = true;
+            bool treeInstances = true;
+            bool grassInstances = true;
         } renderFilter = {};
     } debug = {};
     
     string language = "enGB";
-    string assetsLocation = "Assets";
-    string scenesLocation = "Scenes";
     string serverAddress = "127.0.0.1";
     string startupProject = "Default";
     struct Runtime
@@ -238,8 +240,8 @@ struct Configuration final : XML::IXMLSerializable {
     void save();
 
 protected:
-    bool fromXML(const char* xmlFile) override;
-    bool toXML(const char* xmlFile) const override;
+    bool fromXML(const ResourcePath& xmlFilePath, const char* fileName) override;
+    bool toXML(const ResourcePath& xmlFilePath, const char* fileName) const override;
 };
 }; //namespace Divide
 

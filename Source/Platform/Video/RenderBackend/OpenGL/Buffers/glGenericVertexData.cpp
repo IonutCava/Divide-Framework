@@ -15,7 +15,7 @@ using namespace gl;
 namespace Divide
 {
 
-    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const Str<256>& name )
+    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const std::string_view name )
         : GenericVertexData( context, ringBufferLength, renderIndirect, name )
     {
     }
@@ -126,7 +126,7 @@ namespace Divide
             // At this point, we need an actual index buffer
             impl->_bufferSize = indices.count * elementSize;
             GLUtil::createBuffer( impl->_handle,
-                                  _name.empty() ? nullptr : Util::StringFormat( "%s_index_%d", _name.c_str(), indices.id ).c_str() );
+                                  _name.empty() ? nullptr : Util::StringFormat( "{}_index_{}", _name.c_str(), indices.id ).c_str() );
         }
 
         const size_t range = indices.count * elementSize;

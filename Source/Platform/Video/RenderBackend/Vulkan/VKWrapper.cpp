@@ -116,7 +116,7 @@ namespace
                 }
             }
         }
-        const string outputError = Util::StringFormat("[ %s ] %s : %s\n",
+        const string outputError = Util::StringFormat("[ {} ] {} : {}\n",
                                                       to_string_message_severity( messageSeverity ),
                                                       to_string_message_type( messageType ).c_str(),
                                                       pCallbackData->pMessage );
@@ -169,7 +169,7 @@ namespace Divide
 
         FORCE_INLINE ResourcePath PipelineCacheLocation()
         {
-            return Paths::g_cacheLocation + Paths::Shaders::g_cacheLocation + Paths::g_buildTypeLocation + Paths::Shaders::g_cacheLocationVK;
+            return Paths::Shaders::g_cacheLocation / Paths::g_buildTypeLocation / Paths::Shaders::g_cacheLocationVK;
         }
 
         [[nodiscard]] FORCE_INLINE bool IsTriangles( const PrimitiveTopology topology )
@@ -972,7 +972,7 @@ namespace Divide
     
                 for ( VkPhysicalDeviceToolPropertiesEXT& tool : tools )
                 {
-                    Console::printfn( "\t%s %s\n", tool.name, tool.version );
+                    Console::printfn( "\t{} {}\n", tool.name, tool.version );
                 }
             }
         }
@@ -1088,7 +1088,7 @@ namespace Divide
         pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
         vector<Byte> pipeline_data;
-        const FileError errCache = readFile( PipelineCacheLocation(), PipelineCacheFileName, pipeline_data, FileType::BINARY );
+        const FileError errCache = readFile( PipelineCacheLocation(), PipelineCacheFileName.string(), pipeline_data, FileType::BINARY );
         if ( errCache == FileError::NONE )
         {
             pipelineCacheCreateInfo.initialDataSize = pipeline_data.size();
@@ -1204,7 +1204,7 @@ namespace Divide
                 vector<Byte> data( size );
                 VK_CHECK( vkGetPipelineCacheData( _device->getVKDevice(), _pipelineCache, &size, data.data() ) );
                 /* Write pipeline cache data to a file in binary format */
-                const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName, data.data(), size, FileType::BINARY );
+                const FileError err = writeFile( PipelineCacheLocation(), PipelineCacheFileName.string(), data.data(), size, FileType::BINARY );
                 if ( err != FileError::NONE )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_VK_PIPELINE_CACHE_SAVE" ), Names::fileError[to_base( err )] );
@@ -1940,7 +1940,7 @@ namespace Divide
                 pipelineBuilder._rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
                 compiledPipeline._vkPipelineWireframe = pipelineBuilder.build_pipeline( _device->getVKDevice(), _pipelineCache, true );
 
-                Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineWireframe, VK_OBJECT_TYPE_PIPELINE, Util::StringFormat("%s_wireframe", program->resourceName().c_str()).c_str());
+                Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineWireframe, VK_OBJECT_TYPE_PIPELINE, Util::StringFormat("{}_wireframe", program->resourceName().c_str()).c_str());
             }
 
             Debug::SetObjectName( _device->getVKDevice(), (uint64_t)compiledPipeline._vkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, program->resourceName().c_str() );
@@ -3165,17 +3165,17 @@ namespace Divide
         return eastl::make_unique<vkRenderTarget>( _context, descriptor );
     }
 
-    GenericVertexData_ptr VK_API::newGVD( U32 ringBufferLength, bool renderIndirect, const Str<256>& name ) const
+    GenericVertexData_ptr VK_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
     {
-        return std::make_shared<vkGenericVertexData>( _context, ringBufferLength, renderIndirect, name.c_str() );
+        return std::make_shared<vkGenericVertexData>( _context, ringBufferLength, renderIndirect, name );
     }
 
-    Texture_ptr VK_API::newTexture( size_t descriptorHash, const Str<256>& resourceName, const ResourcePath& assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
+    Texture_ptr VK_API::newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
     {
         return std::make_shared<vkTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
     }
 
-    ShaderProgram_ptr VK_API::newShaderProgram( size_t descriptorHash, const Str<256>& resourceName, const Str<256>& assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
+    ShaderProgram_ptr VK_API::newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
     {
         return std::make_shared<vkShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
     }

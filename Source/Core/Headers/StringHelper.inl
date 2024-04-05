@@ -179,9 +179,9 @@ namespace Divide
                                           const std::string_view replace,
                                           const bool recursive )
         {
-            auto temp = subject.str();
+            string temp = subject.string();
             const bool ret = ReplaceStringInPlace( temp, search, replace, recursive );
-            subject = ResourcePath( temp );
+            subject = ResourcePath{ temp };
             return ret;
         }
 
@@ -196,20 +196,19 @@ namespace Divide
             return ret;
         }
 
-        template<typename T_str> requires valid_replace_string<T_str>
-        T_str MakeXMLSafe( const std::string_view subject )
+        inline string MakeXMLSafe( const std::string_view subject )
         {
-            constexpr std::array<std::string_view, 10> InvalidXMLStrings = {
-                       " ", "[", "]", "...", "..", ".", "/", "'\'", "<", ">"
+            constexpr std::array<std::string_view, 10> InvalidXMLStrings =
+            {
+                " ", "[", "]", "...", "..", ".", "/", "'\'", "<", ">"
             };
-            T_str ret{ subject };
-            ReplaceStringInPlace( ret, InvalidXMLStrings, "__" );
-            return ret;
+
+            return ReplaceString( subject, InvalidXMLStrings, "__" );
         }
 
         FORCE_INLINE ResourcePath MakeXMLSafe( const ResourcePath& subject )
         {
-            return ResourcePath{ MakeXMLSafe( subject.str() ) };
+            return ResourcePath{ MakeXMLSafe( subject.string() ) };
         }
 
         inline bool BeginsWith( const std::string_view input, const std::string_view compare, bool ignoreWhitespace )
@@ -245,85 +244,19 @@ namespace Divide
             return input.substr( 0, inputLength - count );
         }
 
-
         inline bool CompareIgnoreCase( const char* a, const char* b ) noexcept
         {
-            assert( a != nullptr && b != nullptr );
+            if (a == nullptr || b == nullptr)
+            {
+                return false;
+            }
+
             return strcasecmp( a, b ) == 0;
         }
 
-        inline bool CompareIgnoreCase( const char* a, const std::string_view b ) noexcept
+        inline bool CompareIgnoreCase( const std::string_view a, const std::string_view b ) noexcept
         {
-            if ( a != nullptr && !b.empty() )
-            {
-                return strncasecmp( a, b.data(), b.length() ) == 0;
-            }
-            if ( b.empty() )
-            {
-                return IsEmptyOrNull( a );
-            }
-
-            return false;
-        }
-
-        template<typename T_strA>  requires valid_replace_string<T_strA>
-        bool CompareIgnoreCase( const T_strA& a, const char* b ) noexcept
-        {
-            if ( b != nullptr && !a.empty() )
-            {
-                return CompareIgnoreCase( a.c_str(), b );
-            }
-            if ( a.empty() )
-            {
-                return IsEmptyOrNull( b );
-            }
-            return false;
-        }
-
-        template<typename T_strA>  requires valid_replace_string<T_strA>
-        bool CompareIgnoreCase( const T_strA& a, const std::string_view b ) noexcept
-        {
-            return CompareIgnoreCase( a.c_str(), b );
-        }
-
-        template<>
-        inline bool CompareIgnoreCase( const string& a, const string& b ) noexcept
-        {
-            if ( a.length() == b.length() )
-            {
-                return std::equal( std::cbegin( b ),
-                                   std::cend( b ),
-                                   std::cbegin( a ),
-                                   []( const unsigned char aa, const unsigned char bb ) noexcept
-                                   {
-                                       return aa == bb || std::tolower( aa ) == std::tolower( bb );
-                                   } );
-            }
-
-            return false;
-        }
-
-        template<>
-        inline bool CompareIgnoreCase( const string_fast& a, const string_fast& b ) noexcept
-        {
-            if ( a.length() == b.length() )
-            {
-                return std::equal( std::cbegin( b ),
-                                   std::cend( b ),
-                                   std::cbegin( a ),
-                                   []( const unsigned char aa, const unsigned char bb ) noexcept
-                                   {
-                                       return aa == bb || std::tolower( aa ) == std::tolower( bb );
-                                   } );
-            }
-
-            return false;
-        }
-
-        template<typename T_strA, typename T_strB>  requires valid_replace_string<T_strA> && valid_replace_string<T_strB>
-        bool CompareIgnoreCase( const T_strA& a, const T_strB& b ) noexcept
-        {
-            return CompareIgnoreCase( a.c_str(), b.c_str() );
+            return std::ranges::equal( a, b,[]( unsigned char a, unsigned char b) { return tolower(a) == tolower(b); } );
         }
 
         template<typename T_str> requires is_string<T_str>
@@ -378,6 +311,19 @@ namespace Divide
         {
             T_str temp( s );
             return Trim( temp );
+        }
+        
+        template<typename T_str> requires is_string<T_str>
+        bool GetLine( istringstream& input, T_str& line, const char delimiter )
+        {
+            if (std::getline(input, line, delimiter))
+            {
+                std::erase(line, '\r');
+                std::erase(line, '\n');
+                return true;
+            }
+
+            return false;
         }
 
         template<typename T>

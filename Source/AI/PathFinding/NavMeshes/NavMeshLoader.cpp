@@ -3,7 +3,7 @@
 #include "Headers/NavMeshLoader.h"
 
 #include "Core/Headers/ByteBuffer.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Water/Headers/Water.h"
@@ -92,11 +92,12 @@ I32 ParseFace(char* row, I32* data, const I32 n, const I32 vcnt) noexcept {
     return j;
 }
 
-bool LoadMeshFile(NavModelData& outData, const char* filepath, const char* fileName) {
+bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const char* fileName) {
     STUBBED("ToDo: Rework load/save to properly use a ByteBuffer instead of this const char* hackery. -Ionut");
 
     ByteBuffer tempBuffer;
-    if (!tempBuffer.loadFromFile(filepath, fileName)) {
+    if (!tempBuffer.loadFromFile(filePath, fileName))
+    {
         return false;
     }
 
@@ -179,9 +180,11 @@ bool LoadMeshFile(NavModelData& outData, const char* filepath, const char* fileN
     return true;
 }
 
-bool SaveMeshFile(const NavModelData& inData, const char* filepath, const char* filename) {
+bool SaveMeshFile(const NavModelData& inData, const ResourcePath& filePath, const char* filename) {
     if (!inData.getVertCount() || !inData.getTriCount())
+    {
         return false;
+    }
 
     ByteBuffer tempBuffer;
     tempBuffer << BYTE_BUFFER_VERSION;
@@ -197,7 +200,7 @@ bool SaveMeshFile(const NavModelData& inData, const char* filepath, const char* 
         tempBuffer << "f " << *tp + 1 << " " << *(tp + 1) + 1 << " " << *(tp + 2) + 1 << "\n";
     }
 
-    return tempBuffer.dumpToFile(filepath, filename);
+    return tempBuffer.dumpToFile(filePath, filename);
 }
 
 NavModelData MergeModels(NavModelData& a,
@@ -260,7 +263,7 @@ NavModelData MergeModels(NavModelData& a,
         }
     }
 
-    mergedData.name(a.name() + "+" + b.name());
+    mergedData.name(Util::StringFormat("{}+{}", a.name(), b.name() ));
     return mergedData;
 }
 

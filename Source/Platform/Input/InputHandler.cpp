@@ -13,7 +13,7 @@ InputHandler::InputHandler(InputAggregatorInterface& eventListener, Application&
       _eventListener(eventListener)
 {
     //Note: We only pass input events to a single listeners. Listeners should forward events where needed instead of doing a loop
-    //over all, because where and how we pass input events is very context sensitive: does the SceneManager consume the input or does it pass
+    //over all, because where and how we pass input events is very context sensitive: does the ProjectManager consume the input or does it pass
     //it along to the scene? Does the editor consume the input or does it pass if along to the gizmo? Should both editor and gizmo consume an input? etc
 }
 

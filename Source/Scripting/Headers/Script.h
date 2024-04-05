@@ -51,8 +51,8 @@ public:
     virtual ~Script() override;
 
     static void idle();
-    static bool OnStartup(PlatformContext& context);
-    static bool OnShutdown(PlatformContext& context);
+    static bool OnStartup();
+    static bool OnShutdown();
 
     template<typename T>
     void addGlobal(const T& var, const char* name, bool asConst, bool overwrite);
@@ -82,7 +82,7 @@ protected:
     //ToDo: Move this somewhere else to avoid having the include in this file -Ionut
     chaiscript::ChaiScript_uptr _script;
     string  _scriptSource;
-    FileAndPath _scriptFile;
+    FileNameAndPath _scriptFile;
     FileType    _scriptFileType;
     vector<ResourcePath> _usedAtoms;
 

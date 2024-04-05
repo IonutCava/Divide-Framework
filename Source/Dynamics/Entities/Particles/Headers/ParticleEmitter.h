@@ -47,7 +47,7 @@ FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 /// A Particle emitter scene node. Nothing smarter to say, sorry :"> - Ionut
 class ParticleEmitter final : public SceneNode {
    public:
-    explicit ParticleEmitter(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name);
+    explicit ParticleEmitter(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
     ~ParticleEmitter() override;
 
     void prepareRender(SceneGraphNode* sgn,

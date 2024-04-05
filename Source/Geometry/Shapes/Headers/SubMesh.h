@@ -80,7 +80,7 @@ class SubMesh final : public Object3D {
     explicit SubMesh(GFXDevice& context,
                      ResourceCache* parentCache,
                      size_t descriptorHash,
-                     const Str<256>& name);
+                     const std::string_view name);
 
     void postLoad(SceneGraphNode* sgn) override;
 

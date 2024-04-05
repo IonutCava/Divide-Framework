@@ -105,7 +105,7 @@ GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
         glObjectLabel( GL_SAMPLER,
                         samplerID,
                         -1,
-                        Util::StringFormat("SAMPLER_%zu", GetHash(descriptor)).c_str() );
+                        Util::StringFormat("SAMPLER_{}", GetHash(descriptor)).c_str() );
     }
 
     return samplerID;

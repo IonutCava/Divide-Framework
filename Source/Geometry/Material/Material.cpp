@@ -3,7 +3,7 @@
 #include "Headers/Material.h"
 #include "Headers/ShaderComputeQueue.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Utility/Headers/Localization.h"
@@ -138,7 +138,7 @@ namespace Divide
         s_shadersDirty = false;
     }
 
-    Material::Material( GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name )
+    Material::Material( GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name )
         : CachedResource( ResourceType::DEFAULT, descriptorHash, name )
         , _context( context )
         , _parentCache( parentCache )
@@ -215,11 +215,11 @@ namespace Divide
         };
     }
 
-    Material_ptr Material::clone( const Str<256>& nameSuffix )
+    Material_ptr Material::clone( const std::string_view nameSuffix )
     {
         DIVIDE_ASSERT( !nameSuffix.empty(), "Material error: clone called without a valid name suffix!" );
 
-        Material_ptr cloneMat = CreateResource<Material>( _parentCache, ResourceDescriptor( resourceName() + nameSuffix.c_str() ) );
+        Material_ptr cloneMat = CreateResource<Material>( _parentCache, ResourceDescriptor( resourceName() + nameSuffix ) );
         cloneMat->_baseMaterial = this;
         cloneMat->_properties = this->_properties;
         cloneMat->_extraShaderDefines = this->_extraShaderDefines;
@@ -715,7 +715,7 @@ namespace Divide
             const AttributeDescriptor& descriptor = _shaderAttributes._attributes[i];
             if ( descriptor._dataType != GFXDataFormat::COUNT )
             {
-                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "HAS_%s_ATTRIBUTE", Names::attribLocation[i] ).c_str(), true );
+                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "HAS_{}_ATTRIBUTE", Names::attribLocation[i] ).c_str(), true );
             }
         }
 
@@ -771,7 +771,7 @@ namespace Divide
         {
             if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
             {
-                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "USE_%s_TEXTURE", Names::textureSlot[i] ), true );
+                shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "USE_{}_TEXTURE", Names::textureSlot[i] ), true );
             }
         }
 
@@ -1198,7 +1198,7 @@ namespace Divide
         const size_t detectedVersion = pt.get<size_t>( entryName + ".version", 0 );
         if ( detectedVersion != g_materialXMLVersion )
         {
-            Console::printfn( LOCALE_STR( "MATERIAL_WRONG_VERSION" ), assetName().c_str(), detectedVersion, g_materialXMLVersion );
+            Console::printfn( LOCALE_STR( "MATERIAL_WRONG_VERSION" ), assetName(), detectedVersion, g_materialXMLVersion );
             return;
         }
 
@@ -1213,8 +1213,8 @@ namespace Divide
 
         U32 blockIndex = 0u;
 
-        const string stateNode = Util::StringFormat( "%s.RenderStates", entryName.c_str() );
-        const string blockNode = Util::StringFormat( "%s.RenderStateIndex.PerStagePass", entryName.c_str() );
+        const string stateNode = Util::StringFormat( "{}.RenderStates", entryName.c_str() );
+        const string blockNode = Util::StringFormat( "{}.RenderStateIndex.PerStagePass", entryName.c_str() );
 
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
@@ -1234,7 +1234,7 @@ namespace Divide
                     {
                         SaveToXML(
                             block,
-                            Util::StringFormat( "%s.%u", stateNode.c_str(), blockIndex ),
+                            Util::StringFormat( "{}.{}", stateNode.c_str(), blockIndex ),
                             pt );
                         previousHashValues[stateHash] = blockIndex++;
                     }
@@ -1256,8 +1256,8 @@ namespace Divide
         hashMap<U32, RenderStateBlock> previousBlocks;
 
         static boost::property_tree::ptree g_emptyPtree;
-        const string stateNode = Util::StringFormat( "%s.RenderStates", entryName.c_str() );
-        const string blockNode = Util::StringFormat( "%s.RenderStateIndex", entryName.c_str() );
+        const string stateNode = Util::StringFormat( "{}.RenderStates", entryName.c_str() );
+        const string blockNode = Util::StringFormat( "{}.RenderStateIndex", entryName.c_str() );
         for ( const auto& [tag, data] : pt.get_child( blockNode, g_emptyPtree ) )
         {
             assert( tag == "PerStagePass" );
@@ -1275,7 +1275,7 @@ namespace Divide
             else
             {
                 RenderStateBlock block{};
-                LoadFromXML( Util::StringFormat( "%s.%u", stateNode.c_str(), b ), pt, block );
+                LoadFromXML( Util::StringFormat( "{}.{}", stateNode.c_str(), b ), pt, block );
 
                 _defaultRenderStates[s][p][v] = { block, true };
                 previousBlocks[b] = block;
@@ -1300,8 +1300,8 @@ namespace Divide
 
                 const string textureNode = entryName + ".texture." + TypeUtil::TextureSlotToString( usage );
 
-                pt.put( textureNode + ".name", texture->assetName().str() );
-                pt.put( textureNode + ".path", texture->assetLocation().str() );
+                pt.put( textureNode + ".name", texture->assetName().c_str() );
+                pt.put( textureNode + ".path", texture->assetLocation().string() );
                 pt.put( textureNode + ".usage", TypeUtil::TextureOperationToString( _textures[to_base( usage )]._operation ) );
                 pt.put( textureNode + ".srgb", _textures[to_base( usage )]._srgb );
 
@@ -1311,7 +1311,7 @@ namespace Divide
                 if ( previousHashValues.find( samplerHash ) == std::cend( previousHashValues ) )
                 {
                     samplerCount++;
-                    XMLParser::saveToXML( sampler, Util::StringFormat( "%s.SamplerDescriptors.%u", entryName.c_str(), samplerCount ), pt );
+                    XMLParser::saveToXML( sampler, Util::StringFormat( "{}.SamplerDescriptors.{}", entryName.c_str(), samplerCount ), pt );
                     previousHashValues[samplerHash] = samplerCount;
                 }
                 pt.put( textureNode + ".Sampler.id", previousHashValues[samplerHash] );
@@ -1332,7 +1332,7 @@ namespace Divide
             {
                 const string textureNode = entryName + ".texture." + TypeUtil::TextureSlotToString( usage );
 
-                const ResourcePath texName = ResourcePath( pt.get<string>( textureNode + ".name", "" ) );
+                const string texName = pt.get<string>( textureNode + ".name", "" );
                 const ResourcePath texPath = ResourcePath( pt.get<string>( textureNode + ".path", "" ) );
                 // May be a procedural texture
                 if ( texPath.empty() )
@@ -1355,7 +1355,7 @@ namespace Divide
                     }
                     else
                     {
-                        sampler = XMLParser::loadFromXML( Util::StringFormat( "%s.SamplerDescriptors.%u", entryName.c_str(), index ), pt );
+                        sampler = XMLParser::loadFromXML( Util::StringFormat( "{}.SamplerDescriptors.{}", entryName.c_str(), index ), pt );
                         previousSamplers[index] = sampler;
                     }
 
@@ -1372,7 +1372,7 @@ namespace Divide
                     {
                         op = TextureOperation::NONE;
                     }
-                    else if ( crtTex->assetLocation() + crtTex->assetName() == texPath + texName )
+                    else if ( crtTex->assetLocation() / crtTex->assetName() == texPath / texName )
                     {
                         continue;
                     }
@@ -1380,7 +1380,7 @@ namespace Divide
                     _textures[to_base( usage )]._useInGeometryPasses = useInGeometryPasses;
 
                     TextureDescriptor texDesc( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, srgb ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED );
-                    ResourceDescriptor texture( texName.str() );
+                    ResourceDescriptor texture( texName );
                     texture.assetName( texName );
                     texture.assetLocation( texPath );
                     texture.propertyDescriptor( texDesc );

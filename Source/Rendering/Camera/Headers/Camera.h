@@ -81,6 +81,7 @@ namespace Divide
     class GFXDevice;
     class TransformComponent;
 
+    struct CameraEntry;
     struct SceneStatePerPlayer;
 
     class Camera final : public Resource
@@ -114,7 +115,7 @@ namespace Divide
         };
 
         public:
-        explicit Camera( const Str<256>& name, Mode mode, const vec3<F32>& eye = VECTOR3_ZERO );
+        explicit Camera( const std::string_view name, Mode mode, const vec3<F32>& eye = VECTOR3_ZERO );
 
         /// Copies all of the internal data from the specified camera to the current one
         void fromCamera( const Camera& camera );
@@ -305,6 +306,11 @@ namespace Divide
 
         static bool RemoveChangeListener( U32 id );
         static U32  AddChangeListener( const CameraListener& f );
+
+    protected:
+
+         static CameraEntry* FindCameraEntry( const U64 nameHash );
+         static CameraEntry* FindCameraEntryLocked( const U64 nameHash );
     };
 
     TYPEDEF_SMART_POINTERS_FOR_TYPE( Camera );

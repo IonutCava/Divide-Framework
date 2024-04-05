@@ -57,6 +57,41 @@ namespace Attorney
     class DisplayManagerWindowManager;
 };
 
+enum class AppStepResult : U32
+{
+    OK = 0,
+    RESTART,
+    RESTART_CLEAR_CACHE,
+    STOP,
+    STOP_CLEAR_CACHE,
+    ERROR,
+    COUNT
+};
+
+
+namespace Names
+{
+    static const char* appStepResult[] = {
+        "OK",
+        "RESTART",
+        "RESTART AND CLEAR CACHE",
+        "STOP",
+        "STOP AND CLEAR CACHE",
+        "ERROR",
+        "UNKNOWN"
+    };
+} //namespace Names
+
+static_assert(std::size( Names::appStepResult ) == to_base( AppStepResult::COUNT ) + 1u, "AppStepResult name array out of sync!");
+
+namespace TypeUtil
+{
+    [[nodiscard]] inline const char* AppStepResultToString( const AppStepResult err ) noexcept
+    {
+        return Names::appStepResult[to_base( err )];
+    }
+}
+
 /// Class that provides an interface between our framework and the OS (start/stop, display support, main loop, start/stop/restart, etc)
 class Application final : public SDLEventListener
 {
@@ -64,24 +99,12 @@ class Application final : public SDLEventListener
     friend class Attorney::ApplicationProfiler;
 
 public:
-      enum class StepResult : U32
-      {
-          OK = 0,
-          RESTART,
-          RESTART_CLEAR_CACHE,
-          STOP,
-          STOP_CLEAR_CACHE,
-          ERROR,
-          COUNT
-      };
-
-public:
      Application() noexcept;
      ~Application() override;
 
-    [[nodiscard]] ErrorCode  start(const string& entryPoint, I32 argc, char** argv);
-                  void       stop( const StepResult stepResult );
-    [[nodiscard]] StepResult step();
+    [[nodiscard]] ErrorCode     start(const string& entryPoint, I32 argc, char** argv);
+                  void          stop( const AppStepResult stepResult );
+    [[nodiscard]] AppStepResult step();
 
     inline void RequestShutdown( bool clearCache ) noexcept;
     inline void CancelShutdown() noexcept;
@@ -123,6 +146,7 @@ private:
     WindowManager _windowManager;
 
     Kernel* _kernel{ nullptr };
+
     std::atomic_bool _requestShutdown{ false };
     std::atomic_bool _requestRestart{ false };
     std::atomic_bool _stepLoop{ false };

@@ -8,7 +8,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Scenes/Headers/SceneState.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 
 #include "Rendering/Camera/Headers/Camera.h"
@@ -58,9 +58,9 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(geomModule);
         shaderDescriptor._modules.push_back(fragModule);
-        shaderDescriptor._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS));
+        shaderDescriptor._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS {}", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS));
 
-        ResourceDescriptor blurDepthMapShader(Util::StringFormat("GaussBlur_%d_invocations", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS).c_str());
+        ResourceDescriptor blurDepthMapShader(Util::StringFormat("GaussBlur_{}_invocations", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS).c_str());
         blurDepthMapShader.waitForReady(true);
         blurDepthMapShader.propertyDescriptor(shaderDescriptor);
 
@@ -195,7 +195,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ %d ]", lightIndex).c_str(), lightIndex));
+    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ {} ]", lightIndex).c_str(), lightIndex));
 
     _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
 

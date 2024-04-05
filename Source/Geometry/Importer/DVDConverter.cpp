@@ -35,7 +35,7 @@ namespace {
     struct AssimpStream final : Assimp::LogStream {
         void write(const char* message) override
         {
-            Console::printf("%s\n", message);
+            Console::printfn("{}", message);
         }
     };
 
@@ -163,9 +163,10 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
     return numChildren + node->mNumChildren;
 }
 
-bool Load(PlatformContext& context, Import::ImportData& target) {
+bool Load(PlatformContext& context, Import::ImportData& target)
+{
     const ResourcePath& filePath = target.modelPath();
-    const ResourcePath& fileName = target.modelName();
+    const Str<256>& fileName = target.modelName();
 
     Assimp::Importer importer;
 
@@ -196,10 +197,10 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
                             aiProcess_GenBoundingBoxes |
                             aiProcess_TransformUVCoords;// Preprocess UV transformations (scaling, translation ...)
 
-    const aiScene* aiScenePointer = importer.ReadFile((filePath.str() + "/" + fileName.str()).c_str(), ppSteps);
+    const aiScene* aiScenePointer = importer.ReadFile((filePath / fileName).string(), ppSteps);
 
     if (!aiScenePointer) {
-        Console::errorfn(LOCALE_STR("ERROR_IMPORTER_FILE"), fileName.c_str(), importer.GetErrorString());
+        Console::errorfn(LOCALE_STR("ERROR_IMPORTER_FILE"), fileName, importer.GetErrorString());
         return false;
     }
 
@@ -281,20 +282,23 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
     constexpr U8 maxModelNameLength = 16;
     constexpr U8 maxMeshNameLength = 64;
 
-    string modelName{ stripExtension(fileName).c_str() };
-    if (modelName.length() > maxModelNameLength) {
+    string modelName = stripExtension(fileName);
+    if (modelName.length() > maxModelNameLength)
+    {
         modelName = modelName.substr(0, maxModelNameLength);
     }
 
-    for (U16 n = 0u; n < numMeshes; ++n) {
+    for (U16 n = 0u; n < numMeshes; ++n)
+    {
         const aiMesh* currentMesh = aiScenePointer->mMeshes[n];
         // Skip points and lines ... for now -Ionut
-        if (currentMesh->mNumVertices == 0) {
+        if (currentMesh->mNumVertices == 0)
+        {
             continue;
         }
 
-        const string subMeshName = currentMesh->mName.length == 0 ? Util::StringFormat("submesh_%d", n) : currentMesh->mName.C_Str();
-        const string fullName = Util::StringFormat("%s_%d_%s", subMeshName.c_str(), n, modelName);
+        const string subMeshName = currentMesh->mName.length == 0 ? Util::StringFormat("submesh_{}", n) : currentMesh->mName.C_Str();
+        const string fullName = Util::StringFormat("{}_{}_{}", subMeshName.c_str(), n, modelName);
 
         Import::SubMeshData subMeshTemp = {};
         subMeshTemp.name(fullName.length() >= maxMeshNameLength ? fullName.substr(0, maxMeshNameLength - 1u).c_str() : fullName.c_str());
@@ -302,7 +306,8 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
         subMeshTemp.boneCount(to_U8(currentMesh->mNumBones));
         detail::LoadSubMeshGeometry(currentMesh, subMeshTemp, target);
 
-        const string& modelFolderName = getTopLevelFolderName(filePath.c_str());
+        const ResourcePath& modelFolderName = getTopLevelFolderName(filePath);
+
         detail::LoadSubMeshMaterial(subMeshTemp._material,
                                     aiScenePointer,
                                     modelFolderName,
@@ -322,7 +327,7 @@ bool Load(PlatformContext& context, Import::ImportData& target) {
 namespace detail {
 
 void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) {
-    target._vertexBuffer = context.gfx().newVB(true, target.modelName().c_str());
+    target._vertexBuffer = context.gfx().newVB(true, target.modelName());
 
     VertexBuffer* vb = target._vertexBuffer.get();
 
@@ -628,7 +633,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
 
 void LoadSubMeshMaterial(Import::MaterialData& material,
                          const aiScene* source,
-                         const string& modelDirectoryName,
+                         const ResourcePath& modelDirectoryName,
                          const U16 materialIndex,
                          const Str<128>& materialName,
                          const GeometryFormat format,
@@ -795,38 +800,49 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
                                  _aiTextureMapMode_Force32Bit,
                                  _aiTextureMapMode_Force32Bit };
 
-    const auto loadTexture = [&material, &modelDirectoryName](const TextureSlot usage, TextureOperation texOp, const aiString& name, aiTextureMapMode* wrapMode, const bool srgb = false) {
+    const auto loadTexture = [&material, &modelDirectoryName](const TextureSlot usage, TextureOperation texOp, const aiString& name, aiTextureMapMode* wrapMode, const bool srgb = false)
+    {
         DIVIDE_ASSERT(name.length > 0);
-        constexpr const char* g_backupImageExtensions[] = {
+        constexpr const char* g_backupImageExtensions[] =
+        {
             "png", "jpg", "jpeg", "tga", "dds"
         };
 
-        ResourcePath filePath(Paths::g_assetsLocation + Paths::g_texturesLocation);
-        ResourcePath fileName(name.C_Str());
+        ResourcePath filePath = Paths::g_texturesLocation;
+        string fileName(name.C_Str());
         const auto originalExtension = getExtension(fileName);
 
-        bool found = fileExists(filePath + fileName);
-        if (!found) {
+        bool found = fileExists(filePath / fileName);
+        if (!found)
+        {
             //Try backup extensions
-            ResourcePath fileNameStem = stripExtension(fileName);
-            for (const char* ext : g_backupImageExtensions) {
+            string fileNameStem = stripExtension(fileName);
+            for (const char* ext : g_backupImageExtensions)
+            {
                 fileName = fileNameStem + "." + ext;
-                if (fileExists(filePath + fileName)) {
+
+                if (fileExists(filePath / fileName))
+                {
                     found = true;
                     break;
                 }
             }
         }
-        if (!found) {
-            filePath = Paths::g_assetsLocation + Paths::g_texturesLocation + modelDirectoryName + "/";
-            fileName = stripExtension(fileName) + originalExtension;
-            found = fileExists(filePath + fileName);
-            if (!found) {
+        if (!found)
+        {
+            filePath = Paths::g_texturesLocation / modelDirectoryName;
+            fileName = stripExtension(fileName).append(originalExtension);
+
+            found = fileExists(filePath / fileName);
+            if (!found)
+            {
                 //Try backup extensions
-                ResourcePath fileNameStem = stripExtension(fileName);
-                for (const char* ext : g_backupImageExtensions) {
+                string fileNameStem = stripExtension(fileName);
+                for (const char* ext : g_backupImageExtensions)
+                {
                     fileName = fileNameStem + "." + ext;
-                    if (fileExists(filePath + fileName)) {
+                    if (fileExists(filePath / fileName)) 
+                    {
                         found = true;
                         break;
                     }
@@ -835,12 +851,14 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         }
 
         // if we have a name and an extension
-        if (found) {
+        if (found)
+        {
             Import::TextureEntry& texture = material._textures[to_base(usage)];
             // Load the texture resource
             if (IS_IN_RANGE_INCLUSIVE(wrapMode[0], aiTextureMapMode_Wrap, aiTextureMapMode_Decal) &&
                 IS_IN_RANGE_INCLUSIVE(wrapMode[1], aiTextureMapMode_Wrap, aiTextureMapMode_Decal) &&
-                IS_IN_RANGE_INCLUSIVE(wrapMode[2], aiTextureMapMode_Wrap, aiTextureMapMode_Decal)) {
+                IS_IN_RANGE_INCLUSIVE(wrapMode[2], aiTextureMapMode_Wrap, aiTextureMapMode_Decal))
+            {
                 texture.wrapU(detail::aiTextureMapModeTable[wrapMode[0]]);
                 texture.wrapV(detail::aiTextureMapModeTable[wrapMode[1]]);
                 texture.wrapW(detail::aiTextureMapModeTable[wrapMode[2]]);

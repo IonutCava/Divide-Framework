@@ -59,9 +59,9 @@ ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage)
     detail::g_localeFile = newLanguage.data();
     assert(!detail::g_localeFile.empty());
 
-    const ResourcePath file = Paths::g_localisationPath + (detail::g_localeFile + g_languageFileExtension);
+    const ResourcePath file = Paths::g_localisationPath / ( detail::g_localeFile + g_languageFileExtension );
 
-    if (languageFile.LoadFile(file.c_str()) != SI_OK)
+    if (languageFile.LoadFile(file.string().c_str()) != SI_OK)
     {
         return ErrorCode::NO_LANGUAGE_INI;
     }
@@ -85,7 +85,7 @@ ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage)
                     LanguageEntry
                     {
                         ._value = keyValuePairIt->second, 
-                        ._sectionAndValue = Util::StringFormat( "[ %s ] %s", section.pItem, keyValuePairIt->second )
+                        ._sectionAndValue = Util::StringFormat( "[ {} ] {}", section.pItem, keyValuePairIt->second )
                     }
                  );
         }
@@ -123,7 +123,7 @@ ErrorCode Init(const char* newLanguage)
             detail::g_LanguageFileWatcher.reset(new FW::FileWatcher());
             detail::g_fileWatcherListener.addIgnoredEndCharacter('~');
             detail::g_fileWatcherListener.addIgnoredExtension("tmp");
-            detail::g_LanguageFileWatcher->addWatch(FW::String((Paths::g_rootPath + Paths::g_localisationPath).str()), &detail::g_fileWatcherListener);
+            detail::g_LanguageFileWatcher->addWatch(FW::String(Paths::g_localisationPath.string()), &detail::g_fileWatcherListener);
         }
     }
 

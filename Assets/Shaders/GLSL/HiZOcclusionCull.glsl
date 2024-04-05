@@ -1,6 +1,6 @@
 --Compute
 
-#include "HiZCullingAlgorithm.cmn";
+#include "HiZCullingAlgorithm.cmn"
 #include "nodeDataDefinition.cmn"
 
 #define INVS_SQRT_3 0.57735026919f

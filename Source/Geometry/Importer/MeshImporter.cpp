@@ -63,9 +63,10 @@ GeometryFormat GetGeometryFormatForExtension(const char* extension) noexcept {
     return GeometryFormat::COUNT;
 }
 
-namespace Import {
-    bool ImportData::saveToFile([[maybe_unused]] PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName) {
-
+namespace Import
+{
+    bool ImportData::saveToFile([[maybe_unused]] PlatformContext& context, const ResourcePath& path, const std::string_view fileName)
+    {
         ByteBuffer tempBuffer;
         assert(_vertexBuffer != nullptr);
         tempBuffer << BYTE_BUFFER_VERSION;
@@ -85,16 +86,17 @@ namespace Import {
 
             tempBuffer << _hasAnimations;
             // Animations are handled by the SceneAnimator I/O
-            return tempBuffer.dumpToFile(path.c_str(), (fileName.str() + "." + g_parsedAssetGeometryExt).c_str());
+            return tempBuffer.dumpToFile(path, Util::StringFormat("{}.{}", fileName, g_parsedAssetGeometryExt));
         }
 
         return false;
     }
 
-    bool ImportData::loadFromFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName) {
+    bool ImportData::loadFromFile(PlatformContext& context, const ResourcePath& path, const std::string_view fileName)
+    {
         ByteBuffer tempBuffer;
-        if (tempBuffer.loadFromFile(path.c_str(), (fileName.str() + "." + g_parsedAssetGeometryExt).c_str())) {
-
+        if (tempBuffer.loadFromFile(path, Util::StringFormat( "{}.{}", fileName, g_parsedAssetGeometryExt ) ))
+        {
             auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
             tempBuffer >> tempVer;
             if (tempVer == BYTE_BUFFER_VERSION) {
@@ -105,7 +107,7 @@ namespace Import {
                 }
                 tempBuffer >> _modelName;
                 tempBuffer >> _modelPath;
-                _vertexBuffer = context.gfx().newVB(true, _modelName.c_str());
+                _vertexBuffer = context.gfx().newVB( true, _modelName );
                 if (_vertexBuffer->deserialize(tempBuffer)) {
                     U32 subMeshCount = 0;
                     tempBuffer >> subMeshCount;
@@ -263,26 +265,29 @@ namespace Import {
         importTimer.start();
 
         bool success = false;
-        if (!context.config().debug.useGeometryCache || !dataOut.loadFromFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {
-            Console::printfn(LOCALE_STR("MESH_NOT_LOADED_FROM_FILE"), dataOut.modelName().c_str());
+        if (!context.config().debug.cache.enabled ||
+            !context.config().debug.cache.geometry ||
+            !dataOut.loadFromFile( context, Paths::g_geometryCacheLocation, dataOut.modelName() ) )
+        {
+            Console::printfn(LOCALE_STR("MESH_NOT_LOADED_FROM_FILE"), dataOut.modelName());
 
             if (DVDConverter::Load(context, dataOut)) {
-                if (dataOut.saveToFile(context, Paths::g_cacheLocation + Paths::g_geometryCacheLocation, dataOut.modelName())) {
-                    Console::printfn(LOCALE_STR("MESH_SAVED_TO_FILE"), dataOut.modelName().c_str());
+                if (dataOut.saveToFile(context, Paths::g_geometryCacheLocation, dataOut.modelName())) {
+                    Console::printfn(LOCALE_STR("MESH_SAVED_TO_FILE"), dataOut.modelName());
                 } else {
-                    Console::printfn(LOCALE_STR("MESH_NOT_SAVED_TO_FILE"), dataOut.modelName().c_str());
+                    Console::printfn(LOCALE_STR("MESH_NOT_SAVED_TO_FILE"), dataOut.modelName());
                 }
                 success = true;
             }
         } else {
-            Console::printfn(LOCALE_STR("MESH_LOADED_FROM_FILE"), dataOut.modelName().c_str());
+            Console::printfn(LOCALE_STR("MESH_LOADED_FROM_FILE"), dataOut.modelName());
             dataOut.fromFile(true);
             success = true;
         }
 
         importTimer.stop();
         Console::d_printfn(LOCALE_STR("LOAD_MESH_TIME"),
-                           dataOut.modelName().c_str(),
+                           dataOut.modelName(),
                            Time::MicrosecondsToMilliseconds<F32>(importTimer.get()));
 
         return success;
@@ -335,30 +340,35 @@ namespace Import {
 
         WAIT_FOR_CONDITION(taskCounter.load() == 0);
 
-        if (dataIn.hasAnimations()) {
+        if (dataIn.hasAnimations())
+        {
             std::shared_ptr<SceneAnimator> animator;
             // Animation versioning is handled internally.
             ByteBuffer tempBuffer;
             animator.reset(new SceneAnimator());
-            if (tempBuffer.loadFromFile((Paths::g_cacheLocation + Paths::g_geometryCacheLocation).c_str(),
-                (dataIn.modelName() + "." + g_parsedAssetAnimationExt).c_str()))
+
+            const string saveFileName = Util::StringFormat( "{}.{}", dataIn.modelName(), g_parsedAssetAnimationExt );
+            if (tempBuffer.loadFromFile(Paths::g_geometryCacheLocation, saveFileName ))
             {
                 animator->load(context, tempBuffer);
-            } else {
-                if (!dataIn.loadedFromFile()) {
+            }
+            else
+            {
+                if (!dataIn.loadedFromFile())
+                {
                     // We lose ownership of animations here ...
                     Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, dataIn._animations);
 
                     animator->init(context, dataIn._skeleton, dataIn._bones);
                     animator->save(context, tempBuffer);
-                    if (!tempBuffer.dumpToFile((Paths::g_cacheLocation + Paths::g_geometryCacheLocation).c_str(),
-                        (dataIn.modelName() + "." + g_parsedAssetAnimationExt).c_str()))
+                    if (!tempBuffer.dumpToFile(Paths::g_geometryCacheLocation, saveFileName ))
                     {
                         //handle error
                         DIVIDE_UNEXPECTED_CALL();
                     }
                 }
-                else {
+                else
+                {
                     //handle error. No ASSIMP animation data available
                     DIVIDE_UNEXPECTED_CALL();
                 }
@@ -369,7 +379,7 @@ namespace Import {
 
         importTimer.stop();
         Console::d_printfn(LOCALE_STR("PARSE_MESH_TIME"),
-                           dataIn.modelName().c_str(),
+                           dataIn.modelName(),
                            Time::MicrosecondsToMilliseconds<F32>(importTimer.get()));
 
         return true;
@@ -424,7 +434,7 @@ namespace Import {
                 }
 
                 textureDescriptor.textureOptions(importOptions);
-                ResourceDescriptor texture(tex.textureName().str());
+                ResourceDescriptor texture(tex.textureName());
                 texture.assetName(tex.textureName());
                 texture.assetLocation(tex.texturePath());
                 texture.propertyDescriptor(textureDescriptor);

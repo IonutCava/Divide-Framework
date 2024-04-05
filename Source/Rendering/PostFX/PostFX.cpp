@@ -10,7 +10,7 @@
 #include "Core/Time/Headers/ApplicationTimer.h"
 
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
@@ -86,8 +86,8 @@ namespace Divide
         texDescriptor.textureOptions( options );
 
         ResourceDescriptor textureWaterCaustics( "Underwater Normal Map" );
-        textureWaterCaustics.assetName( ResourcePath( "terrain_water_NM.jpg" ) );
-        textureWaterCaustics.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation );
+        textureWaterCaustics.assetName( "terrain_water_NM.jpg" );
+        textureWaterCaustics.assetLocation( Paths::g_imagesLocation );
         textureWaterCaustics.propertyDescriptor( texDescriptor );
         textureWaterCaustics.waitForReady( false );
         _underwaterTexture = CreateResource<Texture>( cache, textureWaterCaustics, loadTasks );
@@ -95,15 +95,15 @@ namespace Divide
         options._isNormalMap = false;
         texDescriptor.textureOptions( options );
         ResourceDescriptor noiseTexture( "noiseTexture" );
-        noiseTexture.assetName( ResourcePath( "bruit_gaussien.jpg" ) );
-        noiseTexture.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation );
+        noiseTexture.assetName( "bruit_gaussien.jpg" );
+        noiseTexture.assetLocation( Paths::g_imagesLocation );
         noiseTexture.propertyDescriptor( texDescriptor );
         noiseTexture.waitForReady( false );
         _noise = CreateResource<Texture>( cache, noiseTexture, loadTasks );
 
         ResourceDescriptor borderTexture( "borderTexture" );
-        borderTexture.assetName( ResourcePath( "vignette.jpeg" ) );
-        borderTexture.assetLocation( Paths::g_assetsLocation + Paths::g_imagesLocation );
+        borderTexture.assetName( "vignette.jpeg" );
+        borderTexture.assetLocation(  Paths::g_imagesLocation );
         borderTexture.propertyDescriptor( texDescriptor );
         borderTexture.waitForReady( false );
         _screenBorder = CreateResource<Texture>( cache, borderTexture ), loadTasks;

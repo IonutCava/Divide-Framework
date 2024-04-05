@@ -11,8 +11,8 @@
 
 namespace Divide {
 
-Trigger::Trigger(ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name)
-    : SceneNode(parentCache, descriptorHash, name, ResourcePath(name), {}, SceneNodeType::TYPE_TRIGGER, to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS))
+Trigger::Trigger(ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
+    : SceneNode(parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_TRIGGER, to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS))
 {
     _taskPool = &parentResourceCache()->context().taskPool(TaskPoolType::HIGH_PRIORITY);
 }

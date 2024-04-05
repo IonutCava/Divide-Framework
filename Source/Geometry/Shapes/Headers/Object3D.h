@@ -68,8 +68,8 @@ class Object3D : public SceneNode {
         COUNT = 3
     };
 
-    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 flagMask);
-    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, SceneNodeType type, ObjectFlag flag);
+    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 flagMask);
+    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, ObjectFlag flag);
 
     void setMaterialTpl(const Material_ptr& material) override;
 

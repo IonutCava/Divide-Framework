@@ -223,7 +223,7 @@ namespace ECS
 				if (sys != nullptr)
 				{
 					this->m_SystemWorkOrder.push_back(sys);
-					LOG_INFO("\t%s", sys->GetSystemTypeName())
+					LOG_INFO("\t{}", sys->GetSystemTypeName())
 				}
 			}
 		}

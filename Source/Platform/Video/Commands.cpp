@@ -22,7 +22,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
             return "Disabled";
         }
 
-        return Util::StringFormat("Blend Src{% s}, Blend Dest{% s}, Blend Op{% s}, Blend Src Alpha{% s}, Blend Dest Alpha{% s}, Blend Op alpha{% s}",
+        return Util::StringFormat("Blend Src[ {} ], Blend Dest[ {} ], Blend Op[ {} ], Blend Src Alpha[ {} ], Blend Dest Alpha[ {} ], Blend Op alpha[ {} ]",
                                   Divide::Names::blendProperty[to_base(state.blendSrc())],
                                   Divide::Names::blendProperty[to_base(state.blendDest())],
                                   Divide::Names::blendOperation[to_base(state.blendOp())],
@@ -37,7 +37,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
         }
 
 
-        return Util::StringFormat("Index { %d }, Binding { %d }, Components per element { %d }, Component format { %s }, Normalised { %s }, Stride in bytes { %zu }",
+        return Util::StringFormat("Index [ {} ], Binding [ {} ], Components per element [ {} ], Component format [ {} ], Normalised [ {} ], Stride in bytes [ {} ]",
                                    idx,
                                    desc._vertexBindingIndex,
                                    desc._componentsPerElement,
@@ -48,7 +48,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
 
     const auto vertexFormatToString = []( const U8 idx, const VertexBinding& binding ) -> string
     {
-        return Util::StringFormat("Index { %d } Binding { %d }, Stride in bytes { %zu}, Per Vertex Input Rate { %s }",
+        return Util::StringFormat("Index [ {} ] Binding [ {} ], Stride in bytes [ {} ], Per Vertex Input Rate [ {} ]",
                                   idx,
                                   binding._bufferBindIndex,
                                   binding._strideInBytes,
@@ -59,19 +59,19 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("Shader handle : %d - %d\n", cmd._pipeline->descriptor()._shaderProgramHandle._id, cmd._pipeline->descriptor()._shaderProgramHandle._generation));
+    ret.append(Util::StringFormat("Shader handle : {} - {}\n", cmd._pipeline->descriptor()._shaderProgramHandle._id, cmd._pipeline->descriptor()._shaderProgramHandle._generation));
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("State hash : %zu\n", cmd._pipeline->stateHash()));
+    ret.append(Util::StringFormat("State hash : {}\n", cmd._pipeline->stateHash()));
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
     ShaderProgram* shader = ShaderProgram::FindShaderProgram(cmd._pipeline->descriptor()._shaderProgramHandle);
     if (shader) {
-        ret.append(Util::StringFormat("Primitive topology : %s\n", Divide::Names::primitiveType[to_base(cmd._pipeline->descriptor()._primitiveTopology)]));
+        ret.append(Util::StringFormat("Primitive topology : {}\n", Divide::Names::primitiveType[to_base(cmd._pipeline->descriptor()._primitiveTopology)]));
         ret.append("    ");
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
@@ -85,7 +85,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Colour {%d, %d, %d, %d}\n", blendStates._blendColour.r, blendStates._blendColour.g, blendStates._blendColour.b, blendStates._blendColour.a));
+        ret.append(Util::StringFormat("Colour [ {}, {}, {}, {} ]\n", blendStates._blendColour.r, blendStates._blendColour.g, blendStates._blendColour.b, blendStates._blendColour.a));
 
         U8 idx = 0u;
         for (const BlendingSettings& state : blendStates._settings) {
@@ -93,7 +93,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
-            ret.append(Util::StringFormat("%d: %s\n", idx++, blendStateToString(state)));
+            ret.append(Util::StringFormat("{}: {}\n", idx++, blendStateToString(state)));
         }
         indent -= 1u;
     }
@@ -111,7 +111,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
             for (U16 j = 0; j < indent; ++j) {
                 ret.append("    ");
             }
-            ret.append(Util::StringFormat("%d: %s\n", idx, attributeDescriptorToString(idx, desc)));
+            ret.append(Util::StringFormat("{}: {}\n", idx, attributeDescriptorToString(idx, desc)));
             ++idx;
         }
         idx = 0u;
@@ -122,7 +122,7 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
             {
                 ret.append( "    " );
             }
-            ret.append( Util::StringFormat( "%d: %s\n", idx, vertexFormatToString( idx, binding ) ) );
+            ret.append( Util::StringFormat( "{}: {}\n", idx, vertexFormatToString( idx, binding ) ) );
             ++idx;
         }
         indent -= 1u;
@@ -138,7 +138,7 @@ string ToString(const SendPushConstantsCommand& cmd, U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Constant binding: %zu Type: %d Data size: %zu\n", it.bindingHash(), to_base(it.type()), it.dataSize()));
+        ret.append(Util::StringFormat("Constant binding: {} Type: {} Data size: {}\n", it.bindingHash(), to_base(it.type()), it.dataSize()));
     }
     
     ret.append("    ");
@@ -157,7 +157,7 @@ string ToString(const SendPushConstantsCommand& cmd, U16 indent) {
             }
 
             const mat4<F32>& datad = cmd._constants.fastData().data[d];
-            ret.append(Util::StringFormat("Data %d:\n", d));
+            ret.append(Util::StringFormat("Data {}:\n", d));
 
             indent += 1u;
             for ( U8 r = 0u; r < 4; ++r )
@@ -168,7 +168,7 @@ string ToString(const SendPushConstantsCommand& cmd, U16 indent) {
                     ret.append( "    " );
                 }
 
-                ret.append(Util::StringFormat(" %.2f %.2f %.2f %.2f\n", datad.m[r][0], datad.m[r][1], datad.m[r][2] , datad.m[r][3]));
+                ret.append(Util::StringFormat(" {:.2f} {:.2f} {:.2f} {:.2f}\n", datad.m[r][0], datad.m[r][1], datad.m[r][2] , datad.m[r][3]));
             }
             indent -= 1u;
         }
@@ -185,18 +185,18 @@ string ToString(const DrawCommand& cmd, const U16 indent)  {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("%d: Draw count: %d Base instance: %d Instance count: %d Index count: %d\n", i++, drawCmd._drawCount, drawCmd._cmd.baseInstance, drawCmd._cmd.instanceCount, drawCmd._cmd.indexCount));
+        ret.append(Util::StringFormat("{}: Draw count: {} Base instance: {} Instance count: {} Index count: {}\n", i++, drawCmd._drawCount, drawCmd._cmd.baseInstance, drawCmd._cmd.instanceCount, drawCmd._cmd.indexCount));
     }
 
     return ret;
 }
 
 string ToString(const SetViewportCommand& cmd, [[maybe_unused]] U16 indent) {
-    return Util::StringFormat(" [%d, %d, %d, %d]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
+    return Util::StringFormat(" [{}, {}, {}, {}]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
 }
 
 string ToString(const PushViewportCommand& cmd, [[maybe_unused]] U16 indent) {
-    return Util::StringFormat(" [%d, %d, %d, %d]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
+    return Util::StringFormat(" [{}, {}, {}, {}]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
 }
 
 string ToString(const BeginRenderPassCommand& cmd, U16 indent)
@@ -206,7 +206,7 @@ string ToString(const BeginRenderPassCommand& cmd, U16 indent)
     {
         ret.append( "    " );
     }
-    ret.append(Util::StringFormat(" Name: [ %s ] Target: [ %d ] Mip Level: [ %d ]: \n", cmd._name.c_str(), to_base(cmd._target), cmd._descriptor._mipWriteLevel));
+    ret.append(Util::StringFormat(" Name: [ {} ] Target: [ {} ] Mip Level: [ {} ]: \n", cmd._name.c_str(), to_base(cmd._target), cmd._descriptor._mipWriteLevel));
 
     U8 k = 0u;
     for ( const bool draw : cmd._descriptor._drawMask )
@@ -216,7 +216,7 @@ string ToString(const BeginRenderPassCommand& cmd, U16 indent)
         {
             ret.append( "    " );
         }
-        ret.append( Util::StringFormat( "Draw Mask[ %d ]: %s\n", k++, draw ? "TRUE" : "FALSE") );
+        ret.append( Util::StringFormat( "Draw Mask[ {} ]: {}\n", k++, draw ? "TRUE" : "FALSE") );
     }
 
     k = 0u;
@@ -227,7 +227,7 @@ string ToString(const BeginRenderPassCommand& cmd, U16 indent)
         {
             ret.append( "    " );
         }
-        ret.append( Util::StringFormat( "Write Layer[ %d ]: [slice: %d, face: %d]\n", k++, layer._layer, layer._cubeFace ) );
+        ret.append( Util::StringFormat( "Write Layer[ {} ]: [slice: {}, face: {}]\n", k++, layer._layer, layer._cubeFace ) );
     }
 
     k = 0u;
@@ -238,7 +238,7 @@ string ToString(const BeginRenderPassCommand& cmd, U16 indent)
         {
             ret.append( "    " );
         }
-        ret.append( Util::StringFormat("Clear Colour {%.2f, %.2f, %.2f, %.2f} (Enabled: %s)\n",  clear._colour.r, clear._colour.g, clear._colour.b, clear._colour.a, clear._enabled ? "TRUE" : "FALSE") );
+        ret.append( Util::StringFormat("Clear Colour [ {:.2f}, {:.2f}, {:.2f}, {:.2f} ] (Enabled: {})\n",  clear._colour.r, clear._colour.g, clear._colour.b, clear._colour.a, clear._enabled ? "TRUE" : "FALSE") );
     }
 
     return ret;
@@ -246,7 +246,7 @@ string ToString(const BeginRenderPassCommand& cmd, U16 indent)
 
 string ToString(const SetScissorCommand& cmd, [[maybe_unused]] U16 indent)
 {
-    return Util::StringFormat(" [%d, %d, %d, %d]", cmd._rect.x, cmd._rect.y, cmd._rect.z, cmd._rect.w);
+    return Util::StringFormat(" [{}, {}, {}, {}]", cmd._rect.x, cmd._rect.y, cmd._rect.z, cmd._rect.w);
 }
 
 string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
@@ -263,7 +263,7 @@ string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
 
             const vec4<F32>& eq = planes[i]._equation;
 
-            ret.append(Util::StringFormat("Plane [%d] [ %5.2f %5.2f %5.2f - %5.2f ]\n", i, eq.x, eq.y, eq.z, eq.w));
+            ret.append(Util::StringFormat("Plane [{}] [ {:5.2f} {:5.2f} {:5.2f} - {:5.2f} ]\n", i, eq.x, eq.y, eq.z, eq.w));
         }
     }
 
@@ -272,7 +272,7 @@ string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
 
 string ToString(const SetCameraCommand& cmd, [[maybe_unused]] U16 indent) {
     string ret = "    ";
-    ret.append(Util::StringFormat("[ Camera position (eye): [ %5.2f %5.2f %5.2f]\n", cmd._cameraSnapshot._eye.x, cmd._cameraSnapshot._eye.y, cmd._cameraSnapshot._eye.z));
+    ret.append(Util::StringFormat("[ Camera position (eye): [ {:5.2f} {:5.2f} {:5.2f}]\n", cmd._cameraSnapshot._eye.x, cmd._cameraSnapshot._eye.y, cmd._cameraSnapshot._eye.z));
     return ret;
 }
 
@@ -296,7 +296,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
         }
     }
 
-    string ret = Util::StringFormat(" [ Buffers: %d, Images: %d ]\n", bufferCount, imageCount);
+    string ret = Util::StringFormat(" [ Buffers: {}, Images: {} ]\n", bufferCount, imageCount);
 
     for ( U8 i = 0u; i < cmd._set._bindingCount; ++i )
     {
@@ -311,7 +311,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
                 ret.append("    ");
             }
 
-            ret.append(Util::StringFormat("Buffer [ %d - %d ] Range [%zu - %zu] Read Index [ %d ]\n",
+            ret.append(Util::StringFormat("Buffer [ {} - {} ] Range [{} - {}] Read Index [ {} ]\n",
                        binding._slot,
                        binding._data._buffer._buffer->getGUID(),
                        binding._data._buffer._range._startOffset,
@@ -343,7 +343,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
                 const DescriptorCombinedImageSampler& sampledImage = binding._data._sampledImage;
                 const Texture* srcTex = sampledImage._image._srcTexture;
 
-                ret.append(Util::StringFormat("Texture [ %d - %zu - %s - %zu ] Layers: [ %d - %d ] MipRange: [ %d - %d ]\n",
+                ret.append(Util::StringFormat("Texture [ {} - {} - {} - {} ] Layers: [ {} - {} ] MipRange: [ {} - {} ]\n",
                             binding._slot,
                             srcTex != nullptr ? srcTex->getGUID() : 0u,
                             srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
@@ -358,7 +358,7 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
                 const DescriptorImageView& imageView = binding._data._imageView;
                 const Texture* srcTex = imageView._image._srcTexture;
 
-                ret.append(Util::StringFormat("Image binds: Slot [%d] - Src GUID [ %d ] - Src Name [ %s ] - Layers [%d - %d] - Levels [%d - %d] - Flag [ %s ]",
+                ret.append(Util::StringFormat("Image binds: Slot [{}] - Src GUID [ {} ] - Src Name [ {} ] - Layers [{} - {}] - Levels [{} - {}] - Flag [ {} ]",
                            binding._slot,
                            srcTex != nullptr ? srcTex->getGUID() : 0u,
                            srcTex != nullptr ? srcTex->resourceName().c_str() : "no-name",
@@ -392,11 +392,11 @@ string ToString(const AddDebugMessageCommand& cmd, const U16 indent)
 
 string ToString(const DispatchComputeCommand& cmd, [[maybe_unused]] U16 indent)
 {
-    return Util::StringFormat(" [ Group sizes: %d %d %d]", cmd._computeGroupSize.x, cmd._computeGroupSize.y, cmd._computeGroupSize.z);
+    return Util::StringFormat(" [ Group sizes: {} {} {}]", cmd._computeGroupSize.x, cmd._computeGroupSize.y, cmd._computeGroupSize.z);
 }
 
 string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
-    string ret = Util::StringFormat(" [ Buffer locks: %zu ] [ Texture layout changes: %zu ]\n",
+    string ret = Util::StringFormat(" [ Buffer locks: {} ] [ Texture layout changes: {} ]\n",
                                       cmd._bufferLocks.size(),
                                       cmd._textureLayoutChanges.size());
  
@@ -408,7 +408,7 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
 
         const I64 guid = it._buffer != nullptr ? it._buffer->getGUID() : -1;
 
-        ret.append(Util::StringFormat("Buffer lock: [ %d - [%zu - %zu] ] - Type [ %s ]\n", guid, it._range._startOffset, it._range._length, Divide::Names::bufferUpdateUsage[to_base(it._type)]));
+        ret.append(Util::StringFormat("Buffer lock: [ {} - [{} - {}] ] - Type [ {} ]\n", guid, it._range._startOffset, it._range._length, Divide::Names::bufferUpdateUsage[to_base(it._type)]));
     }
 
     for (auto it : cmd._textureLayoutChanges) {
@@ -416,7 +416,7 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
         for (U16 j = 0; j < indent; ++j) {
             ret.append("    ");
         }
-        ret.append(Util::StringFormat("Texture Layout Change: [ %d [ %s -> %s ]]\n", it._targetView._srcTexture ? it._targetView._srcTexture->getGUID() : -1, Divide::Names::imageUsage[to_base( it._sourceLayout )], Divide::Names::imageUsage[to_base(it._targetLayout)]));
+        ret.append(Util::StringFormat("Texture Layout Change: [ {} [ {} -> {} ]]\n", it._targetView._srcTexture ? it._targetView._srcTexture->getGUID() : -1, Divide::Names::imageUsage[to_base( it._sourceLayout )], Divide::Names::imageUsage[to_base(it._targetLayout)]));
     }
     return ret;
 }
@@ -435,7 +435,7 @@ string ToString( const EndGPUQueryCommand& cmd, [[maybe_unused]] const U16 inden
 
 string ToString( const BlitRenderTargetCommand& cmd, const U16 indent )
 {
-    string ret = Util::StringFormat("Source ID [ %d ] Target ID [ %d ] Param count [ %d ]\n", cmd._source, cmd._destination, cmd._params.size());
+    string ret = Util::StringFormat("Source ID [ {} ] Target ID [ {} ] Param count [ {} ]\n", cmd._source, cmd._destination, cmd._params.size());
     for ( auto it : cmd._params )
     {
         ret.append( "    " );
@@ -444,7 +444,7 @@ string ToString( const BlitRenderTargetCommand& cmd, const U16 indent )
             ret.append( "    " );
         }
 
-        ret.append( Util::StringFormat( "Input: [l: %d m: %d i: %d] Output: [l: %d m: %d i: %d] Layer count: [ %d ] Mip Count: [ %d ]\n", it._input._layerOffset, it._input._mipOffset, it._input._index, it._output._layerOffset, it._output._mipOffset, it._output._index, it._layerCount, it._mipCount ) );
+        ret.append( Util::StringFormat( "Input: [l: {} m: {} i: {}] Output: [l: {} m: {} i: {}] Layer count: [ {} ] Mip Count: [ {} ]\n", it._input._layerOffset, it._input._mipOffset, it._input._index, it._output._layerOffset, it._output._mipOffset, it._output._index, it._layerCount, it._mipCount ) );
     }
 
     return ret;

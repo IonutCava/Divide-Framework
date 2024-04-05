@@ -42,14 +42,14 @@ namespace ECS
 		System()
 		{
 			DEFINE_LOGGER(typeid(T).name())
-			LOG_INFO("System %s created.", typeid(T).name());
+			LOG_INFO("System {} created.", typeid(T).name());
 		}
 
 	public:
 
 		virtual ~System() override
 		{
-			LOG_INFO("System %s released.", typeid(T).name());
+			LOG_INFO("System {} released.", typeid(T).name());
 		}
 
 		virtual inline SystemTypeId GetStaticSystemTypeID() const override

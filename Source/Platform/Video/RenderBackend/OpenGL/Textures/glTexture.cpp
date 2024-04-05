@@ -15,14 +15,14 @@ namespace Divide {
 
 glTexture::glTexture(GFXDevice& context,
                      const size_t descriptorHash,
-                     const Str<256>& name,
-                     const ResourcePath& resourceName,
+                     const std::string_view name,
+                     const std::string_view resourceName,
                      const ResourcePath& resourceLocation,
                      const TextureDescriptor& texDescriptor,
                      ResourceCache& parentCache)
 
-    : Texture(context, descriptorHash, name, resourceName, resourceLocation, texDescriptor, parentCache),
-     _type(GL_NONE)
+    : Texture(context, descriptorHash, name, resourceName, resourceLocation, texDescriptor, parentCache)
+    , _type(GL_NONE)
 {
 }
 
@@ -33,9 +33,13 @@ glTexture::~glTexture()
 
 bool glTexture::unload()
 {
-    if (_textureHandle > 0u) {
-        if (GL_API::GetStateTracker().unbindTexture(descriptor().texType(), _textureHandle)) { NOP();
+    if (_textureHandle > 0u)
+    {
+        if (GL_API::GetStateTracker().unbindTexture(descriptor().texType(), _textureHandle))
+        {
+            NOP();
         }
+
         glDeleteTextures(1, &_textureHandle);
         _textureHandle = GL_NULL_HANDLE;
     }
@@ -43,9 +47,12 @@ bool glTexture::unload()
     return Texture::unload();
 }
 
-void glTexture::postLoad() {
+void glTexture::postLoad()
+{
     DIVIDE_ASSERT(Runtime::isMainThread());
-    if (_loadSync != nullptr) {
+
+    if (_loadSync != nullptr)
+    {
         glWaitSync(_loadSync, UnusedMask::GL_UNUSED_BIT, GL_TIMEOUT_IGNORED);
         GL_API::DestroyFenceSync(_loadSync);
     }
@@ -53,7 +60,8 @@ void glTexture::postLoad() {
     Texture::postLoad();
 }
 
-void glTexture::reserveStorage() {
+void glTexture::reserveStorage()
+{
     DIVIDE_ASSERT(!_hasStorage && "glTexture::reserveStorage error: double call detected!");
 
     const GLUtil::FormatAndDataType glInternalFormat = GLUtil::InternalFormatAndDataType(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing());
@@ -61,8 +69,10 @@ void glTexture::reserveStorage() {
     const bool isCubeMap = IsCubeTexture(_descriptor.texType());
     DIVIDE_ASSERT(!(isCubeMap && _width != _height) && "glTexture::reserverStorage error: width and height for cube map texture do not match!");
 
-    switch (descriptor().texType()) {
-        case TextureType::TEXTURE_1D: {
+    switch (descriptor().texType())
+    {
+        case TextureType::TEXTURE_1D:
+        {
             assert(_depth == 1u);
             glTextureStorage1D(
                 _loadingHandle,
@@ -73,7 +83,8 @@ void glTexture::reserveStorage() {
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
         case TextureType::TEXTURE_CUBE_MAP:
-        case TextureType::TEXTURE_2D: {
+        case TextureType::TEXTURE_2D:
+        {
             assert(descriptor().texType() == TextureType::TEXTURE_1D_ARRAY || _depth == 1u);
             if (msaaSamples == 0u) {
                 glTextureStorage2D(
@@ -92,8 +103,10 @@ void glTexture::reserveStorage() {
                     GL_TRUE);
             }
         } break;
-        case TextureType::TEXTURE_3D: {
-            if (msaaSamples == 0u) {
+        case TextureType::TEXTURE_3D:
+        {
+            if (msaaSamples == 0u)
+            {
                 glTextureStorage3D(
                     _loadingHandle,
                     mipCount(),
@@ -101,7 +114,9 @@ void glTexture::reserveStorage() {
                     _width,
                     _height,
                     _depth);
-            } else {
+            }
+            else
+            {
                 glTextureStorage3DMultisample(
                     _loadingHandle,
                     msaaSamples,
@@ -112,12 +127,13 @@ void glTexture::reserveStorage() {
                     GL_TRUE);
             }
         } break;
-
         case TextureType::TEXTURE_2D_ARRAY:
-        case TextureType::TEXTURE_CUBE_ARRAY: {
+        case TextureType::TEXTURE_CUBE_ARRAY:
+        {
             const U32 layerCount = isCubeMap ? _depth * 6 : _depth;
 
-            if (msaaSamples == 0u) {
+            if (msaaSamples == 0u)
+            {
                 glTextureStorage3D(
                     _loadingHandle,
                     mipCount(),
@@ -125,7 +141,9 @@ void glTexture::reserveStorage() {
                     _width,
                     _height,
                     layerCount);
-            } else {
+            }
+            else
+            {
                 glTextureStorage3DMultisample(
                     _loadingHandle,
                     msaaSamples,
@@ -142,30 +160,36 @@ void glTexture::reserveStorage() {
     _hasStorage = true;
 }
 
-void glTexture::prepareTextureData(const U16 width, const U16 height, const U16 depth, [[maybe_unused]] const bool emptyAllocation) {
+void glTexture::prepareTextureData(const U16 width, const U16 height, const U16 depth, [[maybe_unused]] const bool emptyAllocation)
+{
     Texture::prepareTextureData(width, height, depth, emptyAllocation);
 
     _type = GLUtil::internalTextureType(_descriptor.texType(), _descriptor.msaaSamples());
 
     glCreateTextures(_type, 1, &_loadingHandle);
     _hasStorage = false;
+
     assert(_loadingHandle != 0 && "glTexture error: failed to generate new texture handle!");
-    if constexpr(Config::ENABLE_GPU_VALIDATION) {
+    if constexpr(Config::ENABLE_GPU_VALIDATION)
+    {
         glObjectLabel(GL_TEXTURE, _loadingHandle, -1, resourceName().c_str());
     }
 
     reserveStorage();
 }
 
-void glTexture::submitTextureData() {
+void glTexture::submitTextureData()
+{
     glTextureParameteri(_loadingHandle, GL_TEXTURE_BASE_LEVEL, _descriptor.mipBaseLevel());
     glTextureParameteri(_loadingHandle, GL_TEXTURE_MAX_LEVEL, mipCount());
 
-    if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO) {
+    if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO)
+    {
         glGenerateTextureMipmap(_loadingHandle);
     }
 
-    if (_textureHandle > 0u) {
+    if (_textureHandle > 0u)
+    {
         // Immutable storage requires us to create a new texture object 
         glDeleteTextures(1, &_textureHandle);
     }
@@ -204,7 +228,6 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const v
 
 void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
 {
-
     const bool isCompressed = IsCompressed(_descriptor.baseFormat());
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing() );
@@ -221,8 +244,10 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
         GL_API::GetStateTracker().setPixelUnpackAlignment( pixelUnpackAlignment );
     }
 
-    switch (descriptor().texType()) {
-        case TextureType::TEXTURE_1D: {
+    switch (descriptor().texType())
+    {
+        case TextureType::TEXTURE_1D:
+        {
             assert(offset.z == 0u);
 
             if (isCompressed)
@@ -235,7 +260,8 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
             }
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
-        case TextureType::TEXTURE_2D:{
+        case TextureType::TEXTURE_2D:
+        {
             assert( offset.z == 0u );
 
             if (isCompressed)
@@ -274,8 +300,10 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     vec4<U16> shortData;
     vec4<U32> intData;
 
-    const auto GetClearData = [clearColour, &floatData, &shortData, &intData](const GFXDataFormat format) {
-        switch (format) {
+    const auto GetClearData = [clearColour, &floatData, &shortData, &intData](const GFXDataFormat format)
+    {
+        switch (format)
+        {
             case GFXDataFormat::UNSIGNED_BYTE:
             case GFXDataFormat::SIGNED_BYTE:
             {
@@ -360,7 +388,8 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     const TextureType dstType = destination->descriptor().texType();
     assert(srcType != TextureType::COUNT && dstType != TextureType::COUNT);
 
-    if (srcType != TextureType::COUNT && dstType != TextureType::COUNT) {
+    if (srcType != TextureType::COUNT && dstType != TextureType::COUNT)
+    {
         U32 layerOffset = params._layerRange.offset;
         U32 layerCount = params._layerRange.count == U16_MAX ? source->_depth : params._layerRange.count;
         if (IsCubeTexture(srcType))

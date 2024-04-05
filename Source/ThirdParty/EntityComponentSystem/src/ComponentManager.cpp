@@ -30,7 +30,7 @@ namespace ECS {
 	{
 		for (auto cc : this->m_ComponentContainerRegistry)
 		{
-			LOG_DEBUG("Releasing remaining entities of type '%s' ...", cc.second->GetComponentContainerTypeName());
+			LOG_DEBUG("Releasing remaining entities of type '{}' ...", cc.second->GetComponentContainerTypeName());
 			delete cc.second;
 			cc.second = nullptr;
 		}

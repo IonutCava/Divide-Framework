@@ -104,18 +104,18 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
     PopButtonStyle();
 
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Reset to %s", Util::StringFormat(format, resetValue).c_str());
+        ImGui::SetTooltip("Reset to {}", Util::StringFormat(format, resetValue).c_str());
     }
 
     ImGui::SameLine();
 
     if constexpr(isSlider)
     {
-        ret = ImGui::DragScalar( Util::StringFormat( "##_value_%s_", label ).c_str(), data_type, &value, 0.1f, &minValue, &maxValue, format, readOnly ? ImGuiSliderFlags_NoInput : 0u ) || ret;
+        ret = ImGui::DragScalar( Util::StringFormat( "##_value_{}_", label ).c_str(), data_type, &value, 0.1f, &minValue, &maxValue, format, readOnly ? ImGuiSliderFlags_NoInput : 0u ) || ret;
     }
     else
     {
-        ret = ImGui::InputScalar(Util::StringFormat("##_value_%s_", label).c_str(), data_type, &value, step_ptr, step_fast_ptr, format, flags) || ret;
+        ret = ImGui::InputScalar(Util::StringFormat("##_value_{}_", label).c_str(), data_type, &value, step_ptr, step_fast_ptr, format, flags) || ret;
     }
 
     if (ret && ImGui::IsItemDeactivated()) {
@@ -335,23 +335,23 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
     bool ret = false;
 
     ImGui::PushItemWidth(250);
-    ret = ImGui::InputScalarN(Util::StringFormat("##%s_0", label).c_str(), data_type, (void*)mat._vec[0]._v, num_rows, step, step_fast, parsedFormat, flags);
+    ret = ImGui::InputScalarN(Util::StringFormat("##{}_0", label).c_str(), data_type, (void*)mat._vec[0]._v, num_rows, step, step_fast, parsedFormat, flags);
     showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
     copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
 
-    ret = ImGui::InputScalarN(Util::StringFormat("##%s_1", label).c_str(), data_type, (void*)mat._vec[1]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
+    ret = ImGui::InputScalarN(Util::StringFormat("##{}_1", label).c_str(), data_type, (void*)mat._vec[1]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
     showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
     copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
 
     if constexpr(num_rows > 2)
     {
-        ret = ImGui::InputScalarN(Util::StringFormat("##%s_2", label).c_str(), data_type, (void*)mat._vec[2]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
+        ret = ImGui::InputScalarN(Util::StringFormat("##{}_2", label).c_str(), data_type, (void*)mat._vec[2]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
         showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
         copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
 
         if constexpr(num_rows > 3)
         {
-            ret = ImGui::InputScalarN(Util::StringFormat("##%s_3", label).c_str(), data_type, (void*)mat._vec[3]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
+            ret = ImGui::InputScalarN(Util::StringFormat("##{}_3", label).c_str(), data_type, (void*)mat._vec[3]._v, num_rows, step, step_fast, parsedFormat, flags) || ret;
             showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || showTooltip;
             copyToClipboard = (showTooltip && ImGui::IsMouseClicked(0)) || copyToClipboard;
         }
@@ -394,7 +394,7 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
         ImGui::SetTooltip((matrixText + tooltip).c_str());
         if (copyToClipboard)
         {
-            SetClipboardText(nullptr, matrixText.c_str());
+            SetClipboardText(matrixText.c_str());
             parent.showStatusMessage("Copied values to clipboard!", Time::SecondsToMilliseconds<F32>(3.f), false);
         }
     }

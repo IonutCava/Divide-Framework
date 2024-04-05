@@ -42,16 +42,17 @@ namespace Divide {
 
     struct File
     {
-        Str<64> _path;
+        ResourcePath _path;
         Str<32> _extension;
     };
 
     FWD_DECLARE_MANAGED_STRUCT(Directory);
 
-    struct Directory {
-        string _path;
-        string _name;
-        vector_fast<std::pair<Str<256>, File>> _files;
+    struct Directory
+    {
+        ResourcePath _path;
+        ResourcePath _name;
+        vector_fast<std::pair<ResourcePath,  File>> _files;
         vector_fast<Directory_uptr> _children;
     };
 
@@ -67,8 +68,8 @@ namespace Divide {
         void getDirectoryStructureForPath(const ResourcePath& directoryPath, Directory& directoryOut) const;
         void printDirectoryStructure(const Directory& dir, bool open) const;
 
-        Texture_ptr getTextureForPath(const ResourcePath& texturePath, const ResourcePath& textureName) const;
-        Mesh_ptr getModelForPath(const ResourcePath& modelPath, const ResourcePath& modelName) const;
+        Texture_ptr getTextureForPath(const ResourcePath& texturePath, std::string_view textureName) const;
+        Mesh_ptr getModelForPath(const ResourcePath& modelPath, std::string_view modelName) const;
         
     private:
         Texture_ptr _fileIcon = nullptr;
@@ -81,7 +82,7 @@ namespace Divide {
         hashMap<size_t, Texture_ptr> _loadedTextures;
 
         bool _textureLoadQueueLocked = false;
-        std::stack<std::pair<Str<256>, File>> _textureLoadQueue;
+        std::stack<std::pair<ResourcePath, File>> _textureLoadQueue;
     };
 } //namespace Divide
 

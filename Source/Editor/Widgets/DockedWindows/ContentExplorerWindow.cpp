@@ -4,7 +4,7 @@
 
 #include "Editor/Headers/Editor.h"
 #include "Core/Headers/Kernel.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -14,6 +14,7 @@
 
 #include <filesystem>
 #include <imgui_internal.h>
+#include <imgui_stdlib.h>
 
 namespace Divide {
     namespace {
@@ -39,24 +40,33 @@ namespace Divide {
            "glsl", "vert", "frag", "geom", "comp", "cmn", "tesc", "tese"
         };
 
-        bool IsValidFile(const char* name) {
-            for (const char* extension : g_extensions) {
-                if (hasExtension(name, extension)) {
+        bool IsValidFile(const ResourcePath& name)
+        {
+            for (const char* extension : g_extensions)
+            {
+                if (hasExtension(name, extension))
+                {
                     return true;
                 }
             }
-            for (const char* extension : g_geometryExtensions) {
-                if (hasExtension(name, extension)) {
+            for (const char* extension : g_geometryExtensions)
+            {
+                if (hasExtension(name, extension))
+                {
                     return true;
                 }
             }
-            for (const char* extension : g_imageExtensions) {
-                if (hasExtension(name, extension)) {
+            for (const char* extension : g_imageExtensions)
+            {
+                if (hasExtension(name, extension))
+                {
                     return true;
                 }
             } 
-            for (const char* extension : g_soundExtensions) {
-                if (hasExtension(name, extension)) {
+            for (const char* extension : g_soundExtensions)
+            {
+                if (hasExtension(name, extension))
+                {
                     return true;
                 }
             }
@@ -70,31 +80,32 @@ namespace Divide {
     {
     }
 
-    void ContentExplorerWindow::init() {
+    void ContentExplorerWindow::init()
+    {
         _currentDirectories.resize(2);
 
         getDirectoryStructureForPath(Paths::g_assetsLocation, _currentDirectories[0]);
-        _currentDirectories[0]._name = "Assets";
+        _currentDirectories[0]._name = Paths::g_assetsLocation;
 
         getDirectoryStructureForPath(Paths::g_xmlDataLocation, _currentDirectories[1]);
-        _currentDirectories[1]._name = "XML";
+        _currentDirectories[1]._name = Paths::g_xmlDataLocation;
 
-        _fileIcon   = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("file_icon.png"));
-        _soundIcon  = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("sound_icon.png"));
-        _shaderIcon = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("shader_icon.png"));
+        _fileIcon   = getTextureForPath(Paths::g_iconsPath, "file_icon.png");
+        _soundIcon  = getTextureForPath( Paths::g_iconsPath, "sound_icon.png");
+        _shaderIcon = getTextureForPath( Paths::g_iconsPath, "shader_icon.png");
 
-        _geometryIcons[to_base(GeometryFormat::_3DS)]     = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("3ds_icon.png"));
-        _geometryIcons[to_base(GeometryFormat::ASE)]      = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("ase_icon.png"));
-        _geometryIcons[to_base(GeometryFormat::FBX)]      = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("fbx_icon.png"));
-        _geometryIcons[to_base(GeometryFormat::MD2)]      = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("md2_icon.png"));
-        _geometryIcons[to_base(GeometryFormat::MD5)]      = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("md5_icon.png"));
-        _geometryIcons[to_base(GeometryFormat::OBJ)]      = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("obj_icon.png"));
-        _geometryIcons[to_base(GeometryFormat::DAE)]      = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("collada.png"));
-        _geometryIcons[to_base(GeometryFormat::GLTF)]     = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("gltf.png"));
-        _geometryIcons[to_base(GeometryFormat::X)]        = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("x_icon.png"));
-        _geometryIcons[to_base(GeometryFormat::DVD_ANIM)] = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("divide.png"));
-        _geometryIcons[to_base(GeometryFormat::DVD_GEOM)] = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("divide.png"));
-        _geometryIcons[to_base(GeometryFormat::COUNT)]    = getTextureForPath(Paths::g_assetsLocation + "icons", ResourcePath("file_icon.png"));
+        _geometryIcons[to_base(GeometryFormat::_3DS)]     = getTextureForPath(Paths::g_iconsPath, "3ds_icon.png");
+        _geometryIcons[to_base(GeometryFormat::ASE)]      = getTextureForPath(Paths::g_iconsPath, "ase_icon.png");
+        _geometryIcons[to_base(GeometryFormat::FBX)]      = getTextureForPath(Paths::g_iconsPath, "fbx_icon.png");
+        _geometryIcons[to_base(GeometryFormat::MD2)]      = getTextureForPath(Paths::g_iconsPath, "md2_icon.png");
+        _geometryIcons[to_base(GeometryFormat::MD5)]      = getTextureForPath(Paths::g_iconsPath, "md5_icon.png");
+        _geometryIcons[to_base(GeometryFormat::OBJ)]      = getTextureForPath(Paths::g_iconsPath, "obj_icon.png");
+        _geometryIcons[to_base(GeometryFormat::DAE)]      = getTextureForPath(Paths::g_iconsPath, "collada.png");
+        _geometryIcons[to_base(GeometryFormat::GLTF)]     = getTextureForPath(Paths::g_iconsPath, "gltf.png");
+        _geometryIcons[to_base(GeometryFormat::X)]        = getTextureForPath(Paths::g_iconsPath, "x_icon.png");
+        _geometryIcons[to_base(GeometryFormat::DVD_ANIM)] = getTextureForPath(Paths::g_iconsPath, "divide.png");
+        _geometryIcons[to_base(GeometryFormat::DVD_GEOM)] = getTextureForPath(Paths::g_iconsPath, "divide.png");
+        _geometryIcons[to_base(GeometryFormat::COUNT)]    = getTextureForPath(Paths::g_iconsPath, "file_icon.png");
     }
 
     void ContentExplorerWindow::update([[maybe_unused]] const U64 deltaTimeUS) {
@@ -103,41 +114,50 @@ namespace Divide {
         if (!_textureLoadQueue.empty()) {
             const auto [path, name] = _textureLoadQueue.top();
             _textureLoadQueue.pop();
-            _loadedTextures[_ID((path + "/" + name._path).c_str())] = getTextureForPath(ResourcePath(path), ResourcePath(name._path));
+            _loadedTextures[_ID((path / name._path).string().c_str())] = getTextureForPath( path, name._path.string());
         }
 
         _textureLoadQueueLocked = false;
     }
 
-    void ContentExplorerWindow::getDirectoryStructureForPath(const ResourcePath& directoryPath, Directory& directoryOut) const {
-        const std::filesystem::path p(directoryPath.c_str());
-        if (is_directory(p)) {
+    void ContentExplorerWindow::getDirectoryStructureForPath(const ResourcePath& directoryPath, Directory& directoryOut) const
+    {
+        const std::filesystem::path p(directoryPath.string());
+        if ( std::filesystem::is_directory(p))
+        {
             directoryOut._name = getTopLevelFolderName(directoryPath);
-            directoryOut._path = directoryPath.str();
+            directoryOut._path = directoryPath;
 
-            for (auto&& x : std::filesystem::directory_iterator(p)) {
-                if (is_regular_file(x.path())) {
-                    if (IsValidFile(x.path().generic_string().c_str())) {
-                        const auto& filename = x.path().filename().generic_string();
-                        directoryOut._files.emplace_back(directoryOut._path.c_str(), File{filename.c_str(), getExtension(filename.c_str()).substr(1).c_str()});
+            for (auto&& x : std::filesystem::directory_iterator(p))
+            {
+                if (std::filesystem::is_regular_file(x.path()))
+                {
+                    if (IsValidFile(ResourcePath { x.path() }))
+                    {
+                        const ResourcePath filename{ x.path().filename() };
+                        directoryOut._files.emplace_back(directoryOut._path.string().c_str(), File{filename, getExtension(filename).substr(1).c_str()});
 
                     }
-                } else if (is_directory(x.path())) {
+                }
+                else if (std::filesystem::is_directory(x.path()))
+                {
                     auto& childDirectory = directoryOut._children.emplace_back(eastl::make_unique<Directory>());
-                    getDirectoryStructureForPath(ResourcePath(x.path().generic_string() + "/"), *childDirectory);
+                    getDirectoryStructureForPath(ResourcePath(x.path()), *childDirectory);
                 }
             }
         }
     }
 
-    void ContentExplorerWindow::printDirectoryStructure(const Directory& dir, const bool open) const {
+    void ContentExplorerWindow::printDirectoryStructure(const Directory& dir, const bool open) const
+    {
         ImGuiTreeNodeFlags nodeFlags = (open ? ImGuiTreeNodeFlags_DefaultOpen : 0);
 
         if (dir._children.empty()) {
             nodeFlags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         }
 
-        if (ImGui::TreeNodeEx(dir._name.c_str(), nodeFlags)) {
+        if (ImGui::TreeNodeEx(dir._name.string().c_str(), nodeFlags))
+        {
             if (ImGui::IsItemClicked() || ImGui::IsItemToggledOpen()) {
                 _selectedDir = &dir;
             }
@@ -180,12 +200,13 @@ namespace Divide {
             return false;
         };
         
-        const auto openFileInEditor = [&](const std::pair<Str<256>, File>& file) {
-            const string& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_parent);
+        const auto openFileInEditor = [&](const std::pair<ResourcePath, File>& file) {
+            const ResourcePath& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_parent);
             if (textEditor.empty()) {
                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3), true);
             } else {
-                if (openFile(textEditor.c_str(), file.first.c_str(), file.second._path.c_str()) != FileError::NONE) {
+                if (openFile(textEditor.string().c_str(), file.first, file.second._path.string()) != FileError::NONE)
+                {
                     Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3), true);
                 }
             }
@@ -235,7 +256,7 @@ namespace Divide {
                     { // Textures
                         for (const char* extension : g_imageExtensions) {
                             if (Util::CompareIgnoreCase(file.second._extension.c_str(), extension)) {
-                                const auto it = _loadedTextures.find(_ID((file.first + "/" + file.second._path).c_str()));
+                                const auto it = _loadedTextures.find(_ID((file.first / file.second._path).string().c_str()));
                                 if (it == std::cend(_loadedTextures) || it->second == nullptr) {
                                     if (!_textureLoadQueueLocked) {
                                         _textureLoadQueue.push(file);
@@ -248,7 +269,7 @@ namespace Divide {
                             }
                         }
                     }
-                    ImGui::PushID(file.second._path.c_str());
+                    ImGui::PushID(file.second._path.string().c_str());
 
                     const GeometryFormat format = tex != nullptr ? GeometryFormat::COUNT : GetGeometryFormatForExtension(file.second._extension.c_str());
 
@@ -270,8 +291,9 @@ namespace Divide {
                         const bool modifierPressed = imguiContext.IO.KeyShift;
                         const ImVec4 bgColour(modifierPressed ? 1.f : 0.f, 0.f, 0.f, modifierPressed ? 1.f : 0.f);
                         if (ImGui::ImageButton(icon->resourceName().c_str(), (void*)icon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1))) {
-                            spawnMesh = getModelForPath(ResourcePath(file.first), ResourcePath(file.second._path));
-                            if (spawnMesh == nullptr) {
+                            spawnMesh = getModelForPath(file.first, file.second._path.string());
+                            if (spawnMesh == nullptr)
+                            {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
                             }
                         }
@@ -305,9 +327,9 @@ namespace Divide {
                         }
                     }
                     if (!hasTooltip && ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(file.second._path.c_str());
+                        ImGui::SetTooltip(file.second._path.string().c_str());
                     }
-                    ImGui::Text(file.second._path.c_str());
+                    ImGui::Text(file.second._path.string().c_str());
 
                     ImGui::PopID();
                     ImGui::NextColumn();
@@ -323,7 +345,7 @@ namespace Divide {
             previewTexture = nullptr;
         }
 
-        const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera(_parent.context().kernel().sceneManager());
+        const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera(_parent.context().kernel().projectManager());
         if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, imguiContext.IO.KeyShift, VECTOR3_UNIT, playerCam->snapshot()._eye)) {
             spawnMesh = nullptr;
         }
@@ -331,25 +353,25 @@ namespace Divide {
         ImGui::PopStyleVar();
     }
 
-    Texture_ptr ContentExplorerWindow::getTextureForPath(const ResourcePath& texturePath, const ResourcePath& textureName) const {
+    Texture_ptr ContentExplorerWindow::getTextureForPath(const ResourcePath& texturePath, const std::string_view textureName) const {
         ImageTools::ImportOptions options{};
         options._useDDSCache = false;
 
         TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
         texturePreviewDescriptor.textureOptions(options);
 
-        ResourceDescriptor textureResource(textureName.str());
-        textureResource.assetName(textureName);
+        ResourceDescriptor textureResource(textureName);
+        textureResource.assetName( textureName );
         textureResource.assetLocation(texturePath);
         textureResource.propertyDescriptor(texturePreviewDescriptor);
 
         return CreateResource<Texture>(_parent.context().kernel().resourceCache(), textureResource);
     }
 
-    Mesh_ptr ContentExplorerWindow::getModelForPath(const ResourcePath& modelPath, const ResourcePath& modelName) const {
-        ResourceDescriptor model(modelName.str());
+    Mesh_ptr ContentExplorerWindow::getModelForPath(const ResourcePath& modelPath, const std::string_view modelName) const {
+        ResourceDescriptor model(modelName);
         model.assetLocation(modelPath);
-        model.assetName(modelName);
+        model.assetName( modelName );
         model.flag(true);
 
         return CreateResource<Mesh>(_parent.context().kernel().resourceCache(), model);

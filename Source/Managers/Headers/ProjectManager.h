@@ -50,7 +50,7 @@ namespace Divide
     {
         public:
         static bool loadScene( Scene& activeScene );
-        static bool saveScene( const Scene& activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride = "" );
+        static bool saveScene( const Scene& activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback );
 
         static bool saveNodeToXML( const Scene& activeScene, const SceneGraphNode* node );
         static bool loadNodeFromXML( const Scene& activeScene, SceneGraphNode* node );
@@ -60,7 +60,7 @@ namespace Divide
     namespace Attorney
     {
         class ProjectScenePool;
-        class ProjectManager;
+        class ProjectManagerProject;
 
         class ProjectManagerScene;
         class ProjectManagerEditor;
@@ -105,50 +105,81 @@ namespace Divide
     FWD_DECLARE_MANAGED_CLASS( Player );
     FWD_DECLARE_MANAGED_CLASS( Texture );
 
-    struct SceneEntry
+    [[nodiscard]] bool operator==(const SceneEntry& lhs, const SceneEntry& rhs) noexcept;
+
+    struct ProjectID
     {
-        Str<256> _name{};
+        U64 _guid{ 0u };
+        Str<256> _name{ "" };
     };
+
+    using ProjectIDs = vector<ProjectID>;
+
+    struct SwitchSceneTarget
+    {
+        SceneEntry _targetScene = {};
+        bool _unloadPreviousScene = true;
+        bool _loadInSeparateThread = true;
+        bool _deferToStartOfFrame = true;
+        bool _createIfNotExist = false;
+    };
+
+    struct SwitchProjectTarget
+    {
+        ProjectID _targetProject = {};
+    };
+
+    [[nodiscard]] inline bool IsSet( const SwitchSceneTarget& target ) noexcept
+    {
+        return !target._targetScene._name.empty();
+    }
+
+    [[nodiscard]] inline bool IsSet( const SwitchProjectTarget& target ) noexcept
+    {
+        return !target._targetProject._name.empty();
+    }
+
 
     class Project
     {
         friend class Attorney::ProjectScenePool;
-        friend class Attorney::ProjectManager;
+        friend class Attorney::ProjectManagerProject;
 
       public:
-        using SceneEntries = vector<SceneEntry>;
+         [[nodiscard]] static bool CreateNewProject( const ProjectID& projectID );
+         [[nodiscard]] static bool CreateNewScene( const SceneEntry& scene, const ProjectID& projectID );
 
-        explicit Project( ProjectManager& parentMgr, const Str<256>& name );
+      public:
+
+        explicit Project( ProjectManager& parentMgr, const ProjectID& name );
         ~Project();
-
-        [[nodiscard]] vector<Str<256>> sceneNameList( bool sorted = true ) const;
 
         Scene& getActiveScene() noexcept;
         [[nodiscard]] const Scene& getActiveScene() const noexcept;
 
-        void setActiveScene( Scene* scene );
-        [[nodiscard]] bool switchScene( const SceneEntry& scene, bool unloadPrevious, bool deferToIdle = true, bool threaded = true );
+        void setActiveScene(  Scene* scene );
+        [[nodiscard]] bool switchScene( const SwitchSceneTarget& scene );
 
         [[nodiscard]] inline const SceneEntries& getSceneEntries() const noexcept { return _sceneEntries; }
 
-        PROPERTY_R_IW(Str<256>, name);
-        POINTER_R_IW(SceneEntry, defaultSceneEntry, nullptr);
+        [[nodiscard]] inline ProjectManager& parent() noexcept { return _parentManager; }
+
+        PROPERTY_R_IW( ProjectID, id );
+
         PROPERTY_R(ScenePool, scenePool);
 
       protected:
         [[nodiscard]] bool switchSceneInternal();
-        [[nodiscard]] bool unloadScene( Scene* scene );
+        [[nodiscard]] Scene* loadScene( const SceneEntry& sceneEntry );
+        [[nodiscard]] bool   unloadScene( Scene* scene );
+
+        void idle();
+        bool onFrameStart();
+        bool onFrameEnd();
 
       private:
 
-        struct SwitchSceneTarget
-        {
-            Str<256> _targetSceneName = "";
-            bool _unloadPreviousScene = true;
-            bool _loadInSeparateThread = true;
-            bool _isSet = false;
-        } _sceneSwitchTarget;
-
+        SwitchSceneTarget _sceneSwitchTarget{};
         ProjectManager& _parentManager;
 
         vector<SceneEntry> _sceneEntries;
@@ -156,21 +187,13 @@ namespace Divide
 
     FWD_DECLARE_MANAGED_CLASS( Project );
     
-    struct ProjectID
-    {
-        U64 _guid{0u};
-        Str<256> _name{""};
-    };
-
-    using ProjectIDs = vector<ProjectID>;
-
     class ProjectManager final : public FrameListener,
         public Input::InputAggregatorInterface,
         public KernelComponent
     {
 
         friend class Attorney::ProjectScenePool;
-        friend class Attorney::ProjectManager;
+        friend class Attorney::ProjectManagerProject;
 
         friend class Attorney::ProjectManagerScene;
         friend class Attorney::ProjectManagerEditor;
@@ -180,9 +203,6 @@ namespace Divide
         friend class Attorney::ProjectManagerCameraAccessor;
 
       public:
-        using PlayerList = std::array<UnitComponent*, Config::MAX_LOCAL_PLAYER_COUNT>;
-
-        public:
         static bool OnStartup( PlatformContext& context );
         static bool OnShutdown( PlatformContext& context );
 
@@ -193,14 +213,7 @@ namespace Divide
 
         void destroy();
 
-
-        [[nodiscard]] Project* loadProject( const ProjectID& targetProject );
-
-
-        [[nodiscard]] U8 getActivePlayerCount() const noexcept
-        {
-            return _activePlayerCount;
-        }
+        [[nodiscard]] ErrorCode loadProject( const ProjectID& targetProject, bool deferToStartOfFrame );
 
         // returns selection callback id
         size_t addSelectionCallback( const DELEGATE<void, U8, const vector_fast<SceneGraphNode*>&>& selectionCallback )
@@ -222,7 +235,7 @@ namespace Divide
 
         [[nodiscard]] bool resetSelection( PlayerIndex idx, const bool resetIfLocked );
         void setSelected( PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, bool recursive );
-        void onNodeDestroy( SceneGraphNode* node );
+        void onNodeDestroy( Scene& parentScene, SceneGraphNode* node );
         /// cull the SceneGraph against the current view frustum. 
         void cullSceneGraph( const NodeCullParams& cullParams, const U16 cullFlags, VisibleNodeList<>& nodesOut );
         /// Searches the scenegraph for the specified nodeGUID and, if found, adds it to nodesOut
@@ -250,7 +263,7 @@ namespace Divide
             return _currentPlayerPass;
         }
 
-        [[nodiscard]] bool saveActiveScene( bool toCache, bool deferred, const DELEGATE<void, std::string_view>& msgCallback = {}, const DELEGATE<void, bool>& finishCallback = {}, const char* sceneNameOverride = "" );
+        [[nodiscard]] bool saveActiveScene( bool toCache, bool deferred, const DELEGATE<void, std::string_view>& msgCallback = {}, const DELEGATE<void, bool>& finishCallback = {} );
 
         [[nodiscard]] AI::Navigation::DivideRecast* recast() const noexcept
         {
@@ -258,6 +271,8 @@ namespace Divide
         }
 
         [[nodiscard]] SceneEnvironmentProbePool* getEnvProbes() const noexcept;
+
+        [[nodiscard]] U8 activePlayerCount() const noexcept;
 
         public:  /// Input
         /// Key pressed: return true if input was consumed
@@ -290,17 +305,21 @@ namespace Divide
         void mouseMovedExternally( const Input::MouseMoveEvent& arg );
 
         PROPERTY_RW( bool, wantsMouse, false );
-
         PROPERTY_R_IW(ProjectIDs, availableProjects);
-        POINTER_R_IW(Project, activeProject, nullptr);
+        PROPERTY_R(Project_uptr, activeProject, nullptr);
+
+        [[nodiscard]] const PlatformContext& platformContext() const noexcept;
+        [[nodiscard]]       PlatformContext& platformContext()       noexcept;
+
+        [[nodiscard]] const ResourceCache& resourceCache() const noexcept;
+        [[nodiscard]]       ResourceCache& resourceCache()       noexcept;
 
     protected:
         bool networkUpdate( U64 frameCount );
 
     protected:
-        ProjectIDs& init( PlatformContext& platformContext, ResourceCache* cache );
+        ProjectIDs& init( );
         void initPostLoadState() noexcept;
-        Scene* load( const Str<256>& sceneName );
 
         // Add a new player to the simulation
         void addPlayerInternal( Scene& parentScene, SceneGraphNode* playerNode );
@@ -336,15 +355,11 @@ namespace Divide
         bool loadNode( SceneGraphNode* targetNode ) const;
         SceneNode_ptr createNode( SceneNodeType type, const ResourceDescriptor& descriptor );
         std::pair<Texture_ptr, SamplerDescriptor> getSkyTexture() const;
+        [[nodiscard]] ErrorCode loadProjectInternal();
 
     private:
         bool _init = false;
         bool _processInput = false;
-        /// Pointer to the hardware objects
-        PlatformContext* _platformContext = nullptr;
-        /// Pointer to the general purpose resource cache
-        ResourceCache* _resourceCache = nullptr;
-
 
         Task* _saveTask = nullptr;
         PlayerIndex _currentPlayerPass = 0u;
@@ -355,13 +370,13 @@ namespace Divide
         U64 _saveTimer = 0ULL;
 
         std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _sceneGraphCullTimers;
-        PlayerList _players = {};
-        U8 _activePlayerCount = 0u;
 
         bool _playerQueueDirty = false;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerAddQueue;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
         AI::Navigation::DivideRecast_uptr _recast = nullptr;
+
+        SwitchProjectTarget _projectSwitchTarget{};
 
         vector<std::pair<size_t, DELEGATE<void, U8 /*player index*/, const vector_fast<SceneGraphNode*>& /*nodes*/>> > _selectionChangeCallbacks;
         VisibleNodeList<> _recentlyRenderedNodes;
@@ -370,7 +385,6 @@ namespace Divide
 
     namespace Attorney
     {
-
         class ProjectScenePool
         {
             static bool unloadScene( Divide::Project& project, Scene* scene )
@@ -381,14 +395,30 @@ namespace Divide
             friend class Divide::ScenePool;
         };
 
-        class ProjectManager
+        class ProjectManagerProject
         {
             static void waitForSaveTask( Divide::ProjectManager& mgr )
             {
                 mgr.waitForSaveTask();
             }
 
+            static void idle( Divide::Project& project )
+            {
+                project.idle();
+            }
+
+            [[nodiscard]] static bool onFrameStart( Divide::Project& project )
+            {
+                return project.onFrameStart();
+            }
+            
+            [[nodiscard]] static bool onFrameEnd( Divide::Project& project )
+            {
+                return project.onFrameEnd();
+            }
+
             friend class Divide::Project;
+            friend class Divide::ProjectManager;
         };
 
         class ProjectManagerScene
@@ -413,9 +443,9 @@ namespace Divide
 
         class ProjectManagerKernel
         {
-            static ProjectIDs& init( Divide::ProjectManager* manager, PlatformContext& platformContext, ResourceCache* cache )
+            static ProjectIDs& init( Divide::ProjectManager* manager)
             {
-                return manager->init( platformContext, cache );
+                return manager->init();
             }
 
             static void initPostLoadState( Divide::ProjectManager* manager ) noexcept

@@ -53,7 +53,7 @@ namespace Divide
         PROPERTY_R( vec3<F32>, extents, VECTOR3_UNIT );
         POINTER_R( Camera, camera, nullptr );
 
-        protected:
+       protected:
         void setParentNode( SceneGraphNode* node ) override;
     };
 

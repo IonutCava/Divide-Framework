@@ -73,7 +73,7 @@ namespace Divide
     class Resource : public GUIDWrapper
     {
         public:
-        explicit Resource( ResourceType type, const Str<256>& resourceName );
+        explicit Resource( ResourceType type, std::string_view resourceName );
 
         [[nodiscard]] ResourceState getState() const noexcept;
 
@@ -104,25 +104,26 @@ namespace Divide
         public:
         explicit CachedResource( ResourceType type,
                                  size_t descriptorHash,
-                                 const Str<256>& resourceName );
+                                 std::string_view resourceName );
         explicit CachedResource( ResourceType type,
                                  size_t descriptorHash,
-                                 const Str<256>& resourceName,
-                                 const ResourcePath& assetName );
+                                 std::string_view resourceName,
+                                 std::string_view assetName );
         explicit CachedResource( ResourceType type,
                                  size_t descriptorHash,
-                                 const Str<256>& resourceName,
-                                 ResourcePath assetName,
+                                 std::string_view resourceName,
+                                 std::string_view assetName,
                                  ResourcePath assetLocation );
 
          /// Loading and unloading interface
         virtual bool load();
         virtual bool unload();
 
-        [[nodiscard]] string assetPath() const
+        [[nodiscard]] inline ResourcePath assetPath() const
         {
-            return assetLocation().str() + "/" + assetName().str();
+            return assetLocation() / assetName();
         }
+
         void addStateCallback( ResourceState targetState, const DELEGATE<void, CachedResource*>& cbk );
 
         protected:
@@ -138,7 +139,7 @@ namespace Divide
         std::array<CallbackList, to_base( ResourceState::COUNT )> _loadingCallbacks{};
         mutable Mutex _callbackLock{};
         PROPERTY_RW( ResourcePath, assetLocation );
-        PROPERTY_RW( ResourcePath, assetName );
+        PROPERTY_RW( Str<256>, assetName );
         PROPERTY_R( size_t, descriptorHash );
     };
 

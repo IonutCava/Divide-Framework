@@ -10,15 +10,15 @@
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Animations/Headers/SceneAnimator.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 namespace Divide {
 
 Mesh::Mesh(GFXDevice& context,
            ResourceCache* parentCache,
            const size_t descriptorHash,
-           const Str<256>& name,
-           const ResourcePath& resourceName,
+           const std::string_view name,
+           const std::string_view resourceName,
            const ResourcePath& resourceLocation)
     : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, SceneNodeType::TYPE_MESH, Object3D::ObjectFlag::OBJECT_FLAG_NONE),
       _animator(nullptr)
@@ -75,7 +75,7 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
         subMeshDescriptor._componentMask |= skinnedMask;
     }
 
-    subMeshDescriptor._name = Util::StringFormat("%s_%d", parentNode->name().c_str(), meshIndex).c_str();
+    subMeshDescriptor._name = Util::StringFormat("{}_{}", parentNode->name().c_str(), meshIndex).c_str();
 
     SceneGraphNode* sgn = parentNode->addChildNode(subMeshDescriptor);
     sgn->get<TransformComponent>()->setPosition(subMesh->getWorldOffset());

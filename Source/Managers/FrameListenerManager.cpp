@@ -18,7 +18,7 @@ void FrameListenerManager::registerFrameListener(FrameListener* listener, const 
     listener->setCallOrder(callOrder);
     if (listener->name().empty())
     {
-        listener->name(Util::StringFormat("generic_f_listener_%d", listener->getGUID()).c_str());
+        listener->name(Util::StringFormat("generic_f_listener_{}", listener->getGUID()).c_str());
     }
     insert_sorted(_listeners, listener, eastl::less<>());
     listener->enabled(true);

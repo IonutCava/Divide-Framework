@@ -11,7 +11,7 @@
 
 #include "Editor/Headers/Editor.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Geometry/Shapes/Predefined/Headers/Box3D.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
@@ -51,8 +51,6 @@ namespace Divide
         I64 DefaultObjectIndex = 0u;
         SceneGraphNodeDescriptor g_nodeDescriptor;
 
-        static ResourcePath g_scenePath;
-
         const string s_messages[] = {
             "Please wait while saving current scene! App may appear frozen or stuttery for up to 30 seconds ...",
             "Saved scene succesfully",
@@ -61,8 +59,8 @@ namespace Divide
 
         struct SaveSceneParams
         {
+            SceneEntry _targetScene = {};
             string _saveMessage = "";
-            const char* _saveNameOverride = "";
             U32 _saveElementCount = 0u;
             U32 _saveProgress = 0u;
             bool _closePopup = false;
@@ -83,12 +81,11 @@ namespace Divide
 
 
     MenuBar::MenuBar( PlatformContext& context, const bool mainMenu )
-        : PlatformContextComponent( context ),
-        _isMainMenu( mainMenu ),
-        _sceneOpenDialog( true, true ),
-        _sceneSaveDialog( true )
+        : PlatformContextComponent( context )
+        , _isMainMenu( mainMenu )
+        , _sceneOpenDialog( true, true )
+        , _sceneSaveDialog( true )
     {
-        g_scenePath = Paths::g_rootPath + Paths::g_scenesLocation;
     }
 
     void MenuBar::draw( )
@@ -114,7 +111,7 @@ namespace Divide
 
             for ( vector<Texture_ptr>::iterator it = std::begin( _previewTextures ); it != std::end( _previewTextures ); )
             {
-                if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: %s", (*it)->resourceName().c_str() ).c_str(), (*it).get(), vec2<F32>( 512, 512 ), true, false ) )
+                if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", (*it)->resourceName().c_str() ).c_str(), (*it).get(), vec2<F32>( 512, 512 ), true, false ) )
                 {
                     it = _previewTextures.erase( it );
                 }
@@ -172,11 +169,13 @@ namespace Divide
                 if ( ImGui::BeginPopupModal( "Create New Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
                 {
                     static char buf[256];
-                    ImGui::Text( "WARNING: All unsaved changes will be lost!" );
-                    if ( ImGui::InputText( "New Scene Name", &buf[0], 254 ) )
+                    ImGui::Text( "This will automatically load the newly created scene!\nWARNING: All unsaved changes will be lost!" );
+                    ImGui::Text( "New Scene Name:" ); ImGui::SameLine();
+                    if ( ImGui::InputText( "##New Scene Name:", &buf[0], 254 ) )
                     {
 
                     }
+                    ImGui::Separator();
                     if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
                     {
                         ImGui::CloseCurrentPopup();
@@ -188,34 +187,68 @@ namespace Divide
                     {
                         ImGui::CloseCurrentPopup();
                         _newScenePopup = false;
-                        string sceneName( buf );
-                        if ( sceneName.empty() )
+                        SceneEntry newScene;
+                        newScene._name = buf;
+
+                        if ( newScene._name.empty() )
                         {
                             _errorMsg.append( "Scenes must be named!. \n" );
                         }
-                        else if ( !Util::CompareIgnoreCase( sceneName, Config::DEFAULT_SCENE_NAME ) )
+                        else if ( !Util::CompareIgnoreCase( newScene._name.c_str(), Config::DEFAULT_SCENE_NAME ) )
                         {
-                            FileError ret = copyDirectory( g_scenePath + "/" + Config::DEFAULT_SCENE_NAME, g_scenePath + "/" + sceneName, true, true );
-                            if ( ret != FileError::NONE )
+                            if (!Attorney::EditorGeneralWidget::switchScene( _context.editor(), newScene, true ) )
                             {
                                 DIVIDE_UNEXPECTED_CALL();
                             }
-                            ret = copyFile( g_scenePath.c_str(),
-                                            (Config::DEFAULT_SCENE_NAME + string( ".xml" )).c_str(),
-                                            g_scenePath.c_str(),
-                                            (sceneName + ".xml").c_str(),
-                                            true );
-                            if ( ret != FileError::NONE )
-                            {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
-                            Attorney::EditorGeneralWidget::switchScene( _context.editor(), (g_scenePath + "/" + sceneName).c_str() );
                         }
                         else
                         {
-                            _errorMsg.append( "Tried to use a reserved name for a new scene! Try a differeng name. \n" );
+                            _errorMsg.append( "Tried to use a reserved name for a new scene! Try a different name. \n" );
                         }
                     }
+                    ImGui::EndPopup();
+                }
+            }
+
+            if ( _saveSceneAsPopup )
+            {
+                Util::OpenCenteredPopup( "Save Scene As ..." );
+                if ( ImGui::BeginPopupModal( "Save Scene As ...", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
+                {
+                    static char buf[256];
+                    ImGui::Text( "Target Name:" ); ImGui::SameLine();
+                    if ( ImGui::InputText( "##Target Name:", &buf[0], 254 ) )
+                    {
+
+                    }
+                    ImGui::Separator();
+                    if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
+                    {
+                        ImGui::CloseCurrentPopup();
+                        _saveSceneAsPopup = false;
+                    }
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+                    if ( ImGui::Button( "Save", ImVec2( 120, 0 ) ) )
+                    {
+                        ImGui::CloseCurrentPopup();
+                        _saveSceneAsPopup = false;
+
+                        SceneEntry newScene;
+                        newScene._name = buf;
+
+                        if ( newScene._name.empty() )
+                        {
+                            _errorMsg.append( "Scenes must be named!. \n" );
+                        }
+                        else if ( !Util::CompareIgnoreCase( newScene._name.c_str(), Config::DEFAULT_SCENE_NAME ) )
+                        {
+                            _errorMsg.append( "Can't overwrite the default scene!. \n" );
+                        }
+
+                        saveAndDrawModalPopup( newScene );
+                    }
+
                     ImGui::EndPopup();
                 }
             }
@@ -321,7 +354,7 @@ namespace Divide
 
                 if ( g_nodeDescriptor._name.empty() )
                 {
-                    g_nodeDescriptor._name = Util::StringFormat( "Primitive_%d", DefaultObjectIndex++ ).c_str();
+                    g_nodeDescriptor._name = Util::StringFormat( "Primitive_{}", DefaultObjectIndex++ ).c_str();
                 }
                 ResourceCache* parentCache = _context.kernel().resourceCache();
                 ResourceDescriptor nodeDescriptor( (g_nodeDescriptor._name + "_n").c_str() );
@@ -369,7 +402,7 @@ namespace Divide
                     g_nodeDescriptor._node->getMaterialTpl()->properties().baseColour( FColour4( 0.4f, 0.4f, 0.4f, 1.0f ) );
                     g_nodeDescriptor._node->getMaterialTpl()->properties().roughness( 0.5f );
                     g_nodeDescriptor._node->getMaterialTpl()->properties().metallic( 0.5f );
-                    const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+                    const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
                     activeScene.sceneGraph()->getRoot()->addChildNode( g_nodeDescriptor );
                     Attorney::EditorGeneralWidget::registerUnsavedSceneChanges( _context.editor() );
                     g_nodeDescriptor._node.reset();
@@ -393,7 +426,8 @@ namespace Divide
                         ImGui::Separator();
 
                         static char buf[64];
-                        if ( ImGui::InputText( "Name", &buf[0], 61 ) )
+                        ImGui::Text( "Name:" ); ImGui::SameLine();
+                        if ( ImGui::InputText( "##Name:", &buf[0], 61 ) )
                         {
                             g_nodeDescriptor._name = buf;
                         }
@@ -449,64 +483,107 @@ namespace Divide
         }
     }
 
-    void MenuBar::drawFileMenu( [[maybe_unused]] const bool modifierPressed )
+    void MenuBar::saveAndDrawModalPopup( const SceneEntry& targetScene )
     {
-        bool showSceneOpenDialog = false;
-        bool showSceneSaveDialog = false;
+        _savePopup = true;
 
-        const auto saveSceneCbk = [this]( const char* sceneName = "" )
+        g_saveSceneParams._targetScene = targetScene;
+        g_saveSceneParams._closePopup = false;
+        g_saveSceneParams._saveProgress = 0u;
+        g_saveSceneParams._saveElementCount = Attorney::EditorGeneralWidget::saveItemCount( _context.editor() );
+
+        const auto messageCbk = []( const std::string_view msg )
         {
-            _savePopup = true;
-
-            const ResourcePath parentFolder = splitPathToNameAndLocation( sceneName ).first;
-            g_saveSceneParams._saveNameOverride = parentFolder.c_str();
-            g_saveSceneParams._closePopup = false;
-            g_saveSceneParams._saveProgress = 0u;
-            g_saveSceneParams._saveElementCount = Attorney::EditorGeneralWidget::saveItemCount( _context.editor() );
-
-            const auto messageCbk = []( const std::string_view msg )
-            {
-                g_saveSceneParams._saveMessage = msg;
-                ++g_saveSceneParams._saveProgress;
-            };
-
-            const auto closeDialog = [this]( const bool success )
-            {
-                Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), s_messages[success ? 1 : 2], Time::SecondsToMilliseconds<F32>( 6 ), !success );
-                g_saveSceneParams._closePopup = true;
-            };
-
-            Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), s_messages[0], Time::SecondsToMilliseconds<F32>( 6 ), false );
-            if ( !Attorney::EditorGeneralWidget::saveSceneChanges( _context.editor(), messageCbk, closeDialog, g_saveSceneParams._saveNameOverride ) )
-            {
-                _errorMsg.append( "Error occured while saving the current scene!\n Try again or check the logs for errors!\n" );
-            }
+            g_saveSceneParams._saveMessage = msg;
+            ++g_saveSceneParams._saveProgress;
         };
 
+        const auto closeDialog = [this]( const bool success )
+        {
+            Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), s_messages[success ? 1 : 2], Time::SecondsToMilliseconds<F32>( 6 ), !success );
+            g_saveSceneParams._closePopup = true;
+        };
+
+        Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), s_messages[0], Time::SecondsToMilliseconds<F32>( 6 ), false );
+        if ( !Attorney::EditorGeneralWidget::saveSceneChanges( _context.editor(), messageCbk, closeDialog ) )
+        {
+            _errorMsg.append( "Error occurred while saving the current scene!\n Try again or check the logs for errors!\n" );
+        }
+    }
+
+    void MenuBar::drawFileMenu( [[maybe_unused]] const bool modifierPressed )
+    {
         if ( ImGui::BeginMenu( "File" ) )
         {
             const bool hasUnsavedElements = Attorney::EditorGeneralWidget::hasUnsavedSceneChanges( _context.editor() );
             const bool isDefaultScene = Attorney::EditorGeneralWidget::isDefaultScene( _context.editor() );
 
+
+            const auto& projectList = Attorney::EditorMenuBar::getProjectList( _context.editor() );
+            if ( ImGui::BeginMenu( "Open Project", !projectList.empty() ) )
+            {
+                bool success = true;
+                for ( size_t i = 0u; i < projectList.size(); ++i )
+                {
+                    if ( ImGui::MenuItem( projectList[i]._name.c_str() ) )
+                    {
+                        if (!Attorney::EditorMenuBar::openProject( _context.editor(), projectList[i] ))
+                        {
+                            success = false;
+                            _errorMsg.append( Util::StringFormat( "Error occurred while trying to open project [ {} ]\n Try again or check the logs for errors!\n", projectList[i]._name.c_str()) );
+
+                            for (const auto& backup : projectList)
+                            {
+                                if (backup._name == Config::DEFAULT_PROJECT_NAME)
+                                {
+                                    if (Attorney::EditorMenuBar::openProject( _context.editor(), projectList.front() ))
+                                    {
+                                        success = true;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        if (!success)
+                        {
+                            DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat(LOCALE_STR("ERROR_PROJECT_LOAD"), projectList[i]._name).c_str());
+                        }
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
             if ( ImGui::MenuItem( "New Scene", "Ctrl+N", false, true ) )
             {
                 if ( hasUnsavedElements && !isDefaultScene )
                 {
-                    saveSceneCbk();
+                    saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene().entry() );
                 }
                 _newScenePopup = true;
             }
 
-            showSceneOpenDialog = ImGui::MenuItem( "Open Scene", "Ctrl+O" );
+            const SceneEntries& sceneList = Attorney::EditorMenuBar::getSceneList( _context.editor() );
+            if ( ImGui::BeginMenu("Open Scene", !sceneList.empty()) )
+            {
+                for ( size_t i = 0u; i < sceneList.size(); ++i )
+                {
+                    if ( ImGui::MenuItem( sceneList[i]._name.c_str() ) )
+                    {
+                        Attorney::EditorGeneralWidget::switchScene( _context.editor(), sceneList[i], false );
+                    }
+                }
+
+                ImGui::EndMenu();
+            }
 
             const auto& recentSceneList = Attorney::EditorMenuBar::getRecentSceneList( _context.editor() );
             if ( ImGui::BeginMenu( "Open Recent", !recentSceneList.empty() ) )
             {
                 for ( size_t i = 0u; i < recentSceneList.size(); ++i )
                 {
-                    if ( ImGui::MenuItem( recentSceneList.get( i ).c_str() ) )
+                    if ( ImGui::MenuItem( recentSceneList.get( i )._name.c_str() ) )
                     {
-                        Attorney::EditorGeneralWidget::switchScene( _context.editor(), (g_scenePath + "/" + recentSceneList.get( i )).c_str() );
+                        Attorney::EditorGeneralWidget::switchScene( _context.editor(), recentSceneList.get( i ), false );
                     }
                 }
 
@@ -517,21 +594,23 @@ namespace Divide
             {
                 if ( isDefaultScene && !modifierPressed )
                 {
-                    showSceneSaveDialog = true;
+                    _saveSceneAsPopup = true;
                 }
                 else
                 {
-                    saveSceneCbk();
+                    saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene().entry() );
                 }
             }
             if ( modifierPressed )
             {
                 Util::AddUnderLine();
             }
+
             if ( ImGui::MenuItem( ICON_FK_FLOPPY_O" Save Scene As", "", false, !isDefaultScene ) )
             {
-                showSceneSaveDialog = true;
+                _saveSceneAsPopup = true;
             }
+
             ImGui::Separator();
             if ( ImGui::BeginMenu( "Options" ) )
             {
@@ -546,7 +625,7 @@ namespace Divide
                         if ( sampleCount % 2 == 0 )
                         {
                             bool msaaEntryEnabled = config.rendering.MSAASamples == sampleCount;
-                            if ( ImGui::MenuItem( Util::StringFormat( "%dx", to_U32( sampleCount ) ).c_str(), "", &msaaEntryEnabled ) )
+                            if ( ImGui::MenuItem( Util::StringFormat( "{}x", to_U32( sampleCount ) ).c_str(), "", &msaaEntryEnabled ) )
                             {
                                 gfx.setScreenMSAASampleCount( sampleCount );
                             }
@@ -559,7 +638,7 @@ namespace Divide
                 {
                     const ShadowType sType = static_cast<ShadowType>(type);
                     if ( sType != ShadowType::CUBEMAP &&
-                         ImGui::BeginMenu( Util::StringFormat( "%s ShadowMap MSAA", Names::shadowType[type] ).c_str() ) )
+                         ImGui::BeginMenu( Util::StringFormat( "{} ShadowMap MSAA", Names::shadowType[type] ).c_str() ) )
                     {
                         const U8 currentCount = sType == ShadowType::CSM
                             ? config.rendering.shadowMapping.csm.MSAASamples
@@ -571,7 +650,7 @@ namespace Divide
                             if ( sampleCount % 2 == 0 )
                             {
                                 bool msaaEntryEnabled = currentCount == sampleCount;
-                                if ( ImGui::MenuItem( Util::StringFormat( "%dx", to_U32( sampleCount ) ).c_str(), "", &msaaEntryEnabled ) )
+                                if ( ImGui::MenuItem( Util::StringFormat( "{}x", to_U32( sampleCount ) ).c_str(), "", &msaaEntryEnabled ) )
                                 {
                                     gfx.setShadowMSAASampleCount( sType, sampleCount );
                                 }
@@ -592,20 +671,21 @@ namespace Divide
             {
                 for ( auto platform : Editor::g_supportedExportPlatforms )
                 {
+                    PushReadOnly(true);
                     if ( ImGui::MenuItem( platform, "", false, true ) )
                     {
                         if ( hasUnsavedElements )
                         {
-                            saveSceneCbk();
+                            saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene().entry() );
                         }
-                        Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), Util::StringFormat( "Exported game for [%s]!", platform ), Time::SecondsToMilliseconds<F32>( 3.0f ), false );
+                        Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), Util::StringFormat( "Exported game for [ {} ]!", platform ), Time::SecondsToMilliseconds<F32>( 3.0f ), false );
                         break;
                     }
+                    PopReadOnly();
                 }
 
                 ImGui::EndMenu();
             }
-
             ImGui::Separator();
             if ( ImGui::MenuItem( "Close Editor" ) )
             {
@@ -630,24 +710,6 @@ namespace Divide
             }
 
             ImGui::EndMenu();
-        }
-
-        Util::CenterNextWindow();
-        const char* sceneOpenPath = _sceneOpenDialog.chooseFolderDialog( showSceneOpenDialog, g_scenePath.c_str() );
-        if ( strlen( sceneOpenPath ) > 0 )
-        {
-            Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), Util::StringFormat( "Chosen scene load directory: \"%s\"", sceneOpenPath ), Time::SecondsToMilliseconds<F32>( 3.0f ), false );
-            if ( !Attorney::EditorGeneralWidget::switchScene( _context.editor(), sceneOpenPath ) )
-            {
-                Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), Util::StringFormat( "Failed to load scene: \"%s\"", sceneOpenPath ), Time::SecondsToMilliseconds<F32>( 3.0f ), true );
-            }
-        }
-
-        const char* sceneSavePath = _sceneSaveDialog.chooseFolderDialog( showSceneSaveDialog, g_scenePath.c_str() );
-        if ( strlen( sceneSavePath ) > 0 )
-        {
-            Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), Util::StringFormat( "Chosen scene save directory: \"%s\"", sceneSavePath ), Time::SecondsToMilliseconds<F32>( 3.0f ), false );
-            saveSceneCbk( sceneSavePath );
         }
     }
 
@@ -962,7 +1024,7 @@ namespace Divide
                     {
                         const size_t start = p * MaxProbesPerPage;
                         const size_t end = start + (p < pageCount ? MaxProbesPerPage : remainder);
-                        if ( ImGui::BeginMenu( Util::StringFormat( "%d - %d", start, end ).c_str() ) )
+                        if ( ImGui::BeginMenu( Util::StringFormat( "{} - {}", start, end ).c_str() ) )
                         {
                             for ( size_t j = start; j < end; ++j )
                             {
@@ -1014,7 +1076,7 @@ namespace Divide
                                 {
                                     const size_t start = p * MaxLightsPerPage;
                                     const size_t end = start + (p < pageCount ? MaxLightsPerPage : remainder);
-                                    if ( ImGui::BeginMenu( Util::StringFormat( "%d - %d", start, end ).c_str() ) )
+                                    if ( ImGui::BeginMenu( Util::StringFormat( "{} - {}", start, end ).c_str() ) )
                                     {
                                         for ( size_t j = start; j < end; ++j )
                                         {
@@ -1070,7 +1132,7 @@ namespace Divide
                 pool.lightImpostorsEnabled( lightImpostors );
             }
 
-            const ECSManager& ecsManager = _context.kernel().sceneManager()->getActiveScene().sceneGraph()->GetECSManager();
+            const ECSManager& ecsManager = _context.kernel().projectManager()->activeProject()->getActiveScene().sceneGraph()->GetECSManager();
             bool playAnimations = ecsManager.ecsEngine().GetSystemManager()->GetSystem<AnimationSystem>()->getAnimationState();
 
             if ( ImGui::MenuItem( "Play animations", "", &playAnimations ) )
@@ -1080,8 +1142,8 @@ namespace Divide
 
             if ( ImGui::BeginMenu( "Debug Gizmos" ) )
             {
-                SceneManager* sceneManager = context().kernel().sceneManager();
-                SceneRenderState& renderState = sceneManager->getActiveScene().state()->renderState();
+                ProjectManager* projectManager = context().kernel().projectManager();
+                SceneRenderState& renderState = projectManager->activeProject()->getActiveScene().state()->renderState();
 
                 bool temp = renderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_AABB );
                 if ( ImGui::MenuItem( "Show AABBs", "", &temp ) )
@@ -1178,7 +1240,7 @@ namespace Divide
                         groups.insert( groupID );
                     }
 
-                    const string label = groupID == -1 ? name : Util::StringFormat( "(%d) %s", groupID, name.c_str() );
+                    const string label = groupID == -1 ? name : Util::StringFormat( "({}) {}", groupID, name.c_str() );
                     if ( ImGui::MenuItem( label.c_str(), "", &enabled ) )
                     {
                         _context.gfx().toggleDebugView( index, enabled );
@@ -1190,7 +1252,7 @@ namespace Divide
                     for ( const I16 group : groups )
                     {
                         bool groupEnabled = _context.gfx().getDebugGroupState( group );
-                        if ( ImGui::MenuItem( Util::StringFormat( "Enable Group [ %d ]", group ).c_str(), "", &groupEnabled ) )
+                        if ( ImGui::MenuItem( Util::StringFormat( "Enable Group [ {} ]", group ).c_str(), "", &groupEnabled ) )
                         {
                             _context.gfx().toggleDebugGroup( group, groupEnabled );
                         }
@@ -1231,8 +1293,8 @@ namespace Divide
         if ( object == DebugObject::SPONZA)
         {
             ResourceDescriptor model( "Debug_Sponza" );
-            model.assetLocation( Paths::g_assetsLocation + Paths::g_modelsLocation );
-            model.assetName( ResourcePath{ "sponza.obj" } );
+            model.assetLocation( Paths::g_modelsLocation );
+            model.assetName( "sponza.obj" );
             model.flag( true );
             //model.waitForReady(true);
 

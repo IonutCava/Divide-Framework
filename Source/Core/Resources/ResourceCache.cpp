@@ -6,7 +6,8 @@
 
 namespace Divide {
 
-namespace {
+namespace
+{
     SharedMutex g_hashLock;
     eastl::set<size_t> g_loadingHashes;
 }
@@ -15,8 +16,10 @@ ResourceLoadLock::ResourceLoadLock(const size_t hash, PlatformContext& context)
     : _loadingHash(hash),
       _threaded(!Runtime::isMainThread())
 {
-    while (!SetLoading(_loadingHash)) {
-        if (_threaded) {
+    while (!SetLoading(_loadingHash))
+    {
+        if (_threaded)
+        {
             notifyTaskPool(context);
         }
     }
@@ -28,16 +31,20 @@ ResourceLoadLock::~ResourceLoadLock()
     DIVIDE_ASSERT(ret, "ResourceLoadLock failed to remove a resource lock!");
 }
 
-bool ResourceLoadLock::IsLoading(const size_t hash) {
+bool ResourceLoadLock::IsLoading(const size_t hash)
+{
     SharedLock<SharedMutex> r_lock(g_hashLock);
     return g_loadingHashes.find(hash) != std::cend(g_loadingHashes);
 }
 
-bool ResourceLoadLock::SetLoading(const size_t hash) {
-    if (!IsLoading(hash)) {
+bool ResourceLoadLock::SetLoading(const size_t hash)
+{
+    if (!IsLoading(hash))
+    {
         LockGuard<SharedMutex> w_lock(g_hashLock);
         //Check again
-        if (g_loadingHashes.find(hash) == std::cend(g_loadingHashes)) {
+        if (g_loadingHashes.find(hash) == std::cend(g_loadingHashes))
+        {
             g_loadingHashes.insert(hash);
             return true;
         }
@@ -45,14 +52,16 @@ bool ResourceLoadLock::SetLoading(const size_t hash) {
     return false;
 }
 
-bool ResourceLoadLock::SetLoadingFinished(const size_t hash) {
+bool ResourceLoadLock::SetLoadingFinished(const size_t hash)
+{
     LockGuard<SharedMutex> w_lock(g_hashLock);
     const size_t prevSize = g_loadingHashes.size();
     g_loadingHashes.erase(hash);
     return prevSize > g_loadingHashes.size();
 }
 
-void ResourceLoadLock::notifyTaskPool(PlatformContext& context) {
+void ResourceLoadLock::notifyTaskPool(PlatformContext& context)
+{
     context.taskPool(TaskPoolType::HIGH_PRIORITY).threadWaiting();
 }
 
@@ -88,11 +97,13 @@ void ResourceCache::printContents() const {
     }
 }
 
-void ResourceCache::clear() {
+void ResourceCache::clear()
+{
     Console::printfn(LOCALE_STR("STOP_RESOURCE_CACHE"));
 
     LockGuard<SharedMutex> w_lock(_creationMutex);
-    for (ResourceMap::iterator it = std::begin(_resDB); it != std::end(_resDB); ++it) {
+    for (ResourceMap::iterator it = std::begin(_resDB); it != std::end(_resDB); ++it)
+    {
         assert(!it->second.expired());
 
         const CachedResource_ptr res = it->second.lock();
@@ -102,7 +113,8 @@ void ResourceCache::clear() {
     _resDB.clear();
 }
 
-void ResourceCache::add(const CachedResource_wptr& resource, const bool overwriteEntry) {
+void ResourceCache::add(const CachedResource_wptr& resource, const bool overwriteEntry)
+{
     DIVIDE_ASSERT(!resource.expired(), LOCALE_STR("ERROR_RESOURCE_CACHE_LOAD_RES"));
 
     const CachedResource_ptr res = resource.lock();
@@ -113,17 +125,20 @@ void ResourceCache::add(const CachedResource_wptr& resource, const bool overwrit
 
     LockGuard<SharedMutex> w_lock(_creationMutex);
     const auto ret = _resDB.emplace(hash, res);
-    if (!ret.second && overwriteEntry) {
+    if (!ret.second && overwriteEntry)
+    {
          _resDB[hash] = res;
     }
     DIVIDE_ASSERT(ret.second || overwriteEntry, LOCALE_STR("ERROR_RESOURCE_CACHE_LOAD_RES"));
 }
 
-CachedResource_ptr ResourceCache::find(const size_t descriptorHash, bool& entryInMap) {
+CachedResource_ptr ResourceCache::find(const size_t descriptorHash, bool& entryInMap)
+{
     /// Search in our resource cache
     SharedLock<SharedMutex> r_lock(_creationMutex);
     const ResourceMap::const_iterator it = _resDB.find(descriptorHash);
-    if (it != std::end(_resDB)) {
+    if (it != std::end(_resDB))
+    {
         entryInMap = true;
         return it->second.lock();
     }
@@ -132,11 +147,12 @@ CachedResource_ptr ResourceCache::find(const size_t descriptorHash, bool& entryI
     return nullptr;
 }
 
-void ResourceCache::remove(CachedResource* resource) {
+void ResourceCache::remove(CachedResource* resource)
+{
     resource->setState(ResourceState::RES_UNLOADING);
 
     const size_t resourceHash = resource->descriptorHash();
-    const Str<256>& name = resource->resourceName();
+    const Str<256> name = resource->resourceName();
     const I64 guid = resource->getGUID();
 
     DIVIDE_ASSERT(resourceHash != 0, LOCALE_STR("ERROR_RESOURCE_CACHE_INVALID_NAME"));
@@ -150,17 +166,22 @@ void ResourceCache::remove(CachedResource* resource) {
     }
 
 
-    Console::printfn(LOCALE_STR("RESOURCE_CACHE_REM_RES"), name.c_str(), resourceHash);
-    if (!resource->unload()) {
-        Console::errorfn(LOCALE_STR("ERROR_RESOURCE_REM"), name.c_str(), guid);
+    Console::printfn(LOCALE_STR("RESOURCE_CACHE_REM_RES"), name, resourceHash);
+    if (!resource->unload())
+    {
+        Console::errorfn(LOCALE_STR("ERROR_RESOURCE_REM"), name, guid);
     }
 
-    if (resDBEmpty) {
-        Console::errorfn(LOCALE_STR("RESOURCE_CACHE_REMOVE_NO_DB"), name.c_str());
-    } else {
+    if (resDBEmpty)
+    {
+        Console::errorfn(LOCALE_STR("RESOURCE_CACHE_REMOVE_NO_DB"), name);
+    }
+    else
+    {
         LockGuard<SharedMutex> w_lock(_creationMutex);
         _resDB.erase(_resDB.find(resourceHash));
     }
+
     resource->setState(ResourceState::RES_UNKNOWN);
 }
 

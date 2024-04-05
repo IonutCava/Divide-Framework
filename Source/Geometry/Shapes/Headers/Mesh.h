@@ -85,8 +85,8 @@ class Mesh final : public Object3D {
     explicit Mesh(GFXDevice& context,
                   ResourceCache* parentCache,
                   size_t descriptorHash,
-                  const Str<256>& name,
-                  const ResourcePath& resourceName,
+                  std::string_view name,
+                  std::string_view resourceName,
                   const ResourcePath& resourceLocation);
 
     void postLoad(SceneGraphNode* sgn) override;

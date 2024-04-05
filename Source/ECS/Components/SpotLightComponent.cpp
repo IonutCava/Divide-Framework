@@ -4,7 +4,7 @@
 
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 

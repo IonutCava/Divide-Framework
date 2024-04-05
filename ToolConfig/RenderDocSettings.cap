@@ -2,16 +2,16 @@
     "rdocCaptureSettings": 1,
     "settings": {
         "autoStart": false,
-        "commandLine": "",
+        "commandLine": "--disableAssertOnRenderAPIError",
         "environment": [
         ],
-        "executable": "G:\\Divide-Framework\\Build\\Divide-Editor_d.exe",
+        "executable": "G:\\Divide-Framework\\Build\\windows-msvc-debug-editor\\bin\\Divide-Framework.exe",
         "inject": false,
         "numQueuedFrames": 0,
         "options": {
             "allowFullscreen": true,
             "allowVSync": true,
-            "apiValidation": false,
+            "apiValidation": true,
             "captureAllCmdLists": false,
             "captureCallstacks": false,
             "captureCallstacksOnlyDraws": false,
@@ -19,6 +19,7 @@
             "delayForDebugger": 0,
             "hookIntoChildren": false,
             "refAllResources": false,
+            "softMemoryLimit": 0,
             "verifyBufferAccess": false
         },
         "queuedFrameCap": 0,

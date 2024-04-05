@@ -475,12 +475,12 @@ set( GUI_SOURCE GUI/GUI.cpp
 
 set( MANAGERS_SOURCE_HEADERS Managers/Headers/FrameListenerManager.h
                              Managers/Headers/RenderPassManager.h
-                             Managers/Headers/SceneManager.h
+                             Managers/Headers/ProjectManager.h
 )
 
 set( MANAGERS_SOURCE Managers/FrameListenerManager.cpp
                      Managers/RenderPassManager.cpp
-                     Managers/SceneManager.cpp
+                     Managers/ProjectManager.cpp
 )
 
 set( NETWORKING_SOURCE_HEADERS Networking/Headers/ASIO.h
@@ -813,8 +813,6 @@ set( SCENES_SOURCE_HEADERS Scenes/DefaultScene/Headers/DefaultScene.h
                            Scenes/Headers/ScenePool.h
                            Scenes/Headers/SceneShaderData.h
                            Scenes/Headers/SceneState.h
-                           Scenes/MainScene/Headers/MainScene.h
-                           Scenes/PingPongScene/Headers/PingPongScene.h
                            Scenes/WarScene/AESOPActions/Headers/WarSceneActions.h
                            Scenes/WarScene/Headers/WarScene.h
                            Scenes/WarScene/Headers/WarSceneAIProcessor.h
@@ -828,8 +826,6 @@ set( SCENES_SOURCE Scenes/Scene.cpp
                    Scenes/SceneShaderData.cpp
                    Scenes/SceneState.cpp
                    Scenes/DefaultScene/DefaultScene.cpp
-                   Scenes/MainScene/MainScene.cpp
-                   Scenes/PingPongScene/PingPongScene.cpp
                    Scenes/WarScene/WarScene.cpp
                    Scenes/WarScene/WarSceneAI.cpp
                    Scenes/WarScene/WarSceneAIProcessor.cpp
@@ -872,19 +868,19 @@ set( UTILITY_SOURCE Utility/Colours.cpp
 set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
                         UnitTests/unitTestCommon.cpp
                         UnitTests/Test-Engine/ByteBufferTests.cpp
-                        UnitTests/Test-Engine/ConversionTests.cpp
-                        UnitTests/Test-Engine/DataTypeTests.cpp
-                        UnitTests/Test-Engine/HashTests.cpp
                         UnitTests/Test-Engine/MathMatrixTests.cpp
                         UnitTests/Test-Engine/MathVectorTests.cpp
                         UnitTests/Test-Engine/ScriptingTests.cpp
-                        UnitTests/Test-Engine/StringTests.cpp
-                        UnitTests/Test-Engine/ThreadingTests.cpp
 )
 
 set( TEST_PLATFORM_SOURCE UnitTests/unitTestCommon.h
                           UnitTests/unitTestCommon.cpp
                           UnitTests/Test-Platform/FileManagement.cpp
+                          UnitTests/Test-Platform/ConversionTests.cpp
+                          UnitTests/Test-Platform/DataTypeTests.cpp
+                          UnitTests/Test-Platform/HashTests.cpp
+                          UnitTests/Test-Platform/StringTests.cpp
+                          UnitTests/Test-Platform/ThreadingTests.cpp
 )
 
 set_source_files_properties("UnitTests/unitTestCommon.h" PROPERTIES HEADER_FILE_ONLY ON)

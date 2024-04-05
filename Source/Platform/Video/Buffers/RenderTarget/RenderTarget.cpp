@@ -32,7 +32,7 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 {
     if ( _descriptor._name.empty() )
     {
-        _descriptor._name = Util::StringFormat( "DVD_FB_%d", getGUID() ).c_str();
+        _descriptor._name = Util::StringFormat( "DVD_FB_{}", getGUID() ).c_str();
     }
 }
 
@@ -90,11 +90,11 @@ bool RenderTarget::create()
     {
         RTAttachment* att = updateAttachment(attDesc);
 
-        const Str<256> texName = Util::StringFormat("RT_%s_Att_%s_%d_%d",
-                                                    name().c_str(),
-                                                    getAttachmentName(attDesc._type),
-                                                    to_base(attDesc._slot),
-                                                    getGUID()).c_str();
+        const string texName = Util::StringFormat("RT_{}_Att_{}_{}_{}",
+                                                  name().c_str(),
+                                                  getAttachmentName(attDesc._type),
+                                                  to_base(attDesc._slot),
+                                                  getGUID());
         
         attDesc._texDescriptor.addImageUsageFlag(attDesc._type == RTAttachmentType::COLOUR 
                                                                 ? ImageUsage::RT_COLOUR_ATTACHMENT

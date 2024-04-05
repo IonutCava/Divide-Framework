@@ -9,6 +9,8 @@
 
 #include <IconsForkAwesome.h>
 
+#include <imgui_stdlib.h>
+
 namespace Divide {
     EditorOptionsWindow::EditorOptionsWindow(PlatformContext& context)
         : PlatformContextComponent(context),
@@ -74,8 +76,12 @@ namespace Divide {
 
         ImGui::Separator();
 
-        string externalTextEditorPath = Attorney::EditorOptionsWindow::externalTextEditorPath(_context.editor());
-        ImGui::InputText("Text Editor", externalTextEditorPath.data(), externalTextEditorPath.size(), ImGuiInputTextFlags_ReadOnly);
+        string externalTextEditorPath = Attorney::EditorOptionsWindow::externalTextEditorPath(_context.editor()).string();
+        ImGui::Text( "Text Editor:" ); ImGui::SameLine();
+        if (ImGui::InputText("##Text Editor:", &externalTextEditorPath, ImGuiInputTextFlags_ReadOnly))
+        {
+        }
+
         ImGui::SameLine();
         const bool openDialog = ImGui::Button("Select");
         if (openDialog) {
@@ -101,7 +107,9 @@ namespace Divide {
         if (ImGui::Button(ICON_FK_FLOPPY_O" Save", ImVec2(120, 0))) {
             open = false;
             _changeCount = 0u;
-            if (!_context.editor().saveToXML()) {
+            Attorney::EditorOptionsWindow::externalTextEditorPath( _context.editor(), ResourcePath{ externalTextEditorPath } );
+            if (!_context.editor().saveToXML())
+            {
                 Attorney::EditorGeneralWidget::showStatusMessage(_context.editor(), "Save failed!", Time::SecondsToMilliseconds<F32>(3.0f), true);
             }
         }
@@ -115,11 +123,10 @@ namespace Divide {
 
         if (_openDialog) {
             Util::CenterNextWindow();
-            const char* chosenPath = _fileOpenDialog.chooseFileDialog(openDialog, nullptr, nullptr, "Choose text editor", ImVec2(-1, -1), ImGui::GetMainViewport()->WorkPos);
-            if (strlen(chosenPath) > 0) {
-                Attorney::EditorOptionsWindow::externalTextEditorPath(_context.editor(), chosenPath);
-            }
-            if (_fileOpenDialog.hasUserJustCancelledDialog()) {
+            externalTextEditorPath = _fileOpenDialog.chooseFileDialog(openDialog, nullptr, nullptr, "Choose text editor", ImVec2(-1, -1), ImGui::GetMainViewport()->WorkPos);
+
+            if (_fileOpenDialog.hasUserJustCancelledDialog())
+            {
                 _openDialog = false;
             }
         }

@@ -1,86 +1,90 @@
 
 
+#include "Headers/ResourcePath.h"
 #include "Headers/FileManagement.h"
-
-#include <filesystem>
 
 namespace Divide {
 
-ResourcePath::ResourcePath(std::string_view path)
-    : _str( std::filesystem::path{path}.generic_string() )
+size_t ResourcePath::length() const noexcept
 {
+    return _fileSystemPath.string().length();
 }
 
-size_t ResourcePath::length() const noexcept {
-    return str().length();
+bool ResourcePath::empty() const noexcept
+{
+    return _fileSystemPath.empty();
 }
 
-bool ResourcePath::empty() const noexcept {
-    return length() == 0;
-}
-
-const char* ResourcePath::c_str() const noexcept {
-    return str().c_str();
-}
-
-ResourcePath& ResourcePath::pop_back() noexcept {
-    if (!empty()) {
-        _str.pop_back();
-    }
-
+ResourcePath& ResourcePath::append(const std::string_view str)
+{
+    _fileSystemPath = std::filesystem::path( string().append(str) );
     return *this;
 }
 
-ResourcePath& ResourcePath::append(std::string_view str)
+ResourcePath& ResourcePath::makeRelative( const ResourcePath& base )
 {
-    _str.append(str);
+    _fileSystemPath = std::filesystem::relative( _fileSystemPath, base.fileSystemPath() );
     return *this;
 }
 
-ResourcePath operator+(const ResourcePath& lhs, const ResourcePath& rhs) {
-    if (lhs.empty()) {
-        return rhs;
-    }
-
-    if (rhs.empty()) {
-        return lhs;
-    }
-
-    const bool hasSeparator = *lhs.str().rbegin() == '/' || *rhs.str().begin() == '/';
-    return ResourcePath(lhs.str() + (hasSeparator ? "" : "/") + rhs.str());
-}
-
-ResourcePath operator+(const ResourcePath& lhs, std::string_view rhs)
+ResourcePath ResourcePath::getRelative( const ResourcePath& base ) const
 {
-    ResourcePath ret(lhs);
-    ret.append(rhs);
-    return ret;
+    ResourcePath ret = *this;
+    return ret.makeRelative(base);
 }
 
-ResourcePath& operator+=(ResourcePath& lhs, const ResourcePath& rhs) {
-    lhs.append(rhs.str());
+ResourcePath operator/ ( const ResourcePath& lhs, const ResourcePath& rhs )
+{
+    return ResourcePath { lhs.fileSystemPath() / rhs.fileSystemPath() };
+}
+
+ResourcePath& operator/=( ResourcePath& lhs, const ResourcePath& rhs )
+{
+    lhs = lhs / rhs;
     return lhs;
 }
 
-ResourcePath& operator+=(ResourcePath& lhs, std::string_view rhs) {
-    lhs.append(rhs);
+ResourcePath  operator/ ( const ResourcePath& lhs, const std::string_view rhs )
+{
+    return ResourcePath{ lhs.fileSystemPath() / std::filesystem::path{rhs} };
+}
+
+ResourcePath& operator/=( ResourcePath& lhs, const std::string_view rhs )
+{
+    lhs = lhs / rhs;
     return lhs;
 }
 
-bool operator== (const ResourcePath& lhs, std::string_view rhs) {
+bool operator== (const ResourcePath& lhs, std::string_view rhs)
+{
     return lhs == ResourcePath(rhs);
 }
 
-bool operator!= (const ResourcePath& lhs, std::string_view rhs) {
+bool operator!= (const ResourcePath& lhs, std::string_view rhs)
+{
     return lhs != ResourcePath(rhs);
 }
 
-bool operator== (const ResourcePath& lhs, const ResourcePath& rhs) {
-    return pathCompare(lhs.c_str(), rhs.c_str());
+bool operator== (const ResourcePath& lhs, const ResourcePath& rhs)
+{
+    return lhs.fileSystemPath().lexically_normal().compare(rhs.fileSystemPath().lexically_normal()) == 0;
 }
 
-bool operator!= (const ResourcePath& lhs, const ResourcePath& rhs) {
-    return !pathCompare(lhs.c_str(), rhs.c_str());
+bool operator!= (const ResourcePath& lhs, const ResourcePath& rhs)
+{
+    return lhs.fileSystemPath().lexically_normal().compare( rhs.fileSystemPath().lexically_normal() ) != 0;
+}
+
+bool operator==( const FileNameAndPath& lhs, const FileNameAndPath& rhs )
+{
+    return lhs._fileName == rhs._fileName &&
+           lhs._path == rhs._path;
+}
+
+bool operator!=( const FileNameAndPath& lhs, const FileNameAndPath& rhs )
+{
+    return lhs._fileName != rhs._fileName ||
+           lhs._path != rhs._path;
 }
 
 }; //namespace Divide

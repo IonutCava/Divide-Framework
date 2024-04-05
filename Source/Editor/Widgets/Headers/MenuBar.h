@@ -38,7 +38,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <ImGuiMisc/imguifilesystem/imguifilesystem.h>
 
-namespace Divide {
+namespace Divide
+{
+    struct SceneEntry;
+
     FWD_DECLARE_MANAGED_CLASS(Texture);
 
     class MenuBar final : public PlatformContextComponent, NonMovable {
@@ -63,11 +66,14 @@ namespace Divide {
         void drawHelpMenu(bool modifierPressed) const;
         void spawnDebugObject(DebugObject object, bool modifierPressed) const;
 
+        void saveAndDrawModalPopup( const SceneEntry& targetScene );
+
     protected:
         bool _isMainMenu = true;
         bool _quitPopup = false;
         bool _restartPopup = false;
         bool _newScenePopup = false;
+        bool _saveSceneAsPopup = false;
         bool _closePopup = false;
         bool _savePopup = false;
         SceneNodeType _newPrimitiveType = SceneNodeType::COUNT;

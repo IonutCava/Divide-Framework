@@ -1,7 +1,7 @@
 
 
 #include "Headers/DirectionalLightComponent.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
@@ -38,7 +38,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
 
     for (U8 cascade = 0; cascade < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++cascade) {
         EditorComponentField sceneFitField = {};
-        sceneFitField._name = Util::StringFormat("Fit CSM To AABB [ %d ]", cascade).c_str();
+        sceneFitField._name = Util::StringFormat("Fit CSM To AABB [ {} ]", cascade).c_str();
         sceneFitField._data = &_csmUseSceneAABBFit[cascade];
         sceneFitField._type = EditorComponentFieldType::PUSH_TYPE;
         sceneFitField._readOnly = cascade >= csmSplitCount();

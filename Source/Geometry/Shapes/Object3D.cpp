@@ -6,7 +6,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Material/Headers/Material.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Physics/Headers/PXDevice.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
@@ -16,7 +16,7 @@
 
 namespace Divide {
 
-Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 flagMask)
+Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 flagMask)
     : SceneNode(parentCache,
                 descriptorHash,
                 name,
@@ -46,7 +46,7 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     }
 }
 
-Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const ObjectFlag flag)
+Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const ObjectFlag flag)
     : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, type, to_U32(flag))
 {
 }

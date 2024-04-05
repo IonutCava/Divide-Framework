@@ -2,7 +2,7 @@
 
 #include "Headers/AnimationComponent.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Geometry/Animations/Headers/SceneAnimator.h"
 

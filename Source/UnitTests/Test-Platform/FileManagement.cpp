@@ -14,10 +14,10 @@ TEST_CASE( "File Existence Check" "[file_management]" )
 {
     platformInitRunListener::PlatformInit();
 
-    const char* invalidFileName = "abc.cba";
+    const ResourcePath invalidFileName{ "abc.cba" };
 
     const Divide::SysInfo& systemInfo = Divide::const_sysInfo();
-    const char* workingPath = systemInfo._workingDirectory.c_str();
+    const ResourcePath workingPath = systemInfo._workingDirectory;
 
     CHECK_TRUE(Divide::pathExists(workingPath));
     CHECK_FALSE(Divide::fileExists(invalidFileName));
@@ -27,17 +27,17 @@ TEST_CASE( "Path Existence Check" "[file_management]" )
 {
     platformInitRunListener::PlatformInit();
 
-    const char* invalidPath = "abccba";
+    const ResourcePath invalidPath{"abccba"};
 
-    CHECK_TRUE(Divide::pathExists(Divide::Paths::g_rootPath + Divide::Paths::g_assetsLocation));
+    CHECK_TRUE(Divide::pathExists(Divide::Paths::g_assetsLocation));
     CHECK_FALSE(Divide::pathExists(invalidPath));
 }
 
 TEST_CASE( "Extension Check" "[file_management]" )
 {
-    const char* file1 = "temp.xyz";
-    const char* file2 = "folder/temp.st";
-    const char* file3 = "folder/temp";
+    const ResourcePath file1{"temp.xyz"};
+    const ResourcePath file2{"folder/temp.st"};
+    const ResourcePath file3{"folder/temp"};
     const char* ext1 = "xyz";
     const char* ext2 = "st";
 
@@ -49,15 +49,13 @@ TEST_CASE( "Extension Check" "[file_management]" )
 
 TEST_CASE( "Lexically Normal Path Compare" "[file_management]" )
 {
-    const char* path1_in = "foo/./bar/..";
-    const char* path2_in = "foo\\/./bar/../";
+    const ResourcePath path1_in{"foo/./bar/.."};
+    const ResourcePath path2_in{"foo\\/./bar/../"};
 
-    const char* path_out = "foo/";
+    const ResourcePath path_out{"foo/"};
 
-    CHECK_TRUE(Divide::pathCompare(path1_in, path_out));
-    CHECK_TRUE(Divide::pathCompare(path2_in, path_out));
-    CHECK_EQUAL(Divide::ResourcePath(path1_in), Divide::ResourcePath(path_out));
-    CHECK_EQUAL(Divide::ResourcePath(path2_in), Divide::ResourcePath(path_out));
+    CHECK_EQUAL(path1_in, path_out);
+    CHECK_EQUAL(path2_in, path_out);
 }
 
 } //namespace Divide

@@ -33,7 +33,7 @@ struct MeshLoadData {
 namespace 
 {
 
-    void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, ResourcePath modelName) {
+    void threadedMeshLoad(MeshLoadData loadData, ResourcePath modelPath, const std::string_view modelName) {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
         Import::ImportData tempMeshData(modelPath, modelName);
@@ -45,7 +45,7 @@ namespace
         } else {
             loadData._cache->remove(loadData._mesh.get());
             loadData._mesh.reset();
-            Console::errorfn(LOCALE_STR("ERROR_IMPORTER_MESH"), modelName.c_str());
+            Console::errorfn(LOCALE_STR("ERROR_IMPORTER_MESH"), modelName);
             return;
         }
     }
@@ -67,9 +67,8 @@ CachedResource_ptr ImplResourceLoader<Mesh>::operator()() {
     }
 
     MeshLoadData loadingData(ptr, _cache, &_context, _descriptor);
-    const ResourcePath assetLocaltion = _descriptor.assetLocation();
-    const ResourcePath assetName = _descriptor.assetName();
-    Task* task = CreateTask([assetLocaltion, assetName, loadingData](const Task &) {
+    Task* task = CreateTask([assetLocaltion = _descriptor.assetLocation(), assetName = _descriptor.assetName(), loadingData](const Task &)
+                            {
                                 threadedMeshLoad(loadingData, assetLocaltion, assetName);
                             });
 

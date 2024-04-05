@@ -13,7 +13,7 @@
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/RenderPassManager.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
@@ -312,7 +312,7 @@ namespace Divide
         bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
         bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        bufferDescriptor._name = Util::StringFormat( "CMD_DATA_%s", TypeUtil::RenderStageToString( stage ) );
+        bufferDescriptor._name = Util::StringFormat( "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
         _cmdBuffer = _context.newSB( bufferDescriptor );
     }
 
@@ -376,7 +376,7 @@ namespace Divide
         {// Node Transform buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _transformBuffer._data._gpuData.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeTransformData );
-            bufferDescriptor._name = Util::StringFormat( "NODE_TRANSFORM_DATA_%s", TypeUtil::RenderStageToString( _stage ) );
+            bufferDescriptor._name = Util::StringFormat( "NODE_TRANSFORM_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
             _transformBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _transformBuffer._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
             _transformBuffer._queueLength = bufferDescriptor._ringBufferLength;
@@ -384,7 +384,7 @@ namespace Divide
         {// Node Material buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _materialBuffer._data._gpuData.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeMaterialData );
-            bufferDescriptor._name = Util::StringFormat( "NODE_MATERIAL_DATA_%s", TypeUtil::RenderStageToString( _stage ) );
+            bufferDescriptor._name = Util::StringFormat( "NODE_MATERIAL_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
             _materialBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _materialBuffer._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
             _materialBuffer._queueLength = bufferDescriptor._ringBufferLength;
@@ -392,7 +392,7 @@ namespace Divide
         {// Indirection Buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _indirectionBuffer._data.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeIndirectionData );
-            bufferDescriptor._name = Util::StringFormat( "NODE_INDIRECTION_DATA_%s", TypeUtil::RenderStageToString( _stage ) );
+            bufferDescriptor._name = Util::StringFormat( "NODE_INDIRECTION_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
             _indirectionBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _indirectionBuffer._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
             _indirectionBuffer._queueLength = bufferDescriptor._ringBufferLength;
@@ -803,7 +803,7 @@ namespace Divide
         }
 
         RenderStagePass stagePass = params._stagePass;
-        const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
+        const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene().state()->renderState();
         {
             Mutex memCmdLock;
 
@@ -863,7 +863,7 @@ namespace Divide
 
         RenderStagePass stagePass = params._stagePass;
         const RenderBinType targetBin = transparencyPass ? RenderBinType::TRANSLUCENT : RenderBinType::COUNT;
-        const SceneRenderState& sceneRenderState = _parent.parent().sceneManager()->getActiveScene().state()->renderState();
+        const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene().state()->renderState();
 
         _renderQueue->clear( targetBin );
 
@@ -937,9 +937,9 @@ namespace Divide
 
         if ( params._stagePass._passType != RenderPassType::PRE_PASS )
         {
-            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = Util::StringFormat( "Post Render pass for stage [ %s ]", TypeUtil::RenderStageToString( stagePass._stage ), to_U32( stagePass._stage ) ).c_str();
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = Util::StringFormat( "Post Render pass for stage [ {} ]", TypeUtil::RenderStageToString( stagePass._stage ), to_U32( stagePass._stage ) ).c_str();
 
-            _renderQueue->postRender( Attorney::SceneManagerRenderPass::renderState( _parent.parent().sceneManager() ),
+            _renderQueue->postRender( Attorney::ProjectManagerRenderPass::renderState( _parent.parent().projectManager() ),
                                       params._stagePass,
                                       bufferInOut );
 
@@ -1202,7 +1202,7 @@ namespace Divide
         }
         const CameraSnapshot& camSnapshot = camera->snapshot();
 
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = Util::StringFormat( "Custom pass ( %s - %s )", TypeUtil::RenderStageToString( _stage ), params._passName.empty() ? "N/A" : params._passName.c_str() ).c_str();
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = Util::StringFormat( "Custom pass ( {} - {} )", TypeUtil::RenderStageToString( _stage ), params._passName.empty() ? "N/A" : params._passName.c_str() ).c_str();
 
         RenderTarget* target = _context.renderTargetPool().getRenderTarget( params._target );
 
@@ -1218,7 +1218,7 @@ namespace Divide
             I64 ignoreGUID = params._sourceNode == nullptr ? -1 : params._sourceNode->getGUID();
 
             NodeCullParams cullParams = {};
-            Attorney::SceneManagerRenderPass::initDefaultCullValues( _parent.parent().sceneManager(), _stage, cullParams );
+            Attorney::ProjectManagerRenderPass::initDefaultCullValues( _parent.parent().projectManager(), _stage, cullParams );
 
             cullParams._clippingPlanes = params._clippingPlanes;
             cullParams._stage = _stage;
@@ -1238,11 +1238,11 @@ namespace Divide
             {
                 cullFlags |= to_base( CullOptions::CULL_STATIC_NODES );
             }
-            Attorney::SceneManagerRenderPass::cullScene( _parent.parent().sceneManager(), cullParams, cullFlags, _visibleNodesCache );
+            Attorney::ProjectManagerRenderPass::cullScene( _parent.parent().projectManager(), cullParams, cullFlags, _visibleNodesCache );
         }
         else
         {
-            Attorney::SceneManagerRenderPass::findNode( _parent.parent().sceneManager(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
+            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
         }
 
         const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES))) && _stage != RenderStage::SHADOW;
@@ -1300,7 +1300,7 @@ namespace Divide
 
         if ( params._refreshLightData )
         {
-            Attorney::SceneManagerRenderPass::prepareLightData( _parent.parent().sceneManager(), _stage, camSnapshot, memCmdInOut );
+            Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager(), _stage, camSnapshot, memCmdInOut );
         }
 
         GFX::EnqueueCommand( bufferInOut, GFX::SetClipPlanesCommand{ params._clippingPlanes } );

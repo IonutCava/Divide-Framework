@@ -10,7 +10,7 @@
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
 #include "Graphs/Headers/SceneGraph.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 namespace Divide
 {

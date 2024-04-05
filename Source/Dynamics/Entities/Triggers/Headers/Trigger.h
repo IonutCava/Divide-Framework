@@ -42,7 +42,7 @@ class Unit;
 /// When a unit touches the circle described by
 class Trigger final : public SceneNode {
    public:
-    explicit Trigger(ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name);
+    explicit Trigger(ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
 
     /// Trigger's the Task regardless of position
     [[nodiscard]] bool trigger() const;

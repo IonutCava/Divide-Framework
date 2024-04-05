@@ -244,7 +244,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         fragModule._moduleType = ShaderType::FRAGMENT;
         for (U8 i = 0; i < to_base(ToneMapParams::MapFunctions::COUNT) + 1; ++i) {
             fragModule._defines.emplace_back(
-                Util::StringFormat("%s %d",
+                Util::StringFormat("{} {}",
                                    TypeUtil::ToneMapFunctionsToString(static_cast<ToneMapParams::MapFunctions>(i)),
                                    i));
         }
@@ -284,9 +284,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         ShaderModuleDescriptor computeModule = {};
         computeModule._moduleType = ShaderType::COMPUTE;
         computeModule._sourceFile = "luminanceCalc.glsl";
-        computeModule._defines.emplace_back(Util::StringFormat("GROUP_SIZE %d", GROUP_X_THREADS * GROUP_Y_THREADS));
-        computeModule._defines.emplace_back(Util::StringFormat("THREADS_X %d", GROUP_X_THREADS));
-        computeModule._defines.emplace_back(Util::StringFormat("THREADS_Y %d", GROUP_Y_THREADS));
+        computeModule._defines.emplace_back(Util::StringFormat("GROUP_SIZE {}", GROUP_X_THREADS * GROUP_Y_THREADS));
+        computeModule._defines.emplace_back(Util::StringFormat("THREADS_X {}", GROUP_X_THREADS));
+        computeModule._defines.emplace_back(Util::StringFormat("THREADS_Y {}", GROUP_Y_THREADS));
         {
             computeModule._variant = "Create";
             ShaderProgramDescriptor calcDescriptor = {};
@@ -864,7 +864,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     {
         if ( filterStack & 1u << to_U32(op->operatorType()))
         {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ %s ]", PostFX::FilterName(op->operatorType())).c_str(), to_U32(op->operatorType()) });
+            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ {} ]", PostFX::FilterName(op->operatorType())).c_str(), to_U32(op->operatorType()) });
             if (op->execute(idx, cameraSnapshot, getInput(false), getOutput(false), bufferInOut))
             {
                 _screenRTs._swappedLDR = !_screenRTs._swappedLDR;

@@ -36,10 +36,37 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
+inline FileError writeFile( const ResourcePath& filePath, const std::string_view fileName, const bufferPtr content, const size_t length, const FileType fileType )
+{
+    return writeFile( filePath, fileName, static_cast<const char*>(content), length, fileType );
+}
+
+inline bool fileExists( const ResourcePath& filePath, const std::string_view fileName )
+{
+    return fileExists( filePath / fileName );
+}
+
+inline bool fileIsEmpty( const ResourcePath& filePath, const std::string_view fileName )
+{
+    return fileIsEmpty( filePath / fileName );
+}
+
+inline FileError fileLastWriteTime( const ResourcePath& filePath, const std::string_view fileName, U64& timeOutSec )
+{
+    return fileLastWriteTime( filePath / fileName, timeOutSec );
+}
+
+inline FileError openFile( const ResourcePath& filePath, const std::string_view fileName )
+{
+    return openFile( "", filePath, fileName );
+}
+
 template<typename T> requires has_assign<T> || is_vector<T>
-FileError readFile(const char* filePath, const char* fileName, T& contentOut, const FileType fileType) {
-    if (!Util::IsEmptyOrNull(filePath) && !Util::IsEmptyOrNull(fileName) && pathExists(filePath)) {
-        std::ifstream streamIn(string{ filePath } +fileName,
+FileError readFile( const ResourcePath& filePath, const std::string_view fileName, T& contentOut, const FileType fileType )
+{
+    if (!filePath.empty() && !fileName.empty() && pathExists(filePath))
+    {
+        std::ifstream streamIn((filePath / fileName).string(),
                                fileType == FileType::BINARY
                                          ? std::ios::in | std::ios::binary
                                          : std::ios::in);
@@ -73,19 +100,14 @@ FileError readFile(const char* filePath, const char* fileName, T& contentOut, co
     return FileError::FILE_NOT_FOUND;
 }
 
-template<typename T> requires has_assign<T> || is_vector<T>
-FileError readFile(const ResourcePath& filePath, const ResourcePath& fileName, T& contentOut, FileType fileType)
-{
-    return readFile(filePath.c_str(), fileName.c_str(), contentOut, fileType);
-}
 
 //Optimized variant for vectors
 template<>
-inline FileError readFile(const char* filePath, const char* fileName, vector<Byte>& contentOut, const FileType fileType)
+inline FileError readFile(const ResourcePath& filePath, const std::string_view fileName, vector<Byte>& contentOut, const FileType fileType)
 {
-    if (!Util::IsEmptyOrNull(filePath) && !Util::IsEmptyOrNull(fileName) && pathExists(filePath))
+    if ( !filePath.empty() && !fileName.empty() && pathExists(filePath))
     {
-        std::ifstream streamIn(string{ filePath } +fileName,
+        std::ifstream streamIn((filePath / fileName).string(),
                                fileType == FileType::BINARY
                                          ? std::ios::in | std::ios::binary
                                          : std::ios::in);

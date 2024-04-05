@@ -23,7 +23,7 @@ namespace ECS
 	{
 		for (auto ec : this->m_EntityRegistry)
 		{
-			LOG_DEBUG("Releasing remaining entities of type '%s' ...", ec.second->GetEntityContainerTypeName());
+			LOG_DEBUG("Releasing remaining entities of type '{}' ...", ec.second->GetEntityContainerTypeName());
 			delete ec.second;
 			ec.second = nullptr;
 		}

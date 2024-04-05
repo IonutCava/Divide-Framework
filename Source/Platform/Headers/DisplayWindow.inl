@@ -58,10 +58,6 @@ namespace Divide {
         return _flags & to_base(WindowFlags::HAS_FOCUS);
     }
 
-    inline U8 DisplayWindow::opacity() const noexcept {
-        return _opacity;
-    }
-
     inline U8 DisplayWindow::prevOpacity() const noexcept {
         return _prevOpacity;
     }
@@ -82,10 +78,6 @@ namespace Divide {
         return _flags & to_base(WindowFlags::HIDDEN);
     }
 
-    inline WindowType DisplayWindow::type() const noexcept {
-        return _type;
-    }
-
     inline void DisplayWindow::changeType(const WindowType newType) {
         handleChangeWindowType(newType);
     }
@@ -94,8 +86,9 @@ namespace Divide {
         changeType(_previousType);
     }
 
-    inline const char* DisplayWindow::title() const noexcept {
-        return SDL_GetWindowTitle(_sdlWindow);
+    inline const char* DisplayWindow::title() const noexcept
+    {
+        return _title.c_str();
     }
 
     inline void DisplayWindow::addEventListener(const WindowEvent windowEvent, const EventListener& listener) {
@@ -119,17 +112,19 @@ namespace Divide {
         return _renderingViewport;
     }
 
-    inline DisplayWindow::UserData* DisplayWindow::userData() const noexcept {
-        return _userData;
-    }
-
     template<typename... Args>
-    void DisplayWindow::title(const char* format, Args&& ...args) noexcept {
-        if constexpr(sizeof...(Args) > 0) {
-            SDL_SetWindowTitle(_sdlWindow, Util::StringFormat(format, static_cast<Args&&>(args)...).c_str());
-        } else {
-            SDL_SetWindowTitle(_sdlWindow, format);
+    void DisplayWindow::title(const char* format, Args&& ...args) noexcept
+    {
+        if constexpr(sizeof...(Args) > 0)
+        {
+            _title = Util::StringFormat( format, static_cast<Args&&>(args)... );
         }
+        else
+        {
+            _title = format;
+        }
+        
+        SDL_SetWindowTitle(_sdlWindow, _title.c_str());
     }
 }; //namespace Divide
 

@@ -40,7 +40,7 @@ namespace Divide {
 
 class AudioDescriptor final : public CachedResource {
    public:
-    AudioDescriptor(const size_t descriptorHash, const Str<256>& name, const ResourcePath& audioFileName, const ResourcePath& audioFilePath)
+    AudioDescriptor(const size_t descriptorHash, const std::string_view name, const std::string_view audioFileName, const ResourcePath& audioFilePath)
         : CachedResource(ResourceType::DEFAULT, descriptorHash, name, audioFileName, audioFilePath)
     {
     }
@@ -49,8 +49,9 @@ class AudioDescriptor final : public CachedResource {
         return true;
     }
 
-    void setAudioFile(const string& filePath) {
-        const auto[name, path] = splitPathToNameAndLocation(filePath.c_str());
+    void setAudioFile(const ResourcePath& filePath)
+    {
+        const auto[name, path] = splitPathToNameAndLocation(filePath);
         assetName(name);
         assetLocation(path);
         _dirty = true;

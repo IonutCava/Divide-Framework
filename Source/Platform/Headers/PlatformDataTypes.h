@@ -208,19 +208,19 @@ namespace Divide
     static const P64 P64_FLAGS_TRUE = { 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u };
     static const P64 P64_FLAGS_FALSE = { 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u };
 
-    FORCE_INLINE bool operator==( const P32& lhs, const P32& rhs ) noexcept
+    inline bool operator==( const P32& lhs, const P32& rhs ) noexcept
     {
         return lhs.i == rhs.i;
     }
-    FORCE_INLINE bool operator!=( const P32& lhs, const P32& rhs ) noexcept
+    inline bool operator!=( const P32& lhs, const P32& rhs ) noexcept
     {
         return lhs.i != rhs.i;
     }
-    FORCE_INLINE bool operator==( const P64& lhs, const P64& rhs ) noexcept
+    inline bool operator==( const P64& lhs, const P64& rhs ) noexcept
     {
         return lhs.i == rhs.i;
     }
-    FORCE_INLINE bool operator!=( const P64& lhs, const P64& rhs ) noexcept
+    inline bool operator!=( const P64& lhs, const P64& rhs ) noexcept
     {
         return lhs.i != rhs.i;
     }
@@ -244,7 +244,7 @@ namespace Divide
             assert( val < INT24_MAX&& val > -INT24_MAX );
         }
 
-        FORCE_INLINE I24& operator= ( const I32 input ) noexcept
+        inline I24& operator= ( const I32 input ) noexcept
         {
             assert( input < INT24_MAX&& input > -INT24_MAX );
 
@@ -255,7 +255,7 @@ namespace Divide
             return *this;
         }
 
-        FORCE_INLINE operator I32() const noexcept
+        inline operator I32() const noexcept
         {
             /* Sign extend negative quantities */
             if ( value[2] & 0x80 )
@@ -266,137 +266,136 @@ namespace Divide
             return value[2] << 16 | value[1] << 8 | value[0];
         }
 
-        FORCE_INLINE I24 operator+   ( const I32 val )  const noexcept
+        inline I24 operator+   ( const I32 val )  const noexcept
         {
             return I24( static_cast<I32>(*this) + val );
         }
-        FORCE_INLINE I24 operator-   ( const I32 val )  const noexcept
+        inline I24 operator-   ( const I32 val )  const noexcept
         {
             return I24( static_cast<I32>(*this) - val );
         }
-        FORCE_INLINE I24 operator+   ( const I24& val ) const noexcept
+        inline I24 operator+   ( const I24& val ) const noexcept
         {
             return I24( static_cast<I32>(*this) + static_cast<I32>(val) );
         }
-        FORCE_INLINE I24 operator-   ( const I24& val ) const noexcept
+        inline I24 operator-   ( const I24& val ) const noexcept
         {
             return I24( static_cast<I32>(*this) - static_cast<I32>(val) );
         }
-        FORCE_INLINE I24 operator*   ( const I24& val ) const noexcept
+        inline I24 operator*   ( const I24& val ) const noexcept
         {
             return I24( static_cast<I32>(*this) * static_cast<I32>(val) );
         }
-        FORCE_INLINE I24 operator/   ( const I24& val ) const noexcept
+        inline I24 operator/   ( const I24& val ) const noexcept
         {
             return I24( static_cast<I32>(*this) / static_cast<I32>(val) );
         }
-        FORCE_INLINE I24& operator+= ( const I24& val )       noexcept
+        inline I24& operator+= ( const I24& val )       noexcept
         {
             *this = *this + val; return *this;
         }
-        FORCE_INLINE I24& operator-= ( const I24& val )       noexcept
+        inline I24& operator-= ( const I24& val )       noexcept
         {
             *this = *this - val; return *this;
         }
-        FORCE_INLINE I24& operator*= ( const I24& val )       noexcept
+        inline I24& operator*= ( const I24& val )       noexcept
         {
             *this = *this * val; return *this;
         }
-        FORCE_INLINE I24& operator/= ( const I24& val )       noexcept
+        inline I24& operator/= ( const I24& val )       noexcept
         {
             *this = *this / val; return *this;
         }
-        FORCE_INLINE I24 operator>>  ( const I32 val ) const  noexcept
+        inline I24 operator>>  ( const I32 val ) const  noexcept
         {
             return I24( static_cast<I32>(*this) >> val );
         }
-        FORCE_INLINE I24 operator<<  ( const I32 val ) const  noexcept
+        inline I24 operator<<  ( const I32 val ) const  noexcept
         {
             return I24( static_cast<I32>(*this) << val );
         }
 
-        FORCE_INLINE operator bool()   const noexcept
+        inline operator bool()   const noexcept
         {
             return static_cast<I32>(*this) != 0;
         }
-        FORCE_INLINE bool operator! () const noexcept
+        inline bool operator! () const noexcept
         {
             return !static_cast<I32>(*this);
         }
-        FORCE_INLINE I24  operator- () const noexcept
+        inline I24  operator- () const noexcept
         {
             return I24( -static_cast<I32>(*this) );
         }
-        FORCE_INLINE I24& operator++ ()      noexcept
+        inline I24& operator++ ()      noexcept
         {
             *this = *this + 1; return *this;
         }
-        FORCE_INLINE I24& operator-- ()      noexcept
+        inline I24& operator-- ()      noexcept
         {
             *this = *this - 1; return *this;
         }
 
-        FORCE_INLINE I24  operator++ ( I32 )                  noexcept
+        inline I24  operator++ ( I32 )                  noexcept
         {
             I24 ret = *this; ++* this; return ret;
         }
-        FORCE_INLINE I24  operator-- ( I32 )                  noexcept
+        inline I24  operator-- ( I32 )                  noexcept
         {
             I24 ret = *this; --* this; return ret;
         }
-        FORCE_INLINE bool operator== ( const I24& val ) const noexcept
+        inline bool operator== ( const I24& val ) const noexcept
         {
             return static_cast<I32>(*this) == static_cast<I32>(val);
         }
-        FORCE_INLINE bool operator!= ( const I24& val ) const noexcept
+        inline bool operator!= ( const I24& val ) const noexcept
         {
             return static_cast<I32>(*this) != static_cast<I32>(val);
         }
-        FORCE_INLINE bool operator>= ( const I24& val ) const noexcept
+        inline bool operator>= ( const I24& val ) const noexcept
         {
             return static_cast<I32>(*this) >= static_cast<I32>(val);
         }
-        FORCE_INLINE bool operator<= ( const I24& val ) const noexcept
+        inline bool operator<= ( const I24& val ) const noexcept
         {
             return static_cast<I32>(*this) <= static_cast<I32>(val);
         }
-        FORCE_INLINE bool operator>  ( const I24& val ) const noexcept
+        inline bool operator>  ( const I24& val ) const noexcept
         {
             return static_cast<I32>(*this) > static_cast<I32>(val);
         }
-        FORCE_INLINE bool operator<  ( const I24& val ) const noexcept
+        inline bool operator<  ( const I24& val ) const noexcept
         {
             return static_cast<I32>(*this) < static_cast<I32>(val);
         }
 
-
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator==  ( const T& val ) const noexcept
+        inline bool operator==  ( const T& val ) const noexcept
         {
             return static_cast<I32>(*this) == val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator!=  ( const T& val ) const noexcept
+        inline bool operator!=  ( const T& val ) const noexcept
         {
             return static_cast<I32>(*this) != val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator> ( const T& val ) const noexcept
+        inline bool operator> ( const T& val ) const noexcept
         {
             return static_cast<I32>(*this) > val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator<  ( const T& val ) const noexcept
+        inline bool operator<  ( const T& val ) const noexcept
         {
             return static_cast<I32>(*this) < val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator>=  ( const T& val ) const noexcept
+        inline bool operator>=  ( const T& val ) const noexcept
         {
             return static_cast<I32>(*this) >= val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator<=  ( const T& val ) const noexcept
+        inline bool operator<=  ( const T& val ) const noexcept
         {
             return static_cast<I32>(*this) <= val;
         }
@@ -416,7 +415,7 @@ namespace Divide
             assert( val < UINT24_MAX );
         }
 
-        FORCE_INLINE U24& operator= ( const U32 input ) noexcept
+        inline U24& operator= ( const U32 input ) noexcept
         {
             assert( input < UINT24_MAX );
 
@@ -427,137 +426,137 @@ namespace Divide
             return *this;
         }
 
-        FORCE_INLINE operator U32() const noexcept
+        inline operator U32() const noexcept
         {
             return value[0] | value[1] << 8 | value[2] << 16;
         }
 
-        FORCE_INLINE U24  operator+  ( const U32 val )  const noexcept
+        inline U24  operator+  ( const U32 val )  const noexcept
         {
             return U24( static_cast<U32>(*this) + val );
         }
-        FORCE_INLINE U24  operator-  ( const U32 val )  const noexcept
+        inline U24  operator-  ( const U32 val )  const noexcept
         {
             return U24( static_cast<U32>(*this) - val );
         }
-        FORCE_INLINE U24  operator+  ( const U24& val ) const noexcept
+        inline U24  operator+  ( const U24& val ) const noexcept
         {
             return U24( static_cast<U32>(*this) + static_cast<U32>(val) );
         }
-        FORCE_INLINE U24  operator-  ( const U24& val ) const noexcept
+        inline U24  operator-  ( const U24& val ) const noexcept
         {
             return U24( static_cast<U32>(*this) - static_cast<U32>(val) );
         }
-        FORCE_INLINE U24  operator*  ( const U24& val ) const noexcept
+        inline U24  operator*  ( const U24& val ) const noexcept
         {
             return U24( static_cast<U32>(*this) * static_cast<U32>(val) );
         }
-        FORCE_INLINE U24  operator/  ( const U24& val ) const noexcept
+        inline U24  operator/  ( const U24& val ) const noexcept
         {
             return U24( static_cast<U32>(*this) / static_cast<U32>(val) );
         }
-        FORCE_INLINE U24& operator+= ( const U24& val )       noexcept
+        inline U24& operator+= ( const U24& val )       noexcept
         {
             *this = *this + val; return *this;
         }
-        FORCE_INLINE U24& operator-= ( const U24& val )       noexcept
+        inline U24& operator-= ( const U24& val )       noexcept
         {
             *this = *this - val; return *this;
         }
-        FORCE_INLINE U24& operator*= ( const U24& val )       noexcept
+        inline U24& operator*= ( const U24& val )       noexcept
         {
             *this = *this * val; return *this;
         }
-        FORCE_INLINE U24& operator/= ( const U24& val )       noexcept
+        inline U24& operator/= ( const U24& val )       noexcept
         {
             *this = *this / val; return *this;
         }
-        FORCE_INLINE U24  operator>> ( const U32 val ) const  noexcept
+        inline U24  operator>> ( const U32 val ) const  noexcept
         {
             return U24( static_cast<U32>(*this) >> val );
         }
-        FORCE_INLINE U24  operator<< ( const U32 val ) const  noexcept
+        inline U24  operator<< ( const U32 val ) const  noexcept
         {
             return U24( static_cast<U32>(*this) << val );
         }
 
-        FORCE_INLINE operator bool() const noexcept
+        inline operator bool() const noexcept
         {
             return static_cast<U32>(*this) != 0;
         }
-        FORCE_INLINE bool operator!  () const noexcept
+        inline bool operator!  () const noexcept
         {
             return !static_cast<U32>(*this);
         }
-        FORCE_INLINE U24& operator++ ()       noexcept
+        inline U24& operator++ ()       noexcept
         {
             *this = *this + 1u; return *this;
         }
-        FORCE_INLINE U24& operator-- ()       noexcept
+        inline U24& operator-- ()       noexcept
         {
             *this = *this - 1u; return *this;
         }
 
-        FORCE_INLINE U24  operator++ ( I32 )                  noexcept
+        inline U24  operator++ ( I32 )                  noexcept
         {
             U24 ret = *this; ++* this; return ret;
         }
-        FORCE_INLINE U24  operator-- ( I32 )                  noexcept
+        inline U24  operator-- ( I32 )                  noexcept
         {
             U24 ret = *this; --* this; return ret;
         }
-        FORCE_INLINE bool operator== ( const U24& val ) const noexcept
+        inline bool operator== ( const U24& val ) const noexcept
         {
             return static_cast<U32>(*this) == static_cast<U32>(val);
         }
-        FORCE_INLINE bool operator!= ( const U24& val ) const noexcept
+        inline bool operator!= ( const U24& val ) const noexcept
         {
             return static_cast<U32>(*this) != static_cast<U32>(val);
         }
-        FORCE_INLINE bool operator>= ( const U24& val ) const noexcept
+        inline bool operator>= ( const U24& val ) const noexcept
         {
             return static_cast<U32>(*this) >= static_cast<U32>(val);
         }
-        FORCE_INLINE bool operator<= ( const U24& val ) const noexcept
+        inline bool operator<= ( const U24& val ) const noexcept
         {
             return static_cast<U32>(*this) <= static_cast<U32>(val);
         }
-        FORCE_INLINE bool operator>  ( const U24& val ) const noexcept
+        inline bool operator>  ( const U24& val ) const noexcept
         {
             return static_cast<U32>(*this) > static_cast<U32>(val);
         }
-        FORCE_INLINE bool operator<  ( const U24& val ) const noexcept
+        inline bool operator<  ( const U24& val ) const noexcept
         {
             return static_cast<U32>(*this) < static_cast<U32>(val);
         }
 
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator==  ( const T& val ) const noexcept
+        inline bool operator==  ( const T& val ) const noexcept
         {
             return val >= 0 && static_cast<U32>(*this) == val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator!=  ( const T& val ) const noexcept
+        inline bool operator!=  ( const T& val ) const noexcept
         {
             return val < 0 || static_cast<U32>(*this) != val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator> ( const T& val ) const noexcept
+        inline bool operator> ( const T& val ) const noexcept
         {
             return static_cast<U32>(*this) > val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator<  ( const T& val ) const noexcept
+        inline bool operator<  ( const T& val ) const noexcept
         {
             return static_cast<U32>(*this) < val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator>=  ( const T& val ) const noexcept
+        inline bool operator>=  ( const T& val ) const noexcept
         {
             return static_cast<U32>(*this) >= val;
         }
         template<typename T> requires std::is_integral_v<T>
-        FORCE_INLINE bool operator<=  ( const T& val ) const noexcept
+        inline bool operator<=  ( const T& val ) const noexcept
         {
             return static_cast<U32>(*this) <= val;
         }
@@ -939,13 +938,13 @@ namespace Divide
 
 #define PROPERTY_GET_SET(Type, Name)                                                         \
 public:                                                                                      \
-    FORCE_INLINE void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }        \
-    [[nodiscard]] FORCE_INLINE Type& Name() noexcept { return _##Name; }                     \
-    [[nodiscard]] FORCE_INLINE GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    inline void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }        \
+    [[nodiscard]] inline Type& Name() noexcept { return _##Name; }                     \
+    [[nodiscard]] inline GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
 #define PROPERTY_GET(Type, Name)                                                             \
 public:                                                                                      \
-    [[nodiscard]] FORCE_INLINE GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] inline GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
 #define VIRTUAL_PROPERTY_GET_SET(Type, Name)                                             \
 public:                                                                                  \
@@ -959,16 +958,16 @@ public:                                                                         
 
 #define POINTER_GET_SET(Type, Name)                                                  \
 public:                                                                              \
-    FORCE_INLINE void Name(Type* const val) noexcept { _##Name = val; }              \
-    [[nodiscard]] FORCE_INLINE Type* Name() const noexcept { return _##Name; }
+    inline void Name(Type* const val) noexcept { _##Name = val; }              \
+    [[nodiscard]] inline Type* Name() const noexcept { return _##Name; }
 
 #define POINTER_GET(Type, Name)                                                     \
 public:                                                                             \
-   [[nodiscard]] FORCE_INLINE Type* Name() const noexcept { return _##Name; }
+   [[nodiscard]] inline Type* Name() const noexcept { return _##Name; }
 
 #define PROPERTY_GET_INTERNAL(Type, Name)                                                  \
 protected:                                                                                 \
-    [[nodiscard]] FORCE_INLINE GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] inline GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
 
 #define VIRTUAL_PROPERTY_GET_INTERNAL(Type, Name)                                     \
 protected:                                                                            \
@@ -976,11 +975,11 @@ protected:                                                                      
 
 #define POINTER_GET_INTERNAL(Type, Name)                                             \
 protected:                                                                           \
-    [[nodiscard]] FORCE_INLINE Type* Name() noexcept { return _##Name; }
+    [[nodiscard]] inline Type* Name() noexcept { return _##Name; }
 
 #define PROPERTY_SET_INTERNAL(Type, Name)                                             \
 protected:                                                                            \
-    FORCE_INLINE void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
+    inline void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
 
 #define VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name)                                \
 protected:                                                                       \
@@ -988,7 +987,7 @@ protected:                                                                      
 
 #define POINTER_SET_INTERNAL(Type, Name)                                \
 protected:                                                              \
-    FORCE_INLINE void Name(Type* const val) noexcept { _##Name = val; }
+    inline void Name(Type* const val) noexcept { _##Name = val; }
 
 #define PROPERTY_GET_SET_INTERNAL(Type, Name) \
 protected: \

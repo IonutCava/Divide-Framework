@@ -2,10 +2,7 @@
 
 #include "Headers/Editor.h"
 
-#include <IconsForkAwesome.h>
-#include <imgui_memory_editor/imgui_memory_editor.h>
-#include <imgui_internal.h>
-
+#include "Headers/Utils.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
@@ -23,33 +20,30 @@
 #include "Editor/Widgets/Headers/ImGuiExtensions.h"
 #include "Editor/Widgets/Headers/MenuBar.h"
 #include "Editor/Widgets/Headers/StatusBar.h"
-#include "Geometry/Shapes/Headers/Mesh.h"
 #include "Graphs/Headers/SceneGraph.h"
-#include "Headers/Utils.h"
-#include "Managers/Headers/SceneManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
+#include "Platform/Video/Headers/IMPrimitive.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
-#include "Platform/Video/Headers/IMPrimitive.h"
-#include "Platform/Video/Headers/RenderStateBlock.h"
-#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
-#include <string.h>
-#include <type_traits>
+#include <IconsForkAwesome.h>
+#include <imgui_memory_editor/imgui_memory_editor.h>
+#include <imgui_internal.h>
 
 namespace Divide
 {
     namespace
     {
-        const char* g_editorFontFile = "Roboto-Medium.ttf";
-        const char* g_editorFontFileBold = "OpenSans-Bold.ttf";
-        const char* g_editorIconFile = FONT_ICON_FILE_NAME_FK;
-        const char* g_editorSaveFile = "Editor.xml";
-        const char* g_editorSaveFileBak = "Editor.xml.bak";
+        const ResourcePath g_editorFontFile{ "Roboto-Medium.ttf" };
+        const ResourcePath g_editorFontFileBold{ "OpenSans-Bold.ttf" };
+        const ResourcePath g_editorIconFile{ FONT_ICON_FILE_NAME_FK };
+        const ResourcePath g_editorSaveFile{ "Editor.xml" };
+        const ResourcePath g_editorSaveFileBak{ "Editor.xml.bak" };
 
         WindowManager* g_windowManager = nullptr;
 
@@ -124,9 +118,26 @@ namespace Divide
     {
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
         io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
-        io.SetClipboardTextFn = SetClipboardText;
-        io.GetClipboardTextFn = GetClipboardText;
-        io.ClipboardUserData = nullptr;
+        io.SetClipboardTextFn = [](void* user_data, const char* text)
+        { 
+            if ( user_data != nullptr )
+            {
+                SetClipboardText( text );
+            }
+        };
+
+        io.GetClipboardTextFn = [](void* user_data )
+        {
+            if ( user_data != nullptr)
+            {
+                return GetClipboardText();
+            }
+
+            return "";
+        };
+
+        static bool enable_clipboard = true;
+        io.ClipboardUserData = &enable_clipboard;
     }
 
     std::array<Input::MouseButton, 5> Editor::g_oisButtons = {
@@ -220,9 +231,9 @@ namespace Divide
         U8* pPixels = nullptr;
         I32 iWidth = 0;
         I32 iHeight = 0;
-        ResourcePath textFontPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorFontFile );
-        ResourcePath textFontBoldPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorFontFileBold );
-        ResourcePath iconFontPath( Paths::g_assetsLocation + Paths::g_GUILocation + Paths::g_fontsPath + g_editorIconFile );
+        ResourcePath textFontPath( Paths::g_fontsPath / g_editorFontFile );
+        ResourcePath textFontBoldPath( Paths::g_fontsPath / g_editorFontFileBold );
+        ResourcePath iconFontPath( Paths::g_fontsPath / g_editorIconFile );
 
         ImFontConfig font_cfg;
         font_cfg.OversampleH = font_cfg.OversampleV = 1;
@@ -233,24 +244,24 @@ namespace Divide
         ImFormatString( font_cfg.Name,
                         IM_ARRAYSIZE( font_cfg.Name ),
                         "%s, %dpx",
-                        g_editorFontFile,
+                        g_editorFontFile.string().c_str(),
                         (int)font_cfg.SizePixels );
 
         io.Fonts->Clear();
-        io.Fonts->AddFontFromFileTTF( textFontPath.c_str(), fontSize * DPIScaleFactor, &font_cfg );
+        io.Fonts->AddFontFromFileTTF( textFontPath.string().c_str(), fontSize * DPIScaleFactor, &font_cfg );
 
         font_cfg.MergeMode = true;
         font_cfg.SizePixels = iconSize * DPIScaleFactor;
         font_cfg.GlyphOffset.y = 1.0f * IM_TRUNC( font_cfg.SizePixels / iconSize ); // Add +1 offset per 16 units
 
         static const ImWchar icons_ranges[] = { ICON_MIN_FK, ICON_MAX_FK, 0 };
-        io.Fonts->AddFontFromFileTTF( iconFontPath.c_str(), iconSize * DPIScaleFactor, &font_cfg, icons_ranges );
+        io.Fonts->AddFontFromFileTTF( iconFontPath.string().c_str(), iconSize * DPIScaleFactor, &font_cfg, icons_ranges );
 
         font_cfg.MergeMode = false;
         font_cfg.SizePixels = fontSizeBold * DPIScaleFactor;
         font_cfg.GlyphOffset.y = 0.f; // 1.0f * IM_TRUNC(font_cfg.SizePixels / fontSizeBold);  // Add +1
         // offset per fontSize units
-        io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
+        io.Fonts->AddFontFromFileTTF( textFontBoldPath.string().c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
         io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
         _fontTexture->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>( iWidth, iHeight ), {});
@@ -265,7 +276,7 @@ namespace Divide
             return false;
         }
 
-        if ( !CreateDirectories( (Paths::g_saveLocation + Paths::Editor::g_saveLocation).c_str() ) )
+        if ( createDirectory( Paths::g_saveLocation / Paths::Editor::g_saveLocation ) != FileError::NONE )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -444,19 +455,22 @@ namespace Divide
                 const DisplayWindow& window = g_windowManager->getWindow( 0u );
                 WindowDescriptor winDescriptor = {};
                 winDescriptor.title = "No Title Yet";
-                winDescriptor.targetDisplay = to_U32( window.currentDisplayIndex() );
+                winDescriptor.parentWindow = g_windowManager->mainWindow();
+                winDescriptor.targetDisplay = to_U16( window.currentDisplayIndex() );
                 winDescriptor.flags = to_U16( WindowDescriptor::Flags::HIDDEN );
-                // We don't enable SDL_WINDOW_RESIZABLE because it enforce windows decorations
+
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration
                                                        ? 0
-                                                       : to_U32( WindowDescriptor::Flags::DECORATED );
+                                                       : to_U16( WindowDescriptor::Flags::DECORATED );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration
                                                        ? 0
-                                                       : to_U32( WindowDescriptor::Flags::RESIZEABLE );
+                                                       : to_U16( WindowDescriptor::Flags::RESIZEABLE );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_TopMost
-                                                       ? to_U32( WindowDescriptor::Flags::ALWAYS_ON_TOP )
+                                                       ? to_U16( WindowDescriptor::Flags::ALWAYS_ON_TOP )
                                                        : 0;
-                winDescriptor.flags |= to_U32( WindowDescriptor::Flags::SHARE_CONTEXT );
+                winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoTaskBarIcon
+                                                       ? to_U16( WindowDescriptor::Flags::NO_TASKBAR_ICON)
+                                                       : 0;
 
                 winDescriptor.dimensions.set( viewport->Size.x, viewport->Size.y );
                 winDescriptor.position.set( viewport->Pos.x, viewport->Pos.y );
@@ -467,7 +481,7 @@ namespace Divide
                 DisplayWindow* newWindow = g_windowManager->createWindow( winDescriptor, err );
                 if ( err == ErrorCode::NO_ERR )
                 {
-                    assert( newWindow != nullptr );
+                    DIVIDE_ASSERT( newWindow != nullptr );
 
                     newWindow->hidden( false );
                     newWindow->bringToFront();
@@ -619,7 +633,11 @@ namespace Divide
         {
             if ( PlatformContext* context = (PlatformContext*)platformContext )
             {
-                context->gfx().drawToWindow( *(DisplayWindow*)viewport->PlatformHandle );
+                DisplayWindow* targetWindow = (DisplayWindow*)viewport->PlatformHandle;
+
+                DIVIDE_ASSERT(targetWindow != nullptr);
+
+                context->app().windowManager().drawToWindow( *targetWindow );
             }
         };
 
@@ -629,6 +647,9 @@ namespace Divide
             if ( PlatformContext* context = (PlatformContext*)platformContext )
             {
                 PROFILE_SCOPE("Editor:: Render Platform Window", Profiler::Category::GUI);
+
+                DisplayWindow* targetWindow = (DisplayWindow*)viewport->PlatformHandle;
+                DIVIDE_ASSERT( targetWindow != nullptr );
 
                 Editor* editor = &context->editor();
 
@@ -642,7 +663,7 @@ namespace Divide
                 GFX::CommandBuffer& buffer = sBuffer();
                 GFX::MemoryBarrierCommand memCmd;
                 editor->renderDrawList(pDrawData,
-                                       2 + ((DisplayWindow*)viewport->PlatformHandle)->getGUID(),
+                                       2 + targetWindow->getGUID(),
                                        targetViewport,
                                        true,
                                        buffer,
@@ -658,7 +679,11 @@ namespace Divide
             if ( g_windowManager != nullptr )
             {
                 PlatformContext* context = (PlatformContext*)platformContext;
-                context->gfx().flushWindow( *(DisplayWindow*)viewport->PlatformHandle );
+                DIVIDE_ASSERT( context != nullptr );
+                DisplayWindow* targetWindow = (DisplayWindow*)viewport->PlatformHandle;
+                DIVIDE_ASSERT( targetWindow != nullptr  );
+
+                context->app().windowManager().flushWindow();
             }
         };
 
@@ -789,13 +814,13 @@ namespace Divide
         {
             _context.config().save();
         }
-        if ( _infiniteGridPrimitive )
+        if ( _infiniteGridPrimitive && !_context.gfx().destroyIMP( _infiniteGridPrimitive ) )
         {
-            _context.gfx().destroyIMP( _infiniteGridPrimitive );
+            DebugBreak();
         }
-        if ( _axisGizmo )
+        if ( _axisGizmo && !_context.gfx().destroyIMP( _axisGizmo ) )
         {
-            _context.gfx().destroyIMP( _axisGizmo );
+            DebugBreak();
         }
         _infiniteGridProgram.reset();
         _fontTexture.reset();
@@ -839,7 +864,7 @@ namespace Divide
             io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
         }
 
-        _context.kernel().sceneManager()->onChangeFocus( !editorHasFocus );
+        _context.kernel().projectManager()->onChangeFocus( !editorHasFocus );
         Attorney::GizmoEditor::onSceneFocus( _gizmo.get(), !editorHasFocus );
     }
 
@@ -850,8 +875,8 @@ namespace Divide
             return;
         }
 
-        SceneManager* sMgr = _context.kernel().sceneManager();
-        const Scene& activeScene = sMgr->getActiveScene();
+        ProjectManager* sMgr = _context.kernel().projectManager();
+        const Scene& activeScene = sMgr->activeProject()->getActiveScene();
 
         running( state );
         Reset( _windowFocusState );
@@ -865,7 +890,7 @@ namespace Divide
             sceneGizmoEnabled( false );
             activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
             activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
-            if ( !_context.kernel().sceneManager()->resetSelection( 0, true ) )
+            if ( !_context.kernel().projectManager()->resetSelection( 0, true ) )
             {
                 NOP();
             }
@@ -881,7 +906,7 @@ namespace Divide
             if (selections._selectionCount == 0)
             {
                 SceneGraphNode* root = activeScene.sceneGraph().getRoot();
-                _context.kernel().sceneManager()->setSelected(0, { &root });
+                _context.kernel().projectManager()->setSelected(0, { &root });
             }*/
         }
         if ( !_axisGizmo )
@@ -1017,10 +1042,10 @@ namespace Divide
 
             static_cast<ContentExplorerWindow*>(_dockedWindows[to_base( WindowType::ContentExplorer )])->update( deltaTimeUS );
 
-            SceneManager* sMgr = _context.kernel().sceneManager();
+            ProjectManager* sMgr = _context.kernel().projectManager();
             const bool scenePaused = (simulationPaused() && _stepQueue == 0);
 
-            const Scene& activeScene = sMgr->getActiveScene();
+            const Scene& activeScene = sMgr->activeProject()->getActiveScene();
             const PlayerIndex idx = sMgr->playerPass();
             SceneStatePerPlayer& playerState = activeScene.state()->playerState( idx );
 
@@ -1057,7 +1082,7 @@ namespace Divide
             static bool movedToNode = false;
             if ( !_isScenePaused || stepQueue() > 0 )
             {
-                Attorney::SceneManagerEditor::editorPreviewNode( sMgr, -1 );
+                Attorney::ProjectManagerEditor::editorPreviewNode( sMgr, -1 );
                 playerState.overrideCamera( nullptr );
                 nodePreviewCamera()->setTarget( nullptr );
                 movedToNode = false;
@@ -1067,7 +1092,7 @@ namespace Divide
                 if ( nodePreviewWindowVisible() )
                 {
                     playerState.overrideCamera( nodePreviewCamera() );
-                    Attorney::SceneManagerEditor::editorPreviewNode( sMgr, _previewNode == nullptr ? 0 : _previewNode->getGUID() );
+                    Attorney::ProjectManagerEditor::editorPreviewNode( sMgr, _previewNode == nullptr ? 0 : _previewNode->getGUID() );
                     if ( !movedToNode && _previewNode != nullptr )
                     {
                         teleportToNode( nodePreviewCamera(), _previewNode );
@@ -1082,7 +1107,7 @@ namespace Divide
                 else
                 {
                     playerState.overrideCamera( editorCamera() );
-                    Attorney::SceneManagerEditor::editorPreviewNode( sMgr, -1 );
+                    Attorney::ProjectManagerEditor::editorPreviewNode( sMgr, -1 );
                     nodePreviewCamera()->setTarget( nullptr );
                     movedToNode = false;
                 }
@@ -1153,6 +1178,7 @@ namespace Divide
                 }
             }
         }
+        if ( readOnly ) { PopReadOnly(); }
 
         if ( _showSampleWindow && !_showOptionsWindow )
         {
@@ -1162,8 +1188,6 @@ namespace Divide
 
         _optionsWindow->draw( _showOptionsWindow );
         renderModelSpawnModal();
-
-        if ( readOnly ) { PopReadOnly(); }
 
         ImGui::End();
 
@@ -1187,7 +1211,7 @@ namespace Divide
 
         const I64 targetGUID = node.getGUID();
 
-        const auto& visibleNodes = _context.kernel().sceneManager()->getRenderedNodeList();
+        const auto& visibleNodes = _context.kernel().projectManager()->getRenderedNodeList();
         const size_t nodeCount = visibleNodes.size();
         for ( size_t i = 0u; i < nodeCount; ++i )
         {
@@ -1369,7 +1393,7 @@ namespace Divide
 
         auto& newBuffer = _IMGUIBuffers[bufferGUID];
 
-        newBuffer = _context.gfx().newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, false, Util::StringFormat("IMGUI_%d", bufferGUID).c_str() );
+        newBuffer = _context.gfx().newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, false, Util::StringFormat("IMGUI_{}", bufferGUID).c_str() );
 
         GenericVertexData::IndexBuffer idxBuff{};
         idxBuff.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
@@ -1603,7 +1627,7 @@ namespace Divide
 
     void Editor::copyPlayerCamToEditorCam() noexcept
     {
-        _editorCamera->fromCamera( *Attorney::SceneManagerEditor::playerCamera( _context.kernel().sceneManager(), 0, true ) );
+        _editorCamera->fromCamera( *Attorney::ProjectManagerEditor::playerCamera( _context.kernel().projectManager(), 0, true ) );
     }
 
     void Editor::setEditorCamLookAt( const vec3<F32>& eye,
@@ -1623,7 +1647,7 @@ namespace Divide
         if ( _undoManager->Undo() )
         {
             showStatusMessage(
-                Util::StringFormat( "Undo: %s", _undoManager->lasActionName().c_str() ),
+                Util::StringFormat( "Undo: {}", _undoManager->lasActionName().c_str() ),
                 Time::SecondsToMilliseconds<F32>( 2.0f ),
                 false );
             return true;
@@ -1638,7 +1662,7 @@ namespace Divide
         if ( _undoManager->Redo() )
         {
             showStatusMessage(
-                Util::StringFormat( "Redo: %s", _undoManager->lasActionName().c_str() ),
+                Util::StringFormat( "Redo: {}", _undoManager->lasActionName().c_str() ),
                 Time::SecondsToMilliseconds<F32>( 2.0f ),
                 false );
             return true;
@@ -2148,11 +2172,9 @@ namespace Divide
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
     }
 
-    bool Editor::saveSceneChanges( const DELEGATE<void, std::string_view>& msgCallback,
-                                   const DELEGATE<void, bool>& finishCallback,
-                                   const char* sceneNameOverride ) const
+    bool Editor::saveSceneChanges( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) const
     {
-        if ( _context.kernel().sceneManager()->saveActiveScene( false, true, msgCallback, finishCallback, sceneNameOverride ) )
+        if ( _context.kernel().projectManager()->saveActiveScene( false, true, msgCallback, finishCallback ) )
         {
             if ( saveToXML() )
             {
@@ -2164,49 +2186,50 @@ namespace Divide
         return false;
     }
 
-    bool Editor::switchScene( const char* scenePath )
+    bool Editor::openProject(const ProjectID& projectID)
+    {
+        return _context.kernel().projectManager()->loadProject(projectID, true) == ErrorCode::NO_ERR;
+    }
+
+    bool Editor::switchScene( const SceneEntry& scene, bool createIfNotExists )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        static CircularBuffer<Str<256>> tempBuffer( 10 );
+        static CircularBuffer<SceneEntry> tempBuffer( 10 );
 
-        if ( Util::IsEmptyOrNull( scenePath ) )
+        if ( Util::IsEmptyOrNull( scene._name.c_str() ) )
         {
             return false;
         }
 
-        const auto [sceneName, _] = splitPathToNameAndLocation( scenePath );
-        if ( Util::CompareIgnoreCase( sceneName, Config::DEFAULT_SCENE_NAME ) )
+        SwitchSceneTarget target
         {
-            showStatusMessage( "Error: can't load default scene! Selected scene is only "
-                               "used as a template!",
-                               Time::SecondsToMilliseconds<F32>( 3.f ),
-                               true );
-            return false;
-        }
+            ._targetScene = scene,
+            ._unloadPreviousScene = true,
+            ._loadInSeparateThread = true,
+            ._deferToStartOfFrame = true,
+            ._createIfNotExist = createIfNotExists
+        };
 
-        if ( !_context.kernel().sceneManager()->switchScene(
-            sceneName.c_str(), true, true, false ) )
+        if ( !_context.kernel().projectManager()->activeProject()->switchScene( target ) )
         {
-            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), sceneName.c_str() );
-            showStatusMessage( Util::StringFormat( LOCALE_STR( "ERROR_SCENE_LOAD" ),
-                                                   sceneName.c_str() ),
+            Console::errorfn( LOCALE_STR( "ERROR_SCENE_LOAD" ), scene._name.c_str() );
+            showStatusMessage( Util::StringFormat( LOCALE_STR( "ERROR_SCENE_LOAD" ), scene._name.c_str() ),
                                Time::SecondsToMilliseconds<F32>( 3.f ),
                                true );
             return false;
         }
 
         tempBuffer.reset();
-        const Str<256> nameToAdd( sceneName.c_str() );
         for ( size_t i = 0u; i < _recentSceneList.size(); ++i )
         {
-            const Str<256>& crtEntry = _recentSceneList.get( i );
-            if ( crtEntry.compare(nameToAdd) != 0 )
+            const SceneEntry& crtEntry = _recentSceneList.get( i );
+            if ( crtEntry != scene )
             {
                 tempBuffer.put( crtEntry );
             }
         }
-        tempBuffer.put( nameToAdd );
+        tempBuffer.put( scene );
         _recentSceneList.reset();
         size_t i = tempBuffer.size();
         while ( i-- )
@@ -2226,7 +2249,7 @@ namespace Divide
     {
         U32 ret = 10u; // All of the scene stuff (settings, music, etc)
 
-        const auto& graph = _context.kernel().sceneManager()->getActiveScene().sceneGraph();
+        const auto& graph = _context.kernel().projectManager()->activeProject()->getActiveScene().sceneGraph();
         ret += to_U32( graph->getTotalNodeCount() );
 
         return ret;
@@ -2234,7 +2257,7 @@ namespace Divide
 
     bool Editor::isDefaultScene() const noexcept
     {
-        const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
         return activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID;
     }
 
@@ -2496,7 +2519,7 @@ namespace Divide
 
         if ( quick )
         {
-            const Camera* playerCam = Attorney::SceneManagerCameraAccessor::playerCamera( _context.kernel().sceneManager() );
+            const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera( _context.kernel().projectManager() );
             if ( !spawnGeometry( mesh,
                                  scale,
                                  playerCam->snapshot()._eye,
@@ -2550,16 +2573,20 @@ namespace Divide
             ImGui::Text( "Spawn [ %s ]?", _queuedModelSpawn._mesh->resourceName().c_str() );
             ImGui::Separator();
 
-            if ( ImGui::InputFloat3( "Scale", _queuedModelSpawn._scale._v ) )
+            ImGui::Text( "Scale:" ); ImGui::SameLine();
+            if ( ImGui::InputFloat3( "##Scale:", _queuedModelSpawn._scale._v ) )
             {
             }
-            if ( ImGui::InputFloat3( "Position", _queuedModelSpawn._position._v ) )
+            ImGui::Text( "Position:" ); ImGui::SameLine();
+            if ( ImGui::InputFloat3( "##Position:", _queuedModelSpawn._position._v ) )
             {
             }
-            if ( ImGui::InputFloat3( "Rotation (euler)", rotation._v ) )
+            ImGui::Text( "Rotation (euler):" ); ImGui::SameLine();
+            if ( ImGui::InputFloat3( "##Rotation (euler):", rotation._v ) )
             {
             }
-            if ( ImGui::InputText( "Name",
+            ImGui::Text( "Name:" ); ImGui::SameLine();
+            if ( ImGui::InputText( "##Name:",
                                    inputBuf,
                                    IM_ARRAYSIZE( inputBuf ),
                                    ImGuiInputTextFlags_EnterReturnsTrue ) )
@@ -2620,7 +2647,7 @@ namespace Divide
         nodeDescriptor._componentMask = normalMask;
         nodeDescriptor._node = mesh;
         
-        const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
         const SceneGraphNode* node = activeScene.sceneGraph()->getRoot()->addChildNode( nodeDescriptor );
         if ( node != nullptr )
         {
@@ -2635,20 +2662,30 @@ namespace Divide
         return false;
     }
 
+    const ProjectIDs& Editor::getProjectList() const noexcept
+    {
+        return _context.kernel().projectManager()->availableProjects();
+    }
+
+    const SceneEntries& Editor::getSceneList() const noexcept
+    {
+        return _context.kernel().projectManager()->activeProject()->getSceneEntries();
+    }
+
     LightPool& Editor::getActiveLightPool() const
     {
-        const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
         return *activeScene.lightPool();
     }
 
     SceneEnvironmentProbePool* Editor::getActiveEnvProbePool() const noexcept
     {
-        return Attorney::SceneManagerEditor::getEnvProbes( _context.kernel().sceneManager() );
+        return Attorney::ProjectManagerEditor::getEnvProbes( _context.kernel().projectManager() );
     }
 
     BoundingSphere Editor::teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const
     {
-        return Attorney::SceneManagerCameraAccessor::moveCameraToNode( _context.kernel().sceneManager(), camera, sgn );
+        return Attorney::ProjectManagerCameraAccessor::moveCameraToNode( _context.kernel().projectManager(), camera, sgn );
     }
 
     void Editor::onRemoveComponent( const EditorComponent& comp ) const
@@ -2661,14 +2698,14 @@ namespace Divide
 
     void Editor::saveNode( const SceneGraphNode* sgn ) const
     {
-        if ( Attorney::SceneManagerEditor::saveNode( _context.kernel().sceneManager(), sgn ) )
+        if ( Attorney::ProjectManagerEditor::saveNode( _context.kernel().projectManager(), sgn ) )
         {
             bool savedParent = false, savedScene = false;
             // Save the parent as well (if it isn't the root node) as this node may be
             // one that's been newly added
             if ( sgn->parent() != nullptr && sgn->parent()->parent() != nullptr )
             {
-                savedParent = Attorney::SceneManagerEditor::saveNode( _context.kernel().sceneManager(), sgn->parent() );
+                savedParent = Attorney::ProjectManagerEditor::saveNode( _context.kernel().projectManager(), sgn->parent() );
             }
             if ( unsavedSceneChanges() )
             {
@@ -2677,7 +2714,7 @@ namespace Divide
 
             showStatusMessage(
                 Util::StringFormat(
-                    "Saved node [ %s ] to file! (Saved parent: %s) (Saved scene: %s)",
+                    "Saved node [ {} ] to file! (Saved parent: {}) (Saved scene: {})",
                     sgn->name().c_str(),
                     savedParent ? "Yes" : "No",
                     savedScene ? "Yes" : "No" ),
@@ -2688,10 +2725,10 @@ namespace Divide
 
     void Editor::loadNode( SceneGraphNode* sgn ) const
     {
-        if ( Attorney::SceneManagerEditor::loadNode( _context.kernel().sceneManager(),
+        if ( Attorney::ProjectManagerEditor::loadNode( _context.kernel().projectManager(),
                                                      sgn ) )
         {
-            showStatusMessage( Util::StringFormat( "Reloaded node [ %s ] from file!",
+            showStatusMessage( Util::StringFormat( "Reloaded node [ {} ] from file!",
                                                    sgn->name().c_str() ),
                                Time::SecondsToMilliseconds<F32>( 3 ),
                                false );
@@ -2700,7 +2737,7 @@ namespace Divide
 
     void Editor::queueRemoveNode( const I64 nodeGUID )
     {
-        const Scene& activeScene = _context.kernel().sceneManager()->getActiveScene();
+        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
         activeScene.sceneGraph()->removeNode( nodeGUID );
         unsavedSceneChanges( true );
     }
@@ -2723,7 +2760,7 @@ namespace Divide
         bool ret = false;
         if ( selections._selectionCount > 0 )
         {
-            const Scene& activeScene = context().kernel().sceneManager()->getActiveScene();
+            const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
 
             for ( U8 i = 0; i < selections._selectionCount; ++i )
             {
@@ -2753,7 +2790,7 @@ namespace Divide
         bool ret = false;
         if ( selections._selectionCount > 0 )
         {
-            const Scene& activeScene = context().kernel().sceneManager()->getActiveScene();
+            const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
 
             for ( U8 i = 0; i < selections._selectionCount; ++i )
             {
@@ -2765,23 +2802,20 @@ namespace Divide
         return ret;
     }
 
-    SceneNode_ptr
-        Editor::createNode( const SceneNodeType type,
-                            const ResourceDescriptor& descriptor )
+    SceneNode_ptr Editor::createNode( const SceneNodeType type, const ResourceDescriptor& descriptor )
     {
-        return Attorney::SceneManagerEditor::createNode(
-            context().kernel().sceneManager(), type, descriptor );
+        return Attorney::ProjectManagerEditor::createNode(context().kernel().projectManager(), type, descriptor );
     }
 
     bool Editor::saveToXML() const
     {
         boost::property_tree::ptree pt;
-        const ResourcePath editorPath = Paths::g_xmlDataLocation + Paths::Editor::g_saveLocation;
+        const ResourcePath editorPath = Paths::g_xmlDataLocation / Paths::Editor::g_saveLocation;
 
         pt.put( "editor.showMemEditor", _showMemoryEditor );
         pt.put( "editor.showSampleWindow", _showSampleWindow );
         pt.put( "editor.themeIndex", to_I32( _currentTheme ) );
-        pt.put( "editor.textEditor", _externalTextEditorPath );
+        pt.put( "editor.textEditor", _externalTextEditorPath.string() );
         pt.put( "editor.lastOpenSceneName", _lastOpenSceneName );
         pt.put( "editor.grid.<xmlattr>.enabled_scene", infiniteGridEnabledScene() );
         pt.put( "editor.grid.<xmlattr>.enabled_node", infiniteGridEnabledNode() );
@@ -2801,18 +2835,19 @@ namespace Divide
         }
         for ( size_t i = 0u; i < _recentSceneList.size(); ++i )
         {
-            pt.add( "editor.recentScene.entry", _recentSceneList.get( i ).c_str() );
+            pt.add( "editor.recentScene.entry", _recentSceneList.get( i )._name.c_str() );
         }
-        if ( createDirectory( editorPath.c_str() ) )
+
+        if ( createDirectory( editorPath ) == FileError::NONE )
         {
-            if ( copyFile( editorPath.c_str(),
-                           g_editorSaveFile,
-                           editorPath.c_str(),
-                           g_editorSaveFileBak,
+            if ( copyFile( editorPath,
+                           g_editorSaveFile.string(),
+                           editorPath,
+                           g_editorSaveFileBak.string(),
                            true )
                  == FileError::NONE )
             {
-                XML::writeXML( (editorPath + g_editorSaveFile).str(), pt );
+                XML::writeXML( editorPath / g_editorSaveFile, pt );
                 return true;
             }
         }
@@ -2825,15 +2860,15 @@ namespace Divide
         static boost::property_tree::ptree g_emptyPtree;
 
         boost::property_tree::ptree pt;
-        const ResourcePath editorPath = Paths::g_xmlDataLocation + Paths::Editor::g_saveLocation;
-        if ( !fileExists( (editorPath + g_editorSaveFile).c_str() ) )
+        const ResourcePath editorPath = Paths::g_xmlDataLocation / Paths::Editor::g_saveLocation;
+        if ( !fileExists( editorPath / g_editorSaveFile ) )
         {
-            if ( fileExists( (editorPath + g_editorSaveFileBak).c_str() ) )
+            if ( fileExists( editorPath / g_editorSaveFileBak ) )
             {
-                if ( copyFile( editorPath.c_str(),
-                               g_editorSaveFileBak,
-                               editorPath.c_str(),
-                               g_editorSaveFile,
+                if ( copyFile( editorPath,
+                               g_editorSaveFileBak.string(),
+                               editorPath,
+                               g_editorSaveFile.string(),
                                true )
                      != FileError::NONE )
                 {
@@ -2842,14 +2877,14 @@ namespace Divide
             }
         }
 
-        if ( fileExists( (editorPath + g_editorSaveFile).c_str() ) )
+        if ( fileExists( editorPath / g_editorSaveFile ) )
         {
-            XML::readXML( (editorPath + g_editorSaveFile).str(), pt );
+            XML::readXML(editorPath / g_editorSaveFile, pt );
             _showMemoryEditor = pt.get( "editor.showMemEditor", false );
             _showSampleWindow = pt.get( "editor.showSampleWindow", false );
             _currentTheme = static_cast<ImGuiStyleEnum>(pt.get( "themeIndex", to_I32( _currentTheme ) ));
             ImGui::ResetStyle( _currentTheme );
-            _externalTextEditorPath = pt.get<string>( "editor.textEditor", "" );
+            _externalTextEditorPath = ResourcePath { pt.get<string>( "editor.textEditor", "notepad" ) };
             if ( _lastOpenSceneName == pt.get<string>( "editor.lastOpenSceneName", "" ) )
             {
                 NOP();
@@ -2868,7 +2903,7 @@ namespace Divide
                 const std::string name = data.get_value<std::string>();
                 if ( !name.empty() )
                 {
-                    _recentSceneList.put( name.c_str() );
+                    _recentSceneList.put( SceneEntry { ._name = name.c_str() } );
                 }
             }
 
@@ -2912,11 +2947,11 @@ namespace Divide
 
     void PopReadOnly()
     {
-        ImGui::PopItemFlag();
         if ( Util::detail::g_readOnlyFaded.top() )
         {
             ImGui::PopStyleVar();
         }
+        ImGui::PopItemFlag();
         Util::detail::g_readOnlyFaded.pop();
     }
 } // namespace Divide

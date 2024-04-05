@@ -71,7 +71,7 @@ namespace Divide {
             bool serialize(ByteBuffer& dataOut) const;
             bool deserialize(ByteBuffer& dataIn);
 
-            PROPERTY_RW(ResourcePath, textureName);
+            PROPERTY_RW(Str<256>, textureName);
             PROPERTY_RW(ResourcePath, texturePath);
 
             // Only Albedo/Diffuse should be sRGB
@@ -140,15 +140,16 @@ namespace Divide {
             MaterialData _material;
         };
 
-        struct ImportData {
-            ImportData(ResourcePath modelPath, ResourcePath modelName) noexcept
-                : _modelName(MOV(modelName)),
-                  _modelPath(MOV(modelPath))
+        struct ImportData
+        {
+            ImportData(ResourcePath modelPath, const std::string_view modelName) noexcept
+                : _modelName(modelName)
+                , _modelPath(MOV(modelPath))
             {
             }
 
-            bool saveToFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);
-            bool loadFromFile(PlatformContext& context, const ResourcePath& path, const ResourcePath& fileName);
+            bool saveToFile(PlatformContext& context, const ResourcePath& path, std::string_view fileName);
+            bool loadFromFile(PlatformContext& context, const ResourcePath& path, std::string_view fileName);
 
             Bone* _skeleton = nullptr;
 
@@ -160,7 +161,7 @@ namespace Divide {
             PROPERTY_RW(bool, hasAnimations, false);
 
             // Name and path
-            PROPERTY_RW(ResourcePath, modelName);
+            PROPERTY_RW(Str<256>, modelName);
             PROPERTY_RW(ResourcePath, modelPath);
             PROPERTY_RW(bool, fromFile, false);
             vector<Bone*> _bones;

@@ -12,7 +12,7 @@
 
 #include "Scenes/Headers/SceneState.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
@@ -80,7 +80,7 @@ namespace Divide
 
             for ( U32 i = 0; i < cameraCount; ++i )
             {
-                s_shadowCameras[t].emplace_back( Camera::CreateCamera( Util::StringFormat( "ShadowCamera_%s_%d", Names::shadowType[t], i ).c_str(), Camera::Mode::STATIC));
+                s_shadowCameras[t].emplace_back( Camera::CreateCamera( Util::StringFormat( "ShadowCamera_{}_{}", Names::shadowType[t], i ).c_str(), Camera::Mode::STATIC));
             }
         }
 
@@ -571,7 +571,7 @@ namespace Divide
                         shadow->_sampler = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                         shadow->_shader = previewShader;
                         shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, i + light->getShadowArrayOffset() );
-                        shadow->_name = Util::StringFormat( "CSM_%d", i + light->getShadowArrayOffset() );
+                        shadow->_name = Util::StringFormat( "CSM_{}", i + light->getShadowArrayOffset() );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_enabled = true;
                         s_debugViews.push_back( shadow );
@@ -595,7 +595,7 @@ namespace Divide
                     shadow->_sampler = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                     shadow->_shader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
                     shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
-                    shadow->_name = Util::StringFormat( "SM_%d", light->getShadowArrayOffset() );
+                    shadow->_name = Util::StringFormat( "SM_{}", light->getShadowArrayOffset() );
                     shadow->_enabled = true;
                     shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                     s_debugViews.push_back( shadow );
@@ -626,7 +626,7 @@ namespace Divide
                         shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
                         shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, i );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
-                        shadow->_name = Util::StringFormat( "CubeSM_%d_face_%d", light->getShadowArrayOffset(), i );
+                        shadow->_name = Util::StringFormat( "CubeSM_{}_face_{}", light->getShadowArrayOffset(), i );
                         shadow->_enabled = true;
                         s_debugViews.push_back( shadow );
                     }

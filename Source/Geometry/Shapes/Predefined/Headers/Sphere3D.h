@@ -40,7 +40,7 @@ namespace Divide {
 class Sphere3D final : public Object3D {
    public:
     /// Change resolution to affect the spacing between vertices
-    explicit Sphere3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, F32 radius, U32 resolution);
+    explicit Sphere3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name, F32 radius, U32 resolution);
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 

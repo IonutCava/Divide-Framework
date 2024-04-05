@@ -15,7 +15,7 @@ Player::Player(const U8 index)
     : Character(CharacterType::CHARACTER_TYPE_PLAYER),
       _index(index)
 {
-     _camera = Camera::CreateCamera(Util::StringFormat("Player_Cam_%d", _index).c_str(), Camera::Mode::FREE_FLY);
+     _camera = Camera::CreateCamera(Util::StringFormat("Player_Cam_{}", _index).c_str(), Camera::Mode::FREE_FLY);
 }
 
 Player::~Player()

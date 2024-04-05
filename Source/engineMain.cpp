@@ -31,18 +31,23 @@ ErrorCode Engine::init(const int argc, char** argv)
 
 ErrorCode Engine::run(const int argc, char** argv)
 {
-    const std::ofstream outputStreamsCOUT{ (Paths::g_logPath + OUTPUT_LOG_FILE).c_str(), std::ofstream::out | std::ofstream::trunc };
-    const std::ofstream outputStreamsCERR{ (Paths::g_logPath + ERROR_LOG_FILE).c_str(), std::ofstream::out | std::ofstream::trunc };
+    ErrorCode errorCode = PlatformInit( argc, argv );
+    if ( errorCode != ErrorCode::NO_ERR)
+    {
+        return errorCode;
+    }
+
+    if ( Paths::g_logPath.empty() )
+    {
+        return ErrorCode::PATHS_ERROR;
+    }
+
+    const std::ofstream outputStreamsCOUT{ (Paths::g_logPath / OUTPUT_LOG_FILE).string(), std::ofstream::out | std::ofstream::trunc };
+    const std::ofstream outputStreamsCERR{ (Paths::g_logPath / ERROR_LOG_FILE).string(), std::ofstream::out | std::ofstream::trunc };
 
     std::cout.rdbuf( outputStreamsCOUT.rdbuf());
     std::cerr.rdbuf( outputStreamsCERR.rdbuf());
 
-    ErrorCode errorCode = PlatformInit( argc, argv );
-
-    if ( errorCode != ErrorCode::NO_ERR )
-    {
-        return errorCode;
-    }
 
     //Win32: SetProcessDpiAwareness
     EnforceDPIScaling();
@@ -59,7 +64,7 @@ ErrorCode Engine::run(const int argc, char** argv)
     {
         Profiler::Initialise();
 
-        Application::StepResult result = Application::StepResult::COUNT;
+        AppStepResult result = AppStepResult::COUNT;
 
         U64 restartCount = 0u;
         do
@@ -73,7 +78,7 @@ ErrorCode Engine::run(const int argc, char** argv)
             if (errorCode == ErrorCode::NO_ERR)
             {
                 // Step the entire application
-                while ( (result = _app->step()) == Application::StepResult::OK )
+                while ( (result = _app->step()) == AppStepResult::OK )
                 {
                     ++stepCount;
                 }
@@ -85,7 +90,7 @@ ErrorCode Engine::run(const int argc, char** argv)
 
             const auto endTime = std::chrono::high_resolution_clock::now();
 
-            std::cout << "Engine shutdown code: " << to_base(result) << std::endl;
+            std::cout << "Engine shutdown request: " << TypeUtil::AppStepResultToString(result) << std::endl;
 
             std::cout << "Divide engine shutdown after "
                       << stepCount
@@ -99,7 +104,7 @@ ErrorCode Engine::run(const int argc, char** argv)
 
             ++restartCount;
 
-        } while (errorCode == ErrorCode::NO_ERR && (result == Application::StepResult::RESTART || result == Application::StepResult::RESTART_CLEAR_CACHE));
+        } while (errorCode == ErrorCode::NO_ERR && (result == AppStepResult::RESTART || result == AppStepResult::RESTART_CLEAR_CACHE));
 
         Locale::Clear();
     }

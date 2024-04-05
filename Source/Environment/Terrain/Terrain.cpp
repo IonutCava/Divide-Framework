@@ -11,7 +11,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 #include "Graphs/Headers/SceneGraphNode.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
@@ -54,8 +54,8 @@ void TessellationParams::fromDescriptor(const std::shared_ptr<TerrainDescriptor>
     WorldScale(descriptor->dimensions() * 0.5f / to_F32(PATCHES_PER_TILE_EDGE));
 }
 
-Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name)
-    : Object3D(context, parentCache, descriptorHash, name, ResourcePath{ name }, {}, SceneNodeType::TYPE_TERRAIN, ObjectFlag::OBJECT_FLAG_NO_VB),
+Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
+    : Object3D(context, parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_TERRAIN, ObjectFlag::OBJECT_FLAG_NO_VB),
       _terrainQuadtree()
 {
     _renderState.addToDrawExclusionMask(RenderStage::SHADOW, RenderPassType::COUNT, static_cast<RenderStagePass::VariantType>(ShadowType::CUBEMAP));
@@ -92,18 +92,18 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         _editorComponent.registerField(MOV(toggleBoundsField));
 
         PlatformContext& pContext = sgn->context();
-        SceneManager* sMgr = pContext.kernel().sceneManager();
+        ProjectManager* sMgr = pContext.kernel().projectManager();
 
         EditorComponentField grassVisibilityDistanceField = {};
         grassVisibilityDistanceField._name = "Grass visibility distance";
         grassVisibilityDistanceField._range = { 0.01f, 10000.0f };
         grassVisibilityDistanceField._serialise = false;
         grassVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept {
-            const SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
+            const SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
             *static_cast<F32*>(dataOut) = rState.grassVisibility();
         };
         grassVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept {
-            SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
+            SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
             rState.grassVisibility(*static_cast<const F32*>(data)); 
         };
         grassVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
@@ -116,11 +116,11 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         treeVisibilityDistanceField._range = { 0.01f, 10000.0f };
         treeVisibilityDistanceField._serialise = false;
         treeVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept {
-            const SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
+            const SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
             *static_cast<F32*>(dataOut) = rState.treeVisibility();
         };
         treeVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept {
-            SceneRenderState& rState = sMgr->getActiveScene().state()->renderState();
+            SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
             rState.treeVisibility(*static_cast<const F32*>(data));
         };
         treeVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
@@ -147,7 +147,7 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
 
     for (const TerrainChunk* chunk : _terrainChunks) {
         vegetationNodeDescriptor._node = Attorney::TerrainChunkTerrain::getVegetation(*chunk);
-        vegetationNodeDescriptor._name = Util::StringFormat("Vegetation_chunk_%d", chunk->ID()).c_str();
+        vegetationNodeDescriptor._name = Util::StringFormat("Vegetation_chunk_{}", chunk->ID()).c_str();
         vegParent->addChildNode(vegetationNodeDescriptor);
     }
 

@@ -55,7 +55,7 @@ namespace ECS { namespace Event { namespace Internal {
 		{
 			this->m_Locked = true;
 			{
-				LOG_INFO("Dispatch event %s", typeid(T).name());
+				LOG_INFO("Dispatch event {}", typeid(T).name());
 
 				// remove pending delegates
 				if (this->m_PendingRemoveDelegates.empty() == false)

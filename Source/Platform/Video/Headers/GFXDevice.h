@@ -75,9 +75,10 @@ class Object3D;
 class GFXRTPool;
 class ShadowMap;
 class IMPrimitive;
-class SceneManager;
+class WindowManager;
 class ResourceCache;
 class SceneGraphNode;
+class ProjectManager;
 class SceneShaderData;
 class SceneRenderState;
 class KernelApplication;
@@ -91,22 +92,26 @@ enum class ShadowType : U8;
 
 FWD_DECLARE_MANAGED_CLASS( VertexBuffer )
 
-namespace Time {
+namespace Time
+{
     class ProfileTimer;
 };
 
-namespace Attorney {
+namespace Attorney
+{
     class GFXDeviceAPI;
     class GFXDeviceKernel;
     class GFXDeviceGraphicsResource;
     class GFXDeviceGFXRTPool;
-    class GFXDeviceSceneManager;
+    class GFXDeviceProjectManager;
     class GFXDeviceShaderProgram;
     class GFXDeviceShadowMap;
+    class GFXDeviceWindowManager;
     class KernelApplication;
 };
 
-namespace TypeUtil {
+namespace TypeUtil
+{
     [[nodiscard]] const char* GraphicResourceTypeToName(GraphicsResource::Type type) noexcept;
 
     [[nodiscard]] const char* RenderStageToString(RenderStage stage) noexcept;
@@ -116,7 +121,8 @@ namespace TypeUtil {
     [[nodiscard]] RenderPassType StringToRenderPassType(const char* pass) noexcept;
 };
 
-struct DebugView final : GUIDWrapper {
+struct DebugView final : GUIDWrapper
+{
     DebugView() noexcept
         : DebugView(-1)
     {
@@ -147,59 +153,22 @@ struct DebugPrimitiveHandler
 {
     static constexpr U8 g_maxFrameLifetime = 6u;
 
-    [[nodiscard]] size_t size() const noexcept { return _debugPrimitives.size(); }
-
-    struct DataEntry {
+    struct DataEntry
+    {
         Descriptor _descriptor;
         I64 _id = 0u;
         U8 _frameLifeTime = 0u;
     };
 
-    DebugPrimitiveHandler()   noexcept
-    {
-        for (auto& primitive : _debugPrimitives) {
-            primitive = nullptr;
-        }
-    }
+    DebugPrimitiveHandler() noexcept;
 
-    ~DebugPrimitiveHandler()
-    {
-        reset();
-    }
+    ~DebugPrimitiveHandler();
+
+    [[nodiscard]] size_t size() const noexcept;
 
     void reset();
-
-    void add(const I64 ID, const Descriptor& data) noexcept {
-        LockGuard<Mutex> w_lock(_dataLock);
-        addLocked(ID, data);
-    }
-
-    void addLocked(const I64 ID, const Descriptor& data) noexcept {
-        const size_t count = _debugData.size();
-
-        for (U32 i = 0u; i < count; ++i) {
-            DataEntry& entry = _debugData[i];
-            if (entry._id == ID) {
-                entry._descriptor = data;
-                entry._frameLifeTime = g_maxFrameLifetime;
-                return;
-            }
-        }
-        for (U32 i = 0u; i < count; ++i) {
-            DataEntry& entry = _debugData[i];
-            if (entry._frameLifeTime == 0u) {
-                entry._id = ID;
-                entry._descriptor = data;
-                entry._frameLifeTime = g_maxFrameLifetime;
-                return;
-            }
-        }
-
-        //We need a new entry. Create one and try again
-        _debugPrimitives.emplace_back(nullptr);
-        _debugData.emplace_back();
-        addLocked(ID, data);
-    }
+    void add(const I64 ID, const Descriptor& data) noexcept;
+    void addLocked(const I64 ID, const Descriptor& data) noexcept;
 
     Mutex _dataLock;
     eastl::fixed_vector<IMPrimitive*, N, true>  _debugPrimitives;
@@ -220,7 +189,8 @@ struct ImShaders
 
 FWD_DECLARE_MANAGED_STRUCT( ImShaders );
 
-struct RenderTargetNames {
+struct RenderTargetNames
+{
     static RenderTargetID BACK_BUFFER;
     static RenderTargetID SCREEN;
     static RenderTargetID SCREEN_PREV;
@@ -239,14 +209,16 @@ struct RenderTargetNames {
 };
 
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU
-class GFXDevice final : public PlatformContextComponent, public FrameListener {
+class GFXDevice final : public PlatformContextComponent, public FrameListener
+{
     friend class Attorney::GFXDeviceAPI;
     friend class Attorney::GFXDeviceKernel;
     friend class Attorney::GFXDeviceGraphicsResource;
     friend class Attorney::GFXDeviceGFXRTPool;
     friend class Attorney::GFXDeviceShaderProgram;
     friend class Attorney::GFXDeviceShadowMap;
-    friend class Attorney::GFXDeviceSceneManager;
+    friend class Attorney::GFXDeviceWindowManager;
+    friend class Attorney::GFXDeviceProjectManager;
 
 public:
     struct ScreenTargets
@@ -259,9 +231,11 @@ public:
         constexpr static RTColourAttachmentSlot REVEALAGE = VELOCITY;
     };
 
-    struct GFXDescriptorSet {
+    struct GFXDescriptorSet
+    {
         PROPERTY_RW(DescriptorSet, impl);
         PROPERTY_RW(bool, dirty, true);
+
         void clear();
         void update(DescriptorSetUsage usage, const DescriptorSet& newBindingData);
         void update(DescriptorSetUsage usage, const DescriptorSetBinding& newBindingData);
@@ -278,8 +252,6 @@ public:  // GPU interface
     void closeRenderingAPI();
 
     void idle(bool fast, U64 deltaTimeUSGame, U64 deltaTimeUSApp);
-    void drawToWindow(DisplayWindow& window);
-    void flushWindow(DisplayWindow& window);
 
     void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
 
@@ -328,29 +300,24 @@ public:  // GPU interface
     F32 renderingAspectRatio() const noexcept;
     vec2<U16> renderingResolution() const noexcept;
 
-    /// Switch between fullscreen rendering
-    void toggleFullScreen() const;
-    void increaseResolution();
-    void decreaseResolution();
-
     void setScreenMSAASampleCount(U8 sampleCount);
     void setShadowMSAASampleCount(ShadowType type, U8 sampleCount);
 
     /// Save a screenshot in TGA format
-    void screenshot(const ResourcePath& filename, GFX::CommandBuffer& bufferInOut ) const;
+    void screenshot(std::string_view fileName, GFX::CommandBuffer& bufferInOut ) const;
 
     ShaderComputeQueue& shaderComputeQueue() noexcept;
     const ShaderComputeQueue& shaderComputeQueue() const noexcept;
 
 public:  // Accessors and Mutators
 
-    Renderer& getRenderer() const;
+    [[nodiscard]] Renderer& getRenderer() const;
     /// returns the standard state block
-    const RenderStateBlock& getNoDepthTestBlock() const noexcept;
-    const RenderStateBlock& get2DStateBlock() const noexcept;
-    GFXRTPool& renderTargetPool() noexcept;
-    const GFXRTPool& renderTargetPool() const noexcept;
-    const ShaderProgram_ptr& getRTPreviewShader(bool depthOnly) const noexcept;
+    [[nodiscard]] const RenderStateBlock& getNoDepthTestBlock() const noexcept;
+    [[nodiscard]] const RenderStateBlock& get2DStateBlock() const noexcept;
+    [[nodiscard]] GFXRTPool& renderTargetPool() noexcept;
+    [[nodiscard]] const GFXRTPool& renderTargetPool() const noexcept;
+    [[nodiscard]] const ShaderProgram_ptr& getRTPreviewShader(bool depthOnly) const noexcept;
     void registerDrawCall() noexcept;
     void registerDrawCalls(U32 count) noexcept;
 
@@ -358,8 +325,8 @@ public:  // Accessors and Mutators
     bool removeDebugView(DebugView* view);
     void toggleDebugView(I16 index, bool state);
     void toggleDebugGroup(I16 groupID, bool state);
-    bool getDebugGroupState(I16 groupID) const;
     void getDebugViewNames(vector<std::tuple<string, I16, I16, bool>>& namesOut);
+    [[nodiscard]] bool getDebugGroupState(I16 groupID) const;
 
     [[nodiscard]] PerformanceMetrics& getPerformanceMetrics() noexcept;
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
@@ -373,40 +340,40 @@ public:  // Accessors and Mutators
     static const DeviceInformation& GetDeviceInformation() noexcept;
     static void OverrideDeviceInformation(const DeviceInformation& info) noexcept;
 
-    static bool IsSubmitCommand(GFX::CommandType type) noexcept;
+    [[nodiscard]] static bool IsSubmitCommand(GFX::CommandType type) noexcept;
 
 public:
     /// Create and return a new framebuffer.
-    RenderTarget_uptr newRT( const RenderTargetDescriptor& descriptor );
+    [[nodiscard]] RenderTarget_uptr newRT( const RenderTargetDescriptor& descriptor );
 
     /// Create and return a new immediate mode emulation primitive.
-    IMPrimitive*       newIMP(const Str<64>& name);
-    bool               destroyIMP(IMPrimitive*& primitive);
+    [[nodiscard]] IMPrimitive*       newIMP( std::string_view name);
+    [[nodiscard]] bool               destroyIMP(IMPrimitive*& primitive);
 
     /// Create and return a new vertex array (VAO + VB + IB).
-    VertexBuffer_ptr  newVB(bool renderIndirect, const Str<256>& name);
+    [[nodiscard]] VertexBuffer_ptr      newVB(bool renderIndirect, std::string_view name);
     /// Create and return a new generic vertex data object
-    GenericVertexData_ptr newGVD(U32 ringBufferLength, bool renderIndirect, const Str<256>& name);
+    [[nodiscard]] GenericVertexData_ptr newGVD(U32 ringBufferLength, bool renderIndirect, std::string_view name);
     /// Create and return a new texture.
-    Texture_ptr        newTexture(size_t descriptorHash,
-                                  const Str<256>& resourceName,
-                                  const ResourcePath& assetNames,
-                                  const ResourcePath& assetLocations,
-                                  const TextureDescriptor& texDescriptor,
-                                  ResourceCache& parentCache);
+    [[nodiscard]] Texture_ptr           newTexture(size_t descriptorHash,
+                                                   std::string_view resourceName,
+                                                   std::string_view assetNames,
+                                                   const ResourcePath& assetLocations,
+                                                   const TextureDescriptor& texDescriptor,
+                                                   ResourceCache& parentCache);
     /// Create and return a new shader program.
-    ShaderProgram_ptr  newShaderProgram(size_t descriptorHash,
-                                        const Str<256>& resourceName,
-                                        const Str<256>& assetName,
-                                        const ResourcePath& assetLocation,
-                                        const ShaderProgramDescriptor& descriptor,
-                                        ResourceCache& parentCache);
+    [[nodiscard]] ShaderProgram_ptr     newShaderProgram(size_t descriptorHash,
+                                                         std::string_view resourceName,
+                                                         std::string_view assetName,
+                                                         const ResourcePath& assetLocation,
+                                                         const ShaderProgramDescriptor& descriptor,
+                                                         ResourceCache& parentCache);
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise
-    ShaderBuffer_uptr  newSB(const ShaderBufferDescriptor& descriptor);
+    [[nodiscard]] ShaderBuffer_uptr     newSB(const ShaderBufferDescriptor& descriptor);
     /// Create and return a new graphics pipeline. This is only used for caching and doesn't use the object arena
-    Pipeline*          newPipeline(const PipelineDescriptor& descriptor);
+    [[nodiscard]] Pipeline*             newPipeline(const PipelineDescriptor& descriptor);
 
     // Render the texture using a custom viewport
     void drawTextureInViewport(const ImageView& texture, SamplerDescriptor sampler, const Rect<I32>& viewport, bool convertToSrgb, bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut);
@@ -446,21 +413,22 @@ protected:
 
     void update(U64 deltaTimeUSFixed, U64 deltaTimeUSApp);
 
-    ErrorCode initDescriptorSets();
+    [[nodiscard]] ErrorCode initDescriptorSets();
 
     void setScreenMSAASampleCountInternal(U8 sampleCount);
     void setShadowMSAASampleCountInternal(ShadowType type, U8 sampleCount);
 
     // returns true if the window and the viewport have different aspect ratios
-    bool fitViewportInWindow(U16 w, U16 h);
+    [[nodiscard]] bool fitViewportInWindow(U16 w, U16 h);
+
+    void drawToWindow( DisplayWindow& window );
+    void flushWindow( DisplayWindow& window );
 
     void onWindowSizeChange(const SizeChangeParams& params);
     void onResolutionChange(const SizeChangeParams& params);
 
     void initDebugViews();
     void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
-
-    void stepResolution(bool increment);
 
     void flushCommandBufferInternal(GFX::CommandBuffer& commandBuffer);
 
@@ -490,19 +458,19 @@ protected:
     // Returns the HiZ texture that can be sent directly to occlusionCull
     std::pair<const Texture_ptr&, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut);
 
-    RenderAPIWrapper& getAPIImpl() { return *_api; }
-    const RenderAPIWrapper& getAPIImpl() const { return *_api; }
+    [[nodiscard]] RenderAPIWrapper& getAPIImpl() { return *_api; }
+    [[nodiscard]] const RenderAPIWrapper& getAPIImpl() const { return *_api; }
 
 private:
     /// Upload draw related data to the GPU (view & projection matrices, viewport settings, etc)
-    bool uploadGPUBlock();
+    [[nodiscard]] bool uploadGPUBlock();
     void resizeGPUBlocks(size_t targetSizeCam, size_t targetSizeCullCounter);
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
     void worldAOViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
 
-    ErrorCode createAPIInstance(RenderAPI api);
+    [[nodiscard]] ErrorCode createAPIInstance(RenderAPI api);
 
 private:
     RenderAPIWrapper_uptr _api = nullptr;
@@ -520,8 +488,6 @@ private:
     CameraSnapshot  _activeCameraSnapshot;
 
     GFXRTPool* _rtPool = nullptr;
-
-    std::pair<vec2<U16>, bool> _resolutionChangeQueued;
 
     static constexpr U8 s_invalidQueueSampleCount = 255u;
     U8 _queuedScreenSampleChange = s_invalidQueueSampleCount;
@@ -574,42 +540,29 @@ private:
     vector<DebugView_ptr> _debugViews;
 
     Mutex _queuedCommandbufferLock;
-    DisplayWindow* _activeWindow{nullptr};
 
-    struct GFXBuffers {
+    struct GFXBuffers
+    {
         static constexpr U8 PER_FRAME_BUFFER_COUNT = 3u;
 
-        struct PerFrameBuffers {
+        struct PerFrameBuffers
+        {
             BufferRange _camBufferWriteRange;
             ShaderBuffer_uptr _camDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
             size_t _camWritesThisFrame = 0u;
             size_t _renderWritesThisFrame = 0u;
         } _perFrameBuffers[PER_FRAME_BUFFER_COUNT];
+
         size_t _perFrameBufferIndex = 0u;
         bool _needsResizeCam = false;
-        [[nodiscard]] inline PerFrameBuffers& crtBuffers() noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
-        [[nodiscard]] inline const PerFrameBuffers& crtBuffers() const noexcept { return _perFrameBuffers[_perFrameBufferIndex]; }
+        [[nodiscard]] inline PerFrameBuffers& crtBuffers() noexcept;
 
-        inline void reset(const bool camBuffer, const bool cullBuffer) noexcept {
-            for (U8 i = 0u; i < PER_FRAME_BUFFER_COUNT; ++i) {
-                if (camBuffer) {
-                    _perFrameBuffers[i]._camDataBuffer.reset();
-                }
-                if (cullBuffer) {
-                    _perFrameBuffers[i]._cullCounter.reset();
-                }
-            }
-            crtBuffers()._camWritesThisFrame = 0u;
-            crtBuffers()._renderWritesThisFrame = 0u;
-        }
+        [[nodiscard]] inline const PerFrameBuffers& crtBuffers() const noexcept;
 
-        inline void onEndFrame() noexcept
-        {
-            _perFrameBufferIndex = (_perFrameBufferIndex + 1u) % PER_FRAME_BUFFER_COUNT;
-            crtBuffers()._camWritesThisFrame = 0u;
-            crtBuffers()._renderWritesThisFrame = 0u;
-        }
+        inline void reset(const bool camBuffer, const bool cullBuffer) noexcept;
+
+        inline void onEndFrame() noexcept;
 
     } _gfxBuffers;
 
@@ -635,17 +588,22 @@ private:
     static DeviceInformation s_deviceInformation;
 };
 
-namespace Attorney {
-    class GFXDeviceKernel {
-        static void onWindowSizeChange(GFXDevice& device, const SizeChangeParams& params) {
+namespace Attorney
+{
+    class GFXDeviceKernel
+    {
+        static void onWindowSizeChange(GFXDevice& device, const SizeChangeParams& params)
+        {
             device.onWindowSizeChange(params);
         }
 
-        static void onResolutionChange(GFXDevice& device, const SizeChangeParams& params) {
+        static void onResolutionChange(GFXDevice& device, const SizeChangeParams& params)
+        {
             device.onResolutionChange(params);
         }
         
-        static void update(GFXDevice& device, const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp) {
+        static void update(GFXDevice& device, const U64 deltaTimeUSFixed, const U64 deltaTimeUSApp)
+        {
             device.update(deltaTimeUSFixed, deltaTimeUSApp);
         }
 
@@ -653,13 +611,16 @@ namespace Attorney {
         friend class Divide::KernelApplication;
     };
 
-    class GFXDeviceGraphicsResource {
-       static void onResourceCreate(GFXDevice& device, GraphicsResource::Type type, I64 GUID, U64 nameHash) {
+    class GFXDeviceGraphicsResource
+    {
+       static void onResourceCreate(GFXDevice& device, GraphicsResource::Type type, I64 GUID, U64 nameHash)
+       {
            LockGuard<Mutex> w_lock(device._graphicsResourceMutex);
            device._graphicResources.emplace_back(type, GUID, nameHash);
        }
 
-       static void onResourceDestroy(GFXDevice& device, [[maybe_unused]] GraphicsResource::Type type, I64 GUID, [[maybe_unused]] U64 nameHash) {
+       static void onResourceDestroy(GFXDevice& device, [[maybe_unused]] GraphicsResource::Type type, I64 GUID, [[maybe_unused]] U64 nameHash)
+       {
            LockGuard<Mutex> w_lock(device._graphicsResourceMutex);
            const bool success = dvd_erase_if(device._graphicResources,
                                              [type, GUID, nameHash](const auto& crtEntry) noexcept -> bool {
@@ -672,10 +633,12 @@ namespace Attorney {
            DIVIDE_ASSERT(success);
    
        }
+
        friend class Divide::GraphicsResource;
     };
 
-    class GFXDeviceGFXRTPool {
+    class GFXDeviceGFXRTPool
+    {
         static RenderTarget_uptr newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor)
         {
             return device.newRT(descriptor);
@@ -684,13 +647,14 @@ namespace Attorney {
         friend class Divide::GFXRTPool;
     }; 
     
-    class GFXDeviceSceneManager {
+    class GFXDeviceProjectManager
+    {
         static void shadowingSettings(GFXDevice& device, const F32 lightBleedBias, const F32 minShadowVariance) noexcept
-        {
+        { 
             device.shadowingSettings(lightBleedBias, minShadowVariance);
         }
 
-        friend class Divide::SceneManager;
+        friend class Divide::ProjectManager;
     };
 
     class GFXDeviceShadowMap
@@ -702,6 +666,21 @@ namespace Attorney {
 
         friend class Divide::ShadowMap;
         friend class Divide::CascadedShadowMapsGenerator;
+    }; 
+    
+    class GFXDeviceWindowManager
+    {
+        static void drawToWindow( GFXDevice& device, DisplayWindow& window )
+        {
+            device.drawToWindow( window );
+        }
+        static void flushWindow( GFXDevice& device, DisplayWindow& window )
+        {
+            device.flushWindow( window );
+        }
+
+        friend class Divide::DisplayWindow;
+        friend class Divide::WindowManager;
     };
 
 };  // namespace Attorney

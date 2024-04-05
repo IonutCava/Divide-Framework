@@ -92,7 +92,7 @@ class SceneNode : public CachedResource {
     friend class Attorney::SceneNodeNetworkComponent;
 
   public:
-    explicit SceneNode(ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 requiredComponentMask);
+    explicit SceneNode(ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 requiredComponentMask);
     virtual ~SceneNode() override;
 
     /// Perform any pre-draw operations POST-command build

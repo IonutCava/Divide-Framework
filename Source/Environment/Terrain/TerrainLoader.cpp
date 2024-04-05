@@ -12,31 +12,37 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 
 #include "Geometry/Material/Headers/Material.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 namespace Divide {
 
 namespace {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-    ResourcePath ClimatesLocation(U8 textureQuality) {
-       CLAMP<U8>(textureQuality, 0u, 3u);
+    ResourcePath ClimatesLocation(U8 textureQuality)
+    {
+        CLAMP<U8>( textureQuality, 0u, 3u );
 
-       return Paths::g_assetsLocation + Paths::g_heightmapLocation +
-             (textureQuality == 3u ? Paths::g_climatesHighResLocation
-                                   : textureQuality == 2u ? Paths::g_climatesMedResLocation
-                                                          : Paths::g_climatesLowResLocation);
+        return (textureQuality == 3u ? Paths::g_climatesHighResLocation
+                                     : textureQuality == 2u ? Paths::g_climatesMedResLocation
+                                                            : Paths::g_climatesLowResLocation);
     }
 
-    std::pair<U8, bool> FindOrInsert(const U8 textureQuality, vector<string>& container, const string& texture, string materialName) {
-        if (!fileExists((ClimatesLocation(textureQuality) + "/" + materialName + "/" + texture).c_str())) {
-            materialName = "std_default";
+    std::pair<U8, bool> FindOrInsert(const U8 textureQuality, vector<ResourcePath>& container, const ResourcePath& texture, string materialName) {
+
+        if (!fileExists((ClimatesLocation(textureQuality) / materialName / texture)))
+        {
+            materialName =  "std_default";
         }
-        const string item = materialName + "/" + texture;
+
+        const ResourcePath item = ResourcePath{ materialName } / texture;
+
         const auto* const it = eastl::find(eastl::cbegin(container),
                                     eastl::cend(container),
                                     item);
-        if (it != eastl::cend(container)) {
+
+        if (it != eastl::cend(container))
+        {
             return std::make_pair(to_U8(eastl::distance(eastl::cbegin(container), it)), false);
         }
 
@@ -52,8 +58,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
 
     const string& name = terrainDescriptor->getVariable("terrainName");
 
-    ResourcePath terrainLocation = Paths::g_assetsLocation + Paths::g_heightmapLocation;
-    terrainLocation += terrainDescriptor->getVariable("descriptor");
+    ResourcePath terrainLocation = Paths::g_heightmapLocation;
+    terrainLocation /= ResourcePath {terrainDescriptor->getVariable("descriptor") };
 
     Attorney::TerrainLoader::descriptor(*terrain, terrainDescriptor);
     const U8 textureQuality = context.config().terrain.textureQuality;
@@ -74,8 +80,8 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     noiseMediumDescriptor.textureOptions(importOptions);
 
     ResourceDescriptor textureNoiseMedium("Terrain Noise Map_" + name);
-    textureNoiseMedium.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
-    textureNoiseMedium.assetName(ResourcePath{ "medium_noise.png" });
+    textureNoiseMedium.assetLocation(Paths::g_imagesLocation);
+    textureNoiseMedium.assetName("medium_noise.png");
     textureNoiseMedium.propertyDescriptor(noiseMediumDescriptor);
 
     // Blend maps
@@ -107,10 +113,11 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
         {"alpha", TerrainTextureChannel::TEXTURE_ALPHA_CHANNEL}
     };
 
-    vector<string> textures[to_base(TerrainTextureType::COUNT)] = {};
+    vector<ResourcePath> textures[to_base(TerrainTextureType::COUNT)] = {};
     vector<string> splatTextures = {};
 
-    const char* textureNames[to_base(TerrainTextureType::COUNT)] = {
+    const char* textureNames[to_base(TerrainTextureType::COUNT)] =
+    {
         "Albedo_roughness", "Normal", "Displacement"
     };
 
@@ -127,40 +134,61 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
                 continue;
             }
 
-            for (U8 k = 0u; k < to_base(TerrainTextureType::COUNT); ++k) {
-                FindOrInsert(textureQuality, textures[k], Util::StringFormat("%s.%s", textureNames[k], k == to_base(TerrainTextureType::ALBEDO_ROUGHNESS) ? "png" : "jpg"), currentMaterial);
+            for (U8 k = 0u; k < to_base(TerrainTextureType::COUNT); ++k)
+            {
+                FindOrInsert(textureQuality, textures[k], ResourcePath{ Util::StringFormat("{}.{}", textureNames[k], k == to_base(TerrainTextureType::ALBEDO_ROUGHNESS) ? "png" : "jpg") }, currentMaterial);
             }
         }
     }
 
-    ResourcePath blendMapArray = {};
-    ResourcePath albedoMapArray = {};
-    ResourcePath normalMapArray = {};
-    ResourcePath extraMapArray = {};
+    string blendMapArray  = "";
+    string albedoMapArray = "";
+    string normalMapArray = "";
+    string extraMapArray  = "";
 
     U16 extraMapCount = 0;
-    for (const string& tex : textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)]) {
-        albedoMapArray.append(tex + ",");
-    }
-    for (const string& tex : textures[to_base(TerrainTextureType::NORMAL)]) {
-        normalMapArray.append(tex + ",");
+    for (const auto& tex : textures[to_base(TerrainTextureType::ALBEDO_ROUGHNESS)])
+    {
+        if ( !albedoMapArray.empty() )
+        {
+            albedoMapArray.append( "," );
+        }
+
+        albedoMapArray.append(tex.string());
     }
 
-    for (U8 i = to_U8(TerrainTextureType::DISPLACEMENT_AO); i < to_U8(TerrainTextureType::COUNT); ++i) {
-        for (const string& tex : textures[i]) {
-            extraMapArray.append(tex + ",");
+    for (const auto& tex : textures[to_base(TerrainTextureType::NORMAL)])
+    {
+        if ( !normalMapArray.empty() )
+        {
+            normalMapArray.append( "," );
+        }
+
+        normalMapArray.append(tex.string());
+    }
+
+    for (U8 i = to_U8(TerrainTextureType::DISPLACEMENT_AO); i < to_U8(TerrainTextureType::COUNT); ++i)
+    {
+        for (const auto& tex : textures[i])
+        {
+            if ( !extraMapArray.empty() )
+            {
+                extraMapArray.append( "," );
+            }
+
+            extraMapArray.append(tex.string());
             ++extraMapCount;
         }
     }
 
-    for (const string& tex : splatTextures) {
-        blendMapArray.append(tex + ",");
+    for (const string& tex : splatTextures)
+    {
+        if (!blendMapArray.empty())
+        {
+            blendMapArray.append( "," );
+        }
+        blendMapArray.append(tex);
     }
-
-    blendMapArray.pop_back();
-    albedoMapArray.pop_back();
-    normalMapArray.pop_back();
-    extraMapArray.pop_back();
 
     SamplerDescriptor heightMapSampler = {};
     heightMapSampler._wrapU = TextureWrap::CLAMP_TO_BORDER;
@@ -251,35 +279,35 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->properties().toggleTransparency(false);
 
     const TerrainDescriptor::LayerData& layerTileData = terrainDescriptor->layerDataEntries();
-    string tileFactorStr = Util::StringFormat("const vec2 CURRENT_TILE_FACTORS[%d] = {\n", layerCount * 4);
+    string tileFactorStr = Util::StringFormat("const vec2 CURRENT_TILE_FACTORS[{}] = {\n", layerCount * 4);
     for (U8 i = 0u; i < layerCount; ++i) {
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
         for (U8 j = 0u; j < 4u; ++j) {
             const vec2<F32> factors = entry[j];
-            tileFactorStr.append(Util::StringFormat("%*c", 8, ' '));
-            tileFactorStr.append(Util::StringFormat("vec2(%3.2f, %3.2f),\n", factors.s, factors.t));
+            tileFactorStr.append("        ");
+            tileFactorStr.append(Util::StringFormat("vec2({:3.2f}, {:3.2f}),\n", factors.s, factors.t));
         }
     }
     tileFactorStr.pop_back();
     tileFactorStr.pop_back();
     tileFactorStr.append("\n};");
 
-    ResourcePath helperTextures { terrainDescriptor->getVariable("waterCaustics") + "," +
-                                  terrainDescriptor->getVariable("underwaterAlbedoTexture") + "," +
-                                  terrainDescriptor->getVariable("underwaterDetailTexture") + "," +
-                                  terrainDescriptor->getVariable("tileNoiseTexture") };
+    string helperTextures { terrainDescriptor->getVariable("waterCaustics") + "," +
+                            terrainDescriptor->getVariable("underwaterAlbedoTexture") + "," +
+                            terrainDescriptor->getVariable("underwaterDetailTexture") + "," +
+                            terrainDescriptor->getVariable("tileNoiseTexture") };
 
     TextureDescriptor helperTexDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
     helperTexDescriptor.textureOptions()._alphaChannelTransparency = false;
 
     ResourceDescriptor textureWaterCaustics("Terrain Helper Textures_" + name);
-    textureWaterCaustics.assetLocation(Paths::g_assetsLocation + Paths::g_imagesLocation);
+    textureWaterCaustics.assetLocation(Paths::g_imagesLocation);
     textureWaterCaustics.assetName(helperTextures);
     textureWaterCaustics.propertyDescriptor(helperTexDescriptor);
 
     ResourceDescriptor heightMapTexture("Terrain Heightmap_" + name);
     heightMapTexture.assetLocation(terrainLocation);
-    heightMapTexture.assetName(ResourcePath{ terrainDescriptor->getVariable("heightfieldTex") });
+    heightMapTexture.assetName(terrainDescriptor->getVariable("heightfieldTex"));
 
     ImageTools::ImportOptions options{};
     options._useDDSCache = false;
@@ -314,16 +342,16 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Y " + Util::to_string(altitudeRange.y - altitudeRange.x));
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Z " + Util::to_string(WorldScale.height));
     terrainMaterial->addShaderDefine(ShaderType::COUNT, "INV_CONTROL_VTX_PER_TILE_EDGE " + Util::to_string(1.f / TessellationParams::VTX_PER_TILE_EDGE));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("CONTROL_VTX_PER_TILE_EDGE %d", TessellationParams::VTX_PER_TILE_EDGE));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("PATCHES_PER_TILE_EDGE %d", TessellationParams::PATCHES_PER_TILE_EDGE));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TEXTURE_LAYERS %d", layerCount));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("CONTROL_VTX_PER_TILE_EDGE {}", TessellationParams::VTX_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("PATCHES_PER_TILE_EDGE {}", TessellationParams::PATCHES_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TEXTURE_LAYERS {}", layerCount));
     if (terrainConfig.detailLevel > 1) {
         terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT");
         if (terrainConfig.detailLevel > 2) {
             terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS");
         }
     }
-    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("UNDERWATER_TILE_SCALE %d", to_I32(underwaterTileScale)));
+    terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("UNDERWATER_TILE_SCALE {}", to_I32(underwaterTileScale)));
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, tileFactorStr, false);
 
     if (!terrainMaterial->properties().receivesShadows()) {
@@ -517,7 +545,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
                                           PlatformContext& context,
                                           const std::shared_ptr<TerrainDescriptor>& terrainDescriptor) {
 
-    ResourcePath terrainMapLocation{ Paths::g_assetsLocation + Paths::g_heightmapLocation + terrainDescriptor->getVariable("descriptor") };
+    ResourcePath terrainMapLocation{ Paths::g_heightmapLocation / terrainDescriptor->getVariable("descriptor") };
     ResourcePath terrainRawFile{ terrainDescriptor->getVariable("heightfield") };
 
     const vec2<U16> terrainDimensions = terrainDescriptor->dimensions();
@@ -532,7 +560,7 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
     const vec3<F32>& bMax = terrainBB.getMax();
 
     ByteBuffer terrainCache;
-    if (terrainCache.loadFromFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), (terrainRawFile + ".cache").c_str())) {
+    if (terrainCache.loadFromFile(Paths::g_terrainCacheLocation, (terrainRawFile.string() + ".cache"))) {
         auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         terrainCache >> tempVer;
         if (tempVer == BYTE_BUFFER_VERSION) {
@@ -545,7 +573,8 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
     if (terrain->_physicsVerts.empty()) {
 
         vector<Byte> data(to_size(terrainDimensions.width) * terrainDimensions.height * (sizeof(U16) / sizeof(char)), Byte{0});
-        if (readFile((terrainMapLocation + "/").c_str(), terrainRawFile.c_str(), data, FileType::BINARY) != FileError::NONE) {
+        if (readFile(terrainMapLocation, terrainRawFile.string(), data, FileType::BINARY) != FileError::NONE)
+        {
             NOP();
         }
 
@@ -652,7 +681,8 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
 
         terrainCache << BYTE_BUFFER_VERSION;
         terrainCache << terrain->_physicsVerts;
-        if (!terrainCache.dumpToFile((Paths::g_cacheLocation + Paths::g_terrainCacheLocation).c_str(), (terrainRawFile + ".cache").c_str())) {
+        if (!terrainCache.dumpToFile( Paths::g_terrainCacheLocation, terrainRawFile.string() + ".cache"))
+        {
             DIVIDE_UNEXPECTED_CALL();
         }
     }
@@ -683,15 +713,15 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
     Vegetation::precomputeStaticData(context.gfx(), chunkSize, maxChunkCount);
 
     for (I32 i = 1; i < 5; ++i) {
-        string currentMesh = terrainDescriptor->getVariable(Util::StringFormat("treeMesh%d", i));
+        string currentMesh = terrainDescriptor->getVariable(Util::StringFormat("treeMesh{}", i));
         if (!currentMesh.empty()) {
-            vegDetails.treeMeshes.push_back(ResourcePath{ currentMesh });
+            vegDetails.treeMeshes.push_back( currentMesh );
         }
 
         vegDetails.treeRotations[i - 1].set(
-            terrainDescriptor->getVariablef(Util::StringFormat("treeRotationX%d", i)),
-            terrainDescriptor->getVariablef(Util::StringFormat("treeRotationY%d", i)),
-            terrainDescriptor->getVariablef(Util::StringFormat("treeRotationZ%d", i))
+            terrainDescriptor->getVariablef(Util::StringFormat("treeRotationX{}", i)),
+            terrainDescriptor->getVariablef(Util::StringFormat("treeRotationY{}", i)),
+            terrainDescriptor->getVariablef(Util::StringFormat("treeRotationZ{}", i))
         );
     }
 
@@ -734,13 +764,14 @@ VegetationDetails& TerrainLoader::initializeVegetationDetails(const Terrain_ptr&
     vegDetails.name = terrain->resourceName() + "_vegetation";
     vegDetails.parentTerrain = terrain;
 
-    const ResourcePath terrainLocation{ Paths::g_assetsLocation + Paths::g_heightmapLocation + terrainDescriptor->getVariable("descriptor") };
+    const ResourcePath terrainLocation{ Paths::g_heightmapLocation / terrainDescriptor->getVariable("descriptor")};
 
     vegDetails.grassMap.reset(new ImageTools::ImageData);
     vegDetails.treeMap.reset(new ImageTools::ImageData);
 
-    const ResourcePath grassMap{ terrainDescriptor->getVariable("grassMap")};
-    const ResourcePath treeMap{ terrainDescriptor->getVariable("treeMap") };
+    const auto grassMap = terrainDescriptor->getVariable("grassMap");
+    const auto treeMap  = terrainDescriptor->getVariable("treeMap");
+
     ImageTools::ImportOptions options{};
     options._alphaChannelTransparency = false;
     options._isNormalMap = false;

@@ -7,7 +7,7 @@
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Managers/Headers/RenderPassManager.h"
 
 #include "Core/Headers/Kernel.h"
@@ -68,10 +68,10 @@ namespace Divide
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( geomModule );
             shaderDescriptor._modules.push_back( fragModule );
-            shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "GS_MAX_INVOCATIONS %d", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
+            shaderDescriptor._globalDefines.emplace_back( Util::StringFormat( "GS_MAX_INVOCATIONS {}", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
 
             {
-                ResourceDescriptor blurDepthMapShader( Util::StringFormat( "GaussBlur_%d_invocations", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
+                ResourceDescriptor blurDepthMapShader( Util::StringFormat( "GaussBlur_{}_invocations", Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT ) );
                 blurDepthMapShader.waitForReady( true );
                 blurDepthMapShader.propertyDescriptor( shaderDescriptor );
 
@@ -394,7 +394,7 @@ namespace Divide
 
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand( Util::StringFormat( "Cascaded Shadow Pass Light: [ %d ]", lightIndex ).c_str(), lightIndex ) );
+        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand( Util::StringFormat( "Cascaded Shadow Pass Light: [ {} ]", lightIndex ).c_str(), lightIndex ) );
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager();
 
@@ -403,7 +403,7 @@ namespace Divide
             params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = i;
             params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = i;
 
-            params._passName = Util::StringFormat( "CSM_PASS_%d", i ).c_str();
+            params._passName = Util::StringFormat( "CSM_PASS_{}", i ).c_str();
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
             params._minExtents.set( g_minExtentsFactors[i] );
             if ( i > 0 && dirLight.csmUseSceneAABBFit()[i] )

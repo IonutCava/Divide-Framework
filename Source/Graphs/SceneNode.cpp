@@ -7,22 +7,23 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, const Str<256>& name, const ResourcePath& resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 requiredComponentMask)
-    : CachedResource(ResourceType::DEFAULT, descriptorHash, name, resourceName, resourceLocation),
-     _type(type),
-     _editorComponent(nullptr, &parentCache->context().editor(), ComponentType::COUNT, Names::sceneNodeType[to_base(type)]),
-     _parentCache(parentCache)
+SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 requiredComponentMask)
+    : CachedResource(ResourceType::DEFAULT, descriptorHash, name, resourceName, resourceLocation)
+    , _type(type)
+    , _editorComponent(nullptr, &parentCache->context().editor(), ComponentType::COUNT, Names::sceneNodeType[to_base(type)])
+    , _parentCache(parentCache)
 {
     _requiredComponentMask |= requiredComponentMask;
 
-    getEditorComponent().onChangedCbk([this](const std::string_view field) {
+    getEditorComponent().onChangedCbk([this](const std::string_view field)
+    {
         editorFieldChanged(field);
     });
 }

@@ -9,7 +9,7 @@
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/Lighting/Headers/LightPool.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
@@ -91,7 +91,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = totalLights;
         bufferDescriptor._bufferParams._elementSize = sizeof(U32);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("LIGHT_INDEX_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            bufferDescriptor._name = Util::StringFormat("LIGHT_INDEX_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightIndexBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -99,7 +99,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("GLOBAL_CLUSTER_AABB_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            bufferDescriptor._name = Util::StringFormat("GLOBAL_CLUSTER_AABB_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightClusterAABBsBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -107,7 +107,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = sizeof(vec4<U32>);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("LIGHT_GRID_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            bufferDescriptor._name = Util::StringFormat("LIGHT_GRID_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -116,7 +116,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         bufferDescriptor._bufferParams._elementCount = 1u;
         bufferDescriptor._bufferParams._elementSize =  sizeof(vec4<U32>);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("GLOBAL_INDEX_COUNT_SSBO_%s", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            bufferDescriptor._name = Util::StringFormat("GLOBAL_INDEX_COUNT_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -169,7 +169,7 @@ void Renderer::prepareLighting(const RenderStage stage,
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
 
-            const auto& pool = context().kernel().sceneManager()->getActiveScene().lightPool();
+            const auto& pool = context().kernel().projectManager()->activeProject()->getActiveScene().lightPool();
 
             const size_t stageIndex = to_size( stage );
             {

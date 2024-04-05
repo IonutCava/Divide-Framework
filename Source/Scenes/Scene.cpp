@@ -13,7 +13,7 @@
 #include "Core/Headers/Kernel.h"
 #include "Editor/Headers/Editor.h"
 
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Headers/Renderer.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
@@ -69,18 +69,19 @@ namespace Divide
     namespace
     {
         constexpr U16 BYTE_BUFFER_VERSION = 1u;
-        constexpr const char* const g_defaultPlayerName = "Player_%d";
+        constexpr const char* const g_defaultPlayerName = "Player_{}";
     }
 
     I64 Scene::DEFAULT_SCENE_GUID = 0;
     Mutex Scene::s_perFrameArenaMutex{};
     MyArena<TO_MEGABYTES( 64 )> Scene::s_perFrameArena{};
 
-    Scene::Scene( PlatformContext& context, ResourceCache* cache, SceneManager& parent, const Str<256>& name )
-        : Resource( ResourceType::DEFAULT, name )
+    Scene::Scene( PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry )
+        : Resource( ResourceType::DEFAULT, entry._name )
         , PlatformContextComponent( context )
-        , _resourceCache( cache )
+        , _resourceCache( &cache )
         , _parent( parent )
+        , _entry( entry )
     {
         _loadingTasks.store( 0 );
         _flashLight.fill( nullptr );
@@ -105,7 +106,10 @@ namespace Divide
 
     Scene::~Scene()
     {
-        _context.gfx().destroyIMP( _linesPrimitive );
+        if (_linesPrimitive != nullptr && !_context.gfx().destroyIMP( _linesPrimitive ))
+        {
+            DebugBreak();
+        }
     }
 
     bool Scene::OnStartup( PlatformContext& context )
@@ -119,6 +123,16 @@ namespace Divide
     {
         DVDConverter::OnShutdown();
         return true;
+    }
+
+    ResourcePath Scene::GetSceneFullPath( const Scene& scene )
+    {
+        return GetSceneRootFolder(scene.parent() ) / scene.resourceName();
+    }
+
+    ResourcePath Scene::GetSceneRootFolder( const Project& project )
+    {
+        return Paths::g_projectsLocation / project.id()._name / Paths::g_scenesLocation;
     }
 
     bool Scene::frameStarted()
@@ -160,7 +174,7 @@ namespace Divide
         return true;
     }
 
-    void Scene::addMusic( const MusicType type, const Str<256>& name, const ResourcePath& srcFile ) const
+    void Scene::addMusic( const MusicType type, const std::string_view name, const ResourcePath& srcFile ) const
     {
         const auto [musicFile, musicFilePath] = splitPathToNameAndLocation( srcFile );
 
@@ -169,7 +183,7 @@ namespace Divide
         music.assetLocation( musicFilePath );
         music.flag( true );
 
-        insert( state()->music( type ), _ID( name.c_str() ), CreateResource<AudioDescriptor>( resourceCache(), music ) );
+        insert( state()->music( type ), _ID( name ), CreateResource<AudioDescriptor>( resourceCache(), music ) );
     }
 
     bool Scene::saveNodeToXML( const SceneGraphNode* node ) const
@@ -179,35 +193,36 @@ namespace Divide
 
     bool Scene::loadNodeFromXML( SceneGraphNode* node ) const
     {
-        const char* assetsFile = "assets.xml";
-        return sceneGraph()->loadNodeFromXML( assetsFile, node );
+        return sceneGraph()->loadNodeFromXML( ResourcePath{ "assets.xml" }, node );
     }
 
-    bool Scene::saveXML( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback, const char* sceneNameOverride ) const
+    bool Scene::saveXML( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) const
     {
         using boost::property_tree::ptree;
-        const char* assetsFile = "assets.xml";
-        const Str<256> saveSceneName = Str<256>( strlen( sceneNameOverride ) > 0 ? sceneNameOverride : resourceName().c_str() );
+        const ResourcePath assetsFile{ "assets.xml" };
 
-        Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_START" ), saveSceneName.c_str() );
+        Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_START" ), resourceName().c_str() );
 
-        const ResourcePath sceneLocation( Paths::g_scenesLocation + saveSceneName );
-        const ResourcePath sceneDataFile( sceneLocation + ".xml" );
+        const Str<256>& sceneName = resourceName();
+        const Str<256> sceneSaveFile = sceneName + ".xml";
+        const ResourcePath scenesLocation = GetSceneRootFolder( parent() );
+        const ResourcePath sceneLocation = GetSceneFullPath( *this );
+        const ResourcePath sceneDataFile = scenesLocation / sceneSaveFile;
 
         if ( msgCallback )
         {
             msgCallback( "Validating directory structure ..." );
         }
 
-        if ( !createDirectory( sceneLocation + "/collisionMeshes/" ) )
+        if ( createDirectory( sceneLocation / "collisionMeshes") != FileError::NONE )
         {
             NOP();
         }
-        if ( !createDirectory( sceneLocation + "/navMeshes/" ) )
+        if ( createDirectory( sceneLocation / "navMeshes" ) != FileError::NONE )
         {
             NOP();
         }
-        if ( !createDirectory( sceneLocation + "/nodes/" ) )
+        if ( createDirectory( sceneLocation / Paths::g_nodesSaveLocation ) != FileError::NONE )
         {
             NOP();
         }
@@ -220,7 +235,7 @@ namespace Divide
             }
 
             ptree pt;
-            pt.put( "assets", assetsFile );
+            pt.put( "assets", assetsFile.string() );
             pt.put( "musicPlaylist", "musicPlaylist.xml" );
 
             pt.put( "vegetation.grassVisibility", state()->renderState().grassVisibility() );
@@ -232,7 +247,7 @@ namespace Divide
 
             pt.put( "options.visibility", state()->renderState().generalVisibility() );
 
-            const U8 activePlayerCount = _parent.getActivePlayerCount();
+            const U8 activePlayerCount = _parent.parent().activePlayerCount();
             for ( U8 i = 0u; i < activePlayerCount; ++i )
             {
                 playerCamera( i, true )->saveToXML( pt );
@@ -259,10 +274,10 @@ namespace Divide
             pt.put( "dayNight.location.<xmlattr>.longitude", _dayNightData._location._longitude );
             pt.put( "dayNight.timeOfDay.<xmlattr>.timeFactor", _dayNightData._speedFactor );
 
-            const FileError backupReturnCode = copyFile( Paths::g_scenesLocation.c_str(), (saveSceneName + ".xml").c_str(), Paths::g_scenesLocation.c_str(), (saveSceneName + ".xml.bak").c_str(), true );
+            const FileError backupReturnCode = copyFile( scenesLocation, sceneSaveFile.c_str(), scenesLocation, (sceneSaveFile + ".bak").c_str(), true );
             if ( backupReturnCode != FileError::NONE &&
-                backupReturnCode != FileError::FILE_NOT_FOUND &&
-                backupReturnCode != FileError::FILE_EMPTY )
+                 backupReturnCode != FileError::FILE_NOT_FOUND &&
+                 backupReturnCode != FileError::FILE_EMPTY )
             {
                 if constexpr( !Config::Build::IS_SHIPPING_BUILD )
                 {
@@ -271,7 +286,7 @@ namespace Divide
             }
             else
             {
-                XML::writeXML( sceneDataFile.c_str(), pt );
+                XML::writeXML( sceneDataFile, pt );
             }
         }
 
@@ -279,7 +294,7 @@ namespace Divide
         {
             msgCallback( "Saving scene graph data ..." );
         }
-        sceneGraph()->saveToXML( assetsFile, msgCallback, sceneNameOverride );
+        sceneGraph()->saveToXML( assetsFile, msgCallback );
 
         //save music
         {
@@ -290,13 +305,13 @@ namespace Divide
 
             ptree pt = {}; //ToDo: Save music data :)
 
-            if ( copyFile( (sceneLocation + "/").c_str(), "musicPlaylist.xml", (sceneLocation + "/").c_str(), "musicPlaylist.xml.bak", true ) == FileError::NONE )
+            if ( copyFile( sceneLocation, "musicPlaylist.xml", sceneLocation, "musicPlaylist.xml.bak", true ) == FileError::NONE )
             {
-                XML::writeXML( (sceneLocation + "/" + "musicPlaylist.xml.dev").c_str(), pt );
+                XML::writeXML( sceneLocation / "musicPlaylist.xml.dev", pt );
             }
         }
 
-        Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_END" ), saveSceneName.c_str() );
+        Console::printfn( LOCALE_STR( "XML_SAVE_SCENE_END" ), sceneDataFile );
 
         if ( finishCallback )
         {
@@ -310,21 +325,23 @@ namespace Divide
     {
         const Configuration& config = _context.config();
 
-        Console::printfn( LOCALE_STR( "XML_LOAD_SCENE" ), resourceName().c_str() );
-        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + resourceName().c_str() );
-        const ResourcePath sceneDataFile( sceneLocation + ".xml" );
+        const Str<256>& sceneName = resourceName();
+        const ResourcePath sceneLocation = GetSceneFullPath( *this );
+        const ResourcePath sceneDataFile( GetSceneRootFolder( parent() ) / (sceneName + ".xml") );
+
+        Console::printfn( LOCALE_STR( "XML_LOAD_SCENE" ), sceneName );
 
         // A scene does not necessarily need external data files
         // Data can be added in code for simple scenes
-        if ( !fileExists( sceneDataFile.c_str() ) )
+        if ( !fileExists( sceneDataFile ) )
         {
-            sceneGraph()->loadFromXML( "assets.xml" );
-            loadMusicPlaylist( sceneLocation.c_str(), "musicPlaylist.xml", this, config );
+            sceneGraph()->loadFromXML( ResourcePath{ "assets.xml" });
+            loadMusicPlaylist( sceneLocation, "musicPlaylist.xml", this, config );
             return true;
         }
 
         boost::property_tree::ptree pt;
-        XML::readXML( sceneDataFile.c_str(), pt );
+        XML::readXML( sceneDataFile, pt );
 
         state()->renderState().grassVisibility( pt.get( "vegetation.grassVisibility", state()->renderState().grassVisibility() ) );
         state()->renderState().treeVisibility( pt.get( "vegetation.treeVisibility", state()->renderState().treeVisibility() ) );
@@ -373,8 +390,8 @@ namespace Divide
         }
 
         state()->renderState().lodThresholds().set( lodThresholds );
-        sceneGraph()->loadFromXML( pt.get( "assets", "assets.xml" ).c_str() );
-        loadMusicPlaylist( sceneLocation.c_str(), pt.get( "musicPlaylist", "" ).c_str(), this, config );
+        sceneGraph()->loadFromXML( ResourcePath{ pt.get( "assets", "assets.xml" ) } );
+        loadMusicPlaylist( sceneLocation, pt.get( "musicPlaylist", "" ).c_str(), this, config );
 
         return true;
     }
@@ -398,16 +415,8 @@ namespace Divide
     {
         assert( parent != nullptr );
 
-        const ResourcePath sceneLocation( Paths::g_scenesLocation + "/" + resourceName().c_str() );
-        ResourcePath savePath{ sceneLocation.c_str() };
-        savePath.append( "/nodes/" );
-
-        ResourcePath targetFile{ parent->name().c_str() };
-        targetFile.append( "_" );
-        targetFile.append( sceneNode.name.c_str() );
-
-
-        const ResourcePath nodePath = savePath + Util::MakeXMLSafe( targetFile ) + ".xml";
+        const ResourcePath targetFile = ResourcePath{ Util::StringFormat("{}_{}", parent->name().c_str(), sceneNode.name.c_str()) };
+        const ResourcePath nodePath = GetSceneFullPath( *this ) / Paths::g_nodesSaveLocation / (Util::MakeXMLSafe( targetFile ).string() + ".xml");
 
         SceneGraphNode* crtNode = parent;
         if ( fileExists( nodePath ) )
@@ -419,7 +428,7 @@ namespace Divide
 
 
             boost::property_tree::ptree nodeTree = {};
-            XML::readXML( nodePath.str(), nodeTree );
+            XML::readXML( nodePath, nodeTree );
 
             const auto loadModelComplete = [this, &nodeTree]( CachedResource* res )
             {
@@ -446,7 +455,7 @@ namespace Divide
                 return false;
             };
 
-            const ResourcePath modelName{ nodeTree.get( "model", "" ) };
+            const string modelName = nodeTree.get( "model", "" );
 
             SceneNode_ptr ret = nullptr;
             bool skipAdd = true;
@@ -488,7 +497,7 @@ namespace Divide
                     }
                     else
                     {
-                        Console::errorfn( LOCALE_STR( "ERROR_SCENE_UNSUPPORTED_GEOM" ), sceneNode.name.c_str() );
+                        Console::errorfn( LOCALE_STR( "ERROR_SCENE_UNSUPPORTED_GEOM" ), sceneNode.name );
                     }
                 }
                 if ( ret != nullptr )
@@ -540,8 +549,8 @@ namespace Divide
                         if ( !modelName.empty() )
                         {
                             _loadingTasks.fetch_add( 1 );
-                            ResourceDescriptor model( modelName.str() );
-                            model.assetLocation( Paths::g_assetsLocation + Paths::g_modelsLocation );
+                            ResourceDescriptor model( modelName );
+                            model.assetLocation( Paths::g_modelsLocation );
                             model.assetName( modelName );
                             model.flag( true );
                             model.waitForReady( true );
@@ -638,7 +647,7 @@ namespace Divide
         }
     }
 
-    SceneGraphNode* Scene::addParticleEmitter( const Str<256>& name,
+    SceneGraphNode* Scene::addParticleEmitter( const std::string_view name,
                                               std::shared_ptr<ParticleData> data,
                                               SceneGraphNode* parentNode ) const
     {
@@ -726,7 +735,7 @@ namespace Divide
         {
             SceneGraphNodeDescriptor lightNodeDescriptor;
             lightNodeDescriptor._serialize = false;
-            lightNodeDescriptor._name = Util::StringFormat( "Flashlight_%d", idx ).c_str();
+            lightNodeDescriptor._name = Util::StringFormat( "Flashlight_{}", idx ).c_str();
             lightNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
             lightNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
                                                  to_base( ComponentType::BOUNDS ) |
@@ -742,7 +751,7 @@ namespace Divide
 
             _cameraUpdateListeners[idx] = playerCamera( idx )->addUpdateListener( [this, idx]( const Camera& cam )
             {
-                if ( idx < _scenePlayers.size() && idx < _flashLight.size() && _flashLight[idx] )
+                if ( idx < Config::MAX_LOCAL_PLAYER_COUNT && idx < _flashLight.size() && _flashLight[idx] )
                 {
                     if ( cam.getGUID() == playerCamera( idx )->getGUID() )
                     {
@@ -902,11 +911,11 @@ namespace Divide
 
         const auto increaseResolution = [this]( [[maybe_unused]] const InputParams param )
         {
-            _context.gfx().increaseResolution();
+            _context.app().windowManager().increaseResolution();
         };
         const auto decreaseResolution = [this]( [[maybe_unused]] const InputParams param )
         {
-            _context.gfx().decreaseResolution();
+            _context.app().windowManager().decreaseResolution();
         };
 
         const auto moveForward = [this]( const InputParams param )
@@ -996,7 +1005,7 @@ namespace Divide
 
         const auto toggleFullScreen = [this]( [[maybe_unused]] const InputParams param )
         {
-            _context.gfx().toggleFullScreen();
+            _context.app().windowManager().toggleFullScreen();
         };
 
         const auto toggleFlashLight = [this]( const InputParams param )
@@ -1316,7 +1325,7 @@ namespace Divide
         loadComplete( true );
         [[maybe_unused]] const U16 lastActionID = registerInputActions();
 
-        XML::loadDefaultKeyBindings( (Paths::g_xmlDataLocation + "keyBindings.xml").str(), this );
+        XML::loadDefaultKeyBindings( Paths::g_xmlDataLocation / "keyBindings.xml", this );
 
         return postLoad();
     }
@@ -1341,19 +1350,22 @@ namespace Divide
 
         for ( const size_t idx : _selectionCallbackIndices )
         {
-            _parent.removeSelectionCallback( idx );
+            _parent.parent().removeSelectionCallback( idx );
         }
         _selectionCallbackIndices.clear();
 
         _context.pfx().destroyPhysicsScene( *this );
 
-        /// Unload scenegraph
+        /// Unload SceneGraph
         _xmlSceneGraphRootNode = {};
         _flashLight.fill( nullptr );
         _sceneGraph->unload();
 
         loadComplete( false );
-        assert( _scenePlayers.empty() );
+        for ( const auto& player : _scenePlayers )
+        {
+            DIVIDE_ASSERT( player == nullptr );
+        }
 
         return true;
     }
@@ -1424,7 +1436,7 @@ namespace Divide
             NOP();
         }
 
-        assert( _parent.getActivePlayerCount() == 0 );
+        assert( _parent.parent().activePlayerCount() == 0 );
         addPlayerInternal( false );
     }
 
@@ -1434,9 +1446,13 @@ namespace Divide
 
         _aiManager->pauseUpdate( true );
 
-        while ( !_scenePlayers.empty() )
+        for ( auto& player : _scenePlayers )
         {
-            Attorney::SceneManagerScene::removePlayer( _parent, *this, _scenePlayers.back()->getBoundNode(), false );
+            if ( player != nullptr )
+            {
+                Attorney::ProjectManagerScene::removePlayer( _parent.parent(), *this, player->getBoundNode(), false );
+                player = nullptr;
+            }
         }
 
         input()->onRemoveActive();
@@ -1447,12 +1463,12 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         // Limit max player count
-        if ( _parent.getActivePlayerCount() == Config::MAX_LOCAL_PLAYER_COUNT )
+        if ( _parent.parent().activePlayerCount() == Config::MAX_LOCAL_PLAYER_COUNT )
         {
             return;
         }
 
-        const string playerName = GetPlayerSGNName( static_cast<PlayerIndex>(_parent.getActivePlayerCount()) );
+        const string playerName = GetPlayerSGNName( static_cast<PlayerIndex>(_parent.parent().activePlayerCount()) );
 
         SceneGraphNode* playerSGN( _sceneGraph->findNode( playerName.c_str() ) );
         if ( !playerSGN )
@@ -1461,18 +1477,18 @@ namespace Divide
 
             SceneGraphNodeDescriptor playerNodeDescriptor;
             playerNodeDescriptor._serialize = false;
-            playerNodeDescriptor._node = std::make_shared<SceneNode>( resourceCache(), to_size( generateGUID() + _parent.getActivePlayerCount() ), playerName.c_str(), ResourcePath{playerName}, ResourcePath{}, SceneNodeType::TYPE_TRANSFORM, 0u);
+            playerNodeDescriptor._node = std::make_shared<SceneNode>( resourceCache(), to_size( generateGUID() + _parent.parent().activePlayerCount() ), playerName, playerName, ResourcePath{}, SceneNodeType::TYPE_TRANSFORM, 0u);
             playerNodeDescriptor._name = playerName.c_str();
             playerNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
             playerNodeDescriptor._componentMask = to_base( ComponentType::UNIT ) |
-                to_base( ComponentType::TRANSFORM ) |
-                to_base( ComponentType::BOUNDS ) |
-                to_base( ComponentType::NETWORKING );
+                                                  to_base( ComponentType::TRANSFORM ) |
+                                                  to_base( ComponentType::BOUNDS ) |
+                                                  to_base( ComponentType::NETWORKING );
 
             playerSGN = root->addChildNode( playerNodeDescriptor );
         }
 
-        Attorney::SceneManagerScene::addPlayer( _parent, *this, playerSGN, queue );
+        Attorney::ProjectManagerScene::addPlayer( _parent.parent(), *this, playerSGN, queue );
         DIVIDE_ASSERT( playerSGN->get<UnitComponent>()->getUnit() != nullptr );
     }
 
@@ -1480,14 +1496,16 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        assert( idx < _scenePlayers.size() );
+        assert( idx < Config::MAX_LOCAL_PLAYER_COUNT);
+        auto& player = _scenePlayers[getSceneIndexForPlayer( idx )];
+        assert( player != nullptr );
 
-        Attorney::SceneManagerScene::removePlayer( _parent, *this, _scenePlayers[getSceneIndexForPlayer( idx )]->getBoundNode(), true );
+        Attorney::ProjectManagerScene::removePlayer( _parent.parent(), *this, player->getBoundNode(), true );
     }
 
     void Scene::onPlayerAdd( const Player_ptr& player )
     {
-        _scenePlayers.push_back( player.get() );
+        DIVIDE_ASSERT( player != nullptr );
         state()->onPlayerAdd( player->index() );
         input()->onPlayerAdd( player->index() );
     }
@@ -1508,14 +1526,15 @@ namespace Divide
         }
         _sceneGraph->getRoot()->removeChildNode( player->getBoundNode() );
 
-        _scenePlayers.erase( std::cbegin( _scenePlayers ) + getSceneIndexForPlayer( idx ) );
+        assert( idx < Config::MAX_LOCAL_PLAYER_COUNT);
+        _scenePlayers[getSceneIndexForPlayer( idx )] = nullptr;
     }
 
     U8 Scene::getSceneIndexForPlayer( const PlayerIndex idx ) const
     {
-        for ( U8 i = 0; i < to_U8( _scenePlayers.size() ); ++i )
+        for ( U8 i = 0; i < Config::MAX_LOCAL_PLAYER_COUNT; ++i )
         {
-            if ( _scenePlayers[i]->index() == idx )
+            if ( _scenePlayers[i] != nullptr && _scenePlayers[i]->index() == idx )
             {
                 return i;
             }
@@ -1527,7 +1546,7 @@ namespace Divide
 
     Player* Scene::getPlayerForIndex( const PlayerIndex idx ) const
     {
-        return _scenePlayers[getSceneIndexForPlayer( idx )];
+        return _scenePlayers[getSceneIndexForPlayer( idx )].get();
     }
 
     U8 Scene::getPlayerIndexForDevice( const U8 deviceIndex ) const
@@ -1609,12 +1628,15 @@ namespace Divide
         {
             //Add a focus flag and ignore redundant calls
 
-            for ( const Player* player : _scenePlayers )
+            for ( const Player_ptr& player : _scenePlayers )
             {
-                state()->playerState( player->index() ).resetMoveDirections();
-                endDragSelection( player->index(), false );
+                if (player != nullptr)
+                {
+                    state()->playerState( player->index() ).resetMoveDirections();
+                    endDragSelection( player->index(), false );
+                }
             }
-            _parent.wantsMouse( false );
+            _parent.parent().wantsMouse( false );
             //_context.kernel().timingData().freezeGameTime(true);
         }
         else
@@ -1850,7 +1872,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        const Camera* crtCamera = Attorney::SceneManagerCameraAccessor::playerCamera( _parent, idx );
+        const Camera* crtCamera = Attorney::ProjectManagerCameraAccessor::playerCamera( _parent.parent(), idx );
         return checkCameraUnderwater( *crtCamera );
     }
 
@@ -2023,7 +2045,7 @@ namespace Divide
             }
         }
 
-        _parent.onNodeDestroy( node );
+        _parent.parent().onNodeDestroy( *this, node );
     }
 
     bool Scene::resetSelection( const PlayerIndex idx, const bool resetIfLocked )
@@ -2076,7 +2098,7 @@ namespace Divide
         // Clear old selection
         if ( clearOld )
         {
-            if ( !_parent.resetSelection( idx, false ) )
+            if ( !_parent.parent().resetSelection( idx, false ) )
             {
                 return false;
             }
@@ -2102,10 +2124,10 @@ namespace Divide
         SceneGraphNode* selectedNode = _sceneGraph->findNode( hoverGUID );
         if ( selectedNode != nullptr )
         {
-            _parent.setSelected( idx, { selectedNode }, false );
+            _parent.parent().setSelected( idx, { selectedNode }, false );
             return true;
         }
-        if ( !_parent.resetSelection( idx, false ) )
+        if ( !_parent.parent().resetSelection( idx, false ) )
         {
             NOP();
         }
@@ -2147,7 +2169,7 @@ namespace Divide
             }
         }
 
-        _parent.wantsMouse( true );
+        _parent.parent().wantsMouse( true );
 
         const vec2<U16> resolution = _context.gfx().renderingResolution();
 
@@ -2186,14 +2208,14 @@ namespace Divide
         if ( GFXDevice::FrameCount() % 2 == 0 )
         {
             clearHoverTarget( idx );
-            if ( _parent.resetSelection( idx, false ) )
+            if ( _parent.parent().resetSelection( idx, false ) )
             {
                 const Camera* crtCamera = playerCamera( idx );
 
                 thread_local vector_fast<SceneGraphNode*> nodes;
-                Attorney::SceneManagerScene::getNodesInScreenRect( _parent, selectionRect, *crtCamera, nodes );
+                Attorney::ProjectManagerScene::getNodesInScreenRect( _parent.parent(), selectionRect, *crtCamera, nodes );
 
-                _parent.setSelected( idx, nodes, false );
+                _parent.parent().setSelected( idx, nodes, false );
             }
         }
     }
@@ -2205,7 +2227,7 @@ namespace Divide
         DragSelectData& data = _dragSelectData[idx];
 
         _linesPrimitive->clearBatch();
-        _parent.wantsMouse( false );
+        _parent.parent().wantsMouse( false );
         data._isDragging = false;
         if ( data._startDragPos.distanceSquared( data._endDragPos ) < DRAG_SELECTION_THRESHOLD_PX_SQ )
         {
@@ -2313,15 +2335,33 @@ namespace Divide
         }
     }
 
+    U8 Scene::playerCount() const noexcept
+    {
+        U8 ret = 0u;
+
+        for ( const auto& player : _scenePlayers )
+        {
+            if ( player != nullptr )
+            {
+                ++ret;
+            }
+        }
+
+        return ret;
+    }
+
     bool Scene::save( ByteBuffer& outputBuffer ) const
     {
         outputBuffer << BYTE_BUFFER_VERSION;
-        const U8 playerCount = to_U8( _scenePlayers.size() );
-        outputBuffer << playerCount;
-        for ( U8 i = 0; i < playerCount; ++i )
+        const U8 plCount = playerCount();
+        outputBuffer << plCount;
+        for ( const auto& player : _scenePlayers )
         {
-            const Camera* cam = _scenePlayers[i]->camera();
-            outputBuffer << _scenePlayers[i]->index() << cam->snapshot()._eye << cam->snapshot()._orientation;
+            if ( player != nullptr )
+            {
+                const Camera* cam = player->camera();
+                outputBuffer << player->index() << cam->snapshot()._eye << cam->snapshot()._orientation;
+            }
         }
 
         return _sceneGraph->saveCache( outputBuffer );
@@ -2336,7 +2376,7 @@ namespace Divide
             inputBuffer >> tempVer;
             if ( tempVer == BYTE_BUFFER_VERSION )
             {
-                const U8 currentPlayerCount = to_U8( _scenePlayers.size() );
+                const U8 currentPlayerCount = playerCount();
 
                 vec3<F32> camPos;
                 Quaternion<F32> camOrientation;
@@ -2367,12 +2407,12 @@ namespace Divide
 
     Camera* Scene::playerCamera( const bool skipOverride ) const
     {
-        return Attorney::SceneManagerCameraAccessor::playerCamera( _parent, skipOverride );
+        return Attorney::ProjectManagerCameraAccessor::playerCamera( _parent.parent(), skipOverride );
     }
 
     Camera* Scene::playerCamera( const U8 index, const bool skipOverride ) const
     {
-        return Attorney::SceneManagerCameraAccessor::playerCamera( _parent, index, skipOverride );
+        return Attorney::ProjectManagerCameraAccessor::playerCamera( _parent.parent(), index, skipOverride );
     }
 
     void Attorney::SceneEnvironmentProbeComponent::registerProbe( const Scene& scene, EnvironmentProbeComponent* probe )

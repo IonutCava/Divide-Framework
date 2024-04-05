@@ -50,7 +50,7 @@ class Quad3D final : public Object3D {
     explicit Quad3D(GFXDevice& context,
                     ResourceCache* parentCache,
                     size_t descriptorHash,
-                    const Str<256>& name,
+                    const std::string_view name,
                     bool doubleSided,
                     const vec3<F32>& sideLength);
 

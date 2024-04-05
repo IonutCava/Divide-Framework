@@ -366,7 +366,7 @@ namespace Divide
                 case GFXImageFormat::BGRA:
                 case GFXImageFormat::RGBA:
                 {
-                    ret._internalFormat = baseFormat == GFXImageFormat::RGB ? (isNormalized ? GL_RGBA : GL_RGBA_INTEGER) : (isNormalized ? GL_BGRA : GL_BGRA_INTEGER);
+                    ret._internalFormat = baseFormat == GFXImageFormat::RGBA ? (isNormalized ? GL_RGBA : GL_RGBA_INTEGER) : (isNormalized ? GL_BGRA : GL_BGRA_INTEGER);
                     if ( packing == GFXImagePacking::RGBA_4444 )
                     {
                         ret._format = GL_RGBA4;
@@ -391,7 +391,7 @@ namespace Divide
                 // compressed formats
                 case GFXImageFormat::DXT1_RGB:  ret._format = ret._internalFormat = packing == GFXImagePacking::NORMALIZED_SRGB ? GL_COMPRESSED_SRGB_S3TC_DXT1_EXT       : GL_COMPRESSED_RGB_S3TC_DXT1_EXT;  break; //BC1  
                 case GFXImageFormat::DXT1_RGBA: ret._format = ret._internalFormat = packing == GFXImagePacking::NORMALIZED_SRGB ? GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT : GL_COMPRESSED_RGBA_S3TC_DXT1_EXT; break; //BC1a 
-                case GFXImageFormat::DXT3_RGBA: ret._format = ret._internalFormat = packing == GFXImagePacking::NORMALIZED_SRGB ? GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT : GL_COMPRESSED_RGB_S3TC_DXT1_EXT;  break; //BC2  
+                case GFXImageFormat::DXT3_RGBA: ret._format = ret._internalFormat = packing == GFXImagePacking::NORMALIZED_SRGB ? GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT : GL_COMPRESSED_RGBA_S3TC_DXT3_EXT; break; //BC2  
                 case GFXImageFormat::DXT5_RGBA: ret._format = ret._internalFormat = packing == GFXImagePacking::NORMALIZED_SRGB ? GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT : GL_COMPRESSED_RGBA_S3TC_DXT5_EXT; break; //BC3  
                 case GFXImageFormat::BC3n:      ret._format = ret._internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;         break;
                 case GFXImageFormat::BC4s:      ret._format = ret._internalFormat = GL_COMPRESSED_SIGNED_RED_RGTC1_EXT;       break;
@@ -844,8 +844,8 @@ namespace Divide
             const GLuint activeProgram = GL_API::GetStateTracker()._activeShaderProgramHandle;
             const GLuint activePipeline = GL_API::GetStateTracker()._activeShaderPipelineHandle;
 
-            const char* programMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Program : %d][DebugGroup: %s][Message: %s]";
-            const char* pipelineMsg = "[%s Thread][Source: %s][Type: %s][ID: %d][Severity: %s][Bound Pipeline : %d][DebugGroup: %s][Message: %s]";
+            constexpr const char* programMsg = "[{} Thread][Source: {}][Type: {}][ID: {}][Severity: {}][Bound Program : {}][DebugGroup: {}][Message: {}]";
+            constexpr const char* pipelineMsg = "[{} Thread][Source: {}][Type: {}][ID: {}][Severity: {}][Bound Pipeline : {}][DebugGroup: {}][Message: {}]";
 
             const string outputError = Util::StringFormat(activeProgram != 0u ? programMsg : pipelineMsg,
                                                           userParam == nullptr ? "Main" : "Worker",

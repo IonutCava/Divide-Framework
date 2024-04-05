@@ -1,5 +1,3 @@
-
-
 #include "Headers/ImageTools.h"
 
 #include "Core/Headers/StringHelper.h"
@@ -10,6 +8,8 @@
 #include "Core/Headers/PlatformContext.h"
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_FAILURE_USERMSG
+
 #pragma warning(push)
 #pragma warning(disable:4505) //unreferenced local function has been removed
 #pragma warning(disable:4189) //local variable is initialized but not referenced
@@ -73,7 +73,8 @@ namespace nvttHelpers {
         }
 
         // create the osg image from the given format
-        bool assignImage(ImageLayer& image) {
+        bool assignImage(ImageLayer& image)
+        {
             switch (_format)
             {
                 case nvtt::Format_RGBA:
@@ -90,8 +91,10 @@ namespace nvttHelpers {
                     return false;
             }
 
-            for (MipMapData& data : _mipmaps) {
-                if (!image.allocateMip(data._pixelData.data(), data._pixelData.size(), to_U16(data._width), to_U16(data._height), to_U16(data._depth), _numComponents)) {
+            for (MipMapData& data : _mipmaps)
+            {
+                if (!image.allocateMip(data._pixelData.data(), data._pixelData.size(), to_U16(data._width), to_U16(data._height), to_U16(data._depth), _numComponents))
+                {
                     DIVIDE_UNEXPECTED_CALL();
                 }
             }
@@ -128,14 +131,20 @@ namespace nvttHelpers {
         return isNormalMap && format == nvtt::Format_BC1;
     }
 
-    [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept {
+    [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept
+    {
         assert(outputFormat != ImageOutputFormat::COUNT);
 
-        if constexpr(g_KeepDevILDDSCompatibility) {
+        if constexpr(g_KeepDevILDDSCompatibility)
+        {
             return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
-        } else {
-            if (outputFormat != ImageOutputFormat::AUTO) {
-                switch (outputFormat) {
+        }
+        else
+        {
+            if (outputFormat != ImageOutputFormat::AUTO)
+            {
+                switch (outputFormat)
+                {
                     case ImageOutputFormat::BC1:      return nvtt::Format::Format_BC1;
                     case ImageOutputFormat::BC1a:     return nvtt::Format::Format_BC1a;
                     case ImageOutputFormat::BC2:      return nvtt::Format::Format_BC2;
@@ -182,12 +191,31 @@ namespace {
         return i;
     }
 
-    inline void checkError() noexcept {
+    [[nodiscard]] inline bool checkError(string& messageInOut) noexcept {
+        bool ret = false;
+
         ILenum error = ilGetError();
-        while (error != IL_NO_ERROR) {
-            DebugBreak();
-            error = ilGetError();
+        bool stopInDebugger = true;
+        messageInOut.resize(0);
+        while (error != IL_NO_ERROR)
+        {
+            ret = true;
+            if (stopInDebugger)
+            {
+                stopInDebugger = false;
+                DebugBreak();
+            }
+            messageInOut.append("\n").append( iluErrorString(error) );
+
+            ILenum nextError = ilGetError();
+            while (error == nextError)
+            {
+                nextError = ilGetError();
+            }
+            error = nextError;
         }
+
+        return ret;
     }
 };
 
@@ -211,12 +239,14 @@ bool UseUpperLeftOrigin() noexcept {
     return s_useUpperLeftOrigin;
 }
 
-bool ImageData::loadFromMemory(const Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U8 numComponents) {
+bool ImageData::loadFromMemory(const Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U8 numComponents)
+{
     ImageLayer& layer = _layers.emplace_back();
     return layer.allocateMip(data, size, width, height, depth, numComponents);
 }
 
-bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name) {
+bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
+{
     ImportOptions options{};
     options._useDDSCache = false;
     return loadFromFile(context, srgb, refWidth, refHeight, path, name, options);
@@ -402,19 +432,25 @@ namespace
     }
 }
 
-bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name, const ImportOptions options) {
+bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name, ImportOptions& options, const bool isRetry)
+{
     _path = path;
     _name = name;
-    _name.convertToLower();
+
     ignoreAlphaChannelTransparency(!options._alphaChannelTransparency);
 
-    // We can handle DDS files directly
-    if (hasExtension(_name, "dds")) {
-        return loadDDS_NVTT(srgb, refWidth, refHeight, _path, _name);
-    }
+    // We can handle DDS files directly in a very FATAL way
+    if (hasExtension(_name, Paths::Textures::g_ddsExtension))
+    {
+        _loadingData._loadedDDSData = loadDDS_NVTT(srgb, refWidth, refHeight, _path, _name);
+        DIVIDE_ASSERT( _loadingData._loadedDDSData );
+        ++_loadingData._fileIndex;
 
-    const ResourcePath fullPath = _path + _name;
-    FILE* f = stbi__fopen(fullPath.c_str(), "rb");
+        return true;
+    }
+    
+    const ResourcePath fullPath = _path / _name;
+    FILE* f = stbi__fopen(fullPath.string().c_str(), "rb");
     if ( !f )
     {
         return false;
@@ -443,23 +479,43 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         _sourceDataType = SourceDataType::BYTE;
     }
 
-    if ( Texture::UseTextureDDSCache() && options._useDDSCache && _sourceDataType == SourceDataType::BYTE )
+    bool useCache = Texture::UseTextureDDSCache() && options._useDDSCache;
+    if ( _loadingData._fileIndex == 0u && _sourceDataType != SourceDataType::BYTE)
+    {
+        options._useDDSCache = false;
+        useCache = false;
+    }
+
+    bool createDDS = useCache || _loadingData._createdDDSData;
+
+    // We either want to convert or we already have DDS faces/layers
+    if ( _loadingData._fileIndex > 0u)
+    {
+        useCache = _loadingData._loadedDDSData;
+        options._useDDSCache = useCache;
+        options._waitForDDSConversion = useCache;
+    }
+
+    if ( useCache || createDDS )
     {
         STUBBED("Get rid of DevIL completely! It is really really bad for DDS handling (quality/performance) compared to the alternatives -Ionut");
 
-        const ResourcePath cachePath = Texture::GetCachePath(_path);
-        const ResourcePath cacheName = _name + ".dds";
-        const ResourcePath cacheFilePath = cachePath + cacheName;
+        _loadingData._createdDDSData = true;
+
+        const ResourcePath cachePath = Paths::Textures::g_metadataLocation / _path;
+        const string cacheFileName = Util::StringFormat( "{}.{}", _name, Paths::Textures::g_ddsExtension );
+        const ResourcePath cacheFilePath = cachePath / cacheFileName;
 
         // Try and save regular images to DDS for better compression next time
-        if (!createDirectory(cachePath))
+        if ( createDirectory(cachePath) != FileError::NONE )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        if (!fileExists(cacheFilePath))
+        Task* ddsConversionTask = nullptr;
+        if ( !fileExists(cacheFilePath) )
         {
-            Start( *CreateTask( [fullPath, cacheFilePath, options]( const Task& )
+            ddsConversionTask = CreateTask( [fullPath, cacheFilePath, options]( const Task& )
             {
                 //LockGuard<Mutex> lock(s_imageLoadingMutex);
 
@@ -468,7 +524,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
                 nvtt::Surface image;
                 bool hasAlpha = false;
-                if (image.load(fullPath.c_str(), &hasAlpha))
+                if (image.load(fullPath.string().c_str(), &hasAlpha))
                 {
                     constexpr bool isGreyScale = false;
                     const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, isGreyScale);
@@ -498,7 +554,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     }
 
                     nvtt::OutputOptions outputOptions;
-                    outputOptions.setFileName(cacheFilePath.c_str());
+                    outputOptions.setFileName(cacheFilePath.string().c_str());
                     nvttHelpers::ErrorHandler errorHandler;
                     outputOptions.setErrorHandler(&errorHandler);
                     if (outputFormat == nvtt::Format_BC6 || outputFormat == nvtt::Format_BC7)
@@ -567,18 +623,45 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     }
 
                 }
-            }),
-           context.taskPool( TaskPoolType::HIGH_PRIORITY ), options._waitForDDSConversion  ? TaskPriority::REALTIME : TaskPriority::DONT_CARE  );
+            });
+
+            Start(
+                *ddsConversionTask, 
+                context.taskPool( TaskPoolType::HIGH_PRIORITY ),
+                options._waitForDDSConversion ? TaskPriority::REALTIME : TaskPriority::DONT_CARE 
+            );
         }
-        else
+
+        if ( useCache )
         {
-            if (loadDDS_NVTT( srgb, refWidth, refHeight, cachePath, cacheName ))
+            if ( ddsConversionTask != nullptr && (options._waitForDDSConversion || _loadingData._loadedDDSData) )
             {
-                return true;
+                Wait(*ddsConversionTask, context.taskPool( TaskPoolType::HIGH_PRIORITY ));
+                ddsConversionTask = nullptr;
             }
-            else
+
+            if ( fileExists( cacheFilePath ) && !ddsConversionTask )
             {
-                Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_DDS_LOAD_ERROR"), fullPath.c_str());
+                if (loadDDS_NVTT( srgb, refWidth, refHeight, cachePath, cacheFileName ))
+                {
+                    _loadingData._loadedDDSData = true;
+                    ++_loadingData._fileIndex;
+                    return true;
+                }
+                else
+                {
+                    Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_DDS_LOAD_ERROR"), cachePath / cacheFileName );
+                    if (!isRetry)
+                    {
+                        if (deleteFile( cachePath, cacheFileName ) != FileError::NONE)
+                        {
+                            Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_DDS_DELETE_ERROR"), cachePath / cacheFileName );
+                        }
+
+                        return loadFromFile( context, srgb, refWidth, refHeight, path, name, options, true );
+                    }
+
+                }
             }
         }
     }
@@ -592,11 +675,11 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         if (stbi_info_from_file(f, &x, &y, &n) && n == 3)
         {
             _hasDummyAlphaChannel = true;
-            Console::warnfn(LOCALE_STR("WARN_IMAGETOOLS_RGB_FORMAT"), fullPath.c_str());
+            Console::warnfn(LOCALE_STR("WARN_IMAGETOOLS_RGB_FORMAT"), fullPath);
         }
     }
 
-    const I32 req_comp = _hasDummyAlphaChannel ? 4 : 0;
+    const auto req_comp = _hasDummyAlphaChannel ? STBI_rgb_alpha : STBI_default;
     switch ( _sourceDataType )
     {
         case SourceDataType::FLOAT:
@@ -619,7 +702,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
     if (dataHDR == nullptr && data16Bit == nullptr && dataLDR == nullptr)
     {
-        Console::errorfn(LOCALE_STR("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE"), fullPath.c_str());
+        Console::errorfn(LOCALE_STR("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE"), fullPath, stbi_failure_reason() );
         return false;
     }
 
@@ -842,34 +925,47 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         DIVIDE_UNEXPECTED_CALL();
     }
 
+    ++_loadingData._fileIndex;
     return ret;
 }
 
-bool ImageData::loadDDS_NVTT([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name)
+bool ImageData::loadDDS_NVTT([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
 {
     //ToDo: Use a better DDS loader
     return loadDDS_IL(srgb, refWidth, refHeight, path, name);
 }
 
-bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const ResourcePath& name)
+bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
 {
-    const ResourcePath fullPath = path + name;
+    const ResourcePath fullPath = path / name;
 
     LockGuard<Mutex> lock(s_imageLoadingMutex);
 
     ILuint imageID = 0u;
     ilGenImages(1, &imageID);
     ilBindImage(imageID);
-    checkError();
+    
+    string devilErrors;
+    if (checkError( devilErrors ))
+    {
+        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+    }
 
     SCOPE_EXIT{
         ilDeleteImage(imageID);
-        checkError();
+        if ( checkError( devilErrors ) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+        }
     };
 
-    if (ilLoadImage(fullPath.c_str()) == IL_FALSE) {
-        checkError();
-        Console::errorfn(LOCALE_STR("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE"), _name.c_str());
+    if (ilLoadImage(fullPath.string().c_str()) == IL_FALSE)
+    {
+        if ( checkError( devilErrors ) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+        }
+        Console::errorfn(LOCALE_STR("ERROR_IMAGETOOLS_INVALID_IMAGE_FILE"), fullPath, LOCALE_STR("ERROR_UNKNOWN") );
         return false;
     }
     
@@ -883,19 +979,30 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
 
 
     const auto flipActiveMip = [&]() {
-        if (!s_useUpperLeftOrigin) {
-            if (compressed) {
+        if (!s_useUpperLeftOrigin)
+        {
+            if (compressed)
+            {
                 ilFlipSurfaceDxtcData();
-            } else {
+            } 
+            else
+            {
                 iluFlipImage();
             }
-            checkError();
+
+            if ( checkError( devilErrors ) )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+            }
         }
     };
 
     ILinfo imageInfo;
     iluGetImageInfo(&imageInfo);
-    checkError();
+    if ( checkError( devilErrors ) )
+    {
+        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+    }
 
     // Avoid, double, longs, unsigned ints, etc
     if (imageInfo.Type != IL_BYTE && imageInfo.Type != IL_UNSIGNED_BYTE &&
@@ -903,20 +1010,26 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         imageInfo.Type != IL_UNSIGNED_SHORT && imageInfo.Type != IL_SHORT) {
         ilConvertImage(imageInfo.Format, IL_FLOAT);
         imageInfo.Type = IL_FLOAT;
-        checkError();
+        if ( checkError( devilErrors ) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+        }
     }
 
     ILint channelCount = ilGetInteger(IL_IMAGE_CHANNELS);
     // We don't support paletted images (or RGB8 in Vulkan)
     if (imageInfo.Format == IL_COLOUR_INDEX || (channelCount == 3 && imageInfo.Type == IL_UNSIGNED_BYTE) )
     {
-        Console::warnfn( LOCALE_STR( "WARN_IMAGETOOLS_RGB_FORMAT" ), fullPath.c_str() );
+        Console::warnfn( LOCALE_STR( "WARN_IMAGETOOLS_RGB_FORMAT" ), fullPath );
 
         ilConvertImage(IL_RGBA, IL_UNSIGNED_BYTE);
         imageInfo.Format = IL_RGBA;
         imageInfo.Type = IL_UNSIGNED_BYTE;
         channelCount = 4u;
-        checkError();
+        if ( checkError( devilErrors ) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+        }
     }
 
     size_t storageSizeFactor = 1u;
@@ -949,15 +1062,18 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     };
 
     // Resize if needed
-    if (refWidth != 0 && refHeight != 0 && (imageInfo.Width != refWidth || imageInfo.Height != refHeight)) {
-        if (iluScale(refWidth, refHeight, imageInfo.Depth)) {
+    if (refWidth != 0 && refHeight != 0 && (imageInfo.Width != refWidth || imageInfo.Height != refHeight))
+    {
+        if (iluScale(refWidth, refHeight, imageInfo.Depth))
+        {
             imageInfo.Width = refWidth;
             imageInfo.Height = refHeight;
         }
-        checkError();
+        if ( checkError( devilErrors ) )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+        }
     }
-
-    checkError();
 
     if (compressed) {
         switch (dxtFormat) {
@@ -1004,8 +1120,7 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     }
 
     const ILint numImages = ilGetInteger(IL_NUM_IMAGES) + 1;
-    // ^^^^^^^^^^^^^ Querying for IL_NUM_IMAGES returns the number of images
-    //               following the current one. Add 1 for the right image count!
+    // ^^^^^^^^^^^^^ Querying for IL_NUM_IMAGES returns the number of images following the current one. Add 1 for the right image count!
     const bool isCube = ilGetInteger(IL_IMAGE_CUBEFLAGS) != 0 || numImages % 6 == 0;
     
     ILint numFaces = ilGetInteger(IL_NUM_FACES) + 1;
@@ -1028,28 +1143,27 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
             const I32 face = determineFace(f, true, isCube);
             ImageLayer& layer = _layers.emplace_back();
 
-            for (ILuint m = 0u; m <= imageInfo.NumMips; ++m) {
+            for (ILuint m = 0u; m <= imageInfo.NumMips; ++m)
+            {
                 // DevIL frequently loses track of the current state
                 ilBindImage(imageID);
                 ilActiveImage(image);
                 ilActiveFace(face);
                 ilActiveMipmap(m);
                 flipActiveMip();
-                checkError();
-
-                if (compressed && image == 0 && face == 0 && m == 0) {
-                    _decompressedData.resize(to_size(imageInfo.Width) * imageInfo.Height * imageInfo.Depth * 4);
-                    ilCopyPixels(0, 0, 0, imageInfo.Width, imageInfo.Height, imageInfo.Depth, IL_RGBA, IL_UNSIGNED_BYTE, _decompressedData.data());
+                if ( checkError( devilErrors ) )
+                {
+                    Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
                 }
                 const ILint width  = ilGetInteger(IL_IMAGE_WIDTH);
                 const ILint height = ilGetInteger(IL_IMAGE_HEIGHT);
                 const ILint depth  = ilGetInteger(IL_IMAGE_DEPTH);
-                checkError();
+                const ILint size   = compressed ? ilGetDXTCData( nullptr, 0, dxtFormat ) 
+                                                : ilGetInteger( IL_IMAGE_SIZE_OF_DATA );
 
-                ILuint size = width * height * depth * imageInfo.Bpp;
-                if (compressed) {
-                    size = ilGetDXTCData(nullptr, 0, dxtFormat);
-                    checkError();
+                if ( checkError( devilErrors ) )
+                {
+                    Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
                 }
 
                 Byte* data = layer.allocateMip<Byte>(to_size(size),
@@ -1058,12 +1172,28 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
                                                      to_U16(depth),
                                                      compressed ? 0  // 0 here means that our calculated size will be 0, thus our specified size will always be used
                                                                 : to_U8(channelCount * storageSizeFactor)); //For short and float type data we need to increase the available storage a bit (channel count assumes a Byte per component here)
-                if (compressed) {
+                if (compressed)
+                {
                     ilGetDXTCData(data, size, dxtFormat);
-                    checkError();
-                } else {
+                }
+                else
+                {
                     memcpy(data, ilGetData(), size);
-                    checkError();
+                }
+                if ( checkError( devilErrors ) )
+                {
+                    Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+                }
+
+
+                if ( compressed && image == 0 && face == 0 && m == 0 )
+                {
+                    _decompressedData.resize( to_size( imageInfo.Width ) * imageInfo.Height * imageInfo.Depth * 4 );
+                    ilCopyPixels( 0, 0, 0, imageInfo.Width, imageInfo.Height, imageInfo.Depth, IL_RGBA, IL_UNSIGNED_BYTE, _decompressedData.data() );
+                    if ( checkError( devilErrors ) )
+                    {
+                        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+                    }
                 }
             }
         }
@@ -1072,7 +1202,8 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
     return true;
 }
 
-UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 layer, const U8 mipLevel) const {
+UColour4 ImageData::getColour(const I32 x, const I32 y, [[maybe_unused]] U32 layer, const U8 mipLevel) const
+{
     UColour4 returnColour;
     getColour(x, y, returnColour.r, returnColour.g, returnColour.b, returnColour.a, mipLevel);
     return returnColour;
@@ -1253,10 +1384,10 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
 
     switch (format)
     {
-        case SaveImageFormat::PNG: return stbi_write_png(filename.c_str(), width, height, 3, pix.data(), width * 3 * sizeof(Byte)) == TRUE;
-        case SaveImageFormat::BMP: return stbi_write_bmp(filename.c_str(), width, height, 3, pix.data()) == TRUE;
-        case SaveImageFormat::TGA: return stbi_write_tga(filename.c_str(), width, height, 3, pix.data()) == TRUE;
-        case SaveImageFormat::JPG: return stbi_write_jpg(filename.c_str(), width, height, 3, pix.data(), 85) == TRUE;
+        case SaveImageFormat::PNG: return stbi_write_png(filename.string().c_str(), width, height, 3, pix.data(), width * 3 * sizeof(Byte)) == TRUE;
+        case SaveImageFormat::BMP: return stbi_write_bmp(filename.string().c_str(), width, height, 3, pix.data())                           == TRUE;
+        case SaveImageFormat::TGA: return stbi_write_tga(filename.string().c_str(), width, height, 3, pix.data())                           == TRUE;
+        case SaveImageFormat::JPG: return stbi_write_jpg(filename.string().c_str(), width, height, 3, pix.data(), 85)                       == TRUE;
         default: DIVIDE_UNEXPECTED_CALL(); break;
     }
 
@@ -1265,7 +1396,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
 
 bool SaveImageHDR(const ResourcePath& filename, const U16 width, const U16 height, const U8 numberOfComponents, [[maybe_unused]] const U8 bytesPerPixel, [[maybe_unused]] const bool sourceIsBGR, const F32* imageData)
 {
-    return stbi_write_hdr(filename.c_str(), width, height, numberOfComponents, imageData) == TRUE;
+    return stbi_write_hdr(filename.string().c_str(), width, height, numberOfComponents, imageData) == TRUE;
 }
 }  // namespace Divide::ImageTools
 

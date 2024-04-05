@@ -61,7 +61,7 @@ namespace Divide
                         return DIVIDE_ASSERT_FUNC( false, expressionStr, file, line, "Message truncated" );
                     }
 
-                    const auto msgOut = Util::StringFormat( "ASSERT [%s : %d]: %s : %s", file, line, expressionStr, failMessage );
+                    const auto msgOut = Util::StringFormat( "ASSERT [{} : {}]: {} : {}", file, line, expressionStr, failMessage );
                     if constexpr ( Config::Assert::LOG_ASSERTS )
                     {
                         Console::errorfn( msgOut.c_str() );
@@ -101,7 +101,7 @@ namespace Divide
         SeedRandom();
 
         InitSysInfo( sysInfo(), argc, argv );
-        Paths::initPaths( sysInfo() );
+        Paths::initPaths( );
         Console::Start();
         
         return ErrorCode::NO_ERR;
@@ -123,8 +123,8 @@ namespace Divide
             // Assume 256Megs as a minimum
             info._availableRamInBytes = (1 << 8) * 1024 * 1024;
         }
+
         info._workingDirectory = getWorkingDirectory();
-        info._workingDirectory.append( "/" );
     }
 
     U16 HardwareThreadCount() noexcept
@@ -132,57 +132,12 @@ namespace Divide
         return to_U16(std::max( std::thread::hardware_concurrency(), 2u ));
     }
 
-    bool CreateDirectories( const ResourcePath& path )
-    {
-        return CreateDirectories( path.c_str() );
-    }
-
-    bool CreateDirectories( const char* path )
-    {
-        static Mutex s_DirectoryLock;
-
-        LockGuard<Mutex> w_lock( s_DirectoryLock );
-        assert( path != nullptr && strlen( path ) > 0 );
-        //Always end in a '/'
-        assert( path[strlen( path ) - 1] == '/' );
-
-        vector<string> directories;
-        Util::Split<vector<string>, string>( path, '/', directories );
-        if ( directories.empty() )
-        {
-            Util::Split<vector<string>, string>( path, '\\', directories );
-        }
-
-        string previousPath = "./";
-        for ( const string& dir : directories )
-        {
-            if ( !createDirectory( (previousPath + dir).c_str() ) )
-            {
-                return false;
-            }
-            previousPath += dir;
-            previousPath += "/";
-        }
-
-        return true;
-    }
-
-    FileAndPath GetInstallLocation( char* argv0 )
-    {
-        if ( argv0 == nullptr || argv0[0] == 0 )
-        {
-            return {};
-        }
-
-        return splitPathToNameAndLocation( extractFilePathAndName( argv0 ).c_str() );
-    }
-
-    const char* GetClipboardText( [[maybe_unused]] void* user_data ) noexcept
+    const char* GetClipboardText() noexcept
     {
         return SDL_GetClipboardText();
     }
 
-    void SetClipboardText( [[maybe_unused]] void* user_data, const char* text ) noexcept
+    void SetClipboardText( const char* text ) noexcept
     {
         SDL_SetClipboardText( text );
     }

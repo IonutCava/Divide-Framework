@@ -48,15 +48,19 @@ class TerrainDescriptor final : public PropertyDescriptor {
     void addVariable(const string& name, const string& value);
     void addVariable(const string& name, F32 value);
 
-    [[nodiscard]] string getVariable(const string& name) const {
+    [[nodiscard]] string getVariable(const string& name) const
+    {
         const hashMap<U64, string>::const_iterator it = _variables.find(_ID(name.c_str()));
-        if (it != std::end(_variables)) {
+        if (it != std::end(_variables))
+        {
             return it->second;
         }
+
         return "";
     }
 
-    [[nodiscard]] F32 getVariablef(const string& name) const {
+    [[nodiscard]] F32 getVariablef(const string& name) const
+    {
         const hashMap<U64, F32>::const_iterator it = _variablesf.find(_ID(name.c_str()));
         if (it != std::end(_variablesf)) {
             return it->second;

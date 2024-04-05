@@ -30,7 +30,7 @@ namespace Divide
 
         if ( GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0 )
         {
-            _output = Util::StringFormat( "Scene Update Loops: %d", timingData.updateLoops() );
+            _output = Util::StringFormat( "Scene Update Loops: {}", timingData.updateLoops() );
 
             if constexpr( Config::Profile::ENABLE_FUNCTION_PROFILING )
             {
@@ -39,7 +39,7 @@ namespace Divide
                 _output.append( "\n" );
                 _output.append( context.app().timer().benchmarkReport());
                 _output.append( "\n" );
-                _output.append( Util::StringFormat( "GPU: [ %5.5f ms] [DrawCalls: %d] [Vertices: %zu] [Primitives: %zu]",
+                _output.append( Util::StringFormat( "GPU: [ {:5.5f} ms] [DrawCalls: {}] [Vertices: {}] [Primitives: {}]",
                                                     perfMetrics._gpuTimeInMS,
                                                     context.gfx().frameDrawCallsPrev(),
                                                     perfMetrics._verticesSubmitted,

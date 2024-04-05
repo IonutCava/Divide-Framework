@@ -146,7 +146,7 @@ namespace Divide
                 buffer << id;
             }
 
-            return buffer.dumpToFile( path.c_str(), file.c_str() );
+            return buffer.dumpToFile( path, file.string() );
         }
 
         bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Reflection::Data& reflectionDataOut, eastl::set<U64>& atomIDsOut )
@@ -213,7 +213,7 @@ namespace Divide
             };
 
             ByteBuffer buffer;
-            if ( buffer.loadFromFile( path.c_str(), file.c_str() ) )
+            if ( buffer.loadFromFile( path, file.string() ) )
             {
                 auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
                 buffer >> tempVer;
@@ -255,7 +255,7 @@ namespace Divide
 
             string line;
             istringstream input( source.c_str() );
-            while ( std::getline( input, line ) )
+            while ( Util::GetLine( input, line ) )
             {
                 bool skip = line.length() < 6u;
 
@@ -367,7 +367,7 @@ namespace Divide
                     for ( size_t j = 0u; j < bMember._arrayInnerSize; ++j )
                     {
                         BlockMember newMember = bMember;
-                        newMember._name = Util::StringFormat( "%s[%d][%d]", bMember._name.c_str(), i, j );
+                        newMember._name = Util::StringFormat( "{}[{}][{}]", bMember._name.c_str(), i, j );
                         newMember._nameHash = _ID( newMember._name.c_str() );
                         newMember._size -= offset;
                         newMember._offset = offset;
@@ -380,7 +380,7 @@ namespace Divide
                 for ( size_t i = 0u; i < bMember._arrayOuterSize; ++i )
                 {
                     BlockMember newMember = bMember;
-                    newMember._name = Util::StringFormat( "%s[%d]", bMember._name.c_str(), i );
+                    newMember._name = Util::StringFormat( "{}[{}]", bMember._name.c_str(), i );
                     newMember._nameHash = _ID( newMember._name.c_str() );
                     newMember._size -= i * (bMember._arrayInnerSize * bMember._elementSize);
                     newMember._offset = i * (bMember._arrayInnerSize * bMember._elementSize);
@@ -393,7 +393,7 @@ namespace Divide
                 for ( size_t i = 0u; i < bMember._arrayOuterSize; ++i )
                 {
                     BlockMember newMember = bMember;
-                    newMember._name = Util::StringFormat( "%s[%d]", bMember._name.c_str(), i );
+                    newMember._name = Util::StringFormat( "{}[{}]", bMember._name.c_str(), i );
                     newMember._nameHash = _ID( newMember._name.c_str() );
                     newMember._size -= offset;
                     newMember._offset = offset;

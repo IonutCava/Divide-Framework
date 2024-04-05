@@ -10,7 +10,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Managers/Headers/RenderPassManager.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -63,7 +63,7 @@ namespace Divide {
         g_framerateBufferCont.reserve(g_maxEntryCount);
     }
 
-    void SolutionExplorerWindow::printCameraNode(SceneManager* sceneManager, Camera* const camera) const {
+    void SolutionExplorerWindow::printCameraNode(ProjectManager* projectManager, Camera* const camera) const {
         if (camera == nullptr) {
             return;
         }
@@ -72,7 +72,7 @@ namespace Divide {
         if (_filter.PassFilter(camera->resourceName().c_str())) {
             if (ImGui::TreeNodeEx((void*)(intptr_t)camera->getGUID(), node_flags, "%s %s", ICON_FK_CAMERA, camera->resourceName().c_str())) {
                 if (ImGui::IsItemClicked()) {
-                    if (sceneManager->resetSelection(0, false)) {
+                    if (projectManager->resetSelection(0, false)) {
                         if (Attorney::EditorSolutionExplorerWindow::getSelectedCamera(_parent) == camera) {
                             Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
                         } else {
@@ -92,7 +92,7 @@ namespace Divide {
             const bool isSubMesh = node.type() == SceneNodeType::TYPE_SUBMESH;
             const bool isRoot = sgn->parent() == nullptr;
 
-            ImGui::Text(Util::StringFormat("%s [%s]", getIconForNode(sgn), sgn->name().c_str()).c_str());
+            ImGui::Text(Util::StringFormat("{} [{}]", getIconForNode(sgn), sgn->name().c_str()).c_str());
             ImGui::Separator();
             if (isSubMesh) {
                 PushReadOnly();
@@ -112,7 +112,7 @@ namespace Divide {
                 g_particleSource.reset();
 
                 g_nodeDescriptor = {};
-                g_nodeDescriptor._name = Util::StringFormat("New_Child_Node_%d", sgn->getGUID()).c_str();
+                g_nodeDescriptor._name = Util::StringFormat("New_Child_Node_{}", sgn->getGUID()).c_str();
                 g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM);
                 g_currentNodeType = SceneNodeType::TYPE_TRANSFORM;
                 _parentNode = sgn;
@@ -163,7 +163,7 @@ namespace Divide {
         return  false;
     }
 
-    void SolutionExplorerWindow::printSceneGraphNode(SceneManager* sceneManager,
+    void SolutionExplorerWindow::printSceneGraphNode(ProjectManager* projectManager,
                                                      SceneGraphNode* sgn,
                                                      const I32 nodeIDX,
                                                      const bool open,
@@ -220,9 +220,9 @@ namespace Divide {
                     const bool parentSelected = !isRoot && sgn->parent()->hasFlag(SceneGraphNode::Flags::SELECTED);
                     const bool childrenSelected = sgn->getChildren()._count.load() > 0u && sgn->getChildren().getChild(0u)->hasFlag(SceneGraphNode::Flags::SELECTED);
 
-                    if (modifierPressed || sceneManager->resetSelection(0, false)) {
+                    if (modifierPressed || projectManager->resetSelection(0, false)) {
                         if (!wasSelected || parentSelected || childrenSelected) {
-                            sceneManager->setSelected(0, { sgn }, wasSelected);
+                            projectManager->setSelected(0, { sgn }, wasSelected);
                         }
                         Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
                     }
@@ -240,7 +240,7 @@ namespace Divide {
                 SharedLock<SharedMutex> r_lock(children._lock);
                 const U32 childCount = children._count;
                 for (U32 i = 0u; i < childCount; ++i) {
-                    printSceneGraphNode(sceneManager, children._data[i], i, false, secondaryView, modifierPressed);
+                    printSceneGraphNode(projectManager, children._data[i], i, false, secondaryView, modifierPressed);
                 }
                 ImGui::TreePop();
             }
@@ -253,7 +253,7 @@ namespace Divide {
             SharedLock<SharedMutex> r_lock(children._lock);
             const U32 childCount = children._count;
             for (U32 i = 0u; i < childCount; ++i) {
-                printSceneGraphNode(sceneManager, children._data[i], i, false, secondaryView, modifierPressed);
+                printSceneGraphNode(projectManager, children._data[i], i, false, secondaryView, modifierPressed);
             }
             if (nodeOpen) {
                 ImGui::TreePop();
@@ -265,12 +265,14 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        SceneManager* sceneManager = context().kernel().sceneManager();
-        Scene& activeScene = sceneManager->getActiveScene();
-        SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
+        ProjectManager* projectManager = context().kernel().projectManager();
+        Scene& activeScene = projectManager->activeProject()->getActiveScene();
+
+        const bool sceneValid = activeScene.getState() == ResourceState::RES_LOADED;
+
         Attorney::EditorGeneralWidget::setPreviewNode(_parent, nullptr);
 
-        const bool lockExplorer = Attorney::EditorSolutionExplorerWindow::lockSolutionExplorer(_parent);
+        const bool lockExplorer = !sceneValid || Attorney::EditorSolutionExplorerWindow::lockSolutionExplorer(_parent);
         const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_context.editor(), Editor::ImGuiContextType::Editor);
         const bool modifierPressed = imguiContext.IO.KeyShift;
         if (lockExplorer)
@@ -290,19 +292,26 @@ namespace Divide {
             ImGui::SetTooltip("Only visible nodes");
         }
         ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowHeight() * .5f), true, 0);
+
         if (ImGui::TreeNodeEx(activeScene.resourceName().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s%s", ICON_FK_HOME, activeScene.resourceName().c_str()))
         {
-            ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
-            printCameraNode(sceneManager, _parent.editorCamera());
-            printCameraNode(sceneManager, _parent.nodePreviewCamera());
-            for (PlayerIndex i = 0; i < static_cast<PlayerIndex>(Config::MAX_LOCAL_PLAYER_COUNT); ++i)
+            if ( sceneValid )
             {
-                printCameraNode(sceneManager, Attorney::SceneManagerCameraAccessor::playerCamera(sceneManager, i, true));
+
+                ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
+                printCameraNode(projectManager, _parent.editorCamera());
+                printCameraNode(projectManager, _parent.nodePreviewCamera());
+                for (PlayerIndex i = 0; i < static_cast<PlayerIndex>(Config::MAX_LOCAL_PLAYER_COUNT); ++i)
+                {
+                    printCameraNode(projectManager, Attorney::ProjectManagerCameraAccessor::playerCamera(projectManager, i, true));
+                }
+                {
+                    PROFILE_SCOPE("Print SceneGraph", Profiler::Category::GUI);
+                    SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
+                    printSceneGraphNode(projectManager, root, 0, true, false, modifierPressed);
+                }
             }
-            {
-                PROFILE_SCOPE("Print SceneGraph", Profiler::Category::GUI);
-                printSceneGraphNode(sceneManager, root, 0, true, false, modifierPressed);
-            }
+
             ImGui::PopStyleVar();
             ImGui::TreePop();
         }
@@ -345,7 +354,7 @@ namespace Divide {
                                  g_framerateBufferCont.data(),
                                  to_I32(g_framerateBufferCont.size()),
                                  0,
-                                 Util::StringFormat("%.3f ms/frame (%.1f FPS)", ms_per_frame_avg, ms_per_frame_avg > 0.01f ? 1000.0f / ms_per_frame_avg : 0.0f).c_str(),
+                                 Util::StringFormat("{:.3f} ms/frame ({:.1f} FPS)", ms_per_frame_avg, ms_per_frame_avg > 0.01f ? 1000.0f / ms_per_frame_avg : 0.0f).c_str(),
                                  0.0f,
                                  max_ms_per_frame,
                                  ImVec2(0, 50));
@@ -541,7 +550,7 @@ namespace Divide {
             s_maxLocksInFlight = 0u;
         }
         
-        static string dayNightText = Util::StringFormat("%s/%s Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();
+        static string dayNightText = Util::StringFormat("{}/{} Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();
 
         if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
         {
@@ -692,7 +701,9 @@ namespace Divide {
             ImGui::BeginChild("Node Properties", ImVec2(0, 400), true, 0);
 
             static char buf[64];
-            if (ImGui::InputText("Name", &buf[0], 61)) {
+            ImGui::Text( "Name:" ); ImGui::SameLine();
+            if (ImGui::InputText("##Name:", &buf[0], 61))
+            {
                 g_nodeDescriptor._name = buf;
             }
 
@@ -872,12 +883,14 @@ namespace Divide {
             }
 
             PushReadOnly();
-            ImGui::InputText("Texture File Name", g_particleEmitterData->_textureFileName.data(), 128);
+            ImGui::Text( "Texture File Name:" ); ImGui::SameLine();
+            ImGui::InputText("##Texture File Name:", g_particleEmitterData->_textureFileName.data(), 128);
             PopReadOnly();
 
             U32 componentMask = g_particleEmitterData->optionsMask();
             U32 particleCount = g_particleEmitterData->totalCount();
-            if (ImGui::InputScalar("Particle Count", ImGuiDataType_U32, &particleCount))
+            ImGui::Text( "Particle Count:" ); ImGui::SameLine();
+            if (ImGui::InputScalar("##Particle Count:", ImGuiDataType_U32, &particleCount))
             {
                 if (particleCount == 0)
                 {
@@ -887,7 +900,8 @@ namespace Divide {
             }
             
             F32 emitRate = g_particleSource->emitRate();
-            if (ImGui::InputFloat("Emit rate", &emitRate))
+            ImGui::Text( "Emit rate:" ); ImGui::SameLine();
+            if (ImGui::InputFloat("##Emit rate:", &emitRate))
             {
                 if (emitRate <= EPSILON_F32 )
                 {
@@ -930,7 +944,7 @@ namespace Divide {
 
     SceneNode_ptr SolutionExplorerWindow::createNode()
     {
-        const ResourceDescriptor descriptor(Util::StringFormat("%s_node", g_nodeDescriptor._name.c_str()));
+        const ResourceDescriptor descriptor(Util::StringFormat("{}_node", g_nodeDescriptor._name.c_str()));
         SceneNode_ptr ptr =  Attorney::EditorSolutionExplorerWindow::createNode(_parent, g_currentNodeType, descriptor);
         if (ptr)
         {
@@ -969,8 +983,8 @@ namespace Divide {
 
             if (ImGui::BeginPopupModal("Select New Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
             {
-                SceneManager* sceneManager = context().kernel().sceneManager();
-                const Scene& activeScene = sceneManager->getActiveScene();
+                ProjectManager* projectManager = context().kernel().projectManager();
+                const Scene& activeScene = projectManager->activeProject()->getActiveScene();
                 SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
 
                 ImGui::Text("Selecting a new parent for SGN [ %d ][ %s ]?", _childNode->getGUID(), _childNode->name().c_str());
@@ -978,7 +992,7 @@ namespace Divide {
                 if (ImGui::BeginChild("SceneGraph", ImVec2(0, 400), true, 0))
                 {
                     ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, ImGui::GetFontSize() * 3); // Increase spacing to differentiate leaves from expanded contents.
-                    printSceneGraphNode(sceneManager, root, 0, true, true, false);
+                    printSceneGraphNode(projectManager, root, 0, true, true, false);
                     ImGui::PopStyleVar();
 
                     ImGui::EndChild();

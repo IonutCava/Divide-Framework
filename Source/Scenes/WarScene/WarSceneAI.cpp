@@ -6,7 +6,7 @@
 #include "AI/Headers/AIManager.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "GUI/Headers/GUIMessageBox.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Dynamics/Entities/Units/Headers/NPC.h"
@@ -38,7 +38,7 @@ void WarScene::printMessage(const U8 eventId, const string& unitName) const {
     U32 elapsedTimeMinutes = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) / 60 % 60;
     U32 elapsedTimeSeconds = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) % 60;
 
-    Console::d_printfn(Util::StringFormat("[GAME TIME: %d:%d][%s]: %s", elapsedTimeMinutes, elapsedTimeSeconds, eventName.c_str(), unitName.c_str()).c_str());
+    Console::d_printfn(Util::StringFormat("[GAME TIME: {}:{}][{}]: {}", elapsedTimeMinutes, elapsedTimeSeconds, eventName.c_str(), unitName.c_str()).c_str());
 }
 
 void WarScene::checkGameCompletion() {
@@ -92,7 +92,7 @@ void WarScene::checkGameCompletion() {
 
     if (restartGame) {
         _elapsedGameTime = 0;
-        Console::d_printfn(Util::StringFormat("\n\nRESTARTING GAME!. Reason: %s \n\n", timeReason ? "TIME" : "SCORE").c_str());
+        Console::d_printfn(Util::StringFormat("\n\nRESTARTING GAME!. Reason: {} \n\n", timeReason ? "TIME" : "SCORE").c_str());
         AI::WarSceneAIProcessor::resetScore(0);
         AI::WarSceneAIProcessor::resetScore(1);
         if (timeReason) {
@@ -129,7 +129,7 @@ void WarScene::registerPoint(const U16 teamID, const string& unitName) {
 
         U32 elapsedTimeMinutes = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) / 60 % 60;
         U32 elapsedTimeSeconds = Time::MicrosecondsToSeconds<U32>(_elapsedGameTime) % 60;
-        Console::d_printfn(Util::StringFormat("[GAME TIME: %d:%d][TEAM %s REGISTER POINT]: %s", elapsedTimeMinutes, elapsedTimeSeconds, teamID == 0 ? "A" : "B", unitName.c_str()).c_str());
+        Console::d_printfn(Util::StringFormat("[GAME TIME: {}:{}][TEAM {} REGISTER POINT]: {}", elapsedTimeMinutes, elapsedTimeSeconds, teamID == 0 ? "A" : "B", unitName.c_str()).c_str());
         checkGameCompletion();
     }
 }
@@ -307,7 +307,7 @@ bool WarScene::addUnits() {
                 currentMesh = lightNodeMesh;
                 currentScale =
                     lightNode->get<TransformComponent>()->getScale();
-                currentName = Util::StringFormat("Soldier_1_%d_%d", k, i);
+                currentName = Util::StringFormat("Soldier_1_{}_{}", k, i);
                 speed = Metric::Base(Random(6.5f, 9.5f));
                 acc = Metric::Base(Random(4.5f, 8.0f));
                 type = AI::WarSceneAIProcessor::AIType::LIGHT;
@@ -315,7 +315,7 @@ bool WarScene::addUnits() {
                 currentMesh = animalNodeMesh;
                 currentScale =
                     animalNode->get<TransformComponent>()->getScale();
-                currentName = Util::StringFormat("Soldier_2_%d_%d", k, i % 5);
+                currentName = Util::StringFormat("Soldier_2_{}_{}", k, i % 5);
                 speed = Metric::Base(Random(8.5f, 11.5f));
                 acc = Metric::Base(Random(6.0f, 9.0f));
                 zFactor = 1.0f;
@@ -325,7 +325,7 @@ bool WarScene::addUnits() {
                 currentMesh = heavyNodeMesh;
                 currentScale =
                     heavyNode->get<TransformComponent>()->getScale();
-                currentName = Util::StringFormat("Soldier_3_%d_%d", k, i % 10);
+                currentName = Util::StringFormat("Soldier_3_{}_{}", k, i % 10);
                 speed = Metric::Base(Random(4.5f, 7.5f));
                 acc = Metric::Base(Random(4.0f, 6.5f));
                 zFactor = 2.0f;
@@ -454,7 +454,7 @@ void WarScene::startSimulation(I64 /*btnGUID*/)
             previousMesh = true;
             _aiManager->destroyNavMesh(aiEntity->getAgentRadiusCategory());
         }
-        navMesh = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *_parent.recast());
+        navMesh = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *_parent.parent().recast(), *this);
         navMesh->setFileName(resourceName());
 
         if (!navMesh->load(_sceneGraph->getRoot())) {

@@ -139,6 +139,7 @@ class Unit : public GUIDWrapper {
     AttributeMap _attributes;
     mutable SharedMutex _unitUpdateMutex;
 };
+
 namespace Attorney {
     class UnitComponent {
     private:

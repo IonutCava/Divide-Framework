@@ -7,11 +7,12 @@
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Water/Headers/Water.h"
 #include "Geometry/Material/Headers/Material.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Scenes/Headers/SceneState.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
+#include "Platform/File/Headers/FileManagement.h"
 #include "Editor/Headers/Editor.h"
 
 #include "ECS/Systems/Headers/ECSManager.h"
@@ -56,11 +57,11 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
     {
         if (_node == nullptr || _node->resourceName().empty())
         {
-            _name = Util::StringFormat("%d_SGN", getGUID()).c_str();
+            _name = Util::StringFormat("{}_SGN", getGUID()).c_str();
         }
         else
         {
-            _name = Util::StringFormat("%s_SGN", _node->resourceName().c_str()).c_str();
+            _name = Util::StringFormat("{}_SGN", _node->resourceName().c_str()).c_str();
         }
     }
     _nameHash = _ID(_name.c_str());
@@ -73,7 +74,7 @@ SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescr
         _node = std::make_shared<SceneNode>(sceneGraph->parentScene().resourceCache(),
                                               generateGUID(),
                                               "EMPTY",
-                                              ResourcePath{"EMPTY"},
+                                              "EMPTY",
                                               ResourcePath{},
                                               SceneNodeType::TYPE_TRANSFORM,
                                               to_base(ComponentType::TRANSFORM));
@@ -1068,7 +1069,7 @@ bool SceneGraphNode::loadCache(ByteBuffer& inputBuffer)
            _sceneGraph->GetECSManager().loadCache(this, inputBuffer);
 }
 
-void SceneGraphNode::saveToXML(const Str<256>& sceneLocation, DELEGATE<void, std::string_view> msgCallback) const
+void SceneGraphNode::saveToXML(const ResourcePath& sceneLocation, DELEGATE<void, std::string_view> msgCallback) const
 {
     if (!serialize())
     {
@@ -1077,7 +1078,7 @@ void SceneGraphNode::saveToXML(const Str<256>& sceneLocation, DELEGATE<void, std
 
     if (msgCallback)
     {
-        msgCallback(Util::StringFormat("Saving node [ %s ] ...", name().c_str()).c_str());
+        msgCallback(Util::StringFormat("Saving node [ {} ] ...", name().c_str()).c_str());
     }
 
     boost::property_tree::ptree pt;
@@ -1090,13 +1091,10 @@ void SceneGraphNode::saveToXML(const Str<256>& sceneLocation, DELEGATE<void, std
         Attorney::EditorComponentSceneGraphNode::saveToXML(*editorComponent, pt);
     }
 
-    ResourcePath savePath{ sceneLocation.c_str() };
-    savePath.append("/nodes/");
+    const auto targetFile =  Util::MakeXMLSafe( Util::StringFormat("{}_{}.xml", parent()->name(), name()) );
+    const ResourcePath savePath = sceneLocation / Paths::g_nodesSaveLocation /  targetFile;
 
-    ResourcePath targetFile{parent()->name().c_str()};
-    targetFile.append("_");
-    targetFile.append(name().c_str());
-    XML::writeXML((savePath + Util::MakeXMLSafe(targetFile) + ".xml").c_str(), pt);
+    XML::writeXML(savePath, pt);
 
     SharedLock<SharedMutex> r_lock(_children._lock);
     const U32 childCount = _children._count;
@@ -1106,16 +1104,14 @@ void SceneGraphNode::saveToXML(const Str<256>& sceneLocation, DELEGATE<void, std
     }
 }
 
-void SceneGraphNode::loadFromXML(const Str<256>& sceneLocation)
+void SceneGraphNode::loadFromXML(const ResourcePath& sceneLocation)
 {
     boost::property_tree::ptree pt;
-    ResourcePath savePath{ sceneLocation.c_str() };
-    savePath.append("/nodes/");
 
-    ResourcePath targetFile{ parent()->name().c_str() };
-    targetFile.append("_");
-    targetFile.append(name().c_str());
-    XML::readXML((savePath + Util::MakeXMLSafe(targetFile) + ".xml").c_str(), pt);
+    const auto targetFile =  Util::MakeXMLSafe( Util::StringFormat( "{}_{}.xml", parent()->name(), name()) );
+    ResourcePath savePath = sceneLocation / Paths::g_nodesSaveLocation / targetFile;
+
+    XML::readXML(savePath, pt);
 
     loadFromXML(pt);
 }

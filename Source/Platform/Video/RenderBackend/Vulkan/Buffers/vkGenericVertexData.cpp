@@ -11,7 +11,7 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const Str<256>& name)
+    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const std::string_view name)
         : GenericVertexData(context, ringBufferLength, renderIndirect, name)
     {
     }
@@ -131,7 +131,7 @@ namespace Divide {
             return updateBuffer( params._bindConfig._bufferIdx, 0, params._bufferParams._elementCount, params._initialData.first);
         }
 
-        const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_%d", handle()._id) : string(_name.c_str()) + "_VTX_BUFFER";
+        const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_{}", handle()._id) : string(_name.c_str()) + "_VTX_BUFFER";
         impl->_buffer = eastl::make_unique<vkBufferImpl>(params._bufferParams,
                                                          bufferSizeInBytes,
                                                          ringSizeFactor,
@@ -232,7 +232,7 @@ namespace Divide {
 
         const std::pair<bufferPtr, size_t> initialData = { data, range };
 
-        const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_%d", handle()._id ) : string(_name.c_str()) + "_IDX_BUFFER";
+        const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_{}", handle()._id ) : string(_name.c_str()) + "_IDX_BUFFER";
         impl->_buffer = eastl::make_unique<vkBufferImpl>( params,
                                                             impl->_bufferSize,
                                                             impl->_ringSizeFactor,

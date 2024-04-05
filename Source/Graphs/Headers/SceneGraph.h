@@ -109,10 +109,10 @@ class SceneGraph final : NonCopyable,
     void postLoad();
 
     bool saveNodeToXML(const SceneGraphNode* node) const;
-    bool loadNodeFromXML(const char* assetsFile, SceneGraphNode* node) const;
+    bool loadNodeFromXML( const ResourcePath& assetsFile, SceneGraphNode* node) const;
 
-    void saveToXML(const char* assetsFile, DELEGATE<void, std::string_view> msgCallback, const char* overridePath = "") const;
-    void loadFromXML(const char* assetsFile, const char* overridePath = "");
+    void saveToXML( const ResourcePath& assetsFile, DELEGATE<void, std::string_view> msgCallback ) const;
+    void loadFromXML( const ResourcePath& assetsFile);
 
     ECSManager& GetECSManager() { return *_ecsManager; }
     const ECSManager& GetECSManager() const { return *_ecsManager; }

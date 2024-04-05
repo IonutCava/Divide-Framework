@@ -17,7 +17,7 @@
 #include "Scenes/Headers/SceneShaderData.h"
 
 #include "Managers/Headers/RenderPassManager.h"
-#include "Managers/Headers/SceneManager.h"
+#include "Managers/Headers/ProjectManager.h"
 
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Headers/Renderer.h"
@@ -427,7 +427,7 @@ namespace Divide
                     }
                     else
                     {
-                        refreshRates.append( Util::StringFormat( ", %d", it._maxRefreshRate ) );
+                        refreshRates.append( Util::StringFormat( ", {}", it._maxRefreshRate ) );
                     }
                 }
             }
@@ -515,7 +515,7 @@ namespace Divide
 
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
-                bufferDescriptor._name = Util::StringFormat( "DVD_GPU_CAM_DATA_%d", i );
+                bufferDescriptor._name = Util::StringFormat( "DVD_GPU_CAM_DATA_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB( bufferDescriptor );
                 _gfxBuffers._perFrameBuffers[i]._camBufferWriteRange = {};
             }
@@ -536,7 +536,7 @@ namespace Divide
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
-                bufferDescriptor._name = Util::StringFormat( "CULL_COUNTER_%d", i );
+                bufferDescriptor._name = Util::StringFormat( "CULL_COUNTER_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB( bufferDescriptor );
             }
         }
@@ -757,13 +757,13 @@ namespace Divide
 
                 for ( U32 i = 0; i < Config::MAX_REFLECTIVE_NODES_IN_VIEW; ++i )
                 {
-                    refDesc._name = Util::StringFormat( "Reflection_Planar_%d", i ).c_str();
+                    refDesc._name = Util::StringFormat( "Reflection_Planar_{}", i ).c_str();
                     RenderTargetNames::REFLECTION_PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
                 for ( U32 i = 0; i < Config::MAX_REFRACTIVE_NODES_IN_VIEW; ++i )
                 {
-                    refDesc._name = Util::StringFormat( "Refraction_Planar_%d", i ).c_str();
+                    refDesc._name = Util::StringFormat( "Refraction_Planar_{}", i ).c_str();
                     RenderTargetNames::REFRACTION_PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
@@ -833,7 +833,7 @@ namespace Divide
                         ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
 
-                    oitDesc._name = Util::StringFormat( "OIT_REFLECT_RES_%d", i ).c_str();
+                    oitDesc._name = Util::StringFormat( "OIT_REFLECT_RES_{}", i ).c_str();
                     oitDesc._resolution = vec2<U16>( reflectRes );
                     oitDesc._externalAttachments = externalAttachments;
                     oitDesc._msaaSamples = 0;
@@ -863,7 +863,7 @@ namespace Divide
         {
             ShaderModuleDescriptor compModule = {};
             compModule._moduleType = ShaderType::COMPUTE;
-            compModule._defines.emplace_back( Util::StringFormat( "LOCAL_SIZE %d", DEPTH_REDUCE_LOCAL_SIZE ) );
+            compModule._defines.emplace_back( Util::StringFormat( "LOCAL_SIZE {}", DEPTH_REDUCE_LOCAL_SIZE ) );
             compModule._defines.emplace_back( "imageSizeIn PushData0[0].xy");
             compModule._defines.emplace_back( "imageSizeOut PushData0[0].zw");
             compModule._defines.emplace_back( "wasEven (uint(PushData0[1].x) == 1u)");
@@ -891,7 +891,7 @@ namespace Divide
         {
             ShaderModuleDescriptor compModule = {};
             compModule._moduleType = ShaderType::COMPUTE;
-            compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE %d", GROUP_SIZE_AABB ) );
+            compModule._defines.emplace_back( Util::StringFormat( "WORK_GROUP_SIZE {}", GROUP_SIZE_AABB ) );
             compModule._sourceFile = "HiZOcclusionCull.glsl";
 
             ShaderProgramDescriptor shaderDescriptor = {};
@@ -1048,7 +1048,7 @@ namespace Divide
                     shaderDescriptorLayered._modules.push_back( fragModule );
                     shaderDescriptorLayered._modules.back()._variant += ".Layered";
                     shaderDescriptorLayered._modules.back()._defines.emplace_back( "LAYERED" );
-                    shaderDescriptorLayered._globalDefines.emplace_back( Util::StringFormat( "GS_MAX_INVOCATIONS %d", MAX_INVOCATIONS_BLUR_SHADER_LAYERED ) );
+                    shaderDescriptorLayered._globalDefines.emplace_back( Util::StringFormat( "GS_MAX_INVOCATIONS {}", MAX_INVOCATIONS_BLUR_SHADER_LAYERED ) );
 
                     ResourceDescriptor blur( "GaussBlur_Layered" );
                     blur.propertyDescriptor( shaderDescriptorLayered );
@@ -1275,49 +1275,26 @@ namespace Divide
     void GFXDevice::drawToWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
-
-        if ( _resolutionChangeQueued.second )
-        {
-            SizeChangeParams params{};
-            params.isFullScreen = window.fullscreen();
-            params.width = _resolutionChangeQueued.first.width;
-            params.height = _resolutionChangeQueued.first.height;
-            params.winGUID = context().mainWindow().getGUID();
-            params.isMainWindow = window.getGUID() == context().mainWindow().getGUID();
-
-            if ( context().app().onResolutionChange( params ) )
-            {
-                NOP();
-            }
-
-            _resolutionChangeQueued.second = false;
-        }
-
         if ( !_api->drawToWindow( window ) )
         {
             NOP();
         }
-        
-        _activeWindow = &window;
         const vec2<U16> windowDimensions = window.getDrawableSize();
         setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
         setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
-
     }
 
     void GFXDevice::flushWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
         {
             LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
-            GFX::CommandBuffer& buffer = *window.getCurrentCommandBuffer();
-            flushCommandBufferInternal(buffer);
-            buffer.clear();
+            GFX::CommandBuffer* buffer = window.getCurrentCommandBuffer();
+            flushCommandBufferInternal(*buffer);
+            buffer->clear();
         }
 
         _api->flushWindow( window, false );
-        _activeWindow = nullptr;
     }
 
     bool GFXDevice::framePreRender( [[maybe_unused]] const FrameEvent& evt )
@@ -1348,7 +1325,7 @@ namespace Divide
 
         if ( _api->frameStarted() )
         {
-            drawToWindow(context().mainWindow());
+            _context.app().windowManager().drawToWindow(context().mainWindow());
             return true;
         }
 
@@ -1383,7 +1360,7 @@ namespace Divide
             flushCommandBuffer( buffer );
         }
 
-        flushWindow( context().mainWindow() );
+        context().app().windowManager().flushWindow();
 
         {
             PROFILE_SCOPE( "Lifetime updates", Profiler::Category::Graphics );
@@ -1666,81 +1643,6 @@ namespace Divide
 #pragma endregion
 
 #pragma region Resolution, viewport and window management
-    void GFXDevice::increaseResolution()
-    {
-        stepResolution( true );
-    }
-
-    void GFXDevice::decreaseResolution()
-    {
-        stepResolution( false );
-    }
-
-    void GFXDevice::stepResolution( const bool increment ) 
-    {
-        const auto compare = []( const vec2<U16> a, const vec2<U16> b ) noexcept -> bool
-        {
-            return a.x > b.x || a.y > b.y;
-        };
-
-        const WindowManager& winManager = context().app().windowManager();
-
-        const auto& displayModes = DisplayManager::GetDisplayModes( winManager.mainWindow()->currentDisplayIndex() );
-
-        bool found = false;
-        vec2<U16> foundRes;
-        if ( increment )
-        {
-            for ( auto it = displayModes.rbegin(); it != displayModes.rend(); ++it )
-            {
-                const vec2<U16> res = it->_resolution;
-                if ( compare( res, _renderingResolution ) )
-                {
-                    found = true;
-                    foundRes.set( res );
-                    break;
-                }
-            }
-        }
-        else
-        {
-            for ( const auto& mode : displayModes )
-            {
-                const vec2<U16> res = mode._resolution;
-                if ( compare( _renderingResolution, res ) )
-                {
-                    found = true;
-                    foundRes.set( res );
-                    break;
-                }
-            }
-        }
-
-        if ( found )
-        {
-            _resolutionChangeQueued.first.set( foundRes );
-            _resolutionChangeQueued.second = true;
-        }
-    }
-
-    void GFXDevice::toggleFullScreen() const
-    {
-        const WindowManager& winManager = context().app().windowManager();
-
-        switch ( winManager.mainWindow()->type() )
-        {
-            case WindowType::WINDOW:
-                winManager.mainWindow()->changeType( WindowType::FULLSCREEN_WINDOWED );
-                break;
-            case WindowType::FULLSCREEN_WINDOWED:
-                winManager.mainWindow()->changeType( WindowType::FULLSCREEN );
-                break;
-            case WindowType::FULLSCREEN:
-                winManager.mainWindow()->changeType( WindowType::WINDOW );
-                break;
-            default: break;
-        };
-    }
 
     void GFXDevice::setScreenMSAASampleCount( const U8 sampleCount )
     {
@@ -1773,9 +1675,9 @@ namespace Divide
     /// The main entry point for any resolution change request
     void GFXDevice::onWindowSizeChange( const SizeChangeParams& params )
     {
-        if ( params.isMainWindow )
+        if ( params.isMainWindow && !fitViewportInWindow( params.width, params.height ) )
         {
-            fitViewportInWindow( params.width, params.height );
+            NOP();
         }
     }
 
@@ -1829,7 +1731,10 @@ namespace Divide
         _renderer->updateResolution( w, h );
         _renderingResolution.set( w, h );
 
-        fitViewportInWindow( w, h );
+        if (!fitViewportInWindow( w, h ))
+        {
+            NOP();
+        }
     }
 
     bool GFXDevice::fitViewportInWindow( const U16 w, const U16 h )
@@ -1857,7 +1762,8 @@ namespace Divide
         }
 
         context().mainWindow().renderingViewport( Rect<I32>( left, bottom, newWidth, newHeight ) );
-        return false;
+
+        return COMPARE(newAspectRatio, currentAspectRatio);
     }
 #pragma endregion
 
@@ -2088,7 +1994,10 @@ namespace Divide
 #pragma region Command buffers, occlusion culling, etc
     void GFXDevice::validateAndUploadDescriptorSets()
     {
-        uploadGPUBlock();
+        if (!uploadGPUBlock())
+        {
+            NOP();
+        }
 
         thread_local DescriptorSetEntries setEntries{};
 
@@ -2121,8 +2030,11 @@ namespace Divide
             commandBuffer.batch();
         }
 
+        DisplayWindow* activeWindow = context().app().windowManager().activeWindow();
+        DIVIDE_ASSERT( activeWindow != nullptr );
+
         LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
-        _activeWindow->getCurrentCommandBuffer()->add(commandBuffer);
+        activeWindow->getCurrentCommandBuffer()->add(commandBuffer);
     }
 
     void GFXDevice::flushCommandBufferInternal( GFX::CommandBuffer& commandBuffer )
@@ -2681,7 +2593,7 @@ namespace Divide
             {
                 const F32 lodLevel = to_F32( mipTimer % view->_texture->mipCount() );
                 view->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, lodLevel );
-                labelStack.emplace_back( Util::StringFormat( "Mip level: %d", to_U8( lodLevel ) ), viewport.sizeY * 4, viewport );
+                labelStack.emplace_back( Util::StringFormat( "Mip level: {}", to_U8( lodLevel ) ), viewport.sizeY * 4, viewport );
             }
             const ShaderProgramHandle crtShader = pipelineDesc._shaderProgramHandle;
             const ShaderProgramHandle newShader = view->_shader->handle();
@@ -2861,7 +2773,7 @@ namespace Divide
             IMPrimitive*& linePrimitive = _debugLines._debugPrimitives[f];
             if ( linePrimitive == nullptr )
             {
-                linePrimitive = newIMP( Util::StringFormat( "DebugLine_%d", f ).c_str() );
+                linePrimitive = newIMP( Util::StringFormat( "DebugLine_{}", f ).c_str() );
                 linePrimitive->setPipelineDescriptor( getDebugPipeline( data._descriptor ) );
             }
 
@@ -2891,7 +2803,7 @@ namespace Divide
             IMPrimitive*& boxPrimitive = _debugBoxes._debugPrimitives[f];
             if ( boxPrimitive == nullptr )
             {
-                boxPrimitive = newIMP( Util::StringFormat( "DebugBox_%d", f ).c_str() );
+                boxPrimitive = newIMP( Util::StringFormat( "DebugBox_{}", f ).c_str() );
                 boxPrimitive->setPipelineDescriptor( getDebugPipeline( data._descriptor ) );
             }
 
@@ -2921,7 +2833,7 @@ namespace Divide
             IMPrimitive*& boxPrimitive = _debugOBBs._debugPrimitives[f];
             if ( boxPrimitive == nullptr )
             {
-                boxPrimitive = newIMP( Util::StringFormat( "DebugOBB_%d", f ).c_str() );
+                boxPrimitive = newIMP( Util::StringFormat( "DebugOBB_{}", f ).c_str() );
                 boxPrimitive->setPipelineDescriptor( getDebugPipeline( data._descriptor ) );
             }
 
@@ -2950,7 +2862,7 @@ namespace Divide
             IMPrimitive*& spherePrimitive = _debugSpheres._debugPrimitives[f];
             if ( spherePrimitive == nullptr )
             {
-                spherePrimitive = newIMP( Util::StringFormat( "DebugSphere_%d", f ).c_str() );
+                spherePrimitive = newIMP( Util::StringFormat( "DebugSphere_{}", f ).c_str() );
                 spherePrimitive->setPipelineDescriptor( getDebugPipeline( data._descriptor ) );
             }
 
@@ -2981,7 +2893,7 @@ namespace Divide
             IMPrimitive*& conePrimitive = _debugCones._debugPrimitives[f];
             if ( conePrimitive == nullptr )
             {
-                conePrimitive = newIMP( Util::StringFormat( "DebugCone_%d", f ).c_str() );
+                conePrimitive = newIMP( Util::StringFormat( "DebugCone_{}", f ).c_str() );
                 conePrimitive->setPipelineDescriptor( getDebugPipeline( data._descriptor ) );
             }
 
@@ -3012,7 +2924,7 @@ namespace Divide
             IMPrimitive*& frustumPrimitive = _debugFrustums._debugPrimitives[f];
             if ( frustumPrimitive == nullptr )
             {
-                frustumPrimitive = newIMP( Util::StringFormat( "DebugFrustum_%d", f ).c_str() );
+                frustumPrimitive = newIMP( Util::StringFormat( "DebugFrustum_{}", f ).c_str() );
                 frustumPrimitive->setPipelineDescriptor( getDebugPipeline( data._descriptor ) );
             }
 
@@ -3049,7 +2961,7 @@ namespace Divide
         return nullptr;
     }
 
-    IMPrimitive* GFXDevice::newIMP( const Str<64>& name )
+    IMPrimitive* GFXDevice::newIMP( const std::string_view name )
     {
         LockGuard<Mutex> w_lock( _imprimitiveMutex );
         return s_IMPrimitivePool.newElement( *this, name );
@@ -3088,13 +3000,14 @@ namespace Divide
 
     void DestroyIMP(IMPrimitive*& primitive)
     {
-        if (primitive != nullptr) {
-            primitive->context().destroyIMP(primitive);
+        if (primitive != nullptr && !primitive->context().destroyIMP(primitive) )
+        {
+            DebugBreak();
         }
         primitive = nullptr;
     }
 
-    VertexBuffer_ptr GFXDevice::newVB(const bool renderIndirect, const Str<256>& name )
+    VertexBuffer_ptr GFXDevice::newVB(const bool renderIndirect, const std::string_view name )
     {
         return std::make_shared<VertexBuffer>( *this, renderIndirect, name );
     }
@@ -3113,25 +3026,25 @@ namespace Divide
     }
 
     /// Extract the pixel data from the main render target's first colour attachment and save it as a TGA image
-    void GFXDevice::screenshot( const ResourcePath& filename, GFX::CommandBuffer& bufferInOut ) const
+    void GFXDevice::screenshot( const std::string_view fileName, GFX::CommandBuffer& bufferInOut ) const
     {
         const RenderTarget* screenRT = _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER );
         auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>( bufferInOut );
         readTextureCmd->_texture = screenRT->getAttachment(RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->texture().get();
         readTextureCmd->_pixelPackAlignment._alignment = 1u;
-        readTextureCmd->_callback = [filename]( const ImageReadbackData& data )
+        readTextureCmd->_callback = [fileName]( const ImageReadbackData& data )
         {
             if ( !data._data.empty() )
             {
                 DIVIDE_ASSERT(data._bpp > 0u && data._numComponents > 0u);
                 // Make sure we have a valid target directory
-                if ( !createDirectory( Paths::g_screenshotPath ) )
+                if ( createDirectory( Paths::g_screenshotPath ) != FileError::NONE )
                 {
                     NOP();
                 }
 
                 // Save to file
-                if ( !ImageTools::SaveImage( ResourcePath( Util::StringFormat( "%s/%s_Date_%s.png", Paths::g_screenshotPath.c_str(), filename.c_str(), CurrentDateTimeString().c_str() )),
+                if ( !ImageTools::SaveImage( ResourcePath( Util::StringFormat( "{}/{}_Date_{}.png", Paths::g_screenshotPath, fileName, CurrentDateTimeString().c_str() )),
                                              data._width,
                                              data._height,
                                              data._numComponents,

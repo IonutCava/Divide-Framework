@@ -233,7 +233,7 @@ class Material final : public CachedResource {
     };
 
    public:
-    explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const Str<256>& name);
+    explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
 
     static void OnStartup();
     static void OnShutdown();
@@ -241,7 +241,7 @@ class Material final : public CachedResource {
     static void Update(U64 deltaTimeUS);
 
     /// Return a new instance of this material with the name composed of the base material's name and the give name suffix (clone calls CreateResource internally!).
-    [[nodiscard]] Material_ptr clone(const Str<256>& nameSuffix);
+    [[nodiscard]] Material_ptr clone(const std::string_view nameSuffix);
     [[nodiscard]] bool unload() override;
     /// Returns a bit mask composed of UpdateResult flags
     [[nodiscard]] U32 update(U64 deltaTimeUS);
