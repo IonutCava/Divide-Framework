@@ -87,28 +87,30 @@ namespace Divide
     {
         struct WorkData
         {
-            const char* _input = nullptr;
-            size_t _inputSize = 0u;
-            const char* _fileName = nullptr;
+            string _input;
+            std::string_view _fileName;
 
             std::array<char, 16 << 10> _scratch{};
-            eastl::string _depends = "";
-            eastl::string _default = "";
-            eastl::string _output = "";
+            string _depends = "";
+            string _default = "";
+            string _output = "";
 
             U32 _scratchPos = 0u;
             U32 _fGetsPos = 0u;
             bool _firstError = true;
         };
 
+        constexpr U8 g_maxTagCount = 64;
+
+        thread_local WorkData g_workData;
+        thread_local fppTag g_tags[g_maxTagCount]{};
+        thread_local fppTag* g_tagHead = g_tags;
+
         namespace Callback
         {
             FORCE_INLINE void AddDependency( const char* file, void* userData )
             {
-                eastl::string& depends = static_cast<WorkData*>(userData)->_depends;
-
-                depends += " \\\n ";
-                depends += file;
+                static_cast<WorkData*>(userData)->_depends.append(Util::StringFormat("\n{}", file));
             }
 
             char* Input( char* buffer, const int size, void* userData ) noexcept
@@ -116,7 +118,7 @@ namespace Divide
                 WorkData* work = static_cast<WorkData*>(userData);
                 int i = 0;
                 for ( char ch = work->_input[work->_fGetsPos];
-                      work->_fGetsPos < work->_inputSize && i < size - 1; ch = work->_input[++work->_fGetsPos] )
+                      work->_fGetsPos < work->_input.size() && i < size - 1; ch = work->_input[++work->_fGetsPos] )
                 {
                     buffer[i++] = ch;
 
@@ -136,28 +138,33 @@ namespace Divide
                 static_cast<WorkData*>(userData)->_output += static_cast<char>(ch);
             }
 
-            char* Scratch( const char* str, WorkData& workData )
+            char* Scratch( const std::string_view fileName )
             {
-                char* result = &workData._scratch[workData._scratchPos];
-                strcpy( result, str );
-                workData._scratchPos += to_U32( strlen( str ) ) + 1;
+                char* result = &g_workData._scratch[g_workData._scratchPos];
+                strncpy( result, fileName.data(),fileName.size() );
+                g_workData._scratchPos += to_U32( fileName.size() ) + 1;
+
                 return result;
             }
 
             void Error( void* userData, const char* format, va_list args )
             {
                 WorkData* work = static_cast<WorkData*>(userData);
-                char formatted[1024];
-                vsnprintf( formatted, 1024, format, args );
+
+                const size_t length = vsprintf( nullptr, format, args ) + 1;
+                vector<char> buf(length);
+                vsnprintf( buf.data(), length, format, args );
+                
                 if ( work->_firstError )
                 {
                     work->_firstError = false;
                     Console::errorfn( "------------------------------------------" );
                     Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_NAME_SHORT" ), work->_fileName );
                 }
-                if ( strlen( formatted ) != 1 && formatted[0] != '\n' )
+
+                if ( !buf.empty() )
                 {
-                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_MSG" ), formatted );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_MSG" ), buf.data() );
                 }
                 else
                 {
@@ -166,56 +173,27 @@ namespace Divide
             }
         }
 
-        eastl::string PreProcess( const eastl::string& source, const char* fileName )
+        void OnThreadCreate()
         {
-            constexpr U8 g_maxTagCount = 64;
-
-            if ( source.empty() )
+            const auto setTag = []( const int tag, void* value )
             {
-                return source;
-            }
-
-            eastl::string temp( source.size() + 1, ' ' );
-            {
-                const char* in = source.data();
-                char* out = temp.data();
-                const char* end = out + source.size();
-
-                for ( char ch = *in++; out < end && ch != '\0'; ch = *in++ )
-                {
-                    if ( ch != '\r' )
-                    {
-                        *out++ = ch;
-                    }
-                }
-                *out = '\0';
-            }
-
-            WorkData workData{
-                temp.c_str(), // input
-                temp.size(),  // input size
-                fileName      // file name
+                g_tagHead->tag = tag;
+                g_tagHead->data = value;
+                ++g_tagHead;
             };
 
-            fppTag tags[g_maxTagCount]{};
-            fppTag* tagHead = tags;
-
-            const auto setTag = [&tagHead]( const int tag, void* value )
-            {
-                tagHead->tag = tag;
-                tagHead->data = value;
-                ++tagHead;
-            };
-            const auto setFlag = [&tagHead, &setTag]( const int tag, bool flag )
+            const auto setFlag = []( const int tag, bool flag )
             {
                 static bool data = true;
-                setTag(tag, flag ? &data : nullptr);
-            };
 
+                g_tagHead->tag = tag;
+                g_tagHead->data = (flag ? &data : nullptr);
+                ++g_tagHead;
+            };
 
             setFlag( FPPTAG_KEEPCOMMENTS, true );
             setFlag( FPPTAG_IGNORE_NONFATAL, false );
-            setFlag( FPPTAG_IGNORE_CPLUSPLUS, false);
+            setFlag( FPPTAG_IGNORE_CPLUSPLUS, false );
             setFlag( FPPTAG_LINE, false );
             setFlag( FPPTAG_WARNILLEGALCPP, false );
             setFlag( FPPTAG_OUTPUTLINE, false );
@@ -230,20 +208,43 @@ namespace Divide
             setFlag( FPPTAG_DISPLAYFUNCTIONS, false );
             setFlag( FPPTAG_WEBMODE, false );
 
-            setTag( FPPTAG_USERDATA, &workData );
             setTag( FPPTAG_DEPENDS, (void*)Callback::AddDependency );
             setTag( FPPTAG_INPUT, (void*)Callback::Input );
             setTag( FPPTAG_OUTPUT, (void*)Callback::Output );
             setTag( FPPTAG_ERROR, (void*)Callback::Error );
-            setTag( FPPTAG_INPUT_NAME, (void*)Callback::Scratch( fileName, workData ) );
-            setTag( FPPTAG_END, nullptr );
 
-            if ( fppPreProcess( tags ) != 0 )
+            setTag( FPPTAG_USERDATA, &g_workData );
+
+        }
+
+        void PreProcessMacros( const std::string_view fileName, string& sourceInOut )
+        {
+            if ( sourceInOut.empty() )
             {
-                NOP();
+                return;
             }
 
-            return workData._output;
+            g_workData = {};
+            g_workData._input = sourceInOut;
+            g_workData._fileName = fileName;
+            std::erase( g_workData._input, '\r' );
+
+            fppTag* tagptr = g_tagHead;
+
+            tagptr->tag = FPPTAG_INPUT_NAME;
+            tagptr->data = (void*)Callback::Scratch( fileName );
+            ++tagptr;
+
+            tagptr->tag = FPPTAG_END;
+            tagptr->data = nullptr;
+            ++tagptr;
+
+            if ( fppPreProcess( g_tags ) != 0 )
+            {
+                DebugBreak();
+            }
+
+            sourceInOut = g_workData._output;
         }
 
     } //Preprocessor
@@ -1163,6 +1164,7 @@ namespace Divide
                 list.resize( 0 );
             }
         }
+
         return ErrorCode::NO_ERR;
     }
 
@@ -1298,6 +1300,7 @@ namespace Divide
 
     bool ShaderProgram::OnThreadCreated( const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID )
     {
+        Preprocessor::OnThreadCreate();
         return InitGLSW( gfx );
     }
 
@@ -1458,17 +1461,17 @@ namespace Divide
         return atomLocations;
     }
 
-    const eastl::string& ShaderProgram::ShaderFileRead( const ResourcePath& filePath, const std::string_view atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
+    const string& ShaderProgram::ShaderFileRead( const ResourcePath& filePath, const std::string_view atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
     {
         LockGuard<Mutex> w_lock( s_atomLock );
         return ShaderFileReadLocked( filePath, atomName, recurse, foundAtomIDsInOut, wasParsed );
     }
 
-    eastl::string ShaderProgram::PreprocessIncludes( const std::string_view name,
-                                                     const eastl::string& source,
-                                                     const I32 level,
-                                                     eastl::set<U64>& foundAtomIDsInOut,
-                                                     const bool lock )
+    void ShaderProgram::PreprocessIncludes( const std::string_view name,
+                                            string& sourceInOut,
+                                            const I32 level,
+                                            eastl::set<U64>& foundAtomIDsInOut,
+                                            const bool lock )
     {
         if ( level > s_maxHeaderRecursionLevel )
         {
@@ -1478,8 +1481,10 @@ namespace Divide
         size_t lineNumber = 1;
 
         string line;
-        eastl::string output, includeString;
-        istringstream input( source.c_str() );
+        string output, includeString;
+        output.reserve(sourceInOut.size());
+
+        istringstream input( sourceInOut );
 
         while ( Util::GetLine( input, line ) )
         {
@@ -1534,14 +1539,12 @@ namespace Divide
                     {
                         Console::errorfn( LOCALE_STR( "ERROR_GLSL_NO_INCLUDE_FILE" ), name, lineNumber, includeFile );
                     }
-                    if ( wasParsed )
+                    if ( !wasParsed )
                     {
-                        output.append( includeString );
+                        PreprocessIncludes( name, includeString, level + 1, foundAtomIDsInOut, lock );
                     }
-                    else
-                    {
-                        output.append( PreprocessIncludes( name, includeString, level + 1, foundAtomIDsInOut, lock ) );
-                    }
+
+                    output.append( includeString );
                 }
             }
 
@@ -1554,11 +1557,11 @@ namespace Divide
             ++lineNumber;
         }
 
-        return output;
+        sourceInOut = output;
     }
 
     /// Open the file found at 'filePath' matching 'atomName' and return it's source code
-    const eastl::string& ShaderProgram::ShaderFileReadLocked( const ResourcePath& filePath, const std::string_view atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
+    const string& ShaderProgram::ShaderFileReadLocked( const ResourcePath& filePath, const std::string_view atomName, const bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed )
     {
         const U64 atomNameHash = _ID( atomName );
         // See if the atom was previously loaded and still in cache
@@ -1581,7 +1584,7 @@ namespace Divide
         assert( !filePath.empty() );
 
         // Open the atom file and add the code to the atom cache for future reference
-        eastl::string& output = s_atoms[atomNameHash];
+        string& output = s_atoms[atomNameHash];
         output.clear();
         eastl::set<U64>& atoms = s_atomIncludes[atomNameHash];
         atoms.clear();
@@ -1590,9 +1593,10 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
+
         if ( recurse )
         {
-            output = PreprocessIncludes( atomName, output, 0, atoms, false );
+            PreprocessIncludes( atomName, output, 0, atoms, false );
         }
 
         for ( const auto& atom : atoms )
@@ -2082,9 +2086,12 @@ namespace Divide
             }
             // And replace in place with our program's headers created earlier
             Util::ReplaceStringInPlace( glslCodeOut, "_CUSTOM_DEFINES__", header );
-            glslCodeOut = PreprocessIncludes( resourceName(), glslCodeOut, 0, atomIDsInOut, true );
-            glslCodeOut = Preprocessor::PreProcess( glslCodeOut, loadDataInOut._shaderName.c_str() );
-            glslCodeOut = Reflection::GatherUniformDeclarations( glslCodeOut, loadDataInOut._uniforms );
+            
+            PreprocessIncludes( resourceName(), glslCodeOut, 0, atomIDsInOut, true );
+
+            Preprocessor::PreProcessMacros( loadDataInOut._shaderName, glslCodeOut );
+
+            Reflection::PreProcessUniforms( glslCodeOut, loadDataInOut._uniforms );
         }
 
         if ( !loadDataInOut._uniforms.empty() )

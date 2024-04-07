@@ -37,8 +37,8 @@
 
 // Code from http://www.gamedev.net/reference/articles/article1382.asp
 // Copyright: "Frame Rate Independent Movement" by Ben Dilts
-namespace Divide {
-namespace Time {
+namespace Divide::Time
+{
   
 using TimeValue = std::chrono::time_point<std::chrono::high_resolution_clock>;
 using NSec = std::chrono::nanoseconds;
@@ -46,7 +46,8 @@ using USec = std::chrono::microseconds;
 using MSec = std::chrono::milliseconds;
 using Sec = std::chrono::seconds;
 
-class ApplicationTimer {
+class ApplicationTimer
+{
 
 
   public:
@@ -71,16 +72,17 @@ class ApplicationTimer {
 };
 
 
-namespace App {
+namespace App
+{
     /// The following functions force a timer update (a call to query performance timer).
     U64 ElapsedNanoseconds() noexcept;
     U64 ElapsedMicroseconds() noexcept;
     D64 ElapsedMilliseconds() noexcept;
     D64 ElapsedSeconds() noexcept;
-}
 
-}  // namespace Time
-}  // namespace Divide
+} //namespace App
+
+}  // namespace Divide::Time
 
 #endif  //DVD_CORE_TIME_APPLICATION_TIMER_H_
 

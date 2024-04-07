@@ -248,13 +248,13 @@ namespace Divide
             return false;
         }
 
-        eastl::string GatherUniformDeclarations( const eastl::string& source, Reflection::UniformsSet& foundUniforms )
+        void PreProcessUniforms( string& sourceInOut, Reflection::UniformsSet& foundUniforms )
         {
-            eastl::string ret;
-            ret.reserve( source.size() );
+            string ret;
+            ret.reserve( sourceInOut.size());
 
             string line;
-            istringstream input( source.c_str() );
+            istringstream input( sourceInOut );
             while ( Util::GetLine( input, line ) )
             {
                 bool skip = line.length() < 6u;
@@ -282,7 +282,7 @@ namespace Divide
                 }
             }
 
-            return ret;
+            sourceInOut = ret;
         }
 
         const BufferEntry* FindUniformBlock( const Data& data )

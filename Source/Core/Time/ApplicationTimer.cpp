@@ -6,9 +6,11 @@
 
 #include "Core/Headers/StringHelper.h"
 
-namespace Divide::Time {
+namespace Divide::Time
+{
 
-namespace {
+namespace
+{
     // Time stamp at application initialization
     TimeValue g_startupTicks;
     // Previous frame's time stamp
@@ -24,14 +26,16 @@ ApplicationTimer::ApplicationTimer() noexcept
     reset();
 }
 
-void ApplicationTimer::reset() noexcept {
+void ApplicationTimer::reset() noexcept
+{
     g_elapsedTimeUs.store(0ULL);
     g_startupTicks = std::chrono::high_resolution_clock::now();
     g_frameDelay = g_startupTicks;
     resetFPSCounter();
 }
 
-void ApplicationTimer::update() {
+void ApplicationTimer::update()
+{
     const TimeValue currentTicks = std::chrono::high_resolution_clock::now();
     g_elapsedTimeUs = to_U64(std::chrono::duration_cast<USec>(currentTicks - g_startupTicks).count());
 
@@ -57,19 +61,14 @@ void ApplicationTimer::update() {
     }
 }
 
-namespace App {
-    /// The following functions force a timer update (a call to query performance timer).
-    U64 ElapsedNanoseconds() noexcept {
-        return MicrosecondsToNanoseconds(ElapsedMicroseconds());
-    }
-    U64 ElapsedMicroseconds() noexcept {
-        return to_U64(std::chrono::duration_cast<USec>(std::chrono::high_resolution_clock::now() - g_startupTicks).count());
-    }
-    D64 ElapsedMilliseconds() noexcept {
-        return MicrosecondsToMilliseconds<D64, U64>(ElapsedMicroseconds());
-    }
-    D64 ElapsedSeconds() noexcept {
-        return MicrosecondsToSeconds(ElapsedMicroseconds());
-    }
+namespace App
+{
+
+U64 ElapsedMicroseconds() noexcept
+{
+    return to_U64( std::chrono::duration_cast<USec>(std::chrono::high_resolution_clock::now() - g_startupTicks).count() );
 }
+
+} //namespace App
+
 }  // namespace Divide::Time

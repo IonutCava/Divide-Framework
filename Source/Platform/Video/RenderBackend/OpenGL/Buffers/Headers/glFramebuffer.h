@@ -130,12 +130,17 @@ class glFramebuffer final : public RenderTarget {
 bool operator==(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;
 bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;
 
-namespace Attorney {
-    class GLAPIRenderTarget {
-        static void begin(glFramebuffer& rt, const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy) {
+namespace Attorney
+{
+    class GLAPIRenderTarget
+    {
+        static void begin(glFramebuffer& rt, const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy)
+        {
             rt.begin(drawPolicy, clearPolicy);
         }
-        static void end( glFramebuffer& rt, const RTTransitionMask& mask ) {
+
+        static void end( glFramebuffer& rt, const RTTransitionMask& mask )
+        {
             rt.end( mask );
         }
 

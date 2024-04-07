@@ -132,7 +132,7 @@ namespace Divide
 
         bool SaveReflectionData( const ResourcePath& path, const ResourcePath& file, const Data& reflectionDataIn, const eastl::set<U64>& atomIDsIn );
         bool LoadReflectionData( const ResourcePath& path, const ResourcePath& file, Data& reflectionDataOut, eastl::set<U64>& atomIDsOut );
-        eastl::string GatherUniformDeclarations( const eastl::string& source, UniformsSet& foundUniforms );
+        void PreProcessUniforms( string& sourceInOut, UniformsSet& foundUniforms );
 
         const Reflection::BufferEntry* FindUniformBlock( const Reflection::Data& data );
     }; //namespace Reflection

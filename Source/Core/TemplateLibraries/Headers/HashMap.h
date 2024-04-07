@@ -58,41 +58,52 @@ namespace Divide {
     using hashMapIntrusive = hashAlg::intrusive_hash_map<K, V, 37>;
 
     template<class T, bool>
-    struct hasher {
-        size_t operator() (const T& elem) {
+    struct hasher
+    {
+        FORCE_INLINE size_t operator() (const T& elem)
+        {
             return hashAlg::hash<T>()(elem);
         }
     };
 
     template<class T>
-    struct hasher<T, true> {
-        size_t operator() (const T& elem) {
+    struct hasher<T, true>
+    {
+        FORCE_INLINE size_t operator() (const T& elem)
+        {
             using EnumType = BaseType<T>;
             return hashAlg::hash<EnumType>()(static_cast<EnumType>(elem));
         }
     };
 
     template<class T>
-    struct EnumHash {
-        size_t operator()(const T& elem) const {
+    struct EnumHash
+    {
+        FORCE_INLINE size_t operator()(const T& elem) const
+        {
             return hasher<T, hashAlg::is_enum<T>::value>()(elem);
         }
     };
 
     template<class T>
-    struct NoHash {
-        size_t operator()(const T& elem) const noexcept {
+    struct NoHash
+    {
+        FORCE_INLINE size_t operator()(const T& elem) const noexcept
+        {
             return static_cast<size_t>(elem);
         }
     };
 
-    namespace MemoryManager {
-
+    namespace MemoryManager
+    {
         /// Deletes every element from the map and clears it at the end
         template <typename K, typename V, typename HashFun = hashAlg::hash<K> >
-        void DELETE_HASHMAP(hashMap<K, V, HashFun>& map) {
-            if (!map.empty()) {
-                for (typename hashMap<K, V, HashFun>::value_type iter : map) {
+        void DELETE_HASHMAP(hashMap<K, V, HashFun>& map)
+        {
+            if (!map.empty())
+            {
+                for (typename hashMap<K, V, HashFun>::value_type iter : map)
+                {
                     log_delete(iter.second);
                     delete iter.second;
                 }
@@ -111,35 +122,44 @@ template <> struct hash<std::string>
     {
         const char* p = x.c_str();
         uint32_t c = 0u, result = 2166136261U;   // Intentionally uint32_t instead of size_t, so the behavior is the same regardless of size.
+
         while ((c = static_cast<uint8_t>(*p++)) != 0)     // cast to unsigned 8 bit.
+        {
             result = result * 16777619 ^ c;
+        }
+
         return static_cast<size_t>(result);
     }
 };
 
 
 template <typename K, typename V, typename ... Args, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
-Divide::hashPairReturn<K, V, HashFun> emplace(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, Args&&... args) {
+Divide::hashPairReturn<K, V, HashFun> emplace(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, Args&&... args)
+{
     return map.try_emplace(key, eastl::forward<Args>(args)...);
 }
 
 template <typename K, typename V, typename ... Args, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
-Divide::hashPairReturn<K, V, HashFun> emplace(Divide::hashMap<K, V, HashFun, Predicate>& map, Args&&... args) {
+Divide::hashPairReturn<K, V, HashFun> emplace(Divide::hashMap<K, V, HashFun, Predicate>& map, Args&&... args)
+{
     return map.emplace(eastl::forward<Args>(args)...);
 }
 
 template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
-Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, const pair<K, V>& valuePair) {
+Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, const pair<K, V>& valuePair)
+{
     return map.insert(valuePair);
 }
 
 template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
-Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, const V& value) {
+Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, const V& value)
+{
     return map.emplace(key, value);
 }
 
 template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = equal_to<K>>
-Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, V&& value) {
+Divide::hashPairReturn<K, V, HashFun> insert(Divide::hashMap<K, V, HashFun, Predicate>& map, K key, V&& value)
+{
     return map.emplace(key, eastl::move(value));
 }
 

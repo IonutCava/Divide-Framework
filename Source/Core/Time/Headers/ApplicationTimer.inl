@@ -32,26 +32,48 @@
 #ifndef DVD_CORE_TIME_APPLICATION_TIMER_INL_
 #define DVD_CORE_TIME_APPLICATION_TIMER_INL_
 
-namespace Divide {
-namespace Time {
+namespace Divide::Time
+{
 
-inline void  ApplicationTimer::resetFPSCounter() noexcept {
+inline void  ApplicationTimer::resetFPSCounter() noexcept
+{
     _frameRateHandler = {};
 }
 
-inline F32 ApplicationTimer::getFps() const noexcept {
+inline F32 ApplicationTimer::getFps() const noexcept
+{
     return _frameRateHandler.frameRate();
 }
 
-inline F32 ApplicationTimer::getFrameTime() const noexcept {
+inline F32 ApplicationTimer::getFrameTime() const noexcept
+{
     return _frameRateHandler.frameTime();
 }
 
-inline void ApplicationTimer::getFrameRateAndTime(F32& fpsOut, F32& frameTimeOut) const noexcept {
+inline void ApplicationTimer::getFrameRateAndTime(F32& fpsOut, F32& frameTimeOut) const noexcept
+{
     _frameRateHandler.frameRateAndTime(fpsOut, frameTimeOut);
 }
 
-}  // namespace Time
-}  // namespace Divide
+namespace App
+{
+    /// The following functions force a timer update (a call to query performance timer).
+    FORCE_INLINE U64 ElapsedNanoseconds() noexcept
+    {
+        return MicrosecondsToNanoseconds( ElapsedMicroseconds() );
+    }
+
+    FORCE_INLINE D64 ElapsedMilliseconds() noexcept
+    {
+        return MicrosecondsToMilliseconds<D64, U64>( ElapsedMicroseconds() );
+    }
+
+    FORCE_INLINE D64 ElapsedSeconds() noexcept
+    {
+        return MicrosecondsToSeconds( ElapsedMicroseconds() );
+    }
+} //namespace App
+
+}  // namespace Divide::Time
 
 #endif  //DVD_CORE_TIME_APPLICATION_TIMER_INL_

@@ -141,7 +141,7 @@ namespace Divide
 
             Reflection::UniformsSet _uniforms;
             std::vector<U32> _sourceCodeSpirV;
-            eastl::string _sourceCodeGLSL;
+            string _sourceCodeGLSL;
             Str<256> _sourceName{};
             Str<256> _shaderName{};
             Str<256> _sourceFile{};
@@ -164,7 +164,7 @@ namespace Divide
 
         using ShaderProgramMap = std::array<ShaderProgramMapEntry, U16_MAX>;
 
-        using AtomMap = hashMap<U64 /*name hash*/, eastl::string>;
+        using AtomMap = hashMap<U64 /*name hash*/, string>;
         using AtomInclusionMap = hashMap<U64 /*name hash*/, eastl::set<U64>>;
         using ShaderQueue = eastl::stack<ShaderQueueEntry, vector_fast<ShaderQueueEntry>>;
 
@@ -304,14 +304,14 @@ namespace Divide
         static void EraseAtom(const U64 atomHash);
         static void EraseAtomLocked(const U64 atomHash);
 
-        static const eastl::string& ShaderFileRead( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
-        static const eastl::string& ShaderFileReadLocked( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
+        static const string& ShaderFileRead( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
+        static const string& ShaderFileReadLocked( const ResourcePath& filePath, std::string_view atomName, bool recurse, eastl::set<U64>& foundAtomIDsInOut, bool& wasParsed );
 
-        static eastl::string PreprocessIncludes( std::string_view name,
-                                                 const eastl::string& source,
-                                                 I32 level,
-                                                 eastl::set<U64>& foundAtomIDsInOut,
-                                                 bool lock );
+        static void PreprocessIncludes( std::string_view name,
+                                        string& sourceInOut,
+                                        I32 level,
+                                        eastl::set<U64>& foundAtomIDsInOut,
+                                        bool lock );
     protected:
         template <typename T>
         friend class ImplResourceLoader;

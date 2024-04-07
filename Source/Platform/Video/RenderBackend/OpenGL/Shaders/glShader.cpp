@@ -89,7 +89,8 @@ ShaderResult glShader::uploadToGPU()
 
         std::array<U64, to_base(ShaderType::COUNT)> stageCompileTimeGPU{};
 
-        if constexpr(Config::ENABLE_GPU_VALIDATION) {
+        if constexpr(Config::ENABLE_GPU_VALIDATION)
+        {
             timers[0].start();
         }
 
@@ -105,34 +106,43 @@ ShaderResult glShader::uploadToGPU()
         glProgramParameteri(_handle, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_FALSE);
         glProgramParameteri(_handle, GL_PROGRAM_SEPARABLE, GL_TRUE);
 
-        if (_handle == 0u || _handle == GL_NULL_HANDLE) {
+        if (_handle == 0u || _handle == GL_NULL_HANDLE)
+        {
             Console::errorfn(LOCALE_STR("ERROR_GLSL_CREATE_PROGRAM"), _name.c_str());
             _valid = false;
             return ShaderResult::Failed;
         }
 
         bool shouldLink = false;
-        for (ShaderProgram::LoadData& data : _loadData) {
-            if (data._type == ShaderType::COUNT) {
+        for (ShaderProgram::LoadData& data : _loadData)
+        {
+            if (data._type == ShaderType::COUNT)
+            {
                 // stage not specified from the current file. Skip.
                 continue;
             }
+
             assert(!data._compiled);
 
-            if constexpr(Config::ENABLE_GPU_VALIDATION) {
+            if constexpr(Config::ENABLE_GPU_VALIDATION)
+            {
                 timers[1].start();
             }
+
             GLuint shader = GL_NULL_HANDLE;
             DIVIDE_ASSERT(shader != 0u && !data._sourceCodeSpirV.empty() && !data._sourceCodeGLSL.empty());
 
-            if constexpr(g_useSPIRVBinaryCode) {
+            if constexpr(g_useSPIRVBinaryCode)
+            {
                 shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
                 glShaderBinary(1, &shader, GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (GLsizei)(data._sourceCodeSpirV.size() * sizeof(U32)));
                 glSpecializeShader(shader, "main", 0, nullptr, nullptr);
-            } else {
+            }
+            else
+            {
                 shader = glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-                vector<const char*> sourceCodeCstr{ data._sourceCodeGLSL.c_str() };
-                glShaderSource(shader, static_cast<GLsizei>(sourceCodeCstr.size()), sourceCodeCstr.data(), nullptr);
+                const char* src = data._sourceCodeGLSL.c_str();
+                glShaderSource(shader, 1u, &src, nullptr);
                 glCompileShader(shader);
             }
 
