@@ -1,5 +1,5 @@
 ﻿{
-    "version": 3,
+    "version": 6,
     "cmakeMinimumRequired": {
         "major": 3,
         "minor": 28,
@@ -12,7 +12,8 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/Build/${presetName}",
-            "installDir": "${sourceDir}/Install/${presetName}"
+            "installDir": "${sourceDir}/Install/${presetName}",
+            "warnings": {"dev": false }
         },
         {
             "name": "conf-windows-common",
@@ -31,10 +32,6 @@
             "toolset": {
                 "value": "host=x64",
                 "strategy": "external"
-            },
-            "cacheVariables": {
-                "ENABLE_CPPCHECK_DEFAULT": "FALSE",
-                "ENABLE_CLANG_TIDY_DEFAULT": "FALSE"
             }
         },
         {
