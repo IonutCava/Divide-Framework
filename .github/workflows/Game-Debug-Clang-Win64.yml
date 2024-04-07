@@ -24,6 +24,9 @@ jobs:
         fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.28.0
+        ninjaVersion: 1.11.1
 
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
