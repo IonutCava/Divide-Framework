@@ -1,7 +1,6 @@
 # CMakeList.txt : Top-level CMake project file, do global configuration and include sub-projects here.
 cmake_minimum_required (VERSION 3.28)
 
-
 option(BUILD_TESTING_INTERNAL "Build and run unit tests" ON)
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
 option(ENABLE_AVX2 "Toggle AVX2 specific compiler flags" ON)
@@ -15,6 +14,13 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED On)
+set(CMAKE_CXX_EXTENSIONS Off)
+set(CXX_SCAN_FOR_MODULES Off)
+set(FETCHCONTENT_QUIET FALSE)
+
 set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/OverlayPorts")
 
 project ( Divide-Framework
@@ -26,11 +32,6 @@ project ( Divide-Framework
 
 set(PROJECT_LICENSE_FILE "${CMAKE_SOURCE_DIR}/../LICENSE" CACHE FILEPATH "Path to the license file for this project.")
 
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED On)
-set(CMAKE_CXX_EXTENSIONS Off)
-set(FETCHCONTENT_QUIET TRUE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")

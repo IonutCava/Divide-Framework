@@ -95,11 +95,11 @@ private:
 
     void idle(bool fast) override;
 
-    void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
+    void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
 
-    void flushCommand(GFX::CommandBase* cmd) override;
+    void flushCommand(GFX::CommandBase* cmd, GFX::CommandType type) override;
 
-    void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
+    void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
 
     void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) override;
 
@@ -166,13 +166,15 @@ private:
         COUNT
     };
 
-    struct glHardwareQueryEntry {
+    struct glHardwareQueryEntry
+    {
         glHardwareQueryRing* _query{ nullptr };
         QueryType _type{ QueryType::COUNT };
         U8 _index{ 0u };
     };
 
-    struct TexBindEntry {
+    struct TexBindEntry
+    {
         gl::GLubyte _slot{ INVALID_TEXTURE_BINDING };
         gl::GLuint _handle{ GL_NULL_HANDLE };
         gl::GLuint _sampler{ GL_NULL_HANDLE };

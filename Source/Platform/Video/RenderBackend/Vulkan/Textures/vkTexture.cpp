@@ -359,7 +359,7 @@ namespace Divide
         }
         clearImageViewCache();
 
-        _image = eastl::make_unique<AllocatedImage>();
+        _image = std::make_unique<AllocatedImage>();
         _vkType = vkTextureTypeTable[to_base( descriptor().texType() )];
 
         sampleFlagBits( VK_SAMPLE_COUNT_1_BIT );
@@ -906,14 +906,6 @@ namespace Divide
         memcpy(grabData._data.data(), (Byte*)stagingBuffer->_allocInfo.pMappedData, sizeDest);
 
         return grabData;
-    }
-
-    bool operator==( const vkTexture::CachedImageView::Descriptor& lhs, const vkTexture::CachedImageView::Descriptor& rhs ) noexcept
-    {
-        return lhs._usage == rhs._usage &&
-               lhs._type == rhs._type &&
-               lhs._format == rhs._format &&
-               lhs._subRange == rhs._subRange;
     }
 
     VkImageView vkTexture::getImageView( const CachedImageView::Descriptor& viewDescriptor ) const

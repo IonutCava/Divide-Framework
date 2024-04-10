@@ -26,6 +26,11 @@ DisplayWindow::DisplayWindow(WindowManager& parent, PlatformContext& context)
 DisplayWindow::~DisplayWindow() 
 {
     destroyWindow();
+
+    for ( U8 i = 0u; i < Config::MAX_FRAMES_IN_FLIGHT; ++i )
+    {
+        DIVIDE_ASSERT(_commandBufferQueues[i]._commandBuffers.empty());
+    }
 }
 
 ErrorCode DisplayWindow::destroyWindow()
@@ -511,9 +516,9 @@ void DisplayWindow::renderingViewport(const Rect<I32>& viewport) noexcept {
     _renderingViewport.set(viewport);
 }
 
-GFX::CommandBuffer* DisplayWindow::getCurrentCommandBuffer()
+GFX::CommandBufferQueue& DisplayWindow::getCurrentCommandBufferQueue()
 {
-    return &_commandBuffers[GFXDevice::FrameCount() % Config::MAX_FRAMES_IN_FLIGHT];
+    return _commandBufferQueues[GFXDevice::FrameCount() % Config::MAX_FRAMES_IN_FLIGHT];
 }
 
 }; //namespace Divide

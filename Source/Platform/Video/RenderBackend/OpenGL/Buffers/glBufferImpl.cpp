@@ -22,7 +22,7 @@ namespace Divide
     {
         assert( params._bufferParams._flags._updateFrequency != BufferUpdateFrequency::COUNT );
 
-        _lockManager = eastl::make_unique<glLockManager>();
+        _lockManager = std::make_unique<glLockManager>();
 
         // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
         if ( params._bufferParams._flags._updateUsage == BufferUpdateUsage::GPU_TO_GPU || params._bufferParams._flags._updateFrequency == BufferUpdateFrequency::ONCE )

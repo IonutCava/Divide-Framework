@@ -88,13 +88,13 @@ namespace Divide
         _currentHoverTarget.fill( -1 );
         _cameraUpdateListeners.fill( 0u );
 
-        _state = eastl::make_unique<SceneState>( *this );
-        _input = eastl::make_unique<SceneInput>( *this );
-        _sceneGraph = eastl::make_unique<SceneGraph>( *this );
-        _aiManager = eastl::make_unique<AI::AIManager>( *this, _context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
-        _lightPool = eastl::make_unique<LightPool>( *this, _context );
-        _envProbePool = eastl::make_unique<SceneEnvironmentProbePool>( *this );
-        _GUI = eastl::make_unique<SceneGUIElements>( *this, _context.gui() );
+        _state = std::make_unique<SceneState>( *this );
+        _input = std::make_unique<SceneInput>( *this );
+        _sceneGraph = std::make_unique<SceneGraph>( *this );
+        _aiManager = std::make_unique<AI::AIManager>( *this, _context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
+        _lightPool = std::make_unique<LightPool>( *this, _context );
+        _envProbePool = std::make_unique<SceneEnvironmentProbePool>( *this );
+        _GUI = std::make_unique<SceneGUIElements>( *this, _context.gui() );
 
         _linesPrimitive = _context.gfx().newIMP( "Generic Line Primitive" );
 
@@ -247,8 +247,7 @@ namespace Divide
 
             pt.put( "options.visibility", state()->renderState().generalVisibility() );
 
-            const U8 activePlayerCount = _parent.parent().activePlayerCount();
-            for ( U8 i = 0u; i < activePlayerCount; ++i )
+            for ( U8 i = 0u; i < playerCount(); ++i )
             {
                 playerCamera( i, true )->saveToXML( pt );
             }
@@ -1362,7 +1361,8 @@ namespace Divide
         _sceneGraph->unload();
 
         loadComplete( false );
-        for ( const auto& player : _scenePlayers )
+        DIVIDE_ASSERT( playerCount() == 0u );
+        for ( const Player_ptr& player : _scenePlayers )
         {
             DIVIDE_ASSERT( player == nullptr );
         }
@@ -1436,7 +1436,7 @@ namespace Divide
             NOP();
         }
 
-        assert( _parent.parent().activePlayerCount() == 0 );
+        assert( playerCount() == 0 );
         addPlayerInternal( false );
     }
 
@@ -1446,7 +1446,7 @@ namespace Divide
 
         _aiManager->pauseUpdate( true );
 
-        for ( auto& player : _scenePlayers )
+        for ( Player_ptr& player : _scenePlayers )
         {
             if ( player != nullptr )
             {
@@ -1463,12 +1463,12 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         // Limit max player count
-        if ( _parent.parent().activePlayerCount() == Config::MAX_LOCAL_PLAYER_COUNT )
+        if ( playerCount() == Config::MAX_LOCAL_PLAYER_COUNT )
         {
             return;
         }
 
-        const string playerName = GetPlayerSGNName( static_cast<PlayerIndex>(_parent.parent().activePlayerCount()) );
+        const string playerName = GetPlayerSGNName( static_cast<PlayerIndex>(playerCount()) );
 
         SceneGraphNode* playerSGN( _sceneGraph->findNode( playerName.c_str() ) );
         if ( !playerSGN )
@@ -1477,7 +1477,7 @@ namespace Divide
 
             SceneGraphNodeDescriptor playerNodeDescriptor;
             playerNodeDescriptor._serialize = false;
-            playerNodeDescriptor._node = std::make_shared<SceneNode>( resourceCache(), to_size( generateGUID() + _parent.parent().activePlayerCount() ), playerName, playerName, ResourcePath{}, SceneNodeType::TYPE_TRANSFORM, 0u);
+            playerNodeDescriptor._node = std::make_shared<SceneNode>( resourceCache(), to_size( generateGUID() + playerCount() ), playerName, playerName, ResourcePath{}, SceneNodeType::TYPE_TRANSFORM, 0u);
             playerNodeDescriptor._name = playerName.c_str();
             playerNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
             playerNodeDescriptor._componentMask = to_base( ComponentType::UNIT ) |
@@ -1497,7 +1497,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         assert( idx < Config::MAX_LOCAL_PLAYER_COUNT);
-        auto& player = _scenePlayers[getSceneIndexForPlayer( idx )];
+        Player_ptr& player = _scenePlayers[getSceneIndexForPlayer( idx )];
         assert( player != nullptr );
 
         Attorney::ProjectManagerScene::removePlayer( _parent.parent(), *this, player->getBoundNode(), true );
@@ -1508,6 +1508,7 @@ namespace Divide
         DIVIDE_ASSERT( player != nullptr );
         state()->onPlayerAdd( player->index() );
         input()->onPlayerAdd( player->index() );
+        ++_playerCount;
     }
 
     void Scene::onPlayerRemove( const Player_ptr& player )
@@ -1528,6 +1529,7 @@ namespace Divide
 
         assert( idx < Config::MAX_LOCAL_PLAYER_COUNT);
         _scenePlayers[getSceneIndexForPlayer( idx )] = nullptr;
+        --_playerCount;
     }
 
     U8 Scene::getSceneIndexForPlayer( const PlayerIndex idx ) const
@@ -2335,27 +2337,12 @@ namespace Divide
         }
     }
 
-    U8 Scene::playerCount() const noexcept
-    {
-        U8 ret = 0u;
-
-        for ( const auto& player : _scenePlayers )
-        {
-            if ( player != nullptr )
-            {
-                ++ret;
-            }
-        }
-
-        return ret;
-    }
-
     bool Scene::save( ByteBuffer& outputBuffer ) const
     {
         outputBuffer << BYTE_BUFFER_VERSION;
         const U8 plCount = playerCount();
         outputBuffer << plCount;
-        for ( const auto& player : _scenePlayers )
+        for ( const Player_ptr& player : _scenePlayers )
         {
             if ( player != nullptr )
             {

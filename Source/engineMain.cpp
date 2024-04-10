@@ -13,7 +13,7 @@ namespace Divide {
 
 ErrorCode Engine::init(const int argc, char** argv)
 {
-    _app = eastl::make_unique<Application>();
+    _app = std::make_unique<Application>();
     Profiler::RegisterApp(_app.get());
 
     // Start our application based on XML configuration.

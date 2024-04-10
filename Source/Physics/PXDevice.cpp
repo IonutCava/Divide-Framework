@@ -38,7 +38,7 @@ namespace Divide
         {
             case PhysicsAPI::PhysX:
             {
-                _api = eastl::make_unique<PhysX>( _context );
+                _api = std::make_unique<PhysX>( _context );
             } break;
             case PhysicsAPI::ODE:
             case PhysicsAPI::Bullet:

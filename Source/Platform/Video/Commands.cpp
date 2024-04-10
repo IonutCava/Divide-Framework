@@ -485,12 +485,12 @@ string ToString( [[maybe_unused]] const ClearBufferDataCommand& cmd, [[maybe_unu
     return "ToDo";
 }
 
-string ToString(const CommandBase& cmd, U16 indent) {
+string ToString(const CommandBase& cmd, const CommandType type, U16 indent) {
     string ret(indent, ' ');
-    ret.append(Names::commandType[to_base(cmd.Type())]);
+    ret.append(Names::commandType[to_base( type )]);
 
     indent += 3u;
-    switch (cmd.Type()) {
+    switch ( type ) {
         case CommandType::BEGIN_RENDER_PASS:
         {
             ret.append(ToString(static_cast<const BeginRenderPassCommand&>(cmd), indent));

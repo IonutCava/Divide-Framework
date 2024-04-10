@@ -33,18 +33,17 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_RUNTIME_H_
 #define DVD_PLATFORM_RUNTIME_H_
 
-namespace Divide {
-namespace Runtime {
+namespace Divide::Runtime
+{
 
-const std::thread::id& mainThreadID() noexcept;
+[[nodiscard]] const std::thread::id& mainThreadID() noexcept;
 // Can only be called once! The first registered thread is the main thread
 void mainThreadID(const std::thread::id& threadID) noexcept;
 bool resetMainThreadID() noexcept;
 
-inline bool isMainThread() noexcept;
+[[nodiscard]] inline bool isMainThread() noexcept;
 
-}; //namespace Runtime
-}; // namespace Divide
+}; // namespace Divide::Runtime
 
 #endif //DVD_PLATFORM_RUNTIME_H_
 

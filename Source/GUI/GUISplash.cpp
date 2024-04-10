@@ -61,18 +61,17 @@ void GUISplash::render(GFXDevice& context) const {
     pipelineDescriptor._shaderProgramHandle = _splashShader->handle();
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
-    GFX::CommandBuffer& buffer = sBuffer();
+    Handle<GFX::CommandBuffer> handle = GFX::AllocateCommandBuffer();
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = SCREEN_TARGET_ID;
     beginRenderPassCmd._name = "BLIT_TO_BACKBUFFER";
     beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-    GFX::EnqueueCommand(buffer, beginRenderPassCmd);
+    GFX::EnqueueCommand( handle, beginRenderPassCmd);
 
     GFX::BindPipelineCommand pipelineCmd;
     pipelineCmd._pipeline = context.newPipeline(pipelineDescriptor);
-    GFX::EnqueueCommand(buffer, pipelineCmd);
+    GFX::EnqueueCommand( handle, pipelineCmd);
 
     GFX::SendPushConstantsCommand pushConstantsCommand = {};
     pushConstantsCommand._constants.set(_ID("lodLevel"), PushConstantType::FLOAT, 1.f);
@@ -80,25 +79,25 @@ void GUISplash::render(GFXDevice& context) const {
     pushConstantsCommand._constants.set(_ID("channelCount"), PushConstantType::UINT, 4u);
     pushConstantsCommand._constants.set(_ID("startChannel"), PushConstantType::UINT, 0u);
     pushConstantsCommand._constants.set(_ID("multiplier"), PushConstantType::FLOAT, 1.f);
-    GFX::EnqueueCommand(buffer, pushConstantsCommand);
+    GFX::EnqueueCommand( handle, pushConstantsCommand);
 
     GFX::SetViewportCommand viewportCommand;
     viewportCommand._viewport.set(0, 0, _dimensions.width, _dimensions.height);
-    GFX::EnqueueCommand(buffer, viewportCommand);
+    GFX::EnqueueCommand( handle, viewportCommand);
 
     _splashImage->waitForReady();
 
-    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(buffer);
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( handle );
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
     DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
     Set( binding._data, _splashImage->getView(), splashSampler );
 
-    GFX::EnqueueCommand<GFX::DrawCommand>(buffer);
+    GFX::EnqueueCommand<GFX::DrawCommand>( handle );
 
-    GFX::EnqueueCommand<GFX::EndRenderPassCommand>(buffer);
+    GFX::EnqueueCommand<GFX::EndRenderPassCommand>( handle );
 
-    context.flushCommandBuffer(buffer);
+    context.flushCommandBuffer( MOV( handle ) );
 }
 
 };

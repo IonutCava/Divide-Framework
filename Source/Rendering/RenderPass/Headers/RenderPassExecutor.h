@@ -72,6 +72,9 @@ public:
 
         U32 range() const noexcept;
         void reset() noexcept;
+
+
+        auto operator<=>(const BufferUpdateRange&) const = default;
     };
 
     using NodeIndirectionData = vec4<U32>;

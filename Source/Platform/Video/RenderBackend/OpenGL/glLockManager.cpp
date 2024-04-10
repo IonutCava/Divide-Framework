@@ -45,7 +45,7 @@ namespace Divide
         bool ret = false;
         if ( entry._ptr == nullptr )
         {
-            entry._ptr = eastl::make_unique<glSyncObject>(flag, frameIdx);
+            entry._ptr = std::make_unique<glSyncObject>(flag, frameIdx);
             ret = true;
         }
         else if ( entry._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )

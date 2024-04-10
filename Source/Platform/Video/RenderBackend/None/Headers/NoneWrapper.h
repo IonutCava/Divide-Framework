@@ -53,9 +53,9 @@ class NONE_API final : public RenderAPIWrapper {
 
       ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
       void closeRenderingAPI() noexcept override;
-      void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) override;
-      void flushCommand(GFX::CommandBase* cmd) noexcept override;
-      void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) noexcept override;
+      void preFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) override;
+      void flushCommand(GFX::CommandBase* cmd, GFX::CommandType type) noexcept override;
+      void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) noexcept override;
       bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
       bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
       void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;

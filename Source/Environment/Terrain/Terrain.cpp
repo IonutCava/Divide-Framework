@@ -202,7 +202,7 @@ void Terrain::postBuild() {
         for (U8 i = 0; i < ringCount ; ++i) {
             const U8 count0 = _descriptor->tileRingCount(i + 0);
             const U8 count1 = _descriptor->tileRingCount(i + 1);
-            _tileRings.emplace_back(eastl::make_unique<TileRing>(count0 / 2, count1, tileWidth));
+            _tileRings.emplace_back( std::make_unique<TileRing>(count0 / 2, count1, tileWidth));
             tileWidth *= 2.0f;
         }
 

@@ -230,8 +230,8 @@ struct VKStateTracker
     size_t _renderTargetFormatHash{0u};
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
-    std::array<std::pair<Str<256>, U32>, 32> _debugScope;
-    std::pair<Str<256>, U32> _lastInsertedDebugMessage;
+    DebugScope _debugScope[Config::MAX_DEBUG_SCOPE_DEPTH];
+    DebugScope _lastInsertedDebugMessage;
 
     U8 _debugScopeDepth{ 0u };
 
@@ -383,8 +383,26 @@ namespace VKUtil {
 }; //namespace VKUtil
 }; //namespace Divide
 
+inline bool operator==(const VkDescriptorSetLayoutBinding& lhs, const VkDescriptorSetLayoutBinding& rhs) noexcept 
+{
+    return lhs.binding == rhs.binding &&
+           lhs.descriptorType == rhs.descriptorType &&
+           lhs.descriptorCount == rhs.descriptorCount &&
+           lhs.stageFlags == rhs.stageFlags &&
+           lhs.pImmutableSamplers == rhs.pImmutableSamplers;
+}
 
-inline bool operator==(const VkViewport& lhs, const VkViewport& rhs) noexcept {
+inline bool operator!=( const VkDescriptorSetLayoutBinding& lhs, const VkDescriptorSetLayoutBinding& rhs ) noexcept
+{
+    return lhs.binding != rhs.binding ||
+           lhs.descriptorType != rhs.descriptorType ||
+           lhs.descriptorCount != rhs.descriptorCount ||
+           lhs.stageFlags != rhs.stageFlags ||
+           lhs.pImmutableSamplers !=  rhs.pImmutableSamplers;
+}
+
+inline bool operator==(const VkViewport& lhs, const VkViewport& rhs) noexcept
+{
     return lhs.x == rhs.x &&
            lhs.y == rhs.y &&
            lhs.width == rhs.width &&
@@ -392,7 +410,8 @@ inline bool operator==(const VkViewport& lhs, const VkViewport& rhs) noexcept {
            lhs.minDepth == rhs.minDepth &&
            lhs.maxDepth == rhs.maxDepth;
 }
-inline bool operator!=(const VkViewport& lhs, const VkViewport& rhs) noexcept {
+inline bool operator!=(const VkViewport& lhs, const VkViewport& rhs) noexcept
+{
     return lhs.x != rhs.x ||
            lhs.y != rhs.y ||
            lhs.width != rhs.width ||
@@ -400,13 +419,15 @@ inline bool operator!=(const VkViewport& lhs, const VkViewport& rhs) noexcept {
            lhs.minDepth != rhs.minDepth ||
            lhs.maxDepth != rhs.maxDepth;
 }
-inline bool operator==(const VkRect2D& lhs, const VkRect2D& rhs) noexcept {
+inline bool operator==(const VkRect2D& lhs, const VkRect2D& rhs) noexcept
+{
     return lhs.offset.x == rhs.offset.x &&
            lhs.offset.y == rhs.offset.y &&
            lhs.extent.width == rhs.extent.width &&
            lhs.extent.height == rhs.extent.height;
 }
-inline bool operator!=(const VkRect2D& lhs, const VkRect2D& rhs) noexcept {
+inline bool operator!=(const VkRect2D& lhs, const VkRect2D& rhs) noexcept 
+{
     return lhs.offset.x != rhs.offset.x ||
            lhs.offset.y != rhs.offset.y ||
            lhs.extent.width != rhs.extent.width ||

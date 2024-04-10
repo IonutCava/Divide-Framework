@@ -72,6 +72,7 @@ public:
     {
         vector<VkDescriptorSetLayoutBinding> bindings;
         size_t GetHash() const;
+
         bool operator==(const DescriptorLayoutInfo& other) const;
     };
 

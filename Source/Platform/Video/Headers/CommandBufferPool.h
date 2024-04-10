@@ -40,37 +40,26 @@ namespace GFX {
 
 class CommandBufferPool {
  public:
-    static constexpr size_t BufferSize = 8192 * 2;
+    static constexpr size_t CommandBufferPoolBufferSize = 8192 * 2;
+    using MemPool = MemoryPool<CommandBuffer, CommandBufferPoolBufferSize>;
 
-    CommandBuffer* allocateBuffer();
-    void deallocateBuffer(CommandBuffer*& buffer);
+    ~CommandBufferPool();
+
+    Handle<CommandBuffer> allocateBuffer();
+    void deallocateBuffer(Handle<CommandBuffer>& buffer);
 
     void reset() noexcept;
 
  private:
     Mutex _mutex;
-    MemoryPool<CommandBuffer, BufferSize> _pool;
+    MemPool _pool;
+    U8 _generation{0u};
+    U32 _bufferCount{0u};
 };
 
-class ScopedCommandBuffer : NonCopyable, NonMovable {
-  public:
-    ~ScopedCommandBuffer() noexcept;
-    CommandBuffer& operator()() noexcept { return *_buffer; }
-    const CommandBuffer& operator()() const noexcept { return *_buffer; }
-
-  protected:
-    friend ScopedCommandBuffer AllocateScopedCommandBuffer();
-    ScopedCommandBuffer();
-
-  private:
-    CommandBuffer* _buffer{ nullptr };
-};
-
-void InitPools() noexcept;
 void DestroyPools() noexcept;
-ScopedCommandBuffer AllocateScopedCommandBuffer();
-CommandBuffer* AllocateCommandBuffer();
-void DeallocateCommandBuffer(CommandBuffer*& buffer);
+Handle<CommandBuffer> AllocateCommandBuffer();
+void DeallocateCommandBuffer(Handle<CommandBuffer>& buffer);
 
 }; //namespace GFX
 }; //namespace Divide

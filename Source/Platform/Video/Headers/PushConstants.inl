@@ -68,18 +68,44 @@ namespace Divide {
         {
             return true;
         }
+        
+        if ( lhs._set != rhs._set)
+        {
+            return false;
+        }
+       
+        for (U8 i = 0u; i < PushConstantsStruct::PUSH_MATRIX_COUNT; ++i)
+        {
+            if (lhs.data[i] != rhs.data[i])
+            {
+                return false;
+            }
+        }
 
-        return lhs._set  == rhs._set && lhs.data == rhs.data;
+        return true;
     }
 
     inline bool operator!=(const PushConstantsStruct& lhs, const PushConstantsStruct& rhs) noexcept
     {
-        if (!lhs._set && !rhs._set)
+        if ( !lhs._set && !rhs._set )
         {
             return false;
         }
 
-        return lhs._set  != rhs._set || lhs.data != rhs.data; 
+        if ( lhs._set != rhs._set )
+        {
+            return true;
+        }
+
+        for ( U8 i = 0u; i < PushConstantsStruct::PUSH_MATRIX_COUNT; ++i )
+        {
+            if ( lhs.data[i] != rhs.data[i] )
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 } //namespace Divide
 

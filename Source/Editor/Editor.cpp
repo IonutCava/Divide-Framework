@@ -181,11 +181,11 @@ namespace Divide
 
         ImGuiFs::Dialog::ExtraWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
 
-        _menuBar = eastl::make_unique<MenuBar>( context, true );
-        _statusBar = eastl::make_unique<StatusBar>( context );
-        _optionsWindow = eastl::make_unique<EditorOptionsWindow>( context );
+        _menuBar = std::make_unique<MenuBar>( context, true );
+        _statusBar = std::make_unique<StatusBar>( context );
+        _optionsWindow = std::make_unique<EditorOptionsWindow>( context );
 
-        _undoManager = eastl::make_unique<UndoManager>( 25 );
+        _undoManager = std::make_unique<UndoManager>( 25 );
         g_windowManager = &context.app().windowManager();
         _memoryEditorData = std::make_pair( nullptr, 0 );
         _nodePreviewBGColour = { 0.35f, 0.32f, 0.45f };
@@ -659,17 +659,18 @@ namespace Divide
                 const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y );
                 const Rect<I32> targetViewport{0, 0, fb_width, fb_height};
 
-                GFX::ScopedCommandBuffer sBuffer = GFX::AllocateScopedCommandBuffer();
-                GFX::CommandBuffer& buffer = sBuffer();
+                Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer();
+
                 GFX::MemoryBarrierCommand memCmd;
                 editor->renderDrawList(pDrawData,
                                        2 + targetWindow->getGUID(),
                                        targetViewport,
                                        true,
-                                       buffer,
+                                       *buffer._ptr,
                                        memCmd);
-                GFX::EnqueueCommand(buffer, memCmd);
-                context->gfx().flushCommandBuffer( buffer );
+                GFX::EnqueueCommand( buffer, memCmd );
+
+                context->gfx().flushCommandBuffer( MOV(buffer) );
             }
         };
 
@@ -729,7 +730,7 @@ namespace Divide
         gizmoContext = ImGui::CreateContext( io.Fonts );
         InitBasicImGUIState( gizmoContext->IO );
         gizmoContext->Viewports[0]->PlatformHandle = _mainWindow;
-        _gizmo = eastl::make_unique<Gizmo>( *this, gizmoContext );
+        _gizmo = std::make_unique<Gizmo>( *this, gizmoContext );
 
         SDL_SetHint( SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1" );
 
@@ -1265,13 +1266,14 @@ namespace Divide
             constexpr I32 viewportDim = 256;
             constexpr I32 viewportPadding = 6;
 
-            const Rect<I32> targetViewport = {
+            GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut)->_viewport =
+            {
                 windowWidth - (viewportDim - viewportPadding),
                 viewportPadding,
                 viewportDim,
-                viewportDim };
-        
-            GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ targetViewport } );
+                viewportDim
+            };
+
             _axisGizmo->getCommandBuffer( worldMatrix, bufferInOut, memCmdInOut );
         }
     }
@@ -1482,12 +1484,11 @@ namespace Divide
         {
             const ImVec4 windowBGColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
 
-            GFX::BeginRenderPassCommand beginRenderPassCmd{};
-            beginRenderPassCmd._target = SCREEN_TARGET_ID;
-            beginRenderPassCmd._name = "Render IMGUI [ External ]";
-            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = {{windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f}, true};
-            beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-            GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
+            auto beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
+            beginRenderPassCmd->_target = SCREEN_TARGET_ID;
+            beginRenderPassCmd->_name = "Render IMGUI [ External ]";
+            beginRenderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = {{windowBGColour.x, windowBGColour.y, windowBGColour.z, 1.f}, true};
+            beginRenderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
         }
         else
         {

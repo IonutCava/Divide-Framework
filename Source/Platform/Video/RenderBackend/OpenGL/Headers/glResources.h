@@ -60,38 +60,25 @@ struct ImageBindSettings
 {
     gl::GLuint _texture = 0;
     gl::GLint  _level = 0;
-    gl::GLboolean _layered = gl::GL_FALSE;
     gl::GLint _layer = 0;
     gl::GLenum _access = gl::GL_NONE;
     gl::GLenum _format = gl::GL_NONE;
+    gl::GLboolean _layered = gl::GL_FALSE;
 
-    void reset() noexcept {
-        _texture = 0;
-        _level = 0;
-        _layered = gl::GL_FALSE;
-        _layer = 0;
-        _access = gl::GL_NONE;
-        _format = gl::GL_NONE;
-    }
-
-    bool operator==(const ImageBindSettings& other) const {
-        return _texture == other._texture &&
-               _level == other._level &&
-               _layered == other._layered &&
-               _layer == other._layer &&
-               _access == other._access &&
-               _format == other._format;
-    }
-
-    bool operator!=(const ImageBindSettings& other) const {
-        return !(*this == other);
-    }
+    auto operator<=>( const ImageBindSettings&) const = default;
 };
 
 class VAOBindings
 {
 public:
-    using BufferBindingParams = std::tuple<gl::GLuint, size_t, size_t>;
+    struct BufferBindingParams 
+    {
+        gl::GLuint _id{0u};
+        size_t _offset{0u};
+        size_t _stride{0u};
+
+        auto operator<=>( const BufferBindingParams&) const = default;
+    };
 
 private:
     using VAOBufferData = vector_fast<BufferBindingParams>;

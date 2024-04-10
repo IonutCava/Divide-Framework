@@ -121,7 +121,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         }
     }
 
-    _postFX = eastl::make_unique<PostFX>(context, cache);
+    _postFX = std::make_unique<PostFX>(context, cache);
 
     if (config.rendering.postFX.postAA.qualityLevel > 0) {
         _postFX->pushFilter(FilterType::FILTER_SS_ANTIALIASING);

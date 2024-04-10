@@ -1,6 +1,7 @@
 
 
 #include "Headers/CommandBuffer.h"
+#include "Headers/CommandBufferPool.h"
 
 #include "Core/Headers/StringHelper.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -16,6 +17,19 @@ namespace Divide::GFX
 
 namespace
 {
+    FORCE_INLINE size_t GetReserveSize( const U8 typeIndex ) noexcept
+    {
+        switch ( static_cast<CommandType>(typeIndex) )
+        {
+            case CommandType::BIND_SHADER_RESOURCES: return 2;
+            case CommandType::SEND_PUSH_CONSTANTS: return 3;
+            case CommandType::DRAW_COMMANDS: return 4;
+            default: break;
+        }
+
+        return 1;
+    }
+
     [[nodiscard]] FORCE_INLINE bool ShouldSkipBatch( const CommandType type ) noexcept
     {
         switch ( type )
@@ -36,7 +50,7 @@ namespace
 
     [[nodiscard]] inline bool EraseEmptyCommands( CommandBuffer::CommandOrderContainer& commandOrder )
     {
-        return dvd_erase_if( commandOrder, []( const CommandBuffer::CommandEntry& entry ) noexcept { return entry._data == PolyContainerEntry::INVALID_ENTRY_ID;} );
+        return dvd_erase_if( commandOrder, []( const CommandEntry& entry ) noexcept { return entry._data == CommandEntry::INVALID_ENTRY_ID;} );
     }
 
     [[nodiscard]] inline bool RemoveEmptyLocks( GFX::MemoryBarrierCommand* memCmd )
@@ -62,17 +76,77 @@ namespace
     }
 }; //namespace
 
+    void ResetCommandBufferQueue( CommandBufferQueue& queue )
+    {
+        for (CommandBufferQueue::Entry& entry : queue._commandBuffers)
+        {
+            if (entry._owning)
+            {
+                DeallocateCommandBuffer( entry._buffer );
+            }
+        }
+
+        efficient_clear(queue._commandBuffers);
+    }
+
+    void AddCommandBufferToQueue( CommandBufferQueue& queue, const Handle<GFX::CommandBuffer>& commandBuffer )
+    {
+        queue._commandBuffers.emplace_back(
+        CommandBufferQueue::Entry
+        {
+            ._buffer = commandBuffer,
+            ._owning = false
+        });
+    }  
+    
+    void AddCommandBufferToQueue( CommandBufferQueue& queue, Handle<GFX::CommandBuffer>&& commandBuffer )
+    {
+        queue._commandBuffers.emplace_back(
+        CommandBufferQueue::Entry
+        {
+            ._buffer = MOV(commandBuffer),
+            ._owning = true
+        });
+    }
+
+    CommandBuffer::CommandBuffer( )
+    {
+        _commandOrder.resize(0);
+        _commandCount.fill( 0u );
+
+        for ( U8 i = 0; i < to_base( CommandType::COUNT ); ++i )
+        {
+            _collection[i].resize(0);
+
+            const auto reserveSize = GetReserveSize( i );
+            if ( reserveSize > 2 )
+            {
+                _collection[i].reserve( reserveSize );
+            }
+        }
+    }
+
     void CommandBuffer::add( const CommandBuffer& other )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        _commands.reserveAdditional( other._commands );
+        for ( U8 i = 0; i < to_base(CommandType::COUNT); ++i )
+        {
+            _collection[i].reserve( _collection[i].size() + other._commandCount[i] );
+        }
 
         for ( const CommandEntry& cmd : other._commandOrder )
         {
-            other.get<CommandBase>( cmd )->addToBuffer( this );
+            other.get(cmd)->addToBuffer( this );
         }
         _batched = false;
+    }
+
+    void CommandBuffer::add( Handle<CommandBuffer> other )
+    {
+        DIVIDE_ASSERT(other != INVALID_HANDLE<GFX::CommandBuffer> && other._ptr != nullptr);
+
+        add(*other._ptr);
     }
 
     void CommandBuffer::batch()
@@ -100,7 +174,7 @@ namespace
                 for ( CommandEntry& entry : _commandOrder )
                 {
                     const CommandType cmdType = static_cast<CommandType>(entry._idx._type);
-                    if ( entry._data == PolyContainerEntry::INVALID_ENTRY_ID || ShouldSkipBatch( cmdType ) )
+                    if ( entry._data == CommandEntry::INVALID_ENTRY_ID || ShouldSkipBatch( cmdType ) )
                     {
                         continue;
                     }
@@ -114,7 +188,7 @@ namespace
                          tryMergeCommands( cmdType, prevCommand, crtCommand ) )
                     {
                         --_commandCount[entry._idx._type];
-                        entry._data = PolyContainerEntry::INVALID_ENTRY_ID;
+                        entry._data = CommandEntry::INVALID_ENTRY_ID;
                         tryMerge = true;
                     }
                     else
@@ -195,7 +269,7 @@ namespace
         else
         {
             _commandOrder.clear();
-            _commandCount.fill( U24( 0u ) );
+            _commandCount.fill(0u);
         }
 
         _batched = true;
@@ -209,14 +283,20 @@ namespace
         }
 
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        while( cleanInternal() )
+        {
+            PROFILE_SCOPE("Clean Loop", Profiler::Category::Graphics);
+        }
+    }
 
+    bool CommandBuffer::cleanInternal()
+    {
         const Pipeline* prevPipeline = nullptr;
         const Rect<I32>* prevScissorRect = nullptr;
         const Rect<I32>* prevViewportRect = nullptr;
         const DescriptorSet* prevDescriptorSet = nullptr;
 
-        bool keepGoing = false;
-        const size_t initialCommandOrderSize = _commandOrder.size();
+        bool ret = false;
 
         for ( CommandEntry& cmd : _commandOrder )
         {
@@ -324,9 +404,10 @@ namespace
 
             if ( erase )
             {
-                keepGoing = true;
                 --_commandCount[cmd._idx._type];
-                cmd._data = PolyContainerEntry::INVALID_ENTRY_ID;
+                cmd._data = CommandEntry::INVALID_ENTRY_ID;
+
+                ret = true;
             }
         }
 
@@ -334,36 +415,32 @@ namespace
             PROFILE_SCOPE( "Remove redundant Pipelines", Profiler::Category::Graphics );
 
             // Remove redundant pipeline changes
-            auto* entry = eastl::next( begin( _commandOrder ) );
+            CommandEntry* entry = eastl::next( begin( _commandOrder ) );
             for ( ; entry != cend( _commandOrder ); ++entry )
             {
                 const U8 typeIndex = entry->_idx._type;
 
                 if ( static_cast<CommandType>(typeIndex) == CommandType::BIND_PIPELINE &&
-                        eastl::prev( entry )->_idx._type == typeIndex )
+                     eastl::prev( entry )->_idx._type == typeIndex )
                 {
                     --_commandCount[typeIndex];
-                    entry->_data = PolyContainerEntry::INVALID_ENTRY_ID;
-                    keepGoing = true;
+                    entry->_data = CommandEntry::INVALID_ENTRY_ID;
+                    ret = true;
                 }
             }
         }
         {
             PROFILE_SCOPE( "Remove invalid commands", Profiler::Category::Graphics );
-            erase_if( _commandOrder, []( const CommandEntry& entry ) noexcept
-                        {
-                            return entry._data == PolyContainerEntry::INVALID_ENTRY_ID;
-                        } );
-            if ( _commandOrder.size() != initialCommandOrderSize )
+            if (erase_if( _commandOrder, []( const CommandEntry& entry ) noexcept
+                         {
+                             return entry._data == CommandEntry::INVALID_ENTRY_ID;
+                         } ) > 0u)
             {
-                keepGoing = true;
+                ret = true;
             }
         }
 
-        if ( keepGoing )
-        {
-            clean();
-        }
+        return ret;
     }
 
     // New use cases that emerge from production work should be checked here.
@@ -395,9 +472,12 @@ namespace
                     pushedPass = true;
 
                     auto beginRenderPassCmd = get<GFX::BeginRenderPassCommand>( cmd );
-                    if (!std::any_of( beginRenderPassCmd->_descriptor._writeLayers.cbegin(), beginRenderPassCmd->_descriptor._writeLayers.cend(), []( const DrawLayerEntry& it ){return it._layer != INVALID_INDEX;}))
+                    for ( const auto& it : beginRenderPassCmd->_descriptor._writeLayers )
                     {
-                        return { ErrorType::INVALID_BEGIN_RENDER_PASS, cmdIndex };
+                        if ( it._layer == INVALID_INDEX )
+                        {
+                            return { ErrorType::INVALID_BEGIN_RENDER_PASS, cmdIndex };
+                        }
                     }
                 } break;
                 case CommandType::END_RENDER_PASS:
@@ -545,18 +625,18 @@ namespace
             case CommandType::BEGIN_RENDER_PASS:
             case CommandType::BEGIN_DEBUG_SCOPE:
             {
-                append( out, GFX::ToString( cmd, to_U16( crtIndent ) ), crtIndent );
+                append( out, GFX::ToString( cmd, type, to_U16( crtIndent ) ), crtIndent );
                 ++crtIndent;
             }break;
             case CommandType::END_RENDER_PASS:
             case CommandType::END_DEBUG_SCOPE:
             {
                 --crtIndent;
-                append( out, GFX::ToString( cmd, to_U16( crtIndent ) ), crtIndent );
+                append( out, GFX::ToString( cmd, type, to_U16( crtIndent ) ), crtIndent );
             }break;
             default:
             {
-                append( out, GFX::ToString( cmd, to_U16( crtIndent ) ), crtIndent );
+                append( out, GFX::ToString( cmd, type, to_U16( crtIndent ) ), crtIndent );
             }break;
         }
     }
@@ -608,7 +688,7 @@ namespace
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DrawCommand::CommandContainer& commands = prevCommand->_drawCommands;
+        auto& commands = prevCommand->_drawCommands;
         commands.insert( cend( commands ),
                             eastl::make_move_iterator( begin( crtCommand->_drawCommands ) ),
                             eastl::make_move_iterator( end( crtCommand->_drawCommands ) ) );

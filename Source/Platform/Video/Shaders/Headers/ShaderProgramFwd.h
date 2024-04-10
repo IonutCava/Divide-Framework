@@ -44,13 +44,15 @@ namespace Divide {
     using ShaderProgramHandle = PoolHandle;
     static constexpr ShaderProgramHandle SHADER_INVALID_HANDLE{ U16_MAX, U8_MAX };
 
-    enum class ShaderResult : U8 {
+    enum class ShaderResult : U8
+    {
         Failed = 0,
         OK,
         COUNT
     };
 
-    struct ModuleDefine {
+    struct ModuleDefine
+    {
         ModuleDefine() = default;
         ModuleDefine(const char* define, const bool addPrefix = true);
         ModuleDefine(const string& define, const bool addPrefix = true);
@@ -61,7 +63,8 @@ namespace Divide {
 
     using ModuleDefines = vector<ModuleDefine>;
 
-    struct ShaderModuleDescriptor {
+    struct ShaderModuleDescriptor
+    {
         ShaderModuleDescriptor() = default;
         explicit ShaderModuleDescriptor(ShaderType type, const Str<64>& file, const Str<64>& variant = "");
 
@@ -71,7 +74,8 @@ namespace Divide {
         ShaderType _moduleType = ShaderType::COUNT;
     };
 
-    struct ShaderProgramDescriptor final : public PropertyDescriptor {
+    struct ShaderProgramDescriptor final : public PropertyDescriptor
+    {
         ShaderProgramDescriptor() noexcept;
 
         size_t getHash() const noexcept override;
@@ -81,7 +85,8 @@ namespace Divide {
         bool _useShaderCache{true};
     };
 
-    struct ShaderProgramMapEntry {
+    struct ShaderProgramMapEntry
+    {
         ShaderProgram* _program = nullptr;
         U8 _generation = 0u;
     };

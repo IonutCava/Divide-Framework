@@ -49,8 +49,7 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
 
     for (U8 i = 0u; i < to_base(RenderStage::COUNT); ++i)
     {
-        const string timerName = Util::StringFormat("Process Command Buffers [ {} ]", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
-        _processCommandBufferTimer[i] = &Time::ADD_TIMER(timerName.c_str());
+        _processCommandBufferTimer[i] = &Time::ADD_TIMER( Util::StringFormat( "Process Command Buffers [ {} ]", TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ) ).c_str());
         _flushCommandBufferTimer->addChildTimer(*_processCommandBufferTimer[i]);
     }
 
@@ -62,27 +61,13 @@ RenderPassManager::~RenderPassManager()
 {
     for (auto& data : _renderPassData)
     {
-        if (data._cmdBuffer != nullptr)
-        {
-            DeallocateCommandBuffer(data._cmdBuffer);
-        }
+        DeallocateCommandBuffer(data._cmdBuffer);
         MemoryManager::SAFE_DELETE(data._pass);
     }
 
-    if (_postFXCmdBuffer != nullptr)
-    {
-        DeallocateCommandBuffer(_postFXCmdBuffer);
-    }
-
-    if (_postRenderBuffer != nullptr)
-    {
-        DeallocateCommandBuffer(_postRenderBuffer);
-    } 
-
-    if (_skyLightRenderBuffer != nullptr)
-    {
-        DeallocateCommandBuffer(_skyLightRenderBuffer);
-    }
+    DeallocateCommandBuffer(_postFXCmdBuffer);
+    DeallocateCommandBuffer(_postRenderBuffer);
+    DeallocateCommandBuffer(_skyLightRenderBuffer);
 }
 
 void RenderPassManager::postInit()
@@ -157,13 +142,13 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                            PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
 
-                                           passData._cmdBuffer->clear(false);
+                                           passData._cmdBuffer._ptr->clear(false);
 
                                            passData._memCmd = {};
-                                           passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *passData._cmdBuffer, passData._memCmd);
+                                           passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *passData._cmdBuffer._ptr, passData._memCmd);
 
                                            Time::ScopedTimer timeGPUFlush( *_processCommandBufferTimer[i] );
-                                           passData._cmdBuffer->batch();
+                                           passData._cmdBuffer._ptr->batch();
 
                                            if (!passData._pass->dependencies().empty())
                                            {
@@ -182,7 +167,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                                });
                                             }
 
-                                            gfx.flushCommandBuffer(*passData._cmdBuffer, true);
+                                            gfx.flushCommandBuffer( passData._cmdBuffer );
                                             _renderPassCompleted[i].store(true);
 
                                            LockGuard<Mutex> w_lock( _waitForDependenciesLock );
@@ -223,12 +208,12 @@ void RenderPassManager::render(const RenderParams& params)
        GFX::MemoryBarrierCommand memCmd{};
        {
             PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
-            _skyLightRenderBuffer->clear(false);
-            gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer, memCmd );
-            SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer, memCmd );
+            _skyLightRenderBuffer._ptr->clear(false);
+            gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer._ptr, memCmd );
+            SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer._ptr, memCmd );
        }
 
-       GFX::CommandBuffer& buf = *_postRenderBuffer;
+       GFX::CommandBuffer& buf = *_postRenderBuffer._ptr;
        buf.clear(false);
 
        const Rect<I32>& targetViewport = params._targetViewport;
@@ -275,21 +260,23 @@ void RenderPassManager::render(const RenderParams& params)
         PROFILE_SCOPE("RenderPassManager::FlushCommandBuffers", Profiler::Category::Scene );
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
 
-        gfx.flushCommandBuffer(*_skyLightRenderBuffer);
+        gfx.flushCommandBuffer(_skyLightRenderBuffer);
 
         { //PostFX should be pretty fast
             PROFILE_SCOPE( "PostFX: CommandBuffer build", Profiler::Category::Scene );
 
-            _postFXCmdBuffer->clear( false );
+            _postFXCmdBuffer._ptr->clear( false );
 
             Time::ScopedTimer time( *_postFxRenderTimer );
-            _context.getRenderer().postFX().apply( params._playerPass, cam->snapshot(), *_postFXCmdBuffer );
+            _context.getRenderer().postFX().apply( params._playerPass, cam->snapshot(), *_postFXCmdBuffer._ptr );
+
+            _postFXCmdBuffer._ptr->batch();
         }
         Wait( *renderTask, pool );
 
         if constexpr ( Config::Build::ENABLE_EDITOR )
         {
-            Attorney::EditorRenderPassExecutor::getCommandBuffer(context.editor(), *_postRenderBuffer, flushMemCmd);
+            Attorney::EditorRenderPassExecutor::getCommandBuffer(context.editor(), *_postRenderBuffer._ptr, flushMemCmd);
         }
         _parent.platformContext().idle();
 
@@ -304,12 +291,12 @@ void RenderPassManager::render(const RenderParams& params)
 
     {
         PROFILE_SCOPE( "PostFX: CommandBuffer flush", Profiler::Category::Scene );
-        _context.flushCommandBuffer( *_postFXCmdBuffer, false );
+        _context.flushCommandBuffer( _postFXCmdBuffer );
     }
     {
         Time::ScopedTimer time(*_blitToDisplayTimer);
-        GFX::EnqueueCommand( *_postRenderBuffer, flushMemCmd );
-        gfx.flushCommandBuffer(*_postRenderBuffer, false);
+        GFX::EnqueueCommand( _postRenderBuffer, flushMemCmd );
+        gfx.flushCommandBuffer( _postRenderBuffer );
     }
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
@@ -343,7 +330,7 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
         item = _renderPassData[to_base(renderStage)]._pass;
         item->dependencies(dependencies);
     } else {
-        _executors[to_base(renderStage)] = eastl::make_unique<RenderPassExecutor>(*this, _context, renderStage);
+        _executors[to_base(renderStage)] = std::make_unique<RenderPassExecutor>(*this, _context, renderStage);
         item = MemoryManager_NEW RenderPass(*this, _context, renderStage, dependencies);
         _renderPassData[to_base(renderStage)]._pass = item;
 

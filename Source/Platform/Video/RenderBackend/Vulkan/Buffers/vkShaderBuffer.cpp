@@ -32,7 +32,7 @@ namespace Divide
 
         const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_SHADER_BUFFER_{}", getGUID() ) : (_name + "_SHADER_BUFFER");
 
-        _bufferImpl = eastl::make_unique<vkBufferImpl>( _params,
+        _bufferImpl = std::make_unique<vkBufferImpl>( _params,
                                                         _alignedBufferSize,
                                                         queueLength(),
                                                         descriptor._initialData,

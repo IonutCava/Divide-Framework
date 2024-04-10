@@ -67,16 +67,16 @@ do {                                                  \
 #endif //TO_STRING
 
 /// Makes writing and reading smart pointer types easier and cleaner
-/// Faster to write ClassName_uptr than eastl::unique_ptr<ClassName>
+/// Faster to write ClassName_uptr than std::unique_ptr<ClassName>
 /// Also cleaner and easier to read the managed type in nested templated parameters 
-/// e.g. std::pair<ClassNameA_uptr, ClassNameB_wptr> vs std::pair<eastl::unique_ptr<ClassNameA>, std::weak_ptr<ClassNameB>>
+/// e.g. std::pair<ClassNameA_uptr, ClassNameB_wptr> vs std::pair<std::unique_ptr<ClassNameA>, std::weak_ptr<ClassNameB>>
 /// Also makes it easier to switch smart pointer implementations (i.e. eastl for unique_ptr) using a centralized location
 #define TYPEDEF_SMART_POINTERS_FOR_TYPE(T)       \
     using T ## _wptr  = std::weak_ptr<T>;        \
     using T ## _ptr   = std::shared_ptr<T>;      \
     using T ## _cwptr = std::weak_ptr<const T>;  \
     using T ## _cptr  = std::shared_ptr<const T>;\
-    using T ## _uptr  = eastl::unique_ptr<T>;
+    using T ## _uptr  = std::unique_ptr<T>;
 
 
 #define FWD_DECLARE_MANAGED_CLASS(T)      \
@@ -516,6 +516,21 @@ namespace detail {
     }
 } //namespace detail
 
+
+template <typename T>
+struct Handle
+{
+    T* _ptr{nullptr};
+
+    U32 _generation: 8;
+    U32 _index : 24;
+
+    auto operator<=>( const Handle& ) const = default;
+};
+
+template<typename T>
+inline constexpr Handle<T> INVALID_HANDLE{ nullptr, U8_MAX, U24_MAX };
+
 #define SCOPE_FAIL auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
 #define SCOPE_SUCCESS auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnSuccess() + [&]()
 #define SCOPE_EXIT auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept
@@ -713,8 +728,6 @@ namespace Assert {
 #define DIVIDE_UNEXPECTED_CALL_MSG(X) DIVIDE_ASSERT(false, X)
 #define DIVIDE_UNEXPECTED_CALL() DIVIDE_UNEXPECTED_CALL_MSG("UNEXPECTED CALL")
 
-#define DIVIDE_UNUSED(X) ((void)X)
-
 template <typename Ret, typename... Args >
 using DELEGATE_EASTL = eastl::function< Ret(Args...) >;
 
@@ -725,34 +738,6 @@ template <typename Ret, typename... Args >
 using DELEGATE = DELEGATE_STD<Ret, Args...>;
 
 [[nodiscard]] U16 HardwareThreadCount() noexcept;
-
-/// Wrapper that allows usage of atomic variables in containers
-/// Copy is not atomic! (e.g. push/pop from containers is not threadsafe!)
-/// ref: http://stackoverflow.com/questions/13193484/how-to-declare-a-vector-of-atomic-in-c
-template <typename T>
-struct AtomicWrapper : private NonMovable
-{
-    std::atomic<T> _a;
-
-    AtomicWrapper() : _a() {}
-    explicit AtomicWrapper(const std::atomic<T> &a) :_a(a.load()) {}
-    AtomicWrapper(const AtomicWrapper &other) : _a(other._a.load()) { }
-    ~AtomicWrapper() = default;
-
-    AtomicWrapper &operator=(const AtomicWrapper &other) {
-        _a.store(other._a.load());
-        return *this;
-    }
-
-    AtomicWrapper &operator=(const T &value) {
-        _a.store(value);
-        return *this;
-    }
-
-    bool operator==(const T &value) const {
-        return _a == value;
-    }
-};
 
 };  // namespace Divide
 

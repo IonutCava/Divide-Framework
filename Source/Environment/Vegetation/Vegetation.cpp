@@ -717,7 +717,10 @@ namespace Divide
     {
         pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, _terrainChunk.ID() );
 
-        GFX::CommandBuffer& bufferInOut = *GetCommandBuffer( pkg );
+        Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( pkg );
+        DIVIDE_ASSERT(cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer>);
+
+        GFX::CommandBuffer& bufferInOut = *cmdBuffer._ptr;
         bufferInOut.clear( false );
 
         if ( s_grassData || s_treeData )

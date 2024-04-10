@@ -201,7 +201,7 @@ DeviceAllocator::DeviceAllocator(const GLMemoryType memoryType) noexcept
 void DeviceAllocator::init(const size_t size)
 {
     deallocate();
-    _chunkAllocator = eastl::make_unique<ChunkAllocator>(size);
+    _chunkAllocator = std::make_unique<ChunkAllocator>(size);
 }
 
 Block DeviceAllocator::allocate(const bool poolAllocations,

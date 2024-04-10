@@ -249,6 +249,7 @@ class Scene : public Resource, public PlatformContextComponent {
         PROPERTY_R_IW(bool, loadComplete, false);
         PROPERTY_R_IW(U64, sceneRuntimeUS, 0ULL);
         PROPERTY_R(SceneEntry, entry);
+        PROPERTY_R(U8, playerCount, 0u);
 
     protected:
         enum class TimerClass : U8
@@ -306,7 +307,6 @@ class Scene : public Resource, public PlatformContextComponent {
         void onPlayerRemove(const Player_ptr& player);
         void currentPlayerPass( PlayerIndex idx);
 
-        [[nodiscard]] U8      playerCount() const noexcept;
         [[nodiscard]] U8      getSceneIndexForPlayer(PlayerIndex idx) const;
         [[nodiscard]] Player* getPlayerForIndex(PlayerIndex idx) const;
         [[nodiscard]] U8      getPlayerIndexForDevice(U8 deviceIndex) const;
@@ -451,11 +451,6 @@ class SceneProjectManager
     [[nodiscard]] static PlayerList& getPlayers( Scene& scene) noexcept
     {
         return scene._scenePlayers;
-    }
-
-    [[nodiscard]] static U8 playerCount( const Scene& scene ) noexcept
-    {
-        return scene.playerCount();
     }
 
     friend class Divide::Project;

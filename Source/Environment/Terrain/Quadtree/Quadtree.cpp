@@ -8,7 +8,7 @@
 namespace Divide {
 
 Quadtree::Quadtree()
-    : _root(eastl::make_unique<QuadtreeNode>(this))
+    : _root(std::make_unique<QuadtreeNode>(this))
 {
 }
 

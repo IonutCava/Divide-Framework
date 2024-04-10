@@ -19,6 +19,8 @@
 #include <string.h>
 #include <thread>
 
+#include <filesystem>
+
 #include <SDL_image.h>
 #include <SDL_surface.h>
 #include <SDL.h>
@@ -67,7 +69,7 @@ static std::string GetLastErrorAsString()
 
 [[nodiscard]] std::pair<std::string, bool> Startup( const char* lpApplicationName, const char* params, const std::filesystem::path& workingDir )
 {
-    const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir.c_str() , SW_SHOWNORMAL );
+    const auto ret = ShellExecute( NULL, "open", lpApplicationName, params, workingDir.string().c_str() , SW_SHOWNORMAL );
     if (int(ret) <= 32)
     {
         return {fmt::format( ERRORS[0], lpApplicationName, GetLastErrorAsString() ), true };
@@ -85,10 +87,54 @@ std::pair<std::string, bool> Startup( [[maybe_unused]] const char* lpApplication
 }
 #endif //IS_WINDOWS_BUILD
 
+static_assert(std::size( BuildTargetNames ) == uint8_t( BuildTarget::COUNT ) + 1u, "BuildTarget name array out of sync!");
+static_assert(std::size( BuildTypetNames ) == uint8_t( BuildType::COUNT ) + 1u, "BuildType name array out of sync!");
+
+struct BuildConfig
+{
+    using Builds = std::array<bool, uint8_t( BuildType::COUNT )>;
+    using Targets = std::array<Builds, uint8_t( BuildTarget::COUNT )>;
+
+    std::string _toolchainName;
+    Targets _targets;
+};
+
+struct Image
+{
+    explicit Image( const std::filesystem::path& path, SDL_Renderer* renderer );
+    ~Image();
+
+    const std::filesystem::path _path;
+    SDL_Surface* _surface = nullptr;
+    SDL_Texture* _texture = nullptr;
+    int _width = 1, _height = 1, _access = 0;
+    uint32_t _format = 0u;
+    float _aspectRatio = 1.f;
+
+    bool operator==( const Image& other ) const noexcept;
+};
+
+using Image_ptr = std::shared_ptr<Image>;
+using ImageDB = std::vector<Image_ptr>;
+
+struct ProjectEntry
+{
+    std::string _name;
+    std::string _path;
+    bool _selected{ false };
+    bool _isDefault{ false };
+    std::weak_ptr<Image> _logo;
+    std::string _logoName{ DEFAULT_ICON_NAME };
+    std::string _logoPath;
+    std::vector<std::string> _sceneList;
+};
+
+using ProjectDB = std::vector<ProjectEntry>;
+
 Image::Image( const std::filesystem::path& path, SDL_Renderer* renderer )
     : _path( path )
 {
-    _surface = IMG_Load( path.c_str() );
+    _surface = IMG_Load( path.string().c_str() );
     assert( _surface );
     _texture = SDL_CreateTextureFromSurface( renderer, _surface );
     assert( _texture );
@@ -176,7 +222,7 @@ static void SetTooltip( const char* text )
     }
     catch ( std::exception& )
     {
-        g_globalMessage = fmt::format( ERRORS[1], search_path.c_str() );
+        g_globalMessage = fmt::format( ERRORS[1], search_path.string() );
     }
 
     return std::nullopt;
@@ -247,7 +293,7 @@ static boost::property_tree::iptree GetXmlTree(std::filesystem::path filePath)
     }
     catch ( boost::property_tree::xml_parser_error& e )
     {
-        g_globalMessage = fmt::format( ERRORS[7], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).c_str(), e.what() );
+        g_globalMessage = fmt::format( ERRORS[7], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string(), e.what() );
     }
 
     return XmlTree;
@@ -283,7 +329,7 @@ static void saveConfig()
     }
     catch ( boost::property_tree::xml_parser_error& e )
     {
-        g_globalMessage = fmt::format( ERRORS[8], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).c_str(), e.what() );
+        g_globalMessage = fmt::format( ERRORS[8], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string(), e.what() );
     }
 }
 
@@ -338,7 +384,7 @@ static void populateProjects( ProjectDB& projects, SDL_Renderer* renderer, Image
     }
     catch ( std::exception& e)
     {
-        g_globalMessage = fmt::format( ERRORS[2], (g_projectPath / PROJECTS_FOLDER_NAME).c_str(), e.what() );
+        g_globalMessage = fmt::format( ERRORS[2], (g_projectPath / PROJECTS_FOLDER_NAME).string(), e.what() );
         if (!retry)
         {
             std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
@@ -372,7 +418,6 @@ static ProjectEntry* getDefaultProject( ProjectDB& projects)
 
     return nullptr;
 }
-
 
 int main( int, char** )
 {
@@ -487,7 +532,7 @@ int main( int, char** )
     bool haveMissingBuildTargets = false;
     auto OnSelectionChanged = [&](bool isComboBox = false)
     {
-        g_globalMessage = fmt::format( CURRENT_DIR_MSG, g_projectPath.c_str() );
+        g_globalMessage = fmt::format( CURRENT_DIR_MSG, g_projectPath.string() );
 
         if (isComboBox)
         {
@@ -1060,7 +1105,7 @@ int main( int, char** )
                         {
                             case 0:
                             {
-                                 const auto[msg, error] = Startup( g_ideLaunchCommand.c_str(), g_projectPath.c_str(), g_projectPath ); 
+                                 const auto[msg, error] = Startup( g_ideLaunchCommand.c_str(), g_projectPath.string().c_str(), g_projectPath ); 
                                  g_globalMessage = msg;
                                  if (!error)
                                  {

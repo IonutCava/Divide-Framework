@@ -16,24 +16,6 @@ using namespace gl;
 
 namespace Divide
 {
-    bool operator==( const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs ) noexcept
-    {
-        return lhs._attState == rhs._attState &&
-               lhs._layer._layer == rhs._layer._layer &&
-               lhs._layer._cubeFace == rhs._layer._cubeFace &&
-               lhs._levelOffset == rhs._levelOffset &&
-               lhs._layeredRendering == rhs._layeredRendering;
-    }
-
-    bool operator!=( const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs ) noexcept
-    {
-        return lhs._attState != rhs._attState ||
-               lhs._layer._layer != rhs._layer._layer ||
-               lhs._layer._cubeFace != rhs._layer._cubeFace ||
-               lhs._levelOffset != rhs._levelOffset ||
-               lhs._layeredRendering != rhs._layeredRendering;
-    }
-
     glFramebuffer::glFramebuffer( GFXDevice& context, const RenderTargetDescriptor& descriptor )
         : RenderTarget( context, descriptor )
         , _debugMessage(("Render Target: [ " + name() + " ]").c_str())
@@ -52,7 +34,7 @@ namespace Divide
         }
 
         // Everything disabled so that the initial "begin" will override this
-        _previousPolicy._drawMask.fill(false);
+        std::ranges::fill(_previousPolicy._drawMask, false);
         _attachmentState.resize( GFXDevice::GetDeviceInformation()._maxRTColourAttachments + 1u + 1u ); //colours + depth-stencil
     }
 
@@ -400,7 +382,20 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( _colourBuffers._dirty || _previousPolicy._drawMask != drawPolicy._drawMask )
+        bool change = _colourBuffers._dirty;
+        if (!change)
+        {
+            for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i)
+            {
+                if ( _previousPolicy._drawMask[i] != drawPolicy._drawMask[i] )
+                {
+                    change = true;
+                    break;
+                }
+            }
+        }
+
+        if ( change )
         {
             bool set = false;
             // handle colour buffers first

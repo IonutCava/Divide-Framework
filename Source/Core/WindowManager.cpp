@@ -6,6 +6,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Headers/CommandBufferPool.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide
@@ -224,6 +225,7 @@ void WindowManager::close()
     s_cursors.fill(nullptr);
 
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    GFX::DestroyPools();
 }
 
 DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, ErrorCode& err )

@@ -141,7 +141,7 @@ namespace Divide {
                 }
                 else if (std::filesystem::is_directory(x.path()))
                 {
-                    auto& childDirectory = directoryOut._children.emplace_back(eastl::make_unique<Directory>());
+                    auto& childDirectory = directoryOut._children.emplace_back(std::make_unique<Directory>());
                     getDirectoryStructureForPath(ResourcePath(x.path()), *childDirectory);
                 }
             }

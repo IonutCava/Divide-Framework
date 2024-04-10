@@ -7,62 +7,66 @@ namespace GFX {
 
 static CommandBufferPool g_sCommandBufferPool;
 
-void InitPools() noexcept
-{
-    g_sCommandBufferPool.reset();
-}
-
 void DestroyPools() noexcept
 {
     g_sCommandBufferPool.reset();
 }
 
+CommandBufferPool::~CommandBufferPool()
+{
+    DIVIDE_ASSERT(_bufferCount == 0);
+}
+
 void CommandBufferPool::reset() noexcept
 {
+    LockGuard<Mutex> lock( _mutex );
     _pool = {};
+    ++_generation;
 }
 
-CommandBuffer* CommandBufferPool::allocateBuffer()
+Handle<CommandBuffer> CommandBufferPool::allocateBuffer()
 {
     LockGuard<Mutex> lock(_mutex);
-    return _pool.newElement();
+    return Handle<CommandBuffer>
+    {
+        ._ptr = _pool.newElement(),
+        ._generation = _generation,
+        ._index = _bufferCount++
+    };
 }
 
-void CommandBufferPool::deallocateBuffer(CommandBuffer*& buffer)
+void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& buffer)
 {
-    if (buffer != nullptr)
+    if (buffer != INVALID_HANDLE<CommandBuffer>)
     {
+
         LockGuard<Mutex> lock(_mutex);
-        _pool.deleteElement(buffer);
-        buffer = nullptr;
+        if (buffer._generation == _generation)
+        {
+            if ( buffer._ptr != nullptr )
+            {
+                _pool.deleteElement( buffer._ptr );
+            }
+            --_bufferCount;
+        }
+        else
+        {
+            // Pool was reset and all command buffers deallocated in bulk
+            NOP();
+        }
+
+        buffer = INVALID_HANDLE<CommandBuffer>;
     }
 }
 
-ScopedCommandBuffer::ScopedCommandBuffer()
-    : _buffer(AllocateCommandBuffer())
-{
-}
-
-ScopedCommandBuffer::~ScopedCommandBuffer()
-{
-    DeallocateCommandBuffer(_buffer);
-}
-
-
-ScopedCommandBuffer AllocateScopedCommandBuffer() {
-    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-    return ScopedCommandBuffer();
-}
-
-CommandBuffer* AllocateCommandBuffer()
+Handle<CommandBuffer> AllocateCommandBuffer()
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     return g_sCommandBufferPool.allocateBuffer();
 }
 
-void DeallocateCommandBuffer(CommandBuffer*& buffer)
+void DeallocateCommandBuffer( Handle<CommandBuffer>& buffer)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

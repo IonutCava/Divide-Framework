@@ -33,7 +33,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_DATA_TYPES_H_
 #define DVD_PLATFORM_DATA_TYPES_H_
 
-#include <cassert>
+#include <type_traits> //std::underlying_type_t
+#include <cstddef> //std::byte
+#include <limits>
 
 namespace Divide
 {
@@ -94,70 +96,72 @@ namespace Divide
 
     using Byte = std::byte;
 
-#define U8_MAX  std::numeric_limits<U8>::max()
-#define U16_MAX std::numeric_limits<U16>::max()
-#define U32_MAX std::numeric_limits<U32>::max()
-#define U64_MAX std::numeric_limits<U64>::max()
-#define I8_MAX  std::numeric_limits<I8>::max()
-#define I16_MAX std::numeric_limits<I16>::max()
-#define I32_MAX std::numeric_limits<I32>::max()
-#define I64_MAX std::numeric_limits<I64>::max()
-#define F32_MAX std::numeric_limits<F32>::max()
-#define D64_MAX std::numeric_limits<D64>::max()
+constexpr U8  U8_MAX  = std::numeric_limits<U8>::max();
+constexpr U16 U16_MAX = std::numeric_limits<U16>::max();
+constexpr U32 U24_MAX = (1 << 24u) - 1u;
+constexpr U32 U32_MAX = std::numeric_limits<U32>::max();
+constexpr U64 U64_MAX = std::numeric_limits<U64>::max();
+constexpr I8  I8_MAX  = std::numeric_limits<I8>::max();
+constexpr I16 I16_MAX = std::numeric_limits<I16>::max();
+constexpr I32 I24_MAX = (1 << 23) - 1;
+constexpr I32 I32_MAX = std::numeric_limits<I32>::max();
+constexpr I64 I64_MAX = std::numeric_limits<I64>::max();
+constexpr F32 F32_MAX = std::numeric_limits<F32>::max();
+constexpr D64 D64_MAX = std::numeric_limits<D64>::max();
 
-#define U8x_MAX  std::numeric_limits<U8x>::max()
-#define U16x_MAX std::numeric_limits<U16x>::max()
-#define U32x_MAX std::numeric_limits<U32x>::max()
-#define U64x_MAX std::numeric_limits<U64x>::max()
-#define I8x_MAX  std::numeric_limits<I8x>::max()
-#define I16x_MAX std::numeric_limits<I16x>::max()
-#define I32x_MAX std::numeric_limits<I32x>::max()
-#define I64x_MAX std::numeric_limits<I64x>::max()
+constexpr U8x  U8x_MAX  = std::numeric_limits<U8x>::max();
+constexpr U16x U16x_MAX = std::numeric_limits<U16x>::max();
+constexpr U32x U32x_MAX = std::numeric_limits<U32x>::max();
+constexpr U64x U64x_MAX = std::numeric_limits<U64x>::max();
+constexpr I8x  I8x_MAX  = std::numeric_limits<I8x>::max();
+constexpr I16x I16x_MAX = std::numeric_limits<I16x>::max();
+constexpr I32x I32x_MAX = std::numeric_limits<I32x>::max();
+constexpr I64x I64x_MAX = std::numeric_limits<I64x>::max();
 
-#define u8_MAX U8_MAX
-#define u16_MAX U16_MAX
-#define u32_MAX U32_MAX
-#define u64_MAX U64_MAX
-#define s8_MAX I8_MAX
-#define s16_MAX I16_MAX
-#define s32_MAX I32_MAX
-#define s64_MAX I64_MAX
+constexpr u8  u8_MAX  = U8_MAX;
+constexpr u16 u16_MAX = U16_MAX;
+constexpr u32 u32_MAX = U32_MAX;
+constexpr u64 u64_MAX = U64_MAX;
+constexpr s8  s8_MAX  = I8_MAX;
+constexpr s16 s16_MAX = I16_MAX;
+constexpr s32 s32_MAX = I32_MAX;
+constexpr s64 s64_MAX = I64_MAX;
 
-#define u8x_MAX U8x_MAX
-#define u16x_MAX U16x_MAX
-#define u32x_MAX U32x_MAX
-#define u64x_MAX U64x_MAX
-#define s8x_MAX I8x_MAX
-#define s16x_MAX I16x_MAX
-#define s32x_MAX I32x_MAX
-#define s64x_MAX I64x_MAX
+constexpr u8x  u8x_MAX  = U8x_MAX;
+constexpr u16x u16x_MAX =U16x_MAX;
+constexpr u32x u32x_MAX =U32x_MAX;
+constexpr u64x u64x_MAX =U64x_MAX;
+constexpr s8x s8x_MAX  = I8x_MAX;
+constexpr s16x s16x_MAX =I16x_MAX;
+constexpr s32x s32x_MAX =I32x_MAX;
+constexpr s64x s64x_MAX =I64x_MAX;
 
-#define F32_INFINITY std::numeric_limits<F32>::infinity()
+constexpr F32 F32_INFINITY = std::numeric_limits<F32>::infinity();
 
-#define F32_LOWEST std::numeric_limits<F32>::lowest()
-#define I64_LOWEST std::numeric_limits<I64>::lowest()
+constexpr F32 F32_LOWEST = std::numeric_limits<F32>::lowest();
+constexpr I64 I64_LOWEST = std::numeric_limits<I64>::lowest();
 
-#define U8_ONE U8(1u)
-#define U16_ONE U16(1u)
-#define U32_ONE 1u
-#define U64_ONE 1u
-#define I8_ONE I8(1)
-#define I16_ONE I16(1)
-#define I32_ONE 1
-#define I64_ONE 1
-#define F32_ONE 1.f
-#define D64_ONE 1.0
+constexpr U8  U8_ONE  = U8(1u);
+constexpr U16 U16_ONE = U16(1u);
+constexpr U32 U32_ONE = 1u;
+constexpr U64 U64_ONE = 1u;
+constexpr I8  I8_ONE  = I8(1);
+constexpr I16 I16_ONE = I16(1);
+constexpr I32 I32_ONE = 1;
+constexpr I64 I64_ONE = 1;
+constexpr F32 F32_ONE = 1.f;
+constexpr D64 D64_ONE = 1.0;
 
-#define U8_ZERO U8(0u)
-#define U16_ZERO U16(0u)
-#define U32_ZERO 0u
-#define U64_ZERO 0u
-#define I8_ZERO I8(0)
-#define I16_ZERO I16(0)
-#define I32_ZERO 0
-#define I64_ZERO 0
-#define F32_ZERO 0.f
-#define D64_ZERO 0.0
+constexpr U8  U8_ZERO  = U8(0u);
+constexpr U16 U16_ZERO = U16(0u);
+constexpr U32 U32_ZERO = 0u;
+constexpr U64 U64_ZERO = 0u;
+constexpr I8  I8_ZERO  = I8(0);
+constexpr I16 I16_ZERO = I16(0);
+constexpr I32 I32_ZERO = 0;
+constexpr I64 I64_ZERO = 0;
+constexpr F32 F32_ZERO = 0.f;
+constexpr D64 D64_ZERO = 0.0;
 
 //ref: https://foonathan.net/2020/09/move-forward/
 // static_cast to rvalue reference
@@ -173,15 +177,9 @@ namespace Divide
         U8  b[4];
 
         P32() = default;
-        P32( const U32 val ) noexcept : i( val )
-        {
-        }
-        P32( const U8 b1, const U8 b2, const U8 b3, const U8 b4 ) noexcept : b{ b1, b2, b3, b4 }
-        {
-        }
-        P32( U8* bytes ) noexcept : b{ bytes[0], bytes[1], bytes[2], bytes[3] }
-        {
-        }
+        P32( const U32 val ) noexcept ;
+        P32( const U8 b1, const U8 b2, const U8 b3, const U8 b4 ) noexcept;
+        P32( U8* bytes ) noexcept;
     };
 
     static const P32 P32_FLAGS_TRUE = { 1u, 1u, 1u, 1u };
@@ -193,16 +191,9 @@ namespace Divide
         U8  b[8];
 
         P64() = default;
-        P64( const U64 val ) noexcept : i( val )
-        {
-        }
-        P64( const U8 b1, const U8 b2, const U8 b3, const U8 b4, const U8 b5, const U8 b6, const U8 b7, const U8 b8 ) noexcept : b{ b1, b2, b3, b4, b5, b6, b7, b8 }
-        {
-        }
-        P64( U8* bytes ) noexcept
-        {
-            std::memcpy( b, bytes, 8 * sizeof( U8 ) );
-        }
+        P64( const U64 val ) noexcept;
+        P64( const U8 b1, const U8 b2, const U8 b3, const U8 b4, const U8 b5, const U8 b6, const U8 b7, const U8 b8 ) noexcept;
+        P64( U8* bytes ) noexcept;
     };
 
     static const P64 P64_FLAGS_TRUE = { 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u };
@@ -229,340 +220,10 @@ namespace Divide
     constexpr I32 INT24_MAX = 8388607;
     constexpr U32 UINT24_MAX = static_cast<U32>(INT24_MAX * 2);
 
-#pragma pack(push, 1)
-    struct I24 final
+    namespace detail
     {
-        U8 value[3] = { 0u, 0u, 0u };
-
-        I24() noexcept = default;
-
-        I24( const I32 val ) noexcept
-            : value{ reinterpret_cast<const U8*>(&val)[0],
-                     reinterpret_cast<const U8*>(&val)[1],
-                     reinterpret_cast<const U8*>(&val)[2] }
-        {
-            assert( val < INT24_MAX&& val > -INT24_MAX );
-        }
-
-        inline I24& operator= ( const I32 input ) noexcept
-        {
-            assert( input < INT24_MAX&& input > -INT24_MAX );
-
-            value[0] = ((U8*)&input)[0];
-            value[1] = ((U8*)&input)[1];
-            value[2] = ((U8*)&input)[2];
-
-            return *this;
-        }
-
-        inline operator I32() const noexcept
-        {
-            /* Sign extend negative quantities */
-            if ( value[2] & 0x80 )
-            {
-                return 0xff << 24 | value[2] << 16 | value[1] << 8 | value[0];
-            }
-
-            return value[2] << 16 | value[1] << 8 | value[0];
-        }
-
-        inline I24 operator+   ( const I32 val )  const noexcept
-        {
-            return I24( static_cast<I32>(*this) + val );
-        }
-        inline I24 operator-   ( const I32 val )  const noexcept
-        {
-            return I24( static_cast<I32>(*this) - val );
-        }
-        inline I24 operator+   ( const I24& val ) const noexcept
-        {
-            return I24( static_cast<I32>(*this) + static_cast<I32>(val) );
-        }
-        inline I24 operator-   ( const I24& val ) const noexcept
-        {
-            return I24( static_cast<I32>(*this) - static_cast<I32>(val) );
-        }
-        inline I24 operator*   ( const I24& val ) const noexcept
-        {
-            return I24( static_cast<I32>(*this) * static_cast<I32>(val) );
-        }
-        inline I24 operator/   ( const I24& val ) const noexcept
-        {
-            return I24( static_cast<I32>(*this) / static_cast<I32>(val) );
-        }
-        inline I24& operator+= ( const I24& val )       noexcept
-        {
-            *this = *this + val; return *this;
-        }
-        inline I24& operator-= ( const I24& val )       noexcept
-        {
-            *this = *this - val; return *this;
-        }
-        inline I24& operator*= ( const I24& val )       noexcept
-        {
-            *this = *this * val; return *this;
-        }
-        inline I24& operator/= ( const I24& val )       noexcept
-        {
-            *this = *this / val; return *this;
-        }
-        inline I24 operator>>  ( const I32 val ) const  noexcept
-        {
-            return I24( static_cast<I32>(*this) >> val );
-        }
-        inline I24 operator<<  ( const I32 val ) const  noexcept
-        {
-            return I24( static_cast<I32>(*this) << val );
-        }
-
-        inline operator bool()   const noexcept
-        {
-            return static_cast<I32>(*this) != 0;
-        }
-        inline bool operator! () const noexcept
-        {
-            return !static_cast<I32>(*this);
-        }
-        inline I24  operator- () const noexcept
-        {
-            return I24( -static_cast<I32>(*this) );
-        }
-        inline I24& operator++ ()      noexcept
-        {
-            *this = *this + 1; return *this;
-        }
-        inline I24& operator-- ()      noexcept
-        {
-            *this = *this - 1; return *this;
-        }
-
-        inline I24  operator++ ( I32 )                  noexcept
-        {
-            I24 ret = *this; ++* this; return ret;
-        }
-        inline I24  operator-- ( I32 )                  noexcept
-        {
-            I24 ret = *this; --* this; return ret;
-        }
-        inline bool operator== ( const I24& val ) const noexcept
-        {
-            return static_cast<I32>(*this) == static_cast<I32>(val);
-        }
-        inline bool operator!= ( const I24& val ) const noexcept
-        {
-            return static_cast<I32>(*this) != static_cast<I32>(val);
-        }
-        inline bool operator>= ( const I24& val ) const noexcept
-        {
-            return static_cast<I32>(*this) >= static_cast<I32>(val);
-        }
-        inline bool operator<= ( const I24& val ) const noexcept
-        {
-            return static_cast<I32>(*this) <= static_cast<I32>(val);
-        }
-        inline bool operator>  ( const I24& val ) const noexcept
-        {
-            return static_cast<I32>(*this) > static_cast<I32>(val);
-        }
-        inline bool operator<  ( const I24& val ) const noexcept
-        {
-            return static_cast<I32>(*this) < static_cast<I32>(val);
-        }
-
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator==  ( const T& val ) const noexcept
-        {
-            return static_cast<I32>(*this) == val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator!=  ( const T& val ) const noexcept
-        {
-            return static_cast<I32>(*this) != val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator> ( const T& val ) const noexcept
-        {
-            return static_cast<I32>(*this) > val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator<  ( const T& val ) const noexcept
-        {
-            return static_cast<I32>(*this) < val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator>=  ( const T& val ) const noexcept
-        {
-            return static_cast<I32>(*this) >= val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator<=  ( const T& val ) const noexcept
-        {
-            return static_cast<I32>(*this) <= val;
-        }
-    };
-
-    struct U24 final
-    {
-        U8 value[3] = { 0u, 0u, 0u };
-
-        U24() noexcept = default;
-
-        U24( const U32 val ) noexcept
-            : value{ reinterpret_cast<const U8*>(&val)[0],
-                     reinterpret_cast<const U8*>(&val)[1],
-                     reinterpret_cast<const U8*>(&val)[2] }
-        {
-            assert( val < UINT24_MAX );
-        }
-
-        inline U24& operator= ( const U32 input ) noexcept
-        {
-            assert( input < UINT24_MAX );
-
-            value[2] = input >> 16 & 0xff;
-            value[1] = input >> 8 & 0xff;
-            value[0] = input & 0xff;
-
-            return *this;
-        }
-
-        inline operator U32() const noexcept
-        {
-            return value[0] | value[1] << 8 | value[2] << 16;
-        }
-
-        inline U24  operator+  ( const U32 val )  const noexcept
-        {
-            return U24( static_cast<U32>(*this) + val );
-        }
-        inline U24  operator-  ( const U32 val )  const noexcept
-        {
-            return U24( static_cast<U32>(*this) - val );
-        }
-        inline U24  operator+  ( const U24& val ) const noexcept
-        {
-            return U24( static_cast<U32>(*this) + static_cast<U32>(val) );
-        }
-        inline U24  operator-  ( const U24& val ) const noexcept
-        {
-            return U24( static_cast<U32>(*this) - static_cast<U32>(val) );
-        }
-        inline U24  operator*  ( const U24& val ) const noexcept
-        {
-            return U24( static_cast<U32>(*this) * static_cast<U32>(val) );
-        }
-        inline U24  operator/  ( const U24& val ) const noexcept
-        {
-            return U24( static_cast<U32>(*this) / static_cast<U32>(val) );
-        }
-        inline U24& operator+= ( const U24& val )       noexcept
-        {
-            *this = *this + val; return *this;
-        }
-        inline U24& operator-= ( const U24& val )       noexcept
-        {
-            *this = *this - val; return *this;
-        }
-        inline U24& operator*= ( const U24& val )       noexcept
-        {
-            *this = *this * val; return *this;
-        }
-        inline U24& operator/= ( const U24& val )       noexcept
-        {
-            *this = *this / val; return *this;
-        }
-        inline U24  operator>> ( const U32 val ) const  noexcept
-        {
-            return U24( static_cast<U32>(*this) >> val );
-        }
-        inline U24  operator<< ( const U32 val ) const  noexcept
-        {
-            return U24( static_cast<U32>(*this) << val );
-        }
-
-        inline operator bool() const noexcept
-        {
-            return static_cast<U32>(*this) != 0;
-        }
-        inline bool operator!  () const noexcept
-        {
-            return !static_cast<U32>(*this);
-        }
-        inline U24& operator++ ()       noexcept
-        {
-            *this = *this + 1u; return *this;
-        }
-        inline U24& operator-- ()       noexcept
-        {
-            *this = *this - 1u; return *this;
-        }
-
-        inline U24  operator++ ( I32 )                  noexcept
-        {
-            U24 ret = *this; ++* this; return ret;
-        }
-        inline U24  operator-- ( I32 )                  noexcept
-        {
-            U24 ret = *this; --* this; return ret;
-        }
-        inline bool operator== ( const U24& val ) const noexcept
-        {
-            return static_cast<U32>(*this) == static_cast<U32>(val);
-        }
-        inline bool operator!= ( const U24& val ) const noexcept
-        {
-            return static_cast<U32>(*this) != static_cast<U32>(val);
-        }
-        inline bool operator>= ( const U24& val ) const noexcept
-        {
-            return static_cast<U32>(*this) >= static_cast<U32>(val);
-        }
-        inline bool operator<= ( const U24& val ) const noexcept
-        {
-            return static_cast<U32>(*this) <= static_cast<U32>(val);
-        }
-        inline bool operator>  ( const U24& val ) const noexcept
-        {
-            return static_cast<U32>(*this) > static_cast<U32>(val);
-        }
-        inline bool operator<  ( const U24& val ) const noexcept
-        {
-            return static_cast<U32>(*this) < static_cast<U32>(val);
-        }
-
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator==  ( const T& val ) const noexcept
-        {
-            return val >= 0 && static_cast<U32>(*this) == val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator!=  ( const T& val ) const noexcept
-        {
-            return val < 0 || static_cast<U32>(*this) != val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator> ( const T& val ) const noexcept
-        {
-            return static_cast<U32>(*this) > val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator<  ( const T& val ) const noexcept
-        {
-            return static_cast<U32>(*this) < val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator>=  ( const T& val ) const noexcept
-        {
-            return static_cast<U32>(*this) >= val;
-        }
-        template<typename T> requires std::is_integral_v<T>
-        inline bool operator<=  ( const T& val ) const noexcept
-        {
-            return static_cast<U32>(*this) <= val;
-        }
-    };
-#pragma pack(pop)
-
+        void internal_assert(const bool condition);
+    } //namespace detail
 
     template <typename From, typename To>
     struct static_caster
@@ -600,7 +261,7 @@ namespace Divide
     {
         if constexpr ( std::is_floating_point<T>::value )
         {
-            assert( value >= 0 );
+            detail::internal_assert( value >= 0 );
         }
 
         return static_cast<size_t>(value);
@@ -611,7 +272,7 @@ namespace Divide
     {
         if constexpr ( std::is_floating_point<T>::value )
         {
-            assert( value >= 0 );
+            detail::internal_assert( value >= 0 );
         }
 
         return static_cast<U64>(value);
@@ -622,7 +283,7 @@ namespace Divide
     {
         if constexpr ( std::is_floating_point<T>::value )
         {
-            assert( value >= 0 );
+            detail::internal_assert( value >= 0 );
         }
 
         return static_cast<U32>(value);
@@ -633,7 +294,7 @@ namespace Divide
     {
         if constexpr ( std::is_floating_point<T>::value )
         {
-            assert( value >= 0 );
+            detail::internal_assert( value >= 0 );
         }
 
         return static_cast<U16>(value);
@@ -644,7 +305,7 @@ namespace Divide
     {
         if constexpr ( std::is_floating_point<T>::value )
         {
-            assert( value >= 0 );
+            detail::internal_assert( value >= 0 );
         }
 
         return static_cast<U8>(value);
@@ -696,44 +357,24 @@ namespace Divide
     {
         if constexpr ( std::is_floating_point<T>::value )
         {
-            assert( value >= 0 );
+            detail::internal_assert( value >= 0 );
         }
 
         return static_cast<Byte>(value);
     }
 
     //ref: http://codereview.stackexchange.com/questions/51235/udp-network-server-client-for-gaming-using-boost-asio
-    class counter
+    struct counter
     {
         size_t _count;
-        public:
-        counter& operator=( const size_t val ) noexcept
-        {
-            _count = val; return *this;
-        }
-        counter( const size_t count = 0 ) noexcept : _count( count )
-        {
-        }
-        operator size_t() const noexcept
-        {
-            return _count;
-        }
-        counter& operator++() noexcept
-        {
-            ++_count; return *this;
-        }
-        counter operator++( int ) noexcept
-        {
-            const counter ret( _count ); ++_count; return ret;
-        }
-        bool operator==( counter const& other ) const noexcept
-        {
-            return _count == other._count;
-        }
-        bool operator!=( counter const& other ) const noexcept
-        {
-            return _count != other._count;
-        }
+        
+        counter& operator=( const size_t val ) noexcept;
+        explicit counter( const size_t count = 0 ) noexcept;
+        operator size_t() const noexcept;
+        counter& operator++() noexcept;
+        counter operator++( int ) noexcept;
+
+        auto operator<=>( const counter& ) const = default;
     };
 
 
@@ -790,8 +431,7 @@ namespace Divide
 
     template <>
     struct promote<char>
-        : public promote<choose_type<std::numeric_limits<char>::is_signed,
-        signed char, unsigned char>::type>
+        : public promote<choose_type<std::numeric_limits<char>::is_signed, signed char, unsigned char>::type>
     {
     };
 
@@ -901,6 +541,8 @@ namespace Divide
     {
         static_assert(ExpectedSize == RealSize, "Wrong data size!");
     }
+
+#define DIVIDE_UNUSED(X) ((void)X)
 
 #pragma region PROPERTY_SETTERS_GETTERS
 

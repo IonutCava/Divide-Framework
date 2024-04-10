@@ -36,6 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "glResources.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
+#include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 namespace Divide {
@@ -147,11 +148,12 @@ namespace Divide {
 
         RenderStateBlock _activeState{};
 
-        std::array<std::pair<Str<256>, U32>, 32> _debugScope;
-        std::pair<Str<256>, U32> _lastInsertedDebugMessage;
+        DebugScope _debugScope[Config::MAX_DEBUG_SCOPE_DEPTH];
+        DebugScope _lastInsertedDebugMessage;
+        U8 _debugScopeDepth{ 0u };
+
         AttributeSettings _currentAttributes;
 
-        U8 _debugScopeDepth{ 0u };
 
         Pipeline const* _activePipeline{ nullptr };
         glShaderProgram* _activeShaderProgram{ nullptr };

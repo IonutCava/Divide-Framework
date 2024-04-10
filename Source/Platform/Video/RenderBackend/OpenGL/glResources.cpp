@@ -838,7 +838,7 @@ namespace Divide
             for ( U8 i = 0u; i < GL_API::GetStateTracker()._debugScopeDepth; ++i )
             {
                 fullScope.append( "::" );
-                fullScope.append( GL_API::GetStateTracker()._debugScope[i].first.c_str() );
+                fullScope.append( GL_API::GetStateTracker()._debugScope[i]._name );
             }
             // Print the message and the details
             const GLuint activeProgram = GL_API::GetStateTracker()._activeShaderProgramHandle;

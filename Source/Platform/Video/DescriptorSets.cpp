@@ -43,13 +43,15 @@ namespace Divide {
         return imageView._targetType;
     }
 
-    bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept {
+    bool operator==(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept
+    {
         return lhs._range == rhs._range &&
                lhs._queueReadIndex == rhs._queueReadIndex &&
                Compare(lhs._buffer, rhs._buffer);
     }
 
-    bool operator!=(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept {
+    bool operator!=(const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs) noexcept
+    {
         return lhs._range != rhs._range ||
                lhs._queueReadIndex != rhs._queueReadIndex ||
                !Compare(lhs._buffer, rhs._buffer);

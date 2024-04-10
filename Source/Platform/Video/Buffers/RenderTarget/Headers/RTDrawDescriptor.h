@@ -47,6 +47,8 @@ struct BlitEntry
     U16 _layerOffset{0u};
     U16 _mipOffset{0u};
     U8 _index{ INVALID_INDEX };
+
+    auto operator<=>(const BlitEntry&) const = default;
 };
 
 struct DrawLayerEntry
@@ -54,6 +56,8 @@ struct DrawLayerEntry
     U16 _layer{0u};
     /// Ignored for non cube textures
     U8 _cubeFace{0u}; 
+
+    auto operator<=>(const DrawLayerEntry&) const = default;
 };
 
 struct RTClearEntry
@@ -70,28 +74,26 @@ struct RTBlitEntry
     U16 _mipCount{1u};
 };
 
-using RTDrawMask = std::array<bool, to_base(RTColourAttachmentSlot::COUNT)>;
 using RTBlitParams = eastl::fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES, false>;
 using RTClearDescriptor = std::array<RTClearEntry, RT_MAX_ATTACHMENT_COUNT>;
-using RTDrawLayerDescriptor = std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT>;
-using RTTransitionMask = std::array<bool, RT_MAX_ATTACHMENT_COUNT>;
+using RTTransitionMask = bool[RT_MAX_ATTACHMENT_COUNT];
+using RTDrawMask = bool[to_base( RTColourAttachmentSlot::COUNT )];
 
 struct RTDrawDescriptor
 {
-    RTDrawMask _drawMask = create_array<to_base( RTColourAttachmentSlot::COUNT )>( false );
-    RTDrawLayerDescriptor _writeLayers;
-    /// Set to true to bind all image layers to the render target (e.g. for Geometry Shader layered rendering support)
-    bool _layeredRendering{false};
+    DrawLayerEntry _writeLayers[RT_MAX_ATTACHMENT_COUNT];
+    RTDrawMask _drawMask = {false, false, false, false};
+    U16 _mipWriteLevel{ 0u };
     bool _autoResolveMSAA{true};
     bool _keepMSAADataAfterResolve{ false };
-    U16 _mipWriteLevel{ 0u };
+    /// Set to true to bind all image layers to the render target (e.g. for Geometry Shader layered rendering support)
+    bool _layeredRendering{false};
 };
 
 extern BlitEntry INVALID_BLIT_ENTRY;
 extern RTClearEntry DEFAULT_CLEAR_ENTRY;
 
 bool IsValid( const RTBlitParams& params) noexcept;
-bool operator==(const BlitEntry& lhs, const BlitEntry& rhs) noexcept;
 
 }; //namespace Divide
 

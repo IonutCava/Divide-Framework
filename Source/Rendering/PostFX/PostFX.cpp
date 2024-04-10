@@ -52,7 +52,7 @@ namespace Divide
 
         context.paramHandler().setParam<bool>( _ID( "postProcessing.enableVignette" ), false );
 
-        _postFXTarget._drawMask.fill(false);
+        std::ranges::fill(_postFXTarget._drawMask, false);
         _postFXTarget._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
 
         Console::printfn( LOCALE_STR( "START_POST_FX" ) );

@@ -36,8 +36,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PushConstant.h"
 
 namespace Divide {
-struct PushConstantsStruct {
-    eastl::array<mat4<F32>, 2> data{MAT4_ZERO, MAT4_ZERO};
+struct PushConstantsStruct
+{
+    static constexpr U8 PUSH_MATRIX_COUNT = 2u;
+
+    mat4<F32> data[PUSH_MATRIX_COUNT] = {MAT4_ZERO, MAT4_ZERO};
 
     [[nodiscard]] static constexpr size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
     [[nodiscard]] inline const F32* dataPtr() const { return data[0].mat; }
@@ -47,7 +50,8 @@ struct PushConstantsStruct {
 bool operator==(const PushConstantsStruct& lhs,const PushConstantsStruct& rhs) noexcept;
 bool operator!=(const PushConstantsStruct& lhs,const PushConstantsStruct& rhs) noexcept;
 
-struct PushConstants {
+struct PushConstants
+{
     PushConstants() = default;
     explicit PushConstants(const PushConstantsStruct& pushConstants);
     explicit PushConstants(const GFX::PushConstant& constant);

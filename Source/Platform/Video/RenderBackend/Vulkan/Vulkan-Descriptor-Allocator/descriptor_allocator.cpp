@@ -27,7 +27,7 @@
         impl->_maxFrames = nFrames;
         for ( Divide::I32 i = 0; i < nFrames; i++)
         {
-            impl->_descriptorPools.push_back(eastl::make_unique<PoolStorage>());
+            impl->_descriptorPools.push_back(std::make_unique<PoolStorage>());
         }
 
         return impl;

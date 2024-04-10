@@ -75,10 +75,10 @@ struct RenderStateBlock
     bool _stencilEnabled{false};
     bool _primitiveRestartEnabled{ false };
     bool _rasterizationEnabled{ true };
+
+    auto operator<=>(const RenderStateBlock&) const = default;
 };
 
-bool operator==( const RenderStateBlock& lhs, const RenderStateBlock& rhs );
-bool operator!=( const RenderStateBlock& lhs, const RenderStateBlock& rhs );
 
 size_t GetHash( const RenderStateBlock& block );
 void SaveToXML( const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt );

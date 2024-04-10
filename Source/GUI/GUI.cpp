@@ -308,6 +308,8 @@ namespace Divide
 
     void GUI::draw( GFXDevice& context, const Rect<I32>& viewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
+        thread_local TextElementBatch textBatch;
+
         if ( !_init || !_activeScene )
         {
             return;
@@ -324,7 +326,8 @@ namespace Divide
 
         const GUIMap& elements = _guiElements[to_base( GUIType::GUI_TEXT )];
 
-        TextElementBatch textBatch;
+        efficient_clear(textBatch.data());
+
         textBatch.data().reserve( elements.size() );
         for ( const GUIMap::value_type& guiStackIterator : elements )
         {
@@ -420,7 +423,7 @@ namespace Divide
                                   } );
 
 
-        _fonsContext = eastl::make_unique<DVDFONSContext>();
+        _fonsContext = std::make_unique<DVDFONSContext>();
         _fonsContext->_width = 512;
         _fonsContext->_parent = &context.gfx();
 

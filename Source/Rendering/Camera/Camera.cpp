@@ -111,7 +111,7 @@ namespace Divide
         s_lastFrameTimeSec = Time::MicrosecondsToSeconds<F32>( deltaTimeUS );
 
         SharedLock<SharedMutex> r_lock( s_cameraPoolLock );
-        for ( auto& cameEntry : s_cameraPool )
+        for ( CameraEntry& cameEntry : s_cameraPool )
         {
             cameEntry._camera->update();
         }

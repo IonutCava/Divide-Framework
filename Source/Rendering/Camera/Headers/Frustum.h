@@ -69,9 +69,12 @@ class Frustum {
 
     const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& computePlanes(const mat4<F32>& viewProjMatrix);
 
-    [[nodiscard]] bool operator==(const Frustum& other) const noexcept {
-        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i) {
-            if (_frustumPlanes[i] != other._frustumPlanes[i]) {
+    [[nodiscard]] bool operator==(const Frustum& other) const noexcept
+    {
+        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i)
+        {
+            if (_frustumPlanes[i] != other._frustumPlanes[i])
+            {
                 return false;
             }
         }
@@ -79,9 +82,12 @@ class Frustum {
         return true;
     }
 
-    [[nodiscard]] bool operator!=(const Frustum& other) const noexcept {
-        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i) {
-            if (_frustumPlanes[i] != other._frustumPlanes[i]) {
+    [[nodiscard]] bool operator!=(const Frustum& other) const noexcept
+    {
+        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i)
+        {
+            if (_frustumPlanes[i] != other._frustumPlanes[i])
+            {
                 return true;
             }
         }

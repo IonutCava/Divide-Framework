@@ -3,25 +3,6 @@
 #include "Headers/BlendingProperties.h"
 
 namespace Divide {
-    bool operator==(const BlendingSettings& lhs, const BlendingSettings& rhs) noexcept {
-        return lhs.enabled()        == rhs.enabled() &&
-               lhs.blendSrc()       == rhs.blendSrc() &&
-               lhs.blendDest()      == rhs.blendDest() &&
-               lhs.blendOp()        == rhs.blendOp() &&
-               lhs.blendSrcAlpha()  == rhs.blendSrcAlpha() &&
-               lhs.blendDestAlpha() == rhs.blendDestAlpha() &&
-               lhs.blendOpAlpha()   == rhs.blendOpAlpha();
-    }
-
-    bool operator!=(const BlendingSettings& lhs, const BlendingSettings& rhs) noexcept {
-        return lhs.enabled()        != rhs.enabled() ||
-               lhs.blendSrc()       != rhs.blendSrc() ||
-               lhs.blendDest()      != rhs.blendDest() ||
-               lhs.blendOp()        != rhs.blendOp() ||
-               lhs.blendSrcAlpha()  != rhs.blendSrcAlpha() ||
-               lhs.blendDestAlpha() != rhs.blendDestAlpha() ||
-               lhs.blendOpAlpha()   != rhs.blendOpAlpha();
-    }
 
     [[nodiscard]] size_t GetHash(const BlendingSettings& properties) {
         size_t hash = 1337;

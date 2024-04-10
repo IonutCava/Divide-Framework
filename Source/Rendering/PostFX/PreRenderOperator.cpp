@@ -11,7 +11,7 @@ PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent,
       _parent(parent),
       _operatorType(operatorType)
 {
-    _screenOnlyDraw._drawMask.fill(false);
+    std::ranges::fill(_screenOnlyDraw._drawMask, false);
     _screenOnlyDraw._drawMask[to_base(RTColourAttachmentSlot::SLOT_0)] = true;
 }
 

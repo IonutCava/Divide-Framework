@@ -297,7 +297,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
 
-        if ( _targetScene && _timeStep > 0.0f )
+        if ( _targetScene != nullptr && _timeStep > 0.0f )
         {
             _accumulator += Time::MicrosecondsToMilliseconds<physx::PxReal>( deltaTimeGameUS );
 
@@ -314,7 +314,7 @@ namespace Divide
     /// Update actors
     void PhysX::frameEnded( const U64 deltaTimeGameUS )
     {
-        if ( _targetScene != nullptr )
+        if ( _targetScene != nullptr ) [[likely]]
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
             _targetScene->frameEnded( deltaTimeGameUS );
@@ -323,7 +323,7 @@ namespace Divide
 
     void PhysX::idle()
     {
-        if ( _targetScene != nullptr )
+        if ( _targetScene != nullptr ) [[likely]]
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
             _targetScene->idle();
@@ -332,7 +332,7 @@ namespace Divide
 
     bool PhysX::initPhysicsScene( Scene& scene )
     {
-        if ( _targetScene != nullptr )
+        if ( _targetScene != nullptr ) [[likely]]
         {
             const I64 currentScene = _targetScene->parentScene().getGUID();
             const I64 callingScene = scene.getGUID();
@@ -356,13 +356,13 @@ namespace Divide
         }
 
         DIVIDE_ASSERT( _targetScene == nullptr );
-        _targetScene = eastl::make_unique<PhysXSceneInterface>( scene );
+        _targetScene = std::make_unique<PhysXSceneInterface>( scene );
         return _targetScene->init();
     }
 
     bool PhysX::destroyPhysicsScene( const Scene& scene )
     {
-        if ( _targetScene != nullptr )
+        if ( _targetScene != nullptr ) [[likely]]
         {
             // Because we can load scenes in the background, our current active scene might not
             // be the one the calling scene wants to destroy.

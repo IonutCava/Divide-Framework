@@ -132,7 +132,7 @@ namespace Divide {
         }
 
         const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_{}", handle()._id) : string(_name.c_str()) + "_VTX_BUFFER";
-        impl->_buffer = eastl::make_unique<vkBufferImpl>(params._bufferParams,
+        impl->_buffer = std::make_unique<vkBufferImpl>(params._bufferParams,
                                                          bufferSizeInBytes,
                                                          ringSizeFactor,
                                                          params._initialData,
@@ -233,7 +233,7 @@ namespace Divide {
         const std::pair<bufferPtr, size_t> initialData = { data, range };
 
         const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_{}", handle()._id ) : string(_name.c_str()) + "_IDX_BUFFER";
-        impl->_buffer = eastl::make_unique<vkBufferImpl>( params,
+        impl->_buffer = std::make_unique<vkBufferImpl>( params,
                                                             impl->_bufferSize,
                                                             impl->_ringSizeFactor,
                                                             initialData,

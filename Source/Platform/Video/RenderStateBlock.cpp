@@ -111,56 +111,6 @@ size_t GetHash( const RenderStateBlock& block )
     return hash;
 }
 
-bool operator==( const RenderStateBlock& lhs, const RenderStateBlock& rhs )
-{
-    return lhs._colourWrite == rhs._colourWrite &&
-           lhs._zBias == rhs._zBias &&
-           lhs._zUnits == rhs._zUnits &&
-           lhs._tessControlPoints == rhs._tessControlPoints &&
-           lhs._stencilRef == rhs._stencilRef &&
-           lhs._stencilMask == rhs._stencilMask &&
-           lhs._stencilWriteMask == rhs._stencilWriteMask &&
-           lhs._zFunc == rhs._zFunc &&
-           lhs._stencilFailOp == rhs._stencilFailOp &&
-           lhs._stencilPassOp == rhs._stencilPassOp &&
-           lhs._stencilZFailOp == rhs._stencilZFailOp &&
-           lhs._stencilFunc == rhs._stencilFunc &&
-           lhs._cullMode == rhs._cullMode &&
-           lhs._fillMode == rhs._fillMode &&
-           lhs._frontFaceCCW == rhs._frontFaceCCW &&
-           lhs._scissorTestEnabled == rhs._scissorTestEnabled &&
-           lhs._depthTestEnabled == rhs._depthTestEnabled &&
-           lhs._depthWriteEnabled == rhs._depthWriteEnabled &&
-           lhs._stencilEnabled == rhs._stencilEnabled &&
-           lhs._primitiveRestartEnabled == rhs._primitiveRestartEnabled &&
-           lhs._rasterizationEnabled == rhs._rasterizationEnabled;
-}
-
-bool operator!=( const RenderStateBlock& lhs, const RenderStateBlock& rhs )
-{
-    return lhs._colourWrite != rhs._colourWrite ||
-           lhs._zBias != rhs._zBias ||
-           lhs._zUnits != rhs._zUnits ||
-           lhs._tessControlPoints != rhs._tessControlPoints ||
-           lhs._stencilRef != rhs._stencilRef ||
-           lhs._stencilMask != rhs._stencilMask ||
-           lhs._stencilWriteMask != rhs._stencilWriteMask ||
-           lhs._zFunc != rhs._zFunc ||
-           lhs._stencilFailOp != rhs._stencilFailOp ||
-           lhs._stencilPassOp != rhs._stencilPassOp ||
-           lhs._stencilZFailOp != rhs._stencilZFailOp ||
-           lhs._stencilFunc != rhs._stencilFunc ||
-           lhs._cullMode != rhs._cullMode ||
-           lhs._fillMode != rhs._fillMode ||
-           lhs._frontFaceCCW != rhs._frontFaceCCW ||
-           lhs._scissorTestEnabled != rhs._scissorTestEnabled ||
-           lhs._depthTestEnabled != rhs._depthTestEnabled ||
-           lhs._depthWriteEnabled != rhs._depthWriteEnabled ||
-           lhs._stencilEnabled != rhs._stencilEnabled ||
-           lhs._primitiveRestartEnabled != rhs._primitiveRestartEnabled ||
-           lhs._rasterizationEnabled != rhs._rasterizationEnabled;
-}
-
 void SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt)
 {
 

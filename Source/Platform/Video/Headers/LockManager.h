@@ -67,14 +67,12 @@ namespace Divide {
 
     struct BufferLockInstance
     {
-        BufferLockInstance() = default;
-        BufferLockInstance(const BufferRange& range, const SyncObjectHandle& handle) noexcept;
-
         BufferRange _range{};
         SyncObjectHandle _syncObjHandle{};
     };
 
-    class LockManager : public GUIDWrapper {
+    class LockManager : public GUIDWrapper
+    {
     public:
         static constexpr U8 DEFAULT_SYNC_FLAG_INTERNAL = 254u;
         static constexpr U8 DEFAULT_SYNC_FLAG_GVD = 255u;

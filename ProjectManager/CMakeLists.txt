@@ -18,9 +18,11 @@ project ( Divide-ProjectManager
 set(PROJECT_LICENSE_FILE "${CMAKE_SOURCE_DIR}/../LICENSE" CACHE FILEPATH "Path to the license file for this project.")
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 set(CMAKE_CXX_EXTENSIONS Off)
+set(CXX_SCAN_FOR_MODULES Off)
+
 set(FETCHCONTENT_QUIET TRUE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
@@ -29,6 +31,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_definitions(USING_MSVC)
+  #add_compile_options(/experimental:module)
   set(CMAKE_DEBUG_PREFIX /D)
 else ()
   set(CMAKE_DEBUG_PREFIX -D)
@@ -47,7 +50,11 @@ find_package(fmt CONFIG REQUIRED)
 find_package(SDL2_image CONFIG REQUIRED)
 
 # Add source to this project's executable.
-add_executable (ProjectManager "ProjectManager.cpp" "ProjectManager.h")
+add_executable (ProjectManager
+                "ProjectManager.cpp"
+                "ProjectManager.h"
+                "${CMAKE_SOURCE_DIR}/../Source/Platform/PlatformDataTypes.cpp")
+
 target_include_directories(ProjectManager PRIVATE "${CMAKE_SOURCE_DIR}/../Source")
 target_include_directories(ProjectManager PRIVATE "${CMAKE_SOURCE_DIR}/../Source/ThirdParty")
 target_link_libraries(ProjectManager PRIVATE 

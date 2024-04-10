@@ -110,8 +110,10 @@ public:
 
     [[nodiscard]] bool getFilterState(const FilterType filter) const noexcept
     {
-        return (_filterStack & 1u << to_U32(filter)) ||
-               (_overrideFilterStack & 1u << to_U32(filter));
+        const U32 filterMask = 1u << to_U32(filter);
+
+        return (_filterStack & filterMask) ||
+               (_overrideFilterStack & filterMask);
     }
 
     [[nodiscard]] PreRenderBatch& getFilterBatch() noexcept

@@ -46,9 +46,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "Platform/Headers/PlatformMemoryDefines.h"
+#include <String.h>
+
 #include <Allocator/stl_allocator.h>
 #include <EASTL/internal/config.h>
-#include <string>
 
 template <typename Type>
 using dvd_allocator = stl_allocator<Type>;
@@ -89,11 +90,11 @@ namespace eastl {
         }
 
         [[nodiscard]]
-        const char* get_name()                  const noexcept { return _name.c_str(); }
+        const char* get_name()                  const noexcept { return _name; }
         void        set_name(const char* pName)       noexcept { _name = pName; }
 
       private:
-        std::string _name;
+        const char* _name;
     };
 
 
@@ -144,11 +145,11 @@ namespace eastl {
 
         
         [[nodiscard]]
-        const char* get_name()               const noexcept { return _name.c_str(); }
+        const char* get_name()               const noexcept { return _name; }
         void        set_name(const char* pName)    noexcept { _name = pName; }
 
       private:
-        std::string _name;
+        const char* _name;
     };
 
     // All allocators are considered equal, as they merely use global new/delete.

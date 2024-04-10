@@ -37,17 +37,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-    struct PoolHandle {
+    struct PoolHandle
+    {
         U16 _id{ 0u };
         U8  _generation{ 0u };
         U8  _tag{ 0u };
-    };
 
-    bool operator==(const PoolHandle& lhs, const PoolHandle& rhs) noexcept;
-    bool operator!=(const PoolHandle& lhs, const PoolHandle& rhs) noexcept;
+        auto operator<=>( const PoolHandle& ) const = default;
+    };
 
 } //namespace Divide
 
 #endif //DVD_POOL_HANDLE_H_
 
-#include "PoolHandle.inl"

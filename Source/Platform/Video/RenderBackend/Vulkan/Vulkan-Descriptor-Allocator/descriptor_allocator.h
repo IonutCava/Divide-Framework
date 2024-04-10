@@ -116,7 +116,7 @@ namespace vke {
         Divide::I32 _maxFrames{ 3 };
 
         Divide::Mutex _poolMutex;
-        Divide::vector_fast<eastl::unique_ptr<PoolStorage>> _descriptorPools;
+        Divide::vector_fast<std::unique_ptr<PoolStorage>> _descriptorPools;
         Divide::vector_fast<DescriptorAllocator> _clearAllocators;
     };
 }

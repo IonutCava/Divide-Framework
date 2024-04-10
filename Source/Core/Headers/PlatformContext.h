@@ -140,6 +140,9 @@ class PlatformContext final {
     [[nodiscard]] DisplayWindow& mainWindow() noexcept;
     [[nodiscard]] const DisplayWindow& mainWindow() const noexcept;
 
+    [[nodiscard]] DisplayWindow& activeWindow() noexcept;
+    [[nodiscard]] const DisplayWindow& activeWindow() const noexcept;
+
     PROPERTY_RW(U32, componentMask, 0u);
 
   protected:

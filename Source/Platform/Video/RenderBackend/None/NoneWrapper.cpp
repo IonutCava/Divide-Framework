@@ -117,15 +117,15 @@ namespace Divide
         _renderer = nullptr;
     }
 
-    void NONE_API::flushCommand( [[maybe_unused]] GFX::CommandBase* cmd ) noexcept
+    void NONE_API::flushCommand( [[maybe_unused]] GFX::CommandBase* cmd, [[maybe_unused]] GFX::CommandType type ) noexcept
     {
     }
 
-    void NONE_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
+    void NONE_API::preFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer )
     {
     }
 
-    void NONE_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer ) noexcept
+    void NONE_API::postFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer ) noexcept
     {
     }
 
@@ -155,7 +155,7 @@ namespace Divide
 
     RenderTarget_uptr NONE_API::newRT( const RenderTargetDescriptor& descriptor ) const
     {
-        return eastl::make_unique<noRenderTarget>( _context, descriptor );
+        return std::make_unique<noRenderTarget>( _context, descriptor );
     }
 
     GenericVertexData_ptr NONE_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
@@ -175,7 +175,7 @@ namespace Divide
 
     ShaderBuffer_uptr NONE_API::newSB( const ShaderBufferDescriptor& descriptor ) const
     {
-        return eastl::make_unique<noUniformBuffer>( _context, descriptor );
+        return std::make_unique<noUniformBuffer>( _context, descriptor );
     }
 
 }; //namespace Divide

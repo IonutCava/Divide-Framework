@@ -149,7 +149,7 @@ namespace Divide
         {
             Task* _workTask{ nullptr };
             RenderPass* _pass{ nullptr };
-            GFX::CommandBuffer* _cmdBuffer{ nullptr };
+            Handle<GFX::CommandBuffer> _cmdBuffer = INVALID_HANDLE<GFX::CommandBuffer>;
             GFX::MemoryBarrierCommand _memCmd{};
         };
 
@@ -159,14 +159,14 @@ namespace Divide
         std::array<RenderPassData, to_base(RenderStage::COUNT)> _renderPassData{};
         std::array<std::atomic_bool, to_base( RenderStage::COUNT )> _renderPassCompleted{};
 
-        GFX::CommandBuffer* _postFXCmdBuffer{ nullptr };
+        Handle<GFX::CommandBuffer> _postFXCmdBuffer = INVALID_HANDLE<GFX::CommandBuffer>;
 
         std::array<RenderPassExecutor_uptr, to_base( RenderStage::COUNT )> _executors;
         std::array<Time::ProfileTimer*, to_base( RenderStage::COUNT )> _processCommandBufferTimer = create_array<to_base( RenderStage::COUNT ), Time::ProfileTimer*>( nullptr );
         std::array<I32, to_base( RenderStage::COUNT )> _drawCallCount = create_array<to_base( RenderStage::COUNT ), I32>( 0 );
 
-        GFX::CommandBuffer* _postRenderBuffer = nullptr;
-        GFX::CommandBuffer* _skyLightRenderBuffer = nullptr;
+        Handle<GFX::CommandBuffer> _postRenderBuffer = INVALID_HANDLE<GFX::CommandBuffer>;
+        Handle<GFX::CommandBuffer> _skyLightRenderBuffer = INVALID_HANDLE<GFX::CommandBuffer>;
 
         Time::ProfileTimer* _renderPassTimer = nullptr;
         Time::ProfileTimer* _buildCommandBufferTimer = nullptr;

@@ -26,7 +26,7 @@ namespace Divide
         , _nonEmptyOutputQueue( io_context.get_executor() )
         , _outputDeadline( io_context.get_executor() )
         , _startTime( time( nullptr ) )
-        , _strand( eastl::make_unique<boost::asio::io_context::strand>( io_context ) )
+        , _strand( std::make_unique<boost::asio::io_context::strand>( io_context ) )
     {
         _inputDeadline.expires_at( boost::posix_time::pos_infin );
         _outputDeadline.expires_at( boost::posix_time::pos_infin );

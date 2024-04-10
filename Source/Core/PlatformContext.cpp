@@ -111,6 +111,16 @@ const DisplayWindow& PlatformContext::mainWindow() const noexcept
     return *app().windowManager().mainWindow();
 }
 
+DisplayWindow& PlatformContext::activeWindow() noexcept
+{
+    return *app().windowManager().activeWindow();
+}
+
+const DisplayWindow& PlatformContext::activeWindow() const noexcept
+{
+    return *app().windowManager().activeWindow();
+}
+
 Kernel& PlatformContext::kernel() noexcept
 {
     return _kernel;

@@ -33,12 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_GFX_COMMAND_H_
 #define DVD_GFX_COMMAND_H_
 
-
-#ifndef TO_STR
-#define TO_STR(arg) #arg
-#endif
-
-
 namespace Divide {
 
 namespace GFX {
@@ -46,41 +40,33 @@ namespace GFX {
 enum class CommandType : U8;
 class CommandBuffer;
 
+template <CommandType> struct MapToDataType_t;
+
+template <CommandType T>
+using MapToDataType = typename MapToDataType_t<T>::type;
+
 struct CommandBase
 {
-    explicit CommandBase(const CommandType type) noexcept
-        : EType( type )
-    {
-    }
-
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] FORCE_INLINE T* As() { return static_cast<T*>(this); }
     virtual ~CommandBase() = default;
-
-    CommandBase( const CommandBase& ) = default;
-    CommandBase( CommandBase&& ) = default;
-    CommandBase& operator=( const CommandBase& ) = default;
-    CommandBase& operator=( CommandBase&& ) = default;
 
     virtual void addToBuffer(CommandBuffer* buffer) const = 0;
 
-    [[nodiscard]] CommandType Type() const noexcept { return EType; }
-
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] FORCE_INLINE T* As() { return static_cast<T*>(this); }
-
 protected:
-    friend void DELETE_CMD( CommandBase*& );
+    friend class CommandBuffer;
     virtual void DeleteCmd( CommandBase*& cmd ) const = 0;
-
-protected:
-    CommandType EType;
 };
 
-template<typename T, CommandType EnumVal>
-struct Command : CommandBase {
+template<CommandType EnumVal>
+struct Command : CommandBase
+{
     static constexpr CommandType EType = EnumVal;
-    using CType = T;
+    using CType = MapToDataType<EnumVal>;
 
-    Command() noexcept : CommandBase(EnumVal) {}
+    Command() noexcept : CommandBase()
+    {
+    }
 
     void addToBuffer(CommandBuffer* buffer) const final;
 
@@ -89,13 +75,16 @@ protected:
 
 };
 
-string ToString(const CommandBase& cmd, U16 indent);
+string ToString(const CommandBase& cmd, CommandType type, U16 indent);
 
-#define DEFINE_COMMAND_BEGIN(Name, Enum) struct Name final : public Command<Name, Enum> { \
-using Base = Command<Name, Enum>; \
-PROPERTY_RW(bool, flag, false) \
 
-#define DEFINE_COMMAND_END(Name) }
+#define DEFINE_COMMAND_BEGIN(Name, Enum) \
+struct Name;\
+template<> struct MapToDataType_t<Enum> { using type = Name; }; \
+struct Name final : public Command<Enum> { \
+PROPERTY_RW(bool, flag, false)
+
+#define DEFINE_COMMAND_END(Name) } 
 
 #define DEFINE_COMMAND(Name, Enum) \
 DEFINE_COMMAND_BEGIN(Name, Enum);\

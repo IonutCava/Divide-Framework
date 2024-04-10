@@ -30,13 +30,13 @@ ErrorCode SFXDevice::initAudioAPI() {
     switch (_API_ID)
     {
         case AudioAPI::FMOD: {
-            _api = eastl::make_unique<FMOD_API>(_context );
+            _api = std::make_unique<FMOD_API>(_context );
         } break;
         case AudioAPI::OpenAL: {
-            _api = eastl::make_unique<OpenAL_API>( _context );
+            _api = std::make_unique<OpenAL_API>( _context );
         } break;
         case AudioAPI::SDL: {
-            _api = eastl::make_unique<SDL_API>( _context );
+            _api = std::make_unique<SDL_API>( _context );
         } break;
         default: {
             Console::errorfn(LOCALE_STR("ERROR_SFX_DEVICE_API"));

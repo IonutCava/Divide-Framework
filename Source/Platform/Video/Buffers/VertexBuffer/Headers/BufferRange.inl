@@ -35,26 +35,19 @@
 
 namespace Divide {
 
-    [[nodiscard]] inline size_t BufferRange::endOffset() const noexcept {
+    [[nodiscard]] inline size_t BufferRange::endOffset() const noexcept
+    {
         return _startOffset + _length;
     }
 
-    inline bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-        return lhs._startOffset == rhs._startOffset &&
-               lhs._length == rhs._length;
-    }
-
-    inline bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept {
-        return lhs._startOffset != rhs._startOffset ||
-               lhs._length != rhs._length;
-    }
-
-    [[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept {
+    [[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept
+    {
         return lhs._startOffset < rhs.endOffset() &&
                rhs._startOffset < lhs.endOffset();
     }
 
-    inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept {
+    inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept
+    {
         const size_t endOffset = std::max(lhs.endOffset(), rhs.endOffset());
         lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);
         assert(endOffset > lhs._startOffset);

@@ -6,7 +6,7 @@
             "type": "default",
             "project": "CMakeLists.txt",
             "projectTarget": "Divide-Framework.exe (bin\\Divide-Framework.exe)",
-            "name": "Divide-Framework",
+            "name": "Divide-Framework.exe (bin\\Divide-Framework.exe)",
             "currentDir": "${workspaceRoot}",
             "args": [ "--project=Default" ]
         },
@@ -14,14 +14,14 @@
             "type": "default",
             "project": "CMakeLists.txt",
             "projectTarget": "Divide-Test-Engine.exe (bin\\Divide-Test-Engine.exe)",
-            "name": "Test Engine",
+            "name": "Divide-Test-Engine.exe (bin\\Divide-Test-Engine.exe)",
             "currentDir": "${workspaceRoot}"
         },
         {
             "type": "default",
             "project": "CMakeLists.txt",
             "projectTarget": "Divide-Test-Platform.exe (bin\\Divide-Test-Platform.exe)",
-            "name": "Test Platform",
+            "name": "Divide-Test-Platform.exe (bin\\Divide-Test-Platform.exe)",
             "currentDir": "${workspaceRoot}"
         }
     ]

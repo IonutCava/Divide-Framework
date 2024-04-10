@@ -48,8 +48,8 @@ bool RenderTarget::autoResolveAttachment( RTAttachment* att ) const
 
 bool RenderTarget::create()
 {
-    _attachmentsUsed.fill(false);
-    _attachmentsAutoResolve.fill(false);
+    std::ranges::fill(_attachmentsUsed, false);
+    std::ranges::fill(_attachmentsAutoResolve, false);
 
     // Avoid invalid dimensions
     assert(getWidth() != 0 && getHeight() != 0 && "glFramebuffer error: Invalid frame buffer dimensions!");
@@ -66,13 +66,13 @@ bool RenderTarget::create()
             {
                 assert(attDesc._slot == RTColourAttachmentSlot::SLOT_0 );
                 printWarning = _attachments[RT_DEPTH_ATTACHMENT_IDX] != nullptr;
-                _attachments[RT_DEPTH_ATTACHMENT_IDX] = eastl::make_unique<RTAttachment>(*this, attDesc);
+                _attachments[RT_DEPTH_ATTACHMENT_IDX] = std::make_unique<RTAttachment>(*this, attDesc);
                 att = _attachments[RT_DEPTH_ATTACHMENT_IDX].get();
             } break;
             case RTAttachmentType::COLOUR:
             {
                 printWarning = _attachments[to_base(attDesc._slot)] != nullptr;
-                _attachments[to_base(attDesc._slot)] = eastl::make_unique<RTAttachment>(*this, attDesc);
+                _attachments[to_base(attDesc._slot)] = std::make_unique<RTAttachment>(*this, attDesc);
                 att = _attachments[to_base(attDesc._slot)].get();
             } break;
             default: DIVIDE_UNEXPECTED_CALL(); break;

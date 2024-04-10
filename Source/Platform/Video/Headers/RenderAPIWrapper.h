@@ -44,6 +44,7 @@ namespace Divide {
 namespace GFX {
     class CommandBuffer;
     struct CommandBase;
+    enum class CommandType : U8;
 };
 
 enum class ErrorCode : I8;
@@ -140,6 +141,12 @@ struct DeviceInformation
     GPURenderer _renderer = GPURenderer::COUNT;
 };
 
+struct DebugScope
+{
+    const char* _name = nullptr;
+    U32 _id{ U32_MAX };
+};
+
 /// Renderer Programming Interface
 class NOINITVTABLE RenderAPIWrapper : NonCopyable {
 public:
@@ -158,9 +165,9 @@ protected:
     virtual ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) = 0;
     virtual void closeRenderingAPI() = 0;
 
-    virtual void preFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) = 0;
-    virtual void flushCommand(GFX::CommandBase* cmd) = 0;
-    virtual void postFlushCommandBuffer(const GFX::CommandBuffer& commandBuffer) = 0;
+    virtual void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
+    virtual void flushCommand(GFX::CommandBase* cmd, GFX::CommandType type) = 0;
+    virtual void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
 
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;

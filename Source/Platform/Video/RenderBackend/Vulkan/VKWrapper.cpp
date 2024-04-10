@@ -514,7 +514,7 @@ namespace Divide
         _activeWindow = mainWindow;
         for ( U8 t = 0u; t < to_base(QueueType::COUNT); ++t )
         {
-            _cmdContexts[t] = eastl::make_unique<VKImmediateCmdContext>( *device, static_cast<QueueType>(t) );
+            _cmdContexts[t] = std::make_unique<VKImmediateCmdContext>( *device, static_cast<QueueType>(t) );
         }
 
     }
@@ -744,7 +744,7 @@ namespace Divide
             DIVIDE_ASSERT(windowState._surface != nullptr);
         }
 
-        windowState._swapChain = eastl::make_unique<VKSwapChain>( *this, *_device, *windowState._window );
+        windowState._swapChain = std::make_unique<VKSwapChain>( *this, *_device, *windowState._window );
         recreateSwapChain( windowState );
     }
 
@@ -837,7 +837,7 @@ namespace Divide
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-        _device = eastl::make_unique<VKDevice>( *this, _vkbInstance, perWindowContext._surface );
+        _device = std::make_unique<VKDevice>( *this, _vkbInstance, perWindowContext._surface );
 
         VkDevice vkDevice = _device->getVKDevice();
         if ( vkDevice == VK_NULL_HANDLE )
@@ -1977,7 +1977,7 @@ namespace Divide
         if ( _pushConstantsNeedLock )
         {
             _pushConstantsNeedLock = false;
-            flushCommand( &_pushConstantsMemCommand );
+            flushCommand( &_pushConstantsMemCommand, _pushConstantsMemCommand.EType );
             _pushConstantsMemCommand._bufferLocks.clear();
         }
     }
@@ -2200,17 +2200,15 @@ namespace Divide
         }
     }
 
-    void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
+    void VK_API::flushCommand( GFX::CommandBase* cmd, const GFX::CommandType type ) noexcept
     {
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
         auto& stateTracker = GetStateTracker();
 
-        const GFX::CommandType cmdType = cmd->Type();
-
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
-        if ( GFXDevice::IsSubmitCommand( cmdType ) )
+        if ( GFXDevice::IsSubmitCommand( type ) )
         {
             FlushBufferTransferRequests();
         }
@@ -2220,7 +2218,7 @@ namespace Divide
             flushPushConstantsLocks();
         }
 
-        switch ( cmdType )
+        switch ( type )
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {
@@ -2501,7 +2499,7 @@ namespace Divide
             {
                 PROFILE_SCOPE( "DRAW_COMMANDS", Profiler::Category::Graphics );
 
-                const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
+                const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
@@ -2879,7 +2877,7 @@ namespace Divide
         }
     }
 
-    void VK_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
+    void VK_API::preFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -2891,7 +2889,7 @@ namespace Divide
         FlushBufferTransferRequests( getCurrentCommandBuffer() );
     }
 
-    void VK_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer ) noexcept
+    void VK_API::postFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -2994,7 +2992,7 @@ namespace Divide
     {
         const ShaderProgram::BindingSetData& bindingData = ShaderProgram::GetBindingSetData();
 
-        _descriptorLayoutCache = eastl::make_unique<DescriptorLayoutCache>( _device->getVKDevice() );
+        _descriptorLayoutCache = std::make_unique<DescriptorLayoutCache>( _device->getVKDevice() );
 
         for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
         {
@@ -3089,7 +3087,7 @@ namespace Divide
             Debug::vkCmdBeginDebugUtilsLabelEXT( cmdBuffer, &labelInfo );
         }
 
-        assert( GetStateTracker()._debugScopeDepth < GetStateTracker()._debugScope.size() );
+        assert( GetStateTracker()._debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH );
         GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth++] = { message, id };
     }
 
@@ -3103,7 +3101,7 @@ namespace Divide
         }
 
         DIVIDE_ASSERT( s_stateTracker._debugScopeDepth > 0u );
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = { "", U32_MAX };
+        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = {};
     }
 
     /// Return the Vulkan sampler object's handle for the given hash value
@@ -3162,7 +3160,7 @@ namespace Divide
 
     RenderTarget_uptr VK_API::newRT( const RenderTargetDescriptor& descriptor ) const
     {
-        return eastl::make_unique<vkRenderTarget>( _context, descriptor );
+        return std::make_unique<vkRenderTarget>( _context, descriptor );
     }
 
     GenericVertexData_ptr VK_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
@@ -3182,6 +3180,6 @@ namespace Divide
 
     ShaderBuffer_uptr VK_API::newSB( const ShaderBufferDescriptor& descriptor ) const
     {
-        return eastl::make_unique<vkShaderBuffer>( _context, descriptor );
+        return std::make_unique<vkShaderBuffer>( _context, descriptor );
     }
 }; //namespace Divide

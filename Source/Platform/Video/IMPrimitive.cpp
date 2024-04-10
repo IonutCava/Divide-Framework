@@ -60,7 +60,7 @@ IMPrimitive::IMPrimitive(GFXDevice& context, const Str<64>& name)
     : _context(context)
     , _name(name)
 {
-    _imInterface = eastl::make_unique<NS_GLIM::GLIM_BATCH>();
+    _imInterface = std::make_unique<NS_GLIM::GLIM_BATCH>();
     _dataBuffer = context.newGVD(1, false, name.c_str());
 
     reset();

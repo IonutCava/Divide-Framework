@@ -49,13 +49,6 @@ namespace Divide
         return false;
     }
 
-    inline bool operator==( const BlitEntry& lhs, const BlitEntry& rhs ) noexcept
-    {
-        return lhs._index == rhs._index &&
-               lhs._layerOffset == rhs._layerOffset &&
-               lhs._mipOffset == rhs._mipOffset;
-    }
-
 }; //namespace Divide
 
 #endif// DVD_RENDER_TARGET_DRAW_DESCRIPTOR_INL_

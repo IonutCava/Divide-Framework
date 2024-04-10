@@ -60,11 +60,11 @@ namespace Divide
                 }
             );
 
-            eastl::unique_ptr<io_context::work> work( new io_context::work( _ioService ) );
-            _thread = eastl::make_unique<std::thread>( [this]()
-                                                       {
-                                                           _ioService.run();
-                                                       } );
+            std::unique_ptr<io_context::work> work( new io_context::work( _ioService ) );
+            _thread = std::make_unique<std::thread>( [this]()
+                                                     {
+                                                         _ioService.run();
+                                                     } );
 
         }
         catch ( std::exception& e )

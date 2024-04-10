@@ -73,19 +73,7 @@ namespace Divide {
         //compare each of the bindings is the same. Bindings are sorted so they will match
         for (size_t i = 0u; i < bindings.size(); i++)
         {
-            if (other.bindings[i].binding != bindings[i].binding)
-            {
-                return false;
-            }
-            if (other.bindings[i].descriptorType != bindings[i].descriptorType)
-            {
-                return false;
-            }
-            if (other.bindings[i].descriptorCount != bindings[i].descriptorCount)
-            {
-                return false;
-            }
-            if (other.bindings[i].stageFlags != bindings[i].stageFlags)
+            if (other.bindings[i] != bindings[i])
             {
                 return false;
             }
@@ -107,7 +95,9 @@ namespace Divide {
                                   b.descriptorType,
                                   b.descriptorCount,
                                   b.stageFlags);
-            if (b.pImmutableSamplers != nullptr) {
+
+            if (b.pImmutableSamplers != nullptr)
+            {
                 Util::Hash_combine(h, *b.pImmutableSamplers);
             }
         }

@@ -57,7 +57,7 @@ class Server {
 
   private:
     boost::asio::io_context _ioService;
-    eastl::unique_ptr<std::thread> _thread;
+    std::unique_ptr<std::thread> _thread;
     tcp_acceptor* _acceptor{nullptr};
     channel_ptr _channel;
     bool _debugOutput{false};

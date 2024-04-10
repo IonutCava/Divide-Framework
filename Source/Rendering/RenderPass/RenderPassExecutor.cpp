@@ -57,15 +57,6 @@ namespace Divide
         using ExecutorBuffer = RenderPassExecutor::ExecutorBuffer<DataContainer>;
         using BufferUpdateRange = RenderPassExecutor::BufferUpdateRange;
 
-        inline bool operator==( const BufferUpdateRange& lhs, const BufferUpdateRange& rhs ) noexcept
-        {
-            return lhs._firstIDX == rhs._firstIDX && lhs._lastIDX == rhs._lastIDX;
-        }
-
-        inline bool operator!=( const BufferUpdateRange& lhs, const BufferUpdateRange& rhs ) noexcept
-        {
-            return lhs._firstIDX != rhs._firstIDX || lhs._lastIDX != rhs._lastIDX;
-        }
 
         inline bool Contains( const BufferUpdateRange& lhs, const BufferUpdateRange& rhs ) noexcept
         {
@@ -303,7 +294,7 @@ namespace Divide
         , _context( context )
         , _stage( stage )
     {
-        _renderQueue = eastl::make_unique<RenderQueue>( parent.parent(), stage );
+        _renderQueue = std::make_unique<RenderQueue>( parent.parent(), stage );
 
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;

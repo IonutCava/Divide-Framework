@@ -173,11 +173,11 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             switch (fType)
             {
                 case FilterType::FILTER_SS_AMBIENT_OCCLUSION:
-                    hdrBatch.emplace_back(eastl::make_unique<SSAOPreRenderOperator>(_context, *this, _resCache));
+                    hdrBatch.emplace_back(std::make_unique<SSAOPreRenderOperator>(_context, *this, _resCache));
                     break;
 
                 case FilterType::FILTER_SS_REFLECTIONS:
-                    hdrBatch.emplace_back(eastl::make_unique<SSRPreRenderOperator>(_context, *this, _resCache));
+                    hdrBatch.emplace_back(std::make_unique<SSRPreRenderOperator>(_context, *this, _resCache));
                     break;
 
                 default:
@@ -197,15 +197,15 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             switch (fType)
             {
                case FilterType::FILTER_DEPTH_OF_FIELD:
-                   hdr2Batch.emplace_back(eastl::make_unique<DoFPreRenderOperator>(_context, *this, _resCache));
+                   hdr2Batch.emplace_back(std::make_unique<DoFPreRenderOperator>(_context, *this, _resCache));
                    break;
 
                case FilterType::FILTER_MOTION_BLUR:
-                   hdr2Batch.emplace_back(eastl::make_unique<MotionBlurPreRenderOperator>(_context, *this, _resCache));
+                   hdr2Batch.emplace_back(std::make_unique<MotionBlurPreRenderOperator>(_context, *this, _resCache));
                    break;
 
                case FilterType::FILTER_BLOOM:
-                   hdr2Batch.emplace_back(eastl::make_unique<BloomPreRenderOperator>(_context, *this, _resCache));
+                   hdr2Batch.emplace_back(std::make_unique<BloomPreRenderOperator>(_context, *this, _resCache));
                    break;
 
                default:
@@ -225,7 +225,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             switch (fType)
             {
                 case FilterType::FILTER_SS_ANTIALIASING:
-                    ldrBatch.push_back(eastl::make_unique<PostAAPreRenderOperator>(_context, *this, _resCache));
+                    ldrBatch.push_back(std::make_unique<PostAAPreRenderOperator>(_context, *this, _resCache));
                     break;
 
                 default:

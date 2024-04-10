@@ -35,15 +35,16 @@
 
 namespace Divide {
 
-    struct BufferRange {
+    struct BufferRange
+    {
         size_t _startOffset{ 0u };
         size_t _length{ 0u };
 
         size_t endOffset() const noexcept;
+
+        auto operator<=>(const BufferRange&) const = default;
     };
 
-    bool operator==(const BufferRange& lhs, const BufferRange& rhs) noexcept;
-    bool operator!=(const BufferRange& lhs, const BufferRange& rhs) noexcept;
 
     bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept;
     void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept;

@@ -118,7 +118,7 @@ void Script::bootstrap()
     std::vector<std::string> scriptPath{Paths::Scripts::g_scriptsLocation.string() + Paths::g_pathSeparator,
                                         Paths::Scripts::g_scriptsAtomsLocation.string() + Paths::g_pathSeparator };
 
-    _script =  eastl::make_unique<chaiscript::ChaiScript>(scriptPath,
+    _script =  std::make_unique<chaiscript::ChaiScript>(scriptPath,
                                                           scriptPath,
                                                           std::vector<chaiscript::Options> 
                                                           {

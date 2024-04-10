@@ -59,7 +59,7 @@ namespace Divide
         : FrameListener( "SceneGraph", parentScene.context().kernel().frameListenerMgr(), 1 ),
         SceneComponent( parentScene )
     {
-        _ecsManager = eastl::make_unique<ECSManager>( parentScene.context(), GetECSEngine() );
+        _ecsManager = std::make_unique<ECSManager>( parentScene.context(), GetECSEngine() );
 
         SceneGraphNodeDescriptor rootDescriptor = {};
         rootDescriptor._name = "ROOT";

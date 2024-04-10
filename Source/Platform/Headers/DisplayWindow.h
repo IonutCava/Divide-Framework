@@ -209,7 +209,7 @@ public:
     [[nodiscard]] bool onSDLEvent(SDL_Event event) override;
 
 
-    [[nodiscard]] GFX::CommandBuffer* getCurrentCommandBuffer();
+    [[nodiscard]] GFX::CommandBufferQueue& getCurrentCommandBufferQueue();
 
     /// The display on which this window was initially created on
     PROPERTY_R(U32, initialDisplay, 0u);
@@ -244,7 +244,7 @@ private:
     WindowType _previousType = WindowType::COUNT;
     U8 _prevOpacity = 255u;
     
-    std::array<GFX::CommandBuffer, Config::MAX_FRAMES_IN_FLIGHT> _commandBuffers;
+    std::array<GFX::CommandBufferQueue, Config::MAX_FRAMES_IN_FLIGHT> _commandBufferQueues;
     /// Did we generate the window move event?
     bool _internalMoveEvent = false;
     bool _internalResizeEvent = false;

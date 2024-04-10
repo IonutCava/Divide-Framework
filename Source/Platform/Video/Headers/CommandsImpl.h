@@ -113,7 +113,6 @@ DEFINE_COMMAND_END(SendPushConstantsCommand);
 
 DEFINE_COMMAND_BEGIN(DrawCommand, CommandType::DRAW_COMMANDS);
     using CommandContainer = eastl::fixed_vector<GenericDrawCommand, 4, true, eastl::dvd_allocator>;
-    static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
     DrawCommand() noexcept : DrawCommand(GenericDrawCommand{}) {}
     DrawCommand(const GenericDrawCommand& cmd) noexcept : _drawCommands{ { cmd } } {}
@@ -145,7 +144,7 @@ DEFINE_COMMAND_BEGIN(BeginRenderPassCommand, CommandType::BEGIN_RENDER_PASS);
 DEFINE_COMMAND_END(BeginRenderPassCommand);
 
 DEFINE_COMMAND_BEGIN(EndRenderPassCommand, CommandType::END_RENDER_PASS);
-    RTTransitionMask _transitionMask = create_array< RT_MAX_ATTACHMENT_COUNT >( true );
+    RTTransitionMask _transitionMask = {true, true, true, true, true};
 DEFINE_COMMAND_END(EndRenderPassCommand);
 
 DEFINE_COMMAND_BEGIN(BeginGPUQueryCommand, CommandType::BEGIN_GPU_QUERY);

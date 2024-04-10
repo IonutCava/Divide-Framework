@@ -369,7 +369,7 @@ namespace Divide
             DIVIDE_ASSERT( _availableProjects.empty() );
             parent().frameListenerMgr().registerFrameListener( this, 1 );
 
-            _recast = eastl::make_unique<AI::Navigation::DivideRecast>();
+            _recast = std::make_unique<AI::Navigation::DivideRecast>();
 
             for ( U8 i = 0u; i < to_base( RenderStage::COUNT ); ++i )
             {
@@ -434,7 +434,7 @@ namespace Divide
             Console::warnfn( LOCALE_STR( "WARN_PROJECT_CHANGE" ), _activeProject->id()._name, target._targetProject._name );
         }
 
-        _activeProject = eastl::make_unique<Project>( *this, target._targetProject );
+        _activeProject = std::make_unique<Project>( *this, target._targetProject );
 
         if ( _activeProject == nullptr || _activeProject->getSceneEntries().empty() )
         {
@@ -1186,7 +1186,7 @@ namespace Divide
 
     U8 ProjectManager::activePlayerCount() const noexcept
     {
-        return Attorney::SceneProjectManager::playerCount( activeProject()->getActiveScene() );
+        return activeProject()->getActiveScene().playerCount();
     }
 
     std::pair<Texture_ptr, SamplerDescriptor> ProjectManager::getSkyTexture() const

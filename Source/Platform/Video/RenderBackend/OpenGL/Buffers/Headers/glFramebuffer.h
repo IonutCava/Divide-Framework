@@ -70,6 +70,8 @@ class glFramebuffer final : public RenderTarget {
         U16 _levelOffset{0u};
         bool _layeredRendering{false};
         AttachmentState _attState{ AttachmentState::COUNT };
+
+        auto operator<=>(const BindingState&) const = default;
     };
 
    public:
@@ -126,9 +128,6 @@ class glFramebuffer final : public RenderTarget {
     bool _statusCheckQueued = false;
     bool _activeDepthBuffer = false;
 };
-
-bool operator==(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;
-bool operator!=(const glFramebuffer::BindingState& lhs, const glFramebuffer::BindingState& rhs) noexcept;
 
 namespace Attorney
 {

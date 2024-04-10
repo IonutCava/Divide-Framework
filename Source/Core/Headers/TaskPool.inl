@@ -36,17 +36,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
     template<class Predicate>
-    Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, const bool allowedInIdle) {
-        Task* task = TaskPool::AllocateTask(parentTask, allowedInIdle);
-        task->_callback = MOV(threadedFunction);
-        return task;
+    FORCE_INLINE Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, const bool allowedInIdle)
+    {
+        return TaskPool::AllocateTask(parentTask, MOV( threadedFunction ), allowedInIdle );
     }
 
     template<class Predicate>
-    Task* CreateTask(Predicate&& threadedFunction, const bool allowedInIdle) {
-        Task* task = TaskPool::AllocateTask(nullptr, allowedInIdle);
-        task->_callback = MOV(threadedFunction);
-        return task;
+    FORCE_INLINE Task* CreateTask(Predicate&& threadedFunction, const bool allowedInIdle)
+    {
+        return CreateTask(nullptr, MOV(threadedFunction), allowedInIdle );
     }
 } //namespace Divide
 

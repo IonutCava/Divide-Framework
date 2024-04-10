@@ -34,10 +34,6 @@
 #define DVD_PROJECTMANAGER_H
 
 #include <cstdint>
-#include <array>
-#include <string>
-#include <vector>
-#include <filesystem>
 
 struct SDL_Texture;
 struct SDL_Surface;
@@ -165,7 +161,6 @@ enum class BuildTarget : uint8_t
 };
 
 static const char* BuildTargetNames[] = { "release", "profile", "debug", "COUNT" };
-static_assert(std::size( BuildTargetNames ) == uint8_t( BuildTarget::COUNT ) + 1u, "BuildTarget name array out of sync!");
 
 enum class BuildType : uint8_t
 {
@@ -175,48 +170,6 @@ enum class BuildType : uint8_t
 };
 
 static const char* BuildTypetNames[] = { "Editor", "Game", "COUNT" };
-static_assert(std::size( BuildTypetNames ) == uint8_t( BuildType::COUNT ) + 1u, "BuildType name array out of sync!");
-
-struct BuildConfig
-{
-    using Builds = std::array<bool, uint8_t( BuildType::COUNT )>;
-    using Targets = std::array<Builds, uint8_t( BuildTarget::COUNT )>;
-
-    std::string _toolchainName;
-    Targets _targets;
-};
-
-struct Image
-{
-    explicit Image( const std::filesystem::path& path, SDL_Renderer* renderer );
-    ~Image();
-
-    const std::filesystem::path _path;
-    SDL_Surface* _surface = nullptr;
-    SDL_Texture* _texture = nullptr;
-    int _width = 1, _height = 1, _access = 0;
-    uint32_t _format = 0u;
-    float _aspectRatio = 1.f;
-
-    bool operator==(const Image& other) const noexcept;
-};
-
-using Image_ptr = std::shared_ptr<Image>;
-using ImageDB = std::vector<Image_ptr>;
-
-struct ProjectEntry
-{
-    std::string _name;
-    std::string _path;
-    bool _selected{ false };
-    bool _isDefault{ false };
-    std::weak_ptr<Image> _logo;
-    std::string _logoName{ DEFAULT_ICON_NAME };
-    std::string _logoPath;
-    std::vector<std::string> _sceneList;
-};
-
-using ProjectDB = std::vector<ProjectEntry>;
 
 
 #endif //DVD_PROJECTMANAGER_H

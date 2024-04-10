@@ -65,7 +65,7 @@ public:
     bool init(U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
     void shutdown();
 
-    static Task* AllocateTask(Task* parentTask, bool allowedInIdle) noexcept;
+    static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func, bool allowedInIdle ) noexcept;
 
     /// Returns the number of callbacks processed
     size_t flushCallbackQueue();

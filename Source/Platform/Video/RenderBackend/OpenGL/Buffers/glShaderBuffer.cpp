@@ -41,7 +41,7 @@ namespace Divide
         implParams._dataSize = _alignedBufferSize * queueLength();
         implParams._useChunkAllocation = getUsage() != BufferUsageType::COMMAND_BUFFER;
 
-        _bufferImpl = eastl::make_unique<glBufferImpl>( context, implParams, descriptor._initialData, _name.empty() ? nullptr : _name.c_str() );
+        _bufferImpl = std::make_unique<glBufferImpl>( context, implParams, descriptor._initialData, _name.empty() ? nullptr : _name.c_str() );
 
         // Just to avoid issues with reading undefined or zero-initialised memory.
         // This is quite fast so far so worth it for now.

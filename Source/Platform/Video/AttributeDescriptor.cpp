@@ -44,47 +44,4 @@ namespace Divide
         return vertexFormatHash;
     }
 
-    bool operator==( const AttributeDescriptor& lhs, const AttributeDescriptor& rhs ) noexcept
-    {
-        return lhs._strideInBytes == rhs._strideInBytes &&
-               lhs._vertexBindingIndex == rhs._vertexBindingIndex &&
-               lhs._componentsPerElement == rhs._componentsPerElement &&
-               lhs._dataType == rhs._dataType &&
-               lhs._normalized == rhs._normalized;
-    }
-
-    bool operator!=( const AttributeDescriptor& lhs, const AttributeDescriptor& rhs ) noexcept
-    {
-        return lhs._strideInBytes != rhs._strideInBytes ||
-               lhs._vertexBindingIndex != rhs._vertexBindingIndex ||
-               lhs._componentsPerElement != rhs._componentsPerElement ||
-               lhs._dataType != rhs._dataType ||
-               lhs._normalized != rhs._normalized;
-    }
-
-    bool operator==( const VertexBinding& lhs, const VertexBinding& rhs ) noexcept
-    {
-        return lhs._perVertexInputRate == rhs._perVertexInputRate &&
-               lhs._bufferBindIndex == rhs._bufferBindIndex &&
-               lhs._strideInBytes == rhs._strideInBytes;
-    }
-
-    bool operator!=( const VertexBinding& lhs, const VertexBinding& rhs ) noexcept
-    {
-        return lhs._perVertexInputRate != rhs._perVertexInputRate ||
-               lhs._bufferBindIndex != rhs._bufferBindIndex ||
-               lhs._strideInBytes != rhs._strideInBytes;
-    }
-
-    bool operator==( const AttributeMap& lhs, const AttributeMap& rhs ) noexcept
-    {
-        return lhs._vertexBindings == rhs._vertexBindings &&
-               lhs._attributes == rhs._attributes;
-    }
-
-    bool operator!=( const AttributeMap& lhs, const AttributeMap& rhs ) noexcept
-    {
-        return lhs._vertexBindings != rhs._vertexBindings ||
-               lhs._attributes != rhs._attributes;
-    }
 }; //namespace Divide

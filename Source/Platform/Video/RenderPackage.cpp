@@ -7,26 +7,29 @@
 
 namespace Divide {
 
-void Clear(RenderPackage& pkg) noexcept {
+RenderPackage::~RenderPackage()
+{
+    GFX::DeallocateCommandBuffer( _additionalCommands );
+}
+
+void Clear(RenderPackage& pkg) noexcept
+{
     pkg.drawCmdOffset(RenderPackage::INVALID_CMD_OFFSET);
     pkg.stagePassBaseIndex(RenderPackage::INVALID_STAGE_INDEX);
     pkg.pipelineCmd(GFX::BindPipelineCommand{});
     pkg.descriptorSetCmd(GFX::BindShaderResourcesCommand{});
     pkg.pushConstantsCmd(GFX::SendPushConstantsCommand{});
 
-    if ( pkg._additionalCommands != nullptr )
-    {
-        pkg._additionalCommands->clear( false );
-    }
+    GFX::DeallocateCommandBuffer( pkg._additionalCommands );
 }
 
-GFX::CommandBuffer* GetCommandBuffer( RenderPackage& pkg )
+Handle<GFX::CommandBuffer> GetCommandBuffer( RenderPackage& pkg )
 {
-    if ( pkg._additionalCommands == nullptr )
+    if ( pkg._additionalCommands == INVALID_HANDLE<GFX::CommandBuffer> )
     {
-        pkg._additionalCommands = eastl::make_unique<GFX::CommandBuffer>();
+        pkg._additionalCommands = GFX::AllocateCommandBuffer();
     }
 
-    return pkg._additionalCommands.get();
+    return pkg._additionalCommands;
 }
 }; //namespace Divide

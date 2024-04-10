@@ -26,12 +26,6 @@ namespace Divide
         _frameNumber = INVALID_FRAME_NUMBER;
     }
 
-    BufferLockInstance::BufferLockInstance( const BufferRange& range, const SyncObjectHandle& handle ) noexcept
-        : _range( range ),
-          _syncObjHandle( handle )
-    {
-    }
-
     void LockManager::CleanExpiredSyncObjects( const RenderAPI api, const U64 frameNumber )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -88,7 +82,7 @@ namespace Divide
 
                 if ( entry._ptr == nullptr )
                 {
-                    entry._ptr = eastl::make_unique<SyncObject>( flag, frameIdx );
+                    entry._ptr = std::make_unique<SyncObject>( flag, frameIdx );
                     return true;
                 }
                 else if ( entry._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )
@@ -140,7 +134,7 @@ namespace Divide
         bool error = false;
 
         LockGuard<Mutex> w_lock_global( _bufferLockslock );
-        efficient_clear( _swapLocks );
+        efficient_clear(_swapLocks);
 
         for ( const BufferLockInstance& lock : _bufferLocks )
         {
@@ -155,16 +149,10 @@ namespace Divide
                 continue;
             }
 
-            if ( !Overlaps( testRange, lock._range ) )
+            if ( !Overlaps( testRange, lock._range ) ||
+                 !waitForLockedRangeLocked( syncLockInstance._ptr, testRange, lock ) )
             {
                 _swapLocks.push_back( lock );
-            }
-            else
-            {
-                if ( !waitForLockedRangeLocked( syncLockInstance._ptr, testRange, lock ) )
-                {
-                    _swapLocks.push_back( lock );
-                }
             }
         }
 

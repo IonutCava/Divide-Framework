@@ -34,15 +34,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_COMMAND_BUFFER_H_
 
 #include "CommandsImpl.h"
-#include "Core/TemplateLibraries/Headers/PolyContainer.h"
 
 namespace Divide {
 struct GenericDrawCommand;
 
 namespace GFX {
-
-void DELETE_CMD(CommandBase*& cmd);
-[[nodiscard]] size_t RESERVE_CMD(U8 typeIndex) noexcept;
 
 enum class ErrorType : U8
 {
@@ -87,17 +83,56 @@ namespace Names {
 
 static_assert(std::size( Names::errorType ) == to_base( ErrorType::COUNT ) + 1u, "ErrorType name array out of sync!");
 
-class CommandBuffer : private NonCopyable
+struct CommandBufferQueue
 {
-    friend class CommandBufferPool;
+    struct Entry
+    {
+        Handle<GFX::CommandBuffer> _buffer{INVALID_HANDLE<GFX::CommandBuffer>};
+        bool _owning{false};
+    };
+
+    static constexpr U32 COMMAND_BUFFER_INIT_SIZE = 4u;
+    eastl::fixed_vector<Entry, COMMAND_BUFFER_INIT_SIZE, true, eastl::dvd_allocator> _commandBuffers;
+};
+
+void ResetCommandBufferQueue( CommandBufferQueue& queue );
+void AddCommandBufferToQueue( CommandBufferQueue& queue, const Handle<GFX::CommandBuffer>& commandBuffer );
+void AddCommandBufferToQueue( CommandBufferQueue& queue, Handle<GFX::CommandBuffer>&& commandBuffer );
+
+#pragma pack(push, 1)
+struct CommandEntry
+{
+    static constexpr U32 INVALID_ENTRY_ID = U32_MAX;
+
+    CommandEntry() = default;
+
+    explicit CommandEntry( const CommandType type, const U32 element )
+        : _idx { ._element = element, ._type = to_U8(type) }
+    {
+    }
+
+    struct IDX
+    {
+        U32 _element : 24;
+        U32 _type : 8;
+    };
+
+    union
+    {
+        IDX _idx;
+        U32 _data{ INVALID_ENTRY_ID };
+    };
+};
+#pragma pack(pop)
+
+class CommandBuffer : private NonCopyable
+{  
   public:
-      using CommandEntry = PolyContainerEntry;
-      using Container = PolyContainer<CommandBase, to_base(CommandType::COUNT), DELETE_CMD, RESERVE_CMD>;
+
       using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 512, true, eastl::dvd_allocator>;
+      using CommandList = vector_fast<CommandBase*>;
 
   public:
-    CommandBuffer() = default;
-    ~CommandBuffer() = default;
 
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     T* add();
@@ -109,35 +144,29 @@ class CommandBuffer : private NonCopyable
     [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
     void add(const CommandBuffer& other);
+    void add(Handle<CommandBuffer> other);
 
-    void clean();
     void batch();
 
-    // Return true if merge is successful
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] bool tryMergeCommands(CommandType type, T* prevCommand, T* crtCommand) const;
+    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] const CommandList& get() const;
 
-    [[nodiscard]] bool exists(const CommandEntry& commandEntry) const noexcept;
-
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] const Container::EntryList& get() const;
-
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
     [[nodiscard]] T* get(const CommandEntry& commandEntry) const;
 
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
+    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
     [[nodiscard]] T* get(const CommandEntry& commandEntry);
 
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] T* get(U24 index);
+    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] T* get(U32 index);
 
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] T* get(U24 index) const;
+    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] T* get(U32 index) const;
 
-    [[nodiscard]] bool exists(U8 typeIndex, U24 index) const noexcept;
+    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] bool exists(U32 index) const noexcept;
 
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] bool exists(U24 index) const noexcept;
+    [[nodiscard]] bool exists(const CommandEntry& commandEntry) const noexcept;
 
     inline CommandOrderContainer& operator()() noexcept;
     inline const CommandOrderContainer& operator()() const noexcept;
@@ -154,19 +183,32 @@ class CommandBuffer : private NonCopyable
     [[nodiscard]] inline size_t size() const noexcept { return _commandOrder.size(); }
 
   protected:
-    template<typename T, CommandType enumVal>
+    template<CommandType EnumVal>
     friend struct Command;
+
+    template <typename T, size_t BlockSize>
+    friend class MemoryPool;
+
+    CommandBuffer();
+
+    // Return true if merge is successful
+    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
+    [[nodiscard]] bool tryMergeCommands( CommandType type, T* prevCommand, T* crtCommand ) const;
+
 
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     [[nodiscard]] T* allocateCommand();
+
+    void clean();
+    bool cleanInternal();
+    
 
     static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
   protected:
       CommandOrderContainer _commandOrder{};
-      eastl::array<U24, to_base(CommandType::COUNT)> _commandCount{};
-
-      Container _commands{};
+      eastl::array<U32, to_base(CommandType::COUNT)> _commandCount{};
+      eastl::array<CommandList, to_base( CommandType::COUNT )> _collection{};
       bool _batched{ false };
 };
 
@@ -182,6 +224,15 @@ FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T& cmd) { return buffer.ad
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) { return buffer.add(cmd); }
+
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer) { return buffer._ptr->add<T>(); }
+
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer, T& cmd) { return buffer._ptr->add(cmd); }
+
+template<typename T> requires std::is_base_of_v<CommandBase, T>
+FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer, T&& cmd) { return buffer._ptr->add(cmd); }
 
 }; //namespace GFX
 }; //namespace Divide

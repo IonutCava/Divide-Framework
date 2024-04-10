@@ -212,7 +212,7 @@ namespace Divide
             return updateBuffer( params._bindConfig._bufferIdx, 0, params._bufferParams._elementCount, params._initialData.first );
         }
 
-        impl->_buffer = eastl::make_unique<glBufferImpl>( _context, implParams, params._initialData, _name.empty() ? nullptr : _name.c_str() );
+        impl->_buffer = std::make_unique<glBufferImpl>( _context, implParams, params._initialData, _name.empty() ? nullptr : _name.c_str() );
 
         BufferLock ret = {};
         for ( U32 i = 1u; i < ringSizeFactor; ++i )

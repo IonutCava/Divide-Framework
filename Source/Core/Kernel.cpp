@@ -278,7 +278,7 @@ void Kernel::onLoop()
 
         if constexpr(!Config::Build::IS_SHIPPING_BUILD)
         {
-            if (GFXDevice::FrameCount() % 6 == 0u)
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u)
             {
                 DisplayWindow& window = _platformContext.mainWindow();
                 static string originalTitle = window.title();

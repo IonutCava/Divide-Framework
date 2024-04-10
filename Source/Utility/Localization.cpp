@@ -22,6 +22,9 @@ namespace detail
     /// Default language can be set at compile time
     Str<64> g_localeFile = {};
 
+    bool g_init = false;
+    bool g_fileWatcher = false;
+
     LanguageData_uptr g_data = nullptr;
 
     /// External modification monitoring system
@@ -118,19 +121,21 @@ ErrorCode Init(const char* newLanguage)
 {
     if constexpr (!Config::Build::IS_SHIPPING_BUILD && Config::ENABLE_LOCALE_FILE_WATCHER)
     {
-        if (detail::g_LanguageFileWatcher == nullptr)
-        {
-            detail::g_LanguageFileWatcher.reset(new FW::FileWatcher());
-            detail::g_fileWatcherListener.addIgnoredEndCharacter('~');
-            detail::g_fileWatcherListener.addIgnoredExtension("tmp");
-            detail::g_LanguageFileWatcher->addWatch(FW::String(Paths::g_localisationPath.string()), &detail::g_fileWatcherListener);
-        }
+        detail::g_fileWatcherListener.addIgnoredEndCharacter('~');
+        detail::g_fileWatcherListener.addIgnoredExtension("tmp");
+
+        detail::g_LanguageFileWatcher.reset(new FW::FileWatcher());
+        detail::g_LanguageFileWatcher->addWatch(FW::String(Paths::g_localisationPath.string()), &detail::g_fileWatcherListener);
+        detail::g_fileWatcher = true;
+    }
+    else
+    {
+        detail::g_fileWatcher = false;
     }
 
-    if (!detail::g_data)
-    {
-        detail::g_data = eastl::make_unique<LanguageData>();
-    }
+
+    detail::g_data = std::make_unique<LanguageData>();
+    detail::g_init = true;
 
     return ChangeLanguage(newLanguage);
 }
@@ -138,18 +143,19 @@ ErrorCode Init(const char* newLanguage)
 void Clear() noexcept
 {
     detail::g_data.reset();
+    detail::g_init = false;
+
+    detail::g_LanguageFileWatcher.reset();
+    detail::g_fileWatcher = false;
 }
 
 void Idle()
 {
     static U32 updateCounter = detail::g_fileWatcherUpdateFrameInterval;
-    if (detail::g_LanguageFileWatcher != nullptr)
+    if (detail::g_fileWatcher && --updateCounter == 0u)
     {
-        if (--updateCounter == 0u)
-        {
-            detail::g_LanguageFileWatcher->update();
-            updateCounter = detail::g_fileWatcherUpdateFrameInterval;
-        }
+        detail::g_LanguageFileWatcher->update();
+        updateCounter = detail::g_fileWatcherUpdateFrameInterval;
     }
 }
 
@@ -164,17 +170,14 @@ ErrorCode ChangeLanguage(const char* newLanguage)
 
 const char* Get(const U64 key, bool appendSection, const char* defaultValue )
 {
-    if (detail::g_data)
-    {
-        return detail::g_data->get(key, appendSection, defaultValue);
-    }
+    assert( detail::g_data != nullptr );
 
-    return defaultValue;
+    return detail::g_data->get(key, appendSection, defaultValue);
 }
 
 void SetChangeLanguageCallback(const DELEGATE<void, std::string_view /*new language*/>& cbk)
 {
-    assert(detail::g_data);
+    assert(detail::g_data != nullptr);
 
     detail::g_data->setChangeLanguageCallback(cbk);
 }

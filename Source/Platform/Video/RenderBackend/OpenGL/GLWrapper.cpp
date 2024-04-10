@@ -481,11 +481,11 @@ namespace Divide
 
         constexpr U16 ringLength = 6u;
 
-        _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_VERTICES_SUBMITTED, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_PRIMITIVES_GENERATED, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_CONTROL_SHADER_PATCHES, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = eastl::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] = std::make_unique<glHardwareQueryRing>( _context, GL_VERTICES_SUBMITTED, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] = std::make_unique<glHardwareQueryRing>( _context, GL_PRIMITIVES_GENERATED, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] = std::make_unique<glHardwareQueryRing>( _context, GL_TESS_CONTROL_SHADER_PATCHES, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = std::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = std::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, ringLength );
 
         s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
         s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
@@ -550,14 +550,7 @@ namespace Divide
     bool GL_API::drawToWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if (!ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ), false ))
-        {
-            auto test = SDL_GetWindowPixelFormat(window.getRawWindow());
-            assert(test == SDL_PIXELFORMAT_RGB888);
-        }
-
-        return true;
+        return ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
     }
 
     void GL_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
@@ -872,22 +865,22 @@ namespace Divide
         if ( _pushConstantsNeedLock )
         {
             _pushConstantsNeedLock = false;
-            flushCommand( &_pushConstantsMemCommand );
+            flushCommand( &_pushConstantsMemCommand, _pushConstantsMemCommand.EType );
             _pushConstantsMemCommand._bufferLocks.clear();
         }
     }
 
-    void GL_API::preFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
+    void GL_API::preFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer )
     {
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
         GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
     }
 
-    void GL_API::flushCommand( GFX::CommandBase* cmd )
+    void GL_API::flushCommand( GFX::CommandBase* cmd, const GFX::CommandType type )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( GFXDevice::IsSubmitCommand( cmd->Type() ) )
+        if ( GFXDevice::IsSubmitCommand( type ) )
         {
             flushTextureBindQueue();
         }
@@ -897,7 +890,7 @@ namespace Divide
             flushPushConstantsLocks();
         }
 
-        switch ( cmd->Type() )
+        switch ( type )
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {
@@ -1192,7 +1185,7 @@ namespace Divide
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
                     U32 drawCount = 0u;
-                    const GFX::DrawCommand::CommandContainer& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
+                    const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
                     for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
                     {
@@ -1373,7 +1366,7 @@ namespace Divide
         }
     }
 
-    void GL_API::postFlushCommandBuffer( [[maybe_unused]] const GFX::CommandBuffer& commandBuffer )
+    void GL_API::postFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -1773,7 +1766,7 @@ namespace Divide
         {
             glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
         }
-        assert( s_stateTracker._debugScopeDepth < s_stateTracker._debugScope.size() );
+        assert( s_stateTracker._debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH );
         s_stateTracker._debugScope[s_stateTracker._debugScopeDepth++] = { message, id };
     }
 
@@ -1785,7 +1778,7 @@ namespace Divide
         {
             glPopDebugGroup();
         }
-        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth--] = { "", U32_MAX };
+        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth--] = {};
     }
 
     bool GL_API::DeleteShaderPrograms( const GLuint count, GLuint* programs )
@@ -1972,7 +1965,7 @@ namespace Divide
 
     RenderTarget_uptr GL_API::newRT( const RenderTargetDescriptor& descriptor ) const
     {
-        return eastl::make_unique<glFramebuffer>( _context, descriptor );
+        return std::make_unique<glFramebuffer>( _context, descriptor );
     }
 
     GenericVertexData_ptr GL_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
@@ -1992,7 +1985,7 @@ namespace Divide
 
     ShaderBuffer_uptr GL_API::newSB( const ShaderBufferDescriptor& descriptor ) const
     {
-        return eastl::make_unique<glShaderBuffer>( _context, descriptor );
+        return std::make_unique<glShaderBuffer>( _context, descriptor );
     }
 
 };

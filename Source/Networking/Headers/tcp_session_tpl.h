@@ -118,7 +118,7 @@ namespace Divide
         deadline_timer _outputDeadline;
         time_t _startTime;
 
-        eastl::unique_ptr<boost::asio::io_context::strand> _strand;
+        std::unique_ptr<boost::asio::io_context::strand> _strand;
     };
 
     using tcp_session_ptr = std::shared_ptr<tcp_session_tpl>;

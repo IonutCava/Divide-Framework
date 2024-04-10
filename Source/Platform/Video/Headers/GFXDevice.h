@@ -253,7 +253,8 @@ public:  // GPU interface
 
     void idle(bool fast, U64 deltaTimeUSGame, U64 deltaTimeUSApp);
 
-    void flushCommandBuffer(GFX::CommandBuffer& commandBuffer, bool batch = true);
+    void flushCommandBuffer(const Handle<GFX::CommandBuffer>& commandBuffer);
+    void flushCommandBuffer(Handle<GFX::CommandBuffer>&& commandBuffer);
 
     void debugDraw( const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
     void debugDrawLines(const I64 ID, IM::LineDescriptor descriptor) noexcept;
@@ -430,7 +431,7 @@ protected:
     void initDebugViews();
     void renderDebugViews(Rect<I32> targetViewport, I32 padding, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
 
-    void flushCommandBufferInternal(GFX::CommandBuffer& commandBuffer);
+    void flushCommandBufferInternal(Handle<GFX::CommandBuffer> commandBuffer);
 
     [[nodiscard]] PipelineDescriptor& getDebugPipeline(const IM::BaseDescriptor& descriptor) noexcept;
     void debugDrawLines( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);

@@ -115,7 +115,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/TemplateLibraries/Headers/CircularBuffer.h
                          Core/TemplateLibraries/Headers/EnumToString.h
                          Core/TemplateLibraries/Headers/HashMap.h
-                         Core/TemplateLibraries/Headers/PolyContainer.h
                          Core/TemplateLibraries/Headers/STLString.h
                          Core/TemplateLibraries/Headers/String.h
                          Core/TemplateLibraries/Headers/TemplateAllocator.h
@@ -133,6 +132,7 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/Configuration.cpp
                  Core/Console.cpp
                  Core/EngineTaskPool.cpp
+                 Core/ErrorCodes.cpp
                  Core/FrameListener.cpp
                  Core/GUIDWrapper.cpp
                  Core/Hashable.cpp
@@ -654,6 +654,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
 
 set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/DisplayWindow.cpp
+                     Platform/PlatformDataTypes.cpp
                      Platform/PlatformDefines.cpp
                      Platform/PlatformDefinesApple.cpp
                      Platform/PlatformDefinesUnix.cpp

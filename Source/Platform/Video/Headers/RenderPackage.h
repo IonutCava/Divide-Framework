@@ -41,6 +41,8 @@ struct RenderPackage {
     static constexpr U32 INVALID_CMD_OFFSET = U32_MAX;
     static constexpr U8 INVALID_STAGE_INDEX = U8_MAX;
 
+    ~RenderPackage();
+
     PROPERTY_RW(GFX::BindPipelineCommand, pipelineCmd);
     PROPERTY_RW(GFX::BindShaderResourcesCommand, descriptorSetCmd);
     PROPERTY_RW(GFX::SendPushConstantsCommand,  pushConstantsCmd);
@@ -49,14 +51,14 @@ struct RenderPackage {
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
 
 private:
-    friend GFX::CommandBuffer* GetCommandBuffer( RenderPackage& pkg );
+    friend Handle<GFX::CommandBuffer> GetCommandBuffer( RenderPackage& pkg );
     friend void Clear( RenderPackage& pkg ) noexcept;
 
-    eastl::unique_ptr<GFX::CommandBuffer> _additionalCommands{nullptr};
+    Handle<GFX::CommandBuffer> _additionalCommands =  INVALID_HANDLE<GFX::CommandBuffer>;
 };
 
 void Clear(RenderPackage& pkg) noexcept;
-GFX::CommandBuffer* GetCommandBuffer(RenderPackage& pkg);
+Handle<GFX::CommandBuffer> GetCommandBuffer(RenderPackage& pkg);
 }; // namespace Divide
 
 #endif //DVD_RENDER_PACKAGE_H_

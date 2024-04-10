@@ -32,12 +32,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_RUNTIME_INL_
 #define DVD_PLATFORM_RUNTIME_INL_
 
-namespace Divide {
-namespace Runtime {
-    inline bool isMainThread() noexcept {
-        return mainThreadID() == std::this_thread::get_id();
+namespace Divide::Runtime
+{
+    inline bool isMainThread() noexcept
+    {
+        thread_local std::thread::id thisThreadID = std::this_thread::get_id();
+
+        return mainThreadID() == thisThreadID;
     }
-}; //namespace Runtime
-}; //namespace Divide
+
+}; //namespace Divide::Runtime
 
 #endif //DVD_PLATFORM_RUNTIME_INL_

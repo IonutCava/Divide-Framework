@@ -647,7 +647,12 @@ namespace Divide
 
     void RenderingComponent::getCommandBuffer( RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut )
     {
-        bufferInOut.add( *GetCommandBuffer( *pkg ) );
+        Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( *pkg );
+        if (cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer>)
+        {
+            bufferInOut.add( *cmdBuffer._ptr );
+        }
+        
         bufferInOut.add( pkg->pipelineCmd() );
         bufferInOut.add( pkg->descriptorSetCmd() );
         bufferInOut.add( pkg->pushConstantsCmd() );

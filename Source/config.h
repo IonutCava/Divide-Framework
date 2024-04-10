@@ -143,6 +143,9 @@ constexpr U8 MAX_REFLECTIVE_PROBES_PER_PASS = 6u;
 /// Maximum number of players we support locally. We store per-player data such as key-bindings, camera positions, etc.
 constexpr U8 MAX_LOCAL_PLAYER_COUNT = 4u;
 
+/// Maximum number of nested debug scopes we support in the renderer
+constexpr U8 MAX_DEBUG_SCOPE_DEPTH = 32u;
+
 namespace Lighting {
     /// How many lights (in order as passed to the shader for the node) should cast shadows
     constexpr U8 MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS = 2u;

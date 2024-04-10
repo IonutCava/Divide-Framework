@@ -59,17 +59,21 @@ class GUIDWrapper {
     const I64 _guid;
 };
 
-FORCE_INLINE bool operator==(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noexcept {
+FORCE_INLINE bool operator==(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noexcept
+{
     return lhs.getGUID() == rhs.getGUID();
 }
 
-FORCE_INLINE bool operator!=(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noexcept {
+FORCE_INLINE bool operator!=(const GUIDWrapper& lhs, const GUIDWrapper& rhs) noexcept
+{
     return lhs.getGUID() != rhs.getGUID();
 }
 
 [[nodiscard]]
-FORCE_INLINE bool Compare(const GUIDWrapper* const lhs, const GUIDWrapper* const rhs) noexcept {
-    if (lhs != nullptr && rhs != nullptr) {
+FORCE_INLINE bool Compare(const GUIDWrapper* const lhs, const GUIDWrapper* const rhs) noexcept
+{
+    if (lhs != nullptr && rhs != nullptr)
+    {
         return lhs->getGUID() == rhs->getGUID();
     }
 

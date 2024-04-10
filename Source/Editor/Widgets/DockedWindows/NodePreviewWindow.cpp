@@ -81,11 +81,11 @@ namespace Divide
         const ImDrawCallback toggleAlphaBlend = []( [[maybe_unused]] const ImDrawList* parent_list, const ImDrawCmd* imCmd ) -> void
         {
             IMGUICallbackData* data = static_cast<IMGUICallbackData*>(imCmd->UserCallbackData);
-            assert( data->_cmdBuffer != nullptr);
+            DIVIDE_ASSERT( data->_cmdBuffer != nullptr );
 
             const PushConstantsStruct pushConstants = IMGUICallbackToPushConstants(*data, false);
 
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( *(data->_cmdBuffer) )->_constants.set( pushConstants );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( *data->_cmdBuffer )->_constants.set( pushConstants );
         };
 
         assert( tex != nullptr );

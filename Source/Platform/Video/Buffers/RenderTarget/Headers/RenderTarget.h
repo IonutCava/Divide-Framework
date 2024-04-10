@@ -99,9 +99,9 @@ class NOINITVTABLE RenderTarget : public GUIDWrapper, public GraphicsResource {
    protected:
     RenderTargetDescriptor _descriptor;
 
-    std::array<RTAttachment_uptr, RT_MAX_ATTACHMENT_COUNT> _attachments{};
-    std::array<bool, RT_MAX_ATTACHMENT_COUNT> _attachmentsUsed;
-    std::array<bool, RT_MAX_ATTACHMENT_COUNT> _attachmentsAutoResolve;
+    RTAttachment_uptr _attachments[RT_MAX_ATTACHMENT_COUNT]{};
+    bool _attachmentsUsed[RT_MAX_ATTACHMENT_COUNT] = {};
+    bool _attachmentsAutoResolve[RT_MAX_ATTACHMENT_COUNT] = {};
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderTarget);

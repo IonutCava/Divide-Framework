@@ -50,7 +50,10 @@ namespace Divide
     void GLStateTracker::setDefaultState()
     {
         _activeState = {};
-        _debugScope.fill( {} );
+        for (auto& scope : _debugScope)
+        {
+            scope = {};
+        }
         _debugScopeDepth = 0u;
         _attributeHash = 0u;
         _activePipeline = nullptr;
@@ -435,7 +438,15 @@ namespace Divide
 
         DIVIDE_ASSERT( handle != GL_NULL_HANDLE );
 
-        ImageBindSettings tempSettings = { handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format };
+        const ImageBindSettings tempSettings = 
+        {
+            ._texture = handle,
+            ._level = level,
+            ._layer = layer,
+            ._access = access,
+            ._format = format,
+            ._layered = layered ? GL_TRUE : GL_FALSE
+        };
 
         ImageBindSettings& settings = _imageBoundMap[unit];
         if ( settings != tempSettings )

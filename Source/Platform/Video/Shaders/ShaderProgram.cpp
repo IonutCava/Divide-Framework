@@ -1927,10 +1927,12 @@ namespace Divide
         bool ret = false;
         for ( auto& blockBuffer : _uniformBlockBuffers )
         {
-            for ( const GFX::PushConstant& constant : data.data() )
+            const auto constants = data.data();
+            for ( const GFX::PushConstant& constant : constants )
             {
                 blockBuffer.uploadPushConstant( constant );
             }
+
             if ( blockBuffer.commit( set, memCmdInOut ) )
             {
                 ret = true;

@@ -85,7 +85,7 @@ struct ImageLayer {
     [[nodiscard]] T* allocateMip(const T* data, size_t len, U16 width, U16 height, U16 depth, const U8 numComponents) {
         assert(_mips.size() < U8_MAX - 1);
 
-        _mips.emplace_back(eastl::make_unique<ImageMip<T>>(data, len, width, height, depth, numComponents));
+        _mips.emplace_back(std::make_unique<ImageMip<T>>(data, len, width, height, depth, numComponents));
         return static_cast<T*>(_mips.back()->data());
     }
 

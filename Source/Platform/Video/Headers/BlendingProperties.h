@@ -35,7 +35,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct BlendingSettings {
+struct BlendingSettings
+{
 
     PROPERTY_RW(BlendProperty,  blendSrc, BlendProperty::ONE);
     PROPERTY_RW(BlendProperty,  blendDest, BlendProperty::ZERO);
@@ -44,14 +45,15 @@ struct BlendingSettings {
     PROPERTY_RW(BlendProperty,  blendDestAlpha, BlendProperty::ZERO);
     PROPERTY_RW(BlendOperation, blendOpAlpha, BlendOperation::COUNT);
     PROPERTY_RW(bool, enabled, false);
+
+    auto operator<=>(const BlendingSettings&) const = default;
 };
 
 [[nodiscard]] size_t GetHash(const BlendingSettings& properties);
-bool operator==(const BlendingSettings& lhs, const BlendingSettings& rhs) noexcept;
-bool operator!=(const BlendingSettings& lhsc, const BlendingSettings& rhs) noexcept;
 
 // Blend state 0 with no RT bound == Global blend
-struct RTBlendStates {
+struct RTBlendStates
+{
     UColour4 _blendColour = { 0u, 0u, 0u, 0u };
     std::array<BlendingSettings, to_base( RTColourAttachmentSlot::COUNT)> _settings;
 };

@@ -68,7 +68,7 @@ namespace Divide
         , _alignedBufferSize( alignedBufferSize )
         , _totalBufferSize( _alignedBufferSize * ringQueueLength )
     {
-        _lockManager = eastl::make_unique<LockManager>();
+        _lockManager = std::make_unique<LockManager>();
 
         VkAccessFlags2 dstAccessMask = VK_ACCESS_2_NONE;
         VkPipelineStageFlags2 dstStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -298,7 +298,7 @@ namespace Divide
             params._elementCount = 1u;
             params._elementSize = size;
 
-            VMABuffer_uptr ret = eastl::make_unique<VMABuffer>( params );
+            VMABuffer_uptr ret = std::make_unique<VMABuffer>( params );
 
             VmaAllocationCreateInfo vmaallocInfo = {};
             // Let the VMA library know that this data should be writable by CPU only

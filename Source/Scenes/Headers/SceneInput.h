@@ -42,18 +42,10 @@ namespace Divide
     {
         U32 _id{ 0u };
         Input::JoystickElementType _element{ Input::JoystickElementType::COUNT };
+
+        auto operator<=>(const JoystickMapKey&) const = default;
     };
 
-    inline bool operator==( const JoystickMapKey& lhs, const JoystickMapKey& rhs ) noexcept
-    {
-        return lhs._element == rhs._element &&
-            lhs._id == rhs._id;
-    }
-    inline bool operator!=( const JoystickMapKey& lhs, const JoystickMapKey& rhs ) noexcept
-    {
-        return lhs._element == rhs._element &&
-            lhs._id == rhs._id;
-    }
 
     struct JoystickMapKeyHash
     {

@@ -209,8 +209,8 @@ namespace Divide
         LockGuard<Mutex> lock( _taskFinishedMutex );
         _taskFinishedCV.notify_one();
     }
-
-    Task* TaskPool::AllocateTask( Task* parentTask, const bool allowedInIdle ) noexcept
+    
+    Task* TaskPool::AllocateTask( Task* parentTask, DELEGATE<void, Task&>&& func, const bool allowedInIdle ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
@@ -226,13 +226,13 @@ namespace Divide
         do
         {
             U16 expected = 0u;
-            if constexpr (false)
+            if constexpr ( false )
             {
                 const auto idx = g_allocatedTasks++ & Config::MAX_POOLED_TASKS - 1u;
                 Task& crtTask = g_taskAllocator[idx];
                 if ( idx == 0u && ++retryCount > s_maxTaskRetry )
                 {
-                   DIVIDE_UNEXPECTED_CALL();
+                    DIVIDE_UNEXPECTED_CALL();
                 }
                 if ( crtTask._unfinishedJobs.compare_exchange_strong( expected, 1u ) )
                 {
@@ -256,10 +256,10 @@ namespace Divide
         }
         task->_parent = parentTask;
         task->_runWhileIdle = allowedInIdle;
+        task->_callback = MOV( func );
 
         return task;
     }
-
     void TaskPool::threadWaiting()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
@@ -298,24 +298,33 @@ namespace Divide
         {
             const U32 start = i * crtPartitionSize;
             const U32 end = start + crtPartitionSize;
-            Task* parallelJob = TaskPool::AllocateTask( nullptr, descriptor._allowRunInIdle );
-            parallelJob->_callback = [&cbk, &jobCount, start, end]( Task& parentTask )
-            {
-                cbk( &parentTask, start, end );
-                jobCount.fetch_sub( 1 );
-            };
+            Task* parallelJob = TaskPool::AllocateTask
+            (
+                nullptr,
+                [&cbk, &jobCount, start, end]( Task& parentTask )
+                {
+                    cbk( &parentTask, start, end );
+                    jobCount.fetch_sub( 1 );
+                },
+                descriptor._allowRunInIdle
+            );
 
             Start( *parallelJob, pool, descriptor._priority );
         }
         if ( remainder > 0u )
         {
             const U32 count = descriptor._iterCount;
-            Task* parallelJob = TaskPool::AllocateTask( nullptr, descriptor._allowRunInIdle );
-            parallelJob->_callback = [&cbk, &jobCount, count, remainder]( Task& parentTask )
-            {
-                cbk( &parentTask, count - remainder, count );
-                jobCount.fetch_sub( 1 );
-            };
+            Task* parallelJob = TaskPool::AllocateTask
+            (
+                nullptr,
+                [&cbk, &jobCount, count, remainder]( Task& parentTask )
+                {
+                    cbk( &parentTask, count - remainder, count );
+                    jobCount.fetch_sub( 1 );
+                },
+                descriptor._allowRunInIdle
+            );
+
             Start( *parallelJob, pool, descriptor._priority );
         }
 

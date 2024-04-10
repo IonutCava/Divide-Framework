@@ -425,7 +425,7 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
-        static RTTransitionMask s_defaultTransitionMask = create_array< RT_MAX_ATTACHMENT_COUNT >(true);
+        static RTTransitionMask s_defaultTransitionMask = {true, true, true, true, true };
 
         _previousPolicy = descriptor;
 
