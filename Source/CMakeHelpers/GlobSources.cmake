@@ -72,7 +72,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/PlatformContext.h
                          Core/Headers/PlatformContextComponent.h
                          Core/Headers/PoolHandle.h
-                         Core/Headers/PoolHandle.inl
                          Core/Headers/Profiler.h
                          Core/Headers/RingBuffer.h
                          Core/Headers/StringHelper.h
@@ -560,7 +559,6 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h
-                             Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.inl
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.inl
                              Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h
