@@ -50,4 +50,5 @@ void OpenAL_API::setMusicVolume([[maybe_unused]] I8 value) noexcept {}
 void OpenAL_API::setSoundVolume([[maybe_unused]] I8 value) noexcept {}
 
 void OpenAL_API::musicFinished() noexcept {}
-};
+
+}; //namespace Divide

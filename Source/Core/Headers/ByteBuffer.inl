@@ -201,8 +201,10 @@ T ByteBuffer::read() {
 }
 
 template <typename T>
-T ByteBuffer::readNoSkipFrom(const size_t pos) const {
-    if (pos + sizeof(T) > storageSize()) {
+T ByteBuffer::readNoSkipFrom(const size_t pos) const
+{
+    if (pos + sizeof(T) > storageSize())
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -247,13 +249,14 @@ inline U64 ByteBuffer::readPackGUID() {
 
 inline void ByteBuffer::appendPackXYZ(const F32 x, const F32 y, const F32 z) {
     U32 packed = 0u;
-    packed |= to_I32(x / 0.25f) & 0x7FF;
-    packed |= (to_I32(y / 0.25f) & 0x7FF) << 11;
-    packed |= (to_I32(z / 0.25f) & 0x3FF) << 22;
+    packed |= to_U32( to_I32(x / 0.25f) & 0x7FF);
+    packed |= to_U32((to_I32(y / 0.25f) & 0x7FF) << 11);
+    packed |= to_U32((to_I32(z / 0.25f) & 0x3FF) << 22);
     *this << packed;
 }
 
-inline void ByteBuffer::appendPackGUID(U64 guid) {
+inline void ByteBuffer::appendPackGUID(U64 guid)
+{
     U8 packGUID[8 + 1];
     packGUID[0] = 0u;
     size_t size = 1;

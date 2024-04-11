@@ -77,7 +77,7 @@ FileError readFile( const ResourcePath& filePath, const std::string_view fileNam
 
             if (fileSize > 0) {
                 streamIn.seekg(0, std::ios::beg);
-                optional_reserve(contentOut, fileSize);
+                optional_reserve(contentOut, to_size(fileSize));
 
                 static_assert(sizeof(char) == sizeof(Byte), "readFile: Platform error!");
                 contentOut.assign(string

@@ -130,11 +130,8 @@ class CommandBuffer : private NonCopyable
     PROPERTY_R( CommandList, commands);
 
   protected:
-    template<CommandType EnumVal>
-    friend struct Command;
-
     template <typename T, size_t BlockSize>
-    friend class MemoryPool;
+    friend class ::MemoryPool;
     CommandBuffer( size_t reservedCmdCount );
     ~CommandBuffer();
 
@@ -142,11 +139,12 @@ class CommandBuffer : private NonCopyable
     bool cleanInternal();
     
 
-    static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
   protected:
       bool _batched{ false };
 };
+
+static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
 // Return true if merge is successful
 template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>

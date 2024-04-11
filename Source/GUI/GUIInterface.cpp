@@ -17,9 +17,6 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Audio/Headers/AudioDescriptor.h"
 
-#include <CEGUI/Window.h>
-#include <CEGUI/WindowManager.h>
-
 namespace Divide {
 
 GUIInterface::GUIInterface(GUI& context)
@@ -240,4 +237,5 @@ bool GUIInterface::unloadWindow(CEGUI::Window*& window) {
 
     return false;
 }
+
 }; //namespace Divide

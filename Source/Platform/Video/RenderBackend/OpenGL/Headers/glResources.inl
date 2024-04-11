@@ -131,6 +131,7 @@ T getGLValueIndexed( gl::GLenum param, gl::GLint index)
     getGLValue(param, ret, index);
     return ret;
 }
+
 }; // namespace GLUtil
 }; // namespace Divide
 

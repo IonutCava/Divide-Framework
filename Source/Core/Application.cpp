@@ -15,11 +15,11 @@ namespace Divide {
 
 bool MemoryManager::MemoryTracker::Ready = false;
 bool MemoryManager::MemoryTracker::LogAllAllocations = false;
-MemoryManager::MemoryTracker MemoryManager::AllocTracer;
+NO_DESTROY MemoryManager::MemoryTracker MemoryManager::AllocTracer;
 
 U8 DisplayManager::s_activeDisplayCount{1u};
 U8 DisplayManager::s_maxMSAASAmples{0u};
-std::array<DisplayManager::OutputDisplayPropertiesContainer, DisplayManager::g_maxDisplayOutputs> DisplayManager::s_supportedDisplayModes;
+NO_DESTROY std::array<DisplayManager::OutputDisplayPropertiesContainer, DisplayManager::g_maxDisplayOutputs> DisplayManager::s_supportedDisplayModes;
 
 Application::Application() noexcept
     : _mainLoopPaused{false}

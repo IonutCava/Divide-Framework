@@ -2,9 +2,6 @@
 
 #include "Headers/GUIMessageBox.h"
 
-#include <CEGUI/WindowManager.h>
-#include <CEGUI/widgets/PushButton.h>
-
 namespace Divide {
 
 GUIMessageBox::GUIMessageBox(const string& name,

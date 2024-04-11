@@ -6,8 +6,6 @@
 #include "GUI/Headers/GUI.h"
 #include "Utility/Headers/Localization.h"
 
-#include <CEGUI/GUIContext.h>
-
 namespace Divide
 {
 namespace

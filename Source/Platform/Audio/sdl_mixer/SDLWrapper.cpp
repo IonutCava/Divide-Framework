@@ -128,4 +128,4 @@ void SDL_API::playSound(const AudioDescriptor_ptr& sound) {
     }   
 }
 
-};
+}; //namespace Divide

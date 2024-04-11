@@ -36,7 +36,6 @@
 constexpr size_t CEGUI_MAX_INPUT_HISTORY = 5;
 
 #include "Core/Headers/PlatformContextComponent.h"
-#include <CEGUI/String.h>
 
 namespace CEGUI {
     class FormattedListboxTextItem;

@@ -54,9 +54,6 @@ public:
     [[nodiscard]] ErrorCode initAudioAPI() override;
     void closeAudioAPI() override;
 
-    void setAPI(const AudioAPI API) noexcept { _API_ID = API; }
-    [[nodiscard]] AudioAPI getAPI() const noexcept { return _API_ID; }
-
     void setAudioState(const AudioState& state) noexcept { _state = state; }
     [[nodiscard]] AudioState& getActiveAudioState() noexcept { return _state; }
 
@@ -76,6 +73,8 @@ public:
 
     void dumpPlaylists();
 
+    PROPERTY_RW(AudioAPI, apiID, AudioAPI::COUNT);
+
 protected:
     friend void musicFinishedHook() noexcept;
     void musicFinished() noexcept override;
@@ -89,7 +88,6 @@ protected:
     MusicPlaylist _currentPlaylist;
 
 private:
-    AudioAPI _API_ID;
     AudioAPIWrapper_uptr _api;
     std::atomic_bool _playNextInPlaylist;
 };

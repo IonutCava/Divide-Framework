@@ -90,7 +90,7 @@ void Command<EnumVal>::addToBuffer(CommandBuffer* buffer) const
 {
     using CType = MapToDataType<EnumVal>;
 
-    buffer->add( static_cast<const MapToDataType<EnumVal>&>(*this) );
+    buffer->add( static_cast<const CType&>(*this) );
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>

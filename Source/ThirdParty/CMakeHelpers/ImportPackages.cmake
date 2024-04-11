@@ -118,7 +118,7 @@ FetchContent_Declare(
 )
 
 
-FetchContent_MakeAvailable(
+FetchContent_MakeAvailableExcludeFromAll(
     spirv_reflect
     optick
     vk_bootstrap

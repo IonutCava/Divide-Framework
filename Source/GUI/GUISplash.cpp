@@ -100,4 +100,4 @@ void GUISplash::render(GFXDevice& context) const {
     context.flushCommandBuffer( MOV( handle ) );
 }
 
-};
+}; //namespace Divide

@@ -13,7 +13,6 @@ namespace Divide {
 SFXDevice::SFXDevice(PlatformContext& context)
     : AudioAPIWrapper("SFXDevice", context),
       _state(true, true, true, true),
-      _API_ID(AudioAPI::COUNT),
       _api(nullptr)
 {
     _playNextInPlaylist = false;
@@ -27,7 +26,7 @@ SFXDevice::~SFXDevice()
 ErrorCode SFXDevice::initAudioAPI() {
     assert(_api == nullptr && "SFXDevice error: initAudioAPI called twice!");
 
-    switch (_API_ID)
+    switch (_apiID)
     {
         case AudioAPI::FMOD: {
             _api = std::make_unique<FMOD_API>(_context );
@@ -41,7 +40,7 @@ ErrorCode SFXDevice::initAudioAPI() {
         default: {
             Console::errorfn(LOCALE_STR("ERROR_SFX_DEVICE_API"));
             return ErrorCode::SFX_NON_SPECIFIED;
-        };
+        }
     }
 
     return _api->initAudioAPI();

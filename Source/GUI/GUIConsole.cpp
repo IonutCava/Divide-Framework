@@ -11,10 +11,6 @@
 
 #include "Platform/Headers/PlatformRuntime.h"
 
-#include <CEGUI/WindowManager.h>
-#include <CEGUI/widgets/Listbox.h>
-#include <CEGUI/widgets/Editbox.h>
-
 namespace Divide {
 
 namespace {

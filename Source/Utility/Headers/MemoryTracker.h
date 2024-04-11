@@ -151,7 +151,7 @@ class MemoryTracker {
                 output.append(entry.File());
                 output.append(", ");
                 output.append(Util::to_string(entry.Line()));
-                output.append(Util::StringFormat("( {} bytes / {} bytes ({:5.2f} Mb)) \n", crtSize, totalUsage, totalUsage / 1024.0f / 1024));
+                output.append(Util::StringFormat("( {} bytes / {} bytes ({:5.2f} Mb)) \n", crtSize, totalUsage, (totalUsage / 1024.0f) / 1024));
                 sizeLeaked += entry.Size();
             }
             leakDetected = true;
@@ -161,7 +161,7 @@ class MemoryTracker {
             output.append("Total leaked bytes: ");
             output.append(Util::to_string(sizeLeaked));
             output.append(" / MB: ");
-            output.append(Util::to_string(sizeLeaked / 1024.0f / 1024));
+            output.append(Util::to_string((sizeLeaked / 1024.0f) / 1024));
             output.append("\n");
         } 
         return output;

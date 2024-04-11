@@ -35,52 +35,56 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
-    inline bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept
+    inline bool ImageView::operator==( const ImageView& other ) const noexcept
     {
-        return lhs._subRange == rhs._subRange &&
-               lhs._descriptor == rhs._descriptor &&
-               TargetType(lhs) == TargetType(rhs) &&
-               lhs._srcTexture == rhs._srcTexture;
+        return _subRange         == other._subRange &&
+               _descriptor       == other._descriptor &&
+               TargetType(*this) == TargetType(other) &&
+               _srcTexture       == other._srcTexture;
     }
 
-    inline bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept
+    inline bool ImageView::operator!=( const ImageView& other ) const noexcept
     {
-        return lhs._srcTexture != rhs._srcTexture ||
-               lhs._subRange != rhs._subRange ||
-               TargetType(lhs) != TargetType(rhs) ||
-               lhs._descriptor != rhs._descriptor;
+        return _srcTexture       != other._srcTexture ||
+               _subRange         != other._subRange ||
+               TargetType(*this) != TargetType(other) ||
+               _descriptor       != other._descriptor;
     }
 
 
-    inline bool operator==( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept
+    inline bool DescriptorSetBindingData::operator==( const DescriptorSetBindingData& other ) const noexcept
     {
-        if ( lhs._type != rhs._type )
+        if ( _type != other._type )
         {
             return false;
         }
 
-        switch ( lhs._type )
+        switch ( _type )
         {
             case DescriptorSetBindingType::UNIFORM_BUFFER : 
-            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER : return lhs._buffer == rhs._buffer;
-            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return lhs._sampledImage == rhs._sampledImage;
-            case DescriptorSetBindingType::IMAGE : return lhs._imageView == rhs._imageView;
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER : return _buffer == other._buffer;
+            case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage == other._sampledImage;
+            case DescriptorSetBindingType::IMAGE : return _imageView == other._imageView;
+
+            case DescriptorSetBindingType::COUNT:
             default: break;
         }
 
         return true;
     }
 
-    inline bool operator!=( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs) noexcept
+    inline bool DescriptorSetBindingData::operator!=( const DescriptorSetBindingData& other ) const noexcept
     {
-        if ( lhs._type == rhs._type )
+        if ( _type == other._type )
         {
-            switch ( lhs._type )
+            switch ( _type )
             {
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: return lhs._buffer != rhs._buffer;
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return lhs._sampledImage != rhs._sampledImage;
-                case DescriptorSetBindingType::IMAGE: return lhs._imageView != rhs._imageView;
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: return _buffer != other._buffer;
+                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage != other._sampledImage;
+                case DescriptorSetBindingType::IMAGE: return _imageView != other._imageView;
+
+                case DescriptorSetBindingType::COUNT:
                 default: return false;
             }
         }

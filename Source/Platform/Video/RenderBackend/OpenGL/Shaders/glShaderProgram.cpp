@@ -26,7 +26,8 @@ void glShaderProgram::Idle(PlatformContext& platformContext)
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     thread_local bool validatedThread = false;
-    if (!validatedThread){
+    if (!validatedThread)
+    {
         DIVIDE_ASSERT( Runtime::isMainThread() );
         validatedThread = true;
     }

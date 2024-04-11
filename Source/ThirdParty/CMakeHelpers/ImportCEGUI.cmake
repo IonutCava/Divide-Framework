@@ -1,5 +1,7 @@
 include(FetchContent)
 
+include(ThirdParty/CMakeHelpers/FetchContentExcludeFromAll.cmake)
+
 FetchContent_Declare(
   Cegui
   GIT_REPOSITORY https://github.com/IonutCava/cegui.git

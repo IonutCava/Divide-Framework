@@ -69,9 +69,8 @@ public:
 
     [[nodiscard]] VKDevice* getDevice() { return _device.get(); }
 
-    [[nodiscard]] GFXDevice& context() noexcept { return _context; };
-    [[nodiscard]] const GFXDevice& context() const noexcept { return _context; };
-
+    [[nodiscard]] GFXDevice& context() noexcept { return _context; }
+    [[nodiscard]] const GFXDevice& context() const noexcept { return _context; }
 
 protected:
     [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const noexcept;

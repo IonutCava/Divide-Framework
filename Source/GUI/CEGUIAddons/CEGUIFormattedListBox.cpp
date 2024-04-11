@@ -2,14 +2,6 @@
 
 #include "Headers/CEGUIFormattedListBox.h"
 
-#include <CEGUI/Image.h>
-#include <CEGUI/CentredRenderedString.h>
-#include <CEGUI/LeftAlignedRenderedString.h>
-#include <CEGUI/RightAlignedRenderedString.h>
-#include <CEGUI/JustifiedRenderedString.h>
-#include <CEGUI/widgets/Listbox.h>
-#include <CEGUI/RenderedStringWordWrapper.h>
-
 namespace CEGUI {
 //----------------------------------------------------------------------------//
 FormattedListboxTextItem::FormattedListboxTextItem(

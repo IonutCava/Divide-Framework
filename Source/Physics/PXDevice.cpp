@@ -34,7 +34,7 @@ namespace Divide
     {
         DIVIDE_ASSERT( _api == nullptr,
                        "PXDevice error: initPhysicsAPI called twice!" );
-        switch ( _API_ID )
+        switch ( _apiID )
         {
             case PhysicsAPI::PhysX:
             {

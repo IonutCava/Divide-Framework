@@ -102,9 +102,9 @@ namespace Divide
 
         constexpr U8 g_maxTagCount = 64;
 
-        thread_local WorkData g_workData;
-        thread_local fppTag g_tags[g_maxTagCount]{};
-        thread_local fppTag* g_tagHead = g_tags;
+        thread_local static WorkData g_workData;
+        thread_local static fppTag g_tags[g_maxTagCount]{};
+        thread_local static fppTag* g_tagHead = g_tags;
 
         namespace Callback
         {
@@ -113,7 +113,7 @@ namespace Divide
                 static_cast<WorkData*>(userData)->_depends.append(Util::StringFormat("\n{}", file));
             }
 
-            char* Input( char* buffer, const int size, void* userData ) noexcept
+            static char* Input( char* buffer, const int size, void* userData ) noexcept
             {
                 WorkData* work = static_cast<WorkData*>(userData);
                 int i = 0;
@@ -138,7 +138,7 @@ namespace Divide
                 static_cast<WorkData*>(userData)->_output += static_cast<char>(ch);
             }
 
-            char* Scratch( const std::string_view fileName )
+            static char* Scratch( const std::string_view fileName )
             {
                 char* result = &g_workData._scratch[g_workData._scratchPos];
                 strncpy( result, fileName.data(),fileName.size() );
@@ -147,11 +147,11 @@ namespace Divide
                 return result;
             }
 
-            void Error( void* userData, const char* format, va_list args )
+            static void Error( void* userData, const char* format, va_list args )
             {
                 WorkData* work = static_cast<WorkData*>(userData);
 
-                const size_t length = vsprintf( nullptr, format, args ) + 1;
+                const size_t length = to_size(vsprintf( nullptr, format, args ) + 1);
                 vector<char> buf(length);
                 vsnprintf( buf.data(), length, format, args );
                 
@@ -173,7 +173,7 @@ namespace Divide
             }
         }
 
-        void OnThreadCreate()
+        static void OnThreadCreate()
         {
             const auto setTag = []( const int tag, void* value )
             {
@@ -217,7 +217,7 @@ namespace Divide
 
         }
 
-        void PreProcessMacros( const std::string_view fileName, string& sourceInOut )
+        static void PreProcessMacros( const std::string_view fileName, string& sourceInOut )
         {
             if ( sourceInOut.empty() )
             {
@@ -397,9 +397,7 @@ namespace Divide
         }
     };
 
-
-
-    bool InitGLSW( const GFXDevice& gfx)
+    static bool InitGLSW( const GFXDevice& gfx)
     {
         const RenderAPI renderingAPI = gfx.renderAPI();
 
@@ -787,7 +785,7 @@ namespace Divide
     }
 
     ShaderModuleDescriptor::ShaderModuleDescriptor( ShaderType type, const Str<64>& file, const Str<64>& variant )
-        : _sourceFile( file ), _moduleType( type ), _variant( variant )
+        : _sourceFile( file ), _variant( variant ), _moduleType( type )
     {
     }
 
@@ -824,7 +822,7 @@ namespace Divide
 
     std::atomic_bool ShaderModule::s_modulesRemoved;
     SharedMutex ShaderModule::s_shaderNameLock;
-    ShaderModule::ShaderMap ShaderModule::s_shaderNameMap;
+    NO_DESTROY ShaderModule::ShaderMap ShaderModule::s_shaderNameMap;
 
     void ShaderModule::Idle( const bool fast )
     {
@@ -1707,7 +1705,7 @@ namespace Divide
                                 dataInOut._shaderName.c_str(),
                                 dataInOut._sourceCodeGLSL, FileType::TEXT );
                 return err == FileError::NONE;
-            } break;
+            }
             case LoadData::ShaderCacheType::SPIRV:
             {
                 vector<Byte> tempData;
@@ -1726,11 +1724,11 @@ namespace Divide
                 }
 
                 return false;
-            } break;
+            }
             case LoadData::ShaderCacheType::REFLECTION:
             {
                 return Reflection::LoadReflectionData( ReflCacheLocation(), ReflTargetName( dataInOut._shaderName ), dataInOut._reflectionData, atomIDsOut );
-            } break;
+            }
             default: break;
         }
 

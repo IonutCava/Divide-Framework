@@ -29,9 +29,6 @@
 #define FONTSTASH_IMPLEMENTATION
 #include "Platform/Video/Headers/fontstash.h"
 
-#include <CEGUI/CEGUI.h>
-#include <CEGUI/WindowRendererSets/Core/Module.h>
-
 namespace Divide
 {
     struct DVDFONSContext final : private NonCopyable

@@ -35,8 +35,6 @@
 
 // Code adapted from http://www.cegui.org.uk/phpBB2/viewtopic.php?f=10&t=4322
 
-#include <CEGUI/widgets/ListboxTextItem.h>
-
 namespace CEGUI {
 ///! A ListboxItem based class that can do horizontal text formatting.
 class FormattedListboxTextItem final : public ListboxTextItem {

@@ -24,7 +24,7 @@ namespace Divide
 
     namespace MemoryManager
     {
-        void log_new( void* p, const size_t size, const char* zFile, const size_t nLine )
+        static void log_new( void* p, const size_t size, const char* zFile, const size_t nLine )
         {
             if constexpr ( Config::Build::IS_DEBUG_BUILD )
             {
@@ -35,7 +35,7 @@ namespace Divide
             }
         }
 
-        void log_delete( void* p )
+        static void log_delete( void* p )
         {
             if constexpr ( Config::Build::IS_DEBUG_BUILD )
             {

@@ -17,7 +17,8 @@ QuadtreeNode::QuadtreeNode(Quadtree* parent) noexcept
 
 QuadtreeNode::~QuadtreeNode()
 {
-    for (U8 i = 0; i < 4; ++i) {
+    for (U8 i = 0; i < 4; ++i)
+    {
         MemoryManager::SAFE_DELETE(_children[i]);
     }
 }
@@ -33,19 +34,26 @@ void QuadtreeNode::build(const U8 depth,
 
     const U32 div = to_U32(std::pow(2.0f, to_F32(depth)));
     vec2<U16> nodesize = HMsize / div;
-    if (nodesize.x % 2 == 0) {
+
+    if (nodesize.x % 2 == 0)
+    {
         nodesize.x++;
     }
-    if (nodesize.y % 2 == 0) {
+
+    if (nodesize.y % 2 == 0)
+    {
         nodesize.y++;
     }
     const vec2<U16> newsize = nodesize / 2;
 
-    if (std::max(newsize.x, newsize.y) < _targetChunkDimension) {
+    if (std::max(newsize.x, newsize.y) < _targetChunkDimension)
+    {
         _terrainChunk = std::make_unique<TerrainChunk>(terrain, *this);
         _terrainChunk->load(depth, pos, _targetChunkDimension, HMsize, _boundingBox);
         chunkCount++;
-    } else {
+    }
+    else
+    {
         // Create 4 children
 
         // Compute children bounding boxes
@@ -76,10 +84,14 @@ void QuadtreeNode::build(const U8 depth,
     }
 }
 
-bool QuadtreeNode::computeBoundingBox(BoundingBox& parentBB) {
-    if (!isALeaf()) {
-        for (I8 i = 0; i < 4; ++i) {
-            if (!_children[i]->computeBoundingBox(_boundingBox)) {
+bool QuadtreeNode::computeBoundingBox(BoundingBox& parentBB)
+{
+    if (!isALeaf())
+    {
+        for (I8 i = 0; i < 4; ++i)
+        {
+            if (!_children[i]->computeBoundingBox(_boundingBox))
+            {
                 return false;
             }
         }
@@ -91,11 +103,13 @@ bool QuadtreeNode::computeBoundingBox(BoundingBox& parentBB) {
     return true;
 }
 
-void QuadtreeNode::toggleBoundingBoxes() {
+void QuadtreeNode::toggleBoundingBoxes()
+{
     _drawBBoxes = !_drawBBoxes;
 }
 
-void QuadtreeNode::drawBBox(GFXDevice& context) {
+void QuadtreeNode::drawBBox(GFXDevice& context)
+{
     IM::BoxDescriptor descriptor;
     descriptor.min = _boundingBox.getMin();
     descriptor.max = _boundingBox.getMax();
@@ -103,11 +117,13 @@ void QuadtreeNode::drawBBox(GFXDevice& context) {
 
     context.debugDrawBox(_terrainChunk != nullptr ? _terrainChunk->ID() : 121221, descriptor);
 
-    if (!isALeaf()) {
+    if (!isALeaf())
+    {
         getChild(ChildPosition::CHILD_NW).drawBBox(context);
         getChild(ChildPosition::CHILD_NE).drawBBox(context);
         getChild(ChildPosition::CHILD_SW).drawBBox(context);
         getChild(ChildPosition::CHILD_SE).drawBBox(context);
     }
 }
+
 }

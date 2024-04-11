@@ -53,9 +53,6 @@ public:
     explicit PXDevice( PlatformContext& context ) noexcept;
     ~PXDevice();
 
-    void setAPI(const PhysicsAPI API) noexcept { _API_ID = API; }
-    [[nodiscard]] PhysicsAPI getAPI() const noexcept { return _API_ID; }
-
     ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
     bool closePhysicsAPI() override;
 
@@ -76,13 +73,14 @@ public:
     [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
     [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
 
+    PROPERTY_RW(PhysicsAPI, apiID, PhysicsAPI::COUNT);
+
 protected:
     void frameStarted( U64 deltaTimeGameUS ) override;
     void frameEnded( U64 deltaTimeGameUS ) noexcept override;
 
 private:
     F32 _simulationSpeed = 1.0f;
-    PhysicsAPI _API_ID = PhysicsAPI::COUNT;
     PhysicsAPIWrapper_uptr _api = nullptr;
 
 };

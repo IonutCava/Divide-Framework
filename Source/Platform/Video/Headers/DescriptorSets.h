@@ -73,6 +73,10 @@ namespace Divide
         ImageSubRange _subRange{};
 
         TextureType _targetType{ TextureType::COUNT };
+
+
+        bool operator==( const ImageView& other ) const noexcept;
+        bool operator!=( const ImageView& other ) const noexcept;
     };
 
     [[nodiscard]] TextureType TargetType(const ImageView& imageView) noexcept;
@@ -84,7 +88,7 @@ namespace Divide
 
         size_t _samplerHash{SamplerDescriptor::INVALID_SAMPLER_HASH};
 
-        bool operator==(const DescriptorCombinedImageSampler&) const = default;
+        bool operator==(const DescriptorCombinedImageSampler&) const noexcept = default;
     };
 
     struct DescriptorImageView
@@ -92,7 +96,7 @@ namespace Divide
         ImageView _image{};
         ImageUsage _usage{ImageUsage::COUNT};
 
-        bool operator==( const DescriptorImageView& ) const = default;
+        bool operator==( const DescriptorImageView& ) const noexcept = default;
     };
 
     struct ShaderBufferEntry
@@ -112,6 +116,9 @@ namespace Divide
         };
 
         DescriptorSetBindingType _type{ DescriptorSetBindingType::COUNT };
+
+        bool operator==( const DescriptorSetBindingData& rhs ) const noexcept;
+        bool operator!=( const DescriptorSetBindingData& rhs ) const noexcept;
     };
 
     struct DescriptorSetBinding
@@ -139,12 +146,8 @@ namespace Divide
     [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, U16 stageVisibilityMask); 
     [[nodiscard]] DescriptorSetBinding& AddBinding(DescriptorSet& setInOut, U8 slot, ShaderStageVisibility stageVisibility);
 
-    bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept;
-    bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;
     bool operator==( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
     bool operator!=( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
-    bool operator==( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept;
-    bool operator!=( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept;
 
     [[nodiscard]] bool IsSet( const DescriptorSetBindingData& data ) noexcept;
 

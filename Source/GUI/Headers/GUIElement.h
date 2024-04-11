@@ -33,8 +33,6 @@
 #ifndef DVD_GUI_ELEMENT_H_
 #define DVD_GUI_ELEMENT_H_
 
-#include <CEGUI/Event.h>
-
 namespace CEGUI {
     class Window;
 };

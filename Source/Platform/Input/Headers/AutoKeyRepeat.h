@@ -68,9 +68,9 @@ class AutoRepeatKey {
     /// Update the internal time interval between frames (microseconds)
     void update(U64 deltaTimeUS);
     /// Adjust delay between key injections
-    void setRepeatDelay(const F32 repeatDelay) noexcept { _repeatDelay = repeatDelay; }
+    void setRepeatDelay(const D64 repeatDelay) noexcept { _repeatDelay = repeatDelay; }
     /// Adjust the initial delay before we start injecting key repeats
-    void setInitialDelay(const F32 initialDelay) noexcept { _initialDelay = initialDelay; }
+    void setInitialDelay(const D64 initialDelay) noexcept { _initialDelay = initialDelay; }
 };
 };  // namespace Input
 };  // namespace Divide

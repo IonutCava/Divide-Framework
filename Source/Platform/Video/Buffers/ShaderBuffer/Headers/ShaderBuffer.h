@@ -66,7 +66,7 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     [[nodiscard]] BufferUpdateFrequency getUpdateFrequency() const noexcept;
     
     [[nodiscard]] FORCE_INLINE I32              getStartIndex(const bool read)  const noexcept { return (read ? queueReadIndex() : queueWriteIndex()); }
-    [[nodiscard]] FORCE_INLINE size_t           getStartOffset(const bool read) const noexcept { return std::max(0, getStartIndex(read)) * _alignedBufferSize; }
+    [[nodiscard]] FORCE_INLINE size_t           getStartOffset(const bool read) const noexcept { return to_size(std::max(0, getStartIndex(read))) * _alignedBufferSize; }
     [[nodiscard]] FORCE_INLINE U32              getPrimitiveCount()             const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t           getPrimitiveSize()              const noexcept { return _params._elementSize; }
     [[nodiscard]] FORCE_INLINE BufferUsageType  getUsage()                      const noexcept { return _params._flags._usageType;  }

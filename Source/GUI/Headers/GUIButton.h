@@ -93,7 +93,7 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
 
     bool onEvent(Event event, const CEGUI::EventArgs& /*e*/);
 
-   protected:;
+   protected:
     /// A pointer to a function to call if the button is pressed
     std::array<ButtonCallback, to_base(Event::COUNT)> _callbackFunction;
     std::array<AudioDescriptor_ptr, to_base(Event::COUNT)> _eventSound;

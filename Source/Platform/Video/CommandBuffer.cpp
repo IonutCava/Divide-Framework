@@ -594,7 +594,7 @@ namespace
         return { ErrorType::NONE, cmdIndex };
     }
 
-    void CommandBuffer::ToString( const CommandBase& cmd, const CommandType type, I32& crtIndent, string& out )
+    void ToString( const CommandBase& cmd, const CommandType type, I32& crtIndent, string& out )
     {
         const auto append = []( string& target, const string& text, const I32 indent )
         {

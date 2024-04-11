@@ -682,8 +682,8 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : to_I32(HardwareThreadCount());
     totalThreadCount(std::max(threadCount, to_I32(g_minimumGeneralPurposeThreadCount)));
 
-    _platformContext.pfx().setAPI(PXDevice::PhysicsAPI::PhysX);
-    _platformContext.sfx().setAPI(SFXDevice::AudioAPI::SDL);
+    _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
+    _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
 
     ASIO::SET_LOG_FUNCTION([](const std::string_view msg, const bool isError) {
         if (isError) {

@@ -49,6 +49,8 @@ struct CommandBase
 {
     explicit CommandBase(CommandType type) : _type(type) {}
 
+    CommandBase(const CommandBase& other) = default;
+
     virtual ~CommandBase() = default;
 
     template<typename T> requires std::is_base_of_v<CommandBase, T>
@@ -68,7 +70,7 @@ struct Command : CommandBase
 {
     static constexpr CommandType EType = EnumVal;
 
-    Command() : CommandBase(EType) {};
+    Command() : CommandBase(EType) {}
 
     void addToBuffer(CommandBuffer* buffer) const final;
 
