@@ -33,64 +33,77 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_RENDER_STAGE_PASS_H_
 #define DVD_RENDER_STAGE_PASS_H_
 
-namespace Divide {
+namespace Divide
+{
 
-static constexpr U16 g_AllIndicesID = U16_MAX;
+    static constexpr U16 g_AllIndicesID = U16_MAX;
 
-struct RenderStagePass {
-    //These enums are here so that we have some sort of upper bound for allocations based on render stages
-    //If we know the maximum number of passes and variants, it is easier to allocate memory beforehand
-    //These enums can easily be modified (but that will affect memory consumption)
+    struct RenderStagePass
+    {
+        //These enums are here so that we have some sort of upper bound for allocations based on render stages
+        //If we know the maximum number of passes and variants, it is easier to allocate memory beforehand
+        //These enums can easily be modified (but that will affect memory consumption)
 
-    enum class VariantType : U8 {
-        VARIANT_0 = 0u,
-        VARIANT_1,
-        VARIANT_2,
-        COUNT
+        enum class VariantType : U8
+        {
+            VARIANT_0 = 0u,
+            VARIANT_1,
+            VARIANT_2,
+            COUNT
+        };
+
+        enum class PassIndex : U8
+        {
+            PASS_0 = 0u,
+            PASS_1,
+            PASS_2,
+            PASS_3,
+            PASS_4,
+            PASS_5,
+            COUNT
+        };
+
+        RenderStage _stage = RenderStage::COUNT;
+        RenderPassType _passType = RenderPassType::COUNT;
+        U16 _index = 0u; // reflector index, light index ,etc
+        VariantType _variant = VariantType::VARIANT_0;// reflector type, light type, etc
+        PassIndex _pass = PassIndex::PASS_0;          // usually some kind of actual pass index (eg. cube face we are rendering into, current CSM split, etc)
+
+        bool operator==(const RenderStagePass&) const = default;
     };
-
-    enum class PassIndex : U8 {
-        PASS_0 = 0u,
-        PASS_1,
-        PASS_2,
-        PASS_3,
-        PASS_4,
-        PASS_5,
-        COUNT
-    };
-
-    RenderStage _stage = RenderStage::COUNT;
-    RenderPassType _passType = RenderPassType::COUNT;
-    U16 _index = 0u; // reflector index, light index ,etc
-    VariantType _variant = VariantType::VARIANT_0;// reflector type, light type, etc
-    PassIndex _pass = PassIndex::PASS_0;          // usually some kind of actual pass index (eg. cube face we are rendering into, current CSM split, etc)
-};
 
     [[nodiscard]] U16 IndexForStage(RenderStagePass renderStagePass);
 
-    [[nodiscard]] static constexpr bool IsShadowPass(const RenderStagePass stagePass) noexcept {
+    [[nodiscard]] static constexpr bool IsShadowPass(const RenderStagePass stagePass) noexcept
+    {
         return stagePass._stage == RenderStage::SHADOW;
     }
 
-    [[nodiscard]] static constexpr bool IsDepthPass(const RenderStagePass stagePass) noexcept {
+    [[nodiscard]] static constexpr bool IsDepthPass(const RenderStagePass stagePass) noexcept
+    {
         return IsShadowPass(stagePass) || stagePass._passType == RenderPassType::PRE_PASS;
     }
    
-    [[nodiscard]] static constexpr bool IsZPrePass(const RenderStagePass stagePass) noexcept {
+    [[nodiscard]] static constexpr bool IsZPrePass(const RenderStagePass stagePass) noexcept
+    {
         return stagePass._stage == RenderStage::DISPLAY && stagePass._passType == RenderPassType::PRE_PASS;
     }
 
-    static constexpr U8 BaseIndex(const RenderStage stage, const RenderPassType passType) noexcept {
+    static constexpr U8 BaseIndex(const RenderStage stage, const RenderPassType passType) noexcept
+    {
         return static_cast<U8>(to_base(stage) + to_base(passType) * to_base(RenderStage::COUNT));
     }
 
     /// This ignores the variant and pass index flags!
-    [[nodiscard]] static constexpr U8 BaseIndex(const RenderStagePass stagePass) noexcept {
+    [[nodiscard]] static constexpr U8 BaseIndex(const RenderStagePass stagePass) noexcept
+    {
         return BaseIndex(stagePass._stage, stagePass._passType);
     }
 
-    [[nodiscard]] static constexpr U8 TotalPassCountForStage(const RenderStage renderStage) {
-        switch (renderStage) {
+    [[nodiscard]] static constexpr U8 TotalPassCountForStage(const RenderStage renderStage)
+    {
+        switch (renderStage)
+        {
             case RenderStage::DISPLAY:
             case RenderStage::NODE_PREVIEW:
                 return 1u;
@@ -108,22 +121,6 @@ struct RenderStagePass {
 
         DIVIDE_UNEXPECTED_CALL();
         return U8_ONE;
-    }
-
-    inline bool operator==(const RenderStagePass lhs, const RenderStagePass rhs) noexcept {
-        return lhs._variant  == rhs._variant &&
-               lhs._pass     == rhs._pass &&
-               lhs._index    == rhs._index &&
-               lhs._stage    == rhs._stage &&
-               lhs._passType == rhs._passType;
-    }
-
-    inline bool operator!=(const RenderStagePass lhs, const RenderStagePass rhs) noexcept {
-        return lhs._variant  != rhs._variant ||
-               lhs._pass     != rhs._pass ||
-               lhs._index    != rhs._index ||
-               lhs._stage    != rhs._stage ||
-               lhs._passType != rhs._passType;
     }
 }; //namespace Divide
 

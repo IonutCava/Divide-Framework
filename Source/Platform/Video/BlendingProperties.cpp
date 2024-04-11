@@ -30,31 +30,4 @@ namespace Divide {
         return hash;
     }
 
-    bool operator==(const RTBlendStates& lhs, const RTBlendStates& rhs) noexcept {
-        if (lhs._blendColour != rhs._blendColour) {
-            return false;
-        }
-        for (size_t i = 0u; i < lhs._settings.size(); ++i ) {
-            if (lhs._settings[i] != rhs._settings[i]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    bool operator!=(const RTBlendStates& lhs, const RTBlendStates& rhs) noexcept {
-        if (lhs._blendColour != rhs._blendColour) {
-            return true;
-        }
-
-        for (size_t i = 0u; i < lhs._settings.size(); ++i ) {
-            if (lhs._settings[i] != rhs._settings[i]) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
 }; //namespace Divide

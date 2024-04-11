@@ -44,7 +44,7 @@ namespace Divide {
         bool _normalized{ false };
 
 
-        auto operator<=>(const AttributeDescriptor&) const = default;
+        bool operator==(const AttributeDescriptor&) const = default;
     };
 
     struct VertexBinding
@@ -54,7 +54,7 @@ namespace Divide {
         bool _perVertexInputRate{ true };
 
 
-        auto operator<=>(const VertexBinding&) const = default;
+        bool operator==(const VertexBinding&) const = default;
     };
 
     struct AttributeMap
@@ -64,7 +64,7 @@ namespace Divide {
         Attributes _attributes;
         VertexBindings _vertexBindings;
 
-        auto operator<=>(const AttributeMap&) const = default;
+        bool operator==(const AttributeMap&) const = default;
     };
 
     size_t GetHash(const AttributeDescriptor& descriptor);

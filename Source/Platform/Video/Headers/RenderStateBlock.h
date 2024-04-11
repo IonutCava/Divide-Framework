@@ -76,7 +76,7 @@ struct RenderStateBlock
     bool _primitiveRestartEnabled{ false };
     bool _rasterizationEnabled{ true };
 
-    auto operator<=>(const RenderStateBlock&) const = default;
+    bool operator==(const RenderStateBlock&) const = default;
 };
 
 

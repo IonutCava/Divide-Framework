@@ -55,15 +55,9 @@ namespace GLMemory{
         size_t _size{ 0u };
         gl::GLuint _bufferHandle{ GL_NULL_HANDLE };
         bool _free{ true };
-    };
 
-    inline bool operator==(const Block &lhs, const Block &rhs) noexcept {
-        return lhs._bufferHandle == rhs._bufferHandle &&
-               lhs._offset == rhs._offset &&
-               lhs._size == rhs._size &&
-               lhs._free == rhs._free &&
-               lhs._ptr == rhs._ptr;
-    }
+        bool operator==(const Block &rhs) const = default;
+    };
 
     class Chunk final : NonCopyable, NonMovable
     {

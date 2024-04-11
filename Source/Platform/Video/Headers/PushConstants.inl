@@ -33,11 +33,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PUSH_CONSTANTS_INL_
 #define DVD_PUSH_CONSTANTS_INL_
 
-namespace Divide {
+namespace Divide
+{
     template<typename T>
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const T* values, size_t count) {
-        for (GFX::PushConstant& constant : _data) {
-            if (constant.bindingHash() == bindingHash) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const T* values, size_t count)
+    {
+        for (GFX::PushConstant& constant : _data)
+        {
+            if (constant.bindingHash() == bindingHash)
+            {
                 assert(constant.type() == type);
                 constant.set(values, count);
                 return;
@@ -48,65 +52,23 @@ namespace Divide {
     }
 
     template<typename T>
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const T& value) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const T& value)
+    {
         set(bindingHash, type, &value, 1);
     }
 
     template<typename T>
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const vector<T>& values) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const vector<T>& values)
+    {
         set(bindingHash, type, values.data(), values.size());
     }
 
     template<typename T, size_t N>
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values) {
+    void PushConstants::set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values)
+    {
         set(bindingHash, type, values.data(), N);
     }
 
-    inline bool operator==(const PushConstantsStruct& lhs, const PushConstantsStruct& rhs) noexcept
-    {
-        if (!lhs._set && !rhs._set)
-        {
-            return true;
-        }
-        
-        if ( lhs._set != rhs._set)
-        {
-            return false;
-        }
-       
-        for (U8 i = 0u; i < PushConstantsStruct::PUSH_MATRIX_COUNT; ++i)
-        {
-            if (lhs.data[i] != rhs.data[i])
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    inline bool operator!=(const PushConstantsStruct& lhs, const PushConstantsStruct& rhs) noexcept
-    {
-        if ( !lhs._set && !rhs._set )
-        {
-            return false;
-        }
-
-        if ( lhs._set != rhs._set )
-        {
-            return true;
-        }
-
-        for ( U8 i = 0u; i < PushConstantsStruct::PUSH_MATRIX_COUNT; ++i )
-        {
-            if ( lhs.data[i] != rhs.data[i] )
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 } //namespace Divide
 
 #endif //DVD_PUSH_CONSTANTS_INL_

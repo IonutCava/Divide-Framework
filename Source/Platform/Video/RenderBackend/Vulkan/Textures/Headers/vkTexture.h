@@ -146,7 +146,7 @@ namespace Divide
                 bool _resolveTarget{false};
                 [[nodiscard]] size_t getHash() const noexcept override;
 
-                auto operator<=>(const Descriptor& other) const = default;
+                bool operator==(const Descriptor& other) const = default;
 
             } _descriptor;
             VkImageView _view{VK_NULL_HANDLE};

@@ -142,7 +142,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                            PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
 
-                                           passData._cmdBuffer._ptr->clear(false);
+                                           passData._cmdBuffer._ptr->clear();
 
                                            passData._memCmd = {};
                                            passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *passData._cmdBuffer._ptr, passData._memCmd);
@@ -208,13 +208,13 @@ void RenderPassManager::render(const RenderParams& params)
        GFX::MemoryBarrierCommand memCmd{};
        {
             PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
-            _skyLightRenderBuffer._ptr->clear(false);
+            _skyLightRenderBuffer._ptr->clear();
             gfx.updateSceneDescriptorSet(*_skyLightRenderBuffer._ptr, memCmd );
             SceneEnvironmentProbePool::UpdateSkyLight(gfx, *_skyLightRenderBuffer._ptr, memCmd );
        }
 
        GFX::CommandBuffer& buf = *_postRenderBuffer._ptr;
-       buf.clear(false);
+       buf.clear();
 
        const Rect<I32>& targetViewport = params._targetViewport;
        context.gui().preDraw( gfx, targetViewport, buf, memCmd );
@@ -265,7 +265,7 @@ void RenderPassManager::render(const RenderParams& params)
         { //PostFX should be pretty fast
             PROFILE_SCOPE( "PostFX: CommandBuffer build", Profiler::Category::Scene );
 
-            _postFXCmdBuffer._ptr->clear( false );
+            _postFXCmdBuffer._ptr->clear();
 
             Time::ScopedTimer time( *_postFxRenderTimer );
             _context.getRenderer().postFX().apply( params._playerPass, cam->snapshot(), *_postFXCmdBuffer._ptr );
@@ -335,7 +335,7 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
         _renderPassData[to_base(renderStage)]._pass = item;
 
         //Secondary command buffers. Used in a threaded fashion. Always keep an extra buffer for PostFX
-        _renderPassData[to_base(renderStage)]._cmdBuffer = GFX::AllocateCommandBuffer();
+        _renderPassData[to_base(renderStage)]._cmdBuffer = GFX::AllocateCommandBuffer(1024);
     }
 
     return *item;

@@ -61,7 +61,7 @@ void GUISplash::render(GFXDevice& context) const {
     pipelineDescriptor._shaderProgramHandle = _splashShader->handle();
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    Handle<GFX::CommandBuffer> handle = GFX::AllocateCommandBuffer();
+    Handle<GFX::CommandBuffer> handle = GFX::AllocateCommandBuffer(16u);
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = SCREEN_TARGET_ID;

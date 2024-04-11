@@ -166,7 +166,7 @@ protected:
     virtual void closeRenderingAPI() = 0;
 
     virtual void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
-    virtual void flushCommand(GFX::CommandBase* cmd, GFX::CommandType type) = 0;
+    virtual void flushCommand(GFX::CommandBase* cmd) = 0;
     virtual void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) = 0;
 
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;

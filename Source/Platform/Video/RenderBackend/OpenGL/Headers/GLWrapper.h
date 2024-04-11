@@ -97,7 +97,7 @@ private:
 
     void preFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
 
-    void flushCommand(GFX::CommandBase* cmd, GFX::CommandType type) override;
+    void flushCommand( GFX::CommandBase* cmd ) override;
 
     void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
 

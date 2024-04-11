@@ -84,31 +84,9 @@ namespace Divide
         {
         }
 
-        bool operator==( const SimdVector& other ) const noexcept
-        {
-            for ( U8 i = 0u; i < 4u; ++i )
-            {
-                if ( _reg[i] != other._reg[i] )
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        bool operator!=( const SimdVector& other ) const noexcept
-        {
-            for ( U8 i = 0u; i < 4u; ++i )
-            {
-                if ( _reg[i] != other._reg[i] )
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         T _reg[4];
+
+        bool operator==( const SimdVector& ) const = default;
     };
 
     template<>

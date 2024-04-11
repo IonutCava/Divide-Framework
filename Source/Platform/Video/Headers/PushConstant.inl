@@ -33,8 +33,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PUSH_CONSTANT_INL_
 #define DVD_PUSH_CONSTANT_INL_
 
-namespace Divide {
-namespace GFX {
+namespace Divide::GFX
+{
+
     template<typename T>
     PushConstant::PushConstant(const U64 bindingHash, const PushConstantType type, const T& data)
         : PushConstant(bindingHash, type, &data, 1)
@@ -66,20 +67,6 @@ namespace GFX {
 
     [[nodiscard]] inline const Byte* PushConstant::data() const noexcept { return _buffer.data(); }
 
-    inline bool PushConstant::operator==(const PushConstant& rhs) const {
-        return type() == rhs.type() &&
-            bindingHash() == rhs.bindingHash() &&
-            dataSize() == rhs.dataSize() &&
-            _buffer == rhs._buffer;
-    }
-
-    inline bool PushConstant::operator!=(const PushConstant& rhs) const {
-        return type() != rhs.type() ||
-               bindingHash() != rhs.bindingHash() ||
-               dataSize() != rhs.dataSize() ||
-               _buffer != rhs._buffer;
-    }
-
     template <>
     inline void PushConstant::set<bool>(const bool* data, const size_t count) {
         assert(data != nullptr);
@@ -98,7 +85,7 @@ namespace GFX {
             set(temp.data(), count);
         }
     }
-} //namespace GFX
-} //namespace Divide
+
+} //namespace Divide::GFX
 
 #endif //DVD_PUSH_CONSTANT_INL_

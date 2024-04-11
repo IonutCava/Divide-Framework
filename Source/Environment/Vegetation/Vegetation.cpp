@@ -721,7 +721,7 @@ namespace Divide
         DIVIDE_ASSERT(cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer>);
 
         GFX::CommandBuffer& bufferInOut = *cmdBuffer._ptr;
-        bufferInOut.clear( false );
+        bufferInOut.clear();
 
         if ( s_grassData || s_treeData )
         {

@@ -117,7 +117,7 @@ namespace Divide
         _renderer = nullptr;
     }
 
-    void NONE_API::flushCommand( [[maybe_unused]] GFX::CommandBase* cmd, [[maybe_unused]] GFX::CommandType type ) noexcept
+    void NONE_API::flushCommand( [[maybe_unused]] GFX::CommandBase* cmd ) noexcept
     {
     }
 

@@ -64,10 +64,9 @@ struct SamplerDescriptor
     TextureBorderColour _borderColour { TextureBorderColour::TRANSPARENT_BLACK_INT };
     ///Used for depth comparison (COUNT = disabled)
     ComparisonFunction _depthCompareFunc { ComparisonFunction::COUNT };
-};
 
-bool operator==( const SamplerDescriptor& lhs, const SamplerDescriptor& rhs ) noexcept;
-bool operator!=( const SamplerDescriptor& lhs, const SamplerDescriptor& rhs ) noexcept;
+    bool operator==( const SamplerDescriptor& rhs ) const = default;
+};
 
 [[nodiscard]] size_t GetHash(SamplerDescriptor descriptor) noexcept;
 

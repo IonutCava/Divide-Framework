@@ -17,19 +17,6 @@ namespace Divide::GFX
 
 namespace
 {
-    FORCE_INLINE size_t GetReserveSize( const U8 typeIndex ) noexcept
-    {
-        switch ( static_cast<CommandType>(typeIndex) )
-        {
-            case CommandType::BIND_SHADER_RESOURCES: return 2;
-            case CommandType::SEND_PUSH_CONSTANTS: return 3;
-            case CommandType::DRAW_COMMANDS: return 4;
-            default: break;
-        }
-
-        return 1;
-    }
-
     [[nodiscard]] FORCE_INLINE bool ShouldSkipBatch( const CommandType type ) noexcept
     {
         switch ( type )
@@ -48,9 +35,9 @@ namespace
         return dvd_erase_if( commands, []( const GenericDrawCommand& cmd ) noexcept { return cmd._drawCount == 0u; } );
     }
 
-    [[nodiscard]] inline bool EraseEmptyCommands( CommandBuffer::CommandOrderContainer& commandOrder )
+    [[nodiscard]] inline bool EraseEmptyCommands( CommandBuffer::CommandList& commands )
     {
-        return dvd_erase_if( commandOrder, []( const CommandEntry& entry ) noexcept { return entry._data == CommandEntry::INVALID_ENTRY_ID;} );
+        return dvd_erase_if( commands, []( const CommandBase* entry ) noexcept {  return entry == nullptr; } );
     }
 
     [[nodiscard]] inline bool RemoveEmptyLocks( GFX::MemoryBarrierCommand* memCmd )
@@ -109,51 +96,43 @@ namespace
         });
     }
 
-    CommandEntry::CommandEntry( const CommandType type, const U32 element ) noexcept
-        : _idx{ ._element = element, ._type = to_U8( type ) }
+    CommandBuffer::CommandBuffer( const size_t reservedCmdCount )
     {
-    }
-
-    CommandBuffer::CommandBuffer( )
-    {
-        _commandOrder.resize(0);
-        _commandCount.fill( 0u );
-
-        for ( U8 i = 0; i < to_base( CommandType::COUNT ); ++i )
+        if ( _commands.max_size() < reservedCmdCount )
         {
-            _collection[i].resize(0);
-
-            const auto reserveSize = GetReserveSize( i );
-            if ( reserveSize > 2 )
-            {
-                _collection[i].reserve( reserveSize );
-            }
+            _commands.reserve( reservedCmdCount );
         }
     }
 
     CommandBuffer::~CommandBuffer()
     {
-        clear(true);
+        clear();
     }
 
-    CommandEntry CommandBuffer::addCommandEntry( const CommandType type )
+    void CommandBuffer::clear()
     {
-        _batched = false;
-        return _commandOrder.emplace_back( type, _commandCount[to_U8( type )]++ );
+        for (CommandBase*& cmd : _commands)
+        {
+            if (cmd != nullptr)
+            {
+                cmd->DeleteCmd( cmd );
+            }
+        }
+
+        efficient_clear( _commands );
+
+        _batched = true;
     }
 
     void CommandBuffer::add( const CommandBuffer& other )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        for ( U8 i = 0; i < to_base(CommandType::COUNT); ++i )
-        {
-            _collection[i].reserve( _collection[i].size() + other._commandCount[i] );
-        }
+        _commands.reserve( _commands.size() + other._commands.size() );
 
-        for ( const CommandEntry& cmd : other._commandOrder )
+        for ( CommandBase* cmd : other._commands )
         {
-            other.get(cmd)->addToBuffer( this );
+            cmd->addToBuffer( this );
         }
         _batched = false;
     }
@@ -187,46 +166,42 @@ namespace
                 tryMerge = false;
                 prevCommand = nullptr;
                 CommandType prevType = CommandType::COUNT;
-                for ( CommandEntry& entry : _commandOrder )
+                for ( CommandBase*& cmd : _commands )
                 {
-                    const CommandType cmdType = static_cast<CommandType>(entry._idx._type);
-                    if ( entry._data == CommandEntry::INVALID_ENTRY_ID || ShouldSkipBatch( cmdType ) )
+                    if ( cmd == nullptr || ShouldSkipBatch( cmd->type() ) )
                     {
                         continue;
                     }
 
                     PROFILE_SCOPE( "TRY_MERGE_LOOP_STEP", Profiler::Category::Graphics );
 
-                    CommandBase* crtCommand = get<CommandBase>( entry );
-
                     if ( prevCommand != nullptr &&
-                         prevType == cmdType &&
-                         TryMergeCommands( cmdType, prevCommand, crtCommand ) )
+                         prevType == cmd->type() &&
+                         TryMergeCommands( cmd->type(), prevCommand, cmd ) )
                     {
-                        --_commandCount[entry._idx._type];
-                        entry._data = CommandEntry::INVALID_ENTRY_ID;
+                        cmd->DeleteCmd( cmd );
                         tryMerge = true;
                     }
                     else
                     {
-                        prevType = cmdType;
-                        prevCommand = crtCommand;
+                        prevType = cmd->type();
+                        prevCommand = cmd;
                     }
                 }
             }
         }
-        while ( EraseEmptyCommands( _commandOrder ) );
+        while ( EraseEmptyCommands( _commands ) );
 
         // If we don't have any actual work to do, clear everything
         bool hasWork = false;
-        for ( const CommandEntry& cmd : _commandOrder )
+        for ( CommandBase* cmd : _commands )
         {
             if ( hasWork )
             {
                 break;
             }
 
-            switch ( static_cast<CommandType>(cmd._idx._type) )
+            switch ( cmd->type() )
             {
                 case CommandType::BEGIN_RENDER_PASS:
                 case CommandType::READ_BUFFER_DATA:
@@ -251,22 +226,22 @@ namespace
                 } break;
                 case CommandType::READ_TEXTURE:
                 {
-                    const ReadTextureCommand* crtCmd = get<ReadTextureCommand>( cmd );
+                    const ReadTextureCommand* crtCmd = cmd->As<ReadTextureCommand>();
                     hasWork = crtCmd->_texture != nullptr && crtCmd->_callback;
                 } break;
                 case CommandType::COPY_TEXTURE:
                 {
-                    const CopyTextureCommand* crtCmd = get<CopyTextureCommand>( cmd );
+                    const CopyTextureCommand* crtCmd = cmd->As<CopyTextureCommand>();
                     hasWork = crtCmd->_source != nullptr && crtCmd->_destination != nullptr;
                 }break;
                 case CommandType::CLEAR_TEXTURE:
                 {
-                    const ClearTextureCommand* crtCmd = get<ClearTextureCommand>( cmd );
+                    const ClearTextureCommand* crtCmd = cmd->As<ClearTextureCommand>();
                     hasWork = crtCmd->_texture != nullptr;
                 }break;
                 case CommandType::BIND_PIPELINE:
                 {
-                    const BindPipelineCommand* crtCmd = get<BindPipelineCommand>( cmd );
+                    const BindPipelineCommand* crtCmd = cmd->As<BindPipelineCommand>();
                     hasWork = crtCmd->_pipeline != nullptr && crtCmd->_pipeline->stateHash() != 0u;
                 }break;
                 default: break;
@@ -284,31 +259,7 @@ namespace
         }
         else
         {
-            _commandOrder.clear();
-            _commandCount.fill(0u);
-        }
-
-        _batched = true;
-    }
-
-    void CommandBuffer::clear( const bool clearMemory )
-    {
-        _commandCount.fill( 0u );
-
-        _commandOrder.clear();
-
-        if ( clearMemory )
-        {
-            for ( U8 i = 0u; i < to_base( CommandType::COUNT ); ++i )
-            {
-                CommandList& col = _collection[i];
-
-                for ( CommandBase*& cmd : col )
-                {
-                    cmd->DeleteCmd( cmd );
-                }
-                col.clear();
-            }
+            clear();
         }
 
         _batched = true;
@@ -316,7 +267,7 @@ namespace
 
     void CommandBuffer::clean()
     {
-        if ( _commandOrder.empty() ) [[unlikely]]
+        if ( _commands.empty() ) [[unlikely]]
         {
             return;
         }
@@ -337,17 +288,17 @@ namespace
 
         bool ret = false;
 
-        for ( CommandEntry& cmd : _commandOrder )
+        for ( CommandBase*& cmd : _commands )
         {
             bool erase = false;
 
-            switch ( static_cast<CommandType>(cmd._idx._type) )
+            switch ( cmd->type() )
             {
                 case CommandType::DRAW_COMMANDS:
                 {
                     PROFILE_SCOPE( "Clean Draw Commands", Profiler::Category::Graphics );
 
-                    DrawCommand::CommandContainer& cmds = get<DrawCommand>( cmd )->_drawCommands;
+                    DrawCommand::CommandContainer& cmds = cmd->As<DrawCommand>()->_drawCommands;
                     if ( cmds.size() == 1 )
                     {
                         erase = cmds.begin()->_drawCount == 0u;
@@ -361,7 +312,7 @@ namespace
                 {
                     PROFILE_SCOPE( "Clean Pipelines", Profiler::Category::Graphics );
 
-                    const Pipeline* pipeline = get<BindPipelineCommand>( cmd )->_pipeline;
+                    const Pipeline* pipeline = cmd->As<BindPipelineCommand>()->_pipeline;
                     // If the current pipeline is identical to the previous one, remove it
                     if ( prevPipeline == nullptr || prevPipeline->stateHash() != pipeline->stateHash() )
                     {
@@ -376,13 +327,13 @@ namespace
                 {
                     PROFILE_SCOPE( "Clean Push Constants", Profiler::Category::Graphics );
 
-                    erase = get<SendPushConstantsCommand>( cmd )->_constants.empty();
+                    erase = cmd->As<SendPushConstantsCommand>()->_constants.empty();
                 }break;
                 case CommandType::BIND_SHADER_RESOURCES:
                 {
                     PROFILE_SCOPE( "Clean Descriptor Sets", Profiler::Category::Graphics );
 
-                    auto bindCmd = get<BindShaderResourcesCommand>(cmd);
+                    auto bindCmd = cmd->As<BindShaderResourcesCommand>();
                     if ( bindCmd->_usage != DescriptorSetUsage::COUNT && (prevDescriptorSet == nullptr || *prevDescriptorSet != bindCmd->_set) )
                     {
                         prevDescriptorSet = &bindCmd->_set;
@@ -394,7 +345,7 @@ namespace
                 }break;
                 case CommandType::MEMORY_BARRIER:
                 {
-                    auto memCmd = get<MemoryBarrierCommand>( cmd );
+                    auto memCmd = cmd->As<MemoryBarrierCommand>();
                     if (RemoveEmptyLocks( memCmd ))
                     {
                         erase = IsEmpty( memCmd->_bufferLocks ) &&
@@ -405,7 +356,7 @@ namespace
                 {
                     PROFILE_SCOPE( "Clean Scissor", Profiler::Category::Graphics );
 
-                    const Rect<I32>& scissorRect = get<SetScissorCommand>( cmd )->_rect;
+                    const Rect<I32>& scissorRect = cmd->As<SetScissorCommand>()->_rect;
                     if ( prevScissorRect == nullptr || *prevScissorRect != scissorRect )
                     {
                         prevScissorRect = &scissorRect;
@@ -417,7 +368,7 @@ namespace
                 } break;
                 case CommandType::READ_BUFFER_DATA:
                 {
-                    auto readCmd = get<ReadBufferDataCommand>( cmd );
+                    auto readCmd = cmd->As<ReadBufferDataCommand>();
                     erase = readCmd->_buffer == nullptr ||
                             readCmd->_target.first == nullptr ||
                             readCmd->_elementCount == 0u ||
@@ -427,7 +378,7 @@ namespace
                 {
                     PROFILE_SCOPE( "Clean Viewport", Profiler::Category::Graphics );
 
-                    const Rect<I32>& viewportRect = get<SetViewportCommand>( cmd )->_viewport;
+                    const Rect<I32>& viewportRect = cmd->As<SetViewportCommand>()->_viewport;
 
                     if ( prevViewportRect == nullptr || *prevViewportRect != viewportRect )
                     {
@@ -443,9 +394,7 @@ namespace
 
             if ( erase )
             {
-                --_commandCount[cmd._idx._type];
-                cmd._data = CommandEntry::INVALID_ENTRY_ID;
-
+                cmd->DeleteCmd(cmd);
                 ret = true;
             }
         }
@@ -454,26 +403,23 @@ namespace
             PROFILE_SCOPE( "Remove redundant Pipelines", Profiler::Category::Graphics );
 
             // Remove redundant pipeline changes
-            CommandEntry* entry = eastl::next( begin( _commandOrder ) );
-            for ( ; entry != cend( _commandOrder ); ++entry )
+            CommandBase* prev = nullptr;
+            for ( CommandBase* cmd : _commands )
             {
-                const U8 typeIndex = entry->_idx._type;
-
-                if ( static_cast<CommandType>(typeIndex) == CommandType::BIND_PIPELINE &&
-                     eastl::prev( entry )->_idx._type == typeIndex )
+                if ( (cmd != nullptr  && cmd->type() == CommandType::BIND_PIPELINE) && // current command is a bind pipeline request 
+                     (prev != nullptr && prev->type() == CommandType::BIND_PIPELINE))  // previous command was also a bind pipeline request
                 {
-                    --_commandCount[typeIndex];
-                    entry->_data = CommandEntry::INVALID_ENTRY_ID;
+                    prev->DeleteCmd(prev); //Remove the previous bind pipeline request as it's redundant
                     ret = true;
                 }
+
+                prev = cmd;
             }
         }
+
         {
             PROFILE_SCOPE( "Remove invalid commands", Profiler::Category::Graphics );
-            if (erase_if( _commandOrder, []( const CommandEntry& entry ) noexcept
-                         {
-                             return entry._data == CommandEntry::INVALID_ENTRY_ID;
-                         } ) > 0u)
+            if (EraseEmptyCommands( _commands ))
             {
                 ret = true;
             }
@@ -497,10 +443,10 @@ namespace
 
         I32 pushedDebugScope = 0, pushedCamera = 0, pushedViewport = 0;
 
-        for ( const CommandEntry& cmd : _commandOrder )
+        for ( CommandBase* cmd : _commands )
         {
             cmdIndex++;
-            switch ( static_cast<CommandType>(cmd._idx._type) )
+            switch ( cmd->type() )
             {
                 case CommandType::BEGIN_RENDER_PASS:
                 {
@@ -510,7 +456,7 @@ namespace
                     }
                     pushedPass = true;
 
-                    auto beginRenderPassCmd = get<GFX::BeginRenderPassCommand>( cmd );
+                    auto beginRenderPassCmd = cmd->As<GFX::BeginRenderPassCommand>();
                     for ( const auto& it : beginRenderPassCmd->_descriptor._writeLayers )
                     {
                         if ( it._layer == INVALID_INDEX )
@@ -575,7 +521,7 @@ namespace
                 {
                     if ( !pushedPass )
                     {
-                        if (get<GFX::BindPipelineCommand>( cmd )->_pipeline->descriptor()._primitiveTopology != PrimitiveTopology::COMPUTE)
+                        if ( cmd->As<GFX::BindPipelineCommand>()->_pipeline->descriptor()._primitiveTopology != PrimitiveTopology::COMPUTE)
                         {
                             return { ErrorType::INVALID_RENDER_PASS_FOR_PIPELINE, cmdIndex };
                         }
@@ -588,7 +534,7 @@ namespace
                     {
                         return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex };
                     }
-                    const vec3<U32>& workGroupCount = get<GFX::DispatchComputeCommand>( cmd )->_computeGroupSize;
+                    const vec3<U32>& workGroupCount = cmd->As<GFX::DispatchComputeCommand>()->_computeGroupSize;
                     if ( !(workGroupCount.x > 0 &&
                             workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
                             workGroupCount.y < GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] &&
@@ -607,7 +553,7 @@ namespace
                 }break;
                 case CommandType::BIND_SHADER_RESOURCES:
                 {
-                    const GFX::BindShaderResourcesCommand* resCmd = get<GFX::BindShaderResourcesCommand>( cmd );
+                    const GFX::BindShaderResourcesCommand* resCmd = cmd->As<GFX::BindShaderResourcesCommand>();
                     if ( resCmd->_usage == DescriptorSetUsage::COUNT )
                     {
                         return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex };
@@ -685,10 +631,10 @@ namespace
         I32 crtIndent = 0;
         string out = "\n\n\n\n";
         size_t idx = 0u;
-        for ( const CommandEntry& cmd : _commandOrder )
+        for ( CommandBase* cmd : _commands )
         {
             out.append( "[ " + std::to_string( idx++ ) + " ]: " );
-            ToString( *get<CommandBase>( cmd ), static_cast<CommandType>(cmd._idx._type), crtIndent, out );
+            ToString( *cmd, cmd->type(), crtIndent, out );
             out.append( "\n" );
         }
         out.append( "\n\n\n\n" );

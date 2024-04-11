@@ -46,7 +46,7 @@ struct BlendingSettings
     PROPERTY_RW(BlendOperation, blendOpAlpha, BlendOperation::COUNT);
     PROPERTY_RW(bool, enabled, false);
 
-    auto operator<=>(const BlendingSettings&) const = default;
+    bool operator==(const BlendingSettings&) const = default;
 };
 
 [[nodiscard]] size_t GetHash(const BlendingSettings& properties);
@@ -56,11 +56,11 @@ struct RTBlendStates
 {
     UColour4 _blendColour = { 0u, 0u, 0u, 0u };
     std::array<BlendingSettings, to_base( RTColourAttachmentSlot::COUNT)> _settings;
+
+    bool operator==(const RTBlendStates&) const = default;
 };
 
 [[nodiscard]] size_t GetHash(const RTBlendStates& blendStates);
-bool operator==(const RTBlendStates& lhs, const RTBlendStates& rhs) noexcept;
-bool operator!=(const RTBlendStates& lhs, const RTBlendStates& rhs) noexcept;
 
 }; //namespace Divide
 

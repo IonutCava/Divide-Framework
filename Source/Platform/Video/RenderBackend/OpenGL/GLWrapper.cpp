@@ -865,7 +865,7 @@ namespace Divide
         if ( _pushConstantsNeedLock )
         {
             _pushConstantsNeedLock = false;
-            flushCommand( &_pushConstantsMemCommand, _pushConstantsMemCommand.EType );
+            flushCommand( &_pushConstantsMemCommand );
             _pushConstantsMemCommand._bufferLocks.clear();
         }
     }
@@ -876,11 +876,11 @@ namespace Divide
         GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
     }
 
-    void GL_API::flushCommand( GFX::CommandBase* cmd, const GFX::CommandType type )
+    void GL_API::flushCommand( GFX::CommandBase* cmd )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( GFXDevice::IsSubmitCommand( type ) )
+        if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
             flushTextureBindQueue();
         }
@@ -890,7 +890,7 @@ namespace Divide
             flushPushConstantsLocks();
         }
 
-        switch ( type )
+        switch ( cmd->type() )
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {

@@ -71,7 +71,7 @@ class glFramebuffer final : public RenderTarget {
         bool _layeredRendering{false};
         AttachmentState _attState{ AttachmentState::COUNT };
 
-        auto operator<=>(const BindingState&) const = default;
+        bool operator==(const BindingState&) const = default;
     };
 
    public:

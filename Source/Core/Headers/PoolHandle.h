@@ -43,7 +43,7 @@ namespace Divide {
         U8  _generation{ 0u };
         U8  _tag{ 0u };
 
-        auto operator<=>( const PoolHandle& ) const = default;
+        bool operator==( const PoolHandle& ) const = default;
     };
 
 } //namespace Divide

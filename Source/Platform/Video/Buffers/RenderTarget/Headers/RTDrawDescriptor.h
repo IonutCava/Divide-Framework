@@ -48,7 +48,7 @@ struct BlitEntry
     U16 _mipOffset{0u};
     U8 _index{ INVALID_INDEX };
 
-    auto operator<=>(const BlitEntry&) const = default;
+    bool operator==(const BlitEntry&) const = default;
 };
 
 struct DrawLayerEntry
@@ -57,7 +57,7 @@ struct DrawLayerEntry
     /// Ignored for non cube textures
     U8 _cubeFace{0u}; 
 
-    auto operator<=>(const DrawLayerEntry&) const = default;
+    bool operator==(const DrawLayerEntry&) const = default;
 };
 
 struct RTClearEntry

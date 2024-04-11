@@ -2048,47 +2048,46 @@ namespace Divide
 
         _api->preFlushCommandBuffer( commandBuffer );
 
-        const GFX::CommandBuffer::CommandOrderContainer& commands = commandBuffer._ptr->commandOrder();
-        for ( const GFX::CommandEntry& cmd : commands )
+        const GFX::CommandBuffer::CommandList& commands = commandBuffer._ptr->commands();
+        for ( GFX::CommandBase* cmd : commands )
         {
-            const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._idx._type);
-            if ( IsSubmitCommand( cmdType ) )
+            if ( IsSubmitCommand( cmd->type() ) )
             {
                 validateAndUploadDescriptorSets();
             }
 
-            switch ( cmdType )
+            switch ( cmd->type() )
             {
                 case GFX::CommandType::READ_BUFFER_DATA:
                 {
                     PROFILE_SCOPE( "READ_BUFFER_DATA", Profiler::Category::Graphics );
 
-                    const GFX::ReadBufferDataCommand& crtCmd = *commandBuffer._ptr->get<GFX::ReadBufferDataCommand>( cmd );
+                    const GFX::ReadBufferDataCommand& crtCmd = *cmd->As<GFX::ReadBufferDataCommand>();
                     crtCmd._buffer->readData( { crtCmd._offsetElementCount, crtCmd._elementCount }, crtCmd._target );
                 } break;
                 case GFX::CommandType::CLEAR_BUFFER_DATA:
                 {
                     PROFILE_SCOPE( "CLEAR_BUFFER_DATA", Profiler::Category::Graphics );
 
-                    const GFX::ClearBufferDataCommand& crtCmd = *commandBuffer._ptr->get<GFX::ClearBufferDataCommand>( cmd );
+                    const GFX::ClearBufferDataCommand& crtCmd = *cmd->As<GFX::ClearBufferDataCommand>();
                     if ( crtCmd._buffer != nullptr )
                     {
                         GFX::MemoryBarrierCommand memCmd{};
                         memCmd._bufferLocks.push_back( crtCmd._buffer->clearData( { crtCmd._offsetElementCount, crtCmd._elementCount } ) );
-                        _api->flushCommand( &memCmd, memCmd.EType );
+                        _api->flushCommand( &memCmd );
                     }
                 } break;
                 case GFX::CommandType::SET_VIEWPORT:
                 {
                     PROFILE_SCOPE( "SET_VIEWPORT", Profiler::Category::Graphics );
 
-                    setViewport( commandBuffer._ptr->get<GFX::SetViewportCommand>( cmd )->_viewport );
+                    setViewport( cmd->As<GFX::SetViewportCommand>()->_viewport );
                 } break;
                 case GFX::CommandType::PUSH_VIEWPORT:
                 {
                     PROFILE_SCOPE( "PUSH_VIEWPORT", Profiler::Category::Graphics );
 
-                    const GFX::PushViewportCommand* crtCmd = commandBuffer._ptr->get<GFX::PushViewportCommand>( cmd );
+                    const GFX::PushViewportCommand* crtCmd = cmd->As<GFX::PushViewportCommand>();
                     _viewportStack.push( activeViewport() );
                     setViewport( crtCmd->_viewport );
                 } break;
@@ -2102,13 +2101,13 @@ namespace Divide
                 case GFX::CommandType::SET_SCISSOR:
                 {
                     PROFILE_SCOPE( "SET_SCISSOR", Profiler::Category::Graphics );
-                    setScissor( commandBuffer._ptr->get<GFX::SetScissorCommand>( cmd )->_rect );
+                    setScissor( cmd->As<GFX::SetScissorCommand>()->_rect );
                 } break;
                 case GFX::CommandType::SET_CAMERA:
                 {
                     PROFILE_SCOPE( "SET_CAMERA", Profiler::Category::Graphics );
 
-                    const GFX::SetCameraCommand* crtCmd = commandBuffer._ptr->get<GFX::SetCameraCommand>( cmd );
+                    const GFX::SetCameraCommand* crtCmd = cmd->As<GFX::SetCameraCommand>();
                     // Tell the Rendering API to draw from our desired PoV
                     renderFromCamera( crtCmd->_cameraSnapshot );
                 } break;
@@ -2116,7 +2115,7 @@ namespace Divide
                 {
                     PROFILE_SCOPE( "PUSH_CAMERA", Profiler::Category::Graphics );
 
-                    const GFX::PushCameraCommand* crtCmd = commandBuffer._ptr->get<GFX::PushCameraCommand>( cmd );
+                    const GFX::PushCameraCommand* crtCmd = cmd->As<GFX::PushCameraCommand>();
                     DIVIDE_ASSERT( _cameraSnapshots.size() < MAX_CAMERA_SNAPSHOTS, "GFXDevice::flushCommandBuffer error: PUSH_CAMERA stack too deep!" );
 
                     _cameraSnapshots.push( _activeCameraSnapshot );
@@ -2133,20 +2132,20 @@ namespace Divide
                 {
                     PROFILE_SCOPE( "SET_CLIP_PLANES", Profiler::Category::Graphics );
 
-                    setClipPlanes( commandBuffer._ptr->get<GFX::SetClipPlanesCommand>( cmd )->_clippingPlanes );
+                    setClipPlanes( cmd->As<GFX::SetClipPlanesCommand>()->_clippingPlanes );
                 } break;
                 case GFX::CommandType::BIND_SHADER_RESOURCES:
                 {
                     PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );
 
-                    const auto resCmd = commandBuffer._ptr->get<GFX::BindShaderResourcesCommand>( cmd );
+                    const auto resCmd = cmd->As<GFX::BindShaderResourcesCommand>();
                     descriptorSet( resCmd->_usage ).update( resCmd->_usage, resCmd->_set );
 
                 } break;
                 default: break;
             }
 
-            _api->flushCommand( commandBuffer._ptr->get<GFX::CommandBase>( cmd ), cmdType );
+            _api->flushCommand( cmd );
         }
 
         GFXBuffers::PerFrameBuffers& frameBuffers = _gfxBuffers.crtBuffers();
@@ -2157,7 +2156,7 @@ namespace Divide
             lock._buffer = frameBuffers._camDataBuffer->getBufferImpl();
             lock._range = frameBuffers._camBufferWriteRange;
             lock._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ;
-            _api->flushCommand( &writeMemCmd, writeMemCmd.EType );
+            _api->flushCommand( &writeMemCmd );
             frameBuffers._camBufferWriteRange = {};
         }
 

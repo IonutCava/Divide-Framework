@@ -69,31 +69,6 @@ class Frustum {
 
     const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& computePlanes(const mat4<F32>& viewProjMatrix);
 
-    [[nodiscard]] bool operator==(const Frustum& other) const noexcept
-    {
-        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i)
-        {
-            if (_frustumPlanes[i] != other._frustumPlanes[i])
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    [[nodiscard]] bool operator!=(const Frustum& other) const noexcept
-    {
-        for (U8 i = 0u; i < to_U8(FrustumPlane::COUNT); ++i)
-        {
-            if (_frustumPlanes[i] != other._frustumPlanes[i])
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     [[nodiscard]] FrustumCollision PlaneBoundingBoxIntersect(FrustumPlane frustumPlane, const BoundingBox& bbox) const noexcept;
     [[nodiscard]] FrustumCollision PlaneBoundingSphereIntersect(FrustumPlane frustumPlane, const BoundingSphere& bsphere) const noexcept;
@@ -106,8 +81,10 @@ class Frustum {
 
     [[nodiscard]] const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& planes() const noexcept { return _frustumPlanes; }
 
+    bool operator==(const Frustum& other) const = default;
+
    private:
-    std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>  _frustumPlanes = create_array<to_base(FrustumPlane::COUNT)>(Plane<F32>{ WORLD_Y_AXIS, 0.0f });
+      std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>  _frustumPlanes = create_array<to_base(FrustumPlane::COUNT)>(Plane<F32>{ WORLD_Y_AXIS, 0.0f });
 };
 
 [[nodiscard]] FrustumCollision PlaneBoundingBoxIntersect(const Plane<F32>& plane, const BoundingBox& bbox) noexcept;

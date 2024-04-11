@@ -44,12 +44,16 @@ namespace Divide
     {
         U16 _offset{0u};
         U16 _count{U16_MAX};
+
+        bool operator==( const SubRange& ) const = default;
     };
 
     struct ImageSubRange
     {
         SubRange _mipLevels{};
         SubRange _layerRange{};
+
+        bool operator==( const ImageSubRange& ) const = default;
     };
 
     struct ImageViewDescriptor
@@ -58,6 +62,8 @@ namespace Divide
         GFXDataFormat _dataType{ GFXDataFormat::COUNT };
         GFXImageFormat _baseFormat{ GFXImageFormat::COUNT };
         GFXImagePacking _packing{ GFXImagePacking::COUNT };
+
+        bool operator==( const ImageViewDescriptor& ) const = default;
     };
 
     struct ImageView
@@ -77,12 +83,16 @@ namespace Divide
         SamplerDescriptor _sampler{};
 
         size_t _samplerHash{SamplerDescriptor::INVALID_SAMPLER_HASH};
+
+        bool operator==(const DescriptorCombinedImageSampler&) const = default;
     };
 
     struct DescriptorImageView
     {
         ImageView _image{};
         ImageUsage _usage{ImageUsage::COUNT};
+
+        bool operator==( const DescriptorImageView& ) const = default;
     };
 
     struct ShaderBufferEntry
@@ -109,12 +119,16 @@ namespace Divide
         DescriptorSetBindingData _data{};
         U16 _shaderStageVisibility{ to_base( ShaderStageVisibility::COUNT ) };
         U8 _slot{ 0u };
+
+        bool operator==( const DescriptorSetBinding& ) const = default;
     };
 
     struct DescriptorSet
     {
         std::array<DescriptorSetBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET> _bindings;
         U8 _bindingCount{ 0u };
+
+        bool operator==( const DescriptorSet& ) const = default;
     };
 
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range ) noexcept;
@@ -127,26 +141,13 @@ namespace Divide
 
     bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept;
     bool operator!=( const ImageView& lhs, const ImageView& rhs ) noexcept;
-    bool operator==( const SubRange& lhs, const SubRange& rhs ) noexcept;
-    bool operator!=( const SubRange& lhs, const SubRange& rhs ) noexcept;
-    bool operator==( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
-    bool operator!=( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept;
-    bool operator==( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept;
-    bool operator!=( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept;
     bool operator==( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
     bool operator!=( const ShaderBufferEntry& lhs, const ShaderBufferEntry& rhs ) noexcept;
-    bool operator==( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept;
-    bool operator!=( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept;
-    bool operator==( const DescriptorImageView& lhs, const DescriptorImageView& rhs ) noexcept;
-    bool operator!=( const DescriptorImageView& lhs, const DescriptorImageView& rhs ) noexcept;
-    bool operator==( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
-    bool operator!=( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept;
     bool operator==( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept;
     bool operator!=( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept;
-    bool operator==( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept;
-    bool operator!=( const DescriptorSet& lhs, const DescriptorSet& rhs ) noexcept;
 
     [[nodiscard]] bool IsSet( const DescriptorSetBindingData& data ) noexcept;
+
     template<typename T>
     [[nodiscard]] T& As( DescriptorSetBindingData& data ) noexcept;
     template<typename T>

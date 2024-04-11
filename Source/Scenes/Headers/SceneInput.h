@@ -43,7 +43,7 @@ namespace Divide
         U32 _id{ 0u };
         Input::JoystickElementType _element{ Input::JoystickElementType::COUNT };
 
-        auto operator<=>(const JoystickMapKey&) const = default;
+        bool operator==(const JoystickMapKey&) const = default;
     };
 
 

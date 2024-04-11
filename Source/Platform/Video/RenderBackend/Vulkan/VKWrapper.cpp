@@ -1977,7 +1977,7 @@ namespace Divide
         if ( _pushConstantsNeedLock )
         {
             _pushConstantsNeedLock = false;
-            flushCommand( &_pushConstantsMemCommand, _pushConstantsMemCommand.EType );
+            flushCommand( &_pushConstantsMemCommand );
             _pushConstantsMemCommand._bufferLocks.clear();
         }
     }
@@ -2200,7 +2200,7 @@ namespace Divide
         }
     }
 
-    void VK_API::flushCommand( GFX::CommandBase* cmd, const GFX::CommandType type ) noexcept
+    void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
         auto& stateTracker = GetStateTracker();
@@ -2208,7 +2208,7 @@ namespace Divide
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
-        if ( GFXDevice::IsSubmitCommand( type ) )
+        if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
             FlushBufferTransferRequests();
         }
@@ -2218,7 +2218,7 @@ namespace Divide
             flushPushConstantsLocks();
         }
 
-        switch ( type )
+        switch ( cmd->type() )
         {
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {

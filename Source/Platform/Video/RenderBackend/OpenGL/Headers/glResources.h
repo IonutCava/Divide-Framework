@@ -65,7 +65,7 @@ struct ImageBindSettings
     gl::GLenum _format = gl::GL_NONE;
     gl::GLboolean _layered = gl::GL_FALSE;
 
-    auto operator<=>( const ImageBindSettings&) const = default;
+    bool operator==( const ImageBindSettings&) const = default;
 };
 
 class VAOBindings
@@ -77,7 +77,7 @@ public:
         size_t _offset{0u};
         size_t _stride{0u};
 
-        auto operator<=>( const BufferBindingParams&) const = default;
+        bool operator==( const BufferBindingParams&) const = default;
     };
 
 private:

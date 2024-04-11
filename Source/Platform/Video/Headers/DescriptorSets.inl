@@ -35,22 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
-    inline bool operator==( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept
-    {
-        return lhs._msaaSamples == rhs._msaaSamples &&
-               lhs._dataType == rhs._dataType &&
-               lhs._baseFormat == rhs._baseFormat &&
-               lhs._packing == rhs._packing;
-    }
-
-    inline bool operator!=( const ImageViewDescriptor& lhs, const ImageViewDescriptor& rhs ) noexcept
-    {
-        return lhs._msaaSamples != rhs._msaaSamples ||
-               lhs._dataType != rhs._dataType ||
-               lhs._baseFormat != rhs._baseFormat ||
-               lhs._packing != rhs._packing;
-    }
-
     inline bool operator==( const ImageView& lhs, const ImageView& rhs ) noexcept
     {
         return lhs._subRange == rhs._subRange &&
@@ -67,67 +51,6 @@ namespace Divide
                lhs._descriptor != rhs._descriptor;
     }
 
-    inline bool operator==( const SubRange& lhs, const SubRange& rhs ) noexcept
-    {
-        return lhs._offset == rhs._offset &&
-               lhs._count == rhs._count;
-    }
-
-    inline bool operator!=( const SubRange& lhs, const SubRange& rhs ) noexcept
-    {
-        return lhs._offset != rhs._offset ||
-               lhs._count != rhs._count;
-    }
-
-    inline bool operator==( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept
-    {
-        return lhs._mipLevels == rhs._mipLevels &&
-               lhs._layerRange == rhs._layerRange;
-    }
-
-    inline bool operator!=( const ImageSubRange& lhs, const ImageSubRange& rhs ) noexcept
-    {
-        return lhs._mipLevels != rhs._mipLevels ||
-               lhs._layerRange != rhs._layerRange;
-    }
-
-    inline bool operator==( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept
-    {
-        return lhs._image == rhs._image &&
-               lhs._sampler == rhs._sampler;
-    }
-
-    inline bool operator!=( const DescriptorCombinedImageSampler& lhs, const DescriptorCombinedImageSampler& rhs ) noexcept
-    {
-        return lhs._image != rhs._image ||
-               lhs._sampler != rhs._sampler;
-    }
-
-    inline bool operator==( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept
-    {
-        return lhs._shaderStageVisibility == rhs._shaderStageVisibility &&
-               lhs._slot == rhs._slot &&
-               lhs._data == rhs._data;
-    }
-
-    inline bool operator!=( const DescriptorSetBinding& lhs, const DescriptorSetBinding& rhs ) noexcept
-    {
-        return lhs._shaderStageVisibility != rhs._shaderStageVisibility ||
-               lhs._slot != rhs._slot ||
-               lhs._data != rhs._data;
-    }
-    
-    inline bool operator==( const DescriptorImageView& lhs, const DescriptorImageView& rhs ) noexcept
-    {
-        return lhs._image == rhs._image &&
-               lhs._usage == rhs._usage;
-    }
-
-    inline bool operator!=( const DescriptorImageView& lhs, const DescriptorImageView& rhs ) noexcept
-    {
-        return lhs._image != rhs._image ||
-               lhs._usage != rhs._usage;
-    }
 
     inline bool operator==( const DescriptorSetBindingData& lhs, const DescriptorSetBindingData& rhs ) noexcept
     {

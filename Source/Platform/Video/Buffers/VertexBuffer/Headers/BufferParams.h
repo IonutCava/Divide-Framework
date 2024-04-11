@@ -40,7 +40,7 @@ namespace Divide {
         BufferUpdateUsage _updateUsage{ BufferUpdateUsage::COUNT };
         BufferUsageType _usageType{ BufferUsageType::COUNT };
 
-        auto operator<=>(const BufferFlags&) const = default;
+        bool operator==(const BufferFlags&) const = default;
     };
 
     struct BufferParams
@@ -50,7 +50,7 @@ namespace Divide {
         size_t _elementSize{ 0u };     ///< Buffer primitive size in bytes
         bool _hostVisible{ false };
 
-        auto operator<=>(const BufferParams&) const = default;
+        bool operator==(const BufferParams&) const = default;
     };
 } //namespace Divide
 

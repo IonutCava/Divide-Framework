@@ -41,14 +41,13 @@ struct PushConstantsStruct
     static constexpr U8 PUSH_MATRIX_COUNT = 2u;
 
     mat4<F32> data[PUSH_MATRIX_COUNT] = {MAT4_ZERO, MAT4_ZERO};
+    bool _set{false};
 
     [[nodiscard]] static constexpr size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
     [[nodiscard]] inline const F32* dataPtr() const { return data[0].mat; }
-    bool _set{false};
-};
 
-bool operator==(const PushConstantsStruct& lhs,const PushConstantsStruct& rhs) noexcept;
-bool operator!=(const PushConstantsStruct& lhs,const PushConstantsStruct& rhs) noexcept;
+    bool operator==(const PushConstantsStruct& rhs) const = default;
+};
 
 struct PushConstants
 {

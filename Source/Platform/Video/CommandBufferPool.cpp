@@ -24,12 +24,12 @@ void CommandBufferPool::reset() noexcept
     ++_generation;
 }
 
-Handle<CommandBuffer> CommandBufferPool::allocateBuffer()
+Handle<CommandBuffer> CommandBufferPool::allocateBuffer( const size_t reservedCmdCount )
 {
     LockGuard<Mutex> lock(_mutex);
     return Handle<CommandBuffer>
     {
-        ._ptr = _pool.newElement(),
+        ._ptr = _pool.newElement( reservedCmdCount ),
         ._generation = _generation,
         ._index = _bufferCount++
     };
@@ -59,11 +59,11 @@ void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& buffer)
     }
 }
 
-Handle<CommandBuffer> AllocateCommandBuffer()
+Handle<CommandBuffer> AllocateCommandBuffer( const size_t reservedCmdCount)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    return g_sCommandBufferPool.allocateBuffer();
+    return g_sCommandBufferPool.allocateBuffer(reservedCmdCount);
 }
 
 void DeallocateCommandBuffer( Handle<CommandBuffer>& buffer)

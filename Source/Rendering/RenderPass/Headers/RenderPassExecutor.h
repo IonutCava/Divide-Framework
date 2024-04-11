@@ -74,7 +74,7 @@ public:
         void reset() noexcept;
 
 
-        auto operator<=>(const BufferUpdateRange&) const = default;
+        bool operator==(const BufferUpdateRange&) const = default;
     };
 
     using NodeIndirectionData = vec4<U32>;

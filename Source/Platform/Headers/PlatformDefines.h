@@ -525,7 +525,7 @@ struct Handle
     U32 _generation: 8;
     U32 _index : 24;
 
-    auto operator<=>( const Handle& ) const = default;
+    bool operator==( const Handle& ) const = default;
 };
 
 template<typename T>

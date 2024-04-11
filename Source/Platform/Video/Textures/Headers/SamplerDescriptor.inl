@@ -35,40 +35,6 @@
 
 namespace Divide
 {
-    inline bool operator==( const SamplerDescriptor& lhs, const SamplerDescriptor& rhs ) noexcept
-    {
-        return lhs._customBorderColour == rhs._customBorderColour &&
-               COMPARE(lhs._minLOD, rhs._minLOD) &&
-               COMPARE(lhs._maxLOD, rhs._maxLOD) &&
-               COMPARE(lhs._biasLOD, rhs._biasLOD) &&
-               lhs._minFilter == rhs._minFilter &&
-               lhs._magFilter == rhs._magFilter &&
-               lhs._mipSampling == rhs._mipSampling &&
-               lhs._wrapU == rhs._wrapU &&
-               lhs._wrapV == rhs._wrapV &&
-               lhs._wrapW == rhs._wrapW &&
-               lhs._anisotropyLevel == rhs._anisotropyLevel &&
-               lhs._borderColour == rhs._borderColour &&
-               lhs._depthCompareFunc == rhs._depthCompareFunc;
-    }
-
-    inline bool operator!=( const SamplerDescriptor& lhs, const SamplerDescriptor& rhs ) noexcept
-    {
-        return lhs._customBorderColour != rhs._customBorderColour ||
-               !COMPARE(lhs._minLOD, rhs._minLOD) ||
-               !COMPARE(lhs._maxLOD, rhs._maxLOD) ||
-               !COMPARE(lhs._biasLOD, rhs._biasLOD) ||
-               lhs._minFilter != rhs._minFilter ||
-               lhs._magFilter != rhs._magFilter ||
-               lhs._mipSampling != rhs._mipSampling ||
-               lhs._wrapU != rhs._wrapU ||
-               lhs._wrapV != rhs._wrapV ||
-               lhs._wrapW != rhs._wrapW ||
-               lhs._anisotropyLevel != rhs._anisotropyLevel ||
-               lhs._borderColour != rhs._borderColour ||
-               lhs._depthCompareFunc != rhs._depthCompareFunc;
-    }
-
     inline size_t GetHash( const SamplerDescriptor descriptor ) noexcept
     {
         size_t hash = 59;

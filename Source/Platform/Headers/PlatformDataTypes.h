@@ -185,33 +185,11 @@ constexpr D64 D64_ZERO = 0.0;
     static const P32 P32_FLAGS_TRUE = { 1u, 1u, 1u, 1u };
     static const P32 P32_FLAGS_FALSE = { 0u, 0u, 0u, 0u };
 
-    union P64
-    {
-        U64 i = 0u;
-        U8  b[8];
-
-        P64() = default;
-        P64( const U64 val ) noexcept;
-        P64( const U8 b1, const U8 b2, const U8 b3, const U8 b4, const U8 b5, const U8 b6, const U8 b7, const U8 b8 ) noexcept;
-        P64( U8* bytes ) noexcept;
-    };
-
-    static const P64 P64_FLAGS_TRUE = { 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u };
-    static const P64 P64_FLAGS_FALSE = { 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u };
-
     inline bool operator==( const P32& lhs, const P32& rhs ) noexcept
     {
         return lhs.i == rhs.i;
     }
     inline bool operator!=( const P32& lhs, const P32& rhs ) noexcept
-    {
-        return lhs.i != rhs.i;
-    }
-    inline bool operator==( const P64& lhs, const P64& rhs ) noexcept
-    {
-        return lhs.i == rhs.i;
-    }
-    inline bool operator!=( const P64& lhs, const P64& rhs ) noexcept
     {
         return lhs.i != rhs.i;
     }
@@ -374,7 +352,7 @@ constexpr D64 D64_ZERO = 0.0;
         counter& operator++() noexcept;
         counter operator++( int ) noexcept;
 
-        auto operator<=>( const counter& ) const = default;
+        bool operator==( const counter& ) const = default;
     };
 
 

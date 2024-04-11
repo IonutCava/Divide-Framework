@@ -41,26 +41,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct BufferImplParams {
+struct BufferImplParams
+{
     BufferParams _bufferParams;
     gl::GLenum _target{ gl::GL_NONE };
     size_t _dataSize{0};
     bool _useChunkAllocation{ false };
+
+    bool operator==(const BufferImplParams& other) const = default;
 };
-
-inline bool operator==(const BufferImplParams& lhs, const BufferImplParams& rhs) noexcept {
-    return lhs._bufferParams == rhs._bufferParams &&
-           lhs._target == rhs._target &&
-           lhs._dataSize == rhs._dataSize &&
-           lhs._useChunkAllocation == rhs._useChunkAllocation;
-}
-
-inline bool operator!=(const BufferImplParams& lhs, const BufferImplParams& rhs) noexcept {
-    return lhs._bufferParams != rhs._bufferParams ||
-           lhs._target != rhs._target ||
-           lhs._dataSize != rhs._dataSize ||
-           lhs._useChunkAllocation != rhs._useChunkAllocation;
-}
 
 class glBufferImpl final : public LockableBuffer {
 public:

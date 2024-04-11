@@ -42,7 +42,7 @@ namespace Divide {
 
         size_t endOffset() const noexcept;
 
-        auto operator<=>(const BufferRange&) const = default;
+        bool operator==(const BufferRange&) const = default;
     };
 
 

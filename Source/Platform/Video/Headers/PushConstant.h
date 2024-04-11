@@ -33,9 +33,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PUSH_CONSTANT_H_
 #define DVD_PUSH_CONSTANT_H_
 
-namespace Divide {
-namespace GFX {
-    struct PushConstant {
+namespace Divide::GFX
+{
+    struct PushConstant
+    {
         template<typename T>
         PushConstant(const U64 bindingHash, const PushConstantType type, const T& data);
         template<typename T>
@@ -51,16 +52,14 @@ namespace GFX {
         PROPERTY_R_IW(U64, bindingHash, 0u);
         PROPERTY_R_IW(PushConstantType, type, PushConstantType::COUNT);
 
-        bool operator==(const PushConstant& rhs) const;
-        bool operator!=(const PushConstant& rhs) const;
+        bool operator==(const PushConstant& rhs) const = default;
 
     private:
         // Most often than not, data will be the size of a mat4 or lower, otherwise we'd just use shader storage buffers
         eastl::fixed_vector<Byte, sizeof(F32) * 16, true, eastl::dvd_allocator> _buffer;
     };
 
-} //namespace GFX
-} //namespace Divide
+} //namespace Divide::GFX
 
 #endif //DVD_PUSH_CONSTANT_H_
 

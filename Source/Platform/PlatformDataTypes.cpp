@@ -34,19 +34,6 @@ namespace Divide
     {
     }
 
-    P64::P64( const U64 val ) noexcept : i( val )
-    {
-    }
-
-    P64::P64( const U8 b1, const U8 b2, const U8 b3, const U8 b4, const U8 b5, const U8 b6, const U8 b7, const U8 b8 ) noexcept : b{ b1, b2, b3, b4, b5, b6, b7, b8 }
-    {
-    }
-
-    P64::P64( U8* bytes ) noexcept
-    {
-        std::memcpy( b, bytes, 8 * sizeof( U8 ) );
-    }
-
     counter::counter( const size_t count ) noexcept
         : _count( count )
     {
@@ -54,20 +41,25 @@ namespace Divide
 
     counter& counter::operator=( const size_t val ) noexcept
     {
-        _count = val; return *this;
+        _count = val;
+        return *this;
     }
 
     counter::operator size_t() const noexcept
     {
         return _count;
     }
+
     counter& counter::operator++() noexcept
     {
         ++_count; return *this;
     }
+
     counter counter::operator++( int ) noexcept
     {
-        const counter ret( _count ); ++_count; return ret;
+        const counter ret( _count );
+        ++_count;
+        return ret;
     }
 
 } //namespace Divide

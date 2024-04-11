@@ -58,7 +58,7 @@ namespace
     }
 
     template<typename T> requires std::is_base_of_v<CommandBase, T>
-    struct CmdAllocator
+    struct CmdAllocator 
     {
         using Pool = MemoryPool<T, MemoryPoolSize<T>()>;
 
@@ -66,6 +66,12 @@ namespace
         {
             NO_DESTROY thread_local Pool pool;
             return pool;
+        }
+
+        void DeleteCmd( CommandBase*& cmd ) const
+        {
+            GetPool().deleteElement( cmd->As<T>() );
+            cmd = nullptr;
         }
     };
 }
@@ -84,79 +90,32 @@ void Command<EnumVal>::addToBuffer(CommandBuffer* buffer) const
 {
     using CType = MapToDataType<EnumVal>;
 
-    buffer->add( static_cast<const CType&>(*this) );
+    buffer->add( static_cast<const MapToDataType<EnumVal>&>(*this) );
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 T* CommandBuffer::add()
 {
-    CommandEntry entry = addCommandEntry(T::EType );
-    T* mem = get<T>(entry);
-
-    if (mem != nullptr)
-    {
-        *mem = {};
-    }
-    else
-    {
-        mem = CmdAllocator<T>::GetPool().newElement();
-        _collection[to_base( T::EType )].emplace_back( mem );
-    }
-
+    T* mem = CmdAllocator<T>::GetPool().newElement();
+    _commands.emplace_back(mem);
     return mem;
 }
 
 template<typename T>  requires std::is_base_of_v<CommandBase, T>
 T* CommandBuffer::add(const T& command)
 {
-    CommandEntry entry = addCommandEntry( T::EType );
-    T* mem = get<T>( entry );
-
-    if (mem != nullptr)
-    {
-        *mem = command;
-    }
-    else
-    {
-        mem = CmdAllocator<T>::GetPool().newElement(command);
-        _collection[to_base( T::EType )].emplace_back( mem );
-    }
-
+    T* mem = CmdAllocator<T>::GetPool().newElement(command);
+    _commands.emplace_back( mem );
     return mem;
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 T* CommandBuffer::add(T&& command)
 {
-    CommandEntry entry = addCommandEntry( T::EType );
-    T* mem = get<T>( entry );
-
-    if (mem != nullptr)
-    {
-        *mem = MOV(command);
-    }
-    else 
-    {
-        mem = CmdAllocator<T>::GetPool().newElement(MOV(command));
-        _collection[to_base( T::EType )].emplace_back( mem );
-    }
-
+    T* mem = CmdAllocator<T>::GetPool().newElement( MOV(command) );
+    _commands.emplace_back( mem );
     return mem;
 }
-
-template<typename T>  requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::get(const CommandEntry& commandEntry) const
-{
-    const CommandList& collection = _collection[commandEntry._idx._type];
-
-    if ( commandEntry._idx._element < collection.size() )
-    {
-        return static_cast<T*>(collection[commandEntry._idx._element]);
-    }
-
-    return nullptr;
-}
-
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 bool TryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand)

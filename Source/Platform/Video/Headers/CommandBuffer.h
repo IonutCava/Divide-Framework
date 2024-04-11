@@ -100,38 +100,13 @@ void ResetCommandBufferQueue( CommandBufferQueue& queue );
 void AddCommandBufferToQueue( CommandBufferQueue& queue, const Handle<GFX::CommandBuffer>& commandBuffer );
 void AddCommandBufferToQueue( CommandBufferQueue& queue, Handle<GFX::CommandBuffer>&& commandBuffer );
 
-#pragma pack(push, 1)
-struct CommandEntry
-{
-    static constexpr U32 INVALID_ENTRY_ID = U32_MAX;
-
-    CommandEntry() noexcept = default;
-
-    explicit CommandEntry( const CommandType type, const U32 element ) noexcept;
-
-    struct IDX
-    {
-        U32 _element : 24;
-        U32 _type : 8;
-    };
-
-    union
-    {
-        IDX _idx;
-        U32 _data{ INVALID_ENTRY_ID };
-    };
-};
-#pragma pack(pop)
-
 class CommandBuffer : private NonCopyable
-{  
+{
   public:
-
-      using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 128, true, eastl::dvd_allocator>;
-      using CommandList = vector_fast<CommandBase*>;
+    static constexpr U32 COMMAND_BUFFER_INIT_SIZE = 32u;
+    using CommandList = eastl::fixed_vector<CommandBase*, COMMAND_BUFFER_INIT_SIZE, true, eastl::dvd_allocator>;
 
   public:
-
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     T* add();
     template<typename T> requires std::is_base_of_v<CommandBase, T>
@@ -144,10 +119,7 @@ class CommandBuffer : private NonCopyable
     void add(Handle<CommandBuffer> other);
 
     void batch();
-    void clear(bool clearMemory = true);
-
-    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] T* get(const CommandEntry& commandEntry) const;
+    void clear();
 
     /// Multi-line. indented list of all commands (and params for some of them)
     [[nodiscard]] string toString() const;
@@ -155,7 +127,7 @@ class CommandBuffer : private NonCopyable
     /// Verify that the commands in the buffer are valid and in the right order 
     [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
-    PROPERTY_R(CommandOrderContainer, commandOrder);
+    PROPERTY_R( CommandList, commands);
 
   protected:
     template<CommandType EnumVal>
@@ -163,11 +135,8 @@ class CommandBuffer : private NonCopyable
 
     template <typename T, size_t BlockSize>
     friend class MemoryPool;
-
-    CommandBuffer();
+    CommandBuffer( size_t reservedCmdCount );
     ~CommandBuffer();
-
-    [[nodiscard]] CommandEntry addCommandEntry( CommandType type );
 
     void clean();
     bool cleanInternal();
@@ -176,8 +145,6 @@ class CommandBuffer : private NonCopyable
     static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
   protected:
-      eastl::array<U32, to_base(CommandType::COUNT)> _commandCount{};
-      eastl::array<CommandList, to_base( CommandType::COUNT )> _collection{};
       bool _batched{ false };
 };
 

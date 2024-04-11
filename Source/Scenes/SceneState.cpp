@@ -5,30 +5,6 @@
 
 namespace Divide
 {
-    [[nodiscard]] bool operator==( const WaterBodyData& lhs, const WaterBodyData& rhs ) noexcept
-    {
-        return lhs._positionW == rhs._positionW &&
-               lhs._extents == rhs._extents;
-    }
-
-    [[nodiscard]] bool operator!=( const WaterBodyData& lhs, const WaterBodyData& rhs ) noexcept
-    {
-        return lhs._positionW != rhs._positionW ||
-               lhs._extents != rhs._extents;
-    }
-
-    [[nodiscard]] bool operator==( const FogDetails& lhs, const FogDetails& rhs ) noexcept
-    {
-        return lhs._colourAndDensity == rhs._colourAndDensity &&
-               lhs._colourSunScatter == rhs._colourSunScatter;
-    }
-
-    [[nodiscard]] bool operator!=( const FogDetails& lhs, const FogDetails& rhs ) noexcept
-    {
-        return lhs._colourAndDensity != rhs._colourAndDensity ||
-               lhs._colourSunScatter != rhs._colourSunScatter;
-    }
-
     void SceneStatePerPlayer::resetMoveDirections( ) noexcept
     {
         _moveFB.reset();
