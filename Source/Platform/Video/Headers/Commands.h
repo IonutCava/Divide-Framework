@@ -47,9 +47,10 @@ using MapToDataType = typename MapToDataType_t<T>::type;
 
 struct CommandBase
 {
+    virtual ~CommandBase() = default;
+
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     [[nodiscard]] FORCE_INLINE T* As() { return static_cast<T*>(this); }
-    virtual ~CommandBase() = default;
 
     virtual void addToBuffer(CommandBuffer* buffer) const = 0;
 
@@ -62,14 +63,8 @@ template<CommandType EnumVal>
 struct Command : CommandBase
 {
     static constexpr CommandType EType = EnumVal;
-    using CType = MapToDataType<EnumVal>;
-
-    Command() noexcept : CommandBase()
-    {
-    }
 
     void addToBuffer(CommandBuffer* buffer) const final;
-
 protected:
     void DeleteCmd(CommandBase*& cmd) const final;
 

@@ -73,28 +73,25 @@ namespace
 template <CommandType EnumVal>
 inline void Command<EnumVal>::DeleteCmd( CommandBase*& cmd ) const
 {
-    CmdAllocator<CType>::GetPool().deleteElement(cmd->As<MapToDataType<EnumVal>>());
+    using CType = MapToDataType<EnumVal>;
+
+    CmdAllocator<CType>::GetPool().deleteElement(cmd->As<CType>());
     cmd = nullptr;
 }
 
 template <CommandType EnumVal>
 void Command<EnumVal>::addToBuffer(CommandBuffer* buffer) const
 {
-    buffer->add( static_cast<const MapToDataType<EnumVal>&>(*this) );
-}
+    using CType = MapToDataType<EnumVal>;
 
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::allocateCommand()
-{
-    _batched = false;
-
-    return get<T>(_commandOrder.emplace_back( T::EType, _commandCount[to_U8( T::EType )]++));
+    buffer->add( static_cast<const CType&>(*this) );
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 T* CommandBuffer::add()
 {
-    T* mem = allocateCommand<T>();
+    CommandEntry entry = addCommandEntry(T::EType );
+    T* mem = get<T>(entry);
 
     if (mem != nullptr)
     {
@@ -112,7 +109,8 @@ T* CommandBuffer::add()
 template<typename T>  requires std::is_base_of_v<CommandBase, T>
 T* CommandBuffer::add(const T& command)
 {
-    T* mem = allocateCommand<T>();
+    CommandEntry entry = addCommandEntry( T::EType );
+    T* mem = get<T>( entry );
 
     if (mem != nullptr)
     {
@@ -130,7 +128,8 @@ T* CommandBuffer::add(const T& command)
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 T* CommandBuffer::add(T&& command)
 {
-    T* mem = allocateCommand<T>();
+    CommandEntry entry = addCommandEntry( T::EType );
+    T* mem = get<T>( entry );
 
     if (mem != nullptr)
     {
@@ -146,22 +145,10 @@ T* CommandBuffer::add(T&& command)
 }
 
 template<typename T>  requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::get(const CommandEntry& commandEntry)
-{
-    const CommandList& collection = _collection[commandEntry._idx._type];
-
-    if ( commandEntry._idx._element < collection.size() )
-    {
-        return static_cast<T*>(collection[commandEntry._idx._element]);
-    }
-
-    return nullptr;
-}
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
 T* CommandBuffer::get(const CommandEntry& commandEntry) const
 {
     const CommandList& collection = _collection[commandEntry._idx._type];
+
     if ( commandEntry._idx._element < collection.size() )
     {
         return static_cast<T*>(collection[commandEntry._idx._element]);
@@ -170,82 +157,9 @@ T* CommandBuffer::get(const CommandEntry& commandEntry) const
     return nullptr;
 }
 
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-const CommandBuffer::CommandList& CommandBuffer::get() const
-{
-    return _collection[ to_base(T::EType) ];
-}
-
-inline bool CommandBuffer::exists(const CommandEntry& commandEntry) const noexcept
-{
-    return commandEntry._idx._type < to_base(CommandType::COUNT) && 
-           commandEntry._idx._element < _collection[commandEntry._idx._type].size();
-}
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
-bool CommandBuffer::exists(const U32 index) const noexcept
-{
-    return exists(T::EType, index);
-}
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::get(const U32 index)
-{
-    return get<T>( CommandEntry{T::EType, index});
-}
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-T* CommandBuffer::get(const U32 index) const
-{
-    return get<T>(CommandEntry{T::EType, index });
-}
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-size_t CommandBuffer::count() const noexcept
-{
-    return _collection[to_base(T::EType)].size();
-}
-
-inline CommandBuffer::CommandOrderContainer& CommandBuffer::operator()() noexcept
-{
-    return _commandOrder;
-}
-
-inline const CommandBuffer::CommandOrderContainer& CommandBuffer::operator()() const noexcept
-{
-    return _commandOrder;
-}
-
-inline void CommandBuffer::clear(const bool clearMemory)
-{
-    _commandCount.fill( 0u );
-
-    _commandOrder.clear();
-
-    if (clearMemory)
-    {
-        for ( U8 i = 0u; i < to_base(CommandType::COUNT); ++i )
-        {
-            CommandList& col = _collection[i];
-
-            for ( CommandBase*& cmd : col )
-            {
-                cmd->DeleteCmd( cmd );
-            }
-            col.clear();
-        }
-    }
-
-    _batched = true;
-}
-
-inline bool CommandBuffer::empty() const noexcept
-{
-    return _commandOrder.empty();
-}
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-bool CommandBuffer::tryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand) const
+bool TryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

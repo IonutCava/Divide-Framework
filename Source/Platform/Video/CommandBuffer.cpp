@@ -109,6 +109,11 @@ namespace
         });
     }
 
+    CommandEntry::CommandEntry( const CommandType type, const U32 element ) noexcept
+        : _idx{ ._element = element, ._type = to_U8( type ) }
+    {
+    }
+
     CommandBuffer::CommandBuffer( )
     {
         _commandOrder.resize(0);
@@ -124,6 +129,17 @@ namespace
                 _collection[i].reserve( reserveSize );
             }
         }
+    }
+
+    CommandBuffer::~CommandBuffer()
+    {
+        clear(true);
+    }
+
+    CommandEntry CommandBuffer::addCommandEntry( const CommandType type )
+    {
+        _batched = false;
+        return _commandOrder.emplace_back( type, _commandCount[to_U8( type )]++ );
     }
 
     void CommandBuffer::add( const CommandBuffer& other )
@@ -185,7 +201,7 @@ namespace
 
                     if ( prevCommand != nullptr &&
                          prevType == cmdType &&
-                         tryMergeCommands( cmdType, prevCommand, crtCommand ) )
+                         TryMergeCommands( cmdType, prevCommand, crtCommand ) )
                     {
                         --_commandCount[entry._idx._type];
                         entry._data = CommandEntry::INVALID_ENTRY_ID;
@@ -270,6 +286,29 @@ namespace
         {
             _commandOrder.clear();
             _commandCount.fill(0u);
+        }
+
+        _batched = true;
+    }
+
+    void CommandBuffer::clear( const bool clearMemory )
+    {
+        _commandCount.fill( 0u );
+
+        _commandOrder.clear();
+
+        if ( clearMemory )
+        {
+            for ( U8 i = 0u; i < to_base( CommandType::COUNT ); ++i )
+            {
+                CommandList& col = _collection[i];
+
+                for ( CommandBase*& cmd : col )
+                {
+                    cmd->DeleteCmd( cmd );
+                }
+                col.clear();
+            }
         }
 
         _batched = true;

@@ -2048,8 +2048,8 @@ namespace Divide
 
         _api->preFlushCommandBuffer( commandBuffer );
 
-        const GFX::CommandBuffer::CommandOrderContainer& commands = (*commandBuffer._ptr)();
-        for ( const auto& cmd : commands )
+        const GFX::CommandBuffer::CommandOrderContainer& commands = commandBuffer._ptr->commandOrder();
+        for ( const GFX::CommandEntry& cmd : commands )
         {
             const GFX::CommandType cmdType = static_cast<GFX::CommandType>(cmd._idx._type);
             if ( IsSubmitCommand( cmdType ) )

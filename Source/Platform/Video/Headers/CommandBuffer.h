@@ -85,13 +85,14 @@ static_assert(std::size( Names::errorType ) == to_base( ErrorType::COUNT ) + 1u,
 
 struct CommandBufferQueue
 {
+    static constexpr U32 COMMAND_BUFFER_INIT_SIZE = 4u;
+
     struct Entry
     {
         Handle<GFX::CommandBuffer> _buffer{INVALID_HANDLE<GFX::CommandBuffer>};
         bool _owning{false};
     };
 
-    static constexpr U32 COMMAND_BUFFER_INIT_SIZE = 4u;
     eastl::fixed_vector<Entry, COMMAND_BUFFER_INIT_SIZE, true, eastl::dvd_allocator> _commandBuffers;
 };
 
@@ -104,12 +105,9 @@ struct CommandEntry
 {
     static constexpr U32 INVALID_ENTRY_ID = U32_MAX;
 
-    CommandEntry() = default;
+    CommandEntry() noexcept = default;
 
-    explicit CommandEntry( const CommandType type, const U32 element )
-        : _idx { ._element = element, ._type = to_U8(type) }
-    {
-    }
+    explicit CommandEntry( const CommandType type, const U32 element ) noexcept;
 
     struct IDX
     {
@@ -129,7 +127,7 @@ class CommandBuffer : private NonCopyable
 {  
   public:
 
-      using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 512, true, eastl::dvd_allocator>;
+      using CommandOrderContainer = eastl::fixed_vector<CommandEntry, 128, true, eastl::dvd_allocator>;
       using CommandList = vector_fast<CommandBase*>;
 
   public:
@@ -141,46 +139,23 @@ class CommandBuffer : private NonCopyable
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     T* add(T&& command);
 
-    [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
     void add(const CommandBuffer& other);
     void add(Handle<CommandBuffer> other);
 
     void batch();
-
-    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] const CommandList& get() const;
+    void clear(bool clearMemory = true);
 
     template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
     [[nodiscard]] T* get(const CommandEntry& commandEntry) const;
 
-    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] T* get(const CommandEntry& commandEntry);
-
-    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] T* get(U32 index);
-
-    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] T* get(U32 index) const;
-
-    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] bool exists(U32 index) const noexcept;
-
-    [[nodiscard]] bool exists(const CommandEntry& commandEntry) const noexcept;
-
-    inline CommandOrderContainer& operator()() noexcept;
-    inline const CommandOrderContainer& operator()() const noexcept;
-
-    inline void clear(bool clearMemory = true);
-    [[nodiscard]] inline bool empty() const noexcept;
-
-    // Multi-line. indented list of all commands (and params for some of them)
+    /// Multi-line. indented list of all commands (and params for some of them)
     [[nodiscard]] string toString() const;
 
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] size_t count() const noexcept;
+    /// Verify that the commands in the buffer are valid and in the right order 
+    [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
 
-    [[nodiscard]] inline size_t size() const noexcept { return _commandOrder.size(); }
+    PROPERTY_R(CommandOrderContainer, commandOrder);
 
   protected:
     template<CommandType EnumVal>
@@ -190,14 +165,9 @@ class CommandBuffer : private NonCopyable
     friend class MemoryPool;
 
     CommandBuffer();
+    ~CommandBuffer();
 
-    // Return true if merge is successful
-    template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] bool tryMergeCommands( CommandType type, T* prevCommand, T* crtCommand ) const;
-
-
-    template<typename T> requires std::is_base_of_v<CommandBase, T>
-    [[nodiscard]] T* allocateCommand();
+    [[nodiscard]] CommandEntry addCommandEntry( CommandType type );
 
     void clean();
     bool cleanInternal();
@@ -206,12 +176,14 @@ class CommandBuffer : private NonCopyable
     static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
   protected:
-      CommandOrderContainer _commandOrder{};
       eastl::array<U32, to_base(CommandType::COUNT)> _commandCount{};
       eastl::array<CommandList, to_base( CommandType::COUNT )> _collection{};
       bool _batched{ false };
 };
 
+// Return true if merge is successful
+template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
+[[nodiscard]] bool TryMergeCommands( CommandType type, T* prevCommand, T* crtCommand );
 [[nodiscard]] bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand);
 [[nodiscard]] bool Merge(MemoryBarrierCommand* lhs, MemoryBarrierCommand* rhs);
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
@@ -223,7 +195,7 @@ template<typename T> requires std::is_base_of_v<CommandBase, T>
 FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T& cmd) { return buffer.add(cmd); }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
-FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) { return buffer.add(cmd); }
+FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) { return buffer.add( MOV(cmd) ); }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer) { return buffer._ptr->add<T>(); }
@@ -232,7 +204,7 @@ template<typename T> requires std::is_base_of_v<CommandBase, T>
 FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer, T& cmd) { return buffer._ptr->add(cmd); }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
-FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer, T&& cmd) { return buffer._ptr->add(cmd); }
+FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer, T&& cmd) { return buffer._ptr->add( MOV(cmd) ); }
 
 }; //namespace GFX
 }; //namespace Divide
