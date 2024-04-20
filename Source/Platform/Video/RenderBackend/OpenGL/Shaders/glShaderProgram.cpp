@@ -15,10 +15,10 @@ namespace Divide {
 
 namespace {
     constexpr size_t g_validationBufferMaxSize = 64 * 1024;
-    moodycamel::BlockingConcurrentQueue<ValidationEntry> g_sValidationQueue;
+    NO_DESTROY moodycamel::BlockingConcurrentQueue<ValidationEntry> g_sValidationQueue;
 
     SharedMutex      g_deletionSetLock;
-    eastl::set<GLuint> g_deletionSet;
+    NO_DESTROY eastl::set<GLuint> g_deletionSet;
 }
 
 void glShaderProgram::Idle(PlatformContext& platformContext)
@@ -40,7 +40,7 @@ void glShaderProgram::Idle(PlatformContext& platformContext)
 
 void glShaderProgram::ProcessValidationQueue()
 {
-    thread_local ValidationEntry s_validationOutputCache;
+    NO_DESTROY thread_local ValidationEntry s_validationOutputCache;
 
     if (g_sValidationQueue.try_dequeue(s_validationOutputCache))
     {
@@ -117,14 +117,14 @@ glShaderProgram::~glShaderProgram()
 
 bool glShaderProgram::unload() 
 {
-    if (_handle != GL_NULL_HANDLE)
+    if (_glHandle != GL_NULL_HANDLE)
     {
         {
             LockGuard<SharedMutex> w_lock(g_deletionSetLock);
-            g_deletionSet.insert(_handle);
+            g_deletionSet.insert(_glHandle);
         }
 
-        if (GL_API::GetStateTracker()._activeShaderPipelineHandle == _handle)
+        if (GL_API::GetStateTracker()._activeShaderPipelineHandle == _glHandle)
         {
             if (GL_API::GetStateTracker().setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED)
             {
@@ -132,8 +132,8 @@ bool glShaderProgram::unload()
             }
         }
 
-        glDeleteProgramPipelines(1, &_handle);
-        _handle = GL_NULL_HANDLE;
+        glDeleteProgramPipelines(1, &_glHandle);
+        _glHandle = GL_NULL_HANDLE;
     }
 
     for ( glShaderEntry& shader : _shaderStage )
@@ -171,7 +171,7 @@ void glShaderProgram::processValidation()
 
     if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
-        g_sValidationQueue.enqueue({ resourceName(), _handle, stageMask});
+        g_sValidationQueue.enqueue({ resourceName(), _glHandle, stageMask});
     }
 }
 
@@ -184,18 +184,18 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
         if (!_stagesBound && rebind)
         {
             assert(getState() == ResourceState::RES_LOADED);
-            if (_handle == GL_NULL_HANDLE) {
-                glCreateProgramPipelines(1, &_handle);
+            if (_glHandle == GL_NULL_HANDLE) {
+                glCreateProgramPipelines(1, &_glHandle);
                 if constexpr(Config::ENABLE_GPU_VALIDATION) {
-                    glObjectLabel(GL_PROGRAM_PIPELINE, _handle, -1, resourceName().c_str());
+                    glObjectLabel(GL_PROGRAM_PIPELINE, _glHandle, -1, resourceName().c_str());
                 }
                 // We can reuse previous handles
                 LockGuard<SharedMutex> w_lock(g_deletionSetLock);
-                g_deletionSet.erase(_handle);
+                g_deletionSet.erase(_glHandle);
             }
 
             if (rebind) {
-                assert(_handle != GL_NULL_HANDLE);
+                assert(_glHandle != GL_NULL_HANDLE);
 
                 for ( glShaderEntry& shader : _shaderStage)
                 {
@@ -206,7 +206,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
                     }
 
                     // If a shader exists for said stage, attach it
-                    glUseProgramStages(_handle, shader._shader->stageMask(), shader._shader->handle());
+                    glUseProgramStages(_glHandle, shader._shader->stageMask(), shader._shader->handle());
                 }
 
                 if (ret == ShaderResult::OK)
@@ -268,7 +268,7 @@ ShaderResult glShaderProgram::bind()
     }
 
     // Set this program as the currently active one
-    if (GL_API::GetStateTracker().setActiveShaderPipeline(_handle) == GLStateTracker::BindResult::JUST_BOUND)
+    if (GL_API::GetStateTracker().setActiveShaderPipeline(_glHandle) == GLStateTracker::BindResult::JUST_BOUND)
     {
         // All of this needs to be run on an actual bind operation. If we are already bound, we assume we did all this
         processValidation();

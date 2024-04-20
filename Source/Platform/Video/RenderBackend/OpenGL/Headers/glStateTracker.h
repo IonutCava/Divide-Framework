@@ -122,7 +122,7 @@ namespace Divide {
         bool setClearColour(const UColour4& colour) { return setClearColour(Util::ToFloatColour(colour)); }
         bool setClearDepth(F32 value);
 
-        inline const RenderStateBlock& getActiveState() const { return _activeState; };
+        inline const RenderStateBlock& getActiveState() const { return _activeState; }
 
         bool setAlphaToCoverage(bool state);
         bool setDepthWrite(bool state);

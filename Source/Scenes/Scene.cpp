@@ -11,6 +11,7 @@
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "Editor/Headers/Editor.h"
 
 #include "Managers/Headers/ProjectManager.h"
@@ -73,15 +74,15 @@ namespace Divide
     }
 
     I64 Scene::DEFAULT_SCENE_GUID = 0;
-    Mutex Scene::s_perFrameArenaMutex{};
-    MyArena<TO_MEGABYTES( 64 )> Scene::s_perFrameArena{};
+    NO_DESTROY Mutex Scene::s_perFrameArenaMutex{};
+    NO_DESTROY MyArena<TO_MEGABYTES( 64 )> Scene::s_perFrameArena{};
 
     Scene::Scene( PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry )
         : Resource( ResourceType::DEFAULT, entry._name )
         , PlatformContextComponent( context )
         , _resourceCache( &cache )
-        , _parent( parent )
         , _entry( entry )
+        , _parent( parent )
     {
         _loadingTasks.store( 0 );
         _flashLight.fill( nullptr );
@@ -403,10 +404,22 @@ namespace Divide
             case SceneNodeType::TYPE_TRIGGER:          return CreateResource<Trigger>( resourceCache(), descriptor );
             case SceneNodeType::TYPE_PARTICLE_EMITTER: return CreateResource<ParticleEmitter>( resourceCache(), descriptor );
             case SceneNodeType::TYPE_INFINITEPLANE:    return CreateResource<InfinitePlane>( resourceCache(), descriptor );
-            default: break;
+
+            case SceneNodeType::TYPE_SPHERE_3D:
+            case SceneNodeType::TYPE_BOX_3D:
+            case SceneNodeType::TYPE_QUAD_3D:
+            case SceneNodeType::TYPE_PATCH_3D:
+            case SceneNodeType::TYPE_MESH:
+            case SceneNodeType::TYPE_SUBMESH:
+            case SceneNodeType::TYPE_TERRAIN:
+            case SceneNodeType::TYPE_DECAL:
+            case SceneNodeType::TYPE_TRANSFORM:
+            case SceneNodeType::TYPE_SKY:
+            case SceneNodeType::TYPE_VEGETATION:
+            case SceneNodeType::COUNT: return nullptr;
         }
 
-        // Warning?
+        DIVIDE_UNEXPECTED_CALL();
         return nullptr;
     }
 
@@ -437,7 +450,8 @@ namespace Divide
 
             const auto IsPrimitive = []( const U64 nameHash )
             {
-                constexpr std::array<U64, 3> primitiveNames = {
+                constexpr U64 primitiveNames[3]
+                {
                     _ID( "BOX_3D" ),
                     _ID( "QUAD_3D" ),
                     _ID( "SPHERE_3D" )
@@ -859,12 +873,11 @@ namespace Divide
     {
         _input->flushCache();
 
-        const auto none = []( [[maybe_unused]] const InputParams param ) noexcept
-        {};
+        const auto none = []( [[maybe_unused]] const InputParams params) noexcept {};
 
-        const auto deleteSelection = [this]( const InputParams param )
+        const auto deleteSelection = [this]( const InputParams params )
         {
-            const PlayerIndex idx = getPlayerIndexForDevice( param._deviceIndex );
+            const PlayerIndex idx = getPlayerIndexForDevice( params._deviceIndex );
             Selections& playerSelections = _currentSelection[idx];
             for ( U8 i = 0u; i < playerSelections._selectionCount; ++i )
             {
@@ -874,9 +887,9 @@ namespace Divide
             playerSelections._selections.fill( -1 );
         };
 
-        const auto increaseCameraSpeed = [this]( const InputParams param )
+        const auto increaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice( param._deviceIndex ) );
+            Camera* cam = playerCamera( getPlayerIndexForDevice( params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                 cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -891,9 +904,9 @@ namespace Divide
             }
         };
 
-        const auto decreaseCameraSpeed = [this]( const InputParams param )
+        const auto decreaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice( param._deviceIndex ) );
+            Camera* cam = playerCamera( getPlayerIndexForDevice( params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                  cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -908,163 +921,167 @@ namespace Divide
             }
         };
 
-        const auto increaseResolution = [this]( [[maybe_unused]] const InputParams param )
+        const auto increaseResolution = [this]( [[maybe_unused]] const InputParams params )
         {
             _context.app().windowManager().increaseResolution();
         };
-        const auto decreaseResolution = [this]( [[maybe_unused]] const InputParams param )
+        const auto decreaseResolution = [this]( [[maybe_unused]] const InputParams params )
         {
             _context.app().windowManager().decreaseResolution();
         };
 
-        const auto moveForward = [this]( const InputParams param )
+        const auto moveForward = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::POSITIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::POSITIVE} );
         };
 
-        const auto moveBackwards = [this]( const InputParams param )
+        const auto moveBackwards = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::NEGATIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::NEGATIVE} );
         };
 
-        const auto stopMoveFWDBCK = [this]( const InputParams param )
+        const auto stopMoveFWDBCK = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::NONE);
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::NONE});
         };
 
-        const auto strafeLeft = [this]( const InputParams param )
+        const auto strafeLeft = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::NEGATIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::NEGATIVE} );
         };
 
-        const auto strafeRight = [this]( const InputParams param )
+        const auto strafeRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::POSITIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::POSITIVE} );
         };
 
-        const auto stopStrafeLeftRight = [this]( const InputParams param )
+        const auto stopStrafeLeftRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::NONE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::NONE} );
         };
 
-        const auto rollCCW = [this]( const InputParams param )
+        const auto rollCCW = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._roll.push( MoveDirection::NEGATIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._roll.push( {255u, MoveDirection::NEGATIVE} );
         };
 
-        const auto rollCW = [this]( const InputParams param )
+        const auto rollCW = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._roll.push( MoveDirection::POSITIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._roll.push( {255u, MoveDirection::POSITIVE} );
         };
 
-        const auto stopRollCCWCW = [this]( const InputParams param )
+        const auto stopRollCCWCW = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._roll.push( MoveDirection::NONE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._roll.push( {255u, MoveDirection::NONE} );
         };
 
-        const auto turnLeft = [this]( const InputParams param )
+        const auto turnLeft = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleLR.push( MoveDirection::NEGATIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::NEGATIVE} );
         };
 
-        const auto turnRight = [this]( const InputParams param )
+        const auto turnRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleLR.push( MoveDirection::POSITIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::POSITIVE} );
         };
 
-        const auto stopTurnLeftRight = [this]( const InputParams param )
+        const auto stopTurnLeftRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleLR.push( MoveDirection::NONE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::NONE} );
         };
 
-        const auto turnUp = [this]( const InputParams param )
+        const auto turnUp = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleUD.push( MoveDirection::NEGATIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::NEGATIVE} );
         };
 
-        const auto turnDown = [this]( const InputParams param )
+        const auto turnDown = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleUD.push( MoveDirection::POSITIVE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::POSITIVE} );
         };
 
-        const auto stopTurnUpDown = [this]( const InputParams param )
+        const auto stopTurnUpDown = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleUD.push( MoveDirection::NONE );
+            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::NONE} );
         };
 
-        const auto togglePauseState = [this]( const InputParams /*param*/ ) noexcept
+        const auto togglePauseState = [this]( [[maybe_unused]] const InputParams params ) noexcept
         {
             _context.kernel().timingData().freezeGameTime( !_context.kernel().timingData().freezeGameTime() );
         };
 
-        const auto takeScreenShot = [this]( [[maybe_unused]] const InputParams param )
+        const auto takeScreenShot = [this]( [[maybe_unused]] const InputParams params )
         {
             state()->screenshotRequestQueued(true);
         };
 
-        const auto toggleFullScreen = [this]( [[maybe_unused]] const InputParams param )
+        const auto toggleFullScreen = [this]( [[maybe_unused]] const InputParams params )
         {
             _context.app().windowManager().toggleFullScreen();
         };
 
-        const auto toggleFlashLight = [this]( const InputParams param )
+        const auto toggleFlashLight = [this]( const InputParams params )
         {
-            toggleFlashlight( getPlayerIndexForDevice( param._deviceIndex ) );
+            toggleFlashlight( getPlayerIndexForDevice( params._deviceIndex ) );
         };
 
-        const auto lockCameraToMouse = [this]( const InputParams  param )
+        const auto lockCameraToMouse = [this]( const InputParams  params )
         {
-            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( param._deviceIndex ), true ) )
+            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( params._deviceIndex ), true ) )
             {
                 NOP();
             }
         };
-        const auto releaseCameraFromMouse = [this]( const InputParams  param )
+        const auto releaseCameraFromMouse = [this]( const InputParams  params )
         {
-            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( param._deviceIndex ), false ) )
+            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( params._deviceIndex ), false ) )
             {
                 NOP();
             }
         };
 
-        const auto shutdown = [this]( [[maybe_unused]] const InputParams param ) noexcept
+        const auto shutdown = [this]( [[maybe_unused]] const InputParams params ) noexcept
         {
             _context.app().RequestShutdown(false);
         };
 
-        const auto povNavigation = [this]( const InputParams param )
+        const auto povNavigation = [this]( const InputParams params )
         {
-            const U32 povMask = param._var[0];
+            const U32 povMask = to_U32(params._var[0]); // cast back
 
             if ( povMask & to_base( Input::JoystickPovDirection::UP ) )
             {  // Going up
-                state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::POSITIVE );
+                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::POSITIVE} );
             }
             if ( povMask & to_base( Input::JoystickPovDirection::DOWN ) )
             {  // Going down
-                state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::NEGATIVE );
+                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NEGATIVE} );
             }
             if ( povMask & to_base( Input::JoystickPovDirection::RIGHT ) )
             {  // Going right
-                state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::POSITIVE );
+                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::POSITIVE} );
             }
             if ( povMask & to_base( Input::JoystickPovDirection::LEFT ) )
             {  // Going left
-                state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::NEGATIVE );
+                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NEGATIVE} );
             }
             if ( povMask == to_base( Input::JoystickPovDirection::CENTERED ) )
             {  // stopped/centered out
-                state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::NONE );
-                state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::NONE );
+                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE } );
+                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NONE } );
             }
         };
 
-        const auto axisNavigation = [this]( const InputParams param )
+        const auto axisNavigation = [this]( const InputParams params )
         {
-            const I32 axisABS = param._var[0];
-            const I32 axis = param._var[1];
-            //const bool isGamePad = param._var[2] == 1;
-            const I32 deadZone = param._var[3];
+            const U8 axis = params._elementIndex;
+
+            [[maybe_unused]] const bool isGamePad = params._var[0] == 1;
+
+            const I32 deadZone = params._var[1];
+            const I32 axisABS = params._var[2];
+
+            const U8 axisPercentage = to_U8((axisABS / to_F32(I16_MAX)) * 255.f);
 
             switch ( axis )
             {
@@ -1072,30 +1089,30 @@ namespace Divide
                 {
                     if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleUD.push( MoveDirection::POSITIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( { axisPercentage, MoveDirection::POSITIVE } );
                     }
                     else if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleUD.push( MoveDirection::NEGATIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( { axisPercentage, MoveDirection::NEGATIVE } );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleUD.push( MoveDirection::NONE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
                 case 1:
                 {
                     if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleLR.push( MoveDirection::POSITIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( { axisPercentage, MoveDirection::POSITIVE } );
                     }
                     else if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleLR.push( MoveDirection::NEGATIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( { axisPercentage, MoveDirection::NEGATIVE } );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._angleLR.push( MoveDirection::NONE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
 
@@ -1103,42 +1120,42 @@ namespace Divide
                 {
                     if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::POSITIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { axisPercentage, MoveDirection::POSITIVE} );
                     }
                     else if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::NEGATIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { axisPercentage, MoveDirection::NEGATIVE} );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveFB.push( MoveDirection::NONE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
                 case 3:
                 {
                     if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::NEGATIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { axisPercentage, MoveDirection::NEGATIVE} );
                     }
                     else if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::POSITIVE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { axisPercentage, MoveDirection::POSITIVE} );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( param._deviceIndex ) )._moveLR.push( MoveDirection::NONE );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
                 default: DIVIDE_UNEXPECTED_CALL(); break;
             }
         };
 
-        const auto toggleDebugInterface = [this]( [[maybe_unused]] const InputParams param ) noexcept
+        const auto toggleDebugInterface = [this]( [[maybe_unused]] const InputParams params ) noexcept
         {
             _context.debug().enabled( !_context.debug().enabled() );
         };
 
-        const auto toggleEditor = [this]( [[maybe_unused]] const InputParams param )
+        const auto toggleEditor = [this]( [[maybe_unused]] const InputParams params )
         {
             if constexpr( Config::Build::ENABLE_EDITOR )
             {
@@ -1146,7 +1163,7 @@ namespace Divide
             }
         };
 
-        const auto toggleConsole = [this]( [[maybe_unused]] const InputParams param )
+        const auto toggleConsole = [this]( [[maybe_unused]] const InputParams params )
         {
             if constexpr( Config::Build::ENABLE_EDITOR )
             {
@@ -1154,13 +1171,13 @@ namespace Divide
             }
         };
 
-        const auto dragSelectBegin = [this]( const InputParams param )
+        const auto dragSelectBegin = [this]( const InputParams params )
         {
-            beginDragSelection( getPlayerIndexForDevice( param._deviceIndex ), vec2<I32>( param._var[2], param._var[3] ) );
+            beginDragSelection( getPlayerIndexForDevice( params._deviceIndex ), vec2<I32>( params._var[0], params._var[1] ) );
         };
-        const auto dragSelectEnd = [this]( const InputParams param )
+        const auto dragSelectEnd = [this]( const InputParams params )
         {
-            endDragSelection( getPlayerIndexForDevice( param._deviceIndex ), true );
+            endDragSelection( getPlayerIndexForDevice( params._deviceIndex ), true );
         };
 
         InputActionList& actions = _input->actionList();
@@ -1450,7 +1467,7 @@ namespace Divide
         {
             if ( player != nullptr )
             {
-                Attorney::ProjectManagerScene::removePlayer( _parent.parent(), *this, player->getBoundNode(), false );
+                Attorney::ProjectManagerScene::removePlayer( _parent.parent(), this, player->getBoundNode(), false );
                 player = nullptr;
             }
         }
@@ -1488,7 +1505,7 @@ namespace Divide
             playerSGN = root->addChildNode( playerNodeDescriptor );
         }
 
-        Attorney::ProjectManagerScene::addPlayer( _parent.parent(), *this, playerSGN, queue );
+        Attorney::ProjectManagerScene::addPlayer( _parent.parent(), this, playerSGN, queue );
         DIVIDE_ASSERT( playerSGN->get<UnitComponent>()->getUnit() != nullptr );
     }
 
@@ -1500,7 +1517,7 @@ namespace Divide
         Player_ptr& player = _scenePlayers[getSceneIndexForPlayer( idx )];
         assert( player != nullptr );
 
-        Attorney::ProjectManagerScene::removePlayer( _parent.parent(), *this, player->getBoundNode(), true );
+        Attorney::ProjectManagerScene::removePlayer( _parent.parent(), this, player->getBoundNode(), true );
     }
 
     void Scene::onPlayerAdd( const Player_ptr& player )
@@ -1759,93 +1776,123 @@ namespace Divide
         {
             static struct tm timeOfDay = {};
 
-            const vec3<F32> sunPosition = _dayNightData._skyInstance->getSunPosition( _dayNightData._sunLight->range() );
-            const vec3<F32> sunDirection = Normalized( VECTOR3_ZERO - sunPosition );
+            bool updateSun = false, updateProbes = false;
 
             if ( _dayNightData._resetTime )
             {
+                updateProbes = true;
+                updateSun = true;
+
+                _dayNightData._resetTime = false;
+                _dayNightData._timeAccumulatorSec = 0.f;
+                _dayNightData._timeAccumulatorHour = 0.f;
+
                 const time_t t = time( nullptr );
                 timeOfDay = *localtime( &t );
                 timeOfDay.tm_hour = _dayNightData._time._hour;
                 timeOfDay.tm_min = _dayNightData._time._minutes;
-                _dayNightData._resetTime = false;
-                _dayNightData._timeAccumulatorSec = Time::Seconds( 1.1f );
-                _dayNightData._timeAccumulatorHour = 0.f;
-                if ( _envProbePool != nullptr )
-                {
-                    SceneEnvironmentProbePool::OnTimeOfDayChange( *_envProbePool );
-                }
-
-                _dayNightData._sunLight->sgn()->get<TransformComponent>()->setDirection( sunDirection );
             }
 
-            const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
-            const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>( gameDeltaTimeUS );
-            const F32 addTime = speedFactor * deltaSeconds;
-            if ( addTime > 0.f )
+            if (!updateSun && !updateProbes)
             {
-                _dayNightData._timeAccumulatorSec += addTime;
-                _dayNightData._timeAccumulatorHour += addTime;
-                Atmosphere atmosphere = _dayNightData._skyInstance->atmosphere();
-                if ( atmosphere._cloudCoverage > 0.9f && increaseWeatherScale )
+                const F32 speedFactor = dayNightCycleEnabled() ? _dayNightData._speedFactor : 0.f;
+                const F32 deltaSeconds = Time::MillisecondsToSeconds<F32>( gameDeltaTimeUS );
+                const F32 addTime = speedFactor * deltaSeconds;
+                if ( addTime > 0.f )
                 {
-                    increaseWeatherScale = false;
-                }
-                else if ( atmosphere._cloudCoverage < 0.1f && !increaseWeatherScale )
-                {
-                    increaseWeatherScale = true;
-                }
-                atmosphere._cloudCoverage += (deltaSeconds * (increaseWeatherScale ? 0.001f : -0.001f));
+                    _dayNightData._timeAccumulatorSec += addTime;
+                    _dayNightData._timeAccumulatorHour += addTime;
+                    Atmosphere atmosphere = _dayNightData._skyInstance->atmosphere();
+                    if ( atmosphere._cloudCoverage > 0.9f && increaseWeatherScale )
+                    {
+                        increaseWeatherScale = false;
+                    }
+                    else if ( atmosphere._cloudCoverage < 0.1f && !increaseWeatherScale )
+                    {
+                        increaseWeatherScale = true;
+                    }
+                    atmosphere._cloudCoverage += (deltaSeconds * (increaseWeatherScale ? 0.001f : -0.001f));
 
-                _dayNightData._skyInstance->setAtmosphere( atmosphere );
+                    _dayNightData._skyInstance->setAtmosphere( atmosphere );
+                }
             }
+
             if ( std::abs( _dayNightData._timeAccumulatorSec ) > Time::Seconds( 1.f ) )
             {
-                timeOfDay.tm_sec += to_I32( _dayNightData._timeAccumulatorSec );
-                const time_t now = mktime( &timeOfDay ); // normalize it
                 _dayNightData._timeAccumulatorSec = 0.f;
+                updateSun = true;
 
-                if ( _dayNightData._timeAccumulatorHour > 1.f )
+                timeOfDay.tm_sec += to_I32( _dayNightData._timeAccumulatorSec );
+
+                if ( std::abs(_dayNightData._timeAccumulatorHour) > Time::Hours( 1.f ) )
                 {
-                    if ( _envProbePool != nullptr )
-                    {
-                        SceneEnvironmentProbePool::OnTimeOfDayChange( *_envProbePool );
-                    }
                     _dayNightData._timeAccumulatorHour = 0.f;
+                    updateProbes = true;
                 }
-                const FColour3 moonColour = Normalized( _dayNightData._skyInstance->moonColour().rgb );
+            }
+
+            if (updateSun)
+            {
+                //Update day/night data
+                _dayNightData._time._hour = to_U8( timeOfDay.tm_hour );
+                _dayNightData._time._minutes = to_U8( timeOfDay.tm_min );
+
+                //Update sky instance with update day/night data
+                const time_t now = mktime( &timeOfDay ); // normalize it
                 const SunInfo details = _dayNightData._skyInstance->setDateTimeAndLocation( localtime( &now ), _dayNightData._location );
-                Light* light = _dayNightData._sunLight;
 
-                const FColour3 sunsetOrange = FColour3( 99.2f, 36.9f, 32.5f ) / 100.f;
+                const Angle::DEGREES<F32> sunAltitude = Angle::RadiansToDegrees( details.altitude );
+                const Angle::DEGREES<F32> sunAzimuth  = Angle::RadiansToDegrees( details.azimuth );
 
-                // Sunset / sunrise
-                const F32 altitudeDegrees = Angle::RadiansToDegrees( details.altitude );
-                const bool isNight = altitudeDegrees < -25.f;
+                constexpr Angle::DEGREES<F32> twilightDegrees{ -18.f };
+                constexpr Angle::DEGREES<F32> sunriseAzimuth{ 70.f };
+                constexpr Angle::DEGREES<F32> sunsetAzimuth{ 280.f };
+
+                const bool isNight = sunAltitude < twilightDegrees;
+                const bool isTwilight = IS_IN_RANGE_INCLUSIVE( sunAltitude, twilightDegrees, 0.f );
+                const bool isDawn  = isTwilight && sunAzimuth < sunriseAzimuth;
+                const bool isDusk  = isTwilight && sunAzimuth > sunsetAzimuth;
+
+                //Update sky direction (inverse direction for night)
+                const vec3<F32> sunPosition = _dayNightData._skyInstance->getSunPosition( _dayNightData._sunLight->range() );
+                vec3<F32> sunDirection = Normalized( VECTOR3_ZERO - sunPosition );
+                
+
+                //Update sun/moon colour
+                const FColour3 sunsetOrange{ 99.2f / 100.f, 36.9f / 100.f, 32.5f / 100.f };
+                const FColour3 sunColour = DefaultColours::WHITE.rgb;
+                const FColour3 moonColour = Normalized( _dayNightData._skyInstance->moonColour().rgb );
+
                 // Dawn
-                if ( IS_IN_RANGE_INCLUSIVE( altitudeDegrees, 0.0f, 25.0f ) )
+                if ( isDawn )
                 {
-                    light->setDiffuseColour( Lerp( sunsetOrange, DefaultColours::WHITE.rgb, altitudeDegrees / 25.f ) );
+                    _dayNightData._sunLight->setDiffuseColour( Lerp( sunsetOrange, sunColour, std::abs(sunAltitude / twilightDegrees ) ) );
+                    //sunDirection *= -1.f;
                 }
                 // Dusk
-                else if ( IS_IN_RANGE_INCLUSIVE( altitudeDegrees, -25.0f, 0.0f ) )
+                else if ( isDusk )
                 {
-                    light->setDiffuseColour( Lerp( sunsetOrange, moonColour, -altitudeDegrees / 25.f ) );
+                    _dayNightData._sunLight->setDiffuseColour( Lerp( sunsetOrange, moonColour, std::abs( sunAltitude / twilightDegrees ) ) );
+                    //sunDirection *= -1.f;
                 }
                 // Night
                 else if ( isNight )
                 {
-                    light->setDiffuseColour( moonColour );
+                    _dayNightData._sunLight->setDiffuseColour( moonColour );
+                    //sunDirection *= -1.f;
                 }
                 // Day
                 else
                 {
-                    light->setDiffuseColour( DefaultColours::WHITE.rgb );
+                    _dayNightData._sunLight->setDiffuseColour( sunColour );
                 }
-                _dayNightData._time._hour = to_U8( timeOfDay.tm_hour );
-                _dayNightData._time._minutes = to_U8( timeOfDay.tm_min );
+                _dayNightData._sunLight->sgn()->get<TransformComponent>()->setPosition( sunPosition );
+                _dayNightData._sunLight->sgn()->get<TransformComponent>()->setDirection( sunDirection );
+            }
 
-                light->sgn()->get<TransformComponent>()->setDirection( sunDirection * (isNight ? -1 : 1) );
+            if ( updateProbes && _envProbePool != nullptr )
+            {
+                SceneEnvironmentProbePool::OnTimeOfDayChange( *_envProbePool );
             }
         }
     }
@@ -1856,7 +1903,7 @@ namespace Divide
 
         if ( _linesPrimitive->hasBatch() )
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ targetViewport } );
+            GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport = targetViewport;
             _linesPrimitive->getCommandBuffer( bufferInOut, memCmdInOut );
         }
     }
@@ -1905,7 +1952,8 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        constexpr std::array<SceneNodeType, 6> s_ignoredNodes = {
+        constexpr SceneNodeType s_ignoredNodes[6]
+        {
             SceneNodeType::TYPE_TRANSFORM,
             SceneNodeType::TYPE_WATER,
             SceneNodeType::TYPE_SKY,
@@ -1932,8 +1980,8 @@ namespace Divide
         intersectionParams._ray = { crtCamera->snapshot()._eye, direction };
         intersectionParams._range = crtCamera->snapshot()._zPlanes;
         intersectionParams._includeTransformNodes = true;
-        intersectionParams._ignoredTypes = s_ignoredNodes.data();
-        intersectionParams._ignoredTypesCount = s_ignoredNodes.size();
+        intersectionParams._ignoredTypes = &s_ignoredNodes[0];
+        intersectionParams._ignoredTypesCount = std::size(s_ignoredNodes);
 
         // Cast the picking ray and find items between the nearPlane and far Plane
         sceneGraph()->intersect( intersectionParams, _sceneSelectionCandidates );
@@ -2036,18 +2084,20 @@ namespace Divide
 
         for ( Selections& playerSelections : _currentSelection )
         {
-            for ( I8 i = playerSelections._selectionCount; i > 0; --i )
+            for ( I16 i = to_I16(playerSelections._selectionCount); i > 0; --i )
             {
-                const I64 crtGUID = playerSelections._selections[i - 1];
+                const size_t idx = to_size(i - 1);
+
+                const I64 crtGUID = playerSelections._selections[idx];
                 if ( crtGUID == guid )
                 {
-                    playerSelections._selections[i - 1] = -1;
-                    std::swap( playerSelections._selections[i - 1], playerSelections._selections[playerSelections._selectionCount--] );
+                    playerSelections._selections[idx] = -1;
+                    std::swap( playerSelections._selections[idx], playerSelections._selections[playerSelections._selectionCount--] );
                 }
             }
         }
 
-        _parent.parent().onNodeDestroy( *this, node );
+        _parent.parent().onNodeDestroy( this, node );
     }
 
     bool Scene::resetSelection( const PlayerIndex idx, const bool resetIfLocked )
@@ -2190,20 +2240,20 @@ namespace Divide
         };
 
         //X0, Y0 -> X1, Y0
-        s_lines[0].positionStart( { selectionRect.x, selectionRect.y, 0 } );
-        s_lines[0].positionEnd( { selectionRect.x + selectionRect.z, selectionRect.y, 0 } );
+        s_lines[0]._positionStart =  { selectionRect.x, selectionRect.y, 0 };
+        s_lines[0]._positionEnd =  { selectionRect.x + selectionRect.z, selectionRect.y, 0 };
 
         //X1 , Y0 -> X1, Y1
-        s_lines[1].positionStart( { selectionRect.x + selectionRect.z, selectionRect.y, 0 } );
-        s_lines[1].positionEnd( { selectionRect.x + selectionRect.z, selectionRect.y + selectionRect.w, 0 } );
+        s_lines[1]._positionStart = { selectionRect.x + selectionRect.z, selectionRect.y, 0 };
+        s_lines[1]._positionEnd =  { selectionRect.x + selectionRect.z, selectionRect.y + selectionRect.w, 0 };
 
         //X1, Y1 -> X0, Y1
-        s_lines[2].positionStart( s_lines[1].positionEnd() );
-        s_lines[2].positionEnd( { selectionRect.x, selectionRect.y + selectionRect.w, 0 } );
+        s_lines[2]._positionStart =  s_lines[1]._positionEnd;
+        s_lines[2]._positionEnd =  { selectionRect.x, selectionRect.y + selectionRect.w, 0 };
 
         //X0, Y1 -> X0, Y0
-        s_lines[3].positionStart( s_lines[2].positionEnd() );
-        s_lines[3].positionEnd( s_lines[0].positionStart() );
+        s_lines[3]._positionStart = s_lines[2]._positionEnd;
+        s_lines[3]._positionEnd =  s_lines[0]._positionStart;
 
         _linesPrimitive->fromLines( s_lines.data(), s_lines.size() );
 
@@ -2214,7 +2264,7 @@ namespace Divide
             {
                 const Camera* crtCamera = playerCamera( idx );
 
-                thread_local vector_fast<SceneGraphNode*> nodes;
+                NO_DESTROY thread_local vector_fast<SceneGraphNode*> nodes;
                 Attorney::ProjectManagerScene::getNodesInScreenRect( _parent.parent(), selectionRect, *crtCamera, nodes );
 
                 _parent.parent().setSelected( idx, nodes, false );
@@ -2402,18 +2452,18 @@ namespace Divide
         return Attorney::ProjectManagerCameraAccessor::playerCamera( _parent.parent(), index, skipOverride );
     }
 
-    void Attorney::SceneEnvironmentProbeComponent::registerProbe( const Scene& scene, EnvironmentProbeComponent* probe )
+    void Attorney::SceneEnvironmentProbeComponent::registerProbe( Scene* scene, EnvironmentProbeComponent* probe )
     {
-        DIVIDE_ASSERT( scene._envProbePool != nullptr );
+        DIVIDE_ASSERT( scene->_envProbePool != nullptr );
 
-        scene._envProbePool->registerProbe( probe );
+        scene->_envProbePool->registerProbe( probe );
     }
 
-    void Attorney::SceneEnvironmentProbeComponent::unregisterProbe( const Scene& scene, const EnvironmentProbeComponent* const probe )
+    void Attorney::SceneEnvironmentProbeComponent::unregisterProbe( Scene* scene, const EnvironmentProbeComponent* const probe )
     {
-        DIVIDE_ASSERT( scene._envProbePool != nullptr );
+        DIVIDE_ASSERT( scene->_envProbePool != nullptr );
 
-        scene._envProbePool->unregisterProbe( probe );
+        scene->_envProbePool->unregisterProbe( probe );
     }
 
 } //namespace Divide

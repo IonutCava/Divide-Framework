@@ -32,7 +32,7 @@ DivideRecast::~DivideRecast()
 PathErrorCode DivideRecast::FindPath(const NavigationMesh& navMesh,
                                      const vec3<F32>& startPos,
                                      const vec3<F32>& endPos,
-                                     const I32 pathSlot,
+                                     const U32 pathSlot,
                                      const I32 target) {
 
     const F32* pStartPos = &startPos[0];

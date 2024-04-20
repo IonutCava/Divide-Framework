@@ -9,4 +9,4 @@ void ParticleGenerator::updateTransform(const vec3<F32>& position, const Quatern
     _sourceOrientation.set(orientation);
 }
 
-} //namespace Divide 
+} //namespace Divide

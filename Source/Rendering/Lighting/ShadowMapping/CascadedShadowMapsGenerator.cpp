@@ -394,7 +394,9 @@ namespace Divide
 
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand( Util::StringFormat( "Cascaded Shadow Pass Light: [ {} ]", lightIndex ).c_str(), lightIndex ) );
+        auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut);
+        cmd->_scopeName = Util::StringFormat( "Cascaded Shadow Pass Light: [ {} ]", lightIndex );
+        cmd->_scopeId = lightIndex;
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager();
 
@@ -481,7 +483,7 @@ namespace Divide
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand( "World AO Render Pass" ) );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "World AO Render Pass";
         _context.context().kernel().renderPassManager()->doCustomPass( shadowCamera, params, bufferInOut, memCmdInOut );
 
         const RenderTargetHandle& handle = ShadowMap::getShadowMap( _type );
@@ -552,7 +554,7 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
 
-        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
 
@@ -580,7 +582,7 @@ namespace Divide
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
 
-        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
     }

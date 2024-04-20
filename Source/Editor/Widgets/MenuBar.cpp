@@ -402,8 +402,8 @@ namespace Divide
                     g_nodeDescriptor._node->getMaterialTpl()->properties().baseColour( FColour4( 0.4f, 0.4f, 0.4f, 1.0f ) );
                     g_nodeDescriptor._node->getMaterialTpl()->properties().roughness( 0.5f );
                     g_nodeDescriptor._node->getMaterialTpl()->properties().metallic( 0.5f );
-                    const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
-                    activeScene.sceneGraph()->getRoot()->addChildNode( g_nodeDescriptor );
+                    Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
+                    activeScene->sceneGraph()->getRoot()->addChildNode( g_nodeDescriptor );
                     Attorney::EditorGeneralWidget::registerUnsavedSceneChanges( _context.editor() );
                     g_nodeDescriptor._node.reset();
                 }
@@ -557,7 +557,7 @@ namespace Divide
             {
                 if ( hasUnsavedElements && !isDefaultScene )
                 {
-                    saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene().entry() );
+                    saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene()->entry() );
                 }
                 _newScenePopup = true;
             }
@@ -598,7 +598,7 @@ namespace Divide
                 }
                 else
                 {
-                    saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene().entry() );
+                    saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene()->entry() );
                 }
             }
             if ( modifierPressed )
@@ -676,7 +676,7 @@ namespace Divide
                     {
                         if ( hasUnsavedElements )
                         {
-                            saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene().entry() );
+                            saveAndDrawModalPopup( _context.kernel().projectManager()->activeProject()->getActiveScene()->entry() );
                         }
                         Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), Util::StringFormat( "Exported game for [ {} ]!", platform ), Time::SecondsToMilliseconds<F32>( 3.0f ), false );
                         break;
@@ -1132,7 +1132,7 @@ namespace Divide
                 pool.lightImpostorsEnabled( lightImpostors );
             }
 
-            const ECSManager& ecsManager = _context.kernel().projectManager()->activeProject()->getActiveScene().sceneGraph()->GetECSManager();
+            const ECSManager& ecsManager = _context.kernel().projectManager()->activeProject()->getActiveScene()->sceneGraph()->GetECSManager();
             bool playAnimations = ecsManager.ecsEngine().GetSystemManager()->GetSystem<AnimationSystem>()->getAnimationState();
 
             if ( ImGui::MenuItem( "Play animations", "", &playAnimations ) )
@@ -1143,7 +1143,7 @@ namespace Divide
             if ( ImGui::BeginMenu( "Debug Gizmos" ) )
             {
                 ProjectManager* projectManager = context().kernel().projectManager();
-                SceneRenderState& renderState = projectManager->activeProject()->getActiveScene().state()->renderState();
+                SceneRenderState& renderState = projectManager->activeProject()->getActiveScene()->state()->renderState();
 
                 bool temp = renderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_AABB );
                 if ( ImGui::MenuItem( "Show AABBs", "", &temp ) )

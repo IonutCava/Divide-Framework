@@ -1,13 +1,12 @@
 
 
-#include "Headers/VKDevice.h"
+#include "Headers/vkDevice.h"
 
 #include "Utility/Headers/Localization.h"
 
 namespace Divide
 {
-    VKDevice::VKDevice( VK_API& context, vkb::Instance& instance, VkSurfaceKHR targetSurface )
-        : _context( context )
+    VKDevice::VKDevice( vkb::Instance& instance, VkSurfaceKHR targetSurface )
     {
         VkPhysicalDeviceExtendedDynamicState3FeaturesEXT vk13EXTfeatures{};
         vk13EXTfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;

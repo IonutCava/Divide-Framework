@@ -73,7 +73,8 @@ namespace {
 
 namespace DVDConverter {
 namespace detail {
-    hashMap<U32, TextureWrap> fillTextureWrapMap() {
+    static hashMap<U32, TextureWrap> fillTextureWrapMap()
+    {
         hashMap<U32, TextureWrap> wrapMap;
         wrapMap[aiTextureMapMode_Wrap] = TextureWrap::REPEAT;
         wrapMap[aiTextureMapMode_Clamp] = TextureWrap::CLAMP_TO_EDGE;
@@ -82,7 +83,8 @@ namespace detail {
         return wrapMap;
     }
 
-    hashMap<U32, ShadingMode> fillShadingModeMap() {
+    static hashMap<U32, ShadingMode> fillShadingModeMap()
+    {
         hashMap<U32, ShadingMode> shadingMap;
         shadingMap[aiShadingMode_PBR_BRDF] = ShadingMode::PBR_MR;
         shadingMap[aiShadingMode_Fresnel] = ShadingMode::BLINN_PHONG;
@@ -99,7 +101,8 @@ namespace detail {
         return shadingMap;
     }
 
-    hashMap<U32, TextureOperation> fillTextureOperationMap() {
+    static hashMap<U32, TextureOperation> fillTextureOperationMap()
+    {
         hashMap<U32, TextureOperation> operationMap;
         operationMap[aiTextureOp_Multiply] = TextureOperation::MULTIPLY;
         operationMap[aiTextureOp_Add] = TextureOperation::ADD;
@@ -111,9 +114,9 @@ namespace detail {
         return operationMap;
     }
 
-    hashMap<U32, TextureWrap> aiTextureMapModeTable = fillTextureWrapMap();
-    hashMap<U32, ShadingMode> aiShadingModeInternalTable = fillShadingModeMap();
-    hashMap<U32, TextureOperation> aiTextureOperationTable = fillTextureOperationMap();
+    NO_DESTROY static hashMap<U32, TextureWrap> aiTextureMapModeTable = fillTextureWrapMap();
+    NO_DESTROY static hashMap<U32, ShadingMode> aiShadingModeInternalTable = fillShadingModeMap();
+    NO_DESTROY static hashMap<U32, TextureOperation> aiTextureOperationTable = fillTextureOperationMap();
 }; //namespace detail
 
 void OnStartup([[maybe_unused]] const PlatformContext& context)
@@ -133,7 +136,9 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
     }
 
     AnimUtils::TransformMatrix(axisCorrectionBasis * node->mTransformation, target._transform);
-    if (target._transform.m[0][0] != target._transform.m[1][1] && target._transform.m[1][1] != target._transform.m[2][2]) {
+    if (!COMPARE(target._transform.m[0][0], target._transform.m[1][1]) && 
+        !COMPARE(target._transform.m[1][1], target._transform.m[2][2]))
+    {
         // We have either:
         // - Non-uniform scale
         // - Different transform axis (e.g. Z-up)
@@ -177,27 +182,27 @@ bool Load(PlatformContext& context, Import::ImportData& target)
     importer.SetPropertyInteger(AI_CONFIG_GLOB_MEASURE_TIME, 1);
     importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, 80.0f);
 
-    constexpr U32 ppSteps = aiProcess_GlobalScale |
-                            aiProcess_CalcTangentSpace |
-                            aiProcess_JoinIdenticalVertices |
-                            aiProcess_ImproveCacheLocality |
-                            aiProcess_GenSmoothNormals |
-                            aiProcess_LimitBoneWeights |
-                            aiProcess_RemoveRedundantMaterials |
-                             //aiProcess_FixInfacingNormals | // Causes issues with backfaces inside the Sponza Atrium model
-                            aiProcess_SplitLargeMeshes |
-                            aiProcess_FindInstances |
-                            aiProcess_Triangulate |
-                            aiProcess_GenUVCoords |
-                            aiProcess_SortByPType |
-                            aiProcess_FindDegenerates |
-                            aiProcess_FindInvalidData |
-                            (Config::Build::IS_DEBUG_BUILD ? aiProcess_ValidateDataStructure : 0u) |
-                            aiProcess_OptimizeMeshes |
-                            aiProcess_GenBoundingBoxes |
-                            aiProcess_TransformUVCoords;// Preprocess UV transformations (scaling, translation ...)
+    constexpr auto ppSteps = aiProcess_GlobalScale |
+                             aiProcess_CalcTangentSpace |
+                             aiProcess_JoinIdenticalVertices |
+                             aiProcess_ImproveCacheLocality |
+                             aiProcess_GenSmoothNormals |
+                             aiProcess_LimitBoneWeights |
+                             aiProcess_RemoveRedundantMaterials |
+                              //aiProcess_FixInfacingNormals | // Causes issues with backfaces inside the Sponza Atrium model
+                             aiProcess_SplitLargeMeshes |
+                             aiProcess_FindInstances |
+                             aiProcess_Triangulate |
+                             aiProcess_GenUVCoords |
+                             aiProcess_SortByPType |
+                             aiProcess_FindDegenerates |
+                             aiProcess_FindInvalidData |
+                             (Config::Build::IS_DEBUG_BUILD ? aiProcess_ValidateDataStructure : 0) |
+                             aiProcess_OptimizeMeshes |
+                             aiProcess_GenBoundingBoxes |
+                             aiProcess_TransformUVCoords;// Preprocess UV transformations (scaling, translation ...)
 
-    const aiScene* aiScenePointer = importer.ReadFile((filePath / fileName).string(), ppSteps);
+    const aiScene* aiScenePointer = importer.ReadFile((filePath / fileName).string(), to_U32(ppSteps));
 
     if (!aiScenePointer) {
         Console::errorfn(LOCALE_STR("ERROR_IMPORTER_FILE"), fileName, importer.GetErrorString());
@@ -217,9 +222,9 @@ bool Load(PlatformContext& context, Import::ImportData& target)
         aiScenePointer->mMetaData->Get<D64>("UnitScaleFactor", UnitScaleFactor);
 
         aiVector3D upVec, forwardVec, rightVec;
-        upVec[UpAxis]         = UpAxisSign    * to_F32(UnitScaleFactor);
-        forwardVec[FrontAxis] = FrontAxisSign * to_F32(UnitScaleFactor);
-        rightVec[CoordAxis]   = CoordAxisSign * to_F32(UnitScaleFactor);
+        upVec[to_U32(UpAxis)]         = to_F32(UpAxisSign    * UnitScaleFactor);
+        forwardVec[to_U32(FrontAxis)] = to_F32(FrontAxisSign * UnitScaleFactor);
+        rightVec[to_U32(CoordAxis)]   = to_F32(CoordAxisSign * UnitScaleFactor);
 
         axisCorrectionBasis = aiMatrix4x4(rightVec.x,   rightVec.y,   rightVec.z,   0.f,
                                           upVec.x,      upVec.y,      upVec.z,      0.f,
@@ -491,10 +496,10 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
             assert( bone->boneID() != -1);
 
             aiVertexWeight* weights = source->mBones[boneIndex]->mWeights;
-            I32 numWeights = source->mBones[boneIndex]->mNumWeights;
-            for ( I32 weightIndex = 0; weightIndex < numWeights; ++weightIndex )
+            U32 numWeights = source->mBones[boneIndex]->mNumWeights;
+            for ( U32 weightIndex = 0; weightIndex < numWeights; ++weightIndex )
             {
-                I32 vertexId = weights[weightIndex].mVertexId;
+                U32 vertexId = weights[weightIndex].mVertexId;
                 F32 weight = weights[weightIndex].mWeight;
                 assert( vertexId <= vertices.size() );
 
@@ -654,7 +659,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
 
         I32 shadingModel = 0, flags = 0;
         if (AI_SUCCESS == aiGetMaterialInteger(mat, AI_MATKEY_SHADING_MODEL, &shadingModel)) {
-            material.shadingMode(detail::aiShadingModeInternalTable[shadingModel]);
+            material.shadingMode(detail::aiShadingModeInternalTable[to_U32(shadingModel)]);
         } else {
             material.shadingMode(ShadingMode::BLINN_PHONG);
         }
@@ -719,15 +724,25 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
         F32 specShininess = 0.f;
         if (AI_SUCCESS == aiGetMaterialFloat(mat, AI_MATKEY_SHININESS, &specShininess)) {
             // Adjust shininess range here so that it always maps to the range [0,1000]
-            switch (format) {
-                case GeometryFormat::_3DS:
-                case GeometryFormat::ASE:
-                case GeometryFormat::FBX:  specShininess *= 10.f;                         break; // percentage (0-100%)
-                case GeometryFormat::OBJ:  specShininess *= 1.f;                          break; // 0...1000.f
-                case GeometryFormat::DAE:  REMAP(specShininess, 0.f, 511.f, 0.f, 1000.f); break; // 511.f
-                default:
-                case GeometryFormat::X:    specShininess = 1.f;                           break; // not supported. 0 = gouraud shading. If this ever changes (somehow) we need to handle it.
-            };
+            if (format == GeometryFormat::_3DS ||
+                format == GeometryFormat::ASE ||
+                format == GeometryFormat::FBX )
+            {
+                specShininess *= 10.f; // percentage (0-100%)
+            }
+            else if (format == GeometryFormat::OBJ)
+            {
+                NOP(); // 0...1000.f
+            }
+            else if (format == GeometryFormat::DAE)
+            {
+                REMAP(specShininess, 0.f, 511.f, 0.f, 1000.f); // 0.f ...511.f
+            }
+            else
+            {
+                specShininess = 1.f; // not supported. 0 = gouraud shading. If this ever changes (somehow) we need to handle it.
+            }
+
             CLAMP(specShininess, 0.f, 1000.f);
         }
         // Once the value has been remaped to 0...1000, remap it what we can handle in the engine;

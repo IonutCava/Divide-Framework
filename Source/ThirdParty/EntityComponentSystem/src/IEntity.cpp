@@ -16,7 +16,7 @@ namespace ECS
 {
 	std::shared_mutex IEntity::s_ComponentManagerLock;
 
-	DEFINE_STATIC_LOGGER(IEntity, "Entity")
+	DEFINE_STATIC_LOGGER(IEntity, "Entity");
 		
 	IEntity::IEntity() :
 		m_Active(true)

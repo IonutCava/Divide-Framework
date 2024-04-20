@@ -47,7 +47,7 @@ class Quad3D final : public Object3D {
         CORNER_ALL
     };
 
-    explicit Quad3D(GFXDevice& context,
+    explicit Quad3D( PlatformContext& context,
                     ResourceCache* parentCache,
                     size_t descriptorHash,
                     const std::string_view name,

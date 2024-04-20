@@ -92,7 +92,6 @@ namespace Divide
     {
         /// How many writes we can basically issue per frame to our scratch buffers before we have to sync
         constexpr size_t TargetBufferSizeCam = 1024u;
-        constexpr size_t TargetBufferSizeRender = 64u;
 
         constexpr U32 GROUP_SIZE_AABB = 64u;
         constexpr U32 MAX_INVOCATIONS_BLUR_SHADER_LAYERED = 4u;
@@ -306,8 +305,8 @@ namespace Divide
     }
 
     GFXDevice::GFXDevice( PlatformContext& context )
-        : FrameListener( "GFXDevice", context.kernel().frameListenerMgr(), 1u),
-          PlatformContextComponent( context )
+        : PlatformContextComponent( context )
+        , FrameListener( "GFXDevice", context.kernel().frameListenerMgr(), 1u)
     {
         _queuedShadowSampleChange.fill( s_invalidQueueSampleCount );
     }
@@ -1324,6 +1323,8 @@ namespace Divide
             }
         }
 
+        ShaderProgram::OnBeginFrame( *this );
+
         if ( _api->frameStarted() )
         {
             _context.app().windowManager().drawToWindow(context().mainWindow());
@@ -1342,7 +1343,7 @@ namespace Divide
         {
             PROFILE_SCOPE("Blit Backbuffer", Profiler::Category::Graphics);
 
-            Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer();
+            Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer("Blit Backbuffer");
 
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = SCREEN_TARGET_ID;
@@ -1483,11 +1484,6 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( arrayOffset < 0 )
-        {
-            return;
-        }
-
         RenderTarget* paraboloidTarget = _rtPool->getRenderTarget( params._target );
         // Colour attachment takes precedent over depth attachment
         const bool hasColour = paraboloidTarget->hasAttachment( RTAttachmentType::COLOUR );
@@ -1602,7 +1598,7 @@ namespace Divide
                     pushData.data[0]._vec[0].x = to_F32( loop );
                     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set( pushData );
                 }
-                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
             }
 
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
@@ -1634,7 +1630,7 @@ namespace Divide
                     pushData.data[0]._vec[0].x = to_F32( loop );
                     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
                 }
-                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+                GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
             }
 
             GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
@@ -2001,7 +1997,8 @@ namespace Divide
 
         thread_local DescriptorSetEntries setEntries{};
 
-        constexpr std::array<DescriptorSetUsage, to_base( DescriptorSetUsage::COUNT )> prioritySorted = {
+        constexpr DescriptorSetUsage prioritySorted[to_base( DescriptorSetUsage::COUNT )]
+        {
             DescriptorSetUsage::PER_FRAME,
             DescriptorSetUsage::PER_PASS,
             DescriptorSetUsage::PER_BATCH,
@@ -2142,6 +2139,10 @@ namespace Divide
                     descriptorSet( resCmd->_usage ).update( resCmd->_usage, resCmd->_set );
 
                 } break;
+                case GFX::CommandType::DRAW_COMMANDS:
+                {
+                    DIVIDE_ASSERT(!cmd->As<GFX::DrawCommand>()->_drawCommands.empty());
+                } break;
                 default: break;
             }
 
@@ -2189,8 +2190,8 @@ namespace Divide
         Texture* HiZTex = HiZAtt->texture().get();
         DIVIDE_ASSERT( HiZTex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::MANUAL );
 
-        GFX::EnqueueCommand( cmdBufferInOut, GFX::BeginDebugScopeCommand{ "Construct Hi-Z" } );
-        GFX::EnqueueCommand( cmdBufferInOut, GFX::BindPipelineCommand{ _hIZPipeline } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( cmdBufferInOut )->_scopeName = "Construct Hi-Z";
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( cmdBufferInOut )->_pipeline = _hIZPipeline;
 
         U32 twidth = HiZTex->width();
         U32 theight = HiZTex->height();
@@ -2273,15 +2274,15 @@ namespace Divide
 
         if ( threadCount == 0u || !enableOcclusionCulling() )
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::AddDebugMessageCommand( "Occlusion Culling Skipped" ) );
+            GFX::EnqueueCommand<GFX::AddDebugMessageCommand>( bufferInOut )->_msg = "Occlusion Culling Skipped";
             return;
         }
 
         ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Occlusion Cull";
 
         // Not worth the overhead for a handful of items and the Pre-Z pass should handle overdraw just fine
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _hIZCullPipeline } );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _hIZCullPipeline;
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -2306,7 +2307,7 @@ namespace Divide
         pushConstants.set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
         pushConstants.set( fastConstants );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::DispatchComputeCommand{ threadCount, 1, 1 } );
+        GFX::EnqueueCommand<GFX::DispatchComputeCommand>( bufferInOut )->_computeGroupSize = { threadCount, 1, 1 };
 
         // Occlusion culling barrier
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back(BufferLock
@@ -2342,7 +2343,7 @@ namespace Divide
     void GFXDevice::drawTextureInViewport( const ImageView& texture, const SamplerDescriptor sampler, const Rect<I32>& viewport, const bool convertToSrgb, const bool drawToDepthOnly, bool drawBlend, GFX::CommandBuffer& bufferInOut )
     {
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Draw Texture In Viewport";
-        GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
+        GFX::EnqueueCommand<GFX::PushCameraCommand>( bufferInOut )->_cameraSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot();
         GFX::EnqueueCommand( bufferInOut, drawToDepthOnly ? _drawFSDepthPipelineCmd : drawBlend ? _drawFSTexturePipelineBlendCmd : _drawFSTexturePipelineCmd );
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -2350,7 +2351,7 @@ namespace Divide
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, texture, sampler );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::PushViewportCommand{ viewport } );
+        GFX::EnqueueCommand<GFX::PushViewportCommand>( bufferInOut )->_viewport = viewport;
 
         if ( !drawToDepthOnly )
         {
@@ -2359,7 +2360,7 @@ namespace Divide
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set(pushData);
         }
 
-        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::PopViewportCommand>( bufferInOut );
         GFX::EnqueueCommand<GFX::PopCameraCommand>( bufferInOut );
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -2374,7 +2375,7 @@ namespace Divide
         // Early out if we didn't request the preview
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render Debug Views" } );
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Render Debug Views";
 
             renderDebugViews(
                 Rect<I32>( targetViewport.x + padding,
@@ -2613,7 +2614,7 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, view->_textureBindSlot, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, view->_texture->getView(), view->_sampler );
 
-            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 
             if ( !view->_name.empty() )
             {
@@ -2632,9 +2633,9 @@ namespace Divide
             }
         }
 
-        GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
+        GFX::EnqueueCommand<GFX::PushCameraCommand>( bufferInOut )->_cameraSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot();
         // Draw labels at the end to reduce number of state changes
-        TextElement text( labelStyleHash, RelativePosition2D( RelativeValue( 0.1f, 0.0f ), RelativeValue( 0.1f, 0.0f ) ) );
+        TextElement text( labelStyleHash, RelativePosition2D{ ._x = RelativeValue{ ._scale = 0.1f, ._offset = 0.0f }, ._y = RelativeValue{ ._scale = 0.1f, ._offset = 0.0f } } );
         for ( const auto& [labelText, viewportOffsetY, viewportIn] : labelStack )
         {
             GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport.set( viewportIn );

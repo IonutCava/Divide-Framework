@@ -155,7 +155,7 @@ void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
 
 void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
     ProjectManager* sMgr = _context.kernel().projectManager();
-    auto& sceneGraph = sMgr->activeProject()->getActiveScene().sceneGraph();
+    auto& sceneGraph = sMgr->activeProject()->getActiveScene()->sceneGraph();
     if (!args.empty()) {
         const SceneGraphNode* sgn = sceneGraph->findNode(args.c_str());
         if (!sgn) {
@@ -171,7 +171,7 @@ void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
         temp = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *sMgr->recast(), sceneGraph->parentScene());
     }
     // Set it's file name
-    temp->setFileName( sMgr->activeProject()->getActiveScene().resourceName());
+    temp->setFileName( sMgr->activeProject()->getActiveScene()->resourceName());
     // Try to load it from file
     bool loaded = temp->load(sceneGraph->getRoot());
     if (!loaded) {
@@ -206,4 +206,4 @@ void GUIConsoleCommandParser::handleFOVCommand(const string& args) {
 void GUIConsoleCommandParser::handleInvalidCommand(const string& args) {
     Console::errorfn(LOCALE_STR("CONSOLE_INVALID_COMMAND"), args.c_str());
 }
-};
+} //namespace Divide

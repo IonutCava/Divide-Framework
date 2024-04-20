@@ -30,4 +30,5 @@ bool Trigger::trigger() const {
     Start(*_triggeredTask, *_taskPool);
     return true;
 }
-}
+
+} //namespace Divide

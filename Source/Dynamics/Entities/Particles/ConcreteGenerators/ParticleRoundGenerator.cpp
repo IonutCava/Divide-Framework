@@ -18,4 +18,5 @@ void ParticleRoundGenerator::generate([[maybe_unused]] Task& packagedTasksParent
                                                 0.0f);
     }
 }
-}
+
+} //namespace Divide

@@ -80,7 +80,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
 
     virtual BufferLock setIndexBuffer(const IndexBuffer& indices) = 0;
 
-    virtual void reset() = 0; //< Also clears GPU memory
+    virtual void reset() = 0; ///< Also clears GPU memory
 
     /// When reading and writing to the same buffer, we use a round-robin approach and
     /// offset the reading and writing to multiple copies of the data

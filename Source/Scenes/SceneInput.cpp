@@ -85,7 +85,7 @@ namespace Divide
 
             {
                 const auto& actions = entry._actions[to_base( onPress ? PressReleaseActions::Action::PRESS
-                                                              : PressReleaseActions::Action::RELEASE )];
+                                                                      : PressReleaseActions::Action::RELEASE )];
                 if ( !actions.empty() )
                 {
                     for ( const auto& action : actions )
@@ -121,7 +121,16 @@ namespace Divide
         if ( getKeyMapping( arg._key, cbks ) )
         {
             return handleCallbacks( cbks,
-                                    InputParams( arg._deviceIndex, to_I32( arg._key ), arg._modMask ),
+                                    InputParams( arg._deviceIndex,
+                                                 to_base(arg._key),
+                                                 {{
+                                                    arg._modMask,
+                                                    -1,
+                                                    -1,
+                                                    -1,
+                                                    -1,
+                                                    -1
+                                                }}),
                                     true );
         }
 
@@ -144,7 +153,16 @@ namespace Divide
         if ( getKeyMapping( arg._key, cbks ) )
         {
             return handleCallbacks( cbks,
-                                    InputParams( arg._deviceIndex, to_I32( arg._key ), arg._modMask ),
+                                    InputParams( arg._deviceIndex,
+                                                 to_base( arg._key ),
+                                                 {{
+                                                     arg._modMask,
+                                                     -1,
+                                                     -1,
+                                                     -1,
+                                                     -1,
+                                                     -1
+                                                }}),
                                     false );
         }
 
@@ -159,7 +177,7 @@ namespace Divide
 
         if ( getJoystickMapping( joy, arg._element._type, arg._element._elementIndex, cbks ) )
         {
-            return handleCallbacks( cbks, InputParams( arg._deviceIndex, to_I32( arg._element._elementIndex ) ), true );
+            return handleCallbacks( cbks, InputParams( arg._deviceIndex, arg._element._elementIndex), true );
         }
 
         return false;
@@ -172,7 +190,7 @@ namespace Divide
         PressReleaseActionCbks cbks;
         if ( getJoystickMapping( joy, arg._element._type, arg._element._elementIndex, cbks ) )
         {
-            return handleCallbacks( cbks, InputParams( arg._deviceIndex, to_I32( arg._element._elementIndex ) ), false );
+            return handleCallbacks( cbks, InputParams( arg._deviceIndex, arg._element._elementIndex ), false );
         }
 
         return false;
@@ -186,10 +204,15 @@ namespace Divide
         if ( getJoystickMapping( joy, arg._element._type, arg._element._elementIndex, cbks ) )
         {
             const InputParams params( arg._deviceIndex,
-                                      arg._element._data._data, // move value
                                       arg._element._elementIndex, // axis index
-                                      arg._element._data._gamePad ? 1 : 0, // is gamepad
-                                      arg._element._data._deadZone ); // dead zone
+                                      {{
+                                        arg._element._data._gamePad ? 1 : 0, // is gamepad
+                                        arg._element._data._deadZone, // dead zone
+                                        arg._element._data._dataSigned, // move value
+                                        -1, // not used
+                                        -1, // not used
+                                        -1 // not used
+                                      }});
             return handleCallbacks( cbks, params, true );
         }
 
@@ -204,7 +227,15 @@ namespace Divide
         if ( getJoystickMapping( joy, arg._element._type, arg._element._elementIndex, cbks ) )
         {
             const InputParams params( arg._deviceIndex,
-                                      arg._element._data._data );
+                                      arg._element._elementIndex,
+                                      {{
+                                          to_I32(arg._element._data._data), //explicit cast for reference
+                                          -1,
+                                          -1,
+                                          -1,
+                                          -1,
+                                          -1
+                                      }});
             return handleCallbacks( cbks, params, true );
         }
 
@@ -219,9 +250,15 @@ namespace Divide
         if ( getJoystickMapping( joy, arg._element._type, arg._element._elementIndex, cbks ) )
         {
             const InputParams params( arg._deviceIndex,
-                                      arg._element._data._smallData[0],
-                                      arg._element._data._smallData[1],
-                                      arg._element._data._gamePad ? 1 : 0 );
+                                      arg._element._elementIndex,
+                                      {{
+                                          arg._element._data._gamePad ? 1 : 0,
+                                          arg._element._data._smallDataSigned[0],
+                                          arg._element._data._smallDataSigned[1],
+                                          -1,
+                                          -1,
+                                          -1
+                                      }});
             return handleCallbacks( cbks, params, true );
         }
 
@@ -252,7 +289,8 @@ namespace Divide
             }
             else
             {
-                state._zoom.push( wheel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE );
+                const U8 speed = std::abs(wheel) > 1 ? 255u : 128u;
+                state._zoom.push( { speed, wheel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE} );
             } 
         }
         else if ( state.cameraLockedToMouse() )
@@ -266,7 +304,8 @@ namespace Divide
             }
             else
             {
-                state._angleLR.push( xRel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE );
+                const U8 speed = std::abs(xRel) > 1 ? 255u : 192u;
+                state._angleLR.push( {speed, xRel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE} );
             }
 
             if ( yRel == 0 )
@@ -275,11 +314,12 @@ namespace Divide
             }
             else
             {
-                state._angleUD.push( yRel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE );
+                const U8 speed = std::abs( yRel ) > 1 ? 255u : 192u;
+                state._angleUD.push( {speed, yRel > 0 ? MoveDirection::POSITIVE : MoveDirection::NEGATIVE} );
             }
         }
 
-        return Attorney::SceneInput::mouseMoved( _parentScene, arg );
+        return Attorney::SceneInput::mouseMoved( &_parentScene, arg );
     }
 
     bool SceneInput::mouseButtonPressed( const Input::MouseButtonEvent& arg )
@@ -298,9 +338,17 @@ namespace Divide
         PressReleaseActionCbks cbks = {};
         if ( getMouseMapping( arg.button(), cbks ) )
         {
-            InputParams params( arg._deviceIndex, to_I32( arg.button() ) );
-            params._var[2] = arg.state().X.abs;
-            params._var[3] = arg.state().Y.abs;
+            InputParams params( arg._deviceIndex,
+                                to_base( arg.button() ),
+                                {{
+                                    arg.state().X.abs,
+                                    arg.state().Y.abs,
+                                    -1,
+                                    -1,
+                                    -1,
+                                    -1
+                                }});
+
             return handleCallbacks( cbks, params, true );
         }
 
@@ -323,9 +371,16 @@ namespace Divide
         PressReleaseActionCbks cbks = {};
         if ( getMouseMapping( arg.button(), cbks ) )
         {
-            InputParams params( arg._deviceIndex, to_I32( arg.button() ) );
-            params._var[2] = arg.state().X.abs;
-            params._var[3] = arg.state().Y.abs;
+            InputParams params( arg._deviceIndex, 
+                                to_base( arg.button() ),
+                                {{
+                                    arg.state().X.abs,
+                                    arg.state().Y.abs,
+                                    -1,
+                                    -1,
+                                    -1,
+                                    -1
+                                }});
             return handleCallbacks( cbks, params, false );
         }
 
@@ -492,5 +547,4 @@ namespace Divide
         _mouseMapCache.clear();
         _joystickMapCache.clear();
     }
-
-}
+} //namespace Divide

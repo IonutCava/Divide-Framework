@@ -32,7 +32,9 @@ namespace ImGuizmo
         ImVec2 mScreenSquareCenter = { 0.0f, 0.0f };
         ImVec2 mScreenSquareMin = { 0.0f, 0.0f };
         ImVec2 mScreenSquareMax = { 0.0f, 0.0f };
-    } gBounds = {};
+    };
+
+    static GizmoBounds gBounds = {};
 
 #if !defined(USE_VCPKG_GIZMO)
     const GizmoBounds& GetBounds() noexcept
@@ -187,6 +189,9 @@ namespace Divide
             case ImGuizmo::ROTATE_X: node.tComp->rotateX( -euler.x ); break;
             case ImGuizmo::ROTATE_Y: node.tComp->rotateY( -euler.y ); break;
             case ImGuizmo::ROTATE_Z: node.tComp->rotateZ( -euler.z ); break;
+
+            case ImGuizmo::BOUNDS: break;
+            case ImGuizmo::ROTATE_SCREEN: break;
         }
     }
 
@@ -470,4 +475,5 @@ namespace Divide
 
         return false;
     }
+
 } //namespace Divide

@@ -57,12 +57,10 @@ class ScenePool
   public:
     bool   defaultSceneActive() const noexcept;
 
-    Scene&       defaultScene() noexcept;
-    const Scene& defaultScene() const noexcept;
+    Scene* defaultScene() const noexcept;
 
-    Scene&       activeScene() noexcept;
-    const Scene& activeScene() const noexcept;
-    void         activeScene(Scene& scene) noexcept;
+    Scene* activeScene() const noexcept;
+    void   activeScene(Scene& scene) noexcept;
 
     vector<Str<256>> customCodeScenes(bool sorted) const;
 

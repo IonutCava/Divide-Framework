@@ -65,7 +65,8 @@ namespace Divide
     }
     static_assert(ArrayCount( Names::fStops ) == to_base( FStops::COUNT ) + 1, "Camera::FStops name array out of sync!");
 
-    static constexpr std::array<F32, to_base( FStops::COUNT )> g_FStopValues = {
+    static constexpr F32 g_FStopValues[to_base( FStops::COUNT )]
+    {
         1.4f, 1.8f, 2.0f, 2.8f, 3.5f, 4.0f, 5.6f, 8.0f, 11.0f, 16.0f, 22.0f, 32.0f
     };
 

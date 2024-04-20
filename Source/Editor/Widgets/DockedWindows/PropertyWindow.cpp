@@ -617,7 +617,7 @@ namespace Divide
                     if ( ImGui::CollapsingHeader( "Scene Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth ) )
                     {
                         ProjectManager* projectManager = context().kernel().projectManager();
-                        auto& activeSceneState = projectManager->activeProject()->getActiveScene().state();
+                        auto& activeSceneState = projectManager->activeProject()->getActiveScene()->state();
 
                         {
                             F32 bleedBias = activeSceneState->lightBleedBias();
@@ -879,15 +879,14 @@ namespace Divide
 
     const Selections& PropertyWindow::selections() const
     {
-        const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
-        return activeScene.getCurrentSelection();
+        Scene* activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
+        return activeScene->getCurrentSelection();
     }
 
     SceneGraphNode* PropertyWindow::node( const I64 guid ) const
     {
-        const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
-
-        return activeScene.sceneGraph()->findNode( guid );
+        Scene* activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
+        return activeScene->sceneGraph()->findNode( guid );
     }
 
     bool PropertyWindow::processField( EditorComponentField& field )

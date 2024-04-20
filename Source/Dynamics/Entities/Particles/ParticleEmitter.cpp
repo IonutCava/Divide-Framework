@@ -80,7 +80,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             params._bufferParams._elementSize = sizeof(vec3<F32>);
             params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
             params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
-            params._initialData = { (Byte*)geometry.data(), geometry.size() * params._bufferParams._elementSize};
+            params._initialData = { (bufferPtr)geometry.data(), geometry.size() * params._bufferParams._elementSize};
             params._useRingBuffer = false;
 
             {
@@ -92,7 +92,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
                 GenericVertexData::IndexBuffer idxBuff{};
                 idxBuff.smallIndices = false;
                 idxBuff.count = to_U32(indices.size());
-                idxBuff.data = (Byte*)indices.data();
+                idxBuff.data = (bufferPtr)indices.data();
                 idxBuff.dynamic = false;
 
                 const BufferLock lock = buffer.setIndexBuffer(idxBuff);
@@ -246,12 +246,12 @@ bool ParticleEmitter::unload() {
     return SceneNode::unload();
 }
 
-void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
-    GenericDrawCommand cmd{};
-    cmd._cmd.indexCount = to_U32(_particles->particleGeometryIndices().size());
-    if (cmd._cmd.indexCount > 0)
+void ParticleEmitter::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) {
+    const U32 idxCount = to_U32( _particles->particleGeometryIndices().size() );
+    if (idxCount > 0)
     {
-        cmdsOut.emplace_back( GFX::DrawCommand{ cmd } );
+        GenericDrawCommand& cmd = cmdsOut.emplace_back();
+        cmd._cmd.indexCount = idxCount;
     }
 
     SceneNode::buildDrawCommands(sgn, cmdsOut);
@@ -281,7 +281,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
         RenderingComponent::DrawCommands& cmds = rComp.drawCommands();
         {
             LockGuard<SharedMutex> w_lock(cmds._dataLock);
-            GenericDrawCommand& cmd = cmds._data.front()._drawCommands.front();
+            GenericDrawCommand& cmd = cmds._data.front();
             cmd._cmd.instanceCount = to_U32(_particles->_renderingPositions.size());
             cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
         }

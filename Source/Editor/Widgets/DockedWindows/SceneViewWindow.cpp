@@ -69,9 +69,6 @@ namespace Divide
         static F32 RButtonWidth = 10.0f;
         static F32 SButtonWidth = 10.0f;
         static F32 NButtonWidth = 10.0f;
-        static F32 XButtonWidth = 10.0f;
-        static F32 YButtonWidth = 10.0f;
-        static F32 ZButtonWidth = 10.0f;
 
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         ImGui::SameLine(window->Size.x * 0.49f);
@@ -211,6 +208,10 @@ namespace Divide
                     settings.currentGizmoOperation = ImGuizmo::SCALE_X;
                     settings.previousAxisSelected[2] = 1u;
                     break;
+
+                case ImGuizmo::ROTATE_SCREEN:
+                case ImGuizmo::BOUNDS: 
+                    break;
             };
         }
         Util::PopButtonStyle();
@@ -242,6 +243,9 @@ namespace Divide
                 case ImGuizmo::SCALE_Z:
                     settings.currentGizmoOperation = ImGuizmo::SCALE_Y;
                     settings.previousAxisSelected[2] = 2u;
+                    break;
+                case ImGuizmo::ROTATE_SCREEN:
+                case ImGuizmo::BOUNDS:
                     break;
             };
         }
@@ -275,6 +279,9 @@ namespace Divide
                     settings.currentGizmoOperation = ImGuizmo::SCALE_Z;
                     settings.previousAxisSelected[2] = 3u;
                     break;
+                case ImGuizmo::ROTATE_SCREEN:
+                case ImGuizmo::BOUNDS:
+                    break;
             };
         }
         Util::PopButtonStyle();
@@ -287,23 +294,29 @@ namespace Divide
 
             switch (settings.currentGizmoOperation)
             {
+                case ImGuizmo::TRANSLATE:
                 case ImGuizmo::TRANSLATE_X:
                 case ImGuizmo::TRANSLATE_Y:
                 case ImGuizmo::TRANSLATE_Z: 
                     settings.currentGizmoOperation = ImGuizmo::TRANSLATE;
                     settings.previousAxisSelected[0] = 0u;
                     break;
+                case ImGuizmo::ROTATE:
                 case ImGuizmo::ROTATE_X:
                 case ImGuizmo::ROTATE_Y:
                 case ImGuizmo::ROTATE_Z:
                     settings.currentGizmoOperation = ImGuizmo::ROTATE;
                     settings.previousAxisSelected[1] = 0u;
                     break;
+                case ImGuizmo::SCALE:
                 case ImGuizmo::SCALE_X:
                 case ImGuizmo::SCALE_Y:
                 case ImGuizmo::SCALE_Z:
                     settings.currentGizmoOperation = ImGuizmo::SCALE;
                     settings.previousAxisSelected[2] = 0u;
+                    break;
+                case ImGuizmo::ROTATE_SCREEN:
+                case ImGuizmo::BOUNDS:
                     break;
             };
         }
@@ -388,6 +401,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
+                        default: DIVIDE_UNEXPECTED_CALL(); break;
                     }
                 }
                 else if (IsRotationOperation(settings))
@@ -455,6 +469,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
+                        default: DIVIDE_UNEXPECTED_CALL(); break;
                     }
                 }
                 else if (IsScaleOperation(settings))
@@ -522,6 +537,7 @@ namespace Divide
                                 Util::Colours[2],
                                 flags);
                             break;
+                        default: DIVIDE_UNEXPECTED_CALL(); break;
                     }
                 }
             }
@@ -547,4 +563,4 @@ namespace Divide
             ImGui::SetTooltip("Toggle the editor XZ grid on/off.\nGrid sizing is controlled in the \"Editor options\" window (under \"File\" in the menu bar)");
         }
     }
-}
+} //namespace Divide

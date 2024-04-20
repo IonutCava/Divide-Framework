@@ -109,8 +109,8 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Networking/Headers/Session.h
                          Core/Resources/Headers/Resource.h
                          Core/Resources/Headers/ResourceCache.h
+                         Core/Resources/Headers/ResourceCache.inl
                          Core/Resources/Headers/ResourceDescriptor.h
-                         Core/Resources/Headers/ResourceLoader.h
                          Core/TemplateLibraries/Headers/CircularBuffer.h
                          Core/TemplateLibraries/Headers/EnumToString.h
                          Core/TemplateLibraries/Headers/HashMap.h
@@ -157,21 +157,6 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/Resources/Resource.cpp
                  Core/Resources/ResourceCache.cpp
                  Core/Resources/ResourceDescriptor.cpp
-                 Core/Resources/ConcreteLoaders/AudioDescriptorLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/Box3DLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/InfinitePlaneLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/MaterialLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/MeshLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/ParticleEmitterLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/Quad3DLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/ShaderProgramLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/SkyLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/Sphere3DLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/SubMeshLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/TerrainLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/TextureLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/TriggerLoaderImpl.cpp
-                 Core/Resources/ConcreteLoaders/WaterPlaneLoaderImpl.cpp
                  Core/Time/ApplicationTimer.cpp
                  Core/Time/FrameRateHandler.cpp
                  Core/Time/ProfileTimer.cpp
@@ -297,9 +282,7 @@ set( ECS_SOURCE ECS/Components/AnimationComponent.cpp
                 ECS/Systems/BoundsSystem.cpp
                 ECS/Systems/DirectionalLightSystem.cpp
                 ECS/Systems/ECSManager.cpp
-                ECS/Systems/ECSSystem.cpp
                 ECS/Systems/EnvironmentProbeSystem.cpp
-                ECS/Systems/NavigationSystem.cpp
                 ECS/Systems/PointLightSystem.cpp
                 ECS/Systems/RenderingSystem.cpp
                 ECS/Systems/RigidBodySystem.cpp
@@ -508,7 +491,6 @@ set( PHYSICS_SOURCE_HEADERS Physics/Headers/PhysicsAPIWrapper.h
 
 set( PHYSICS_SOURCE Physics/PhysicsAPIWrapper.cpp
                     Physics/PhysicsAsset.cpp
-                    Physics/PhysicsSceneInterface.cpp
                     Physics/PXDevice.cpp
                     Physics/PhysX/PhysX.cpp
                     Physics/PhysX/PhysXActor.cpp
@@ -576,7 +558,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/CommandBufferPool.h
                              Platform/Video/Headers/CommandBufferPool.inl
                              Platform/Video/Headers/Commands.h
-                             Platform/Video/Headers/CommandsImpl.h
+                             Platform/Video/Headers/Commands.inl
                              Platform/Video/Headers/DescriptorSets.h
                              Platform/Video/Headers/DescriptorSets.inl
                              Platform/Video/Headers/DescriptorSetsFwd.h
@@ -691,7 +673,6 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Video/Pipeline.cpp
                      Platform/Video/PushConstant.cpp
                      Platform/Video/PushConstants.cpp
-                     Platform/Video/RenderAPIWrapper.cpp
                      Platform/Video/RenderPackage.cpp
                      Platform/Video/RenderStagePass.cpp
                      Platform/Video/RenderStateBlock.cpp

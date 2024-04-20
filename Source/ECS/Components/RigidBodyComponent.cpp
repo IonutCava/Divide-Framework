@@ -40,4 +40,5 @@ namespace Divide {
             }
         }
     }
-} //namespace
+
+} //namespace Divide

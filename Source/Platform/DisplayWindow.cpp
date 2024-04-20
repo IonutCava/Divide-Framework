@@ -483,8 +483,9 @@ bool DisplayWindow::setDimensions(U16 width, U16 height) {
         } break;
         case WindowType::FULLSCREEN_WINDOWED: //fall-through
             changeType(WindowType::WINDOW);
-        case WindowType::WINDOW: 
-        default: {
+        case WindowType::WINDOW: [[fallthrough]];
+        default:
+        {
             maximized(false);
             SDL_SetWindowSize(_sdlWindow, newW, newH);
             SDL_GetWindowSize(_sdlWindow, &newW, &newH);
@@ -521,4 +522,4 @@ GFX::CommandBufferQueue& DisplayWindow::getCurrentCommandBufferQueue()
     return _commandBufferQueues[GFXDevice::FrameCount() % Config::MAX_FRAMES_IN_FLIGHT];
 }
 
-}; //namespace Divide
+} //namespace Divide

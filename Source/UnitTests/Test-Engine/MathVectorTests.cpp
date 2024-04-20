@@ -99,7 +99,7 @@ TEST_CASE( "Vec Length Tests", "[math_vectors_test]" )
 
     CHECK_ZERO(input1.length());
     CHECK_ZERO(input2.length());
-    CHECK_EQUAL(input3.length(), 1);
+    CHECK_TRUE(COMPARE(input3.length(), 1.f));
     input3.w = 0.0f;
     CHECK_ZERO(input3.length());
 
@@ -109,7 +109,7 @@ TEST_CASE( "Vec Length Tests", "[math_vectors_test]" )
 
     input2.set(4.0f, 3.0f, 2.0f);
     input3.set(4.0f, 3.0f, 2.0f, 0.0f);
-    CHECK_EQUAL(std::sqrt(input2.lengthSquared()), input3.length());
+    CHECK_TRUE(COMPARE(std::sqrt(input2.lengthSquared()), input3.length()));
 }
 
 TEST_CASE( "Vec-Scalar Multiply Tests", "[math_vectors_test]" )
@@ -158,7 +158,7 @@ TEST_CASE( "Vec Dot Tests", "[math_vectors_test]" )
 
     CHECK_EQUAL(input1.dot(input4), (2u * 4u) + (2u * 4u));
     CHECK_EQUAL(input2.dot(input5), (5 * 2) +( 0 * 3) + (-5 * -1));
-    CHECK_EQUAL(input3.dot(input6), (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f));
+    CHECK_TRUE(COMPARE(input3.dot(input6), (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f) + (10.0f * 1.0f)));
 }
 
 

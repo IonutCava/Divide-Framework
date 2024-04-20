@@ -75,7 +75,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <windef.h>     // MAX_PATH is defined here,
-#include <winbase.h>
+#include <WinBase.h>
 #include <wchar.h>
 #include <string.h>
 #include <stdlib.h>

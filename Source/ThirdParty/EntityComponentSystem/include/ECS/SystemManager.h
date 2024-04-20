@@ -139,7 +139,7 @@ namespace ECS
 			if (STID + 1 > this->m_SystemDependencyMatrix.size())
 			{
 				this->m_SystemDependencyMatrix.resize(STID + 1);
-				for (int i = 0; i < this->m_SystemDependencyMatrix.size(); ++i)
+				for (size_t i = 0u; i < this->m_SystemDependencyMatrix.size(); ++i)
 					this->m_SystemDependencyMatrix[i].resize(STID + 1);
 			}
 
@@ -177,7 +177,7 @@ namespace ECS
 			if (this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] != true)
 			{
 				this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] = true;
-				LOG_INFO("added '{}' as dependency to '{}'", dependency->GetSystemTypeName(), target->GetSystemTypeName())
+				LOG_INFO("added '{}' as dependency to '{}'", dependency->GetSystemTypeName(), target->GetSystemTypeName());
 			}
 
 			//this->UpdateSystemWorkOrder();
@@ -192,7 +192,7 @@ namespace ECS
 			if (this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] != true)
 			{
 				this->m_SystemDependencyMatrix[TARGET_ID][DEPEND_ID] = true;
-				LOG_INFO("added '{}' as dependency to '{}'", dependency->GetSystemTypeName(), target->GetSystemTypeName())
+				LOG_INFO("added '{}' as dependency to '{}'", dependency->GetSystemTypeName(), target->GetSystemTypeName());
 			}
 
 			this->AddSystemDependency(target, FWD(dependencies)...);

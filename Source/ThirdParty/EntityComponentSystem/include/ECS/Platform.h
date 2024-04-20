@@ -83,11 +83,11 @@ namespace ECS
 
 		operator u32() const { return this->asUInt; }
 
-		inline const bool operator==(const TimeStamp& other) const { return this->asUInt == other.asUInt; }
-		inline const bool operator!=(const TimeStamp& other) const { return this->asUInt != other.asUInt; }
+		inline bool operator==(const TimeStamp& other) const { return this->asUInt == other.asUInt; }
+		inline bool operator!=(const TimeStamp& other) const { return this->asUInt != other.asUInt; }
 
-		inline const bool operator<(const TimeStamp& other) const { return this->asFloat < other.asFloat; }
-		inline const bool operator>(const TimeStamp& other) const { return this->asFloat > other.asFloat; }
+		inline bool operator<(const TimeStamp& other) const { return this->asFloat < other.asFloat; }
+		inline bool operator>(const TimeStamp& other) const { return this->asFloat > other.asFloat; }
 
 	}; // union TimeStamp
 

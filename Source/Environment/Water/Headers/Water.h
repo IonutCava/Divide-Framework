@@ -75,7 +75,7 @@ class WaterPlane : public SceneNode {
     PROPERTY_RW(bool, blurReflections, true);
 
    protected:
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
     void postLoad(SceneGraphNode* sgn) override;
     void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;

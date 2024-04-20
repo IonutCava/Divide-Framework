@@ -152,11 +152,11 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipeline });
+    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipeline;
     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _constants );
     
 
-    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
     return true;

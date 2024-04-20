@@ -30,10 +30,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef DVD_GFX_COMMAND_IMPL_H_
-#define DVD_GFX_COMMAND_IMPL_H_
+#ifndef DVD_GFX_COMMAND_INL_
+#define DVD_GFX_COMMAND_INL_
 
-#include "Commands.h"
+#include "CommandBuffer.h"
 #include "ClipPlanes.h"
 #include "DescriptorSetsFwd.h"
 #include "GenericDrawCommand.h"
@@ -97,40 +97,38 @@ namespace Names {
 
 static_assert(sizeof(Names::commandType) / sizeof(Names::commandType[0]) == to_size(CommandType::COUNT) + 1);
 
-DEFINE_COMMAND_BEGIN(BindPipelineCommand, CommandType::BIND_PIPELINE);
-    BindPipelineCommand() noexcept = default;
-    BindPipelineCommand(const Pipeline* pipeline) noexcept : _pipeline(pipeline) {}
+template<CommandType EnumVal>
+void Command<EnumVal>::addToBuffer( CommandBuffer* buffer ) const
+{
+    using CType = MapToDataType<EnumVal>;
+    buffer->add( static_cast<const CType&>(*this) );
+}
 
+template<CommandType EnumVal>
+void Command<EnumVal>::DeleteCmd( CommandBase*& cmd ) const
+{
+    using CType = MapToDataType<EnumVal>;
+    CmdAllocator<CType>::GetPool().deleteElement( cmd->As<CType>() );
+    cmd = nullptr;
+}
+
+DEFINE_COMMAND_BEGIN(BindPipelineCommand, CommandType::BIND_PIPELINE);
     const Pipeline* _pipeline = nullptr;
 DEFINE_COMMAND_END(BindPipelineCommand);
 
 DEFINE_COMMAND_BEGIN(SendPushConstantsCommand, CommandType::SEND_PUSH_CONSTANTS);
-    SendPushConstantsCommand() noexcept = default;
-    SendPushConstantsCommand(const PushConstants& constants) noexcept : _constants(constants) {}
-
     PushConstants _constants{};
 DEFINE_COMMAND_END(SendPushConstantsCommand);
 
 DEFINE_COMMAND_BEGIN(DrawCommand, CommandType::DRAW_COMMANDS);
-    using CommandContainer = eastl::fixed_vector<GenericDrawCommand, 4, true, eastl::dvd_allocator>;
-
-    DrawCommand() noexcept : DrawCommand(GenericDrawCommand{}) {}
-    DrawCommand(const GenericDrawCommand& cmd) noexcept : _drawCommands{ { cmd } } {}
-
-    CommandContainer _drawCommands;
+    GenericDrawCommandContainer _drawCommands;
 DEFINE_COMMAND_END(DrawCommand);
 
 DEFINE_COMMAND_BEGIN(SetViewportCommand, CommandType::SET_VIEWPORT);
-    SetViewportCommand() noexcept = default;
-    SetViewportCommand(const Rect<I32>& viewport) noexcept : _viewport(viewport) {}
-
     Rect<I32> _viewport;
 DEFINE_COMMAND_END(SetViewportCommand);
 
 DEFINE_COMMAND_BEGIN(PushViewportCommand, CommandType::PUSH_VIEWPORT);
-    PushViewportCommand() noexcept = default;
-    PushViewportCommand(const Rect<I32>& viewport) noexcept : _viewport(viewport) {}
-
     Rect<I32> _viewport;
 DEFINE_COMMAND_END(PushViewportCommand);
 
@@ -148,10 +146,6 @@ DEFINE_COMMAND_BEGIN(EndRenderPassCommand, CommandType::END_RENDER_PASS);
 DEFINE_COMMAND_END(EndRenderPassCommand);
 
 DEFINE_COMMAND_BEGIN(BeginGPUQueryCommand, CommandType::BEGIN_GPU_QUERY);
-    BeginGPUQueryCommand() noexcept = default;
-    BeginGPUQueryCommand(const QueryType query) noexcept : _queryMask(to_base(query)) {}
-    BeginGPUQueryCommand(const U32 mask) noexcept : _queryMask(mask) {}
-
     U32 _queryMask{ 0u };
 DEFINE_COMMAND_END(BeginGPUQueryCommand);
 
@@ -197,32 +191,20 @@ DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 
 DEFINE_COMMAND_BEGIN(SetScissorCommand, CommandType::SET_SCISSOR);
-    SetScissorCommand() noexcept = default;
-    SetScissorCommand(const Rect<I32>& rect) noexcept : _rect( rect ) {}
-
     Rect<I32> _rect;
 DEFINE_COMMAND_END(SetScissorCommand);
 
 DEFINE_COMMAND_BEGIN(SetCameraCommand, CommandType::SET_CAMERA);
-    SetCameraCommand() noexcept = default;
-    SetCameraCommand(const CameraSnapshot& cameraSnapshot) noexcept : _cameraSnapshot(cameraSnapshot) {}
-
     CameraSnapshot _cameraSnapshot;
 DEFINE_COMMAND_END(SetCameraCommand);
 
 DEFINE_COMMAND_BEGIN(PushCameraCommand, CommandType::PUSH_CAMERA);
-    PushCameraCommand() noexcept = default;
-    PushCameraCommand(const CameraSnapshot& cameraSnapshot) noexcept : _cameraSnapshot(cameraSnapshot) {}
-
     CameraSnapshot _cameraSnapshot;
 DEFINE_COMMAND_END(PushCameraCommand);
 
 DEFINE_COMMAND(PopCameraCommand, CommandType::POP_CAMERA);
 
 DEFINE_COMMAND_BEGIN(SetClipPlanesCommand, CommandType::SET_CLIP_PLANES);
-    SetClipPlanesCommand() noexcept = default;
-    SetClipPlanesCommand(const FrustumClipPlanes& clippingPlanes) noexcept : _clippingPlanes(clippingPlanes) {}
-
     FrustumClipPlanes _clippingPlanes;
 DEFINE_COMMAND_END(SetClipPlanesCommand);
 
@@ -232,12 +214,6 @@ DEFINE_COMMAND_BEGIN(BindShaderResourcesCommand, CommandType::BIND_SHADER_RESOUR
 DEFINE_COMMAND_END(BindShaderResourcesCommand);
 
 DEFINE_COMMAND_BEGIN(BeginDebugScopeCommand, CommandType::BEGIN_DEBUG_SCOPE);
-    BeginDebugScopeCommand() noexcept = default;
-    BeginDebugScopeCommand(const char* scopeName, const U32 scopeId = U32_MAX) noexcept 
-        : _scopeName(scopeName)
-        , _scopeId(scopeId)
-    {}
-
     Str<64> _scopeName;
     U32 _scopeId{ U32_MAX };
 DEFINE_COMMAND_END(BeginDebugScopeCommand);
@@ -245,21 +221,11 @@ DEFINE_COMMAND_END(BeginDebugScopeCommand);
 DEFINE_COMMAND(EndDebugScopeCommand, CommandType::END_DEBUG_SCOPE);
 
 DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
-    AddDebugMessageCommand() noexcept = default;
-    AddDebugMessageCommand(const char* msg, const U32 msgId = U32_MAX ) noexcept
-        : _msg(msg)
-        , _msgId(msgId)
-    {}
-
     Str<64> _msg;
     U32 _msgId{ U32_MAX };
 DEFINE_COMMAND_END(AddDebugMessageCommand);
 
 DEFINE_COMMAND_BEGIN(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
-    DispatchComputeCommand() noexcept = default;
-    DispatchComputeCommand(const U32 xGroupSize, const U32 yGroupSize, const U32 zGroupSize) noexcept : _computeGroupSize(xGroupSize, yGroupSize, zGroupSize) {}
-    DispatchComputeCommand(const vec3<U32>& groupSize) noexcept : _computeGroupSize(groupSize) {}
-
     vec3<U32> _computeGroupSize;
 DEFINE_COMMAND_END(DispatchComputeCommand);
 
@@ -284,4 +250,4 @@ DEFINE_COMMAND_END(ClearBufferDataCommand);
 }; //namespace GFX
 }; //namespace Divide
 
-#endif //DVD_GFX_COMMAND_IMPL_H_
+#endif //DVD_GFX_COMMAND_INL_

@@ -76,8 +76,8 @@ namespace Divide {
             Attorney::SceneNodeBoundsSystem::clearBoundsChanged(bComp->parentSGN()->getNode());
             bComp->parentSGN()->SendEvent(
             {
-                ECS::CustomEvent::Type::BoundsUpdated,
-                bComp,
+                ._type = ECS::CustomEvent::Type::BoundsUpdated,
+                ._sourceCmp = bComp,
             });
         }
         for (BoundsComponent* bComp : _componentCache) {

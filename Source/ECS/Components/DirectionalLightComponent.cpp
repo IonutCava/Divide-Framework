@@ -107,4 +107,4 @@ void DirectionalLightComponent::setDirection(const vec3<F32>& direction) {
     }
 }
 
-}
+} //namespace Divide

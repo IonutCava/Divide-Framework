@@ -576,7 +576,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
             }
 
-            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
         { // Generate Half Res AO
@@ -603,7 +603,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 Set( binding._data, halfDepthAtt->texture()->getView(), halfDepthAtt->_descriptor._sampler );
             }
 
-            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
         { // UpSample AO
@@ -643,7 +643,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, halfResAOAtt->texture()->getView(), halfResAOAtt->_descriptor._sampler );
             }
-            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     }
@@ -674,7 +674,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             }
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
-            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     }
@@ -714,7 +714,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                     Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
                 }
 
-                GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+                GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
                 GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
             }
             { //Vertical
@@ -744,7 +744,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                     Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
                 }
 
-                GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+                GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
                 GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
             }
         }
@@ -764,7 +764,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, ssaoAtt->texture()->getView(), ssaoAtt->_descriptor._sampler );
             }
-            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     }

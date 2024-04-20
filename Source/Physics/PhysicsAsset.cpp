@@ -15,4 +15,4 @@ PhysicsAsset::PhysicsAsset(RigidBodyComponent& parent) noexcept
 void PhysicsAsset::physicsCollisionGroup([[maybe_unused]] const PhysicsGroup group) {
 }
 
-}; //namespace Divide
+} //namespace Divide

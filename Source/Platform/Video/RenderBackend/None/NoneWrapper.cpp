@@ -178,4 +178,4 @@ namespace Divide
         return std::make_unique<noUniformBuffer>( _context, descriptor );
     }
 
-}; //namespace Divide
+} //namespace Divide

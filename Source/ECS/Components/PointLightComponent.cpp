@@ -38,4 +38,4 @@ void PointLightComponent::OnData(const ECS::CustomEvent& data) {
     }
 }
 
-}
+} //namespace Divide

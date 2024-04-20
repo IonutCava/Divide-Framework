@@ -136,4 +136,5 @@ bool operator==(const Pipeline& lhs, const Pipeline& rhs) noexcept {
 bool operator!=(const Pipeline& lhs, const Pipeline& rhs) noexcept {
     return lhs.stateHash() != rhs.stateHash();
 }
-}; //namespace Divide
+
+} //namespace Divide

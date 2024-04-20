@@ -27,9 +27,10 @@ Handle<GFX::CommandBuffer> GetCommandBuffer( RenderPackage& pkg )
 {
     if ( pkg._additionalCommands == INVALID_HANDLE<GFX::CommandBuffer> )
     {
-        pkg._additionalCommands = GFX::AllocateCommandBuffer();
+        pkg._additionalCommands = GFX::AllocateCommandBuffer("Render Package");
     }
 
     return pkg._additionalCommands;
 }
-}; //namespace Divide
+
+}//namespace Divide

@@ -39,4 +39,4 @@ void NavigationComponent::navigationDetailOverride(const bool detailOverride) {
         }
     }
 }
-}
+} //namespace Divide

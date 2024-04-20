@@ -20,18 +20,18 @@ namespace Divide::Locale
 namespace detail
 {
     /// Default language can be set at compile time
-    Str<64> g_localeFile = {};
+    static Str<64> g_localeFile = {};
 
-    bool g_init = false;
-    bool g_fileWatcher = false;
+    static bool g_init = false;
+    static bool g_fileWatcher = false;
 
-    LanguageData_uptr g_data = nullptr;
+    static LanguageData_uptr g_data = nullptr;
 
     /// External modification monitoring system
-    FW::FileWatcher_uptr g_LanguageFileWatcher = nullptr;
+    static FW::FileWatcher_uptr g_LanguageFileWatcher = nullptr;
 
     /// Callback for external file changes. 
-    UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt)
+    static UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt)
     {
         if (evt == FileUpdateEvent::DELETE)
         {

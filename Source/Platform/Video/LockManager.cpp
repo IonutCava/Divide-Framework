@@ -71,10 +71,7 @@ namespace Divide
     {
         switch ( api )
         {
-            case RenderAPI::OpenGL:
-            {
-                return glLockManager::InitLockPoolEntry( entry, flag, frameIdx );
-            } break;
+            case RenderAPI::OpenGL: return glLockManager::InitLockPoolEntry( entry, flag, frameIdx );
             case RenderAPI::Vulkan:
             case RenderAPI::None: 
             {
@@ -85,7 +82,8 @@ namespace Divide
                     entry._ptr = std::make_unique<SyncObject>( flag, frameIdx );
                     return true;
                 }
-                else if ( entry._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )
+
+                if ( entry._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )
                 {
                     entry._ptr->_frameNumber = frameIdx;
                     entry._ptr->_flag = flag;
@@ -93,7 +91,11 @@ namespace Divide
                 }
 
                 return false;
-            } break;
+            }
+
+            case RenderAPI::COUNT:
+                DIVIDE_UNEXPECTED_CALL();
+                break;
         }
 
         return true;

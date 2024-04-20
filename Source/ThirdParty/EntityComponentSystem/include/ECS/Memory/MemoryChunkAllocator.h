@@ -12,7 +12,6 @@
 #include "API.h"
 #include "Memory/Allocator/PoolAllocator.h"
 
-#include <EASTL/list.h>
 #include <shared_mutex>
 
 namespace ECS { namespace Memory {

@@ -50,10 +50,11 @@ namespace Divide
 
         VK_API::PushDebugMessage(cmdBuffer, "vkRrenderTarget::blitFrom");
 
-        vkRenderTarget* input = source;
         vkRenderTarget* output = this;
-        const vec2<U16> inputDim = input->_descriptor._resolution;
-        const vec2<U16> outputDim = output->_descriptor._resolution;
+        [[maybe_unused]] const vec2<U16> outputDim = output->_descriptor._resolution;
+
+        vkRenderTarget* input = source;
+        [[maybe_unused]] const vec2<U16> inputDim = input->_descriptor._resolution;
 
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
         for ( const RTBlitEntry entry : params )
@@ -503,12 +504,8 @@ namespace Divide
                     // If we specify a clear policy, we want to clear out attachment on load
                     if ( clearPolicy[i]._enabled )
                     {
-                        info.clearValue.color = {
-                            clearPolicy[i]._colour.r,
-                            clearPolicy[i]._colour.g,
-                            clearPolicy[i]._colour.b,
-                            clearPolicy[i]._colour.a
-                        };
+                        *info.clearValue.color.float32 = *clearPolicy[i]._colour._v;
+
                         info.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
                     }
                     else if ( resolveMSAA && !descriptor._keepMSAADataAfterResolve && !_keptMSAAData)
@@ -639,5 +636,4 @@ namespace Divide
 
         transitionAttachments( cmdBuffer, _previousPolicy, mask, false );
     }
-
 }; //namespace Divide

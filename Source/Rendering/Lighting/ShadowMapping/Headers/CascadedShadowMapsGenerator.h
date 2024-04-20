@@ -34,7 +34,7 @@
 #define DVD_CSM_GENERATOR_H_
 
 #include "ShadowMap.h"
-#include "Platform/Video/Headers/CommandsImpl.h"
+#include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
 
@@ -55,7 +55,7 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
    public:
     explicit CascadedShadowMapsGenerator(GFXDevice& context);
-    ~CascadedShadowMapsGenerator();
+    ~CascadedShadowMapsGenerator() override;
 
     void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) override;
     void generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );

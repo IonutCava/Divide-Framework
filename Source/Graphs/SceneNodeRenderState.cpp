@@ -51,4 +51,4 @@ void SceneNodeRenderState::addToDrawExclusionMask(const RenderStage stage, const
     }
 }
 
-};
+} //namespace Divide

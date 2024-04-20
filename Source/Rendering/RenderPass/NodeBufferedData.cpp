@@ -35,4 +35,4 @@ namespace Divide {
         return tempHash;
     }
 
-}; //namespace Divide
+} //namespace Divide

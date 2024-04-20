@@ -82,7 +82,7 @@ class Mesh final : public Object3D {
 };
 
    public:
-    explicit Mesh(GFXDevice& context,
+    explicit Mesh(PlatformContext& context,
                   ResourceCache* parentCache,
                   size_t descriptorHash,
                   std::string_view name,

@@ -12,15 +12,15 @@ namespace Divide {
 
 namespace SceneList
 {
-    [[nodiscard]] SceneFactoryMap& sceneFactoryMap()
+    [[nodiscard]] static SceneFactoryMap& sceneFactoryMap()
     {
-        static SceneFactoryMap sceneFactory{};
+        NO_DESTROY static SceneFactoryMap sceneFactory{};
         return sceneFactory;
     }
 
-    [[nodiscard]] SceneNameMap& sceneNameMap()
+    [[nodiscard]] static SceneNameMap& sceneNameMap()
     {
-        static SceneNameMap sceneNameMap{};
+        NO_DESTROY static SceneNameMap sceneNameMap{};
         return sceneNameMap;
     }
 
@@ -64,14 +64,9 @@ bool ScenePool::defaultSceneActive() const noexcept
     return !_defaultScene || !_activeScene || _activeScene->getGUID() == _defaultScene->getGUID();
 }
 
-Scene& ScenePool::activeScene() noexcept
+Scene* ScenePool::activeScene() const noexcept
 {
-    return *_activeScene;
-}
-
-const Scene& ScenePool::activeScene() const noexcept
-{
-    return *_activeScene;
+    return _activeScene;
 }
 
 void ScenePool::activeScene(Scene& scene) noexcept
@@ -79,14 +74,9 @@ void ScenePool::activeScene(Scene& scene) noexcept
     _activeScene = &scene;
 }
 
-Scene& ScenePool::defaultScene() noexcept
+Scene* ScenePool::defaultScene() const noexcept
 {
-    return *_defaultScene;
-}
-
-const Scene& ScenePool::defaultScene() const noexcept
-{
-    return *_defaultScene;
+    return _defaultScene;
 }
 
 Scene* ScenePool::getOrCreateScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& sceneEntry, bool& foundInCache)

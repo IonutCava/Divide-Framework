@@ -37,35 +37,27 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct InputParams {
-    InputParams(const U8 deviceIndex) noexcept
-        : InputParams(deviceIndex, -1)
+struct InputParams
+{
+    static constexpr U8 MAX_PARAMS = 6u;
+    using Params = std::array<I32, MAX_PARAMS>;
+
+    explicit InputParams(const U8 deviceIndex, const U8 elementIndex) noexcept
+        : _deviceIndex( deviceIndex )
+        , _elementIndex(elementIndex )
     {
     }
 
-    InputParams(const U8 deviceIndex, const I32 var1) noexcept
-        : InputParams(deviceIndex, var1, -1)
+    explicit InputParams(const U8 deviceIndex, const U8 elementIndex, const Params args) noexcept
+        : _deviceIndex( deviceIndex )
+        , _elementIndex( elementIndex )
+        , _var(args)
     {
     }
 
-    InputParams(const U8 deviceIndex, const I32 var1, const I32 var2) noexcept
-        : InputParams(deviceIndex, var1, var2, -1)
-    {
-    }
-
-    InputParams(const U8 deviceIndex, const I32 var1, const I32 var2, const I32 var3) noexcept
-        : InputParams(deviceIndex, var1, var2, var3, -1)
-    {
-    }
-
-    InputParams(const U8 deviceIndex, const I32 var1, const I32 var2, const I32 var3, const I32 var4) noexcept
-        : _var{ var1, var2, var3, var4 },
-          _deviceIndex(deviceIndex)
-    {
-    }
-
-    I32 _var[4];
-    U8  _deviceIndex;
+    U8  _deviceIndex{0u};
+    U8  _elementIndex{0u};
+    Params _var = create_array<MAX_PARAMS, I32>(-1);
 };
 
 class PressReleaseActions {

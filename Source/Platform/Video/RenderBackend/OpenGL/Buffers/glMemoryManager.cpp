@@ -364,5 +364,5 @@ void freeBuffer(GLuint& bufferId, bufferPtr mappedPtr)
     }
 }
 
-};  // namespace GLUtil
-};  // namespace Divide
+}  // namespace GLUtil
+}  // namespace Divide

@@ -39,23 +39,23 @@ using namespace gl;
 namespace Divide
 {
 
-    GLStateTracker GL_API::s_stateTracker;
+    NO_DESTROY GLStateTracker GL_API::s_stateTracker;
     std::atomic_bool GL_API::s_glFlushQueued{false};
-    GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
+    NO_DESTROY GLUtil::glTextureViewCache GL_API::s_textureViewCache{};
     U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
     SharedMutex GL_API::s_samplerMapLock;
-    GL_API::SamplerObjectMap GL_API::s_samplerMap{};
+    NO_DESTROY GL_API::SamplerObjectMap GL_API::s_samplerMap{};
     glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;
-    eastl::fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS, false> GL_API::s_TexBindQueue;
+    NO_DESTROY eastl::fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS, false> GL_API::s_TexBindQueue;
 
-    std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = {
+    NO_DESTROY std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = {
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::OTHER )
     };
 
-    std::array<size_t, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocatorSizes{
+    NO_DESTROY std::array<size_t, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocatorSizes{
         TO_MEGABYTES( 512 ),
         TO_MEGABYTES( 1024 ),
         TO_MEGABYTES( 256 ),
@@ -1155,18 +1155,21 @@ namespace Divide
 
                     if ( IsArrayTexture( targetType ) && view._subRange._layerRange._count == 1 )
                     {
-                        switch ( targetType )
+                        if ( targetType == TextureType::TEXTURE_1D_ARRAY )
                         {
-                            case TextureType::TEXTURE_1D_ARRAY:
-                                view._targetType = TextureType::TEXTURE_1D;
-                                break;
-                            case TextureType::TEXTURE_2D_ARRAY:
-                                view._targetType =TextureType::TEXTURE_2D;
-                                break;
-                            case TextureType::TEXTURE_CUBE_ARRAY:
-                                view._targetType = TextureType::TEXTURE_CUBE_MAP;
-                                break;
-                            default: break;
+                            view._targetType = TextureType::TEXTURE_1D;
+                        }
+                        else if ( targetType == TextureType::TEXTURE_2D_ARRAY )
+                        {
+                            view._targetType =TextureType::TEXTURE_2D;
+                        }
+                        else if ( targetType ==TextureType::TEXTURE_CUBE_ARRAY )
+                        {
+                            view._targetType = TextureType::TEXTURE_CUBE_MAP;
+                        }
+                        else
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
                         }
                     }
 
@@ -1362,7 +1365,22 @@ namespace Divide
                     glTextureBarrier();
                 }
             } break;
-            default: break;
+
+
+            case GFX::CommandType::SET_VIEWPORT:
+            case GFX::CommandType::PUSH_VIEWPORT:
+            case GFX::CommandType::POP_VIEWPORT:
+            case GFX::CommandType::SET_SCISSOR:
+            case GFX::CommandType::SET_CAMERA:
+            case GFX::CommandType::PUSH_CAMERA:
+            case GFX::CommandType::POP_CAMERA:
+            case GFX::CommandType::SET_CLIP_PLANES:
+            case GFX::CommandType::BIND_SHADER_RESOURCES:
+            case GFX::CommandType::READ_BUFFER_DATA:
+            case GFX::CommandType::CLEAR_BUFFER_DATA: break;
+
+            case GFX::CommandType::COUNT:
+            default: DIVIDE_UNEXPECTED_CALL(); break;
         }
     }
 
@@ -1539,7 +1557,13 @@ namespace Divide
                             case ImageUsage::SHADER_READ: access = GL_READ_ONLY; break;
                             case ImageUsage::SHADER_WRITE: access = GL_WRITE_ONLY; break;
                             case ImageUsage::SHADER_READ_WRITE: access = GL_READ_WRITE; break;
-                            default: DIVIDE_UNEXPECTED_CALL();  break;
+
+                            case ImageUsage::UNDEFINED:
+                            case ImageUsage::CPU_READ:
+                            case ImageUsage::RT_COLOUR_ATTACHMENT:
+                            case ImageUsage::RT_DEPTH_ATTACHMENT:
+                            case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                            case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();  break;
                         }
 
                         DIVIDE_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
@@ -1719,13 +1743,21 @@ namespace Divide
     GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage( const GLenum usage ) noexcept
     {
         assert( usage != GL_NONE );
-        switch ( usage )
+        if ( usage == GL_UNIFORM_BUFFER ||
+             usage ==GL_SHADER_STORAGE_BUFFER) 
         {
-            case GL_UNIFORM_BUFFER:
-            case GL_SHADER_STORAGE_BUFFER: return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
-            case GL_ELEMENT_ARRAY_BUFFER:  return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
-            case GL_ARRAY_BUFFER:          return GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER;
-        };
+             return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
+        }
+
+        if (usage == GL_ELEMENT_ARRAY_BUFFER)
+        {
+            return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
+        }
+
+        if (usage == GL_ARRAY_BUFFER)
+        {
+            return GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER;
+        }
 
         return GLUtil::GLMemory::GLMemoryType::OTHER;
     }

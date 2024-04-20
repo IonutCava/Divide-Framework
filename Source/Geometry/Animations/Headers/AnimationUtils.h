@@ -50,4 +50,4 @@ void TransformMatrix(const mat4<F32>& in, aiMatrix4x4& out, bool rowMajor = fals
 
 };  // namespace Divide
 
-#endif
+#endif //ANIMATION_UTILITITES_H_

@@ -90,7 +90,7 @@ namespace {
         if (ImGui::CollapsingHeader("Fog Settings")) {
             bool sceneChanged = false;
             ProjectManager* projectManager = context().kernel().projectManager();
-            auto& activeSceneState = projectManager->activeProject()->getActiveScene().state();
+            auto& activeSceneState = projectManager->activeProject()->getActiveScene()->state();
             bool fogEnabled = context().config().rendering.enableFog;
             if (ImGui::Checkbox("Enabled", &fogEnabled)) {
                 context().config().rendering.enableFog = fogEnabled;
@@ -481,4 +481,5 @@ namespace {
             }
         }
     }
-}
+
+} //namespace Divide

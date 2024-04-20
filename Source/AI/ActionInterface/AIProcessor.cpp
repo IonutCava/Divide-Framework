@@ -9,7 +9,7 @@ namespace Divide::AI {
 AIProcessor::AIProcessor(AIManager& parentManager)
     : _entity(nullptr),
       _parentManager(parentManager),
-      _currentStep(-1),
+      _currentStep(U32_MAX),
       _activeGoal(nullptr)
 {
     _init = false;
@@ -47,9 +47,9 @@ void AIProcessor::registerGoalList(const GOAPGoalList& goalList) {
     }
 }
 
-const string& AIProcessor::printActionStats( [[maybe_unused]] const GOAPAction& planStep ) const {
-    static const string placeholder("");
-    return placeholder;
+const char* AIProcessor::printActionStats( [[maybe_unused]] const GOAPAction& planStep ) const {
+    constexpr const char* none = "";
+    return none;
 }
 
 }  // namespace Divide::AI

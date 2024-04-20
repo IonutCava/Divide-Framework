@@ -15,7 +15,7 @@
 
 namespace Divide {
 
-SubMesh::SubMesh(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
+SubMesh::SubMesh( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
     : Object3D(context, parentCache, descriptorHash, name, {}, {}, SceneNodeType::TYPE_SUBMESH, Object3D::ObjectFlag::OBJECT_FLAG_NO_VB)
 {
 }
@@ -34,15 +34,15 @@ void SubMesh::postLoad(SceneGraphNode* sgn) {
 }
 
 /// update possible animations
-void SubMesh::onAnimationChange(SceneGraphNode* sgn, const I32 newIndex) {
+void SubMesh::onAnimationChange(SceneGraphNode* sgn, const U32 newIndex) {
     computeBBForAnimation(sgn, newIndex);
 
     Object3D::onAnimationChange(sgn, newIndex);
 }
 
-void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask, const I32 animationIndex, const AnimationComponent* const animComp)
+void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask, const U32 animationIndex, const AnimationComponent* const animComp)
 {
-    if (animationIndex < 0)
+    if (animationIndex == U32_MAX)
     {
         return;
     }
@@ -73,12 +73,12 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
     }
 }
 
-void SubMesh::updateBB(const I32 animIndex) {
+void SubMesh::updateBB(const U32 animIndex) {
     SharedLock<SharedMutex> r_lock(_bbLock);
     setBounds(_boundingBoxes[animIndex], _worldOffset);
 }
 
-void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const I32 animIndex) {
+void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const U32 animIndex) {
     // Attempt to get the map of BBs for the current animation
     LockGuard<SharedMutex> w_lock(_bbStateLock);
     const BoundingBoxState state = _boundingBoxesState[animIndex];
@@ -109,4 +109,5 @@ void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const I32 animInd
             }
         });
 }
-};
+
+} //namespace Divide

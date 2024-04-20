@@ -329,6 +329,10 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
                 floatData = Util::ToFloatColour(clearColour);
                 return (bufferPtr)floatData._v;
             }
+            case GFXDataFormat::COUNT:
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            } break;
         }
 
         return (bufferPtr)nullptr;
@@ -433,9 +437,9 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
     mipLevel = std::min(mipLevel, to_U8(mipCount() - 1u));
     if ( IsCompressed( _descriptor.baseFormat() ) )
     {
-        GLint compressedSize = 0u;
+        GLint compressedSize = 0;
         glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel) , GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
-        if ( compressedSize > 0u )
+        if ( compressedSize > 0 )
         {
             grabData._data.resize(compressedSize);
             glGetCompressedTextureImage( _textureHandle, mipLevel, compressedSize, (bufferPtr)grabData._data.data() );

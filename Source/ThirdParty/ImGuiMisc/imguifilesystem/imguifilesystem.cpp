@@ -13,7 +13,7 @@
 // 3. This notice may not be removed or altered from any source distribution.
 
 #ifdef _WIN32
-#	include <windows.h>
+#	include <Windows.h>
 #endif //_WIN32
 
 //- Common Code For All Addons needed just to ease inclusion as separate files in user code ----------------------
@@ -32,7 +32,7 @@
 #endif //IMGUIBINDINGS_CLEAR_INPUT_DATA_SOON
 
 #ifdef _WIN32
-#include <shlobj.h> // Known Directory locations
+#include <ShlObj.h> // Known Directory locations
 #   ifndef CSIDL_MYPICTURES
 #       define CSIDL_MYPICTURES 0x0027
 #   endif //CSIDL_MYPICTURES

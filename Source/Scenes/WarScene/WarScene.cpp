@@ -657,7 +657,7 @@ void WarScene::postLoadMainThread() {
                   {
                       thread_local F32 phiLight = 0.0f;
                       thread_local bool initPosSetLight = false;
-                      thread_local vector<vec3<F32>> initPosLight;
+                      NO_DESTROY thread_local vector<vec3<F32>> initPosLight;
 
                       if ( !initPosSetLight )
                       {

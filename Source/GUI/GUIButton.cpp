@@ -4,8 +4,7 @@
 
 namespace Divide {
 
-
-GUIButton::AudioCallback GUIButton::s_soundCallback;
+NO_DESTROY GUIButton::AudioCallback GUIButton::s_soundCallback;
 
 GUIButton::GUIButton(const string& name,
                      const string& text,
@@ -17,8 +16,10 @@ GUIButton::GUIButton(const string& name,
       _btnWindow(nullptr)
 {
     
-    static string buttonInfo = guiScheme + "/Button";
-    if (parent != nullptr) {
+    NO_DESTROY static string buttonInfo = guiScheme + "/Button";
+
+    if (parent != nullptr)
+    {
         _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(buttonInfo.c_str(), name.c_str());
 
         const CEGUI::UDim sizeX(0.f, size._x._width);
@@ -170,4 +171,4 @@ void GUIButton::setEventCallback(const Event event, const ButtonCallback& callba
     setEventSound(event, sound);
 }
 
-};
+} //namespace Divide

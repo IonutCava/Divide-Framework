@@ -82,9 +82,9 @@ namespace Divide {
             comp->parentSGN()->SendEvent(
                 ECS::CustomEvent
                 {
-                      ECS::CustomEvent::Type::TransformUpdated,
-                      comp,
-                      mask
+                      ._type = ECS::CustomEvent::Type::TransformUpdated,
+                      ._sourceCmp = comp,
+                      ._flag = mask
                 }
             );
         }

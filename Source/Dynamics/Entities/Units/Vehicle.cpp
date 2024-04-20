@@ -21,4 +21,5 @@ void Vehicle::setVehicleTypeMask(const U32 mask) {
 bool Vehicle::checkVehicleMask(const VehicleType type) const {
     return (_vehicleTypeMask & to_U32(type)) != to_U32(type);
 }
-}
+
+} //namespace Divide

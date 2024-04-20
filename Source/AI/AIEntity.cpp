@@ -13,8 +13,8 @@
 namespace Divide {
 using namespace AI;
 
-constexpr D64 DESTINATION_RADIUS = 2;
-constexpr D64 DESTINATION_RADIUS_SQ = DESTINATION_RADIUS *
+constexpr F32 DESTINATION_RADIUS = 2.f;
+constexpr F32 DESTINATION_RADIUS_SQ = DESTINATION_RADIUS *
                                       DESTINATION_RADIUS;
 constexpr F32 DESTINATION_RADIUS_F = to_F32(DESTINATION_RADIUS);
 
@@ -128,7 +128,7 @@ bool AIEntity::addSensor(const SensorType type) {
         case SensorType::NONE:{
                 
         } break;
-    };
+    }
 
     if (sensor) {
         const auto result = insert(_sensorList, type, sensor);
@@ -186,11 +186,13 @@ bool AIEntity::update(const U64 deltaTimeUS) {
     return true;
 }
 
-I32 AIEntity::getTeamID() const {
-    if (_teamPtr) {
-        return _teamPtr->getTeamID();
+U32 AIEntity::getTeamID() const
+{
+    if (_teamPtr)
+    {
+        return _teamPtr->teamID();
     }
-    return -1;
+    return U32_MAX;
 }
 
 void AIEntity::setTeamPtr(AITeam* const teamPtr) {
@@ -207,12 +209,12 @@ void AIEntity::addUnitRef(NPC* const npc) {
     }
 }
 
-D64 AIEntity::getAgentHeight() const noexcept {
-    return _detourCrowd ? _detourCrowd->getAgentHeight() : 0.0;
+F32 AIEntity::getAgentHeight() const noexcept {
+    return _detourCrowd ? _detourCrowd->getAgentHeight() : 0.f;
 }
 
-D64 AIEntity::getAgentRadius() const noexcept {
-    return _detourCrowd ? _detourCrowd->getAgentRadius() : 0.0;
+F32 AIEntity::getAgentRadius() const noexcept {
+    return _detourCrowd ? _detourCrowd->getAgentRadius() : 0.f;
 }
 
 void AIEntity::resetCrowd() {
@@ -280,7 +282,7 @@ void AIEntity::updatePosition(const U64 deltaTimeUS)
         {
             _moveWaitTimer += deltaTimeUS;
 
-            if (Time::MicrosecondsToSeconds<D64>(_moveWaitTimer) > 5)
+            if (Time::MicrosecondsToSeconds<F32>(_moveWaitTimer) > 5.f)
             {
                 // DISABLED FOR NOW!
                 if constexpr(false)
@@ -421,12 +423,14 @@ vec3<F32> AIEntity::getVelocity() const noexcept {
     return isAgentLoaded() ? vec3<F32>(getAgent()->nvel) : vec3<F32>();
 }
 
-D64 AIEntity::getMaxSpeed() const noexcept {
-    return isAgentLoaded() ? getAgent()->params.maxSpeed : 0.0;
+F32 AIEntity::getMaxSpeed() const noexcept
+{
+    return isAgentLoaded() ? getAgent()->params.maxSpeed : 0.f;
 }
 
-D64 AIEntity::getMaxAcceleration() const noexcept {
-    return isAgentLoaded() ? getAgent()->params.maxAcceleration : 0.0;
+F32 AIEntity::getMaxAcceleration() const noexcept
+{
+    return isAgentLoaded() ? getAgent()->params.maxAcceleration : 0.f;
 }
 
 string AIEntity::toString() const {

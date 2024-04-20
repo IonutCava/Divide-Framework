@@ -154,4 +154,5 @@ void ParticleData::setParticleGeometry(const vector<vec3<F32>>& particleGeometry
 void ParticleData::setBillboarded(const bool state) noexcept {
     _isBillboarded = state;
 }
-}
+
+} //namespace Divide

@@ -10,5 +10,5 @@ namespace GFX {
         type(PushConstantType::COUNT);
     }
 
-}; //namespace GFX
-}; //namespace Divide
+} //namespace GFX
+} //namespace Divide

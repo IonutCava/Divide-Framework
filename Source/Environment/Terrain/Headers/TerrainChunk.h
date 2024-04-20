@@ -63,7 +63,6 @@ class TerrainChunk {
 
     void load(U8 depth, const vec2<U32> pos, U32 targetChunkDimension, vec2<U32> HMSize, BoundingBox& bbInOut);
 
-    [[nodiscard]] U32 ID() const noexcept { return _ID; }
 
     [[nodiscard]] vec4<F32> getOffsetAndSize() const noexcept {
         return vec4<F32>(_xOffset, _yOffset, _sizeX, _sizeY);
@@ -77,6 +76,8 @@ class TerrainChunk {
 
     [[nodiscard]] U8 LoD() const noexcept;
 
+    PROPERTY_R(U32, id, 0u);
+
    protected:
     [[nodiscard]] const Vegetation_ptr& getVegetation() const noexcept { return _vegetation; }
 
@@ -86,7 +87,6 @@ class TerrainChunk {
    private:
     QuadtreeNode& _quadtreeNode;
 
-    U32 _ID;
     F32 _xOffset;
     F32 _yOffset;
     F32 _sizeX;

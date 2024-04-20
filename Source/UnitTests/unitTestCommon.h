@@ -63,6 +63,10 @@ class platformInitRunListener : public Catch::EventListenerBase
 #define CHECK_EQUAL(LHS, RHS) CHECK_TRUE(LHS == RHS)
 #endif //CHECK_EQUAL
 
+#ifndef CHECK_COMPARE
+#define CHECK_COMPARE(LHS, RHS) CHECK_TRUE(COMPARE(LHS, RHS))
+#endif //CHECK_COMPARE
+
 #ifndef CHECK_NOT_EQUAL
 #define CHECK_NOT_EQUAL(LHS, RHS) CHECK_FALSE(LHS == RHS)
 #endif //CHECK_NOT_EQUAL

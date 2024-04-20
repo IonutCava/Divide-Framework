@@ -65,7 +65,7 @@ namespace Divide
         return ret;
     }
 
-    bool Wait( GLsync sync, U8& retryCount )
+    static bool Wait( GLsync sync, U8& retryCount )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -133,6 +133,4 @@ namespace Divide
 
         return false;
     }
-
-
 };//namespace Divide

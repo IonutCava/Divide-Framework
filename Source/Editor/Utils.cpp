@@ -172,6 +172,49 @@ namespace Divide
             case Input::KeyCode::KC_F10: return ImGuiKey_F10;
             case Input::KeyCode::KC_F11: return ImGuiKey_F11;
             case Input::KeyCode::KC_F12: return ImGuiKey_F12;
+
+            case Input::KeyCode::KC_SYSRQ: break;//PrintScreen?
+            case Input::KeyCode::KC_UNASSIGNED:
+            case Input::KeyCode::KC_OEM_102:
+            case Input::KeyCode::KC_F13:
+            case Input::KeyCode::KC_F14:
+            case Input::KeyCode::KC_F15:
+            case Input::KeyCode::KC_KANA:
+            case Input::KeyCode::KC_ABNT_C1:
+            case Input::KeyCode::KC_CONVERT:
+            case Input::KeyCode::KC_NOCONVERT:
+            case Input::KeyCode::KC_YEN:
+            case Input::KeyCode::KC_ABNT_C2:
+            case Input::KeyCode::KC_PREVTRACK:
+            case Input::KeyCode::KC_AT:
+            case Input::KeyCode::KC_COLON:
+            case Input::KeyCode::KC_UNDERLINE:
+            case Input::KeyCode::KC_KANJI:
+            case Input::KeyCode::KC_STOP:
+            case Input::KeyCode::KC_AX:
+            case Input::KeyCode::KC_UNLABELED:
+            case Input::KeyCode::KC_NEXTTRACK:
+            case Input::KeyCode::KC_MUTE:
+            case Input::KeyCode::KC_CALCULATOR:
+            case Input::KeyCode::KC_PLAYPAUSE:
+            case Input::KeyCode::KC_MEDIASTOP:
+            case Input::KeyCode::KC_TWOSUPERIOR:
+            case Input::KeyCode::KC_VOLUMEDOWN:
+            case Input::KeyCode::KC_VOLUMEUP:
+            case Input::KeyCode::KC_WEBHOME:
+            case Input::KeyCode::KC_NUMPADCOMMA:
+            case Input::KeyCode::KC_POWER:
+            case Input::KeyCode::KC_SLEEP:
+            case Input::KeyCode::KC_WAKE:
+            case Input::KeyCode::KC_WEBSEARCH:
+            case Input::KeyCode::KC_WEBFAVORITES:
+            case Input::KeyCode::KC_WEBREFRESH:
+            case Input::KeyCode::KC_WEBSTOP:
+            case Input::KeyCode::KC_WEBFORWARD:
+            case Input::KeyCode::KC_WEBBACK:
+            case Input::KeyCode::KC_MYCOMPUTER:
+            case Input::KeyCode::KC_MAIL:
+            case Input::KeyCode::KC_MEDIASELECT: break;
         }
 
         return ImGuiKey_None;
@@ -376,7 +419,7 @@ namespace Divide
             ImGui::OpenPopup( name, popup_flags );
         }
 
-        void PrintColouredText( const std::string_view text, ImVec4 colour )
+        void PrintColouredText( const std::string_view text, const ImVec4& colour )
         {
             ImGui::PushStyleColor( ImGuiCol_Text, colour );
             ImGui::TextUnformatted( text.data(), text.data() + text.length());

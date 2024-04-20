@@ -106,7 +106,7 @@ namespace Divide
         borderTexture.assetLocation(  Paths::g_imagesLocation );
         borderTexture.propertyDescriptor( texDescriptor );
         borderTexture.waitForReady( false );
-        _screenBorder = CreateResource<Texture>( cache, borderTexture ), loadTasks;
+        _screenBorder = CreateResource<Texture>( cache, borderTexture, loadTasks );
 
         _noiseTimer = 0.0;
         _tickInterval = 1.0f / 24.0f;
@@ -137,8 +137,7 @@ namespace Divide
 
     void PostFX::updateResolution( const U16 newWidth, const U16 newHeight )
     {
-        if ( _resolutionCache.width == newWidth &&
-             _resolutionCache.height == newHeight ||
+        if ( (_resolutionCache.width == newWidth && _resolutionCache.height == newHeight) ||
              newWidth < 1 || newHeight < 1 )
         {
             return;
@@ -152,8 +151,7 @@ namespace Divide
 
     void PostFX::prePass( const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut )
     {
-        static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: PrePass" };
-        GFX::EnqueueCommand( bufferInOut, s_beginScopeCmd );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "PostFX: PrePass";
         GFX::EnqueueCommand<GFX::PushCameraCommand>( bufferInOut )->_cameraSnapshot = _setCameraCmd._cameraSnapshot;
 
         _preRenderBatch.prePass( idx, cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut );
@@ -164,9 +162,7 @@ namespace Divide
 
     void PostFX::apply( const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut )
     {
-        static GFX::BeginDebugScopeCommand s_beginScopeCmd{ "PostFX: Apply" };
-
-        GFX::EnqueueCommand( bufferInOut, s_beginScopeCmd );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "PostFX: Apply";
         GFX::EnqueueCommand( bufferInOut, _setCameraCmd );
 
         _preRenderBatch.execute( idx, cameraSnapshot, _filterStack | _overrideFilterStack, bufferInOut );
@@ -177,7 +173,7 @@ namespace Divide
         beginRenderPassCmd._name = "DO_POSTFX_PASS";
         beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
         GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _drawPipeline } );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _drawPipeline;
 
         if ( _filtersDirty )
         {
@@ -234,7 +230,7 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, prbAtt->texture()->getView(), prbAtt->_descriptor._sampler );
         }
-        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 
         GFX::EnqueueCommand( bufferInOut, GFX::EndRenderPassCommand{} );
 

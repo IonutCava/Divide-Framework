@@ -230,7 +230,7 @@ namespace Divide
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = to_U32( nbActiveActors );
             descriptor._partitionSize = g_parallelPartitionSize;
-            descriptor._cbk = [this, activeActors]( const Task*, const U32 start, const U32 end )
+            descriptor._cbk = [activeActors]( const Task*, const U32 start, const U32 end )
             {
                 for ( U32 i = start; i < end; ++i )
                 {
@@ -320,4 +320,4 @@ namespace Divide
 
         return false;
     }
-};
+} //namespace Divide

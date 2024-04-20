@@ -66,8 +66,7 @@ namespace Divide
             case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage == other._sampledImage;
             case DescriptorSetBindingType::IMAGE : return _imageView == other._imageView;
 
-            case DescriptorSetBindingType::COUNT:
-            default: break;
+            case DescriptorSetBindingType::COUNT: break;
         }
 
         return true;
@@ -84,8 +83,7 @@ namespace Divide
                 case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage != other._sampledImage;
                 case DescriptorSetBindingType::IMAGE: return _imageView != other._imageView;
 
-                case DescriptorSetBindingType::COUNT:
-                default: return false;
+                case DescriptorSetBindingType::COUNT: return false;
             }
         }
 

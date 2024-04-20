@@ -69,7 +69,7 @@ class glShaderProgram final : public ShaderProgram {
                              const ShaderProgramDescriptor& descriptor,
                              ResourceCache& parentCache);
 
-    ~glShaderProgram();
+    ~glShaderProgram() override;
 
     static void Idle(PlatformContext& platformContext);
 
@@ -91,7 +91,7 @@ class glShaderProgram final : public ShaderProgram {
     static void ProcessValidationQueue();
 
    private:
-   gl::GLuint _handle = GL_NULL_HANDLE;
+   gl::GLuint _glHandle = GL_NULL_HANDLE;
 
     bool _validationQueued = false;
     bool _stagesBound = false;

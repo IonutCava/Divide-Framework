@@ -351,13 +351,11 @@ namespace Divide
         return sgn->get<BoundsComponent>()->getBoundingBox().containsPoint( point );
     }
 
-    void WaterPlane::buildDrawCommands( SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut )
+    void WaterPlane::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
-        GenericDrawCommand cmd = {};
+        GenericDrawCommand& cmd = cmdsOut.emplace_back();
         cmd._cmd.indexCount = to_U32( _plane->geometryBuffer()->getIndexCount() );
         cmd._sourceBuffer = _plane->geometryBuffer()->handle();
-
-        cmdsOut.emplace_back( GFX::DrawCommand{ cmd } );
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );
     }
@@ -508,4 +506,4 @@ namespace Divide
         SceneNode::loadFromXML( pt );
     }
 
-}
+} //namespace Divide

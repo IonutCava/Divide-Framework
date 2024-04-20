@@ -36,51 +36,66 @@
 //ref: https://github.com/embeddedartistry/embedded-resources/blob/master/examples/cpp/circular_buffer.cpp
 namespace Divide {
 
-template <class T>
+template <class T, size_t N, bool threadSafe = false>
 class CircularBuffer {
+    struct Lock
+    {
+        Lock()
+        {
+            if constexpr ( threadSafe )
+            {
+                _lock.lock();
+            }
+        }
+        ~Lock()
+        {
+            if constexpr ( threadSafe )
+            {
+                _lock.unlock();
+            }
+        }
+        mutable Mutex _lock;
+    };
+
 public:
-    explicit CircularBuffer(const size_t bufferSize) :
-        _buffer(std::make_unique<T[]>(bufferSize)),
-        _maxSize(bufferSize) {
+    void reset()
+    {
+        Lock();
 
-    }
-
-    void reset() {
-        std::lock_guard<Mutex> lock(_lock);
         _head = _tail;
         _isFull = false;
     }
 
-    void put(const T& item) {
-        std::lock_guard<Mutex> lock(_lock);
+    void put(const T& item)
+    {
+        Lock();
 
         _buffer[_head] = item;
 
-        if (full()) {
-            _tail = (_tail + 1) % _maxSize;
+        if ( fullLocked() )
+        {
+            _tail = (_tail + 1) % N;
         }
 
-        _head = (_head + 1) % _maxSize;
+        _head = (_head + 1) % N;
         _isFull = _head == _tail;
     }
 
-    [[nodiscard]] T& get(const size_t idx) {
-        std::lock_guard<Mutex> lock(_lock);
-        return _buffer[idx];
-    }
-    
-    [[nodiscard]] const T& get(const size_t idx) const {
-        std::lock_guard<Mutex> lock(_lock);
+    [[nodiscard]] const T& get(const size_t idx) const
+    {
+        Lock();
         return _buffer[idx];
     }
 
-    [[nodiscard]] T get() {
-        std::lock_guard<Mutex> lock(_lock);
+    [[nodiscard]] T get()
+    {
+        Lock();
 
-        if (!empty()) {
+        if (!empty())
+        {
             const T val = _buffer[_tail];
             _isFull = false;
-            _tail = (_tail + 1) % _maxSize;
+            _tail = (_tail + 1) % N;
 
             return val;
         }
@@ -88,26 +103,48 @@ public:
         return T();
     }
 
-    [[nodiscard]] inline size_t size() const noexcept {
-        if (full()) {
-            return _maxSize;
+    [[nodiscard]] inline size_t size() const noexcept
+    {
+        Lock();
+
+        if ( fullLocked() )
+        {
+            return N;
         }
 
         return (_head >= _tail) 
                        ? _head - _tail
-                       : _maxSize + _head - _tail;
+                       : N + _head - _tail;
     }
 
-    [[nodiscard]] inline bool empty() const noexcept { return (!full() && (_head == _tail)); }
-    [[nodiscard]] inline bool full() const noexcept { return _isFull; }
-    [[nodiscard]] inline size_t capacity() const noexcept { return _maxSize; }
+    [[nodiscard]] inline bool empty() const noexcept
+    {
+        Lock();
+        return (!fullLocked() && (_head == _tail));
+    }
+
+    [[nodiscard]] inline bool full() const noexcept
+    {
+        Lock();
+        return fullLocked();
+    }
+
+    [[nodiscard]] inline static size_t capacity() noexcept
+    {
+        return N;
+    }
+
 
 private:
-    mutable Mutex _lock;
-    std::unique_ptr<T[]> _buffer;
+    [[nodiscard]] inline bool fullLocked() const noexcept
+    {
+        return _isFull;
+    }
+
+private:
+    T _buffer[N];
     size_t _head{0u};
     size_t _tail{0u};
-    const size_t _maxSize;
     bool _isFull{false};
 };
 

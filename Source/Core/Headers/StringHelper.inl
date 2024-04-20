@@ -107,8 +107,8 @@ namespace Divide
             while ( std::next_permutation( std::begin( tempCpy ), std::end( tempCpy ) ) );
         }
 
-        template<size_t N, typename T_str> requires valid_replace_string<T_str>
-        bool ReplaceStringInPlace( T_str& subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive )
+        template<typename T_str> requires valid_replace_string<T_str>
+        bool ReplaceStringInPlace( T_str& subject, const std::span<const std::string_view> search, std::string_view replace, bool recursive )
         {
             bool ret = true;
             bool changed = true;
@@ -126,8 +126,8 @@ namespace Divide
             return ret;
         }
 
-        template<size_t N, typename T_str> requires valid_replace_string<T_str>
-        T_str ReplaceString( std::string_view subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive )
+        template<typename T_str> requires valid_replace_string<T_str>
+        T_str ReplaceString( std::string_view subject, const std::span<const std::string_view> search, std::string_view replace, bool recursive )
         {
             T_str ret{ subject };
             bool changed = true;
@@ -198,7 +198,7 @@ namespace Divide
 
         inline string MakeXMLSafe( const std::string_view subject )
         {
-            constexpr std::array<std::string_view, 10> InvalidXMLStrings =
+            constexpr std::string_view InvalidXMLStrings[10] =
             {
                 " ", "[", "]", "...", "..", ".", "/", "'\'", "<", ">"
             };

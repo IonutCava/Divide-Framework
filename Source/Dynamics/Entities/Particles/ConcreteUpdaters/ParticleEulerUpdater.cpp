@@ -43,4 +43,4 @@ void ParticleEulerUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
     parallel_for(context(), descriptor);
 }
 
-}
+} //namespace Divide

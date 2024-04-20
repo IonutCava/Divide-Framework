@@ -54,7 +54,7 @@ void TessellationParams::fromDescriptor(const std::shared_ptr<TerrainDescriptor>
     WorldScale(descriptor->dimensions() * 0.5f / to_F32(PATCHES_PER_TILE_EDGE));
 }
 
-Terrain::Terrain(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
+Terrain::Terrain(PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name)
     : Object3D(context, parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_TERRAIN, ObjectFlag::OBJECT_FLAG_NO_VB),
       _terrainQuadtree()
 {
@@ -98,12 +98,14 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         grassVisibilityDistanceField._name = "Grass visibility distance";
         grassVisibilityDistanceField._range = { 0.01f, 10000.0f };
         grassVisibilityDistanceField._serialise = false;
-        grassVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept {
-            const SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
+        grassVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept
+        {
+            const SceneRenderState& rState = sMgr->activeProject()->getActiveScene()->state()->renderState();
             *static_cast<F32*>(dataOut) = rState.grassVisibility();
         };
-        grassVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept {
-            SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
+        grassVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept
+        {
+            SceneRenderState& rState = sMgr->activeProject()->getActiveScene()->state()->renderState();
             rState.grassVisibility(*static_cast<const F32*>(data)); 
         };
         grassVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
@@ -115,12 +117,14 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
         treeVisibilityDistanceField._name = "Tree visibility distance";
         treeVisibilityDistanceField._range = { 0.01f, 10000.0f };
         treeVisibilityDistanceField._serialise = false;
-        treeVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept {
-            const SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
+        treeVisibilityDistanceField._dataGetter = [sMgr](void* dataOut) noexcept
+        {
+            const SceneRenderState& rState = sMgr->activeProject()->getActiveScene()->state()->renderState();
             *static_cast<F32*>(dataOut) = rState.treeVisibility();
         };
-        treeVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept {
-            SceneRenderState& rState = sMgr->activeProject()->getActiveScene().state()->renderState();
+        treeVisibilityDistanceField._dataSetter = [sMgr](const void* data) noexcept
+        {
+            SceneRenderState& rState = sMgr->activeProject()->getActiveScene()->state()->renderState();
             rState.treeVisibility(*static_cast<const F32*>(data));
         };
         treeVisibilityDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
@@ -147,7 +151,7 @@ void Terrain::postLoad(SceneGraphNode* sgn) {
 
     for (const TerrainChunk* chunk : _terrainChunks) {
         vegetationNodeDescriptor._node = Attorney::TerrainChunkTerrain::getVegetation(*chunk);
-        vegetationNodeDescriptor._name = Util::StringFormat("Vegetation_chunk_{}", chunk->ID()).c_str();
+        vegetationNodeDescriptor._name = Util::StringFormat("Vegetation_chunk_{}", chunk->id()).c_str();
         vegParent->addChildNode(vegetationNodeDescriptor);
     }
 
@@ -315,16 +319,15 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     Object3D::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
 }
 
-void Terrain::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut)
+void Terrain::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut)
 {
-    GenericDrawCommand cmd = {};
+    GenericDrawCommand& cmd = cmdsOut.emplace_back();
     cmd._sourceBuffer = _terrainBuffer->handle();
     cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
-    for (const auto& tileRing : _tileRings) {
+    for (const auto& tileRing : _tileRings)
+    {
         cmd._cmd.instanceCount += tileRing->tileCount();
     }
-
-    cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
 
     Object3D::buildDrawCommands(sgn, cmdsOut);
 }
@@ -482,4 +485,4 @@ void Terrain::loadFromXML(const boost::property_tree::ptree& pt) {
     Object3D::loadFromXML(pt);
 }
 
-}
+} //namespace Divide

@@ -66,7 +66,7 @@ class glHardwareQueryRing final : public RingBufferSeparateWrite {
 
 public:
     explicit glHardwareQueryRing(GFXDevice& context, gl::GLenum queryType, U16 queueLength, U32 id = 0);
-    ~glHardwareQueryRing();
+    ~glHardwareQueryRing() override;
 
     void resize(U16 queueLength) override;
 

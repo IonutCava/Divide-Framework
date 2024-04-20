@@ -78,4 +78,5 @@ const BoundingBox& Quadtree::computeBoundingBox() const {
 
     return _root->getBoundingBox();
 }
-}
+
+} //namespace Divide

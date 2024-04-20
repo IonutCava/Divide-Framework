@@ -23,4 +23,5 @@ void ParticleAttractorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, P
         }
     }
 }
-}
+
+} //namespace Divide

@@ -116,7 +116,7 @@ namespace Divide
                        Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS * 6 +
                        Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS +
                        1u /*WORLD AO*/;
-            default: break;
+            case RenderStage::COUNT: break;
         }
 
         DIVIDE_UNEXPECTED_CALL();

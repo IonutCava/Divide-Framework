@@ -30,4 +30,4 @@ void Player::setParentNode(SceneGraphNode* node) {
     }
 }
 
-}
+} //namespace Divide

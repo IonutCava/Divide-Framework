@@ -22,7 +22,7 @@ using namespace std;
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif  //NOMINMAX
-#include <windows.h>
+#include <Windows.h>
 static CRITICAL_SECTION _criticalSection; 
 #else
 #include <pthread.h>
@@ -312,11 +312,17 @@ extern "C" Allocator* xallocator_get_allocator(size_t size)
 	// to minimize wasted storage. This offers application specific tuning.
     size_t blockSize = size + sizeof(Allocator *);
     if (blockSize > 256 && blockSize <= 396)
+	{
         blockSize = 396;
+	}
     else if (blockSize > 512 && blockSize <= 768)
+	{
         blockSize = 768;
+	}
     else
+	{
         blockSize = nexthigher<size_t>(blockSize);
+	}
 
 	Allocator* allocator = find_allocator(blockSize);
 

@@ -49,7 +49,7 @@ namespace Divide::Util
 template<typename T, bool SeparateActivate, typename Pred>
 inline void RegisterUndo(Editor& editor, PushConstantType type, const T& oldVal, const T& newVal, const char* name, Pred&& dataSetter)
 {
-    static hashMapDefaultAlloc<U64, UndoEntry<T>> _undoEntries;
+    NO_DESTROY static hashMapDefaultAlloc<U64, UndoEntry<T>> _undoEntries;
 
     UndoEntry<T>& undo = _undoEntries[_ID(name)];
     if (!SeparateActivate || ImGui::IsItemActivated())
@@ -257,11 +257,21 @@ inline bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, c
     DIVIDE_ASSERT(!field._readOnly || (flags & ImGuiInputTextFlags_ReadOnly));
     DIVIDE_ASSERT(!field._hexadecimal || (flags & ImGuiInputTextFlags_CharsHexadecimal));
 
+    ComponentType* data = nullptr;
+    if constexpr (num_comp > 1)
+    {
+        data = &val[0];
+    }
+    else
+    {
+        data = &val;
+    }
+
     const DrawReturnValue ret = 
         Util::DrawVec<ComponentType, num_comp, IsSlider>(data_type,
                                                          label,
                                                          field._labels == nullptr ? FieldLabels : field._labels,
-                                                         (ComponentType*) & val,
+                                                         data,
                                                          flags,
                                                          static_cast<ComponentType>(field._resetValue),
                                                          min,

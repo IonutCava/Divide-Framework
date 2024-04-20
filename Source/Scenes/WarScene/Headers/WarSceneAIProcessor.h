@@ -158,7 +158,6 @@ class WarSceneOrder final : public Order {
     {
     }
 
-    virtual ~WarSceneOrder() = default;
 
     void lock() override { Order::lock(); }
     void unlock() override { Order::unlock(); }
@@ -176,7 +175,7 @@ namespace Attorney {
 
 class AudioSensor;
 class VisualSensor;
-class WarSceneAIProcessor : public AIProcessor {
+class WarSceneAIProcessor final : public AIProcessor {
     friend class Attorney::WarAISceneWarAction;
    public:
        using NodeToUnitMap = hashMap<I64, AIEntity*>;
@@ -188,7 +187,7 @@ class WarSceneAIProcessor : public AIProcessor {
            COUNT
        };
     WarSceneAIProcessor(AIType type, AIManager& parentManager);
-    ~WarSceneAIProcessor();
+    ~WarSceneAIProcessor() override;
 
     void registerGOAPPackage(const GOAPPackage& package);
 
@@ -235,7 +234,7 @@ class WarSceneAIProcessor : public AIProcessor {
     void updatePositions();
     bool performAction(const GOAPAction& planStep) override;
     bool performActionStep(GOAPAction::operationsIterator step) override;
-    const string& printActionStats(const GOAPAction& planStep) const override;
+    const char* printActionStats(const GOAPAction& planStep) const override;
     void printWorkingMemory() const;
     void initInternal() override;
     void beginPlan(const GOAPGoal& currentGoal);

@@ -74,20 +74,19 @@ void DVDGeometryBuffer::draw() const
 
     const CEGUI::Rectf viewPort = _owner->getActiveViewPort();
 
+    GFX::CommandBuffer* cmdBuffer = _owner->cmdBuffer();
+    Divide::Rect<I32>& clipRect = GFX::EnqueueCommand<GFX::SetScissorCommand>( *cmdBuffer )->_rect;
+
     // setup clip region
-    Divide::Rect<I32> clipRect(
-        to_I32( _clipRect.left() ),
-        to_I32( viewPort.getHeight() - _clipRect.bottom() ),
-        to_I32( _clipRect.getWidth() ),
-        to_I32( _clipRect.getHeight() )
-    );
+    clipRect.offsetX = to_I32( _clipRect.left() );
+    clipRect.offsetY = to_I32( viewPort.getHeight() - _clipRect.bottom() );
+    clipRect.sizeX = to_I32( _clipRect.getWidth() );
+    clipRect.sizeY = to_I32( _clipRect.getHeight() );
 
     if ( _owner->flipClippingHeight() )
     {
         clipRect.offsetY = to_I32(_clipRect.top());
-    }
-    GFX::CommandBuffer* cmdBuffer = _owner->cmdBuffer();
-    GFX::EnqueueCommand( *cmdBuffer, GFX::SetScissorCommand{clipRect});
+    }    
 
     // apply the transformations we need to use.
     if (!_matrixValid)
@@ -134,7 +133,7 @@ void DVDGeometryBuffer::draw() const
             drawCmd._cmd.baseVertex = pos;
             drawCmd._cmd.vertexCount = currentBatch.vertexCount;
 
-            GFX::EnqueueCommand( *cmdBuffer, GFX::DrawCommand{ drawCmd } );
+            GFX::EnqueueCommand<GFX::DrawCommand>( *cmdBuffer )->_drawCommands.emplace_back(drawCmd);
 
             pos += currentBatch.vertexCount;
         }

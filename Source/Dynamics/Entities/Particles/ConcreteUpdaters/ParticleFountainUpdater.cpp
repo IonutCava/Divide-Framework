@@ -67,4 +67,4 @@ void ParticleFountainUpdater::update( [[maybe_unused]] const U64 deltaTime, [[ma
         */
 }
 
-};
+} //namespace Divide

@@ -7,7 +7,7 @@ namespace Divide::AI {
 GOAPGoal::GOAPGoal(const string& name, const U32 ID)
     : WorldState(), _relevancy(0.f)
 {
-    _ID = ID;
+    _id = ID;
     name_ = name;
 }
 

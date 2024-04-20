@@ -18,4 +18,5 @@ void ParticleTimeGenerator::generate([[maybe_unused]] Task& packagedTasksParent,
         misc.z = time > EPSILON_F32 ? 1.f / misc.x : 0.f;
     }
 }
-}
+
+} //namespace Divide

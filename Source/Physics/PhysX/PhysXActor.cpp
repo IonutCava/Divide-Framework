@@ -207,4 +207,4 @@ namespace Util {
         PhysicsAsset::physicsCollisionGroup(group);
     }
 
-}; //namespace Divide
+} //namespace Divide

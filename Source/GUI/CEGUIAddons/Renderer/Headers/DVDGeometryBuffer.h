@@ -72,7 +72,6 @@ private:
 
 public:
     DVDGeometryBuffer( CEGUIRenderer& owner );
-    virtual ~DVDGeometryBuffer() = default;
 
     [[nodiscard]] const glm::mat4& getMatrix() const;
 

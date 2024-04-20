@@ -151,17 +151,17 @@ namespace
 
 namespace Divide
 {
-    PFN_vkCmdSetColorBlendEnableEXT   vkCmdSetColorBlendEnableEXT   = VK_NULL_HANDLE;
-    PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT = VK_NULL_HANDLE;
-    PFN_vkCmdSetColorWriteMaskEXT     vkCmdSetColorWriteMaskEXT     = VK_NULL_HANDLE;
-    PFN_vkCmdPushDescriptorSetKHR     vkCmdPushDescriptorSetKHR     = VK_NULL_HANDLE;
+    static PFN_vkCmdSetColorBlendEnableEXT   vkCmdSetColorBlendEnableEXT   = VK_NULL_HANDLE;
+    static PFN_vkCmdSetColorBlendEquationEXT vkCmdSetColorBlendEquationEXT = VK_NULL_HANDLE;
+    static PFN_vkCmdSetColorWriteMaskEXT     vkCmdSetColorWriteMaskEXT     = VK_NULL_HANDLE;
+    static PFN_vkCmdPushDescriptorSetKHR     vkCmdPushDescriptorSetKHR     = VK_NULL_HANDLE;
 
-    PFN_vkGetDescriptorSetLayoutSizeEXT              vkGetDescriptorSetLayoutSizeEXT              = VK_NULL_HANDLE;
-    PFN_vkGetDescriptorSetLayoutBindingOffsetEXT     vkGetDescriptorSetLayoutBindingOffsetEXT     = VK_NULL_HANDLE;
-    PFN_vkGetDescriptorEXT                           vkGetDescriptorEXT                           = VK_NULL_HANDLE;
-    PFN_vkCmdBindDescriptorBuffersEXT                vkCmdBindDescriptorBuffersEXT                = VK_NULL_HANDLE;
-    PFN_vkCmdSetDescriptorBufferOffsetsEXT           vkCmdSetDescriptorBufferOffsetsEXT           = VK_NULL_HANDLE;
-    PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT vkCmdBindDescriptorBufferEmbeddedSamplersEXT = VK_NULL_HANDLE;
+    static PFN_vkGetDescriptorSetLayoutSizeEXT              vkGetDescriptorSetLayoutSizeEXT              = VK_NULL_HANDLE;
+    static PFN_vkGetDescriptorSetLayoutBindingOffsetEXT     vkGetDescriptorSetLayoutBindingOffsetEXT     = VK_NULL_HANDLE;
+    static PFN_vkGetDescriptorEXT                           vkGetDescriptorEXT                           = VK_NULL_HANDLE;
+    static PFN_vkCmdBindDescriptorBuffersEXT                vkCmdBindDescriptorBuffersEXT                = VK_NULL_HANDLE;
+    static PFN_vkCmdSetDescriptorBufferOffsetsEXT           vkCmdSetDescriptorBufferOffsetsEXT           = VK_NULL_HANDLE;
+    static PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT vkCmdBindDescriptorBufferEmbeddedSamplersEXT = VK_NULL_HANDLE;
 
     namespace
     {
@@ -179,18 +179,6 @@ namespace Divide
                    topology == PrimitiveTopology::TRIANGLE_FAN ||
                    topology == PrimitiveTopology::TRIANGLES_ADJACENCY ||
                    topology == PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY;
-        }
-
-        [[nodiscard]] size_t GetHash( const VkPipelineRenderingCreateInfo& info ) noexcept
-        {
-            size_t hash = 17;
-
-            Util::Hash_combine( hash, info.viewMask, info.colorAttachmentCount, info.depthAttachmentFormat, info.stencilAttachmentFormat );
-            for ( uint32_t i = 0u; i < info.colorAttachmentCount; ++i )
-            {
-                Util::Hash_combine( hash, info.pColorAttachmentFormats[i] );
-            }
-            return hash;
         }
 
         [[nodiscard]] VkShaderStageFlags GetFlagsForStageVisibility( const BaseType<ShaderStageVisibility> mask ) noexcept
@@ -837,7 +825,7 @@ namespace Divide
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-        _device = std::make_unique<VKDevice>( *this, _vkbInstance, perWindowContext._surface );
+        _device = std::make_unique<VKDevice>( _vkbInstance, perWindowContext._surface );
 
         VkDevice vkDevice = _device->getVKDevice();
         if ( vkDevice == VK_NULL_HANDLE )
@@ -2229,16 +2217,18 @@ namespace Divide
                     .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .imageView = VK_NULL_HANDLE,
                     .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                        .clearValue = {
-                            .color = {
-                                DefaultColours::DIVIDE_BLUE.r,
-                                DefaultColours::DIVIDE_BLUE.g,
-                                DefaultColours::DIVIDE_BLUE.b,
-                                DefaultColours::DIVIDE_BLUE.a
-                            }
+                    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                    .clearValue = 
+                    {
+                        .color = 
+                        {
+                            DefaultColours::DIVIDE_BLUE.r,
+                            DefaultColours::DIVIDE_BLUE.g,
+                            DefaultColours::DIVIDE_BLUE.b,
+                            DefaultColours::DIVIDE_BLUE.a
                         }
+                    }
                 };
 
                 thread_local VkRenderingInfo renderingInfo{};
@@ -2259,7 +2249,7 @@ namespace Divide
 
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
-                    attachmentInfo[0].imageView = swapChain->getCurrentImageView(),
+                    attachmentInfo[0].imageView = swapChain->getCurrentImageView();
                     swapChainImageFormat[0] = swapChain->getSwapChain().image_format;
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = to_U32(swapChainImageFormat.size());
                     stateTracker._pipelineRenderInfo.pColorAttachmentFormats = swapChainImageFormat.data();
@@ -2341,7 +2331,7 @@ namespace Divide
                 if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
                 {
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
-                    imageBarrier.image = stateTracker._activeWindow->_swapChain->getCurrentImage(),
+                    imageBarrier.image = stateTracker._activeWindow->_swapChain->getCurrentImage();
                     imageBarrier.subresourceRange = {
                         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                         .baseMipLevel = 0,
@@ -2873,7 +2863,21 @@ namespace Divide
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 }
             } break;
-            default: break;
+
+            case GFX::CommandType::SET_VIEWPORT:
+            case GFX::CommandType::PUSH_VIEWPORT:
+            case GFX::CommandType::POP_VIEWPORT:
+            case GFX::CommandType::SET_SCISSOR:
+            case GFX::CommandType::SET_CAMERA:
+            case GFX::CommandType::PUSH_CAMERA:
+            case GFX::CommandType::POP_CAMERA:
+            case GFX::CommandType::SET_CLIP_PLANES:
+            case GFX::CommandType::BIND_SHADER_RESOURCES:
+            case GFX::CommandType::READ_BUFFER_DATA:
+            case GFX::CommandType::CLEAR_BUFFER_DATA: break;
+
+            case GFX::CommandType::COUNT:
+            default: DIVIDE_UNEXPECTED_CALL(); break;
         }
     }
 

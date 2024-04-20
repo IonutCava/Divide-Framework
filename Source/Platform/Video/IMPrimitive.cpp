@@ -28,6 +28,8 @@ namespace {
 
             case NS_GLIM::GLIM_ENUM::GLIM_4F:
             case NS_GLIM::GLIM_ENUM::GLIM_4I: return 4u;
+
+            default: break;
         }
 
         DIVIDE_UNEXPECTED_CALL();
@@ -40,6 +42,8 @@ namespace {
             case NS_GLIM::GLIM_BUFFER_TYPE::LINES: return PrimitiveTopology::LINES;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: return PrimitiveTopology::LINES;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: return PrimitiveTopology::TRIANGLES;
+
+            default: break;
         }
 
         return PrimitiveTopology::COUNT;
@@ -57,8 +61,8 @@ void IMPrimitive::InitStaticData()
 }
 
 IMPrimitive::IMPrimitive(GFXDevice& context, const Str<64>& name)
-    : _context(context)
-    , _name(name)
+    : _name(name)
+    , _context(context)
 {
     _imInterface = std::make_unique<NS_GLIM::GLIM_BATCH>();
     _dataBuffer = context.newGVD(1, false, name.c_str());
@@ -245,6 +249,9 @@ void IMPrimitive::endBatch() noexcept {
                 idxBuff.count = batchData.m_IndexBuffer_Wireframe.size();
                 idxBuff.data = batchData.m_IndexBuffer_Wireframe.data();
             } break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT: {
+                DIVIDE_UNEXPECTED_CALL();
+            } break;
         }
 
         _memCmd._bufferLocks.emplace_back(_dataBuffer->setIndexBuffer(idxBuff));
@@ -294,78 +301,78 @@ void IMPrimitive::fromFrustums(const IM::FrustumDescriptor* frustums, size_t cou
             const UColour4 startColour = Util::ToByteColour( Util::ToFloatColour( frustums[i].colour ) * 0.25f);
 
             // Draw Near Plane
-            temp.positionStart(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-            temp.colourStart(startColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)];
+            temp._colourStart = startColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-            temp.colourStart(startColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)];
+            temp._colourStart = startColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-            temp.colourStart(startColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_LEFT_TOP)];
+            temp._colourStart = startColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-            temp.colourStart(startColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::NEAR_LEFT_TOP)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)];
+            temp._colourStart = startColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
 
             // Draw Far Plane
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(endColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)];
+            temp._positionEnd = corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)];
+            temp._colourStart = endColour;
+            temp._colourEnd = endColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(endColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)];
+            temp._positionEnd = corners[to_base(FrustumPoints::FAR_RIGHT_TOP)];
+            temp._colourStart = endColour;
+            temp._colourEnd = endColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(endColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_RIGHT_TOP)];
+            temp._positionEnd = corners[to_base(FrustumPoints::FAR_LEFT_TOP)];
+            temp._colourStart = endColour;
+            temp._colourEnd = endColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(endColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_LEFT_TOP)];
+            temp._positionEnd = corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)];
+            temp._colourStart = endColour;
+            temp._colourEnd = endColour;
             lines[lineCount++] = temp;
 
             // Connect Planes
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_RIGHT_BOTTOM)];
+            temp._colourStart = endColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_RIGHT_TOP)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_RIGHT_TOP)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_RIGHT_TOP)];
+            temp._colourStart = endColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_TOP)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_TOP)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_LEFT_TOP)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_LEFT_TOP)];
+            temp._colourStart = endColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
 
-            temp.positionStart(corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)]);
-            temp.positionEnd(corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)]);
-            temp.colourStart(endColour);
-            temp.colourEnd(startColour);
+            temp._positionStart = corners[to_base(FrustumPoints::FAR_LEFT_BOTTOM)];
+            temp._positionEnd = corners[to_base(FrustumPoints::NEAR_LEFT_BOTTOM)];
+            temp._colourStart = endColour;
+            temp._colourEnd = startColour;
             lines[lineCount++] = temp;
             fromLinesInternal(lines.data(), lineCount);
     }
@@ -389,10 +396,10 @@ void IMPrimitive::fromOBBs(const IM::OBBDescriptor* boxes, const size_t count) {
             OBB::OOBBEdgeList edges = descriptor.box.edgeList();
             for (U8 j = 0u; j < 12u; ++j)
             {
-                lines[j].positionStart(edges[j]._start);
-                lines[j].positionEnd(edges[j]._end);
-                lines[j].colourStart(descriptor.colour);
-                lines[j].colourEnd(descriptor.colour);
+                lines[j]._positionStart = edges[j]._start;
+                lines[j]._positionEnd = edges[j]._end;
+                lines[j]._colourStart = descriptor.colour;
+                lines[j]._colourEnd = descriptor.colour;
             }
 
             fromLinesInternal(lines.data(), lines.size());
@@ -468,52 +475,45 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
         const IM::SphereDescriptor& sphere = spheres[c];
         const F32 drho = M_PI_f / sphere.stacks;
         const F32 dtheta = 2.f * M_PI_f / sphere.slices;
-        const F32 ds = 1.f / sphere.slices;
-        const F32 dt = 1.f / sphere.stacks;
 
-        F32 t = 1.f;
         // Create the object
-            attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(sphere.colour));
-            begin(PrimitiveTopology::LINE_STRIP);
-                vec3<F32> startVert{};
-                for (U32 i = 0u; i < sphere.stacks; i++) {
-                    const F32 rho = i * drho;
-                    const F32 srho = std::sin(rho);
-                    const F32 crho = std::cos(rho);
-                    const F32 srhodrho = std::sin(rho + drho);
-                    const F32 crhodrho = std::cos(rho + drho);
+        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(sphere.colour));
+        begin(PrimitiveTopology::LINE_STRIP);
+            vec3<F32> startVert{};
+            for (U32 i = 0u; i < sphere.stacks; i++) {
+                const F32 rho = i * drho;
+                const F32 srho = std::sin(rho);
+                const F32 crho = std::cos(rho);
+                const F32 srhodrho = std::sin(rho + drho);
+                const F32 crhodrho = std::cos(rho + drho);
+                for (U32 j = 0; j <= sphere.slices; j++) {
+                    const F32 theta = j == sphere.slices ? 0.0f : j * dtheta;
+                    const F32 stheta = -std::sin(theta);
+                    const F32 ctheta = std::cos(theta);
 
-                    F32 s = 0.0f;
-                    for (U32 j = 0; j <= sphere.slices; j++) {
-                        const F32 theta = j == sphere.slices ? 0.0f : j * dtheta;
-                        const F32 stheta = -std::sin(theta);
-                        const F32 ctheta = std::cos(theta);
-
-                        F32 x = stheta * srho;
-                        F32 y = ctheta * srho;
-                        F32 z = crho;
-                        const vec3<F32> vert1{
-                            x * sphere.radius + sphere.center.x,
+                    F32 x = stheta * srho;
+                    F32 y = ctheta * srho;
+                    F32 z = crho;
+                    const vec3<F32> vert1{
+                        x * sphere.radius + sphere.center.x,
+                        y * sphere.radius + sphere.center.y,
+                        z * sphere.radius + sphere.center.z
+                    };
+                    vertex(vert1);
+                    x = stheta * srhodrho;
+                    y = ctheta * srhodrho;
+                    z = crhodrho;
+                    vertex(x * sphere.radius + sphere.center.x,
                             y * sphere.radius + sphere.center.y,
-                            z * sphere.radius + sphere.center.z
-                        };
-                        vertex(vert1);
-                        x = stheta * srhodrho;
-                        y = ctheta * srhodrho;
-                        z = crhodrho;
-                        s += ds;
-                        vertex(x * sphere.radius + sphere.center.x,
-                               y * sphere.radius + sphere.center.y,
-                               z * sphere.radius + sphere.center.z);
+                            z * sphere.radius + sphere.center.z);
 
-                        if (i == 0 && j == 0) {
-                            startVert = vert1;
-                        }
+                    if (i == 0 && j == 0) {
+                        startVert = vert1;
                     }
-                    t -= dt;
                 }
-                vertex(startVert.x, startVert.y, startVert.z);
-            end();
+            }
+            vertex(startVert.x, startVert.y, startVert.z);
+        end();
     }
     endBatch();
 }
@@ -588,20 +588,20 @@ void IMPrimitive::fromLinesInternal(const Line* lines, size_t count) {
         return;
     }
 
-    attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(lines[0].colourStart()));
+    attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(lines[0]._colourStart));
     attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(1.f, 1.f));
     // Set the mode to line rendering
     begin(PrimitiveTopology::LINES);
     // Add every line in the list to the batch
     for (size_t i = 0u; i < count; ++i) {
         const Line& line = lines[i];
-        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourStart()));
-        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line.widthStart(), line.widthEnd()));
-        vertex(line.positionStart());
+        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line._colourStart));
+        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line._widthStart, line._widthEnd));
+        vertex(line._positionStart);
 
-        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line.colourEnd()));
-        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line.widthStart(), line.widthEnd()));
-        vertex(line.positionEnd());
+        attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line._colourEnd));
+        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line._widthStart, line._widthEnd));
+        vertex(line._positionEnd);
 
     }
     end();
@@ -655,7 +655,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     drawCmd._cmd.instanceCount = 1u;
     drawCmd._sourceBuffer = _dataBuffer->handle();
 
-    GFX::EnqueueCommand(commandBufferInOut, GFX::BeginDebugScopeCommand{ _name.c_str() });
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(commandBufferInOut)->_scopeName = _name.c_str();
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(commandBufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -681,9 +681,9 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
                 drawCmd._cmd.indexCount = to_U32(_indexCount[i]);
                 drawCmd._bufferFlag = _indexBufferId[i];
 
-                GFX::EnqueueCommand(commandBufferInOut, GFX::BindPipelineCommand{ _pipelines[i] });
-                GFX::EnqueueCommand(commandBufferInOut, GFX::SendPushConstantsCommand{ _additionalConstats });
-                GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ drawCmd });
+                GFX::EnqueueCommand<GFX::BindPipelineCommand>(commandBufferInOut)->_pipeline = _pipelines[i];
+                GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(commandBufferInOut)->_constants = _additionalConstats;
+                GFX::EnqueueCommand<GFX::DrawCommand>(commandBufferInOut)->_drawCommands.emplace_back(drawCmd);
             }
         }
     }
@@ -697,4 +697,4 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     }
 }
 
-};
+} //namespace Divide

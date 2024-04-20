@@ -51,7 +51,7 @@ public:
     };
 
     explicit PXDevice( PlatformContext& context ) noexcept;
-    ~PXDevice();
+    ~PXDevice() override;
 
     ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
     bool closePhysicsAPI() override;

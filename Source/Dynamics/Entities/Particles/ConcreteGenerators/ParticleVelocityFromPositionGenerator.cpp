@@ -14,4 +14,5 @@ void ParticleVelocityFromPositionGenerator::generate([[maybe_unused]] Task& pack
         p._velocity[i].xyz = Random(_minScale, _maxScale) * (p._position[i].xyz - _offset);
     }
 }
-}
+
+} //namespace Divide

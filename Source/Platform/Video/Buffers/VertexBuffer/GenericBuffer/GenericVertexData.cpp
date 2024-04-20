@@ -13,4 +13,4 @@ GenericVertexData::GenericVertexData(GFXDevice& context, const U16 ringBufferLen
     assert(handle()._id != 0);
 }
 
-}; //namespace Divide
+} //namespace Divide

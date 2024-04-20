@@ -101,7 +101,7 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     params.data[0]._vec[0].xy.set( velocityFactor, to_F32( maxSamples() ) );
     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
 
-    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
     return true;

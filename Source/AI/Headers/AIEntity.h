@@ -84,7 +84,7 @@ class AIEntity final : public GUIDWrapper {
     [[nodiscard]] Sensor* getSensor(SensorType type);
 
     [[nodiscard]] AITeam* getTeam() const noexcept { return _teamPtr; }
-    [[nodiscard]] I32 getTeamID() const;
+    [[nodiscard]] U32 getTeamID() const;
     [[nodiscard]] const string& name() const noexcept { return _name; }
 
     void addUnitRef(NPC* npc);
@@ -99,9 +99,9 @@ class AIEntity final : public GUIDWrapper {
     /// Update the crowding system
     void resetCrowd();
     /// The height of the agent for this character.
-    [[nodiscard]] D64 getAgentHeight() const noexcept;
+    [[nodiscard]] F32 getAgentHeight() const noexcept;
     /// The radius of the agent for this character.
-    [[nodiscard]] D64 getAgentRadius() const noexcept;
+    [[nodiscard]] F32 getAgentRadius() const noexcept;
     /// The radius category of this character
     [[nodiscard]] PresetAgentRadius getAgentRadiusCategory() const noexcept { return _agentRadiusCategory; }
     /**
@@ -122,10 +122,10 @@ class AIEntity final : public GUIDWrapper {
     [[nodiscard]] const vec3<F32>& getPosition() const noexcept;
     /// The maximum speed this character can attain.
     /// This parameter is configured for the agent controlling this character.
-    [[nodiscard]] D64 getMaxSpeed() const noexcept;
+    [[nodiscard]] F32 getMaxSpeed() const noexcept;
     /// The maximum acceleration this character has towards its maximum speed.
     /// This parameter is configured for the agent controlling this character.
-    [[nodiscard]] D64 getMaxAcceleration() const noexcept;
+    [[nodiscard]] F32 getMaxAcceleration() const noexcept;
     /**
      * Request to set a manual velocity for this character, to control it
      * manually.
@@ -149,7 +149,7 @@ class AIEntity final : public GUIDWrapper {
     /// at.
     [[nodiscard]] vec3<F32> getVelocity() const noexcept;
     /// The current speed this character is traveling at.
-    [[nodiscard]] D64 getSpeed() const noexcept { return getVelocity().length(); }
+    [[nodiscard]] F32 getSpeed() const noexcept { return getVelocity().length(); }
     /// Returns true if this character is moving.
     [[nodiscard]] bool isMoving() const noexcept { return !_stopped || !IS_ZERO(getSpeed()); }
 

@@ -17,4 +17,5 @@ bool Weapon::addProperty(const WeaponProperty property) {
     _properyMask |= to_U32(property);
     return true;
 }
-}
+
+} //namespace Divide

@@ -53,4 +53,4 @@ RenderTarget* GFXRTPool::getRenderTarget(const RenderTargetID target) const {
     return _renderTargets[target].get();
 }
 
-}; //namespace Divide
+} //namespace Divide

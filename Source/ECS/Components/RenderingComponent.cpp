@@ -267,10 +267,11 @@ namespace Divide
         {
             if ( shaderJustFinishedLoading )
             {
-                _parentSGN->SendEvent( {
-                    ECS::CustomEvent::Type::NewShaderReady,
-                    this
-                                       } );
+                _parentSGN->SendEvent(
+                {
+                    ._type = ECS::CustomEvent::Type::NewShaderReady,
+                    ._sourceCmp = this
+                });
             }
 
             return renderOptionEnabled( RenderOptions::IS_VISIBLE );
@@ -442,28 +443,22 @@ namespace Divide
             {
                 LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
                 _parentSGN->getNode().buildDrawCommands( _parentSGN, _drawCommands._data );
-                for ( GFX::DrawCommand& drawCmd : _drawCommands._data )
+                for ( GenericDrawCommand& cmd : _drawCommands._data )
                 {
-                    for ( GenericDrawCommand& cmd : drawCmd._drawCommands )
+                    hasCommands = true;
+                    cmd._renderOptions = drawCmdOptions;
+                    if ( cmd._cmd.instanceCount > 1 )
                     {
-                        hasCommands = true;
-                        cmd._renderOptions = drawCmdOptions;
-                        if ( cmd._cmd.instanceCount > 1 )
-                        {
-                            isInstanced( true );
-                        }
+                        isInstanced( true );
                     }
                 }
             }
             else
             {
                 LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
-                for ( GFX::DrawCommand& drawCmd : _drawCommands._data )
+                for ( GenericDrawCommand& cmd : _drawCommands._data )
                 {
-                    for ( GenericDrawCommand& cmd : drawCmd._drawCommands )
-                    {
-                        cmd._renderOptions = drawCmdOptions;
-                    }
+                    cmd._renderOptions = drawCmdOptions;
                 }
             }
 
@@ -628,18 +623,15 @@ namespace Divide
         const bool autoIndex = offset != 0u || count != 0u;
         {
             SharedLock<SharedMutex> r_lock2( _drawCommands._dataLock );
-            for ( const GFX::DrawCommand& drawCmd : _drawCommands._data )
+            for ( const GenericDrawCommand& gCmd : _drawCommands._data )
             {
-                for ( const GenericDrawCommand& gCmd : drawCmd._drawCommands )
+                cmdsInOut.push_back( gCmd._cmd );
+                IndirectIndexedDrawCommand& iCmd = cmdsInOut.back();
+                iCmd.baseInstance = isInstanced() ? 0u : (iBufferEntry + 1u); //Make sure to substract 1 in the shader!
+                if ( autoIndex )
                 {
-                    cmdsInOut.push_back( gCmd._cmd );
-                    IndirectIndexedDrawCommand& iCmd = cmdsInOut.back();
-                    iCmd.baseInstance = isInstanced() ? 0u : (iBufferEntry + 1u); //Make sure to substract 1 in the shader!
-                    if ( autoIndex )
-                    {
-                        iCmd.firstIndex = to_U32( offset );
-                        iCmd.indexCount = to_U32( count );
-                    }
+                    iCmd.firstIndex = to_U32( offset );
+                    iCmd.indexCount = to_U32( count );
                 }
             }
         }
@@ -660,14 +652,12 @@ namespace Divide
             U32 startOffset = pkg->drawCmdOffset();
 
             SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
-            for ( const GFX::DrawCommand& drawCmd : _drawCommands._data )
+            for ( GenericDrawCommand& gCmd : _drawCommands._data )
             {
-                GFX::DrawCommand* cmd = bufferInOut.add( drawCmd );
-                for ( GenericDrawCommand& gCmd : cmd->_drawCommands )
-                {
-                    gCmd._commandOffset = startOffset++;
-                }
+                gCmd._commandOffset = startOffset++;
             }
+
+            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands = _drawCommands._data;
         }
     }
 
@@ -861,26 +851,26 @@ namespace Divide
         if ( _axisGizmoLinesDescriptor._lines.empty() )
         {
             Line temp = {};
-            temp.widthStart( 10.0f );
-            temp.widthEnd( 10.0f );
-            temp.positionStart( VECTOR3_ZERO );
+            temp._widthStart = 10.0f;
+            temp._widthEnd = 10.0f;
+            temp._positionStart = VECTOR3_ZERO;
 
             // Red X-axis
-            temp.positionEnd( WORLD_X_AXIS * 4 );
-            temp.colourStart( UColour4( 255, 0, 0, 255 ) );
-            temp.colourEnd( UColour4( 255, 0, 0, 255 ) );
+            temp._positionEnd = WORLD_X_AXIS * 4;
+            temp._colourStart = UColour4( 255, 0, 0, 255 );
+            temp._colourEnd = UColour4( 255, 0, 0, 255 );
             _axisGizmoLinesDescriptor._lines.push_back( temp );
 
             // Green Y-axis
-            temp.positionEnd( WORLD_Y_AXIS * 4 );
-            temp.colourStart( UColour4( 0, 255, 0, 255 ) );
-            temp.colourEnd( UColour4( 0, 255, 0, 255 ) );
+            temp._positionEnd = WORLD_Y_AXIS * 4;
+            temp._colourStart = UColour4( 0, 255, 0, 255 );
+            temp._colourEnd = UColour4( 0, 255, 0, 255 );
             _axisGizmoLinesDescriptor._lines.push_back( temp );
 
             // Blue Z-axis
-            temp.positionEnd( WORLD_Z_AXIS * 4 );
-            temp.colourStart( UColour4( 0, 0, 255, 255 ) );
-            temp.colourEnd( UColour4( 0, 0, 255, 255 ) );
+            temp._positionEnd = WORLD_Z_AXIS * 4;
+            temp._colourStart = UColour4( 0, 0, 255, 255 );
+            temp._colourEnd = UColour4( 0, 0, 255, 255 );
             _axisGizmoLinesDescriptor._lines.push_back( temp );
 
             mat4<F32> worldOffsetMatrixCache( GetMatrix( _parentSGN->get<TransformComponent>()->getWorldOrientation() ), false );

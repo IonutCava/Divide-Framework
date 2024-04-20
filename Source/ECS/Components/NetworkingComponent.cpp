@@ -88,4 +88,4 @@ void UpdateEntities(WorldPacket& p) {
     }
 }
 
-}
+} //namespace Divide

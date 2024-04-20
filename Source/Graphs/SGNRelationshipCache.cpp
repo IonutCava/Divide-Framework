@@ -7,8 +7,8 @@ namespace Divide
 {
 
     SGNRelationshipCache::SGNRelationshipCache( SceneGraphNode* parent ) noexcept
-        : _parentNode( parent ),
-          _isValid(false)
+        : _isValid(false)
+        , _parentNode( parent )
     {
     }
 
@@ -134,8 +134,8 @@ namespace Divide
                     }
                 }
             }break;
-            default: break;
-        };
+            case RelationshipType::COUNT: break;
+        }
 
         return false;
     }

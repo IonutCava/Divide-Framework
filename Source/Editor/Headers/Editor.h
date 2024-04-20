@@ -184,7 +184,7 @@ namespace Divide
 
         public:
         explicit Editor( PlatformContext& context, ImGuiStyleEnum theme = ImGuiStyle_DarkCodz01 );
-        ~Editor();
+        ~Editor() override;
 
         [[nodiscard]] bool init( const vec2<U16> renderResolution );
         void close();
@@ -355,7 +355,7 @@ namespace Divide
         IMPrimitive* _axisGizmo = nullptr;
         Pipeline* _editorPipeline = nullptr;
 
-        hashMap<I64, GenericVertexData_ptr> _IMGUIBuffers;
+        hashMap<I64, GenericVertexData_ptr> _imguiBuffers;
 
         std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};
@@ -375,7 +375,7 @@ namespace Divide
         bool           _showMemoryEditor = false;
         bool           _isScenePaused = false;
         bool           _gridSettingsDirty = true;
-        CircularBuffer<SceneEntry> _recentSceneList;
+        CircularBuffer<SceneEntry, 10> _recentSceneList;
         CameraSnapshot _render2DSnapshot;
         RenderTargetHandle _nodePreviewRTHandle{};
         struct QueueModelSpawn
@@ -576,7 +576,7 @@ namespace Divide
                 return editor._showOptionsWindow;
             }
 
-            [[nodiscard]] static const CircularBuffer<SceneEntry>& getRecentSceneList( const Editor& editor ) noexcept
+            [[nodiscard]] static const CircularBuffer<SceneEntry, 10>& getRecentSceneList( const Editor& editor ) noexcept
             {
                 return editor._recentSceneList;
             }    

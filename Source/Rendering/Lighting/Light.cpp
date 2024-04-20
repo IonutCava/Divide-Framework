@@ -59,12 +59,12 @@ namespace Divide
         }
 
         _shadowProperties._lightDetails.x = to_F32( type );
-        setDiffuseColour( FColour3( DefaultColours::WHITE ) );
+        setDiffuseColour( DefaultColours::WHITE.rgb );
 
         const ECS::CustomEvent evt = {
-            ECS::CustomEvent::Type::TransformUpdated,
-            sgn->get<TransformComponent>(),
-            to_U32( TransformType::ALL )
+            ._type = ECS::CustomEvent::Type::TransformUpdated,
+            ._sourceCmp = sgn->get<TransformComponent>(),
+            ._flag = to_U32( TransformType::ALL )
         };
 
         updateCache( evt );
@@ -214,4 +214,4 @@ namespace Divide
         _colour.rgb = newDiffuseColour;
     }
 
-}
+} //namespace Divide

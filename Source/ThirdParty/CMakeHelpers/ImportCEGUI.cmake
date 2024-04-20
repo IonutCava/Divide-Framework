@@ -2,24 +2,28 @@ include(FetchContent)
 
 include(ThirdParty/CMakeHelpers/FetchContentExcludeFromAll.cmake)
 
+set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4312 /wd4477")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int")
+endif()
+
 FetchContent_Declare(
   Cegui
   GIT_REPOSITORY https://github.com/IonutCava/cegui.git
   GIT_TAG origin/v0-8
+  SYSTEM
 )
 
 set(CEGUI_BUILD_STATIC_CONFIGURATION TRUE)
-
 set(CEGUI_IMAGE_CODEC STBImageCodec)
 set(CEGUI_IMAGE_CODEC_LIB "CEGUI${CEGUI_IMAGE_CODEC}")
 set(CEGUI_BUILD_IMAGECODEC_STB TRUE)
-
 set(CEGUI_XML_PARSER ExpatParser)
 set(CEGUI_XML_PARSER_LIB "CEGUI${CEGUI_XML_PARSER}")
 set(CEGUI_BUILD_XMLPARSER_EXPAT TRUE)
-
 set(CEGUI_BUILD_STATIC_FACTORY_MODULE TRUE)
-
 set(CEGUI_HAS_STD11_REGEX TRUE)
 set(CEGUI_SAMPLES_ENABLED FALSE)
 set(CEGUI_STRING_CLASS 1)
@@ -48,6 +52,8 @@ set(CEGUI_BUILD_XMLPARSER_EXPAT TRUE)
 
 FetchContent_MakeAvailable(Cegui)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
+
 set(CEGUI_LIBRARY_NAMES "CEGUIBase-0_Static;CEGUICommonDialogs-0_Static;CEGUICoreWindowRendererSet_Static;${CEGUI_IMAGE_CODEC_LIB}_Static;${CEGUI_XML_PARSER_LIB}_Static")
 
 set(CEGUI_LIBRARIES "")
@@ -59,7 +65,6 @@ foreach(TARGET_LIB ${CEGUI_LIBRARY_NAMES})
 
     list(APPEND CEGUI_LIBRARIES ${TARGET_LIB})
 endforeach()
-
 
 include_directories(
     "${cegui_SOURCE_DIR}/cegui/include"

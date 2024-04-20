@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_COMMAND_BUFFER_H_
 #define DVD_COMMAND_BUFFER_H_
 
-#include "CommandsImpl.h"
 
 namespace Divide {
 struct GenericDrawCommand;
@@ -82,6 +81,12 @@ namespace Names {
 };
 
 static_assert(std::size( Names::errorType ) == to_base( ErrorType::COUNT ) + 1u, "ErrorType name array out of sync!");
+
+enum class CommandType : U8;
+class CommandBuffer;
+struct CommandBase;
+struct DrawCommand;
+struct MemoryBarrierCommand;
 
 struct CommandBufferQueue
 {
@@ -132,7 +137,7 @@ class CommandBuffer : private NonCopyable
   protected:
     template <typename T, size_t BlockSize>
     friend class ::MemoryPool;
-    CommandBuffer( size_t reservedCmdCount );
+    CommandBuffer( const char* name, size_t reservedCmdCount);
     ~CommandBuffer();
 
     void clean();
@@ -142,6 +147,7 @@ class CommandBuffer : private NonCopyable
 
   protected:
       bool _batched{ false };
+      const char* _name{ nullptr };
 };
 
 static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);

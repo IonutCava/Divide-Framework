@@ -42,7 +42,7 @@ struct glswContextRec
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE GLOBALS
 
-thread_local glswContext* __glsw__Context = nullptr;
+thread_local static glswContext* __glsw__Context = nullptr;
 
 ///////////////////////////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
@@ -50,9 +50,9 @@ thread_local glswContext* __glsw__Context = nullptr;
 static int __glsw__Alphanumeric(char c)
 {
     return
-        c >= 'A' && c <= 'Z' ||
-        c >= 'a' && c <= 'z' ||
-        c >= '0' && c <= '9' ||
+        (c >= 'A' && c <= 'Z') ||
+        (c >= 'a' && c <= 'z') ||
+        (c >= '0' && c <= '9') ||
         c == '_' || c == '.';
 }
 
@@ -85,7 +85,8 @@ glswContext* glswGetCurrentContext()
     return __glsw__Context;
 }
 
-void glswSetCurrentContext(glswContext* gc) {
+static void glswSetCurrentContext(glswContext* gc)
+{
     __glsw__Context = gc;
 }
 

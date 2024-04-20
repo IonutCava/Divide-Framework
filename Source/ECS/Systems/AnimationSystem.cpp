@@ -17,7 +17,8 @@ namespace Divide {
         Parent::PreUpdate(dt);
 
         for (AnimationComponent* comp : _componentCache) {
-            if (comp->_currentAnimIndex == -1) {
+            if (comp->animationIndex() == U32_MAX)
+            {
                 comp->playAnimation(0);
             }
 
@@ -40,12 +41,14 @@ namespace Divide {
             comp->_currentTimeStamp = comp->_parentTimeStamp;
             const D64 timeStampS = Time::MillisecondsToSeconds<D64>(comp->_currentTimeStamp);
 
-            if (comp->playAnimations()) {
+            if (comp->playAnimations())
+            {
                 // Update Animations
-                comp->_frameIndex = animator->frameIndexForTimeStamp(comp->_currentAnimIndex, timeStampS);
+                comp->_frameIndex = animator->frameIndexForTimeStamp(comp->animationIndex(), timeStampS);
 
-                if (comp->_currentAnimIndex != comp->_previousAnimationIndex && comp->_currentAnimIndex >= 0) {
-                    comp->_previousAnimationIndex = comp->_currentAnimIndex;
+                if (comp->animationIndex() != comp->previousAnimationIndex() && comp->animationIndex() != U32_MAX)
+                {
+                    comp->previousAnimationIndex(comp->animationIndex());
                 }
             }
 
@@ -68,8 +71,8 @@ namespace Divide {
             if (comp->frameTicked()) {
                 comp->parentSGN()->SendEvent(
                     ECS::CustomEvent{
-                         ECS::CustomEvent::Type::AnimationUpdated,
-                         comp
+                         ._type = ECS::CustomEvent::Type::AnimationUpdated,
+                         ._sourceCmp = comp
                     }
                 );
             }
@@ -107,4 +110,5 @@ namespace Divide {
     bool AnimationSystem::getAnimationState() const noexcept {
         return AnimationComponent::GlobalAnimationState();
     }
+
 }//namespace Divide

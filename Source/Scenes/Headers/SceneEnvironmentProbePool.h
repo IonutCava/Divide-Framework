@@ -89,8 +89,8 @@ public:
 
     void onNodeUpdated(const SceneGraphNode& node) noexcept;
 
-    static I16  AllocateSlice(bool lock);
-    static void UnlockSlice(I16 slice) noexcept;
+    static U16  AllocateSlice(bool lock);
+    static void UnlockSlice(U16 slice) noexcept;
 
     static bool ProbesDirty()                 noexcept { return s_probesDirty; }
     static void ProbesDirty(const bool state) noexcept { s_probesDirty = state; }

@@ -138,12 +138,12 @@ namespace Divide
         s_shadersDirty = false;
     }
 
-    Material::Material( GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name )
+    Material::Material( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name )
         : CachedResource( ResourceType::DEFAULT, descriptorHash, name )
-        , _context( context )
+        , _context( context.gfx() )
         , _parentCache( parentCache )
     {
-        properties().receivesShadows( _context.context().config().rendering.shadowMapping.enabled );
+        properties().receivesShadows( context.config().rendering.shadowMapping.enabled );
 
         const ShaderProgramInfo defaultShaderInfo = {};
         // Could just direct copy the arrays, but this looks cool
@@ -1393,4 +1393,4 @@ namespace Divide
         }
     }
 
-};
+} //namespace Divide

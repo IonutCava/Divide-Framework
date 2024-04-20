@@ -78,8 +78,7 @@ namespace ECS
 		~ECSEngine();
 
 
-		inline EntityManager* GetEntityManager() { return ECS_EntityManager; }
-        inline EntityManager* const GetEntityManager() const { return ECS_EntityManager; }
+        inline EntityManager* GetEntityManager() const { return ECS_EntityManager; }
 
 		inline ComponentManager* GetComponentManager() { return ECS_ComponentManager; }
         inline ComponentManager* GetComponentManager() const { return ECS_ComponentManager; }

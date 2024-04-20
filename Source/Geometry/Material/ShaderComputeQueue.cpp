@@ -85,4 +85,4 @@ namespace Divide
         _shaderComputeQueue.push_back( element );
     }
 
-}; //namespace Divide
+} //namespace Divide

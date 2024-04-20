@@ -65,7 +65,8 @@ enum class TaskPoolType : U8
     COUNT
 };
 
-class PlatformContext final {
+class PlatformContext final
+{
     friend class Attorney::PlatformContextKernel;
 
  public:
@@ -88,11 +89,12 @@ class PlatformContext final {
     };
 
  public:
-    explicit PlatformContext(Application& app, Kernel& kernel);
+    explicit PlatformContext(Application& app);
     ~PlatformContext();
 
     void idle(bool fast = true, U64 deltaTimeUSGame = 0u, U64 deltaTimeUSApp = 0u );
 
+    void init(Kernel& kernel);
     void terminate();
 
     [[nodiscard]] Application& app()  noexcept { return _app; }
@@ -152,7 +154,7 @@ class PlatformContext final {
     /// Main application instance
     Application& _app;
     /// Main app's kernel
-    Kernel& _kernel;
+    Kernel* _kernel{nullptr};
 
     /// Task pools
     std::array<TaskPool*, to_base(TaskPoolType::COUNT)> _taskPool;

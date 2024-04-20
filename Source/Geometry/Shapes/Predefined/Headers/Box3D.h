@@ -39,7 +39,7 @@ namespace Divide {
 
 class Box3D final : public Object3D {
    public:
-   explicit Box3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name, const vec3<F32>& size);
+   explicit Box3D( PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name, const vec3<F32>& size);
 
    void setHalfExtent(const vec3<F32>& halfExtent);
 

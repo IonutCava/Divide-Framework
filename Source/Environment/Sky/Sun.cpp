@@ -95,7 +95,7 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     const I32 day = dateTime.tm_mday;
     // clock time just now
     const auto h = dateTime.tm_hour + dateTime.tm_min / 60.0;
-    const auto tzone = std::chrono::current_zone()->get_info( std::chrono::system_clock::now() ).offset.count();
+    const auto tzone = std::chrono::current_zone()->get_info( std::chrono::system_clock::now() ).offset.count() / 3600.0;
 
     // year = 1990; m=4; day=19; h=11.99;	// local time
     const auto UT = h - tzone;	// universal time
@@ -156,23 +156,24 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     riset -= 24 * (riset > 24 ? 1 : 0);
     settm -= 24 * (settm > 24 ? 1 : 0);
 
-    const auto calcTime = [](const D64 dhr) noexcept {
+    const auto calcTime = [](const D64 dhr) noexcept
+    {
         SimpleTime ret;
         ret._hour = to_U8(dhr);
         ret._minutes = to_U8((dhr - to_D64(ret._hour)) * 60);
         return ret;
     };
 
-    SunInfo ret;
-    ret.sunriseTime = calcTime(riset);
-    ret.sunsetTime = calcTime(settm);
-    ret.noonTime = calcTime(noont);
-    ret.altitude = to_F32(altit);
-    ret.azimuth = to_F32(azim);
-    ret.altitudeMax = to_F32(altmax);
-    ret.declination = to_F32(delta_deg);
-
-    return ret;
+    return SunInfo
+    {
+        .sunriseTime = calcTime(riset),
+        .sunsetTime  = calcTime(settm),
+        .noonTime    = calcTime(noont),
+        .altitude    = to_F32(altit),
+        .azimuth     = to_F32(azim),
+        .altitudeMax = to_F32(altmax),
+        .declination = to_F32(delta_deg)
+    };
 }
 
 D64 SunPosition::CorrectAngle(const D64 angleInRadians) noexcept {
@@ -243,4 +244,5 @@ const SunInfo& Sun::GetDetails() const {
         sinPhiRadius * std::cos(theta)
     };
 }
+
 } //namespace Divide

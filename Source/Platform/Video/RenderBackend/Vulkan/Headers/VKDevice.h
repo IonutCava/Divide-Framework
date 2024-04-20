@@ -37,12 +37,10 @@
 
 namespace Divide {
 
-class VK_API;
-
 class VKDevice final : NonCopyable, NonMovable
 {
     public:
-        VKDevice(VK_API& context, vkb::Instance& instance, VkSurfaceKHR targetSurface);
+        VKDevice( vkb::Instance& instance, VkSurfaceKHR targetSurface);
         ~VKDevice();
 
         [[nodiscard]] VkDevice getVKDevice() const noexcept;
@@ -66,8 +64,6 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;
 
     private:
-
-        VK_API& _context;
         vkb::Device _device{}; // Vulkan device for commands
         vkb::PhysicalDevice _physicalDevice{}; // GPU chosen as the default device
         U32 _presentQueueIndex{ INVALID_VK_QUEUE_INDEX };

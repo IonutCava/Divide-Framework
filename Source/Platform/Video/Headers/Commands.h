@@ -40,6 +40,8 @@ namespace GFX {
 enum class CommandType : U8;
 class CommandBuffer;
 
+struct CommandBase;
+
 template <CommandType> struct MapToDataType_t;
 
 template <CommandType T>
@@ -47,9 +49,10 @@ using MapToDataType = typename MapToDataType_t<T>::type;
 
 struct CommandBase
 {
-    explicit CommandBase(CommandType type) : _type(type) {}
+    explicit CommandBase(CommandType type) : _type( type ) {}
 
-    CommandBase(const CommandBase& other) = default;
+    CommandBase(const CommandBase&) = default;
+    CommandBase& operator=(const CommandBase&) = default;
 
     virtual ~CommandBase() = default;
 
@@ -70,12 +73,12 @@ struct Command : CommandBase
 {
     static constexpr CommandType EType = EnumVal;
 
-    Command() : CommandBase(EType) {}
+    Command() : CommandBase( EType ) {}
 
-    void addToBuffer(CommandBuffer* buffer) const final;
+    virtual void addToBuffer(CommandBuffer* buffer) const final;
 
 protected:
-    void DeleteCmd(CommandBase*& cmd) const final;
+     virtual void DeleteCmd(CommandBase*& cmd) const final;
 };
 
 string ToString(const CommandBase& cmd, CommandType type, U16 indent);
@@ -97,3 +100,5 @@ DEFINE_COMMAND_END(Name)
 }; //namespace Divide
 
 #endif //DVD_GFX_COMMAND_H_
+
+#include "Commands.inl"

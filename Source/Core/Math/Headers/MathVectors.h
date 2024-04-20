@@ -131,9 +131,8 @@ namespace Divide
         static_assert(ValidMathType<T>, "Invalid base type!");
 
         public:
-        vec2() noexcept : vec2( static_cast<T>(0) )
-        {
-        }
+        vec2() noexcept : vec2( T{0} ) {}
+
         vec2( T value ) noexcept : vec2( value, value )
         {
         }
@@ -370,7 +369,7 @@ namespace Divide
         /// set the 2 components of the vector back to 0
         void reset()
         {
-            this->set( static_cast<T>(0) );
+            this->set( T{0} );
         }
         /// return the vector's length
         [[nodiscard]] T length()        const noexcept
@@ -443,7 +442,8 @@ namespace Divide
             {
                 T offset, count;
             };
-            T _v[2];
+
+            T _v[2] = {T{0}, T{0} };
         };
     };
 
@@ -481,9 +481,8 @@ namespace Divide
         static_assert(ValidMathType<T>, "Invalid base type!");
 
         public:
-        vec3() noexcept : vec3( static_cast<T>(0) )
-        {
-        }
+        vec3() noexcept : vec3( T{0} ) {}
+
         vec3( T value ) noexcept : vec3( value, value, value )
         {
         }
@@ -513,7 +512,7 @@ namespace Divide
         vec3( const T* v ) noexcept : vec3( v[0], v[1], v[2] )
         {
         }
-        vec3( const vec2<T> v ) noexcept : vec3( v, static_cast<T>(0) )
+        vec3( const vec2<T> v ) noexcept : vec3( v, T{0} )
         {
         }
         vec3( const vec2<T> v, T zIn ) noexcept : vec3( v.x, v.y, zIn )
@@ -523,7 +522,7 @@ namespace Divide
         {
         }
         template<typename U> requires std::is_pod_v<U>
-        vec3( const vec2<U> v ) noexcept : vec3( v.x, v.y, static_cast<U>(0) )
+        vec3( const vec2<U> v ) noexcept : vec3( v.x, v.y, U{0} )
         {
         }
         template<typename U> requires std::is_pod_v<U>
@@ -860,7 +859,8 @@ namespace Divide
             {
                 T _r; vec2<T> gb;
             };
-            T _v[3];
+
+            T _v[3] = {T{0}, T{0}, T{0}};
         };
     };
 
@@ -915,14 +915,13 @@ namespace Divide
     {
         static_assert(ValidMathType<T>, "Invalid base type!");
 
-        public:
-        vec4() noexcept : x( 0 ), y( 0 ), z( 0 ), w( 1 )
-        {
-        }
+      public:
+        vec4() noexcept : vec4( T{0} ) {}
+
         vec4( T xIn, T yIn, T zIn, T wIn ) noexcept : x( xIn ), y( yIn ), z( zIn ), w( wIn )
         {
         }
-        vec4( T xIn, T yIn, T zIn ) noexcept : x( xIn ), y( yIn ), z( zIn ), w( static_cast<T>(1) )
+        vec4( T xIn, T yIn, T zIn ) noexcept : x( xIn ), y( yIn ), z( zIn ), w( T{1} )
         {
         }
         template<typename U> requires std::is_pod_v<U>
@@ -930,7 +929,7 @@ namespace Divide
         {
         }
         template<typename U> requires std::is_pod_v<U>
-        vec4( U xIn, U yIn, U zIn ) noexcept : vec4( xIn, yIn, zIn, static_cast<T>(1) )
+        vec4( U xIn, U yIn, U zIn ) noexcept : vec4( xIn, yIn, zIn, T{1} )
         {
         }
         vec4( __m128 reg ) noexcept : _reg( reg )
@@ -949,27 +948,27 @@ namespace Divide
         vec4( const T* v ) noexcept : vec4( v[0], v[1], v[2], v[3] )
         {
         }
-        vec4( const vec2<T> v ) noexcept : vec4( v, static_cast<T>(0) )
+        vec4( const vec2<T> v ) noexcept : vec4( v, T{0} )
         {
         }
-        vec4( const vec2<T> v, T zIn ) noexcept : vec4( v, zIn, static_cast<T>(1) )
+        vec4( const vec2<T> v, T zIn ) noexcept : vec4( v, zIn, T{1} )
         {
         }
         vec4( const vec2<T> v, T zIn, T wIn ) noexcept : vec4( v.x, v.y, zIn, wIn )
         {
         }
-        vec4( const vec3<T>& v ) noexcept : vec4( v, static_cast<T>(1) )
+        vec4( const vec3<T>& v ) noexcept : vec4( v, T{1} )
         {
         }
         vec4( const vec3<T>& v, T wIn ) noexcept : vec4( v.x, v.y, v.z, wIn )
         {
         }
         template<typename U> requires std::is_pod_v<U>
-        vec4( const vec2<U> v ) noexcept : vec4( v.x, v.y, static_cast<U>(0), static_cast<U>(0) )
+        vec4( const vec2<U> v ) noexcept : vec4( v.x, v.y, U{0}, U{0} )
         {
         }
         template<typename U> requires std::is_pod_v<U>
-        vec4( const vec3<U>& v ) noexcept : vec4( v.x, v.y, v.z, static_cast<U>(0) )
+        vec4( const vec3<U>& v ) noexcept : vec4( v.x, v.y, v.z, U{0} )
         {
         }
         template<typename U> requires std::is_pod_v<U>
@@ -1286,7 +1285,7 @@ namespace Divide
         /// set all the components back to 0
         void reset() noexcept
         {
-            this->set( static_cast<T>(0) );
+            this->set( T{0} );
         }
         /// compare 2 vectors
         template<typename U> requires std::is_pod_v<U>
@@ -1395,7 +1394,7 @@ namespace Divide
                 T _r1; vec2<T> gb;  T _a1;
             };
 
-            T _v[4];
+            T _v[4] = {T{0}, T{0}, T{0}, T{1}};
             SimdVector<T> _reg;
         };
     };

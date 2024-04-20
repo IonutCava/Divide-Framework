@@ -13,10 +13,10 @@ namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     SGNComponent::SGNComponent([[maybe_unused]] Key key, const ComponentType type, SceneGraphNode* parentSGN, PlatformContext& context)
-        : PlatformContextComponent(context),
-          _editorComponent(this, &context.editor(), type, TypeUtil::ComponentTypeToString(type)),
-          _parentSGN(parentSGN),
-          _type(type)
+        : PlatformContextComponent(context)
+        , _parentSGN(parentSGN)
+        , _type(type)
+        , _editorComponent(this, &context.editor(), type, TypeUtil::ComponentTypeToString(type))
     {
     }
 
@@ -62,11 +62,13 @@ namespace Divide {
         return _ID(Util::StringFormat("{}_{}", _parentSGN->name().c_str(), _editorComponent.name().c_str()).c_str());
     }
 
-    bool SGNComponent::enabled() const {
+    bool SGNComponent::enabled() const
+    {
         return _enabled;
     }
 
-    void SGNComponent::enabled(const bool state) {
+    void SGNComponent::enabled(const bool state)
+    {
         _enabled = state;
     }
 

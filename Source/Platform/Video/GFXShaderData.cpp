@@ -10,4 +10,4 @@ namespace Divide {
         const size_t alignmentRequirement = ShaderBuffer::AlignmentRequirement(BufferUsageType::CONSTANT_BUFFER);
         return (dataSizeA % alignmentRequirement == 0);
     }
-}; //namespace Divide
+} //namespace Divide

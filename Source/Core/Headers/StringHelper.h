@@ -41,11 +41,11 @@ namespace Divide {
         bool FindCommandLineArgument(int argc, char** argv, const char* target_arg, const char* arg_prefix = "--");
         bool ExtractStartupProject(int argc, char** argv, string& projectOut, const char* arg_prefix = "--");
 
-        template<size_t N, typename T_str = string>  requires valid_replace_string<T_str>
-        bool ReplaceStringInPlace(T_str& subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);
+        template< typename T_str = string>  requires valid_replace_string<T_str>
+        bool ReplaceStringInPlace(T_str& subject, std::span<const std::string_view> search, std::string_view replace, bool recursive = false);
 
-        template<size_t N, typename T_str = string>  requires valid_replace_string<T_str>
-        [[nodiscard]] T_str ReplaceString(std::string_view subject, const std::array<std::string_view, N>& search, std::string_view replace, bool recursive = false);
+        template<typename T_str = string>  requires valid_replace_string<T_str>
+        [[nodiscard]] T_str ReplaceString(std::string_view subject, std::span<const std::string_view> search, std::string_view replace, bool recursive = false);
 
         template<typename T_str = string> requires valid_replace_string<T_str>
         bool ReplaceStringInPlace(T_str& subject, std::string_view search, std::string_view replace, bool recursive = false);

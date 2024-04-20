@@ -266,7 +266,7 @@ namespace Divide
                         Reflection::UniformDeclaration declaration; 
                         declaration._type = Util::Trim( m.get<1>().str() ).c_str();
                         declaration._name = Util::Trim( m.get<2>().str() ).c_str();
-                        declaration._typeHash = _ID( declaration._type.c_str() ),
+                        declaration._typeHash = _ID( declaration._type.c_str() );
                         foundUniforms.emplace( declaration );
                     }
                     else
@@ -306,10 +306,10 @@ namespace Divide
     };
 
     UniformBlockUploader::UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask )
-        : _context( context ),
-        _shaderStageVisibilityMask( shaderStageVisibilityMask ),
-        _parentShaderName( parentShaderName ),
-        _uniformBlock( uniformBlock )
+        : _uniformBlock( uniformBlock )
+        , _context( context )
+        , _shaderStageVisibilityMask( shaderStageVisibilityMask )
+        , _parentShaderName( parentShaderName )
     {
         const auto GetSizeOf = []( const PushConstantType type ) noexcept -> size_t
         {
@@ -319,6 +319,7 @@ namespace Divide
                 case PushConstantType::UINT: return sizeof( U32 );
                 case PushConstantType::FLOAT: return sizeof( F32 );
                 case PushConstantType::DOUBLE: return sizeof( D64 );
+                default: break;
             };
 
             DIVIDE_UNEXPECTED_CALL_MSG( "Unexpected push constant type" );
@@ -545,4 +546,4 @@ namespace Divide
 
         return 0u;
     }
-}; //namespace Divide
+}//namespace Divide

@@ -41,7 +41,7 @@ namespace ECS
 
 		System()
 		{
-			DEFINE_LOGGER(typeid(T).name())
+			DEFINE_LOGGER(typeid(T).name());
 			LOG_INFO("System {} created.", typeid(T).name());
 		}
 

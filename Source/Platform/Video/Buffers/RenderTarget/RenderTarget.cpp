@@ -187,6 +187,8 @@ RTAttachment* RenderTarget::getAttachment(const RTAttachmentType type, const RTC
         case RTAttachmentType::DEPTH:
         case RTAttachmentType::DEPTH_STENCIL:  DIVIDE_ASSERT(slot == RTColourAttachmentSlot::SLOT_0); return _attachments[RT_DEPTH_ATTACHMENT_IDX].get();
         case RTAttachmentType::COLOUR:         return _attachments[to_base(slot)].get();
+
+        case RTAttachmentType::COUNT: break;
     }
 
     DIVIDE_UNEXPECTED_CALL();
@@ -212,6 +214,7 @@ U8 RenderTarget::getAttachmentCount(const RTAttachmentType type) const noexcept
 
             return count;
         }
+        case RTAttachmentType::COUNT: break;
     }
 
     DIVIDE_UNEXPECTED_CALL();

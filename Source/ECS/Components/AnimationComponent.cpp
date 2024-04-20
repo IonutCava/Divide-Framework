@@ -74,28 +74,31 @@ bool AnimationComponent::playAnimation(const string& name) {
 }
 
 /// Select an animation by index
-bool AnimationComponent::playAnimation(const I32 pAnimIndex) {
-    if (!_animator) {
+bool AnimationComponent::playAnimation(const U32 pAnimIndex)
+{
+    if (!_animator)
+    {
         return false;
     }
 
-    if (pAnimIndex >= to_I32(_animator->animations().size())) {
+    if (pAnimIndex >= _animator->animations().size() && pAnimIndex != U32_MAX)
+    {
         return false;  // no change, or the animations data is out of bounds
     }
 
-    const I32 oldIndex = _currentAnimIndex;
-    _currentAnimIndex = pAnimIndex;  // only set this after the checks for good
-                                     // data and the object was actually
-                                     // inserted
+    const U32 oldIndex = animationIndex();
+    _animationIndex = pAnimIndex;  // only set this after the checks for good data and the object was actually inserted
 
-    if (_currentAnimIndex == -1) {
-        _currentAnimIndex = 0;
+    if ( _animationIndex == U32_MAX)
+    {
+        _animationIndex = 0;
     }
 
     resetTimers();
 
-    if (oldIndex != _currentAnimIndex) {
-        _parentSGN->getNode<Object3D>().onAnimationChange(_parentSGN, _currentAnimIndex);
+    if (oldIndex != _animationIndex )
+    {
+        _parentSGN->getNode<Object3D>().onAnimationChange(_parentSGN, _animationIndex );
         return true;
     }
 
@@ -103,65 +106,84 @@ bool AnimationComponent::playAnimation(const I32 pAnimIndex) {
 }
 
 /// Select next available animation
-bool AnimationComponent::playNextAnimation() noexcept {
-    if (!_animator) {
+bool AnimationComponent::playNextAnimation() noexcept
+{
+    if (!_animator)
+    {
         return false;
     }
 
-    const I32 oldIndex = _currentAnimIndex;
-    _currentAnimIndex = (_currentAnimIndex + 1 ) % _animator->animations().size();
+    const U32 oldIndex = animationIndex();
+    if ( _animationIndex == U32_MAX)
+    {
+        _animationIndex = 0u;
+    }
+
+    _animationIndex = (_animationIndex + 1u) % _animator->animations().size();
 
     resetTimers();
 
-    return oldIndex != _currentAnimIndex;
+    return oldIndex != _animationIndex;
 }
 
-bool AnimationComponent::playPreviousAnimation() noexcept {
-    if (!_animator) {
+bool AnimationComponent::playPreviousAnimation() noexcept
+{
+    if (!_animator)
+    {
         return false;
     }
 
-    const I32 oldIndex = _currentAnimIndex;
-    if (_currentAnimIndex == 0) {
-        _currentAnimIndex = to_I32(_animator->animations().size());
+    const U32 oldIndex = _animationIndex;
+    if ( _animationIndex == 0 || _animationIndex == U32_MAX)
+    {
+        _animationIndex = to_I32(_animator->animations().size());
     }
-    --_currentAnimIndex;
+
+    --_animationIndex;
 
     resetTimers();
 
-    return oldIndex != _currentAnimIndex;
+    return oldIndex != _animationIndex;
 }
 
-const vector<Line>& AnimationComponent::skeletonLines() const {
+const vector<Line>& AnimationComponent::skeletonLines() const
+{
     assert(_animator != nullptr);
 
     const D64 animTimeStamp = Time::MillisecondsToSeconds<D64>(std::max(_currentTimeStamp, 0.0));
     // update possible animation
-    return  _animator->skeletonLines(_currentAnimIndex, animTimeStamp);
+    return  _animator->skeletonLines( _animationIndex, animTimeStamp);
 }
 
 ShaderBuffer* AnimationComponent::getBoneBuffer() const
 {
-    const AnimEvaluator& anim = getAnimationByIndex( std::max( _previousAnimationIndex, 0 ) );
+    const AnimEvaluator& anim = getAnimationByIndex( std::min( _previousAnimationIndex, to_U32(_animator->animations().size()) ) );
     return anim.boneBuffer();
 }
 
-I32 AnimationComponent::frameCount(const U32 animationID) const {
+I32 AnimationComponent::frameCount(const U32 animationID) const
+{
     assert(_animator != nullptr);
+
     return _animator->frameCount(animationID);
 }
 
-U8 AnimationComponent::boneCount() const {
+U8 AnimationComponent::boneCount() const
+{
     assert(_animator != nullptr);
+
     return  _animator->boneCount();
 }
 
-bool AnimationComponent::frameTicked() const noexcept {
+bool AnimationComponent::frameTicked() const noexcept
+{
     return _playAnimations ? _frameIndex._prev != _frameIndex._curr : false;
 }
 
-AnimEvaluator& AnimationComponent::getAnimationByIndex(const I32 animationID) const {
-    assert(_animator != nullptr);
+AnimEvaluator& AnimationComponent::getAnimationByIndex(const U32 animationID) const
+{
+    assert(_animator != nullptr && animationID != U32_MAX);
+
     return _animator->animationByIndex(animationID);
 }
 

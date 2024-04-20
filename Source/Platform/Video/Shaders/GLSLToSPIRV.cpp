@@ -259,6 +259,8 @@ namespace
             case ShaderType::TESSELLATION_CTRL: return ShaderStageVisibility::TESS_CONTROL;
             case ShaderType::TESSELLATION_EVAL: return ShaderStageVisibility::TESS_EVAL;
             case ShaderType::COMPUTE: return ShaderStageVisibility::COMPUTE;
+
+            case ShaderType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         };
 
         return ShaderStageVisibility::NONE;

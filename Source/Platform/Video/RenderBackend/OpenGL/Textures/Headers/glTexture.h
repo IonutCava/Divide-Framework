@@ -50,7 +50,7 @@ class glTexture final : public Texture {
                        const TextureDescriptor& texDescriptor,
                        ResourceCache& parentCache);
 
-    ~glTexture();
+    ~glTexture() override;
 
     bool unload() override;
 

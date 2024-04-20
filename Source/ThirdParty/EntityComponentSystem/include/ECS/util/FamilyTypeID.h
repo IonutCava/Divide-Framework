@@ -25,13 +25,13 @@ namespace ECS { namespace util { namespace Internal {
 	public:
 	
 		template<class U>
-		static const TypeID Get()
+		static TypeID Get()
 		{
 			static const TypeID STATIC_TYPE_ID { s_count++ };
 			return STATIC_TYPE_ID;
 		}
 
-		static const TypeID Get()
+		static TypeID Get()
 		{
 			return s_count;
 		}

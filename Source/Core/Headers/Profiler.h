@@ -86,7 +86,7 @@ bool OnProfilerStateChanged( const Profiler::State state );
 #define PROFILE_SCOPE(NAME, CATEGORY) OPTICK_EVENT(NAME, CATEGORY); static_assert(true, "")
 #define PROFILE_SCOPE_AUTO(CATEGORY) OPTICK_EVENT(OPTICK_FUNC, CATEGORY); static_assert(true, "")
 #define PROFILE_TAG(NAME, ...) OPTICK_TAG( NAME, __VA_ARGS__ ); static_assert(true, "")
-#define PROFILE_FRAME(NAME) OPTICK_FRAME( NAME ); static_assert(true, "")
+#define PROFILE_FRAME(NAME) NO_DESTROY OPTICK_FRAME( NAME ); static_assert(true, "")
 
 
 #if 1

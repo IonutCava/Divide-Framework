@@ -83,10 +83,11 @@ namespace Divide {
         [[nodiscard]] const string& lasActionName() const noexcept;
 
         template<typename T>
-        void registerUndoEntry(const UndoEntry<T>& entry) {
-            auto entryPtr = std::make_shared<UndoEntry<T>>(entry);
-            _undoStack.push_back(entryPtr);
-            if (to_U32(_undoStack.size()) >= _maxSize) {
+        void registerUndoEntry(const UndoEntry<T>& entry)
+        {
+            _undoStack.emplace_back( std::make_shared<UndoEntry<T>>( entry ) );
+            if (to_U32(_undoStack.size()) >= _maxSize)
+            {
                 _undoStack.pop_front();
             }
         }

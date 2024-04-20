@@ -29,7 +29,7 @@ namespace Divide
     namespace
     {
         constexpr U16 BYTE_BUFFER_VERSION = 1u;
-        constexpr std::array<U32, 2> g_cacheMarkerByteValue = { 0xDEADBEEF, 0xBADDCAFE };
+        constexpr U32 g_cacheMarkerByteValue[2]{ 0xDEADBEEF, 0xBADDCAFE };
         constexpr U32 g_nodesPerPartition = 32u;
     };
 
@@ -102,7 +102,7 @@ namespace Divide
         //ToDo: Maybe add particles too? -Ionut
         if ( Is3DObject( node.getNode().type() ) )
         {
-            SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes( parentScene() );
+            SceneEnvironmentProbePool* probes = Attorney::SceneGraph::getEnvProbes( &parentScene() );
             probes->onNodeUpdated( node );
         }
         else if ( node.getNode().type() == SceneNodeType::TYPE_SKY )
@@ -118,7 +118,7 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-            LightPool* pool = Attorney::SceneGraph::getLightPool( parentScene() );
+            LightPool* pool = Attorney::SceneGraph::getLightPool( &parentScene() );
             pool->onVolumeMoved( bComp->getBoundingSphere(), node.usageContext() == NodeUsageContext::NODE_STATIC );
 
             if ( bComp->collisionsEnabled() )
@@ -168,7 +168,7 @@ namespace Divide
                       } );
         }
 
-        Attorney::SceneGraph::onNodeDestroy( _parentScene, oldNode );
+        Attorney::SceneGraph::onNodeDestroy( &parentScene(), oldNode );
 
         _nodeListChanged = true;
     }
@@ -742,7 +742,7 @@ namespace Divide
         readNode( node_pt, rootNode, readNode );
         // This may not be needed;
         assert( rootNode.typeHash == _ID( "TRANSFORM" ) );
-        Attorney::SceneGraph::addSceneGraphToLoad( parentScene(), MOV( rootNode ) );
+        Attorney::SceneGraph::addSceneGraphToLoad( &parentScene(), MOV( rootNode ) );
     }
 
     bool SceneGraph::saveNodeToXML( const SceneGraphNode* node ) const

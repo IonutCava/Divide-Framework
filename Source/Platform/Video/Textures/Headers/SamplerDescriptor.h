@@ -37,6 +37,17 @@
 
 namespace Divide {
 
+struct SamplerLOD
+{
+    /// OpenGL eg: used by TEXTURE_MIN_LOD and TEXTURE_MAX_LOD
+    F32 _min{ -1000.f };
+    F32 _max{ 1000.f };
+    /// OpenGL eg: used by TEXTURE_LOD_BIAS
+    F32 _bias{ 0 };
+
+    bool operator==( const SamplerLOD& rhs ) const noexcept;
+};
+
  /// This struct is used to define all of the sampler settings needed to use a texture
  /// We do not define copy constructors as we must define descriptors only with POD
 struct SamplerDescriptor 
@@ -45,11 +56,7 @@ struct SamplerDescriptor
 
     /// Used with custom border colours
     UColour4 _customBorderColour { DefaultColours::BLACK_U8 };
-    /// OpenGL eg: used by TEXTURE_MIN_LOD and TEXTURE_MAX_LOD
-    F32 _minLOD { -1000.f };
-    F32 _maxLOD {  1000.f };
-    /// OpenGL eg: used by TEXTURE_LOD_BIAS
-    F32 _biasLOD { 0 };
+    SamplerLOD _lod{};
     /// Texture filtering mode
     TextureFilter _minFilter { TextureFilter::LINEAR };
     TextureFilter _magFilter { TextureFilter::LINEAR };

@@ -957,13 +957,11 @@ void Sky::prepareRender( SceneGraphNode* sgn,
     SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
 }
 
-void Sky::buildDrawCommands( SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut )
+void Sky::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
 {
-    GenericDrawCommand cmd = {};
+    GenericDrawCommand& cmd = cmdsOut.emplace_back();
     cmd._sourceBuffer = _sky->geometryBuffer()->handle();
     cmd._cmd.indexCount = to_U32( _sky->geometryBuffer()->getIndexCount() );
-
-    cmdsOut.emplace_back( GFX::DrawCommand{ cmd } );
 
     SceneEnvironmentProbePool::SkyLightNeedsRefresh( true );
     _atmosphereChanged = true;

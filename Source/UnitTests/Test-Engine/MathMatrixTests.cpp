@@ -113,7 +113,7 @@ TEST_CASE( "Mat Union Tests", "[math_matrix_test]" )
     CHECK_EQUAL(input1.element(1, 0), input1.m[1][0]);
     CHECK_EQUAL(input2.element(2, 1), input2.m[2][1]);
     CHECK_EQUAL(input3.element(3, 2), input3.m[3][2]);
-    CHECK_EQUAL(input4.element(2, 2), input4.m[2][2]);
+    CHECK_TRUE(COMPARE(input4.element(2, 2), input4.m[2][2]));
 
     U8 row = 0u, column = 0u;
     U8 elementsPerLine = 2;
@@ -137,7 +137,7 @@ TEST_CASE( "Mat Union Tests", "[math_matrix_test]" )
 
     for (row = 0; row < elementsPerLine; ++row) {
         for (column = 0; column < elementsPerLine; ++column) {
-            CHECK_EQUAL(input4.element(row, column), input4.mat[row * elementsPerLine + column]);
+            CHECK_TRUE(COMPARE(input4.element(row, column), input4.mat[row * elementsPerLine + column]));
         }
     }
 }

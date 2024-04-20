@@ -32,4 +32,5 @@ void ParticleVelocityGenerator::generate(Task& packagedTasksParent,
             parentPool);
         });
 }
-}
+
+} //namespace Divide

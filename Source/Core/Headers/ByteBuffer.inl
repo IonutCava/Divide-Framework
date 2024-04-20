@@ -49,29 +49,39 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_CORE_BYTE_BUFFER_INL_
 #define DVD_CORE_BYTE_BUFFER_INL_
 
-namespace Divide {
+namespace Divide
+{
 
 template<class T, size_t N>
-void ByteBuffer::addMarker(const std::array<T, N>& pattern) {
-    for (const T& entry : pattern) {
+void ByteBuffer::addMarker(const T( &pattern )[N])
+{
+    for (const T& entry : pattern)
+    {
         append<T>(entry);
     }
 }
 
 template<class T, size_t N>
-void ByteBuffer::readSkipToMarker(const std::array<T, N>& pattern) {
+void ByteBuffer::readSkipToMarker(const T( &pattern )[N])
+{
     T tempMarker{0};
     bool found = false;
-    do {
-        while (bufferSize() >= sizeof(T) && tempMarker != pattern[0]) {
-            tempMarker = read<T>();
+    do
+    {
+        while (bufferSize() >= sizeof(T) && tempMarker != pattern[0])
+        {
+            read<T>( tempMarker );
         }
-        if (bufferSize() >= sizeof(T)) {
+
+        if (bufferSize() >= sizeof(T))
+        {
             assert(tempMarker == pattern[0]);
             found = true;
-            for (size_t i = 1u; i < N; ++i) {
-                tempMarker = read<T>();
-                if (tempMarker != pattern[i]) {
+            for (size_t i = 1u; i < N; ++i)
+            {
+                read<T>( tempMarker );
+                if (tempMarker != pattern[i])
+                {
                     found = false;
                     break;
                 }
@@ -80,141 +90,173 @@ void ByteBuffer::readSkipToMarker(const std::array<T, N>& pattern) {
     } while (bufferSize() >= sizeof(T) && !found);
 
     // We wanted to skip to a marker. None was found so we need to skip to the end!
-    if (!found) {
+    if (!found)
+    {
+        Byte temp{};
         // Consume a byte at a time until we reach the end.
-        while (!bufferEmpty()) {
-            read<Byte>();
+        while (!bufferEmpty())
+        {
+            read<Byte>(temp);
         }
     }
 }
 
 template <typename T>
-void ByteBuffer::put(const size_t pos, const T& value) {
+void ByteBuffer::put(const size_t pos, const T& value)
+{
     put(pos, (Byte*)&value, sizeof(T));
 }
 
 
 template <typename T>
-ByteBuffer& ByteBuffer::operator<<(const T& value) {
+ByteBuffer& ByteBuffer::operator<<(const T& value)
+{
     append<T>(value);
     return *this;
 }
 
-
 template <typename T>
-ByteBuffer& ByteBuffer::operator>>(T& value) {
-    value = read<T>();
+ByteBuffer& ByteBuffer::operator>>(T& value)
+{
+    read<T>(value);
     return *this;
 }
 
 template<>
-inline ByteBuffer& ByteBuffer::operator>>(bool& value) {
-    value = read<I8>() == I8_ONE;
+inline ByteBuffer& ByteBuffer::operator>>(bool& value)
+{
+    I8 temp{};
+    read<I8>(temp);
+    value = temp == I8_ONE;
     return *this;
 }
 
 template<>
-inline ByteBuffer& ByteBuffer::operator>>(string& value) {
+inline ByteBuffer& ByteBuffer::operator>>(string& value)
+{
     value.clear();
-    // prevent crash at wrong string format in packet
-    while (rpos() < storageSize()) {
-        const char c = read<char>();
-        if (c == U8_ZERO ) {
+
+    char c;
+    while (rpos() < storageSize())
+    {
+        read<char>(c);
+        if (c == U8_ZERO )
+        {
             break;
         }
         value += c;
     }
+
     return *this;
 }
 
 template <typename T>
-void ByteBuffer::readNoSkip(T& value) {
-    value = readNoSkipFrom<T>(_rpos);
+void ByteBuffer::readNoSkip(T& value)
+{
+    readNoSkipFrom<T>(_rpos, value);
 }
 
 template <>
 inline void ByteBuffer::readNoSkip(bool& value) {
-    value = readNoSkipFrom<I8>(_rpos) == I8_ONE;
+    I8 temp{};
+    readNoSkipFrom<I8>(_rpos, temp);
+    value = temp == I8_ONE;
 }
 
 template <>
-inline void ByteBuffer::readNoSkip(string& value) {
+inline void ByteBuffer::readNoSkip(string& value)
+{
     value.clear();
     size_t inc = 0;
+
+    char c;
     // prevent crash at wrong string format in packet
-    while (rpos() < storageSize()) {
-        const char c = read<char>(); ++inc;
-        if (c == U8_ZERO ) {
+    while (rpos() < storageSize())
+    {
+        read<char>(c);
+        ++inc;
+        if (c == U8_ZERO )
+        {
             break;
         }
         value += c;
     }
+
     _rpos -= inc;
 }
 
 template <>
-inline void ByteBuffer::readNoSkip(ResourcePath& value) {
+inline void ByteBuffer::readNoSkip(ResourcePath& value)
+{
     string temp{};
     readNoSkip(temp);
     value = ResourcePath(temp);
 }
 
 template <typename U>
-ByteBuffer& ByteBuffer::operator>>([[maybe_unused]] Unused<U>& value) {
+ByteBuffer& ByteBuffer::operator>>([[maybe_unused]] Unused<U>& value)
+{
     readSkip<U>();
     return *this;
 }
 
 template <typename T>
-void ByteBuffer::readSkip() {
+void ByteBuffer::readSkip()
+{
     readSkip(sizeof(T));
 }
 
 template <>
-inline void ByteBuffer::readSkip<char *>() {
+inline void ByteBuffer::readSkip<char *>()
+{
     string temp;
     *this >> temp;
 }
 
 template <>
-inline void ByteBuffer::readSkip<char const *>() {
+inline void ByteBuffer::readSkip<char const *>()
+{
     readSkip<char *>();
 }
 
 template <>
-inline void ByteBuffer::readSkip<string>() {
+inline void ByteBuffer::readSkip<string>()
+{
     readSkip<char *>();
 }
 
-inline void ByteBuffer::readSkip(const size_t skip) noexcept {
-    if (_rpos + skip > storageSize()) {
+inline void ByteBuffer::readSkip(const size_t skip) noexcept
+{
+    if (_rpos + skip > storageSize())
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
+
     _rpos += skip;
 }
 
 template <typename T>
-T ByteBuffer::read() {
-    T r = readNoSkipFrom<T>(_rpos);
+void ByteBuffer::read(T& out)
+{
+    readNoSkipFrom<T>(_rpos, out);
     _rpos += sizeof(T);
-    return r;
 }
 
 template <typename T>
-T ByteBuffer::readNoSkipFrom(const size_t pos) const
+void ByteBuffer::readNoSkipFrom(const size_t pos, T& out) const
 {
     if (pos + sizeof(T) > storageSize())
     {
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    T val = *(T const *)&_storage[pos];
-    //EndianConvert(val);
-    return val;
+    std::memcpy(&out, &_storage[pos], sizeof(T));
 }
 
-inline void ByteBuffer::read(Byte *dest, const size_t len) {
-    if (_rpos + len > storageSize()) {
+inline void ByteBuffer::read(Byte *dest, const size_t len)
+{
+    if (_rpos + len > storageSize())
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 
@@ -222,7 +264,8 @@ inline void ByteBuffer::read(Byte *dest, const size_t len) {
     _rpos += len;
 }
 
-inline void ByteBuffer::readPackXYZ(F32& x, F32& y, F32& z) {
+inline void ByteBuffer::readPackXYZ(F32& x, F32& y, F32& z)
+{
     U32 packed = 0;
     *this >> packed;
     x = ((packed & 0x7FF) << 21 >> 21) * 0.25f;
@@ -230,13 +273,16 @@ inline void ByteBuffer::readPackXYZ(F32& x, F32& y, F32& z) {
     z = (packed >> 22 << 22 >> 22) * 0.25f;
 }
 
-inline U64 ByteBuffer::readPackGUID() {
+inline U64 ByteBuffer::readPackGUID()
+{
     U64 guid = 0;
     U8 guidmark = 0;
     *this >> guidmark;
 
-    for (I32 i = 0; i < 8; ++i) {
-        if (guidmark & U8_ONE << i) {
+    for (I32 i = 0; i < 8; ++i)
+    {
+        if (guidmark & U8_ONE << i)
+        {
             U8 bit;
             *this >> bit;
             guid |= static_cast<U64>(bit) << i * 8;
@@ -247,7 +293,8 @@ inline U64 ByteBuffer::readPackGUID() {
 }
 
 
-inline void ByteBuffer::appendPackXYZ(const F32 x, const F32 y, const F32 z) {
+inline void ByteBuffer::appendPackXYZ(const F32 x, const F32 y, const F32 z)
+{
     U32 packed = 0u;
     packed |= to_U32( to_I32(x / 0.25f) & 0x7FF);
     packed |= to_U32((to_I32(y / 0.25f) & 0x7FF) << 11);
@@ -260,8 +307,10 @@ inline void ByteBuffer::appendPackGUID(U64 guid)
     U8 packGUID[8 + 1];
     packGUID[0] = 0u;
     size_t size = 1;
-    for (U8 i = 0; guid != 0; ++i) {
-        if (guid & 0xFF) {
+    for (U8 i = 0; guid != 0; ++i)
+    {
+        if (guid & 0xFF)
+        {
             packGUID[0] |= U8_ONE << i;
             packGUID[size] = to_U8(guid & 0xFF);
             ++size;
@@ -273,8 +322,10 @@ inline void ByteBuffer::appendPackGUID(U64 guid)
     append(packGUID, size);
 }
 
-inline Byte ByteBuffer::operator[](const size_t pos) const {
-    return readNoSkipFrom<Byte>(pos);
+inline Byte ByteBuffer::operator[](const size_t pos) const{
+    Byte ret{};
+    readNoSkipFrom<Byte>( pos, ret );
+    return ret;
 }
 
 inline size_t ByteBuffer::rpos() const noexcept {

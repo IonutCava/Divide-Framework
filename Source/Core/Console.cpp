@@ -10,7 +10,7 @@
 namespace Divide {
 
 SharedMutex Console::s_callbackLock;
-vector<Console::ConsolePrintCallbackEntry> Console::s_guiConsoleCallbacks;
+NO_DESTROY  vector<Console::ConsolePrintCallbackEntry> Console::s_guiConsoleCallbacks;
 
 constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
                               to_base( Console::Flags::DECORATE_THREAD_ID ) |
@@ -26,11 +26,11 @@ std::atomic_bool Console::s_running = false;
 //https://github.com/cameron314/concurrentqueue
 namespace
 {
-    std::array<Console::OutputEntry, 16> g_outputCache;
+    NO_DESTROY std::array<Console::OutputEntry, 16> g_outputCache;
 
     moodycamel::BlockingConcurrentQueue<Console::OutputEntry>& OutBuffer()
     {
-        static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> s_OutputBuffer;
+        NO_DESTROY static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> s_OutputBuffer;
         return s_OutputBuffer;
     }
 }

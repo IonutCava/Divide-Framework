@@ -36,6 +36,8 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 find_package(ctre CONFIG REQUIRED)
+find_package(OpenMP REQUIRED)
+find_package(vk-bootstrap CONFIG REQUIRED)
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")

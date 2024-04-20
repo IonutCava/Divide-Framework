@@ -38,7 +38,7 @@
 #include "Pipeline.h"
 #include "PushConstants.h"
 #include "Platform/Video/GLIM/glim.h"
-#include "Platform/Video/Headers/CommandsImpl.h"
+#include "Platform/Video/Headers/Commands.h"
 
 namespace NS_GLIM {
     FWD_DECLARE_MANAGED_CLASS(GLIM_BATCH);

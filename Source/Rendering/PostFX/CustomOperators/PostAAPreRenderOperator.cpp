@@ -206,13 +206,13 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
                 Set( binding._data, searchTex, samplerDescriptor );
             }
             
-            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaWeightPipeline });
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _smaaWeightPipeline;
 
             PushConstantsStruct pushData{};
             pushData.data[0]._vec[0].x = to_F32( postAAQualityLevel() - 1 );
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
-            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
         { //Step 2: Blend
@@ -238,9 +238,9 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
                 Set( binding._data, blendTex, screenAtt->_descriptor._sampler );
             }
 
-            GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _smaaBlendPipeline });
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _smaaBlendPipeline;
 
-            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         }
     } else {
@@ -252,7 +252,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
         beginRenderPassCmd._name = "DO_POSTAA_PASS";
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _fxaaPipeline });
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut )->_pipeline = _fxaaPipeline;
 
         PushConstantsStruct pushData{};
         pushData.data[0]._vec[0].x = to_F32( postAAQualityLevel() - 1 );
@@ -266,7 +266,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
             Set( binding._data, screenTex, screenAtt->_descriptor._sampler );
         }
 
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
 

@@ -5,11 +5,11 @@
 
 namespace Divide {
 
-TextLabelStyle::TextLabelStyleMap TextLabelStyle::s_textLabelStyle;
+NO_DESTROY TextLabelStyle::TextLabelStyleMap TextLabelStyle::s_textLabelStyle;
 SharedMutex TextLabelStyle::s_textLableStyleMutex = {};
 size_t TextLabelStyle::s_defaultHashValue = 0;
 
-TextLabelStyle::FontNameHashMap TextLabelStyle::s_fontName;
+NO_DESTROY TextLabelStyle::FontNameHashMap TextLabelStyle::s_fontName;
 
 TextLabelStyle::TextLabelStyle(const char* font,
                                const UColour4& colour,

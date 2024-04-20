@@ -95,4 +95,4 @@ void GUIMessageBox::setMessageType(const MessageType type) {
         }
     }
 }
-};
+} //namespace Divide

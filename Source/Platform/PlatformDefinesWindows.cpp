@@ -9,7 +9,7 @@
 
 #include "Headers/PlatformDefinesWindows.h"
 #include "Core/Headers/StringHelper.h"
-#include <ShellScalingAPI.h>
+#include <ShellScalingApi.h>
 #include <comdef.h>
 
 #pragma comment(lib, "Shcore.lib")
@@ -51,41 +51,29 @@ LRESULT DlgProc([[maybe_unused]] HWND hWnd, [[maybe_unused]] UINT uMsg, [[maybe_
 
 namespace Divide {
     //https://msdn.microsoft.com/en-us/library/windows/desktop/ms679360%28v=vs.85%29.aspx
-    static CHAR * GetLastErrorText(CHAR *pBuf, const LONG bufSize) noexcept
+    static std::string GetLastErrorText() noexcept
     {
-        LPTSTR pTemp = nullptr;
-
-        if (bufSize < 16)
+        //Get the error message ID, if any.
+        DWORD errorMessageID = ::GetLastError();
+        if ( errorMessageID == 0 )
         {
-            if (bufSize > 0)
-            {
-                pBuf[0] = '\0';
-            }
-            return(pBuf);
+            return std::string(); //No error message has been recorded
         }
 
-        const DWORD retSize = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                                            FORMAT_MESSAGE_FROM_SYSTEM |
-                                            FORMAT_MESSAGE_ARGUMENT_ARRAY,
-                                            nullptr,
-                                            GetLastError(),
-                                            LANG_NEUTRAL,
-                                            reinterpret_cast<LPTSTR>(&pTemp),
-                                            0,
-                                            nullptr);
+        LPSTR messageBuffer = nullptr;
 
-        if (!retSize || pTemp == nullptr)
-        {
-            pBuf[0] = '\0';
-        }
-        else
-        {
-            pTemp[strlen(pTemp) - 2] = '\0'; //remove cr and newline character
-            sprintf(pBuf, "%0.*s (0x%x)", bufSize - 16, pTemp, GetLastError());
-            LocalFree(static_cast<HLOCAL>(pTemp));
-        }
+        //Ask Win32 to give us the string version of that message ID.
+        //The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
+        size_t size = FormatMessageA( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                      NULL, errorMessageID, MAKELANGID( LANG_NEUTRAL, SUBLANG_DEFAULT ), (LPSTR)&messageBuffer, 0, NULL );
 
-        return(pBuf);
+        //Copy the error message into a std::string.
+        std::string message( messageBuffer, size );
+
+        //Free the Win32's string's buffer.
+        LocalFree( messageBuffer );
+
+        return message;
     }
 
     F32 PlatformDefaultDPI() noexcept
@@ -114,12 +102,9 @@ namespace Divide {
 
     void EnforceDPIScaling() noexcept
     {
-        const HRESULT hr = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
-        if (FAILED(hr)) {
-            const _com_error err(hr);
-            CHAR msgText[256];
-            GetLastErrorText(msgText, sizeof(msgText));
-            std::cerr << msgText;
+        if (FAILED( SetProcessDpiAwareness( PROCESS_PER_MONITOR_DPI_AWARE ) ))
+        {
+            std::cerr << GetLastErrorText();
         }
     }
 
@@ -136,9 +121,7 @@ namespace Divide {
         }
         else
         {
-            CHAR msgText[256];
-            GetLastErrorText(msgText,sizeof(msgText));
-            Console::errorfn(msgText);
+            Console::errorfn( GetLastErrorText().c_str() );
         }
 
         return false;
@@ -157,7 +140,7 @@ namespace Divide {
     } THREADNAME_INFO;
 #pragma pack(pop)
 
-    void SetThreadPriorityInternal(HANDLE thread, const ThreadPriority priority)
+    static void SetThreadPriorityInternal(HANDLE thread, const ThreadPriority priority)
     {
         if (priority == ThreadPriority::COUNT)
         {
@@ -172,6 +155,7 @@ namespace Divide {
             case ThreadPriority::ABOVE_NORMAL:  ::SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);  break;
             case ThreadPriority::HIGHEST:       ::SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);       break;
             case ThreadPriority::TIME_CRITICAL: ::SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL); break;
+            case ThreadPriority::COUNT:          DIVIDE_UNEXPECTED_CALL();                                  break;
         }
     }
 
@@ -185,7 +169,7 @@ namespace Divide {
         SetThreadPriorityInternal(static_cast<HANDLE>(thread->native_handle()), priority);
     }
 
-    void SetThreadName(const U32 threadID, const std::string_view threadName) noexcept
+    static void SetThreadName(const U32 threadID, const std::string_view threadName) noexcept
     {
         // DWORD dwThreadID = ::GetThreadId( static_cast<HANDLE>( t.native_handle() ) );
 

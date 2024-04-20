@@ -112,8 +112,7 @@ private:
     DVDTexture( CEGUIRenderer& owner, const String& name, const Sizef& size);
     //! Constructor that wraps an existing GL texture.
     DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::Texture_ptr& tex, const Sizef& size);
-    //! Destructor.
-    virtual ~DVDTexture() = default;
+
     //! generate the DVD texture and set some initial options.
     void generateDVDTexture();
     //! updates cached scale value used to map pixels to texture co-ords.

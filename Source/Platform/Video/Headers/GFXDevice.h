@@ -38,7 +38,7 @@
 #include "ClipPlanes.h"
 #include "GFXShaderData.h"
 #include "Pipeline.h"
-#include "CommandBuffer.h"
+#include "Commands.h"
 #include "PushConstants.h"
 #include "RenderAPIWrapper.h"
 #include "RenderStagePass.h"
@@ -49,8 +49,9 @@
 #include "Core/Headers/PlatformContextComponent.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
-
+#include "Platform/Video/Headers/DescriptorSets.h"
 #include "Rendering/Camera/Headers/Frustum.h"
+#include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Rendering/RenderPass/Headers/RenderPass.h"
 
@@ -620,16 +621,18 @@ namespace Attorney
            device._graphicResources.emplace_back(type, GUID, nameHash);
        }
 
-       static void onResourceDestroy(GFXDevice& device, [[maybe_unused]] GraphicsResource::Type type, I64 GUID, [[maybe_unused]] U64 nameHash)
+       static void onResourceDestroy(GFXDevice& device, GraphicsResource::Type type, I64 GUID,  U64 nameHash)
        {
            LockGuard<Mutex> w_lock(device._graphicsResourceMutex);
            const bool success = dvd_erase_if(device._graphicResources,
                                              [type, GUID, nameHash](const auto& crtEntry) noexcept -> bool {
-                                                if (std::get<1>(crtEntry) == GUID) {
-                                                   assert(std::get<0>(crtEntry) == type && std::get<2>(crtEntry) == nameHash);
-                                                   return true;
+                                                if (std::get<1>(crtEntry) != GUID)
+                                                {
+                                                    return false;
                                                 }
-                                                return false;
+
+                                                DIVIDE_ASSERT(std::get<0>(crtEntry) == type && std::get<2>(crtEntry) == nameHash);
+                                                return true;
                                              });
            DIVIDE_ASSERT(success);
    

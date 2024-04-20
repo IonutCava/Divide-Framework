@@ -31,9 +31,9 @@ namespace Divide {
         }
         else
         {
-            samplerInfo.minLod = descriptor._minLOD;
-            samplerInfo.maxLod = descriptor._maxLOD;
-            samplerInfo.mipLodBias = descriptor._biasLOD;
+            samplerInfo.minLod = descriptor._lod._min;
+            samplerInfo.maxLod = descriptor._lod._max;
+            samplerInfo.mipLodBias = descriptor._lod._bias;
             samplerInfo.mipmapMode = descriptor._mipSampling == TextureMipSampling::LINEAR
                                                               ? VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_LINEAR
                                                               : VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_NEAREST;

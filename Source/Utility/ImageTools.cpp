@@ -64,42 +64,10 @@ namespace nvttHelpers {
         bool _discardAlpha = false;
 
         OutputHandler(nvtt::Format format, bool discardAlpha, const U8 numComponents)
-            : _format(format), _numComponents(numComponents), _discardAlpha( discardAlpha )
+            : _numComponents(numComponents)
+            , _format(format)
+            , _discardAlpha( discardAlpha )
         {
-        }
-
-        virtual ~OutputHandler()
-        {
-        }
-
-        // create the osg image from the given format
-        bool assignImage(ImageLayer& image)
-        {
-            switch (_format)
-            {
-                case nvtt::Format_RGBA:
-                case nvtt::Format_BC1:
-                case nvtt::Format_BC1a:
-                case nvtt::Format_BC2:
-                case nvtt::Format_BC3:
-                case nvtt::Format_BC4:
-                case nvtt::Format_BC5:
-                case nvtt::Format_BC6:
-                case nvtt::Format_BC7:
-                default:
-                    Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_FORMAT"));
-                    return false;
-            }
-
-            for (MipMapData& data : _mipmaps)
-            {
-                if (!image.allocateMip(data._pixelData.data(), data._pixelData.size(), to_U16(data._width), to_U16(data._height), to_U16(data._depth), _numComponents))
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            }
-
-            return true;
         }
 
         /// Indicate the start of a new compressed image that's part of the final texture.
@@ -131,7 +99,7 @@ namespace nvttHelpers {
         return isNormalMap && format == nvtt::Format_BC1;
     }
 
-    [[nodiscard]] nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept
+    [[nodiscard]] static nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept
     {
         assert(outputFormat != ImageOutputFormat::COUNT);
 
@@ -162,7 +130,8 @@ namespace nvttHelpers {
         }
     }
 
-    [[nodiscard]] nvtt::MipmapFilter getNVTTMipFilter(const MipMapFilter filter) noexcept {
+    [[nodiscard]] static nvtt::MipmapFilter getNVTTMipFilter(const MipMapFilter filter) noexcept
+    {
         switch (filter) {
             case MipMapFilter::BOX: return nvtt::MipmapFilter_Box;
             case MipMapFilter::TRIANGLE: return nvtt::MipmapFilter_Triangle;
@@ -257,19 +226,33 @@ namespace
     #define stbi__float2int(x)   ((int) (x))
     static stbi__uint16* stbi__hdr_to_16( float* data, int x, int y, int comp )
     {
-        int i, k, n;
-        stbi__uint16* output;
-        if ( !data ) return NULL;
-        output = (stbi__uint16*)stbi__malloc_mad4( x, y, comp, sizeof(stbi__uint16), 0 );
+        if ( !data ) 
+        {
+            return nullptr;
+        }
+
+        stbi__uint16* output = (stbi__uint16*)stbi__malloc_mad4( x, y, comp, sizeof(stbi__uint16), 0 );
         if ( output == NULL )
         {
-            STBI_FREE( data ); return (stbi__uint16*)stbi__errpuc( "outofmem", "Out of memory" );
+            STBI_FREE( data );
+            return nullptr;
         }
+
         // compute number of non-alpha components
-        if ( comp & 1 ) n = comp; else n = comp - 1;
-        for ( i = 0; i < x * y; ++i )
+        int n = 0;
+        if ( comp & 1 )
         {
-            for ( k = 0; k < n; ++k )
+            n = comp;
+        }
+        else
+        {
+            n = comp - 1;
+        }
+
+        for (int i = 0; i < x * y; ++i )
+        {
+            int k = 0;
+            for (; k < n; ++k )
             {
                 float z = (float)pow( data[i * comp + k] * stbi__h2l_scale_i, stbi__h2l_gamma_i ) * 65536 + 0.5f;
                 if ( z < 0 ) z = 0;
@@ -284,24 +267,40 @@ namespace
                 output[i * comp + k] = (stbi__uint16)stbi__float2int( z );
             }
         }
+
         STBI_FREE( data );
         return output;
     }
+
     static glm::detail::hdata* stbi__hdr_to_half( float* data, int x, int y, int comp )
     {
-        int i, k, n;
-        glm::detail::hdata* output;
-        if ( !data ) return NULL;
-        output = (glm::detail::hdata*)stbi__malloc_mad4( x, y, comp, sizeof(glm::detail::hdata), 0 );
+        if ( !data ) 
+        {
+            return nullptr;
+        }
+
+        glm::detail::hdata* output = (glm::detail::hdata*)stbi__malloc_mad4( x, y, comp, sizeof(glm::detail::hdata), 0 );
         if ( output == NULL )
         {
-            STBI_FREE( data ); return (glm::detail::hdata*)glm::detail::toFloat16( stbi__errpf( "outofmem", "Out of memory" )[0] );
+            STBI_FREE( data );
+            return nullptr;
         }
+
         // compute number of non-alpha components
-        if ( comp & 1 ) n = comp; else n = comp - 1;
-        for ( i = 0; i < x * y; ++i )
+        int n = 0;
+        if ( comp & 1 ) 
         {
-            for ( k = 0; k < n; ++k )
+            n = comp;
+        }
+        else
+        {
+            n = comp - 1;
+        }
+
+        for (int i = 0; i < x * y; ++i )
+        {
+            int k = 0;
+            for (; k < n; ++k )
             {
                 output[i * comp + k] = glm::detail::toFloat16( data[i * comp + k]);
             }
@@ -310,95 +309,140 @@ namespace
                 output[i * comp + k] = glm::detail::toFloat16( data[i * comp + k] );
             }
         }
+
         STBI_FREE( data );
         return output;
     }
 
     static glm::detail::hdata* stbi__ldr_to_half( stbi_uc* data, int x, int y, int comp )
     {
-        int i, k, n;
-        glm::detail::hdata* output;
-        if ( !data ) return NULL;
-        output = (glm::detail::hdata*)stbi__malloc_mad4( x, y, comp, sizeof( glm::detail::hdata ), 0 );
+        if ( !data )
+        {
+            return nullptr;
+        }
+
+        glm::detail::hdata* output = (glm::detail::hdata*)stbi__malloc_mad4( x, y, comp, sizeof( glm::detail::hdata ), 0 );
         if ( output == NULL )
         {
-            STBI_FREE( data ); return (glm::detail::hdata*)glm::detail::toFloat16(stbi__errpf( "outofmem", "Out of memory" )[0]);
+            STBI_FREE( data );
+            return nullptr;
         }
+
         // compute number of non-alpha components
-        if ( comp & 1 ) n = comp; else n = comp - 1;
-        for ( i = 0; i < x * y; ++i )
+        int n = 0;
+        if ( comp & 1 )
         {
-            for ( k = 0; k < n; ++k )
+            n = comp;
+        }
+        else
+        {
+            n = comp - 1;
+        }
+
+        for (int i = 0; i < x * y; ++i )
+        {
+            for (int k = 0; k < n; ++k )
             {
                 output[i * comp + k] = glm::detail::toFloat16( (float)(pow( data[i * comp + k] / 255.0f, stbi__l2h_gamma ) * stbi__l2h_scale));
             }
         }
         if ( n < comp )
         {
-            for ( i = 0; i < x * y; ++i )
+            for (int i = 0; i < x * y; ++i )
             {
                 output[i * comp + n] = glm::detail::toFloat16( data[i * comp + n] / 255.0f );
             }
         }
+
         STBI_FREE( data );
         return output;
     }
+
     static glm::detail::hdata* stbi__16_to_half( stbi__uint16* data, int x, int y, int comp )
     {
-        int i, k, n;
-        glm::detail::hdata* output;
-        if ( !data ) return NULL;
-        output = (glm::detail::hdata*)stbi__malloc_mad4( x, y, comp, sizeof( glm::detail::hdata ), 0 );
+        if ( !data )
+        {
+            return nullptr;
+        }
+
+        glm::detail::hdata* output = (glm::detail::hdata*)stbi__malloc_mad4( x, y, comp, sizeof( glm::detail::hdata ), 0 );
+
         if ( output == NULL )
         {
-            STBI_FREE( data ); return (glm::detail::hdata* )glm::detail::toFloat16(stbi__errpf( "outofmem", "Out of memory" )[0]);
+            STBI_FREE( data );
+            return nullptr;
         }
+
         // compute number of non-alpha components
-        if ( comp & 1 ) n = comp; else n = comp - 1;
-        for ( i = 0; i < x * y; ++i )
+        int n = 0;
+        if ( comp & 1 )
         {
-            for ( k = 0; k < n; ++k )
+            n = comp;
+        }
+        else
+        {
+            n = comp - 1;
+        }
+
+        for (int i = 0; i < x * y; ++i )
+        {
+            for (int k = 0; k < n; ++k )
             {
                 output[i * comp + k] = glm::detail::toFloat16((float)(pow( data[i * comp + k] / 65536.0f, stbi__l2h_gamma ) * stbi__l2h_scale));
             }
         }
         if ( n < comp )
         {
-            for ( i = 0; i < x * y; ++i )
+            for (int i = 0; i < x * y; ++i )
             {
                 output[i * comp + n] = glm::detail::toFloat16( data[i * comp + n] / 65536.0f );
             }
         }
+
         STBI_FREE( data );
         return output;
     }
 
     static float* stbi__16_to_hdr( stbi__uint16* data, int x, int y, int comp )
     {
-        int i, k, n;
-        float* output;
-        if ( !data ) return NULL;
-        output = (float*)stbi__malloc_mad4( x, y, comp, sizeof( float ), 0 );
+        if ( !data )
+        {
+            return nullptr;
+        }
+
+        float* output = (float*)stbi__malloc_mad4( x, y, comp, sizeof( float ), 0 );
         if ( output == NULL )
         {
-            STBI_FREE( data ); return stbi__errpf( "outofmem", "Out of memory" );
+            STBI_FREE( data );
+            return nullptr;
         }
+
         // compute number of non-alpha components
-        if ( comp & 1 ) n = comp; else n = comp - 1;
-        for ( i = 0; i < x * y; ++i )
+        int n = 0;
+        if ( comp & 1 )
         {
-            for ( k = 0; k < n; ++k )
+            n = comp;
+        }
+        else
+        {
+            n = comp - 1;
+        }
+
+        for (int i = 0; i < x * y; ++i )
+        {
+            for (int k = 0; k < n; ++k )
             {
                 output[i * comp + k] = (float)(pow( data[i * comp + k] / 65536.0f, stbi__l2h_gamma ) * stbi__l2h_scale);
             }
         }
         if ( n < comp )
         {
-            for ( i = 0; i < x * y; ++i )
+            for (int i = 0; i < x * y; ++i )
             {
                 output[i * comp + n] = data[i * comp + n] / 65536.0f;
             }
         }
+
         STBI_FREE( data );
         return output;
     }
@@ -406,19 +450,33 @@ namespace
     template<typename To, typename From>
     static To* stbi_convert( From* data, int x, int y, int comp )
     {
-        int i, k, n;
-        To* output;
-        if ( !data ) return NULL;
-        output = (To*)stbi__malloc_mad4( x, y, comp, sizeof(To), 0 );
+        if ( !data )
+        {
+            return nullptr;
+        }
+
+        To* output = (To*)stbi__malloc_mad4( x, y, comp, sizeof(To), 0 );
         if ( output == NULL )
         {
-            STBI_FREE( data ); return (To*)( stbi__errpf( "outofmem", "Out of memory" ) );
+            STBI_FREE( data );
+            return nullptr;
         }
+        
         // compute number of non-alpha components
-        if ( comp & 1 ) n = comp; else n = comp - 1;
-        for ( i = 0; i < x * y; ++i )
+        int n = 0;
+        if ( comp & 1 )
         {
-            for ( k = 0; k < n; ++k )
+            n = comp;
+        }
+        else
+        {
+            n = comp - 1;
+        }
+
+        for (int i = 0; i < x * y; ++i )
+        {
+            int k = 0;
+            for (; k < n; ++k )
             {
                 output[i * comp + k] = static_cast<To>( data[i * comp + k] );
             }
@@ -427,6 +485,7 @@ namespace
                 output[i * comp + k] = static_cast<To>( data[i * comp + k] );
             }
         }
+
         STBI_FREE( data );
         return output;
     }
@@ -1158,15 +1217,15 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
                 const ILint width  = ilGetInteger(IL_IMAGE_WIDTH);
                 const ILint height = ilGetInteger(IL_IMAGE_HEIGHT);
                 const ILint depth  = ilGetInteger(IL_IMAGE_DEPTH);
-                const ILint size   = compressed ? ilGetDXTCData( nullptr, 0, dxtFormat ) 
-                                                : ilGetInteger( IL_IMAGE_SIZE_OF_DATA );
+                const ILuint size   = compressed ? ilGetDXTCData( nullptr, 0, dxtFormat ) 
+                                                 : static_cast<ILuint>(ilGetInteger( IL_IMAGE_SIZE_OF_DATA ));
 
                 if ( checkError( devilErrors ) )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
                 }
 
-                Byte* data = layer.allocateMip<Byte>(to_size(size),
+                Byte* data = layer.allocateMip<Byte>(size,
                                                      to_U16(width),
                                                      to_U16(height),
                                                      to_U16(depth),

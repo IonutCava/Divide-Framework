@@ -16,7 +16,7 @@
 
 namespace Divide {
 
-Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 flagMask)
+Object3D::Object3D( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 flagMask)
     : SceneNode(parentCache,
                 descriptorHash,
                 name,
@@ -24,7 +24,7 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
                 resourceLocation,
                 type,
                 to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS) | to_base(ComponentType::RENDERING)),
-    _context(context),
+    _context(context.gfx()),
     _geometryPartitionIDs{},
     _geometryFlagMask(flagMask)
 {
@@ -32,7 +32,7 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     _geometryPartitionIDs[0] = 0u;
 
     if (!getObjectFlag(ObjectFlag::OBJECT_FLAG_NO_VB)) {
-        _geometryBuffer = context.newVB(true, name);
+        _geometryBuffer = _context.newVB(true, name);
     }
 
     if (getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED)) {
@@ -46,7 +46,7 @@ Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t 
     }
 }
 
-Object3D::Object3D(GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const ObjectFlag flag)
+Object3D::Object3D( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const ObjectFlag flag)
     : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, type, to_U32(flag))
 {
 }
@@ -76,19 +76,19 @@ void Object3D::setMaterialTpl(const Material_ptr& material) {
     }
 }
 
-void Object3D::buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) {
+void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (geometryBuffer() != nullptr) {
-        if (cmdsOut.size() == 0u) {
+    if (geometryBuffer() != nullptr)
+    {
+        if (cmdsOut.size() == 0u)
+        {
             const U16 partitionID = _geometryPartitionIDs[0];
-            GenericDrawCommand cmd;
+            GenericDrawCommand& cmd = cmdsOut.emplace_back();
             cmd._sourceBuffer = geometryBuffer()->handle();
             cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(partitionID));
             cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(partitionID));
             cmd._cmd.instanceCount = sgn->instanceCount();
-            
-            cmdsOut.emplace_back(GFX::DrawCommand{ cmd });
         }
         
         U16 prevID = 0;

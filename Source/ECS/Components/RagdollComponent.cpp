@@ -9,4 +9,4 @@ RagdollComponent::RagdollComponent(SceneGraphNode* parentSGN, PlatformContext& c
 {
 }
 
-}
+} //namespace Divide

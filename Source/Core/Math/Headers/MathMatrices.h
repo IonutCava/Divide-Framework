@@ -199,8 +199,8 @@ public:
     [[nodiscard]] T& operator[](I32 i);
     [[nodiscard]] T  operator[](I32 i) const;
 
-    [[nodiscard]] T &element(I8 row, I8 column) noexcept;
-    [[nodiscard]] const T &element(I8 row, I8 column) const noexcept;
+    [[nodiscard]] T &element(U8 row, U8 column) noexcept;
+    [[nodiscard]] const T &element(U8 row, U8 column) const noexcept;
 
     template<typename U>
     void set(U m0, U m1, U m2, U m3) noexcept;
@@ -354,8 +354,8 @@ class mat3 {
     [[nodiscard]] T &operator[](I32 i) noexcept;
     [[nodiscard]] T operator[](I32 i) const noexcept;
 
-    [[nodiscard]] T &element(I8 row, I8 column) noexcept;
-    [[nodiscard]] const T &element(I8 row, I8 column) const noexcept;
+    [[nodiscard]] T &element(U8 row, U8 column) noexcept;
+    [[nodiscard]] const T &element(U8 row, U8 column) const noexcept;
 
     template<typename U>
     void set(U m0, U m1, U m2, U m3, U m4, U m5, U m6, U m7, U m8) noexcept;
@@ -563,8 +563,8 @@ class mat4 {
     [[nodiscard]] T &operator[](I32 i) noexcept;
     [[nodiscard]] const T &operator[](I32 i) const noexcept;
 
-    [[nodiscard]] T &element(I8 row, I8 column) noexcept;
-    [[nodiscard]] const T &element(I8 row, I8 column) const noexcept;
+    [[nodiscard]] T &element(U8 row, U8 column) noexcept;
+    [[nodiscard]] const T &element(U8 row, U8 column) const noexcept;
 
     void set(std::initializer_list<T> matrix) noexcept;
 

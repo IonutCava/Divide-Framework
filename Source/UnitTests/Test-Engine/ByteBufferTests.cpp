@@ -92,7 +92,7 @@ TEST_CASE( "ByteBuffer RW POD", "[byte_buffer]" )
 
 TEST_CASE( "ByteBuffer Simple Marker", "[byte_buffer]" )
 {
-    constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+    constexpr U16 testMarker[3]{ 444u, 555u, 777u };
 
     constexpr U8 input = 122u;
 
@@ -113,7 +113,7 @@ TEST_CASE( "ByteBuffer No Marker", "[byte_buffer]" )
 {
     SECTION( "EVEN" )
     {
-        constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+        constexpr U16 testMarker[3]{ 444u, 555u, 777u };
 
         ByteBuffer test;
         test << string{ "StringTest Whatever" };
@@ -127,7 +127,7 @@ TEST_CASE( "ByteBuffer No Marker", "[byte_buffer]" )
 
     SECTION( "ODD" )
     {
-        constexpr std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+        constexpr U16 testMarker[3]{ 444u, 555u, 777u };
 
         ByteBuffer test;
         test << string{ "StringTest Whatever" };
@@ -144,7 +144,7 @@ TEST_CASE( "ByteBuffer No Marker", "[byte_buffer]" )
 
 TEST_CASE( "ByteBuffer Wrong Marker", "[byte_buffer]" )
 {
-    std::array<U16, 3> testMarker{ 444u, 555u, 777u };
+    U16 testMarker[3]{ 444u, 555u, 777u };
 
     ByteBuffer test;
     test << string{ "StringTest Whatever" };
@@ -242,8 +242,8 @@ TEST_CASE( "ByteBuffer RW Mixed Data", "[byte_buffer]" )
     constexpr bool inputBool = false;
     const vector<I32> inputVectorInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
     const vector<string> inputVectorStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
-    constexpr std::array<I32, 11> inputArrayInt = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
-    const std::array<string, 11> inputArrayStr = { "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" };
+    constexpr std::array<I32, 11> inputArrayInt = {{ -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 }};
+    const std::array<string, 11> inputArrayStr = {{ "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5" }};
     constexpr U8  inputU8 = 2;
     constexpr U16 inputU16 = 4;
     constexpr U32 inputU32 = 6;

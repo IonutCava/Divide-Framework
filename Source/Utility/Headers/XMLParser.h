@@ -81,12 +81,13 @@ namespace Divide
 #define GET_PARAM_ATTRIB(X, Y) \
     X.Y = LoadSave.XmlTree.get(CONCAT(CONCAT(LoadSave._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
 
-#define PUT_PARAM(X) PUT_TEMP_PARAM(X, X)
 #define PUT_TEMP_PARAM(X, TEMP) \
-    LoadSave.XmlTree.put(LoadSave._rootNodePath + TO_STRING(X), TEMP);
+    LoadSave.XmlTree.put(LoadSave._rootNodePath + TO_STRING(X), TEMP)
 #define PUT_PARAM_ATTRIB(X, Y) \
     LoadSave.XmlTree.put(CONCAT(CONCAT(LoadSave._rootNodePath + TO_STRING(X), ".<xmlattr>."), TO_STRING(Y)), (X.Y))
 #endif
+
+#define PUT_PARAM(X) PUT_TEMP_PARAM(X, X)
 
         class IXMLSerializable
         {

@@ -248,4 +248,4 @@ const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& Frustum::computePlan
     return _frustumPlanes;
 }
 
-};
+} //namespace Divide

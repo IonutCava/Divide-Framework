@@ -105,7 +105,8 @@ bool Application::onProfilerStateChanged( const Profiler::State state )
             context.config().debug.renderer.assertOnRenderAPIError = assertOnAPIError;
             context.config().debug.renderer.enableRenderAPIDebugging = apiDebugging;
         } break;
-        default: break;
+
+        case Profiler::State::COUNT: break;
     }
 
 
@@ -157,7 +158,7 @@ void Application::stop( const AppStepResult stepResult )
         const string allocLog = MemoryManager::AllocTracer.Dump(leakDetected, sizeLeaked);
         if (leakDetected)
         {
-            Console::errorfn(LOCALE_STR("ERROR_MEMORY_NEW_DELETE_MISMATCH"), to_I32(std::ceil(sizeLeaked / 1024.0f)));
+            Console::errorfn(LOCALE_STR("ERROR_MEMORY_NEW_DELETE_MISMATCH"), to_I32(std::ceil(to_F32(sizeLeaked) / 1024)));
         }
 
         std::ofstream memLog{ (Paths::g_logPath / MEM_LOG_FILE).string() };

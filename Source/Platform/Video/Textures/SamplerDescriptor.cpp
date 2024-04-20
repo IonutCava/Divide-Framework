@@ -7,12 +7,12 @@ namespace Divide
 {
     namespace TypeUtil
     {
-        const char* TextureBorderColourToString(const TextureBorderColour colour) noexcept
+        static const char* TextureBorderColourToString(const TextureBorderColour colour) noexcept
         {
             return Names::textureBorderColour[to_base(colour)];
         }
 
-        TextureBorderColour StringToTextureBorderColour(const string& colour)
+        static TextureBorderColour StringToTextureBorderColour(const string& colour)
         {
             for (U8 i = 0; i < to_U8(TextureBorderColour::COUNT); ++i)
             {
@@ -25,12 +25,12 @@ namespace Divide
             return TextureBorderColour::COUNT;
         }
 
-        const char* WrapModeToString(const TextureWrap wrapMode) noexcept
+        static const char* WrapModeToString(const TextureWrap wrapMode) noexcept
         {
             return Names::textureWrap[to_base(wrapMode)];
         }
 
-        TextureWrap StringToWrapMode(const string& wrapMode)
+        static TextureWrap StringToWrapMode(const string& wrapMode)
         {
             for (U8 i = 0; i < to_U8(TextureWrap::COUNT); ++i)
             {
@@ -43,12 +43,12 @@ namespace Divide
             return TextureWrap::COUNT;
         }
 
-        const char* TextureFilterToString(const TextureFilter filter) noexcept
+        static const char* TextureFilterToString(const TextureFilter filter) noexcept
         {
             return Names::textureFilter[to_base(filter)];
         }
 
-        TextureFilter StringToTextureFilter(const string& filter)
+        static TextureFilter StringToTextureFilter(const string& filter)
         {
             for (U8 i = 0; i < to_U8(TextureFilter::COUNT); ++i)
             {
@@ -61,12 +61,12 @@ namespace Divide
             return TextureFilter::COUNT;
         }
 
-        const char* TextureMipSamplingToString(TextureMipSampling sampling) noexcept
+        static const char* TextureMipSamplingToString(TextureMipSampling sampling) noexcept
         {
             return Names::textureMipSampling[to_base(sampling)];
         }
 
-        TextureMipSampling StringToTextureMipSampling(const string& sampling)
+        static TextureMipSampling StringToTextureMipSampling(const string& sampling)
         {
             for (U8 i = 0; i < to_U8(TextureMipSampling::COUNT); ++i)
             {
@@ -92,9 +92,9 @@ namespace Divide
             pt.put(entryName + ".Sampler.Map.<xmlattr>.W", TypeUtil::WrapModeToString(sampler._wrapW));
             pt.put(entryName + ".Sampler.comparisonFunction", TypeUtil::ComparisonFunctionToString(sampler._depthCompareFunc));
             pt.put(entryName + ".Sampler.anisotropy", to_U32(sampler._anisotropyLevel));
-            pt.put(entryName + ".Sampler.minLOD", sampler._minLOD);
-            pt.put(entryName + ".Sampler.maxLOD", sampler._maxLOD);
-            pt.put(entryName + ".Sampler.biasLOD", sampler._biasLOD);
+            pt.put(entryName + ".Sampler.minLOD", sampler._lod._min);
+            pt.put(entryName + ".Sampler.maxLOD", sampler._lod._max);
+            pt.put(entryName + ".Sampler.biasLOD", sampler._lod._bias);
             pt.put(entryName + ".Sampler.borderColour", TypeUtil::TextureBorderColourToString(sampler._borderColour));
             pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.r", sampler._customBorderColour.r);
             pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.g", sampler._customBorderColour.g);
@@ -113,9 +113,9 @@ namespace Divide
             sampler._wrapW = TypeUtil::StringToWrapMode(pt.get<string>(entryName + ".Sampler.Map.<xmlattr>.W", TypeUtil::WrapModeToString(TextureWrap::REPEAT)));
             sampler._depthCompareFunc = TypeUtil::StringToComparisonFunction(pt.get(entryName + ".Sampler.comparisonFunction", "LEQUAL").c_str());
             sampler._anisotropyLevel = to_U8(pt.get(entryName + ".Sampler.anisotropy", 255u));
-            sampler._minLOD = pt.get(entryName + ".Sampler.minLOD", -1000.f);
-            sampler._maxLOD = pt.get(entryName + ".Sampler.maxLOD", 1000.f);
-            sampler._biasLOD = pt.get(entryName + ".Sampler.biasLOD", 0.f);
+            sampler._lod._min = pt.get(entryName + ".Sampler.minLOD", -1000.f);
+            sampler._lod._max = pt.get(entryName + ".Sampler.maxLOD", 1000.f);
+            sampler._lod._bias = pt.get(entryName + ".Sampler.biasLOD", 0.f);
             sampler._borderColour = TypeUtil::StringToTextureBorderColour(pt.get<string>(entryName + ".Sampler.borderColour", TypeUtil::TextureBorderColourToString(TextureBorderColour::OPAQUE_BLACK_F32)));
             sampler._customBorderColour = UColour4
             {

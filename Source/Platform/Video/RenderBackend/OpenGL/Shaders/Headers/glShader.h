@@ -61,7 +61,7 @@ class glShader final : public ShaderModule
     /// The shader's name is the period-separated list of properties, type is
     /// the render stage this shader is used for
     explicit glShader(GFXDevice& context, const std::string_view name, const U32 generation);
-    ~glShader();
+    ~glShader() override;
 
     [[nodiscard]] bool load(const ShaderProgram::ShaderLoadData& data);
 

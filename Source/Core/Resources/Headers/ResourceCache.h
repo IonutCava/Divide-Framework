@@ -30,18 +30,49 @@
  */
 
 #pragma once
-#ifndef RESOURCE_MANAGER_H_
-#define RESOURCE_MANAGER_H_
+#ifndef DVD_RESOURCE_CACHE_H_
+#define DVD_RESOURCE_CACHE_H_
 
-#include "ResourceLoader.h"
-
+#include "Resource.h"
+#include "ResourceDescriptor.h"
 #include "Utility/Headers/Localization.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Headers/PlatformContextComponent.h"
-#include "Platform/Headers/PlatformRuntime.h"
 
 namespace Divide
 {
+
+    class ResourceCache;
+    // Used to delete resources
+    struct DeleteResource
+    {
+        explicit DeleteResource( ResourceCache* context ) noexcept
+            : _context( context )
+        {
+        }
+
+        void operator()( CachedResource* res ) const;
+
+        ResourceCache* _context = nullptr;
+    };
+
+    struct ResourceLoader
+    {
+        template<typename ResourceType>  requires std::is_base_of_v<Resource, ResourceType>
+        static CachedResource_ptr Build( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash );
+
+        protected:
+        static bool Load( CachedResource_ptr res )
+        {
+            if ( res == nullptr )
+            {
+                return false;
+            }
+
+            res->setState( ResourceState::RES_LOADING );
+            return res->load();
+        }
+    };
 
     class ResourceLoadLock final : NonCopyable, NonMovable
     {
@@ -72,7 +103,7 @@ namespace Divide
 
         /// Each resource entity should have a 'resource name'Loader implementation.
         template <typename T, bool UseAtomicCounter> requires std::is_base_of_v<CachedResource, T>
-        std::shared_ptr<T> loadResource( const ResourceDescriptor& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
+        inline std::shared_ptr<T> loadResource( const ResourceDescriptor& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
         {
             F32 timeInMS = 0.f;
             std::shared_ptr<T> ptr;
@@ -101,7 +132,7 @@ namespace Divide
                     Time::ProfileTimer loadTimer = {};
                     loadTimer.start();
                     /// ...acquire the resource's loader and get our resource as the loader creates it
-                    ptr = std::static_pointer_cast<T>(ImplResourceLoader<T>( this, _context, descriptor, loadingHash )());
+                    ptr = std::static_pointer_cast<T>(ResourceLoader::Build<T>( this, _context, descriptor, loadingHash ));
                     assert( ptr != nullptr );
                     add( ptr, cacheHit );
                     loadTimer.stop();
@@ -160,33 +191,48 @@ namespace Divide
     };
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, bool& wasInCache )
+    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, bool& wasInCache )
     {
         std::atomic_uint taskCounter = 0u;
         return cache->loadResource<T, false>( descriptor, wasInCache, taskCounter );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
+    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
     {
         return cache->loadResource<T, true>( descriptor, wasInCache, taskCounter );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor )
+    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor )
     {
         bool wasInCache = false;
         return CreateResource<T>( cache, descriptor, wasInCache );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, std::atomic_uint& taskCounter )
+    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, std::atomic_uint& taskCounter )
     {
         bool wasInCache = false;
         return CreateResource<T>( cache, descriptor, wasInCache, taskCounter );
     }
 
+    FWD_DECLARE_MANAGED_CLASS( Mesh );
+    namespace detail
+    {
+        struct MeshLoadData
+        {
+            Mesh_ptr _mesh;
+            ResourceCache* _cache;
+            PlatformContext* _context;
+            ResourceDescriptor* _descriptor;
+
+            Mesh_ptr build();
+        };
+    } //namespace detail
 
 }  // namespace Divide
 
-#endif
+#endif //DVD_RESOURCE_CACHE_H_
+
+#include "ResourceCache.inl"

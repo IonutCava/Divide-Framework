@@ -41,7 +41,7 @@ struct glSyncObject final : SyncObject
 {
     explicit glSyncObject( U8 flag, U64 frameIdx );
 
-    ~glSyncObject();
+    ~glSyncObject() override;
     void reset() override;
 
     gl::GLsync _syncObject{ nullptr };
@@ -50,7 +50,7 @@ struct glSyncObject final : SyncObject
 // --------------------------------------------------------------------------------------------------------------------
 class glLockManager final : public LockManager {
   public:
-      ~glLockManager();
+      ~glLockManager() override;
 
       static bool InitLockPoolEntry( BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
 

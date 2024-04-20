@@ -55,19 +55,20 @@ namespace Divide
 
     constexpr I8 s_maxHeaderRecursionLevel = 64;
     
-    Mutex ShaderProgram::s_atomLock;
-    Mutex ShaderProgram::g_cacheLock;
-    ShaderProgram::AtomMap ShaderProgram::s_atoms;
-    ShaderProgram::AtomInclusionMap ShaderProgram::s_atomIncludes;
+    NO_DESTROY Mutex ShaderProgram::s_atomLock;
+    NO_DESTROY Mutex ShaderProgram::g_cacheLock;
+    NO_DESTROY ShaderProgram::AtomMap ShaderProgram::s_atoms;
+    NO_DESTROY ShaderProgram::AtomInclusionMap ShaderProgram::s_atomIncludes;
 
     I64 ShaderProgram::s_shaderFileWatcherID = -1;
-    ResourcePath ShaderProgram::shaderAtomLocationPrefix[to_base( ShaderType::COUNT ) + 1];
+    NO_DESTROY ResourcePath ShaderProgram::shaderAtomLocationPrefix[to_base( ShaderType::COUNT ) + 1];
     U64 ShaderProgram::shaderAtomExtensionHash[to_base( ShaderType::COUNT ) + 1];
-    Str<8> ShaderProgram::shaderAtomExtensionName[to_base( ShaderType::COUNT ) + 1];
+    NO_DESTROY Str<8> ShaderProgram::shaderAtomExtensionName[to_base( ShaderType::COUNT ) + 1];
 
-    ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
-    ShaderProgram::ShaderQueue ShaderProgram::s_recompileFailedQueue;
+    NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
+    NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileFailedQueue;
     ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
+    eastl::fixed_vector<ShaderProgram*, U16_MAX, false> ShaderProgram::s_usedShaderPrograms;
     ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
     U8 ShaderProgram::k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
 
@@ -76,7 +77,7 @@ namespace Divide
 
     ShaderProgram::BindingSetData ShaderProgram::s_bindingsPerSet;
 
-    UpdateListener g_sFileWatcherListener(
+    NO_DESTROY static UpdateListener g_sFileWatcherListener(
         []( const std::string_view atomName, const FileUpdateEvent evt )
         {
             ShaderProgram::OnAtomChange( atomName, evt );
@@ -102,9 +103,9 @@ namespace Divide
 
         constexpr U8 g_maxTagCount = 64;
 
-        thread_local static WorkData g_workData;
-        thread_local static fppTag g_tags[g_maxTagCount]{};
-        thread_local static fppTag* g_tagHead = g_tags;
+        NO_DESTROY thread_local static WorkData g_workData;
+        NO_DESTROY thread_local static fppTag g_tags[g_maxTagCount]{};
+        NO_DESTROY thread_local static fppTag* g_tagHead = g_tags;
 
         namespace Callback
         {
@@ -151,9 +152,10 @@ namespace Divide
             {
                 WorkData* work = static_cast<WorkData*>(userData);
 
+                string message;
                 const size_t length = to_size(vsprintf( nullptr, format, args ) + 1);
-                vector<char> buf(length);
-                vsnprintf( buf.data(), length, format, args );
+                message.resize( length );
+                vsnprintf( message.data(), length, format, args );
                 
                 if ( work->_firstError )
                 {
@@ -162,9 +164,9 @@ namespace Divide
                     Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_NAME_SHORT" ), work->_fileName );
                 }
 
-                if ( !buf.empty() )
+                if ( !message.empty() )
                 {
-                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_MSG" ), buf.data() );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_PARSE_ERROR_MSG" ), message );
                 }
                 else
                 {
@@ -347,7 +349,7 @@ namespace Divide
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: filePath = ReflCacheLocation() / ReflTargetName( fileName ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() / fileName; break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: filePath = SpvCacheLocation() / SpvTargetName( fileName ); break;
-                default: return false;
+                case ShaderProgram::LoadData::ShaderCacheType::COUNT: return false;
             }
 
             if ( fileLastWriteTime( filePath, lastWriteTimeCache ) != FileError::NONE ||
@@ -360,12 +362,6 @@ namespace Divide
             return true;
         }
 
-        [[nodiscard]] bool ValidateCache( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& sourceFileName, const Str<256>& fileName )
-        {
-            LockGuard<Mutex> rw_lock( ShaderProgram::g_cacheLock );
-            return ValidateCacheLocked( type, sourceFileName, fileName );
-        }
-
         [[nodiscard]] bool DeleteCacheLocked( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& fileName )
         {
             FileError err = FileError::NONE;
@@ -374,7 +370,7 @@ namespace Divide
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: err = deleteFile( ReflCacheLocation(), ReflTargetName( fileName ).string() ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), fileName.c_str() ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: err = deleteFile( SpvCacheLocation(), SpvTargetName( fileName ).string() ); break;
-                default: return false;
+                case ShaderProgram::LoadData::ShaderCacheType::COUNT: err = FileError::FILE_EMPTY; return false;
             }
 
             return err == FileError::NONE || err == FileError::FILE_NOT_FOUND;
@@ -1075,7 +1071,6 @@ namespace Divide
         // Find the shader program
         for ( const ShaderProgramMapEntry& entry : s_shaderPrograms )
         {
-
             ShaderProgram* program = entry._program;
             assert( program != nullptr );
 
@@ -1261,7 +1256,7 @@ namespace Divide
                     bindingData._glBinding = s_bufferSlot++;
                 }
                 break;
-            default:
+            case DescriptorSetBindingType::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
                 break;
         }
@@ -1276,10 +1271,11 @@ namespace Divide
         {
             switch ( type )
             {
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: count = to_base( TextureSlot::COUNT ) + 2u; /*{Reflection + Refraction}*/; break;
+                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: count = to_base( TextureSlot::COUNT ) + 2u; /*{Reflection + Refraction}*/ break;
                 case DescriptorSetBindingType::IMAGE: count = 2u; break;
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: count = 4u; break;
+                case DescriptorSetBindingType::COUNT: break;
             }
         }
         else
@@ -1302,24 +1298,27 @@ namespace Divide
         return InitGLSW( gfx );
     }
 
+    void ShaderProgram::OnBeginFrame( [[maybe_unused]] GFXDevice& gfx )
+    {
+        efficient_clear(s_usedShaderPrograms);
+    }
+
     void ShaderProgram::OnEndFrame( GFXDevice& gfx )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        size_t totalUniformBufferSize = 0u;
-        SharedLock<SharedMutex> lock( s_programLock );
-        for ( const ShaderProgramMapEntry& entry : s_shaderPrograms )
+        size_t& totalUniformBufferSize = gfx.getPerformanceMetrics()._uniformBufferVRAMUsage;
+        totalUniformBufferSize = 0u;
+
+        for ( ShaderProgram* program : s_usedShaderPrograms )
         {
-            if ( entry._program != nullptr )
+            for ( UniformBlockUploader& block : program->_uniformBlockBuffers )
             {
-                for ( UniformBlockUploader& block : entry._program->_uniformBlockBuffers )
-                {
-                    block.onFrameEnd();
-                    totalUniformBufferSize += block.totalBufferSize();
-                }
+                block.onFrameEnd();
+                totalUniformBufferSize += block.totalBufferSize();
             }
         }
-        gfx.getPerformanceMetrics()._uniformBufferVRAMUsage = totalUniformBufferSize;
+        
     }
 
     /// Whenever a new program is created, it's registered with the manager
@@ -1433,7 +1432,7 @@ namespace Divide
 
     vector<ResourcePath> ShaderProgram::GetAllAtomLocations()
     {
-        static vector<ResourcePath> atomLocations;
+        NO_DESTROY static vector<ResourcePath> atomLocations;
         if ( atomLocations.empty() )
         {
             // General
@@ -1664,8 +1663,9 @@ namespace Divide
                     Console::errorfn( LOCALE_STR( "ERROR_SHADER_SAVE_REFL_FAILED" ), dataIn._shaderName.c_str() );
                 }
             } break;
-            default: return false;
-        };
+
+            case LoadData::ShaderCacheType::COUNT: break;
+        }
 
         if ( !ret )
         {
@@ -1729,7 +1729,8 @@ namespace Divide
             {
                 return Reflection::LoadReflectionData( ReflCacheLocation(), ReflTargetName( dataInOut._shaderName ), dataInOut._reflectionData, atomIDsOut );
             }
-            default: break;
+
+            case LoadData::ShaderCacheType::COUNT: break;
         }
 
         return false;
@@ -1933,6 +1934,7 @@ namespace Divide
 
             if ( blockBuffer.commit( set, memCmdInOut ) )
             {
+                s_usedShaderPrograms.emplace_back(this );
                 ret = true;
             }
         }

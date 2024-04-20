@@ -64,9 +64,9 @@ namespace Divide
     namespace VKUtil
     {
 
-        void SubmitIndexedRenderCommand( const GenericDrawCommand& drawCommand,
-                                         const VkCommandBuffer commandBuffer,
-                                         const bool useIndirectBuffer )
+        static void SubmitIndexedRenderCommand( const GenericDrawCommand& drawCommand,
+                                                const VkCommandBuffer commandBuffer,
+                                                const bool useIndirectBuffer )
         {
             if ( useIndirectBuffer )
             {
@@ -79,9 +79,9 @@ namespace Divide
             }
         }
 
-        void SubmitNonIndexedRenderCommand( const GenericDrawCommand& drawCommand,
-                                            const VkCommandBuffer commandBuffer,
-                                            const bool useIndirectBuffer )
+        static void SubmitNonIndexedRenderCommand( const GenericDrawCommand& drawCommand,
+                                                   const VkCommandBuffer commandBuffer,
+                                                   const bool useIndirectBuffer )
         {
             if ( useIndirectBuffer )
             {
@@ -518,6 +518,8 @@ namespace Divide
                         default: break;
                     };
                 } break;
+
+                case GFXDataFormat::COUNT: break;
             }
 
             DIVIDE_UNEXPECTED_CALL();
@@ -532,6 +534,8 @@ namespace Divide
                 case DescriptorSetBindingType::IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 case DescriptorSetBindingType::UNIFORM_BUFFER: return isPushDescriptor ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: return isPushDescriptor ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+
+                case DescriptorSetBindingType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
             }
 
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;

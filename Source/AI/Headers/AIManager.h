@@ -77,10 +77,13 @@ class AIManager final : public SceneComponent
     /// Remove an AI Entity from all teams. Entities can be added to multiple teams.
     /// Caller is responsible for the lifetime of entity
     void unregisterEntity(AIEntity* entity);
-    AITeam* getTeamByID(const I32 AITeamID) {
-        if (AITeamID != -1) {
+    inline AITeam* getTeamByID(const U32 AITeamID)
+    {
+        if (AITeamID != U32_MAX)
+        {
             const AITeamMap::const_iterator it = _aiTeams.find(AITeamID);
-            if (it != std::end(_aiTeams)) {
+            if (it != std::end(_aiTeams))
+            {
                 return it->second;
             }
         }

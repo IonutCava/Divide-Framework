@@ -1,7 +1,7 @@
 
 
-#include "Headers/VKSwapChain.h"
-#include "Headers/VKDevice.h"
+#include "Headers/vkSwapChain.h"
+#include "Headers/vkDevice.h"
 
 #include "Utility/Headers/Localization.h"
 

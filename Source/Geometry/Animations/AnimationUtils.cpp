@@ -34,4 +34,4 @@ void TransformMatrix(const mat4<F32>& in, aiMatrix4x4& out, const bool rowMajor)
     }
 }
 
-}
+} //namespace Divide

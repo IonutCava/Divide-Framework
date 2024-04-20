@@ -149,4 +149,4 @@ void FormattedListboxTextItem::setupStringFormatter() const {
 }
 
 //----------------------------------------------------------------------------//
-}
+} //namespace CEGUI

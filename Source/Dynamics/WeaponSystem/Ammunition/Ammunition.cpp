@@ -4,6 +4,9 @@
 
 namespace Divide {
 
-Ammunition::Ammunition(const AmmunitionType type) : _type(type) {}
-
+Ammunition::Ammunition(const AmmunitionType type)
+    : _type( type )
+{
 }
+
+} // namespace Divide

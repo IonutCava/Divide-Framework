@@ -2,7 +2,7 @@
 
 #include "Headers/NavMesh.h"
 #include "Headers/NavMeshDebugDraw.h"
-#include "../Headers/DivideRecast.h"
+#include "AI/PathFinding/Headers/DivideRecast.h"
 
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"

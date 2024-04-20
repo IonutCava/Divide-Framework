@@ -21,4 +21,4 @@ GUIText::GUIText(const string& name,
 const RelativePosition2D& GUIText::getPosition() const noexcept {
     return _position;
 }
-};
+} //namespace Divide

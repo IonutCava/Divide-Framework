@@ -33,10 +33,10 @@
 #ifndef DVD_GL_WRAPPER_H_
 #define DVD_GL_WRAPPER_H_
 
-#include "GLStateTracker.h"
+#include "glStateTracker.h"
 #include "glHardwareQuery.h"
 
-#include "Platform/Video/Headers/CommandsImpl.h"
+#include "Platform/Video/Headers/Commands.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 

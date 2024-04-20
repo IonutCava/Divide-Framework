@@ -37,7 +37,7 @@
 #define DVD_POST_AA_PRE_RENDER_OPERATOR_H_
 
 #include "Rendering/PostFX/Headers/PreRenderOperator.h"
-#include "Platform/Video/Headers/CommandsImpl.h"
+#include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
 

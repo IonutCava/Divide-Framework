@@ -101,4 +101,5 @@ void SpotLightComponent::setDirection(const vec3<F32>& direction) const {
         tComp->setDirection(direction);
     }
 }
-}
+
+} //namespace Divide

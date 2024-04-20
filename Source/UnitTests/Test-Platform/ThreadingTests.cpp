@@ -9,7 +9,7 @@ namespace Divide
 
 namespace
 {
-    Mutex printLock{};
+    NO_DESTROY Mutex printLock{};
 
     void printLine( const char* line )
     {

@@ -66,7 +66,7 @@ namespace Divide
         };
 
         FrustumClipPlanes _clippingPlanes;
-        vec3<F32> _minExtents{ 0.f, 0.f };
+        vec3<F32> _minExtents{ 0.f, 0.f, 0.f };
         // source node is used to determine if the current pass is triggered by a specific node:
         // e.g. a light node for shadow mapping, a reflector for reflection (or refraction), etc
         // safe to be set to null
@@ -114,7 +114,7 @@ namespace Divide
         };
 
         explicit RenderPassManager( Kernel& parent, GFXDevice& context );
-        ~RenderPassManager();
+        ~RenderPassManager() override;
 
         /// Call every render queue's render function in order
         void render( const RenderParams& params );
@@ -141,8 +141,8 @@ namespace Divide
         private:
         GFXDevice& _context;
 
-        ShaderProgram_ptr _OITCompositionShader = nullptr;
-        ShaderProgram_ptr _OITCompositionShaderMS = nullptr;
+        ShaderProgram_ptr _oitCompositionShader = nullptr;
+        ShaderProgram_ptr _oitCompositionShaderMS = nullptr;
         ShaderProgram_ptr _gbufferResolveShader = nullptr;
 
         struct RenderPassData

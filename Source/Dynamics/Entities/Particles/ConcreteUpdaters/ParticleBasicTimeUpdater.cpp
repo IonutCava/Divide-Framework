@@ -27,4 +27,5 @@ void ParticleBasicTimeUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
         }
     }
 }
-}
+
+} //namespace Divide

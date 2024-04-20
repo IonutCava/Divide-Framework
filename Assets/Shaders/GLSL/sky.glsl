@@ -476,6 +476,7 @@ void main()
 
     // Guess work based on what "look right"
     const float lerpValue = Saturate(2.95f * (-sunDirection.y + 0.15f));
+    //const float lerpValue = dvd_sunAltitude * 0.5f + 0.5f; //Saturate(2.95f * (-sunDirection.y + 0.15f));
     const vec3 rayDirection = normalize(VAR._vertexW.xyz - dvd_CameraPosition);
 
 #if defined(MAIN_DISPLAY_PASS)

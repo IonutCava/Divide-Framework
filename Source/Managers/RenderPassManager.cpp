@@ -8,12 +8,12 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
-
 #include "Editor/Headers/Editor.h"
 
 #include "GUI/Headers/GUI.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/ProjectManager.h"
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
@@ -83,14 +83,14 @@ void RenderPassManager::postInit()
         {
             ResourceDescriptor shaderResDesc("OITComposition");
             shaderResDesc.propertyDescriptor(shaderDescriptor);
-            _OITCompositionShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResDesc);
+            _oitCompositionShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResDesc);
         }
         {
             shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET");
 
             ResourceDescriptor shaderResMSDesc("OITCompositionMS");
             shaderResMSDesc.propertyDescriptor(shaderDescriptor);
-            _OITCompositionShaderMS = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResMSDesc);
+            _oitCompositionShaderMS = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResMSDesc);
         }
     }
     {
@@ -112,13 +112,13 @@ void RenderPassManager::postInit()
     {
         if (executor != nullptr)
         {
-            executor->postInit( _OITCompositionShader, _OITCompositionShaderMS, _gbufferResolveShader );
+            executor->postInit( _oitCompositionShader, _oitCompositionShaderMS, _gbufferResolveShader );
         }
     }
 
-    _postFXCmdBuffer = GFX::AllocateCommandBuffer();
-    _postRenderBuffer = GFX::AllocateCommandBuffer();
-    _skyLightRenderBuffer = GFX::AllocateCommandBuffer();
+    _postFXCmdBuffer = GFX::AllocateCommandBuffer("PostFX");
+    _postRenderBuffer = GFX::AllocateCommandBuffer("Post Render");
+    _skyLightRenderBuffer = GFX::AllocateCommandBuffer("Sky Light");
 }
 
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, Task* parentTask)
@@ -335,7 +335,7 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
         _renderPassData[to_base(renderStage)]._pass = item;
 
         //Secondary command buffers. Used in a threaded fashion. Always keep an extra buffer for PostFX
-        _renderPassData[to_base(renderStage)]._cmdBuffer = GFX::AllocateCommandBuffer(1024);
+        _renderPassData[to_base(renderStage)]._cmdBuffer = GFX::AllocateCommandBuffer(TypeUtil::RenderStageToString(renderStage), 1024);
     }
 
     return *item;

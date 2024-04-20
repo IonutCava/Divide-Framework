@@ -23,4 +23,5 @@ void ParticleBasicColourUpdater::update( [[maybe_unused]] const U64 deltaTimeUS,
 
     parallel_for(context(), descriptor);
 }
-}
+
+} //namespace Divide

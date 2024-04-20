@@ -14,14 +14,14 @@ U32 TerrainChunk::_chunkID = 0;
 
 TerrainChunk::TerrainChunk(Terrain* const parentTerrain,
                            QuadtreeNode& parentNode) noexcept
-    : _quadtreeNode(parentNode),
-      _ID(_chunkID++),
-      _xOffset(0),
-      _yOffset(0),
-      _sizeX(0),
-      _sizeY(0),
-      _parentTerrain(parentTerrain),
-      _vegetation(nullptr)
+    : _id(_chunkID++)
+    , _quadtreeNode(parentNode)
+    , _xOffset(0)
+    , _yOffset(0)
+    , _sizeX(0)
+    , _sizeY(0)
+    , _parentTerrain(parentTerrain)
+    , _vegetation(nullptr)
 {
 }
 
@@ -91,4 +91,5 @@ U8 TerrainChunk::LoD() const noexcept {
 void TerrainChunk::drawBBox(GFXDevice& context) const {
     _quadtreeNode.drawBBox(context);
 }
-}
+
+} //namespace Divide

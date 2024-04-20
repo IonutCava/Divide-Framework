@@ -132,4 +132,4 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
         return _api->intersect( intersectionRay, range, intersectionsOut );
     }
-}; //namespace Divide
+} //namespace Divide

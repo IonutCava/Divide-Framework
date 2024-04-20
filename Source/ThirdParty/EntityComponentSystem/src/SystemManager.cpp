@@ -12,14 +12,11 @@
 #include "SystemManager.h"
 #include "ISystem.h"
 
-
-#include <EASTL/map.h>
-
 namespace ECS
 {
 	SystemManager::SystemManager()
 	{
-		DEFINE_LOGGER("SystemManager")
+		DEFINE_LOGGER("SystemManager");
 
 		LOG_INFO("Initialize SystemManager!","");
 
@@ -146,11 +143,13 @@ namespace ECS
 
 		while (INDICES.empty() == false)
 		{
-			SystemTypeId index = INDICES.back();
+			int idx = INDICES.back();
 			INDICES.pop_back();
 
-			if (index == -1)
+			if (idx == -1)
 				continue;
+
+			SystemTypeId index = static_cast<SystemTypeId>(idx);
 
             eastl::vector<SystemTypeId> group;
             eastl::vector<SystemTypeId> member;
@@ -211,7 +210,7 @@ namespace ECS
 
 
 
-		LOG_INFO("Update system work order:", "")
+		LOG_INFO("Update system work order:", "");
 
 		// re-build system work order
 		this->m_SystemWorkOrder.clear();
@@ -223,7 +222,7 @@ namespace ECS
 				if (sys != nullptr)
 				{
 					this->m_SystemWorkOrder.push_back(sys);
-					LOG_INFO("\t{}", sys->GetSystemTypeName())
+					LOG_INFO("\t{}", sys->GetSystemTypeName());
 				}
 			}
 		}

@@ -153,7 +153,7 @@ namespace Util {
 
     void CenterNextWindow();
     void OpenCenteredPopup(const char* name, ImGui::ImGuiPopupFlags popup_flags = 0);
-    void PrintColouredText(const std::string_view text, ImVec4 colour);
+    void PrintColouredText(const std::string_view text, const ImVec4& colour);
 
     [[nodiscard]] ImGuiInputTextFlags GetDefaultFlagsForSettings(bool readOnly, bool hex);
     [[nodiscard]] ImGuiInputTextFlags GetDefaultFlagsForField(const EditorComponentField& field);

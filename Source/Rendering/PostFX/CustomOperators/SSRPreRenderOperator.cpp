@@ -160,7 +160,7 @@ bool SSRPreRenderOperator::execute( [[maybe_unused]] const PlayerIndex idx, cons
 
     GFX::EnqueueCommand(bufferInOut, _constantsCmd);
 
-    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
     return false;

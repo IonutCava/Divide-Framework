@@ -222,4 +222,4 @@ namespace Divide
             nodesOut.append( { node, distanceSqToCamera } );
         }
     }
-}
+} //namespace Divide

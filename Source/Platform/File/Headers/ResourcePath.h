@@ -66,10 +66,13 @@ struct ResourcePath
     ResourcePath& makeRelative(const ResourcePath& base);
     ResourcePath getRelative(const ResourcePath& base) const;
 
+    template<size_t N>
+    using StringReturnType = std::conditional_t<(N > 0), Str<N>, Divide::string>;
+
     template<size_t N = 0>
-    std::conditional_t<(N > 0), Str<N>, Divide::string> string() const noexcept
+    StringReturnType<N> string() const noexcept
     {
-        return std::conditional_t<(N > 0), Str<N>, Divide::string>( _fileSystemPath.string().c_str() );
+        return StringReturnType<N>{ _fileSystemPath.string().c_str() };
     }
 
     PROPERTY_R_IW(std::filesystem::path, fileSystemPath);

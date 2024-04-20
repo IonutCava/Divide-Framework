@@ -57,9 +57,9 @@ class SceneShaderData
 {
     struct SceneShaderBufferData
     {
-        // w - reserved
+        // w - altitude
         vec4<F32> _sunDirection = {-0.3f, -0.8f, 0.5f, 1.f};
-        // w - reserved
+        // w - azimuth
         FColour4 _sunColour = DefaultColours::WHITE;
         // x,y,z - direction, w - speed
         vec4<F32> _windDetails = VECTOR4_ZERO;
@@ -92,13 +92,15 @@ class SceneShaderData
         }
     }
 
-    void sunDetails(const vec3<F32>& sunDirection, const FColour3& colour) noexcept
+    void sunDetails(const vec3<F32>& sunDirection, const FColour3& colour, const F32 altitude, const F32 azimuth) noexcept
     {
         if (_sceneBufferData._sunDirection.xyz != sunDirection ||
-            _sceneBufferData._sunColour.xyz != colour)
+            _sceneBufferData._sunColour.xyz != colour ||
+            !COMPARE(_sceneBufferData._sunDirection.w, altitude) ||
+            !COMPARE(_sceneBufferData._sunColour.w, azimuth))
         {
-            _sceneBufferData._sunDirection.xyz.set( sunDirection );
-            _sceneBufferData._sunColour.set(colour);
+            _sceneBufferData._sunDirection.set( sunDirection, altitude );
+            _sceneBufferData._sunColour.set(colour, azimuth);
             _sceneDataDirty = true;
         }
     }

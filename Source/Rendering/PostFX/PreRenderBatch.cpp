@@ -222,15 +222,13 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
         if (GetOperatorSpace(fType) == FilterSpace::FILTER_SPACE_LDR)
         {
-            switch (fType)
+            if (fType == FilterType::FILTER_SS_ANTIALIASING) [[likely]]
             {
-                case FilterType::FILTER_SS_ANTIALIASING:
-                    ldrBatch.push_back(std::make_unique<PostAAPreRenderOperator>(_context, *this, _resCache));
-                    break;
-
-                default:
-                    DIVIDE_UNEXPECTED_CALL();
-                    break;
+                ldrBatch.push_back( std::make_unique<PostAAPreRenderOperator>( _context, *this, _resCache ) );
+            }
+            else
+            {
+                DIVIDE_UNEXPECTED_CALL();
             }
         }
     }
@@ -533,7 +531,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         pushData.data[0]._vec[0].xy = cameraSnapshot._zPlanes;
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
@@ -547,7 +545,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     {
         if (filterStack & 1u << to_U32(op->operatorType()))
         {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = PostFX::FilterName(op->operatorType());
             const bool swapTargets = op->execute(idx, cameraSnapshot, prevScreenHandle, getOutput(true), bufferInOut);
             DIVIDE_ASSERT(!swapTargets, "PreRenderBatch::prePass: Swap render target request detected during prePass!");
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -575,7 +573,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     _toneMapParams._width = screenRT()._rt->getWidth();
     _toneMapParams._height = screenRT()._rt->getHeight();
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Compute Adaptive Exposure" });
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Compute Adaptive Exposure";
 
     const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
 
@@ -583,7 +581,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
         const ImageView screenImage = screenColour->getView();
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "CreateLuminanceHistogram" });
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "CreateLuminanceHistogram";
 
         // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
@@ -593,7 +591,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             ._targetLayout = ImageUsage::SHADER_READ_WRITE
         });
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcHistogram });
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipelineLumCalcHistogram;
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -615,7 +613,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
         const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{groupsX, groupsY, 1});
+        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = {groupsX, groupsY, 1};
 
         auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
         memCmd->_bufferLocks.emplace_back(BufferLock
@@ -636,7 +634,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     { // Averaging pass
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "AverageLuminanceHistogram" });
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "AverageLuminanceHistogram";
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -645,7 +643,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             ._targetLayout = ImageUsage::SHADER_WRITE,
         });
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _pipelineLumCalcAverage });
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipelineLumCalcAverage;
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -667,7 +665,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ 1, 1, 1, });
+        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { 1, 1, 1, };
         {
             auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
             memCmd->_bufferLocks.emplace_back( BufferLock
@@ -723,12 +721,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     OperatorBatch& hdrBatchPostSS = _operators[to_base(FilterSpace::FILTER_SPACE_HDR_POST_SS)];
     OperatorBatch& ldrBatch       = _operators[to_base(FilterSpace::FILTER_SPACE_LDR)];
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: Execute HDR(1) operators"});
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: Execute HDR(1) operators";
     for (auto& op : hdrBatch)
     {
         if (filterStack & 1u << to_U32(op->operatorType()))
         {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = PostFX::FilterName(op->operatorType());
             if (op->execute(idx, cameraSnapshot, getInput(true), getOutput(true), bufferInOut))
             {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
@@ -743,7 +741,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     {
         if (filterStack & 1u << to_U32(op->operatorType()))
         {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ PostFX::FilterName(op->operatorType()) });
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = PostFX::FilterName(op->operatorType());
             if (op->execute(idx, cameraSnapshot, getInput(true), getOutput(true), bufferInOut))
             {
                 _screenRTs._swappedHDR = !_screenRTs._swappedHDR;
@@ -779,7 +777,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
         const auto& screenDepthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: tone map" });
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: tone map";
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -802,7 +800,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
         renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap });
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap;
 
         const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
 
@@ -814,7 +812,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
@@ -823,7 +821,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
     // Now that we have an LDR target, proceed with edge detection. This LDR target is NOT GAMMA CORRECTED!
     if (edgeDetectionMethod() != EdgeDetectionMethod::COUNT) {
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "PostFX: edge detection" });
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: edge detection";
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -847,13 +845,13 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
         renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _edgeDetectionPipelines[to_base(edgeDetectionMethod())] });
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _edgeDetectionPipelines[to_base(edgeDetectionMethod())];
 
         PushConstantsStruct pushData{};
         pushData.data[0]._vec[0].x = edgeDetectionThreshold();
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
 
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -864,7 +862,10 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     {
         if ( filterStack & 1u << to_U32(op->operatorType()))
         {
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ Util::StringFormat("PostFX: Execute LDR operator [ {} ]", PostFX::FilterName(op->operatorType())).c_str(), to_U32(op->operatorType()) });
+            auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
+            cmd->_scopeName = Util::StringFormat( "PostFX: Execute LDR operator [ {} ]", PostFX::FilterName( op->operatorType() ) );
+            cmd->_scopeId = to_U32( op->operatorType() );
+
             if (op->execute(idx, cameraSnapshot, getInput(false), getOutput(false), bufferInOut))
             {
                 _screenRTs._swappedLDR = !_screenRTs._swappedLDR;
@@ -892,4 +893,5 @@ void PreRenderBatch::reshape(const U16 width, const U16 height) {
     _sceneEdges._rt->resize(width, height);
     _linearDepthRT._rt->resize(width, height);
 }
-};
+
+} //namespace Divide

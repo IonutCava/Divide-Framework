@@ -40,4 +40,4 @@ void ParticleFloorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, Parti
     parallel_for(context(), descriptor);
 }
 
-}
+} //namespace Divide

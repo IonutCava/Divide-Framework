@@ -50,7 +50,7 @@ public:
     static constexpr float DEFAULT_SIZE = 128.f;
 
     DVDTextureTarget( CEGUIRenderer& owner, const Sizef resolution);
-    virtual ~DVDTextureTarget();
+    virtual ~DVDTextureTarget() override;
 
     // implementation of TextureTarget interface
     void clear() override;

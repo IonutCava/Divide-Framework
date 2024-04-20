@@ -68,7 +68,7 @@ class DockedWindow : NonCopyable, NonMovable {
 
         [[nodiscard]] const Descriptor& descriptor() const noexcept { return _descriptor; }
 
-        virtual void onRemoveComponent([[maybe_unused]] const EditorComponent& comp) {};
+        virtual void onRemoveComponent([[maybe_unused]] const EditorComponent& comp) {}
 
         PROPERTY_RW(ImGuiWindowFlags, windowFlags, 0);
         PROPERTY_RW(bool, enabled, true);

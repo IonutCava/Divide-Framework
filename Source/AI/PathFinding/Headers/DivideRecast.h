@@ -70,7 +70,7 @@
 #ifndef DVD_NAVIGATION_PATH_H_
 #define DVD_NAVIGATION_PATH_H_
 
-#include "../NavMeshes/Headers/NavMesh.h"
+#include "AI/PathFinding/NavMeshes/Headers/NavMesh.h"
 
 namespace Divide {
 namespace AI {
@@ -106,7 +106,7 @@ class DivideRecast {
      *  PATH_ERROR_NO_STRAIGHT_PATH_FIND   Couldn't find a straight path
     **/
     PathErrorCode FindPath(const NavigationMesh& navMesh, const vec3<F32>& startPos,
-                           const vec3<F32>& endPos, I32 pathSlot, I32 target);
+                           const vec3<F32>& endPos, U32 pathSlot, I32 target);
     /**
     * Retrieve the path at specified slot defined as a line along an ordered set of
     *3D positions.

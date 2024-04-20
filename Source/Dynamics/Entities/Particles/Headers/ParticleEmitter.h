@@ -87,7 +87,7 @@ class ParticleEmitter final : public SceneNode {
                      SceneGraphNode* sgn,
                      SceneState& sceneState) override;
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
     [[nodiscard]] GenericVertexData& getDataBuffer(RenderStage stage, PlayerIndex idx);
 

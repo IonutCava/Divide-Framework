@@ -26,18 +26,18 @@ namespace {
     constexpr bool s_AlwaysRefreshSkyLight = false;
     constexpr bool s_AlwaysProcessFullProbeRefreshPerFrame = false;
 
-    Mutex s_queueLock;
+    NO_DESTROY Mutex s_queueLock;
     constexpr U16 s_IrradianceTextureSize = 64u;
     constexpr U16 s_LUTTextureSize = 128u;
 
-    eastl::queue<U16> s_computationQueue;
-    eastl::set<U16> s_computationSet;
+    NO_DESTROY eastl::queue<U16> s_computationQueue;
+    NO_DESTROY eastl::set<U16> s_computationSet;
     U16 s_queuedLayer = 0u;
 
     static SceneEnvironmentProbePool::ComputationStages s_queuedStage = SceneEnvironmentProbePool::ComputationStages::COUNT;
 }
 
-vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
+NO_DESTROY vector<DebugView_ptr> SceneEnvironmentProbePool::s_debugViews;
 bool SceneEnvironmentProbePool::s_probesDirty = true;
 
 std::array<SceneEnvironmentProbePool::ProbeSlice, Config::MAX_REFLECTIVE_PROBES_PER_PASS> SceneEnvironmentProbePool::s_availableSlices;
@@ -45,10 +45,10 @@ RenderTargetHandle SceneEnvironmentProbePool::s_reflection;
 RenderTargetHandle SceneEnvironmentProbePool::s_prefiltered;
 RenderTargetHandle SceneEnvironmentProbePool::s_irradiance;
 RenderTargetHandle SceneEnvironmentProbePool::s_brdfLUT;
-ShaderProgram_ptr SceneEnvironmentProbePool::s_previewShader;
-ShaderProgram_ptr SceneEnvironmentProbePool::s_irradianceComputeShader;
-ShaderProgram_ptr SceneEnvironmentProbePool::s_prefilterComputeShader;
-ShaderProgram_ptr SceneEnvironmentProbePool::s_lutComputeShader;
+NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_previewShader;
+NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_irradianceComputeShader;
+NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_prefilterComputeShader;
+NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_lutComputeShader;
 Pipeline* SceneEnvironmentProbePool::s_pipelineCalcPrefiltered = nullptr;
 Pipeline* SceneEnvironmentProbePool::s_pipelineCalcIrradiance = nullptr;
 bool SceneEnvironmentProbePool::s_debuggingSkyLight = false;
@@ -65,24 +65,29 @@ SceneEnvironmentProbePool::~SceneEnvironmentProbePool()
 {
 }
 
-I16 SceneEnvironmentProbePool::AllocateSlice(const bool lock) {
+U16 SceneEnvironmentProbePool::AllocateSlice(const bool lock)
+{
     static_assert(Config::MAX_REFLECTIVE_PROBES_PER_PASS < I16_MAX);
 
-    for (U32 i = 0; i < Config::MAX_REFLECTIVE_PROBES_PER_PASS; ++i) {
-        if (s_availableSlices[i]._available) {
+    for (U16 i = 0; i < Config::MAX_REFLECTIVE_PROBES_PER_PASS; ++i)
+    {
+        if (s_availableSlices[i]._available)
+        {
             s_availableSlices[i] = { false, lock };
-            return to_I16(i);
+            return i;
         }
     }
 
-    if constexpr (Config::Build::IS_DEBUG_BUILD) {
+    if constexpr (Config::Build::IS_DEBUG_BUILD)
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    return -1;
+    return Config::MAX_REFLECTIVE_PROBES_PER_PASS;
 }
 
-void SceneEnvironmentProbePool::UnlockSlice(const I16 slice) noexcept {
+void SceneEnvironmentProbePool::UnlockSlice(const U16 slice) noexcept
+{
     s_availableSlices[slice] = { true, false };
 }
 
@@ -316,7 +321,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         const Pipeline* pipelineCalcLut = context.newPipeline(pipelineDescriptor);
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ pipelineCalcLut });
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = pipelineCalcLut;
 
         Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture().get();
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
@@ -336,7 +341,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
         const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });
+        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { groupsX, groupsY, 1 };
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -357,7 +362,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
     {
         PROFILE_SCOPE( "Upadate Sky Probe", Profiler::Category::Graphics );
 
-        GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand("SkyLight Pass"));
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "SkyLight Pass";
 
         RenderPassParams params = {};
 
@@ -456,7 +461,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(const U16 layerID,
         {
             PROFILE_SCOPE( "Generate Mipmaps", Profiler::Category::Graphics );
 
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Process environment map #{}-MipMapsSource", layerID).c_str()));
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut )->_scopeName = Util::StringFormat("Process environment map #{}-MipMapsSource", layerID);
             RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
             GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
@@ -480,7 +485,11 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(const U16 layerID,
             stage = ComputationStages::COUNT;
             s_queuedLayer = 0u;
         } break;
-    };
+        case ComputationStages::COUNT: 
+            DIVIDE_UNEXPECTED_CALL();
+            break;
+
+    }
 }
 
 void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandBuffer& bufferInOut)
@@ -491,9 +500,9 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     const Texture* sourceTex = sourceAtt->texture().get();
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("PreFilter environment map #{}", layerID).c_str()));
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("PreFilter environment map #{}", layerID);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcPrefiltered });
+    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = s_pipelineCalcPrefiltered;
 
     // width is the width/length of a single face of our cube map
     const U16 width = sourceTex->width();
@@ -533,7 +542,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
 
         // Dispatch enough groups to cover the entire _mipped_ face
         const U16 mipWidth = width / to_U16(std::pow(2.f, mipLevel));
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 });
+        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 };
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -559,9 +568,9 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Compute Irradiance #{}", layerID).c_str()));
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("Compute Irradiance #{}", layerID);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ s_pipelineCalcIrradiance });
+    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = s_pipelineCalcIrradiance;
 
     ImageView destinationView = destinationAtt->texture()->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
 
@@ -589,7 +598,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
 
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
-    GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{ groupsX, groupsY, 1 });
+    GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { groupsX, groupsY, 1 };
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back( TextureLayoutChange
     {
@@ -676,69 +685,92 @@ void SceneEnvironmentProbePool::prepareDebugData() {
         }
     }
 
-    if (enableSkyLightDebug && addSkyLightViews) {
+    if (enableSkyLightDebug && addSkyLightViews)
+    {
         createDebugView(SkyProbeLayerIndex());
     }
-    if (enableProbeDebugging && addProbeViews) {
+    if (enableProbeDebugging && addProbeViews)
+    {
         createDebugView(_debugProbe->rtLayerIndex());
     }
 }
 
-void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex) {
-    for (U32 i = 0u; i < 18u; ++i) {
+void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex)
+{
+    for (U32 i = 0u; i < 18u; ++i)
+    {
         DebugView_ptr& probeView = s_debugViews.emplace_back(std::make_shared<DebugView>(to_I16(I16_MAX - layerIndex - i)));
         probeView->_cycleMips = true;
 
-        if (i > 11) {
+        if (i > 11)
+        {
             probeView->_texture = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
             probeView->_sampler = PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->_descriptor._sampler;
-        } else if (i > 5) {
+        }
+        else if (i > 5)
+        {
             probeView->_texture = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
             probeView->_sampler = IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->_descriptor._sampler;
-        } else {
+        }
+        else
+        {
             probeView->_texture = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
             probeView->_sampler = ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->_descriptor._sampler;
         }
+
         probeView->_shader = s_previewShader;
         probeView->_shaderData.set(_ID("layer"), PushConstantType::INT, layerIndex);
         probeView->_shaderData.set(_ID("face"), PushConstantType::INT, i % 6u);
-        if (i > 11) {
+        if (i > 11)
+        {
             probeView->_name = Util::StringFormat("Probe_{}_Filtered_face_{}", layerIndex, i % 6u);
-        } else if (i > 5) {
+        }
+        else if (i > 5) 
+        {
             probeView->_name = Util::StringFormat("Probe_{}_Irradiance_face_{}", layerIndex, i % 6u);
-        } else {
+        }
+        else
+        {
             probeView->_name = Util::StringFormat("Probe_{}_Reference_face_{}", layerIndex, i % 6u);
         }
+
         probeView->_groupID = g_debugViewBase + layerIndex;
         probeView->_enabled = true;
         parentScene().context().gfx().addDebugView(probeView);
     }
 }
 
-void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexcept {
+void SceneEnvironmentProbePool::onNodeUpdated(const SceneGraphNode& node) noexcept
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
     const BoundingSphere& bSphere = node.get<BoundsComponent>()->getBoundingSphere();
     lockProbeList();
     const EnvironmentProbeList& probes = getLocked();
-    for (const auto& probe : probes) {
-        if (probe->checkCollisionAndQueueUpdate(bSphere)) {
+    for (const auto& probe : probes)
+    {
+        if (probe->checkCollisionAndQueueUpdate(bSphere))
+        {
             NOP();
         }
     }
+
     unlockProbeList();
     if (node.getNode().type() == SceneNodeType::TYPE_SKY) {
         SkyLightNeedsRefresh(true);
     }
 }
 
-void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept {
+void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePool& probePool) noexcept
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
     probePool.lockProbeList();
     const EnvironmentProbeList& probes = probePool.getLocked();
-    for (const auto& probe : probes) {
-        if (probe->updateType() != EnvironmentProbeComponent::UpdateType::ONCE) {
+    for (const auto& probe : probes)
+    {
+        if (probe->updateType() != EnvironmentProbeComponent::UpdateType::ONCE)
+        {
             probe->dirty(true);
         }
     }
@@ -746,23 +778,28 @@ void SceneEnvironmentProbePool::OnTimeOfDayChange(const SceneEnvironmentProbePoo
     SkyLightNeedsRefresh(true);
 }
 
-bool SceneEnvironmentProbePool::DebuggingSkyLight() noexcept {
+bool SceneEnvironmentProbePool::DebuggingSkyLight() noexcept
+{
     return s_debuggingSkyLight;
 }
 
-void SceneEnvironmentProbePool::DebuggingSkyLight(const bool state) noexcept {
+void SceneEnvironmentProbePool::DebuggingSkyLight(const bool state) noexcept
+{
     s_debuggingSkyLight = state;
 }
 
-bool SceneEnvironmentProbePool::SkyLightNeedsRefresh() noexcept {
+bool SceneEnvironmentProbePool::SkyLightNeedsRefresh() noexcept
+{
     return s_skyLightNeedsRefresh || s_AlwaysRefreshSkyLight;
 }
 
-void SceneEnvironmentProbePool::SkyLightNeedsRefresh(const bool state) noexcept {
+void SceneEnvironmentProbePool::SkyLightNeedsRefresh(const bool state) noexcept
+{
     s_skyLightNeedsRefresh = state;
 }
 
-U16 SceneEnvironmentProbePool::SkyProbeLayerIndex() noexcept {
+U16 SceneEnvironmentProbePool::SkyProbeLayerIndex() noexcept
+{
     return Config::MAX_REFLECTIVE_PROBES_PER_PASS;
 }
 } //namespace Divide

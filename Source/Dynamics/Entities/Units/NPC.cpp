@@ -23,4 +23,4 @@ AI::AIEntity* NPC::getAIEntity() const noexcept {
     return _aiUnit;
 }
 
-}
+} //namespace Divide

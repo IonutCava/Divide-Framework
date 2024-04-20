@@ -112,7 +112,7 @@ namespace Divide {
                                     case Character::CharacterType::CHARACTER_TYPE_PLAYER: return ICON_FK_GAMEPAD;
                                     default: break;
                                 }
-                            }
+                            } break;
                             case UnitType::UNIT_TYPE_VEHICLE:
                             {
                                 return ICON_FK_CAR;

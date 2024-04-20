@@ -84,7 +84,6 @@ class WarSceneAIProcessor;
 class WarSceneAction final : public GOAPAction {
    public:
     WarSceneAction(ActionType type, const string& name, F32 cost = 1.0f);
-    virtual ~WarSceneAction() = default;
 
     ActionType actionType() const noexcept { return _type; }
 

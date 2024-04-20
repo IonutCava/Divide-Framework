@@ -5,7 +5,7 @@
 namespace Divide {
 namespace GFX {
 
-static CommandBufferPool g_sCommandBufferPool;
+NO_DESTROY static CommandBufferPool g_sCommandBufferPool;
 
 void DestroyPools() noexcept
 {
@@ -24,12 +24,12 @@ void CommandBufferPool::reset() noexcept
     ++_generation;
 }
 
-Handle<CommandBuffer> CommandBufferPool::allocateBuffer( const size_t reservedCmdCount )
+Handle<CommandBuffer> CommandBufferPool::allocateBuffer( const char* name, const size_t reservedCmdCount )
 {
     LockGuard<Mutex> lock(_mutex);
     return Handle<CommandBuffer>
     {
-        ._ptr = _pool.newElement( reservedCmdCount ),
+        ._ptr = _pool.newElement( name, reservedCmdCount ),
         ._generation = _generation,
         ._index = _bufferCount++
     };
@@ -59,11 +59,11 @@ void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& buffer)
     }
 }
 
-Handle<CommandBuffer> AllocateCommandBuffer( const size_t reservedCmdCount)
+Handle<CommandBuffer> AllocateCommandBuffer(const char* name, const size_t reservedCmdCount)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    return g_sCommandBufferPool.allocateBuffer(reservedCmdCount);
+    return g_sCommandBufferPool.allocateBuffer(name, reservedCmdCount);
 }
 
 void DeallocateCommandBuffer( Handle<CommandBuffer>& buffer)

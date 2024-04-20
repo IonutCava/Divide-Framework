@@ -254,4 +254,5 @@ Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parent) {
 
     return nullptr;
 }
-};
+
+} //namespace Divide

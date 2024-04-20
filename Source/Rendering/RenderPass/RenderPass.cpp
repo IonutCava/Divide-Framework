@@ -76,12 +76,12 @@ namespace Divide
     }
 
     RenderPass::RenderPass( RenderPassManager& parent, GFXDevice& context, const RenderStage renderStage, const vector<RenderStage>& dependencies )
-        : _context( context ),
-        _parent( parent ),
-        _config( context.context().config() ),
-        _stageFlag( renderStage ),
-        _dependencies( dependencies ),
-        _name( TypeUtil::RenderStageToString( renderStage ) )
+        : _dependencies( dependencies )
+        , _context( context )
+        , _parent( parent )
+        , _config( context.context().config() )
+        , _stageFlag( renderStage )
+        , _name( TypeUtil::RenderStageToString( renderStage ) )
     {
         for ( U8 i = 0u; i < to_base( _stageFlag ); ++i )
         {
@@ -139,13 +139,13 @@ namespace Divide
                 params._target = RenderTargetNames::SCREEN;
                 params._useMSAA = _config.rendering.MSAASamples > 0u;
 
-                GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Main Display Pass" } );
+                GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Main Display Pass";
 
                 Camera* playerCamera = Attorney::ProjectManagerCameraAccessor::playerCamera( _parent.parent().projectManager() );
                 _parent.doCustomPass( playerCamera, params, bufferInOut, memCmdInOut );
                 const CameraSnapshot& camSnapshot = playerCamera->snapshot();
 
-                GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ camSnapshot } );
+                GFX::EnqueueCommand<GFX::PushCameraCommand>( bufferInOut )->_cameraSnapshot = camSnapshot;
 
                 GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
                 beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
@@ -192,7 +192,7 @@ namespace Divide
                         _parent.doCustomPass( editor.nodePreviewCamera(), params, bufferInOut, memCmdInOut );
 
                         const CameraSnapshot& camSnapshot = editor.nodePreviewCamera()->snapshot();
-                        GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ camSnapshot } );
+                        GFX::EnqueueCommand<GFX::PushCameraCommand>( bufferInOut )->_cameraSnapshot = camSnapshot;
 
                         GFX::BeginRenderPassCommand* beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
                         beginRenderPassCmd->_name = "DO_POST_RENDER_PASS";
@@ -217,7 +217,7 @@ namespace Divide
 
                     const Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
 
-                    GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Shadow Render Stage" } );
+                    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Shadow Render Stage";
                     lightPool.sortLightData( RenderStage::SHADOW, camera->snapshot() );
                     lightPool.generateShadowMaps( *camera, bufferInOut, memCmdInOut );
 
@@ -230,7 +230,7 @@ namespace Divide
                 ProjectManager* mgr = _parent.parent().projectManager();
                 Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
 
-                GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Reflection Pass" } );
+                GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Reflection Pass";
                 {
                     PROFILE_SCOPE( "RenderPass - Probes", Profiler::Category::Scene );
                     SceneEnvironmentProbePool::Prepare( bufferInOut );
@@ -250,7 +250,7 @@ namespace Divide
                 }
                 {
                     PROFILE_SCOPE( "RenderPass - Reflection", Profiler::Category::Scene );
-                    static VisibleNodeList s_Nodes;
+                    static VisibleNodeList<> s_Nodes;
                     //Update classic reflectors (e.g. mirrors, water, etc)
                     //Get list of reflective nodes from the scene manager
                     mgr->getSortedReflectiveNodes( camera, RenderStage::REFLECTION, true, s_Nodes );
@@ -279,9 +279,9 @@ namespace Divide
 
             case RenderStage::REFRACTION:
             {
-                static VisibleNodeList s_Nodes;
+                static VisibleNodeList<> s_Nodes;
 
-                GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Refraction Pass" } );
+                GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Refraction Pass";
 
                 PROFILE_SCOPE( "RenderPass - Refraction", Profiler::Category::Scene );
                 // Get list of refractive nodes from the scene manager
@@ -318,4 +318,4 @@ namespace Divide
         };
     }
 
-};
+} //namespace Divide

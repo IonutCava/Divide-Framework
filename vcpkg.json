@@ -3,6 +3,7 @@
     "version-string": "0.1",
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "dependencies": [
+        "pkgconf",
         "boost-property-tree",
         "boost-asio",
         "stb",
@@ -16,6 +17,19 @@
         "glm",
         "meshoptimizer",
         "nvtt",
+        "openal-soft",
+        "physx",
+        "expat",
+        "recastnavigation",
+        "imgui-node-editor",
+        "imguizmo",
+        "vulkan",
+        "vulkan-memory-allocator",
+        "vk-bootstrap",
+        "glslang",
+        "ctre",
+        "catch2",
+        "fribidi",
         "sdl2",
         "sdl2-image",
         {
@@ -25,26 +39,14 @@
                 "libflac",
                 "libmodplug",
                 "mpg123",
+                "wavpack",
                 "opusfile"
             ]
         },
-        "openal-soft",
-        "physx",
-        "expat",
-        "pkgconf",
-        "recastnavigation",
         "assimp",
         {
             "name": "imgui",
             "features": [ "docking-experimental", "no-obsolete-keyio", "no-obsolete-functions" ]
-        },
-        "imgui-node-editor",
-        "imguizmo",
-        "zlib",
-        "vulkan",
-        "vulkan-memory-allocator",
-        "glslang",
-        "ctre",
-        "catch2"
+        }
     ]
 }

@@ -8,7 +8,7 @@ namespace Divide {
         constexpr U32 g_updateFrameInterval = 60;
     }
 
-    vector<std::pair<FileWatcher_uptr, U32>> FileWatcherManager::s_fileWatchers;
+    NO_DESTROY vector<std::pair<FileWatcher_uptr, U32>> FileWatcherManager::s_fileWatchers;
 
     FileWatcher& FileWatcherManager::allocateWatcher() {
         s_fileWatchers.emplace_back(std::make_pair( std::make_unique<FileWatcher>(), g_updateFrameInterval));

@@ -21,7 +21,6 @@ namespace Divide
     {
         for ( const TextureLayoutChange& it : changes )
         {
-            ImageSubRange subRangeTemp = it._targetView._subRange;
             if ( it._targetView._srcTexture != nullptr &&
                  it._targetLayout != ImageUsage::COUNT &&
                  it._sourceLayout != it._targetLayout )
@@ -250,6 +249,7 @@ namespace Divide
             case GFXImageFormat::RG:   return 2u;
             case GFXImageFormat::RGB:  return 3u;
             case GFXImageFormat::RGBA: return 4u;
+            default: break;
         }
 
         return 0u;
@@ -436,7 +436,7 @@ namespace Divide
                 descriptor._iterCount = width;
                 descriptor._partitionSize = std::max( 16u, to_U32( width / 10 ) );
                 descriptor._useCurrentThread = true;
-                descriptor._cbk = [this, &fileData, &hasTransulenctOrOpaquePixels, height, layer, &transparentPixelCount, transparentPixelsSkipCount]( const Task* /*parent*/, const U32 start, const U32 end )
+                descriptor._cbk = [&]( const Task* /*parent*/, const U32 start, const U32 end )
                 {
                     U8 tempA = 0u;
                     for ( U32 i = start; i < end; ++i )
@@ -522,8 +522,19 @@ namespace Divide
                     valid = _descriptor.dataType() == GFXDataFormat::UNSIGNED_BYTE;
                 } break;
 
-                default: break;
-            };
+                case GFXImageFormat::RED: 
+                case GFXImageFormat::RG: 
+                case GFXImageFormat::BC3n: 
+                case GFXImageFormat::BC4s: 
+                case GFXImageFormat::BC4u: 
+                case GFXImageFormat::BC5s: 
+                case GFXImageFormat::BC5u: 
+                case GFXImageFormat::BC6s: 
+                case GFXImageFormat::BC6u: break;
+
+                case GFXImageFormat::COUNT:
+                default: DIVIDE_UNEXPECTED_CALL(); break;
+            }
 
             DIVIDE_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );
         }
@@ -557,7 +568,7 @@ namespace Divide
         view._descriptor._dataType = _descriptor.dataType();
         view._descriptor._baseFormat = _descriptor.baseFormat();
         view._descriptor._packing = _descriptor.packing();
-        view._subRange._layerRange._count = layerCount,
+        view._subRange._layerRange._count = layerCount;
         view._subRange._mipLevels._count = _mipCount;
 
         return view;

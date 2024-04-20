@@ -82,7 +82,7 @@ using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 6, true>;
 class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
 {
     friend class ResourceCache;
-    friend class ResourceLoader;
+    friend struct ResourceLoader;
     template <typename T>
     friend class ImplResourceLoader;
     friend class Attorney::TextureKernel;

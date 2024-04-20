@@ -6,7 +6,8 @@
 
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+#include "Utility/Headers/Localization.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"

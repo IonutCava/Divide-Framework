@@ -15,4 +15,5 @@ GraphicsResource::~GraphicsResource()
 {
     Attorney::GFXDeviceGraphicsResource::onResourceDestroy(_context, _type, _guid, _nameHash);
 }
-}; //namespace Divide
+
+} //namespace Divide

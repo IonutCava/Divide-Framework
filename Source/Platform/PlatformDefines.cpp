@@ -19,7 +19,7 @@ namespace Divide
 
     namespace
     {
-        SysInfo g_sysInfo;
+        NO_DESTROY SysInfo g_sysInfo;
     };
 
     namespace MemoryManager
@@ -35,7 +35,7 @@ namespace Divide
             }
         }
 
-        static void log_delete( void* p )
+        void log_delete( void* p )
         {
             if constexpr ( Config::Build::IS_DEBUG_BUILD )
             {

@@ -17,4 +17,4 @@ namespace Divide {
     {
         SDLEventManager::unregisterListener(*this);
     }
-};
+} // namespace Divide

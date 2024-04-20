@@ -49,7 +49,7 @@ void VisualSensor::followSceneGraphNode(const U32 containerID, SceneGraphNode* n
            node->get<TransformComponent>()->getWorldPosition());
 }
 
-void VisualSensor::unfollowSceneGraphNode(const U32 containerID, const U64 nodeGUID) {
+void VisualSensor::unfollowSceneGraphNode(const U32 containerID, const I64 nodeGUID) {
     DIVIDE_ASSERT(nodeGUID != 0,
                   "VisualSensor error: Invalid node GUID specified for "
                   "unfollow function");
@@ -87,7 +87,7 @@ SceneGraphNode* VisualSensor::findClosestNode(const U32 containerID) {
         NPC* const unit = _parentEntity->getUnitRef();
         if (unit) {
             const vec3<F32>& currentPosition = unit->getCurrentPosition();
-            U64 currentNearest = positions.begin()->first;
+            I64 currentNearest = positions.begin()->first;
             F32 currentDistanceSq = F32_MAX;
             for (const NodePositions::value_type& entry : positions) {
                 const F32 temp = currentPosition.distanceSquared(entry.second);
@@ -109,7 +109,7 @@ SceneGraphNode* VisualSensor::findClosestNode(const U32 containerID) {
     return nullptr;
 }
 
-F32 VisualSensor::getDistanceToNodeSq(const U32 containerID, const U64 nodeGUID) {
+F32 VisualSensor::getDistanceToNodeSq(const U32 containerID, const I64 nodeGUID) {
     DIVIDE_ASSERT(
         nodeGUID != 0,
         "VisualSensor error: Invalid node GUID specified for distance request");
@@ -122,7 +122,7 @@ F32 VisualSensor::getDistanceToNodeSq(const U32 containerID, const U64 nodeGUID)
     return F32_MAX;
 }
 
-vec3<F32> VisualSensor::getNodePosition(const U32 containerID, const U64 nodeGUID) {
+vec3<F32> VisualSensor::getNodePosition(const U32 containerID, const I64 nodeGUID) {
     DIVIDE_ASSERT(
         nodeGUID != 0,
         "VisualSensor error: Invalid node GUID specified for position request");

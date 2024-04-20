@@ -9,14 +9,9 @@
 
         inline bool IsMemoryError(const VkResult errorResult) noexcept
         {
-            switch (errorResult)
-            {
-                case VK_ERROR_FRAGMENTED_POOL:
-                case VK_ERROR_OUT_OF_POOL_MEMORY: return true;
-            }
-            return false;
+            return errorResult == VK_ERROR_FRAGMENTED_POOL ||
+                   errorResult == VK_ERROR_OUT_OF_POOL_MEMORY;
         }
-
     }
 
     vke::DescriptorAllocatorPool* vke::DescriptorAllocatorPool::Create(const VkDevice& device, Divide::I32 nFrames)
@@ -84,7 +79,7 @@
         ownerPool = nullptr;
     }
 
-    bool DescriptorAllocatorHandle::Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, Divide::I8 retryCount)
+    bool DescriptorAllocatorHandle::Allocate(const VkDescriptorSetLayout& layout, VkDescriptorSet& builtSet, Divide::U8 retryCount)
     {
         PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Graphics );
 
@@ -113,7 +108,7 @@
                 newHandle.poolIdx = -1;
                 newHandle.ownerPool = nullptr;
 
-                Divide::DIVIDE_ASSERT( retryCount < 250, "DescriptorAllocatorHandle::Allocate failed to allocate descriptor sets: memory error!");
+                Divide::DIVIDE_ASSERT( retryCount < (Divide::U8_MAX - 1u), "DescriptorAllocatorHandle::Allocate failed to allocate descriptor sets: memory error!");
                 //could be good idea to avoid infinite loop here
                 return Allocate(layout, builtSet, retryCount + 1);
             }

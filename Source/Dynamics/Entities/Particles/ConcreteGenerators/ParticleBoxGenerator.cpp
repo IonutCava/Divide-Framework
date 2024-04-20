@@ -32,4 +32,4 @@ void ParticleBoxGenerator::generate(Task& packagedTasksParent,
     });
 }
 
-}
+} //namespace Divide

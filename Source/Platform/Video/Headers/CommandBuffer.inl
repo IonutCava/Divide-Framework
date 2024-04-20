@@ -37,24 +37,25 @@ namespace GFX {
 
 struct DrawCommand;
 struct BindShaderResourcesCommand;
+struct SendPushConstantsCommand;
 
 namespace
 {
-    template<typename T>
+    template<typename T> requires std::is_base_of_v<CommandBase, T>
     constexpr size_t MemoryPoolSize()
     {
-        constexpr size_t g_commandPoolSizeFactor = prevPOW2( sizeof( T ) ) * (1u << 4);
+        constexpr size_t g_commandSize = prevPOW2( sizeof( T ) );
 
         if constexpr ( std::is_same<T, GFX::BindShaderResourcesCommand>::value )
         {
-            return g_commandPoolSizeFactor * 3;
+            return g_commandSize * (1u << 5);
         }
         else if constexpr ( std::is_same<T, GFX::DrawCommand>::value )
         {
-            return g_commandPoolSizeFactor * 2;
+            return g_commandSize * (1u << 6);
         }
 
-        return g_commandPoolSizeFactor;
+        return g_commandSize * (1u << 4);
     }
 
     template<typename T> requires std::is_base_of_v<CommandBase, T>
@@ -67,30 +68,7 @@ namespace
             NO_DESTROY thread_local Pool pool;
             return pool;
         }
-
-        void DeleteCmd( CommandBase*& cmd ) const
-        {
-            GetPool().deleteElement( cmd->As<T>() );
-            cmd = nullptr;
-        }
     };
-}
-
-template <CommandType EnumVal>
-inline void Command<EnumVal>::DeleteCmd( CommandBase*& cmd ) const
-{
-    using CType = MapToDataType<EnumVal>;
-
-    CmdAllocator<CType>::GetPool().deleteElement(cmd->As<CType>());
-    cmd = nullptr;
-}
-
-template <CommandType EnumVal>
-void Command<EnumVal>::addToBuffer(CommandBuffer* buffer) const
-{
-    using CType = MapToDataType<EnumVal>;
-
-    buffer->add( static_cast<const CType&>(*this) );
 }
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
@@ -132,12 +110,12 @@ bool TryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand)
         } break;
         case CommandType::MEMORY_BARRIER:
         {
-            ret = Merge(reinterpret_cast<MemoryBarrierCommand*>(prevCommand), reinterpret_cast<MemoryBarrierCommand*>(crtCommand));
+            ret = Merge( static_cast<MemoryBarrierCommand*>(prevCommand), static_cast<MemoryBarrierCommand*>(crtCommand));
         } break;
         case CommandType::SEND_PUSH_CONSTANTS:
         {
             bool partial = false;
-            ret = Merge(reinterpret_cast<SendPushConstantsCommand*>(prevCommand)->_constants, reinterpret_cast<SendPushConstantsCommand*>(crtCommand)->_constants, partial);
+            ret = Merge( static_cast<SendPushConstantsCommand*>(prevCommand)->_constants, static_cast<SendPushConstantsCommand*>(crtCommand)->_constants, partial);
         } break;
         default:
         {

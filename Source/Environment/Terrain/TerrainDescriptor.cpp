@@ -15,13 +15,10 @@ namespace Divide {
         , _name(name)
         , _altitudeRange{ 0.f, 1.f }
     {
-        for (LayerDataEntry& entry : _layerDataEntries) {
+        for (LayerDataEntry& entry : _layerDataEntries)
+        {
             entry.fill(VECTOR2_UNIT);
         }
-    }
-
-    TerrainDescriptor::~TerrainDescriptor()
-    {
     }
 
     bool TerrainDescriptor::loadFromXML(const boost::property_tree::ptree& pt, const string& name) {

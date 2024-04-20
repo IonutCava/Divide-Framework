@@ -4,8 +4,9 @@
 
 namespace Divide {
 
-namespace {
-    vector<FileData> s_ModelData;
+namespace
+{
+    NO_DESTROY vector<FileData> s_ModelData;
 };
 
 namespace Patch {

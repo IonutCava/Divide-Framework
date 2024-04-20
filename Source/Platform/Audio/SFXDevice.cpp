@@ -37,7 +37,9 @@ ErrorCode SFXDevice::initAudioAPI() {
         case AudioAPI::SDL: {
             _api = std::make_unique<SDL_API>( _context );
         } break;
-        default: {
+        default:
+        case AudioAPI::COUNT:
+        {
             Console::errorfn(LOCALE_STR("ERROR_SFX_DEVICE_API"));
             return ErrorCode::SFX_NON_SPECIFIED;
         }

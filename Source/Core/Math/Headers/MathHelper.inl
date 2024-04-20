@@ -632,6 +632,18 @@ namespace Divide
     {
 
         template <typename T>
+        constexpr T Hours( const T a )
+        {
+            return a;
+        }
+
+        template <typename T>
+        constexpr T Minutes( const T a )
+        {
+            return a;
+        }
+
+        template <typename T>
         constexpr T Seconds( const T a )
         {
             return a;
@@ -653,6 +665,18 @@ namespace Divide
         constexpr T Nanoseconds( const T a )
         {
             return a;
+        }
+
+        template <typename T, typename U>
+        constexpr T Hours( const U a )
+        {
+            return static_cast<T>(a);
+        }
+
+        template <typename T, typename U>
+        constexpr T Minutes( const U a )
+        {
+            return static_cast<T>(a);
         }
 
         template <typename T, typename U>

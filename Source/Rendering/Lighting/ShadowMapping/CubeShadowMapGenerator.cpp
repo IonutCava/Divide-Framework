@@ -31,7 +31,9 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
 
     const vec3<F32> lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Cube Shadow Pass Light: [ {} ]", lightIndex).c_str(), lightIndex));
+    auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
+    cmd->_scopeName = Util::StringFormat("Cube Shadow Pass Light: [ {} ]", lightIndex);
+    cmd->_scopeId = lightIndex;
 
     RenderPassParams params = {};
     params._target = ShadowMap::getShadowMap(_type)._targetID;
@@ -64,4 +66,5 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
 void CubeShadowMapGenerator::updateMSAASampleCount([[maybe_unused]] const U8 sampleCount) noexcept {
     DIVIDE_UNEXPECTED_CALL();
 }
-};
+
+} //namespace Divide

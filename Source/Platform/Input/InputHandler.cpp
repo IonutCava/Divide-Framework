@@ -59,7 +59,7 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
             const TextEvent arg{eventWindow, 0, event.text.text};
             _eventListener.onTextEvent(arg);
             return true;
-        };
+        }
 
         case SDL_KEYUP:
         case SDL_KEYDOWN: {
@@ -109,7 +109,7 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
                 _eventListener.onKeyUp(arg);
             }
             return true;
-        };
+        }
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
         {
@@ -141,7 +141,7 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
                     arg.button(MouseButton::MB_Button7);
                     break;
                 default: break;
-            };
+            }
 
             arg.numCliks(to_U8(event.button.clicks));
             auto& state = Attorney::MouseEventInputHandler::state(arg);
@@ -157,7 +157,7 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
                 _eventListener.mouseButtonReleased(arg);
             }
             return true;
-        };
+        }
         case SDL_MOUSEWHEEL:
         case SDL_MOUSEMOTION:
         {
@@ -172,18 +172,18 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
 
             _eventListener.mouseMoved(arg);
             return true;
-        };
+        }
         case SDL_CONTROLLERAXISMOTION:
         case SDL_JOYAXISMOTION:
         {
             JoystickData jData = {};
             jData._gamePad = event.type == SDL_CONTROLLERAXISMOTION;
-            jData._data = jData._gamePad ? event.caxis.value : event.jaxis.value;
+            jData._dataSigned = jData._gamePad ? event.caxis.value : event.jaxis.value;
 
             JoystickElement element = {};
             element._type = JoystickElementType::AXIS_MOVE;
             element._data = jData;
-            element._elementIndex = jData._gamePad ? event.caxis.axis : event.jaxis.axis;
+            element._elementIndex = (jData._gamePad ? event.caxis.axis : event.jaxis.axis);
 
             JoystickEvent arg(eventWindow, to_U8(jData._gamePad ? event.caxis.which : event.jaxis.which));
             arg._element = element;
@@ -194,13 +194,13 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
         case SDL_JOYBALLMOTION:
         {
             JoystickData jData = {};
-            jData._smallData[0] = event.jball.xrel;
-            jData._smallData[1] = event.jball.yrel;
+            jData._smallDataSigned[0] = event.jball.xrel;
+            jData._smallDataSigned[1] = event.jball.yrel;
 
             JoystickElement element = {};
             element._type = JoystickElementType::BALL_MOVE;
             element._data = jData;
-            element._elementIndex = event.jball.ball;
+            element._elementIndex = (event.jball.ball);
 
             JoystickEvent arg(eventWindow, to_U8(event.jball.which));
             arg._element = element;
@@ -253,7 +253,7 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
             JoystickElement element = {};
             element._type = JoystickElementType::POV_MOVE;
             element._data = jData;
-            element._elementIndex = event.jhat.hat;
+            element._elementIndex = (event.jhat.hat);
 
             JoystickEvent arg(eventWindow, to_U8(event.jhat.which));
             arg._element = element;

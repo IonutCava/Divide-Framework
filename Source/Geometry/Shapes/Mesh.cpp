@@ -14,7 +14,7 @@
 
 namespace Divide {
 
-Mesh::Mesh(GFXDevice& context,
+Mesh::Mesh(PlatformContext& context,
            ResourceCache* parentCache,
            const size_t descriptorHash,
            const std::string_view name,

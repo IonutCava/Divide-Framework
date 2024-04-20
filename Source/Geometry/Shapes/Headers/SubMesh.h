@@ -77,7 +77,7 @@ class SubMesh final : public Object3D {
     using BoundingBoxPerAnimationStatus = vector<BoundingBoxState>;
 
    public:
-    explicit SubMesh(GFXDevice& context,
+    explicit SubMesh(PlatformContext& context,
                      ResourceCache* parentCache,
                      size_t descriptorHash,
                      const std::string_view name);
@@ -91,13 +91,13 @@ protected:
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SubMesh"; }
 
 private:
-    void computeBBForAnimation(SceneGraphNode* sgn, I32 animIndex);
-    void buildBoundingBoxesForAnim(const Task& parentTask, I32 animationIndex, const AnimationComponent* const animComp);
+    void computeBBForAnimation(SceneGraphNode* sgn, U32 animIndex);
+    void buildBoundingBoxesForAnim(const Task& parentTask, U32 animationIndex, const AnimationComponent* const animComp);
 
-    void updateBB(I32 animIndex);
+    void updateBB(U32 animIndex);
 
 protected:
-    void onAnimationChange(SceneGraphNode* sgn, I32 newIndex) override;
+    void onAnimationChange(SceneGraphNode* sgn, U32 newIndex) override;
 
 private:
     /// Build status of bounding boxes for each animation

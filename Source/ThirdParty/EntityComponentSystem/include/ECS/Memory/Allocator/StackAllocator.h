@@ -31,7 +31,7 @@ namespace ECS { namespace Memory { namespace Allocator {
 
 		StackAllocator(size_t memSize, const void* mem);
 
-		virtual ~StackAllocator();
+		virtual ~StackAllocator() override;
 
 		virtual void* allocate(size_t size, u8 alignment) override;
 		virtual void free(void* p) override;

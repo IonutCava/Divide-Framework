@@ -15,8 +15,6 @@
 #include "API.h"
 #include "IEventDispatcher.h"
 
-#include <EASTL/list.h>
-
 namespace ECS { namespace Event { namespace Internal {
 
 	template<class T>
@@ -145,7 +143,7 @@ namespace ECS { namespace Event { namespace Internal {
 		virtual inline size_t GetEventCallbackCount() const override { return this->m_EventCallbacks.size(); }
 	};
 
-	DEFINE_STATIC_LOGGER_TEMPLATE(EventDispatcher, T, "EventDispatcher")
+	DEFINE_STATIC_LOGGER_TEMPLATE(EventDispatcher, T, "EventDispatcher");
 
 }}} // namespace ECS::Event::Internal
 

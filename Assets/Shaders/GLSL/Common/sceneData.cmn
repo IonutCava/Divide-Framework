@@ -15,9 +15,9 @@ struct FogDetails
 };
 
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 8, std140) uniform dvd_SceneData {
-    // x,y,z - direction, w - reserved
+    // x,y,z - direction, w - altitude
     vec4 dvd_sunDirection;
-    // w - reserved
+    // w - azimuth
     vec4 dvd_sunColour;
     // x,y,z - direction, w - speed
     vec4 dvd_windDetails;
@@ -32,5 +32,8 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_FRAME, 8, std140) uniform dvd_SceneData {
 #define dvd_GameTimeMS int(dvd_appData.x)
 #define dvd_GlobalTimeMS int(dvd_appData.y)
 #define dvd_MaterialDebugFlag int(dvd_appData.z)
+// -1 to 1. -1 = night, 1 = noon
+#define dvd_sunAltitude dvd_sunDirection.w
+#define dvd_sunAzimuth dvd_sunColour.w
 
 #endif //_SCENE_DATA_INPUT_CMN_

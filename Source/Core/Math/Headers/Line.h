@@ -37,25 +37,14 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct Line {
-    Line() = default;
-
-    Line(vec3<F32> positionStart, vec3<F32> positionEnd, FColour3 colourStart, FColour3 colourEnd, const F32 widthStart, const F32 widthEnd) noexcept
-        : _positionStart(MOV(positionStart)),
-          _positionEnd(MOV(positionEnd)),
-          _colourStart(MOV(colourStart)),
-          _colourEnd(MOV(colourEnd)),
-          _widthStart(widthStart),
-          _widthEnd(widthEnd)
-    {
-    }
-
-    PROPERTY_RW(vec3<F32>, positionStart, VECTOR3_ZERO);
-    PROPERTY_RW(vec3<F32>, positionEnd, VECTOR3_UNIT);
-    PROPERTY_RW(UColour4, colourStart, DefaultColours::BLACK_U8);
-    PROPERTY_RW(UColour4, colourEnd, DefaultColours::DIVIDE_BLUE_U8);
-    PROPERTY_RW(F32, widthStart, 1.0f);
-    PROPERTY_RW(F32, widthEnd, 1.0f);
+struct Line
+{
+    vec3<F32> _positionStart = VECTOR3_ZERO;
+    vec3<F32> _positionEnd = VECTOR3_UNIT;
+    UColour4  _colourStart = DefaultColours::BLACK_U8;
+    UColour4  _colourEnd = DefaultColours::DIVIDE_BLUE_U8;
+    F32       _widthStart = 1.0f;
+    F32       _widthEnd = 1.0f;
 };
 
 } //namespace Divide

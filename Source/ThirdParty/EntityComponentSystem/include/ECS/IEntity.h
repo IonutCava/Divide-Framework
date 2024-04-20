@@ -82,9 +82,9 @@ namespace ECS
 		inline bool operator!=(const IEntity* rhs) const { return this->m_EntityID != rhs->m_EntityID; }
 
 		// ACCESORS
-		virtual const EntityTypeId GetStaticEntityTypeID() const = 0;
+		virtual EntityTypeId GetStaticEntityTypeID() const = 0;
 		
-		inline const EntityId GetEntityID() const { return this->m_EntityID; }
+		inline EntityId GetEntityID() const { return this->m_EntityID; }
 		
 		void SetActive(bool active);
 

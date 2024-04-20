@@ -38,6 +38,12 @@ namespace Divide
                     ret |= ( usage == ImageUsage::RT_COLOUR_ATTACHMENT ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
                     
                 } break;
+
+                case ImageUsage::UNDEFINED:
+                case ImageUsage::SHADER_READ:
+                case ImageUsage::CPU_READ:  break;
+
+                case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
             }
 
             if ( descriptor.allowRegionUpdates() )

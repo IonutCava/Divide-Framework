@@ -94,33 +94,31 @@ inline bool SupportsZOffsetTexture( const TextureType texType ) noexcept
 
 inline U8 NumChannels(const GFXImageFormat format) noexcept 
 {
-    switch (format) {
+    switch (format)
+    {
         case GFXImageFormat::RED:
         case GFXImageFormat::BC4s:
-        case GFXImageFormat::BC4u:
-            return 1u;
+        case GFXImageFormat::BC4u: return 1u;
+
         case GFXImageFormat::RG:
         case GFXImageFormat::BC5s:
-        case GFXImageFormat::BC5u:
-            return 2u;
+        case GFXImageFormat::BC5u: return 2u;
+
         case GFXImageFormat::BGR:
         case GFXImageFormat::RGB:
         case GFXImageFormat::BC1:
         case GFXImageFormat::BC6s:
-        case GFXImageFormat::BC6u:
-            return 3u;
+        case GFXImageFormat::BC6u: return 3u;
+
         case GFXImageFormat::BGRA:
         case GFXImageFormat::RGBA:
         case GFXImageFormat::BC1a:
         case GFXImageFormat::BC2:
         case GFXImageFormat::BC3:
         case GFXImageFormat::BC3n:
-        case GFXImageFormat::BC7:
-            return 4u;
+        case GFXImageFormat::BC7: return 4u;
 
-        default:
-            DIVIDE_UNEXPECTED_CALL();
-            break;
+        case GFXImageFormat::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
     }
 
     return 0u;
@@ -128,16 +126,8 @@ inline U8 NumChannels(const GFXImageFormat format) noexcept
 
 inline bool IsBGRTexture( GFXImageFormat format ) noexcept
 {
-    switch ( format )
-    {
-        case GFXImageFormat::BGR:
-        case GFXImageFormat::BGRA:
-            return true;
-
-        default: break;
-    }
-
-    return false;
+    return format == GFXImageFormat::BGR ||
+           format == GFXImageFormat::BGRA;
 }
 } //namespace Divide
 

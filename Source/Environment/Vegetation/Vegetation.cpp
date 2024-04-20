@@ -50,17 +50,17 @@ namespace Divide
         SharedMutex g_treeMeshLock;
     }
 
-    Material_ptr Vegetation::s_treeMaterial = nullptr;
-    Material_ptr Vegetation::s_vegetationMaterial = nullptr;
+    NO_DESTROY Material_ptr Vegetation::s_treeMaterial = nullptr;
+    NO_DESTROY Material_ptr Vegetation::s_vegetationMaterial = nullptr;
 
-    eastl::unordered_set<vec2<F32>> Vegetation::s_treePositions;
-    eastl::unordered_set<vec2<F32>> Vegetation::s_grassPositions;
-    ShaderBuffer_uptr Vegetation::s_treeData = nullptr;
-    ShaderBuffer_uptr Vegetation::s_grassData = nullptr;
-    VertexBuffer_ptr Vegetation::s_buffer = nullptr;
-    ShaderProgram_ptr Vegetation::s_cullShaderGrass = nullptr;
-    ShaderProgram_ptr Vegetation::s_cullShaderTrees = nullptr;
-    vector<Mesh_ptr> Vegetation::s_treeMeshes;
+    NO_DESTROY eastl::unordered_set<vec2<F32>> Vegetation::s_treePositions;
+    NO_DESTROY eastl::unordered_set<vec2<F32>> Vegetation::s_grassPositions;
+    NO_DESTROY ShaderBuffer_uptr Vegetation::s_treeData = nullptr;
+    NO_DESTROY ShaderBuffer_uptr Vegetation::s_grassData = nullptr;
+    NO_DESTROY VertexBuffer_ptr Vegetation::s_buffer = nullptr;
+    NO_DESTROY ShaderProgram_ptr Vegetation::s_cullShaderGrass = nullptr;
+    NO_DESTROY ShaderProgram_ptr Vegetation::s_cullShaderTrees = nullptr;
+    NO_DESTROY vector<Mesh_ptr> Vegetation::s_treeMeshes;
     std::atomic_uint Vegetation::s_bufferUsage = 0;
     U32 Vegetation::s_maxChunks = 0u;
     std::array<U16, 3> Vegetation::s_lodPartitions;
@@ -73,9 +73,9 @@ namespace Divide
                             TerrainChunk& parentChunk,
                             const VegetationDetails& details )
         : SceneNode( context.context().kernel().resourceCache(),
-                     parentChunk.parent().descriptorHash() + parentChunk.ID(),
+                     parentChunk.parent().descriptorHash() + parentChunk.id(),
                      details.name,
-                     Util::StringFormat("{}_{}", details.name.c_str(), parentChunk.ID() ),
+                     Util::StringFormat("{}_{}", details.name.c_str(), parentChunk.id() ),
                      {},
                      SceneNodeType::TYPE_VEGETATION,
                      to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::RENDERING ) ),
@@ -162,7 +162,7 @@ namespace Divide
         terrainIDField._name = "Terrain Chunk ID";
         terrainIDField._dataGetter = [this]( void* dataOut ) noexcept
         {
-            *static_cast<U32*>(dataOut) = _terrainChunk.ID();
+            *static_cast<U32*>(dataOut) = _terrainChunk.id();
         };
         terrainIDField._type = EditorComponentFieldType::PUSH_TYPE;
         terrainIDField._readOnly = true;
@@ -273,7 +273,7 @@ namespace Divide
                 vertices.push_back( transform[i] * vec4<F32>( -1.f, 1.f, 0.f, 1.f ) ); //TL
                 vertices.push_back( transform[i] * vec4<F32>( 1.f, 1.f, 0.f, 1.f ) ); //TR
                 vertices.push_back( transform[i] * vec4<F32>( 1.f, 0.f, 0.f, 1.f ) ); //BR
-            };
+            }
 
             const U16 indices[] = { 0, 1, 2,
                                     0, 2, 3 };
@@ -559,9 +559,9 @@ namespace Divide
 
         if ( _instanceCountGrass > 0u )
         {
-            if ( _terrainChunk.ID() < s_maxChunks )
+            if ( _terrainChunk.id() < s_maxChunks )
             {
-                std::memcpy( &grassDataOut[_terrainChunk.ID() * s_maxGrassInstances * sizeof( VegetationData )], _tempGrassData.data(), _instanceCountGrass * sizeof( VegetationData ) );
+                std::memcpy( &grassDataOut[_terrainChunk.id() * s_maxGrassInstances * sizeof( VegetationData )], _tempGrassData.data(), _instanceCountGrass * sizeof( VegetationData ) );
             }
             else
             {
@@ -572,9 +572,9 @@ namespace Divide
 
         if ( _instanceCountTrees > 0u )
         {
-            if ( _terrainChunk.ID() < s_maxChunks )
+            if ( _terrainChunk.id() < s_maxChunks )
             {
-                std::memcpy( &treeDataOut[_terrainChunk.ID() * s_maxGrassInstances * sizeof( VegetationData )], _tempTreeData.data(), _instanceCountTrees * sizeof( VegetationData ) );
+                std::memcpy( &treeDataOut[_terrainChunk.id() * s_maxGrassInstances * sizeof( VegetationData )], _tempTreeData.data(), _instanceCountTrees * sizeof( VegetationData ) );
             }
             else
             {
@@ -606,7 +606,7 @@ namespace Divide
             renderState().drawState( true );
         }
 
-        const U32 ID = _terrainChunk.ID();
+        const U32 ID = _terrainChunk.id();
         const U32 meshID = to_U32( ID % _treeMeshNames.size() );
 
         if ( _instanceCountTrees > 0 && !_treeMeshNames.empty() )
@@ -715,7 +715,7 @@ namespace Divide
                                     const CameraSnapshot& cameraSnapshot,
                                     bool refreshData )
     {
-        pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, _terrainChunk.ID() );
+        pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, _terrainChunk.id() );
 
         Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( pkg );
         DIVIDE_ASSERT(cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer>);
@@ -771,10 +771,10 @@ namespace Divide
                 constants.set( _ID( "dvd_treeVisibilityDistance" ), PushConstantType::FLOAT, _treeDistance );
                 constants.set( _ID( "dvd_treeExtents" ), PushConstantType::VEC4, _treeExtents );
                 constants.set( _ID( "dvd_grassExtents" ), PushConstantType::VEC4, _grassExtents );
-                constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, _terrainChunk.ID() );
+                constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, _terrainChunk.id() );
                 constants.set( fastConstants );
 
-                GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Occlusion Cull Vegetation" } );
+                GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut)->_scopeName = "Occlusion Cull Vegetation";
 
                 {
                     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -833,7 +833,7 @@ namespace Divide
         if ( !renderState().drawState() )
         {
             prepareDraw( sgn );
-            sgn->get<RenderingComponent>()->dataFlag( to_F32( _terrainChunk.ID() ) );
+            sgn->get<RenderingComponent>()->dataFlag( to_F32( _terrainChunk.id() ) );
         }
         else
         {
@@ -878,17 +878,15 @@ namespace Divide
     }
 
 
-    void Vegetation::buildDrawCommands( SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut )
+    void Vegetation::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
-
         const U16 partitionID = s_lodPartitions[0];
 
-        GenericDrawCommand cmd = {};
+        GenericDrawCommand& cmd = cmdsOut.emplace_back();
         cmd._sourceBuffer = s_buffer->handle();
         cmd._cmd.instanceCount = _instanceCountGrass;
         cmd._cmd.indexCount = to_U32( s_buffer->getPartitionIndexCount( partitionID ) );
         cmd._cmd.firstIndex = to_U32( s_buffer->getPartitionOffset( partitionID ) );
-        cmdsOut.emplace_back( GFX::DrawCommand{ cmd } );
 
         RenderingComponent* rComp = sgn->get<RenderingComponent>();
         U16 prevID = 0;
@@ -954,7 +952,7 @@ namespace Divide
         }
 
         const Terrain& terrain = _terrainChunk.parent();
-        const U32 ID = _terrainChunk.ID();
+        const U32 ID = _terrainChunk.id();
 
         const string cacheFileName = Util::StringFormat( "{}_{}_{}_{}.cache", terrain.resourceName().c_str(), resourceName().c_str(), treeData ? "trees" : "grass", ID );
         Console::printfn( Locale::Get( treeData ? _ID( "CREATE_TREE_START" ) : _ID( "CREATE_GRASS_BEGIN" ) ), ID );
@@ -970,7 +968,9 @@ namespace Divide
             chunkCache >> tempVer;
             if ( tempVer == BYTE_BUFFER_VERSION )
             {
-                container.resize( chunkCache.read<size_t>() );
+                size_t containerSize = 0u;
+                chunkCache.read<size_t>(containerSize);
+                container.resize( containerSize );
                 chunkCache.read( reinterpret_cast<Byte*>(container.data()), sizeof( VegetationData ) * container.size() );
             }
             else

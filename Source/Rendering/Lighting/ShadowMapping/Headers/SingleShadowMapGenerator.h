@@ -47,7 +47,7 @@ FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 class SingleShadowMapGenerator final : public ShadowMapGenerator {
    public:
     explicit SingleShadowMapGenerator(GFXDevice& context);
-    ~SingleShadowMapGenerator();
+    ~SingleShadowMapGenerator() override;
 
     void render(const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) override;
 

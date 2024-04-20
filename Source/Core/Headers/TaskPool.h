@@ -59,9 +59,6 @@ class TaskPool final : public GUIDWrapper {
 public:
   public:
 
-    TaskPool() = default;
-    ~TaskPool();
-    
     bool init(U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
     void shutdown();
 

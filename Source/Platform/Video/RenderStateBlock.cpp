@@ -159,10 +159,10 @@ void LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt,
     blockInOut._depthTestEnabled = pt.get(entryName + ".depthTestEnabled", blockInOut._depthTestEnabled);
     blockInOut._depthWriteEnabled = pt.get(entryName + ".depthWriteEnabled", blockInOut._depthWriteEnabled);
     blockInOut._stencilEnabled = pt.get(entryName + ".stencilEnable", blockInOut._stencilEnabled);
-    blockInOut._stencilRef = pt.get(entryName + ".stencilRef", blockInOut._stencilRef),
-    blockInOut._stencilFailOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilFailOp", TypeUtil::StencilOperationToString(blockInOut._stencilFailOp)).c_str()),
-    blockInOut._stencilZFailOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilPassOp", TypeUtil::StencilOperationToString(blockInOut._stencilPassOp)).c_str()),
-    blockInOut._stencilPassOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilZFailOp",TypeUtil::StencilOperationToString(blockInOut._stencilZFailOp)).c_str()),
+    blockInOut._stencilRef = pt.get(entryName + ".stencilRef", blockInOut._stencilRef);
+    blockInOut._stencilFailOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilFailOp", TypeUtil::StencilOperationToString(blockInOut._stencilFailOp)).c_str());
+    blockInOut._stencilZFailOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilPassOp", TypeUtil::StencilOperationToString(blockInOut._stencilPassOp)).c_str());
+    blockInOut._stencilPassOp = TypeUtil::StringToStencilOperation(pt.get(entryName + ".stencilZFailOp",TypeUtil::StencilOperationToString(blockInOut._stencilZFailOp)).c_str());
     blockInOut._stencilFunc = TypeUtil::StringToComparisonFunction(pt.get(entryName + ".stencilFunc", TypeUtil::ComparisonFunctionToString(blockInOut._stencilFunc)).c_str());
     blockInOut._stencilMask = pt.get(entryName + ".stencilMask", blockInOut._stencilMask);
     blockInOut._stencilWriteMask = pt.get(entryName + ".stencilWriteMask", blockInOut._stencilWriteMask);

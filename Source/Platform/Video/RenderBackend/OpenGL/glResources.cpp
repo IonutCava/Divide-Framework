@@ -20,7 +20,8 @@ namespace Divide
             vector_fast<GLsizei> _countData;
             vector_fast<GLuint>  _indexOffsetData;
             vector_fast<GLint>   _baseVertexData;
-        } s_multiDrawIndexData;
+        };
+        NO_DESTROY static glVertexDataIndexContainer s_multiDrawIndexData;
     };
 
     void VAOBindings::init( const U32 maxBindings ) noexcept
@@ -80,7 +81,7 @@ namespace Divide
 
         const DisplayWindow* s_glMainRenderWindow;
         thread_local SDL_GLContext s_glSecondaryContext = nullptr;
-        Mutex s_glSecondaryContextMutex;
+        NO_DESTROY Mutex s_glSecondaryContextMutex;
 
         std::array<GLenum, to_base( BlendProperty::COUNT )> glBlendTable;
         std::array<GLenum, to_base( BlendOperation::COUNT )> glBlendOpTable;
@@ -283,7 +284,7 @@ namespace Divide
                             case GFXDataFormat::FLOAT_16:
                             case GFXDataFormat::FLOAT_32:        ret._format = GL_DEPTH_COMPONENT32F; break;
                             default: break;
-                        };
+                        }
                     }
                     else if ( packing == GFXImagePacking::DEPTH_STENCIL )
                     {
@@ -300,7 +301,7 @@ namespace Divide
                             case GFXDataFormat::FLOAT_16:
                             case GFXDataFormat::FLOAT_32:        ret._format = GL_DEPTH32F_STENCIL8; break;
                             default: break;
-                        };
+                        }
                     }
                     else
                     {
@@ -317,7 +318,7 @@ namespace Divide
                             case GFXDataFormat::FLOAT_16:        ret._format = GL_R16F;  ret._internalFormat = GL_RED;                                       break;
                             case GFXDataFormat::FLOAT_32:        ret._format = GL_R32F;  ret._internalFormat = GL_RED;                                       break;
                             default: break;
-                        };
+                        }
                     }
                 }break;
                 case GFXImageFormat::RG:
@@ -335,7 +336,7 @@ namespace Divide
                         case GFXDataFormat::FLOAT_16:        ret._format = GL_RG16F;  ret._internalFormat = GL_RG;                                       break;
                         case GFXDataFormat::FLOAT_32:        ret._format = GL_RG32F;  ret._internalFormat = GL_RG;                                       break;
                         default: break;
-                    };
+                    }
                 }break;
                 case GFXImageFormat::BGR:
                 case GFXImageFormat::RGB:
@@ -360,7 +361,7 @@ namespace Divide
                             case GFXDataFormat::FLOAT_16:        ret._format = GL_RGB16F;  ret._internalFormat = GL_RGB;                                       break;
                             case GFXDataFormat::FLOAT_32:        ret._format = GL_RGB32F;  ret._internalFormat = GL_RGB;                                       break;
                             default: break;
-                        };
+                        }
                     }
                 }break;
                 case GFXImageFormat::BGRA:
@@ -384,7 +385,7 @@ namespace Divide
                             case GFXDataFormat::FLOAT_16:       ret._format = GL_RGBA16F;  ret._internalFormat = GL_RGBA;                                       break;
                             case GFXDataFormat::FLOAT_32:       ret._format = GL_RGBA32F;  ret._internalFormat = GL_RGBA;                                       break;
                             default: break;
-                        };
+                        }
                     }
                 }break;
 
@@ -415,17 +416,26 @@ namespace Divide
             {
                 switch ( type )
                 {
-                    case TextureType::TEXTURE_2D: return GL_TEXTURE_2D_MULTISAMPLE;
+                    case TextureType::TEXTURE_2D:       return GL_TEXTURE_2D_MULTISAMPLE;
                     case TextureType::TEXTURE_2D_ARRAY: return GL_TEXTURE_2D_MULTISAMPLE_ARRAY;
+                    
+                    case TextureType::TEXTURE_1D:
+                    case TextureType::TEXTURE_3D:
+                    case TextureType::TEXTURE_CUBE_MAP:
+                    case TextureType::TEXTURE_1D_ARRAY:
+                    case TextureType::TEXTURE_CUBE_ARRAY:
+                    case TextureType::COUNT: 
+                        DIVIDE_UNEXPECTED_CALL();
+                        break;
                 }
             }
 
             return GLUtil::glTextureTypeTable[to_base( type )];
         }
 
-        void SubmitIndexedRenderCommand( const GenericDrawCommand& drawCommand,
-                                         const bool useIndirectBuffer,
-                                         const GLenum internalFormat)
+        static void SubmitIndexedRenderCommand( const GenericDrawCommand& drawCommand,
+                                                const bool useIndirectBuffer,
+                                                const GLenum internalFormat)
         {
             // We could collapse multiple of these into a generic glMultiDrawElementsBaseVertex and pass 1 or 0 to the required parameters for the exceptions
             // but those exceptions are the common case and I don't know what kind of bookeeping the driver does for multi-draw calls so a few if-checks and we 
@@ -461,11 +471,11 @@ namespace Divide
                     if ( drawCommand._cmd.baseVertex > 0u )
                     {
                         eastl::fill( begin( s_multiDrawIndexData._baseVertexData ), begin( s_multiDrawIndexData._baseVertexData ) + drawCommand._drawCount, drawCommand._cmd.baseVertex );
-                        glMultiDrawElementsBaseVertex( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void**)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount, s_multiDrawIndexData._baseVertexData.data() );
+                        glMultiDrawElementsBaseVertex( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void* const*)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount, s_multiDrawIndexData._baseVertexData.data() );
                     }
                     else
                     {
-                        glMultiDrawElements( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void**)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount);
+                        glMultiDrawElements( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void* const*)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount);
                     }
                 }
                 else
@@ -510,8 +520,8 @@ namespace Divide
             }
         }
 
-        void SubmitNonIndexedRenderCommand( const GenericDrawCommand& drawCommand,
-                                            const bool useIndirectBuffer )
+        static void SubmitNonIndexedRenderCommand( const GenericDrawCommand& drawCommand, 
+                                                   const bool useIndirectBuffer )
         {
             const GLenum primitiveType = glPrimitiveTypeTable[to_base( GL_API::GetStateTracker()._activeTopology )];
             if ( useIndirectBuffer )

@@ -107,7 +107,7 @@ class Sky final : public SceneNode {
 
     void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
     void prepareRender( SceneGraphNode* sgn,
                         RenderingComponent& rComp,

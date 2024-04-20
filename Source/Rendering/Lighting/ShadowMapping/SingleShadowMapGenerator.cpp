@@ -195,7 +195,9 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("Single Shadow Pass Light: [ {} ]", lightIndex).c_str(), lightIndex));
+    auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
+    cmd->_scopeName = Util::StringFormat("Single Shadow Pass Light: [ {} ]", lightIndex);
+    cmd->_scopeId = lightIndex;
 
     _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
 
@@ -241,7 +243,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
     beginRenderPassCmd._name = "DO_SM_BLUR_PASS_HORIZONTAL";
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BindPipelineCommand{ _blurPipeline });
+    GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurPipeline;
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -256,7 +258,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
 
     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _shaderConstants );
 
-    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
 
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 
@@ -281,7 +283,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
 
     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
 
-    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+    GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
 
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 

@@ -19,23 +19,14 @@
 
 namespace Divide {
 
-PlatformContext::PlatformContext(Application& app, Kernel& kernel)
+PlatformContext::PlatformContext(Application& app)
   : _app(app)
-  , _kernel(kernel)
-  , _taskPool{}
   , _paramHandler(MemoryManager_NEW ParamHandler())
-  , _config(MemoryManager_NEW Configuration())         // XML based configuration
-  , _debug(MemoryManager_NEW DebugInterface())         // Debug Interface
-  , _inputHandler(MemoryManager_NEW Input::InputHandler(_kernel, _app))
-  , _gfx(MemoryManager_NEW GFXDevice(*this))           // Video
-  , _gui(MemoryManager_NEW GUI(_kernel))               // Audio
-  , _sfx(MemoryManager_NEW SFXDevice(*this))           // Physics
-  , _pfx(MemoryManager_NEW PXDevice(*this))            // Graphical User Interface
-  , _client(MemoryManager_NEW LocalClient(_kernel))    // Network client
-  , _server(MemoryManager_NEW Server())                // Network server
-  , _editor(Config::Build::ENABLE_EDITOR ? MemoryManager_NEW Editor(*this) : nullptr)
+  , _config(MemoryManager_NEW Configuration())
+  , _debug(MemoryManager_NEW DebugInterface())
+  , _server(MemoryManager_NEW Server())
 {
-    for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
+    for ( U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i )
     {
         _taskPool[i] = MemoryManager_NEW TaskPool();
     }
@@ -45,26 +36,41 @@ PlatformContext::PlatformContext(Application& app, Kernel& kernel)
 PlatformContext::~PlatformContext()
 {
     assert(_gfx == nullptr);
+    for ( U8 i = 0u; i < to_U32( TaskPoolType::COUNT ); ++i )
+    {
+        MemoryManager::DELETE( _taskPool[i] );
+    }
+    MemoryManager::DELETE( _server );
+    MemoryManager::DELETE( _paramHandler );
+    MemoryManager::DELETE( _debug );
+    MemoryManager::DELETE( _config );
+}
+
+void PlatformContext::init(Kernel& kernel)
+{
+    assert(_gfx == nullptr);
+
+    _kernel = &kernel;
+
+    _inputHandler = MemoryManager_NEW Input::InputHandler( kernel, _app );
+    _gfx = MemoryManager_NEW GFXDevice(*this);
+    _sfx = MemoryManager_NEW SFXDevice(*this);
+    _pfx = MemoryManager_NEW PXDevice(*this);
+    _gui =  MemoryManager_NEW GUI( kernel );
+    _client = MemoryManager_NEW LocalClient( kernel );
+    _editor = (Config::Build::ENABLE_EDITOR ? MemoryManager_NEW Editor(*this) : nullptr);
+
 }
 
 void PlatformContext::terminate()
 {
-    for ( U8 i = 0u; i < to_U32(TaskPoolType::COUNT); ++i)
-    {
-        MemoryManager::DELETE(_taskPool[i]);
-    }
-
     MemoryManager::SAFE_DELETE(_editor);
-    MemoryManager::DELETE(_server);
     MemoryManager::DELETE(_client);
+    MemoryManager::DELETE(_gui);
     MemoryManager::DELETE(_pfx);
     MemoryManager::DELETE(_sfx);
-    MemoryManager::DELETE(_gui);
     MemoryManager::DELETE(_gfx);
     MemoryManager::DELETE(_inputHandler);
-    MemoryManager::DELETE(_debug);
-    MemoryManager::DELETE(_config);
-    MemoryManager::DELETE(_paramHandler);
 }
 
 void PlatformContext::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTimeUSApp )
@@ -123,12 +129,14 @@ const DisplayWindow& PlatformContext::activeWindow() const noexcept
 
 Kernel& PlatformContext::kernel() noexcept
 {
-    return _kernel;
+    assert( _kernel != nullptr );
+    return *_kernel;
 }
 
 const Kernel& PlatformContext::kernel() const noexcept
 {
-    return _kernel;
+    assert(_kernel != nullptr);
+    return *_kernel;
 }
 
 void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::thread::id& threadID, bool isMainRenderThread ) const

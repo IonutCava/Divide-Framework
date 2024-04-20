@@ -91,7 +91,7 @@ namespace Divide {
         static void Clear();
 
     public:
-        virtual ~LockManager() = default;
+        virtual ~LockManager() override = default;
 
         /// Returns false if we encountered an error
         bool waitForLockedRange(size_t lockBeginBytes, size_t lockLength);

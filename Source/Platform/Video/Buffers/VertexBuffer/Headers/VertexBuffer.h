@@ -170,6 +170,7 @@ class VertexBuffer final : public VertexDataInterface {
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
     void draw(const GenericDrawCommand& command, VDIUserData* data) override;
 
+    [[nodiscard]] static size_t GetTotalDataSize(const AttributeFlags& usedAttributes);
     [[nodiscard]] static AttributeOffsets GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut);
 
    protected:
@@ -179,7 +180,6 @@ class VertexBuffer final : public VertexDataInterface {
     /// Used for creating an "IB". If it's empty, then an outside source should provide the indices
     vector<U32> _indices;
     AttributeFlags _useAttribute{};
-    size_t _effectiveEntrySize = 0u;
     GenericVertexData_ptr _internalGVD = nullptr;
     bool _refreshQueued = false;
     bool _dataLayoutChanged = false;

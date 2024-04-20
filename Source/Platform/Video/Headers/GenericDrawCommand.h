@@ -91,6 +91,8 @@ struct GenericDrawCommand {
 
 static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
+using GenericDrawCommandContainer = eastl::fixed_vector<GenericDrawCommand, 1, true, eastl::dvd_allocator>;
+
 bool isEnabledOption(const GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
 void toggleOption(GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
 

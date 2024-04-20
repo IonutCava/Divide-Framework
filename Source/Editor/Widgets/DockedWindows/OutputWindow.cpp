@@ -10,10 +10,11 @@
 
 namespace Divide
 {
-    constexpr U16 g_maxLogEntries = 512;
+    constexpr U16 g_maxLogEntries = 1024u;
+    static U16 g_logEntries = 256;
 
-    std::atomic_size_t g_writeIndex = 0;
-    std::array<Console::OutputEntry, g_maxLogEntries> g_log;
+    static std::atomic_size_t g_writeIndex = 0;
+    static vector<Console::OutputEntry> g_log;
 
     OutputWindow::OutputWindow( Editor& parent, const Descriptor& descriptor )
         : DockedWindow( parent, descriptor ),
@@ -27,6 +28,8 @@ namespace Divide
                                                                 PrintText( entry );
                                                                 _scrollToButtomReset = true;
                                                             } );
+
+        g_log.resize( g_maxLogEntries );
     }
 
     OutputWindow::~OutputWindow()
@@ -42,7 +45,11 @@ namespace Divide
 
     void OutputWindow::clearLog()
     {
-        g_log.fill( { "", Console::EntryType::INFO } );
+        for ( auto& entry : g_log)
+        {
+            entry = {};
+        }
+
         g_writeIndex.store( 0 );
         _scrollToBottom = true;
     }
@@ -61,6 +68,18 @@ namespace Divide
             if ( tooltip )
             {
                 ImGui::SetTooltip( "Search/Filter (\"incl,-excl\") (\"error\")" );
+            }
+            ImGui::SameLine(0.f, 30.f);
+            ImGui::Text( "Max log entries: ");
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth( 15 );
+            U16 logSize = g_logEntries;
+            if (ImGui::InputScalar( "##MaxLogEntries", ImGuiDataType_U16, &logSize, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue ))
+            {
+                if ( logSize != g_logEntries)
+                {
+                    g_logEntries = CLAMPED<U16>( logSize, 1u, g_maxLogEntries );
+                }
             }
         }
         ImGui::PopStyleVar();
@@ -94,7 +113,7 @@ namespace Divide
         size_t readIndex = g_writeIndex.load();
         if ( readIndex == 0u )
         {
-            readIndex = g_maxLogEntries - 1u;
+            readIndex = g_logEntries - 1u;
         }
         else
         {
@@ -110,37 +129,31 @@ namespace Divide
         {
             PROFILE_SCOPE( "Print Scrolling region ", Profiler::Category::GUI );
 
-            static string currentMessage;
-
             Console::EntryType previousType = Console::EntryType::INFO;
+            ImGui::PushStyleColor( ImGuiCol_Text, colours[to_U8(previousType)]);
 
-            for ( U16 i = 0u; i < g_maxLogEntries; ++i )
+            for ( U16 i = 0u; i < g_logEntries; ++i )
             {
                 const Console::OutputEntry& message = g_log[(readIndex + i) % g_maxLogEntries];
-                if ( !_filter.PassFilter( message._text.c_str(), message._text.c_str() + message._text.length() ) )
+                const char* msgBegin = message._text.c_str();
+                const char* msgEnd = message._text.c_str() + message._text.length();
+
+                if ( !_filter.PassFilter( msgBegin, msgEnd ) ) [[unlikely]]
                 {
                     continue;
                 }
 
                 if ( previousType != message._type )
                 {
-                    if ( !currentMessage.empty() )
-                    {
-                        Util::PrintColouredText(currentMessage, colours[to_U8( previousType )]);
-                        currentMessage.resize(0);
-                    }
+                    ImGui::PopStyleColor();
+                    ImGui::PushStyleColor( ImGuiCol_Text, colours[to_U8( message._type )] );
                     previousType = message._type;
                 }
 
-                currentMessage.append(message._text);
-                currentMessage.append("\n");
+                ImGui::TextUnformatted( msgBegin, msgEnd );
             }
 
-            if ( !currentMessage.empty() )
-            {
-                Util::PrintColouredText( currentMessage, colours[to_U8( previousType )] );
-                currentMessage.resize(0);
-            }
+            ImGui::PopStyleColor();
         }
 
         if ( _scrollToBottom && _scrollToButtomReset )
@@ -232,4 +245,5 @@ namespace Divide
 
         return -1;
     }
-}
+
+} //namespace Divide

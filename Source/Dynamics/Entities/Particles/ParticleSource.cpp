@@ -40,4 +40,5 @@ void ParticleSource::emit(const U64 deltaTimeUS, const std::shared_ptr<ParticleD
         p->wake(i);
     }
 }
-}
+
+} //namespace Divide

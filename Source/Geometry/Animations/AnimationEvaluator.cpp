@@ -93,9 +93,12 @@ bool AnimEvaluator::initBuffers(GFXDevice& context)
     return false;
 }
 
-AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) const noexcept {
+AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) const noexcept
+{
     D64 time = 0.0;
-    if (duration() > 0.0) {
+
+    if (duration() > 0.0)
+    {
         // get a [0.f ... 1.f) value by allowing the percent to wrap around 1
         time = std::fmod(elapsedTimeS * ticksPerSecond(), duration());
     }
@@ -103,15 +106,19 @@ AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) co
     const D64 percent = time / duration();
 
     FrameIndex ret = {};
-    if (!_transforms.empty()) {
+    if (!_transforms.empty())
+    {
         // this will invert the percent so the animation plays backwards
-        if (playAnimationForward()) {
+        if (playAnimationForward())
+        {
             ret._curr = std::min(to_I32(_transforms.size() * percent), to_I32(_transforms.size() - 1));
             ret._prev = ret._curr > 0 ? ret._curr - 1 : to_I32(_transforms.size()) - 1;
-            ret._next = (ret._curr + 1) % _transforms.size();
-        } else {
+            ret._next = to_I32((ret._curr + 1) % _transforms.size());
+        }
+        else
+        {
             ret._curr = std::min(to_I32(_transforms.size() * ((percent - 1.0f) * -1.0f)), to_I32(_transforms.size() - 1));
-            ret._prev = (ret._curr + 1) % _transforms.size();
+            ret._prev = to_I32((ret._curr + 1) % _transforms.size());
             ret._next = ret._curr > 0 ? ret._curr - 1 : to_I32(_transforms.size()) - 1;
         }
     }
@@ -120,7 +127,8 @@ AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) co
 
 // ------------------------------------------------------------------------------------------------
 // Evaluates the animation tracks for a given time stamp.
-void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton) {
+void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton)
+{
     const D64 pTime = dt * ticksPerSecond();
 
     D64 time = 0.0f;
@@ -239,4 +247,5 @@ void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton) {
     }
     _lastTime = time;
 }
-};
+
+} //namespace Divide

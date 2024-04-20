@@ -111,10 +111,11 @@ namespace Divide {
     void ContentExplorerWindow::update([[maybe_unused]] const U64 deltaTimeUS) {
 
         // One per frame to avoid massive stutters.
-        if (!_textureLoadQueue.empty()) {
-            const auto [path, name] = _textureLoadQueue.top();
+        if (!_textureLoadQueue.empty())
+        {
+            const EditorFileEntry entry = _textureLoadQueue.top();
             _textureLoadQueue.pop();
-            _loadedTextures[_ID((path / name._path).string().c_str())] = getTextureForPath( path, name._path.string());
+            _loadedTextures[_ID((entry._path / entry._file._path).string().c_str())] = getTextureForPath( entry._path, entry._file._path.string());
         }
 
         _textureLoadQueueLocked = false;
@@ -135,7 +136,7 @@ namespace Divide {
                     if (IsValidFile(ResourcePath { x.path() }))
                     {
                         const ResourcePath filename{ x.path().filename() };
-                        directoryOut._files.emplace_back(directoryOut._path.string().c_str(), File{filename, getExtension(filename).substr(1).c_str()});
+                        directoryOut._files.emplace_back(filename, getExtension(filename).substr(1).c_str());
 
                     }
                 }
@@ -200,12 +201,16 @@ namespace Divide {
             return false;
         };
         
-        const auto openFileInEditor = [&](const std::pair<ResourcePath, File>& file) {
+        const auto openFileInEditor = [&](const ResourcePath& path, const File& file) {
             const ResourcePath& textEditor = Attorney::EditorGeneralWidget::externalTextEditorPath(_parent);
-            if (textEditor.empty()) {
+
+            if (textEditor.empty())
+            {
                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: No text editor specified!", Time::SecondsToMilliseconds<F32>(3), true);
-            } else {
-                if (openFile(textEditor.string().c_str(), file.first, file.second._path.string()) != FileError::NONE)
+            }
+            else
+            {
+                if (openFile(textEditor.string().c_str(), path, file._path.string()) != FileError::NONE)
                 {
                     Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3), true);
                 }
@@ -247,42 +252,63 @@ namespace Divide {
                 ImGui::EndMenuBar();
             }
 
-            if (_selectedDir != nullptr) {
+            if (_selectedDir != nullptr)
+            {
                 ImGui::Columns(CLAMPED(to_I32(_selectedDir->_files.size()), 1, 4));
                 bool lockTextureQueue = false;
 
-                for (const auto& file : _selectedDir->_files) {
+                for (const auto& file : _selectedDir->_files)
+                {
                     Texture_ptr tex = nullptr;
                     { // Textures
-                        for (const char* extension : g_imageExtensions) {
-                            if (Util::CompareIgnoreCase(file.second._extension.c_str(), extension)) {
-                                const auto it = _loadedTextures.find(_ID((file.first / file.second._path).string().c_str()));
-                                if (it == std::cend(_loadedTextures) || it->second == nullptr) {
-                                    if (!_textureLoadQueueLocked) {
-                                        _textureLoadQueue.push(file);
+                        for (const char* extension : g_imageExtensions)
+                        {
+                            if (Util::CompareIgnoreCase(file._extension.c_str(), extension))
+                            {
+                                const auto it = _loadedTextures.find(_ID((_selectedDir->_path / file._path).string().c_str()));
+                                if (it == std::cend(_loadedTextures) || it->second == nullptr)
+                                {
+                                    if (!_textureLoadQueueLocked)
+                                    {
+                                        const EditorFileEntry entry
+                                        {
+                                           ._path = _selectedDir->_path,
+                                           ._file = 
+                                           {
+                                               ._path = file._path
+                                           }
+                                        };
+                                        _textureLoadQueue.push( entry );
                                         lockTextureQueue = true;
                                     }
-                                } else if (it->second->getState() == ResourceState::RES_LOADED) {
+                                }
+                                else if (it->second->getState() == ResourceState::RES_LOADED)
+                                {
                                     tex = it->second;
                                 }
                                 break;
                             }
                         }
                     }
-                    ImGui::PushID(file.second._path.string().c_str());
 
-                    const GeometryFormat format = tex != nullptr ? GeometryFormat::COUNT : GetGeometryFormatForExtension(file.second._extension.c_str());
+                    ImGui::PushID( _selectedDir->_path.string().c_str());
+
+                    const GeometryFormat format = tex != nullptr ? GeometryFormat::COUNT : GetGeometryFormatForExtension(file._extension.c_str());
 
                     bool hasTooltip = false;
-                    if (tex != nullptr) {
+                    if (tex != nullptr)
+                    {
                         const U16 w = tex->width();
                         const U16 h = tex->height();
                         const F32 aspect = w / to_F32(h);
-                        ;
-                        if (ImGui::ImageButton(tex->resourceName().c_str(), (void*)tex.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
+                    
+                        if (ImGui::ImageButton(tex->resourceName().c_str(), (void*)tex.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        {
                             previewTexture = tex;
                         }
-                    } else if (format != GeometryFormat::COUNT) {
+                    }
+                    else if (format != GeometryFormat::COUNT)
+                    {
                         const Texture_ptr& icon = _geometryIcons[to_base(format)];
                         const U16 w = icon->width();
                         const U16 h = icon->height();
@@ -290,50 +316,63 @@ namespace Divide {
 
                         const bool modifierPressed = imguiContext.IO.KeyShift;
                         const ImVec4 bgColour(modifierPressed ? 1.f : 0.f, 0.f, 0.f, modifierPressed ? 1.f : 0.f);
-                        if (ImGui::ImageButton(icon->resourceName().c_str(), (void*)icon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1))) {
-                            spawnMesh = getModelForPath(file.first, file.second._path.string());
+                        if (ImGui::ImageButton(icon->resourceName().c_str(), (void*)icon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1)))
+                        {
+                            spawnMesh = getModelForPath(_selectedDir->_path, file._path.string());
                             if (spawnMesh == nullptr)
                             {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
                             }
                         }
                         hasTooltip = true;
-                        if (ImGui::IsItemHovered()) {
+                        if (ImGui::IsItemHovered())
+                        {
                             ImGui::SetTooltip("Hold down [Shift] to spawn directly at the camera position");
                         }
-                    } else if (isSoundFile(file.second._extension.c_str())) {
+                    }
+                    else if (isSoundFile(file._extension.c_str()))
+                    {
                         const U16 w = _soundIcon->width();
                         const U16 h = _soundIcon->height();
-                         const F32 aspect = w / to_F32(h);
+                        const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(_soundIcon->resourceName().c_str(), (void*)_soundIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
+                        if (ImGui::ImageButton(_soundIcon->resourceName().c_str(), (void*)_soundIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        {
                             //ToDo: Play sound file -Ionut
                         }
-                    } else if (isShaderFile(file.second._extension.c_str())) {
+                    } else if (isShaderFile(file._extension.c_str())) {
                         const U16 w = _shaderIcon->width();
                         const U16 h = _shaderIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(_shaderIcon->resourceName().c_str(), (void*)_shaderIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
-                            openFileInEditor(file);
+                        if (ImGui::ImageButton(_shaderIcon->resourceName().c_str(), (void*)_shaderIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        {
+                            openFileInEditor(_selectedDir->_path, file);
                         }
-                    } else {
+                    }
+                    else
+                    {
                         const U16 w = _fileIcon->width();
                         const U16 h = _fileIcon->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(_fileIcon->resourceName().c_str(), (void*)_fileIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1)) {
-                            openFileInEditor(file);
+                        if (ImGui::ImageButton(_fileIcon->resourceName().c_str(), (void*)_fileIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        {
+                            openFileInEditor( _selectedDir->_path, file);
                         }
                     }
-                    if (!hasTooltip && ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(file.second._path.string().c_str());
+
+                    if (!hasTooltip && ImGui::IsItemHovered())
+                    {
+                        ImGui::SetTooltip(file._path.string().c_str());
                     }
-                    ImGui::Text(file.second._path.string().c_str());
+
+                    ImGui::Text(file._path.string().c_str());
 
                     ImGui::PopID();
                     ImGui::NextColumn();
-                    if (lockTextureQueue) {
+                    if (lockTextureQueue)
+                    {
                         _textureLoadQueueLocked = true;
                     }
                 }

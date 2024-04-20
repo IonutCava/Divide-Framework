@@ -33,7 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_RENDER_PACKAGE_H_
 #define DVD_RENDER_PACKAGE_H_
 
-#include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
 

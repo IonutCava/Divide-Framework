@@ -42,7 +42,11 @@ namespace Divide {
                                    public ECSSystem<NavigationSystem, NavigationComponent> {
         using Parent = ECSSystem<NavigationSystem, NavigationComponent>;
     public:
-        NavigationSystem(ECS::ECSEngine& parentEngine, PlatformContext& context);
+        NavigationSystem( ECS::ECSEngine& parentEngine, PlatformContext& context )
+            : PlatformContextComponent( context )
+            ,  ECSSystem( parentEngine )
+        {
+        }
     };
 }
 

@@ -27,10 +27,10 @@ TEST_CASE( "Time Downcast", "[conversion_tests]" )
 
     CHECK_EQUAL(microToNanoResult, microToNano);
     CHECK_EQUAL(milliToMicroResult, milliToMicro);
-    CHECK_EQUAL(milliToNanoResult, milliToNano);
+    CHECK_TRUE(COMPARE(milliToNanoResult, milliToNano));
     CHECK_EQUAL(secondsToMilliResult, secondsToMilli);
-    CHECK_EQUAL(secondsToMicroResult, secondsToMicro);
-    CHECK_EQUAL(secondsToNanoResult, secondsToNano);
+    CHECK_TRUE(COMPARE(secondsToMicroResult, secondsToMicro));
+    CHECK_TRUE(COMPARE(secondsToNanoResult, secondsToNano));
 }
 
 TEST_CASE( "Time Upcast", "[conversion_tests]" )

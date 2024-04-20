@@ -57,12 +57,12 @@ class GOAPGoal : public goap::WorldState {
    public:
     GOAPGoal(const Divide::string& name, U32 ID);
     virtual ~GOAPGoal() = default;
+    GOAPGoal(const GOAPGoal&) = default;
 
     [[nodiscard]] F32 relevancy() const noexcept { return _relevancy; }
     void relevancy(const F32 relevancy) noexcept { _relevancy = relevancy; }
 
     [[nodiscard]] const Divide::string& name() const noexcept { return name_; }
-    [[nodiscard]] U32 getID() const noexcept { return _ID; }
     [[nodiscard]] virtual bool plan(const GOAPWorldState& worldState, const GOAPActionSet& actionSet);
 
     [[nodiscard]] const GOAPPlan& getCurrentPlan() const;
@@ -78,8 +78,10 @@ class GOAPGoal : public goap::WorldState {
         _planner.printClosedList(ret);
         return ret;
     }
+
+    PROPERTY_R(U32, id);
+
    protected:
-    U32 _ID;
     F32 _relevancy;
     goap::Planner _planner;
     GOAPPlan _currentPlan;

@@ -1,6 +1,6 @@
 
 
-#include "Headers/CommandsImpl.h"
+#include "Headers/Commands.h"
 #include "Headers/Pipeline.h"
 
 #include "Core/Headers/StringHelper.h"
@@ -14,7 +14,8 @@
 namespace Divide {
 namespace GFX {
 
-string ToString(const BindPipelineCommand& cmd, U16 indent) {
+static string ToString(const BindPipelineCommand& cmd, U16 indent)
+{
     assert(cmd._pipeline != nullptr);
 
     const auto blendStateToString = [](const BlendingSettings& state) -> string {
@@ -130,7 +131,8 @@ string ToString(const BindPipelineCommand& cmd, U16 indent) {
     return ret;
 }
 
-string ToString(const SendPushConstantsCommand& cmd, U16 indent) {
+static string ToString(const SendPushConstantsCommand& cmd, U16 indent)
+{
     string ret = "\n";
 
     for (const auto& it : cmd._constants.data()) {
@@ -177,7 +179,8 @@ string ToString(const SendPushConstantsCommand& cmd, U16 indent) {
     return ret;
 }
 
-string ToString(const DrawCommand& cmd, const U16 indent)  {
+static string ToString(const DrawCommand& cmd, const U16 indent)
+{
     string ret = "\n";
     size_t i = 0;
     for (const GenericDrawCommand& drawCmd : cmd._drawCommands) {
@@ -191,15 +194,17 @@ string ToString(const DrawCommand& cmd, const U16 indent)  {
     return ret;
 }
 
-string ToString(const SetViewportCommand& cmd, [[maybe_unused]] U16 indent) {
+static string ToString(const SetViewportCommand& cmd, [[maybe_unused]] U16 indent)
+{
     return Util::StringFormat(" [{}, {}, {}, {}]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
 }
 
-string ToString(const PushViewportCommand& cmd, [[maybe_unused]] U16 indent) {
+static string ToString(const PushViewportCommand& cmd, [[maybe_unused]] U16 indent)
+{
     return Util::StringFormat(" [{}, {}, {}, {}]", cmd._viewport.x, cmd._viewport.y, cmd._viewport.z, cmd._viewport.w);
 }
 
-string ToString(const BeginRenderPassCommand& cmd, U16 indent)
+static string ToString(const BeginRenderPassCommand& cmd, U16 indent)
 {
     string ret = "\n";
     for ( U16 j = 0; j < indent; ++j )
@@ -244,12 +249,12 @@ string ToString(const BeginRenderPassCommand& cmd, U16 indent)
     return ret;
 }
 
-string ToString(const SetScissorCommand& cmd, [[maybe_unused]] U16 indent)
+static string ToString(const SetScissorCommand& cmd, [[maybe_unused]] U16 indent)
 {
     return Util::StringFormat(" [{}, {}, {}, {}]", cmd._rect.x, cmd._rect.y, cmd._rect.z, cmd._rect.w);
 }
 
-string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
+static string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
     string ret = "\n";
 
     auto& planes = cmd._clippingPlanes.planes();
@@ -270,13 +275,13 @@ string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
     return ret;
 }
 
-string ToString(const SetCameraCommand& cmd, [[maybe_unused]] U16 indent) {
+static string ToString(const SetCameraCommand& cmd, [[maybe_unused]] U16 indent) {
     string ret = "    ";
     ret.append(Util::StringFormat("[ Camera position (eye): [ {:5.2f} {:5.2f} {:5.2f}]\n", cmd._cameraSnapshot._eye.x, cmd._cameraSnapshot._eye.y, cmd._cameraSnapshot._eye.z));
     return ret;
 }
 
-string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
+static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
 {
     U8 bufferCount = 0u;
     U8 imageCount = 0u;
@@ -374,12 +379,12 @@ string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
     return ret;
 }
 
-string ToString(const BeginDebugScopeCommand& cmd, [[maybe_unused]] const U16 indent)
+static string ToString(const BeginDebugScopeCommand& cmd, [[maybe_unused]] const U16 indent)
 {
     return " [ " + string(cmd._scopeName.c_str()) + " ]";
 }
 
-string ToString(const AddDebugMessageCommand& cmd, const U16 indent)
+static string ToString(const AddDebugMessageCommand& cmd, const U16 indent)
 {
     string ret = "\n";
     for (U16 j = 0; j < indent; ++j) {
@@ -390,12 +395,12 @@ string ToString(const AddDebugMessageCommand& cmd, const U16 indent)
     return ret;
 }
 
-string ToString(const DispatchComputeCommand& cmd, [[maybe_unused]] U16 indent)
+static string ToString(const DispatchComputeCommand& cmd, [[maybe_unused]] U16 indent)
 {
     return Util::StringFormat(" [ Group sizes: {} {} {}]", cmd._computeGroupSize.x, cmd._computeGroupSize.y, cmd._computeGroupSize.z);
 }
 
-string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
+static string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
     string ret = Util::StringFormat(" [ Buffer locks: {} ] [ Texture layout changes: {} ]\n",
                                       cmd._bufferLocks.size(),
                                       cmd._textureLayoutChanges.size());
@@ -421,19 +426,19 @@ string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
     return ret;
 }
 
-string ToString( const BeginGPUQueryCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( const BeginGPUQueryCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     string ret = " Bit Mask: ";
     ret.append( std::bitset<32>(cmd._queryMask).to_string() );
     return ret;
 }
 
-string ToString( const EndGPUQueryCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( const EndGPUQueryCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return cmd._waitForResults ? " Wait for results: TRUE" : " Wait for results: FALSE";
 }
 
-string ToString( const BlitRenderTargetCommand& cmd, const U16 indent )
+static string ToString( const BlitRenderTargetCommand& cmd, const U16 indent )
 {
     string ret = Util::StringFormat("Source ID [ {} ] Target ID [ {} ] Param count [ {} ]\n", cmd._source, cmd._destination, cmd._params.size());
     for ( auto it : cmd._params )
@@ -450,37 +455,37 @@ string ToString( const BlitRenderTargetCommand& cmd, const U16 indent )
     return ret;
 }
 
-string ToString( [[maybe_unused]] const CopyTextureCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( [[maybe_unused]] const CopyTextureCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return "ToDo";
 }
 
-string ToString( [[maybe_unused]] const ReadTextureCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( [[maybe_unused]] const ReadTextureCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return "ToDo";
 }
 
-string ToString( [[maybe_unused]] const ClearTextureCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( [[maybe_unused]] const ClearTextureCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return "ToDo";
 }
 
-string ToString( [[maybe_unused]] const ComputeMipMapsCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( [[maybe_unused]] const ComputeMipMapsCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return "ToDo";
 }
 
-string ToString( [[maybe_unused]] const PushCameraCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( [[maybe_unused]] const PushCameraCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return "ToDo";
 }
 
-string ToString( [[maybe_unused]] const ReadBufferDataCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( [[maybe_unused]] const ReadBufferDataCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return "ToDo";
 }
 
-string ToString( [[maybe_unused]] const ClearBufferDataCommand& cmd, [[maybe_unused]] const U16 indent )
+static string ToString( [[maybe_unused]] const ClearBufferDataCommand& cmd, [[maybe_unused]] const U16 indent )
 {
     return "ToDo";
 }
@@ -595,5 +600,5 @@ string ToString(const CommandBase& cmd, const CommandType type, U16 indent) {
     return ret;
 }
 
-}; //namespace GFX
-}; //namespace Divide
+} //namespace GFX
+} //namespace Divide

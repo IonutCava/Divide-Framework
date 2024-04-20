@@ -22,4 +22,5 @@ void ParticleVelocityColourUpdater::update( [[maybe_unused]] const U64 deltaTime
             Lerp(p._startColour[i].a, p._endColour[i].a, p._misc[i].y) * 255.0f);
     }
 }
-}
+
+} //namespace Divide

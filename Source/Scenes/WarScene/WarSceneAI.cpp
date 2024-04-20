@@ -141,8 +141,8 @@ bool WarScene::initializeAI(bool /*continueOnErrors*/) {
         _faction[i] = MemoryManager_NEW AI::AITeam(i, *_aiManager);
     }
     // Make the teams fight each other
-    _faction[0]->addEnemyTeam(_faction[1]->getTeamID());
-    _faction[1]->addEnemyTeam(_faction[0]->getTeamID());
+    _faction[0]->addEnemyTeam(_faction[1]->teamID());
+    _faction[1]->addEnemyTeam(_faction[0]->teamID());
 
     //if (addUnits()) 
     {

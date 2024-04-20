@@ -16,7 +16,7 @@ namespace ECS {
 
 	ComponentManager::ComponentManager()
 	{
-		DEFINE_LOGGER("ComponentManager")
+		DEFINE_LOGGER("ComponentManager");
 		LOG_INFO("Initialize ComponentManager!","");
 
 		const size_t NUM_COMPONENTS { util::Internal::FamilyTypeID<IComponent>::Get() };

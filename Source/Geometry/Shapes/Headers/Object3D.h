@@ -42,20 +42,20 @@ namespace Divide {
 class BoundingBox;
 enum class RigidBodyShape : U8;
 
-[[nodiscard]] FORCE_INLINE constexpr PrimitiveTopology GetGeometryBufferType(const SceneNodeType type) noexcept {
-    if ( Is3DObject( type ) )
+[[nodiscard]] FORCE_INLINE constexpr PrimitiveTopology GetGeometryBufferType(const SceneNodeType type) noexcept
+{
+    if ( !Is3DObject( type ) ) [[unlikely]]
     {
-        switch (type) {
-            case SceneNodeType::TYPE_BOX_3D:
-            case SceneNodeType::TYPE_MESH:
-            case SceneNodeType::TYPE_SUBMESH: return PrimitiveTopology::TRIANGLES;
-            default: break;
-        }
-
-        return PrimitiveTopology::TRIANGLE_STRIP;
+        return PrimitiveTopology::COUNT;
+    }
+    if (type == SceneNodeType::TYPE_BOX_3D ||
+        type == SceneNodeType::TYPE_MESH ||
+        type == SceneNodeType::TYPE_SUBMESH)
+    {
+        return PrimitiveTopology::TRIANGLES;
     }
 
-    return PrimitiveTopology::COUNT;
+    return PrimitiveTopology::TRIANGLE_STRIP;
 }
 
 class Object3D : public SceneNode {
@@ -68,8 +68,8 @@ class Object3D : public SceneNode {
         COUNT = 3
     };
 
-    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 flagMask);
-    explicit Object3D(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, ObjectFlag flag);
+    explicit Object3D( PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 flagMask);
+    explicit Object3D( PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, ObjectFlag flag);
 
     void setMaterialTpl(const Material_ptr& material) override;
 
@@ -93,7 +93,7 @@ class Object3D : public SceneNode {
 
     inline void geometryBuffer(const VertexBuffer_ptr& vb) noexcept { _geometryBuffer = vb; }
 
-    virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] I32 newIndex) {}
+    virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] const U32 newIndex) {}
 
     [[nodiscard]] U8 getGeometryPartitionCount() const noexcept {
         U8 ret = 0;
@@ -149,7 +149,7 @@ class Object3D : public SceneNode {
 
     virtual void rebuildInternal();
 
-    void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+    void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Object3D"; }
 

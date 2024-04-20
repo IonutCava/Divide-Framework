@@ -132,14 +132,14 @@ namespace Divide
         }
     }
 
-    void InfinitePlane::buildDrawCommands( SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut )
+    void InfinitePlane::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
         //infinite plane
-        GenericDrawCommand planeCmd = {};
+        GenericDrawCommand& planeCmd = cmdsOut.emplace_back();
         planeCmd._cmd.firstIndex = 0u;
         planeCmd._cmd.indexCount = to_U32( _plane->geometryBuffer()->getIndexCount() );
         planeCmd._sourceBuffer = _plane->geometryBuffer()->handle();
-        cmdsOut.emplace_back( GFX::DrawCommand{ planeCmd } );
+        
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );
     }

@@ -41,7 +41,6 @@ namespace Divide {
 class TerrainDescriptor final : public PropertyDescriptor {
    public:
     explicit TerrainDescriptor(std::string_view name) noexcept;
-    virtual ~TerrainDescriptor() override;
 
     bool loadFromXML(const boost::property_tree::ptree& pt, const string& name);
 

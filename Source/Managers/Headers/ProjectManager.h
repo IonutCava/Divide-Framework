@@ -49,11 +49,11 @@ namespace Divide
     class LoadSave
     {
         public:
-        static bool loadScene( Scene& activeScene );
-        static bool saveScene( const Scene& activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback );
+        static bool loadScene( Scene* activeScene );
+        static bool saveScene( Scene* activeScene, bool toCache, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback );
 
-        static bool saveNodeToXML( const Scene& activeScene, const SceneGraphNode* node );
-        static bool loadNodeFromXML( const Scene& activeScene, SceneGraphNode* node );
+        static bool saveNodeToXML( Scene* activeScene, const SceneGraphNode* node );
+        static bool loadNodeFromXML( Scene* activeScene, SceneGraphNode* node );
     };
 
     enum class RenderStage : U8;
@@ -154,8 +154,7 @@ namespace Divide
         explicit Project( ProjectManager& parentMgr, const ProjectID& name );
         ~Project();
 
-        Scene& getActiveScene() noexcept;
-        [[nodiscard]] const Scene& getActiveScene() const noexcept;
+        [[nodiscard]] Scene* getActiveScene() const noexcept;
 
         void setActiveScene(  Scene* scene );
         [[nodiscard]] bool switchScene( const SwitchSceneTarget& scene );
@@ -235,7 +234,7 @@ namespace Divide
 
         [[nodiscard]] bool resetSelection( PlayerIndex idx, const bool resetIfLocked );
         void setSelected( PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, bool recursive );
-        void onNodeDestroy( Scene& parentScene, SceneGraphNode* node );
+        void onNodeDestroy( Scene* parentScene, SceneGraphNode* node );
         /// cull the SceneGraph against the current view frustum. 
         void cullSceneGraph( const NodeCullParams& cullParams, const U16 cullFlags, VisibleNodeList<>& nodesOut );
         /// Searches the scenegraph for the specified nodeGUID and, if found, adds it to nodesOut
@@ -322,18 +321,18 @@ namespace Divide
         void initPostLoadState() noexcept;
 
         // Add a new player to the simulation
-        void addPlayerInternal( Scene& parentScene, SceneGraphNode* playerNode );
+        void addPlayerInternal( Scene* parentScene, SceneGraphNode* playerNode );
         // Removes the specified player from the active simulation
         // Returns true if the player was previously registered
         // On success, player pointer will be reset
-        void removePlayerInternal( Scene& parentScene, SceneGraphNode* playerNode );
+        void removePlayerInternal( Scene* parentScene, SceneGraphNode* playerNode );
 
         // Add a new player to the simulation
-        void addPlayer( Scene& parentScene, SceneGraphNode* playerNode, bool queue );
+        void addPlayer( Scene* parentScene, SceneGraphNode* playerNode, bool queue );
         // Removes the specified player from the active simulation
         // Returns true if the player was previously registered
         // On success, player pointer will be reset
-        void removePlayer( Scene& parentScene, SceneGraphNode* playerNode, bool queue );
+        void removePlayer( Scene* parentScene, SceneGraphNode* playerNode, bool queue );
         void getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut ) const;
 
         void waitForSaveTask();
@@ -423,12 +422,12 @@ namespace Divide
 
         class ProjectManagerScene
         {
-            static void addPlayer( Divide::ProjectManager& manager, Scene& parentScene, SceneGraphNode* playerNode, const bool queue )
+            static void addPlayer( Divide::ProjectManager& manager, Scene* parentScene, SceneGraphNode* playerNode, const bool queue )
             {
                 manager.addPlayer( parentScene, playerNode, queue );
             }
 
-            static void removePlayer( Divide::ProjectManager& manager, Scene& parentScene, SceneGraphNode* playerNode, const bool queue )
+            static void removePlayer( Divide::ProjectManager& manager, Scene* parentScene, SceneGraphNode* playerNode, const bool queue )
             {
                 manager.removePlayer( parentScene, playerNode, queue );
             }
@@ -597,17 +596,17 @@ namespace Divide
 
             static const SceneStatePerPlayer& playerState( const Divide::ProjectManager* mgr ) noexcept
             {
-                return mgr->activeProject()->getActiveScene().state()->playerState();
+                return mgr->activeProject()->getActiveScene()->state()->playerState();
             }
 
             static LightPool& lightPool( Divide::ProjectManager* mgr )
             {
-                return *mgr->activeProject()->getActiveScene().lightPool();
+                return *mgr->activeProject()->getActiveScene()->lightPool();
             }
 
             static  SceneRenderState& renderState( Divide::ProjectManager* mgr ) noexcept
             {
-                return mgr->activeProject()->getActiveScene().state()->renderState();
+                return mgr->activeProject()->getActiveScene()->state()->renderState();
             }
 
             friend class Divide::RenderPass;

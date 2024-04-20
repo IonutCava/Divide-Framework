@@ -46,7 +46,7 @@ namespace Divide
         using Parent = ECSSystem<SelectionSystem, SelectionComponent>;
       public:
         SelectionSystem( ECS::ECSEngine& parentEngine, PlatformContext& context );
-        virtual ~SelectionSystem();
+        virtual ~SelectionSystem() override;
 
         void Update( F32 dt ) override;
 

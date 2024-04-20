@@ -2,7 +2,6 @@
 
 #include "Platform/Headers/PlatformDefines.h"
 
-
 void* operator new[](const size_t size, 
                      [[maybe_unused]] size_t alignment,
                      [[maybe_unused]] size_t alignmentOffset,
@@ -28,17 +27,23 @@ void* operator new[](const size_t size,
     return malloc(size);
 }
 
-int Vsnprintf8(char* pDestination, const size_t n, const char* pFormat, va_list arguments) noexcept {
-    return vsnprintf(pDestination, n, pFormat, arguments);
+int Vsnprintf8( char* p, size_t n, const char* pFormat, va_list arguments )
+{
+#ifdef _MSC_VER
+    return vsnprintf_s( p, n, _TRUNCATE, pFormat, arguments );
+#else
+    return vsnprintf( p, n, pFormat, arguments );
+#endif
 }
 
 namespace eastl {
     /// gDefaultAllocator
     /// Default global allocator instance. 
-    EASTL_API aligned_allocator  gDefaultAllocator;
-    EASTL_API aligned_allocator* gpDefaultAllocator = &gDefaultAllocator;
+    EASTL_API static aligned_allocator  gDefaultAllocator;
+    EASTL_API static aligned_allocator* gpDefaultAllocator = &gDefaultAllocator;
 
-    EASTL_API aligned_allocator* GetDefaultDvdAllocator() noexcept {
+    EASTL_API aligned_allocator* GetDefaultDvdAllocator() noexcept
+    {
         return gpDefaultAllocator;
     }
 

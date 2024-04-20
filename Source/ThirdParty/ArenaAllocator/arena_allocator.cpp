@@ -16,14 +16,14 @@
 namespace unitest {
 
 /**/
-void arena_simple_usage()
+static void arena_simple_usage()
 {
 	struct SomeSt {
 		double d;
 		int    i;
 
-		SomeSt()				{;}
-		SomeSt(double, int)		{;}
+		SomeSt()				{}
+		SomeSt(double, int)		{}
 	};
 
 	Arena arena;
@@ -43,14 +43,14 @@ void arena_simple_usage()
 
 
 /**/
-void my_arena_usage()
+static void my_arena_usage()
 {
 	struct SomeSt {
 		double d;
 		int    i;
 
-		SomeSt()				{;}
-		SomeSt(double, int)		{;}
+		SomeSt()				{}
+		SomeSt(double, int)		{}
 		~SomeSt()				{ printf("SomeSt::DTOR() %d\n", i); }
 	};
 
@@ -93,33 +93,6 @@ public:
 };
 
 typedef slist<MyStruct> AList;
-
-/**/
-void slist_usecase()
-{
-	AList l1;
-	AList l2;
-	
-	MyStruct* p = new MyStruct[3];
-
-	p[0].indx_ = 0;
-	p[1].indx_ = 1;
-	p[2].indx_ = 2;
-
-//	l1.push_back(p[0]);
-//	l1.push_back(p[1]);
-//	l1.push_back(p[2]);
-
-	l2.push_front(p[0]);
-	l2.push_front(p[1]);
-	l2.push_front(p[2]);
-
-	for ( AList::iterator it(l2.begin()), end(l2.end()); it != end; ++it )
-		printf("%d\n", it->indx_);
-
-	return;
-}
-
 
 /**/
 void arena_usecases()

@@ -38,9 +38,9 @@ namespace ECS {
 			IEvent(ECSEngine* engine, EntityId sourceEntityID, EventTypeId typeId);
 			 
 			// ACCESSOR
-			inline const EventTypeId	GetEventTypeID()	    const { return this->m_TypeId; }
-			inline const EventTimestamp GetTimeCreated()	    const { return this->m_TimeCreated; }
-            inline const EntityId       GetSourceEntityId( )	const { return this->m_SourceEntityID; }
+			inline EventTypeId    GetEventTypeID()	    const { return this->m_TypeId; }
+			inline EventTimestamp GetTimeCreated()	    const { return this->m_TimeCreated; }
+            inline EntityId       GetSourceEntityId( )	const { return this->m_SourceEntityID; }
 
 		}; // class IEvent
 

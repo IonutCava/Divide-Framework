@@ -38,9 +38,9 @@ GLuint glSamplerObject::Construct(const SamplerDescriptor& descriptor)
     GLuint samplerID = GL_NULL_HANDLE;
 
     glCreateSamplers(1, &samplerID);
-    glSamplerParameterf(samplerID, GL_TEXTURE_LOD_BIAS, descriptor._biasLOD);
-    glSamplerParameterf(samplerID, GL_TEXTURE_MIN_LOD, descriptor._minLOD);
-    glSamplerParameterf(samplerID, GL_TEXTURE_MAX_LOD, descriptor._maxLOD);
+    glSamplerParameterf(samplerID, GL_TEXTURE_LOD_BIAS, descriptor._lod._bias);
+    glSamplerParameterf(samplerID, GL_TEXTURE_MIN_LOD, descriptor._lod._min);
+    glSamplerParameterf(samplerID, GL_TEXTURE_MAX_LOD, descriptor._lod._max);
     glSamplerParameteri(samplerID, GL_TEXTURE_MIN_FILTER, getMinFilterMode(descriptor._minFilter, descriptor._mipSampling));
     glSamplerParameteri(samplerID, GL_TEXTURE_MAG_FILTER, getMagFilterMode(descriptor._magFilter));
     glSamplerParameteri(samplerID, GL_TEXTURE_WRAP_S, to_U32(GLUtil::glWrapTable[to_U32(descriptor._wrapU)]));
@@ -120,4 +120,4 @@ void glSamplerObject::Destruct(GLuint& handle)
     }
 }
 
-};
+} //namespace Divide

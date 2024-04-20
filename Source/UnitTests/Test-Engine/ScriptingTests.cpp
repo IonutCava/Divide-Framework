@@ -12,7 +12,7 @@ TEST_CASE("Simple Inline Script Test", "[scripting]")
     Script input("5.3 + 2.1");
     constexpr D64 result = 7.4;
 
-    CHECK_EQUAL(input.eval<double>(), result);
+    CHECK_COMPARE(input.eval<double>(), result);
 }
 
 TEST_CASE( "External Function Script Test", "[scripting]" )

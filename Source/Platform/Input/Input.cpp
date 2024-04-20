@@ -147,7 +147,8 @@ namespace Input {
         return KeyCodeFromSDLKey(SDL_GetKeyFromName(keyName));
     }
 
-    InputState GetKeyState([[maybe_unused]] const U8 deviceIndex, const KeyCode key) noexcept {
+    InputState GetKeyState([[maybe_unused]] const U8 deviceIndex, const KeyCode key) noexcept
+    {
         const Uint8 *state = SDL_GetKeyboardState(nullptr);
 
         return state[SDL_GetScancodeFromKey(SDLKeyCodeFromKey(key))] ? InputState::PRESSED : InputState::RELEASED;
@@ -174,9 +175,12 @@ namespace Input {
         case MouseButton::MB_Button4:
             sdlButton = SDL_BUTTON_X2;
             break;
-        default:
+        case MouseButton::MB_Button5:
+        case MouseButton::MB_Button6:
+        case MouseButton::MB_Button7:
+        case MouseButton::COUNT:
             return InputState::RELEASED;
-        };
+        }
 
         return (state & SDL_BUTTON(sdlButton)) != 0 ? InputState::PRESSED : InputState::RELEASED;
     }

@@ -47,7 +47,7 @@ class AudioSensor final : public Sensor {
 
    public:
     void update(U64 deltaTimeUS) override;
-    ~AudioSensor() = default;
+    ~AudioSensor() override = default;
 
    protected:
     AudioSensor(AIEntity* parentEntity);

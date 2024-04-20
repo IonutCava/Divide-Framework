@@ -39,7 +39,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     : BaseComponentType<EnvironmentProbeComponent, ComponentType::ENVIRONMENT_PROBE>(sgn, context),
       GUIDWrapper()
 {
-    const Scene& parentScene = sgn->sceneGraph()->parentScene();
+    Scene& parentScene = sgn->sceneGraph()->parentScene();
 
     EditorComponentField layerField = {};
     layerField._name = "RT Layer index";
@@ -47,7 +47,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     layerField._type = EditorComponentFieldType::PUSH_TYPE;
     layerField._readOnly = true;
     layerField._serialise = false;
-    layerField._basicType = PushConstantType::INT;
+    layerField._basicType = PushConstantType::UINT;
     layerField._basicTypeSize = PushConstantSize::WORD;
 
     editorComponent().registerField(MOV(layerField));
@@ -55,10 +55,10 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     EditorComponentField typeField = {};
     typeField._name = "Is Local";
     typeField._dataGetter = [this](void* dataOut) {
-        *static_cast<bool*>(dataOut) = _type == ProbeType::TYPE_LOCAL;
+        *static_cast<bool*>(dataOut) = _probeType == ProbeType::TYPE_LOCAL;
     };
     typeField._dataSetter = [this](const void* data) {
-        _type = *static_cast<const bool*>(data) ? ProbeType::TYPE_LOCAL : ProbeType::TYPE_INFINITE;
+        _probeType = *static_cast<const bool*>(data) ? ProbeType::TYPE_LOCAL : ProbeType::TYPE_INFINITE;
     };
     typeField._type = EditorComponentFieldType::PUSH_TYPE;
     typeField._readOnly = false;
@@ -127,13 +127,13 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
         }
     });
 
-    Attorney::SceneEnvironmentProbeComponent::registerProbe(parentScene, this);
+    Attorney::SceneEnvironmentProbeComponent::registerProbe(&parentScene, this);
     enabled(true);
 }
 
 EnvironmentProbeComponent::~EnvironmentProbeComponent()
 {
-    Attorney::SceneEnvironmentProbeComponent::unregisterProbe(_parentSGN->sceneGraph()->parentScene(), this);
+    Attorney::SceneEnvironmentProbeComponent::unregisterProbe(&_parentSGN->sceneGraph()->parentScene(), this);
     enabled(false);
 }
 
@@ -178,7 +178,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     if (updateType() != UpdateType::ALWAYS)
     {
         rtLayerIndex(SceneEnvironmentProbePool::AllocateSlice(false));
-        if ( rtLayerIndex() == -1)
+        if ( rtLayerIndex() == Config::MAX_REFLECTIVE_PROBES_PER_PASS)
         {
             if constexpr ( Config::Build::IS_DEBUG_BUILD )
             {
@@ -189,30 +189,30 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
         }
     }
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand(Util::StringFormat("EnvironmentProbePass Id: [ {} ]", rtLayerIndex()).c_str(), to_U32(rtLayerIndex())));
+    auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
+    cmd->_scopeName = Util::StringFormat( "EnvironmentProbePass Id: [ {} ]", rtLayerIndex() ).c_str(),
+    cmd->_scopeId = rtLayerIndex();
 
-    RenderPassParams params;
-
-    params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
-    params._sourceNode = findNodeToIgnore();
-
-    // Probes come after reflective nodes in buffer positions and array layers for management reasons (rate of update and so on)
-    params._stagePass =
-    { 
-        RenderStage::REFLECTION,
-        RenderPassType::COUNT,
-        to_U16(Config::MAX_REFLECTIVE_NODES_IN_VIEW + rtLayerIndex()),
-        static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE)
+    RenderPassParams params
+    {
+        ._sourceNode = findNodeToIgnore(),
+        ._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID,
+        // Probes come after reflective nodes in buffer positions and array layers for management reasons (rate of update and so on)
+        ._stagePass =
+        { 
+            ._stage = RenderStage::REFLECTION,
+            ._passType = RenderPassType::COUNT,
+            ._index = to_U16(rtLayerIndex() + Config::MAX_REFLECTIVE_NODES_IN_VIEW),
+            ._variant = static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE)
+        },
     };
-
-    params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
-    params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES));
 
     params._targetDescriptorPrePass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = false;
     params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
-
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
+    params._drawMask &= ~(1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ));
+    params._drawMask &= ~(1u << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES ));
 
     _context.gfx().generateCubeMap(params,
                                    rtLayerIndex(),
@@ -230,10 +230,17 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     return true;
 }
 
-void EnvironmentProbeComponent::enabled(const bool state) {
+bool EnvironmentProbeComponent::enabled() const
+{
+    return Parent::enabled();
+}
+
+void EnvironmentProbeComponent::enabled(const bool state)
+{
     Parent::enabled(state);
     const auto sceneData = _context.gfx().sceneData();
-    if (sceneData != nullptr) {
+    if (sceneData != nullptr)
+    {
         sceneData->probeState(poolIndex(), state);
     }
 }
@@ -263,20 +270,27 @@ void EnvironmentProbeComponent::updateType(const UpdateType type) {
         return;
     }
 
-    if (updateType() == UpdateType::ALWAYS && rtLayerIndex() >= 0) {
+    if (updateType() == UpdateType::ALWAYS && rtLayerIndex() < Config::MAX_REFLECTIVE_PROBES_PER_PASS )
+    {
         // Release slice if we switch to on-demand updates
         SceneEnvironmentProbePool::UnlockSlice(rtLayerIndex());
     }
 
     _updateType = type;
-    if (type == UpdateType::ALWAYS) {
-        const I16 newSlice = SceneEnvironmentProbePool::AllocateSlice(true);
-        if (newSlice >= 0) {
+    if (type == UpdateType::ALWAYS)
+    {
+        const U16 newSlice = SceneEnvironmentProbePool::AllocateSlice(true);
+        if (newSlice < Config::MAX_REFLECTIVE_PROBES_PER_PASS )
+        {
             rtLayerIndex(newSlice);
-        } else {
-            if constexpr (Config::Build::IS_DEBUG_BUILD) {
+        }
+        else
+        {
+            if constexpr (Config::Build::IS_DEBUG_BUILD)
+            {
                 DIVIDE_UNEXPECTED_CALL();
             }
+
             // Failed to allocate a slice. Fallback to manual updates
             updateType(UpdateType::ON_DIRTY);
         }

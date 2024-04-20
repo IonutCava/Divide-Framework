@@ -18,6 +18,9 @@ namespace goap {
         using operationsIterator = hashMap<I32, bool>::const_iterator;
 
         virtual ~Action() = default;
+        Action(const Action&) = default;
+        Action& operator=(const Action&) = default;
+
     private:
         string name_; // The human-readable action name
         I32 cost_;        // The numeric cost of this action

@@ -37,9 +37,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Geometry/Material/Headers/MaterialEnums.h"
 #include "Platform/Video/Headers/RenderPackage.h"
-#include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
+#include "Platform/Video/Headers/Pipeline.h"
+#include "Platform/Video/Headers/IMPrimitiveDescriptors.h"
 
 namespace Divide {
 struct NodeMaterialData;
@@ -73,7 +74,8 @@ namespace Attorney {
     class RenderingComponentSGN;
 }
 
-struct RenderParams {
+struct RenderParams
+{
     GenericDrawCommand _cmd;
     Pipeline _pipeline;
 };
@@ -122,8 +124,9 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
            IS_VISIBLE = toBit(8)
        };
 
-       struct DrawCommands {
-           vector_fast<GFX::DrawCommand> _data;
+       struct DrawCommands
+       {
+           GenericDrawCommandContainer _data;
            SharedMutex _dataLock;
        };
 

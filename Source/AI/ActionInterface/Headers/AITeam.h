@@ -89,13 +89,13 @@ class AITeam final : public GUIDWrapper {
     bool addEnemyTeam(U32 enemyTeamID);
     bool removeEnemyTeam(U32 enemyTeamID);
 
-    void setTeamID(const U32 value) { _teamID = value; }
-    U32  getTeamID() const { return _teamID; }
-
-    I32  getEnemyTeamID(const U32 index) const {
-        if (_enemyTeams.size() <= index) {
-            return -1;
+    inline U32  getEnemyTeamID(const U32 index) const
+    {
+        if (_enemyTeams.size() <= index)
+        {
+            return U32_MAX;
         }
+
         return _enemyTeams[index];
     }
 
@@ -123,6 +123,8 @@ class AITeam final : public GUIDWrapper {
     }
 
     const OrderList& requestOrders() const { return _orders; }
+
+    PROPERTY_RW(U32, teamID, U32_MAX);
 
    protected:
     friend class AIManager;
@@ -160,7 +162,6 @@ class AITeam final : public GUIDWrapper {
     mutable SharedMutex _orderMutex;
 
    private:
-    U32 _teamID;
     TeamMap _team;
     AIManager& _parentManager;
     /// Container with data per team member. For example a map of distances

@@ -3,11 +3,11 @@
 #include "Headers/NavMeshLoader.h"
 
 #include "Core/Headers/ByteBuffer.h"
+#include "Utility/Headers/Localization.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Water/Headers/Water.h"
-
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/NavigationComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"

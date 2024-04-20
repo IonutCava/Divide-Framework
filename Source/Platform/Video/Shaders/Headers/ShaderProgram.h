@@ -187,7 +187,7 @@ namespace Divide
                                 ShaderProgramDescriptor descriptor,
                                 ResourceCache& parentCache );
 
-        virtual ~ShaderProgram();
+        ~ShaderProgram() override;
 
         bool load() override;
         bool unload() override;
@@ -212,6 +212,7 @@ namespace Divide
         [[nodiscard]] static ErrorCode OnStartup( ResourceCache* parentCache );
         [[nodiscard]] static bool OnShutdown();
         [[nodiscard]] static bool OnThreadCreated( const GFXDevice& gfx, const std::thread::id& threadID );
+        static void OnBeginFrame( GFXDevice& gfx );
         static void OnEndFrame( GFXDevice& gfx );
 
         /// Queue a shaderProgram recompile request
@@ -272,6 +273,7 @@ namespace Divide
         static ShaderQueue s_recompileFailedQueue;
         /// Shader program cache
         static ShaderProgramMap s_shaderPrograms;
+        static eastl::fixed_vector<ShaderProgram*, U16_MAX, false> s_usedShaderPrograms;
 
         struct LastRequestedShader
         {

@@ -148,4 +148,4 @@ void glHardwareQueryPool::deallocate(const glHardwareQueryRing& query) {
     DIVIDE_UNEXPECTED_CALL();
 }
 
-}; //namespace Divide
+} //namespace Divide

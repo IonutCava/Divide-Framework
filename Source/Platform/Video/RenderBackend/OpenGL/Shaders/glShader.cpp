@@ -19,8 +19,6 @@ namespace Divide {
 
 namespace {
     constexpr bool g_useSPIRVBinaryCode = false;
-    constexpr const char* g_binaryBinExtension = ".bin";
-    constexpr const char* g_binaryFmtExtension = ".fmt";
 
     size_t g_validationBufferMaxSize = 4096 * 16;
 
@@ -28,13 +26,13 @@ namespace {
     {
         switch (type)
         {
-            case ShaderType::VERTEX: return UseProgramStageMask::GL_VERTEX_SHADER_BIT;
+            case ShaderType::VERTEX:            return UseProgramStageMask::GL_VERTEX_SHADER_BIT;
             case ShaderType::TESSELLATION_CTRL: return UseProgramStageMask::GL_TESS_CONTROL_SHADER_BIT;
             case ShaderType::TESSELLATION_EVAL: return UseProgramStageMask::GL_TESS_EVALUATION_SHADER_BIT;
-            case ShaderType::GEOMETRY: return UseProgramStageMask::GL_GEOMETRY_SHADER_BIT;
-            case ShaderType::FRAGMENT: return UseProgramStageMask::GL_FRAGMENT_SHADER_BIT;
-            case ShaderType::COMPUTE: return UseProgramStageMask::GL_COMPUTE_SHADER_BIT;
-            default: break;
+            case ShaderType::GEOMETRY:          return UseProgramStageMask::GL_GEOMETRY_SHADER_BIT;
+            case ShaderType::FRAGMENT:          return UseProgramStageMask::GL_FRAGMENT_SHADER_BIT;
+            case ShaderType::COMPUTE:           return UseProgramStageMask::GL_COMPUTE_SHADER_BIT;
+            case ShaderType::COUNT:             break;
         }
 
         return UseProgramStageMask::GL_NONE_BIT;
@@ -86,8 +84,6 @@ ShaderResult glShader::uploadToGPU()
         Time::ProfileTimer timers[2];
 
         Console::d_printfn(LOCALE_STR("GLSL_LOAD_PROGRAM"), _name.c_str(), getGUID());
-
-        std::array<U64, to_base(ShaderType::COUNT)> stageCompileTimeGPU{};
 
         if constexpr(Config::ENABLE_GPU_VALIDATION)
         {
@@ -160,7 +156,7 @@ ShaderResult glShader::uploadToGPU()
                     GLint logSize = 0;
                     glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logSize);
                     string validationBuffer;
-                    validationBuffer.resize(logSize);
+                    validationBuffer.resize(to_size(logSize) );
 
                     glGetShaderInfoLog(shader, logSize, &logSize, &validationBuffer[0]);
                     if (validationBuffer.size() > g_validationBufferMaxSize) {
@@ -207,7 +203,7 @@ ShaderResult glShader::uploadToGPU()
             GLint logSize = 0;
             glGetProgramiv(_handle, GL_INFO_LOG_LENGTH, &logSize);
             string validationBuffer;
-            validationBuffer.resize(logSize);
+            validationBuffer.resize(to_size(logSize));
 
             glGetProgramInfoLog(_handle, logSize, nullptr, &validationBuffer[0]);
             if (validationBuffer.size() > g_validationBufferMaxSize) {

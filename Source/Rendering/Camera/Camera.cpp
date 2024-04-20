@@ -708,22 +708,26 @@ namespace Divide
         bool updated = false;
         if ( mode() == Mode::FREE_FLY )
         {
-            const I8 moveFB = to_base(playerState._moveFB.top());
-            const I8 moveLR = to_base(playerState._moveLR.top());
-            const I8 moveUD = to_base(playerState._moveUD.top());
-
-            updated = moveRelative( { moveFB, moveLR, moveUD } ) || updated;
+            updated = moveRelative(
+            {
+                playerState._moveFB.topValue(),
+                playerState._moveLR.topValue(),
+                playerState._moveUD.topValue()
+            }) || updated;
         }
 
-        const I8 angleUD = to_base( playerState._angleUD.top() );
-        const I8 angleLR = to_base( playerState._angleLR.top() );
-        const I8 roll    = to_base( playerState._roll.top() );
+        
 
-        updated = rotateRelative( { angleUD, angleLR, roll } ) || updated; //roll
+        updated = rotateRelative( 
+        {
+            playerState._angleUD.topValue(),
+            playerState._angleLR.topValue(),
+            playerState._roll.topValue()
+        }) || updated;
 
         if ( mode() == Mode::ORBIT || mode() == Mode::THIRD_PERSON )
         {
-            updated = zoom( to_base( playerState._zoom.top() ) ) || updated;
+            updated = zoom( playerState._zoom.topValue() ) || updated;
         }
 
         return updated;

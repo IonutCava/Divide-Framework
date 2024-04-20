@@ -9,8 +9,8 @@
 */
 
 #pragma once
-#ifndef ECS__ECSSMM_H__
-#define ECS__ECSSMM_H__
+#ifndef ECS_ECSSMM_H__
+#define ECS_ECSSMM_H__
 
 #define ECS_GLOBAL_MEMORY_CAPACITY 134217728 // 128 MB
 
@@ -94,7 +94,7 @@ namespace Internal {
 							break;
 						}
 					}	
-				};
+				}
 
 			}
 			else
@@ -109,4 +109,4 @@ namespace Internal {
 
 }}} // namespace ECS::Memory::Internal
 
-#endif // ECS__ECSSMM_H__
+#endif // ECS_ECSSMM_H__

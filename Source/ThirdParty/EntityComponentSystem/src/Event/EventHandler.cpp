@@ -16,7 +16,7 @@ namespace ECS { namespace Event {
 
 	EventHandler::EventHandler()
 	{
-		DEFINE_LOGGER("EventHandler")
+		DEFINE_LOGGER("EventHandler");
 		LOG_INFO("Initialize EventHandler!","");
 	
 		// allocate memory from global memory manager

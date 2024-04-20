@@ -30,7 +30,7 @@ namespace
         return false;
     }
 
-    [[nodiscard]] inline bool RemoveEmptyDrawCommands( DrawCommand::CommandContainer& commands )
+    [[nodiscard]] inline bool RemoveEmptyDrawCommands( GenericDrawCommandContainer& commands )
     {
         return dvd_erase_if( commands, []( const GenericDrawCommand& cmd ) noexcept { return cmd._drawCount == 0u; } );
     }
@@ -96,7 +96,8 @@ namespace
         });
     }
 
-    CommandBuffer::CommandBuffer( const size_t reservedCmdCount )
+    CommandBuffer::CommandBuffer( const char* name, const size_t reservedCmdCount )
+        : _name( name )
     {
         if ( _commands.max_size() < reservedCmdCount )
         {
@@ -298,7 +299,7 @@ namespace
                 {
                     PROFILE_SCOPE( "Clean Draw Commands", Profiler::Category::Graphics );
 
-                    DrawCommand::CommandContainer& cmds = cmd->As<DrawCommand>()->_drawCommands;
+                    GenericDrawCommandContainer& cmds = cmd->As<DrawCommand>()->_drawCommands;
                     if ( cmds.size() == 1 )
                     {
                         erase = cmds.begin()->_drawCount == 0u;

@@ -270,4 +270,4 @@ namespace Divide
         return countOut;
     }
 
-};
+} //namespace Divide

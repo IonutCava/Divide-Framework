@@ -83,7 +83,7 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 
     EditorComponentField recomputeBoundsField = {};
     recomputeBoundsField._name = "Recompute Bounds";
-    recomputeBoundsField._range = { recomputeBoundsField._name.length() * 10.0f, 20.0f };//dimensions
+    recomputeBoundsField._range = { to_F32(recomputeBoundsField._name.length()) * 10, 20.0f };//dimensions
     recomputeBoundsField._type = EditorComponentFieldType::BUTTON;
     recomputeBoundsField._readOnly = false; //disabled/enabled
     _editorComponent.registerField(MOV(recomputeBoundsField));
@@ -101,8 +101,8 @@ void BoundsComponent::showAABB(const bool state) {
 
         _parentSGN->SendEvent(
             {
-                ECS::CustomEvent::Type::DrawBoundsChanged,
-                this
+                ._type = ECS::CustomEvent::Type::DrawBoundsChanged,
+                ._sourceCmp = this
             });
     }
 }
@@ -113,8 +113,8 @@ void BoundsComponent::showOBB(const bool state) {
 
         _parentSGN->SendEvent(
             {
-                ECS::CustomEvent::Type::DrawBoundsChanged,
-                this
+                ._type = ECS::CustomEvent::Type::DrawBoundsChanged,
+                ._sourceCmp = this
             });
     }
 }
@@ -125,8 +125,8 @@ void BoundsComponent::showBS(const bool state) {
 
         _parentSGN->SendEvent(
             {
-                ECS::CustomEvent::Type::DrawBoundsChanged,
-                this
+                ._type = ECS::CustomEvent::Type::DrawBoundsChanged,
+                ._sourceCmp = this
             });
     }
 }

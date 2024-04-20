@@ -162,14 +162,14 @@ void Renderer::prepareLighting(const RenderStage stage,
 
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Cull Lights" });
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Renderer Cull Lights";
     {
         PerRenderStageData& data = _lightDataPerStage[to_base(stage)];
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
 
-            const auto& pool = context().kernel().projectManager()->activeProject()->getActiveScene().lightPool();
+            LightPool* pool = context().kernel().projectManager()->activeProject()->getActiveScene()->lightPool().get();
 
             const size_t stageIndex = to_size( stage );
             {
@@ -203,7 +203,7 @@ void Renderer::prepareLighting(const RenderStage stage,
         }
 
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Reset Global Index Count" } );
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Renderer Reset Global Index Count";
 
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
             {
@@ -212,7 +212,7 @@ void Renderer::prepareLighting(const RenderStage stage,
                 ._buffer = data._globalIndexCountBuffer->getBufferImpl()
             });
             GFX::EnqueueCommand( bufferInOut, _lightResetCounterPipelineCmd );
-            GFX::EnqueueCommand( bufferInOut, GFX::DispatchComputeCommand{ 1u, 1u, 1u } );
+            GFX::EnqueueCommand<GFX::DispatchComputeCommand>( bufferInOut )->_computeGroupSize = { 1u, 1u, 1u };
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
             {
                 ._range = { 0u, U32_MAX },
@@ -242,7 +242,7 @@ void Renderer::prepareLighting(const RenderStage stage,
         {
             data._invalidated = false;
 
-            GFX::EnqueueCommand(bufferInOut, GFX::BeginDebugScopeCommand{ "Renderer Rebuild Light Grid" });
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Renderer Rebuild Light Grid";
 
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
             {
@@ -258,12 +258,12 @@ void Renderer::prepareLighting(const RenderStage stage,
 
             GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushConstants);
-            GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand
+            GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize =
             { 
                 Config::Lighting::ClusteredForward::CLUSTERS_X,
                 Config::Lighting::ClusteredForward::CLUSTERS_Y,
                 Config::Lighting::ClusteredForward::CLUSTERS_Z
-            });
+            };
 
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
             {
@@ -284,11 +284,12 @@ void Renderer::prepareLighting(const RenderStage stage,
         });
 
         GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
-        GFX::EnqueueCommand(bufferInOut, GFX::DispatchComputeCommand{
+        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = 
+        {
             Config::Lighting::ClusteredForward::CLUSTERS_X / Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
             Config::Lighting::ClusteredForward::CLUSTERS_Y / Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,
             Config::Lighting::ClusteredForward::CLUSTERS_Z / Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS
-        });
+        };
 
         {
             auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
@@ -334,4 +335,4 @@ void Renderer::updateResolution(const U16 newWidth, const U16 newHeight) const {
            _invProjectionMatrix != other._invProjectionMatrix;
 }
 
-}
+} //namespace Divide

@@ -122,4 +122,4 @@ namespace Divide
 
         return _lodThresholds;
     }
-}  // namespace Divide
+} // namespace Divide

@@ -25,4 +25,5 @@ void ParticlePositionColourUpdater::update( [[maybe_unused]] const U64 deltaTime
                   p._misc[i].y) * 255.0f);
     }
 }
-}
+
+} //namespace Divide

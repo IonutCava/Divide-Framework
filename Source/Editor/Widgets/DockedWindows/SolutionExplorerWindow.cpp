@@ -36,7 +36,6 @@
 #include "ECS/Components/Headers/ScriptComponent.h"
 #include "ECS/Components/Headers/UnitComponent.h"
 
-#include <EASTL/deque.h>
 #include <IconsForkAwesome.h>
 #include <imgui_internal.h>
 
@@ -266,9 +265,9 @@ namespace Divide {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         ProjectManager* projectManager = context().kernel().projectManager();
-        Scene& activeScene = projectManager->activeProject()->getActiveScene();
+        Scene* activeScene = projectManager->activeProject()->getActiveScene();
 
-        const bool sceneValid = activeScene.getState() == ResourceState::RES_LOADED;
+        const bool sceneValid = activeScene->getState() == ResourceState::RES_LOADED;
 
         Attorney::EditorGeneralWidget::setPreviewNode(_parent, nullptr);
 
@@ -293,7 +292,7 @@ namespace Divide {
         }
         ImGui::BeginChild("SceneGraph", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowHeight() * .5f), true, 0);
 
-        if (ImGui::TreeNodeEx(activeScene.resourceName().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s%s", ICON_FK_HOME, activeScene.resourceName().c_str()))
+        if (ImGui::TreeNodeEx(activeScene->resourceName().c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s%s", ICON_FK_HOME, activeScene->resourceName().c_str()))
         {
             if ( sceneValid )
             {
@@ -307,7 +306,7 @@ namespace Divide {
                 }
                 {
                     PROFILE_SCOPE("Print SceneGraph", Profiler::Category::GUI);
-                    SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
+                    SceneGraphNode* root = activeScene->sceneGraph()->getRoot();
                     printSceneGraphNode(projectManager, root, 0, true, false, modifierPressed);
                 }
             }
@@ -520,9 +519,9 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Text("Queued GPU Frames: %d", perfMetrics._queuedGPUFrames);
             ImGui::NewLine();  
-            ImGui::Text("Shader uniforms VRAM usage: %.2f Kb", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
+            ImGui::Text("Per Frame shader uniforms VRAM usage: %.2f Kb", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
             ImGui::NewLine();
-            ImGui::Text("Shader buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage / 1024.f / 1024.f));
+            ImGui::Text("Total buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage / 1024.f / 1024.f));
             ImGui::NewLine();
             ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d", cachedSyncCount[0], cachedSyncCount[1], cachedSyncCount[2], s_maxLocksInFlight);
 
@@ -554,15 +553,15 @@ namespace Divide {
 
         if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
         {
-            bool dayNightEnabled = activeScene.dayNightCycleEnabled();
+            bool dayNightEnabled = activeScene->dayNightCycleEnabled();
             if (ImGui::Checkbox("Enable day/night cycle", &dayNightEnabled))
             {
-                activeScene.dayNightCycleEnabled(dayNightEnabled);
+                activeScene->dayNightCycleEnabled(dayNightEnabled);
             }
 
             ImGui::Text(ICON_FK_CLOCK_O" Time of Day:");
-            SimpleTime time = activeScene.getTimeOfDay();
-            SimpleLocation location = activeScene.getGeographicLocation();
+            SimpleTime time = activeScene->getTimeOfDay();
+            SimpleLocation location = activeScene->getGeographicLocation();
 
             constexpr U8 min = 0u;
             constexpr U8 maxHour = 24u;
@@ -572,12 +571,12 @@ namespace Divide {
             const bool minutesChanged = ImGui::SliderScalar("Minute", ImGuiDataType_U8, &time._minutes, &min, &maxMinute, "%02d");
             if (hourChanged || minutesChanged)
             {
-                activeScene.setTimeOfDay(time);
+                activeScene->setTimeOfDay(time);
             }
-            F32 timeFactor = activeScene.getDayNightCycleTimeFactor();
+            F32 timeFactor = activeScene->getDayNightCycleTimeFactor();
             if (ImGui::InputFloat("Time factor", &timeFactor))
             {
-                activeScene.setDayNightCycleTimeFactor(CLAMPED(timeFactor, -500.f, 500.f));
+                activeScene->setDayNightCycleTimeFactor(CLAMPED(timeFactor, -500.f, 500.f));
             }
 
             ImGui::Text(ICON_FK_GLOBE_W" Global positioning:");
@@ -585,31 +584,49 @@ namespace Divide {
             const bool longitudeChanged = ImGui::SliderFloat("Longitude", &location._longitude, -180.f, 180.f, "%.6f");
             if (latitudeChanged || longitudeChanged)
             {
-                activeScene.setGeographicLocation(location);
+                activeScene->setGeographicLocation(location);
             }
 
-            if (!dayNightEnabled)
+            if ( ImGui::CollapsingHeader( "Day/Night details", ImGuiTreeNodeFlags_SpanAvailWidth ) )
             {
-                PushReadOnly();
-            }
+                const SunInfo sun = activeScene->getCurrentSunDetails();
+                const vec3<F32> sunPosition = activeScene->getSunPosition();
+                const vec3<F32> sunDirection = activeScene->getSunDirection();
 
-            const SunInfo sun = activeScene.getCurrentSunDetails();
-            const vec3<F32> sunPosition = activeScene.getSunPosition();
-            const vec3<F32> sunDirection = activeScene.getSunDirection();
+                const Angle::DEGREES<F32> sunAltitude = Angle::RadiansToDegrees( sun.altitude );
+                const Angle::DEGREES<F32> sunAzimuth = Angle::RadiansToDegrees( sun.azimuth );
+                constexpr Angle::DEGREES<F32> twilightDegrees{ -18.f };
+                constexpr Angle::DEGREES<F32> sunriseAzimuth{ 70.f };
+                constexpr Angle::DEGREES<F32> sunsetAzimuth{ 280.f };
+                const bool isNight = sunAltitude < twilightDegrees;
+                const bool isTwilight = IS_IN_RANGE_INCLUSIVE( sunAltitude, twilightDegrees, 0.f );
+                const bool isDawn = isTwilight && sunAzimuth < sunriseAzimuth;
+                const bool isDusk = isTwilight && sunAzimuth > sunsetAzimuth;
 
-            ImGui::Text(ICON_FK_INFO_CIRCLE);
-            ImGui::SameLine();
-            ImGui::Text("Sunset: %02d:%02d", sun.sunsetTime._hour, sun.sunsetTime._minutes);
-            ImGui::SameLine(); ImGui::Text(" | "); ImGui::SameLine();
-            ImGui::Text("Sunrise: %02d:%02d", sun.sunriseTime._hour, sun.sunriseTime._minutes);
-            ImGui::SameLine();  ImGui::Text(" | "); ImGui::SameLine();
-            ImGui::Text("Noon: %02d:%02d", sun.noonTime._hour, sun.noonTime._minutes);
-            ImGui::Text("Sun Pos|Dir: (%1.2f, %1.2f, %1.2f) | (%1.2f, %1.2f, %1.2f)", sunPosition.x, sunPosition.y, sunPosition.z, sunDirection.x, sunDirection.y, sunDirection.z);
-            ImGui::Text("Sun altitude(max) | azimuth : (%3.2f | %3.2f) degrees", Angle::RadiansToDegrees(sun.altitude), sun.altitudeMax, Angle::RadiansToDegrees(sun.azimuth));
-
-            if (!dayNightEnabled)
-            {
-                PopReadOnly();
+                {
+                    ImGui::Text( ICON_FK_CLOCK_O ); ImGui::SameLine();
+                    ImGui::Text("Sunset: %02d:%02d", sun.sunsetTime._hour, sun.sunsetTime._minutes);
+                    ImGui::SameLine(); ImGui::Text(" | "); ImGui::SameLine();
+                    ImGui::Text("Sunrise: %02d:%02d", sun.sunriseTime._hour, sun.sunriseTime._minutes);
+                    ImGui::SameLine();  ImGui::Text(" | "); ImGui::SameLine();
+                    ImGui::Text("Noon: %02d:%02d", sun.noonTime._hour, sun.noonTime._minutes);
+                }
+                {
+                    ImGui::Text( ICON_FK_SUN_O ); ImGui::SameLine();
+                    ImGui::Text("Sun Pos|Dir: (%1.2f, %1.2f, %1.2f) | (%1.2f, %1.2f, %1.2f)", sunPosition.x, sunPosition.y, sunPosition.z, sunDirection.x, sunDirection.y, sunDirection.z);
+                }
+                {
+                    ImGui::Text( ICON_FK_SUN_O ); ImGui::SameLine();
+                    ImGui::Text( "Sun altitude | Max altitude : (%3.2f | %3.2f) degrees", sunAltitude, sun.altitudeMax );
+                }
+                {
+                    ImGui::Text( ICON_FK_SUN_O ); ImGui::SameLine();
+                    ImGui::Text( "Sun azimuth  | Declination  : (%3.2f | %3.2f) degrees", sun.azimuth, sun.declination );
+                }
+                {
+                    ImGui::Text( ICON_FK_MOON_O ); ImGui::SameLine();
+                    ImGui::Text( "Time of day: %s", isNight ? "Night" : isDawn ? "Dawn" : isDusk ? "Dusk" : "Day" );
+                }
             }
         }
         
@@ -984,8 +1001,7 @@ namespace Divide {
             if (ImGui::BeginPopupModal("Select New Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
             {
                 ProjectManager* projectManager = context().kernel().projectManager();
-                const Scene& activeScene = projectManager->activeProject()->getActiveScene();
-                SceneGraphNode* root = activeScene.sceneGraph()->getRoot();
+                SceneGraphNode* root = projectManager->activeProject()->getActiveScene()->sceneGraph()->getRoot();
 
                 ImGui::Text("Selecting a new parent for SGN [ %d ][ %s ]?", _childNode->getGUID(), _childNode->name().c_str());
 
@@ -1019,4 +1035,4 @@ namespace Divide {
             }
         }
     }
-}
+} //namespace Divide

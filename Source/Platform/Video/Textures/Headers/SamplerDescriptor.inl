@@ -35,6 +35,13 @@
 
 namespace Divide
 {
+    inline bool SamplerLOD::operator==( const SamplerLOD& rhs ) const noexcept
+    {
+        return COMPARE( _min, rhs._min ) && 
+               COMPARE( _max, rhs._max ) && 
+               COMPARE( _bias, rhs._bias );
+    }
+
     inline size_t GetHash( const SamplerDescriptor descriptor ) noexcept
     {
         size_t hash = 59;
@@ -43,9 +50,9 @@ namespace Divide
                             descriptor._customBorderColour.g,
                             descriptor._customBorderColour.b,
                             descriptor._customBorderColour.a,
-                            descriptor._minLOD,
-                            descriptor._maxLOD,
-                            descriptor._biasLOD,
+                            descriptor._lod._min,
+                            descriptor._lod._max,
+                            descriptor._lod._bias,
                             to_base( descriptor._minFilter ),
                             to_base( descriptor._magFilter ),
                             to_base( descriptor._mipSampling ),

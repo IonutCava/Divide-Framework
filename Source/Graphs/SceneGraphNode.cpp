@@ -4,12 +4,14 @@
 #include "Headers/SceneGraph.h"
 
 #include "Core/Headers/PlatformContext.h"
+#include "Utility/Headers/Localization.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Water/Headers/Water.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Scenes/Headers/SceneState.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -455,7 +457,7 @@ void SceneGraphNode::postLoad()
 {
     SendEvent(
     {
-        ECS::CustomEvent::Type::EntityPostLoad
+        ._type = ECS::CustomEvent::Type::EntityPostLoad
     });
 }
 
@@ -1030,7 +1032,7 @@ void SceneGraphNode::invalidateRelationshipCache(SceneGraphNode* source)
 
     SendEvent(
     {
-        ECS::CustomEvent::Type::RelationshipCacheInvalidated
+        ._type = ECS::CustomEvent::Type::RelationshipCacheInvalidated
     });
 
     _relationshipCache.invalidate();
@@ -1154,9 +1156,9 @@ void SceneGraphNode::setFlag(const Flags flag, const bool recursive)
         _nodeFlags |= to_base(flag);
         ECS::CustomEvent evt
         {
-           ECS::CustomEvent::Type::EntityFlagChanged,
-           nullptr,
-           to_U32(flag)
+           ._type = ECS::CustomEvent::Type::EntityFlagChanged,
+           ._sourceCmp = nullptr,
+           ._flag = to_U32(flag)
         };
         evt._dataPair._first = 1u;
         evt._dataPair._second = recursive ? 1u : 0u;
@@ -1182,9 +1184,9 @@ void SceneGraphNode::clearFlag(const Flags flag, const bool recursive)
         _nodeFlags &= ~to_U32(flag);
         ECS::CustomEvent evt
         {
-            ECS::CustomEvent::Type::EntityFlagChanged,
-            nullptr,
-            to_U32(flag)
+            ._type = ECS::CustomEvent::Type::EntityFlagChanged,
+            ._sourceCmp = nullptr,
+            ._flag = to_U32(flag)
         };
         evt._dataPair._first = 0u;
         evt._dataPair._second = recursive ? 1u : 0u;
@@ -1267,4 +1269,4 @@ void SceneGraphNode::updateCollisions( const SceneGraphNode& parentNode, Interse
     }
 }
 
-};
+} //namespace Divide

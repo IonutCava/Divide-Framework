@@ -585,7 +585,7 @@ namespace Divide
             pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->handle();
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
-            GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _context.gfx().newPipeline( pipelineDescriptor ) } );
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _context.gfx().newPipeline( pipelineDescriptor );
             {
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;

@@ -40,8 +40,7 @@
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Core/Resources/Headers/Resource.h"
 #include "ECS/Components/Headers/EditorComponent.h"
-#include "Rendering/Camera/Headers/Frustum.h"
-#include "Platform/Video/Headers/AttributeDescriptor.h"
+#include "Platform/Video/Headers/GenericDrawCommand.h"
 
 namespace Divide {
 
@@ -105,7 +104,7 @@ class SceneNode : public CachedResource {
                                const CameraSnapshot& cameraSnapshot,
                                bool refreshData);
 
-    virtual void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut);
+    virtual void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut);
 
     bool unload() override;
     virtual void setMaterialTpl(const Material_ptr& material);

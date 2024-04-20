@@ -119,7 +119,7 @@ bool AIManager::registerEntity(const U32 teamID, AIEntity* entity) {
 
 void AIManager::unregisterEntity(AIEntity* entity) {
     for (AITeamMap::value_type& team : _aiTeams) {
-        unregisterEntity(team.second->getTeamID(), entity);
+        unregisterEntity(team.second->teamID(), entity);
     }
 }
 
@@ -175,7 +175,7 @@ void AIManager::destroyNavMesh(const AIEntity::PresetAgentRadius radius) {
 
 void AIManager::registerTeam(AITeam* const team) {
     LockGuard<Mutex> w_lock(_updateMutex);
-    const U32 teamID = team->getTeamID();
+    const U32 teamID = team->teamID();
     DIVIDE_ASSERT(_aiTeams.find(teamID) == std::end(_aiTeams),
                   "AIManager error: attempt to double register an AI team!");
 
@@ -184,7 +184,7 @@ void AIManager::registerTeam(AITeam* const team) {
 
 void AIManager::unregisterTeam(AITeam* const team) {
     LockGuard<Mutex> w_lock(_updateMutex);
-    const U32 teamID = team->getTeamID();
+    const U32 teamID = team->teamID();
     const AITeamMap::iterator it = _aiTeams.find(teamID);
     DIVIDE_ASSERT(it != std::end(_aiTeams),
                   "AIManager error: attempt to unregister an invalid AI team!");

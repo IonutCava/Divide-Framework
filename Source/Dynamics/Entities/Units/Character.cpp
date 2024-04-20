@@ -94,18 +94,26 @@ void Character::lookAt(const vec3<F32>& targetPos) {
     _velocityDirty = true;
 }
 
-void Character::playAnimation(I32 index) const {
+void Character::playAnimation(U32 index) const
+{
     SceneGraphNode* node(getBoundNode());
-    if (node) {
+    if (node)
+    {
         AnimationComponent* anim = node->get<AnimationComponent>();
-        if (anim) {
+        if (anim)
+        {
             anim->playAnimation(index);
-        } else {
+        }
+        else
+        {
             const SceneGraphNode::ChildContainer& children = node->getChildren();
             const U32 childCount =  children._count;
-            for (U32 i = 0u; i < childCount; ++i) {
+
+            for (U32 i = 0u; i < childCount; ++i)
+            {
                 AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
-                if (childAnim) {
+                if (childAnim)
+                {
                     childAnim->playAnimation(index);
                 }
             }
@@ -169,4 +177,5 @@ void Character::pauseAnimation(bool state) const {
         }
     }
 }
-}
+
+} //namespace Divide

@@ -34,7 +34,7 @@
 #define DVD_RENDERER_H_
 
 #include "Core/Headers/PlatformContextComponent.h"
-#include "Platform/Video/Headers/CommandsImpl.h"
+#include "Platform/Video/Headers/Commands.h"
 
 namespace Divide {
 

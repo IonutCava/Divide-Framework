@@ -57,10 +57,13 @@ bool decomposeMatrix(const mat4<F32>& transform,
     isUniformScaleOut = scaleOut.isUniform();
       
     rotationOut.y = asin(-Row[0][2]);
-    if (cos(rotationOut.y) != 0) {
+    if (!IS_ZERO(cos(rotationOut.y)))
+    {
         rotationOut.x = atan2(Row[1][2], Row[2][2]);
         rotationOut.z = atan2(Row[0][1], Row[0][0]);
-    } else {
+    }
+    else
+    {
         rotationOut.x = atan2(-Row[2][0], Row[1][1]);
         rotationOut.z = 0;
     }
@@ -497,4 +500,5 @@ void Normalize(vec3<F32>& inputRotation, const bool degrees, const bool normYaw,
         }
     }
 }
+
 }  // namespace Divide::Util

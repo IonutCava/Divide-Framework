@@ -40,7 +40,8 @@ struct Hashable
     Hashable() = default;
     virtual ~Hashable() = default;
 
-    Hashable( const Hashable& other ) : _hash(other._hash) {}
+    Hashable( const Hashable& )  = default;
+    Hashable& operator=( const Hashable& ) = default;
 
     [[nodiscard]] virtual size_t getHash() const { return _hash; }
 

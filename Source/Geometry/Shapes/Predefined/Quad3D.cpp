@@ -4,7 +4,7 @@
 
 namespace Divide {
 
-Quad3D::Quad3D(GFXDevice& context,
+Quad3D::Quad3D( PlatformContext& context,
                ResourceCache* parentCache,
                const size_t descriptorHash,
                const std::string_view name,
@@ -141,4 +141,4 @@ void Quad3D::recomputeBounds() {
     );
 }
 
-}; //namespace Divide
+} //namespace Divide

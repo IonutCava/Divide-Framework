@@ -109,9 +109,9 @@ namespace Divide
             xfree( ptr );
         }
 
-        ImGuiMemAllocFunc g_ImAllocatorAllocFunc = MallocWrapper;
-        ImGuiMemFreeFunc g_ImAllocatorFreeFunc = FreeWrapper;
-        ImGuiAllocatorUserData g_ImAllocatorUserData{};
+        static ImGuiMemAllocFunc g_ImAllocatorAllocFunc = MallocWrapper;
+        static ImGuiMemFreeFunc g_ImAllocatorFreeFunc = FreeWrapper;
+        static ImGuiAllocatorUserData g_ImAllocatorUserData{};
     }; // namespace ImGuiCustom
 
     void InitBasicImGUIState( ImGuiIO& io ) noexcept
@@ -173,7 +173,6 @@ namespace Divide
         , _editorUpdateTimer( Time::ADD_TIMER( "Editor Update Timer" ) )
         , _editorRenderTimer( Time::ADD_TIMER( "Editor Render Timer" ) )
         , _currentTheme( theme )
-        , _recentSceneList( 10 )
     {
         ImGui::SetAllocatorFunctions( ImGuiCustom::g_ImAllocatorAllocFunc,
                                       ImGuiCustom::g_ImAllocatorFreeFunc,
@@ -659,7 +658,7 @@ namespace Divide
                 const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y );
                 const Rect<I32> targetViewport{0, 0, fb_width, fb_height};
 
-                Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer();
+                Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer("IMGUI Render Window");
 
                 GFX::MemoryBarrierCommand memCmd;
                 editor->renderDrawList(pDrawData,
@@ -827,7 +826,7 @@ namespace Divide
         _fontTexture.reset();
         _imguiProgram.reset();
         _gizmo.reset();
-        _IMGUIBuffers.clear();
+        _imguiBuffers.clear();
 
         for ( ImGuiContext* context : _imguiContexts )
         {
@@ -877,20 +876,20 @@ namespace Divide
         }
 
         ProjectManager* sMgr = _context.kernel().projectManager();
-        const Scene& activeScene = sMgr->activeProject()->getActiveScene();
+        Scene* activeScene = sMgr->activeProject()->getActiveScene();
 
         running( state );
         Reset( _windowFocusState );
         updateEditorFocus();
 
-        SceneStatePerPlayer& playerState = activeScene.state()->playerState( sMgr->playerPass() );
+        SceneStatePerPlayer& playerState = activeScene->state()->playerState( sMgr->playerPass() );
         if ( !state )
         {
             _context.config().save();
             playerState.overrideCamera( nullptr );
             sceneGizmoEnabled( false );
-            activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
-            activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
+            activeScene->state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
+            activeScene->state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
             if ( !_context.kernel().projectManager()->resetSelection( 0, true ) )
             {
                 NOP();
@@ -901,12 +900,12 @@ namespace Divide
             _stepQueue = 0;
             playerState.overrideCamera( editorCamera() );
             sceneGizmoEnabled( true );
-            activeScene.state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
+            activeScene->state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
             static_cast<ContentExplorerWindow*>( _dockedWindows[to_base( WindowType::ContentExplorer )] )->init();
-            /*const Selections& selections = activeScene.getCurrentSelection();
+            /*const Selections& selections = activeScene->getCurrentSelection();
             if (selections._selectionCount == 0)
             {
-                SceneGraphNode* root = activeScene.sceneGraph().getRoot();
+                SceneGraphNode* root = activeScene->sceneGraph().getRoot();
                 _context.kernel().projectManager()->setSelected(0, { &root });
             }*/
         }
@@ -1046,9 +1045,9 @@ namespace Divide
             ProjectManager* sMgr = _context.kernel().projectManager();
             const bool scenePaused = (simulationPaused() && _stepQueue == 0);
 
-            const Scene& activeScene = sMgr->activeProject()->getActiveScene();
+            Scene* activeScene = sMgr->activeProject()->getActiveScene();
             const PlayerIndex idx = sMgr->playerPass();
-            SceneStatePerPlayer& playerState = activeScene.state()->playerState( idx );
+            SceneStatePerPlayer& playerState = activeScene->state()->playerState( idx );
 
             if ( _isScenePaused != scenePaused )
             {
@@ -1064,18 +1063,18 @@ namespace Divide
                 }
                 if ( _isScenePaused )
                 {
-                    activeScene.state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
+                    activeScene->state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
                     if ( allGizmosEnabled )
                     {
-                        activeScene.state()->renderState().enableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
+                        activeScene->state()->renderState().enableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
                     }
                     sceneGizmoEnabled( true );
                 }
                 else
                 {
-                    allGizmosEnabled = activeScene.state()->renderState().isEnabledOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
-                    activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
-                    activeScene.state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
+                    allGizmosEnabled = activeScene->state()->renderState().isEnabledOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
+                    activeScene->state()->renderState().disableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
+                    activeScene->state()->renderState().disableOption( SceneRenderState::RenderOptions::ALL_GIZMOS );
                     sceneGizmoEnabled( false );
                 }
             }
@@ -1385,15 +1384,15 @@ namespace Divide
 
     GenericVertexData* Editor::getOrCreateIMGUIBuffer( const I64 bufferGUID, const U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        const auto it = _IMGUIBuffers.find( bufferGUID );
-        if ( it != eastl::cend( _IMGUIBuffers ) )
+        const auto it = _imguiBuffers.find( bufferGUID );
+        if ( it != eastl::cend( _imguiBuffers ) )
         {
             GenericVertexData* buffer = it->second.get();
             buffer->incQueue();
             return buffer;
         }
 
-        auto& newBuffer = _IMGUIBuffers[bufferGUID];
+        auto& newBuffer = _imguiBuffers[bufferGUID];
 
         newBuffer = _context.gfx().newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, false, Util::StringFormat("IMGUI_{}", bufferGUID).c_str() );
 
@@ -1448,16 +1447,13 @@ namespace Divide
         GenericVertexData* buffer = getOrCreateIMGUIBuffer( bufferGUID, MaxVertices, memCmdInOut);
         assert( buffer != nullptr );
 
-        GenericDrawCommand drawCmd{};
-        drawCmd._sourceBuffer = buffer->handle();
-
         // ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
-        I32 numVertices = 0, numIndices = 0;
+        U32 numVertices = 0, numIndices = 0;
         for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
         {
             const ImDrawList* cl = pDrawData->CmdLists[n];
-            const I32 clNumVertices = cl->VtxBuffer.size();
-            const I32 clNumIndices = cl->IdxBuffer.size();
+            const U32 clNumVertices = to_U32(cl->VtxBuffer.size());
+            const U32 clNumIndices = to_U32(cl->IdxBuffer.size());
 
             if ( (numVertices + clNumVertices) > MaxVertices || (numIndices + clNumIndices) > MaxIndices )
             {
@@ -1497,7 +1493,7 @@ namespace Divide
             scopeCmd->_scopeId = numVertices;
         }
 
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut, { _editorPipeline } );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut)->_pipeline = _editorPipeline;
 
         static IMGUICallbackData defaultData{
             ._flip = false
@@ -1505,7 +1501,7 @@ namespace Divide
 
         const PushConstantsStruct pushConstants = IMGUICallbackToPushConstants( defaultData, false );
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushConstants );
-        GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut, targetViewport);
+        GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut)->_viewport = targetViewport;
 
         const F32 scale[] = {
             2.f / pDrawData->DisplaySize.x,
@@ -1517,7 +1513,10 @@ namespace Divide
              1.f + pDrawData->DisplayPos.y * scale[1]
         };
         
-        mat4<F32>& projection = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut, { _render2DSnapshot } )->_cameraSnapshot._projectionMatrix;
+        CameraSnapshot& snapshot = GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut)->_cameraSnapshot;
+        snapshot = _render2DSnapshot;
+
+        mat4<F32>& projection = snapshot._projectionMatrix;
         projection.m[0][0] = scale[0];
         projection.m[1][1] = -scale[1];
         projection.m[2][2] = -1.f;
@@ -1526,7 +1525,6 @@ namespace Divide
 
         const ImVec2 clip_off = pDrawData->DisplayPos;         // (0,0) unless using multi-viewports
         const ImVec2 clip_scale = pDrawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
-        Rect<I32> clipRect{};
 
         const bool flipClipY = _context.gfx().renderAPI() == RenderAPI::OpenGL;
 
@@ -1534,6 +1532,10 @@ namespace Divide
 
         U32 baseVertex = 0u;
         U32 indexOffset = 0u;
+
+        GFX::DrawCommand* drawCommand = nullptr;
+
+        bool newCommand = true;
         for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
         {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
@@ -1543,10 +1545,10 @@ namespace Divide
                 {
                     static_cast<IMGUICallbackData*>(pcmd.UserCallbackData)->_cmdBuffer = &bufferInOut;
                     pcmd.UserCallback( cmd_list, &pcmd );
+                    newCommand = true;
                 }
                 else
                 {
-
                     ImVec2 clip_min( (pcmd.ClipRect.x - clip_off.x)* clip_scale.x, (pcmd.ClipRect.y - clip_off.y)* clip_scale.y );
                     ImVec2 clip_max( (pcmd.ClipRect.z - clip_off.x)* clip_scale.x, (pcmd.ClipRect.w - clip_off.y)* clip_scale.y );
 
@@ -1560,6 +1562,7 @@ namespace Divide
                         continue;
                     }
 
+                    Rect<I32>& clipRect = GFX::EnqueueCommand<GFX::SetScissorCommand>( bufferInOut )->_rect;
                     clipRect.sizeX = to_I32( clip_max.x - clip_min.x);
                     clipRect.sizeY = to_I32( clip_max.y - clip_min.y);
 
@@ -1572,8 +1575,6 @@ namespace Divide
                     {
                         clipRect.offsetY = to_I32( clip_min.y );
                     }
-                    GFX::EnqueueCommand( bufferInOut, GFX::SetScissorCommand{ clipRect } );
-
 
                     ImTextureID imguiTexID = pcmd.GetTexID();
 
@@ -1593,12 +1594,21 @@ namespace Divide
                             Set(binding._data, Texture::DefaultTexture2DArray()->getView(), Texture::DefaultSampler());
                         }
                         crtImguiTexID = imguiTexID;
+                        newCommand = true;
                     }
 
-                    drawCmd._cmd.indexCount = pcmd.ElemCount;
-                    drawCmd._cmd.firstIndex = indexOffset + pcmd.IdxOffset;
-                    drawCmd._cmd.baseVertex = baseVertex + pcmd.VtxOffset;
-                    GFX::EnqueueCommand( bufferInOut, GFX::DrawCommand{ drawCmd } );
+                    if ( newCommand )
+                    {
+                        drawCommand = GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+                        newCommand = false;
+                    }
+
+                    auto drawCmd = &drawCommand->_drawCommands.emplace_back();
+                    drawCmd->_sourceBuffer = buffer->handle();
+                    drawCmd->_cmd.indexCount = pcmd.ElemCount;
+                    drawCmd->_cmd.firstIndex = indexOffset + pcmd.IdxOffset;
+                    drawCmd->_cmd.baseVertex = baseVertex + pcmd.VtxOffset;
+                    
                 }
             }
 
@@ -2196,7 +2206,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        static CircularBuffer<SceneEntry> tempBuffer( 10 );
+        static CircularBuffer<SceneEntry, 10> tempBuffer;
 
         if ( Util::IsEmptyOrNull( scene._name.c_str() ) )
         {
@@ -2250,7 +2260,7 @@ namespace Divide
     {
         U32 ret = 10u; // All of the scene stuff (settings, music, etc)
 
-        const auto& graph = _context.kernel().projectManager()->activeProject()->getActiveScene().sceneGraph();
+        const auto& graph = _context.kernel().projectManager()->activeProject()->getActiveScene()->sceneGraph();
         ret += to_U32( graph->getTotalNodeCount() );
 
         return ret;
@@ -2258,8 +2268,8 @@ namespace Divide
 
     bool Editor::isDefaultScene() const noexcept
     {
-        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
-        return activeScene.getGUID() == Scene::DEFAULT_SCENE_GUID;
+        Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
+        return activeScene->getGUID() == Scene::DEFAULT_SCENE_GUID;
     }
 
     bool Editor::modalTextureView( const char* modalName,
@@ -2648,8 +2658,8 @@ namespace Divide
         nodeDescriptor._componentMask = normalMask;
         nodeDescriptor._node = mesh;
         
-        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
-        const SceneGraphNode* node = activeScene.sceneGraph()->getRoot()->addChildNode( nodeDescriptor );
+        Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
+        const SceneGraphNode* node = activeScene->sceneGraph()->getRoot()->addChildNode( nodeDescriptor );
         if ( node != nullptr )
         {
             TransformComponent* tComp = node->get<TransformComponent>();
@@ -2675,8 +2685,8 @@ namespace Divide
 
     LightPool& Editor::getActiveLightPool() const
     {
-        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
-        return *activeScene.lightPool();
+        Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
+        return *activeScene->lightPool();
     }
 
     SceneEnvironmentProbePool* Editor::getActiveEnvProbePool() const noexcept
@@ -2738,8 +2748,8 @@ namespace Divide
 
     void Editor::queueRemoveNode( const I64 nodeGUID )
     {
-        const Scene& activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
-        activeScene.sceneGraph()->removeNode( nodeGUID );
+        Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
+        activeScene->sceneGraph()->removeNode( nodeGUID );
         unsavedSceneChanges( true );
     }
 
@@ -2761,11 +2771,11 @@ namespace Divide
         bool ret = false;
         if ( selections._selectionCount > 0 )
         {
-            const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
+            Scene* activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
 
             for ( U8 i = 0; i < selections._selectionCount; ++i )
             {
-                SceneGraphNode* sgn = activeScene.sceneGraph()->findNode( selections._selections[i] );
+                SceneGraphNode* sgn = activeScene->sceneGraph()->findNode( selections._selections[i] );
                 ret = addComponent( sgn, newComponentType ) || ret;
             }
         }
@@ -2791,11 +2801,11 @@ namespace Divide
         bool ret = false;
         if ( selections._selectionCount > 0 )
         {
-            const Scene& activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
+            Scene* activeScene = context().kernel().projectManager()->activeProject()->getActiveScene();
 
             for ( U8 i = 0; i < selections._selectionCount; ++i )
             {
-                SceneGraphNode* sgn = activeScene.sceneGraph()->findNode( selections._selections[i] );
+                SceneGraphNode* sgn = activeScene->sceneGraph()->findNode( selections._selections[i] );
                 ret = removeComponent( sgn, newComponentType ) || ret;
             }
         }

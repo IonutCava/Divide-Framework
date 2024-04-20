@@ -110,9 +110,9 @@ VertexBuffer::VertexBuffer(GFXDevice& context, const bool renderIndirect, const 
 {
 }
 
-bool VertexBuffer::create(const bool staticDraw, const bool keepData) {
-    const AttributeOffsets offsets = GetAttributeOffsets(_useAttribute, _effectiveEntrySize);
-    DIVIDE_ASSERT(!_data.empty() && _effectiveEntrySize > 0u, LOCALE_STR("ERROR_VB_POSITION"));
+bool VertexBuffer::create(const bool staticDraw, const bool keepData)
+{
+    DIVIDE_ASSERT(!_data.empty(), LOCALE_STR("ERROR_VB_POSITION"));
 
     _staticBuffer = staticDraw;
     _keepData = keepData;
@@ -404,7 +404,7 @@ size_t VertexBuffer::lastPartitionOffset() const {
 bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, const size_t dataOutBufferLength) {
     assert(dataOut != nullptr);
 
-    if (dataOutBufferLength >= dataIn.size() * _effectiveEntrySize) {
+    if (dataOutBufferLength >= dataIn.size() * GetTotalDataSize(_useAttribute)) {
         FillSmallData(dataIn,
                      dataOut,
                      _useAttribute[to_base(AttribLocation::TEXCOORD)],
@@ -428,14 +428,16 @@ bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut ) 
     assert(!_indices.empty() && "glVertexArray::refresh error: Invalid index data on Refresh()!");
 
     {
-        vector_fast<Byte> smallData(_data.size() * _effectiveEntrySize);
+        const size_t effectiveEntrySize = GetTotalDataSize( _useAttribute );
+
+        vector_fast<Byte> smallData(_data.size() * effectiveEntrySize);
         if (!getMinimalData(_data, smallData.data(), smallData.size())) {
             DIVIDE_UNEXPECTED_CALL();
         }
 
         if (_dataLayoutChanged) {
             GenericVertexData::SetBufferParams setBufferParams{};
-            setBufferParams._bufferParams._elementSize = _effectiveEntrySize;
+            setBufferParams._bufferParams._elementSize = effectiveEntrySize;
             setBufferParams._bufferParams._elementCount = to_U32(_data.size());
             setBufferParams._bufferParams._flags._updateFrequency = _staticBuffer ? BufferUpdateFrequency::ONCE : BufferUpdateFrequency::OFTEN;
             setBufferParams._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
@@ -498,7 +500,8 @@ void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data) {
 }
 
 /// Activate and set all of the required vertex attributes.
-AttributeMap VertexBuffer::generateAttributeMap() {
+AttributeMap VertexBuffer::generateAttributeMap()
+{
     AttributeMap retMap{};
 
     constexpr U32 positionLoc   = to_base(AttribLocation::POSITION);
@@ -674,7 +677,8 @@ void VertexBuffer::reset() {
     _useAttribute.fill(false);
 }
 
-void VertexBuffer::fromBuffer(const VertexBuffer& other) {
+void VertexBuffer::fromBuffer(const VertexBuffer& other)
+{
     reset();
     staticBuffer(other.staticBuffer());
     useLargeIndices(other.useLargeIndices());
@@ -684,7 +688,6 @@ void VertexBuffer::fromBuffer(const VertexBuffer& other) {
     _partitions = other._partitions;
     _keepData = other._keepData;
     _useAttribute = other._useAttribute;
-    _effectiveEntrySize = other._effectiveEntrySize;
     _refreshQueued = true;
     _dataLayoutChanged = true;
 }
@@ -734,7 +737,21 @@ bool VertexBuffer::serialize(ByteBuffer& dataOut) const {
     return false;
 }
 
-AttributeOffsets VertexBuffer::GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut) {
+size_t VertexBuffer::GetTotalDataSize( const AttributeFlags& usedAttributes )
+{
+    size_t ret = sizeof( vec3<F32> );
+
+    ret += usedAttributes[to_base( AttribLocation::TEXCOORD )]    ? sizeof( vec2<F32> )    : 0u;
+    ret += usedAttributes[to_base( AttribLocation::NORMAL )]      ? sizeof( F32 )          : 0u;
+    ret += usedAttributes[to_base( AttribLocation::TANGENT )]     ? sizeof( F32 )          : 0u;
+    ret += usedAttributes[to_base( AttribLocation::COLOR )]       ? sizeof( UColour4 )     : 0u;
+    ret += usedAttributes[to_base( AttribLocation::BONE_INDICE )] ? 2 * sizeof( vec4<U8> ) : 0u;
+
+    return ret;
+}
+
+AttributeOffsets VertexBuffer::GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut)
+{
     AttributeOffsets offsets{};
 
     totalDataSizeOut = sizeof(vec3<F32>);

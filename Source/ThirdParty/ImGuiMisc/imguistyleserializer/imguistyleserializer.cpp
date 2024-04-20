@@ -1531,7 +1531,7 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
 
         const ImVec4 black(0,0,0,1);
         const ImVec4 white(1,1,1,1);
-        const ImVec4 red(136/255.0f,57/255.0f,50/255.0f,1.0f);
+        [[maybe_unused]] const ImVec4 red(136/255.0f,57/255.0f,50/255.0f,1.0f);
         const ImVec4 cyan(103/255.0f,182/255.0f,189/255.0f,1.0f);
         const ImVec4 purple(139/255.0f,63/255.0f,150/255.0f,1.0f);
         const ImVec4 green(85/255.0f,160/255.0f,73/255.0f,1.0f);

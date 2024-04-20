@@ -51,18 +51,18 @@ bool SceneAnimator::init([[maybe_unused]] PlatformContext& context) {
     constexpr D64 timeStep = 1. / ANIMATION_TICKS_PER_SECOND;
     BoneTransform::Container transforms = {};
 
-    const size_t animationCount = _animations.size();
+    const U32 animationCount = to_U32(_animations.size());
     _skeletonLines.resize(animationCount);
 
     // pre-calculate the animations
-    for (size_t i = 0u; i < animationCount; ++i) {
+    for (U32 i = 0u; i < animationCount; ++i) {
         AnimEvaluator* crtAnimation = _animations[i];
         const D64 duration = crtAnimation->duration();
         const D64 tickStep = crtAnimation->ticksPerSecond() / ANIMATION_TICKS_PER_SECOND;
         D64 dt = 0;
         for (D64 ticks = 0; ticks < duration; ticks += tickStep) {
             dt += timeStep;
-            calculate(to_I32(i), dt);
+            calculate(i, dt);
             transforms.resize(_skeletonDepthCache, MAT4_IDENTITY);
             for (I32 a = 0; a < _skeletonDepthCache; ++a) {
                 Bone* bone = _bones[a];
@@ -103,50 +103,63 @@ bool SceneAnimator::init(PlatformContext& context, Bone* skeleton, const vector<
 
 // ------------------------------------------------------------------------------------------------
 // Calculates the node transformations for the scene.
-void SceneAnimator::calculate(const I32 animationIndex, const D64 pTime) {
+void SceneAnimator::calculate(const U32 animationIndex, const D64 pTime)
+{
     assert(_skeleton != nullptr);
 
-    if (animationIndex < 0 || animationIndex >= to_I32(_animations.size())) {
+    if (animationIndex >= _animations.size())
+    {
         return;  // invalid animation
     }
+
     _animations[animationIndex]->evaluate(pTime, _skeleton);
     UpdateTransforms(_skeleton);
 }
 
 /// ------------------------------------------------------------------------------------------------
 /// Recursively updates the internal node transformations from the given matrix array
-void SceneAnimator::UpdateTransforms(Bone* pNode) {
+void SceneAnimator::UpdateTransforms(Bone* pNode)
+{
     CalculateBoneToWorldTransform(pNode);  // update global transform as well
     /// continue for all children
-    for (Bone* bone : pNode->_children) {
+    for (Bone* bone : pNode->_children)
+    {
         UpdateTransforms(bone);
     }
 }
 
-Bone* SceneAnimator::boneByName(const string& name) const {
+Bone* SceneAnimator::boneByName(const string& name) const
+{
     assert(_skeleton != nullptr);
 
     return _skeleton->find(name);
 }
 
-I32 SceneAnimator::boneIndex(const string& bName) const {
+I32 SceneAnimator::boneIndex(const string& bName) const
+{
     const Bone* bone = boneByName(bName);
     return bone != nullptr ? bone->boneID() : -1;
 }
 
 /// Renders the current skeleton pose at time index dt
-const vector<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const D64 dt) {
+const vector<Line>& SceneAnimator::skeletonLines(const U32 animationIndex, const D64 dt)
+{
+    assert( animationIndex < _animations.size() );
+
     const I32 frameIndex = std::max(_animations[animationIndex]->frameIndexAt(dt)._curr - 1, 0);
+
     I32& vecIndex = _skeletonLines[animationIndex][frameIndex];
 
-    if (vecIndex == -1) {
+    if (vecIndex == -1)
+    {
         vecIndex = to_I32(_skeletonLinesContainer.size());
         _skeletonLinesContainer.emplace_back();
     }
 
     // create all the needed points
     vector<Line>& lines = _skeletonLinesContainer[vecIndex];
-    if (lines.empty()) {
+    if (lines.empty())
+    {
         lines.reserve(boneCount());
         // Construct skeleton
         calculate(animationIndex, dt);
@@ -161,13 +174,23 @@ const vector<Line>& SceneAnimator::skeletonLines(const I32 animationIndex, const
 I32 SceneAnimator::CreateSkeleton(Bone* piNode,
                                   const mat4<F32>& parent,
                                   vector<Line>& lines) {
-    static Line s_line = { VECTOR3_ZERO, VECTOR3_UNIT, DefaultColours::RED_U8, DefaultColours::RED_U8, 2.0f, 2.0f };
+    static Line s_line
+    {
+        ._positionStart = VECTOR3_ZERO,
+        ._positionEnd = VECTOR3_UNIT,
+        ._colourStart = DefaultColours::RED_U8,
+        ._colourEnd = DefaultColours::RED_U8,
+        ._widthStart = 2.0f,
+        ._widthEnd = 2.0f
+    };
+
     const mat4<F32>& me = piNode->globalTransform();
 
-    if (piNode->_parent) {
+    if (piNode->_parent)
+    {
         Line& line = lines.emplace_back(s_line);
-        line.positionStart(parent.getRow(3).xyz);
-        line.positionEnd(me.getRow(3).xyz);
+        line._positionStart = parent.getRow(3).xyz;
+        line._positionEnd = me.getRow(3).xyz;
     }
 
     // render all child nodes
@@ -177,4 +200,5 @@ I32 SceneAnimator::CreateSkeleton(Bone* piNode,
 
     return 1;
 }
-};
+
+} //namespace Divide

@@ -5,6 +5,11 @@ set(BUILD_TESTING OFF)
 #CEGUI
 include(ThirdParty/CMakeHelpers/ImportCEGUI.cmake)
 
+add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
+add_compile_definitions(IMGUI_DISABLE_OBSOLETE_KEYIO)
+add_compile_definitions(IMGUI_USE_STB_SPRINTF)
+add_compile_definitions(IMGUI_DEFINE_MATH_OPERATORS)
+
 #SPIRV-Reflect
 FetchContent_Declare(
     spirv_reflect
@@ -16,7 +21,6 @@ FetchContent_Declare(
 set(SPIRV_REFLECT_EXAMPLES OFF)
 set(SPIRV_REFLECT_EXECUTABLE OFF)
 set(SPIRV_REFLECT_STATIC_LIB ON)
-
 
 #Optick
 FetchContent_Declare(
@@ -34,13 +38,6 @@ set(OPTICK_USE_D3D12 FALSE)
 set(OPTICK_USE_VULKAN TRUE)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
-#VK-Bootstrap
-FetchContent_Declare(
-    vk_bootstrap
-    GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
-    GIT_TAG        534e8bb76c695e0db2a8e2f2a222ade65edd900e
-    #GIT_PROGRESS   TRUE
-)
 
 #Skarupke hash maps
 FetchContent_Declare(
@@ -80,6 +77,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/jameswynn/simplefilewatcher.git
     GIT_TAG        4bccd086621698f21a6e95f3ff77c559f862184a
     #GIT_PROGRESS   TRUE
+    SYSTEM
 )
 
 #fcpp
@@ -88,6 +86,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/IonutCava/fcpp.git
     GIT_TAG        master
     #GIT_PROGRESS   TRUE
+    SYSTEM
 )
 
 #imgui_club
@@ -115,13 +114,12 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/ChaiScript/ChaiScript.git
     GIT_TAG        406a7ba1ef144d67021a68b1ba09224244a761ca
     #GIT_PROGRESS   TRUE
+    SYSTEM
 )
-
 
 FetchContent_MakeAvailableExcludeFromAll(
     spirv_reflect
     optick
-    vk_bootstrap
     skarupke
     memory_pool
     tileable_volume_noise

@@ -97,7 +97,7 @@ namespace Divide
         public std::enable_shared_from_this<CachedResource>
     {
         friend class ResourceCache;
-        friend class ResourceLoader;
+        friend struct ResourceLoader;
         template <typename X>
         friend class ImplResourceLoader;
 
@@ -149,9 +149,7 @@ namespace Divide
         {
             position.set( 0, 0, 0 );
         }
-/// "variables" contains the various strings needed for each terrain such as
-/// texture names,
-/// terrain name etc.
+
         hashMap<U64, string> variables;
         F32 grassScale = 1.0f;
         F32 treeScale = 1.0f;

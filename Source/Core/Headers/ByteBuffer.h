@@ -83,11 +83,11 @@ class ByteBuffer {
 
     /// Add a specific list of items in order to mark a special point in the buffer. Can be used for skipping entire blocks later
     template<class T, size_t N>
-    void addMarker(const std::array<T, N>& pattern);
+    void addMarker(const T (&pattern)[N]);
 
     /// Skip (consume) everything in the buffer until we find the specified list of items. If the markers aren't found, the buffer will skip to the end!
     template<class T, size_t N>
-    void readSkipToMarker(const std::array<T, N>& pattern);
+    void readSkipToMarker(const T ( &pattern )[N]);
 
     /// Inserts 'value' at the specified position overriding any existing data at that location. Does not allocate storage!
     template <typename T>
@@ -118,11 +118,11 @@ class ByteBuffer {
 
     /// Reads sizeof(T) data from the buffer and returns it. Reading moves the read head forward!
     template <typename T>
-    T read();
+    void read(T& out);
 
     /// Reads sizeof(T) data from the buffer and returns it but does NOT move the read head forward!
     template <typename T>
-    T readNoSkipFrom(size_t pos) const;
+    void readNoSkipFrom(size_t pos, T& out) const;
 
     /// Reads 'len' bytes of data from the buffer and memcpy's it into dest. Reading moves the read head forward!
     void read(Byte *dest, size_t len);

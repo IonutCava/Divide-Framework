@@ -12,15 +12,10 @@ namespace Divide
     {
         constexpr I32 g_maxDequeueItems = 5;
         std::atomic_uint g_taskIDCounter = 0u;
-        thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
+        NO_DESTROY thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
         thread_local U64  g_allocatedTasks = 0u;
 
         std::array<U32, g_maxDequeueItems> g_completedTaskIndices{};
-    }
-
-    TaskPool::~TaskPool()
-    {
-        shutdown();
     }
 
     bool TaskPool::init( const U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate, const string& workerName )

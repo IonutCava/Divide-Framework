@@ -49,7 +49,6 @@ namespace Divide
 
         // Remove materials that haven't been indexed in this amount of frames to make space for new ones
         constexpr U16 g_maxMaterialFrameLifetime = 6u;
-        constexpr U16 g_maxIndirectionFrameLifetime = 6u;
         // Use to partition parallel jobs
         constexpr U32 g_nodesPerPrepareDrawPartition = 16u;
 
@@ -96,23 +95,6 @@ namespace Divide
 
             return ret;
         }
-
-        template<typename DataContainer>
-        FORCE_INLINE U32 GetPreviousIndex( ExecutorBuffer<DataContainer>& executorBuffer, U32 idx )
-        {
-            if ( idx == 0 )
-            {
-                idx = executorBuffer._gpuBuffer->queueLength();
-            }
-
-            return (idx - 1) % executorBuffer._gpuBuffer->queueLength();
-        };
-
-        template<typename DataContainer>
-        FORCE_INLINE U32 GetNextIndex( ExecutorBuffer<DataContainer>& executorBuffer, const U32 idx )
-        {
-            return (idx + 1) % executorBuffer._gpuBuffer->queueLength();
-        };
 
         FORCE_INLINE bool MergeBufferUpdateRanges( BufferUpdateRange& target, const BufferUpdateRange& source ) noexcept
         {
@@ -564,7 +546,7 @@ namespace Divide
 
             [[maybe_unused]] bool cacheHit = false;
             const U16 idx = processVisibleNodeMaterial( queue[i], cacheHit );
-            DIVIDE_ASSERT( idx != g_invalidMaterialIndex && idx != U32_MAX );
+            DIVIDE_ASSERT( idx != g_invalidMaterialIndex && idx != U16_MAX );
 
             if ( _indirectionBuffer._data[indirectionIDX][MATERIAL_IDX] != idx || idx == 0u )
             {
@@ -794,7 +776,7 @@ namespace Divide
         }
 
         RenderStagePass stagePass = params._stagePass;
-        const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene().state()->renderState();
+        const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene()->state()->renderState();
         {
             Mutex memCmdLock;
 
@@ -854,7 +836,7 @@ namespace Divide
 
         RenderStagePass stagePass = params._stagePass;
         const RenderBinType targetBin = transparencyPass ? RenderBinType::TRANSLUCENT : RenderBinType::COUNT;
-        const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene().state()->renderState();
+        const SceneRenderState& sceneRenderState = _parent.parent().projectManager()->activeProject()->getActiveScene()->state()->renderState();
 
         _renderQueue->clear( targetBin );
 
@@ -944,7 +926,7 @@ namespace Divide
 
         assert( params._stagePass._passType == RenderPassType::PRE_PASS );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ " - PrePass" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - PrePass";
 
 
         GFX::BeginRenderPassCommand renderPassCmd{};
@@ -970,7 +952,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "HiZ Construct & Cull" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "HiZ Construct & Cull";
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
         {
@@ -1005,7 +987,7 @@ namespace Divide
 
         assert( params._stagePass._passType == RenderPassType::MAIN_PASS );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ " - MainPass" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - MainPass";
 
         if ( params._target != INVALID_RENDER_TARGET_ID ) [[likely]]
         {
@@ -1055,7 +1037,7 @@ namespace Divide
 
         assert( params._stagePass._passType == RenderPassType::OIT_PASS );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ " - W-OIT Pass" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - W-OIT Pass";
 
         // Step1: Draw translucent items into the accumulation and revealage buffers
         GFX::BeginRenderPassCommand* beginRenderPassOitCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
@@ -1091,8 +1073,8 @@ namespace Divide
         beginRenderPassCompCmd->_descriptor._autoResolveMSAA = params._targetDescriptorMainPass._autoResolveMSAA;
         beginRenderPassCompCmd->_descriptor._keepMSAADataAfterResolve = params._targetDescriptorMainPass._keepMSAADataAfterResolve;
 
-        GFX::EnqueueCommand( bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ params._useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline } );
+        GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut )->_cameraSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot();
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = params._useMSAA ? s_OITCompositionMSPipeline : s_OITCompositionPipeline;
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -1109,7 +1091,7 @@ namespace Divide
                 Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
             }
         }
-        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+        GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
@@ -1138,7 +1120,7 @@ namespace Divide
         // If we rendered to the multisampled screen target, we can now copy the colour to our regular buffer as we are done with it at this point
         if ( params._target == RenderTargetNames::SCREEN && params._useMSAA )
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ " - Resolve Screen Targets" } );
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = " - Resolve Screen Targets";
 
             GFX::BeginRenderPassCommand* beginRenderPassCommand = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             beginRenderPassCommand->_target = RenderTargetNames::NORMALS_RESOLVED;
@@ -1146,7 +1128,7 @@ namespace Divide
             beginRenderPassCommand->_descriptor._drawMask[0u] = true;
             beginRenderPassCommand->_name = "RESOLVE_MAIN_GBUFFER";
 
-            GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ s_ResolveGBufferPipeline } );
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = s_ResolveGBufferPipeline;
 
             const RenderTarget* MSSource = _context.renderTargetPool().getRenderTarget( params._target );
             RTAttachment* normalsAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
@@ -1156,7 +1138,7 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
 
-            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut );
+            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
 
             GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -1294,7 +1276,7 @@ namespace Divide
             Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager(), _stage, camSnapshot, memCmdInOut );
         }
 
-        GFX::EnqueueCommand( bufferInOut, GFX::SetClipPlanesCommand{ params._clippingPlanes } );
+        GFX::EnqueueCommand<GFX::SetClipPlanesCommand>( bufferInOut )->_clippingPlanes =  params._clippingPlanes;
 
         // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
         params._stagePass._passType = RenderPassType::MAIN_PASS;

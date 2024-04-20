@@ -115,7 +115,7 @@ void QuadtreeNode::drawBBox(GFXDevice& context)
     descriptor.max = _boundingBox.getMax();
     descriptor.colour = UColour4(0, 128, 255, 255);
 
-    context.debugDrawBox(_terrainChunk != nullptr ? _terrainChunk->ID() : 121221, descriptor);
+    context.debugDrawBox(_terrainChunk != nullptr ? _terrainChunk->id() : 121221, descriptor);
 
     if (!isALeaf())
     {

@@ -233,7 +233,7 @@ class Material final : public CachedResource {
     };
 
    public:
-    explicit Material(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
+    explicit Material( PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
 
     static void OnStartup();
     static void OnShutdown();

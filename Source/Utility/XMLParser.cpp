@@ -98,7 +98,7 @@ namespace detail
     }
 }
 
-void populatePressRelease(const ptree & attributes, PressReleaseActions::Entry& entryOut)
+static void PopulatePressRelease(const ptree & attributes, PressReleaseActions::Entry& entryOut)
 {
     static vector<std::string> modifiersOut, actionsUpOut, actionsDownOut;
 
@@ -169,9 +169,8 @@ void loadDefaultKeyBindings(const ResourcePath& file, const Scene* scene) {
             continue;
         }
 
-        
         const ptree & attributes = data.get_child("<xmlattr>", g_emptyPtree);
-        populatePressRelease(attributes, entry);
+        PopulatePressRelease(attributes, entry);
 
         const Input::KeyCode key = Input::KeyCodeByName(Util::Trim(data.data()).c_str());
         scene->input()->addKeyMapping(key, entry);
@@ -184,7 +183,7 @@ void loadDefaultKeyBindings(const ResourcePath& file, const Scene* scene) {
         }
 
         const ptree & attributes = data.get_child("<xmlattr>", g_emptyPtree);
-        populatePressRelease(attributes, entry);
+        PopulatePressRelease(attributes, entry);
 
         const Input::MouseButton btn = Input::mouseButtonByName(Util::Trim(data.data()));
 
@@ -202,7 +201,7 @@ void loadDefaultKeyBindings(const ResourcePath& file, const Scene* scene) {
             }
 
             const ptree & attributes = value.get_child("<xmlattr>", g_emptyPtree);
-            populatePressRelease(attributes, entry);
+            PopulatePressRelease(attributes, entry);
 
             const Input::JoystickElement element = Input::joystickElementByName(Util::Trim(value.data()));
 

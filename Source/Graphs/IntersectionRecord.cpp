@@ -65,4 +65,4 @@ bool IntersectionRecord::operator==(const IntersectionRecord& otherRecord) const
     return false;
 
 }
-};
+} //namespace Divide

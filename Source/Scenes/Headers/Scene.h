@@ -364,56 +364,58 @@ namespace Attorney {
 class SceneProjectManager
 {
    private:
-    static bool loadComplete(const Scene& scene) noexcept {
-        return scene.loadComplete();
+    static bool loadComplete(Scene* scene) noexcept
+    {
+        return scene->loadComplete();
     }
 
-    static void onPlayerAdd(Scene& scene, const Player_ptr& player) {
-        scene.onPlayerAdd(player);
+    static void onPlayerAdd(Scene* scene, const Player_ptr& player) {
+        scene->onPlayerAdd(player);
     }
 
-    static void onPlayerRemove(Scene& scene, const Player_ptr& player) {
-        scene.onPlayerRemove(player);
+    static void onPlayerRemove(Scene* scene, const Player_ptr& player) {
+        scene->onPlayerRemove(player);
     }
 
-    static void currentPlayerPass(Scene& scene, const PlayerIndex idx) {
-        scene.currentPlayerPass(idx);
+    static void currentPlayerPass(Scene* scene, const PlayerIndex idx) {
+        scene->currentPlayerPass(idx);
     }
 
-    static void debugDraw(Scene& scene, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) {
-        scene.debugDraw(bufferInOut, memCmdInOut);
+    static void debugDraw(Scene* scene, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) {
+        scene->debugDraw(bufferInOut, memCmdInOut);
     }
 
-    static void drawCustomUI(Scene& scene, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) {
-        scene.drawCustomUI(targetViewport, bufferInOut, memCmdInOut);
+    static void drawCustomUI(Scene* scene, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) {
+        scene->drawCustomUI(targetViewport, bufferInOut, memCmdInOut);
     }
 
-    static bool frameStarted(Scene& scene) { 
-        return scene.frameStarted();
+    static bool frameStarted(Scene* scene) { 
+        return scene->frameStarted();
     }
 
-    static bool frameEnded(Scene& scene) {
-        return scene.frameEnded();
+    static bool frameEnded(Scene* scene) {
+        return scene->frameEnded();
     }
 
-    static bool load(Scene& scene) {
-        return scene.load();
+    static bool load(Scene* scene) {
+        return scene->load();
     }
 
-    static bool unload(Scene& scene) { 
-        return scene.unload();
+    static bool unload(Scene* scene) { 
+        return scene->unload();
     }
 
-    static void postLoadMainThread(Scene& scene) {
-        scene.postLoadMainThread();
+    static void postLoadMainThread(Scene* scene) {
+        scene->postLoadMainThread();
     }
 
-    static void onSetActive(Scene& scene) {
-        scene.onSetActive();
+    static void onSetActive(Scene* scene) {
+        scene->onSetActive();
     }
 
-    static void onRemoveActive(Scene& scene) {
-        scene.onRemoveActive();
+    static void onRemoveActive(Scene* scene)
+    {
+        scene->onRemoveActive();
     }
 
     static bool onStartup(PlatformContext& context) {
@@ -424,33 +426,33 @@ class SceneProjectManager
         return Scene::OnShutdown(context);
     }
 
-    static SceneGUIElements* gui(const Scene& scene) noexcept {
-        return scene._GUI.get();
+    static SceneGUIElements* gui(Scene* scene) noexcept {
+        return scene->_GUI.get();
     }
 
-    static bool resetSelection(Scene& scene, const PlayerIndex idx, const bool resetIfLocked) {
-        return scene.resetSelection(idx, resetIfLocked);
+    static bool resetSelection(Scene* scene, const PlayerIndex idx, const bool resetIfLocked) {
+        return scene->resetSelection(idx, resetIfLocked);
     }
 
-    static void setSelected(Scene& scene, const PlayerIndex idx, const vector_fast<SceneGraphNode*>& sgns, const bool recursive) {
-        scene.setSelected(idx, sgns, recursive);
+    static void setSelected(Scene* scene, const PlayerIndex idx, const vector_fast<SceneGraphNode*>& sgns, const bool recursive) {
+        scene->setSelected(idx, sgns, recursive);
     }
 
-    static void clearHoverTarget(Scene& scene, const Input::MouseMoveEvent& arg) {
-        scene.clearHoverTarget(scene.input()->getPlayerIndexForDevice(arg._deviceIndex));
+    static void clearHoverTarget(Scene* scene, const Input::MouseMoveEvent& arg) {
+        scene->clearHoverTarget(scene->input()->getPlayerIndexForDevice(arg._deviceIndex));
     }
 
-    static SceneNode_ptr createNode(const Scene& scene, const SceneNodeType type, const ResourceDescriptor& descriptor) {
-        return scene.createNode(type, descriptor);
+    static SceneNode_ptr createNode(const Scene* scene, const SceneNodeType type, const ResourceDescriptor& descriptor) {
+        return scene->createNode(type, descriptor);
     }
 
-    static SceneEnvironmentProbePool* getEnvProbes(const Scene& scene) noexcept {
-        return scene._envProbePool.get();
+    static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept {
+        return scene->_envProbePool.get();
     }
 
-    [[nodiscard]] static PlayerList& getPlayers( Scene& scene) noexcept
+    [[nodiscard]] static PlayerList& getPlayers( Scene* scene) noexcept
     {
-        return scene._scenePlayers;
+        return scene->_scenePlayers;
     }
 
     friend class Divide::Project;
@@ -458,8 +460,9 @@ class SceneProjectManager
 };
 
 class SceneRenderPass {
-    static SceneEnvironmentProbePool* getEnvProbes(const Scene& scene) noexcept {
-        return scene._envProbePool.get();
+    static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept
+    {
+        return scene->_envProbePool.get();
     }
 
     friend class Divide::RenderPass;
@@ -468,68 +471,67 @@ class SceneRenderPass {
 
 class SceneEnvironmentProbeComponent
 {
-    static void registerProbe(const Scene& scene, EnvironmentProbeComponent* probe);
-    static void unregisterProbe(const Scene& scene, const EnvironmentProbeComponent* const probe);
+    static void registerProbe(Scene* scene, EnvironmentProbeComponent* probe);
+    static void unregisterProbe(Scene* scene, const EnvironmentProbeComponent* const probe);
 
     friend class Divide::EnvironmentProbeComponent;
 };
 
 class SceneLoadSave {
-    static bool save(const Scene& scene, ByteBuffer& outputBuffer) {
-        return scene.save(outputBuffer);
+    static bool save(const Scene* scene, ByteBuffer& outputBuffer) {
+        return scene->save(outputBuffer);
     }
 
-    static bool load(Scene& scene, ByteBuffer& inputBuffer) {
-        return scene.load(inputBuffer);
+    static bool load(Scene* scene, ByteBuffer& inputBuffer) {
+        return scene->load(inputBuffer);
     }
 
-
-    static bool saveNodeToXML(const Scene& scene, const SceneGraphNode* node) {
-        return scene.saveNodeToXML(node);
+    static bool saveNodeToXML(Scene* scene, const SceneGraphNode* node) {
+        return scene->saveNodeToXML(node);
     }
 
-    static bool loadNodeFromXML(const Scene& scene, SceneGraphNode* node) {
-        return scene.loadNodeFromXML(node);
+    static bool loadNodeFromXML(Scene* scene, SceneGraphNode* node) {
+        return scene->loadNodeFromXML(node);
     }  
     
-    static bool saveXML(const Scene& scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) {
-        return scene.saveXML(msgCallback, finishCallback);
+    static bool saveXML(Scene* scene, const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) {
+        return scene->saveXML(msgCallback, finishCallback);
     }
 
     friend class Divide::LoadSave;
 };
 
 class SceneGraph {
-    static void onNodeDestroy(Scene& scene, SceneGraphNode* node) {
-        scene.onNodeDestroy(node);
+    static void onNodeDestroy(Scene* scene, SceneGraphNode* node) {
+        scene->onNodeDestroy(node);
     }
 
-    static SceneEnvironmentProbePool* getEnvProbes(const Scene& scene) noexcept {
-        return scene._envProbePool.get();
+    static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept {
+        return scene->_envProbePool.get();
     } 
     
-    static LightPool* getLightPool(const Scene& scene) noexcept {
-        return scene.lightPool().get();
+    static LightPool* getLightPool(Scene* scene) noexcept {
+        return scene->lightPool().get();
     }
 
-    static void addSceneGraphToLoad(Scene& scene, const XML::SceneNode&& rootNode) { 
-        scene._xmlSceneGraphRootNode = rootNode; 
+    static void addSceneGraphToLoad(Scene* scene, const XML::SceneNode&& rootNode) { 
+        scene->_xmlSceneGraphRootNode = rootNode; 
     }
 
     friend class Divide::SceneGraph;
 };
 
 class SceneGUI {
-    static SceneGUIElements* guiElements(const Scene& scene) noexcept {
-        return scene._GUI.get();
+    static SceneGUIElements* guiElements(Scene* scene) noexcept {
+        return scene->_GUI.get();
     }
 
     friend class Divide::GUI;
 };
 
 class SceneInput {
-    static bool mouseMoved(Scene& scene, const Input::MouseMoveEvent& arg) {
-        return scene.mouseMoved(arg);
+    static bool mouseMoved(Scene* scene, const Input::MouseMoveEvent& arg) {
+        return scene->mouseMoved(arg);
     }
 
     friend class Divide::SceneInput;

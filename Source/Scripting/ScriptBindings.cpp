@@ -22,4 +22,4 @@ namespace Divide {
 
         return module;
     }
-}
+} //namespace Divide

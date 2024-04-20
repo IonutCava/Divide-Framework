@@ -76,7 +76,7 @@ class glFramebuffer final : public RenderTarget {
 
    public:
     explicit glFramebuffer(GFXDevice& context, const RenderTargetDescriptor& descriptor);
-    ~glFramebuffer();
+    ~glFramebuffer() override;
 
     void setMipLevel(U16 writeLevel);
 

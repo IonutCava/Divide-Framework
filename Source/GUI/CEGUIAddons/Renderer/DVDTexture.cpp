@@ -64,11 +64,11 @@ DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Sizef& s
 
 DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::Texture_ptr& tex, const Sizef& size )
     : _size(size)
-    , _texture(tex)
     , _dataSize(size)
     , _owner(owner)
     , _name(name)
     , _format(PF_RGBA)
+    , _texture(tex)
 {
     updateCachedScaleValues();
 }
@@ -122,7 +122,6 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
 {
     using namespace Divide;
 
-    _isCompressed = false;
     _format = format;
 
     switch ( format )
@@ -133,6 +132,14 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
         case PF_RGBA_DXT5:
             _isCompressed = true;
             break;
+
+        case PF_RGB:
+        case PF_RGBA:
+        case PF_RGBA_4444:
+        case PF_RGB_565:
+            _isCompressed = false;
+            break;
+
         case PF_PVRTC2:
         case PF_PVRTC4:
         {
@@ -206,7 +213,7 @@ void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
     dimensions.width = to_U16(area.getWidth());
     dimensions.height = to_U16(area.getHeight());
     dimensions.depth = 1u;
-    _texture->replaceData( (Byte*)sourceData, image_size, offset, dimensions, pixelUnpackAlignment );
+    _texture->replaceData( (const Byte*)sourceData, image_size, offset, dimensions, pixelUnpackAlignment );
 }
 
 void DVDTexture::blitToMemory(void* targetData) {
@@ -314,6 +321,10 @@ bool DVDTexture::isPixelFormatSupported(const PixelFormat fmt) const
         case PF_RGBA_DXT3:
         case PF_RGBA_DXT5:
             return true;
+
+        case PF_PVRTC2:
+        case PF_PVRTC4:
+            break;
     }
 
     return false;

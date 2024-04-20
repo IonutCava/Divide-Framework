@@ -11,4 +11,4 @@ GUIElement::GUIElement(string name, CEGUI::Window* const parent) noexcept
 {
 }
 
-};
+} //namespace Divide

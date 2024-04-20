@@ -1,13 +1,14 @@
 
 
 #include <thread>
+#include "Headers/PlatformRuntime.h"
 
 namespace Divide::Runtime
 {
 
 namespace detail
 {
-    std::thread::id g_mainThreadID;
+    static std::thread::id g_mainThreadID;
 };
 
 const std::thread::id& mainThreadID() noexcept

@@ -96,9 +96,10 @@ public:
     //gets rendered that has this probe as the nearest one
     void queueRefresh() noexcept { _queueRefresh = true; }
 
-    void enabled(bool state) override;
+    [[nodiscard]] bool enabled() const override;
+                  void enabled(bool state) override;
 
-    PROPERTY_R_IW(I16, rtLayerIndex, 0u);
+    PROPERTY_R_IW(U16, rtLayerIndex, 0u);
     PROPERTY_RW(bool, showParallaxAABB, false);
     PROPERTY_RW(bool, dirty, true);
     PROPERTY_RW(U8, updateRate, 1u);
@@ -121,7 +122,7 @@ protected:
     BoundingBox _refaabb{ vec3<F32>(-1), vec3<F32>(1) };
 
     U8 _currentUpdateCall = 0u;
-    ProbeType _type = ProbeType::TYPE_LOCAL;
+    ProbeType _probeType = ProbeType::TYPE_LOCAL;
 
 private:
     bool _queueRefresh = true;

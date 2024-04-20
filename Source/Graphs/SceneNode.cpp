@@ -99,7 +99,7 @@ void SceneNode::editorFieldChanged([[maybe_unused]] std::string_view field) {
 }
 
 void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
-                                  [[maybe_unused]] vector_fast<GFX::DrawCommand>& cmdsOut)
+                                  [[maybe_unused]] GenericDrawCommandContainer& cmdsOut)
 {
 }
 
@@ -128,4 +128,4 @@ void SceneNode::loadFromXML(const boost::property_tree::ptree& pt) {
     Attorney::EditorComponentSceneGraphNode::loadFromXML(getEditorComponent(), pt);
 }
 
-};
+} //namespace Divide

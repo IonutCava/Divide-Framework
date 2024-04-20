@@ -129,8 +129,8 @@ namespace Divide
         : GUIInterface( *this )
         , KernelComponent( parent )
         , FrameListener( "GUI", parent.frameListenerMgr(), 2 )
-        , _ceguiInput( *this )
         , _textRenderInterval( Time::MillisecondsToMicroseconds( 10 ) )
+        , _ceguiInput( *this )
     {
         // 500ms
         _ceguiInput.setInitialDelay( 0.500f );
@@ -161,7 +161,7 @@ namespace Divide
         }
         else
         {
-            SceneGUIElements* elements = Attorney::SceneGUI::guiElements( *newScene );
+            SceneGUIElements* elements = Attorney::SceneGUI::guiElements( newScene );
             insert( _guiStack, newScene->getGUID(), elements );
             elements->onEnable();
         }
@@ -203,14 +203,14 @@ namespace Divide
             ._anisotropyLevel = 0u
         };
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Draw Text" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Draw Text";
 
         if ( pushCamera )
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::PushCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
+            GFX::EnqueueCommand<GFX::PushCameraCommand>( bufferInOut )->_cameraSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot();
         }
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _textRenderPipeline } );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _textRenderPipeline;
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -287,10 +287,10 @@ namespace Divide
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Pre-Render GUI" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Pre-Render GUI";
         if ( _ceguiRenderer != nullptr )
         {
-            GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render CEGUI" } );
+            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Render CEGUI";
 
             _ceguiRenderer->beginRendering( bufferInOut, memCmdInOut );
             _renderTextureTarget->clear();
@@ -314,12 +314,12 @@ namespace Divide
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BeginDebugScopeCommand{ "Render GUI" } );
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Render GUI";
 
         //Set a 2D camera for rendering
-        GFX::EnqueueCommand( bufferInOut, GFX::SetCameraCommand{ Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot() } );
+        GFX::EnqueueCommand<GFX::SetCameraCommand>( bufferInOut )->_cameraSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->snapshot();
 
-        GFX::EnqueueCommand( bufferInOut, GFX::SetViewportCommand{ viewport } );
+        GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport = viewport;
 
         const GUIMap& elements = _guiElements[to_base( GUIType::GUI_TEXT )];
 
@@ -461,7 +461,7 @@ namespace Divide
                 ._skipRows = to_size( rect[1] )
             };
 
-            dvd->_fontRenderingTexture->replaceData( (Divide::Byte*)data, sizeof( U8 ) * w * h, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, pixelUnpackAlignment );
+            dvd->_fontRenderingTexture->replaceData( (const Divide::Byte*)data, sizeof( U8 ) * w * h, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, pixelUnpackAlignment );
         };
         params.renderDraw = []( void* userPtr, const FONSvert* verts, int nverts )
         {
@@ -484,11 +484,11 @@ namespace Divide
             const BufferLock lock = dvd->_fontRenderingBuffer->updateBuffer( 0u, elementOffset, nverts, (Divide::bufferPtr)verts );
             dvd->_memCmd->_bufferLocks.emplace_back( lock );
 
-            GenericDrawCommand drawCmd{};
+            GenericDrawCommand& drawCmd = GFX::EnqueueCommand<GFX::DrawCommand>( *dvd->_commandBuffer )->_drawCommands.emplace_back();
             drawCmd._sourceBuffer = dvd->_fontRenderingBuffer->handle();
             drawCmd._cmd.vertexCount = nverts;
             drawCmd._cmd.baseVertex = elementOffset;
-            GFX::EnqueueCommand( *dvd->_commandBuffer, GFX::DrawCommand{ drawCmd } );
+            
         };
         params.renderDelete = [](void* userPtr)
         {

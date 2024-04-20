@@ -46,7 +46,7 @@ namespace ECS {
 
 	public:
 
-		const EntityTypeId GetStaticEntityTypeID() const override { return STATIC_ENTITY_TYPE_ID; }
+		EntityTypeId GetStaticEntityTypeID() const override { return STATIC_ENTITY_TYPE_ID; }
 
 		Entity() 
 		{}

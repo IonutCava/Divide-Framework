@@ -207,4 +207,4 @@ I32 Unit::getAttribute(const U32 attributeID) const {
     return -1;
 }
 
-}
+} //namespace Divide

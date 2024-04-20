@@ -51,7 +51,7 @@ namespace Divide {
     class vkShader final : public ShaderModule {
     public:
         explicit vkShader(GFXDevice& context, const std::string_view name, U32 generation);
-        ~vkShader();
+        ~vkShader() override;
 
         [[nodiscard]] bool load(const ShaderProgram::LoadData& data);
 
@@ -83,7 +83,7 @@ namespace Divide {
                         const ResourcePath& assetLocation,
                         const ShaderProgramDescriptor& descriptor,
                         ResourceCache& parentCache);
-        ~vkShaderProgram();
+        ~vkShaderProgram() override;
 
         [[nodiscard]] const vkShaders& shaderStages() const noexcept;
         [[nodiscard]] VkShaderStageFlags stageMask() const noexcept;

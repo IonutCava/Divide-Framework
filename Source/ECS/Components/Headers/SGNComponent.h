@@ -152,12 +152,15 @@ private:
 
     Factory() = default;
 
-    static FactoryContainerConstruct& constructData() {
-        static FactoryContainerConstruct container;
+    static FactoryContainerConstruct& constructData()
+    {
+        NO_DESTROY static FactoryContainerConstruct container;
         return container;
     }
-    static FactoryContainerDestruct& destructData() {
-        static FactoryContainerDestruct container;
+
+    static FactoryContainerDestruct& destructData()
+    {
+        NO_DESTROY static FactoryContainerDestruct container;
         return container;
     }
 };
@@ -184,8 +187,8 @@ class SGNComponent : protected PlatformContextComponent,
 
         [[nodiscard]] U64 uniqueID() const;
 
-        virtual bool enabled() const;
-        virtual void enabled(bool state);
+        [[nodiscard]] virtual bool enabled() const;
+                       virtual void enabled(bool state);
 
         [[nodiscard]] EditorComponent& editorComponent() noexcept { return _editorComponent; }
 

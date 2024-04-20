@@ -35,7 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "glMemoryManager.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glLockManager.h"
-#include "Platform/Video/RenderBackend/OpenGL/Headers/GLStateTracker.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h"
 
@@ -51,10 +50,11 @@ struct BufferImplParams
     bool operator==(const BufferImplParams& other) const = default;
 };
 
+class GFXDevice;
 class glBufferImpl final : public LockableBuffer {
 public:
     explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<const bufferPtr, size_t>& initialData, const char* name);
-    virtual ~glBufferImpl();
+    virtual ~glBufferImpl() override;
 
     BufferLock writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, const bufferPtr data, bool firstWrite = false);
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);

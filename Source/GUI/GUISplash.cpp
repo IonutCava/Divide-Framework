@@ -61,7 +61,7 @@ void GUISplash::render(GFXDevice& context) const {
     pipelineDescriptor._shaderProgramHandle = _splashShader->handle();
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    Handle<GFX::CommandBuffer> handle = GFX::AllocateCommandBuffer(16u);
+    Handle<GFX::CommandBuffer> handle = GFX::AllocateCommandBuffer("Splash Screen", 16u);
 
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
     beginRenderPassCmd._target = SCREEN_TARGET_ID;
@@ -93,7 +93,7 @@ void GUISplash::render(GFXDevice& context) const {
     DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
     Set( binding._data, _splashImage->getView(), splashSampler );
 
-    GFX::EnqueueCommand<GFX::DrawCommand>( handle );
+    GFX::EnqueueCommand<GFX::DrawCommand>( handle )->_drawCommands.emplace_back();
 
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>( handle );
 

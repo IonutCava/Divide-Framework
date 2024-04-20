@@ -615,8 +615,6 @@ namespace Divide
                     shadowPreviewShader.waitForReady( true );
                     ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
 
-                    const vec2<F32> zPlanes = shadowCameras( ShadowType::CUBEMAP )[0]->snapshot()._zPlanes;
-
                     for ( U8 i = 0u; i < 6u; ++i )
                     {
                         DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 - 6 + i ) );
@@ -640,4 +638,4 @@ namespace Divide
             }
         }
     }
-}
+} //namespace Divide

@@ -576,8 +576,8 @@ static unsigned int fons__decutf8(unsigned int* state, unsigned int* codep, unsi
     const unsigned int type = utf8d[byte];
 
     *codep = *state != FONS_UTF8_ACCEPT ?
-        byte & 0x3fu | *codep << 6 :
-        0xff >> type & byte;
+        (byte & 0x3fu) | (*codep << 6) :
+        (0xff >> type) & byte;
 
     *state = utf8d[256 + *state + type];
     return *state;
@@ -633,8 +633,12 @@ static int fons__atlasInsertNode(FONSatlas* atlas, int idx, int x, int y, int w)
 		if (atlas->nodes == nullptr)
             return 0;
     }
+
     for (int i = atlas->nnodes; i > idx; i--)
+    {
         atlas->nodes[i] = atlas->nodes[i-1];
+    }
+
 	atlas->nodes[idx].x = (short)x;
 	atlas->nodes[idx].y = (short)y;
 	atlas->nodes[idx].width = (short)w;
@@ -718,15 +722,20 @@ static int fons__atlasRectFits(FONSatlas* atlas, int i, int w, int h)
     const int x = atlas->nodes[i].x;
     int y = atlas->nodes[i].y;
     if (x + w > atlas->width)
+    {
         return -1;
+    }
 	int spaceLeft = w;
-    while (spaceLeft > 0) {
+
+    while (spaceLeft > 0)
+    {
         if (i == atlas->nnodes) return -1;
         y = fons__maxi(y, atlas->nodes[i].y);
         if (y + h > atlas->height) return -1;
         spaceLeft -= atlas->nodes[i].width;
         ++i;
     }
+
     return y;
 }
 
@@ -739,7 +748,8 @@ static int fons__atlasAddRect(FONSatlas* atlas, int rw, int rh, int* rx, int* ry
     for (int i = 0; i < atlas->nnodes; i++) {
         const int y = fons__atlasRectFits(atlas, i, rw, rh);
         if (y != -1) {
-            if (y + rh < besth || y + rh == besth && atlas->nodes[i].width < bestw) {
+            if (y + rh < besth || (y + rh == besth && atlas->nodes[i].width < bestw))
+            {
                 besti = i;
                 bestw = atlas->nodes[i].width;
                 besth = y + rh;

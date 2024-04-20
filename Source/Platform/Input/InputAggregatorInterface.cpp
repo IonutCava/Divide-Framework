@@ -48,7 +48,7 @@ JoystickElement joystickElementByName(const string& elementName) {
     vector<string> buttonElements = Util::Split<vector<string>, string>(elementName.c_str(), '_');
     assert(buttonElements.size() == 2 && "Invalid joystick element name!");
     assert(Util::CompareIgnoreCase(buttonElements[0], "BUTTON"));
-    ret._elementIndex = Util::ConvertData<U32, string>(buttonElements[1]);
+    ret._elementIndex = Util::ConvertData<U8, string>(buttonElements[1]);
 
     return ret;
 }
@@ -91,5 +91,5 @@ TextEvent::TextEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const ch
 {
 }
 
-}; //namespace Input
-}; //namespace Divide
+} //namespace Input
+} //namespace Divide

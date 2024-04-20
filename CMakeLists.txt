@@ -40,51 +40,33 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_definitions(USING_MSVC)
+
   set(CMAKE_DEBUG_PREFIX /D)
-
-  add_compile_options(/W4)
-  add_compile_options(/bigobj)
-  add_compile_options(/Zc:__cplusplus)
-  add_compile_options(/Zm256)
-  add_compile_options(/ZI)
-  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-
-  #ToDo(Ionut): These should be disabled only for third party libs
-  #>>>
-  add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
-  #<<<
-
-  add_link_options(/INCREMENTAL)
 
   if( ENABLE_AVX2 )
     add_compile_options(/arch:AVX2)
   endif()
+
+  add_compile_options(/Zc:__cplusplus)
+  add_compile_options(/Zm256)
+  add_compile_options(/ZI)
+
+  add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+  add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING) #ToDo(Ionut): This should be disabled only for third party libs
+
+  add_link_options(/INCREMENTAL)
 else ()
   set(CMAKE_DEBUG_PREFIX -D)
-
-  add_compile_options(-Wall)
-  add_compile_options(-Wno-unused-function)
-
-  #ToDo(Ionut): These should be disabled only for third party libs
-  #>>>
-  add_compile_options(-Wno-deprecated-declarations)
-  add_compile_options(-Wno-language-extension-token)
-  add_compile_options(-Wno-unsafe-buffer-usage)
-  add_compile_options(-Wno-zero-as-null-pointer-constant)
-  add_compile_options(-Wno-old-style-cast)
-  add_compile_options(-Wno-global-constructors)
-  #<<<
 
   if( ENABLE_AVX2 )
     add_compile_options(-mavx2)
   endif()
 
+  #add_compile_options(-W0)
+
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_definitions(USING_CLANG)
-
-    add_compile_options(-Wno-c++98-compat -Wno-c++98-compat-pedantic)
-
-    add_link_options(-v)
+    add_compile_options(-Wno-unknown-argument -Wno-unused-command-line-argument)
   else()
     add_compile_definitions(USING_GCC)
   endif ()

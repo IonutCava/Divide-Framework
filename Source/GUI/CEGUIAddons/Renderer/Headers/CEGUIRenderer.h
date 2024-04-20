@@ -136,7 +136,7 @@ public:
 
 private:
     CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_ptr shader, CEGUI::Sizef resolution);
-    virtual ~CEGUIRenderer();
+    virtual ~CEGUIRenderer() override;
 
     /// Helper to safely log the creation of a named texture
     static void LogTextureCreation(const String& name);

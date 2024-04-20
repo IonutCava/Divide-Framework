@@ -139,24 +139,47 @@ enum class MoveDirection : I8
 
 constexpr F32 DEFAULT_PLAYER_HEIGHT = 1.82f;
 
+struct MoveDirectionRequest
+{
+    U8 _speedPercentage = 0u; ///< 0...255 maps to 0...100%
+    MoveDirection _direction = MoveDirection::NONE;
+};
+
 struct MovementStack
 {
-    std::array<MoveDirection, 2> _directions = { MoveDirection::NONE, MoveDirection::NONE };
+    std::array<MoveDirectionRequest, 2> _directions;
 
-    [[nodiscard]] MoveDirection top() const noexcept
+    [[nodiscard]] inline MoveDirectionRequest top() const noexcept
     {
         return _directions[0];
     }
 
-    void push( const MoveDirection direction ) noexcept
+    [[nodiscard]] inline F32 topValue() const noexcept
+    {
+        const MoveDirectionRequest& direction = top();
+        if (direction._direction == MoveDirection::NONE)
+        {
+            return 0.f;
+        }
+
+        return (direction._speedPercentage / 255.f) * (direction._direction == MoveDirection::NEGATIVE ? -1.f : 1.f);
+    }
+
+    void push( const MoveDirectionRequest direction ) noexcept
     {
         _directions[1] = _directions[0];
         _directions[0] = direction;
     }
 
+    void pop() noexcept
+    {
+        _directions[0] = _directions[1];
+        _directions[1] = {};
+    }
+
     void reset() noexcept
     {
-        _directions.fill(MoveDirection::NONE);
+        _directions.fill({});
     }
 };
 

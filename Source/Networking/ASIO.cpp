@@ -14,7 +14,7 @@
 namespace Divide
 {
 
-    ASIO::LOG_CBK ASIO::s_logCBK;
+    NO_DESTROY ASIO::LOG_CBK ASIO::s_logCBK;
 
     ASIO::~ASIO()
     {

@@ -874,7 +874,9 @@ namespace Divide
     {
         if (Parent::loadCache(inputBuffer))
         {
-            if (inputBuffer.read<bool>())
+            bool isSet = false;
+            inputBuffer.read<bool>(isSet);
+            if (isSet)
             {
                 LockGuard<SharedMutex> w_lock(_lock);
                 inputBuffer >> _transformInterface._translation;
@@ -888,4 +890,4 @@ namespace Divide
 
         return false;
     }
-} //namespace
+} //namespace Divide

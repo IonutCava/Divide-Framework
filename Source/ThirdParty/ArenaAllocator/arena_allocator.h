@@ -42,7 +42,7 @@ class Arena
 
 		//! construct and initialize record
 		inline DtorRec(void* ptr, int count)
-			: ptr_(ptr), count_(count), dtor_(NULL)
+			: ptr_(ptr), dtor_(NULL), count_( count )
 		{;}
 
 		//! invoke dtor

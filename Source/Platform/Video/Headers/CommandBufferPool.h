@@ -45,7 +45,7 @@ class CommandBufferPool {
 
     ~CommandBufferPool();
 
-    Handle<CommandBuffer> allocateBuffer( size_t reservedCmdCount );
+    Handle<CommandBuffer> allocateBuffer( const char* name, size_t reservedCmdCount );
     void deallocateBuffer(Handle<CommandBuffer>& buffer);
 
     void reset() noexcept;
@@ -58,7 +58,7 @@ class CommandBufferPool {
 };
 
 void DestroyPools() noexcept;
-Handle<CommandBuffer> AllocateCommandBuffer(size_t reservedCmdCount = CommandBuffer::COMMAND_BUFFER_INIT_SIZE );
+Handle<CommandBuffer> AllocateCommandBuffer(const char* name, size_t reservedCmdCount = CommandBuffer::COMMAND_BUFFER_INIT_SIZE );
 void DeallocateCommandBuffer(Handle<CommandBuffer>& buffer);
 
 }; //namespace GFX

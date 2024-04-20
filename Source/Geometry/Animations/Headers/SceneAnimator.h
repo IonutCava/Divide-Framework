@@ -82,79 +82,108 @@ class SceneAnimator {
     /// the current animation.
     /// You could use a forward walking animation and reverse it to get a
     /// walking backwards
-    void playAnimationForward(const I32 animationIndex) {
+    inline void playAnimationForward(const U32 animationIndex)
+    {
+        assert(animationIndex < _animations.size());
+
         _animations[animationIndex]->playAnimationForward(true);
     }
-    void playAnimationBackward(const I32 animationIndex) {
+
+    void playAnimationBackward(const U32 animationIndex)
+    {
+        assert( animationIndex < _animations.size() );
         _animations[animationIndex]->playAnimationForward(false);
     }
     /// This function will adjust the current animations speed by a percentage.
     /// So, passing 100, would do nothing, passing 50, would decrease the speed
     /// by half, and 150 increase it by 50%
-    void adjustAnimationSpeedBy(const I32 animationIndex, const D64 percent) {
-        AnimEvaluator* animation = _animations[animationIndex];
-        animation->ticksPerSecond(animation->ticksPerSecond() * (percent / 100.0));
+    inline void adjustAnimationSpeedBy(const U32 animationIndex, const D64 percent)
+    {
+        assert( animationIndex < _animations.size() );
+        _animations[animationIndex]->ticksPerSecond( animationSpeed(animationIndex) * (percent / 100.0));
     }
     /// This will set the animation speed
-    void adjustAnimationSpeedTo(const I32 animationIndex, const D64 ticksPerSecond) {
+    inline void adjustAnimationSpeedTo(const U32 animationIndex, const D64 ticksPerSecond)
+    {
+        assert( animationIndex < _animations.size() );
         _animations[animationIndex]->ticksPerSecond(ticksPerSecond);
     }
+
     /// Get the animation speed... in ticks per second
-    D64 animationSpeed(const I32 animationIndex) const {
+    inline D64 animationSpeed(const U32 animationIndex) const
+    {
+        assert( animationIndex < _animations.size() );
         return _animations[animationIndex]->ticksPerSecond();
     }
 
     /// Get the transforms needed to pass to the vertex shader.
-    /// This will wrap the dt value passed, so it is safe to pass 50000000 as a
-    /// valid number
-    AnimEvaluator::FrameIndex frameIndexForTimeStamp(const I32 animationIndex, const D64 dt) const {
+    /// This will wrap the dt value passed, so it is safe to pass 50000000 as a valid number
+    inline AnimEvaluator::FrameIndex frameIndexForTimeStamp(const U32 animationIndex, const D64 dt) const
+    {
+        assert( animationIndex < _animations.size() );
         return _animations[animationIndex]->frameIndexAt(dt);
     }
 
-    const BoneTransform& transforms(const I32 animationIndex, const U32 index) const {
+    inline const BoneTransform& transforms(const U32 animationIndex, const U32 index) const
+    {
+        assert( animationIndex < _animations.size() );
         return _animations[animationIndex]->transforms(index);
     }
 
-    const AnimEvaluator& animationByIndex(const I32 animationIndex) const {
-        assert(IS_IN_RANGE_INCLUSIVE(animationIndex, 0, to_I32(_animations.size()) - 1));
+    inline const AnimEvaluator& animationByIndex(const U32 animationIndex) const
+    {
+        assert( animationIndex < _animations.size() );
+
         const AnimEvaluator* animation = _animations[animationIndex];
         assert(animation != nullptr);
         return *animation;
     }
 
-    AnimEvaluator& animationByIndex(const I32 animationIndex) {
-        assert(IS_IN_RANGE_INCLUSIVE(animationIndex, 0, to_I32(_animations.size()) - 1));
+    inline AnimEvaluator& animationByIndex(const U32 animationIndex)
+    {
+        assert( animationIndex < _animations.size() );
+
         AnimEvaluator* animation = _animations[animationIndex];
         assert(animation != nullptr);
         return *animation;
     }
 
-    U32 frameCount(const I32 animationIndex) const {
+    inline U32 frameCount(const U32 animationIndex) const
+    {
+        assert( animationIndex < _animations.size() );
         return _animations[animationIndex]->frameCount();
     }
 
-    const vector<AnimEvaluator*>& animations() const noexcept {
+    inline const vector<AnimEvaluator*>& animations() const noexcept
+    {
         return _animations;
     }
 
-    const string& animationName(const I32 animationIndex) const {
+    inline const string& animationName(const U32 animationIndex) const
+    {
+        assert( animationIndex < _animations.size() );
+
         return _animations[animationIndex]->name();
     }
 
-    I32 animationID(const string& animationName) {
+    U32 animationID(const string& animationName)
+    {
         const hashMap<U64, U32>::iterator itr = _animationNameToID.find(_ID(animationName.c_str()));
-        if (itr != std::end(_animationNameToID)) {
+        if (itr != std::end(_animationNameToID))
+        {
             return itr->second;
         }
-        return -1;
+
+        return U32_MAX;
     }
     /// GetBoneTransform will return the matrix of the bone given its name and the time.
     /// Be careful with this to make sure and send the correct dt. If the dt is
-    /// different from what the model is currently at,
-    /// the transform will be off
-    const mat4<F32>& boneTransform(const I32 animationIndex, const D64 dt, const string& bName) {
+    /// different from what the model is currently at, the transform will be off
+    inline const mat4<F32>& boneTransform(const U32 animationIndex, const D64 dt, const string& bName)
+    {
         const I32 boneID = boneIndex(bName);
-        if (boneID != -1) {
+        if (boneID != -1)
+        {
             return boneTransform(animationIndex, dt, boneID);
         }
 
@@ -163,8 +192,11 @@ class SceneAnimator {
     }
 
     /// Same as above, except takes the index
-    const mat4<F32>& boneTransform(const I32 animationIndex, const D64 dt, const I32 bIndex) {
-        if (bIndex != -1) {
+    inline const mat4<F32>& boneTransform(const U32 animationIndex, const D64 dt, const I32 bIndex)
+    {
+        if (bIndex != -1)
+        {
+            assert( animationIndex < _animations.size() );
             return _animations[animationIndex]->transforms(dt).matrices()[bIndex];
         }
 
@@ -173,11 +205,14 @@ class SceneAnimator {
     }
 
     /// Get the bone's global transform
-    const mat4<F32>& boneOffsetTransform(const string& bName) {
+    inline const mat4<F32>& boneOffsetTransform(const string& bName)
+    {
         const Bone* bone = boneByName(bName);
-        if (bone != nullptr) {
+        if (bone != nullptr)
+        {
             _boneTransformCache = bone->offsetMatrix();
         }
+
         return _boneTransformCache;
     }
 
@@ -186,14 +221,16 @@ class SceneAnimator {
     /// The index can be used to index directly into the vector returned from
     /// GetTransform
     I32 boneIndex(const string& bName) const;
-    const vector<Line>& skeletonLines(I32 animationIndex, D64 dt);
+    const vector<Line>& skeletonLines(U32 animationIndex, D64 dt);
 
     /// Returns the frame count of the longest registered animation
-    U32 getMaxAnimationFrames() const noexcept {
+    inline U32 getMaxAnimationFrames() const noexcept
+    {
         return _maximumAnimationFrames;
     }
 
-    U8 boneCount() const noexcept {
+    inline U8 boneCount() const noexcept
+    {
         return _skeletonDepthCache > -1 ? to_U8(_skeletonDepthCache) : U8_ZERO;
     }
 
@@ -206,7 +243,7 @@ class SceneAnimator {
     Bone* loadSkeleton(ByteBuffer& dataIn, Bone* parent);
 
     static void UpdateTransforms(Bone* pNode);
-    void calculate(I32 animationIndex, D64 pTime);
+    void calculate(U32 animationIndex, D64 pTime);
     static I32 CreateSkeleton(Bone* piNode,
                               const mat4<F32>& parent,
                               vector<Line>& lines);

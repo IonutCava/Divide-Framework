@@ -15,8 +15,8 @@ namespace ECS
 		m_NumPendingDestroyedEntities(0),
 		m_ComponentManagerInstance(componentManagerInstance)
 	{
-		DEFINE_LOGGER("EntityManager")
-		LOG_INFO("Initialize EntityManager!","")
+		DEFINE_LOGGER("EntityManager");
+		LOG_INFO("Initialize EntityManager!","");
 	}
 
 	EntityManager::~EntityManager()
@@ -28,7 +28,7 @@ namespace ECS
 			ec.second = nullptr;
 		}
 
-		LOG_INFO("Release EntityManager!","")
+		LOG_INFO("Release EntityManager!","");
 	}
 
 	EntityId EntityManager::AqcuireEntityId(IEntity* entity)
@@ -73,5 +73,6 @@ namespace ECS
 
 		this->m_NumPendingDestroyedEntities = 0;
 	}
+
 
 } // namespace ECS

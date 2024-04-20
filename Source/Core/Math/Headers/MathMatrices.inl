@@ -615,13 +615,13 @@ namespace Divide
     }
 
     template<typename T>
-    T& mat2<T>::element( I8 row, I8 column ) noexcept
+    T& mat2<T>::element( const U8 row, const U8 column ) noexcept
     {
         return m[row][column];
     }
 
     template<typename T>
-    const T& mat2<T>::element( I8 row, I8 column ) const noexcept
+    const T& mat2<T>::element( const U8 row, const U8 column ) const noexcept
     {
         return m[row][column];
     }
@@ -1216,13 +1216,13 @@ namespace Divide
     }
 
     template<typename T>
-    T& mat3<T>::element( I8 row, I8 column ) noexcept
+    T& mat3<T>::element( const U8 row, const U8 column ) noexcept
     {
         return m[row][column];
     }
 
     template<typename T>
-    const T& mat3<T>::element( I8 row, I8 column ) const noexcept
+    const T& mat3<T>::element( const U8 row, const U8 column ) const noexcept
     {
         return m[row][column];
     }
@@ -2108,13 +2108,13 @@ namespace Divide
     }
 
     template<typename T>
-    FORCE_INLINE T& mat4<T>::element( I8 row, I8 column ) noexcept
+    FORCE_INLINE T& mat4<T>::element( const U8 row, const U8 column ) noexcept
     {
         return m[row][column];
     }
 
     template<typename T>
-    FORCE_INLINE const T& mat4<T>::element( I8 row, I8 column ) const noexcept
+    FORCE_INLINE const T& mat4<T>::element( const U8 row, const U8 column ) const noexcept
     {
         return m[row][column];
     }

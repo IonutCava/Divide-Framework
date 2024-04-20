@@ -130,7 +130,7 @@ namespace Divide {
             PROPERTY_RW(vec3<F32>, maxPos);
             PROPERTY_RW(vec3<F32>, worldOffset);
 
-            std::array<U16, MAX_LOD_LEVELS> _partitionIDs = {0u, 0u, 0u};
+            std::array<U16, MAX_LOD_LEVELS> _partitionIDs{};
             vector<vec3<U32>> _triangles[MAX_LOD_LEVELS];
             vector<U32> _indices[MAX_LOD_LEVELS];
             vector<Vertex> _vertices[MAX_LOD_LEVELS];

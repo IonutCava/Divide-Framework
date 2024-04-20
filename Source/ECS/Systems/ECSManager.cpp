@@ -27,7 +27,7 @@
 
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
-    constexpr std::array<U32, 2> g_cacheMarkerByteValue = { 0xBADDCAFE, 0xDEADBEEF };
+    constexpr U32 g_cacheMarkerByteValue[2]{ 0xBADDCAFE, 0xDEADBEEF };
 
 #define STUB_SYSTEM(Name) \
     class Name##System final : public ECSSystem<Name##System, Name##Component> {\

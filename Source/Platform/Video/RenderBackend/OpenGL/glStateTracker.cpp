@@ -1,6 +1,6 @@
 
 
-#include "Headers/GLStateTracker.h"
+#include "Headers/glStateTracker.h"
 #include "Headers/GLWrapper.h"
 
 #include "Core/Headers/StringHelper.h"
@@ -230,25 +230,25 @@ namespace Divide
 
         // Keep track if we actually affect any OpenGL state
         bool changed = false;
-        if ( _unpackAlignment._alignment != pixelUnpackAlignment._alignment )
+        if ( _unpackAlignment._alignment != SIZE_MAX && _unpackAlignment._alignment != pixelUnpackAlignment._alignment )
         {
             glPixelStorei( GL_UNPACK_ALIGNMENT, (GLint)pixelUnpackAlignment._alignment );
             changed = true;
         }
 
-        if ( pixelUnpackAlignment._rowLength != -1 && _unpackAlignment._rowLength != pixelUnpackAlignment._rowLength )
+        if ( pixelUnpackAlignment._rowLength != SIZE_MAX && _unpackAlignment._rowLength != pixelUnpackAlignment._rowLength )
         {
             glPixelStorei( GL_UNPACK_ROW_LENGTH, (GLint)pixelUnpackAlignment._rowLength );
             changed = true;
         }
 
-        if ( pixelUnpackAlignment._skipRows != -1 && _unpackAlignment._skipRows != pixelUnpackAlignment._skipRows )
+        if ( pixelUnpackAlignment._skipRows != SIZE_MAX && _unpackAlignment._skipRows != pixelUnpackAlignment._skipRows )
         {
             glPixelStorei( GL_UNPACK_SKIP_ROWS, (GLint)pixelUnpackAlignment._skipRows );
             changed = true;
         }
 
-        if ( pixelUnpackAlignment._skipPixels != -1 && _unpackAlignment._skipPixels != pixelUnpackAlignment._skipPixels )
+        if ( pixelUnpackAlignment._skipPixels != SIZE_MAX && _unpackAlignment._skipPixels != pixelUnpackAlignment._skipPixels )
         {
             glPixelStorei( GL_UNPACK_SKIP_PIXELS, (GLint)pixelUnpackAlignment._skipPixels );
             changed = true;
@@ -465,7 +465,12 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( location );
-        const VAOBindings::BufferBindingParams currentParams( bufferID, offset, stride );
+        const VAOBindings::BufferBindingParams currentParams
+        {
+            ._id = bufferID,
+            ._offset = offset,
+            ._stride = stride
+        };
 
         if ( bindings != currentParams )
         {
@@ -487,7 +492,12 @@ namespace Divide
         for ( GLsizei i = 0u; i < count; ++i )
         {
             const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( i );
-            const VAOBindings::BufferBindingParams currentParams( bufferIDs[i], offsets[i], strides[i] );
+            const VAOBindings::BufferBindingParams currentParams
+            {
+                ._id = bufferIDs[i],
+                ._offset = to_size(offsets[i]),
+                ._stride = to_size(strides[i])
+            };
             if ( bindings != currentParams )
             {
                 _vaoBufferData.bindingParams( location + i, currentParams );
@@ -1124,4 +1134,4 @@ namespace Divide
         return ret;
     }
 
-}; //namespace Divide
+} //namespace Divide

@@ -100,8 +100,10 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     }
 
     /// Get the most relevant goal and set it as active
-    GOAPGoal* findRelevantGoal() {
-        if (_activeGoals.empty()) {
+    GOAPGoal* findRelevantGoal()
+    {
+        if (_activeGoals.empty())
+        {
             return nullptr;
         }
 
@@ -111,7 +113,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
                     });
 
         _activeGoal = _activeGoals.back();
-        _currentStep = -1;
+        _currentStep = U32_MAX;
         assert(_activeGoal != nullptr);
 
         return _activeGoal;
@@ -158,47 +160,63 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         return false;
     }
 
-    bool advanceGoal() {
-        if (_activeGoal == nullptr) {
+    bool advanceGoal()
+    {
+        if (_activeGoal == nullptr)
+        {
             return false;
         }
+
         const GOAPPlan& plan = _activeGoal->getCurrentPlan();
-        if (!plan.empty()) {
-            _currentStep++;
-            const GOAPAction* crtAction = getActiveAction();
-            if (!crtAction || !performAction(*crtAction)) {
-                invalidateCurrentPlan();
-                return false;
-            }
-            return true;
+        if (plan.empty())
+        {
+            return false;
         }
-        return false;
+
+        assert(_currentStep < U32_MAX - 1u);
+
+        _currentStep++;
+        const GOAPAction* crtAction = getActiveAction();
+        if (!crtAction || !performAction(*crtAction))
+        {
+            invalidateCurrentPlan();
+            return false;
+        }
+        return true;
     }
 
-    string printPlan() const {
-        if (_activeGoal == nullptr) {
+    string printPlan() const
+    {
+        if (_activeGoal == nullptr)
+        {
             return "no active goal!";
         }
+
         string returnString;
         const GOAPPlan& plan = _activeGoal->getCurrentPlan();
-        for (const GOAPAction* action : plan) {
-            returnString.append(" - " + printActionStats(*action) + "\n");
+        for (const GOAPAction* action : plan)
+        {
+            returnString = Util::StringFormat("{} - {}\n", returnString, printActionStats(*action));
         }
 
         return returnString;
     }
 
-    virtual void invalidateCurrentPlan() {
+    virtual void invalidateCurrentPlan()
+    {
         _activeGoal = nullptr;
-        _currentStep = -1;
+        _currentStep = U32_MAX;
     }
 
-    const GOAPAction* getActiveAction() const {
+    inline const GOAPAction* getActiveAction() const
+    {
         assert(_activeGoal != nullptr);
         const GOAPPlan& plan = _activeGoal->getCurrentPlan();
-        if (to_U32(_currentStep) >= plan.size()) {
+        if ( _currentStep == U32_MAX || _currentStep >= plan.size())
+        {
             return nullptr;
         }
+
         return plan[_currentStep];
     }
 
@@ -206,7 +224,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
 
     const string& getPlanLog() const noexcept { return _planLog; }
 
-    virtual const string& printActionStats(const GOAPAction& planStep) const;
+    virtual const char* printActionStats(const GOAPAction& planStep) const;
     virtual bool performActionStep(GOAPAction::operationsIterator step) = 0;
     virtual bool performAction(const GOAPAction& planStep) = 0;
     virtual bool processData(U64 deltaTimeUS) = 0;
@@ -229,7 +247,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
     AIManager& _parentManager;
 
    private:
-    I32 _currentStep;
+    U32 _currentStep;
     GOAPGoal* _activeGoal;
     GOAPActionSet _actionSet;
     GOAPWorldState _worldState;

@@ -71,7 +71,7 @@ bool pathExists(const ResourcePath& filePath)
 
 FileError createDirectory(const ResourcePath& path)
 {
-    static Mutex s_DirectoryLock;
+    NO_DESTROY static Mutex s_DirectoryLock;
     LockGuard<Mutex> w_lock( s_DirectoryLock );
 
     if (!pathExists(path))
@@ -139,7 +139,7 @@ FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec
         return FileError::FILE_READ_ERROR;
     }
 
-    timeOutSec = std::chrono::duration_cast<std::chrono::seconds>(timeStamp).count();
+    timeOutSec = to_U64(std::chrono::duration_cast<std::chrono::seconds>(timeStamp).count());
 
     return FileError::NONE;
 }
@@ -400,7 +400,7 @@ bool getAllFilesInDirectory( const ResourcePath& filePath, FileList& listInOut, 
 
                     if (!extensionNoDot || Util::CompareIgnoreCase(extensionString.c_str(), extensionNoDot))
                     {
-                        const U64 timeOutSec = std::chrono::duration_cast<std::chrono::seconds>(p.last_write_time().time_since_epoch()).count();
+                        const U64 timeOutSec = to_U64(std::chrono::duration_cast<std::chrono::seconds>(p.last_write_time().time_since_epoch()).count());
 
                         listInOut.emplace_back(FileEntry
                         {

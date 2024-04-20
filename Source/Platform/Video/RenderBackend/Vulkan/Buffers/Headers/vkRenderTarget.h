@@ -54,7 +54,6 @@ namespace Divide
 
     public:
         vkRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor);
-        ~vkRenderTarget() = default;
 
         [[nodiscard]] bool create() override;
 

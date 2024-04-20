@@ -65,4 +65,4 @@ namespace Divide {
                                                                                  : DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
     }
 
-}; //namespace Divide
+} //namespace Divide

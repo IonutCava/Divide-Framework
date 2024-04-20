@@ -62,11 +62,11 @@ class VisualSensor final : public Sensor {
     void update(U64 deltaTimeUS) override;
 
     void followSceneGraphNode(U32 containerID, SceneGraphNode* node);
-    void unfollowSceneGraphNode(U32 containerID, U64 nodeGUID);
+    void unfollowSceneGraphNode(U32 containerID, I64 nodeGUID);
 
-    F32 getDistanceToNodeSq(U32 containerID, U64 nodeGUID);
+    F32 getDistanceToNodeSq(U32 containerID, I64 nodeGUID);
 
-    F32 getDistanceToNode(const U32 containerID, const U64 nodeGUID) {
+    F32 getDistanceToNode(const U32 containerID, const I64 nodeGUID) {
         const F32 distanceSq = getDistanceToNodeSq(containerID, nodeGUID);
         if (distanceSq < F32_MAX - 1.f) {
             return Sqrt(distanceSq);
@@ -74,7 +74,7 @@ class VisualSensor final : public Sensor {
         return distanceSq;
     }
 
-    vec3<F32> getNodePosition(U32 containerID, U64 nodeGUID);
+    vec3<F32> getNodePosition(U32 containerID, I64 nodeGUID);
     SceneGraphNode* findClosestNode(U32 containerID);
 
    protected:

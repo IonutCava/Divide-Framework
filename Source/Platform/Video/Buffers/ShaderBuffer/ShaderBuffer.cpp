@@ -8,9 +8,15 @@ namespace Divide {
 size_t ShaderBuffer::AlignmentRequirement(const BufferUsageType usage) noexcept {
     switch ( usage )
     {
+        case BufferUsageType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+
         case BufferUsageType::UNBOUND_BUFFER :
         case BufferUsageType::COMMAND_BUFFER : return GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO;
         case BufferUsageType::CONSTANT_BUFFER: return GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO;
+
+        case BufferUsageType::VERTEX_BUFFER:
+        case BufferUsageType::INDEX_BUFFER:
+        case BufferUsageType::STAGING_BUFFER: break;
     };
 
     return sizeof(U32);
@@ -20,9 +26,9 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& des
       : GUIDWrapper()
       , GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str()))
       , RingBufferSeparateWrite(descriptor._ringBufferLength, descriptor._separateReadWrite)
-      , _params(descriptor._bufferParams)
-      , _name(descriptor._name)
       , _alignmentRequirement(AlignmentRequirement(descriptor._bufferParams._flags._usageType))
+      , _name(descriptor._name)
+      , _params(descriptor._bufferParams)
 {
     assert(descriptor._bufferParams._flags._usageType != BufferUsageType::COUNT);
     assert(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
@@ -95,4 +101,4 @@ BufferUpdateFrequency ShaderBuffer::getUpdateFrequency() const noexcept
     return _params._flags._updateFrequency;
 }
 
-} //namespace Divide;
+} //namespace Divide

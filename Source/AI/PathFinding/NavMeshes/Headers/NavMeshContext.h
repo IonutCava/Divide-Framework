@@ -47,8 +47,6 @@ class rcContextDivide final : public rcContext {
         resetTimers();
     }
 
-    ~rcContextDivide() = default;
-
    private:
     /// Logs a message.
     ///  @param[in]        category    The category of the message.

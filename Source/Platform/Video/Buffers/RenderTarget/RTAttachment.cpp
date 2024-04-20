@@ -10,8 +10,8 @@
 namespace Divide {
 
 RTAttachment::RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept
-    : _parent(parent),
-      _descriptor(descriptor)
+    : _descriptor(descriptor)
+    , _parent(parent)
 {
 }
 
@@ -39,4 +39,4 @@ const RenderTarget& RTAttachment::parent() const  noexcept
     return _parent;
 }
 
-}; //namespace Divide
+} //namespace Divide

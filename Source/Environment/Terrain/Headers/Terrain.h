@@ -35,7 +35,6 @@
 
 #include "TerrainDescriptor.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
-#include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 #include "Environment/Vegetation/Headers/Vegetation.h"
 #include "Environment/Terrain/Quadtree/Headers/Quadtree.h"
@@ -117,7 +116,7 @@ class Terrain final : public Object3D {
        };
 
    public:
-    explicit Terrain(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
+    explicit Terrain(PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
 
     void toggleBoundingBoxes();
 
@@ -143,7 +142,7 @@ class Terrain final : public Object3D {
 
      void postBuild();
 
-     void buildDrawCommands(SceneGraphNode* sgn, vector_fast<GFX::DrawCommand>& cmdsOut) override;
+     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
      void prepareRender(SceneGraphNode* sgn,
                         RenderingComponent& rComp,

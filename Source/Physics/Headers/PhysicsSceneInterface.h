@@ -42,7 +42,11 @@ class SceneGraphNode;
 class PhysicsSceneInterface : public SceneComponent,
                               public GUIDWrapper {
    public:
-    explicit PhysicsSceneInterface(Scene& parentScene);
+    explicit PhysicsSceneInterface(Scene& parentScene)
+        : SceneComponent( parentScene ),
+          GUIDWrapper()
+    {
+    }
 
     /// Pre PHYSICS_DEVICE initialisation call
     virtual bool init() = 0;

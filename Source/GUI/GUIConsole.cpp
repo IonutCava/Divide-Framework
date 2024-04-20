@@ -15,7 +15,7 @@ namespace Divide {
 
 namespace {
     /// Maximum number of lines to display in the console Window
-    constexpr U32 _CEGUI_MAX_CONSOLE_ENTRIES = Config::Build::IS_DEBUG_BUILD ? 128 : 512;
+    constexpr U32 CEGUI_MAX_CONSOLE_ENTRIES = Config::Build::IS_DEBUG_BUILD ? 128 : 512;
 };
 
 GUIConsole::GUIConsole(GUI& parent, PlatformContext& context, ResourceCache* cache)
@@ -107,13 +107,13 @@ bool GUIConsole::Handle_TextInput(const CEGUI::EventArgs& e) {
             _inputHistoryIndex--;
             if (_inputHistoryIndex < 0)
                 _inputHistoryIndex = (I16)_inputHistory.size() - 1;
-            _editBox->setText(_inputHistory[_inputHistoryIndex]);
+            _editBox->setText(_inputHistory[to_size(_inputHistoryIndex)]);
         }
         if (keyEvent->scancode == CEGUI::Key::ArrowDown) {
             _inputHistoryIndex++;
             if (_inputHistoryIndex >= (I32)_inputHistory.size())
                 _inputHistoryIndex = 0;
-            _editBox->setText(_inputHistory[_inputHistoryIndex]);
+            _editBox->setText(_inputHistory[to_size(_inputHistoryIndex)]);
         }
     }
 
@@ -134,7 +134,7 @@ bool GUIConsole::Handle_TextSubmitted(const CEGUI::EventArgs& /*e*/) {
     _editBox->setText("");
     _inputHistory.push_back(_inputBuffer);
     // Keep command history low
-    if (_inputHistory.size() > _CEGUI_MAX_CONSOLE_ENTRIES) {
+    if (_inputHistory.size() > CEGUI_MAX_CONSOLE_ENTRIES) {
         _inputHistory.pop_front();
     }
     _inputHistoryIndex = (I16)_inputHistory.size() - 1;
@@ -181,12 +181,16 @@ bool GUIConsole::isVisible() const {
     return _consoleWindow->isVisible();
 }
 
-void GUIConsole::printText(const Console::OutputEntry& entry) {
+void GUIConsole::printText(const Console::OutputEntry& entry)
+{
     _outputBuffer.enqueue(entry);
-    if (_outputBuffer.size_approx() > _CEGUI_MAX_CONSOLE_ENTRIES) {
-        for (U8 i = 0; i < _CEGUI_MAX_CONSOLE_ENTRIES; ++i) {
+    if (_outputBuffer.size_approx() > CEGUI_MAX_CONSOLE_ENTRIES)
+    {
+        for (U16 i = 0u; i < CEGUI_MAX_CONSOLE_ENTRIES; ++i)
+        {
             Console::OutputEntry message;
-            if (!_outputBuffer.try_dequeue(message)) {
+            if (!_outputBuffer.try_dequeue(message))
+            {
                 break;
             }
         }
@@ -194,7 +198,7 @@ void GUIConsole::printText(const Console::OutputEntry& entry) {
 }
 
 void GUIConsole::OutputText(const Console::OutputEntry& text) const {
-    if (_outputWindow->getItemCount() == _CEGUI_MAX_CONSOLE_ENTRIES - 1) {
+    if (_outputWindow->getItemCount() == CEGUI_MAX_CONSOLE_ENTRIES - 1) {
         _outputWindow->removeItem(_outputWindow->getListboxItemFromIndex(0));
     }
 
@@ -246,4 +250,5 @@ void GUIConsole::update(const U64 /*deltaTimeUS*/) {
         _lastMsg.clear();
     }
 }
-};
+
+} //namespace Divide

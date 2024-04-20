@@ -46,13 +46,19 @@ namespace Divide {
         Str<32> _extension;
     };
 
+    struct EditorFileEntry
+    {
+        ResourcePath _path{};
+        File _file{};
+    };
+
     FWD_DECLARE_MANAGED_STRUCT(Directory);
 
     struct Directory
     {
         ResourcePath _path;
         ResourcePath _name;
-        vector_fast<std::pair<ResourcePath,  File>> _files;
+        vector_fast<File> _files;
         vector_fast<Directory_uptr> _children;
     };
 
@@ -82,7 +88,7 @@ namespace Divide {
         hashMap<size_t, Texture_ptr> _loadedTextures;
 
         bool _textureLoadQueueLocked = false;
-        std::stack<std::pair<ResourcePath, File>> _textureLoadQueue;
+        eastl::stack<EditorFileEntry> _textureLoadQueue;
     };
 } //namespace Divide
 

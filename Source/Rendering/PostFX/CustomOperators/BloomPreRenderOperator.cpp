@@ -158,7 +158,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
 
         PushConstantsStruct params{};
         params.data[0]._vec[0].x = luminanceBias();
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomCalcPipeline } );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _bloomCalcPipeline;
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( params );
     
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -173,7 +173,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
         }
 
 
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
     {// Step 2: blur bloom
@@ -207,9 +207,9 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
             Set( binding._data, bloomTex, bloomAtt->_descriptor._sampler );
         }
 
-        GFX::EnqueueCommand( bufferInOut, GFX::BindPipelineCommand{ _bloomApplyPipeline } );
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _bloomApplyPipeline;
 
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
     }
 

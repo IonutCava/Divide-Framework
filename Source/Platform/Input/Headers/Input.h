@@ -72,16 +72,19 @@ namespace Input {
         bool _gamePad = false;
         I32 _deadZone = 8000;
         I32 _max = 0;
-        union {
+        union
+        {
             U32 _data = 0;
             U16 _smallData[2];
+            I32 _dataSigned;
+            I16 _smallDataSigned[2];
         };
     };
 
     struct JoystickElement {
         JoystickElementType _type = JoystickElementType::COUNT;
         JoystickData _data; //values
-        U32 _elementIndex = 0; //item index on device
+        U8 _elementIndex = 0u; //item index on device
     };
 
     struct MouseAxis {
@@ -121,7 +124,8 @@ namespace Input {
         MODE = toBit(11)
     };
 
-    enum class KeyCode : U32 {
+    enum class KeyCode : U8
+    {
         KC_UNASSIGNED = 0x00,
         KC_ESCAPE = 0x01,
         KC_1 = 0x02,

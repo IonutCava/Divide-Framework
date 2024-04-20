@@ -391,7 +391,8 @@ template <typename T, typename U>
 [[nodiscard]] constexpr T Pico(U a);
 }
 
-struct SimpleTime {
+struct SimpleTime
+{
     U8 _hour = 0u;
     U8 _minutes = 0u;
 };
@@ -405,7 +406,11 @@ namespace Time {
 /// Return the passed param without any modification
 /// Used only for emphasis
 template <typename T>
-[[nodiscard]] constexpr T Seconds(T a);
+[[nodiscard]] constexpr T Hours(T a);
+template <typename T>
+[[nodiscard]] constexpr T Minutes( T a );
+template <typename T>
+[[nodiscard]] constexpr T Seconds( T a );
 template <typename T>
 [[nodiscard]] constexpr T Milliseconds(T a);
 template <typename T>
@@ -413,6 +418,10 @@ template <typename T>
 template <typename T>
 [[nodiscard]] constexpr T Nanoseconds(T a);
 
+template <typename T, typename U>
+[[nodiscard]] constexpr T Hours( U a );
+template <typename T, typename U>
+[[nodiscard]] constexpr T Minutes( U a );
 template <typename T, typename U>
 [[nodiscard]] constexpr T Seconds(U a);
 template <typename T, typename U>
@@ -493,6 +502,8 @@ void Normalize(vec3<F32>& inputRotation, bool degrees = false,
 [[nodiscard]] UColour3  ToByteColour(const FColour3& floatColour) noexcept;
 [[nodiscard]] FColour4 ToFloatColour(const UColour4& byteColour) noexcept;
 [[nodiscard]] FColour3 ToFloatColour(const UColour3& byteColour) noexcept;
+[[nodiscard]] FColour4 ToFloatColour( const vec4<U32>& colour ) noexcept;
+[[nodiscard]] FColour3 ToFloatColour( const vec3<U32>& colour ) noexcept;
 
 void ToByteColour(const FColour4& floatColour, UColour4& colourOut) noexcept;
 void ToByteColour(const FColour3& floatColour, UColour3& colourOut) noexcept;

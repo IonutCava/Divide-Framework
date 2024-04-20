@@ -28,7 +28,7 @@ namespace Divide::Profiler
             case Optick::State::START_CAPTURE:  return OnProfilerStateChanged( Profiler::State::STARTED );
             case Optick::State::STOP_CAPTURE:
             case Optick::State::CANCEL_CAPTURE: return OnProfilerStateChanged( Profiler::State::STOPPED );
-            default: break;
+            case Optick::State::DUMP_CAPTURE: break;
         }
 
         return OnProfilerStateChanged( Profiler::State::COUNT );
@@ -72,7 +72,7 @@ namespace Divide::Profiler
                                          })
             if constexpr (g_TrackOptickStateChange)
             {
-                OPTICK_SET_STATE_CHANGED_CALLBACK( OnOptickStateChanged );
+                OPTICK_SET_STATE_CHANGED_CALLBACK( OnOptickStateChanged )
             }
         }
     }
@@ -83,7 +83,7 @@ namespace Divide::Profiler
 
         if constexpr (detail::enabled)
         {
-            OPTICK_SHUTDOWN();
+            OPTICK_SHUTDOWN()
         }
     }
 
@@ -91,14 +91,14 @@ namespace Divide::Profiler
     {
         if constexpr( detail::enabled )
         {
-            OPTICK_START_THREAD(threadName.data());
+            OPTICK_START_THREAD(threadName.data())
         }
     }
     void OnThreadStop()
     {
         if constexpr( detail::enabled )
         {
-            OPTICK_STOP_THREAD();
+            OPTICK_STOP_THREAD()
         }
     }
 }; //namespace Divide::Profiler

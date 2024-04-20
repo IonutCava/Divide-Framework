@@ -2,7 +2,10 @@
 
 #include "Headers/ResourceCache.h"
 
+#include "Utility/Headers/Localization.h"
 #include "Core/Headers/PlatformContext.h"
+
+#include "Platform/Headers/PlatformRuntime.h"
 
 namespace Divide {
 
@@ -185,4 +188,34 @@ void ResourceCache::remove(CachedResource* resource)
     resource->setState(ResourceState::RES_UNKNOWN);
 }
 
+Mesh_ptr detail::MeshLoadData::build()
+{
+    if ( _mesh != nullptr )
+    {
+        Start(*CreateTask([&]( const Task& )
+                          {
+                              PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
+                          
+                              Import::ImportData tempMeshData( _descriptor->assetLocation(), _descriptor->assetName() );
+                          
+                              if ( MeshImporter::loadMeshDataFromFile( *_context, tempMeshData ) &&
+                                   MeshImporter::loadMesh( tempMeshData.loadedFromFile(), _mesh.get(), *_context, _cache, tempMeshData ) &&
+                                   _mesh->load() )
+                              {
+                                  NOP();
+                              }
+                              else
+                              {
+                                  Console::errorfn( LOCALE_STR( "ERROR_IMPORTER_MESH" ), _descriptor->assetLocation() / _descriptor->assetName() );
+                          
+                                  _cache->remove( _mesh.get() );
+                                  _mesh.reset();
+                              }
+                          }),
+               _context->taskPool( TaskPoolType::HIGH_PRIORITY ) );
+    }
+
+    return _mesh;
 }
+
+} //namespace Divide

@@ -78,8 +78,7 @@ namespace ECS
 			EntityContainer() : Memory::MemoryChunkAllocator<T, ENITY_T_CHUNK_SIZE>("EntityManager")
 			{}
 
-			virtual ~EntityContainer()
-			{}
+			virtual ~EntityContainer() override = default;
 
 			virtual const char* GetEntityContainerTypeName() const override
 			{ 

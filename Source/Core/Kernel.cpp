@@ -50,7 +50,7 @@ namespace
 };
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
-    : _platformContext(PlatformContext(parentApp, *this))
+    : _platformContext(parentApp)
     , _appLoopTimerMain(Time::ADD_TIMER("Main Loop Timer"))
     , _appLoopTimerInternal(Time::ADD_TIMER("Internal Main Loop Timer"))
     , _frameTimer(Time::ADD_TIMER("Total Frame Timer"))
@@ -66,6 +66,7 @@ Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
     , _argc(argc)
     , _argv(argv)
 {
+    _platformContext.init(*this);
     InitConditionalWait(_platformContext);
 
     _appLoopTimerMain.addChildTimer(_appLoopTimerInternal);
@@ -281,11 +282,11 @@ void Kernel::onLoop()
             if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u)
             {
                 DisplayWindow& window = _platformContext.mainWindow();
-                static string originalTitle = window.title();
+                NO_DESTROY static string originalTitle = window.title();
 
                 F32 fps = 0.f, frameTime = 0.f;
                 _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
-                const Str<256>& activeSceneName = _projectManager->activeProject()->getActiveScene().resourceName();
+                const Str<256>& activeSceneName = _projectManager->activeProject()->getActiveScene()->resourceName();
                 constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
                 constexpr const char* titleString = "[{} - {}] - {} - {} - {:5.2f} FPS - {:3.2f} ms - FrameIndex: {} - Update Calls : {} - Alpha : {:1.2f}";
                 window.title(titleString,
@@ -357,7 +358,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
 
             {
                 PROFILE_SCOPE("GUI Update", Profiler::Category::IO );
-                _projectManager->activeProject()->getActiveScene().processGUI( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+                _projectManager->activeProject()->getActiveScene()->processGUI( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
             }
 
             while (_timingData.accumulator() >= FIXED_UPDATE_RATE_US)
@@ -383,14 +384,14 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                     PROFILE_SCOPE("Process input", Profiler::Category::IO );
                     for (U8 i = 0u; i < playerCount; ++i) {
                         PROFILE_TAG("Player index", i);
-                        _projectManager->activeProject()->getActiveScene().processInput(i, evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+                        _projectManager->activeProject()->getActiveScene()->processInput(i, evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                     }
                 }
 
                 // process all scene events
                 {
                     PROFILE_SCOPE("Process scene events", Profiler::Category::IO );
-                    _projectManager->activeProject()->getActiveScene().processTasks( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
+                    _projectManager->activeProject()->getActiveScene()->processTasks( evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
                 }
 
                 // Update the scene state based on current time (e.g. animation matrices)
@@ -524,10 +525,11 @@ static void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& t
     }
 
     //Slide the last row to center it
-    if (extraColumns > 0) {
+    if (extraColumns > 0)
+    {
         ViewportRow& lastRow = rows.back();
         const I32 screenMidPoint = width / 2;
-        const I32 rowMidPoint = to_I32(lastRow.size() * playerWidth / 2);
+        const I32 rowMidPoint = (to_I32(lastRow.size()) * playerWidth) / 2;
         const I32 slideFactor = screenMidPoint - rowMidPoint;
         for (Rect<I32>& viewport : lastRow) {
             viewport.x += slideFactor;
@@ -577,7 +579,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 
 
     RenderPassManager::RenderParams renderParams{};
-    renderParams._sceneRenderState = &_projectManager->activeProject()->getActiveScene().state()->renderState();
+    renderParams._sceneRenderState = &_projectManager->activeProject()->getActiveScene()->state()->renderState();
 
     for (U8 i = 0u; i < playerCount; ++i) {
         Attorney::ProjectManagerKernel::currentPlayerPass(_projectManager, i);
@@ -679,8 +681,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
 
-    const I32 threadCount = config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : to_I32(HardwareThreadCount());
-    totalThreadCount(std::max(threadCount, to_I32(g_minimumGeneralPurposeThreadCount)));
+    totalThreadCount(std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : to_I32( HardwareThreadCount() ), to_I32(g_minimumGeneralPurposeThreadCount)));
 
     _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
@@ -918,7 +919,7 @@ void Kernel::shutdown()
 
     for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
     {
-        _platformContext.taskPool(static_cast<TaskPoolType>(i)).waitForAllTasks(true);
+        _platformContext.taskPool( static_cast<TaskPoolType>(i)).waitForAllTasks(true);
     }
     
     if constexpr (Config::Build::ENABLE_EDITOR)
@@ -939,7 +940,10 @@ void Kernel::shutdown()
     Camera::DestroyPool();
     resourceCache()->clear();
     MemoryManager::SAFE_DELETE(_resourceCache);
-
+    for ( U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i )
+    {
+        _platformContext.taskPool( static_cast<TaskPoolType>(i) ).shutdown();
+    }
     Console::printfn(LOCALE_STR("STOP_ENGINE_OK"));
 }
 
