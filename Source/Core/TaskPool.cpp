@@ -338,7 +338,7 @@ namespace Divide
         PoolTask task = {};
         if ( deque( waitForTask, task ) )
         {
-            if ( !task( !waitForTask ) )
+            if ( !task( !waitForTask ) ) [[unlikely]]
             {
                 addTask( MOV( task ) );
             }
@@ -354,9 +354,9 @@ namespace Divide
         {
             if constexpr ( IsBlocking )
             {
-                while( !_queue.wait_dequeue_timed( taskOut, Time::Microseconds( 500 ) ))
+                while( !_queue.wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
                 {
-                    if (!_isRunning)
+                    if (!_isRunning) [[unlikely]]
                     {
                         ret = false;
                         break;
@@ -368,7 +368,7 @@ namespace Divide
             {
                 while ( !_queue.try_dequeue( taskOut ) )
                 {
-                    if ( !_isRunning )
+                    if ( !_isRunning ) [[unlikely]]
                     {
                         ret = false;
                         break;

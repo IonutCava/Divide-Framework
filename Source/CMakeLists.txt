@@ -39,6 +39,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
                                /wd4599 #pch mismatch ...
                                /wd4605 #some defines don't really need to be in the PCH and command line at the same time. Some due, sure, but this causes more problems than it solves
                                /wd4668 #sometimes we don't actually define preoprocessor macros and want them to be interpreted as 0
+                               $<$<CONFIG:Release>:/wd4711> # automatic inline expansion warning
     )
 
     set(PCH_COMPILE_OPTIONS /bigobj
