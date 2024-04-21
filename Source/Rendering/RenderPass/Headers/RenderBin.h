@@ -106,13 +106,13 @@ struct RenderQueuePackage {
     RenderPackage* _rPackage = nullptr;
 };
 
-using RenderQueuePackages = vector_fast<RenderQueuePackage>;
+using RenderQueuePackages = eastl::fixed_vector<RenderQueuePackage, Config::MAX_VISIBLE_NODES, false>;
 
 /// This class contains a list of "RenderBinItem"'s and stores them sorted depending on designation
 class RenderBin {
    public:
     using RenderBinStack = eastl::array<RenderBinItem, Config::MAX_VISIBLE_NODES>;
-    using SortedQueue = vector<RenderingComponent*>;
+    using SortedQueue = eastl::fixed_vector<RenderingComponent*, Config::MAX_VISIBLE_NODES, false>;
     using SortedQueues = std::array<SortedQueue, to_base(RenderBinType::COUNT)>;
 
     RenderBin() = default;

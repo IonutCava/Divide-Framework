@@ -72,7 +72,7 @@ namespace Divide
             ImGui::SameLine(0.f, 30.f);
             ImGui::Text( "Max log entries: ");
             ImGui::SameLine();
-            ImGui::SetNextItemWidth( 15 );
+            ImGui::SetNextItemWidth( 100 );
             U16 logSize = g_logEntries;
             if (ImGui::InputScalar( "##MaxLogEntries", ImGuiDataType_U16, &logSize, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue ))
             {
@@ -110,14 +110,16 @@ namespace Divide
             ImVec4( 0.0f, 0.0f, 1.0f, 1.0f )
         };
 
-        size_t readIndex = g_writeIndex.load();
-        if ( readIndex == 0u )
+        size_t readIndex = 0u;
+        size_t writeIndex = g_writeIndex.load();
+        if ( writeIndex >= g_logEntries )
         {
-            readIndex = g_logEntries - 1u;
+            readIndex = writeIndex - g_logEntries;
         }
         else
         {
-            readIndex -= 1u;
+            size_t remainder = g_logEntries - writeIndex;
+            readIndex = g_maxLogEntries - remainder;
         }
 
         ImGui::PushStyleVar( ImGuiStyleVar_ItemSpacing, ImVec2( 4, 1 ) ); // Tighten spacing

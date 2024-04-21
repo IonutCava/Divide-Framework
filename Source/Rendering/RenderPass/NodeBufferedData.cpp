@@ -4,7 +4,8 @@
 
 
 namespace Divide {
-    size_t HashMaterialData(const NodeMaterialData& dataIn) {
+    size_t HashMaterialData(const NodeMaterialData& dataIn)
+    {
         size_t tempHash = 9999991;
         
         Util::Hash_combine(tempHash, dataIn._albedo.x * 255,

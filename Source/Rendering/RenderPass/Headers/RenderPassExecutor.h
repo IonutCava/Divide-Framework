@@ -105,22 +105,32 @@ public:
     {
         using TransformDataContainer = std::array<NodeTransformData, Config::MAX_VISIBLE_NODES>;
         TransformDataContainer _gpuData{};
+
+        Mutex _freeListlock;
         std::array<bool, Config::MAX_VISIBLE_NODES> _freeList{};
     };
 
     using BufferIndirectionData = std::array<NodeIndirectionData, MAX_INDIRECTION_ENTRIES>;
     
-    template<typename DataContainer>
-    struct ExecutorBuffer {
-        DataContainer _data;
-        eastl::fixed_vector<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
-        vector<BufferUpdateRange> _bufferUpdateRangeHistory;
-        SharedMutex _proccessedLock;
-        Mutex _lock;
-        ShaderBuffer_uptr _gpuBuffer{ nullptr };
+    struct ExecutorBufferRange
+    {
+        SharedMutex _lock;
         BufferUpdateRange _bufferUpdateRange;
         BufferUpdateRange _bufferUpdateRangePrev;
+        vector<BufferUpdateRange> _bufferUpdateRangeHistory;
         U32 _highWaterMark{ 0u };
+    };
+
+    template<typename DataContainer>
+    struct ExecutorBuffer
+    {
+        DataContainer _data;
+        ExecutorBufferRange _range;
+
+        SharedMutex _nodeProcessedLock;
+        eastl::fixed_vector<U32, MAX_INDIRECTION_ENTRIES, false> _nodeProcessedThisFrame;
+
+        ShaderBuffer_uptr _gpuBuffer{ nullptr };
         U32 _queueLength{ Config::MAX_FRAMES_IN_FLIGHT + 1u };
     };
 
