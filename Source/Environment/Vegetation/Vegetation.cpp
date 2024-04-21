@@ -174,17 +174,9 @@ namespace Divide
     Vegetation::~Vegetation()
     {
         Console::printfn( LOCALE_STR( "UNLOAD_VEGETATION_BEGIN" ), resourceName().c_str() );
-        U32 timer = 0;
-        while ( getState() == ResourceState::RES_LOADING )
-        {
-            // wait for the loading thread to finish first;
-            std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
-            timer += 10;
-            if ( timer > 3000 )
-            {
-                break;
-            }
-        }
+        
+        WAIT_FOR_CONDITION_TIMEOUT( getState() != ResourceState::RES_LOADING, Time::Milliseconds(3000.0));
+
         assert( getState() != ResourceState::RES_LOADING );
         if ( s_bufferUsage.fetch_sub( 1 ) == 1 )
         {

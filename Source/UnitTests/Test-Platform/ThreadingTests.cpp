@@ -1,6 +1,7 @@
 #include "UnitTests/unitTestCommon.h"
 
 #include "Core/Time/Headers/ProfileTimer.h"
+#include "Core/Time/Headers/ApplicationTimer.h"
 #include <atomic>
 #include <iostream>
 
@@ -9,23 +10,25 @@ namespace Divide
 
 namespace
 {
-    NO_DESTROY Mutex printLock{};
-
-    void printLine( const char* line )
-    {
-        LockGuard<Mutex> lock( printLock );
-        std::cout << line << std::endl;
-    };
-
-    void printLine( const std::string& string )
-    {
-        printLine( string.c_str() );
-    }
-
-    void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {})
+     void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {})
     {
         Start( task, pool, priority, onCompletionFunction );
         Wait( task, pool );
+    }
+
+    void SleepThread(const D64 milliseconds )
+    {
+        const D64 start = Time::App::ElapsedMilliseconds();
+
+        while ( true )
+        {
+            if ( Time::App::ElapsedMilliseconds() - start >= Time::Milliseconds( milliseconds ) )
+            {
+                break;
+            }
+            std::this_thread::yield();
+        }
+
     }
 };
 
@@ -35,7 +38,7 @@ TEST_CASE( "Task Pool Construction Test", "[threading_tests]" )
 
     Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
 
-    TaskPool test;
+    TaskPool test("CONSTRUCTION_TEST");
 
     // Not enough workers
     bool init = test.init( 0 );
@@ -47,7 +50,9 @@ TEST_CASE( "Task Pool Construction Test", "[threading_tests]" )
 
     // Double init
     init = test.init( HardwareThreadCount() );
-    CHECK_FALSE( init );
+    CHECK_TRUE( init );
+
+    test.shutdown();
 }
 
 TEST_CASE( "Parallel For Test", "[threading_tests]" )
@@ -56,7 +61,8 @@ TEST_CASE( "Parallel For Test", "[threading_tests]" )
 
     Console::ToggleFlag( Console::Flags::ENABLE_ERROR_STREAM, false );
 
-    TaskPool test;
+    TaskPool test( "PARALLEL_FOR_TEST" );
+
     const bool init = test.init( HardwareThreadCount() );
     CHECK_TRUE( init );
 
@@ -82,14 +88,17 @@ TEST_CASE( "Parallel For Test", "[threading_tests]" )
 
     CHECK_EQUAL( loopCounter, 5u );
     CHECK_EQUAL( totalCounter, 18u );
+
+    test.shutdown();
 }
+
 
 TEST_CASE( "Task Callback Test", "[threading_tests]" )
 {
     platformInitRunListener::PlatformInit();
 
-    TaskPool test;
-    const bool init = test.init( to_U8( HardwareThreadCount() ) );
+    TaskPool test( "CALLBACK_TEST" );
+    const bool init = test.init( HardwareThreadCount() );
     CHECK_TRUE( init );
 
     bool testValue = false;
@@ -98,32 +107,37 @@ TEST_CASE( "Task Callback Test", "[threading_tests]" )
                             {
                                 Time::ProfileTimer timer;
                                 timer.start();
-                                printLine( "TaskCallbackTest: Thread sleeping for 500ms" );
-                                std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+                                TaskPool::PrintLine( "TaskCallbackTest: Thread sleeping for 500ms" );
+                                SleepThread(Time::Milliseconds(500) );
+
                                 timer.stop();
                                 const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - Time::ProfileTimer::overhead() );
-                                printLine( "TaskCallbackTest: Thread waking up (" + std::to_string( durationMS ) + "ms )" );
+                                TaskPool::PrintLine( "TaskCallbackTest: Thread waking up (" + std::to_string( durationMS ) + "ms )" );
                             } );
 
     Start( *job, test, TaskPriority::DONT_CARE, [&testValue]()
             {
-                printLine( "TaskCallbackTest: Callback called!" );
+                TaskPool::PrintLine( "TaskCallbackTest: Callback called!" );
                 testValue = true;
-                printLine( "TaskCallbackTest: Value changed to: [ " + std::string( testValue ? "true" : "false" ) + " ]!" );
+                TaskPool::PrintLine( "TaskCallbackTest: Value changed to: [ " + std::string( testValue ? "true" : "false" ) + " ]!" );
             } );
 
     CHECK_FALSE( testValue );
-    printLine( "TaskCallbackTest: waiting for task!" );
+    TaskPool::PrintLine( "TaskCallbackTest: waiting for task!" );
     Wait( *job, test );
+
     CHECK_TRUE( Finished( *job ) );
     CHECK_FALSE( testValue );
 
-    printLine( "TaskCallbackTest: flushing queue!" );
+    TaskPool::PrintLine( "TaskCallbackTest: flushing queue!" );
     const size_t callbackCount = test.flushCallbackQueue();
     CHECK_EQUAL( callbackCount, 1u );
-    printLine( "TaskCallbackTest: flushing test! Value: " + std::string( testValue ? "true" : "false" ) );
+    TaskPool::PrintLine( "TaskCallbackTest: flushing test! Value: " + std::string( testValue ? "true" : "false" ) );
     CHECK_TRUE( testValue );
+
+    test.shutdown();
 }
+
 
 namespace
 {
@@ -143,10 +157,10 @@ namespace
         {
             Time::ProfileTimer timer;
             timer.start();
-            std::this_thread::sleep_for( std::chrono::milliseconds( 300 ) );
+            SleepThread( Time::Milliseconds( 300 ) );
             timer.stop();
             const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - Time::ProfileTimer::overhead() );
-            printLine( "threadedFunction completed in: " + std::to_string( durationMS ) + " ms." );
+            TaskPool::PrintLine( "threadedFunction completed in: " + std::to_string( durationMS ) + " ms." );
 
             setTestValue( true );
         }
@@ -160,7 +174,8 @@ TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_t
 {
     platformInitRunListener::PlatformInit();
 
-    TaskPool test;
+    TaskPool test("MEMBER_CALLBACK_TEST");
+
     const bool init = test.init( to_U8( HardwareThreadCount() ));
     CHECK_TRUE( init );
 
@@ -188,6 +203,8 @@ TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_t
     const bool finalValue = getTestValue();
 
     CHECK_FALSE( finalValue );
+
+    test.shutdown();
 }
 
 TEST_CASE( "Task Speed Test", "[threading_tests]" )
@@ -200,7 +217,7 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
 
     const U64 timerOverhead = Time::ProfileTimer::overhead();
     {
-        TaskPool test;
+        TaskPool test("SPEED_TEST_LOOP");
         const bool init = test.init( to_U8( HardwareThreadCount() ) );
         CHECK_TRUE( init );
 
@@ -218,10 +235,12 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
 
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
-        printLine( "Threading speed test: " + std::to_string( loopCountA ) + " tasks completed in: " + std::to_string( durationMS ) + " ms." );
+        TaskPool::PrintLine( "Threading speed test: " + std::to_string( loopCountA ) + " tasks completed in: " + std::to_string( durationMS ) + " ms." );
+
+        test.shutdown();
     }
     {
-        TaskPool test;
+        TaskPool test("SPEED_TEST_PARALLEL_FOR");
         const bool init = test.init( to_U8( HardwareThreadCount() ) );
         CHECK_TRUE( init );
 
@@ -240,10 +259,12 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
         parallel_for( test, descriptor );
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
-        printLine( "Threading speed test (parallel_for): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
+        TaskPool::PrintLine( "Threading speed test (parallel_for): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
+
+        test.shutdown();
     }
     {
-        TaskPool test;
+        TaskPool test("SPEED_TEST_PARALLEL_FOR_CURRENT_THREAD");
         const bool init = test.init( to_U8( HardwareThreadCount() ) );
         CHECK_TRUE( init );
 
@@ -263,7 +284,9 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
 
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
-        printLine( "Threading speed test (parallel_for - use current thread): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
+        TaskPool::PrintLine( "Threading speed test (parallel_for - use current thread): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
+
+        test.shutdown();
     }
 }
 
@@ -271,13 +294,13 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
 {
     platformInitRunListener::PlatformInit();
 
-    TaskPool test;
-    const bool init = test.init( to_U8( HardwareThreadCount() ) );
+    TaskPool test("PRIORTIY_TEST");
+    const bool init = test.init( HardwareThreadCount() );
     CHECK_TRUE( init );
 
     U32 callbackValue = 0u;
 
-    Task* job = CreateTask( [&callbackValue]( const Task& /*parentTask*/ )
+    Task* job = CreateTask( [&callbackValue]( [[maybe_unused]] const Task& parentTask )
                             {
                                 ++callbackValue;
                             } );
@@ -293,7 +316,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
     CHECK_EQUAL( callbackCount, 1u );
     CHECK_EQUAL( callbackValue, 2u );
 
-    job = CreateTask( [&callbackValue]( const Task& /*parentTask*/ )
+    job = CreateTask( [&callbackValue]( [[maybe_unused]] const Task& parentTask )
                         {
                             ++callbackValue;
                         } );
@@ -305,7 +328,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
     CHECK_EQUAL( callbackCount, 0u );
     CHECK_EQUAL( callbackValue, 3u );
 
-    job = CreateTask( [&callbackValue]( const Task& /*parentTask*/ )
+    job = CreateTask( [&callbackValue]( [[maybe_unused]] const Task& parentTask )
                         {
                             ++callbackValue;
                         } );
@@ -313,6 +336,10 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                     {
                         ++callbackValue;
                     } );
+
     CHECK_EQUAL( callbackValue, 5u );
+
+    test.shutdown();
 }
+
 } //namespace Divide

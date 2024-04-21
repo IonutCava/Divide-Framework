@@ -532,7 +532,6 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Threading/Headers/Task.h
                              Platform/Threading/Headers/Task.inl
                              Platform/Threading/Headers/TaskGPUSync.h
-                             Platform/Threading/Headers/ThreadPool.h
                              Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h
                              Platform/Video/Buffers/RenderTarget/Headers/RTAttachment.h
                              Platform/Video/Buffers/RenderTarget/Headers/RTDrawDescriptor.h
@@ -656,7 +655,6 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Input/InputAggregatorInterface.cpp
                      Platform/Input/InputHandler.cpp
                      Platform/Threading/Task.cpp
-                     Platform/Threading/ThreadPool.cpp
                      Platform/Video/AttributeDescriptor.cpp
                      Platform/Video/BlendingProperties.cpp
                      Platform/Video/CommandBuffer.cpp

@@ -96,10 +96,12 @@ TEST_CASE( "Vec Length Tests", "[math_vectors_test]" )
     vec2<F32> input1;
     vec3<F32> input2;
     vec4<F32> input3;
+    vec4<F32> input4{0.f, 0.f, 0.f, 1.f};
 
     CHECK_ZERO(input1.length());
     CHECK_ZERO(input2.length());
-    CHECK_TRUE(COMPARE(input3.length(), 1.f));
+    CHECK_ZERO(input3.length());
+    CHECK_TRUE(COMPARE(input4.length(), 1.f));
     input3.w = 0.0f;
     CHECK_ZERO(input3.length());
 

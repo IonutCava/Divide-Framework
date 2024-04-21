@@ -70,11 +70,11 @@ constexpr void assert_type( const U& )
     assert_type<D64>(timeoutMS);                                       \
                                                                        \
     if (timeoutMS >= 0.0) {                                            \
-        const D64 start = Time::ElapsedMilliseconds(true);             \
+        const D64 start = Time::App::ElapsedMilliseconds();            \
                                                                        \
         while (!(condition)) {                                         \
             PlatformContextIdleCall();                                 \
-            if (Time::ElapsedMilliseconds(true) - start >= timeoutMS)  \
+            if (Time::App::ElapsedMilliseconds() - start >= timeoutMS) \
             {                                                          \
                 break;                                                 \
             }                                                          \

@@ -26,9 +26,13 @@ PlatformContext::PlatformContext(Application& app)
   , _debug(MemoryManager_NEW DebugInterface())
   , _server(MemoryManager_NEW Server())
 {
+    const char* taskPoolNames[] = { "WORKER_THREAD",
+                                    "BACKUP_THREAD" };
+    static_assert(std::size(taskPoolNames) == to_base(TaskPoolType::COUNT));
+
     for ( U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i )
     {
-        _taskPool[i] = MemoryManager_NEW TaskPool();
+        _taskPool[i] = MemoryManager_NEW TaskPool(taskPoolNames[i]);
     }
 }
 

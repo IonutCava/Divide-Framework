@@ -732,25 +732,24 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         const size_t cpuThreadCount = totalThreadCount();
         std::atomic_size_t threadCounter = cpuThreadCount;
 
-        const auto initTaskPool = [&](const TaskPoolType taskPoolType, const U32 threadCount, const char* threadPrefix)
+        const auto initTaskPool = [&](const TaskPoolType taskPoolType, const U32 threadCount)
         {
             if (!_platformContext.taskPool(taskPoolType).init(threadCount, [this, taskPoolType, &threadCounter](const std::thread::id& threadID)
                 {
                     Attorney::PlatformContextKernel::onThreadCreated(platformContext(), taskPoolType, threadID, false);
                     threadCounter.fetch_sub(1);
-                },
-                threadPrefix))
+                }))
             {
                 return ErrorCode::CPU_NOT_SUPPORTED;
             }
                 return ErrorCode::NO_ERR;
         };
 
-        initError = initTaskPool(TaskPoolType::HIGH_PRIORITY, to_U32(cpuThreadCount - g_backupThreadPoolSize), "DIVIDE_WORKER_THREAD_");
+        initError = initTaskPool(TaskPoolType::HIGH_PRIORITY, to_U32(cpuThreadCount - g_backupThreadPoolSize) );
         if (initError != ErrorCode::NO_ERR) {
             return initError;
         }
-        initError = initTaskPool(TaskPoolType::LOW_PRIORITY, to_U32(g_backupThreadPoolSize), "DIVIDE_BACKUP_THREAD_");
+        initError = initTaskPool(TaskPoolType::LOW_PRIORITY, to_U32(g_backupThreadPoolSize) );
         if (initError != ErrorCode::NO_ERR) {
             return initError;
         }

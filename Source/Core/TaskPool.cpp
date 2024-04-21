@@ -5,9 +5,10 @@
 #include "Core/Headers/StringHelper.h"
 #include "Platform/Headers/PlatformRuntime.h"
 
+#include <iostream>
+
 namespace Divide
 {
-
     namespace
     {
         constexpr I32 g_maxDequeueItems = 5;
@@ -18,44 +19,75 @@ namespace Divide
         std::array<U32, g_maxDequeueItems> g_completedTaskIndices{};
     }
 
-    bool TaskPool::init( const U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate, const string& workerName )
+    NO_DESTROY Mutex TaskPool::s_printLock{};
+
+    void TaskPool::PrintLine(const std::string_view line )
     {
-        if ( threadCount == 0u || _threadPool != nullptr )
+        LockGuard<Mutex> lock( s_printLock );
+        std::cout << line << std::endl;
+    };
+
+    TaskPool::TaskPool( const std::string_view workerName )
+        : _threadNamePrefix( workerName )
+    {
+    }
+
+    TaskPool::~TaskPool()
+    {
+        DIVIDE_ASSERT( _activeThreads.load() == 0u, "Task pool is still active! Threads should be joined before destroying the pool. Call TaskPool::shutdown() first");
+    }
+
+    bool TaskPool::init( const U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreateCbk)
+    {
+        shutdown();
+        if (threadCount == 0u)
         {
             return false;
         }
 
-        _threadNamePrefix = workerName;
-        _threadCreateCbk = onThreadCreate;
-        _threadPool = MemoryManager_NEW ThreadPool( *this, threadCount );
+        _isRunning = true;
+        _threadCreateCbk = onThreadCreateCbk;
+        _threads.reserve( threadCount );
+        _activeThreads.store(threadCount);
+
+        for ( U32 idx = 0u; idx < threadCount; ++idx )
+        {
+            _threads.emplace_back(
+                [&]
+                {
+                    const string threadName = Util::StringFormat( "{}_{}", _threadNamePrefix, idx );
+
+                    Profiler::OnThreadStart( threadName );
+
+                    SetThreadName( threadName );
+
+                    if ( _threadCreateCbk )
+                    {
+                        _threadCreateCbk( std::this_thread::get_id() );
+                    }
+
+                    while ( _isRunning )
+                    {
+                        executeOneTask( true );
+                    }
+
+                    Profiler::OnThreadStop();
+
+                    _activeThreads.fetch_sub( 1u );
+                } );
+        }
+
         return true;
     }
 
     void TaskPool::shutdown()
     {
-        if ( _threadPool != nullptr )
-        {
-            waitForAllTasks( true );
-            waitAndJoin();
-            MemoryManager::SAFE_DELETE( _threadPool );
-        }
-    }
-
-    void TaskPool::onThreadCreate( const U32 threadIndex, const std::thread::id& threadID )
-    {
-        const string threadName = _threadNamePrefix + Util::to_string( threadIndex );
-
-        Profiler::OnThreadStart( threadName );
-        SetThreadName( threadName );
-        if ( _threadCreateCbk )
-        {
-            _threadCreateCbk( threadID );
-        }
-    }
-
-    void TaskPool::onThreadDestroy( [[maybe_unused]] const std::thread::id& threadID )
-    {
-        Profiler::OnThreadStop();
+        wait();
+        join();
+        waitForAllTasks( true );
+        efficient_clear( _threads );
+        _taskCallbacks.clear();
+        _threadCreateCbk = {};
     }
 
     bool TaskPool::enqueue( Task& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction )
@@ -103,13 +135,14 @@ namespace Divide
                 _taskCallbacks[taskIndex] = onCompletionFunction;
             }
 
-            return _threadPool->addTask( MOV( poolTask ) );
+            return addTask( MOV( poolTask ) );
         }
 
         if ( !poolTask( false ) ) [[unlikely]]
         {
             DIVIDE_UNEXPECTED_CALL();
         }
+
         if ( onCompletionFunction )
         {
             onCompletionFunction();
@@ -166,20 +199,18 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
         DIVIDE_ASSERT(Runtime::isMainThread());
         
-        if ( _threadPool != nullptr ) [[likely]]
+        if ( _activeThreads.load() > 0u )
         {
-            {
-                UniqueLock<Mutex> lock( _taskFinishedMutex );
-                _taskFinishedCV.wait( lock, [this]() noexcept
-                                      {
-                                          return _runningTaskCount.load() == 0u;
-                                      } );
-            }
+            UniqueLock<Mutex> lock( _taskFinishedMutex );
+            _taskFinishedCV.wait( lock, [this]() noexcept
+                                    {
+                                        return _runningTaskCount.load() == 0u;
+                                    } );
+        }
 
-            if ( flushCallbacks )
-            {
-                flushCallbackQueue();
-            }
+        if ( flushCallbacks )
+        {
+            flushCallbackQueue();
         }
     }
 
@@ -255,21 +286,104 @@ namespace Divide
 
         return task;
     }
+
     void TaskPool::threadWaiting()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-
-        _threadPool->executeOneTask( false );
+        executeOneTask( false );
     }
 
-    void TaskPool::waitAndJoin() const
+    void TaskPool::join()
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
+        _isRunning = false;
 
-        assert( _threadPool != nullptr );
+        for ( std::thread& thread : _threads )
+        {
+            if (!thread.joinable())
+            {
+                continue;
+            }
 
-        _threadPool->wait();
-        _threadPool->join();
+            thread.join();
+        }
+
+        WAIT_FOR_CONDITION( _activeThreads.load() == 0u );
+    }
+
+    void TaskPool::wait() const noexcept
+    {
+        if ( _isRunning )
+        {
+            // Busy wait
+            while ( _tasksLeft.load() > 0 )
+            {
+                std::this_thread::yield();
+            }
+        }
+    }
+
+    bool TaskPool::addTask( PoolTask&& job )
+    {
+        if ( _queue.enqueue( MOV( job ) ) )
+        {
+            _tasksLeft.fetch_add( 1 );
+            return true;
+        }
+
+        return false;
+    }
+
+    void TaskPool::executeOneTask( const bool waitForTask )
+    {
+        PoolTask task = {};
+        if ( deque( waitForTask, task ) )
+        {
+            if ( !task( !waitForTask ) )
+            {
+                addTask( MOV( task ) );
+            }
+            _tasksLeft.fetch_sub( 1 );
+        }
+    }
+
+    bool TaskPool::deque( const bool waitForTask, PoolTask& taskOut )
+    {
+        bool ret = true;
+
+        if ( waitForTask )
+        {
+            if constexpr ( IsBlocking )
+            {
+                while( !_queue.wait_dequeue_timed( taskOut, Time::Microseconds( 500 ) ))
+                {
+                    if (!_isRunning)
+                    {
+                        ret = false;
+                        break;
+                    }
+                    std::this_thread::yield();
+                }
+            }
+            else
+            {
+                while ( !_queue.try_dequeue( taskOut ) )
+                {
+                    if ( !_isRunning )
+                    {
+                        ret = false;
+                        break;
+                    }
+
+                    std::this_thread::yield();
+                }
+            }
+        }
+        else if ( !_queue.try_dequeue( taskOut ) )
+        {
+            ret = false;
+        }
+
+        return ret;
     }
 
     void parallel_for( TaskPool& pool, const ParallelForDescriptor& descriptor )

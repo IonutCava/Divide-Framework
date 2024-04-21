@@ -33,11 +33,8 @@
 #ifndef DVD_TASKS_H_
 #define DVD_TASKS_H_
 
-#include "Platform/Threading/Headers/ThreadPool.h"
-
 namespace Divide {
 
-struct Task;
 class TaskPool;
 
 enum class TaskPriority : U8
@@ -47,9 +44,8 @@ enum class TaskPriority : U8
     COUNT
 };
 
-constexpr auto TASK_NOP = [](Task&) { NOP(); };
-
-struct alignas(128) Task {
+struct alignas(128) Task
+{
     DELEGATE<void, Task&> _callback;
     Task* _parent{ nullptr };
     U32 _id{ 0u };
@@ -58,12 +54,14 @@ struct alignas(128) Task {
     U8 _padding[48];
 };
 
+constexpr auto TASK_NOP = [](Task&) { NOP(); };
+
 void Start(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
 void Wait(const Task& task, TaskPool& pool);
 
 [[nodiscard]] bool Finished(const Task& task) noexcept;
 
-};  // namespace Divide
+}  // namespace Divide
 
 #endif //DVD_TASKS_H_
 

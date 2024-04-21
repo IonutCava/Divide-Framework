@@ -55,11 +55,18 @@ struct ParallelForDescriptor {
     bool _allowRunInIdle = true;
 };
 
+using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
+
 class TaskPool final : public GUIDWrapper {
 public:
   public:
 
-    bool init(U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {}, const string& workerName = "DVD_WORKER");
+    constexpr static bool IsBlocking = true;
+
+    explicit TaskPool(std::string_view workerName);
+    ~TaskPool();
+
+    bool init(U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {});
     void shutdown();
 
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func, bool allowedInIdle ) noexcept;
@@ -72,7 +79,25 @@ public:
     /// Use this to run another task (if any) and return to the previous execution point
     void threadWaiting();
 
+
+    // Add a new task to the pool's queue
+    bool addTask( PoolTask&& job );
+
+    // Reinitializes the thread pool (joins and closes out all existing threads first)
+    void init();
+    // Join all of the threads and block until all running tasks have completed.
+    void join();
+
+    // Wait for all running jobs to finish
+    void wait() const noexcept;
+
+    void executeOneTask( bool waitForTask );
+
+    static void PrintLine( std::string_view );
+
     PROPERTY_R(U32, workerThreadCount, 0u);
+    PROPERTY_R( vector<std::thread>, threads );
+
 
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
@@ -85,27 +110,27 @@ public:
     void taskCompleted(Task& task, bool hasOnCompletionFunction);
     
     bool enqueue(Task& task, TaskPriority priority, U32 taskIndex, const DELEGATE<void>& onCompletionFunction);
+    bool deque( bool waitForTask, PoolTask& taskOut );
     void waitForTask(const Task& task);
 
-    friend class ThreadPool;
-
-    void onThreadCreate(const U32 threadIndex, const std::thread::id& threadID);
-    void onThreadDestroy(const std::thread::id& threadID);
-
-    void waitAndJoin() const;
-
   private:
+     static Mutex s_printLock;
+     const string _threadNamePrefix;
+
+     using QueueType = std::conditional_t<IsBlocking, moodycamel::BlockingConcurrentQueue<PoolTask>, moodycamel::ConcurrentQueue<PoolTask>>;
+     QueueType _queue;
+
      hashMap<U32, DELEGATE<void>> _taskCallbacks{};
 
-     DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
-     moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
+     DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
+     moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
 
-     ThreadPool* _threadPool{nullptr};
-
-     string _threadNamePrefix;
      std::atomic_uint _runningTaskCount = 0u;
+     std::atomic_uint _activeThreads{ 0u };
+     std::atomic_uint _tasksLeft{ 0 };
+     bool _isRunning{ true };
 };
 
 template<class Predicate>
