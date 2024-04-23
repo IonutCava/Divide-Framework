@@ -53,7 +53,7 @@ namespace GLMemory{
         Byte* _ptr{ nullptr };
         size_t _offset{ 0u };
         size_t _size{ 0u };
-        gl::GLuint _bufferHandle{ GL_NULL_HANDLE };
+        gl46core::GLuint _bufferHandle{ GL_NULL_HANDLE };
         bool _free{ true };
 
         bool operator==(const Block &rhs) const = default;
@@ -65,17 +65,17 @@ namespace GLMemory{
         explicit Chunk(bool poolAllocations,
                        size_t size,
                        size_t alignment,
-                       gl::BufferStorageMask storageMask,
-                       gl::BufferAccessMask accessMask,
-                       gl::GLenum usage);
+                       gl46core::BufferStorageMask storageMask,
+                       gl46core::BufferAccessMask accessMask,
+                       gl46core::GLenum usage);
         ~Chunk();
                       void deallocate(const Block& block);
         [[nodiscard]] bool allocate(size_t size, const char* name, std::pair<bufferPtr, size_t> initialData, Block& blockOut);
         [[nodiscard]] bool containsBlock(const Block &block) const;
 
-        PROPERTY_RW( gl::BufferStorageMask, storageMask, gl::BufferStorageMask::GL_NONE_BIT);
-        PROPERTY_RW( gl::BufferAccessMask, accessMask, gl::BufferAccessMask::GL_NONE_BIT);
-        PROPERTY_RW( gl::GLenum, usage, gl::GL_NONE);
+        PROPERTY_RW( gl46core::BufferStorageMask, storageMask, gl46core::BufferStorageMask::GL_NONE_BIT);
+        PROPERTY_RW( gl46core::BufferAccessMask, accessMask, gl46core::BufferAccessMask::GL_NONE_BIT);
+        PROPERTY_RW( gl46core::GLenum, usage, gl46core::GL_NONE);
         PROPERTY_RW(size_t, alignment, 0u);
 
         [[nodiscard]] FORCE_INLINE bool poolAllocations() const noexcept { return _poolAllocations;  }
@@ -95,9 +95,9 @@ namespace GLMemory{
         [[nodiscard]] Chunk* allocate(bool poolAllocations,
                                       size_t size,
                                       size_t alignment,
-                                      gl::BufferStorageMask storageMask,
-                                      gl::BufferAccessMask accessMask,
-                                      gl::GLenum usage) const;
+                                      gl46core::BufferStorageMask storageMask,
+                                      gl46core::BufferAccessMask accessMask,
+                                      gl46core::GLenum usage) const;
 
     private:
         const size_t _size{ 0u };
@@ -114,9 +114,9 @@ namespace GLMemory{
         [[nodiscard]] Block allocate(bool poolAllocations,
                                      size_t size,
                                      size_t alignment,
-                                     gl::BufferStorageMask storageMask,
-                                     gl::BufferAccessMask accessMask,
-                                     gl::GLenum usage,
+                                     gl46core::BufferStorageMask storageMask,
+                                     gl46core::BufferAccessMask accessMask,
+                                     gl46core::GLenum usage,
                                      const char* blockName,
                                      std::pair<bufferPtr, size_t> initialData);
         void deallocate(const Block &block) const;
@@ -132,22 +132,22 @@ namespace GLMemory{
     };
 } // namespace GLMemory
 
-void createBuffer( gl::GLuint& bufferIdOut, const char* name = nullptr);
+void createBuffer( gl46core::GLuint& bufferIdOut, const char* name = nullptr);
 
 void createAndAllocBuffer(size_t bufferSize,
-                          gl::GLenum usageMask,
-                          gl::GLuint& bufferIdOut,
+                          gl46core::GLenum usageMask,
+                          gl46core::GLuint& bufferIdOut,
                           std::pair<bufferPtr, size_t> initialData,
                           const char* name = nullptr);
 
 Byte* createAndAllocPersistentBuffer(size_t bufferSize,
-                                     gl::BufferStorageMask storageMask,
-                                     gl::BufferAccessMask accessMask,
-                                     gl::GLuint& bufferIdOut,
+                                     gl46core::BufferStorageMask storageMask,
+                                     gl46core::BufferAccessMask accessMask,
+                                     gl46core::GLuint& bufferIdOut,
                                      std::pair<bufferPtr, size_t> initialData,
                                      const char* name = nullptr);
 
-void freeBuffer( gl::GLuint &bufferId, bufferPtr mappedPtr = nullptr);
+void freeBuffer( gl46core::GLuint &bufferId, bufferPtr mappedPtr = nullptr);
 
 }; //namespace GLUtil
 }; //namespace Divide

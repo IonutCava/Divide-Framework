@@ -2,14 +2,11 @@
 
 #include "config.h"
 
-
 #include "Headers/glTexture.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
-
-using namespace gl;
 
 namespace Divide {
 
@@ -22,7 +19,7 @@ glTexture::glTexture(GFXDevice& context,
                      ResourceCache& parentCache)
 
     : Texture(context, descriptorHash, name, resourceName, resourceLocation, texDescriptor, parentCache)
-    , _type(GL_NONE)
+    , _type( gl46core::GL_NONE )
 {
 }
 
@@ -40,7 +37,7 @@ bool glTexture::unload()
             NOP();
         }
 
-        glDeleteTextures(1, &_textureHandle);
+        gl46core::glDeleteTextures(1, &_textureHandle);
         _textureHandle = GL_NULL_HANDLE;
     }
 
@@ -53,7 +50,7 @@ void glTexture::postLoad()
 
     if (_loadSync != nullptr)
     {
-        glWaitSync(_loadSync, UnusedMask::GL_UNUSED_BIT, GL_TIMEOUT_IGNORED);
+        gl46core::glWaitSync(_loadSync, gl46core::UnusedMask::GL_UNUSED_BIT, gl46core::GL_TIMEOUT_IGNORED);
         GL_API::DestroyFenceSync(_loadSync);
     }
 
@@ -65,7 +62,7 @@ void glTexture::reserveStorage()
     DIVIDE_ASSERT(!_hasStorage && "glTexture::reserveStorage error: double call detected!");
 
     const GLUtil::FormatAndDataType glInternalFormat = GLUtil::InternalFormatAndDataType(_descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing());
-    const GLuint msaaSamples = static_cast<GLuint>(_descriptor.msaaSamples());
+    const gl46core::GLuint msaaSamples = static_cast<gl46core::GLuint>(_descriptor.msaaSamples());
     const bool isCubeMap = IsCubeTexture(_descriptor.texType());
     DIVIDE_ASSERT(!(isCubeMap && _width != _height) && "glTexture::reserverStorage error: width and height for cube map texture do not match!");
 
@@ -74,11 +71,10 @@ void glTexture::reserveStorage()
         case TextureType::TEXTURE_1D:
         {
             assert(_depth == 1u);
-            glTextureStorage1D(
-                _loadingHandle,
-                mipCount(),
-                glInternalFormat._format,
-                _width);
+            gl46core::glTextureStorage1D( _loadingHandle,
+                                          mipCount(),
+                                          glInternalFormat._format,
+                                          _width );
 
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
@@ -87,44 +83,40 @@ void glTexture::reserveStorage()
         {
             assert(descriptor().texType() == TextureType::TEXTURE_1D_ARRAY || _depth == 1u);
             if (msaaSamples == 0u) {
-                glTextureStorage2D(
-                    _loadingHandle,
-                    mipCount(),
-                    glInternalFormat._format,
-                    _width,
-                    descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? _depth : _height);
+                gl46core::glTextureStorage2D( _loadingHandle,
+                                              mipCount(),
+                                              glInternalFormat._format,
+                                              _width,
+                                              descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? _depth : _height );
             } else {
-                glTextureStorage2DMultisample(
-                    _loadingHandle,
-                    msaaSamples,
-                    glInternalFormat._format,
-                    _width,
-                    descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? _depth : _height,
-                    GL_TRUE);
+                gl46core::glTextureStorage2DMultisample( _loadingHandle,
+                                                         msaaSamples,
+                                                         glInternalFormat._format,
+                                                         _width,
+                                                         descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? _depth : _height,
+                                                         gl46core::GL_TRUE );
             }
         } break;
         case TextureType::TEXTURE_3D:
         {
             if (msaaSamples == 0u)
             {
-                glTextureStorage3D(
-                    _loadingHandle,
-                    mipCount(),
-                    glInternalFormat._format,
-                    _width,
-                    _height,
-                    _depth);
+                gl46core::glTextureStorage3D( _loadingHandle,
+                                              mipCount(),
+                                              glInternalFormat._format,
+                                              _width,
+                                              _height,
+                                              _depth );
             }
             else
             {
-                glTextureStorage3DMultisample(
-                    _loadingHandle,
-                    msaaSamples,
-                    glInternalFormat._format,
-                    _width,
-                    _height,
-                    _depth,
-                    GL_TRUE);
+                gl46core::glTextureStorage3DMultisample( _loadingHandle,
+                                                         msaaSamples,
+                                                         glInternalFormat._format,
+                                                         _width,
+                                                         _height,
+                                                         _depth,
+                                                         gl46core::GL_TRUE );
             }
         } break;
         case TextureType::TEXTURE_2D_ARRAY:
@@ -134,24 +126,22 @@ void glTexture::reserveStorage()
 
             if (msaaSamples == 0u)
             {
-                glTextureStorage3D(
-                    _loadingHandle,
-                    mipCount(),
-                    glInternalFormat._format,
-                    _width,
-                    _height,
-                    layerCount);
+                gl46core::glTextureStorage3D( _loadingHandle,
+                                              mipCount(),
+                                              glInternalFormat._format,
+                                              _width,
+                                              _height,
+                                              layerCount );
             }
             else
             {
-                glTextureStorage3DMultisample(
-                    _loadingHandle,
-                    msaaSamples,
-                    glInternalFormat._format,
-                    _width,
-                    _height,
-                    layerCount,
-                    GL_TRUE);
+                gl46core::glTextureStorage3DMultisample( _loadingHandle,
+                                                         msaaSamples,
+                                                         glInternalFormat._format,
+                                                         _width,
+                                                         _height,
+                                                         layerCount,
+                                                         gl46core::GL_TRUE );
             }
         } break;
         default: DIVIDE_UNEXPECTED_CALL(); break;
@@ -166,13 +156,13 @@ void glTexture::prepareTextureData(const U16 width, const U16 height, const U16 
 
     _type = GLUtil::internalTextureType(_descriptor.texType(), _descriptor.msaaSamples());
 
-    glCreateTextures(_type, 1, &_loadingHandle);
+    gl46core::glCreateTextures(_type, 1, &_loadingHandle);
     _hasStorage = false;
 
     assert(_loadingHandle != 0 && "glTexture error: failed to generate new texture handle!");
     if constexpr(Config::ENABLE_GPU_VALIDATION)
     {
-        glObjectLabel(GL_TEXTURE, _loadingHandle, -1, resourceName().c_str());
+        gl46core::glObjectLabel( gl46core::GL_TEXTURE, _loadingHandle, -1, resourceName().c_str());
     }
 
     reserveStorage();
@@ -180,18 +170,18 @@ void glTexture::prepareTextureData(const U16 width, const U16 height, const U16 
 
 void glTexture::submitTextureData()
 {
-    glTextureParameteri(_loadingHandle, GL_TEXTURE_BASE_LEVEL, _descriptor.mipBaseLevel());
-    glTextureParameteri(_loadingHandle, GL_TEXTURE_MAX_LEVEL, mipCount());
+    gl46core::glTextureParameteri(_loadingHandle, gl46core::GL_TEXTURE_BASE_LEVEL, _descriptor.mipBaseLevel() );
+    gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, mipCount());
 
     if (_descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO)
     {
-        glGenerateTextureMipmap(_loadingHandle);
+        gl46core::glGenerateTextureMipmap(_loadingHandle);
     }
 
     if (_textureHandle > 0u)
     {
         // Immutable storage requires us to create a new texture object 
-        glDeleteTextures(1, &_textureHandle);
+        gl46core::glDeleteTextures(1, &_textureHandle);
     }
 
     _textureHandle = _loadingHandle;
@@ -202,7 +192,7 @@ void glTexture::submitTextureData()
             GL_API::DestroyFenceSync(_loadSync);
         }
         _loadSync = GL_API::CreateFenceSync();
-        glFlush();
+        gl46core::glFlush();
     }
 
     Texture::submitTextureData();
@@ -252,11 +242,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
             if (isCompressed)
             {
-                glCompressedTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, static_cast<GLsizei>(size), data);
+                gl46core::glCompressedTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(size), data);
             }
             else
             {
-                glTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, formatAndType._dataType, data);
+                gl46core::glTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, formatAndType._dataType, data);
             }
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
@@ -266,11 +256,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
             if (isCompressed)
             {
-                glCompressedTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, static_cast<GLsizei>(size), data);
+                gl46core::glCompressedTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(size), data);
             }
             else
             {
-                glTextureSubImage2D(_loadingHandle, targetMip, offset.x, descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? offset.z : offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, formatAndType._dataType, data);
+                gl46core::glTextureSubImage2D(_loadingHandle, targetMip, offset.x, descriptor().texType() == TextureType::TEXTURE_1D_ARRAY ? offset.z : offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, formatAndType._dataType, data);
             }
         } break;
         case TextureType::TEXTURE_3D:
@@ -278,14 +268,13 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
         case TextureType::TEXTURE_CUBE_MAP:
         case TextureType::TEXTURE_CUBE_ARRAY:
         {
-
             if (isCompressed)
             {
-                glCompressedTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, static_cast<GLsizei>(size), data);
+                gl46core::glCompressedTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(size), data);
             }
             else
             {
-                glTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, formatAndType._dataType, data);
+                gl46core::glTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, formatAndType._dataType, data);
             }
         } break;
         default: break;
@@ -350,7 +339,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
 
     if ( layerRange._offset == 0u && (layerRange._count == U16_MAX || layerRange._count == _depth))
     {
-        glClearTexImage( _textureHandle, mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor.dataType() ) );
+        gl46core::glClearTexImage( _textureHandle, mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor.dataType() ) );
     }
     else
     {
@@ -365,17 +354,17 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
         const U16 mipWidth = _width >> mipLevel;
         const U16 mipHeight = _height >> mipLevel;
 
-        glClearTexSubImage(_textureHandle,
-                            mipLevel,
-                            0,
-                            _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange._offset : 0,
-                            layerOffset,
-                            mipWidth,
-                            _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange._count : mipHeight,
-                            depth,
-                            formatAndType._internalFormat,
-                            formatAndType._dataType,
-                            GetClearData( _descriptor.dataType() ) );
+        gl46core::glClearTexSubImage( _textureHandle,
+                                      mipLevel,
+                                      0,
+                                      _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange._offset : 0,
+                                      layerOffset,
+                                      mipWidth,
+                                      _descriptor.texType() == TextureType::TEXTURE_1D_ARRAY ? layerRange._count : mipHeight,
+                                      depth,
+                                      formatAndType._internalFormat,
+                                      formatAndType._dataType,
+                                      GetClearData( _descriptor.dataType() ) );
  
     }
 }
@@ -402,7 +391,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
             layerCount *= 6;
         }
 
-        glCopyImageSubData(
+        gl46core::glCopyImageSubData(
             //Source
             source->textureHandle(),
             GLUtil::internalTextureType(srcType, sourceSamples),
@@ -437,21 +426,21 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
     mipLevel = std::min(mipLevel, to_U8(mipCount() - 1u));
     if ( IsCompressed( _descriptor.baseFormat() ) )
     {
-        GLint compressedSize = 0;
-        glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel) , GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
+        gl46core::GLint compressedSize = 0;
+        gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel) , gl46core::GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
         if ( compressedSize > 0 )
         {
             grabData._data.resize(compressedSize);
-            glGetCompressedTextureImage( _textureHandle, mipLevel, compressedSize, (bufferPtr)grabData._data.data() );
+            gl46core::glGetCompressedTextureImage( _textureHandle, mipLevel, compressedSize, (bufferPtr)grabData._data.data() );
         }
     }
     else
     {
         grabData._numComponents = 4; //glGetTextureImage pads the data to RGBA
         {
-            GLint width = _width, height = _height;
-            glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_WIDTH,  &width );
-            glGetTextureLevelParameteriv(_textureHandle, static_cast<GLint>(mipLevel), GL_TEXTURE_HEIGHT, &height );
+            gl46core::GLint width = _width, height = _height;
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_WIDTH,  &width );
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_HEIGHT, &height );
             grabData._width = to_U16(width);
             grabData._height = to_U16(height);
         }
@@ -463,12 +452,12 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
 
         const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing() );
 
-        glGetTextureImage(_textureHandle,
-                          mipLevel,
-                          formatAndType._internalFormat,
-                          formatAndType._dataType,
-                          (GLsizei)grabData._data.size(),
-                          grabData._data.data());
+        gl46core::glGetTextureImage( _textureHandle,
+                                     mipLevel,
+                                     formatAndType._internalFormat,
+                                     formatAndType._dataType,
+                                     (gl46core::GLsizei)grabData._data.size(),
+                                     grabData._data.data() );
 
         GL_API::GetStateTracker().setPixelPackAlignment({});
     }

@@ -44,7 +44,7 @@ struct glSyncObject final : SyncObject
     ~glSyncObject() override;
     void reset() override;
 
-    gl::GLsync _syncObject{ nullptr };
+    gl46core::GLsync _syncObject{ nullptr };
 };
 
 // --------------------------------------------------------------------------------------------------------------------

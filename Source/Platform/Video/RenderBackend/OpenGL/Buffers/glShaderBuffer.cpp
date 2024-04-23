@@ -10,8 +10,6 @@
 
 #include "Utility/Headers/Localization.h"
 
-using namespace gl;
-
 namespace Divide
 {
 
@@ -35,8 +33,8 @@ namespace Divide
         BufferImplParams implParams;
         implParams._bufferParams = _params;
         implParams._target = (getUsage() == BufferUsageType::UNBOUND_BUFFER || getUsage() == BufferUsageType::COMMAND_BUFFER)
-            ? GL_SHADER_STORAGE_BUFFER
-            : GL_UNIFORM_BUFFER;
+                              ? gl46core::GL_SHADER_STORAGE_BUFFER
+                              : gl46core::GL_UNIFORM_BUFFER;
 
         implParams._dataSize = _alignedBufferSize * queueLength();
         implParams._useChunkAllocation = getUsage() != BufferUsageType::COMMAND_BUFFER;
@@ -80,7 +78,7 @@ namespace Divide
 
         if ( bindIndex == ShaderProgram::k_commandBufferID )
         {
-            result = GL_API::GetStateTracker().setActiveBuffer( GL_DRAW_INDIRECT_BUFFER, bufferImpl()->memoryBlock()._bufferHandle );
+            result = GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_DRAW_INDIRECT_BUFFER, bufferImpl()->memoryBlock()._bufferHandle );
             GL_API::GetStateTracker()._drawIndirectBufferOffset = bufferImpl()->memoryBlock()._offset + (readIndex * _alignedBufferSize);
         }
         else if ( range._length > 0 ) [[likely]]

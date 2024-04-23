@@ -7,12 +7,9 @@
 
 #include "Utility/Headers/Localization.h"
 
-using namespace gl;
-
 namespace Divide
 {
-
-    constexpr GLuint64 kOneSecondInNanoSeconds = 1000000000;
+    constexpr gl46core::GLuint64 kOneSecondInNanoSeconds = 1000000000;
 
     glSyncObject::glSyncObject( const U8 flag, const U64 frameIdx )
         : SyncObject(flag, frameIdx)
@@ -65,23 +62,23 @@ namespace Divide
         return ret;
     }
 
-    static bool Wait( GLsync sync, U8& retryCount )
+    static bool Wait( gl46core::GLsync sync, U8& retryCount )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        GLuint64 waitTimeout = 0u;
-        SyncObjectMask waitFlags = SyncObjectMask::GL_NONE_BIT;
+        gl46core::GLuint64 waitTimeout = 0u;
+        gl46core::SyncObjectMask waitFlags = gl46core::SyncObjectMask::GL_NONE_BIT;
         while ( true )
         {
             PROFILE_SCOPE( "Wait - OnLoop", Profiler::Category::Graphics );
             PROFILE_TAG( "RetryCount", retryCount );
 
-            const GLenum waitRet = glClientWaitSync( sync, waitFlags, waitTimeout );
-            if ( waitRet == GL_ALREADY_SIGNALED || waitRet == GL_CONDITION_SATISFIED )
+            const gl46core::GLenum waitRet = gl46core::glClientWaitSync( sync, waitFlags, waitTimeout );
+            if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED )
             {
                 return true;
             }
-            DIVIDE_ASSERT( waitRet != GL_WAIT_FAILED, "glLockManager::wait error: Not sure what to do here. Probably raise an exception or something." );
+            DIVIDE_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "glLockManager::wait error: Not sure what to do here. Probably raise an exception or something." );
 
             if ( retryCount == 1 )
             {
@@ -90,12 +87,12 @@ namespace Divide
             }
 
             // After the first time, need to start flushing, and wait for a looong time.
-            waitFlags = SyncObjectMask::GL_SYNC_FLUSH_COMMANDS_BIT;
+            waitFlags = gl46core::SyncObjectMask::GL_SYNC_FLUSH_COMMANDS_BIT;
             waitTimeout = kOneSecondInNanoSeconds;
 
             if ( ++retryCount > g_MaxLockWaitRetries )
             {
-                if ( waitRet != GL_TIMEOUT_EXPIRED ) [[unlikely]]
+                if ( waitRet != gl46core::GL_TIMEOUT_EXPIRED ) [[unlikely]]
                 {
                     Console::errorfn(LOCALE_STR("ERROR_GL_LOCK_WAIT_TIMEOUT"));
                 }

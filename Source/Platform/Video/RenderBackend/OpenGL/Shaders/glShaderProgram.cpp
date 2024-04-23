@@ -9,16 +9,15 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Utility/Headers/Localization.h"
 
-using namespace gl;
-
 namespace Divide {
 
-namespace {
+namespace
+{
     constexpr size_t g_validationBufferMaxSize = 64 * 1024;
     NO_DESTROY moodycamel::BlockingConcurrentQueue<ValidationEntry> g_sValidationQueue;
 
     SharedMutex      g_deletionSetLock;
-    NO_DESTROY eastl::set<GLuint> g_deletionSet;
+    NO_DESTROY eastl::set<gl46core::GLuint> g_deletionSet;
 }
 
 void glShaderProgram::Idle( [[maybe_unused]] PlatformContext& platformContext )
@@ -47,12 +46,12 @@ void glShaderProgram::ProcessValidationQueue()
 
     assert(s_validationOutputCache._handle != GL_NULL_HANDLE);
     
-    glValidateProgramPipeline(s_validationOutputCache._handle);
+    gl46core::glValidateProgramPipeline(s_validationOutputCache._handle);
 
-    GLint status = 1;
-    if (s_validationOutputCache._stageMask != UseProgramStageMask::GL_COMPUTE_SHADER_BIT)
+    gl46core::GLint status = 1;
+    if (s_validationOutputCache._stageMask != gl46core::UseProgramStageMask::GL_COMPUTE_SHADER_BIT)
     {
-        glGetProgramPipelineiv(s_validationOutputCache._handle, GL_VALIDATE_STATUS, &status);
+        gl46core::glGetProgramPipelineiv(s_validationOutputCache._handle, gl46core::GL_VALIDATE_STATUS, &status);
     }
 
     // we print errors in debug and in release, but everything else only in debug
@@ -61,14 +60,14 @@ void glShaderProgram::ProcessValidationQueue()
     if (status == 0)
     {
         // Query the size of the log
-        GLint length = 0;
-        glGetProgramPipelineiv(s_validationOutputCache._handle, GL_INFO_LOG_LENGTH, &length);
+        gl46core::GLint length = 0;
+        gl46core::glGetProgramPipelineiv(s_validationOutputCache._handle, gl46core::GL_INFO_LOG_LENGTH, &length);
         // If we actually have something in the validation log
         if (length > 1)
         {
             string validationBuffer;
             validationBuffer.resize(length);
-            glGetProgramPipelineInfoLog(s_validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
+            gl46core::glGetProgramPipelineInfoLog(s_validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
 
             // To avoid overflowing the output buffers (both CEGUI and Console), limit the maximum output size
             if (validationBuffer.size() > g_validationBufferMaxSize)
@@ -125,7 +124,7 @@ bool glShaderProgram::unload()
             }
         }
 
-        glDeleteProgramPipelines(1, &_glHandle);
+        gl46core::glDeleteProgramPipelines(1, &_glHandle);
         _glHandle = GL_NULL_HANDLE;
     }
 
@@ -150,7 +149,7 @@ void glShaderProgram::processValidation()
 
     _validationQueued = false;
 
-    UseProgramStageMask stageMask = UseProgramStageMask::GL_NONE_BIT;
+    gl46core::UseProgramStageMask stageMask = gl46core::UseProgramStageMask::GL_NONE_BIT;
     for ( glShaderEntry& shader : _shaderStage)
     {
         if (!shader._shader->valid())
@@ -177,17 +176,23 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
         if (!_stagesBound && rebind)
         {
             assert(getState() == ResourceState::RES_LOADED);
-            if (_glHandle == GL_NULL_HANDLE) {
-                glCreateProgramPipelines(1, &_glHandle);
-                if constexpr(Config::ENABLE_GPU_VALIDATION) {
-                    glObjectLabel(GL_PROGRAM_PIPELINE, _glHandle, -1, resourceName().c_str());
+            if (_glHandle == GL_NULL_HANDLE)
+            {
+                gl46core::glCreateProgramPipelines(1, &_glHandle);
+                if constexpr(Config::ENABLE_GPU_VALIDATION)
+                {
+                    gl46core::glObjectLabel( gl46core::GL_PROGRAM_PIPELINE,
+                                             _glHandle,
+                                             -1,
+                                             resourceName().c_str() );
                 }
                 // We can reuse previous handles
                 LockGuard<SharedMutex> w_lock(g_deletionSetLock);
                 g_deletionSet.erase(_glHandle);
             }
 
-            if (rebind) {
+            if (rebind)
+            {
                 assert(_glHandle != GL_NULL_HANDLE);
 
                 for ( glShaderEntry& shader : _shaderStage)
@@ -199,7 +204,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
                     }
 
                     // If a shader exists for said stage, attach it
-                    glUseProgramStages(_glHandle, shader._shader->stageMask(), shader._shader->handle());
+                    gl46core::glUseProgramStages(_glHandle, shader._shader->stageMask(), shader._shader->handle());
                 }
 
                 if (ret == ShaderResult::OK)
@@ -210,10 +215,12 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
             }
         }
     }
+
     return ret;
 }
 
-bool glShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, const bool overwrite ) {
+bool glShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, const bool overwrite )
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     if (ShaderProgram::loadInternal(fileData, overwrite))

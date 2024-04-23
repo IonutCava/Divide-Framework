@@ -11,11 +11,8 @@
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 
-using namespace gl;
-
 namespace Divide
 {
-
     glBufferImpl::glBufferImpl( GFXDevice& context, const BufferImplParams& params, const std::pair<const bufferPtr, size_t>& initialData, const char* name )
         : _params( params )
         , _context( context )
@@ -27,40 +24,40 @@ namespace Divide
         // Create all buffers with zero mem and then write the actual data that we have (If we want to initialise all memory)
         if ( params._bufferParams._flags._updateUsage == BufferUpdateUsage::GPU_TO_GPU || params._bufferParams._flags._updateFrequency == BufferUpdateFrequency::ONCE )
         {
-            GLenum usage = GL_NONE;
+            gl46core::GLenum usage = gl46core::GL_NONE;
             switch ( params._bufferParams._flags._updateFrequency )
             {
                 case BufferUpdateFrequency::ONCE:
                     switch ( params._bufferParams._flags._updateUsage )
                     {
-                        case BufferUpdateUsage::CPU_TO_GPU: usage = GL_STATIC_DRAW; break;
-                        case BufferUpdateUsage::GPU_TO_CPU: usage = GL_STATIC_READ; break;
-                        case BufferUpdateUsage::GPU_TO_GPU: usage = GL_STATIC_COPY; break;
+                        case BufferUpdateUsage::CPU_TO_GPU: usage = gl46core::GL_STATIC_DRAW; break;
+                        case BufferUpdateUsage::GPU_TO_CPU: usage = gl46core::GL_STATIC_READ; break;
+                        case BufferUpdateUsage::GPU_TO_GPU: usage = gl46core::GL_STATIC_COPY; break;
                         default: break;
                     }
                     break;
                 case BufferUpdateFrequency::OCASSIONAL:
                     switch ( params._bufferParams._flags._updateUsage )
                     {
-                        case BufferUpdateUsage::CPU_TO_GPU: usage = GL_DYNAMIC_DRAW; break;
-                        case BufferUpdateUsage::GPU_TO_CPU: usage = GL_DYNAMIC_READ; break;
-                        case BufferUpdateUsage::GPU_TO_GPU: usage = GL_DYNAMIC_COPY; break;
+                        case BufferUpdateUsage::CPU_TO_GPU: usage = gl46core::GL_DYNAMIC_DRAW; break;
+                        case BufferUpdateUsage::GPU_TO_CPU: usage = gl46core::GL_DYNAMIC_READ; break;
+                        case BufferUpdateUsage::GPU_TO_GPU: usage = gl46core::GL_DYNAMIC_COPY; break;
                         default: break;
                     }
                     break;
                 case BufferUpdateFrequency::OFTEN:
                     switch ( params._bufferParams._flags._updateUsage )
                     {
-                        case BufferUpdateUsage::CPU_TO_GPU: usage = GL_STREAM_DRAW; break;
-                        case BufferUpdateUsage::GPU_TO_CPU: usage = GL_STREAM_READ; break;
-                        case BufferUpdateUsage::GPU_TO_GPU: usage = GL_STREAM_COPY; break;
+                        case BufferUpdateUsage::CPU_TO_GPU: usage = gl46core::GL_STREAM_DRAW; break;
+                        case BufferUpdateUsage::GPU_TO_CPU: usage = gl46core::GL_STREAM_READ; break;
+                        case BufferUpdateUsage::GPU_TO_GPU: usage = gl46core::GL_STREAM_COPY; break;
                         default: break;
                     }
                     break;
                 default: break;
             }
 
-            DIVIDE_ASSERT( usage != GL_NONE );
+            DIVIDE_ASSERT( usage != gl46core::GL_NONE );
 
             GLUtil::createAndAllocBuffer( _params._dataSize,
                                           usage,
@@ -74,12 +71,12 @@ namespace Divide
         }
         else
         {
-            const BufferStorageMask storageMask = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
-            const BufferAccessMask  accessMask  = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
+            const gl46core::BufferStorageMask storageMask = gl46core::GL_MAP_PERSISTENT_BIT | gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_COHERENT_BIT;
+            const gl46core::BufferAccessMask  accessMask  = gl46core::GL_MAP_PERSISTENT_BIT | gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_COHERENT_BIT;
 
-            const size_t alignment = params._target == GL_UNIFORM_BUFFER
+            const size_t alignment = params._target == gl46core::GL_UNIFORM_BUFFER
                                                      ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO
-                                                     : _params._target == GL_SHADER_STORAGE_BUFFER
+                                                     : _params._target == gl46core::GL_SHADER_STORAGE_BUFFER
                                                                         ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO
                                                                         : GFXDevice::GetDeviceInformation()._offsetAlignmentBytesVBO;
 
@@ -172,7 +169,7 @@ namespace Divide
         {
             DIVIDE_ASSERT( data == nullptr || firstWrite, "glBufferImpl: trying to write to a buffer create with BufferUpdateFrequency::ONCE" );
 
-            Byte* ptr = (Byte*)glMapNamedBufferRange( _memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT );
+            Byte* ptr = (Byte*)gl46core::glMapNamedBufferRange( _memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_INVALIDATE_RANGE_BIT | gl46core::GL_MAP_UNSYNCHRONIZED_BIT );
             if ( data == nullptr )
             {
                 memset( ptr, 0, rangeInBytes );
@@ -181,7 +178,7 @@ namespace Divide
             {
                 memcpy( ptr, data, rangeInBytes );
             }
-            glUnmapNamedBuffer( _memoryBlock._bufferHandle );
+            gl46core::glUnmapNamedBuffer( _memoryBlock._bufferHandle );
         }
 
         return ret;
@@ -209,19 +206,19 @@ namespace Divide
                 GLUtil::freeBuffer( _copyBufferTarget );
                 _copyBufferSize = rangeInBytes;
                 GLUtil::createAndAllocBuffer( _copyBufferSize,
-                                              GL_STREAM_READ,
+                                              gl46core::GL_STREAM_READ,
                                               _copyBufferTarget,
                                               { nullptr, 0u },
                                               Util::StringFormat( "COPY_BUFFER_{}", _memoryBlock._bufferHandle ).c_str() );
 
                 _context.getPerformanceMetrics()._bufferVRAMUsage += _copyBufferSize;
             }
-            glCopyNamedBufferSubData( _memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, 0u, rangeInBytes );
+            gl46core::glCopyNamedBufferSubData( _memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, 0u, rangeInBytes );
 
-            const Byte* bufferData = (Byte*)glMapNamedBufferRange( _copyBufferTarget, 0u, rangeInBytes, BufferAccessMask::GL_MAP_READ_BIT );
+            const Byte* bufferData = (Byte*)gl46core::glMapNamedBufferRange( _copyBufferTarget, 0u, rangeInBytes, gl46core::BufferAccessMask::GL_MAP_READ_BIT );
             assert( bufferData != nullptr );
             memcpy( outData.first, bufferData, rangeInBytes );
-            glUnmapNamedBuffer( _copyBufferTarget );
+            gl46core::glUnmapNamedBuffer( _copyBufferTarget );
         }
     }
 

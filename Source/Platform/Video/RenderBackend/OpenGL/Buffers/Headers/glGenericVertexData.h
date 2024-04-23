@@ -69,8 +69,8 @@ class glGenericVertexData final : public GenericVertexData {
         IndexBuffer _data;
 
         size_t _bufferSize{0u};
-        gl::GLuint _handle{ GL_NULL_HANDLE };
-        gl::GLsync _idxBufferSync{ nullptr };
+        gl46core::GLuint _handle{ GL_NULL_HANDLE };
+        gl46core::GLsync _idxBufferSync{ nullptr };
     };
 
     vector<IndexBufferEntry> _idxBuffers;

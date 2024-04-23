@@ -10,8 +10,6 @@
 #include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 
-using namespace gl;
-
 namespace Divide
 {
 
@@ -51,7 +49,7 @@ namespace Divide
         {
             SharedLock<SharedMutex> w_lock( _idxBufferLock );
 
-            GLenum indexFormat = GL_NONE;
+            gl46core::GLenum indexFormat = gl46core::GL_NONE;
             if ( !_idxBuffers.empty())
             {
                 DIVIDE_ASSERT(command._bufferFlag < _idxBuffers.size());
@@ -59,15 +57,15 @@ namespace Divide
                 auto& idxBuffer = _idxBuffers[command._bufferFlag];
                 if ( idxBuffer._idxBufferSync != nullptr )
                 {
-                    glWaitSync( idxBuffer._idxBufferSync, UnusedMask::GL_UNUSED_BIT, GL_TIMEOUT_IGNORED );
+                    gl46core::glWaitSync( idxBuffer._idxBufferSync, gl46core::UnusedMask::GL_UNUSED_BIT, gl46core::GL_TIMEOUT_IGNORED );
                     GL_API::DestroyFenceSync( idxBuffer._idxBufferSync );
                 }
-                if ( GL_API::GetStateTracker().setActiveBuffer( GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle ) == GLStateTracker::BindResult::FAILED ) [[unlikely]]
+                if ( GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle ) == GLStateTracker::BindResult::FAILED ) [[unlikely]]
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
 
-                indexFormat = idxBuffer._data.count > 0u ? (idxBuffer._data.smallIndices ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT) : GL_NONE;
+                indexFormat = idxBuffer._data.count > 0u ? (idxBuffer._data.smallIndices ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT) : gl46core::GL_NONE;
             }
             else
             {
@@ -118,8 +116,8 @@ namespace Divide
             return {};
         }
 
-        const size_t elementSize = indices.smallIndices ? sizeof( GLushort ) : sizeof( GLuint );
-        const GLenum usage = indices.dynamic ? GL_STREAM_DRAW : GL_STATIC_DRAW;
+        const size_t elementSize = indices.smallIndices ? sizeof( gl46core::GLushort ) : sizeof( gl46core::GLuint );
+        const gl46core::GLenum usage = indices.dynamic ? gl46core::GL_STREAM_DRAW : gl46core::GL_STATIC_DRAW;
         if ( impl->_handle == GL_NULL_HANDLE )
         {
             impl->_data = indices;
@@ -146,12 +144,12 @@ namespace Divide
 
         if ( range == impl->_bufferSize )
         {
-            glNamedBufferData( impl->_handle, range, data, usage);
+            gl46core::glNamedBufferData( impl->_handle, range, data, usage);
         }
         else
         {
-            glInvalidateBufferSubData( impl->_handle, 0u, range );
-            glNamedBufferSubData( impl->_handle, 0u, range, data );
+            gl46core::glInvalidateBufferSubData( impl->_handle, 0u, range );
+            gl46core::glNamedBufferSubData( impl->_handle, 0u, range, data );
         }
 
         if ( !Runtime::isMainThread() )
@@ -162,7 +160,7 @@ namespace Divide
             }
 
             impl->_idxBufferSync = GL_API::CreateFenceSync();
-            glFlush();
+            gl46core::glFlush();
         }
 
         impl->_data._smallIndicesTemp.clear();
@@ -197,7 +195,7 @@ namespace Divide
         BufferImplParams implParams;
         implParams._bufferParams = params._bufferParams;
         implParams._dataSize = bufferSizeInBytes * ringSizeFactor;
-        implParams._target = GL_ARRAY_BUFFER;
+        implParams._target = gl46core::GL_ARRAY_BUFFER;
         implParams._useChunkAllocation = true;
 
         const size_t elementStride = params._elementStride == SetBufferParams::INVALID_ELEMENT_STRIDE

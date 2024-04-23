@@ -10,34 +10,32 @@
 
 #include "Utility/Headers/Localization.h"
 
-using namespace gl;
-
 namespace Divide
 {
 
     namespace
     {
         // GL_NONE returns the count
-        FORCE_INLINE GLint GetBufferTargetIndex( const GLenum target ) noexcept
+        FORCE_INLINE gl46core::GLint GetBufferTargetIndex( const gl46core::GLenum target ) noexcept
         {
             // Select the appropriate index in the array based on the buffer target
             switch ( target )
             {
-                case GL_TEXTURE_BUFFER: return 0;
-                case GL_UNIFORM_BUFFER: return 1;
-                case GL_SHADER_STORAGE_BUFFER: return 2;
-                case GL_PIXEL_UNPACK_BUFFER: return 3;
-                case GL_DRAW_INDIRECT_BUFFER: return 4;
-                case GL_ARRAY_BUFFER: return 5;
-                case GL_PARAMETER_BUFFER: return 6;
-                case GL_ELEMENT_ARRAY_BUFFER: return 7;
-                case GL_PIXEL_PACK_BUFFER: return 8;
-                case GL_TRANSFORM_FEEDBACK_BUFFER: return 9;
-                case GL_COPY_READ_BUFFER: return 10;
-                case GL_COPY_WRITE_BUFFER: return 11;
-                case GL_QUERY_BUFFER: return 12;
-                case GL_ATOMIC_COUNTER_BUFFER: return 13;
-                case GL_NONE: return 14;
+                case gl46core::GL_TEXTURE_BUFFER: return 0;
+                case gl46core::GL_UNIFORM_BUFFER: return 1;
+                case gl46core::GL_SHADER_STORAGE_BUFFER: return 2;
+                case gl46core::GL_PIXEL_UNPACK_BUFFER: return 3;
+                case gl46core::GL_DRAW_INDIRECT_BUFFER: return 4;
+                case gl46core::GL_ARRAY_BUFFER: return 5;
+                case gl46core::GL_PARAMETER_BUFFER: return 6;
+                case gl46core::GL_ELEMENT_ARRAY_BUFFER: return 7;
+                case gl46core::GL_PIXEL_PACK_BUFFER: return 8;
+                case gl46core::GL_TRANSFORM_FEEDBACK_BUFFER: return 9;
+                case gl46core::GL_COPY_READ_BUFFER: return 10;
+                case gl46core::GL_COPY_WRITE_BUFFER: return 11;
+                case gl46core::GL_QUERY_BUFFER: return 12;
+                case gl46core::GL_ATOMIC_COUNTER_BUFFER: return 13;
+                case gl46core::GL_NONE: return 14;
                 default: break;
             };
 
@@ -71,7 +69,7 @@ namespace Divide
         _activeShaderPipelineHandle = 0u;
         _alphaToCoverageEnabled = false;
         _blendPropertiesGlobal = {};
-        _blendEnabledGlobal = GL_FALSE;
+        _blendEnabledGlobal = gl46core::GL_FALSE;
         _currentBindConfig = {};
         _blendProperties.clear();
         _blendEnabled.clear();
@@ -96,9 +94,9 @@ namespace Divide
         _imageBoundMap.resize( GFXDevice::GetDeviceInformation()._maxTextureUnits );
 
         _blendProperties.resize( GFXDevice::GetDeviceInformation()._maxRTColourAttachments, BlendingSettings() );
-        _blendEnabled.resize( GFXDevice::GetDeviceInformation()._maxRTColourAttachments, GL_FALSE );
+        _blendEnabled.resize( GFXDevice::GetDeviceInformation()._maxRTColourAttachments, gl46core::GL_FALSE );
 
-        _activeBufferID = create_array<13, GLuint>( GL_NULL_HANDLE );
+        _activeBufferID = create_array<13, gl46core::GLuint>( GL_NULL_HANDLE );
         _textureBoundMap.fill( GL_NULL_HANDLE );
         _samplerBoundMap.fill( GL_NULL_HANDLE );
     }
@@ -131,28 +129,28 @@ namespace Divide
             {
                 if ( descriptor._dataType == GFXDataFormat::COUNT )
                 {
-                    glDisableVertexAttribArray( idx );
+                    gl46core::glDisableVertexAttribArray( idx );
                 }
                 else
                 {
-                    glEnableVertexAttribArray( idx );
-                    glVertexAttribBinding( idx, descriptor._vertexBindingIndex );
+                    gl46core::glEnableVertexAttribArray( idx );
+                    gl46core::glVertexAttribBinding( idx, descriptor._vertexBindingIndex );
                     const bool isIntegerType = descriptor._dataType != GFXDataFormat::FLOAT_16 && descriptor._dataType != GFXDataFormat::FLOAT_32;
 
                     if ( !isIntegerType || descriptor._normalized )
                     {
-                        glVertexAttribFormat( idx,
-                                              descriptor._componentsPerElement,
-                                              GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
-                                              descriptor._normalized ? GL_TRUE : GL_FALSE,
-                                              static_cast<GLuint>(descriptor._strideInBytes) );
+                        gl46core::glVertexAttribFormat( idx,
+                                                        descriptor._componentsPerElement,
+                                                        GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
+                                                        descriptor._normalized ? gl46core::GL_TRUE : gl46core::GL_FALSE,
+                                                        static_cast<gl46core::GLuint>(descriptor._strideInBytes) );
                     }
                     else
                     {
-                        glVertexAttribIFormat( idx,
-                                               descriptor._componentsPerElement,
-                                               GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
-                                               static_cast<GLuint>(descriptor._strideInBytes) );
+                        gl46core::glVertexAttribIFormat( idx,
+                                                         descriptor._componentsPerElement,
+                                                         GLUtil::glDataFormatTable[to_U32( descriptor._dataType )],
+                                                         static_cast<gl46core::GLuint>(descriptor._strideInBytes) );
                     }
                 }
                 _currentAttributes[idx] = descriptor;
@@ -164,7 +162,7 @@ namespace Divide
             const bool perInstanceDivisor = !vertBinding._perVertexInputRate;
             if ( _vaoBufferData.instanceDivisorFlag( vertBinding._bufferBindIndex ) != perInstanceDivisor )
             {
-                glVertexBindingDivisor( vertBinding._bufferBindIndex, perInstanceDivisor ? 1u : 0u );
+                gl46core::glVertexBindingDivisor( vertBinding._bufferBindIndex, perInstanceDivisor ? 1u : 0u );
                 _vaoBufferData.instanceDivisorFlag( vertBinding._bufferBindIndex, perInstanceDivisor );
             }
         }
@@ -192,25 +190,25 @@ namespace Divide
         bool changed = false;
         if ( _packAlignment._alignment != pixelPackAlignment._alignment )
         {
-            glPixelStorei( GL_PACK_ALIGNMENT, (GLint)pixelPackAlignment._alignment );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ALIGNMENT, (gl46core::GLint)pixelPackAlignment._alignment );
             changed = true;
         }
 
         if ( _packAlignment._rowLength != pixelPackAlignment._rowLength )
         {
-            glPixelStorei( GL_PACK_ROW_LENGTH, (GLint)pixelPackAlignment._rowLength );
+            gl46core::glPixelStorei( gl46core::GL_PACK_ROW_LENGTH, (gl46core::GLint)pixelPackAlignment._rowLength );
             changed = true;
         }
 
         if ( _packAlignment._skipRows != pixelPackAlignment._skipRows )
         {
-            glPixelStorei( GL_PACK_SKIP_ROWS, (GLint)pixelPackAlignment._skipRows );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_ROWS, (gl46core::GLint)pixelPackAlignment._skipRows );
             changed = true;
         }
 
         if ( _packAlignment._skipPixels != pixelPackAlignment._skipPixels )
         {
-            glPixelStorei( GL_PACK_SKIP_PIXELS, (GLint)pixelPackAlignment._skipPixels );
+            gl46core::glPixelStorei( gl46core::GL_PACK_SKIP_PIXELS, (gl46core::GLint)pixelPackAlignment._skipPixels );
             changed = true;
         }
 
@@ -232,25 +230,25 @@ namespace Divide
         bool changed = false;
         if ( _unpackAlignment._alignment != SIZE_MAX && _unpackAlignment._alignment != pixelUnpackAlignment._alignment )
         {
-            glPixelStorei( GL_UNPACK_ALIGNMENT, (GLint)pixelUnpackAlignment._alignment );
+            gl46core::glPixelStorei( gl46core::GL_UNPACK_ALIGNMENT, (gl46core::GLint)pixelUnpackAlignment._alignment );
             changed = true;
         }
 
         if ( pixelUnpackAlignment._rowLength != SIZE_MAX && _unpackAlignment._rowLength != pixelUnpackAlignment._rowLength )
         {
-            glPixelStorei( GL_UNPACK_ROW_LENGTH, (GLint)pixelUnpackAlignment._rowLength );
+            gl46core::glPixelStorei( gl46core::GL_UNPACK_ROW_LENGTH, (gl46core::GLint)pixelUnpackAlignment._rowLength );
             changed = true;
         }
 
         if ( pixelUnpackAlignment._skipRows != SIZE_MAX && _unpackAlignment._skipRows != pixelUnpackAlignment._skipRows )
         {
-            glPixelStorei( GL_UNPACK_SKIP_ROWS, (GLint)pixelUnpackAlignment._skipRows );
+            gl46core::glPixelStorei( gl46core::GL_UNPACK_SKIP_ROWS, (gl46core::GLint)pixelUnpackAlignment._skipRows );
             changed = true;
         }
 
         if ( pixelUnpackAlignment._skipPixels != SIZE_MAX && _unpackAlignment._skipPixels != pixelUnpackAlignment._skipPixels )
         {
-            glPixelStorei( GL_UNPACK_SKIP_PIXELS, (GLint)pixelUnpackAlignment._skipPixels );
+            gl46core::glPixelStorei( gl46core::GL_UNPACK_SKIP_PIXELS, (gl46core::GLint)pixelUnpackAlignment._skipPixels );
             changed = true;
         }
 
@@ -262,9 +260,9 @@ namespace Divide
         return changed;
     }
 
-    GLStateTracker::BindResult GLStateTracker::bindSamplers( const GLubyte unitOffset,
-                                                             const GLuint samplerCount,
-                                                             const GLuint* const samplerHandles )
+    GLStateTracker::BindResult GLStateTracker::bindSamplers( const gl46core::GLubyte unitOffset,
+                                                             const gl46core::GLuint samplerCount,
+                                                             const gl46core::GLuint* const samplerHandles )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -274,11 +272,11 @@ namespace Divide
         {
             if ( samplerCount == 1 )
             {
-                GLuint& handle = _samplerBoundMap[unitOffset];
-                const GLuint targetHandle = samplerHandles ? samplerHandles[0] : 0u;
+                gl46core::GLuint& handle = _samplerBoundMap[unitOffset];
+                const gl46core::GLuint targetHandle = samplerHandles ? samplerHandles[0] : 0u;
                 if ( handle != targetHandle )
                 {
-                    glBindSampler( unitOffset, targetHandle );
+                    gl46core::glBindSampler( unitOffset, targetHandle );
                     handle = targetHandle;
                     result = BindResult::JUST_BOUND;
                 }
@@ -288,11 +286,11 @@ namespace Divide
             {
                 // Update bound map
                 bool newBinding = false;
-                for ( GLubyte idx = 0u; idx < samplerCount; ++idx )
+                for ( gl46core::GLubyte idx = 0u; idx < samplerCount; ++idx )
                 {
                     const U8 slot = unitOffset + idx;
-                    const GLuint targetHandle = samplerHandles ? samplerHandles[idx] : 0u;
-                    GLuint& crtHandle = _samplerBoundMap[slot];
+                    const gl46core::GLuint targetHandle = samplerHandles ? samplerHandles[idx] : 0u;
+                    gl46core::GLuint& crtHandle = _samplerBoundMap[slot];
                     if ( crtHandle != targetHandle )
                     {
                         crtHandle = targetHandle;
@@ -306,7 +304,7 @@ namespace Divide
                 }
                 else
                 {
-                    glBindSamplers( unitOffset, samplerCount, samplerHandles );
+                    gl46core::glBindSamplers( unitOffset, samplerCount, samplerHandles );
                     result = BindResult::JUST_BOUND;
                 }
             }
@@ -315,7 +313,7 @@ namespace Divide
         return result;
     }
 
-    bool GLStateTracker::unbindTexture( [[maybe_unused]] const TextureType type, const GLuint handle )
+    bool GLStateTracker::unbindTexture( [[maybe_unused]] const TextureType type, const gl46core::GLuint handle )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -324,7 +322,7 @@ namespace Divide
             if ( _textureBoundMap[idx] == handle )
             {
                 _textureBoundMap[idx] = GL_NULL_HANDLE;
-                glBindTextureUnit( idx, 0u );
+                gl46core::glBindTextureUnit( idx, 0u );
                 if ( bindSamplers( idx, 1, nullptr ) == BindResult::FAILED )
                 {
                     DIVIDE_UNEXPECTED_CALL();
@@ -343,14 +341,14 @@ namespace Divide
         _textureBoundMap.fill( GL_NULL_HANDLE );
         _samplerBoundMap.fill( GL_NULL_HANDLE );
 
-        glBindTextures( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
-        glBindSamplers( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
+        gl46core::glBindTextures( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
+        gl46core::glBindSamplers( 0u, GFXDevice::GetDeviceInformation()._maxTextureUnits - 1, nullptr );
 
         return true;
     }
 
     /// Bind a texture specified by a GL handle and GL type to the specified unit using the sampler object defined by hash value
-    GLStateTracker::BindResult GLStateTracker::bindTexture( const GLubyte unit, const GLuint handle, const GLuint samplerHandle )
+    GLStateTracker::BindResult GLStateTracker::bindTexture( const gl46core::GLubyte unit, const gl46core::GLuint handle, const gl46core::GLuint samplerHandle )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -359,29 +357,29 @@ namespace Divide
 
         BindResult result = BindResult::ALREADY_BOUND;
 
-        GLuint& crtEntry = _textureBoundMap[unit];
+        gl46core::GLuint& crtEntry = _textureBoundMap[unit];
         if ( crtEntry != handle )
         {
             crtEntry = handle;
-            glBindTextureUnit( unit, handle );
+            gl46core::glBindTextureUnit( unit, handle );
             result = BindResult::JUST_BOUND;
         }
 
-        GLuint& crtSampler = _samplerBoundMap[unit];
+        gl46core::GLuint& crtSampler = _samplerBoundMap[unit];
         if ( crtSampler != samplerHandle )
         {
             crtSampler = samplerHandle;
-            glBindSampler( unit, samplerHandle );
+            gl46core::glBindSampler( unit, samplerHandle );
             result = BindResult::JUST_BOUND;
         }
 
         return result;
     }
 
-    GLStateTracker::BindResult GLStateTracker::bindTextures( const GLubyte unitOffset,
-                                                             const GLuint textureCount,
-                                                             const GLuint* const textureHandles,
-                                                             const GLuint* const samplerHandles )
+    GLStateTracker::BindResult GLStateTracker::bindTextures( const gl46core::GLubyte unitOffset,
+                                                             const gl46core::GLuint textureCount,
+                                                             const gl46core::GLuint* const textureHandles,
+                                                             const gl46core::GLuint* const samplerHandles )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -397,11 +395,11 @@ namespace Divide
         {
             // Update bound map
             bool newBinding = false;
-            for ( GLubyte idx = 0u; idx < textureCount; ++idx )
+            for ( gl46core::GLubyte idx = 0u; idx < textureCount; ++idx )
             {
                 const U8 slot = unitOffset + idx;
-                const GLuint targetHandle = textureHandles ? textureHandles[idx] : 0u;
-                GLuint& crtHandle = _textureBoundMap[slot];
+                const gl46core::GLuint targetHandle = textureHandles ? textureHandles[idx] : 0u;
+                gl46core::GLuint& crtHandle = _textureBoundMap[slot];
                 if ( crtHandle != targetHandle )
                 {
                     crtHandle = targetHandle;
@@ -415,7 +413,7 @@ namespace Divide
             }
             else
             {
-                glBindTextures( unitOffset, textureCount, textureHandles );
+                gl46core::glBindTextures( unitOffset, textureCount, textureHandles );
                 result = BindResult::JUST_BOUND;
             }
 
@@ -430,9 +428,9 @@ namespace Divide
         return result;
     }
 
-    GLStateTracker::BindResult GLStateTracker::bindTextureImage( const GLubyte unit, const GLuint handle, const GLint level,
-                                                                 const bool layered, const GLint layer, const GLenum access,
-                                                                 const GLenum format )
+    GLStateTracker::BindResult GLStateTracker::bindTextureImage( const gl46core::GLubyte unit, const gl46core::GLuint handle, const gl46core::GLint level,
+                                                                 const bool layered, const gl46core::GLint layer, const gl46core::GLenum access,
+                                                                 const gl46core::GLenum format )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -445,13 +443,13 @@ namespace Divide
             ._layer = layer,
             ._access = access,
             ._format = format,
-            ._layered = layered ? GL_TRUE : GL_FALSE
+            ._layered = layered ? gl46core::GL_TRUE : gl46core::GL_FALSE
         };
 
         ImageBindSettings& settings = _imageBoundMap[unit];
         if ( settings != tempSettings )
         {
-            glBindImageTexture( unit, handle, level, layered ? GL_TRUE : GL_FALSE, layer, access, format );
+            glBindImageTexture( unit, handle, level, layered ? gl46core::GL_TRUE : gl46core::GL_FALSE, layer, access, format );
             settings = tempSettings;
             return BindResult::JUST_BOUND;
         }
@@ -460,7 +458,7 @@ namespace Divide
     }
 
     /// Single place to change buffer objects for every target available
-    GLStateTracker::BindResult GLStateTracker::bindActiveBuffer( const GLuint location, GLuint bufferID, size_t offset, size_t stride )
+    GLStateTracker::BindResult GLStateTracker::bindActiveBuffer( const gl46core::GLuint location, gl46core::GLuint bufferID, size_t offset, size_t stride )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -475,7 +473,7 @@ namespace Divide
         if ( bindings != currentParams )
         {
             // Bind the specified buffer handle to the desired buffer target
-            glBindVertexBuffer( location, bufferID, static_cast<GLintptr>(offset), static_cast<GLsizei>(stride) );
+            gl46core::glBindVertexBuffer( location, bufferID, static_cast<gl46core::GLintptr>(offset), static_cast<gl46core::GLsizei>(stride) );
             // Remember the new binding for future reference
             _vaoBufferData.bindingParams( location, currentParams );
             return BindResult::JUST_BOUND;
@@ -484,12 +482,12 @@ namespace Divide
         return BindResult::ALREADY_BOUND;
     }
 
-    GLStateTracker::BindResult GLStateTracker::bindActiveBuffers( const GLuint location, const GLsizei count, GLuint* bufferIDs, GLintptr* offsets, GLsizei* strides )
+    GLStateTracker::BindResult GLStateTracker::bindActiveBuffers( const gl46core::GLuint location, const gl46core::GLsizei count, gl46core::GLuint* bufferIDs, gl46core::GLintptr* offsets, gl46core::GLsizei* strides )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         bool needsBind = false;
-        for ( GLsizei i = 0u; i < count; ++i )
+        for ( gl46core::GLsizei i = 0u; i < count; ++i )
         {
             const VAOBindings::BufferBindingParams& bindings = _vaoBufferData.bindingParams( i );
             const VAOBindings::BufferBindingParams currentParams
@@ -506,22 +504,22 @@ namespace Divide
         }
         if ( needsBind )
         {
-            glBindVertexBuffers( location, count, bufferIDs, offsets, strides );
+            gl46core::glBindVertexBuffers( location, count, bufferIDs, offsets, strides );
             return BindResult::JUST_BOUND;
         }
 
         return BindResult::ALREADY_BOUND;
     }
 
-    GLStateTracker::BindResult GLStateTracker::setActiveFB( const RenderTarget::Usage usage, const GLuint ID )
+    GLStateTracker::BindResult GLStateTracker::setActiveFB( const RenderTarget::Usage usage, const gl46core::GLuint ID )
     {
-        GLuint temp = 0;
+        gl46core::GLuint temp = 0;
         return setActiveFB( usage, ID, temp );
     }
 
     /// Switch the current framebuffer by binding it as either a R/W buffer, read
     /// buffer or write buffer
-    GLStateTracker::BindResult GLStateTracker::setActiveFB( const RenderTarget::Usage usage, GLuint ID, GLuint& previousID )
+    GLStateTracker::BindResult GLStateTracker::setActiveFB( const RenderTarget::Usage usage, gl46core::GLuint ID, gl46core::GLuint& previousID )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -559,18 +557,18 @@ namespace Divide
             {
                 // According to documentation this is equivalent to independent calls to
                 // bindFramebuffer(read, ID) and bindFramebuffer(write, ID)
-                glBindFramebuffer( GL_FRAMEBUFFER, ID );
+                gl46core::glBindFramebuffer( gl46core::GL_FRAMEBUFFER, ID );
                 // This also overrides the read and write bindings
                 _activeFBID[to_base( RenderTarget::Usage::RT_READ_ONLY )] = ID;
                 _activeFBID[to_base( RenderTarget::Usage::RT_WRITE_ONLY )] = ID;
             } break;
             case RenderTarget::Usage::RT_READ_ONLY:
             {
-                glBindFramebuffer( GL_READ_FRAMEBUFFER, ID );
+                gl46core::glBindFramebuffer( gl46core::GL_READ_FRAMEBUFFER, ID );
             } break;
             case RenderTarget::Usage::RT_WRITE_ONLY:
             {
-                glBindFramebuffer( GL_DRAW_FRAMEBUFFER, ID );
+                gl46core::glBindFramebuffer( gl46core::GL_DRAW_FRAMEBUFFER, ID );
             } break;
             default: DIVIDE_UNEXPECTED_CALL(); break;
         };
@@ -582,13 +580,13 @@ namespace Divide
     }
 
     /// Single place to change buffer objects for every target available
-    GLStateTracker::BindResult GLStateTracker::setActiveBuffer( const GLenum target, const GLuint bufferHandle, GLuint& previousID )
+    GLStateTracker::BindResult GLStateTracker::setActiveBuffer( const gl46core::GLenum target, const gl46core::GLuint bufferHandle, gl46core::GLuint& previousID )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        GLuint& crtBinding = target != GL_ELEMENT_ARRAY_BUFFER
-            ? _activeBufferID[GetBufferTargetIndex( target )]
-            : _activeVAOIB;
+        gl46core::GLuint& crtBinding = target != gl46core::GL_ELEMENT_ARRAY_BUFFER
+                                               ? _activeBufferID[GetBufferTargetIndex( target )]
+                                               : _activeVAOIB;
         previousID = crtBinding;
 
         // Prevent double bind (hope that this is the most common case. Should be.)
@@ -604,13 +602,13 @@ namespace Divide
         return BindResult::JUST_BOUND;
     }
 
-    GLStateTracker::BindResult GLStateTracker::setActiveBuffer( const GLenum target, const GLuint bufferHandle )
+    GLStateTracker::BindResult GLStateTracker::setActiveBuffer( const gl46core::GLenum target, const gl46core::GLuint bufferHandle )
     {
-        GLuint temp = 0u;
+        gl46core::GLuint temp = 0u;
         return setActiveBuffer( target, bufferHandle, temp );
     }
 
-    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange( const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes, GLuint& previousID )
+    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange( const gl46core::GLenum target, const gl46core::GLuint bufferHandle, const gl46core::GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes, gl46core::GLuint& previousID )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -627,11 +625,11 @@ namespace Divide
             entry = { bufferHandle, offsetInBytes, rangeInBytes };
             if ( offsetInBytes == 0u && rangeInBytes == 0u )
             {
-                glBindBufferBase( target, bindIndex, bufferHandle );
+                gl46core::glBindBufferBase( target, bindIndex, bufferHandle );
             }
             else
             {
-                glBindBufferRange( target, bindIndex, bufferHandle, offsetInBytes, rangeInBytes );
+                gl46core::glBindBufferRange( target, bindIndex, bufferHandle, offsetInBytes, rangeInBytes );
             }
             return BindResult::JUST_BOUND;
         }
@@ -639,25 +637,25 @@ namespace Divide
         return BindResult::ALREADY_BOUND;
     }
 
-    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndex( const GLenum target, const GLuint bufferHandle, const GLuint bindIndex )
+    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndex( const gl46core::GLenum target, const gl46core::GLuint bufferHandle, const gl46core::GLuint bindIndex )
     {
-        GLuint temp = 0u;
+        gl46core::GLuint temp = 0u;
         return setActiveBufferIndex( target, bufferHandle, bindIndex, temp );
     }
 
-    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndex( const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, GLuint& previousID )
+    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndex( const gl46core::GLenum target, const gl46core::GLuint bufferHandle, const gl46core::GLuint bindIndex, gl46core::GLuint& previousID )
     {
         return setActiveBufferIndexRange( target, bufferHandle, bindIndex, 0u, 0u, previousID );
     }
 
-    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange( const GLenum target, const GLuint bufferHandle, const GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes )
+    GLStateTracker::BindResult GLStateTracker::setActiveBufferIndexRange( const gl46core::GLenum target, const gl46core::GLuint bufferHandle, const gl46core::GLuint bindIndex, const size_t offsetInBytes, const size_t rangeInBytes )
     {
-        GLuint temp = 0u;
+        gl46core::GLuint temp = 0u;
         return setActiveBufferIndexRange( target, bufferHandle, bindIndex, offsetInBytes, rangeInBytes, temp );
     }
 
     /// Change the currently active shader program. Passing null will unbind shaders (will use program 0)
-    GLStateTracker::BindResult GLStateTracker::setActiveProgram( const GLuint programHandle )
+    GLStateTracker::BindResult GLStateTracker::setActiveProgram( const gl46core::GLuint programHandle )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -673,7 +671,7 @@ namespace Divide
             // Remember the new binding for future reference
             _activeShaderProgramHandle = programHandle;
             // Bind the new program
-            glUseProgram( programHandle );
+            gl46core::glUseProgram( programHandle );
             if ( programHandle == 0u )
             {
                 _activeShaderProgram = nullptr;
@@ -685,7 +683,7 @@ namespace Divide
     }
 
     /// Change the currently active shader pipeline. Passing null will unbind shaders (will use pipeline 0)
-    GLStateTracker::BindResult GLStateTracker::setActiveShaderPipeline( const GLuint pipelineHandle )
+    GLStateTracker::BindResult GLStateTracker::setActiveShaderPipeline( const gl46core::GLuint pipelineHandle )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -701,7 +699,7 @@ namespace Divide
             // Remember the new binding for future reference
             _activeShaderPipelineHandle = pipelineHandle;
             // Bind the new pipeline
-            glBindProgramPipeline( pipelineHandle );
+            gl46core::glBindProgramPipeline( pipelineHandle );
             if ( pipelineHandle == 0u )
             {
                 _activeShaderProgram = nullptr;
@@ -719,7 +717,7 @@ namespace Divide
             _blendColour.set( blendColour );
 
             const FColour4 floatColour = Util::ToFloatColour( blendColour );
-            glBlendColor( floatColour.r, floatColour.g, floatColour.b, floatColour.a );
+            gl46core::glBlendColor( floatColour.r, floatColour.g, floatColour.b, floatColour.a );
         }
     }
 
@@ -729,10 +727,10 @@ namespace Divide
 
         const bool enable = blendingProperties.enabled();
 
-        if ( _blendEnabledGlobal == GL_TRUE != enable )
+        if ( _blendEnabledGlobal == gl46core::GL_TRUE != enable )
         {
-            enable ? glEnable( GL_BLEND ) : glDisable( GL_BLEND );
-            _blendEnabledGlobal = enable ? GL_TRUE : GL_FALSE;
+            enable ? gl46core::glEnable( gl46core::GL_BLEND ) : gl46core::glDisable( gl46core::GL_BLEND );
+            _blendEnabledGlobal = enable ? gl46core::GL_TRUE : gl46core::GL_FALSE;
             std::fill( std::begin( _blendEnabled ), std::end( _blendEnabled ), _blendEnabledGlobal );
         }
 
@@ -745,19 +743,19 @@ namespace Divide
                      blendingProperties.blendSrcAlpha() != _blendPropertiesGlobal.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != _blendPropertiesGlobal.blendDestAlpha() )
                 {
-                    glBlendFuncSeparate( GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
-                                         GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )],
-                                         GLUtil::glBlendTable[to_base( blendingProperties.blendSrcAlpha() )],
-                                         GLUtil::glBlendTable[to_base( blendingProperties.blendDestAlpha() )] );
+                    gl46core::glBlendFuncSeparate( GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
+                                                   GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )],
+                                                   GLUtil::glBlendTable[to_base( blendingProperties.blendSrcAlpha() )],
+                                                   GLUtil::glBlendTable[to_base( blendingProperties.blendDestAlpha() )] );
                 }
 
                 if ( blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() ||
                      blendingProperties.blendOpAlpha() != _blendPropertiesGlobal.blendOpAlpha() )
                 {
-                    glBlendEquationSeparate( GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
-                                             ? to_base( blendingProperties.blendOp() )
-                                             : to_base( BlendOperation::ADD )],
-                                             GLUtil::glBlendOpTable[to_base( blendingProperties.blendOpAlpha() )] );
+                    gl46core::glBlendEquationSeparate( GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
+                                                                                                            ? to_base( blendingProperties.blendOp() )
+                                                                                                            : to_base( BlendOperation::ADD )],
+                                                       GLUtil::glBlendOpTable[to_base( blendingProperties.blendOpAlpha() )] );
                 }
             }
             else
@@ -765,14 +763,14 @@ namespace Divide
                 if ( blendingProperties.blendSrc() != _blendPropertiesGlobal.blendSrc() ||
                      blendingProperties.blendDest() != _blendPropertiesGlobal.blendDest() )
                 {
-                    glBlendFunc( GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
-                                 GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )] );
+                    gl46core::glBlendFunc( GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
+                                           GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )] );
                 }
                 if ( blendingProperties.blendOp() != _blendPropertiesGlobal.blendOp() )
                 {
-                    glBlendEquation( GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
-                                     ? to_base( blendingProperties.blendOp() )
-                                     : to_base( BlendOperation::ADD )] );
+                    gl46core::glBlendEquation( GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
+                                                                                                    ? to_base( blendingProperties.blendOp() )
+                                                                                                    : to_base( BlendOperation::ADD )] );
                 }
 
             }
@@ -783,7 +781,7 @@ namespace Divide
         }
     }
 
-    void GLStateTracker::setBlending( const GLuint drawBufferIdx, const BlendingSettings& blendingProperties )
+    void GLStateTracker::setBlending( const gl46core::GLuint drawBufferIdx, const BlendingSettings& blendingProperties )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -791,13 +789,13 @@ namespace Divide
 
         assert( drawBufferIdx < GFXDevice::GetDeviceInformation()._maxRTColourAttachments );
 
-        if ( _blendEnabled[drawBufferIdx] == GL_TRUE != enable )
+        if ( _blendEnabled[drawBufferIdx] == gl46core::GL_TRUE != enable )
         {
-            enable ? glEnablei( GL_BLEND, drawBufferIdx ) : glDisablei( GL_BLEND, drawBufferIdx );
-            _blendEnabled[drawBufferIdx] = enable ? GL_TRUE : GL_FALSE;
+            enable ? gl46core::glEnablei( gl46core::GL_BLEND, drawBufferIdx ) : gl46core::glDisablei( gl46core::GL_BLEND, drawBufferIdx );
+            _blendEnabled[drawBufferIdx] = enable ? gl46core::GL_TRUE : gl46core::GL_FALSE;
             if ( !enable )
             {
-                _blendEnabledGlobal = GL_FALSE;
+                _blendEnabledGlobal = gl46core::GL_FALSE;
             }
         }
 
@@ -812,11 +810,11 @@ namespace Divide
                      blendingProperties.blendSrcAlpha() != crtProperties.blendSrcAlpha() ||
                      blendingProperties.blendDestAlpha() != crtProperties.blendDestAlpha() )
                 {
-                    glBlendFuncSeparatei( drawBufferIdx,
-                                          GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
-                                          GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )],
-                                          GLUtil::glBlendTable[to_base( blendingProperties.blendSrcAlpha() )],
-                                          GLUtil::glBlendTable[to_base( blendingProperties.blendDestAlpha() )] );
+                    gl46core::glBlendFuncSeparatei( drawBufferIdx,
+                                                    GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
+                                                    GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )],
+                                                    GLUtil::glBlendTable[to_base( blendingProperties.blendSrcAlpha() )],
+                                                    GLUtil::glBlendTable[to_base( blendingProperties.blendDestAlpha() )] );
 
                     _blendPropertiesGlobal.blendSrc() = blendingProperties.blendSrc();
                     _blendPropertiesGlobal.blendDest() = blendingProperties.blendDest();
@@ -827,11 +825,11 @@ namespace Divide
                 if ( blendingProperties.blendOp() != crtProperties.blendOp() ||
                      blendingProperties.blendOpAlpha() != crtProperties.blendOpAlpha() )
                 {
-                    glBlendEquationSeparatei( drawBufferIdx,
-                                              GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
-                                              ? to_base( blendingProperties.blendOp() )
-                                              : to_base( BlendOperation::ADD )],
-                                              GLUtil::glBlendOpTable[to_base( blendingProperties.blendOpAlpha() )] );
+                    gl46core::glBlendEquationSeparatei( drawBufferIdx,
+                                                        GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
+                                                                                                             ? to_base( blendingProperties.blendOp() )
+                                                                                                             : to_base( BlendOperation::ADD )],
+                                                         GLUtil::glBlendOpTable[to_base( blendingProperties.blendOpAlpha() )] );
 
                     _blendPropertiesGlobal.blendOp() = blendingProperties.blendOp();
                     _blendPropertiesGlobal.blendOpAlpha() = blendingProperties.blendOpAlpha();
@@ -842,20 +840,20 @@ namespace Divide
                 if ( blendingProperties.blendSrc() != crtProperties.blendSrc() ||
                      blendingProperties.blendDest() != crtProperties.blendDest() )
                 {
-                    glBlendFunci( drawBufferIdx,
-                                  GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
-                                  GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )] );
-
+                    gl46core::glBlendFunci( drawBufferIdx,
+                                            GLUtil::glBlendTable[to_base( blendingProperties.blendSrc() )],
+                                            GLUtil::glBlendTable[to_base( blendingProperties.blendDest() )] );
+                                        
                     _blendPropertiesGlobal.blendSrc() = blendingProperties.blendSrc();
                     _blendPropertiesGlobal.blendDest() = blendingProperties.blendDest();
                 }
 
                 if ( blendingProperties.blendOp() != crtProperties.blendOp() )
                 {
-                    glBlendEquationi( drawBufferIdx,
-                                      GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
-                                      ? to_base( blendingProperties.blendOp() )
-                                      : to_base( BlendOperation::ADD )] );
+                    gl46core::glBlendEquationi( drawBufferIdx,
+                                                GLUtil::glBlendOpTable[blendingProperties.blendOp() != BlendOperation::COUNT
+                                                                                                     ? to_base( blendingProperties.blendOp() )
+                                                                                                     : to_base( BlendOperation::ADD )] );
                     _blendPropertiesGlobal.blendOp() = blendingProperties.blendOp();
                 }
             }
@@ -869,7 +867,7 @@ namespace Divide
     {
         if ( viewport.z > 0 && viewport.w > 0 && viewport != _activeViewport )
         {
-            glViewport( viewport.x, viewport.y, viewport.z, viewport.w );
+            gl46core::glViewport( viewport.x, viewport.y, viewport.z, viewport.w );
             _activeViewport.set( viewport );
             return true;
         }
@@ -881,7 +879,7 @@ namespace Divide
     {
         if ( colour != _activeClearColour )
         {
-            glClearColor( colour.r, colour.g, colour.b, colour.a );
+            gl46core::glClearColor( colour.r, colour.g, colour.b, colour.a );
             _activeClearColour.set( colour );
             return true;
         }
@@ -893,7 +891,7 @@ namespace Divide
     {
         if ( !COMPARE( _clearDepthValue, value ) )
         {
-            glClearDepth( value );
+            gl46core::glClearDepth( value );
             _clearDepthValue = value;
             return true;
         }
@@ -905,7 +903,7 @@ namespace Divide
     {
         if ( rect != _activeScissor )
         {
-            glScissor( rect.x, rect.y, rect.z, rect.w );
+            gl46core::glScissor( rect.x, rect.y, rect.z, rect.w );
             _activeScissor.set( rect );
             return true;
         }
@@ -920,11 +918,11 @@ namespace Divide
             _alphaToCoverageEnabled = state;
             if ( state )
             {
-                glEnable( GL_SAMPLE_ALPHA_TO_COVERAGE );
+                gl46core::glEnable( gl46core::GL_SAMPLE_ALPHA_TO_COVERAGE );
             }
             else
             {
-                glDisable( GL_SAMPLE_ALPHA_TO_COVERAGE );
+                gl46core::glDisable( gl46core::GL_SAMPLE_ALPHA_TO_COVERAGE );
             }
 
             return true;
@@ -933,28 +931,28 @@ namespace Divide
         return false;
     }
 
-    GLuint GLStateTracker::getBoundTextureHandle( const U8 slot )  const noexcept
+    gl46core::GLuint GLStateTracker::getBoundTextureHandle( const U8 slot )  const noexcept
     {
         return _textureBoundMap[slot];
     }
 
-    GLuint GLStateTracker::getBoundSamplerHandle( const U8 slot ) const noexcept
+    gl46core::GLuint GLStateTracker::getBoundSamplerHandle( const U8 slot ) const noexcept
     {
         return _samplerBoundMap[slot];
     }
 
-    GLuint GLStateTracker::getBoundProgramHandle() const noexcept
+    gl46core::GLuint GLStateTracker::getBoundProgramHandle() const noexcept
     {
         return _activeShaderPipelineHandle == 0u ? _activeShaderProgramHandle : _activeShaderPipelineHandle;
     }
 
-    GLuint GLStateTracker::getBoundBuffer( const GLenum target, const GLuint bindIndex ) const noexcept
+    gl46core::GLuint GLStateTracker::getBoundBuffer( const gl46core::GLenum target, const gl46core::GLuint bindIndex ) const noexcept
     {
         size_t offset, range;
         return getBoundBuffer( target, bindIndex, offset, range );
     }
 
-    GLuint GLStateTracker::getBoundBuffer( const GLenum target, const GLuint bindIndex, size_t& offsetOut, size_t& rangeOut ) const noexcept
+    gl46core::GLuint GLStateTracker::getBoundBuffer( const gl46core::GLenum target, const gl46core::GLuint bindIndex, size_t& offsetOut, size_t& rangeOut ) const noexcept
     {
         const BindConfigEntry& entry = _currentBindConfig[GetBufferTargetIndex( target )][bindIndex];
         offsetOut = entry._offset;
@@ -971,7 +969,7 @@ namespace Divide
     {
         if ( _activeState._depthWriteEnabled != state )
         {
-            glDepthMask( state ? GL_TRUE : GL_FALSE );
+            gl46core::glDepthMask( state ? gl46core::GL_TRUE : gl46core::GL_FALSE );
             return true;
         }
 
@@ -987,19 +985,19 @@ namespace Divide
         bool ret = false;
         if ( _activeState._stencilEnabled != newBlock._stencilEnabled )
         {
-            newBlock._stencilEnabled ? glEnable( GL_STENCIL_TEST ) : glDisable( GL_STENCIL_TEST );
+            newBlock._stencilEnabled ? gl46core::glEnable( gl46core::GL_STENCIL_TEST ) : gl46core::glDisable( gl46core::GL_STENCIL_TEST );
             ret = true;
         }
 
         if ( _activeState._depthTestEnabled != newBlock._depthTestEnabled )
         {
-            newBlock._depthTestEnabled ? glEnable( GL_DEPTH_TEST ) : glDisable( GL_DEPTH_TEST );
+            newBlock._depthTestEnabled ? gl46core::glEnable( gl46core::GL_DEPTH_TEST ) : gl46core::glDisable( gl46core::GL_DEPTH_TEST );
             ret = true;
         }
 
         if ( _activeState._scissorTestEnabled != newBlock._scissorTestEnabled )
         {
-            newBlock._scissorTestEnabled ? glEnable( GL_SCISSOR_TEST ) : glDisable( GL_SCISSOR_TEST );
+            newBlock._scissorTestEnabled ? gl46core::glEnable( gl46core::GL_SCISSOR_TEST ) : gl46core::glDisable( gl46core::GL_SCISSOR_TEST );
             ret = true;
         }
 
@@ -1011,16 +1009,16 @@ namespace Divide
         
         if ( _activeState._rasterizationEnabled != newBlock._rasterizationEnabled )
         {
-            newBlock._rasterizationEnabled ? glDisable( GL_RASTERIZER_DISCARD )
-                                           : glEnable( GL_RASTERIZER_DISCARD );
+            newBlock._rasterizationEnabled ? gl46core::glDisable( gl46core::GL_RASTERIZER_DISCARD )
+                                           : gl46core::glEnable( gl46core::GL_RASTERIZER_DISCARD );
             ret = true;
         }
 
         // Toggle primitive restart on or off
         if ( _activeState._primitiveRestartEnabled != newBlock._primitiveRestartEnabled )
         {
-            newBlock._primitiveRestartEnabled ? glEnable( GL_PRIMITIVE_RESTART_FIXED_INDEX )
-                                              : glDisable( GL_PRIMITIVE_RESTART_FIXED_INDEX );
+            newBlock._primitiveRestartEnabled ? gl46core::glEnable( gl46core::GL_PRIMITIVE_RESTART_FIXED_INDEX )
+                                              : gl46core::glDisable( gl46core::GL_PRIMITIVE_RESTART_FIXED_INDEX );
             ret = true;
         }
         // Check culling mode (back (CW) / front (CCW) by default)
@@ -1030,48 +1028,48 @@ namespace Divide
             {
                 if ( _activeState._cullMode == CullMode::NONE )
                 {
-                    glEnable( GL_CULL_FACE );
+                    gl46core::glEnable( gl46core::GL_CULL_FACE );
                 }
 
-                glCullFace( GLUtil::glCullModeTable[to_U32( newBlock._cullMode )] );
+                gl46core::glCullFace( GLUtil::glCullModeTable[to_U32( newBlock._cullMode )] );
             }
             else
             {
-                glDisable( GL_CULL_FACE );
+                gl46core::glDisable( gl46core::GL_CULL_FACE );
             }
             ret = true;
         }
 
         if ( _activeState._frontFaceCCW != newBlock._frontFaceCCW )
         {
-            glFrontFace( newBlock._frontFaceCCW ? GL_CCW : GL_CW );
+            gl46core::glFrontFace( newBlock._frontFaceCCW ? gl46core::GL_CCW : gl46core::GL_CW );
             ret = true;
         }
 
         // Check rasterization mode
         if ( _activeState._fillMode != newBlock._fillMode )
         {
-            glPolygonMode( GL_FRONT_AND_BACK, GLUtil::glFillModeTable[to_U32( newBlock._fillMode )] );
+            gl46core::glPolygonMode( gl46core::GL_FRONT_AND_BACK, GLUtil::glFillModeTable[to_U32( newBlock._fillMode )] );
             ret = true;
         }
 
         if ( _activeState._tessControlPoints != newBlock._tessControlPoints )
         {
-            glPatchParameteri( GL_PATCH_VERTICES, newBlock._tessControlPoints );
+            gl46core::glPatchParameteri( gl46core::GL_PATCH_VERTICES, newBlock._tessControlPoints );
             ret = true;
         }
 
         // Check the depth function
         if ( _activeState._zFunc != newBlock._zFunc )
         {
-            glDepthFunc( GLUtil::glCompareFuncTable[to_U32( newBlock._zFunc )] );
+            gl46core::glDepthFunc( GLUtil::glCompareFuncTable[to_U32( newBlock._zFunc )] );
             ret = true;
         }
 
         // Check if we need to change the stencil mask
         if ( _activeState._stencilWriteMask != newBlock._stencilWriteMask )
         {
-            glStencilMask( newBlock._stencilWriteMask );
+            gl46core::glStencilMask( newBlock._stencilWriteMask );
             ret = true;
         }
 
@@ -1080,9 +1078,9 @@ namespace Divide
              _activeState._stencilRef != newBlock._stencilRef ||
              _activeState._stencilMask != newBlock._stencilMask )
         {
-            glStencilFunc( GLUtil::glCompareFuncTable[to_U32( newBlock._stencilFunc )],
-                           newBlock._stencilRef,
-                           newBlock._stencilMask );
+            gl46core::glStencilFunc( GLUtil::glCompareFuncTable[to_U32( newBlock._stencilFunc )],
+                                     newBlock._stencilRef,
+                                     newBlock._stencilMask );
             ret = true;
         }
         // Stencil operation is also dependent  on 3 state parameters set together
@@ -1101,14 +1099,14 @@ namespace Divide
         {
             if ( IS_ZERO( newBlock._zBias ) )
             {
-                glDisable( GL_POLYGON_OFFSET_FILL );
+                gl46core::glDisable( gl46core::GL_POLYGON_OFFSET_FILL );
             }
             else
             {
-                glEnable( GL_POLYGON_OFFSET_FILL );
+                gl46core::glEnable( gl46core::GL_POLYGON_OFFSET_FILL );
                 if ( !COMPARE( _activeState._zBias, newBlock._zBias ) || !COMPARE( _activeState._zUnits, newBlock._zUnits ) )
                 {
-                    glPolygonOffset( newBlock._zBias, newBlock._zUnits );
+                    gl46core::glPolygonOffset( newBlock._zBias, newBlock._zUnits );
                 }
             }
             ret = true;
@@ -1118,10 +1116,10 @@ namespace Divide
         if ( _activeState._colourWrite.i != newBlock._colourWrite.i )
         {
             const P32 cWrite = newBlock._colourWrite;
-            glColorMask( cWrite.b[0] == 1 ? GL_TRUE : GL_FALSE,   // R
-                         cWrite.b[1] == 1 ? GL_TRUE : GL_FALSE,   // G
-                         cWrite.b[2] == 1 ? GL_TRUE : GL_FALSE,   // B
-                         cWrite.b[3] == 1 ? GL_TRUE : GL_FALSE ); // A
+            gl46core::glColorMask( cWrite.b[0] == 1 ? gl46core::GL_TRUE : gl46core::GL_FALSE,   // R
+                                   cWrite.b[1] == 1 ? gl46core::GL_TRUE : gl46core::GL_FALSE,   // G
+                                   cWrite.b[2] == 1 ? gl46core::GL_TRUE : gl46core::GL_FALSE,   // B
+                                   cWrite.b[3] == 1 ? gl46core::GL_TRUE : gl46core::GL_FALSE ); // A
 
             ret = true;
         }

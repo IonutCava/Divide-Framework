@@ -3,8 +3,6 @@
 #include "Headers/glHardwareQuery.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
-using namespace gl;
-
 namespace Divide {
 
 glHardwareQuery::glHardwareQuery() noexcept
@@ -12,37 +10,43 @@ glHardwareQuery::glHardwareQuery() noexcept
 {
 }
 
-void glHardwareQuery::create([[maybe_unused]] const GLenum queryType) {
+void glHardwareQuery::create([[maybe_unused]] const gl46core::GLenum queryType)
+{
     destroy();
-    glGenQueries(1, &_queryID);
+    gl46core::glGenQueries(1, &_queryID);
 }
 
-void glHardwareQuery::destroy() {
-    if (_queryID != 0u) {
-        glDeleteQueries(1, &_queryID);
+void glHardwareQuery::destroy()
+{
+    if (_queryID != 0u)
+    {
+        gl46core::glDeleteQueries(1, &_queryID);
     }
     _queryID = 0u;
 }
 
-bool glHardwareQuery::isResultAvailable() const {
-    GLint available = 0;
-    glGetQueryObjectiv(getID(), GL_QUERY_RESULT_AVAILABLE, &available);
+bool glHardwareQuery::isResultAvailable() const
+{
+    gl46core::GLint available = 0;
+    gl46core::glGetQueryObjectiv(getID(), gl46core::GL_QUERY_RESULT_AVAILABLE, &available);
     return available != 0;
 }
 
-I64 glHardwareQuery::getResult() const {
-    GLint64 res = 0;
-    glGetQueryObjecti64v(getID(), GL_QUERY_RESULT, &res);
+I64 glHardwareQuery::getResult() const
+{
+    gl46core::GLint64 res = 0;
+    gl46core::glGetQueryObjecti64v(getID(), gl46core::GL_QUERY_RESULT, &res);
     return res;
 }
 
-I64 glHardwareQuery::getResultNoWait() const {
-    GLint64 res = 0;
-    glGetQueryObjecti64v(getID(), GL_QUERY_RESULT_NO_WAIT, &res);
+I64 glHardwareQuery::getResultNoWait() const
+{
+    gl46core::GLint64 res = 0;
+    gl46core::glGetQueryObjecti64v(getID(), gl46core::GL_QUERY_RESULT_NO_WAIT, &res);
     return res;
 }
 
-glHardwareQueryRing::glHardwareQueryRing(GFXDevice& context, const GLenum queryType, const U16 queueLength, const U32 id)
+glHardwareQueryRing::glHardwareQueryRing(GFXDevice& context, const gl46core::GLenum queryType, const U16 queueLength, const U32 id)
     : RingBufferSeparateWrite(queueLength, true),
       _context(context),
       _id(id),
@@ -60,45 +64,54 @@ glHardwareQueryRing::~glHardwareQueryRing()
     _queries.clear();
 }
 
-const glHardwareQuery& glHardwareQueryRing::readQuery() const {
+const glHardwareQuery& glHardwareQueryRing::readQuery() const
+{
     return _queries[queueReadIndex()];
 }
 
-const glHardwareQuery& glHardwareQueryRing::writeQuery() const {
+const glHardwareQuery& glHardwareQueryRing::writeQuery() const
+{
     return _queries[queueWriteIndex()];
 }
 
-void glHardwareQueryRing::resize(const U16 queueLength) {
+void glHardwareQueryRing::resize(const U16 queueLength)
+{
     RingBufferSeparateWrite::resize(queueLength);
 
     const size_t crtCount = _queries.size();
-    if (queueLength < crtCount) {
-        while (queueLength < crtCount) {
+    if (queueLength < crtCount)
+    {
+        while (queueLength < crtCount)
+        {
             _queries.back().destroy();
             _queries.pop_back();
         }
-    } else {
+    }
+    else
+    {
         const size_t countToAdd = queueLength - crtCount;
 
-        for (size_t i = 0; i < countToAdd; ++i) {
+        for (size_t i = 0; i < countToAdd; ++i)
+        {
             _queries.emplace_back().create(_queryType);
 
             //Prime the query
-            glBeginQuery(_queryType, _queries.back().getID());
-            glEndQuery(_queryType);
+            gl46core::glBeginQuery(_queryType, _queries.back().getID());
+            gl46core::glEndQuery(_queryType);
         }
     }
 }
 
 
-void glHardwareQueryRing::begin() const {
-    glBeginQuery(_queryType, writeQuery().getID());
+void glHardwareQueryRing::begin() const
+{
+    gl46core::glBeginQuery(_queryType, writeQuery().getID());
 }
 
-void glHardwareQueryRing::end() const {
-    glEndQuery(_queryType);
+void glHardwareQueryRing::end() const
+{
+    gl46core::glEndQuery(_queryType);
 }
-
 
 glHardwareQueryPool::glHardwareQueryPool(GFXDevice& context)
     : _context(context)
@@ -110,35 +123,45 @@ glHardwareQueryPool::~glHardwareQueryPool()
     destroy();
 }
 
-void glHardwareQueryPool::init(const hashMap<GLenum, U32>& sizes) {
+void glHardwareQueryPool::init(const hashMap<gl46core::GLenum, U32>& sizes)
+{
     destroy();
-    for (auto [type, size] : sizes) {
+    for (auto [type, size] : sizes) 
+    {
         const U32 j = std::max(size, 1u);
         _index[type] = 0;
         auto& pool = _queryPool[type];
-        for (U32 i = 0; i < j; ++i) {
+        for (U32 i = 0; i < j; ++i)
+        {
             pool.emplace_back(MemoryManager_NEW glHardwareQueryRing(_context, type, 1, i));
         }
     }
 }
 
-void glHardwareQueryPool::destroy() {
-    for (auto& [type, container] : _queryPool) {
+void glHardwareQueryPool::destroy()
+{
+    for (auto& [type, container] : _queryPool)
+    {
         MemoryManager::DELETE_CONTAINER(container);
     }
+
     _queryPool.clear();
 }
 
-glHardwareQueryRing& glHardwareQueryPool::allocate(const GLenum queryType) {
+glHardwareQueryRing& glHardwareQueryPool::allocate(const gl46core::GLenum queryType)
+{
     return *_queryPool[queryType][++_index[queryType]];
 }
 
-void glHardwareQueryPool::deallocate(const glHardwareQueryRing& query) {
-    const GLenum type = query.type();
+void glHardwareQueryPool::deallocate(const glHardwareQueryRing& query)
+{
+    const gl46core::GLenum type = query.type();
     U32& index = _index[type];
     auto& pool = _queryPool[type];
-    for (U32 i = 0; i < index; ++i) {
-        if (pool[i]->id() == query.id()) {
+    for (U32 i = 0; i < index; ++i)
+    {
+        if (pool[i]->id() == query.id())
+        {
             std::swap(pool[i], pool[index - 1]);
             --index;
             return;

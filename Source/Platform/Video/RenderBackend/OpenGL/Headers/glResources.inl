@@ -37,87 +37,87 @@ namespace Divide {
 namespace GLUtil {
 
 template<typename T>
-void getGLValue(const gl::GLenum param, T& value, const gl::GLint index)
+void getGLValue(const gl46core::GLenum param, T& value, const gl46core::GLint index)
 {
-    gl::GLint valueTemp = 0;
+    gl46core::GLint valueTemp = 0;
     if (index < 0)
     {
-        gl::glGetIntegerv(param, &valueTemp);
+        gl46core::glGetIntegerv(param, &valueTemp);
     }
     else
     {
-        gl::glGetIntegeri_v(param, static_cast<gl::GLuint>(index), &valueTemp);
+        gl46core::glGetIntegeri_v(param, static_cast<gl46core::GLuint>(index), &valueTemp);
     }
 
     value = static_cast<T>(valueTemp);
 }
 
 template<typename T>
-void getGLValue(const gl::GLenum param, T* value)
+void getGLValue(const gl46core::GLenum param, T* value)
 {
-    gl::glGetIntegerv(param, value);
+    gl46core::glGetIntegerv(param, value);
 }
 
 template<>
-inline void getGLValue(const gl::GLenum param, U32& value, const gl::GLint index)
+inline void getGLValue(const gl46core::GLenum param, U32& value, const gl46core::GLint index)
 {
-    value = static_cast<U32>(getGLValueIndexed<gl::GLint>(param, index));
+    value = static_cast<U32>(getGLValueIndexed<gl46core::GLint>(param, index));
 }
 
 template<>
-inline void getGLValue(const gl::GLenum param, F32& value, const gl::GLint index)
+inline void getGLValue(const gl46core::GLenum param, F32& value, const gl46core::GLint index)
 {
     if (index < 0)
     {
-        gl::glGetFloatv(param, &value);
+        gl46core::glGetFloatv(param, &value);
     }
     else
     {
-        gl::glGetFloati_v(param, static_cast<gl::GLuint>(index), &value);
+        gl46core::glGetFloati_v(param, static_cast<gl46core::GLuint>(index), &value);
     }
 }
 
 template<>
-inline void getGLValue(const gl::GLenum param, gl::GLboolean& value, const gl::GLint index)
+inline void getGLValue(const gl46core::GLenum param, gl46core::GLboolean& value, const gl46core::GLint index)
 {
     if (index < 0)
     {
-        gl::glGetBooleanv(param, &value);
+        gl46core::glGetBooleanv(param, &value);
     }
     else
     {
-        gl::glGetBooleani_v(param, static_cast<gl::GLuint>(index), &value);
+        gl46core::glGetBooleani_v(param, static_cast<gl46core::GLuint>(index), &value);
     }
 }
 
 template<>
-inline void getGLValue(const gl::GLenum param, D64& value, const gl::GLint index)
+inline void getGLValue(const gl46core::GLenum param, D64& value, const gl46core::GLint index)
 {
     if (index < 0)
     {
-        gl::glGetDoublev(param, &value);
+        gl46core::glGetDoublev(param, &value);
     }
     else
     {
-        gl::glGetDoublei_v(param, static_cast<gl::GLuint>(index), &value);
+        gl46core::glGetDoublei_v(param, static_cast<gl46core::GLuint>(index), &value);
     }
 }
 
 template<>
-inline void getGLValue(const gl::GLenum param, gl::GLint64& value, const gl::GLint index)
+inline void getGLValue(const gl46core::GLenum param, gl46core::GLint64& value, const gl46core::GLint index)
 {
     if (index < 0)
     {
-        gl::glGetInteger64v(param, &value);
+        gl46core::glGetInteger64v(param, &value);
     }
     else
     {
-        gl::glGetInteger64i_v(param, static_cast<gl::GLuint>(index), &value);
+        gl46core::glGetInteger64i_v(param, static_cast<gl46core::GLuint>(index), &value);
     }
 }
 
 template<typename T>
-T getGLValue( gl::GLenum param)
+T getGLValue( gl46core::GLenum param)
 {
     T ret = {};
     getGLValue(param, ret, -1);
@@ -125,7 +125,7 @@ T getGLValue( gl::GLenum param)
 }
 
 template<typename T>
-T getGLValueIndexed( gl::GLenum param, gl::GLint index)
+T getGLValueIndexed( gl46core::GLenum param, gl46core::GLint index)
 {
     T ret = {};
     getGLValue(param, ret, index);

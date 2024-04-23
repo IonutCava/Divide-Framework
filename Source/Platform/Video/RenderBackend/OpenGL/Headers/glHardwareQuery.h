@@ -46,7 +46,7 @@ class glHardwareQuery {
 public:
     explicit glHardwareQuery() noexcept;
 
-    void create( gl::GLenum queryType);
+    void create( gl46core::GLenum queryType);
     void destroy();
 
     [[nodiscard]] bool isResultAvailable() const;
@@ -65,7 +65,7 @@ protected:
 class glHardwareQueryRing final : public RingBufferSeparateWrite {
 
 public:
-    explicit glHardwareQueryRing(GFXDevice& context, gl::GLenum queryType, U16 queueLength, U32 id = 0);
+    explicit glHardwareQueryRing(GFXDevice& context, gl46core::GLenum queryType, U16 queueLength, U32 id = 0);
     ~glHardwareQueryRing() override;
 
     void resize(U16 queueLength) override;
@@ -87,7 +87,7 @@ public:
         return readQuery().getResultNoWait();
     }
 
-    gl::GLenum type() const noexcept {
+    gl46core::GLenum type() const noexcept {
         return _queryType;
     }
 protected:
@@ -98,7 +98,7 @@ protected:
     GFXDevice& _context;
     vector<glHardwareQuery> _queries;
     U32 _id = 0u;
-    gl::GLenum _queryType = gl::GL_NONE;
+    gl46core::GLenum _queryType = gl46core::GL_NONE;
 };
 
 FWD_DECLARE_MANAGED_CLASS(glHardwareQueryRing);
@@ -108,15 +108,15 @@ public:
     explicit glHardwareQueryPool(GFXDevice& context);
     ~glHardwareQueryPool();
 
-    void init(const hashMap<gl::GLenum, U32>& sizes);
+    void init(const hashMap<gl46core::GLenum, U32>& sizes);
     void destroy();
 
-    glHardwareQueryRing& allocate( gl::GLenum queryType);
+    glHardwareQueryRing& allocate( gl46core::GLenum queryType);
     void deallocate(const glHardwareQueryRing& query);
 
 private:
-    hashMap<gl::GLenum, vector<glHardwareQueryRing*>> _queryPool;
-    hashMap<gl::GLenum, U32> _index;
+    hashMap<gl46core::GLenum, vector<glHardwareQueryRing*>> _queryPool;
+    hashMap<gl46core::GLenum, U32> _index;
 
     GFXDevice& _context;
 };

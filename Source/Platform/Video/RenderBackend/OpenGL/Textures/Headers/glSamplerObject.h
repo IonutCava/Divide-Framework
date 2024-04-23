@@ -41,8 +41,8 @@ struct SamplerDescriptor;
 
 class glSamplerObject {
    public:
-    static gl::GLuint Construct(const SamplerDescriptor& descriptor);
-    static void Destruct( gl::GLuint& handle);
+    static gl46core::GLuint Construct(const SamplerDescriptor& descriptor);
+    static void Destruct( gl46core::GLuint& handle);
 };
 
 };  // namespace Divide

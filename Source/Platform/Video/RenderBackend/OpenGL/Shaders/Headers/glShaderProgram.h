@@ -47,8 +47,8 @@ struct PushConstantsStruct;
 struct ValidationEntry
 {
     Str<256> _name{};
-    gl::GLuint _handle{ GL_NULL_HANDLE };
-    gl::UseProgramStageMask _stageMask{ gl::UseProgramStageMask::GL_NONE_BIT };
+    gl46core::GLuint _handle{ GL_NULL_HANDLE };
+    gl46core::UseProgramStageMask _stageMask{ gl46core::UseProgramStageMask::GL_NONE_BIT };
 };
 
 namespace Attorney {
@@ -91,7 +91,7 @@ class glShaderProgram final : public ShaderProgram {
     static void ProcessValidationQueue();
 
    private:
-    gl::GLuint _glHandle = GL_NULL_HANDLE;
+    gl46core::GLuint _glHandle = GL_NULL_HANDLE;
 
     bool _validationQueued = false;
     bool _stagesBound = false;

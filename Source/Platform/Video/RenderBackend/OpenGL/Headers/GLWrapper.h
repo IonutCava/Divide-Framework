@@ -109,7 +109,7 @@ private:
 
     [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
-    [[nodiscard]] bool makeTextureViewResident( gl::GLubyte bindingSlot, const ImageView& imageView, SamplerDescriptor sampler, size_t& samplerHashInOut ) const;
+    [[nodiscard]] bool makeTextureViewResident( gl46core::GLubyte bindingSlot, const ImageView& imageView, SamplerDescriptor sampler, size_t& samplerHashInOut ) const;
 
     bool setViewportInternal(const Rect<I32>& viewport) override;
     bool setScissorInternal( const Rect<I32>& scissor ) override;
@@ -117,7 +117,7 @@ private:
 
     void flushTextureBindQueue();
 
-    [[nodiscard]] gl::GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames) const;
+    [[nodiscard]] gl46core::GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames) const;
 
     void initDescriptorSets() override;
 
@@ -131,7 +131,7 @@ private:
 
 public:
     [[nodiscard]] static GLStateTracker& GetStateTracker() noexcept;
-    [[nodiscard]] static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage(gl::GLenum usage) noexcept;
+    [[nodiscard]] static GLUtil::GLMemory::GLMemoryType GetMemoryTypeForUsage( gl46core::GLenum usage) noexcept;
     [[nodiscard]] static GLUtil::GLMemory::DeviceAllocator& GetMemoryAllocator(GLUtil::GLMemory::GLMemoryType memoryType) noexcept;
 
     static void QueueFlush() noexcept;
@@ -140,17 +140,17 @@ public:
     static void PushDebugMessage( const char* message, U32 id = U32_MAX );
     static void PopDebugMessage();
 
-    [[nodiscard]] static bool DeleteShaderPrograms( gl::GLuint count, gl::GLuint * programs);
-    [[nodiscard]] static bool DeleteSamplers( gl::GLuint count, gl::GLuint* samplers);
-    [[nodiscard]] static bool DeleteBuffers( gl::GLuint count, gl::GLuint* buffers);
-    [[nodiscard]] static bool DeleteFramebuffers( gl::GLuint count, gl::GLuint* framebuffers);
+    [[nodiscard]] static bool DeleteShaderPrograms( gl46core::GLuint count, gl46core::GLuint * programs);
+    [[nodiscard]] static bool DeleteSamplers( gl46core::GLuint count, gl46core::GLuint* samplers);
+    [[nodiscard]] static bool DeleteBuffers( gl46core::GLuint count, gl46core::GLuint* buffers);
+    [[nodiscard]] static bool DeleteFramebuffers( gl46core::GLuint count, gl46core::GLuint* framebuffers);
 
-    [[nodiscard]] static gl::GLuint GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
+    [[nodiscard]] static gl46core::GLuint GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
 
     [[nodiscard]] static glHardwareQueryPool* GetHardwareQueryPool() noexcept;
 
-    [[nodiscard]] static gl::GLsync CreateFenceSync();
-    static void DestroyFenceSync( gl::GLsync& sync);
+    [[nodiscard]] static gl46core::GLsync CreateFenceSync();
+    static void DestroyFenceSync( gl46core::GLsync& sync);
 
 protected:
     static ShaderResult BindPipeline(GFXDevice& context, const Pipeline& pipeline);
@@ -176,15 +176,15 @@ private:
 
     struct TexBindEntry
     {
-        gl::GLubyte _slot{ INVALID_TEXTURE_BINDING };
-        gl::GLuint _handle{ GL_NULL_HANDLE };
-        gl::GLuint _sampler{ GL_NULL_HANDLE };
+        gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
+        gl46core::GLuint _handle{ GL_NULL_HANDLE };
+        gl46core::GLuint _sampler{ GL_NULL_HANDLE };
     };
 
     static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
-    using SamplerObjectMap = hashMap<size_t, gl::GLuint>;
+    using SamplerObjectMap = hashMap<size_t, gl46core::GLuint>;
 
 private:
     GFXDevice& _context;
@@ -200,7 +200,7 @@ private:
     bool _pushConstantsNeedLock{false};
     GFX::MemoryBarrierCommand _pushConstantsMemCommand{};
 
-    gl::GLuint _dummyVAO{ GL_NULL_HANDLE };
+    gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
 
 private:
 

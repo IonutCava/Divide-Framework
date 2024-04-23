@@ -43,7 +43,7 @@ namespace Divide {
 struct BufferImplParams
 {
     BufferParams _bufferParams;
-    gl::GLenum _target{ gl::GL_NONE };
+    gl46core::GLenum _target{ gl46core::GL_NONE };
     size_t _dataSize{0};
     bool _useChunkAllocation{ false };
 
@@ -67,7 +67,7 @@ public:
 protected:
     GFXDevice& _context;
 
-    gl::GLuint _copyBufferTarget{ GL_NULL_HANDLE };
+    gl46core::GLuint _copyBufferTarget{ GL_NULL_HANDLE };
     size_t _copyBufferSize{ 0u };
     mutable Mutex _mapLock;
 };

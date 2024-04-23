@@ -12,25 +12,23 @@
 
 #include "Utility/Headers/Localization.h"
 
-using namespace gl;
-
 namespace Divide
 {
     glFramebuffer::glFramebuffer( GFXDevice& context, const RenderTargetDescriptor& descriptor )
         : RenderTarget( context, descriptor )
         , _debugMessage(("Render Target: [ " + name() + " ]").c_str())
     {
-        glCreateFramebuffers( 1, &_framebufferHandle );
+        gl46core::glCreateFramebuffers( 1, &_framebufferHandle );
 
         DIVIDE_ASSERT( (_framebufferHandle != 0 && _framebufferHandle != GL_NULL_HANDLE), "glFramebuffer error: Tried to bind an invalid framebuffer!" );
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
             // label this FB to be able to tell that it's internally created and nor from a 3rd party lib
-            glObjectLabel( GL_FRAMEBUFFER,
-                           _framebufferHandle,
-                           -1,
-                           (name() + "_RENDER").c_str());
+            gl46core::glObjectLabel( gl46core::GL_FRAMEBUFFER,
+                                     _framebufferHandle,
+                                     -1,
+                                     (name() + "_RENDER").c_str());
         }
 
         // Everything disabled so that the initial "begin" will override this
@@ -64,14 +62,14 @@ namespace Divide
         if ( att->_descriptor._externalAttachment == nullptr && att->resolvedTexture()->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
         {
             // We do this here to avoid any undefined data if we use this attachment as a texture before we actually draw to it
-            glGenerateTextureMipmap( static_cast<glTexture*>(att->resolvedTexture().get())->textureHandle() );
+            gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(att->resolvedTexture().get())->textureHandle() );
         }
 
         // Find the appropriate binding point
-        U32 binding = to_U32( GL_COLOR_ATTACHMENT0 ) + to_base( slot );
+        U32 binding = to_U32( gl46core::GL_COLOR_ATTACHMENT0 ) + to_base( slot );
         if ( type == RTAttachmentType::DEPTH || type == RTAttachmentType::DEPTH_STENCIL )
         {
-            binding = type == RTAttachmentType::DEPTH ? to_U32( GL_DEPTH_ATTACHMENT ) : to_U32( GL_DEPTH_STENCIL_ATTACHMENT );
+            binding = type == RTAttachmentType::DEPTH ? to_U32( gl46core::GL_DEPTH_ATTACHMENT ) : to_U32( gl46core::GL_DEPTH_STENCIL_ATTACHMENT );
             // Most of these aren't even valid, but hey, doesn't hurt to check
             _isLayeredDepth = SupportsZOffsetTexture( att->resolvedTexture()->descriptor().texType() );
         }
@@ -113,44 +111,44 @@ namespace Divide
         // Compare with old state
         if ( bState != _attachmentState[attachmentIdx] )
         {
-            const GLenum binding = static_cast<GLenum>(attachment->binding());
+            const auto binding = static_cast<gl46core::GLenum>(attachment->binding());
 
             if ( state == AttachmentState::STATE_DISABLED )
             {
-                glNamedFramebufferTexture( _framebufferHandle, binding, 0u, 0u );
+                gl46core::glNamedFramebufferTexture( _framebufferHandle, binding, 0u, 0u );
                 if ( _attachmentsAutoResolve[attachmentIdx] )
                 {
-                    glNamedFramebufferTexture( _framebufferResolveHandle, binding, 0u, 0u );
+                    gl46core::glNamedFramebufferTexture( _framebufferResolveHandle, binding, 0u, 0u );
                 }
             }
             else
             {
                 DIVIDE_ASSERT( bState._layer._layer < tex->depth() && bState._levelOffset < tex->mipCount());
 
-                const GLuint handle = static_cast<glTexture*>(tex.get())->textureHandle();
+                const gl46core::GLuint handle = static_cast<glTexture*>(tex.get())->textureHandle();
                 if ( bState._layer._layer == 0u && bState._layer._cubeFace == 0u && layeredRendering )
                 {
-                    glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
+                    gl46core::glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        glNamedFramebufferTexture( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset );
+                        gl46core::glNamedFramebufferTexture( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset );
                     }
                 }
                 else if ( IsCubeTexture( tex->descriptor().texType() ) )
                 {
-                    glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
                     }
                 }
                 else
                 {
                     assert(bState._layer._cubeFace == 0u);
-                    glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
+                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._layer );
+                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._layer );
                     }
                 }
             }
@@ -182,13 +180,13 @@ namespace Divide
 
         if ( needsAutoResolve && _framebufferResolveHandle  == GL_NULL_HANDLE )
         {
-            glCreateFramebuffers( 1, &_framebufferResolveHandle );
+            gl46core::glCreateFramebuffers( 1, &_framebufferResolveHandle );
             if constexpr ( Config::ENABLE_GPU_VALIDATION )
             {
-                glObjectLabel( GL_FRAMEBUFFER,
-                                _framebufferResolveHandle,
-                                -1,
-                                (name() + "_RESOLVE").c_str() );
+                gl46core::glObjectLabel( gl46core::GL_FRAMEBUFFER,
+                                         _framebufferResolveHandle,
+                                         -1,
+                                         (name() + "_RESOLVE").c_str() );
             }
         }
         else if ( !needsAutoResolve && _framebufferResolveHandle != GL_NULL_HANDLE )
@@ -231,7 +229,7 @@ namespace Divide
         const vec2<U16> inputDim = input->_descriptor._resolution;
         const vec2<U16> outputDim = output->_descriptor._resolution;
 
-        GLuint inputHandle = input->_framebufferHandle;
+        gl46core::GLuint inputHandle = input->_framebufferHandle;
         if ( input->_framebufferResolveHandle != GL_NULL_HANDLE )
         {
             inputHandle = input->_framebufferResolveHandle;
@@ -277,8 +275,8 @@ namespace Divide
 
             const RTAttachment_uptr& inAtt = input->_attachments[entry._input._index];
             const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
-            const GLenum readBuffer = static_cast<GLenum>(inAtt->binding());
-            const GLenum writeBuffer = static_cast<GLenum>(outAtt->binding());
+            const gl46core::GLenum readBuffer = static_cast<gl46core::GLenum>(inAtt->binding());
+            const gl46core::GLenum writeBuffer = static_cast<gl46core::GLenum>(outAtt->binding());
 
             const bool isColourBlit = entry._input._index != RT_DEPTH_ATTACHMENT_IDX;
             if ( isColourBlit )
@@ -289,7 +287,7 @@ namespace Divide
                 if ( readBuffer != input->_activeReadBuffer )
                 {
                     input->_activeReadBuffer = readBuffer;
-                    glNamedFramebufferReadBuffer( inputHandle, readBuffer );
+                    gl46core::glNamedFramebufferReadBuffer( inputHandle, readBuffer );
                     readBufferDirty = true;
                 }
 
@@ -297,9 +295,9 @@ namespace Divide
                 {
                     output->_colourBuffers._glSlot[0] = writeBuffer;
                     output->_colourBuffers._dirty = true;
-                    glNamedFramebufferDrawBuffers( output->_framebufferHandle,
-                                                   (GLsizei)output->_colourBuffers._glSlot.size(),
-                                                   output->_colourBuffers._glSlot.data() );
+                    gl46core::glNamedFramebufferDrawBuffers( output->_framebufferHandle,
+                                                             (gl46core::GLsizei)output->_colourBuffers._glSlot.size(),
+                                                             output->_colourBuffers._glSlot.data() );
                 }
             }
 
@@ -337,14 +335,14 @@ namespace Divide
                             }
                         }
 
-                        glBlitNamedFramebuffer( inputHandle,
-                                                output->_framebufferHandle,
-                                                0, 0,
-                                                inputDim.width, inputDim.height,
-                                                0, 0,
-                                                outputDim.width, outputDim.height,
-                                                isColourBlit ? GL_COLOR_BUFFER_BIT : GL_DEPTH_BUFFER_BIT,
-                                                GL_NEAREST );
+                        gl46core::glBlitNamedFramebuffer( inputHandle,
+                                                          output->_framebufferHandle,
+                                                          0, 0,
+                                                          inputDim.width, inputDim.height,
+                                                          0, 0,
+                                                          outputDim.width, outputDim.height,
+                                                          isColourBlit ? gl46core::GL_COLOR_BUFFER_BIT : gl46core::GL_DEPTH_BUFFER_BIT,
+                                                          gl46core::GL_NEAREST );
 
                         _context.registerDrawCall();
                         blitted = true;
@@ -372,8 +370,8 @@ namespace Divide
 
         if ( readBufferDirty )
         {
-            glNamedFramebufferReadBuffer( inputHandle, GL_NONE );
-            input->_activeReadBuffer = GL_NONE;
+            gl46core::glNamedFramebufferReadBuffer( inputHandle, gl46core::GL_NONE );
+            input->_activeReadBuffer = gl46core::GL_NONE;
         }
     }
 
@@ -401,14 +399,14 @@ namespace Divide
             const U8 count = std::min( to_base( RTColourAttachmentSlot::COUNT ), getAttachmentCount( RTAttachmentType::COLOUR ) );
             for ( U8 j = 0; j < to_base( RTColourAttachmentSlot::COUNT ); ++j )
             {
-                GLenum temp = GL_NONE;
+                gl46core::GLenum temp = gl46core::GL_NONE;
                 if ( j < count )
                 {
                     const RTColourAttachmentSlot slot = static_cast<RTColourAttachmentSlot>(j);
-                    temp = GL_NONE;
+                    temp = gl46core::GL_NONE;
                     if ( drawPolicy._drawMask[j] && usesAttachment(RTAttachmentType::COLOUR, slot) )
                     {
-                        temp = static_cast<GLenum>(getAttachment( RTAttachmentType::COLOUR, slot )->binding());
+                        temp = static_cast<gl46core::GLenum>(getAttachment( RTAttachmentType::COLOUR, slot )->binding());
                     }
                 }
 
@@ -421,7 +419,7 @@ namespace Divide
 
             if ( set )
             {
-                glNamedFramebufferDrawBuffers( _framebufferHandle, to_base( RTColourAttachmentSlot::COUNT ), _colourBuffers._glSlot.data() );
+                gl46core::glNamedFramebufferDrawBuffers( _framebufferHandle, to_base( RTColourAttachmentSlot::COUNT ), _colourBuffers._glSlot.data() );
             }
 
             _colourBuffers._dirty = false;
@@ -432,7 +430,6 @@ namespace Divide
     void glFramebuffer::begin( const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
 
         DrawLayerEntry targetDepthLayer{};
 
@@ -505,18 +502,18 @@ namespace Divide
             {
                 toggleAttachment( i, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[i], _previousPolicy._layeredRendering);
 
-                const GLenum rwBuffer = static_cast<GLenum>(_attachments[i]->binding());
-                glNamedFramebufferReadBuffer( _framebufferHandle, rwBuffer );
-                glNamedFramebufferDrawBuffers( _framebufferResolveHandle, 1u, &rwBuffer);
+                const gl46core::GLenum rwBuffer = static_cast<gl46core::GLenum>(_attachments[i]->binding());
+                gl46core::glNamedFramebufferReadBuffer( _framebufferHandle, rwBuffer );
+                gl46core::glNamedFramebufferDrawBuffers( _framebufferResolveHandle, 1u, &rwBuffer);
 
-                glBlitNamedFramebuffer( _framebufferHandle,
-                                        _framebufferResolveHandle,
-                                        0, 0,
-                                        _descriptor._resolution.width, _descriptor._resolution.height,
-                                        0, 0,
-                                        _descriptor._resolution.width, _descriptor._resolution.height,
-                                        GL_COLOR_BUFFER_BIT,
-                                        GL_NEAREST );
+                gl46core::glBlitNamedFramebuffer( _framebufferHandle,
+                                                  _framebufferResolveHandle,
+                                                  0, 0,
+                                                  _descriptor._resolution.width, _descriptor._resolution.height,
+                                                  0, 0,
+                                                  _descriptor._resolution.width, _descriptor._resolution.height,
+                                                  gl46core::GL_COLOR_BUFFER_BIT,
+                                                  gl46core::GL_NEAREST );
             }
         }
 
@@ -524,19 +521,19 @@ namespace Divide
         {
             toggleAttachment( RT_DEPTH_ATTACHMENT_IDX, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[RT_DEPTH_ATTACHMENT_IDX], _previousPolicy._layeredRendering );
 
-            glBlitNamedFramebuffer( _framebufferHandle,
-                                    _framebufferResolveHandle,
-                                    0, 0,
-                                    _descriptor._resolution.width, _descriptor._resolution.height,
-                                    0, 0,
-                                    _descriptor._resolution.width, _descriptor._resolution.height,
-                                    GL_DEPTH_BUFFER_BIT,
-                                    GL_NEAREST );
+            gl46core::glBlitNamedFramebuffer( _framebufferHandle,
+                                              _framebufferResolveHandle,
+                                              0, 0,
+                                              _descriptor._resolution.width, _descriptor._resolution.height,
+                                              0, 0,
+                                              _descriptor._resolution.width, _descriptor._resolution.height,
+                                              gl46core::GL_DEPTH_BUFFER_BIT,
+                                              gl46core::GL_NEAREST );
         }
 
 
-        glNamedFramebufferReadBuffer( _framebufferHandle, GL_NONE );
-        _activeReadBuffer = GL_NONE;
+        gl46core::glNamedFramebufferReadBuffer( _framebufferHandle, gl46core::GL_NONE );
+        _activeReadBuffer = gl46core::GL_NONE;
     }
 
     void glFramebuffer::QueueMipMapsRecomputation( const RTAttachment_uptr& attachment )
@@ -551,7 +548,7 @@ namespace Divide
         const Texture_ptr& texture = attachment->resolvedTexture();
         if ( texture != nullptr && texture->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
         {
-            glGenerateTextureMipmap( static_cast<glTexture*>(texture.get())->textureHandle() );
+            gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(texture.get())->textureHandle() );
         }
     }
 
@@ -571,13 +568,13 @@ namespace Divide
                 DIVIDE_ASSERT( att != nullptr, "glFramebuffer::error: Invalid clear target specified!" );
 
                 const U32 binding = att->binding();
-                if ( static_cast<GLenum>(binding) != GL_NONE )
+                if ( static_cast<gl46core::GLenum>(binding) != gl46core::GL_NONE )
                 {
-                    const GLint buffer = static_cast<GLint>(binding - static_cast<GLint>(GL_COLOR_ATTACHMENT0));
+                    const gl46core::GLint buffer = static_cast<gl46core::GLint>(binding - static_cast<gl46core::GLint>(gl46core::GL_COLOR_ATTACHMENT0));
                     const FColour4& colour = descriptor[i]._colour;
                     if ( IsNormalizedTexture(att->renderTexture()->descriptor().packing()) )
                     {
-                        glClearNamedFramebufferfv( _framebufferHandle, GL_COLOR, buffer, colour._v );
+                        gl46core::glClearNamedFramebufferfv( _framebufferHandle, gl46core::GL_COLOR, buffer, colour._v );
                     }
                     else
                     {
@@ -586,7 +583,7 @@ namespace Divide
                             case GFXDataFormat::FLOAT_16:
                             case GFXDataFormat::FLOAT_32:
                             {
-                                glClearNamedFramebufferfv( _framebufferHandle, GL_COLOR, buffer, colour._v );
+                                gl46core::glClearNamedFramebufferfv( _framebufferHandle, gl46core::GL_COLOR, buffer, colour._v );
                             } break;
 
                             case GFXDataFormat::SIGNED_BYTE:
@@ -600,7 +597,7 @@ namespace Divide
                                     FLOAT_TO_CHAR_SNORM( colour.a ) 
                                 };
 
-                                glClearNamedFramebufferiv( _framebufferHandle, GL_COLOR, buffer, clearColour._v );
+                                gl46core::glClearNamedFramebufferiv( _framebufferHandle, gl46core::GL_COLOR, buffer, clearColour._v );
                             } break;
 
                             default:
@@ -611,7 +608,7 @@ namespace Divide
                                      FLOAT_TO_CHAR_UNORM( colour.b ),
                                      FLOAT_TO_CHAR_UNORM( colour.a ) 
                                 };
-                                glClearNamedFramebufferuiv( _framebufferHandle, GL_COLOR, buffer, clearColour._v );
+                                gl46core::glClearNamedFramebufferuiv( _framebufferHandle, gl46core::GL_COLOR, buffer, clearColour._v );
                             } break;
                         }
                     }
@@ -628,11 +625,11 @@ namespace Divide
             const FColour4& clearColour = descriptor[RT_DEPTH_ATTACHMENT_IDX]._colour;
             if ( _attachments[RT_DEPTH_ATTACHMENT_IDX]->_descriptor._type == RTAttachmentType::DEPTH_STENCIL )
             {
-                glClearNamedFramebufferfi( _framebufferHandle, GL_DEPTH_STENCIL, 0, clearColour.r, to_I32( clearColour.g) );
+                gl46core::glClearNamedFramebufferfi( _framebufferHandle, gl46core::GL_DEPTH_STENCIL, 0, clearColour.r, to_I32( clearColour.g) );
             }
             else
             {
-                glClearNamedFramebufferfv( _framebufferHandle, GL_DEPTH, 0, &clearColour.r );
+                gl46core::glClearNamedFramebufferfv( _framebufferHandle, gl46core::GL_DEPTH, 0, &clearColour.r );
             }
             _context.registerDrawCall();
         }
@@ -698,54 +695,54 @@ namespace Divide
         return checkStatusInternal( _framebufferHandle );
     }
 
-    bool glFramebuffer::checkStatusInternal( const GLuint handle )
+    bool glFramebuffer::checkStatusInternal( const gl46core::GLuint handle )
     {
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
             // check FB status
-            const GLenum status = glCheckNamedFramebufferStatus( handle, GL_FRAMEBUFFER );
-            if ( status == GL_FRAMEBUFFER_COMPLETE )
+            const gl46core::GLenum status = gl46core::glCheckNamedFramebufferStatus( handle, gl46core::GL_FRAMEBUFFER );
+            if ( status == gl46core::GL_FRAMEBUFFER_COMPLETE )
             {
                 return true;
             }
 
             switch ( status )
             {
-                case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+                case gl46core::GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_ATTACHMENT_INCOMPLETE" ) );
                 } break;
-                case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+                case gl46core::GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_NO_IMAGE" ) );
                 } break;
-                case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+                case gl46core::GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_DRAW_BUFFER" ) );
                 } break;
-                case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+                case gl46core::GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_READ_BUFFER" ) );
                 } break;
-                case GL_FRAMEBUFFER_UNSUPPORTED:
+                case gl46core::GL_FRAMEBUFFER_UNSUPPORTED:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_UNSUPPORTED" ) );
                 } break;
-                case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+                case gl46core::GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_MULTISAMPLE" ) );
                 } break;
-                case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+                case gl46core::GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_INCOMPLETE_LAYER_TARGETS" ) );
                 } break;
-                case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+                case gl::GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_DIMENSIONS" ) );
                 } break;
-                case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+                case gl::GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_RT_FORMAT" ) );
                 } break;

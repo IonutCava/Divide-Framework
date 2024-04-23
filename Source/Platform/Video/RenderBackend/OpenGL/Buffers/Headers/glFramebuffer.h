@@ -88,7 +88,7 @@ class glFramebuffer final : public RenderTarget {
 
   protected:
     bool checkStatus();
-    bool checkStatusInternal( gl::GLuint handle);
+    bool checkStatusInternal( gl46core::GLuint handle);
 
     void prepareBuffers(const RTDrawDescriptor& drawPolicy);
 
@@ -101,7 +101,7 @@ class glFramebuffer final : public RenderTarget {
     void end(const RTTransitionMask& mask);
 
     PROPERTY_R_IW(Str<128>, debugMessage, "");
-    PROPERTY_R_IW( gl::GLuint, framebufferHandle, GL_NULL_HANDLE);
+    PROPERTY_R_IW( gl46core::GLuint, framebufferHandle, GL_NULL_HANDLE);
 
    protected:
     void resolve(const RTTransitionMask& mask);
@@ -109,18 +109,18 @@ class glFramebuffer final : public RenderTarget {
     static void QueueMipMapsRecomputation(const RTAttachment_uptr& attachment);
 
    protected:
-    gl::GLuint _framebufferResolveHandle{GL_NULL_HANDLE};
+    gl46core::GLuint _framebufferResolveHandle{GL_NULL_HANDLE};
 
     RTDrawDescriptor _previousPolicy;
     std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT> _previousDrawLayers;
 
     struct ColourBufferState
     {
-        std::array<gl::GLenum, to_base( RTColourAttachmentSlot::COUNT )> _glSlot = create_array<to_base( RTColourAttachmentSlot::COUNT ), gl::GLenum>( gl::GL_NONE);
+        std::array<gl46core::GLenum, to_base( RTColourAttachmentSlot::COUNT )> _glSlot = create_array<to_base( RTColourAttachmentSlot::COUNT ), gl46core::GLenum>( gl46core::GL_NONE);
         bool _dirty{ true };
     } _colourBuffers;
     
-    gl::GLenum _activeReadBuffer = gl::GL_NONE;
+    gl46core::GLenum _activeReadBuffer = gl46core::GL_NONE;
 
     eastl::fixed_vector<BindingState, 8 + 2, true, eastl::dvd_allocator> _attachmentState;
 

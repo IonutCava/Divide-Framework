@@ -27,14 +27,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glShaderBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glFramebuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h"
-
-#include "Platform/Video/GLIM/glim.h"
-
-#include <glbinding-aux/Meta.h>
-#include <glbinding-aux/ContextInfo.h>
 #include <glbinding/Binding.h>
-
-using namespace gl;
 
 namespace Divide
 {
@@ -125,7 +118,7 @@ namespace Divide
     }
 
     /// Try and create a valid OpenGL context taking in account the specified resolution and command line arguments
-    ErrorCode GL_API::initRenderingAPI( [[maybe_unused]] GLint argc, [[maybe_unused]] char** argv, Configuration& config )
+    ErrorCode GL_API::initRenderingAPI( [[maybe_unused]] gl46core::GLint argc, [[maybe_unused]] char** argv, Configuration& config )
     {
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
         GLUtil::s_glMainRenderWindow = &window;
@@ -142,22 +135,21 @@ namespace Divide
             if ( (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
             {
                 // GL_DEBUG_OUTPUT_SYNCHRONOUS is essential for debugging gl commands in the IDE
-                glEnable( GL_DEBUG_OUTPUT );
-                glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+                gl46core::glEnable( gl46core::GL_DEBUG_OUTPUT );
+                gl46core::glEnable( gl46core::GL_DEBUG_OUTPUT_SYNCHRONOUS );
                 // hard-wire our debug callback function with OpenGL's implementation
-                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE );
-                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
-                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_MARKER,     gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
+                gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_PUSH_GROUP, gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
+                gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_POP_GROUP,  gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
                 if ( !config.debug.renderer.enableRenderAPIBestPractices )
                 {
-                    glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 0, NULL, GL_FALSE );
-                    glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PORTABILITY, GL_DONT_CARE, 0, NULL, GL_FALSE );
-                    glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                    gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
+                    gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_PORTABILITY,         gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
+                    gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_PERFORMANCE,         gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
                 }
-                glDebugMessageCallback( (GLDEBUGPROC)GLUtil::DebugCallback, nullptr );
+                gl46core::glDebugMessageCallback( (gl46core::GLDEBUGPROC)GLUtil::DebugCallback, nullptr );
             }
         }
-        glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
 
 
         if ( SDL_GL_GetCurrentContext() == nullptr )
@@ -178,7 +170,7 @@ namespace Divide
 
         // Query GPU vendor to enable/disable vendor specific features
         GPUVendor vendor = GPUVendor::COUNT;
-        const char* gpuVendorStr = reinterpret_cast<const char*>(glGetString( GL_VENDOR ));
+        const char* gpuVendorStr = reinterpret_cast<const char*>(gl46core::glGetString( gl46core::GL_VENDOR ));
         if ( gpuVendorStr != nullptr )
         {
             if ( strstr( gpuVendorStr, "Intel" ) != nullptr )
@@ -212,7 +204,7 @@ namespace Divide
             vendor = GPUVendor::OTHER;
         }
         GPURenderer renderer = GPURenderer::COUNT;
-        const char* gpuRendererStr = reinterpret_cast<const char*>(glGetString( GL_RENDERER ));
+        const char* gpuRendererStr = reinterpret_cast<const char*>(gl46core::glGetString( gl46core::GL_RENDERER ));
         if ( gpuRendererStr != nullptr )
         {
             if ( strstr( gpuRendererStr, "Tegra" ) || strstr( gpuRendererStr, "GeForce" ) || strstr( gpuRendererStr, "NV" ) )
@@ -276,7 +268,7 @@ namespace Divide
             renderer = GPURenderer::UNKNOWN;
         }
         // GPU info, including vendor, gpu and driver
-        Console::printfn( LOCALE_STR( "GL_VENDOR_STRING" ), gpuVendorStr, gpuRendererStr, reinterpret_cast<const char*>(glGetString( GL_VERSION )) );
+        Console::printfn( LOCALE_STR( "GL_VENDOR_STRING" ), gpuVendorStr, gpuRendererStr, reinterpret_cast<const char*>(gl46core::glGetString( gl46core::GL_VERSION )) );
 
         DeviceInformation deviceInformation{};
         deviceInformation._vendor = vendor;
@@ -289,15 +281,15 @@ namespace Divide
 
         // If we got here, let's figure out what capabilities we have available
         // Maximum addressable texture image units in the fragment shader
-        deviceInformation._maxTextureUnits = CLAMPED( GLUtil::getGLValue( GL_MAX_TEXTURE_IMAGE_UNITS ), 16, 255 );
+        deviceInformation._maxTextureUnits = CLAMPED( GLUtil::getGLValue( gl46core::GL_MAX_TEXTURE_IMAGE_UNITS ), 16, 255 );
         DIVIDE_ASSERT( deviceInformation._maxTextureUnits >= GLStateTracker::MAX_BOUND_TEXTURE_UNITS );
 
-        GLUtil::getGLValue( GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings );
+        GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings );
 
-        GLUtil::getGLValue( GL_MAX_TEXTURE_SIZE, deviceInformation._maxTextureSize );
+        GLUtil::getGLValue( gl46core::GL_MAX_TEXTURE_SIZE, deviceInformation._maxTextureSize );
 
-        deviceInformation._versionInfo._major = to_U8( GLUtil::getGLValue( GL_MAJOR_VERSION ) );
-        deviceInformation._versionInfo._minor = to_U8( GLUtil::getGLValue( GL_MINOR_VERSION ) );
+        deviceInformation._versionInfo._major = to_U8( GLUtil::getGLValue( gl46core::GL_MAJOR_VERSION ) );
+        deviceInformation._versionInfo._minor = to_U8( GLUtil::getGLValue( gl46core::GL_MINOR_VERSION ) );
         Console::printfn( LOCALE_STR( "GL_MAX_VERSION" ), deviceInformation._versionInfo._major, deviceInformation._versionInfo._minor );
 
         if ( deviceInformation._versionInfo._major < 4 || (deviceInformation._versionInfo._major == 4 && deviceInformation._versionInfo._minor < 6) )
@@ -307,30 +299,31 @@ namespace Divide
         }
 
         // Maximum number of colour attachments per framebuffer
-        GLUtil::getGLValue( GL_MAX_COLOR_ATTACHMENTS, deviceInformation._maxRTColourAttachments );
+        GLUtil::getGLValue( gl46core::GL_MAX_COLOR_ATTACHMENTS, deviceInformation._maxRTColourAttachments );
 
-        deviceInformation._shaderCompilerThreads = GLUtil::getGLValue( GL_MAX_SHADER_COMPILER_THREADS_ARB );
+        deviceInformation._shaderCompilerThreads = GLUtil::getGLValue( gl::GL_MAX_SHADER_COMPILER_THREADS_ARB );
         Console::printfn( LOCALE_STR( "GL_SHADER_THREADS" ), deviceInformation._shaderCompilerThreads );
+        gl::glMaxShaderCompilerThreadsARB( deviceInformation._shaderCompilerThreads );
 
-        glEnable( GL_MULTISAMPLE );
+        gl46core::glEnable( gl46core::GL_MULTISAMPLE );
         // Line smoothing should almost always be used
-        glEnable( GL_LINE_SMOOTH );
+        gl46core::glEnable( gl46core::GL_LINE_SMOOTH );
 
         // GL_FALSE causes a conflict here. Thanks glbinding ...
-        glClampColor( GL_CLAMP_READ_COLOR, GL_FALSE );
+        gl46core::glClampColor( gl46core::GL_CLAMP_READ_COLOR, gl46core::GL_FALSE );
 
         // Match Vulkan's depth range
-        glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+        gl46core::glClipControl( gl46core::GL_LOWER_LEFT, gl46core::GL_ZERO_TO_ONE );
 
         // Cap max anisotropic level to what the hardware supports
         CLAMP( config.rendering.maxAnisotropicFilteringLevel,
                U8_ZERO,
-               to_U8( GLUtil::getGLValue( GL_MAX_TEXTURE_MAX_ANISOTROPY ) ) );
+               to_U8( GLUtil::getGLValue( gl46core::GL_MAX_TEXTURE_MAX_ANISOTROPY ) ) );
 
         deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
 
         // Number of sample buffers associated with the framebuffer & MSAA sample count
-        const U8 maxGLSamples = to_U8( std::min( 254, GLUtil::getGLValue( GL_MAX_SAMPLES ) ) );
+        const U8 maxGLSamples = to_U8( std::min( 254, GLUtil::getGLValue( gl46core::GL_MAX_SAMPLES ) ) );
         // If we do not support MSAA on a hardware level for whatever reason, override user set MSAA levels
         config.rendering.MSAASamples = std::min( config.rendering.MSAASamples, maxGLSamples );
 
@@ -340,24 +333,24 @@ namespace Divide
 
         // Print all of the OpenGL functionality info to the console and log
         // How many uniforms can we send to fragment shaders
-        Console::printfn( LOCALE_STR( "GL_MAX_UNIFORM" ), GLUtil::getGLValue( GL_MAX_FRAGMENT_UNIFORM_COMPONENTS ) );
+        Console::printfn( LOCALE_STR( "GL_MAX_UNIFORM" ), GLUtil::getGLValue( gl46core::GL_MAX_FRAGMENT_UNIFORM_COMPONENTS ) );
         // How many uniforms can we send to vertex shaders
-        Console::printfn( LOCALE_STR( "GL_MAX_VERT_UNIFORM" ), GLUtil::getGLValue( GL_MAX_VERTEX_UNIFORM_COMPONENTS ) );
+        Console::printfn( LOCALE_STR( "GL_MAX_VERT_UNIFORM" ), GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_UNIFORM_COMPONENTS ) );
         // How many uniforms can we send to vertex + fragment shaders at the same time
-        Console::printfn( LOCALE_STR( "GL_MAX_FRAG_AND_VERT_UNIFORM" ), GLUtil::getGLValue( GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS ) );
+        Console::printfn( LOCALE_STR( "GL_MAX_FRAG_AND_VERT_UNIFORM" ), GLUtil::getGLValue( gl46core::GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS ) );
         // How many attributes can we send to a vertex shader
-        deviceInformation._maxVertAttributes = GLUtil::getGLValue( GL_MAX_VERTEX_ATTRIBS );
+        deviceInformation._maxVertAttributes = GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIBS );
         Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
         {
-            GLUtil::getGLValue( GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorgroupCount[i], i );
-            GLUtil::getGLValue( GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorgroupSize[i], i );
+            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorgroupCount[i], i );
+            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorgroupSize[i], i );
         }
 
-        deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue( GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
-        deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue( GL_MAX_COMPUTE_SHARED_MEMORY_SIZE );
+        deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
+        deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_SHARED_MEMORY_SIZE );
 
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ) ,
                           deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
@@ -367,23 +360,23 @@ namespace Divide
 
         // Maximum number of texture units we can address in shaders
         Console::printfn( LOCALE_STR( "GL_MAX_TEX_UNITS" ),
-                          GLUtil::getGLValue( GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ),
+                          GLUtil::getGLValue( gl46core::GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS ),
                           deviceInformation._maxTextureUnits );
         // Maximum number of varying components supported as outputs in the vertex shader
-        deviceInformation._maxVertOutputComponents = GLUtil::getGLValue( GL_MAX_VERTEX_OUTPUT_COMPONENTS );
+        deviceInformation._maxVertOutputComponents = GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_OUTPUT_COMPONENTS );
         Console::printfn( LOCALE_STR( "MAX_VERTEX_OUTPUT_COMPONENTS" ), deviceInformation._maxVertOutputComponents );
 
         // Query shading language version support
         Console::printfn( LOCALE_STR( "GL_GLSL_SUPPORT" ),
-                          reinterpret_cast<const char*>(glGetString( GL_SHADING_LANGUAGE_VERSION ) ));
+                          reinterpret_cast<const char*>( gl46core::glGetString( gl46core::GL_SHADING_LANGUAGE_VERSION ) ) );
         // In order: Maximum number of uniform buffer binding points,
         //           maximum size in basic machine units of a uniform block and
         //           minimum required alignment for uniform buffer sizes and offset
-        GLUtil::getGLValue( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._offsetAlignmentBytesUBO );
-        GLUtil::getGLValue( GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._maxSizeBytesUBO );
+        GLUtil::getGLValue( gl46core::GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, deviceInformation._offsetAlignmentBytesUBO );
+        GLUtil::getGLValue( gl46core::GL_MAX_UNIFORM_BLOCK_SIZE, deviceInformation._maxSizeBytesUBO );
         const bool UBOSizeOver1Mb = deviceInformation._maxSizeBytesUBO / 1024 > 1024;
         Console::printfn( LOCALE_STR( "GL_VK_UBO_INFO" ),
-                          GLUtil::getGLValue( GL_MAX_UNIFORM_BUFFER_BINDINGS ),
+                          GLUtil::getGLValue( gl46core::GL_MAX_UNIFORM_BUFFER_BINDINGS ),
                           (deviceInformation._maxSizeBytesUBO / 1024) / (UBOSizeOver1Mb ? 1024 : 1),
                           UBOSizeOver1Mb ? "Mb" : "Kb",
                           deviceInformation._offsetAlignmentBytesUBO );
@@ -394,43 +387,43 @@ namespace Divide
         //           be accessed by all active shaders and
         //           minimum required alignment for shader storage buffer sizes and
         //           offset.
-        GLUtil::getGLValue( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._offsetAlignmentBytesSSBO );
-        GLUtil::getGLValue( GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._maxSizeBytesSSBO );
-        deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue( GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS );
+        GLUtil::getGLValue( gl46core::GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._offsetAlignmentBytesSSBO );
+        GLUtil::getGLValue( gl46core::GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._maxSizeBytesSSBO );
+        deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue( gl46core::GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS );
         Console::printfn( LOCALE_STR( "GL_VK_SSBO_INFO" ),
                           deviceInformation._maxSSBOBufferBindings,
                           deviceInformation._maxSizeBytesSSBO / 1024 / 1024,
-                          GLUtil::getGLValue( GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS ),
+                          GLUtil::getGLValue( gl46core::GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS ),
                           deviceInformation._offsetAlignmentBytesSSBO );
 
         // Maximum number of subroutines and maximum number of subroutine uniform
         // locations usable in a shader
         Console::printfn( LOCALE_STR( "GL_SUBROUTINE_INFO" ),
-                          GLUtil::getGLValue( GL_MAX_SUBROUTINES ),
-                          GLUtil::getGLValue( GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS ) );
+                          GLUtil::getGLValue( gl46core::GL_MAX_SUBROUTINES ),
+                          GLUtil::getGLValue( gl46core::GL_MAX_SUBROUTINE_UNIFORM_LOCATIONS ) );
 
-        GLint range[2];
-        GLUtil::getGLValue( GL_SMOOTH_LINE_WIDTH_RANGE, range );
+        gl46core::GLint range[2];
+        GLUtil::getGLValue( gl46core::GL_SMOOTH_LINE_WIDTH_RANGE, range );
         Console::printfn( LOCALE_STR( "GL_LINE_WIDTH_INFO" ), range[0], range[1] );
 
-        const I32 clipDistanceCount = std::max( GLUtil::getGLValue( GL_MAX_CLIP_DISTANCES ), 0 );
-        const I32 cullDistanceCount = std::max( GLUtil::getGLValue( GL_MAX_CULL_DISTANCES ), 0 );
+        const I32 clipDistanceCount = std::max( GLUtil::getGLValue( gl46core::GL_MAX_CLIP_DISTANCES ), 0 );
+        const I32 cullDistanceCount = std::max( GLUtil::getGLValue( gl46core::GL_MAX_CULL_DISTANCES ), 0 );
 
-        deviceInformation._maxClipAndCullDistances = GLUtil::getGLValue( GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES );
+        deviceInformation._maxClipAndCullDistances = GLUtil::getGLValue( gl46core::GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES );
         deviceInformation._maxClipDistances = to_U32( clipDistanceCount );
         deviceInformation._maxCullDistances = to_U32( cullDistanceCount );
 
         GFXDevice::OverrideDeviceInformation( deviceInformation );
         // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
-        glEnable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
-        glEnable(GL_FRAMEBUFFER_SRGB);
+        gl46core::glEnable( gl46core::GL_TEXTURE_CUBE_MAP_SEAMLESS  );
+        gl46core::glEnable( gl46core::GL_FRAMEBUFFER_SRGB );
         // Culling is enabled by default, but RenderStateBlocks can toggle it on a per-draw call basis
-        glEnable( GL_CULL_FACE );
+        gl46core::glEnable( gl46core::GL_CULL_FACE );
 
         // Enable all clip planes, I guess
         for ( U8 i = 0u; i < Config::MAX_CLIP_DISTANCES; ++i )
         {
-            glEnable( static_cast<GLenum>(static_cast<U32>(GL_CLIP_DISTANCE0) + i) );
+            gl46core::glEnable( static_cast<gl46core::GLenum>(static_cast<U32>(gl46core::GL_CLIP_DISTANCE0) + i) );
         }
 
         for ( U8 i = 0u; i < to_base( GLUtil::GLMemory::GLMemoryType::COUNT ); ++i )
@@ -443,43 +436,47 @@ namespace Divide
         // Initialize our query pool
         s_hardwareQueryPool->init(
             {
-                { GL_TIME_ELAPSED, 9 },
-                { GL_TRANSFORM_FEEDBACK_OVERFLOW, 6 },
-                { GL_VERTICES_SUBMITTED, 6 },
-                { GL_PRIMITIVES_SUBMITTED, 6 },
-                { GL_VERTEX_SHADER_INVOCATIONS, 6 },
-                { GL_SAMPLES_PASSED, 6 },
-                { GL_ANY_SAMPLES_PASSED, 6 },
-                { GL_PRIMITIVES_GENERATED, 6 },
-                { GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, 6 },
-                { GL_ANY_SAMPLES_PASSED_CONSERVATIVE, 6 },
-                { GL_TESS_CONTROL_SHADER_PATCHES, 6},
-                { GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6}
+                { gl46core::GL_TIME_ELAPSED, 9 },
+                { gl46core::GL_TRANSFORM_FEEDBACK_OVERFLOW, 6 },
+                { gl46core::GL_VERTICES_SUBMITTED, 6 },
+                { gl46core::GL_PRIMITIVES_SUBMITTED, 6 },
+                { gl46core::GL_VERTEX_SHADER_INVOCATIONS, 6 },
+                { gl46core::GL_SAMPLES_PASSED, 6 },
+                { gl46core::GL_ANY_SAMPLES_PASSED, 6 },
+                { gl46core::GL_PRIMITIVES_GENERATED, 6 },
+                { gl46core::GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, 6 },
+                { gl46core::GL_ANY_SAMPLES_PASSED_CONSERVATIVE, 6 },
+                { gl46core::GL_TESS_CONTROL_SHADER_PATCHES, 6},
+                { gl46core::GL_TESS_EVALUATION_SHADER_INVOCATIONS, 6}
             }
         );
 
-        glClearColor( DefaultColours::BLACK.r,
-                      DefaultColours::BLACK.g,
-                      DefaultColours::BLACK.b,
-                      DefaultColours::BLACK.a );
+        gl46core::glClearColor( DefaultColours::BLACK.r,
+                                DefaultColours::BLACK.g,
+                                DefaultColours::BLACK.b,
+                                DefaultColours::BLACK.a );
 
-        glCreateVertexArrays( 1, &_dummyVAO );
+        gl46core::glCreateVertexArrays( 1, &_dummyVAO );
         DIVIDE_ASSERT( _dummyVAO != GL_NULL_HANDLE, LOCALE_STR( "ERROR_VAO_INIT" ) );
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            glObjectLabel( GL_VERTEX_ARRAY, _dummyVAO, -1, "GENERIC_VAO");
+            gl46core::glObjectLabel( gl46core::GL_VERTEX_ARRAY,
+                                     _dummyVAO,
+                                     -1,
+                                     "GENERIC_VAO");
         }
-        glBindVertexArray( _dummyVAO );
+
+        gl46core::glBindVertexArray( _dummyVAO );
         s_stateTracker.setDefaultState();
 
         constexpr U16 ringLength = 6u;
 
-        _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] = std::make_unique<glHardwareQueryRing>( _context, GL_VERTICES_SUBMITTED, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] = std::make_unique<glHardwareQueryRing>( _context, GL_PRIMITIVES_GENERATED, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] = std::make_unique<glHardwareQueryRing>( _context, GL_TESS_CONTROL_SHADER_PATCHES, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = std::make_unique<glHardwareQueryRing>( _context, GL_TESS_EVALUATION_SHADER_INVOCATIONS, ringLength );
-        _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )] = std::make_unique<glHardwareQueryRing>( _context, GL_TIME_ELAPSED, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )]            = std::make_unique<glHardwareQueryRing>( _context, gl46core::GL_VERTICES_SUBMITTED,                 ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )]          = std::make_unique<glHardwareQueryRing>( _context, gl46core::GL_PRIMITIVES_GENERATED,               ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )]          = std::make_unique<glHardwareQueryRing>( _context, gl46core::GL_TESS_CONTROL_SHADER_PATCHES,        ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] = std::make_unique<glHardwareQueryRing>( _context, gl46core::GL_TESS_EVALUATION_SHADER_INVOCATIONS, ringLength );
+        _performanceQueries[to_base( GlobalQueryTypes::GPU_TIME )]                      = std::make_unique<glHardwareQueryRing>( _context, gl46core::GL_TIME_ELAPSED,                       ringLength );
 
         s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
         s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
@@ -496,8 +493,8 @@ namespace Divide
 
         if ( _dummyVAO != GL_NULL_HANDLE )
         {
-            glBindVertexArray(0u);
-            glDeleteVertexArrays(1, &_dummyVAO );
+            gl46core::glBindVertexArray(0u);
+            gl46core::glDeleteVertexArrays(1, &_dummyVAO );
             _dummyVAO = GL_NULL_HANDLE;
         }
 
@@ -590,9 +587,9 @@ namespace Divide
         while ( !s_stateTracker._endFrameFences.empty() )
         {
             auto& sync = s_stateTracker._endFrameFences.front();
-            const GLenum waitRet = glClientWaitSync( sync.first, SyncObjectMask::GL_NONE_BIT, 0u );
-            DIVIDE_ASSERT( waitRet != GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something." );
-            if ( waitRet == GL_ALREADY_SIGNALED || waitRet == GL_CONDITION_SATISFIED )
+            const gl46core::GLenum waitRet = gl46core::glClientWaitSync( sync.first, gl46core::SyncObjectMask::GL_NONE_BIT, 0u );
+            DIVIDE_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something." );
+            if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED )
             {
                 s_stateTracker._lastSyncedFrameNumber = sync.second;
                 DestroyFenceSync( sync.first );
@@ -635,10 +632,10 @@ namespace Divide
                 _performanceQueries[i]->incQueue();
             }
 
-            _context.getPerformanceMetrics()._gpuTimeInMS = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
-            _context.getPerformanceMetrics()._verticesSubmitted = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
-            _context.getPerformanceMetrics()._primitivesGenerated = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
-            _context.getPerformanceMetrics()._tessellationPatches = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
+            _context.getPerformanceMetrics()._gpuTimeInMS             = Time::NanosecondsToMilliseconds<F32>( results[to_base( GlobalQueryTypes::GPU_TIME )] );
+            _context.getPerformanceMetrics()._verticesSubmitted       = to_U64( results[to_base( GlobalQueryTypes::VERTICES_SUBMITTED )] );
+            _context.getPerformanceMetrics()._primitivesGenerated     = to_U64( results[to_base( GlobalQueryTypes::PRIMITIVES_GENERATED )] );
+            _context.getPerformanceMetrics()._tessellationPatches     = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_PATCHES )] );
             _context.getPerformanceMetrics()._tessellationInvocations = to_U64( results[to_base( GlobalQueryTypes::TESSELLATION_EVAL_INVOCATIONS )] );
         }
 
@@ -655,7 +652,7 @@ namespace Divide
         s_stateTracker._endFrameFences.push( std::make_pair( CreateFenceSync(), GFXDevice::FrameCount() ) );
         _context.getPerformanceMetrics()._queuedGPUFrames = s_stateTracker._endFrameFences.size();
 
-        if ( glGetGraphicsResetStatus() != GL_NO_ERROR )
+        if ( gl46core::glGetGraphicsResetStatus() != gl46core::GL_NO_ERROR )
         {
             DIVIDE_UNEXPECTED_CALL_MSG( "OpenGL Reset Status raised!" );
         }
@@ -696,11 +693,11 @@ namespace Divide
                     case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
                     default : return false;
                 }
-                GLUtil::SubmitRenderCommand( drawCmd, false, GL_NONE);
+                GLUtil::SubmitRenderCommand( drawCmd, false, gl46core::GL_NONE);
             }
             else
             {
-                GLUtil::SubmitRenderCommand(cmd, false, GL_NONE);
+                GLUtil::SubmitRenderCommand(cmd, false, gl46core::GL_NONE);
             }
         }
         else [[likely]]
@@ -727,8 +724,8 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         thread_local std::array<TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureCache;
-        thread_local std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureHandles;
-        thread_local std::array<GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureSamplers;
+        thread_local std::array<gl46core::GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureHandles;
+        thread_local std::array<gl46core::GLuint, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> s_textureSamplers;
 
         if ( s_TexBindQueue.empty() )
         {
@@ -823,7 +820,7 @@ namespace Divide
         efficient_clear(s_TexBindQueue);
     }
 
-    GLuint GL_API::getGLTextureView( const ImageView srcView, const U8 lifetimeInFrames ) const
+    gl46core::GLuint GL_API::getGLTextureView( const ImageView srcView, const U8 lifetimeInFrames ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -831,28 +828,28 @@ namespace Divide
 
         if ( !cacheHit )
         {
-            const GLuint srcHandle = static_cast<const glTexture*>(srcView._srcTexture)->textureHandle();
+            const gl46core::GLuint srcHandle = static_cast<const glTexture*>(srcView._srcTexture)->textureHandle();
             
             if ( srcHandle == GL_NULL_HANDLE )
             {
                 return srcHandle;
             }
 
-            const GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( srcView._descriptor._baseFormat,
-                                                                               srcView._descriptor._dataType,
-                                                                               srcView._descriptor._packing )._format;
+            const gl46core::GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( srcView._descriptor._baseFormat,
+                                                                                         srcView._descriptor._dataType,
+                                                                                         srcView._descriptor._packing )._format;
 
             const bool isCube = IsCubeTexture( TargetType( srcView ) );
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
-            glTextureView( handle,
-                           GLUtil::internalTextureType( TargetType( srcView ), srcView._descriptor._msaaSamples ),
-                           srcHandle,
-                           glInternalFormat,
-                           static_cast<GLuint>(srcView._subRange._mipLevels._offset),
-                           static_cast<GLuint>(srcView._subRange._mipLevels._count),
-                           srcView._subRange._layerRange._offset * (isCube ? 6 : 1),
-                           srcView._subRange._layerRange._count * (isCube ? 6 : 1));
+            gl46core::glTextureView( handle,
+                                     GLUtil::internalTextureType( TargetType( srcView ), srcView._descriptor._msaaSamples ),
+                                     srcHandle,
+                                     glInternalFormat,
+                                     static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._offset),
+                                     static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._count),
+                                     srcView._subRange._layerRange._offset * (isCube ? 6 : 1),
+                                     srcView._subRange._layerRange._count * (isCube ? 6 : 1));
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );
@@ -916,15 +913,15 @@ namespace Divide
                     {
                         PROFILE_SCOPE( "Clear Screen Target", Profiler::Category::Graphics );
 
-                        ClearBufferMask mask = ClearBufferMask::GL_COLOR_BUFFER_BIT;
+                        gl46core::ClearBufferMask mask = gl46core::ClearBufferMask::GL_COLOR_BUFFER_BIT;
 
                         s_stateTracker.setClearColour( crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )]._colour );
                         if ( crtCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX]._enabled )
                         {
                             s_stateTracker.setClearDepth( crtCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX]._colour.r );
-                            mask |= ClearBufferMask::GL_DEPTH_BUFFER_BIT;
+                            mask |= gl46core::ClearBufferMask::GL_DEPTH_BUFFER_BIT;
                         }
-                        glClear( mask );
+                        gl46core::glClear( mask );
                     }
                     PushDebugMessage( crtCmd->_name.c_str(), SCREEN_TARGET_ID );
                 }
@@ -1139,7 +1136,7 @@ namespace Divide
                 if ( crtCmd->_layerRange._offset == 0 && layerCount >= texLayers )
                 {
                     PROFILE_SCOPE( "GL: In-place computation - Full", Profiler::Category::Graphics );
-                    glGenerateTextureMipmap( static_cast<glTexture*>(crtCmd->_texture)->textureHandle() );
+                    gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(crtCmd->_texture)->textureHandle() );
                 }
                 else
                 {
@@ -1177,7 +1174,7 @@ namespace Divide
                          view._subRange._mipLevels._count - view._subRange._mipLevels._offset > 0u )
                     {
                         PROFILE_SCOPE( "GL: In-place computation - Image", Profiler::Category::Graphics );
-                        glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
+                        gl46core::glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
                     }
                 }
             }break;
@@ -1220,7 +1217,7 @@ namespace Divide
                     assert( s_stateTracker._activeTopology == PrimitiveTopology::COMPUTE );
 
                     const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
-                    glDispatchCompute( crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
+                    gl46core::glDispatchCompute( crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
                 }
             }break;
             case GFX::CommandType::MEMORY_BARRIER:
@@ -1229,7 +1226,7 @@ namespace Divide
 
                 const GFX::MemoryBarrierCommand* crtCmd = cmd->As<GFX::MemoryBarrierCommand>();
 
-                MemoryBarrierMask mask = GL_NONE_BIT;
+                gl46core::MemoryBarrierMask mask = gl46core::GL_NONE_BIT;
 
                 SyncObjectHandle handle{};
                 for ( const BufferLock& lock : crtCmd->_bufferLocks )
@@ -1261,11 +1258,11 @@ namespace Divide
                             if ( flags._updateUsage == BufferUpdateUsage::GPU_TO_GPU ||
                                  flags._updateFrequency == BufferUpdateFrequency::ONCE )
                             {
-                                mask |= GL_BUFFER_UPDATE_BARRIER_BIT;
+                                mask |= gl46core::GL_BUFFER_UPDATE_BARRIER_BIT;
                             }
                             else
                             {
-                                mask |= GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT;
+                                mask |= gl46core::GL_BUFFER_UPDATE_BARRIER_BIT | gl46core::GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT;
                             }
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_GPU_READ:
@@ -1275,34 +1272,34 @@ namespace Divide
                             {
                                 case BufferUsageType::CONSTANT_BUFFER:
                                 {
-                                    mask |= GL_UNIFORM_BARRIER_BIT;
+                                    mask |= gl46core::GL_UNIFORM_BARRIER_BIT;
                                 } break;
                                 case BufferUsageType::UNBOUND_BUFFER:
                                 {
-                                    mask |= GL_SHADER_STORAGE_BARRIER_BIT;
+                                    mask |= gl46core::GL_SHADER_STORAGE_BARRIER_BIT;
                                 } break;
                                 case BufferUsageType::COMMAND_BUFFER:
                                 {
-                                    mask |= GL_COMMAND_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT;
+                                    mask |= gl46core::GL_COMMAND_BARRIER_BIT | gl46core::GL_SHADER_STORAGE_BARRIER_BIT;
                                 } break;
                                 case BufferUsageType::VERTEX_BUFFER:
                                 {
-                                    mask |= GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+                                    mask |= gl46core::GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
                                 } break;
                                 case BufferUsageType::INDEX_BUFFER:
                                 {
-                                    mask |= GL_ELEMENT_ARRAY_BARRIER_BIT;
+                                    mask |= gl46core::GL_ELEMENT_ARRAY_BARRIER_BIT;
                                 } break;
                                 case BufferUsageType::STAGING_BUFFER:
                                 {
-                                    mask |= GL_BUFFER_UPDATE_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT;
+                                    mask |= gl46core::GL_BUFFER_UPDATE_BARRIER_BIT | gl46core::GL_SHADER_STORAGE_BARRIER_BIT;
                                 } break;
                                 default: DIVIDE_UNEXPECTED_CALL(); break;
                             }
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_GPU_WRITE:
                         {
-                            mask |= GL_SHADER_STORAGE_BARRIER_BIT;
+                            mask |= gl46core::GL_SHADER_STORAGE_BARRIER_BIT;
                         } break;
                         case BufferSyncUsage::CPU_WRITE_TO_CPU_READ:
                         case BufferSyncUsage::CPU_READ_TO_CPU_WRITE:
@@ -1326,7 +1323,7 @@ namespace Divide
                     {
                         case ImageUsage::SHADER_WRITE:
                         {
-                            mask |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                            mask |= gl46core::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
                         } break;
                         case ImageUsage::SHADER_READ:
                         case ImageUsage::SHADER_READ_WRITE:
@@ -1338,31 +1335,31 @@ namespace Divide
                             }
                             else
                             {
-                                mask |= GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+                                mask |= gl46core::GL_TEXTURE_FETCH_BARRIER_BIT | gl46core::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
                             }
                         } break;
                         case ImageUsage::CPU_READ:
                         {
-                            mask |= GL_TEXTURE_UPDATE_BARRIER_BIT;
+                            mask |= gl46core::GL_TEXTURE_UPDATE_BARRIER_BIT;
                         } break;
                         case ImageUsage::RT_COLOUR_ATTACHMENT:
                         case ImageUsage::RT_DEPTH_ATTACHMENT:
                         case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
                         {
-                            mask |= GL_FRAMEBUFFER_BARRIER_BIT;
+                            mask |= gl46core::GL_FRAMEBUFFER_BARRIER_BIT;
                         } break;
 
                         default: DIVIDE_UNEXPECTED_CALL(); break;
                     }
                 }
 
-                if ( mask != MemoryBarrierMask::GL_NONE_BIT )
+                if ( mask != gl46core::MemoryBarrierMask::GL_NONE_BIT )
                 {
-                    glMemoryBarrier( mask );
+                    gl46core::glMemoryBarrier( mask );
                 }
                 if ( textureBarrierRequired )
                 {
-                    glTextureBarrier();
+                    gl46core::glTextureBarrier();
                 }
             } break;
 
@@ -1394,7 +1391,7 @@ namespace Divide
         if ( s_glFlushQueued.compare_exchange_strong( expected, false ) )
         {
             PROFILE_SCOPE( "GL_FLUSH", Profiler::Category::Graphics );
-            glFlush();
+            gl46core::glFlush();
         }
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
@@ -1431,16 +1428,16 @@ namespace Divide
         // Enable OpenGL debug callbacks for this context as well
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            glEnable( GL_DEBUG_OUTPUT );
-            glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
-            glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE );
-            glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
-            glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
+            gl46core::glEnable( gl46core::GL_DEBUG_OUTPUT );
+            gl46core::glEnable( gl46core::GL_DEBUG_OUTPUT_SYNCHRONOUS );
+            gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_MARKER,     gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
+            gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_PUSH_GROUP, gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
+            gl46core::glDebugMessageControl( gl46core::GL_DONT_CARE, gl46core::GL_DEBUG_TYPE_POP_GROUP,  gl46core::GL_DONT_CARE, 0, NULL, gl46core::GL_FALSE );
             // Debug callback in a separate thread requires a flag to distinguish it from the main thread's callbacks
-            glDebugMessageCallback( (GLDEBUGPROC)GLUtil::DebugCallback, GLUtil::s_glSecondaryContext );
+            gl46core::glDebugMessageCallback( (gl46core::GLDEBUGPROC)GLUtil::DebugCallback, GLUtil::s_glSecondaryContext );
         }
 
-        glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
+        gl::glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
     }
 
     /// Reset as much of the GL default state as possible within the limitations given
@@ -1453,7 +1450,7 @@ namespace Divide
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        if ( stateTracker.setActiveBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 ) == GLStateTracker::BindResult::FAILED )
+        if ( stateTracker.setActiveBuffer( gl46core::GL_ELEMENT_ARRAY_BUFFER, 0 ) == GLStateTracker::BindResult::FAILED )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -1505,7 +1502,7 @@ namespace Divide
             for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
                 const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
-                const GLubyte glBindingSlot = ShaderProgram::GetGLBindingForDescriptorSlot( entry._usage, srcBinding._slot );
+                const gl46core::GLubyte glBindingSlot = ShaderProgram::GetGLBindingForDescriptorSlot( entry._usage, srcBinding._slot );
 
                 switch ( srcBinding._data._type )
                 {
@@ -1551,12 +1548,12 @@ namespace Divide
                         DIVIDE_ASSERT( TargetType( imageView._image ) != TextureType::COUNT );
                         DIVIDE_ASSERT( imageView._image._subRange._layerRange._count > 0u );
 
-                        GLenum access = GL_NONE;
+                        gl46core::GLenum access = gl46core::GL_NONE;
                         switch ( imageView._usage )
                         {
-                            case ImageUsage::SHADER_READ: access = GL_READ_ONLY; break;
-                            case ImageUsage::SHADER_WRITE: access = GL_WRITE_ONLY; break;
-                            case ImageUsage::SHADER_READ_WRITE: access = GL_READ_WRITE; break;
+                            case ImageUsage::SHADER_READ:       access = gl46core::GL_READ_ONLY; break;
+                            case ImageUsage::SHADER_WRITE:      access = gl46core::GL_WRITE_ONLY; break;
+                            case ImageUsage::SHADER_READ_WRITE: access = gl46core::GL_READ_WRITE; break;
 
                             case ImageUsage::UNDEFINED:
                             case ImageUsage::CPU_READ:
@@ -1568,11 +1565,11 @@ namespace Divide
 
                         DIVIDE_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
 
-                        const GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( imageView._image._descriptor._baseFormat,
-                                                                                           imageView._image._descriptor._dataType,
-                                                                                           imageView._image._descriptor._packing )._format;
+                        const gl46core::GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( imageView._image._descriptor._baseFormat,
+                                                                                                     imageView._image._descriptor._dataType,
+                                                                                                     imageView._image._descriptor._packing )._format;
 
-                        const GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
+                        const gl46core::GLuint handle = static_cast<const glTexture*>(imageView._image._srcTexture)->textureHandle();
                         if ( handle != GL_NULL_HANDLE &&
                              GL_API::s_stateTracker.bindTextureImage( glBindingSlot,
                                                                       handle,
@@ -1596,7 +1593,7 @@ namespace Divide
         return true;
     }
 
-    bool GL_API::makeTextureViewResident( const GLubyte bindingSlot, const ImageView& imageView, const SamplerDescriptor sampler, size_t& samplerHashInOut ) const
+    bool GL_API::makeTextureViewResident( const gl46core::GLubyte bindingSlot, const ImageView& imageView, const SamplerDescriptor sampler, size_t& samplerHashInOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -1740,21 +1737,21 @@ namespace Divide
         return s_stateTracker;
     }
 
-    GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage( const GLenum usage ) noexcept
+    GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage( const gl46core::GLenum usage ) noexcept
     {
-        assert( usage != GL_NONE );
-        if ( usage == GL_UNIFORM_BUFFER ||
-             usage ==GL_SHADER_STORAGE_BUFFER) 
+        assert( usage != gl46core::GL_NONE );
+        if ( usage == gl46core::GL_UNIFORM_BUFFER ||
+             usage == gl46core::GL_SHADER_STORAGE_BUFFER)
         {
              return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
         }
 
-        if (usage == GL_ELEMENT_ARRAY_BUFFER)
+        if (usage == gl46core::GL_ELEMENT_ARRAY_BUFFER)
         {
             return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
         }
 
-        if (usage == GL_ARRAY_BUFFER)
+        if (usage == gl46core::GL_ARRAY_BUFFER)
         {
             return GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER;
         }
@@ -1771,7 +1768,7 @@ namespace Divide
     {
         if ( Runtime::isMainThread() )
         {
-            glFlush();
+            gl46core::glFlush();
         }
         else
         {
@@ -1784,8 +1781,8 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
-            glPopDebugGroup();
+            gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+            gl46core::glPopDebugGroup();
         }
         s_stateTracker._lastInsertedDebugMessage = {message, id};
     }
@@ -1796,7 +1793,7 @@ namespace Divide
 
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+            gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
         }
         assert( s_stateTracker._debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH );
         s_stateTracker._debugScope[s_stateTracker._debugScopeDepth++] = { message, id };
@@ -1808,16 +1805,16 @@ namespace Divide
 
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            glPopDebugGroup();
+            gl46core::glPopDebugGroup();
         }
         s_stateTracker._debugScope[s_stateTracker._debugScopeDepth--] = {};
     }
 
-    bool GL_API::DeleteShaderPrograms( const GLuint count, GLuint* programs )
+    bool GL_API::DeleteShaderPrograms( const gl46core::GLuint count, gl46core::GLuint* programs )
     {
         if ( count > 0 && programs != nullptr )
         {
-            for ( GLuint i = 0; i < count; ++i )
+            for ( gl46core::GLuint i = 0; i < count; ++i )
             {
                 if ( s_stateTracker._activeShaderProgramHandle == programs[i] )
                 {
@@ -1826,26 +1823,26 @@ namespace Divide
                         DIVIDE_UNEXPECTED_CALL();
                     }
                 }
-                glDeleteProgram( programs[i] );
+                gl46core::glDeleteProgram( programs[i] );
             }
 
-            memset( programs, 0, count * sizeof( GLuint ) );
+            memset( programs, 0, count * sizeof( gl46core::GLuint ) );
             return true;
         }
         return false;
     }
 
-    bool GL_API::DeleteSamplers( const GLuint count, GLuint* samplers )
+    bool GL_API::DeleteSamplers( const gl46core::GLuint count, gl46core::GLuint* samplers )
     {
         if ( count > 0 && samplers != nullptr )
         {
 
-            for ( GLuint i = 0; i < count; ++i )
+            for ( gl46core::GLuint i = 0; i < count; ++i )
             {
-                const GLuint crtSampler = samplers[i];
+                const gl46core::GLuint crtSampler = samplers[i];
                 if ( crtSampler != 0 )
                 {
-                    for ( GLuint& boundSampler : s_stateTracker._samplerBoundMap )
+                    for ( gl46core::GLuint& boundSampler : s_stateTracker._samplerBoundMap )
                     {
                         if ( boundSampler == crtSampler )
                         {
@@ -1854,8 +1851,8 @@ namespace Divide
                     }
                 }
             }
-            glDeleteSamplers( count, samplers );
-            memset( samplers, 0, count * sizeof( GLuint ) );
+            gl46core::glDeleteSamplers( count, samplers );
+            memset( samplers, 0, count * sizeof( gl46core::GLuint ) );
             return true;
         }
 
@@ -1863,15 +1860,15 @@ namespace Divide
     }
 
 
-    bool GL_API::DeleteBuffers( const GLuint count, GLuint* buffers )
+    bool GL_API::DeleteBuffers( const gl46core::GLuint count, gl46core::GLuint* buffers )
     {
         if ( count > 0 && buffers != nullptr )
         {
-            for ( GLuint i = 0; i < count; ++i )
+            for ( gl46core::GLuint i = 0; i < count; ++i )
             {
-                const GLuint crtBuffer = buffers[i];
+                const gl46core::GLuint crtBuffer = buffers[i];
 
-                for ( GLuint& boundBuffer : s_stateTracker._activeBufferID )
+                for ( gl46core::GLuint& boundBuffer : s_stateTracker._activeBufferID )
                 {
                     if ( boundBuffer == crtBuffer )
                     {
@@ -1884,22 +1881,22 @@ namespace Divide
                 }
             }
 
-            glDeleteBuffers( count, buffers );
-            memset( buffers, 0, count * sizeof( GLuint ) );
+            gl46core::glDeleteBuffers( count, buffers );
+            memset( buffers, 0, count * sizeof( gl46core::GLuint ) );
             return true;
         }
 
         return false;
     }
 
-    bool GL_API::DeleteFramebuffers( const GLuint count, GLuint* framebuffers )
+    bool GL_API::DeleteFramebuffers( const gl46core::GLuint count, gl46core::GLuint* framebuffers )
     {
         if ( count > 0 && framebuffers != nullptr )
         {
-            for ( GLuint i = 0; i < count; ++i )
+            for ( gl46core::GLuint i = 0; i < count; ++i )
             {
-                const GLuint crtFB = framebuffers[i];
-                for ( GLuint& activeFB : s_stateTracker._activeFBID )
+                const gl46core::GLuint crtFB = framebuffers[i];
+                for ( gl46core::GLuint& activeFB : s_stateTracker._activeFBID )
                 {
                     if ( activeFB == crtFB )
                     {
@@ -1907,18 +1904,18 @@ namespace Divide
                     }
                 }
             }
-            glDeleteFramebuffers( count, framebuffers );
-            memset( framebuffers, 0, count * sizeof( GLuint ) );
+            gl46core::glDeleteFramebuffers( count, framebuffers );
+            memset( framebuffers, 0, count * sizeof( gl46core::GLuint ) );
             return true;
         }
         return false;
     }
 
     /// Return the OpenGL sampler object's handle for the given hash value
-    GLuint GL_API::GetSamplerHandle( const SamplerDescriptor sampler, size_t& samplerHashInOut )
+    gl46core::GLuint GL_API::GetSamplerHandle( const SamplerDescriptor sampler, size_t& samplerHashInOut )
     {
         thread_local size_t cached_hash = 0u;
-        thread_local GLuint cached_handle = GL_NULL_HANDLE;
+        thread_local gl46core::GLuint cached_handle = GL_NULL_HANDLE;
 
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -1955,7 +1952,7 @@ namespace Divide
             {
                 // Cache miss. Create the sampler object now.
                 // Create and store the newly created sample object. GL_API is responsible for deleting these!
-                const GLuint samplerHandle = glSamplerObject::Construct( sampler );
+                const gl46core::GLuint samplerHandle = glSamplerObject::Construct( sampler );
                 s_samplerMap[cached_hash] = samplerHandle;
 
                 cached_handle = samplerHandle;
@@ -1974,24 +1971,24 @@ namespace Divide
         return s_hardwareQueryPool;
     }
 
-    GLsync GL_API::CreateFenceSync()
+    gl46core::GLsync GL_API::CreateFenceSync()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
 
         ++s_fenceSyncCounter[s_LockFrameLifetime - 1u];
-        return glFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, UnusedMask::GL_UNUSED_BIT );
+        return gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, gl46core::UnusedMask::GL_UNUSED_BIT );
     }
 
-    void GL_API::DestroyFenceSync( GLsync& sync )
+    void GL_API::DestroyFenceSync( gl46core::GLsync& sync )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u );
 
         --s_fenceSyncCounter[s_LockFrameLifetime - 1u];
-        glDeleteSync( sync );
+        gl46core::glDeleteSync( sync );
         sync = nullptr;
     }
 
