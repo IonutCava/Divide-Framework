@@ -53,8 +53,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/Configuration.h
                          Core/Headers/Console.h
                          Core/Headers/Console.inl
-                         Core/Headers/EngineTaskPool.h
-                         Core/Headers/EngineTaskPool.inl
                          Core/Headers/ErrorCodes.h
                          Core/Headers/FrameListener.h
                          Core/Headers/GUIDWrapper.h
@@ -130,7 +128,6 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/ByteBuffer.cpp
                  Core/Configuration.cpp
                  Core/Console.cpp
-                 Core/EngineTaskPool.cpp
                  Core/ErrorCodes.cpp
                  Core/FrameListener.cpp
                  Core/GUIDWrapper.cpp

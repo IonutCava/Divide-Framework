@@ -3,7 +3,6 @@
 #include "Headers/RenderPassCuller.h"
 
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
@@ -104,7 +103,7 @@ namespace Divide
                         FrustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
                     }
                 };
-                parallel_for( context, descriptor );
+                parallel_for( context.taskPool( TaskPoolType::RENDERER ), descriptor );
             }
             else
             {
@@ -177,7 +176,7 @@ namespace Divide
                             FrustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
                         }
                     };
-                    parallel_for( currentNode->context(), descriptor );
+                    parallel_for( currentNode->context().taskPool( TaskPoolType::RENDERER ), descriptor );
                 }
                 else
                 {

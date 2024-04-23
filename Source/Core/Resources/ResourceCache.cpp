@@ -65,7 +65,7 @@ bool ResourceLoadLock::SetLoadingFinished(const size_t hash)
 
 void ResourceLoadLock::notifyTaskPool(PlatformContext& context)
 {
-    context.taskPool(TaskPoolType::HIGH_PRIORITY).threadWaiting();
+    context.taskPool(TaskPoolType::ASSET_LOADER ).threadWaiting();
 }
 
 void DeleteResource::operator()(CachedResource* res) const
@@ -212,7 +212,7 @@ Mesh_ptr detail::MeshLoadData::build()
                                   _mesh.reset();
                               }
                           }),
-               _context->taskPool( TaskPoolType::HIGH_PRIORITY ) );
+               _context->taskPool( TaskPoolType::ASSET_LOADER ) );
     }
 
     return _mesh;

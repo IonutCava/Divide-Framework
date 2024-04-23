@@ -1,8 +1,9 @@
 
 
 #include "Headers/TransformSystem.h"
-#include "Core/Headers/EngineTaskPool.h"
+
 #include "Graphs/Headers/SceneGraphNode.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide {
@@ -67,7 +68,7 @@ namespace Divide {
                     events[i].first->updateLocalMatrix( interpFactor );
                 }
             };
-            parallel_for(_context, descriptor);
+            parallel_for(_context.taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
         }
         else
         {

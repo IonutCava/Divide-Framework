@@ -26,8 +26,14 @@ PlatformContext::PlatformContext(Application& app)
   , _debug(MemoryManager_NEW DebugInterface())
   , _server(MemoryManager_NEW Server())
 {
-    const char* taskPoolNames[] = { "WORKER_THREAD",
-                                    "BACKUP_THREAD" };
+    const char* taskPoolNames[] =
+    {
+        "WORKER_THREAD",
+        "BACKUP_THREAD",
+        "RENDERER",
+        "ASSET_LOADER"
+    };
+
     static_assert(std::size(taskPoolNames) == to_base(TaskPoolType::COUNT));
 
     for ( U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i )
@@ -35,7 +41,6 @@ PlatformContext::PlatformContext(Application& app)
         _taskPool[i] = MemoryManager_NEW TaskPool(taskPoolNames[i]);
     }
 }
-
 
 PlatformContext::~PlatformContext()
 {
@@ -145,7 +150,8 @@ const Kernel& PlatformContext::kernel() const noexcept
 
 void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::thread::id& threadID, bool isMainRenderThread ) const
 {
-    if (poolType != TaskPoolType::LOW_PRIORITY)
+    if (poolType == TaskPoolType::ASSET_LOADER ||
+        poolType == TaskPoolType::RENDERER)
     {
         _gfx->onThreadCreated(threadID, isMainRenderThread);
     }

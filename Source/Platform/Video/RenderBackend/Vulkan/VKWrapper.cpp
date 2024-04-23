@@ -606,7 +606,11 @@ namespace Divide
         return true;
     }
 
-    void VK_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
+    void VK_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    {
+    }
+
+    void VK_API::flushWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

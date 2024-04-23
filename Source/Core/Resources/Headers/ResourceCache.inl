@@ -473,7 +473,7 @@ namespace Divide {
                                      threadedMeshLoad( loadingData, assetLocaltion, assetName );
                                  } );
 
-        Start( *task, context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
+        Start( *task, context.taskPool( TaskPoolType::ASSET_LOADER ) );
 
         return ptr;
     }

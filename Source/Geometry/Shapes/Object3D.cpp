@@ -59,8 +59,10 @@ void Object3D::rebuildInternal() {
     NOP();
 }
 
-const VertexBuffer_ptr& Object3D::geometryBuffer() {
-    if (geometryDirty()) {
+const VertexBuffer_ptr& Object3D::geometryBuffer()
+{
+    if (geometryDirty())
+    {
         geometryDirty(false);
         rebuildInternal();
     }

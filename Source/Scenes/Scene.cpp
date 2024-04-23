@@ -7,7 +7,6 @@
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Kernel.h"
@@ -656,7 +655,7 @@ namespace Divide
                     loadAsset( innerTask, sceneNode.children[i], crtNode );
                 }
             };
-            parallel_for( _context, descriptor );
+            parallel_for( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor );
         }
     }
 
@@ -682,7 +681,7 @@ namespace Divide
             }
         };
 
-        TaskPool& pool = _context.taskPool( TaskPoolType::HIGH_PRIORITY );
+        TaskPool& pool = _context.taskPool( TaskPoolType::ASSET_LOADER );
         Task* initTask = CreateTask( TASK_NOP );
         Start( *initTask, pool, TaskPriority::DONT_CARE, initData);
         Wait( *initTask, pool);
@@ -1299,7 +1298,7 @@ namespace Divide
                     loadAsset( parentTask, rootChildren[i], rootNode );
                 }
             };
-            parallel_for( _context, descriptor );
+            parallel_for( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor );
         }
         else
         {

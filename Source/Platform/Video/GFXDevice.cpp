@@ -1240,11 +1240,6 @@ namespace Divide
     void GFXDevice::onThreadCreated( const std::thread::id& threadID, const bool isMainRenderThread ) const
     {
         _api->onThreadCreated( threadID, isMainRenderThread );
-
-        if ( !ShaderProgram::OnThreadCreated( *this, threadID ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
     }
 
 #pragma endregion
@@ -1276,14 +1271,17 @@ namespace Divide
         {
             NOP();
         }
-        const vec2<U16> windowDimensions = window.getDrawableSize();
-        setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
-        setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
     }
 
     void GFXDevice::flushWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        _api->prepareFlushWindow( window );
+        const vec2<U16> windowDimensions = window.getDrawableSize();
+        setViewport( { 0, 0, windowDimensions.width, windowDimensions.height } );
+        setScissor( { 0, 0, windowDimensions.width, windowDimensions.height } );
+
         {
             LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
             GFX::CommandBufferQueue& queue = window.getCurrentCommandBufferQueue();
@@ -1293,8 +1291,7 @@ namespace Divide
             }
             ResetCommandBufferQueue(queue);
         }
-
-        _api->flushWindow( window, false );
+        _api->flushWindow( window );
     }
 
     bool GFXDevice::framePreRender( [[maybe_unused]] const FrameEvent& evt )
@@ -1363,22 +1360,8 @@ namespace Divide
 
         context().app().windowManager().flushWindow();
 
-        {
-            PROFILE_SCOPE( "Lifetime updates", Profiler::Category::Graphics );
-
-            frameDrawCallsPrev( frameDrawCalls() );
-            frameDrawCalls( 0u );
-
-            DecrementPrimitiveLifetime( _debugLines );
-            DecrementPrimitiveLifetime( _debugBoxes );
-            DecrementPrimitiveLifetime( _debugOBBs );
-            DecrementPrimitiveLifetime( _debugFrustums );
-            DecrementPrimitiveLifetime( _debugCones );
-            DecrementPrimitiveLifetime( _debugSpheres );
-
-            _performanceMetrics._scratchBufferQueueUsage[0] = to_U32( _gfxBuffers.crtBuffers()._camWritesThisFrame );
-            _performanceMetrics._scratchBufferQueueUsage[1] = to_U32( _gfxBuffers.crtBuffers()._renderWritesThisFrame );
-        }
+        frameDrawCallsPrev( frameDrawCalls() );
+        frameDrawCalls( 0u );
 
         if ( _gfxBuffers._needsResizeCam )
         {
@@ -1394,9 +1377,26 @@ namespace Divide
         _gfxBuffers.onEndFrame();
         ShaderProgram::OnEndFrame( *this );
         
-        const bool ret = _api->frameEnded();
-        ++s_frameCount;
-        return ret;
+        if (!_api->frameEnded())
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+        {
+            PROFILE_SCOPE( "Lifetime updates", Profiler::Category::Graphics );
+
+            DecrementPrimitiveLifetime( _debugLines );
+            DecrementPrimitiveLifetime( _debugBoxes );
+            DecrementPrimitiveLifetime( _debugOBBs );
+            DecrementPrimitiveLifetime( _debugFrustums );
+            DecrementPrimitiveLifetime( _debugCones );
+            DecrementPrimitiveLifetime( _debugSpheres );
+
+            _performanceMetrics._scratchBufferQueueUsage[0] = to_U32( _gfxBuffers.crtBuffers()._camWritesThisFrame );
+            _performanceMetrics._scratchBufferQueueUsage[1] = to_U32( _gfxBuffers.crtBuffers()._renderWritesThisFrame );
+            ++s_frameCount;
+        }
+ 
+        return true;
     }
 #pragma endregion
 

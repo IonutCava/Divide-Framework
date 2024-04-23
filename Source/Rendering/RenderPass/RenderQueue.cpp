@@ -183,7 +183,7 @@ namespace Divide
         else
         {
             bool sortTaskDirty = false;
-            TaskPool& pool = parent().platformContext().taskPool( TaskPoolType::HIGH_PRIORITY );
+            TaskPool& pool = parent().platformContext().taskPool( TaskPoolType::RENDERER );
             Task* sortTask = CreateTask( TASK_NOP );
             for (U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i)
             {

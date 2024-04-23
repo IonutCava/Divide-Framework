@@ -4,7 +4,6 @@
 #include "Headers/PhysX.h"
 
 #include "Scenes/Headers/Scene.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
@@ -84,7 +83,7 @@ namespace Divide
         sceneDesc.gravity = physx::PxVec3( DEFAULT_GRAVITY.x, DEFAULT_GRAVITY.y, DEFAULT_GRAVITY.z );
         if ( !sceneDesc.cpuDispatcher )
         {
-            _cpuDispatcher = physx::PxDefaultCpuDispatcherCreate( std::max( 2u, HardwareThreadCount() - 2u ) );
+            _cpuDispatcher = physx::PxDefaultCpuDispatcherCreate( std::min(std::thread::hardware_concurrency(), 4u) );
             if ( !_cpuDispatcher )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_PHYSX_INTERFACE_CPU_DISPATCH" ) );
@@ -238,7 +237,7 @@ namespace Divide
                 }
             };
 
-            parallel_for( parentScene().context(), descriptor );
+            parallel_for( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
         }
     }
 

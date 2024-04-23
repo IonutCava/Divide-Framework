@@ -163,6 +163,8 @@ extern thread_local SDL_GLContext s_glSecondaryContext;
 
 extern Mutex s_glSecondaryContextMutex;
 
+bool ValidateSDL( const I32 errCode, bool assert = true );
+
 ///Note: If internal format is not GL_NONE, an indexed draw is issued!
 void SubmitRenderCommand(const GenericDrawCommand& drawCommand, bool useIndirectBuffer, gl::GLenum internalFormat);
 

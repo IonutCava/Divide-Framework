@@ -211,7 +211,6 @@ namespace Divide
 
         [[nodiscard]] static ErrorCode OnStartup( ResourceCache* parentCache );
         [[nodiscard]] static bool OnShutdown();
-        [[nodiscard]] static bool OnThreadCreated( const GFXDevice& gfx, const std::thread::id& threadID );
         static void OnBeginFrame( GFXDevice& gfx );
         static void OnEndFrame( GFXDevice& gfx );
 

@@ -9,6 +9,8 @@
 
 #include "Core/Headers/StringHelper.h"
 
+#include "Utility/Headers/Localization.h"
+
 using namespace gl;
 
 namespace Divide
@@ -431,6 +433,21 @@ namespace Divide
             }
 
             return GLUtil::glTextureTypeTable[to_base( type )];
+        }
+
+        bool ValidateSDL( const I32 errCode, bool assert  )
+        {
+            if ( errCode != 0 )
+            {
+                Console::errorfn( LOCALE_STR( "SDL_ERROR" ), SDL_GetError() );
+                if ( assert )
+                {
+                    DIVIDE_UNEXPECTED_CALL_MSG( SDL_GetError() );
+                }
+                return false;
+            }
+
+            return true;
         }
 
         static void SubmitIndexedRenderCommand( const GenericDrawCommand& drawCommand,

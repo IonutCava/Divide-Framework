@@ -393,12 +393,8 @@ namespace Divide
         }
     };
 
-    static bool InitGLSW( const GFXDevice& gfx)
+    static bool InitGLSW( const RenderAPI renderingAPI, const Configuration& config)
     {
-        const RenderAPI renderingAPI = gfx.renderAPI();
-
-        const Configuration& config = gfx.context().config();
-
         const auto AppendToShaderHeader = []( const ShaderType type, const string& entry )
         {
             glswAddDirectiveToken( type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "", entry.c_str() );
@@ -509,8 +505,9 @@ namespace Divide
         };
 
         // Initialize GLSW
-        I32 glswState = -1;
-        if ( !glswGetCurrentContext() )
+        I32 glswState = glswGetCurrentContext() ? 1 : -1;
+
+        if (glswState == -1) 
         {
             glswState = glswInit();
             DIVIDE_ASSERT( glswState == 1 );
@@ -961,11 +958,13 @@ namespace Divide
                                 PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
                                 hashMap<U64, PerFileShaderData> loadDataByFile{};
-                                loadInternal( loadDataByFile, false );
-                                RegisterShaderProgram( this );
-                                CachedResource::load();
+                                if ( loadInternal( loadDataByFile, false ))
+                                {
+                                    RegisterShaderProgram( this );
+                                    CachedResource::load();
+                                }
                             } ),
-               _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ) );
+               _context.context().taskPool( TaskPoolType::ASSET_LOADER ) );
 
         return true;
     }
@@ -1163,7 +1162,7 @@ namespace Divide
 
     ErrorCode ShaderProgram::SubmitSetLayouts( GFXDevice& gfx )
     {
-        if ( !InitGLSW( gfx ) )
+        if ( !InitGLSW( gfx.renderAPI(), gfx.context().config() ))
         {
             return ErrorCode::GLSL_INIT_ERROR;
         }
@@ -1290,12 +1289,6 @@ namespace Divide
         }
         
         return count;
-    }
-
-    bool ShaderProgram::OnThreadCreated( const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID )
-    {
-        Preprocessor::OnThreadCreate();
-        return InitGLSW( gfx );
     }
 
     void ShaderProgram::OnBeginFrame( [[maybe_unused]] GFXDevice& gfx )
@@ -1738,6 +1731,17 @@ namespace Divide
 
     bool ShaderProgram::loadInternal( hashMap<U64, PerFileShaderData>& fileData, const bool overwrite )
     {
+        thread_local bool isPreprocInit = false;
+        if (!isPreprocInit )
+        {
+            isPreprocInit = true;
+            Preprocessor::OnThreadCreate();
+            if (!InitGLSW( _context.renderAPI(), _context.context().config() ))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+        }
+
         // The context is thread_local so each call to this should be thread safe
         if ( overwrite )
         {

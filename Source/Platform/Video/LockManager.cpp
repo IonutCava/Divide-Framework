@@ -101,32 +101,6 @@ namespace Divide
         return true;
     }
 
-    SyncObjectHandle LockManager::CreateSyncObjectLocked( const RenderAPI api, const U8 flag )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        // Attempt reuse
-        for ( size_t i = 0u; i < s_bufferLockPool.size(); ++i )
-        {
-            BufferLockPoolEntry& syncObject = s_bufferLockPool[i];
-
-            if ( InitLockPoolEntry(api, syncObject, flag, GFXDevice::FrameCount() ) )
-            {
-                return SyncObjectHandle{ i, ++syncObject._generation };
-            }
-        }
-
-        // We failed once, so create a new object
-        BufferLockPoolEntry newEntry{};
-        if ( !InitLockPoolEntry( api, newEntry, flag, GFXDevice::FrameCount() ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-
-        s_bufferLockPool.emplace_back( MOV( newEntry ) );
-        return SyncObjectHandle{ s_bufferLockPool.size() - 1u, newEntry._generation };
-    }
-
     bool LockManager::waitForLockedRange( const size_t lockBeginBytes, const size_t lockLength )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -197,8 +171,30 @@ namespace Divide
 
     SyncObjectHandle LockManager::CreateSyncObject( const RenderAPI api, const U8 flag )
     {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
         LockGuard<Mutex> w_lock( s_bufferLockLock );
-        return CreateSyncObjectLocked( api, flag );
+
+        // Attempt reuse
+        for ( size_t i = 0u; i < s_bufferLockPool.size(); ++i )
+        {
+            BufferLockPoolEntry& syncObject = s_bufferLockPool[i];
+
+            if ( InitLockPoolEntry( api, syncObject, flag, GFXDevice::FrameCount() ) )
+            {
+                return SyncObjectHandle{ i, ++syncObject._generation };
+            }
+        }
+
+        // We failed once, so create a new object
+        BufferLockPoolEntry newEntry{};
+        if ( !InitLockPoolEntry( api, newEntry, flag, GFXDevice::FrameCount() ) )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        s_bufferLockPool.emplace_back( MOV( newEntry ) );
+        return SyncObjectHandle{ s_bufferLockPool.size() - 1u, newEntry._generation };
     }
 
 

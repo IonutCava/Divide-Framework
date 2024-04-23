@@ -4,7 +4,6 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/ByteBuffer.h"
-#include "Core/Headers/EngineTaskPool.h"
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/FrameListenerManager.h"
@@ -300,7 +299,7 @@ namespace Divide
                     }
                 };
 
-                parallel_for( parentScene().context(), descriptor );
+                parallel_for( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
             }
             else
             {
@@ -329,7 +328,7 @@ namespace Divide
                     }
                 };
 
-                parallel_for( parentScene().context(), descriptor );
+                parallel_for( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
             }
             else
             {

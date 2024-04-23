@@ -78,10 +78,10 @@ namespace Divide
             const BufferAccessMask  accessMask  = GL_MAP_PERSISTENT_BIT | GL_MAP_WRITE_BIT | GL_MAP_COHERENT_BIT;
 
             const size_t alignment = params._target == GL_UNIFORM_BUFFER
-                ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO
-                : _params._target == GL_SHADER_STORAGE_BUFFER
-                ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO
-                : GFXDevice::GetDeviceInformation()._offsetAlignmentBytesVBO;
+                                                     ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO
+                                                     : _params._target == GL_SHADER_STORAGE_BUFFER
+                                                                        ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO
+                                                                        : GFXDevice::GetDeviceInformation()._offsetAlignmentBytesVBO;
 
             GLUtil::GLMemory::DeviceAllocator& allocator = GL_API::GetMemoryAllocator( GL_API::GetMemoryTypeForUsage( _params._target ) );
             _memoryBlock = allocator.allocate( _params._useChunkAllocation,

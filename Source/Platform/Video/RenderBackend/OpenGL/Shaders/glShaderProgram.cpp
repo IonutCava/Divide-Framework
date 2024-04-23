@@ -21,18 +21,9 @@ namespace {
     NO_DESTROY eastl::set<GLuint> g_deletionSet;
 }
 
-void glShaderProgram::Idle(PlatformContext& platformContext)
+void glShaderProgram::Idle( [[maybe_unused]] PlatformContext& platformContext )
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-    thread_local bool validatedThread = false;
-    if (!validatedThread)
-    {
-        DIVIDE_ASSERT( Runtime::isMainThread() );
-        validatedThread = true;
-    }
-
-    DIVIDE_UNUSED(platformContext);
 
     // One validation per Idle call
     ProcessValidationQueue();
@@ -42,60 +33,62 @@ void glShaderProgram::ProcessValidationQueue()
 {
     NO_DESTROY thread_local ValidationEntry s_validationOutputCache;
 
-    if (g_sValidationQueue.try_dequeue(s_validationOutputCache))
+    if (!g_sValidationQueue.try_dequeue(s_validationOutputCache))
     {
+        return;
+    }
+    {
+        SharedLock<SharedMutex> w_lock(g_deletionSetLock);
+        if (g_deletionSet.find(s_validationOutputCache._handle) != std::cend(g_deletionSet))
         {
-            SharedLock<SharedMutex> w_lock(g_deletionSetLock);
-            if (g_deletionSet.find(s_validationOutputCache._handle) != std::cend(g_deletionSet))
-            {
-                return;
-            }
+            return;
         }
-        assert(s_validationOutputCache._handle != GL_NULL_HANDLE);
+    }
 
-        glValidateProgramPipeline(s_validationOutputCache._handle);
+    assert(s_validationOutputCache._handle != GL_NULL_HANDLE);
+    
+    glValidateProgramPipeline(s_validationOutputCache._handle);
 
-        GLint status = 1;
-        if (s_validationOutputCache._stageMask != UseProgramStageMask::GL_COMPUTE_SHADER_BIT)
+    GLint status = 1;
+    if (s_validationOutputCache._stageMask != UseProgramStageMask::GL_COMPUTE_SHADER_BIT)
+    {
+        glGetProgramPipelineiv(s_validationOutputCache._handle, GL_VALIDATE_STATUS, &status);
+    }
+
+    // we print errors in debug and in release, but everything else only in debug
+    // the validation log is only retrieved if we request it. (i.e. in release,
+    // if the shader is validated, it isn't retrieved)
+    if (status == 0)
+    {
+        // Query the size of the log
+        GLint length = 0;
+        glGetProgramPipelineiv(s_validationOutputCache._handle, GL_INFO_LOG_LENGTH, &length);
+        // If we actually have something in the validation log
+        if (length > 1)
         {
-            glGetProgramPipelineiv(s_validationOutputCache._handle, GL_VALIDATE_STATUS, &status);
-        }
+            string validationBuffer;
+            validationBuffer.resize(length);
+            glGetProgramPipelineInfoLog(s_validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
 
-        // we print errors in debug and in release, but everything else only in debug
-        // the validation log is only retrieved if we request it. (i.e. in release,
-        // if the shader is validated, it isn't retrieved)
-        if (status == 0)
-        {
-            // Query the size of the log
-            GLint length = 0;
-            glGetProgramPipelineiv(s_validationOutputCache._handle, GL_INFO_LOG_LENGTH, &length);
-            // If we actually have something in the validation log
-            if (length > 1)
+            // To avoid overflowing the output buffers (both CEGUI and Console), limit the maximum output size
+            if (validationBuffer.size() > g_validationBufferMaxSize)
             {
-                string validationBuffer;
-                validationBuffer.resize(length);
-                glGetProgramPipelineInfoLog(s_validationOutputCache._handle, length, nullptr, &validationBuffer[0]);
-
-                // To avoid overflowing the output buffers (both CEGUI and Console), limit the maximum output size
-                if (validationBuffer.size() > g_validationBufferMaxSize)
-                {
-                    // On some systems, the program's disassembly is printed, and that can get quite large
-                    validationBuffer.resize(std::strlen(LOCALE_STR("GLSL_LINK_PROGRAM_LOG")) + g_validationBufferMaxSize);
-                    // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
-                    validationBuffer.append(" ... ");
-                }
-                // Return the final message, whatever it may contain
-                Console::errorfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), validationBuffer.c_str());
+                // On some systems, the program's disassembly is printed, and that can get quite large
+                validationBuffer.resize(std::strlen(LOCALE_STR("GLSL_LINK_PROGRAM_LOG")) + g_validationBufferMaxSize);
+                // Use the simple "truncate and inform user" system (a.k.a. add dots and delete the rest)
+                validationBuffer.append(" ... ");
             }
-            else
-            {
-                Console::errorfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ Couldn't retrieve info log! ]");
-            }
+            // Return the final message, whatever it may contain
+            Console::errorfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), validationBuffer.c_str());
         }
         else
         {
-            Console::d_printfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ OK! ]");
+            Console::errorfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ Couldn't retrieve info log! ]");
         }
+    }
+    else
+    {
+        Console::d_printfn(LOCALE_STR("GLSL_VALIDATING_PROGRAM"), s_validationOutputCache._handle, s_validationOutputCache._name.c_str(), "[ OK! ]");
     }
 }
 

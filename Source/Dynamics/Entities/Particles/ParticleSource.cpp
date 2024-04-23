@@ -1,8 +1,7 @@
 
 
 #include "Headers/ParticleSource.h"
-
-#include "Core/Headers/EngineTaskPool.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide {

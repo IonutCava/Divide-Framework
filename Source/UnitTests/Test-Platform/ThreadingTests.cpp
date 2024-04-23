@@ -49,7 +49,7 @@ TEST_CASE( "Task Pool Construction Test", "[threading_tests]" )
     CHECK_TRUE( init );
 
     // Double init
-    init = test.init( HardwareThreadCount() );
+    init = test.init( std::thread::hardware_concurrency() );
     CHECK_TRUE( init );
 
     test.shutdown();
@@ -63,7 +63,7 @@ TEST_CASE( "Parallel For Test", "[threading_tests]" )
 
     TaskPool test( "PARALLEL_FOR_TEST" );
 
-    const bool init = test.init( HardwareThreadCount() );
+    const bool init = test.init( std::thread::hardware_concurrency() );
     CHECK_TRUE( init );
 
     constexpr U32 partitionSize = 4;
@@ -98,7 +98,7 @@ TEST_CASE( "Task Callback Test", "[threading_tests]" )
     platformInitRunListener::PlatformInit();
 
     TaskPool test( "CALLBACK_TEST" );
-    const bool init = test.init( HardwareThreadCount() );
+    const bool init = test.init( std::thread::hardware_concurrency() );
     CHECK_TRUE( init );
 
     bool testValue = false;
@@ -176,7 +176,7 @@ TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_t
 
     TaskPool test("MEMBER_CALLBACK_TEST");
 
-    const bool init = test.init( to_U8( HardwareThreadCount() ));
+    const bool init = test.init( to_U8( std::thread::hardware_concurrency() ));
     CHECK_TRUE( init );
 
     Task* job = CreateTask( [&]( const Task& parentTask )
@@ -218,7 +218,7 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
     const U64 timerOverhead = Time::ProfileTimer::overhead();
     {
         TaskPool test("SPEED_TEST_LOOP");
-        const bool init = test.init( to_U8( HardwareThreadCount() ) );
+        const bool init = test.init( to_U8( std::thread::hardware_concurrency() ) );
         CHECK_TRUE( init );
 
         Time::ProfileTimer timer;
@@ -241,7 +241,7 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
     }
     {
         TaskPool test("SPEED_TEST_PARALLEL_FOR");
-        const bool init = test.init( to_U8( HardwareThreadCount() ) );
+        const bool init = test.init( to_U8( std::thread::hardware_concurrency() ) );
         CHECK_TRUE( init );
 
         Time::ProfileTimer timer;
@@ -265,7 +265,7 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
     }
     {
         TaskPool test("SPEED_TEST_PARALLEL_FOR_CURRENT_THREAD");
-        const bool init = test.init( to_U8( HardwareThreadCount() ) );
+        const bool init = test.init( to_U8( std::thread::hardware_concurrency() ) );
         CHECK_TRUE( init );
 
         Time::ProfileTimer timer;
@@ -295,7 +295,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
     platformInitRunListener::PlatformInit();
 
     TaskPool test("PRIORTIY_TEST");
-    const bool init = test.init( HardwareThreadCount() );
+    const bool init = test.init( std::thread::hardware_concurrency() );
     CHECK_TRUE( init );
 
     U32 callbackValue = 0u;

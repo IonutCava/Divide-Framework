@@ -127,11 +127,6 @@ namespace Divide
         info._workingDirectory = getWorkingDirectory();
     }
 
-    U16 HardwareThreadCount() noexcept
-    {
-        return to_U16(std::max( std::thread::hardware_concurrency(), 2u ));
-    }
-
     const char* GetClipboardText() noexcept
     {
         return SDL_GetClipboardText();

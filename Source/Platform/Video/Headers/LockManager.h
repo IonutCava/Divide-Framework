@@ -102,7 +102,6 @@ namespace Divide {
 
     protected:
         [[nodiscard]] static bool InitLockPoolEntry( RenderAPI api, BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
-        [[nodiscard]] static SyncObjectHandle CreateSyncObjectLocked( RenderAPI api, U8 flag);
 
         virtual bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock);
 

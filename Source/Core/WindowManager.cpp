@@ -304,12 +304,6 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
 
     DisplayWindow* crtWindow = activeWindow();
 
-    if ( !isMainWindow )
-    {
-        DIVIDE_ASSERT(descriptor.parentWindow != nullptr, "Secondary windows must have a parent window (usually the main app window!");
-        ValidateAssert( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
-    }
-
     bool contextChanged = false;
     if ( descriptor.parentWindow != nullptr )
     {
@@ -321,7 +315,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
 
     if ( crtWindow != nullptr && contextChanged )
     {
-        Validate( SDL_GL_MakeCurrent( crtWindow->getRawWindow(), crtWindow->userData()._glContext ) );
+        Validate( SDL_GL_MakeCurrent( crtWindow->getRawWindow(), nullptr ) );
     }
 
     if (err != ErrorCode::NO_ERR)
@@ -499,6 +493,7 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
         {
             targetWindow->_userData._glContext = SDL_GL_CreateContext( targetWindow->getRawWindow() );
             targetWindow->_userData._ownsContext = true;
+            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
         }
 
         if ( targetWindow->_userData._glContext == nullptr)
@@ -508,8 +503,6 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
             Console::warnfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
             return ErrorCode::GL_OLD_HARDWARE;
         }
-
-        Validate(SDL_GL_MakeCurrent( targetWindow->getRawWindow(), targetWindow->userData()._glContext));
 
         if ( targetWindow->_flags & to_base(WindowFlags::VSYNC))
         {
@@ -537,7 +530,8 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
             SDL_GL_SetSwapInterval(0);
         }
 
-        Validate(SDL_GL_MakeCurrent( activeWindow->getRawWindow(), activeWindow->userData()._glContext));
+        // Creating a context will also set it as current in SDL. So ... unset it here.
+        Validate(SDL_GL_MakeCurrent( activeWindow->getRawWindow(), nullptr));
     }
 
     return ErrorCode::NO_ERR;

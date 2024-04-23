@@ -182,7 +182,6 @@ namespace Divide
 
         if ( needsAutoResolve && _framebufferResolveHandle  == GL_NULL_HANDLE )
         {
-
             glCreateFramebuffers( 1, &_framebufferResolveHandle );
             if constexpr ( Config::ENABLE_GPU_VALIDATION )
             {

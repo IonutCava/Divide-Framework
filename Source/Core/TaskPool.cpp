@@ -37,7 +37,7 @@ namespace Divide
         DIVIDE_ASSERT( _activeThreads.load() == 0u, "Task pool is still active! Threads should be joined before destroying the pool. Call TaskPool::shutdown() first");
     }
 
-    bool TaskPool::init( const U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreateCbk)
+    bool TaskPool::init( const size_t threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreateCbk)
     {
         shutdown();
         if (threadCount == 0u)
@@ -53,7 +53,7 @@ namespace Divide
         for ( U32 idx = 0u; idx < threadCount; ++idx )
         {
             _threads.emplace_back(
-                [&]
+                [&, idx]
                 {
                     const string threadName = Util::StringFormat( "{}_{}", _threadNamePrefix, idx );
 

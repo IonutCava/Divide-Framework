@@ -62,6 +62,8 @@ namespace Divide
         TO_MEGABYTES( 256 )
     };
 
+    constexpr bool g_breakOnGLCall = false;
+
     namespace
     {
         struct SDLContextEntry
@@ -70,33 +72,18 @@ namespace Divide
             bool _inUse = false;
         };
 
-        inline bool ValidateSDL( const I32 errCode, bool assert = true )
-        {
-            if ( errCode != 0 )
-            {
-                Console::errorfn( LOCALE_STR( "SDL_ERROR" ), SDL_GetError() );
-                if (assert)
-                {
-                    DIVIDE_UNEXPECTED_CALL_MSG( SDL_GetError() );
-                }
-                return false;
-            }
-
-            return true;
-        }
-
         struct ContextPool
         {
             bool init( const size_t size, const DisplayWindow& window )
             {
                 SDL_Window* raw = window.getRawWindow();
                 _contexts.resize( size );
-                ValidateSDL( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
-                ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
+                GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
                 for ( SDLContextEntry& contextEntry : _contexts )
                 {
                     contextEntry._context = SDL_GL_CreateContext( raw );
                 }
+                GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), nullptr ) );
                 return true;
             }
 
@@ -140,27 +127,54 @@ namespace Divide
     /// Try and create a valid OpenGL context taking in account the specified resolution and command line arguments
     ErrorCode GL_API::initRenderingAPI( [[maybe_unused]] GLint argc, [[maybe_unused]] char** argv, Configuration& config )
     {
-        // Fill our (abstract API <-> openGL) enum translation tables with proper values
-        GLUtil::OnStartup();
-
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
-        g_ContextPool.init( _context.context().kernel().totalThreadCount(), window );
-
-        ValidateSDL(SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
-
         GLUtil::s_glMainRenderWindow = &window;
-
+		g_ContextPool.init( Kernel::TotalThreadCount( TaskPoolType::RENDERER ) + Kernel::TotalThreadCount(TaskPoolType::ASSET_LOADER), window );
+        GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
         glbinding::Binding::initialize( []( const char* proc ) noexcept
-                                        {
-                                            return (glbinding::ProcAddress)SDL_GL_GetProcAddress( proc );
-                                        }, true );
+        {
+            return (glbinding::ProcAddress)SDL_GL_GetProcAddress( proc );
+        }, false );
+
+        // OpenGL has a nifty error callback system, available in every build configuration if required
+        if constexpr ( Config::ENABLE_GPU_VALIDATION )
+        {
+            if ( (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
+            {
+                // GL_DEBUG_OUTPUT_SYNCHRONOUS is essential for debugging gl commands in the IDE
+                glEnable( GL_DEBUG_OUTPUT );
+                glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+                // hard-wire our debug callback function with OpenGL's implementation
+                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                if ( !config.debug.renderer.enableRenderAPIBestPractices )
+                {
+                    glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                    glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PORTABILITY, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                    glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE );
+                }
+                glDebugMessageCallback( (GLDEBUGPROC)GLUtil::DebugCallback, nullptr );
+            }
+        }
+        glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
+
 
         if ( SDL_GL_GetCurrentContext() == nullptr )
         {
             return ErrorCode::GLBINGING_INIT_ERROR;
         }
 
-        glbinding::Binding::useCurrentContext();
+        if constexpr ( g_breakOnGLCall )
+        {
+            glbinding::Binding::setCallbackMaskExcept( glbinding::CallbackMask::Before, { "glGetError" } );
+            glbinding::Binding::setBeforeCallback( [&]( const glbinding::FunctionCall& )
+            {
+                DebugBreak();
+            });
+        }
+
+        GLUtil::OnStartup();
 
         // Query GPU vendor to enable/disable vendor specific features
         GPUVendor vendor = GPUVendor::COUNT;
@@ -273,25 +287,6 @@ namespace Divide
             s_hardwareQueryPool = MemoryManager_NEW glHardwareQueryPool( _context );
         }
 
-        // OpenGL has a nifty error callback system, available in every build configuration if required
-        if ( Config::ENABLE_GPU_VALIDATION && (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
-        {
-            // GL_DEBUG_OUTPUT_SYNCHRONOUS is essential for debugging gl commands in the IDE
-            glEnable( GL_DEBUG_OUTPUT );
-            glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
-            // hard-wire our debug callback function with OpenGL's implementation
-            glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_MARKER, GL_DONT_CARE, 0, NULL, GL_FALSE );
-            glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PUSH_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
-            glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_POP_GROUP, GL_DONT_CARE, 0, NULL, GL_FALSE );
-            if ( !config.debug.renderer.enableRenderAPIBestPractices )
-            {
-                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 0, NULL, GL_FALSE );
-                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PORTABILITY, GL_DONT_CARE, 0, NULL, GL_FALSE );
-                glDebugMessageControl( GL_DONT_CARE, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 0, NULL, GL_FALSE );
-            }
-            glDebugMessageCallback( (GLDEBUGPROC)GLUtil::DebugCallback, nullptr );
-        }
-
         // If we got here, let's figure out what capabilities we have available
         // Maximum addressable texture image units in the fragment shader
         deviceInformation._maxTextureUnits = CLAMPED( GLUtil::getGLValue( GL_MAX_TEXTURE_IMAGE_UNITS ), 16, 255 );
@@ -314,7 +309,6 @@ namespace Divide
         // Maximum number of colour attachments per framebuffer
         GLUtil::getGLValue( GL_MAX_COLOR_ATTACHMENTS, deviceInformation._maxRTColourAttachments );
 
-        glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
         deviceInformation._shaderCompilerThreads = GLUtil::getGLValue( GL_MAX_SHADER_COMPILER_THREADS_ARB );
         Console::printfn( LOCALE_STR( "GL_SHADER_THREADS" ), deviceInformation._shaderCompilerThreads );
 
@@ -549,11 +543,17 @@ namespace Divide
     /// Prepare the GPU for rendering a frame
     bool GL_API::drawToWindow( DisplayWindow& window )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-        return ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
+        GLUtil::s_glMainRenderWindow = &window;
+        return true;
     }
 
-    void GL_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
+    void GL_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
+    }
+
+    void GL_API::flushWindow( DisplayWindow& window )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -1422,7 +1422,7 @@ namespace Divide
         [[maybe_unused]] const bool ctxFound = g_ContextPool.getAvailableContext( GLUtil::s_glSecondaryContext );
         assert( ctxFound && "GL_API::syncToThread: context not found for current thread!" );
 
-        ValidateSDL( SDL_GL_MakeCurrent( GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext ) );
+        GLUtil::ValidateSDL( SDL_GL_MakeCurrent( GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext ) );
         glbinding::Binding::initialize( []( const char* proc ) noexcept
                                         {
                                             return (glbinding::ProcAddress)SDL_GL_GetProcAddress( proc );

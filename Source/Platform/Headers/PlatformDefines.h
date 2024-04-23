@@ -714,7 +714,8 @@ template <typename TO>
 
 extern void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept;
 
-namespace Assert {
+namespace Assert
+{
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
     bool DIVIDE_ASSERT_FUNC(bool expression, const char* expressionStr, const char* file, int line, const char* failMessage) noexcept;
 }
@@ -736,8 +737,6 @@ using DELEGATE_STD = std::function< Ret(Args...) >;
 
 template <typename Ret, typename... Args >
 using DELEGATE = DELEGATE_STD<Ret, Args...>;
-
-[[nodiscard]] U16 HardwareThreadCount() noexcept;
 
 };  // namespace Divide
 

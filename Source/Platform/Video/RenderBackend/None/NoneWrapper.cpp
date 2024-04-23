@@ -24,7 +24,11 @@ namespace Divide
         return true;
     }
 
-    void NONE_API::flushWindow( DisplayWindow& window, [[maybe_unused]] const bool isRenderThread )
+    void NONE_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
+    {
+    }
+
+    void NONE_API::flushWindow( DisplayWindow& window )
     {
         constexpr U32 ChangeTimerInSeconds = 3;
 

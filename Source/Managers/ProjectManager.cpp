@@ -6,7 +6,6 @@
 
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"
@@ -144,7 +143,7 @@ namespace Divide
             {
                 return false;
             }
-            WaitForAllTasks( getActiveScene()->context(), true );
+            getActiveScene()->context().taskPool( TaskPoolType::HIGH_PRIORITY ).waitForAllTasks( true );
             parent().platformContext().gfx().getRenderer().postFX().setFadeIn( 2750.0 );
         }
 

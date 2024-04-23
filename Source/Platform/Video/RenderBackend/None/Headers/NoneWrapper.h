@@ -47,7 +47,8 @@ class NONE_API final : public RenderAPIWrapper {
       void idle(bool fast) noexcept override;
 
       [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
-                    void flushWindow( DisplayWindow& window, bool isRenderThread ) override;
+                    void prepareFlushWindow( DisplayWindow& window ) override;
+                    void flushWindow( DisplayWindow& window ) override;
       [[nodiscard]] bool frameStarted() override;
       [[nodiscard]] bool frameEnded() override;
 

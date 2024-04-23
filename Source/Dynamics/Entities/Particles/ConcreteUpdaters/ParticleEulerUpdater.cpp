@@ -2,7 +2,6 @@
 
 #include "Headers/ParticleEulerUpdater.h"
 #include "Core/Headers/Kernel.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide {
@@ -40,7 +39,7 @@ void ParticleEulerUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
         }
     };
 
-    parallel_for(context(), descriptor);
+    parallel_for(context().taskPool(TaskPoolType::HIGH_PRIORITY), descriptor);
 }
 
 } //namespace Divide

@@ -5,7 +5,6 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/EngineTaskPool.h"
 
 #include "Editor/Headers/Editor.h"
 
@@ -623,7 +622,7 @@ namespace Divide
 
         bool updateTaskDirty = false;
 
-        TaskPool& pool = _context.context().taskPool( TaskPoolType::HIGH_PRIORITY );
+        TaskPool& pool = _context.context().taskPool( TaskPoolType::RENDERER );
         Task* updateTask = CreateTask( TASK_NOP );
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Transforms", Profiler::Category::Scene );
@@ -845,7 +844,7 @@ namespace Divide
                 descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
                 descriptor._priority = TaskPriority::DONT_CARE;
                 descriptor._useCurrentThread = true;
-                parallel_for( _parent.parent().platformContext(), descriptor );
+                parallel_for( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor );
             }
             _renderQueue->sort( stagePass );
         }
@@ -907,7 +906,7 @@ namespace Divide
             descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
             descriptor._priority = TaskPriority::DONT_CARE;
             descriptor._useCurrentThread = true;
-            parallel_for( _parent.parent().platformContext(), descriptor );
+            parallel_for( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor );
         }
         else
         {

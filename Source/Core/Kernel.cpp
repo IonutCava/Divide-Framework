@@ -4,7 +4,6 @@
 
 #include "Headers/Kernel.h"
 #include "Headers/Configuration.h"
-#include "Headers/EngineTaskPool.h"
 #include "Headers/PlatformContext.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
@@ -16,7 +15,6 @@
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Editor/Headers/Editor.h"
 #include "GUI/Headers/GUI.h"
-#include "GUI/Headers/GUIConsole.h"
 #include "GUI/Headers/GUISplash.h"
 #include "Managers/Headers/FrameListenerManager.h"
 #include "Managers/Headers/RenderPassManager.h"
@@ -26,6 +24,7 @@
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/File/Headers/FileWatcherManager.h"
 #include "Platform/Headers/SDLEventManager.h"
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -39,15 +38,35 @@ namespace Divide
 
 namespace
 {
-    constexpr U8 g_minimumGeneralPurposeThreadCount = 8u;
-    constexpr U8 g_backupThreadPoolSize = 2u;
-
-    static_assert(g_backupThreadPoolSize < g_minimumGeneralPurposeThreadCount);
-
     constexpr U32 g_printTimerBase = 15u;
     constexpr U8  g_warmupFrameCount = 8u;
+
+    constexpr U32 g_mininumTotalWorkerCount = 16u;
+    static U32 g_totalWorkerCount = 8u;
+
     U32 g_printTimer = g_printTimerBase;
 };
+
+size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
+{
+    constexpr U8 g_renderThreadPoolSize = 6u;
+    constexpr U8 g_assetLoadingPoolSize = 4u;
+    constexpr U8 g_backupThreadPoolSize = 2u;
+
+    DIVIDE_ASSERT(g_totalWorkerCount >= g_mininumTotalWorkerCount);
+    static_assert(g_renderThreadPoolSize + g_assetLoadingPoolSize + g_backupThreadPoolSize < g_mininumTotalWorkerCount);
+
+    switch ( type )
+    {
+        case TaskPoolType::ASSET_LOADER: return g_assetLoadingPoolSize;
+        case TaskPoolType::RENDERER: return g_renderThreadPoolSize;
+        case TaskPoolType::LOW_PRIORITY: return g_backupThreadPoolSize;
+        case TaskPoolType::HIGH_PRIORITY: return std::max(g_totalWorkerCount - g_backupThreadPoolSize - g_assetLoadingPoolSize - g_renderThreadPoolSize, 4u);
+        case TaskPoolType::COUNT: break;
+    }
+
+    return g_totalWorkerCount;
+}
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
     : _platformContext(parentApp)
@@ -106,29 +125,28 @@ void Kernel::startSplashScreen() {
     window.hidden(false);
     SDLEventManager::pollEvents();
 
-    GUISplash splash(resourceCache(), "divideLogo.jpg", _platformContext.config().runtime.splashScreenSize);
+    _splashScreen = MemoryManager_NEW GUISplash( resourceCache(), "divideLogo.jpg", _platformContext.config().runtime.splashScreenSize );
 
     // Load and render the splash screen
     _splashTask = CreateTask(
-        [this, &splash, &window](const Task& /*task*/) {
-        U64 previousTimeUS = 0;
-        while (_splashScreenUpdating)
+        [this, &window](const Task& /*task*/)
         {
+            U64 previousTimeUS = 0;
+
             const U64 deltaTimeUS = Time::App::ElapsedMicroseconds() - previousTimeUS;
             previousTimeUS += deltaTimeUS;
 
             _platformContext.app().windowManager().drawToWindow(window);
-            splash.render(_platformContext.gfx());
+            _splashScreen->render(_platformContext.gfx());
             _platformContext.app().windowManager().flushWindow();
             std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        });
 
-            break;
-        }
-    });
     Start(*_splashTask, _platformContext.taskPool(TaskPoolType::HIGH_PRIORITY), TaskPriority::REALTIME/*HIGH*/);
 }
 
-void Kernel::stopSplashScreen() {
+void Kernel::stopSplashScreen()
+{
     DisplayWindow& window = _platformContext.mainWindow();
     const vec2<U16> previousDimensions = window.getPreviousDimensions();
     _splashScreenUpdating = false;
@@ -138,10 +156,14 @@ void Kernel::stopSplashScreen() {
     window.decorated(true);
     WAIT_FOR_CONDITION(window.setDimensions(previousDimensions));
     window.setPosition(vec2<I32>(-1));
-    if (window.type() == WindowType::WINDOW && _platformContext.config().runtime.maximizeOnStart) {
+
+    if (window.type() == WindowType::WINDOW && _platformContext.config().runtime.maximizeOnStart)
+    {
         window.maximized(true);
     }
     SDLEventManager::pollEvents();
+
+    MemoryManager::SAFE_DELETE( _splashScreen );
 }
 
 void Kernel::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTimeUSApp )
@@ -639,6 +661,7 @@ void Kernel::warmup()
     Attorney::ProjectManagerKernel::initPostLoadState(_projectManager);
 }
 
+
 ErrorCode Kernel::initialize(const string& entryPoint)
 {
     const SysInfo& systemInfo = const_sysInfo();
@@ -679,17 +702,19 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
     }
 
-    DIVIDE_ASSERT(g_backupThreadPoolSize >= 2u, "Backup thread pool needs at least 2 threads to handle background tasks without issues!");
-
-    totalThreadCount(std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : to_I32( HardwareThreadCount() ), to_I32(g_minimumGeneralPurposeThreadCount)));
+    g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
 
     _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
 
-    ASIO::SET_LOG_FUNCTION([](const std::string_view msg, const bool isError) {
-        if (isError) {
+    ASIO::SET_LOG_FUNCTION([](const std::string_view msg, const bool isError)
+    {
+        if (isError)
+        {
             Console::errorfn(string(msg).c_str());
-        } else {
+        }
+        else
+        {
             Console::printfn(string(msg).c_str());
         }
     });
@@ -728,44 +753,40 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         return initError;
     }
-    { // Start thread pools
-        const size_t cpuThreadCount = totalThreadCount();
-        std::atomic_size_t threadCounter = cpuThreadCount;
 
-        const auto initTaskPool = [&](const TaskPoolType taskPoolType, const U32 threadCount)
+    { // Start thread pools
+        std::atomic_size_t threadCounter = TotalThreadCount(TaskPoolType::COUNT);
+
+        for ( U8 i = 0u; i < to_base(TaskPoolType::COUNT); ++i)
         {
-            if (!_platformContext.taskPool(taskPoolType).init(threadCount, [this, taskPoolType, &threadCounter](const std::thread::id& threadID)
+            const TaskPoolType poolType = static_cast<TaskPoolType>(i);
+             if (!_platformContext.taskPool( poolType ).init(
+                TotalThreadCount( poolType ),
+                [&threadCounter, poolType, &ctx = _platformContext](const std::thread::id& threadID)
                 {
-                    Attorney::PlatformContextKernel::onThreadCreated(platformContext(), taskPoolType, threadID, false);
+                    Attorney::PlatformContextKernel::onThreadCreated( ctx, poolType, threadID, false);
                     threadCounter.fetch_sub(1);
                 }))
             {
                 return ErrorCode::CPU_NOT_SUPPORTED;
             }
-                return ErrorCode::NO_ERR;
-        };
+        }
 
-        initError = initTaskPool(TaskPoolType::HIGH_PRIORITY, to_U32(cpuThreadCount - g_backupThreadPoolSize) );
-        if (initError != ErrorCode::NO_ERR) {
-            return initError;
-        }
-        initError = initTaskPool(TaskPoolType::LOW_PRIORITY, to_U32(g_backupThreadPoolSize) );
-        if (initError != ErrorCode::NO_ERR) {
-            return initError;
-        }
         WAIT_FOR_CONDITION(threadCounter.load() == 0);
     }
 
     initError = _platformContext.gfx().postInitRenderingAPI(config.runtime.resolution);
     // If we could not initialize the graphics device, exit
-    if (initError != ErrorCode::NO_ERR) {
+    if (initError != ErrorCode::NO_ERR)
+    {
         return initError;
     }
 
     SceneEnvironmentProbePool::OnStartup(_platformContext.gfx());
     _inputConsumers.fill(nullptr);
 
-    if constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR)
+    {
         _inputConsumers[to_base(InputConsumerType::Editor)] = &_platformContext.editor();
     }
 
@@ -782,11 +803,13 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Console::printfn(LOCALE_STR("SCENE_ADD_DEFAULT_CAMERA"));
 
     WindowManager& winManager = _platformContext.app().windowManager();
-    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& ) {
+    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& )
+    {
         mgr->onChangeFocus(false);
         return true;
     });
-    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& ) {
+    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& )
+    {
         mgr->onChangeFocus(true);
         return true;
     });
@@ -872,7 +895,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         return ErrorCode::MISSING_SCENE_LOAD_CALL;
     }
 
-    _platformContext.gui().addText("ProfileData",           // Unique ID
+    _platformContext.gui().addText("ProfileData",                // Unique ID
                                     RelativePosition2D{
                                          ._x = RelativeValue{
                                              ._scale = 0.75f, 
@@ -885,9 +908,9 @@ ErrorCode Kernel::initialize(const string& entryPoint)
                                     },                           // Position
                                     Font::DROID_SERIF_BOLD,      // Font
                                     UColour4(255,  50, 0, 255),  // Colour
-                                    "",                     // Text
-                                    true,               // Multiline
-                                    12);                 // Font size
+                                    "",                          // Text
+                                    true,                        // Multiline
+                                    12);                         // Font size
 
     ShadowMap::initShadowMaps(_platformContext.gfx());
 

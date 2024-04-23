@@ -4,7 +4,6 @@
 
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Kernel.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -159,7 +158,7 @@ namespace Divide
                             {
                                 threadedLoad();
                             }),
-                            _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ),
+                            _context.context().taskPool( TaskPoolType::ASSET_LOADER ),
                             TaskPriority::DONT_CARE,
                             [this, tex = shared_from_this()]()
                             {
@@ -473,7 +472,7 @@ namespace Divide
                     // All the alpha values are 0, so this channel is useless.
                     _hasTransparency = _hasTranslucency = false;
                 }
-                parallel_for( _context.context(), descriptor );
+                parallel_for( _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
                 metadataCache << BYTE_BUFFER_VERSION;
                 metadataCache << _hasTransparency;
                 metadataCache << _hasTranslucency;

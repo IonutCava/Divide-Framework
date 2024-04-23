@@ -62,6 +62,8 @@ enum class TaskPoolType : U8
 {
     HIGH_PRIORITY = 0,
     LOW_PRIORITY,
+    RENDERER,
+    ASSET_LOADER,
     COUNT
 };
 

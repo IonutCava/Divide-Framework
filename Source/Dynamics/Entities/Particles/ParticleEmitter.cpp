@@ -9,7 +9,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderPackage.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Graphs/Headers/SceneGraphNode.h"
@@ -303,7 +302,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                 }
             };
 
-            parallel_for(_context.context(), descriptor);
+            parallel_for(_context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
 
             _bufferUpdate = CreateTask(
                 [this, &renderStagePass](const Task&) {
@@ -357,7 +356,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             }
         };
 
-        parallel_for(_context.context(), descriptor);
+        parallel_for(_context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
 
         ParticleData& data = *_particles;
         for (const std::shared_ptr<ParticleUpdater>& up : _updaters) {

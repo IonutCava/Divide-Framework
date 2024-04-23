@@ -536,7 +536,7 @@ bool TerrainLoader::loadTerrain(const Terrain_ptr& terrain,
             DIVIDE_UNEXPECTED_CALL();
         }
     }), 
-    context.taskPool(TaskPoolType::HIGH_PRIORITY),
+    context.taskPool(TaskPoolType::ASSET_LOADER ),
     threadedLoading ? TaskPriority::DONT_CARE : TaskPriority::REALTIME);
 
     return true;

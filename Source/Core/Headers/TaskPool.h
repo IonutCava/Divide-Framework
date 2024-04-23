@@ -66,7 +66,7 @@ public:
     explicit TaskPool(std::string_view workerName);
     ~TaskPool();
 
-    bool init(U32 threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {});
+    bool init(size_t threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {});
     void shutdown();
 
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func, bool allowedInIdle ) noexcept;
@@ -95,7 +95,6 @@ public:
 
     static void PrintLine( std::string_view );
 
-    PROPERTY_R(U32, workerThreadCount, 0u);
     PROPERTY_R( vector<std::thread>, threads );
 
 
@@ -128,8 +127,8 @@ public:
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
 
      std::atomic_uint _runningTaskCount = 0u;
-     std::atomic_uint _activeThreads{ 0u };
      std::atomic_uint _tasksLeft{ 0 };
+     std::atomic_size_t _activeThreads{ 0u };
      bool _isRunning{ true };
 };
 

@@ -2,7 +2,8 @@
 
 #include "Headers/ParticleBasicColourUpdater.h"
 
-#include "Core/Headers/EngineTaskPool.h"
+#include "Core/Headers/TaskPool.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide {
@@ -21,7 +22,7 @@ void ParticleBasicColourUpdater::update( [[maybe_unused]] const U64 deltaTimeUS,
         }
     };
 
-    parallel_for(context(), descriptor);
+    parallel_for(context().taskPool(TaskPoolType::HIGH_PRIORITY), descriptor);
 }
 
 } //namespace Divide

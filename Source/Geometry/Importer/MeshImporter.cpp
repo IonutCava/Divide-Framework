@@ -416,9 +416,11 @@ namespace Import
 
         TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
 
-        for (U32 i = 0; i < to_base(TextureSlot::COUNT); ++i) {
+        for (U32 i = 0; i < to_base(TextureSlot::COUNT); ++i)
+        {
             const Import::TextureEntry& tex = importData._textures[i];
-            if (!tex.textureName().empty()) {
+            if (!tex.textureName().empty())
+            {
                 textureSampler._wrapU = tex.wrapU();
                 textureSampler._wrapV = tex.wrapV();
                 textureSampler._wrapW = tex.wrapW();
@@ -441,7 +443,8 @@ namespace Import
                 // No need to fire off additional threads just to wait on the result immediately after
                 texture.waitForReady(true);
                 Texture_ptr texPtr = CreateResource<Texture>(cache, texture, taskCounter);
-                texPtr->addStateCallback(ResourceState::RES_LOADED, [tempMaterial, i, texPtr, tex, textureSampler](CachedResource*) {
+                texPtr->addStateCallback(ResourceState::RES_LOADED, [tempMaterial, i, texPtr, tex, textureSampler](CachedResource*)
+                {
                     tempMaterial->setTexture(static_cast<TextureSlot>(i), texPtr, textureSampler,tex.operation());
                 });
             }

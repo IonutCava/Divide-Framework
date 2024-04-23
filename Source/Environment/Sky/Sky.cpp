@@ -4,7 +4,6 @@
 
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/EngineTaskPool.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Headers/Sun.h"
 
@@ -196,7 +195,7 @@ namespace Divide
                         cbk(i);
                     }
                 };
-                parallel_for( context, descriptor );
+                parallel_for( context.taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
             }
             else
             {
