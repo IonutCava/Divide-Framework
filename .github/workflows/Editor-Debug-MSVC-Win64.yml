@@ -25,7 +25,7 @@ jobs:
 
     - uses: lukka/get-cmake@latest
       with:
-        cmakeVersion: 3.28.0
+        cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
     - name: Restore from cache and setup vcpkg executable and data files.
