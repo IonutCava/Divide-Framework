@@ -16,6 +16,7 @@
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/Input/Headers/InputHandler.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 
 namespace Divide {
 
@@ -150,10 +151,15 @@ const Kernel& PlatformContext::kernel() const noexcept
 
 void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::thread::id& threadID, bool isMainRenderThread ) const
 {
-    if (poolType == TaskPoolType::ASSET_LOADER ||
-        poolType == TaskPoolType::RENDERER)
+    if ( poolType == TaskPoolType::ASSET_LOADER ||
+        poolType == TaskPoolType::RENDERER )
     {
         _gfx->onThreadCreated(threadID, isMainRenderThread);
+
+        if ( poolType == TaskPoolType::ASSET_LOADER )
+        {
+            ShaderProgram::OnThreadCreated(*_gfx, threadID, isMainRenderThread);
+        }
     }
 }
 

@@ -606,6 +606,14 @@ namespace Divide
         return true;
     }
 
+    void VK_API::onRenderThreadLoopStart( )
+    {
+    }
+
+    void VK_API::onRenderThreadLoopEnd()
+    {
+    }
+
     void VK_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
     {
     }

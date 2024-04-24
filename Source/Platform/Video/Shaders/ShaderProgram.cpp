@@ -153,7 +153,7 @@ namespace Divide
                 WorkData* work = static_cast<WorkData*>(userData);
 
                 string message;
-                const size_t length = to_size(vsprintf( nullptr, format, args ) + 1);
+                const size_t length = to_size(vsnprintf( nullptr, 0, format, args ) + 1);
                 message.resize( length );
                 vsnprintf( message.data(), length, format, args );
                 
@@ -175,7 +175,7 @@ namespace Divide
             }
         }
 
-        static void OnThreadCreate()
+        static void OnThreadCreated()
         {
             const auto setTag = []( const int tag, void* value )
             {
@@ -219,11 +219,11 @@ namespace Divide
 
         }
 
-        static void PreProcessMacros( const std::string_view fileName, string& sourceInOut )
+        static bool PreProcessMacros( const std::string_view fileName, string& sourceInOut )
         {
             if ( sourceInOut.empty() )
             {
-                return;
+                return false;
             }
 
             g_workData = {};
@@ -241,12 +241,14 @@ namespace Divide
             tagptr->data = nullptr;
             ++tagptr;
 
-            if ( fppPreProcess( g_tags ) != 0 )
+            bool ret = false;
+            if ( fppPreProcess( g_tags ) == 0 )
             {
-                DebugBreak();
+                ret = true;
+                sourceInOut = g_workData._output;
             }
 
-            sourceInOut = g_workData._output;
+            return ret;
         }
 
     } //Preprocessor
@@ -1008,6 +1010,16 @@ namespace Divide
         return ShaderResult::OK;
     }
 
+    void ShaderProgram::OnThreadCreated( const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread )
+    {
+        Preprocessor::OnThreadCreated();
+
+        if ( !InitGLSW( gfx.renderAPI(), gfx.context().config() ) )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+    }
+
     void ShaderProgram::Idle( [[maybe_unused]] PlatformContext& platformContext, const bool fast )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -1162,6 +1174,7 @@ namespace Divide
 
     ErrorCode ShaderProgram::SubmitSetLayouts( GFXDevice& gfx )
     {
+        Preprocessor::OnThreadCreated();
         if ( !InitGLSW( gfx.renderAPI(), gfx.context().config() ))
         {
             return ErrorCode::GLSL_INIT_ERROR;
@@ -1731,17 +1744,6 @@ namespace Divide
 
     bool ShaderProgram::loadInternal( hashMap<U64, PerFileShaderData>& fileData, const bool overwrite )
     {
-        thread_local bool isPreprocInit = false;
-        if (!isPreprocInit )
-        {
-            isPreprocInit = true;
-            Preprocessor::OnThreadCreate();
-            if (!InitGLSW( _context.renderAPI(), _context.context().config() ))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-        }
-
         // The context is thread_local so each call to this should be thread safe
         if ( overwrite )
         {
@@ -2095,7 +2097,10 @@ namespace Divide
             
             PreprocessIncludes( resourceName(), glslCodeOut, 0, atomIDsInOut, true );
 
-            Preprocessor::PreProcessMacros( loadDataInOut._shaderName, glslCodeOut );
+            if (!Preprocessor::PreProcessMacros( loadDataInOut._shaderName, glslCodeOut ))
+            {
+                NOP();
+            }
 
             Reflection::PreProcessUniforms( glslCodeOut, loadDataInOut._uniforms );
         }

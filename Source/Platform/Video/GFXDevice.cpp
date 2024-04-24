@@ -114,6 +114,21 @@ namespace Divide
                 }
             }
         }
+
+
+        struct RenderThread
+        {
+            std::thread _thread;
+            std::condition_variable _cv;
+            std::atomic_bool _running{false};
+            bool _hasWork{false};
+            Mutex _lock;
+            DELEGATE<void> _work;
+
+            std::queue<DisplayWindow*> _windows;
+        };
+
+        static RenderThread s_renderThread;
     };
 
     RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
@@ -466,7 +481,47 @@ namespace Divide
             hardwareState = initDescriptorSets();
         }
 
+        if ( hardwareState == ErrorCode::NO_ERR)
+        {
+            s_renderThread._running = true;
+            s_renderThread._thread  = std::thread( &GFXDevice::renderThread, this );
+        }
+
         return hardwareState;
+    }
+
+    void GFXDevice::renderThread()
+    {
+        SetThreadName("Main render thread");
+        onThreadCreated( std::this_thread::get_id(), true );
+
+        while ( s_renderThread._running )
+        {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+            UniqueLock<Mutex> lock( s_renderThread._lock );
+            while( !s_renderThread._hasWork && s_renderThread._running )
+            {
+                s_renderThread._cv.wait( lock, []() { return s_renderThread._hasWork || !s_renderThread._running; } );
+            }
+
+            if ( s_renderThread._running )
+            {
+                s_renderThread._work();
+            }
+
+            s_renderThread._work = {};
+            s_renderThread._hasWork = false;
+        }
+    }
+
+    void GFXDevice::addRenderWork( DELEGATE<void>&& work )
+    {
+        {
+            LockGuard<Mutex> lck( s_renderThread._lock );
+            s_renderThread._work = MOV(work);
+            s_renderThread._hasWork = true;
+        }
+        s_renderThread._cv.notify_one();
     }
 
     void GFXDevice::updateSceneDescriptorSet( GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
@@ -1173,6 +1228,17 @@ namespace Divide
             return;
         }
 
+        if ( s_renderThread._running )
+        {
+            {
+                LockGuard<Mutex> lock( s_renderThread._lock );
+                s_renderThread._hasWork = false;
+                s_renderThread._running = false;
+            }
+            s_renderThread._cv.notify_one();
+            s_renderThread._thread.join();
+        }
+
         _debugLines.reset();
         _debugBoxes.reset();
         _debugOBBs.reset();
@@ -1359,6 +1425,32 @@ namespace Divide
         }
 
         context().app().windowManager().flushWindow();
+
+
+        /*while ( !s_renderThread._windows.empty() )
+        {
+            DisplayWindow* window = s_renderThread._windows.front();
+
+            _api->onRenderThreadLoopStart();
+
+            ///addRenderWork( [&]()
+            {
+                _api->prepareFlushWindow( *window );
+                {
+                    LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
+                    GFX::CommandBufferQueue& queue = window->getCurrentCommandBufferQueue();
+                    for ( const GFX::CommandBufferQueue::Entry& entry : queue._commandBuffers )
+                    {
+                        flushCommandBufferInternal( *window, entry._buffer );
+                    }
+                    ResetCommandBufferQueue( queue );
+                }
+                _api->flushWindow( *window );
+            }
+            ///);
+
+            s_renderThread._windows.pop();
+        }*/
 
         frameDrawCallsPrev( frameDrawCalls() );
         frameDrawCalls( 0u );
@@ -2016,15 +2108,6 @@ namespace Divide
         }
 
         _api->bindShaderResources( setEntries );
-    }
-
-    void GFXDevice::flushCommandBuffer( const Handle<GFX::CommandBuffer>& commandBuffer )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        LockGuard<Mutex> w_lock( _queuedCommandbufferLock );
-        GFX::CommandBufferQueue& queue = context().activeWindow().getCurrentCommandBufferQueue();
-        AddCommandBufferToQueue( queue, commandBuffer);
     }
 
     void GFXDevice::flushCommandBuffer( Handle<GFX::CommandBuffer>&& commandBuffer )

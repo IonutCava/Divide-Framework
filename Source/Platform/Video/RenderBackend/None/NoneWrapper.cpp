@@ -20,12 +20,20 @@ namespace Divide
 
     bool NONE_API::drawToWindow( [[maybe_unused]] DisplayWindow& window )
     {
-        SDL_RenderClear( _renderer );
         return true;
+    }
+
+    void NONE_API::onRenderThreadLoopStart()
+    {
+    }
+
+    void NONE_API::onRenderThreadLoopEnd()
+    {
     }
 
     void NONE_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
     {
+        SDL_RenderClear( _renderer );
     }
 
     void NONE_API::flushWindow( DisplayWindow& window )

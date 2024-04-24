@@ -159,8 +159,6 @@ class Kernel final : public Input::InputAggregatorInterface,
 
     vector<Rect<I32>> _targetViewports{};
 
-    Task* _splashTask = nullptr;
-
     Time::ProfileTimer& _appLoopTimerMain;
     Time::ProfileTimer& _appLoopTimerInternal;
     Time::ProfileTimer& _frameTimer;

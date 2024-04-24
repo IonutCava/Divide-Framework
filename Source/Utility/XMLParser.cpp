@@ -34,10 +34,14 @@ namespace detail
 {
     bool LoadSave::read(const ResourcePath& filePath, const char* fileName, const string& rootNode)
     {
-        _loadPath = filePath / fileName;
+        _filePath = filePath;
+        _fileName = fileName;
         _rootNodePath = rootNode;
 
-        const ResourcePath testPath(_loadPath);
+        const ResourcePath loadPath = filePath / fileName;
+
+        const ResourcePath testPath(loadPath);
+
         if (!fileExists(testPath) || fileIsEmpty(testPath))
         {
             const FileNameAndPath data = splitPathToNameAndLocation(testPath);
@@ -53,48 +57,66 @@ namespace detail
             }
         }
 
-        read_xml(_loadPath.string(), XmlTree, boost::property_tree::xml_parser::trim_whitespace);
-        return !XmlTree.empty();
-    }
-
-    bool LoadSave::prepareSaveFile(const ResourcePath& filePath, const char* fileName) const
-    {
-        _savePath = filePath / fileName;
-        return true;
-    }
-
-    void LoadSave::write() const
-    {
-        if (fileExists(_savePath))
+        try
         {
-            const auto[file, path] = splitPathToNameAndLocation(_savePath);
+            read_xml(loadPath.string(),
+                     XmlTree,
+                     boost::property_tree::xml_parser::trim_whitespace);
+
+            return !XmlTree.empty();
+        }
+        catch ( boost::property_tree::xml_parser_error error )
+        {
+            Console::errorfn( error.what() );
+        }
+        catch(...)
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        return false;
+    }
+
+    bool LoadSave::write( const ResourcePath& filePath, const char* fileName ) const
+    {
+        const ResourcePath savePath = filePath / fileName;
+
+        if (fileExists(savePath))
+        {
+            const auto[file, path] = splitPathToNameAndLocation(savePath);
 
             const FileError backupReturnCode = copyFile(path, file, path, (file + ".bak"), true);
             if (backupReturnCode != FileError::NONE &&
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
                 backupReturnCode != FileError::FILE_EMPTY)
             {
-                if constexpr(!Config::Build::IS_SHIPPING_BUILD)
-                {
                     DIVIDE_UNEXPECTED_CALL();
-                }
-            }
-            else
-            {
-                if (!createFile(_savePath, true))
-                {
-                    if constexpr(!Config::Build::IS_SHIPPING_BUILD)
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
-                }
             }
         }
+        else if (!createFile(savePath, true))
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
 
-        write_xml(_savePath.string(),
-            XmlTree,
-            std::locale(),
-            boost::property_tree::xml_writer_make_settings<boost::property_tree::iptree::key_type>('\t', 1));
+        try
+        {
+            write_xml(savePath.string(),
+                      XmlTree,
+                      std::locale(),
+                      boost::property_tree::xml_writer_make_settings<boost::property_tree::iptree::key_type>('\t', 1));
+
+            return true;
+        }
+        catch(boost::property_tree::xml_parser_error error)
+        {
+            Console::errorfn(error.what());
+        }
+        catch(...)
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        return false;
     }
 }
 

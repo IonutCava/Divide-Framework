@@ -53,20 +53,13 @@ namespace Divide
         {
             struct LoadSave
             {
-                bool _saveFileOK = false;
-                ResourcePath _loadPath;
-                string _loadFile;
-
-                mutable ResourcePath _savePath;
-                mutable string _saveFile;
-
-                string _rootNodePath = {};
-
                 mutable boost::property_tree::iptree XmlTree;
+                string _rootNodePath;
+                string _fileName;
+                ResourcePath _filePath;
 
-                bool read( const ResourcePath& filePath, const char* fileName, const string& rootNode );
-                bool prepareSaveFile( const ResourcePath& filePath, const char* fileName ) const;
-                void write() const;
+                [[nodiscard]] bool read( const ResourcePath& filePath, const char* fileName, const string& rootNode );
+                [[nodiscard]] bool write( const ResourcePath& filePath, const char* fileName ) const;
             };
         }
 

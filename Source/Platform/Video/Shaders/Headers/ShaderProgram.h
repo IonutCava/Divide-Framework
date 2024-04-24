@@ -321,6 +321,10 @@ namespace Divide
         const ShaderProgramDescriptor _descriptor;
 
     protected:
+        friend class PlatformContext;
+        static void OnThreadCreated( const GFXDevice& gfx, const std::thread::id& threadID, bool isMainRenderThread );
+
+    protected:
         vector<UniformBlockUploader> _uniformBlockBuffers;
         eastl::set<U64> _usedAtomIDs;
 

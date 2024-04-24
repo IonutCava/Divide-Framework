@@ -156,6 +156,8 @@ protected:
     friend class GFXDevice;
 
     [[nodiscard]] virtual bool drawToWindow(DisplayWindow& window) = 0;
+                  virtual void onRenderThreadLoopStart() = 0;
+                  virtual void onRenderThreadLoopEnd() = 0;
                   virtual void prepareFlushWindow(DisplayWindow& window) = 0;
                   virtual void flushWindow(DisplayWindow& window) = 0;
     [[nodiscard]] virtual bool frameStarted() = 0;

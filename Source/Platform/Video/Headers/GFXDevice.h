@@ -254,7 +254,6 @@ public:  // GPU interface
 
     void idle(bool fast, U64 deltaTimeUSGame, U64 deltaTimeUSApp);
 
-    void flushCommandBuffer(const Handle<GFX::CommandBuffer>& commandBuffer);
     void flushCommandBuffer(Handle<GFX::CommandBuffer>&& commandBuffer);
 
     void debugDraw( const SceneRenderState& sceneRenderState, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
@@ -473,6 +472,9 @@ private:
     void worldAOViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
 
     [[nodiscard]] ErrorCode createAPIInstance(RenderAPI api);
+
+    void renderThread();
+    void addRenderWork(DELEGATE<void>&& work);
 
 private:
     RenderAPIWrapper_uptr _api = nullptr;

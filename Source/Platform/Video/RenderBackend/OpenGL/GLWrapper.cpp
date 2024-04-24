@@ -118,11 +118,13 @@ namespace Divide
     }
 
     /// Try and create a valid OpenGL context taking in account the specified resolution and command line arguments
-    ErrorCode GL_API::initRenderingAPI( [[maybe_unused]] gl46core::GLint argc, [[maybe_unused]] char** argv, Configuration& config )
+    ErrorCode GL_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, Configuration& config )
     {
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
         GLUtil::s_glMainRenderWindow = &window;
-		g_ContextPool.init( Kernel::TotalThreadCount( TaskPoolType::RENDERER ) + Kernel::TotalThreadCount(TaskPoolType::ASSET_LOADER), window );
+
+        g_ContextPool.init( Kernel::TotalThreadCount( TaskPoolType::RENDERER ) + Kernel::TotalThreadCount( TaskPoolType::ASSET_LOADER ), window );
+
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
         glbinding::Binding::initialize( []( const char* proc ) noexcept
         {
@@ -540,13 +542,22 @@ namespace Divide
     /// Prepare the GPU for rendering a frame
     bool GL_API::drawToWindow( DisplayWindow& window )
     {
+        //GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
         GLUtil::s_glMainRenderWindow = &window;
         return true;
     }
 
+    void GL_API::onRenderThreadLoopStart( )
+    {
+       //GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), nullptr );
+    }
+
+    void GL_API::onRenderThreadLoopEnd()
+    {
+    }
+
     void GL_API::prepareFlushWindow( [[maybe_unused]] DisplayWindow& window )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ));
     }
 

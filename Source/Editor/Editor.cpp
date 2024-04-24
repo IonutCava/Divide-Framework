@@ -1534,6 +1534,7 @@ namespace Divide
         U32 indexOffset = 0u;
 
         GFX::DrawCommand* drawCommand = nullptr;
+        Rect<I32> prevClipRect{-1};
 
         bool newCommand = true;
         for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
@@ -1562,18 +1563,21 @@ namespace Divide
                         continue;
                     }
 
-                    Rect<I32>& clipRect = GFX::EnqueueCommand<GFX::SetScissorCommand>( bufferInOut )->_rect;
-                    clipRect.sizeX = to_I32( clip_max.x - clip_min.x);
-                    clipRect.sizeY = to_I32( clip_max.y - clip_min.y);
-
+                    Rect<I32> clipRect;
+                    clipRect.sizeX = to_I32( clip_max.x - clip_min.x );
+                    clipRect.sizeY = to_I32( clip_max.y - clip_min.y );
                     clipRect.offsetX = to_I32( clip_min.x );
-                    if ( flipClipY )
+                    clipRect.offsetY = flipClipY ? to_I32( fb_height - clip_max.y ) : to_I32( clip_min.y );
+
+                    if ( prevClipRect != clipRect )
                     {
-                        clipRect.offsetY = to_I32(fb_height - clip_max.y);
+                        prevClipRect = clipRect;
+                        GFX::EnqueueCommand<GFX::SetScissorCommand>( bufferInOut )->_rect = clipRect;
+                        newCommand = true;
                     }
                     else
                     {
-                        clipRect.offsetY = to_I32( clip_min.y );
+                        NOP();
                     }
 
                     ImTextureID imguiTexID = pcmd.GetTexID();

@@ -43,6 +43,7 @@ namespace
 
     constexpr U32 g_mininumTotalWorkerCount = 16u;
     static U32 g_totalWorkerCount = 8u;
+    constexpr U8 g_renderThreadCount = 1u;
 
     U32 g_printTimer = g_printTimerBase;
 };
@@ -54,14 +55,14 @@ size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
     constexpr U8 g_backupThreadPoolSize = 2u;
 
     DIVIDE_ASSERT(g_totalWorkerCount >= g_mininumTotalWorkerCount);
-    static_assert(g_renderThreadPoolSize + g_assetLoadingPoolSize + g_backupThreadPoolSize < g_mininumTotalWorkerCount);
+    static_assert(g_renderThreadPoolSize + g_assetLoadingPoolSize + g_backupThreadPoolSize + g_renderThreadCount < g_mininumTotalWorkerCount);
 
     switch ( type )
     {
-        case TaskPoolType::ASSET_LOADER: return g_assetLoadingPoolSize;
-        case TaskPoolType::RENDERER: return g_renderThreadPoolSize;
-        case TaskPoolType::LOW_PRIORITY: return g_backupThreadPoolSize;
-        case TaskPoolType::HIGH_PRIORITY: return std::max(g_totalWorkerCount - g_backupThreadPoolSize - g_assetLoadingPoolSize - g_renderThreadPoolSize, 4u);
+        case TaskPoolType::ASSET_LOADER:  return g_assetLoadingPoolSize;
+        case TaskPoolType::RENDERER:      return g_renderThreadPoolSize;
+        case TaskPoolType::LOW_PRIORITY:  return g_backupThreadPoolSize;
+        case TaskPoolType::HIGH_PRIORITY: return std::max(g_totalWorkerCount - g_backupThreadPoolSize - g_assetLoadingPoolSize - g_renderThreadPoolSize - g_renderThreadCount, 4u);
         case TaskPoolType::COUNT: break;
     }
 
@@ -127,22 +128,9 @@ void Kernel::startSplashScreen() {
 
     _splashScreen = MemoryManager_NEW GUISplash( resourceCache(), "divideLogo.jpg", _platformContext.config().runtime.splashScreenSize );
 
-    // Load and render the splash screen
-    _splashTask = CreateTask(
-        [this, &window](const Task& /*task*/)
-        {
-            U64 previousTimeUS = 0;
-
-            const U64 deltaTimeUS = Time::App::ElapsedMicroseconds() - previousTimeUS;
-            previousTimeUS += deltaTimeUS;
-
-            _platformContext.app().windowManager().drawToWindow(window);
-            _splashScreen->render(_platformContext.gfx());
-            _platformContext.app().windowManager().flushWindow();
-            std::this_thread::sleep_for(std::chrono::milliseconds(15));
-        });
-
-    Start(*_splashTask, _platformContext.taskPool(TaskPoolType::HIGH_PRIORITY), TaskPriority::REALTIME/*HIGH*/);
+    _platformContext.app().windowManager().drawToWindow(window);
+    _splashScreen->render(_platformContext.gfx());
+    _platformContext.app().windowManager().flushWindow();
 }
 
 void Kernel::stopSplashScreen()
@@ -150,7 +138,6 @@ void Kernel::stopSplashScreen()
     DisplayWindow& window = _platformContext.mainWindow();
     const vec2<U16> previousDimensions = window.getPreviousDimensions();
     _splashScreenUpdating = false;
-    Wait(*_splashTask, _platformContext.taskPool(TaskPoolType::HIGH_PRIORITY));
 
     window.changeToPreviousType();
     window.decorated(true);
@@ -393,7 +380,6 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                 {
                     _sceneUpdateLoopTimer.start();
                 }
-
 
                 // Flush any pending threaded callbacks
                 for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
@@ -755,7 +741,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     { // Start thread pools
-        std::atomic_size_t threadCounter = TotalThreadCount(TaskPoolType::COUNT);
+        std::atomic_size_t threadCounter = TotalThreadCount(TaskPoolType::COUNT) - g_renderThreadCount;
 
         for ( U8 i = 0u; i < to_base(TaskPoolType::COUNT); ++i)
         {
