@@ -52,10 +52,9 @@ namespace Divide
             _localClient->start( res.resolve( address, Util::to_string( port ) ) );
             _thread = std::make_unique<std::thread>( [&]
                                                      {
+                                                        SetThreadName("ASIO_THREAD");
                                                          _ioService.run();
                                                      } );
-            SetThreadName( _thread.get(), "ASIO_THREAD");
-
             _ioService.poll();
             _connected = true;
         }

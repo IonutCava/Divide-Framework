@@ -762,4 +762,10 @@ namespace
         return true;
     }
 
+    bool Merge(SendPushConstantsCommand* lhs, SendPushConstantsCommand* rhs)
+    {
+        bool partial = false;
+        return Merge(static_cast<SendPushConstantsCommand*>(lhs)->_constants, static_cast<SendPushConstantsCommand*>(rhs)->_constants, partial);
+    }
+
 }; //namespace Divide::GFX

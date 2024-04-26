@@ -125,7 +125,7 @@ namespace Divide
             Mutex _lock;
             DELEGATE<void> _work;
 
-            std::queue<DisplayWindow*> _windows;
+            eastl::queue<DisplayWindow*> _windows;
         };
 
         static RenderThread s_renderThread;

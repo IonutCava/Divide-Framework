@@ -549,6 +549,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/AttributeDescriptor.h
                              Platform/Video/Headers/BlendingProperties.h
                              Platform/Video/Headers/ClipPlanes.h
+                             Platform/Video/Headers/CommandTypes.h
                              Platform/Video/Headers/CommandBuffer.h
                              Platform/Video/Headers/CommandBuffer.inl
                              Platform/Video/Headers/CommandBufferPool.h

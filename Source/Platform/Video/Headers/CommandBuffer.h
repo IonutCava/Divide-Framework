@@ -87,6 +87,7 @@ class CommandBuffer;
 struct CommandBase;
 struct DrawCommand;
 struct MemoryBarrierCommand;
+struct SendPushConstantsCommand;
 
 struct CommandBufferQueue
 {
@@ -157,6 +158,7 @@ template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>
 [[nodiscard]] bool TryMergeCommands( CommandType type, T* prevCommand, T* crtCommand );
 [[nodiscard]] bool Merge(DrawCommand* prevCommand, DrawCommand* crtCommand);
 [[nodiscard]] bool Merge(MemoryBarrierCommand* lhs, MemoryBarrierCommand* rhs);
+[[nodiscard]] bool Merge(SendPushConstantsCommand* lhs, SendPushConstantsCommand* rhs);
 [[nodiscard]] bool BatchDrawCommands(GenericDrawCommand& previousGDC, GenericDrawCommand& currentGDC) noexcept;
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>

@@ -1,7 +1,5 @@
 include(FetchContent)
 
-include(ThirdParty/CMakeHelpers/FetchContentExcludeFromAll.cmake)
-
 set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4312 /wd4477")
@@ -9,11 +7,13 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int")
 endif()
 
+
 FetchContent_Declare(
   Cegui
   GIT_REPOSITORY https://github.com/IonutCava/cegui.git
   GIT_TAG origin/v0-8
-  SYSTEM
+  #GIT_PROGRESS   TRUE
+  #SYSTEM
 )
 
 set(CEGUI_BUILD_STATIC_CONFIGURATION TRUE)
@@ -54,19 +54,22 @@ FetchContent_MakeAvailable(Cegui)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
 
-set(CEGUI_LIBRARY_NAMES "CEGUIBase-0_Static;CEGUICommonDialogs-0_Static;CEGUICoreWindowRendererSet_Static;${CEGUI_IMAGE_CODEC_LIB}_Static;${CEGUI_XML_PARSER_LIB}_Static")
+find_library(CEGUI_BASE_LIB NAMES "CEGUIBase-0_Static" PATHS "${cegui_BINARY_DIR}/lib")
+find_library(CEGUI_COMMON_LIB NAMES "CEGUICommonDialogs-0_Static" PATHS "${cegui_BINARY_DIR}/lib")
+find_library(CEGUI_CORE_LIB NAMES "CEGUICoreWindowRendererSet_Static" PATHS "${cegui_BINARY_DIR}/lib")
+find_library(CEGUI_IMAGE_LIB NAMES "${CEGUI_IMAGE_CODEC_LIB}_Static" PATHS "${cegui_BINARY_DIR}/lib")
+find_library(CEGUI_PARSER_LIB NAMES "${CEGUI_XML_PARSER_LIB}_Static" PATHS "${cegui_BINARY_DIR}/lib")
 
-set(CEGUI_LIBRARIES "")
-
-foreach(TARGET_LIB ${CEGUI_LIBRARY_NAMES})
-    if(CMAKE_BUILD_TYPE MATCHES Debug)
-        set(TARGET_LIB "${TARGET_LIB}_d")
-    endif()
-
-    list(APPEND CEGUI_LIBRARIES ${TARGET_LIB})
-endforeach()
+set(CEGUI_LIBRARIES
+       ${CEGUI_BASE_LIB}
+       ${CEGUI_COMMON_LIB}
+       ${CEGUI_CORE_LIB}
+       ${CEGUI_IMAGE_LIB}
+       ${CEGUI_PARSER_LIB}
+)
 
 include_directories(
     "${cegui_SOURCE_DIR}/cegui/include"
     "${cegui_BINARY_DIR}/cegui/include"
 )
+link_directories("${cegui_BINARY_DIR}/lib" )

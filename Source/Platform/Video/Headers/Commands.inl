@@ -53,50 +53,6 @@ class ShaderBuffer;
 
 namespace GFX {
 
-enum class CommandType : U8 {
-    BEGIN_RENDER_PASS,
-    END_RENDER_PASS,
-    BEGIN_GPU_QUERY,
-    END_GPU_QUERY,
-    SET_VIEWPORT,
-    PUSH_VIEWPORT,
-    POP_VIEWPORT,
-    SET_SCISSOR,
-    BLIT_RT,
-    COPY_TEXTURE,
-    READ_TEXTURE,
-    CLEAR_TEXTURE,
-    COMPUTE_MIPMAPS,
-    SET_CAMERA,
-    PUSH_CAMERA,
-    POP_CAMERA,
-    SET_CLIP_PLANES,
-    BIND_PIPELINE,
-    BIND_SHADER_RESOURCES,
-    SEND_PUSH_CONSTANTS,
-    DRAW_COMMANDS,
-    DISPATCH_COMPUTE,
-    MEMORY_BARRIER,
-    READ_BUFFER_DATA,
-    CLEAR_BUFFER_DATA,
-    BEGIN_DEBUG_SCOPE,
-    END_DEBUG_SCOPE,
-    ADD_DEBUG_MESSAGE,
-    COUNT
-};
-
-namespace Names {
-    static const char* commandType[] = {
-        "BEGIN_RENDER_PASS", "END_RENDER_PASS", "BEGIN_GPU_QUERY", "END_GPU_QUERY", "SET_VIEWPORT", "PUSH_VIEWPORT","POP_VIEWPORT",
-        "SET_SCISSOR", "BLIT_RT", "COPY_TEXTURE", "READ_TEXTURE", "CLEAR_TEXTURE", "COMPUTE_MIPMAPS",
-        "SET_CAMERA", "PUSH_CAMERA", "POP_CAMERA", "SET_CLIP_PLANES", "BIND_PIPELINE", "BIND_SHADER_RESOURCES", "SEND_PUSH_CONSTANTS",
-        "DRAW_COMMANDS", "DISPATCH_COMPUTE", "MEMORY_BARRIER", "READ_BUFFER_DATA", "CLEAR_BUFFER_DATA",
-        "BEGIN_DEBUG_SCOPE","END_DEBUG_SCOPE", "ADD_DEBUG_MESSAGE", "UNKNOWN"
-    };
-};
-
-static_assert(sizeof(Names::commandType) / sizeof(Names::commandType[0]) == to_size(CommandType::COUNT) + 1);
-
 template<CommandType EnumVal>
 void Command<EnumVal>::addToBuffer( CommandBuffer* buffer ) const
 {

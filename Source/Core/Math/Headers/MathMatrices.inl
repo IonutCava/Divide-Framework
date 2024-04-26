@@ -34,10 +34,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide
 {
 
-#ifndef USE_AVX
-#define USE_AVX
-#endif
-
     template<typename T1, typename T2, typename T3, typename T4>
     constexpr auto MakeShuffleMask( const T1 x, const T2 y, const T3 z, const T4 w )
     {
@@ -84,10 +80,21 @@ namespace Divide
             }
         }
 
-        //ref: https://gist.github.com/rygorous/4172889
-#ifndef USE_AVX
-    // linear combination:
-    // a[0] * B.row[0] + a[1] * B.row[1] + a[2] * B.row[2] + a[3] * B.row[3]
+#if defined(HAS_AVX2)
+        // another linear combination, using AVX instructions on XMM regs
+        static FORCE_INLINE __m128 lincomb_AVX_4mem( const F32* a, const mat4<F32>& B ) noexcept
+        {
+            const auto& bReg = B._reg;
+            __m128 result = _mm_mul_ps( _mm_broadcast_ss( &a[0] ), bReg[0]._reg );
+            result = _mm_add_ps( result, _mm_mul_ps( _mm_broadcast_ss( &a[1] ), bReg[1]._reg ) );
+            result = _mm_add_ps( result, _mm_mul_ps( _mm_broadcast_ss( &a[2] ), bReg[2]._reg ) );
+            result = _mm_add_ps( result, _mm_mul_ps( _mm_broadcast_ss( &a[3] ), bReg[3]._reg ) );
+            return result;
+        }
+#else //HAS_AVX2
+        // ref: https://gist.github.com/rygorous/4172889
+        // linear combination:
+        // a[0] * B.row[0] + a[1] * B.row[1] + a[2] * B.row[2] + a[3] * B.row[3]
         static FORCE_INLINE __m128 lincomb_SSE( const __m128& a, const mat4<F32>& B )
         {
             const auto& bReg = B._reg;
@@ -98,18 +105,7 @@ namespace Divide
 
             return result;
         }
-#else
-    // another linear combination, using AVX instructions on XMM regs
-        static FORCE_INLINE __m128 lincomb_AVX_4mem( const F32* a, const mat4<F32>& B ) noexcept
-        {
-            const auto& bReg = B._reg;
-            __m128 result = _mm_mul_ps( _mm_broadcast_ss( &a[0] ), bReg[0]._reg );
-            result = _mm_add_ps( result, _mm_mul_ps( _mm_broadcast_ss( &a[1] ), bReg[1]._reg ) );
-            result = _mm_add_ps( result, _mm_mul_ps( _mm_broadcast_ss( &a[2] ), bReg[2]._reg ) );
-            result = _mm_add_ps( result, _mm_mul_ps( _mm_broadcast_ss( &a[3] ), bReg[3]._reg ) );
-            return result;
-        }
-#endif
+#endif //HAS_AVX2
 
         //ref: https://lxjk.github.io/2017/09/03/Fast-4x4-Matrix-Inverse-with-SSE-SIMD-Explained.html
         FORCE_INLINE void GetTransformInverseNoScale( const mat4<F32>& inM, mat4<F32>& r ) noexcept
@@ -2779,12 +2775,7 @@ namespace Divide
     template<>
     FORCE_INLINE void mat4<F32>::Multiply( const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret ) noexcept
     {
-#if !defined(USE_AVX)
-        ret._reg[0]._reg = AVX::lincomb_SSE( matrixB._reg[0]._reg, matrixA);
-        ret._reg[1]._reg = AVX::lincomb_SSE( matrixB._reg[1]._reg, matrixA );
-        ret._reg[2]._reg = AVX::lincomb_SSE( matrixB._reg[2]._reg, matrixA );
-        ret._reg[3]._reg = AVX::lincomb_SSE( matrixB._reg[3]._reg, matrixA );
-#else //!USE_AVX
+#if defined(HAS_AVX2)
         // using AVX instructions, 4-wide
         // this can be better if A is in memory.
         _mm256_zeroupper();
@@ -2792,7 +2783,12 @@ namespace Divide
         ret._reg[1]._reg = AVX::lincomb_AVX_4mem( matrixB.m[1], matrixA );
         ret._reg[2]._reg = AVX::lincomb_AVX_4mem( matrixB.m[2], matrixA );
         ret._reg[3]._reg = AVX::lincomb_AVX_4mem( matrixB.m[3], matrixA );
-#endif //!USE_AVX
+#else //HAS_AVX2
+        ret._reg[0]._reg = AVX::lincomb_SSE( matrixB._reg[0]._reg, matrixA);
+        ret._reg[1]._reg = AVX::lincomb_SSE( matrixB._reg[1]._reg, matrixA );
+        ret._reg[2]._reg = AVX::lincomb_SSE( matrixB._reg[2]._reg, matrixA );
+        ret._reg[3]._reg = AVX::lincomb_SSE( matrixB._reg[3]._reg, matrixA );
+#endif //HAS_AVX2
     }
 
     // Copyright 2011 The Closure Library Authors. All Rights Reserved.

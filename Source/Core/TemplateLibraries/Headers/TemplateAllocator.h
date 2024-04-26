@@ -46,7 +46,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "Platform/Headers/PlatformMemoryDefines.h"
-#include <String.h>
 
 #include <Allocator/stl_allocator.h>
 #include <EASTL/internal/config.h>

@@ -9,10 +9,10 @@ add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 add_compile_definitions(EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED=1)
 add_compile_definitions(IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
 
+find_package(PkgConfig REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(DevIL REQUIRED)
-find_package(PkgConfig REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(expat CONFIG REQUIRED)
@@ -36,10 +36,16 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 find_package(ctre CONFIG REQUIRED)
-find_package(OpenMP REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
+
+find_package(OpenMP REQUIRED)
+if(OPENMP_FOUND)
+  message("OPENMP FOUND")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
 
 find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
@@ -109,6 +115,7 @@ include_directories(
     ${Boost_INCLUDE_DIR}
     ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS}
     ${expat_INCLUDE_DIR}
+    ${VulkanMemoryAllocator_INCLUDE_DIR}
     "ThirdParty/EntityComponentSystem/include/ECS"
     "ThirdParty/EntityComponentSystem/include"
 )
@@ -121,9 +128,9 @@ set(EXTERNAL_LIBS
     ${ILU_LIBRARIES}
     ${ILUT_LIBRARIES}
     ${PYTHON_LIBRARIES}
-    ${CEGUI_LIBRARIES}
     ${IMAGE_LIBRARIES}
     ${LZMA_LIBRARY}
+    ${CEGUI_LIBRARIES}
     fmt::fmt
     OptickCore
     EASTL

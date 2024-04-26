@@ -100,25 +100,19 @@ namespace Divide {
         }
     }
 
-    void SetThreadPriority(const ThreadPriority priority) {
+    void SetThreadPriority(const ThreadPriority priority)
+    {
         SetThreadPriorityInternal(pthread_self(), priority);
     }
 
-    extern void SetThreadPriority(std::thread* thread, ThreadPriority priority) {
-        SetThreadPriorityInternal(static_cast<pthread_t>(thread->native_handle()), priority);
-    }
-
-    void SetThreadName(std::thread* thread, const std::string_view threadName) {
-        auto handle = thread->native_handle();
-        pthread_setname_np(handle, threadName.data(), threadName.size());
-    }
-
     #include <sys/prctl.h>
-    void SetThreadName(const std::string_view threadName) noexcept {
-        SetThreadName(GetCurrentThreadId(), threadName);
+    void SetThreadName(const std::string_view threadName) noexcept
+    {
+        pthread_setname_np(pthread_self(), threadName.data());
     }
 
-    bool CallSystemCmd(const std::string_view cmd, const string_view args) {
+    bool CallSystemCmd(const std::string_view cmd, const std::string_view args)
+    {
         return std::system(Util::StringFormat("{} {}", cmd, args).c_str()) == 0;
     }
 
