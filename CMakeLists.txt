@@ -1,10 +1,8 @@
 # CMakeList.txt : Top-level CMake project file, do global configuration and include sub-projects here.
 cmake_minimum_required (VERSION 3.28)
 
-include(Source/CMakeHelpers/FindAVX2.cmake)
-
 option(BUILD_TESTING_INTERNAL "Build and run unit tests" ON)
-option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
+option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." ON)
 
 # This is required to be before the first project() call of the CMake build.
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
@@ -36,6 +34,8 @@ set(PROJECT_LICENSE_FILE "${CMAKE_SOURCE_DIR}/../LICENSE" CACHE FILEPATH "Path t
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+include(Source/CMakeHelpers/FindAVX2.cmake)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_definitions(USING_MSVC)
