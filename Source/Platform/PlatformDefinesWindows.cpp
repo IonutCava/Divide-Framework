@@ -164,11 +164,6 @@ namespace Divide {
         SetThreadPriorityInternal(GetCurrentThread(), priority);
     }
 
-    extern void SetThreadPriority(std::thread* thread, ThreadPriority priority)
-    {
-        SetThreadPriorityInternal(static_cast<HANDLE>(thread->native_handle()), priority);
-    }
-
     static void SetThreadName(const U32 threadID, const std::string_view threadName) noexcept
     {
         // DWORD dwThreadID = ::GetThreadId( static_cast<HANDLE>( t.native_handle() ) );
@@ -192,12 +187,6 @@ namespace Divide {
     void SetThreadName(const std::string_view threadName) noexcept
     {
         SetThreadName(GetCurrentThreadId(), threadName);
-    }
-
-    void SetThreadName(std::thread* thread, const std::string_view  threadName)
-    {
-        const DWORD threadId = GetThreadId(static_cast<HANDLE>(thread->native_handle()));
-        SetThreadName(threadId, threadName);
     }
 
     bool CallSystemCmd(const std::string_view cmd, const std::string_view args)

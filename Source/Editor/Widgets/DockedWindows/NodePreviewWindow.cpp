@@ -99,7 +99,7 @@ namespace Divide
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         const ImRect bb( window->DC.CursorPos, ImVec2( window->DC.CursorPos.x + wndSz.x, window->DC.CursorPos.y + wndSz.y ) );
         ImGui::ItemSize( bb );
-        if ( ImGui::ItemAdd( bb, NULL ) )
+        if ( ImGui::ItemAdd( bb, ImGui::GetID("##nodePreviewRect") ) )
         {
             ImVec2 imageSz = wndSz - ImVec2( 0.2f, 0.2f );
             ImVec2 remainingWndSize( 0, 0 );

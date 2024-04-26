@@ -210,10 +210,8 @@ enum class ThreadPriority : U8 {
     COUNT
 };
 
-extern void SetThreadPriority(std::thread* thread, ThreadPriority priority);
 extern void SetThreadPriority(ThreadPriority priority);
 
-extern void SetThreadName(std::thread* thread, std::string_view threadName);
 extern void SetThreadName(std::string_view threadName) noexcept;
 
 extern bool CallSystemCmd(std::string_view cmd, std::string_view args);

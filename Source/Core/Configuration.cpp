@@ -321,7 +321,7 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
 
 void Configuration::save()
 {
-    if (changed() && toXML(LoadSave._filePath, LoadSave._fileName.c_str()));
+    if (changed() && toXML(LoadSave._filePath, LoadSave._fileName.c_str()))
     {
         changed(false);
     }

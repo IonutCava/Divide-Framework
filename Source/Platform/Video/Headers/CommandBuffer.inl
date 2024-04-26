@@ -32,6 +32,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_COMMAND_BUFFER_INL_
 #define DVD_COMMAND_BUFFER_INL_
 
+#include "CommandTypes.h"
+
 namespace Divide {
 namespace GFX {
 
@@ -114,8 +116,7 @@ bool TryMergeCommands(const CommandType type, T* prevCommand, T* crtCommand)
         } break;
         case CommandType::SEND_PUSH_CONSTANTS:
         {
-            bool partial = false;
-            ret = Merge( static_cast<SendPushConstantsCommand*>(prevCommand)->_constants, static_cast<SendPushConstantsCommand*>(crtCommand)->_constants, partial);
+            ret = Merge( static_cast<SendPushConstantsCommand*>(prevCommand), static_cast<SendPushConstantsCommand*>(crtCommand));
         } break;
         default:
         {

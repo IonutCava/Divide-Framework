@@ -1,9 +1,10 @@
 # CMakeList.txt : Top-level CMake project file, do global configuration and include sub-projects here.
 cmake_minimum_required (VERSION 3.28)
 
+include(Source/CMakeHelpers/FindAVX2.cmake)
+
 option(BUILD_TESTING_INTERNAL "Build and run unit tests" ON)
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
-option(ENABLE_AVX2 "Toggle AVX2 specific compiler flags" ON)
 
 # This is required to be before the first project() call of the CMake build.
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
@@ -32,37 +33,25 @@ project ( Divide-Framework
 
 set(PROJECT_LICENSE_FILE "${CMAKE_SOURCE_DIR}/../LICENSE" CACHE FILEPATH "Path to the license file for this project.")
 
-
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_definitions(USING_MSVC)
 
   set(CMAKE_DEBUG_PREFIX /D)
 
-  if( ENABLE_AVX2 )
-    add_compile_options(/arch:AVX2)
-  endif()
-
   add_compile_options(/Zc:__cplusplus)
   add_compile_options(/Zm256)
-
+  add_compile_options(/arch:SSE4.2)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
   add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING) #ToDo(Ionut): This should be disabled only for third party libs
 
   add_link_options(/INCREMENTAL)
 else ()
   set(CMAKE_DEBUG_PREFIX -D)
-
-  if( ENABLE_AVX2 )
-    add_compile_options(-mavx2)
-  endif()
-
-  #add_compile_options(-W0)
-
+  add_compile_options(-msse4.2)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_definitions(USING_CLANG)
     add_compile_options(-Wno-unknown-argument -Wno-unused-command-line-argument)
@@ -71,6 +60,13 @@ else ()
   endif ()
 endif ()
 
+if( AVX2_FOUND )
+  add_compile_options(${AVX2_C_FLAGS})
+  add_compile_definitions(HAS_AVX2)
+  message("AVX2 supported and enabled!")
+else()
+  message("AVX2 not supported")
+endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${CMAKE_DEBUG_PREFIX}_DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${CMAKE_DEBUG_PREFIX}_RELEASE")
@@ -92,6 +88,6 @@ if (PRINT_ALL_CMAKE_VARIABLES)
     get_cmake_property(_variableNames VARIABLES)
     list (SORT _variableNames)
     foreach (_variableName ${_variableNames})
-        message(STATUS "${_variableName}=${${_variableName}}")
+        message("${_variableName}=${${_variableName}}")
     endforeach()
 endif()
