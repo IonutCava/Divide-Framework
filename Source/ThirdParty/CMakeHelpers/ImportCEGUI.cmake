@@ -54,19 +54,18 @@ FetchContent_MakeAvailable(Cegui)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
 
-find_library(CEGUI_BASE_LIB NAMES "CEGUIBase-0_Static" PATHS "${cegui_BINARY_DIR}/lib")
-find_library(CEGUI_COMMON_LIB NAMES "CEGUICommonDialogs-0_Static" PATHS "${cegui_BINARY_DIR}/lib")
-find_library(CEGUI_CORE_LIB NAMES "CEGUICoreWindowRendererSet_Static" PATHS "${cegui_BINARY_DIR}/lib")
-find_library(CEGUI_IMAGE_LIB NAMES "${CEGUI_IMAGE_CODEC_LIB}_Static" PATHS "${cegui_BINARY_DIR}/lib")
-find_library(CEGUI_PARSER_LIB NAMES "${CEGUI_XML_PARSER_LIB}_Static" PATHS "${cegui_BINARY_DIR}/lib")
+set(CEGUI_LIBRARY_NAMES "CEGUIBase-0_Static;CEGUICommonDialogs-0_Static;CEGUICoreWindowRendererSet_Static;${CEGUI_IMAGE_CODEC_LIB}_Static;${CEGUI_XML_PARSER_LIB}_Static")
 
-set(CEGUI_LIBRARIES
-       ${CEGUI_BASE_LIB}
-       ${CEGUI_COMMON_LIB}
-       ${CEGUI_CORE_LIB}
-       ${CEGUI_IMAGE_LIB}
-       ${CEGUI_PARSER_LIB}
-)
+set(CEGUI_LIBRARIES "")
+
+foreach(TARGET_LIB ${CEGUI_LIBRARY_NAMES})
+
+    if (WIN32 AND (CMAKE_BUILD_TYPE MATCHES Debug))
+        set(TARGET_LIB "${TARGET_LIB}_d")
+    endif()
+
+    list(APPEND CEGUI_LIBRARIES ${TARGET_LIB})
+endforeach()
 
 include_directories(
     "${cegui_SOURCE_DIR}/cegui/include"
