@@ -41,5 +41,6 @@ jobs:
         testPreset: 'test-unixlike-clang-release-editor'
 
     - name: Print temp error log
+      if: always()
       id: run
       run: cat /home/runner/work/Divide-Framework/Divide-Framework/Build/unixlike-clang-release-editor/vcpkg-manifest-install.log
