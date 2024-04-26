@@ -115,7 +115,7 @@ include_directories(
     ${Boost_INCLUDE_DIR}
     ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS}
     ${expat_INCLUDE_DIR}
-    ${VulkanMemoryAllocator_INCLUDE_DIR}
+    "${Vulkan_INCLUDE_DIR}/vma"
     "ThirdParty/EntityComponentSystem/include/ECS"
     "ThirdParty/EntityComponentSystem/include"
 )
