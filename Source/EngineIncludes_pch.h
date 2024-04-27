@@ -50,7 +50,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning(disable: 4458) //warning C4458: declaration of 'shift' hides class member
 #pragma warning(disable: 4310) //warning C4310: cast truncates constant value 
 #endif
-//#include <stdexcept>
+#include <stdexcept>
 #include <bytell_hash_map.hpp>
 #ifdef _MSC_VER
 #pragma warning(pop)
