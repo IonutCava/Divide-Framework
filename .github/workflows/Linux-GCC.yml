@@ -1,6 +1,6 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: Editor + UTs (Release - Linux - Clang)
+name: Linux - GCC
 
 on:
   push:
@@ -36,11 +36,13 @@ jobs:
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'unixlike-clang-release-editor'
-        buildPreset: 'unixlike-clang-release-editor'
-        testPreset: 'test-unixlike-clang-release-editor'
+        configurePreset: 'unixlike-gcc-release-editor'
+        buildPreset: 'unixlike-gcc-release-editor'
+        testPreset: 'test-unixlike-gcc-release-editor'
 
-    - name: Print temp error log
-      if: always()
-      id: run
-      run: cat /home/runner/work/Divide-Framework/Divide-Framework/Build/unixlike-clang-release-editor/vcpkg-manifest-install.log
+    - name: Build and test Game in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'unixlike-gcc-debug'
+        buildPreset: 'unixlike-gcc-debug'
+        testPreset: 'test-unixlike-gcc-debug'

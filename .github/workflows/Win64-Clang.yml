@@ -1,6 +1,6 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: Editor + UTs (Release - Win64 - Clang)
+name: Win64 - Clang
 
 on:
   push:
@@ -33,9 +33,17 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
+    - name: Build and test Game in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-clang-debug'
+        buildPreset: 'windows-clang-debug'
+        testPreset: 'test-windows-clang-debug'
+
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       with:
         configurePreset: 'windows-clang-release-editor'
         buildPreset: 'windows-clang-release-editor'
         testPreset: 'test-windows-clang-release-editor'
+        
