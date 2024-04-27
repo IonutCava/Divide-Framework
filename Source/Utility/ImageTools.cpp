@@ -84,7 +84,7 @@ namespace nvttHelpers {
         virtual bool writeData(const void* data, int size) override
         {
             // Copy mipmap data
-            memcpy(&_mipmaps[_currentMipLevel]._pixelData, data, size);
+            memcpy(_mipmaps[_currentMipLevel]._pixelData.data(), data, size);
             return true;
         }
     };
