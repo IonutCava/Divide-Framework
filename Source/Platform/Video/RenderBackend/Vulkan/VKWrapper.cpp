@@ -486,7 +486,7 @@ namespace Divide
         submitInfo.pCommandBuffers = &cmd;
 
         _context.submitToQueue( _type, submitInfo, fence );
-        _bufferIndex = ++_bufferIndex % BUFFER_COUNT;
+        _bufferIndex = (_bufferIndex + 1u) % BUFFER_COUNT;
 
         if ( _bufferIndex == 0u )
         {
@@ -1088,10 +1088,17 @@ namespace Divide
         pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
         vector<Byte> pipeline_data;
-        const FileError errCache = readFile( PipelineCacheLocation(), PipelineCacheFileName.string(), pipeline_data, FileType::BINARY );
+        std::ifstream data;
+        const FileError errCache = readFile( PipelineCacheLocation(), PipelineCacheFileName.string(), FileType::BINARY, data );
         if ( errCache == FileError::NONE )
         {
-            pipelineCacheCreateInfo.initialDataSize = pipeline_data.size();
+            data.seekg(0, std::ios::end);
+            const size_t fileSize = to_size(data.tellg());
+            data.seekg(0);
+            pipeline_data.resize(fileSize);
+            data.read(reinterpret_cast<char*>(pipeline_data.data()), fileSize);
+
+            pipelineCacheCreateInfo.initialDataSize = fileSize;
             pipelineCacheCreateInfo.pInitialData = pipeline_data.data();
         }
         else
@@ -1099,6 +1106,11 @@ namespace Divide
             Console::errorfn( LOCALE_STR( "ERROR_VK_PIPELINE_CACHE_LOAD" ), Names::fileError[to_base( errCache )] );
         }
 
+        if (data.is_open())
+        {
+            data.close();
+        }
+        
         if ( _context.context().config().runtime.usePipelineCache )
         {
             VK_CHECK( vkCreatePipelineCache( vkDevice, &pipelineCacheCreateInfo, nullptr, &_pipelineCache ) );

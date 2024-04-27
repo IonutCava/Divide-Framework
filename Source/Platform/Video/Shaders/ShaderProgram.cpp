@@ -1592,7 +1592,7 @@ namespace Divide
         eastl::set<U64>& atoms = s_atomIncludes[atomNameHash];
         atoms.clear();
 
-        if ( readFile( filePath, atomName, output, FileType::TEXT ) != FileError::NONE )
+        if ( readFile( filePath, atomName, FileType::TEXT, output ) != FileError::NONE )
         {
             DIVIDE_UNEXPECTED_CALL();
         }
@@ -1648,7 +1648,7 @@ namespace Divide
                     err = writeFile( SpvCacheLocation(),
                                      SpvTargetName( dataIn._shaderName ).string(),
                                      (bufferPtr)dataIn._sourceCodeSpirV.data(),
-                                     dataIn._sourceCodeSpirV.size() * sizeof( U32 ),
+                                     dataIn._sourceCodeSpirV.size() * sizeof( SpvWord ),
                                      FileType::BINARY );
 
                     if ( err != FileError::NONE )
@@ -1709,23 +1709,40 @@ namespace Divide
             {
                 err = readFile( TxtCacheLocation(),
                                 dataInOut._shaderName.c_str(),
-                                dataInOut._sourceCodeGLSL, FileType::TEXT );
+                                FileType::TEXT,
+                                dataInOut._sourceCodeGLSL );
                 return err == FileError::NONE;
             }
             case LoadData::ShaderCacheType::SPIRV:
             {
-                vector<Byte> tempData;
+                std::ifstream tempData;
                 {
                     err = readFile( SpvCacheLocation(),
                                     SpvTargetName( dataInOut._shaderName ).string(),
-                                    tempData,
-                                    FileType::BINARY );
+                                    FileType::BINARY,
+                                    tempData );
                 }
 
                 if ( err == FileError::NONE )
                 {
-                    dataInOut._sourceCodeSpirV.resize( tempData.size() / sizeof( U32 ) );
-                    memcpy( dataInOut._sourceCodeSpirV.data(), tempData.data(), tempData.size() );
+                    tempData.seekg(0, std::ios::end);
+                    dataInOut._sourceCodeSpirV.reserve( tempData.tellg() / sizeof( SpvWord ) );
+                    tempData.seekg(0);
+
+                    while (!tempData.eof())
+                    {
+                        SpvWord inWord;
+                        tempData.read((char *)&inWord, sizeof(inWord));
+                        if (!tempData.eof())
+                        {
+                            dataInOut._sourceCodeSpirV.push_back(inWord);
+                            if (tempData.fail())
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    
                     return true;
                 }
 

@@ -64,11 +64,7 @@ namespace Divide {
     };
 
     namespace Names {
-        static const char* sceneNodeType[] = {
-              "SPHERE_3D", "BOX_3D", "QUAD_3D", "PATCH_3D", "MESH", "SUBMESH", "TERRAIN", "DECAL",
-              "TRANSFORM", "WATER", "TRIGGER", "PARTICLE_EMITTER", "SKY",
-              "INFINITE_PLANE", "VEGETATION_GRASS", "UNKNOWN"
-        };
+        extern const char* sceneNodeType[to_base(SceneNodeType::COUNT) + 1u];
     };
 
     FWD_DECLARE_MANAGED_CLASS(SceneNode);

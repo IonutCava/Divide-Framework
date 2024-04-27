@@ -70,7 +70,7 @@ bool SFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
         _api->musicFinished();
 
         if (!_currentPlaylist.second.empty()) {
-            _currentPlaylist.first = ++_currentPlaylist.first % _currentPlaylist.second.size();
+            _currentPlaylist.first = (_currentPlaylist.first + 1u) % _currentPlaylist.second.size();
             _api->playMusic(_currentPlaylist.second[_currentPlaylist.first]);
         }
         _playNextInPlaylist = false;

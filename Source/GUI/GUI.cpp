@@ -471,7 +471,7 @@ namespace Divide
                 return;
             }
 
-            dvd->_writeOffset = ++dvd->_writeOffset % dvd->_bufferSizeFactor;
+            dvd->_writeOffset = (dvd->_writeOffset + 1u) % dvd->_bufferSizeFactor;
             if ( dvd->_writeOffset == 0u )
             {
                 // Wrapped around. Dangerous to write data. Wait till next frame

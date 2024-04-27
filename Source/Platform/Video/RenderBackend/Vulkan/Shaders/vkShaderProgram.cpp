@@ -84,7 +84,7 @@ namespace Divide {
             assert(!data._sourceCodeSpirV.empty());
 
             //create a new shader module, using the buffer we loaded
-            const VkShaderModuleCreateInfo createInfo = vk::shaderModuleCreateInfo(data._sourceCodeSpirV.size() * sizeof(uint32_t), data._sourceCodeSpirV.data());
+            const VkShaderModuleCreateInfo createInfo = vk::shaderModuleCreateInfo(data._sourceCodeSpirV.size() * sizeof(SpvWord), data._sourceCodeSpirV.data());
 
             VK_CHECK(vkCreateShaderModule(VK_API::GetStateTracker()._device->getVKDevice(), &createInfo, nullptr, &_handle));
 

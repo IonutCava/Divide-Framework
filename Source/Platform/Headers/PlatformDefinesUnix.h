@@ -53,7 +53,7 @@
 #include <sys/time.h>
 #include <X11/X.h>
 #include <strings.h>
-#include <iterator>
+//#include <iterator>
 #include <cmath>
 
 namespace std

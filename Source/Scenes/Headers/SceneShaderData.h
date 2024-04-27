@@ -197,8 +197,8 @@ class SceneShaderData
       SceneShaderBufferData _sceneBufferData;
       ProbeBufferData _probeData = {};
       /// Generic scene data that doesn't change per shader
-      ShaderBuffer_uptr _sceneShaderData = nullptr;
-      ShaderBuffer_uptr _probeShaderData = nullptr;
+      ShaderBuffer_uptr _sceneShaderData;
+      ShaderBuffer_uptr _probeShaderData;
 };
 } //namespace Divide
 

@@ -373,7 +373,7 @@ namespace Divide
         bool _playerQueueDirty = false;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerAddQueue;
         eastl::queue<std::pair<Scene*, SceneGraphNode*>>  _playerRemoveQueue;
-        AI::Navigation::DivideRecast_uptr _recast = nullptr;
+        AI::Navigation::DivideRecast_uptr _recast;
 
         SwitchProjectTarget _projectSwitchTarget{};
 

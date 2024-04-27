@@ -320,8 +320,17 @@ namespace Divide
                 {
                     CSMShadowProperties& propsTarget = _shadowBufferData._dirLights[shadowIndex];
                     propsTarget._details = propsSource._lightDetails;
-                    std::memcpy( propsTarget._position.data(), propsSource._lightPosition.data(), sizeof( vec4<F32> ) * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
-                    std::memcpy( propsTarget._vpMatrix.data(), propsSource._lightVP.data(), sizeof( mat4<F32> ) * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT );
+
+                    for ( U8 i = 0u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
+                    {
+                        std::memcpy( propsTarget._position[i]._v, propsSource._lightPosition[0]._v, sizeof(F32) * 4u);
+                    }
+
+                    for ( U8 i = 0u; i < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++i)
+                    {
+                        std::memcpy( propsTarget._vpMatrix[i].m, propsSource._lightVP[i].m, sizeof(F32) * 16u );
+                    }
+
                     layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + static_cast<DirectionalLightComponent*>(light)->csmSplitCount() ) );
                 }break;
                 case LightType::COUNT:

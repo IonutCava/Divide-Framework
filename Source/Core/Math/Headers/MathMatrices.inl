@@ -34,11 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide
 {
 
-    template<typename T1, typename T2, typename T3, typename T4>
-    constexpr auto MakeShuffleMask( const T1 x, const T2 y, const T3 z, const T4 w )
-    {
-        return x | y << 2 | z << 4 | w << 6;
-    }
+#   define MakeShuffleMask(x,y,z,w)         (x | y << 2 | z << 4 | w << 6)
 
     // vec(0, 1, 2, 3) -> (vec[x], vec[y], vec[z], vec[w])
 #   define VecSwizzle(vec, x,y,z,w)        _mm_shuffle_ps(vec, vec, MakeShuffleMask(x,y,z,w))
@@ -54,8 +50,6 @@ namespace Divide
      // special shuffle
 #   define VecShuffle_0101(vec1, vec2)     _mm_movelh_ps(vec1, vec2)
 #   define VecShuffle_2323(vec1, vec2)     _mm_movehl_ps(vec2, vec1)
-
-    constexpr F32 SMALL_NUMBER = 1.e-8f;
 
     namespace AVX
     {
@@ -163,11 +157,11 @@ namespace Divide
 
             // optional test to avoid divide by 0
             const __m128 one = _mm_set1_ps( 1.f );
-            // for each component, if(sizeSqr < SMALL_NUMBER) sizeSqr = 1;
+            // for each component, if(sizeSqr < epsilon) sizeSqr = 1;
             const __m128 rSizeSqr = _mm_blendv_ps(
                 _mm_div_ps( one, sizeSqr ),
                 one,
-                _mm_cmplt_ps( sizeSqr, _mm_set1_ps( SMALL_NUMBER ) )
+                _mm_cmplt_ps( sizeSqr, _mm_set1_ps( std::numeric_limits<F32>::epsilon() ) )
             );
 
             r._reg[0] = SimdVector<F32>( _mm_mul_ps( r._reg[0]._reg, rSizeSqr ) );

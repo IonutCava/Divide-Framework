@@ -227,11 +227,11 @@ class LightPool final : public FrameListener,
 
     mutable SharedMutex _lightLock{};
 
-    Texture_ptr _lightIconsTexture = nullptr;
-    ShaderProgram_ptr _lightImpostorShader = nullptr;
-    ShaderBuffer_uptr _lightBuffer = nullptr;
-    ShaderBuffer_uptr _sceneBuffer = nullptr;
-    ShaderBuffer_uptr _shadowBuffer = nullptr;
+    Texture_ptr _lightIconsTexture;
+    ShaderProgram_ptr _lightImpostorShader;
+    ShaderBuffer_uptr _lightBuffer;
+    ShaderBuffer_uptr _sceneBuffer;
+    ShaderBuffer_uptr _shadowBuffer;
     Time::ProfileTimer& _shadowPassTimer;
     U32               _totalLightCount = 0u;
     bool _shadowBufferDirty = false;

@@ -477,8 +477,8 @@ private:
     void addRenderWork(DELEGATE<void>&& work);
 
 private:
-    RenderAPIWrapper_uptr _api = nullptr;
-    Renderer_uptr _renderer = nullptr;
+    RenderAPIWrapper_uptr _api;
+    Renderer_uptr _renderer;
 
     ShaderComputeQueue* _shaderComputeQueue = nullptr;
 

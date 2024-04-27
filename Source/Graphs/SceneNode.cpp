@@ -14,6 +14,15 @@
 namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
+namespace Names
+{
+    const char* sceneNodeType[to_base(SceneNodeType::COUNT) + 1u] = 
+    {
+        "SPHERE_3D", "BOX_3D", "QUAD_3D", "PATCH_3D", "MESH", "SUBMESH", "TERRAIN", "DECAL",
+        "TRANSFORM", "WATER", "TRIGGER", "PARTICLE_EMITTER", "SKY",
+        "INFINITE_PLANE", "VEGETATION_GRASS", "UNKNOWN"
+    };
+}
 SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 requiredComponentMask)
     : CachedResource(ResourceType::DEFAULT, descriptorHash, name, resourceName, resourceLocation)
     , _type(type)

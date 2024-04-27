@@ -40,7 +40,7 @@ namespace FW {
 namespace Divide {
     struct FileWatcher final : GUIDWrapper {
        FORCE_INLINE FW::FileWatcher& operator()() noexcept { return *_impl; }
-       FW::FileWatcher_uptr _impl = nullptr;
+       FW::FileWatcher_uptr _impl;
     };
 
     FWD_DECLARE_MANAGED_STRUCT(FileWatcher);

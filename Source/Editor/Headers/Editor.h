@@ -338,15 +338,15 @@ namespace Divide
         Time::ProfileTimer& _editorUpdateTimer;
         Time::ProfileTimer& _editorRenderTimer;
 
-        MenuBar_uptr             _menuBar = nullptr;
-        StatusBar_uptr           _statusBar = nullptr;
-        EditorOptionsWindow_uptr _optionsWindow = nullptr;
-        UndoManager_uptr         _undoManager = nullptr;
-        Gizmo_uptr               _gizmo = nullptr;
+        MenuBar_uptr             _menuBar;
+        StatusBar_uptr           _statusBar;
+        EditorOptionsWindow_uptr _optionsWindow;
+        UndoManager_uptr         _undoManager;
+        Gizmo_uptr               _gizmo ;
 
         DisplayWindow* _mainWindow = nullptr;
         Texture_ptr       _fontTexture = nullptr;
-        ShaderProgram_ptr _imguiProgram = nullptr;
+        ShaderProgram_ptr _imguiProgram;
 
         IMPrimitive* _infiniteGridPrimitive = nullptr;
         ShaderProgram_ptr _infiniteGridProgram;

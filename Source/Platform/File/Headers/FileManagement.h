@@ -46,13 +46,14 @@ enum class FileError : U8 {
     FILE_DELETE_ERROR,
     FILE_OVERWRITE_ERROR,
     FILE_COPY_ERROR,
+    FILE_TARGET_BUFFER_ERROR,
     COUNT
 };
 
 namespace Names
 {
     static const char* fileError[] = {
-            "NONE", "FILE_NOT_FOUND", "FILE_EMPTY", "FILE_CREATE_ERROR","FILE_READ_ERROR", "FILE_OPEN_ERROR", "FILE_WRITE_ERROR", "FILE_DELETE_ERROR", "FILE_OVERWRITE_ERROR", "FILE_COPY_ERROR", "UNKNOWN"
+            "NONE", "FILE_NOT_FOUND", "FILE_EMPTY", "FILE_CREATE_ERROR","FILE_READ_ERROR", "FILE_OPEN_ERROR", "FILE_WRITE_ERROR", "FILE_DELETE_ERROR", "FILE_OVERWRITE_ERROR", "FILE_COPY_ERROR", "FILE_TARGET_BUFFER_ERROR", "UNKNOWN"
     };
 }
 
@@ -191,8 +192,10 @@ using FileList = vector<FileEntry>;
 
 [[nodiscard]] size_t numberOfFilesInDirectory(const ResourcePath& path);
 
-template<typename T> requires has_assign<T> || is_vector<T>
-[[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, T& contentOut, FileType fileType);
+/// Read the contents of a file into an ifstream. Will not close the stream!
+[[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::ifstream& sreamOut);
+[[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, string& contentOut);
+[[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, Byte* contentOut, size_t& sizeInOut);
 
 [[nodiscard]] FileError openFile(const ResourcePath& filePath, std::string_view fileName);
 [[nodiscard]] FileError openFile(const char* cmd, const ResourcePath& filePath, std::string_view fileName);

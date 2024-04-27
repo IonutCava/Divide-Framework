@@ -72,7 +72,7 @@ class Quadtree {
     PROPERTY_R_IW(U32, targetChunkDimension, 0u);
 
    private:
-    QuadtreeNode_uptr _root = nullptr;
+    QuadtreeNode_uptr _root;
     VertexBuffer* _parentVB = nullptr;
     U32 _chunkCount = 0u;
     bool _drawBBoxes = false;

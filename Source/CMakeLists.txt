@@ -55,85 +55,96 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
                                     /wd5026 /wd5027 /wd5039 /wd5045 /wd5204 /wd5219 /wd5220
                                     /wd5262 /wd5267
     )
-
 else()
 
     set(DIVIDE_COMPILE_OPTIONS -Wall
-                               -Wno-macro-redefined
-                               -Wno-clang-cl-pch
-                               -Wno-old-style-cast
                                -Wno-unused-function
-                               -Wno-format-nonliteral
-                               -Wno-c++98-compat
-                               -Wno-c++98-compat-pedantic
-                               -Wno-cast-function-type-strict
-                               -Wno-global-constructors #Really now?
     )
-      set(THIRD_PARTY_COMPILE_OPTIONS -Wno-reserved-macro-identifier
-                                      -Wno-documentation
-                                      -Wno-documentation-unknown-command
-                                      -Wno-ignored-attributes
-                                      -Wno-undef
-                                      -Wno-cast-qual
-                                      -Wno-cast-align
-                                      -Wno-cast-function-type
-                                      -Wno-sign-conversion
-                                      -Wno-float-conversion
-                                      -Wno-string-conversion
-                                      -Wno-string-plus-int
-                                      -Wno-double-promotion
-                                      -Wno-unused-member-function
-                                      -Wno-parentheses
-                                      -Wno-unused-but-set-variable
-                                      -Wno-conditional-uninitialized
-                                      -Wno-implicit-int-conversion
-                                      -Wno-implicit-float-conversion
-                                      -Wno-unsafe-buffer-usage
-                                      -Wno-covered-switch-default
-                                      -Wno-unused-private-field
-                                      -Wno-missing-braces
-                                      -Wno-misleading-indentation
-                                      -Wno-gnu-zero-variadic-macro-arguments
-                                      -Wno-float-equal
-                                      -Wno-extra-semi
-                                      -Wno-switch-enum
-                                      -Wno-shadow-uncaptured-local
-                                      -Wno-disabled-macro-expansion
-                                      -Wno-nullability-extension
-                                      -Wno-zero-as-null-pointer-constant
-                                      -Wno-suggest-override
-                                      -Wno-suggest-destructor-override
-                                      -Wno-reserved-identifier
-                                      -Wno-implicit-int-float-conversion
-                                      -Wno-unknown-pragmas
-                                      -Wno-strict-prototypes
-                                      -Wno-unused-template
-                                      -Wno-unused-variable
-                                      -Wno-unused-macros
-                                      -Wno-shorten-64-to-32
-                                      -Wno-missing-prototypes
-                                      -Wno-deprecated-copy
-                                      -Wno-newline-eof
-                                      -Wno-extra-semi-stmt
-                                      -Wno-comma
-                                      -Wno-shadow
-                                      -Wno-microsoft-enum-value
-                                      -Wno-language-extension-token
-                                      -Wno-deprecated-dynamic-exception-spec
-                                      -Wno-exit-time-destructors
-                                      -Wno-shadow-field-in-constructor
-                                      -Wno-implicit-fallthrough
-                                      -Wno-inconsistent-missing-override
-                                      -Wno-inconsistent-missing-destructor-override
-                                      -Wno-deprecated-declarations
-                                      -Wno-deprecated-copy-with-dtor
-                                      -Wno-deprecated-copy-with-user-provided-dtor
-                                      -Wno-parentheses-equality
-                                      -Wno-return-type-c-linkage
-                                      -Wno-missing-field-initializers
-                                      -Wno-nonportable-system-include-path
+    set(THIRD_PARTY_COMPILE_OPTIONS -Wno-unused-but-set-variable
+                                    -Wno-parentheses
+                                    -Wno-misleading-indentation
+                                    -Wno-unused-variable
+                                    -Wno-char-subscripts
+                                    $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
     )
 
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+
+        set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS}
+                                -Wno-macro-redefined
+                                -Wno-clang-cl-pch
+                                -Wno-old-style-cast
+                                -Wno-format-nonliteral
+                                -Wno-c++98-compat
+                                -Wno-c++98-compat-pedantic
+                                -Wno-cast-function-type-strict
+                                -Wno-global-constructors #Really now?
+        )
+        set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}
+                                        -Wno-reserved-macro-identifier
+                                        -Wno-documentation
+                                        -Wno-documentation-unknown-command
+                                        -Wno-ignored-attributes
+                                        -Wno-undef
+                                        -Wno-cast-qual
+                                        -Wno-cast-align
+                                        -Wno-cast-function-type
+                                        -Wno-sign-conversion
+                                        -Wno-float-conversion
+                                        -Wno-string-conversion
+                                        -Wno-string-plus-int
+                                        -Wno-double-promotion
+                                        -Wno-unused-member-function
+                                        -Wno-conditional-uninitialized
+                                        -Wno-implicit-int-conversion
+                                        -Wno-implicit-float-conversion
+                                        -Wno-unsafe-buffer-usage
+                                        -Wno-covered-switch-default
+                                        -Wno-unused-private-field
+                                        -Wno-missing-braces
+                                        -Wno-gnu-zero-variadic-macro-arguments
+                                        -Wno-float-equal
+                                        -Wno-extra-semi
+                                        -Wno-switch-enum
+                                        -Wno-shadow-uncaptured-local
+                                        -Wno-disabled-macro-expansion
+                                        -Wno-nullability-extension
+                                        -Wno-zero-as-null-pointer-constant
+                                        -Wno-suggest-override
+                                        -Wno-suggest-destructor-override
+                                        -Wno-reserved-identifier
+                                        -Wno-implicit-int-float-conversion
+                                        -Wno-unknown-pragmas
+                                        -Wno-strict-prototypes
+                                        -Wno-unused-template
+                                        -Wno-unused-macros
+                                        -Wno-shorten-64-to-32
+                                        -Wno-missing-prototypes
+                                        -Wno-newline-eof
+                                        -Wno-extra-semi-stmt
+                                        -Wno-comma
+                                        -Wno-shadow
+                                        -Wno-microsoft-enum-value
+                                        -Wno-language-extension-token
+                                        -Wno-deprecated-dynamic-exception-spec
+                                        -Wno-exit-time-destructors
+                                        -Wno-shadow-field-in-constructor
+                                        -Wno-implicit-fallthrough
+                                        -Wno-inconsistent-missing-override
+                                        -Wno-inconsistent-missing-destructor-override
+                                        -Wno-deprecated-declarations
+                                        -Wno-deprecated-copy-with-dtor
+                                        -Wno-deprecated-copy-with-user-provided-dtor
+                                        -Wno-parentheses-equality
+                                        -Wno-return-type-c-linkage
+                                        -Wno-missing-field-initializers
+                                        -Wno-nonportable-system-include-path
+        )
+    else() #GCC
+        set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}
+                                        -Wno-format-overflow
+        )
+    endif()
 endif()
 
 add_library( ${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_FETCH_SRC_FILES} )

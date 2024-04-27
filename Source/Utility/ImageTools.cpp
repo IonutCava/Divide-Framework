@@ -10,10 +10,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_FAILURE_USERMSG
 
-#pragma warning(push)
-#pragma warning(disable:4505) //unreferenced local function has been removed
-#pragma warning(disable:4189) //local variable is initialized but not referenced
-#pragma warning(disable:4244) //conversion from X to Y possible loss of data
 #include "stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
@@ -24,7 +20,6 @@
 #include <IL/il.h>
 #include <IL/ilu.h>
 //#include <IL/ilut.h>
-#pragma warning(pop)
 
 #include <nvtt/nvtt.h>
 #include <glm/detail/type_half.hpp>

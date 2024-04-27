@@ -58,6 +58,8 @@ namespace Divide
 
     enum class FileUpdateEvent : U8;
 
+    using SpvWord = U32;
+
     FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
 
     namespace TypeUtil
@@ -140,7 +142,7 @@ namespace Divide
             };
 
             Reflection::UniformsSet _uniforms;
-            std::vector<U32> _sourceCodeSpirV;
+            std::vector<SpvWord> _sourceCodeSpirV;
             string _sourceCodeGLSL;
             Str<256> _sourceName{};
             Str<256> _shaderName{};

@@ -57,10 +57,16 @@ bool ByteBuffer::dumpToFile(const ResourcePath& path, const std::string_view fil
 bool ByteBuffer::loadFromFile(const ResourcePath& path, const std::string_view fileName, const U8 version)
 {
     clear();
-    _storage.reserve(DEFAULT_SIZE);
-    if (readFile(path, fileName, _storage, FileType::BINARY) == FileError::NONE)
+
+    std::ifstream data;
+    if (readFile(path, fileName, FileType::BINARY, data) == FileError::NONE)
     {
-        _wpos = storageSize();
+        data.seekg(0, std::ios::end);
+        const size_t fileSize = to_size(data.tellg());
+        data.seekg(0);
+        _storage.resize(fileSize);
+        data.read(reinterpret_cast<char*>(_storage.data()), fileSize);
+        _wpos = fileSize;
         return version == 0u || to_U8(_storage.back()) == version;
     }
 

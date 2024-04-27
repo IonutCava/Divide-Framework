@@ -84,7 +84,7 @@ class Renderer final : public PlatformContextComponent {
     ShaderProgram_ptr _lightCullComputeShader = nullptr;
     ShaderProgram_ptr _lightCounterResetComputeShader = nullptr;
     ShaderProgram_ptr _lightBuildClusteredAABBsComputeShader = nullptr;
-    PostFX_uptr _postFX = nullptr;
+    PostFX_uptr _postFX;
 
     GFX::BindPipelineCommand _lightCullPipelineCmd;
     GFX::BindPipelineCommand _lightResetCounterPipelineCmd;

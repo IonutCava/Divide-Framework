@@ -571,10 +571,11 @@ bool TerrainLoader::loadThreadedResources(const Terrain_ptr& terrain,
         }
     }
 
-    if (terrain->_physicsVerts.empty()) {
-
-        vector<Byte> data(to_size(terrainDimensions.width) * terrainDimensions.height * (sizeof(U16) / sizeof(char)), Byte{0});
-        if (readFile(terrainMapLocation, terrainRawFile.string(), data, FileType::BINARY) != FileError::NONE)
+    if (terrain->_physicsVerts.empty())
+    {
+        size_t dataSize = to_size(terrainDimensions.width) * terrainDimensions.height * (sizeof(U16) / sizeof(char));
+        vector<Byte> data(dataSize, Byte{0});
+        if (readFile(terrainMapLocation, terrainRawFile.string(), FileType::BINARY, data.data(), dataSize) != FileError::NONE)
         {
             NOP();
         }

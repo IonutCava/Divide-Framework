@@ -1182,7 +1182,7 @@ namespace Divide
                     }
 
                     if ( view._subRange._mipLevels._count > view._subRange._mipLevels._offset &&
-                         view._subRange._mipLevels._count - view._subRange._mipLevels._offset > 0u )
+                         view._subRange._mipLevels._count - view._subRange._mipLevels._offset > 0 )
                     {
                         PROFILE_SCOPE( "GL: In-place computation - Image", Profiler::Category::Graphics );
                         gl46core::glGenerateTextureMipmap( getGLTextureView( view, 6u ) );

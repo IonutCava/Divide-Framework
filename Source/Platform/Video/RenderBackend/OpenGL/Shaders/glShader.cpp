@@ -128,7 +128,7 @@ ShaderResult glShader::uploadToGPU()
             if constexpr(g_useSPIRVBinaryCode)
             {
                 shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-                gl46core::glShaderBinary(1, &shader, gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (gl46core::GLsizei)(data._sourceCodeSpirV.size() * sizeof(U32)));
+                gl46core::glShaderBinary(1, &shader, gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (gl46core::GLsizei)(data._sourceCodeSpirV.size() * sizeof(SpvWord)));
                 gl46core::glSpecializeShader(shader, "main", 0, nullptr, nullptr);
             }
             else

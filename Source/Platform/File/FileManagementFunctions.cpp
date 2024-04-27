@@ -13,6 +13,69 @@ ResourcePath getWorkingDirectory()
     return ResourcePath { std::filesystem::current_path().lexically_normal() };
 }
 
+FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::ifstream& sreamOut)
+{
+    if (filePath.empty() || fileName.empty() || !pathExists(filePath))
+    {
+        return FileError::FILE_NOT_FOUND;
+    }
+
+    sreamOut = std::ifstream((filePath / fileName).string(),
+                              fileType == FileType::BINARY
+                                        ? std::ios::in | std::ios::binary
+                                        : std::ios::in);
+
+
+    return (sreamOut.eof() || sreamOut.fail()) 
+                            ? FileError::FILE_READ_ERROR
+                            : FileError::NONE;
+}
+
+FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, string& contentOut)
+{
+    std::ifstream streamIn;
+    const FileError ret = readFile(filePath, fileName, fileType, streamIn);
+    if ( ret != FileError::NONE)
+    {
+       return ret;
+    }
+
+    std::stringstream buffer;
+    buffer << streamIn.rdbuf();
+    contentOut = buffer.str();
+
+    return contentOut.empty() ? FileError::FILE_EMPTY : FileError::NONE;
+}
+
+FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, Byte* contentOut, size_t& sizeInOut)
+{
+    if (contentOut == nullptr || sizeInOut == 0u)
+    {
+        return FileError::FILE_TARGET_BUFFER_ERROR;
+    }
+
+    std::ifstream streamIn;
+    const FileError ret = readFile(filePath, fileName, fileType, streamIn);
+    if ( ret != FileError::NONE)
+    {
+       return ret;
+    }
+
+    streamIn.seekg(0, std::ios::end);
+    const size_t fileSize = to_size(streamIn.tellg());
+    streamIn.seekg(0);
+    if (fileSize == 0u)
+    {
+        return FileError::FILE_EMPTY;
+    }
+
+    std::memset(contentOut, 0, sizeInOut * sizeof(Byte));
+    sizeInOut = std::min(sizeInOut, fileSize);
+    streamIn.read(reinterpret_cast<char*>(contentOut), sizeInOut);
+ 
+    return FileError::NONE;
+}
+
 FileError writeFile(const ResourcePath& filePath, const std::string_view fileName, const char* content, const size_t length, const FileType fileType)
 {
     if (!filePath.empty() && content != nullptr && length > 0)

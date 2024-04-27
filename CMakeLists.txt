@@ -2,7 +2,7 @@
 cmake_minimum_required (VERSION 3.28)
 
 option(BUILD_TESTING_INTERNAL "Build and run unit tests" ON)
-option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." ON)
+option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
 
 # This is required to be before the first project() call of the CMake build.
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")

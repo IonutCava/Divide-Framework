@@ -65,7 +65,7 @@ namespace detail
 
             return !XmlTree.empty();
         }
-        catch ( boost::property_tree::xml_parser_error error )
+        catch ( const boost::property_tree::xml_parser_error& error )
         {
             Console::errorfn( error.what() );
         }
@@ -107,7 +107,7 @@ namespace detail
 
             return true;
         }
-        catch(boost::property_tree::xml_parser_error error)
+        catch(const boost::property_tree::xml_parser_error& error)
         {
             Console::errorfn(error.what());
         }
