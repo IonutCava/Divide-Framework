@@ -41,7 +41,7 @@ namespace Divide {
 
 class glGenericVertexData final : public GenericVertexData {
    public:
-    glGenericVertexData(GFXDevice& context, U16 ringBufferLength, bool renderIndirect, const std::string_view name);
+    glGenericVertexData(GFXDevice& context, U16 ringBufferLength, const std::string_view name);
 
     void reset() override;
 
@@ -73,8 +73,8 @@ class glGenericVertexData final : public GenericVertexData {
         gl46core::GLsync _idxBufferSync{ nullptr };
     };
 
-    vector<IndexBufferEntry> _idxBuffers;
-    vector<GenericBufferImpl> _bufferObjects;
+    eastl::fixed_vector<IndexBufferEntry,1,true> _idxBuffers;
+    eastl::fixed_vector<GenericBufferImpl,1,true> _bufferObjects;
 
     SharedMutex _idxBufferLock;
 };

@@ -81,8 +81,8 @@ public:
     };
 
 private:
-    using VAOBufferData = vector_fast<BufferBindingParams>;
-    using VAODivisors = vector_fast<bool>;
+    using VAOBufferData = vector<BufferBindingParams>;
+    using VAODivisors = vector<bool>;
     using VAOData = std::pair<VAOBufferData, VAODivisors>;
 
 public:
@@ -126,13 +126,18 @@ public:
     void deallocate( gl46core::GLuint handle, U32 frameDelay = 1);
 
 private:
-    vector<State>  _usageMap;
-
+    vector<State>      _usageMap;
     vector<U32>        _lifeLeft;
     vector<gl46core::GLuint> _handles;
     vector<gl46core::GLuint> _tempBuffer;
 
-    hashMap<size_t, U32> _cache;
+    static constexpr size_t InitialCacheSize = 128u;
+    struct CacheEntry
+    {
+        size_t _hash = 0u;
+        U32    _idx = U32_MAX;
+    };
+    eastl::fixed_vector<CacheEntry, InitialCacheSize, true> _cache;
 
     //Heavy-handed general purpose lock
     SharedMutex _lock;
@@ -166,7 +171,7 @@ extern Mutex s_glSecondaryContextMutex;
 bool ValidateSDL( const I32 errCode, bool assert = true );
 
 ///Note: If internal format is not GL_NONE, an indexed draw is issued!
-void SubmitRenderCommand(const GenericDrawCommand& drawCommand, bool useIndirectBuffer, gl46core::GLenum internalFormat);
+void SubmitRenderCommand(const GenericDrawCommand& drawCommand, gl46core::GLenum internalFormat);
 
 /// Populate enumeration tables with appropriate API values
 void OnStartup();

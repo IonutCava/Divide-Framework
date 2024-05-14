@@ -18,7 +18,6 @@ namespace Divide
     Server::~Server()
     {
         close();
-        MemoryManager::SAFE_DELETE( _acceptor );
     }
 
     void Server::close()
@@ -47,7 +46,7 @@ namespace Divide
             const boost::asio::ip::tcp::endpoint listen_endpoint( boost::asio::ip::tcp::v4(), port );
             const boost::asio::ip::udp::endpoint broadcast_endpoint( boost::asio::ip::address::from_string( broadcast_endpoint_address.c_str() ), port );
 
-            _acceptor = MemoryManager_NEW tcp_acceptor( _ioService.get_executor(), listen_endpoint );
+            _acceptor = std::make_unique<tcp_acceptor>( _ioService.get_executor(), listen_endpoint );
             const subscriber_ptr bc( new udp_broadcaster( _ioService, broadcast_endpoint ) );
             _channel->join( bc );
             tcp_session_ptr new_session( new Session( _ioService, *_channel ) );

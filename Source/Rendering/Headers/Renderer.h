@@ -39,17 +39,17 @@
 namespace Divide {
 
 class LightPool;
+class ShaderProgram;
 class ResourceCache;
 class PlatformContext;
 
 FWD_DECLARE_MANAGED_CLASS(PostFX);
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 /// TiledForwardShading
 class Renderer final : public PlatformContextComponent {
    public:
-    Renderer(PlatformContext& context, ResourceCache* cache);
+    Renderer(PlatformContext& context);
     ~Renderer() override;
 
     void prepareLighting(RenderStage stage, const Rect<I32>& viewport, const CameraSnapshot& cameraSnapshot, GFX::CommandBuffer& bufferInOut);
@@ -81,9 +81,9 @@ class Renderer final : public PlatformContextComponent {
     // No shadow stage
     std::array<PerRenderStageData, to_base(RenderStage::COUNT) - 1> _lightDataPerStage;
 
-    ShaderProgram_ptr _lightCullComputeShader = nullptr;
-    ShaderProgram_ptr _lightCounterResetComputeShader = nullptr;
-    ShaderProgram_ptr _lightBuildClusteredAABBsComputeShader = nullptr;
+    Handle<ShaderProgram> _lightCullComputeShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _lightCounterResetComputeShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _lightBuildClusteredAABBsComputeShader = INVALID_HANDLE<ShaderProgram>;
     PostFX_uptr _postFX;
 
     GFX::BindPipelineCommand _lightCullPipelineCmd;

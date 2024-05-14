@@ -41,7 +41,8 @@ namespace Divide {
 
 class SSRPreRenderOperator final : public PreRenderOperator {
    public:
-    explicit SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
+    explicit SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    ~SSRPreRenderOperator();
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
@@ -55,7 +56,7 @@ class SSRPreRenderOperator final : public PreRenderOperator {
        void prepare(PlayerIndex idx, GFX::CommandBuffer& bufferInOut) override;
 
    private:
-     ShaderProgram_ptr _ssrShader = nullptr;
+     Handle<ShaderProgram> _ssrShader = INVALID_HANDLE<ShaderProgram>;
      GFX::BindPipelineCommand _pipelineCmd;
      GFX::SendPushConstantsCommand _constantsCmd;
      mat4<F32> _projToPixelBasis;

@@ -79,8 +79,8 @@ struct SamplerDescriptor
 
 namespace XMLParser
 {
-    void saveToXML(const SamplerDescriptor& sampler, const string& entryName, boost::property_tree::ptree& pt);
-    [[nodiscard]] SamplerDescriptor loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
+    void saveToXML(const SamplerDescriptor& sampler, const std::string& entryName, boost::property_tree::ptree& pt);
+    [[nodiscard]] SamplerDescriptor loadFromXML(const std::string& entryName, const boost::property_tree::ptree& pt);
 };
 
 } //namespace Divide 

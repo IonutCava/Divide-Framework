@@ -54,7 +54,7 @@ constexpr U32 MAX_SOUND_BUFFERS = 64;
 class NOINITVTABLE AudioAPIWrapper : public PlatformContextComponent, public FrameListener
 {
    public:
-     using MusicPlaylist = std::pair<U32, vector<AudioDescriptor_ptr>>;
+     using MusicPlaylist = std::pair<U32, vector< Handle<AudioDescriptor>>>;
      using MusicPlaylists = hashMap<U32, MusicPlaylist>;
 
    public:
@@ -69,10 +69,10 @@ class NOINITVTABLE AudioAPIWrapper : public PlatformContextComponent, public Fra
     virtual ErrorCode initAudioAPI() = 0;
     virtual void closeAudioAPI() = 0;
 
-    virtual void playSound(const AudioDescriptor_ptr& sound) = 0;
+    virtual void playSound( Handle<AudioDescriptor> sound ) = 0;
 
     // this stops the current track, if any, and plays the specified song
-    virtual void playMusic(const AudioDescriptor_ptr& music) = 0;
+    virtual void playMusic( Handle<AudioDescriptor> music ) = 0;
 
     virtual void pauseMusic() = 0;
     virtual void stopMusic() = 0;

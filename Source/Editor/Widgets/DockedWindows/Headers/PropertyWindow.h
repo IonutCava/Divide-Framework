@@ -79,7 +79,7 @@ class PropertyWindow final : public DockedWindow, public PlatformContextComponen
             SceneGraphNode* _parentSGN = nullptr;
         } _lockedComponent;
 
-        Texture* _previewTexture = nullptr;
+        Handle<Texture> _previewTexture = INVALID_HANDLE<Texture>;
         
 };
 

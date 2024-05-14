@@ -10,6 +10,7 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Editor/Headers/Editor.h"
 
@@ -145,25 +146,28 @@ namespace Divide
 
     RenderingComponent::~RenderingComponent()
     {
+        DestroyResource( _materialInstance );
         RenderPassExecutor::OnRenderingComponentDestruction( this );
     }
 
-    void RenderingComponent::instantiateMaterial( const Material_ptr& material )
+    void RenderingComponent::instantiateMaterial( const Handle<Material> material )
     {
-        if ( material == nullptr )
+        if ( material == INVALID_HANDLE<Material> )
         {
             return;
         }
 
-        _materialInstance = material->clone( (_parentSGN->name() + "_instance").c_str() );
+        _materialInstance = Get(material)->clone( (_parentSGN->name() + "_instance").c_str() );
 
-        if ( _materialInstance != nullptr )
+        if ( _materialInstance != INVALID_HANDLE<Material> )
         {
-            assert( !_materialInstance->resourceName().empty() );
+            ResourcePtr<Material> mat = Get(_materialInstance);
+
+            DIVIDE_ASSERT( !mat->resourceName().empty() );
 
             EditorComponentField materialField = {};
             materialField._name = "Material";
-            materialField._data = _materialInstance.get();
+            materialField._data = mat;
             materialField._type = EditorComponentFieldType::MATERIAL;
             materialField._readOnly = false;
             // should override any existing entry
@@ -197,8 +201,8 @@ namespace Divide
             renderLodField._readOnly = false;
             _editorComponent.registerField( MOV( renderLodField ) );
 
-            _materialInstance->properties().isStatic( _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC );
-            _materialInstance->properties().isInstanced( _materialInstance->properties().isInstanced() || isInstanced() );
+            mat->properties().isStatic( _parentSGN->usageContext() == NodeUsageContext::NODE_STATIC );
+            mat->properties().isInstanced( mat->properties().isInstanced() || isInstanced() );
         }
     }
 
@@ -263,7 +267,7 @@ namespace Divide
 
         // Can we render without a material? Maybe. IDK.
         bool shaderJustFinishedLoading = false;
-        if ( _materialInstance == nullptr || _materialInstance->canDraw( renderStagePass, shaderJustFinishedLoading ) )
+        if ( _materialInstance == INVALID_HANDLE<Material> || Get(_materialInstance)->canDraw( renderStagePass, shaderJustFinishedLoading ) )
         {
             if ( shaderJustFinishedLoading )
             {
@@ -282,17 +286,17 @@ namespace Divide
 
     void RenderingComponent::onParentUsageChanged( const NodeUsageContext context ) const
     {
-        if ( _materialInstance != nullptr )
+        if ( _materialInstance != INVALID_HANDLE<Material> )
         {
-            _materialInstance->properties().isStatic( context == NodeUsageContext::NODE_STATIC );
+            Get(_materialInstance)->properties().isStatic( context == NodeUsageContext::NODE_STATIC );
         }
     }
 
     void RenderingComponent::rebuildMaterial()
     {
-        if ( _materialInstance != nullptr )
+        if ( _materialInstance != INVALID_HANDLE<Material> )
         {
-            _materialInstance->rebuild();
+            Get(_materialInstance)->rebuild();
             rebuildDrawCommands( true );
         }
 
@@ -326,9 +330,9 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        if ( _materialInstance != nullptr )
+        if ( _materialInstance != INVALID_HANDLE<Material> )
         {
-            _materialInstance->getData( _reflectionProbeIndex, dataOut );
+            Get(_materialInstance)->getData( _reflectionProbeIndex, dataOut );
         }
     }
 
@@ -493,26 +497,27 @@ namespace Divide
                 if ( isInstanced() )
                 {
                     pkg.pushConstantsCmd()._constants.set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, 0u );
-                    if ( _materialInstance != nullptr )
+                    if ( _materialInstance != INVALID_HANDLE<Material> )
                     {
-                        _materialInstance->properties().isInstanced( true );
+                        Get(_materialInstance)->properties().isInstanced( true );
                     }
                 }
                 PipelineDescriptor pipelineDescriptor = {};
 
-                if ( _materialInstance != nullptr )
+                if ( _materialInstance != INVALID_HANDLE<Material> )
                 {
-                    pipelineDescriptor._stateBlock = _materialInstance->getOrCreateRenderStateBlock( renderStagePass );
-                    pipelineDescriptor._shaderProgramHandle = _materialInstance->getProgramHandle( renderStagePass );
-                    pipelineDescriptor._primitiveTopology = _materialInstance->topology();
-                    pipelineDescriptor._vertexFormat = _materialInstance->shaderAttributes();
+                    ResourcePtr<Material> mat = Get(_materialInstance);
+                    pipelineDescriptor._stateBlock = mat->getOrCreateRenderStateBlock( renderStagePass );
+                    pipelineDescriptor._shaderProgramHandle = mat->getProgramHandle( renderStagePass );
+                    pipelineDescriptor._primitiveTopology = mat->topology();
+                    pipelineDescriptor._vertexFormat = mat->shaderAttributes();
                     pkg.descriptorSetCmd()._usage = DescriptorSetUsage::PER_DRAW;
-                    pkg.descriptorSetCmd()._set = _materialInstance->getDescriptorSet( renderStagePass );
+                    pkg.descriptorSetCmd()._set = mat->getDescriptorSet( renderStagePass );
                 }
                 else
                 {
                     pipelineDescriptor._stateBlock = {};
-                    pipelineDescriptor._shaderProgramHandle = _gfxContext.imShaders()->imWorldShader()->handle();
+                    pipelineDescriptor._shaderProgramHandle = _gfxContext.imShaders()->imWorldShader();
                     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
                 }
                 if ( renderStagePass._passType == RenderPassType::TRANSPARENCY_PASS )
@@ -568,14 +573,14 @@ namespace Divide
                 if ( _updateReflection )
                 {
                     DescriptorSetBindingData data{};
-                    if ( _reflectionPlanar.first != nullptr && renderStagePass._stage != RenderStage::REFLECTION)
+                    if ( _reflectionPlanar.first != INVALID_HANDLE<Texture> && renderStagePass._stage != RenderStage::REFLECTION)
                     {
                         //ToDo: Find a way to render reflected items that also have reflections -Ionut
-                        Set( data, _reflectionPlanar.first->getView(), _reflectionPlanar.second);
+                        Set( data, _reflectionPlanar.first, _reflectionPlanar.second);
                     }
                     else
                     {
-                        Set(data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSampler());
+                        Set(data, Texture::DefaultTexture2D(), Texture::DefaultSampler());
                     }
 
                     updateBinding( pkg.descriptorSetCmd()._set, 10, data);
@@ -583,14 +588,14 @@ namespace Divide
                 if ( _updateRefraction )
                 {
                     DescriptorSetBindingData data{};
-                    if ( _refractionPlanar.first != nullptr && renderStagePass._stage != RenderStage::REFRACTION )
+                    if ( _refractionPlanar.first != INVALID_HANDLE<Texture> && renderStagePass._stage != RenderStage::REFRACTION )
                     {
                         //ToDo: Find a way to render refracted items that also have refractions -Ionut
-                        Set( data, _refractionPlanar.first->getView(), _refractionPlanar.second );
+                        Set( data, _refractionPlanar.first, _refractionPlanar.second );
                     }
                     else
                     {
-                        Set( data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSampler() );
+                        Set( data, Texture::DefaultTexture2D(), Texture::DefaultSampler() );
                     }
                     updateBinding( pkg.descriptorSetCmd()._set, 11, data );
                 }
@@ -639,12 +644,7 @@ namespace Divide
 
     void RenderingComponent::getCommandBuffer( RenderPackage* const pkg, GFX::CommandBuffer& bufferInOut )
     {
-        Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( *pkg );
-        if (cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer>)
-        {
-            bufferInOut.add( *cmdBuffer._ptr );
-        }
-        
+        bufferInOut.add( GetCommandBuffer( *pkg ) );
         bufferInOut.add( pkg->pipelineCmd() );
         bufferInOut.add( pkg->descriptorSetCmd() );
         bufferInOut.add( pkg->pushConstantsCmd() );
@@ -701,11 +701,11 @@ namespace Divide
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        std::pair<Texture*, SamplerDescriptor> temp = { nullptr, {} };
+        std::pair<Handle<Texture>, SamplerDescriptor> temp = { INVALID_HANDLE<Texture>, {} };
 
         bool ret = false;
         //Target texture: the opposite of what we bind during the regular passes
-        if ( _materialInstance != nullptr  && _reflectorType != ReflectorType::COUNT && _reflectionCallback )
+        if ( _materialInstance != INVALID_HANDLE<Material> && _reflectorType != ReflectorType::COUNT && _reflectionCallback )
         {
             const RenderTargetID reflectRTID( _reflectorType == ReflectorType::PLANAR
                                                 ? RenderTargetNames::REFLECTION_PLANAR[reflectionIndex]
@@ -713,7 +713,7 @@ namespace Divide
 
             if ( inBudget )
             {
-                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager();
+                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager().get();
                 RenderCbkParams params{ _gfxContext, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8( _reflectorType ), camera };
                 _reflectionCallback( passManager, params, bufferInOut, memCmdInOut );
                 ret = true;
@@ -722,7 +722,7 @@ namespace Divide
             if ( _reflectorType == ReflectorType::PLANAR )
             {
                 RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( reflectRTID )->getAttachment( RTAttachmentType::COLOUR );
-                temp = { targetAtt->texture().get(), targetAtt->_descriptor._sampler };
+                temp = { targetAtt->texture(), targetAtt->_descriptor._sampler };
             }
         }
 
@@ -742,11 +742,11 @@ namespace Divide
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        std::pair<Texture*, SamplerDescriptor> temp = { nullptr, {} };
+        std::pair<Handle<Texture>, SamplerDescriptor> temp = { INVALID_HANDLE<Texture>, {} };
 
         bool ret = false;
         // no default refraction system!
-        if ( _materialInstance != nullptr && _refractorType != RefractorType::COUNT && _refractionCallback )
+        if ( _materialInstance != INVALID_HANDLE<Material> && _refractorType != RefractorType::COUNT && _refractionCallback )
         {
             const RenderTargetID refractRTID( RenderTargetNames::REFRACTION_PLANAR[refractionIndex] );
 
@@ -755,14 +755,14 @@ namespace Divide
 
             if ( inBudget )
             {
-                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager();
+                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager().get();
                 RenderCbkParams params{ _gfxContext, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
                 _refractionCallback( passManager, params, bufferInOut, memCmdInOut );
                 ret = true;
             }
 
             RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( refractRTID )->getAttachment( RTAttachmentType::COLOUR );
-            temp = { targetAtt->texture().get(), targetAtt->_descriptor._sampler };
+            temp = { targetAtt->texture(), targetAtt->_descriptor._sampler };
         }
 
         if ( _refractionPlanar != temp )

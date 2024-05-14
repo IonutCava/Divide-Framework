@@ -44,8 +44,8 @@ public:
     ErrorCode initAudioAPI() noexcept override;
     void closeAudioAPI() noexcept override;
 
-    void playSound(const AudioDescriptor_ptr& sound) noexcept override;
-    void playMusic(const AudioDescriptor_ptr& music) noexcept override;
+    void playSound(const Handle<AudioDescriptor> sound) noexcept override;
+    void playMusic(const Handle<AudioDescriptor> music) noexcept override;
 
     void pauseMusic() noexcept override;
     void stopMusic() noexcept override;

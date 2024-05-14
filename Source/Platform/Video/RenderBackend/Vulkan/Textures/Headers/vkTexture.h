@@ -150,13 +150,7 @@ namespace Divide
             VkImageView _view{VK_NULL_HANDLE};
         };
 
-        vkTexture( GFXDevice& context,
-                   const size_t descriptorHash,
-                   const std::string_view name,
-                   std::string_view assetNames,
-                   const ResourcePath& assetLocations,
-                   const TextureDescriptor& texDescriptor,
-                   ResourceCache& parentCache );
+        vkTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor );
 
         virtual ~vkTexture() override;
 

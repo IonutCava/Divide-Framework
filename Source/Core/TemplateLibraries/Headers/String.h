@@ -104,4 +104,17 @@ struct fmt::formatter<Divide::Str<N>>
     }
 };
 
+namespace std
+{
+    template<size_t N>
+    struct hash<Divide::Str<N> >
+    {
+        size_t operator()( const Divide::Str<N>& str ) const
+        {
+            const std::string_view view = str;
+            return std::hash<std::string_view>{}(view);
+        }
+    };
+}
+
 #endif //DVD_STRING_H_

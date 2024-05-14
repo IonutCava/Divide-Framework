@@ -13,8 +13,8 @@
 namespace Divide
 {
 
-    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const std::string_view name )
-        : GenericVertexData( context, ringBufferLength, renderIndirect, name )
+    glGenericVertexData::glGenericVertexData( GFXDevice& context, const U16 ringBufferLength, const std::string_view name )
+        : GenericVertexData( context, ringBufferLength, name )
     {
     }
 
@@ -73,7 +73,7 @@ namespace Divide
             }
 
             // Submit the draw command
-            GLUtil::SubmitRenderCommand( command, renderIndirect(), indexFormat );
+            GLUtil::SubmitRenderCommand( command, indexFormat );
         }
     }
 

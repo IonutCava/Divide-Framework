@@ -133,18 +133,13 @@ void glHardwareQueryPool::init(const hashMap<gl46core::GLenum, U32>& sizes)
         auto& pool = _queryPool[type];
         for (U32 i = 0; i < j; ++i)
         {
-            pool.emplace_back(MemoryManager_NEW glHardwareQueryRing(_context, type, 1, i));
+            pool.emplace_back(std::make_unique<glHardwareQueryRing>(_context, type, 1, i));
         }
     }
 }
 
 void glHardwareQueryPool::destroy()
 {
-    for (auto& [type, container] : _queryPool)
-    {
-        MemoryManager::DELETE_CONTAINER(container);
-    }
-
     _queryPool.clear();
 }
 

@@ -91,20 +91,14 @@ void glShaderProgram::ProcessValidationQueue()
     }
 }
 
-glShaderProgram::glShaderProgram(GFXDevice& context,
-                                 const size_t descriptorHash,
-                                 const std::string_view name,
-                                 std::string_view assetName,
-                                 const ResourcePath& assetLocation,
-                                 const ShaderProgramDescriptor& descriptor,
-                                 ResourceCache& parentCache)
-    : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, parentCache)
+glShaderProgram::glShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor )
+    : ShaderProgram(context, descriptor)
 {
 }
 
 glShaderProgram::~glShaderProgram()
 {
-    unload();
+    safeToDelete();
 }
 
 bool glShaderProgram::unload() 

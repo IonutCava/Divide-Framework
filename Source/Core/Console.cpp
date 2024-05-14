@@ -102,7 +102,7 @@ void Console::Output(const std::string_view text, const bool newline, const Entr
 {
     if ( s_flags & to_base( Flags::ENABLE_OUTPUT ) )
     {
-        stringstream_fast outStream;
+        stringstream outStream;
         DecorateAndPrint(outStream, text, newline, type);
 
         const OutputEntry entry

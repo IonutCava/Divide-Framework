@@ -33,6 +33,8 @@
 #ifndef DVD_RESOURCE_H_
 #define DVD_RESOURCE_H_
 
+#include "Core/Headers/Hashable.h"
+
 namespace Divide
 {
 
@@ -42,8 +44,9 @@ namespace Divide
 /// After "load" is called, the resource is move to the "RES_LOADING" state
 /// Nothing can be done to the resource when it's in "RES_LOADING" state!
 /// Once loading is complete, preferably in another thread,
-/// the resource state will become "RES_LOADED" and ready to be used (e.g. added
-/// to the SceneGraph)
+/// the resource state will become "RES_THREAD_LOADED"
+/// In the main thread, postLoad() will be called setting the state to RES_LOADED 
+/// and the resource will be ready to be used (e.g. added to the SceneGraph)
 /// Calling "unload" is only available for "RES_LOADED" state resources.
 /// Calling this method will set the state to "RES_LOADING"
 /// Once unloading is complete, the resource will become "RES_CREATED".
@@ -52,114 +55,111 @@ namespace Divide
 
     enum class ResourceState : U8
     {
-        RES_UNKNOWN = 0,   ///< The resource exists, but it's state is undefined
-        RES_CREATED = 1,   ///< The pointer has been created and instantiated, but no data has been loaded
-        RES_LOADING = 2,   ///< The resource is loading, creating data, parsing scripts, etc
-        RES_LOADED = 3,   ///< The resource is loaded and available
-        RES_UNLOADING = 4, ///< The resource is unloading, deleting data, etc
+        RES_UNKNOWN = 0,      ///< The resource exists, but it's state is undefined
+        RES_CREATED = 1,      ///< The pointer has been created and instantiated, but no data has been loaded
+        RES_LOADING = 2,      ///< The resource is loading, creating data, parsing scripts, etc
+        RES_THREAD_LOADED = 3,///< The resource is loaded but not yet available
+        RES_LOADED = 4,       ///< The resource is available for usage
+        RES_UNLOADING = 5,    ///< The resource is unloading, deleting data, etc
         COUNT
     };
-
-    enum class ResourceType : U8
-    {
-        DEFAULT = 0,
-        GPU_OBJECT = 1, ///< Textures, Render targets, shaders, etc
-        COUNT
-    };
-
-    FWD_DECLARE_MANAGED_CLASS( Resource );
-    FWD_DECLARE_MANAGED_CLASS( CachedResource );
 
     class Resource : public GUIDWrapper
     {
-        public:
-        explicit Resource( ResourceType type, std::string_view resourceName );
+      public:
+        explicit Resource( std::string_view resourceName, std::string_view typeName );
 
         [[nodiscard]] ResourceState getState() const noexcept;
-
-        PROPERTY_R( Str<256>, resourceName );
-        PROPERTY_R( ResourceType, resourceType, ResourceType::COUNT );
-
         void waitForReady() const;
 
-        protected:
-        virtual void setState( ResourceState currentState );
-        [[nodiscard]] virtual const char* getResourceTypeName() const noexcept
-        {
-            return "Resource";
-        }
+        bool safeToDelete();
 
-        protected:
+        PROPERTY_R( Str<32>, typeName );
+        PROPERTY_R( Str<256>, resourceName );
+
+      protected:
+        virtual void setState( ResourceState currentState );
+
+      protected:
         std::atomic<ResourceState> _resourceState;
     };
 
-    class CachedResource : public Resource,
-        public std::enable_shared_from_this<CachedResource>
+    struct ResourceDescriptorBase;
+
+    class CachedResource : public Resource
     {
         friend class ResourceCache;
         friend struct ResourceLoader;
-        template <typename X>
-        friend class ImplResourceLoader;
 
-        public:
-        explicit CachedResource( ResourceType type,
-                                 size_t descriptorHash,
-                                 std::string_view resourceName );
-        explicit CachedResource( ResourceType type,
-                                 size_t descriptorHash,
-                                 std::string_view resourceName,
-                                 std::string_view assetName );
-        explicit CachedResource( ResourceType type,
-                                 size_t descriptorHash,
-                                 std::string_view resourceName,
-                                 std::string_view assetName,
-                                 ResourcePath assetLocation );
+       public:
+        explicit CachedResource( const ResourceDescriptorBase& descriptor, std::string_view typeName);
 
          /// Loading and unloading interface
-        virtual bool load();
+        virtual bool load( PlatformContext& context );
+        virtual bool postLoad();
         virtual bool unload();
 
-        [[nodiscard]] inline ResourcePath assetPath() const
-        {
-            return assetLocation() / assetName();
-        }
-
-        void addStateCallback( ResourceState targetState, const DELEGATE<void, CachedResource*>& cbk );
-
-        protected:
         void setState( ResourceState currentState ) final;
-        [[nodiscard]] const char* getResourceTypeName() const noexcept override
-        {
-            return "Cached Resource";
-        }
-        void flushStateCallbacks();
 
-        protected:
-        using CallbackList = vector<DELEGATE<void, CachedResource*>>;
-        std::array<CallbackList, to_base( ResourceState::COUNT )> _loadingCallbacks{};
+      protected:
         mutable Mutex _callbackLock{};
         PROPERTY_RW( ResourcePath, assetLocation );
         PROPERTY_RW( Str<256>, assetName );
         PROPERTY_R( size_t, descriptorHash );
     };
 
-    struct TerrainInfo
-    {
-        TerrainInfo() noexcept
-        {
-            position.set( 0, 0, 0 );
-        }
+    template<typename T> requires std::is_base_of_v<CachedResource, T>
+    using ResourcePtr = T*;
 
-        hashMap<U64, string> variables;
-        F32 grassScale = 1.0f;
-        F32 treeScale = 1.0f;
-        vec3<F32> position;
-        vec2<F32> scale;
-        bool active = false;
+    template<typename T>
+    struct PropertyDescriptor
+    {
     };
 
-    FWD_DECLARE_MANAGED_CLASS( Resource );
+    template<typename T>
+    bool operator==( const PropertyDescriptor<T>& lhs, const PropertyDescriptor<T>& rhs ) noexcept;
+    template<typename T>
+    bool operator!=( const PropertyDescriptor<T>& lhs, const PropertyDescriptor<T>& rhs ) noexcept;
+
+
+    template<typename T>
+    [[nodiscard]] size_t GetHash( const PropertyDescriptor<T>& descriptor ) noexcept;
+
+    struct ResourceDescriptorBase : public Hashable
+    {
+        explicit ResourceDescriptorBase( const std::string_view resourceName );
+
+        [[nodiscard]] size_t getHash() const override;
+
+        PROPERTY_RW( ResourcePath, assetLocation ); ///< Can't be fixed size due to the need to handle array textures, cube maps, etc
+        PROPERTY_RW( Str<256>, assetName );     ///< Resource instance name (for lookup)
+        PROPERTY_RW( Str<256>, resourceName );
+        PROPERTY_RW( vec3<U32>, data, VECTOR3_ZERO ); ///< general data
+        PROPERTY_RW( U32, enumValue, 0u );
+        PROPERTY_RW( U32, ID, 0u );
+        PROPERTY_RW( P32, mask ); ///< 4 bool values representing  ... anything ...
+        PROPERTY_RW( bool, flag, false );
+        PROPERTY_RW( bool, waitForReady, true );
+    };
+
+    template <typename T>
+    struct ResourceDescriptor final : public ResourceDescriptorBase
+    {
+        explicit ResourceDescriptor( std::string_view resourceName );
+        explicit ResourceDescriptor( std::string_view resourceName, const PropertyDescriptor<T>& descriptor );
+
+        PropertyDescriptor<T> _propertyDescriptor;
+
+        [[nodiscard]] size_t getHash() const final;
+    };
+
+    template<typename T>
+    bool operator==( const ResourceDescriptor<T>& lhs, const ResourceDescriptor<T>& rhs ) noexcept;
+    template<typename T>
+    bool operator!=( const ResourceDescriptor<T>& lhs, const ResourceDescriptor<T>& rhs ) noexcept;
 
 }  // namespace Divide
 
 #endif //DVD_RESOURCE_H_
+
+#include "Resource.inl"

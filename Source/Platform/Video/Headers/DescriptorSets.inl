@@ -118,9 +118,12 @@ namespace Divide
         dataInOut._sampledImage._image = view;
         dataInOut._sampledImage._sampler = sampler;
         dataInOut._sampledImage._samplerHash = GetHash( sampler );
+        dataInOut._sampledImage._imageHash = GetHash( view );
 
         dataInOut._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
     }
+
+    void Set( DescriptorSetBindingData& dataInOut, const Handle<Texture> defaultTextureView, const SamplerDescriptor sampler ) noexcept;
 
     inline DescriptorSetBinding& AddBinding( DescriptorSet& setInOut, const U8 slot, const U16 stageVisibilityMask )
     {

@@ -157,8 +157,6 @@ namespace Divide {
             PROPERTY_RW(bool, loadedFromFile, false);
             // Geometry
             VertexBuffer_ptr _vertexBuffer = nullptr;
-            // Animations
-            PROPERTY_RW(bool, hasAnimations, false);
 
             // Name and path
             PROPERTY_RW(Str<256>, modelName);
@@ -167,6 +165,8 @@ namespace Divide {
             vector<Bone*> _bones;
             Divide::MeshNodeData _nodeData;
             vector<SubMeshData> _subMeshData;
+
+            size_t _animationCount{0u};
             vector<AnimEvaluator*> _animations;
         };
     };
@@ -176,11 +176,11 @@ namespace Divide {
     class MeshImporter
     {
         public:
-            static bool loadMeshDataFromFile(PlatformContext& context, Import::ImportData& dataOut);
-            static bool loadMesh(bool loadedFromCache, Mesh* mesh, PlatformContext& context, ResourceCache* cache, const Import::ImportData& dataIn);
+            static bool loadMesh( PlatformContext& context, ResourcePtr<Mesh> mesh );
 
         protected:
-            static Material_ptr loadSubMeshMaterial(ResourceCache* cache, const Import::MaterialData& importData, bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter);
+            static bool loadMeshDataFromFile( PlatformContext& context, Import::ImportData& dataOut);
+            static Handle<Material> loadSubMeshMaterial(const Import::MaterialData& importData, bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter);
     };
 
 };  // namespace Divide

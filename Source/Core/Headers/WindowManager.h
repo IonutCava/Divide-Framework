@@ -144,7 +144,7 @@ protected:
     std::pair<vec2<U16>, bool> _resolutionChangeQueued;
     PlatformContext* _context{ nullptr };
     vector<MonitorData> _monitors;
-    vector<DisplayWindow*> _windows;
+    vector<std::unique_ptr<DisplayWindow>> _windows;
     static SDL_DisplayMode s_mainDisplayMode;
     static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
     eastl::stack<DisplayWindow*> _activeWindows;

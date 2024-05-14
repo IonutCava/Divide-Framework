@@ -3,6 +3,8 @@
 #include "Headers/IMPrimitive.h"
 
 #include "Core/Math/BoundingVolumes/Headers/OBB.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Headers/CommandBufferPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -65,7 +67,8 @@ IMPrimitive::IMPrimitive(GFXDevice& context, const Str<64>& name)
     , _context(context)
 {
     _imInterface = std::make_unique<NS_GLIM::GLIM_BATCH>();
-    _dataBuffer = context.newGVD(1, false, name.c_str());
+
+    _dataBuffer = context.newGVD(1, name.c_str());
 
     reset();
 }
@@ -639,13 +642,13 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     const bool useTexture = TargetType( _texture ) != TextureType::COUNT;
     if (useTexture )
     {
-        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader()->handle();
+        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader();
     }
     else
     {
-        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShaderNoTexture()->handle();
+        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShaderNoTexture();
     }
-    DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "IMPrimitive error: Draw call received without a valid shader defined!");
+    DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != INVALID_HANDLE<ShaderProgram>, "IMPrimitive error: Draw call received without a valid shader defined!");
 
     _additionalConstats.set(_ID("dvd_WorldMatrix"), PushConstantType::MAT4, worldMatrix);
     _additionalConstats.set(_ID("useTexture"), PushConstantType::BOOL, useTexture);
@@ -663,7 +666,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
 
         if ( TargetType( _texture ) == TextureType::COUNT )
         {
-            Set( binding._data, Texture::DefaultTexture2D()->getView(), Texture::DefaultSampler());
+            Set( binding._data, Texture::DefaultTexture2D(), Texture::DefaultSampler());
         }
         else
         {

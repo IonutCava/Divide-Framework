@@ -3,7 +3,7 @@
 #include "Platform/Headers/PlatformDefines.h"
 
 void* operator new[](const size_t size, 
-                     [[maybe_unused]] size_t alignment,
+                     size_t alignment,
                      [[maybe_unused]] size_t alignmentOffset,
                      [[maybe_unused]] const char* pName,
                      [[maybe_unused]] int flags, 
@@ -11,10 +11,7 @@ void* operator new[](const size_t size,
                      [[maybe_unused]] const char* file,
                      [[maybe_unused]] int line)
 {
-    // this allocator doesn't support alignment
-    assert(alignment == alignof(void*));
-
-    return malloc(size);
+    return mi_new_aligned_nothrow(size, alignment);
 }
 
 void* operator new[](const size_t size,
@@ -24,7 +21,7 @@ void* operator new[](const size_t size,
                      [[maybe_unused]] const char* file,
                      [[maybe_unused]] int line)
 {
-    return malloc(size);
+    return mi_new_nothrow(size);
 }
 
 int Vsnprintf8( char* p, size_t n, const char* pFormat, va_list arguments )
@@ -35,21 +32,3 @@ int Vsnprintf8( char* p, size_t n, const char* pFormat, va_list arguments )
     return vsnprintf( p, n, pFormat, arguments );
 #endif
 }
-
-namespace eastl {
-    /// gDefaultAllocator
-    /// Default global allocator instance. 
-    EASTL_API static aligned_allocator  gDefaultAllocator;
-    EASTL_API static aligned_allocator* gpDefaultAllocator = &gDefaultAllocator;
-
-    EASTL_API aligned_allocator* GetDefaultDvdAllocator() noexcept
-    {
-        return gpDefaultAllocator;
-    }
-
-    EASTL_API aligned_allocator* SetDefaultAllocator(aligned_allocator* pAllocator) noexcept {
-        aligned_allocator* const pPrevAllocator = gpDefaultAllocator;
-        gpDefaultAllocator = pAllocator;
-        return pPrevAllocator;
-    }
-} //namespace eastl

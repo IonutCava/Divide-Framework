@@ -54,11 +54,11 @@ namespace Divide
             struct LoadSave
             {
                 mutable boost::property_tree::iptree XmlTree;
-                string _rootNodePath;
-                string _fileName;
+                std::string _rootNodePath;
+                std::string _fileName;
                 ResourcePath _filePath;
 
-                [[nodiscard]] bool read( const ResourcePath& filePath, const char* fileName, const string& rootNode );
+                [[nodiscard]] bool read( const ResourcePath& filePath, const char* fileName, const std::string& rootNode );
                 [[nodiscard]] bool write( const ResourcePath& filePath, const char* fileName ) const;
             };
         }
@@ -104,7 +104,7 @@ namespace Divide
         void readXML( const ResourcePath& path, boost::property_tree::ptree& tree );
         /// Child Functions
         void loadDefaultKeyBindings( const ResourcePath& file, const Scene* scene );
-        void loadMusicPlaylist( const ResourcePath& scenePath, const Str<64>& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config );
+        void loadMusicPlaylist( const ResourcePath& scenePath, const Str<64>& fileName, Scene* scene, [[maybe_unused]] const Configuration& config );
 
         struct SceneNode
         {

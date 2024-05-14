@@ -145,7 +145,7 @@ private:
 private:
     WindowManager _windowManager;
 
-    Kernel* _kernel{ nullptr };
+    std::unique_ptr<Kernel> _kernel;
 
     std::atomic_bool _requestShutdown{ false };
     std::atomic_bool _requestRestart{ false };

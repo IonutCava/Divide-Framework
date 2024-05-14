@@ -172,6 +172,9 @@ struct ImageData final : NonCopyable
     [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
 
+
+    [[nodiscard]] FORCE_INLINE ResourcePath fullPath() const noexcept { return _path / _name; }
+
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
     /// If true, then the source image was probably RGB and we loaded it as RGBA

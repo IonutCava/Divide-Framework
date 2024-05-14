@@ -33,6 +33,8 @@
 #ifndef DVD_HASH_MAP_H_
 #define DVD_HASH_MAP_H_
 
+#include "Platform/Headers/PlatformDataTypes.h"
+
 #include <EASTL/unordered_map.h>
 #include <EASTL/intrusive_hash_map.h>
 
@@ -50,7 +52,7 @@ namespace Divide {
     using hashMapDefaultAlloc = hashAlg::unordered_map<K, V, HashFun, Predicate>;
 
     template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = eastl::equal_to<K>>
-    using hashMap = hashAlg::unordered_map<K, V, HashFun, Predicate, eastl::dvd_allocator>;
+    using hashMap = hashAlg::unordered_map<K, V, HashFun, Predicate>;
     template <typename K, typename V, typename HashFun = Divide::HashType<K>, typename Predicate = eastl::equal_to<K>>
     using hashPairReturn = hashAlg::pair<typename hashMap<K, V, HashFun, Predicate>::iterator, bool>;
 
@@ -94,24 +96,6 @@ namespace Divide {
         }
     };
 
-    namespace MemoryManager
-    {
-        /// Deletes every element from the map and clears it at the end
-        template <typename K, typename V, typename HashFun = hashAlg::hash<K> >
-        void DELETE_HASHMAP(hashMap<K, V, HashFun>& map)
-        {
-            if (!map.empty())
-            {
-                for (typename hashMap<K, V, HashFun>::value_type iter : map)
-                {
-                    log_delete(iter.second);
-                    delete iter.second;
-                }
-                map.clear();
-            }
-        }
-
-    } //namespace MemoryManager
 }; //namespace Divide
 
 namespace eastl {

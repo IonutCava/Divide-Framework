@@ -231,7 +231,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     bool _renderConnections;
     RenderMode _renderMode;
     /// DebugDraw interface
-    NavMeshDebugDraw* _debugDrawInterface;
+    std::unique_ptr<NavMeshDebugDraw> _debugDrawInterface;
 
     Task* _buildTask = nullptr;
     DivideRecast& _recastInterface;

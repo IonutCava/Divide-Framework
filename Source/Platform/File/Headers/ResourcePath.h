@@ -47,16 +47,7 @@ struct ResourcePath
 {
     ResourcePath() = default;
 
-    template<size_t N>
-    explicit ResourcePath(const Str<N>& path) : ResourcePath(path.c_str()) {}
-
-    explicit ResourcePath(const char* path) : _fileSystemPath(path) {}
-
-    explicit ResourcePath(std::string_view path) : _fileSystemPath(path) {}
-
-    explicit ResourcePath(const string& path) : _fileSystemPath(path) {}
-
-    explicit ResourcePath(const std::filesystem::path& path) : _fileSystemPath(path) {}
+    explicit ResourcePath(const std::string_view path) : _fileSystemPath(path) {}
 
     [[nodiscard]] size_t length() const noexcept;
     [[nodiscard]] bool empty() const noexcept;
@@ -75,7 +66,7 @@ struct ResourcePath
         return StringReturnType<N>{ _fileSystemPath.string().c_str() };
     }
 
-    PROPERTY_R_IW(std::filesystem::path, fileSystemPath);
+    PROPERTY_R(std::filesystem::path, fileSystemPath);
 };
 
 ResourcePath  operator/ (const ResourcePath& lhs, const ResourcePath& rhs);
@@ -125,4 +116,16 @@ struct fmt::formatter<Divide::ResourcePath>
     }
 };
 
+
+namespace std
+{
+    template<>
+    struct hash<Divide::ResourcePath>
+    {
+        size_t operator()( const Divide::ResourcePath& path ) const
+        {
+            return std::hash<std::filesystem::path>{}(path.fileSystemPath());
+        }
+    };
+}
 #endif //DVD_FILE_WITH_PATH_H_

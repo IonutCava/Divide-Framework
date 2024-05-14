@@ -30,11 +30,11 @@ namespace Divide
             return Names::materialDebugFlag[to_base( materialFlag )];
         }
 
-        MaterialDebugFlag StringToMaterialDebugFlag( const string& name )
+        MaterialDebugFlag StringToMaterialDebugFlag( const std::string_view name )
         {
             for ( U8 i = 0; i < to_U8( MaterialDebugFlag::COUNT ); ++i )
             {
-                if ( strcmp( name.c_str(), Names::materialDebugFlag[i] ) == 0 )
+                if ( name == Names::materialDebugFlag[i] )
                 {
                     return static_cast<MaterialDebugFlag>(i);
                 }
@@ -48,11 +48,11 @@ namespace Divide
             return Names::textureSlot[to_base( texUsage )];
         }
 
-        TextureSlot StringToTextureSlot( const string& name )
+        TextureSlot StringToTextureSlot( const std::string_view name )
         {
             for ( U8 i = 0; i < to_U8( TextureSlot::COUNT ); ++i )
             {
-                if ( strcmp( name.c_str(), Names::textureSlot[i] ) == 0 )
+                if (  name == Names::textureSlot[i] )
                 {
                     return static_cast<TextureSlot>(i);
                 }
@@ -66,11 +66,11 @@ namespace Divide
             return Names::bumpMethod[to_base( bumpMethod )];
         }
 
-        BumpMethod StringToBumpMethod( const string& name )
+        BumpMethod StringToBumpMethod( const std::string_view name )
         {
             for ( U8 i = 0; i < to_U8( BumpMethod::COUNT ); ++i )
             {
-                if ( strcmp( name.c_str(), Names::bumpMethod[i] ) == 0 )
+                if ( name == Names::bumpMethod[i] )
                 {
                     return static_cast<BumpMethod>(i);
                 }
@@ -84,11 +84,11 @@ namespace Divide
             return Names::shadingMode[to_base( shadingMode )];
         }
 
-        ShadingMode StringToShadingMode( const string& name )
+        ShadingMode StringToShadingMode( const std::string_view name )
         {
             for ( U8 i = 0; i < to_U8( ShadingMode::COUNT ); ++i )
             {
-                if ( strcmp( name.c_str(), Names::shadingMode[i] ) == 0 )
+                if ( name == Names::shadingMode[i] )
                 {
                     return static_cast<ShadingMode>(i);
                 }
@@ -102,11 +102,11 @@ namespace Divide
             return Names::textureOperation[to_base( textureOp )];
         }
 
-        TextureOperation StringToTextureOperation( const string& operation )
+        TextureOperation StringToTextureOperation( const std::string_view operation )
         {
             for ( U8 i = 0; i < to_U8( TextureOperation::COUNT ); ++i )
             {
-                if ( strcmp( operation.c_str(), Names::textureOperation[i] ) == 0 )
+                if ( operation == Names::textureOperation[i] )
                 {
                     return static_cast<TextureOperation>(i);
                 }
@@ -138,10 +138,9 @@ namespace Divide
         s_shadersDirty = false;
     }
 
-    Material::Material( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name )
-        : CachedResource( ResourceType::DEFAULT, descriptorHash, name )
+    Material::Material( PlatformContext& context, const ResourceDescriptor<Material>& descriptor )
+        : CachedResource( descriptor, "Material")
         , _context( context.gfx() )
-        , _parentCache( parentCache )
     {
         properties().receivesShadows( context.config().rendering.shadowMapping.enabled );
 
@@ -215,17 +214,18 @@ namespace Divide
         };
     }
 
-    Material_ptr Material::clone( const std::string_view nameSuffix )
+    Handle<Material> Material::clone( const std::string_view nameSuffix )
     {
         DIVIDE_ASSERT( !nameSuffix.empty(), "Material error: clone called without a valid name suffix!" );
 
-        Material_ptr cloneMat = CreateResource<Material>( _parentCache, ResourceDescriptor( resourceName() + nameSuffix ) );
+        Handle<Material> cloneMatHandle = CreateResource( ResourceDescriptor<Material>( resourceName() + nameSuffix ) );
+        ResourcePtr<Material> cloneMat = Get(cloneMatHandle);
+
         cloneMat->_baseMaterial = this;
         cloneMat->_properties = this->_properties;
         cloneMat->_extraShaderDefines = this->_extraShaderDefines;
         cloneMat->_computeShaderCBK = this->_computeShaderCBK;
         cloneMat->_computeRenderStateCBK = this->_computeRenderStateCBK;
-        cloneMat->_shaderInfo = this->_shaderInfo;
         cloneMat->_defaultRenderStates = this->_defaultRenderStates;
         cloneMat->_topology = this->_topology;
         cloneMat->_shaderAttributes = this->_shaderAttributes;
@@ -233,24 +233,39 @@ namespace Divide
 
         cloneMat->ignoreXMLData( this->ignoreXMLData() );
         cloneMat->updatePriorirty( this->updatePriorirty() );
+
         for ( U8 i = 0u; i < to_U8( this->_textures.size() ); ++i )
         {
             const TextureInfo& texInfo = this->_textures[i];
-            if ( texInfo._ptr != nullptr )
+            if ( texInfo._ptr != INVALID_HANDLE<Texture> )
             {
+                const Handle<Texture> cloneTex = GetResourceRef<Texture>( Get( texInfo._ptr )->descriptorHash() );
                 cloneMat->setTexture(
                     static_cast<TextureSlot>(i),
-                    texInfo._ptr,
+                    cloneTex,
                     texInfo._sampler,
                     texInfo._operation,
                     texInfo._useInGeometryPasses );
             }
         }
 
-        LockGuard<SharedMutex> w_lock( _instanceLock );
-        _instances.emplace_back( cloneMat.get() );
+        for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
+        {
+            for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
+            {
+                const auto& variantMapSrc = _shaderInfo[s][p];
+                      auto& variantMapDst = cloneMat->_shaderInfo[s][p];
+                for ( U8 v = 0u; v < to_U8( RenderStagePass::VariantType::COUNT ); ++v )
+                {
+                    variantMapDst[v] = variantMapSrc[v].clone();
+                }
+            }
+        }
 
-        return cloneMat;
+        LockGuard<SharedMutex> w_lock( _instanceLock );
+        _instances.emplace_back( cloneMatHandle );
+
+        return cloneMatHandle;
     }
 
     U32 Material::update( [[maybe_unused]] const U64 deltaTimeUS )
@@ -332,7 +347,12 @@ namespace Divide
         return true;
     }
 
-    bool Material::setTextureLocked( const TextureSlot textureUsageSlot, const Texture_ptr& texture, const SamplerDescriptor sampler, const TextureOperation op, const bool useInGeometryPasses )
+    bool Material::setTextureLocked( const TextureSlot textureUsageSlot, const ResourceDescriptor<Texture>& texture, const SamplerDescriptor sampler, const TextureOperation op, const bool useInGeometryPasses )
+    {
+        return setTextureLocked(textureUsageSlot, CreateResource(texture), sampler, op, useInGeometryPasses);
+    }
+
+    bool Material::setTextureLocked( const TextureSlot textureUsageSlot, const Handle<Texture> texture, const SamplerDescriptor sampler, const TextureOperation op, const bool useInGeometryPasses )
     {
         // Invalidate our descriptor sets
         _descriptorSetMainPass._bindingCount = {0u};
@@ -346,24 +366,24 @@ namespace Divide
 
         setSampler( textureUsageSlot, sampler );
 
-        setTextureOperation( textureUsageSlot, texture ? op : TextureOperation::NONE );
+        setTextureOperation( textureUsageSlot, texture != INVALID_HANDLE<Texture> ? op : TextureOperation::NONE );
 
-        if ( texInfo._ptr != nullptr )
+        if ( texInfo._ptr != INVALID_HANDLE<Texture> )
         {
             // Skip adding same texture
-            if ( texture != nullptr && texInfo._ptr->getGUID() == texture->getGUID() )
+            if ( texture != INVALID_HANDLE<Texture> && texInfo._ptr == texture )
             {
                 return true;
             }
         }
 
-        texInfo._srgb = texture ? texture->descriptor().packing() == GFXImagePacking::NORMALIZED_SRGB : false;
-        texInfo._useInGeometryPasses = texture ? useInGeometryPasses : false;
+        texInfo._srgb = texture != INVALID_HANDLE<Texture> ? Get(texture)->descriptor()._packing == GFXImagePacking::NORMALIZED_SRGB : false;
+        texInfo._useInGeometryPasses = texture != INVALID_HANDLE<Texture> ? useInGeometryPasses : false;
         texInfo._ptr = texture;
 
         if ( textureUsageSlot == TextureSlot::METALNESS )
         {
-            properties()._usePackedOMR = (texture != nullptr && texture->numChannels() > 2u);
+            properties()._usePackedOMR = (texture != INVALID_HANDLE<Texture> && Get(texture)->numChannels() > 2u);
         }
 
         if ( textureUsageSlot == TextureSlot::UNIT0 ||
@@ -377,7 +397,21 @@ namespace Divide
         return true;
     }
 
-    bool Material::setTexture( const TextureSlot textureUsageSlot, const Texture_ptr& texture, const SamplerDescriptor sampler, const TextureOperation op, const bool useInGeometryPasses )
+    bool Material::setTexture( const TextureSlot textureUsageSlot,
+                               const ResourceDescriptor<Texture>& texture,
+                               const SamplerDescriptor sampler,
+                               const TextureOperation op,
+                               bool useInGeometryPasses)
+    {
+        LockGuard<SharedMutex> w_lock( _textureLock );
+        return setTextureLocked(textureUsageSlot, texture, sampler, op, useInGeometryPasses);
+    }
+
+    bool Material::setTexture( const TextureSlot textureUsageSlot,
+                               const Handle<Texture> texture,
+                               const SamplerDescriptor sampler,
+                               const TextureOperation op,
+                               const bool useInGeometryPasses )
     {
         LockGuard<SharedMutex> w_lock( _textureLock );
         return setTextureLocked( textureUsageSlot, texture, sampler, op, useInGeometryPasses );
@@ -395,64 +429,25 @@ namespace Divide
         }
     }
 
-    void Material::setShaderProgramInternal( const ShaderProgramDescriptor& shaderDescriptor,
-                                             ShaderProgramInfo& shaderInfo,
-                                             const RenderStagePass stagePass ) const
+    void Material::setShaderProgramInternal( ShaderProgramDescriptor shaderDescriptor, const RenderStagePass stagePass )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-        ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
-        shaderDescriptorRef._useShaderCache = !ignoreShaderCache();
-        computeAndAppendShaderDefines( shaderDescriptorRef, stagePass );
-        ResourceDescriptor shaderResDescriptor( shaderDescriptorRef._name );
-        shaderResDescriptor.propertyDescriptor( shaderDescriptorRef );
-
-        ShaderProgram_ptr shader = CreateResource<ShaderProgram>( _context.context().kernel().resourceCache(), shaderResDescriptor );
-        if ( shader != nullptr )
-        {
-            const ShaderProgram* oldShader = shaderInfo._shaderRef.get();
-            if ( oldShader != nullptr )
-            {
-                const char* newShaderName = shader == nullptr ? nullptr : shader->resourceName().c_str();
-
-                if ( newShaderName == nullptr || strlen( newShaderName ) == 0 || oldShader->resourceName().compare( newShaderName ) != 0 )
-                {
-                    // We cannot replace a shader that is still loading in the background
-                    WAIT_FOR_CONDITION( oldShader->getState() == ResourceState::RES_LOADED );
-                    Console::printfn( LOCALE_STR( "REPLACE_SHADER" ),
-                                      oldShader->resourceName().c_str(),
-                                      newShaderName != nullptr ? newShaderName : "NULL",
-                                      TypeUtil::RenderStageToString( stagePass._stage ),
-                                      TypeUtil::RenderPassTypeToString( stagePass._passType ),
-                                      to_base( stagePass._variant ) );
-                }
-            }
-        }
-
-        shaderInfo._shaderRef = shader;
-        shaderInfo._shaderCompStage = ShaderBuildStage::COMPUTED;
-        shaderInfo._shaderRef->waitForReady();
-    }
-
-    void Material::setShaderProgramInternal( const ShaderProgramDescriptor& shaderDescriptor,
-                                             const RenderStagePass stagePass )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
-
-        ShaderProgramDescriptor shaderDescriptorRef = shaderDescriptor;
-        computeAndAppendShaderDefines( shaderDescriptorRef, stagePass );
+        computeAndAppendShaderDefines( shaderDescriptor, stagePass );
 
         ShaderProgramInfo& info = shaderInfo( stagePass );
         // if we already have a different shader assigned ...
-        if ( info._shaderRef != nullptr )
+        if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> )
         {
+            ResourcePtr<ShaderProgram> ptr = Get( info._shaderRef);
+
             // We cannot replace a shader that is still loading in the background
-            WAIT_FOR_CONDITION( info._shaderRef->getState() == ResourceState::RES_LOADED );
-            if ( info._shaderRef->descriptor().getHash() != shaderDescriptorRef.getHash() )
+            WAIT_FOR_CONDITION( ptr->getState() == ResourceState::RES_LOADED );
+            if ( ptr->descriptor() != shaderDescriptor )
             {
                 Console::printfn( LOCALE_STR( "REPLACE_SHADER" ),
-                                  info._shaderRef->resourceName().c_str(),
-                                  shaderDescriptorRef._name.c_str(),
+                                  ptr->resourceName().c_str(),
+                                  shaderDescriptor._name.c_str(),
                                   TypeUtil::RenderStageToString( stagePass._stage ),
                                   TypeUtil::RenderPassTypeToString( stagePass._passType ),
                                   to_base(stagePass._variant) );
@@ -463,13 +458,13 @@ namespace Divide
             }
         }
 
-        ShaderComputeQueue::ShaderQueueElement shaderElement{ info._shaderRef, shaderDescriptorRef };
+        ShaderComputeQueue::ShaderQueueElement shaderElement{ &info._shaderRef, shaderDescriptor };
         if ( updatePriorirty() == UpdatePriority::High )
         {
             _context.shaderComputeQueue().process( shaderElement );
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
-            assert( info._shaderRef != nullptr );
-            info._shaderRef->waitForReady();
+            DIVIDE_ASSERT( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
+            Get(info._shaderRef)->waitForReady();
         }
         else
         {
@@ -513,7 +508,7 @@ namespace Divide
         _recomputeShadersCBK();
     }
 
-    ShaderProgramHandle Material::computeAndGetProgramHandle( const RenderStagePass renderStagePass )
+    Handle<ShaderProgram> Material::computeAndGetProgramHandle( const RenderStagePass renderStagePass )
     {
         constexpr U8 maxRetries = 250;
 
@@ -533,22 +528,22 @@ namespace Divide
             }
         }
 
-        return _context.imShaders()->imWorldShaderNoTexture()->handle();
+        return _context.imShaders()->imWorldShaderNoTexture();
     }
 
-    ShaderProgramHandle Material::getProgramHandle( const RenderStagePass renderStagePass ) const
+    Handle<ShaderProgram> Material::getProgramHandle( const RenderStagePass renderStagePass ) const
     {
 
         const ShaderProgramInfo& info = shaderInfo( renderStagePass );
 
-        if ( info._shaderRef != nullptr )
+        if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> )
         {
-            WAIT_FOR_CONDITION( info._shaderRef->getState() == ResourceState::RES_LOADED );
-            return info._shaderRef->handle();
+            WAIT_FOR_CONDITION( Get(info._shaderRef)->getState() == ResourceState::RES_LOADED );
+            return info._shaderRef;
         }
         DIVIDE_UNEXPECTED_CALL();
 
-        return _context.imShaders()->imWorldShaderNoTexture()->handle();
+        return _context.imShaders()->imWorldShaderNoTexture();
     }
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
@@ -559,16 +554,15 @@ namespace Divide
         ShaderProgramInfo& info = shaderInfo( renderStagePass );
         if ( info._shaderCompStage == ShaderBuildStage::REQUESTED )
         {
-            _computeShaderCBK( this, renderStagePass );
-            const ShaderProgramDescriptor descriptor = _computeShaderCBK( this, renderStagePass );
-            setShaderProgramInternal( descriptor, renderStagePass );
+            setShaderProgramInternal( _computeShaderCBK( this, renderStagePass ),
+                                      renderStagePass );
         }
 
         // If we have a shader queued (with a valid ref) ...
         if ( info._shaderCompStage == ShaderBuildStage::QUEUED )
         {
             // ... we are now passed the "compute" stage. We just need to wait for it to load
-            if ( info._shaderRef == nullptr )
+            if ( info._shaderRef == INVALID_HANDLE<ShaderProgram> )
             {
                 // Shader is still in the queue
                 return false;
@@ -579,13 +573,13 @@ namespace Divide
         // If the shader is computed ...
         if ( info._shaderCompStage == ShaderBuildStage::COMPUTED )
         {
-            assert( info._shaderRef != nullptr );
+            assert( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
             // ... wait for the shader to finish loading
-            info._shaderRef->waitForReady();
+            Get(info._shaderRef)->waitForReady();
             // Once it has finished loading, it is ready for drawing
             shaderJustFinishedLoading = true;
             info._shaderCompStage = ShaderBuildStage::READY;
-            info._shaderKeyCache = info._shaderRef->getGUID();
+            info._shaderKeyCache = Get(info._shaderRef)->getGUID();
         }
 
         // If the shader isn't ready it may have not passed through the computational stage yet (e.g. the first time this method is called)
@@ -687,7 +681,7 @@ namespace Divide
         }
         // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
         if ( (!isDepthPass || renderStagePass._stage == RenderStage::DISPLAY) &&
-             _textures[to_base( TextureSlot::NORMALMAP )]._ptr != nullptr &&
+             _textures[to_base( TextureSlot::NORMALMAP )]._ptr != INVALID_HANDLE<Texture> &&
              properties().bumpMethod() != BumpMethod::NONE )
         {
             // Bump mapping?
@@ -730,7 +724,7 @@ namespace Divide
             }
         }
 
-        const Configuration& config = _parentCache->context().config();
+        const Configuration& config = _context.context().config();
         if ( !config.rendering.shadowMapping.enabled )
         {
             moduleDefines[to_base( ShaderType::FRAGMENT )].emplace_back( "DISABLE_SHADOW_MAPPING", true );
@@ -785,7 +779,7 @@ namespace Divide
 
     bool Material::usesTextureInShader( const TextureSlot slot, const bool isPrePass, const bool isShadowPass ) const noexcept
     {
-        if ( _textures[to_base( slot )]._ptr == nullptr )
+        if ( _textures[to_base( slot )]._ptr == INVALID_HANDLE<Texture> )
         {
             return false;
         }
@@ -845,19 +839,20 @@ namespace Divide
     {
         for ( TextureInfo& tex : _textures )
         {
-            tex._ptr.reset();
+            DestroyResource(tex._ptr);
         }
-
-        static ShaderProgramInfo defaultShaderInfo = {};
 
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
             auto& passMapShaders = _shaderInfo[s];
-            auto& passMapStates = _defaultRenderStates[s];
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
-                passMapShaders[p].fill( defaultShaderInfo );
-                passMapStates[p].fill( { {}, false } );
+                auto& shaders = passMapShaders[p];
+                for ( ShaderProgramInfo& info : shaders )
+                {
+                    DestroyResource(info._shaderRef);
+                    info = {};
+                }
             }
         }
 
@@ -865,16 +860,16 @@ namespace Divide
         {
             LockGuard<SharedMutex> w_lock( _instanceLock );
             erase_if( _baseMaterial->_instances,
-                      [guid = getGUID()]( Material* instance ) noexcept
+                      [guid = getGUID()]( Handle<Material> instance ) noexcept
                       {
-                          return instance->getGUID() == guid;
+                          return Get(instance)->getGUID() == guid;
                       } );
         }
 
         SharedLock<SharedMutex> r_lock( _instanceLock );
-        for ( Material* instance : _instances )
+        for ( Handle<Material> instance : _instances )
         {
-            instance->_baseMaterial = nullptr;
+            Get(instance)->_baseMaterial = nullptr;
         }
 
         return true;
@@ -917,18 +912,18 @@ namespace Divide
             }
 
             // base texture is translucent
-            const Texture_ptr& albedo = _textures[to_base( TextureSlot::UNIT0 )]._ptr;
-            if ( albedo && albedo->hasTransparency() && !properties().overrides().ignoreTexDiffuseAlpha() )
+            const Handle<Texture> albedo = _textures[to_base( TextureSlot::UNIT0 )]._ptr;
+            if ( albedo != INVALID_HANDLE<Texture> && Get(albedo)->hasTransparency() && !properties().overrides().ignoreTexDiffuseAlpha() )
             {
                 properties()._translucencySource = TranslucencySource::ALBEDO_TEX;
             }
 
             // opacity map
-            const Texture_ptr& opacity = _textures[to_base( TextureSlot::OPACITY )]._ptr;
-            if ( opacity )
+            const Handle<Texture> opacity = _textures[to_base( TextureSlot::OPACITY )]._ptr;
+            if ( opacity != INVALID_HANDLE<Texture>)
             {
-                const U8 channelCount = NumChannels( opacity->descriptor().baseFormat() );
-                properties()._translucencySource = (channelCount == 4 && opacity->hasTransparency())
+                const U8 channelCount = NumChannels( Get(opacity)->descriptor()._baseFormat );
+                properties()._translucencySource = (channelCount == 4 && Get(opacity)->hasTransparency())
                     ? TranslucencySource::OPACITY_MAP_A
                     : TranslucencySource::OPACITY_MAP_R;
             }
@@ -996,9 +991,9 @@ namespace Divide
     {
         shaderKey = shaderInfo( renderStagePass )._shaderKeyCache;
         SharedLock<SharedMutex> r_lock( _textureLock );
-        if ( _textures[to_base( TextureSlot::UNIT0 )]._ptr != nullptr )
+        if ( _textures[to_base( TextureSlot::UNIT0 )]._ptr != INVALID_HANDLE<Texture> )
         {
-            textureKey = _textures[to_base( TextureSlot::UNIT0 )]._ptr->getGUID();
+            textureKey = Get(_textures[to_base( TextureSlot::UNIT0 )]._ptr)->getGUID();
         }
         else
         {
@@ -1007,77 +1002,78 @@ namespace Divide
         transparencyFlag = hasTransparency();
     }
 
-    FColour4 Material::getBaseColour( bool& hasTextureOverride, Texture*& textureOut ) const noexcept
+    FColour4 Material::getBaseColour( bool& hasTextureOverride, Handle<Texture>& textureOut ) const noexcept
     {
-        textureOut = nullptr;
-        hasTextureOverride = _textures[to_base( TextureSlot::UNIT0 )]._ptr != nullptr;
+        textureOut = INVALID_HANDLE<Texture>;
+        hasTextureOverride = _textures[to_base( TextureSlot::UNIT0 )]._ptr != INVALID_HANDLE<Texture>;
         if ( hasTextureOverride )
         {
-            textureOut = _textures[to_base( TextureSlot::UNIT0 )]._ptr.get();
+            textureOut = _textures[to_base( TextureSlot::UNIT0 )]._ptr;
         }
+
         return properties().baseColour();
     }
 
-    FColour3 Material::getEmissive( bool& hasTextureOverride, Texture*& textureOut ) const noexcept
+    FColour3 Material::getEmissive( bool& hasTextureOverride, Handle<Texture>& textureOut ) const noexcept
     {
-        textureOut = nullptr;
-        hasTextureOverride = _textures[to_base( TextureSlot::EMISSIVE )]._ptr != nullptr;
+        textureOut = INVALID_HANDLE<Texture>;
+        hasTextureOverride = _textures[to_base( TextureSlot::EMISSIVE )]._ptr != INVALID_HANDLE<Texture>;
         if ( hasTextureOverride )
         {
-            textureOut = _textures[to_base( TextureSlot::EMISSIVE )]._ptr.get();
+            textureOut = _textures[to_base( TextureSlot::EMISSIVE )]._ptr;
         }
 
         return properties().emissive();
     }
 
-    FColour3 Material::getAmbient( bool& hasTextureOverride, Texture*& textureOut ) const noexcept
+    FColour3 Material::getAmbient( bool& hasTextureOverride, Handle<Texture>& textureOut ) const noexcept
     {
-        textureOut = nullptr;
+        textureOut = INVALID_HANDLE<Texture>;
         hasTextureOverride = false;
 
         return properties().ambient();
     }
 
-    FColour3 Material::getSpecular( bool& hasTextureOverride, Texture*& textureOut ) const noexcept
+    FColour3 Material::getSpecular( bool& hasTextureOverride, Handle<Texture>& textureOut ) const noexcept
     {
-        textureOut = nullptr;
-        hasTextureOverride = _textures[to_base( TextureSlot::SPECULAR )]._ptr != nullptr;
+        textureOut = INVALID_HANDLE<Texture>;
+        hasTextureOverride = _textures[to_base( TextureSlot::SPECULAR )]._ptr != INVALID_HANDLE<Texture>;
         if ( hasTextureOverride )
         {
-            textureOut = _textures[to_base( TextureSlot::SPECULAR )]._ptr.get();
+            textureOut = _textures[to_base( TextureSlot::SPECULAR )]._ptr;
         }
         return properties().specular();
     }
 
-    F32 Material::getMetallic( bool& hasTextureOverride, Texture*& textureOut ) const noexcept
+    F32 Material::getMetallic( bool& hasTextureOverride, Handle<Texture>& textureOut ) const noexcept
     {
-        textureOut = nullptr;
-        hasTextureOverride = _textures[to_base( TextureSlot::METALNESS )]._ptr != nullptr;
+        textureOut = INVALID_HANDLE<Texture>;
+        hasTextureOverride = _textures[to_base( TextureSlot::METALNESS )]._ptr != INVALID_HANDLE<Texture>;
         if ( hasTextureOverride )
         {
-            textureOut = _textures[to_base( TextureSlot::METALNESS )]._ptr.get();
+            textureOut = _textures[to_base( TextureSlot::METALNESS )]._ptr;
         }
         return properties().metallic();
     }
 
-    F32 Material::getRoughness( bool& hasTextureOverride, Texture*& textureOut ) const noexcept
+    F32 Material::getRoughness( bool& hasTextureOverride, Handle<Texture>& textureOut ) const noexcept
     {
-        textureOut = nullptr;
-        hasTextureOverride = _textures[to_base( TextureSlot::ROUGHNESS )]._ptr != nullptr;
+        textureOut = INVALID_HANDLE<Texture>;
+        hasTextureOverride = _textures[to_base( TextureSlot::ROUGHNESS )]._ptr != INVALID_HANDLE<Texture>;
         if ( hasTextureOverride )
         {
-            textureOut = _textures[to_base( TextureSlot::ROUGHNESS )]._ptr.get();
+            textureOut = _textures[to_base( TextureSlot::ROUGHNESS )]._ptr;
         }
         return properties().roughness();
     }
 
-    F32 Material::getOcclusion( bool& hasTextureOverride, Texture*& textureOut ) const noexcept
+    F32 Material::getOcclusion( bool& hasTextureOverride, Handle<Texture>& textureOut ) const noexcept
     {
-        textureOut = nullptr;
-        hasTextureOverride = _textures[to_base( TextureSlot::OCCLUSION )]._ptr != nullptr;
+        textureOut = INVALID_HANDLE<Texture>;
+        hasTextureOverride = _textures[to_base( TextureSlot::OCCLUSION )]._ptr != INVALID_HANDLE<Texture>;
         if ( hasTextureOverride )
         {
-            textureOut = _textures[to_base( TextureSlot::OCCLUSION )]._ptr.get();
+            textureOut = _textures[to_base( TextureSlot::OCCLUSION )]._ptr;
         }
         return properties().occlusion();
     }
@@ -1149,7 +1145,7 @@ namespace Divide
                     if ( usesTextureInShader( static_cast<TextureSlot>(i), isPrePass, isShadowPass ) )
                     {
                         DescriptorSetBinding& binding = AddBinding( descriptor, i, texVisibility );
-                        Set( binding._data, _textures[i]._ptr->getView(), _textures[i]._sampler );
+                        Set( binding._data, _textures[i]._ptr, _textures[i]._sampler );
                     }
                 }
             }
@@ -1170,16 +1166,16 @@ namespace Divide
                 auto& shaders = _shaderInfo[s][p];
                 for ( const ShaderProgramInfo& info : shaders )
                 {
-                    if ( info._shaderRef != nullptr && info._shaderRef->getState() == ResourceState::RES_LOADED )
+                    if ( info._shaderRef != INVALID_HANDLE<ShaderProgram> && Get(info._shaderRef)->getState() == ResourceState::RES_LOADED )
                     {
-                        info._shaderRef->recompile();
+                        Get(info._shaderRef)->recompile();
                     }
                 }
             }
         }
     }
 
-    void Material::saveToXML( const string& entryName, boost::property_tree::ptree& pt ) const
+    void Material::saveToXML( const std::string& entryName, boost::property_tree::ptree& pt ) const
     {
         pt.put( entryName + ".version", g_materialXMLVersion );
 
@@ -1188,7 +1184,7 @@ namespace Divide
         saveTextureDataToXML( entryName, pt );
     }
 
-    void Material::loadFromXML( const string& entryName, const boost::property_tree::ptree& pt )
+    void Material::loadFromXML( const std::string& entryName, const boost::property_tree::ptree& pt )
     {
         if ( ignoreXMLData() )
         {
@@ -1207,14 +1203,14 @@ namespace Divide
         loadTextureDataFromXML( entryName, pt );
     }
 
-    void Material::saveRenderStatesToXML( const string& entryName, boost::property_tree::ptree& pt ) const
+    void Material::saveRenderStatesToXML( const std::string& entryName, boost::property_tree::ptree& pt ) const
     {
         hashMap<size_t, U32> previousHashValues;
 
         U32 blockIndex = 0u;
 
-        const string stateNode = Util::StringFormat( "{}.RenderStates", entryName.c_str() );
-        const string blockNode = Util::StringFormat( "{}.RenderStateIndex.PerStagePass", entryName.c_str() );
+        const std::string stateNode = Util::StringFormat( "{}.RenderStates", entryName).c_str();
+        const std::string blockNode = Util::StringFormat( "{}.RenderStateIndex.PerStagePass", entryName).c_str();
 
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
         {
@@ -1234,7 +1230,7 @@ namespace Divide
                     {
                         SaveToXML(
                             block,
-                            Util::StringFormat( "{}.{}", stateNode.c_str(), blockIndex ),
+                            Util::StringFormat( "{}.{}", stateNode, blockIndex ).c_str(),
                             pt );
                         previousHashValues[stateHash] = blockIndex++;
                     }
@@ -1251,13 +1247,13 @@ namespace Divide
         }
     }
 
-    void Material::loadRenderStatesFromXML( const string& entryName, const boost::property_tree::ptree& pt )
+    void Material::loadRenderStatesFromXML( const std::string& entryName, const boost::property_tree::ptree& pt )
     {
         hashMap<U32, RenderStateBlock> previousBlocks;
 
         static boost::property_tree::ptree g_emptyPtree;
-        const string stateNode = Util::StringFormat( "{}.RenderStates", entryName.c_str() );
-        const string blockNode = Util::StringFormat( "{}.RenderStateIndex", entryName.c_str() );
+        const std::string stateNode = Util::StringFormat( "{}.RenderStates", entryName).c_str();
+        const std::string blockNode = Util::StringFormat( "{}.RenderStateIndex", entryName).c_str();
         for ( const auto& [tag, data] : pt.get_child( blockNode, g_emptyPtree ) )
         {
             assert( tag == "PerStagePass" );
@@ -1275,7 +1271,7 @@ namespace Divide
             else
             {
                 RenderStateBlock block{};
-                LoadFromXML( Util::StringFormat( "{}.{}", stateNode.c_str(), b ), pt, block );
+                LoadFromXML( Util::StringFormat( "{}.{}", stateNode, b ).c_str(), pt, block );
 
                 _defaultRenderStates[s][p][v] = { block, true };
                 previousBlocks[b] = block;
@@ -1283,7 +1279,7 @@ namespace Divide
         }
     }
 
-    void Material::saveTextureDataToXML( const string& entryName, boost::property_tree::ptree& pt ) const
+    void Material::saveTextureDataToXML( const std::string& entryName, boost::property_tree::ptree& pt ) const
     {
         hashMap<size_t, U32> previousHashValues;
 
@@ -1292,13 +1288,13 @@ namespace Divide
         {
             const TextureSlot usage = static_cast<TextureSlot>(i);
 
-            Texture_wptr tex = getTexture( usage );
-            if ( !tex.expired() )
+            Handle<Texture> tex = getTexture( usage );
+            if ( tex != INVALID_HANDLE<Texture> )
             {
-                const Texture_ptr texture = tex.lock();
+                const Texture* texture = Get(tex);
 
 
-                const string textureNode = entryName + ".texture." + TypeUtil::TextureSlotToString( usage );
+                const std::string textureNode = entryName + ".texture." + TypeUtil::TextureSlotToString( usage );
 
                 pt.put( textureNode + ".name", texture->assetName().c_str() );
                 pt.put( textureNode + ".path", texture->assetLocation().string() );
@@ -1311,7 +1307,7 @@ namespace Divide
                 if ( previousHashValues.find( samplerHash ) == std::cend( previousHashValues ) )
                 {
                     samplerCount++;
-                    XMLParser::saveToXML( sampler, Util::StringFormat( "{}.SamplerDescriptors.{}", entryName.c_str(), samplerCount ), pt );
+                    XMLParser::saveToXML( sampler, Util::StringFormat( "{}.SamplerDescriptors.{}", entryName, samplerCount ).c_str(), pt );
                     previousHashValues[samplerHash] = samplerCount;
                 }
                 pt.put( textureNode + ".Sampler.id", previousHashValues[samplerHash] );
@@ -1320,7 +1316,7 @@ namespace Divide
         }
     }
 
-    void Material::loadTextureDataFromXML( const string& entryName, const boost::property_tree::ptree& pt )
+    void Material::loadTextureDataFromXML( const std::string& entryName, const boost::property_tree::ptree& pt )
     {
         hashMap<U32, SamplerDescriptor> previousSamplers;
 
@@ -1330,10 +1326,10 @@ namespace Divide
 
             if ( pt.get_child_optional( entryName + ".texture." + TypeUtil::TextureSlotToString( usage ) + ".name" ) )
             {
-                const string textureNode = entryName + ".texture." + TypeUtil::TextureSlotToString( usage );
+                const std::string textureNode = entryName + ".texture." + TypeUtil::TextureSlotToString( usage );
 
-                const string texName = pt.get<string>( textureNode + ".name", "" );
-                const ResourcePath texPath = ResourcePath( pt.get<string>( textureNode + ".path", "" ) );
+                const std::string texName = pt.get<std::string>( textureNode + ".name", "" );
+                const ResourcePath texPath = ResourcePath( pt.get<std::string>( textureNode + ".path", "" ).c_str() );
                 // May be a procedural texture
                 if ( texPath.empty() )
                 {
@@ -1355,7 +1351,7 @@ namespace Divide
                     }
                     else
                     {
-                        sampler = XMLParser::loadFromXML( Util::StringFormat( "{}.SamplerDescriptors.{}", entryName.c_str(), index ), pt );
+                        sampler = XMLParser::loadFromXML( Util::StringFormat( "{}.SamplerDescriptors.{}", entryName, index ).c_str(), pt );
                         previousSamplers[index] = sampler;
                     }
 
@@ -1364,30 +1360,34 @@ namespace Divide
                     TextureOperation& op = _textures[to_base( usage )]._operation;
                     bool& srgb = _textures[to_base(usage)]._srgb;
 
-                    op = TypeUtil::StringToTextureOperation( pt.get<string>( textureNode + ".usage", TypeUtil::TextureOperationToString( op ) ) );
+                    op = TypeUtil::StringToTextureOperation( pt.get<std::string>( textureNode + ".usage", TypeUtil::TextureOperationToString( op ) ) );
                     srgb = pt.get<bool>( textureNode + ".srgb", srgb);
 
-                    const Texture_ptr& crtTex = _textures[to_base( usage )]._ptr;
-                    if ( crtTex == nullptr )
+                    Handle<Texture> crtTex = _textures[to_base( usage )]._ptr;
+                    if ( crtTex == INVALID_HANDLE<Texture> )
                     {
                         op = TextureOperation::NONE;
                     }
-                    else if ( crtTex->assetLocation() / crtTex->assetName() == texPath / texName )
+                    else if ( (Get(crtTex)->assetLocation() / Get(crtTex)->assetName()) == (texPath / texName) )
                     {
                         continue;
                     }
 
                     _textures[to_base( usage )]._useInGeometryPasses = useInGeometryPasses;
 
-                    TextureDescriptor texDesc( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, srgb ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED );
-                    ResourceDescriptor texture( texName );
-                    texture.assetName( texName );
+                    ResourceDescriptor<Texture> texture( texName );
+                    texture.assetName( texName.c_str() );
                     texture.assetLocation( texPath );
-                    texture.propertyDescriptor( texDesc );
                     texture.waitForReady( true );
 
-                    Texture_ptr tex = CreateResource<Texture>( _context.context().kernel().resourceCache(), texture );
-                    setTextureLocked( usage, tex, sampler, op, useInGeometryPasses );
+                    TextureDescriptor& texDesc = texture._propertyDescriptor;
+                    texDesc._texType = TextureType::TEXTURE_2D_ARRAY;
+                    if ( srgb )
+                    {
+                        texDesc._packing = GFXImagePacking::NORMALIZED_SRGB;
+                    }
+
+                    setTextureLocked( usage, texture, sampler, op, useInGeometryPasses );
                 }
             }
         }

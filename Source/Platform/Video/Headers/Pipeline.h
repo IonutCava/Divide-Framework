@@ -44,7 +44,7 @@ struct PipelineDescriptor
 {
     RTBlendStates _blendStates;
     RenderStateBlock _stateBlock{};
-    ShaderProgramHandle _shaderProgramHandle{ SHADER_INVALID_HANDLE };
+    Handle<ShaderProgram> _shaderProgramHandle{ INVALID_HANDLE<ShaderProgram> };
     PrimitiveTopology _primitiveTopology{ PrimitiveTopology::COUNT };
     AttributeMap _vertexFormat;
     U8   _multiSampleCount{ 0u };

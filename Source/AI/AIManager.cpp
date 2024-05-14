@@ -31,19 +31,14 @@ AIManager::~AIManager()
 }
 
 /// Clear up any remaining AIEntities
-void AIManager::destroy() {
+void AIManager::destroy()
+{
     {
         LockGuard<Mutex> w_lock(_updateMutex);
-        for (AITeamMap::value_type& entity : _aiTeams) {
-            MemoryManager::DELETE(entity.second);
-        }
         _aiTeams.clear();
     }
     {
         LockGuard<SharedMutex> w_lock(_navMeshMutex);
-        for (NavMeshMap::value_type& it : _navMeshes) {
-            MemoryManager::DELETE(it.second);
-        }
         _navMeshes.clear();
     }
 }
@@ -132,63 +127,77 @@ void AIManager::unregisterEntity(const U32 teamID, AIEntity* entity) {
     it->second->removeTeamMember(entity);
 }
 
-bool AIManager::addNavMesh(const AIEntity::PresetAgentRadius radius, Navigation::NavigationMesh* const navMesh) {
+Navigation::NavigationMesh* AIManager::addNavMesh( PlatformContext& context, Navigation::DivideRecast& recastInterface, Scene& parentScene, const AIEntity::PresetAgentRadius radius )
+{
+    _navMeshMutex.lock();
+    std::unique_ptr<Navigation::NavigationMesh>& navMesh = _navMeshes[radius];
+    if (navMesh == nullptr)
     {
-        LockGuard<SharedMutex> w_lock(_navMeshMutex);
-        const NavMeshMap::iterator it = _navMeshes.find(radius);
-        DIVIDE_ASSERT(it == std::end(_navMeshes),
-                      "AIManager error: NavMesh for specified dimensions already "
-                      "exists. Remove it first!");
-        DIVIDE_ASSERT(navMesh != nullptr,
-                      "AIManager error: Invalid navmesh specified!");
-
+        navMesh = std::make_unique<Navigation::NavigationMesh>(context, recastInterface, parentScene);
         navMesh->debugDraw(_navMeshDebugDraw);
-        insert(_navMeshes, radius, navMesh);
     }
+    _navMeshMutex.unlock();
+
     {
         LockGuard<Mutex> w_lock(_updateMutex);
-        for (AITeamMap::value_type& team : _aiTeams) {
-            team.second->addCrowd(radius, navMesh);
+        for (AITeamMap::value_type& team : _aiTeams)
+        {
+            team.second->addCrowd(radius, navMesh.get());
         }
     }
-    return true;
+
+    return navMesh.get();
 }
 
-void AIManager::destroyNavMesh(const AIEntity::PresetAgentRadius radius) {
+bool AIManager::destroyNavMesh(const AIEntity::PresetAgentRadius radius)
+{
     {
         LockGuard<SharedMutex> w_lock(_navMeshMutex);
         const NavMeshMap::iterator it = _navMeshes.find(radius);
-        DIVIDE_ASSERT(it != std::end(_navMeshes),
-                      "AIManager error: Can't destroy NavMesh for specified radius "
-                      "(NavMesh not found)!");
-        MemoryManager::DELETE(it->second);
-        _navMeshes.erase(it);
+        if ( it == std::end(_navMeshes))
+        {
+            return false;
+        }
+
+        _navMeshes.erase( it );
     }
 
     {
         LockGuard<Mutex> w_lock(_updateMutex);
-        for (AITeamMap::value_type& team : _aiTeams) {
+        for (AITeamMap::value_type& team : _aiTeams)
+        {
             team.second->removeCrowd(radius);
         }
     }
+
+    return true;
 }
 
-void AIManager::registerTeam(AITeam* const team) {
+AITeam* AIManager::registerTeam( const U32 id )
+{
     LockGuard<Mutex> w_lock(_updateMutex);
-    const U32 teamID = team->teamID();
-    DIVIDE_ASSERT(_aiTeams.find(teamID) == std::end(_aiTeams),
-                  "AIManager error: attempt to double register an AI team!");
+    auto& team = _aiTeams[id];
+    auto it = _aiTeams.find(id);
+    if ( team == nullptr )
+    {
+        team.reset( new AITeam( id, *this ) );
+    }
 
-    insert(_aiTeams, teamID, team);
+    return team.get();
 }
 
-void AIManager::unregisterTeam(AITeam* const team) {
+bool AIManager::unregisterTeam(const U32 id )
+{
     LockGuard<Mutex> w_lock(_updateMutex);
-    const U32 teamID = team->teamID();
-    const AITeamMap::iterator it = _aiTeams.find(teamID);
-    DIVIDE_ASSERT(it != std::end(_aiTeams),
-                  "AIManager error: attempt to unregister an invalid AI team!");
-    _aiTeams.erase(it);
+
+    const AITeamMap::iterator it = _aiTeams.find( id );
+    if (it != std::end(_aiTeams))
+    {
+        _aiTeams.erase( it );
+        return true;
+    }
+
+    return false;
 }
 
 void AIManager::toggleNavMeshDebugDraw(const bool state) {

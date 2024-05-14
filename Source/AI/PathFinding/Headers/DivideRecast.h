@@ -79,7 +79,6 @@ namespace Navigation {
 class DivideRecast {
   public:
       DivideRecast();
-      ~DivideRecast();
 
     /**
      * Find a path beween start point and end point and, if possible, generates a
@@ -155,7 +154,7 @@ class DivideRecast {
     /// Stores all created paths
     std::array<PATHDATA, MAX_PATHSLOT> _pathStore;
     /// The poly filter that will be used for all (random) point and nearest poly searches.
-    dtQueryFilter* _filter;
+    std::unique_ptr<dtQueryFilter> _filter;
 
 };
 

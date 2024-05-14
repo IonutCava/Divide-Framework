@@ -33,12 +33,13 @@
 #ifndef DVD_TEXTURE_DESCRIPTOR_H_
 #define DVD_TEXTURE_DESCRIPTOR_H_
 
-#include "Core/Resources/Headers/ResourceDescriptor.h"
 #include "Utility/Headers/ImageToolsFwd.h"
+#include "Core/Resources/Headers/Resource.h"
 
 namespace Divide {
 
 struct SamplerDescriptor;
+class Texture;
 
 struct PixelAlignment
 {
@@ -48,46 +49,45 @@ struct PixelAlignment
     size_t _skipRows{ 0u };
 };
 
+enum class MipMappingState : U8
+{
+    AUTO = 0,
+    MANUAL,
+    OFF,
+    COUNT
+};
+
 /// Use to define a texture with details such as type, image formats, etc
 /// We do not define copy constructors as we must define descriptors only with POD
-class TextureDescriptor final : public PropertyDescriptor {
+template<>
+struct PropertyDescriptor<Texture>
+{
    public:
-    enum class MipMappingState : U8 {
-        AUTO = 0,
-        MANUAL,
-        OFF,
-        COUNT
-    };
 
-    TextureDescriptor() noexcept;
-    TextureDescriptor(const TextureType type, const GFXDataFormat dataType, const GFXImageFormat format, const GFXImagePacking packing = GFXImagePacking::NORMALIZED) noexcept;
-
-    [[nodiscard]] size_t getHash() const noexcept override;
-
-    PROPERTY_RW(U16, layerCount,   0u);
-    PROPERTY_RW(U16, mipBaseLevel, 0u);
-    PROPERTY_RW(GFXDataFormat,  dataType, GFXDataFormat::COUNT);
-    PROPERTY_RW(GFXImageFormat, baseFormat, GFXImageFormat::COUNT);
-    PROPERTY_RW(GFXImagePacking, packing, GFXImagePacking::COUNT);
-    PROPERTY_RW(TextureType, texType, TextureType::COUNT);
-    PROPERTY_RW(ImageTools::ImportOptions, textureOptions);
-    PROPERTY_RW(MipMappingState, mipMappingState, MipMappingState::AUTO);
-    PROPERTY_RW(U8,  msaaSamples,  0u);
-    PROPERTY_RW(bool, allowRegionUpdates, false);
-
-    void addImageUsageFlag(const ImageUsage usage) noexcept;
-    void removeImageUsageFlag(const ImageUsage usage) noexcept;
-    [[nodiscard]] bool hasUsageFlagSet(const ImageUsage usage) const noexcept;
-
-private:
+    ImageTools::ImportOptions _textureOptions{};
     U32 _usageMask{ 1u << to_base(ImageUsage::SHADER_READ) };
+    U16 _layerCount{ 0u };
+    U16 _mipBaseLevel{ 0u };
+    TextureType _texType{ TextureType::TEXTURE_2D };
+    GFXDataFormat _dataType{ GFXDataFormat::UNSIGNED_BYTE };
+    GFXImagePacking _packing{ GFXImagePacking::NORMALIZED };
+    GFXImageFormat _baseFormat{ GFXImageFormat::RGBA };
+    MipMappingState _mipMappingState{ MipMappingState::AUTO };
+    U8 _msaaSamples{ 0u };
+    bool _allowRegionUpdates{ false };
 };
+
+using TextureDescriptor = PropertyDescriptor<Texture>;
+
+template<>
+inline size_t GetHash( const PropertyDescriptor<Texture>& descriptor ) noexcept;
+
+              void AddImageUsageFlag( PropertyDescriptor<Texture>& descriptor, const ImageUsage usage ) noexcept;
+              void RemoveImageUsageFlag( PropertyDescriptor<Texture>& descriptor, const ImageUsage usage ) noexcept;
+[[nodiscard]] bool HasUsageFlagSet( const PropertyDescriptor<Texture>& descriptor, const ImageUsage usage ) noexcept;
 
 [[nodiscard]] bool IsCompressed(GFXImageFormat format) noexcept;
 [[nodiscard]] bool HasAlphaChannel (GFXImageFormat format) noexcept;
-
-bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept;
-bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept;
 
 [[nodiscard]] bool Is1DTexture(TextureType texType) noexcept;
 [[nodiscard]] bool Is2DTexture(TextureType texType) noexcept;

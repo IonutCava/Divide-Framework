@@ -281,7 +281,7 @@ static std::weak_ptr<Image> loadImage( const std::string& imagePath, const std::
         }
     }
 
-    return imageDB.emplace_back( std::make_unique<Image>( targetPath, renderer ) );
+    return imageDB.emplace_back( std::make_shared<Image>( targetPath, renderer ) );
 }
 
 static boost::property_tree::iptree GetXmlTree(std::filesystem::path filePath)

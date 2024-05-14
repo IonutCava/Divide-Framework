@@ -16,7 +16,7 @@ namespace Divide
 
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
-    bool IsEmpty( const TextureLayoutChanges& changes ) noexcept
+    [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept
     {
         for ( const TextureLayoutChange& it : changes )
         {
@@ -34,31 +34,27 @@ namespace Divide
     Str<64> Texture::s_missingTextureFileName( "missing_texture.jpg" );
 
     SamplerDescriptor Texture::s_defaultSampler;
-    Texture_ptr Texture::s_defaultTexture2D = nullptr;
-    Texture_ptr Texture::s_defaultTexture2DArray = nullptr;
+    Handle<Texture> Texture::s_defaultTexture2D = INVALID_HANDLE<Texture>;
+    Handle<Texture> Texture::s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
     bool Texture::s_useDDSCache = true;
 
     void Texture::OnStartup( GFXDevice& gfx )
     {
         ImageTools::OnStartup( gfx.renderAPI() != RenderAPI::OpenGL );
 
-        TextureDescriptor textureDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        textureDescriptor.baseFormat( GFXImageFormat::RGBA );
+        TextureDescriptor textureDescriptor{};
+        textureDescriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;
+        textureDescriptor._baseFormat = GFXImageFormat::RGBA;
 
         {
-            ResourceDescriptor textureResourceDescriptor( "defaultEmptyTexture2D" );
-            textureResourceDescriptor.propertyDescriptor( textureDescriptor );
-            textureResourceDescriptor.waitForReady( true );
-            s_defaultTexture2D = CreateResource<Texture>( gfx.context().kernel().resourceCache(), textureResourceDescriptor);
+            s_defaultTexture2D = CreateResource( ResourceDescriptor<Texture>( "defaultEmptyTexture2D", textureDescriptor ) );
         }
         {
-            textureDescriptor.texType(TextureType::TEXTURE_2D_ARRAY);
-            ResourceDescriptor textureResourceDescriptor( "defaultEmptyTexture2DArray" );
-            textureResourceDescriptor.propertyDescriptor( textureDescriptor );
-            textureResourceDescriptor.waitForReady( true );
-            s_defaultTexture2DArray = CreateResource<Texture>( gfx.context().kernel().resourceCache(), textureResourceDescriptor );
+            textureDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+            s_defaultTexture2DArray = CreateResource( ResourceDescriptor<Texture>( "defaultEmptyTexture2DArray", textureDescriptor ) );
         }
-        Byte* defaultTexData = MemoryManager_NEW Byte[1u * 1u * 4];
+
+        Byte defaultTexData[1u * 1u * 4];
         defaultTexData[0] = defaultTexData[1] = defaultTexData[2] = to_byte( 0u ); //RGB: black
         defaultTexData[3] = to_byte( 1u ); //Alpha: 1
 
@@ -67,9 +63,8 @@ namespace Divide
         {
             DIVIDE_UNEXPECTED_CALL();
         }
-        s_defaultTexture2D->createWithData( imgDataDefault, {});
-        s_defaultTexture2DArray->createWithData( imgDataDefault, {});
-        MemoryManager::DELETE_ARRAY( defaultTexData );
+        Get(s_defaultTexture2D)->createWithData( imgDataDefault, {});
+        Get(s_defaultTexture2DArray)->createWithData( imgDataDefault, {});
 
         s_defaultSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
         s_defaultSampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
@@ -82,8 +77,8 @@ namespace Divide
 
     void Texture::OnShutdown() noexcept
     {
-        s_defaultTexture2D.reset();
-        s_defaultTexture2DArray.reset();
+        DestroyResource(s_defaultTexture2D);
+        DestroyResource(s_defaultTexture2DArray);
         ImageTools::OnShutdown();
     }
 
@@ -92,12 +87,12 @@ namespace Divide
         return s_useDDSCache;
     }
 
-    const Texture_ptr& Texture::DefaultTexture2D() noexcept
+    Handle<Texture> Texture::DefaultTexture2D() noexcept
     {
         return s_defaultTexture2D;
     }
     
-    const Texture_ptr& Texture::DefaultTexture2DArray() noexcept
+    Handle<Texture> Texture::DefaultTexture2DArray() noexcept
     {
         return s_defaultTexture2DArray;
     }
@@ -130,59 +125,103 @@ namespace Divide
         return NumChannels( baseFormat ) * bytesPerChannel;
     }
 
-    Texture::Texture( GFXDevice& context,
-                      const size_t descriptorHash,
-                      const std::string_view name,
-                      std::string_view assetNames,
-                      const ResourcePath& assetLocations,
-                      const TextureDescriptor& texDescriptor,
-                      ResourceCache& parentCache )
-       : CachedResource( ResourceType::GPU_OBJECT, descriptorHash, name, assetNames, assetLocations )
-       , GraphicsResource( context, Type::TEXTURE, getGUID(), _ID( name ) )
-       , _descriptor( texDescriptor )
-       , _parentCache( parentCache )
+    Texture::Texture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor )
+       : CachedResource( descriptor, "Texture" )
+       , GraphicsResource( context.gfx(), Type::TEXTURE, getGUID(), _ID( resourceName() ) )
+       , _descriptor( descriptor._propertyDescriptor )
     {
-        DIVIDE_ASSERT(_descriptor.packing() != GFXImagePacking::COUNT &&
-                      _descriptor.baseFormat() != GFXImageFormat::COUNT &&
-                      _descriptor.dataType() != GFXDataFormat::COUNT);
+        DIVIDE_ASSERT( descriptor.enumValue() < to_base( TextureType::COUNT ) );
+        DIVIDE_ASSERT(_descriptor._packing != GFXImagePacking::COUNT &&
+                      _descriptor._baseFormat != GFXImageFormat::COUNT &&
+                      _descriptor._dataType != GFXDataFormat::COUNT);
+
+        _loadedFromFile = !descriptor.assetName().empty();
+
+        if ( _loadedFromFile )
+        {
+            if ( assetLocation().empty() )
+            {
+                assetLocation( Paths::g_texturesLocation );
+            }
+
+            DIVIDE_ASSERT( assetLocation().string().find(',' ) == string::npos, "TextureLoaderImpl error: All textures for a single array must be loaded from the same location!" );
+
+            const bool isCubeMap = IsCubeTexture( _descriptor._texType );
+
+            const U16 numCommas = to_U16( std::count( std::cbegin( descriptor.assetName() ), std::cend( descriptor.assetName() ), ',' ) );
+            if ( numCommas > 0u )
+            {
+                const U16 targetLayers = numCommas + 1u;
+
+                if ( isCubeMap )
+                {
+                    // Each layer needs 6 images
+                    DIVIDE_ASSERT( targetLayers >= 6u && targetLayers % 6u == 0u, "TextureLoaderImpl error: Invalid number of source textures specified for cube map!" );
+
+                    if ( _descriptor._layerCount == 0u )
+                    {
+                        _descriptor._layerCount = targetLayers % 6;
+                    }
+
+                    DIVIDE_ASSERT( _descriptor._layerCount == targetLayers % 6 );
+
+                    // We only use cube arrays to simplify some logic in the texturing code
+                    if ( _descriptor._texType == TextureType::TEXTURE_CUBE_MAP )
+                    {
+                        _descriptor._texType = TextureType::TEXTURE_CUBE_ARRAY;
+                    }
+                }
+                else
+                {
+                    if ( _descriptor._layerCount == 0u )
+                    {
+                        _descriptor._layerCount = targetLayers;
+                    }
+
+                    DIVIDE_ASSERT( _descriptor._layerCount == targetLayers, "TextureLoaderImpl error: Invalid number of source textures specified for texture array!" );
+                }
+            }
+
+        }
+
+        if ( _descriptor._layerCount == 0u )
+        {
+            _descriptor._layerCount = 1u;
+        }
+
     }
 
     Texture::~Texture()
     {
-        _parentCache.remove( this );
     }
 
-    bool Texture::load()
+    bool Texture::load( PlatformContext& context )
     {
-        Start( *CreateTask( [this]( [[maybe_unused]] const Task& parent )
-                            {
-                                threadedLoad();
-                            }),
-                            _context.context().taskPool( TaskPoolType::ASSET_LOADER ),
-                            TaskPriority::DONT_CARE,
-                            [this, tex = shared_from_this()]()
-                            {
-                                // Hack to keep this texture alive if we immediately discard it after load but before we flush the callback queue
-                                DIVIDE_ASSERT(tex != nullptr);
-                                postLoad();
-                            });
+        if (!loadInternal())
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_FILE" ),
+                              assetLocation(),
+                              assetName(),
+                              resourceName() );
+            return false;
+        }
 
-        return true;
+        return CachedResource::load( context );
     }
 
-    void Texture::postLoad()
+    bool Texture::postLoad()
     {
-        NOP();
+        return CachedResource::postLoad();
     }
 
     /// Load texture data using the specified file name
-    void Texture::threadedLoad()
+    bool Texture::loadInternal()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-        if ( !assetLocation().empty() )
+        if ( _loadedFromFile )
         {
-            const GFXDataFormat requestedFormat = _descriptor.dataType();
+            const GFXDataFormat requestedFormat = _descriptor._dataType;
             assert( requestedFormat == GFXDataFormat::UNSIGNED_BYTE ||  // Regular image format
                     requestedFormat == GFXDataFormat::UNSIGNED_SHORT || // 16Bit
                     requestedFormat == GFXDataFormat::FLOAT_16 ||       // 16Bit
@@ -195,7 +234,7 @@ namespace Divide
             ImageTools::ImageData dataStorage = {};
             dataStorage.requestedFormat( requestedFormat );
 
-            bool loadedFromFile = false;
+            bool hasValidEntries = false;
             // We loop over every texture in the above list and store it in this temporary string
             const ResourcePath currentTextureFullPath = assetLocation().empty() ? Paths::g_texturesLocation : assetLocation();
 
@@ -215,34 +254,34 @@ namespace Divide
                     continue;
                 }
 
-                loadedFromFile = true;
+                hasValidEntries = true;
             }
 
-            if ( loadedFromFile )
+            if ( hasValidEntries )
             {
                 // Create a new Rendering API-dependent texture object
-                _descriptor.baseFormat( dataStorage.format() );
-                _descriptor.dataType( dataStorage.dataType() );
+                _descriptor._baseFormat = dataStorage.format();
+                _descriptor._dataType = dataStorage.dataType();
                 // Uploading to the GPU dependents on the rendering API
                 createWithData( dataStorage, {});
 
-                if ( IsCubeTexture( _descriptor.texType()) && ( dataStorage.layerCount() % 6 != 0 || dataStorage.layerCount() / 6 != depth()) )
+                if ( IsCubeTexture( _descriptor._texType ) && ( dataStorage.layerCount() % 6 != 0 || dataStorage.layerCount() / 6 != depth()) )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ), resourceName().c_str() );
                 }
-                else if ( IsArrayTexture(_descriptor.texType() ) && !IsCubeTexture( _descriptor.texType() ) && dataStorage.layerCount() != depth() )
+                else if ( IsArrayTexture( _descriptor._texType ) && !IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() != depth() )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ), resourceName().c_str() );
                 }
             }
         }
 
-        CachedResource::load();
+        return true;
     }
 
     U8 Texture::numChannels() const noexcept
     {
-        switch ( descriptor().baseFormat() )
+        switch ( _descriptor._baseFormat )
         {
             case GFXImageFormat::RED:  return 1u;
             case GFXImageFormat::RG:   return 2u;
@@ -256,10 +295,10 @@ namespace Divide
 
     bool Texture::loadFile( const ResourcePath& path, const std::string_view name, ImageTools::ImageData& fileData )
     {
-        const bool srgb = _descriptor.packing() == GFXImagePacking::NORMALIZED_SRGB;
+        const bool srgb = _descriptor._packing == GFXImagePacking::NORMALIZED_SRGB;
 
 
-        if ( !fileExists( path / name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor.textureOptions() ) )
+        if ( !fileExists( path / name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor._textureOptions ) )
         {
             if ( fileData.layerCount() > 0 )
             {
@@ -269,8 +308,6 @@ namespace Divide
 
             Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOAD" ), name );
             // missing_texture.jpg must be something that really stands out
-            _descriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
-            _descriptor.baseFormat(GFXImageFormat::RGBA);
             if ( !fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_texturesLocation, s_missingTextureFileName ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
@@ -296,7 +333,7 @@ namespace Divide
 
     void Texture::createWithData( const Byte* data, size_t dataSize, const vec2<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
-        createWithData(data, dataSize, vec3<U16>{dimensions.width, dimensions.height, _descriptor.layerCount()}, pixelUnpackAlignment);
+        createWithData(data, dataSize, vec3<U16>{dimensions.width, dimensions.height, _descriptor._layerCount}, pixelUnpackAlignment);
     }
 
     void Texture::submitTextureData()
@@ -309,20 +346,20 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // This should never be called for compressed textures
-        assert( !IsCompressed( _descriptor.baseFormat() ) );
+        DIVIDE_ASSERT( !IsCompressed( _descriptor._baseFormat ) );
 
-        const U16 slices = IsCubeTexture( _descriptor.texType() ) ? dimensions.depth * 6u : dimensions.depth;
+        const U16 slices = IsCubeTexture( _descriptor._texType ) ? dimensions.depth * 6u : dimensions.depth;
 
         const bool emptyAllocation = dataSize == 0u || data == nullptr;
         prepareTextureData( dimensions.width, dimensions.height, slices, emptyAllocation );
 
         // We can't manually specify data for msaa textures.
-        assert( _descriptor.msaaSamples() == 0u || data == nullptr );
+        DIVIDE_ASSERT( _descriptor._msaaSamples == 0u || data == nullptr );
         
         if ( !emptyAllocation )
         {
             ImageTools::ImageData imgData{};
-            if ( imgData.loadFromMemory( data, dataSize, dimensions.width, dimensions.height, 1, GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat(), _descriptor.packing() ) ) )
+            if ( imgData.loadFromMemory( data, dataSize, dimensions.width, dimensions.height, 1, GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing ) ) )
             {
                 loadDataInternal( imgData, vec3<U16>(0u), pixelUnpackAlignment);
             }
@@ -359,22 +396,22 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         U16 slices = imageData.layerCount();
-        if ( IsCubeTexture(_descriptor.texType()) )
+        if ( IsCubeTexture( _descriptor._texType ) )
         {
             DIVIDE_ASSERT(slices >= 6u && slices % 6u == 0u);
             slices = slices / 6u;
         }
-        else if ( Is3DTexture( _descriptor.texType() ) )
+        else if ( Is3DTexture( _descriptor._texType ) )
         {
             slices = imageData.dimensions( 0u, 0u ).depth;
         }
 
         prepareTextureData( imageData.dimensions( 0u, 0u ).width, imageData.dimensions( 0u, 0u ).height, slices, false );
 
-        if ( IsCompressed( _descriptor.baseFormat() ) &&
-             _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
+        if ( IsCompressed( _descriptor._baseFormat ) &&
+             _descriptor._mipMappingState == MipMappingState::AUTO )
         {
-            _descriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
+            _descriptor._mipMappingState = MipMappingState::MANUAL;
         }
 
         loadDataInternal( imageData, vec3<U16>(0u), pixelUnpackAlignment);
@@ -494,19 +531,19 @@ namespace Divide
     void Texture::setSampleCount( U8 newSampleCount )
     {
         CLAMP( newSampleCount, U8_ZERO, DisplayManager::MaxMSAASamples() );
-        if ( _descriptor.msaaSamples() != newSampleCount )
+        if ( _descriptor._msaaSamples != newSampleCount )
         {
-            _descriptor.msaaSamples( newSampleCount );
+            _descriptor._msaaSamples = newSampleCount;
             createWithData( nullptr, 0u, { width(), height(), depth() }, {});
         }
     }
 
     void Texture::validateDescriptor()
     {
-        if (_descriptor.packing() == GFXImagePacking::NORMALIZED_SRGB )
+        if ( _descriptor._packing == GFXImagePacking::NORMALIZED_SRGB )
         {
             bool valid = false;
-            switch ( _descriptor.baseFormat() )
+            switch ( _descriptor._baseFormat )
             {
                 case GFXImageFormat::RGB:
                 case GFXImageFormat::BGR:
@@ -518,7 +555,7 @@ namespace Divide
                 case GFXImageFormat::BC3:
                 case GFXImageFormat::BC7:
                 {
-                    valid = _descriptor.dataType() == GFXDataFormat::UNSIGNED_BYTE;
+                    valid = _descriptor._dataType == GFXDataFormat::UNSIGNED_BYTE;
                 } break;
 
                 case GFXImageFormat::RED: 
@@ -537,16 +574,16 @@ namespace Divide
 
             DIVIDE_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );
         }
-        else if ( IsDepthTexture(_descriptor.packing()) )
+        else if ( IsDepthTexture( _descriptor._packing) )
         {
-            DIVIDE_ASSERT(_descriptor.baseFormat() == GFXImageFormat::RED, "Depth textures only supported for single channel formats");
+            DIVIDE_ASSERT( _descriptor._baseFormat == GFXImageFormat::RED, "Depth textures only supported for single channel formats");
         }
 
         // We may have a 1D texture
         DIVIDE_ASSERT( _width > 0u && _height > 0u );
         {
             //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
-            if ( descriptor().mipMappingState() != TextureDescriptor::MipMappingState::OFF )
+            if ( _descriptor._mipMappingState != MipMappingState::OFF )
             {
                 _mipCount = to_U16( std::floorf( std::log2f( std::fmaxf( to_F32( _width ), to_F32( _height ) ) ) ) ) + 1;
             }
@@ -559,14 +596,14 @@ namespace Divide
 
     ImageView Texture::getView() const noexcept
     {
-        const U16 layerCount = _descriptor.texType() == TextureType::TEXTURE_3D ? 1u : _depth;
+        const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u : _depth;
 
         ImageView view{};
         view._srcTexture = this;
-        view._descriptor._msaaSamples = _descriptor.msaaSamples();
-        view._descriptor._dataType = _descriptor.dataType();
-        view._descriptor._baseFormat = _descriptor.baseFormat();
-        view._descriptor._packing = _descriptor.packing();
+        view._descriptor._msaaSamples = _descriptor._msaaSamples;
+        view._descriptor._dataType = _descriptor._dataType;
+        view._descriptor._baseFormat = _descriptor._baseFormat;
+        view._descriptor._packing = _descriptor._packing;
         view._subRange._layerRange._count = layerCount;
         view._subRange._mipLevels._count = _mipCount;
 

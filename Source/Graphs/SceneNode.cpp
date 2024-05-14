@@ -11,35 +11,34 @@
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 
-namespace Divide {
-    constexpr U16 BYTE_BUFFER_VERSION = 1u;
+namespace Divide
+{
+
+constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
 namespace Names
 {
     const char* sceneNodeType[to_base(SceneNodeType::COUNT) + 1u] = 
     {
-        "SPHERE_3D", "BOX_3D", "QUAD_3D", "PATCH_3D", "MESH", "SUBMESH", "TERRAIN", "DECAL",
-        "TRANSFORM", "WATER", "TRIGGER", "PARTICLE_EMITTER", "SKY",
-        "INFINITE_PLANE", "VEGETATION_GRASS", "UNKNOWN"
+        "SPHERE_3D", "BOX_3D", "QUAD_3D", "MESH", "SUBMESH", "TERRAIN", "TRANSFORM",
+        "WATER", "PARTICLE_EMITTER", "SKY", "INFINITE_PLANE", "VEGETATION_GRASS", "UNKNOWN"
     };
 }
-SceneNode::SceneNode(ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 requiredComponentMask)
-    : CachedResource(ResourceType::DEFAULT, descriptorHash, name, resourceName, resourceLocation)
+SceneNode::SceneNode( const ResourceDescriptorBase& descriptor, const SceneNodeType type, const U32 requiredComponentMask)
+    : CachedResource( descriptor, Names::sceneNodeType[to_base( type )] )
     , _type(type)
-    , _editorComponent(nullptr, &parentCache->context().editor(), ComponentType::COUNT, Names::sceneNodeType[to_base(type)])
-    , _parentCache(parentCache)
 {
     _requiredComponentMask |= requiredComponentMask;
-
-    getEditorComponent().onChangedCbk([this](const std::string_view field)
-    {
-        editorFieldChanged(field);
-    });
 }
 
 SceneNode::~SceneNode()
 {
-    assert(_materialTemplate == nullptr);
+    DIVIDE_ASSERT(_materialTemplate == INVALID_HANDLE<Material>);
+}
+
+void SceneNode::registerEditorComponent( PlatformContext& context )
+{
+    _editorComponent = std::make_unique<EditorComponent>( context, ComponentType::COUNT, typeName() );
 }
 
 void SceneNode::sceneUpdate([[maybe_unused]] const U64 deltaTimeUS,
@@ -59,52 +58,58 @@ void SceneNode::prepareRender([[maybe_unused]] SceneGraphNode* sgn,
     assert(getState() == ResourceState::RES_LOADED);
 }
 
-void SceneNode::postLoad(SceneGraphNode* sgn) {
-    if (getEditorComponent().name().empty()) {
-        getEditorComponent().name( Names::sceneNodeType[to_base( type() )] );
-    }
-
+void SceneNode::postLoad(SceneGraphNode* sgn)
+{
     sgn->postLoad();
 }
 
-void SceneNode::setBounds(const BoundingBox& aabb, const vec3<F32>& worldOffset) {
+void SceneNode::setBounds(const BoundingBox& aabb, const vec3<F32>& worldOffset)
+{
     _boundsChanged = true;
     _boundingBox.set(aabb);
     _worldOffset.set(worldOffset);
 }
 
-const Material_ptr& SceneNode::getMaterialTpl() const {
-    // UpgradableReadLock ur_lock(_materialLock);
+Handle<Material> SceneNode::getMaterialTpl() const
+{
     return _materialTemplate;
 }
 
-void SceneNode::setMaterialTpl(const Material_ptr& material) {
-    if (material != nullptr) {  // If we need to update the material
-        // UpgradableReadLock ur_lock(_materialLock);
-
-        // If we had an old material
-        if (_materialTemplate != nullptr) {
-            // if the old material isn't the same as the new one
-            if (_materialTemplate->getGUID() != material->getGUID()) {
-                Console::printfn(LOCALE_STR("REPLACE_MATERIAL"),
-                                 _materialTemplate->resourceName().c_str(),
-                                 material->resourceName().c_str());
-                _materialTemplate = material;  // set the new material
-            }
-        } else {
-            _materialTemplate = material;  // set the new material
-        }
-    } else {  // if we receive a null material, the we need to remove this node's material
-        _materialTemplate.reset();
+void SceneNode::setMaterialTpl(const Handle<Material> material)
+{
+    if (_materialTemplate == material)
+    {
+        return;
     }
+
+    if ( _materialTemplate != INVALID_HANDLE<Material> )
+    {
+        if ( material != INVALID_HANDLE<Material> )
+        {
+            Console::printfn( LOCALE_STR( "REPLACE_MATERIAL" ), to_U32(_materialTemplate._index), to_U32(material._index));
+        }
+
+        DestroyResource( _materialTemplate );
+    }
+
+    _materialTemplate = material;
 }
 
-bool SceneNode::unload() {
-    setMaterialTpl(nullptr);
-    return true;
+bool SceneNode::load( PlatformContext& context )
+{
+    return CachedResource::load( context );
 }
 
-void SceneNode::editorFieldChanged([[maybe_unused]] std::string_view field) {
+bool SceneNode::postLoad() 
+{
+    return CachedResource::postLoad();
+}
+
+bool SceneNode::unload()
+{
+    setMaterialTpl(INVALID_HANDLE<Material>);
+    _editorComponent.reset();
+    return CachedResource::unload();
 }
 
 void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
@@ -112,29 +117,61 @@ void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
 {
 }
 
-void SceneNode::onNetworkSend([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataOut) const {
+void SceneNode::onNetworkSend([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataOut) const
+{
 }
 
-void SceneNode::onNetworkReceive([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataIn) const {
+void SceneNode::onNetworkReceive([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataIn) const
+{
 }
 
-bool SceneNode::saveCache(ByteBuffer& outputBuffer) const {
+bool SceneNode::saveCache(ByteBuffer& outputBuffer) const
+{
     outputBuffer << BYTE_BUFFER_VERSION;
+    if ( _editorComponent != nullptr )
+    {
+        return Attorney::EditorComponentSceneGraphNode::saveCache( *_editorComponent, outputBuffer );
+    }
+
     return true;
 }
 
-bool SceneNode::loadCache(ByteBuffer& inputBuffer) {
+bool SceneNode::loadCache(ByteBuffer& inputBuffer)
+{
     auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     inputBuffer >> tempVer;
-    return tempVer == BYTE_BUFFER_VERSION;
+    if ( tempVer == BYTE_BUFFER_VERSION )
+    {
+        if ( _editorComponent != nullptr )
+        {
+            return Attorney::EditorComponentSceneGraphNode::loadCache( *_editorComponent, inputBuffer );
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
-void SceneNode::saveToXML(boost::property_tree::ptree& pt) const {
-    Attorney::EditorComponentSceneGraphNode::saveToXML(getEditorComponent(), pt);
+void SceneNode::saveToXML(boost::property_tree::ptree& pt) const
+{
+    if ( _editorComponent != nullptr )
+    {
+        Attorney::EditorComponentSceneGraphNode::saveToXML( *_editorComponent, pt );
+    }
 }
 
-void SceneNode::loadFromXML(const boost::property_tree::ptree& pt) {
-    Attorney::EditorComponentSceneGraphNode::loadFromXML(getEditorComponent(), pt);
+void SceneNode::loadFromXML(const boost::property_tree::ptree& pt)
+{
+    if ( _editorComponent != nullptr )
+    {
+        Attorney::EditorComponentSceneGraphNode::loadFromXML( *_editorComponent, pt );
+    }
+}
+
+TransformNode::TransformNode( PlatformContext& context, const ResourceDescriptor<TransformNode>& descriptor )
+    : SceneNode( descriptor, SceneNodeType::TYPE_TRANSFORM, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) )
+{
 }
 
 } //namespace Divide

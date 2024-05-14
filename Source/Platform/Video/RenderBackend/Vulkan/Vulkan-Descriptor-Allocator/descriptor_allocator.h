@@ -38,7 +38,7 @@ namespace vke {
 
     struct PoolSizes
     {
-        Divide::vector_fast<PoolSize> sizes =
+        Divide::vector<PoolSize> sizes =
         {
             { VK_DESCRIPTOR_TYPE_SAMPLER, 1.f },
             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f },
@@ -61,8 +61,8 @@ namespace vke {
 
     struct PoolStorage
     {
-        Divide::vector_fast<DescriptorAllocator> _usableAllocators;
-        Divide::vector_fast<DescriptorAllocator> _fullAllocators;
+        Divide::vector<DescriptorAllocator> _usableAllocators;
+        Divide::vector<DescriptorAllocator> _fullAllocators;
     };
 
     class DescriptorAllocatorPool;
@@ -116,8 +116,8 @@ namespace vke {
         Divide::I32 _maxFrames{ 3 };
 
         Divide::Mutex _poolMutex;
-        Divide::vector_fast<std::unique_ptr<PoolStorage>> _descriptorPools;
-        Divide::vector_fast<DescriptorAllocator> _clearAllocators;
+        Divide::vector<std::unique_ptr<PoolStorage>> _descriptorPools;
+        Divide::vector<DescriptorAllocator> _clearAllocators;
     };
 }
 

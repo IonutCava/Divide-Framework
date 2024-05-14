@@ -43,6 +43,8 @@ using TimedMutex = std::timed_mutex;
 using SharedMutex = std::shared_mutex;
 using SharedTimedMutex = std::shared_timed_mutex;
 
+using RecursiveMutex = std::recursive_mutex;
+
 template<typename mutex>
 using SharedLock = std::shared_lock<mutex>;
 

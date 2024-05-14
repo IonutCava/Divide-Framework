@@ -71,7 +71,6 @@ namespace ECS
 		namespace Internal
 		{
 			class  MemoryManager;
-			extern MemoryManager*				ECSMemoryManager;
 		}
 	}
 
@@ -103,7 +102,7 @@ namespace ECS
 		{
 		private:
 
-			Internal::MemoryManager* ECS_MEMORY_MANAGER;
+			std::unique_ptr<Internal::MemoryManager> ECS_MEMORY_MANAGER;
 
 		public:
 
@@ -115,10 +114,6 @@ namespace ECS
 		};
 
 	} // namespace ECS::Memory
-
-
-	ECS_API void					Initialize();
-	ECS_API void					Terminate();
 
 } // namespace ECS
 

@@ -43,7 +43,7 @@ class ShaderProgram;
 
 class BloomPreRenderOperator final : public PreRenderOperator {
    public:
-    BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
+    BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
     ~BloomPreRenderOperator() override;
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
@@ -58,8 +58,8 @@ class BloomPreRenderOperator final : public PreRenderOperator {
     RenderTargetHandle _bloomOutput;
     RenderTargetHandle _bloomBlurBuffer[2];
 
-    ShaderProgram_ptr _bloomCalc{ nullptr };
-    ShaderProgram_ptr _bloomApply{ nullptr };
+    Handle<ShaderProgram> _bloomCalc{ INVALID_HANDLE<ShaderProgram> };
+    Handle<ShaderProgram> _bloomApply{ INVALID_HANDLE<ShaderProgram> };
 
     Pipeline* _bloomCalcPipeline{ nullptr };
     Pipeline* _bloomApplyPipeline{ nullptr };

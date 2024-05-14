@@ -64,54 +64,41 @@ namespace Divide
     namespace VKUtil
     {
 
-        static void SubmitIndexedRenderCommand( const GenericDrawCommand& drawCommand,
-                                                const VkCommandBuffer commandBuffer,
-                                                const bool useIndirectBuffer )
-        {
-            if ( useIndirectBuffer )
-            {
-                const size_t offset = (drawCommand._commandOffset * sizeof( IndirectIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
-                vkCmdDrawIndexedIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectIndexedDrawCommand ) );
-            }
-            else
-            {
-                vkCmdDrawIndexed( commandBuffer, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.firstIndex, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
-            }
-        }
-
-        static void SubmitNonIndexedRenderCommand( const GenericDrawCommand& drawCommand,
-                                                   const VkCommandBuffer commandBuffer,
-                                                   const bool useIndirectBuffer )
-        {
-            if ( useIndirectBuffer )
-            {
-                const size_t offset = (drawCommand._commandOffset * sizeof( IndirectNonIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
-                vkCmdDrawIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectNonIndexedDrawCommand ) );
-            }
-            else
-            {
-                vkCmdDraw( commandBuffer, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
-            }
-        }
-
         void SubmitRenderCommand( const GenericDrawCommand& drawCommand,
                                   const VkCommandBuffer commandBuffer,
-                                  const bool indexed,
-                                  const bool useIndirectBuffer )
+                                  const bool indexed )
         {
             if ( drawCommand._drawCount > 0u && drawCommand._cmd.instanceCount > 0u )
             {
+                const bool useIndirectBuffer = isEnabledOption(drawCommand, CmdRenderOptions::RENDER_INDIRECT);
+
                 if ( !useIndirectBuffer && drawCommand._cmd.instanceCount > 1u && drawCommand._drawCount > 1u ) [[unlikely]]
                 {
                     DIVIDE_UNEXPECTED_CALL_MSG( "Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value (base instance is also used for buffer indexing). Split the call into multiple draw commands with manual uniform-updates in-between!" );
                 }
                 if ( indexed )
                 {
-                    SubmitIndexedRenderCommand( drawCommand, commandBuffer, useIndirectBuffer);
+                    if ( useIndirectBuffer )
+                    {
+                        const size_t offset = (drawCommand._commandOffset * sizeof( IndirectIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
+                        vkCmdDrawIndexedIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectIndexedDrawCommand ) );
+                    }
+                    else
+                    {
+                        vkCmdDrawIndexed( commandBuffer, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.firstIndex, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                    }
                 }
                 else
                 {
-                    SubmitNonIndexedRenderCommand( drawCommand, commandBuffer, useIndirectBuffer );
+                    if ( useIndirectBuffer )
+                    {
+                        const size_t offset = (drawCommand._commandOffset * sizeof( IndirectNonIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
+                        vkCmdDrawIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectNonIndexedDrawCommand ) );
+                    }
+                    else
+                    {
+                        vkCmdDraw( commandBuffer, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                    }
                 }
             }
         }

@@ -18,12 +18,12 @@ constexpr F32 DESTINATION_RADIUS_SQ = DESTINATION_RADIUS *
                                       DESTINATION_RADIUS;
 constexpr F32 DESTINATION_RADIUS_F = to_F32(DESTINATION_RADIUS);
 
-AIEntity::AIEntity(const vec3<F32>& currentPosition, string name)
+AIEntity::AIEntity( NPC* parent, const vec3<F32>& currentPosition, std::string_view name)
     : GUIDWrapper(),
       _name(MOV(name)),
       _teamPtr(nullptr),
       _processor(nullptr),
-      _unitRef(nullptr),
+      _unitRef( parent ),
       _agentID(-1),
       _detourCrowd(nullptr),
       _agent(nullptr),
@@ -42,22 +42,21 @@ AIEntity::~AIEntity()
         _detourCrowd->removeAgent(getAgentID());
     }
 
-    _agentID = -1;
-    _agent = nullptr;
-
-    if (!setAIProcessor(nullptr)) {
+    if (!setAndSurrenderAIProcessor( nullptr ))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
-    MemoryManager::DELETE_HASHMAP(_sensorList);
 }
 
-void AIEntity::load(const vec3<F32>& position) {
-    if (!setPosition(position)) {
+void AIEntity::load( const vec3<F32>& currentPosition )
+{
+    if (!setPosition( currentPosition ))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
 
     if (!isAgentLoaded() && _detourCrowd) {
-        _agentID = _detourCrowd->addAgent(position,
+        _agentID = _detourCrowd->addAgent( currentPosition,
                                           _unitRef
                                               ? _unitRef->getMovementSpeed()
                                               : to_F32(_detourCrowd->getAgentHeight() / 2 * 3.5f),
@@ -66,7 +65,7 @@ void AIEntity::load(const vec3<F32>& position) {
                                               : 5.0f);
 
         _agent = _detourCrowd->getAgent(_agentID);
-        _destination = position;
+        _destination = currentPosition;
     }
 }
 
@@ -110,43 +109,43 @@ Sensor* AIEntity::getSensor(const SensorType type) {
     SharedLock<SharedMutex> r_lock(_updateMutex);
     const SensorMap::const_iterator it = _sensorList.find(type);
     if (it != std::end(_sensorList)) {
-        return it->second;
+        return it->second.get();
     }
     return nullptr;
 }
 
-bool AIEntity::addSensor(const SensorType type) {
+bool AIEntity::addSensor(const SensorType type)
+{
     LockGuard<SharedMutex> w_lock(_updateMutex);
-    Sensor* sensor = nullptr;
-    switch (type) {
-        case SensorType::AUDIO_SENSOR: {
-            sensor = Attorney::AudioSensorConstructor::construct(this);
+    std::unique_ptr<Sensor>& sensor = _sensorList[type];
+    switch (type)
+    {
+        case SensorType::AUDIO_SENSOR:
+        {
+            sensor = std::make_unique<AudioSensor>(this);
         } break;
-        case SensorType::VISUAL_SENSOR: {
-            sensor = Attorney::VisualSensorConstructor::construct(this);
+        case SensorType::VISUAL_SENSOR:
+        {
+            sensor = std::make_unique<VisualSensor>(this);
         } break;
         case SensorType::NONE:{
                 
         } break;
     }
 
-    if (sensor) {
-        const auto result = insert(_sensorList, type, sensor);
-        if (!result.second) {
-            MemoryManager::SAFE_UPDATE(result.first->second, sensor);
-        } 
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
-bool AIEntity::setAIProcessor(AIProcessor* processor) {
+bool AIEntity::setAndSurrenderAIProcessor( AIProcessor* processor )
+{
     LockGuard<SharedMutex> w_lock(_updateMutex);
-    MemoryManager::SAFE_UPDATE(_processor, processor);
-    if (_processor) {
+    _processor.reset(processor);
+    if (_processor)
+    {
         _processor->addEntityRef(this);
+        processor = nullptr;
     }
+
     return true;
 }
 
@@ -202,12 +201,6 @@ void AIEntity::setTeamPtr(AITeam* const teamPtr) {
     _teamPtr = teamPtr;
 }
 
-void AIEntity::addUnitRef(NPC* const npc) {
-    _unitRef = npc;
-    if (_unitRef) {
-        load(_unitRef->getPosition());
-    }
-}
 
 F32 AIEntity::getAgentHeight() const noexcept {
     return _detourCrowd ? _detourCrowd->getAgentHeight() : 0.f;
@@ -217,8 +210,10 @@ F32 AIEntity::getAgentRadius() const noexcept {
     return _detourCrowd ? _detourCrowd->getAgentRadius() : 0.f;
 }
 
-void AIEntity::resetCrowd() {
-    if (_detourCrowd) {
+void AIEntity::resetCrowd()
+{
+    if (_detourCrowd)
+    {
         unload();
     }
 

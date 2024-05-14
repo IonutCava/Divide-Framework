@@ -62,7 +62,6 @@ namespace Divide {
         switch (sgn->getNode().type())
         {
             case SceneNodeType::TYPE_WATER: return ICON_FK_SHIP;
-            case SceneNodeType::TYPE_TRIGGER: return ICON_FK_COGS;
             case SceneNodeType::TYPE_PARTICLE_EMITTER: return ICON_FK_FIRE;
             case SceneNodeType::TYPE_SKY: return ICON_FK_CLOUD;
             case SceneNodeType::TYPE_INFINITEPLANE: return ICON_FK_ARROWS;
@@ -70,11 +69,9 @@ namespace Divide {
             case SceneNodeType::TYPE_SPHERE_3D: return ICON_FK_CIRCLE;
             case SceneNodeType::TYPE_BOX_3D: return ICON_FK_CUBE;
             case SceneNodeType::TYPE_QUAD_3D: return ICON_FK_SQUARE;
-            case SceneNodeType::TYPE_PATCH_3D: return ICON_FK_PLUS_SQUARE;
             case SceneNodeType::TYPE_MESH: return ICON_FK_BUILDING;
             case SceneNodeType::TYPE_SUBMESH: return ICON_FK_PUZZLE_PIECE;
             case SceneNodeType::TYPE_TERRAIN: return ICON_FK_TREE;
-            case SceneNodeType::TYPE_DECAL: return ICON_FK_STICKY_NOTE;
             case SceneNodeType::TYPE_TRANSFORM:
             {
                 if (sgn->HasComponents(ComponentType::DIRECTIONAL_LIGHT))

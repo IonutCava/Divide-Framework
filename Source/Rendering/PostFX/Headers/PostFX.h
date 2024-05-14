@@ -63,7 +63,7 @@ private:
     };
 
 public:
-    explicit PostFX(PlatformContext& context, ResourceCache* cache);
+    explicit PostFX(PlatformContext& context);
     ~PostFX() override;
 
     void prePass(PlayerIndex idx, const CameraSnapshot& cameraSnapshot,GFX::CommandBuffer& bufferInOut);
@@ -142,16 +142,15 @@ public:
     PROPERTY_RW(bool, isDayTime, true);
 private:
     PreRenderBatch _preRenderBatch;
-    /// Screen Border
-    Texture_ptr _screenBorder = nullptr;
-    /// Noise
-    Texture_ptr _noise = nullptr;
+
+    Handle<Texture> _screenBorder = INVALID_HANDLE<Texture>;
+    Handle<Texture> _noise = INVALID_HANDLE<Texture>;
+    Handle<Texture> _underwaterTexture = INVALID_HANDLE<Texture>;
 
     F32 _randomNoiseCoefficient = 0.0f, _randomFlashCoefficient = 0.0f;
     D64 _noiseTimer = 0.0, _tickInterval = 1.0;
 
-    ShaderProgram_ptr _postProcessingShader = nullptr;
-    Texture_ptr _underwaterTexture = nullptr;
+    Handle<ShaderProgram> _postProcessingShader = INVALID_HANDLE<ShaderProgram>;
     vec2<U16> _resolutionCache;
 
     RTDrawDescriptor _postFXTarget;

@@ -121,11 +121,10 @@ void DVDTextureTarget::initialiseRenderTexture()
     _sampler._mipSampling = TextureMipSampling::NONE;
     _sampler._anisotropyLevel = 0u;
 
-    TextureDescriptor descriptor( TextureType::TEXTURE_2D,
-                                  GFXDataFormat::UNSIGNED_BYTE,
-                                  GFXImageFormat::RGBA,
-                                  GFXImagePacking::NORMALIZED );
-    descriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+    TextureDescriptor descriptor
+    {
+        ._mipMappingState = MipMappingState::OFF
+    };
 
     RenderTargetDescriptor editorDesc = {};
     editorDesc._attachments = 
@@ -171,8 +170,7 @@ void DVDTextureTarget::resizeRenderTexture()
 
 void DVDTextureTarget::createCEGUITexture()
 {
-    static Divide::Texture_ptr dummy{};
-    _CEGUITexture = &static_cast<DVDTexture&>(_owner.createTexture( GenerateTextureName(), dummy, _area.getSize() ));
+    _CEGUITexture = &static_cast<DVDTexture&>(_owner.createTexture( GenerateTextureName(), Divide::INVALID_HANDLE<Divide::Texture>, _area.getSize() ));
     _requiresClear = true;
 }
 
@@ -187,10 +185,9 @@ String DVDTextureTarget::GenerateTextureName()
 }
 
 
-Divide::Texture* DVDTextureTarget::getAttachmentTex() const
+Divide::Handle<Divide::Texture> DVDTextureTarget::getAttachmentTex() const
 {
-    auto attachment = _renderTarget._rt->getAttachment( Divide::RTAttachmentType::COLOUR );
-    return attachment->texture().get();
+    return _renderTarget._rt->getAttachment( Divide::RTAttachmentType::COLOUR )->texture();
 }
 
 void DVDTextureTarget::setArea( const Rectf& area )

@@ -8,6 +8,7 @@
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Utility/Headers/Localization.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 namespace Divide
 {
@@ -129,10 +130,10 @@ namespace Divide
         // Save the render state hash value for sorting
         item._stateHash = Attorney::RenderingCompRenderBin::getStateHash( item._renderable, renderStagePass );
 
-        const Material_ptr& nodeMaterial = item._renderable->getMaterialInstance();
-        if ( nodeMaterial )
+        const Handle<Material> nodeMaterial = item._renderable->getMaterialInstance();
+        if ( nodeMaterial != INVALID_HANDLE<Material>)
         {
-            Attorney::MaterialRenderBin::getSortKeys( *nodeMaterial, renderStagePass, item._shaderKey, item._textureKey, item._hasTransparency );
+            Attorney::MaterialRenderBin::getSortKeys( Get(nodeMaterial), renderStagePass, item._shaderKey, item._textureKey, item._hasTransparency );
         }
     }
 

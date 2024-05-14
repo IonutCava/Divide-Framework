@@ -60,29 +60,29 @@ struct PushConstants
 
     void set(const PushConstantsStruct& fastData);
 
-    template<typename T>
+    template<typename T> requires !std::is_same_v<bool, T>
     void set(U64 bindingHash, PushConstantType type, const T* values, size_t count);
 
     template<typename T>
     void set(U64 bindingHash, PushConstantType type, const T& value);
 
-    template<typename T>
+    template<typename T> requires !std::is_same_v<bool, T>
     void set(U64 bindingHash, PushConstantType type, const vector<T>& values);
 
-    template<typename T, size_t N>
+    template<typename T, size_t N> requires !std::is_same_v<bool, T>
     void set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values);
 
     void clear() noexcept;
     bool empty() const noexcept;
     void countHint(const size_t count);
 
-    [[nodiscard]] const vector_fast<GFX::PushConstant>& data() const noexcept;
+    [[nodiscard]] const vector<GFX::PushConstant>& data() const noexcept;
     [[nodiscard]] const PushConstantsStruct& fastData() const noexcept;
 
 private:
     friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
     PushConstantsStruct _fastData{};
-    vector_fast<GFX::PushConstant> _data;
+    vector<GFX::PushConstant> _data;
 };
 
 bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);

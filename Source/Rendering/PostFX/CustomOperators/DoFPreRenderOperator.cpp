@@ -19,7 +19,7 @@ namespace {
     constexpr U8 g_ringCount = 4;
 }
 
-DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
+DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
     : PreRenderOperator(context, parent, FilterType::FILTER_DEPTH_OF_FIELD)
 {
     ShaderModuleDescriptor vertModule = {};
@@ -74,19 +74,16 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
 
-    ResourceDescriptor dof("DepthOfField");
+    ResourceDescriptor<ShaderProgram> dof("DepthOfField", shaderDescriptor );
     dof.waitForReady(false);
-    dof.propertyDescriptor(shaderDescriptor);
-    _dofShader = CreateResource<ShaderProgram>(cache, dof);
-    _dofShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
-    {
-        PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _dofShader->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        _pipeline = _context.newPipeline(pipelineDescriptor);
-    });
+    _dofShader = CreateResource(dof);
+    PipelineDescriptor pipelineDescriptor = {};
+    pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+    pipelineDescriptor._shaderProgramHandle = _dofShader;
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
+    _pipeline = _context.newPipeline( pipelineDescriptor );
 
     const vec2<U16> resolution = _parent.screenRT()._rt->getResolution();
     _constants.data[0]._vec[0].xy.set(resolution.width, resolution.height );
@@ -94,9 +91,14 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     parametersChanged();
 }
 
+DoFPreRenderOperator::~DoFPreRenderOperator()
+{
+    DestroyResource(_dofShader);
+}
+
 bool DoFPreRenderOperator::ready() const noexcept
 {
-    return _dofShader->getState() == ResourceState::RES_LOADED && PreRenderOperator::ready();
+    return Get(_dofShader)->getState() == ResourceState::RES_LOADED && PreRenderOperator::ready();
 }
 
 void DoFPreRenderOperator::parametersChanged() noexcept
@@ -131,8 +133,8 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::COLOUR);
-    const auto& screenTex = screenAtt->texture()->getView();
-    const auto& extraTex = extraAtt->texture()->getView();
+    const auto& screenTex = Get(screenAtt->texture())->getView();
+    const auto& extraTex  = Get(extraAtt->texture())->getView();
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;

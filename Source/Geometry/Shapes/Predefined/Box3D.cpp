@@ -2,10 +2,18 @@
 
 #include "Headers/Box3D.h"
 
+#include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+#include "Geometry/Material/Headers/Material.h"
+
+#include "Platform/Video/Headers/GFXDevice.h"
+
 namespace Divide {
 
-namespace {
-    static const U16 indices[] = {
+namespace
+{
+    static const U16 indices[] =
+    {
          0,  1,  3,  0,  3,  2,
          4,  5,  7,  4,  7,  6,
          8,  9, 11,  8, 11, 10,
@@ -14,7 +22,8 @@ namespace {
         20, 21, 23, 20, 23, 22,
     };
 
-    static const vec3<F32> vertices[4 * 6] = {
+    static const vec3<F32> vertices[4 * 6] =
+    {
         {-1.0f, -1.0f,  1.0f},
         { 1.0f, -1.0f,  1.0f},
         {-1.0f,  1.0f,  1.0f},
@@ -46,17 +55,28 @@ namespace {
         { 1.0f,  1.0f, -1.0f}
     };
 };
-Box3D::Box3D( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const vec3<F32>& size)
-    : Object3D(context, parentCache, descriptorHash, name, {}, {}, SceneNodeType::TYPE_BOX_3D, Object3D::ObjectFlag::OBJECT_FLAG_NONE)
+Box3D::Box3D( PlatformContext& context, const ResourceDescriptor<Box3D>& descriptor )
+    : Object3D(context, descriptor, GetSceneNodeType<Box3D>() )
 {
-    static const vec2<F32> texCoords[4] = {
+    constexpr F32 s_minSideLength = 0.0001f;
+
+    const vec3<F32> targetSize
+    {
+        std::max( Util::UINT_TO_FLOAT( descriptor.data().x ), s_minSideLength ),
+        std::max( Util::UINT_TO_FLOAT( descriptor.data().y ), s_minSideLength ),
+        std::max( Util::UINT_TO_FLOAT( descriptor.data().z ), s_minSideLength )
+    };
+
+    static const vec2<F32> texCoords[4] =
+    {
         {0.0f, 0.0f},
         {1.0f, 0.0f},
         {0.0f, 1.0f},
         {1.0f, 1.0f}
     };
 
-    static const vec3<F32> normals[] = {
+    static const vec3<F32> normals[] =
+    {
         { 0.f,  0.f,  1.f},
         { 1.f,  0.f,  0.f},
         { 0.f,  0.f, -1.f},
@@ -66,27 +86,50 @@ Box3D::Box3D( PlatformContext& context, ResourceCache* parentCache, const size_t
     };
 
 
-    _halfExtent.set(size / 2);
+    _halfExtent.set( targetSize / 2);
 
-    geometryBuffer()->setVertexCount(std::size(vertices));
+    const size_t vertexCount = std::size( vertices );
+    VertexBuffer::Descriptor vbDescriptor{};
+    vbDescriptor._name = resourceName();
+    vbDescriptor._allowDynamicUpdates = true;
+    vbDescriptor._keepCPUData = true;
+    vbDescriptor._largeIndices = vertexCount + 1 > U16_MAX;
 
-    for (const U16 idx : indices) {
-        geometryBuffer()->addIndex(idx);
+    auto vb = context.gfx().newVB( vbDescriptor );
+    vb->setVertexCount( vertexCount );
+    vb->reserveIndexCount( vertexCount );
+
+    for (const U16 idx : indices)
+    {
+        vb->addIndex(idx);
     }
 
-    for (U32 i = 0u; i < std::size(vertices); ++i) {
-        geometryBuffer()->modifyPositionValue(i, vertices[i] * _halfExtent);
-        geometryBuffer()->modifyTexCoordValue(i, texCoords[i % 4]);
-        geometryBuffer()->modifyNormalValue(i, normals[i / 4]);
+    for (U32 i = 0u; i < std::size(vertices); ++i)
+    {
+        vb->modifyPositionValue(i, vertices[i] * _halfExtent);
+        vb->modifyTexCoordValue(i, texCoords[i % 4]);
+        vb->modifyNormalValue(i, normals[i / 4]);
     }
-    geometryBuffer()->create(false, true);
+
+    geometryBuffer(vb);
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
+
+    if ( !descriptor.flag() )
+    {
+        ResourceDescriptor<Material> matDesc( "Material_" + descriptor.resourceName() );
+        matDesc.waitForReady( true );
+        Handle<Material> matTemp = CreateResource( matDesc );
+        Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
+        setMaterialTpl( matTemp );
+    }
 }
 
-void Box3D::setHalfExtent(const vec3<F32>& halfExtent) {
+void Box3D::setHalfExtent(const vec3<F32>& halfExtent)
+{
     _halfExtent = halfExtent;
 
-    for (U32 i = 0u; i < std::size(vertices); ++i) {
+    for (U32 i = 0u; i < std::size(vertices); ++i)
+    {
         geometryBuffer()->modifyPositionValue(i, vertices[i] * _halfExtent);
     }
     setBounds(BoundingBox(-_halfExtent, _halfExtent));

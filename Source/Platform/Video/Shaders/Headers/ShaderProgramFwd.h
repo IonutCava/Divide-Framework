@@ -33,16 +33,12 @@
 #ifndef DVD_SHADER_PROGRAM_FWD_H_
 #define DVD_SHADER_PROGRAM_FWD_H_
 
-#include "Core/Resources/Headers/ResourceDescriptor.h"
-
+#include "Core/Resources/Headers/Resource.h"
 #include "Core/Headers/PoolHandle.h"
 
 namespace Divide {
     class ShaderProgram;
     struct PerFileShaderData;
-
-    using ShaderProgramHandle = PoolHandle;
-    static constexpr ShaderProgramHandle SHADER_INVALID_HANDLE{ U16_MAX, U8_MAX };
 
     enum class ShaderResult : U8
     {
@@ -74,20 +70,23 @@ namespace Divide {
         ShaderType _moduleType = ShaderType::COUNT;
     };
 
-    struct ShaderProgramDescriptor final : public PropertyDescriptor
+    template<>
+    struct PropertyDescriptor<ShaderProgram>
     {
-        ShaderProgramDescriptor() noexcept;
-
-        size_t getHash() const noexcept override;
         Str<256> _name;
         ModuleDefines _globalDefines;
         vector<ShaderModuleDescriptor> _modules;
         bool _useShaderCache{true};
     };
 
+    using ShaderProgramDescriptor = PropertyDescriptor<ShaderProgram>;
+
+    template<>
+    inline size_t GetHash( const PropertyDescriptor<ShaderProgram>& descriptor ) noexcept;
+
     struct ShaderProgramMapEntry
     {
-        ShaderProgram* _program = nullptr;
+        Handle<ShaderProgram> _program = INVALID_HANDLE<ShaderProgram>;
         U8 _generation = 0u;
     };
 
@@ -97,3 +96,5 @@ namespace Divide {
 }; //namespace Divide
 
 #endif //DVD_SHADER_PROGRAM_FWD_H_
+
+#include "ShaderProgramFwd.inl"

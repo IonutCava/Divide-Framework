@@ -7,15 +7,6 @@
 #include <SDL_syswm.h>
 #include <signal.h>
 
-void* malloc_aligned(const size_t size, size_t alignment, size_t offset) {
-    (void)offset;
-    return _mm_malloc(size, alignment);
-}
-
-void  free_aligned(void*& ptr) {
-    _mm_free(ptr);
-}
-
 namespace Divide {
 
     bool DebugBreak(const bool condition) noexcept {

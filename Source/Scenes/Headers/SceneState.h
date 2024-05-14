@@ -204,12 +204,12 @@ struct SceneStatePerPlayer {
     const F32 _headHeight = DEFAULT_PLAYER_HEIGHT;
 };
 
-using WaterBodyDataContainer = eastl::fixed_vector<WaterBodyData, 5, true, eastl::dvd_allocator>;
+using WaterBodyDataContainer = eastl::fixed_vector<WaterBodyData, 5, true>;
 
 class SceneState : public SceneComponent {
    public:
     /// Background music map : trackName - track
-    using MusicPlaylist = hashMap<U64, AudioDescriptor_ptr>;
+    using MusicPlaylist = hashMap<U64, Handle<AudioDescriptor>>;
 
     explicit SceneState(Scene& parentScene);
 

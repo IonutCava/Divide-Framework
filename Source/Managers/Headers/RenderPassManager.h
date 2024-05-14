@@ -114,7 +114,7 @@ namespace Divide
         };
 
         explicit RenderPassManager( Kernel& parent, GFXDevice& context );
-        ~RenderPassManager() override;
+        ~RenderPassManager();
 
         /// Call every render queue's render function in order
         void render( const RenderParams& params );
@@ -141,14 +141,14 @@ namespace Divide
         private:
         GFXDevice& _context;
 
-        ShaderProgram_ptr _oitCompositionShader = nullptr;
-        ShaderProgram_ptr _oitCompositionShaderMS = nullptr;
-        ShaderProgram_ptr _gbufferResolveShader = nullptr;
+        Handle<ShaderProgram> _oitCompositionShader = INVALID_HANDLE<ShaderProgram>;
+        Handle<ShaderProgram> _oitCompositionShaderMS = INVALID_HANDLE<ShaderProgram>;
+        Handle<ShaderProgram> _gbufferResolveShader = INVALID_HANDLE<ShaderProgram>;
 
         struct RenderPassData
         {
             Task* _workTask{ nullptr };
-            RenderPass* _pass{ nullptr };
+            std::unique_ptr<RenderPass> _pass{ nullptr };
             GFX::MemoryBarrierCommand _memCmd{};
         };
 

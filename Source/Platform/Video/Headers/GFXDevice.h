@@ -47,9 +47,10 @@
 #include "Core/Math/Headers/Line.h"
 #include "Core/Headers/FrameListener.h"
 #include "Core/Headers/PlatformContextComponent.h"
-#include "Geometry/Material/Headers/MaterialEnums.h"
-#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Headers/DescriptorSets.h"
+#include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
+#include "Geometry/Material/Headers/MaterialEnums.h"
 #include "Rendering/Camera/Headers/Frustum.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
@@ -59,7 +60,6 @@ namespace Divide
 {
 
 struct RenderPassParams;
-struct ShaderProgramDescriptor;
 
 enum class SceneNodeType : U16;
 enum class WindowEvent : U8;
@@ -137,8 +137,8 @@ struct DebugView final : GUIDWrapper
 
     PushConstants _shaderData;
     string _name;
-    ShaderProgram_ptr _shader = nullptr;
-    Texture_ptr _texture = nullptr;
+    Handle<ShaderProgram> _shader = INVALID_HANDLE<ShaderProgram>;
+    Handle<Texture> _texture = INVALID_HANDLE<Texture>;
     SamplerDescriptor _sampler{};
     I16 _groupID = -1;
     I16 _sortIndex = -1;
@@ -178,14 +178,15 @@ struct DebugPrimitiveHandler
 
 struct ImShaders
 {
-    explicit ImShaders( GFXDevice& context );
+    explicit ImShaders();
+    ~ImShaders();
 
-    PROPERTY_R_IW( ShaderProgram_ptr, imShader, nullptr );
-    PROPERTY_R_IW( ShaderProgram_ptr, imShaderNoTexture, nullptr );
-    PROPERTY_R_IW( ShaderProgram_ptr, imWorldShader, nullptr );
-    PROPERTY_R_IW( ShaderProgram_ptr, imWorldShaderNoTexture, nullptr );
-    PROPERTY_R_IW( ShaderProgram_ptr, imWorldOITShader, nullptr );
-    PROPERTY_R_IW( ShaderProgram_ptr, imWorldOITShaderNoTexture, nullptr );
+    PROPERTY_R_IW( Handle<ShaderProgram>, imShader, INVALID_HANDLE<ShaderProgram> );
+    PROPERTY_R_IW( Handle<ShaderProgram>, imShaderNoTexture, INVALID_HANDLE<ShaderProgram> );
+    PROPERTY_R_IW( Handle<ShaderProgram>, imWorldShader, INVALID_HANDLE<ShaderProgram> );
+    PROPERTY_R_IW( Handle<ShaderProgram>, imWorldShaderNoTexture, INVALID_HANDLE<ShaderProgram> );
+    PROPERTY_R_IW( Handle<ShaderProgram>, imWorldOITShader, INVALID_HANDLE<ShaderProgram> );
+    PROPERTY_R_IW( Handle<ShaderProgram>, imWorldOITShaderNoTexture, INVALID_HANDLE<ShaderProgram> );
 };
 
 FWD_DECLARE_MANAGED_STRUCT( ImShaders );
@@ -318,7 +319,7 @@ public:  // Accessors and Mutators
     [[nodiscard]] const RenderStateBlock& get2DStateBlock() const noexcept;
     [[nodiscard]] GFXRTPool& renderTargetPool() noexcept;
     [[nodiscard]] const GFXRTPool& renderTargetPool() const noexcept;
-    [[nodiscard]] const ShaderProgram_ptr& getRTPreviewShader(bool depthOnly) const noexcept;
+    [[nodiscard]] Handle<ShaderProgram> getRTPreviewShader(bool depthOnly) const noexcept;
     void registerDrawCall() noexcept;
     void registerDrawCalls(U32 count) noexcept;
 
@@ -352,23 +353,10 @@ public:
     [[nodiscard]] bool               destroyIMP(IMPrimitive*& primitive);
 
     /// Create and return a new vertex array (VAO + VB + IB).
-    [[nodiscard]] VertexBuffer_ptr      newVB(bool renderIndirect, std::string_view name);
-    /// Create and return a new generic vertex data object
-    [[nodiscard]] GenericVertexData_ptr newGVD(U32 ringBufferLength, bool renderIndirect, std::string_view name);
-    /// Create and return a new texture.
-    [[nodiscard]] Texture_ptr           newTexture(size_t descriptorHash,
-                                                   std::string_view resourceName,
-                                                   std::string_view assetNames,
-                                                   const ResourcePath& assetLocations,
-                                                   const TextureDescriptor& texDescriptor,
-                                                   ResourceCache& parentCache);
-    /// Create and return a new shader program.
-    [[nodiscard]] ShaderProgram_ptr     newShaderProgram(size_t descriptorHash,
-                                                         std::string_view resourceName,
-                                                         std::string_view assetName,
-                                                         const ResourcePath& assetLocation,
-                                                         const ShaderProgramDescriptor& descriptor,
-                                                         ResourceCache& parentCache);
+    [[nodiscard]] VertexBuffer_ptr      newVB( const VertexBuffer::Descriptor& descriptor );
+
+    [[nodiscard]] GenericVertexData_ptr newGVD(U32 ringBufferLength, std::string_view name);
+
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise
@@ -403,7 +391,7 @@ public:
     PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);     ///< X = culled items HiZ, Y = culled items overflow, Z = baseInstance == 0 count, W = skipped cull count
     PROPERTY_R_IW(Rect<I32>, activeViewport, UNIT_VIEWPORT);
     PROPERTY_R_IW(Rect<I32>, activeScissor, UNIT_VIEWPORT);
-    POINTER_R(SceneShaderData, sceneData, nullptr);
+    PROPERTY_R(std::unique_ptr<SceneShaderData>, sceneData);
     PROPERTY_R(ImShaders_uptr, imShaders);
 
    [[nodiscard]] bool framePreRender( const FrameEvent& evt ) override;
@@ -450,14 +438,14 @@ protected:
     friend class RenderPassExecutor;
 
     void occlusionCull(const RenderPass::BufferData& bufferData,
-                       const Texture_ptr& hizBuffer,
+                        Handle<Texture> hizBuffer,
                        SamplerDescriptor sampler,
                        const CameraSnapshot& cameraSnapshot,
                        bool countCulledNodes,
                        GFX::CommandBuffer& bufferInOut);
 
     // Returns the HiZ texture that can be sent directly to occlusionCull
-    std::pair<const Texture_ptr&, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut);
+    std::pair<Handle<Texture>, SamplerDescriptor> constructHIZ(RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut);
 
     [[nodiscard]] RenderAPIWrapper& getAPIImpl() { return *_api; }
     [[nodiscard]] const RenderAPIWrapper& getAPIImpl() const { return *_api; }
@@ -480,7 +468,7 @@ private:
     RenderAPIWrapper_uptr _api;
     Renderer_uptr _renderer;
 
-    ShaderComputeQueue* _shaderComputeQueue = nullptr;
+    std::unique_ptr<ShaderComputeQueue> _shaderComputeQueue;
 
     DebugPrimitiveHandler<IM::LineDescriptor, 16u> _debugLines;
     DebugPrimitiveHandler<IM::BoxDescriptor, 16u> _debugBoxes;
@@ -491,7 +479,7 @@ private:
 
     CameraSnapshot  _activeCameraSnapshot;
 
-    GFXRTPool* _rtPool = nullptr;
+    std::unique_ptr<GFXRTPool> _rtPool;
 
     static constexpr U8 s_invalidQueueSampleCount = 255u;
     U8 _queuedScreenSampleChange = s_invalidQueueSampleCount;
@@ -505,18 +493,18 @@ private:
     FrustumClipPlanes _clippingPlanes;
 
     /// shader used to preview the depth buffer
-    ShaderProgram_ptr _previewDepthMapShader = nullptr;
-    ShaderProgram_ptr _previewRenderTargetColour = nullptr;
-    ShaderProgram_ptr _previewRenderTargetDepth = nullptr;
-    ShaderProgram_ptr _renderTargetDraw = nullptr;
-    ShaderProgram_ptr _hIZConstructProgram = nullptr;
-    ShaderProgram_ptr _hIZCullProgram = nullptr;
-    ShaderProgram_ptr _displayShader = nullptr;
-    ShaderProgram_ptr _depthShader = nullptr;
-    ShaderProgram_ptr _blurBoxShaderSingle = nullptr;
-    ShaderProgram_ptr _blurBoxShaderLayered = nullptr;
-    ShaderProgram_ptr _blurGaussianShaderSingle = nullptr;
-    ShaderProgram_ptr _blurGaussianShaderLayered = nullptr;
+    Handle<ShaderProgram> _previewDepthMapShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _previewRenderTargetColour = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _previewRenderTargetDepth = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _renderTargetDraw = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _hIZConstructProgram = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _hIZCullProgram = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _displayShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _depthShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _blurBoxShaderSingle = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _blurBoxShaderLayered = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _blurGaussianShaderSingle = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _blurGaussianShaderLayered = INVALID_HANDLE<ShaderProgram>;
 
 
     Pipeline* _hIZPipeline = nullptr;

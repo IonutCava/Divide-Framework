@@ -1,5 +1,7 @@
 
 
+#include <mimalloc-new-delete.h>
+
 #include "config.h"
 
 #include "Headers/PlatformDefines.h"
@@ -8,8 +10,6 @@
 #include "GUI/Headers/GUI.h"
 
 #include "Utility/Headers/Localization.h"
-#include "Utility/Headers/MemoryTracker.h"
-
 #include "Platform/File/Headers/FileManagement.h"
 
 #include <iostream>
@@ -21,31 +21,6 @@ namespace Divide
     {
         NO_DESTROY SysInfo g_sysInfo;
     };
-
-    namespace MemoryManager
-    {
-        static void log_new( void* p, const size_t size, const char* zFile, const size_t nLine )
-        {
-            if constexpr ( Config::Build::IS_DEBUG_BUILD )
-            {
-                if ( MemoryTracker::Ready )
-                {
-                    AllocTracer.Add( p, size, zFile, nLine );
-                }
-            }
-        }
-
-        void log_delete( void* p )
-        {
-            if constexpr ( Config::Build::IS_DEBUG_BUILD )
-            {
-                if ( MemoryTracker::Ready )
-                {
-                    AllocTracer.Remove( p );
-                }
-            }
-        }
-    };  // namespace MemoryManager
 
     namespace Assert
     {
@@ -161,38 +136,3 @@ namespace Divide
     }
 
 };  // namespace Divide
-
-void* operator new(const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine)
-{
-    void* ptr = malloc( size );
-#if defined(_DEBUG)
-    Divide::MemoryManager::log_new( ptr, size, zFile, nLine );
-#endif
-    return ptr;
-}
-
-void operator delete(void* ptr, [[maybe_unused]] const char* zFile, [[maybe_unused]] size_t nLine)
-{
-#if defined(_DEBUG)
-    Divide::MemoryManager::log_delete( ptr );
-#endif
-
-    free( ptr );
-}
-
-void* operator new[]( const size_t size, [[maybe_unused]] const char* zFile, [[maybe_unused]] const size_t nLine )
-{
-    void* ptr = malloc( size );
-#if defined(_DEBUG)
-    Divide::MemoryManager::log_new( ptr, size, zFile, nLine );
-#endif
-    return ptr;
-}
-
-void operator delete[]( void* ptr, [[maybe_unused]] const char* zFile, [[maybe_unused]] size_t nLine )
-{
-#if defined(_DEBUG)
-    Divide::MemoryManager::log_delete( ptr );
-#endif
-    free( ptr );
-}

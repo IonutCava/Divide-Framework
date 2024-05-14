@@ -55,18 +55,16 @@ class IMPrimitive;
 class ParticleData;
 class ParamHandler;
 class ProjectManager;
-class ResourceCache;
 class SceneGraphNode;
 class ParticleEmitter;
 class PlatformContext;
 class SceneShaderData;
 class RenderPassManager;
-class TerrainDescriptor;
-class ResourceDescriptor;
 class DirectionalLightComponent;
 class EnvironmentProbeComponent;
 
 struct SceneEntry;
+struct ResourceDescriptorBase;
 
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Player);
@@ -150,17 +148,13 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] static ResourcePath GetSceneRootFolder( const Project& project );
 
     protected:
-        static Mutex s_perFrameArenaMutex;
-        static MyArena<TO_MEGABYTES(64)> s_perFrameArena;
-
-    protected:
         static bool OnStartup(PlatformContext& context);
         static bool OnShutdown(PlatformContext& context);
         static string GetPlayerSGNName(PlayerIndex idx);
 
     public:
 
-        explicit Scene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry);
+        explicit Scene(PlatformContext& context, Project& parent, const SceneEntry& entry);
         virtual ~Scene() override;
 
         /// Scene is rendering, so add intensive tasks here to save CPU cycles
@@ -194,19 +188,19 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] bool              findSelection(PlayerIndex idx, bool clearOld);
 
         [[nodiscard]] bool resetSelection(PlayerIndex idx, const bool resetIfLocked);
-        void setSelected(PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, bool recursive);
+        void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
 
         void beginDragSelection(PlayerIndex idx, vec2<I32> mousePos);
         void endDragSelection(PlayerIndex idx, bool clearSelection);
 #pragma endregion
 
 #pragma region Entity Management
-                      void            addMusic(MusicType type, const std::string_view name, const ResourcePath& srcFile) const;
+                      void            addMusic(MusicType type, const std::string_view name, const ResourcePath& srcFile);
         [[nodiscard]] SceneGraphNode* addSky(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
         [[nodiscard]] SceneGraphNode* addInfPlane(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
                       void            addWater(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
                       void            addTerrain(SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName = "");
-        [[nodiscard]] SceneGraphNode* addParticleEmitter(const std::string_view name, std::shared_ptr<ParticleData> data,SceneGraphNode* parentNode) const;
+        [[nodiscard]] SceneGraphNode* addParticleEmitter(const std::string_view name, std::shared_ptr<ParticleData> data,SceneGraphNode* parentNode);
 #pragma endregion
 
 #pragma region Time Of Day
@@ -242,7 +236,6 @@ class Scene : public Resource, public PlatformContextComponent {
         PROPERTY_R(SceneGraph_uptr, sceneGraph);
         PROPERTY_R(AI::AIManager_uptr, aiManager);
         PROPERTY_R(SceneGUIElements_uptr, GUI);
-        POINTER_R(ResourceCache, resourceCache, nullptr);
         PROPERTY_R(LightPool_uptr, lightPool);
         PROPERTY_R(SceneInput_uptr, input);
         PROPERTY_R(SceneEnvironmentProbePool_uptr, envProbePool);
@@ -267,9 +260,8 @@ class Scene : public Resource, public PlatformContextComponent {
         /// Returns the first available action ID
         [[nodiscard]] virtual U16 registerInputActions();
 
-        void          onNodeDestroy(SceneGraphNode* node);
-        SceneNode_ptr createNode(SceneNodeType type, const ResourceDescriptor& descriptor) const;
-        void          loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
+        void       onNodeDestroy(SceneGraphNode* node);
+        void       loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
 
         /// Draw debug entities
         virtual void debugDraw(GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut );
@@ -332,7 +324,6 @@ class Scene : public Resource, public PlatformContextComponent {
         void updateSelectionData(PlayerIndex idx, DragSelectData& data);
         [[nodiscard]] bool checkCameraUnderwater(PlayerIndex idx) const;
         [[nodiscard]] bool checkCameraUnderwater(const Camera& camera) const noexcept;
-        [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Scene"; }
 
     protected:
         Project&         _parent;
@@ -434,16 +425,12 @@ class SceneProjectManager
         return scene->resetSelection(idx, resetIfLocked);
     }
 
-    static void setSelected(Scene* scene, const PlayerIndex idx, const vector_fast<SceneGraphNode*>& sgns, const bool recursive) {
+    static void setSelected(Scene* scene, const PlayerIndex idx, const vector<SceneGraphNode*>& sgns, const bool recursive) {
         scene->setSelected(idx, sgns, recursive);
     }
 
     static void clearHoverTarget(Scene* scene, const Input::MouseMoveEvent& arg) {
         scene->clearHoverTarget(scene->input()->getPlayerIndexForDevice(arg._deviceIndex));
-    }
-
-    static SceneNode_ptr createNode(const Scene* scene, const SceneNodeType type, const ResourceDescriptor& descriptor) {
-        return scene->createNode(type, descriptor);
     }
 
     static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept {
@@ -543,7 +530,7 @@ class SceneInput {
 namespace SceneList {
     template<typename T>
     using SharedPtrFactory = boost::factory<std::shared_ptr<T>>;
-    using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& name)>;
+    using ScenePtrFactory = std::function<std::shared_ptr<Scene>(PlatformContext& context, Project& parent, const SceneEntry& name)>;
     using SceneFactoryMap = std::unordered_map<U64, ScenePtrFactory>;
     using SceneNameMap = std::unordered_map<U64, Str<256>>;
 

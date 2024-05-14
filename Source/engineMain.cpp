@@ -42,8 +42,11 @@ ErrorCode Engine::run(const int argc, char** argv)
         return ErrorCode::PATHS_ERROR;
     }
 
-    const std::ofstream outputStreamsCOUT{ (Paths::g_logPath / OUTPUT_LOG_FILE).string(), std::ofstream::out | std::ofstream::trunc };
-    const std::ofstream outputStreamsCERR{ (Paths::g_logPath / ERROR_LOG_FILE).string(), std::ofstream::out | std::ofstream::trunc };
+    const string consoleLogFile = (Paths::g_logPath / OUTPUT_LOG_FILE).string();
+    const string errorLogFile = (Paths::g_logPath / ERROR_LOG_FILE).string();
+
+    const std::ofstream outputStreamsCOUT{ consoleLogFile.c_str(), std::ofstream::out | std::ofstream::trunc };
+    const std::ofstream outputStreamsCERR{ errorLogFile.c_str(), std::ofstream::out | std::ofstream::trunc };
 
     std::cout.rdbuf( outputStreamsCOUT.rdbuf());
     std::cerr.rdbuf( outputStreamsCERR.rdbuf());

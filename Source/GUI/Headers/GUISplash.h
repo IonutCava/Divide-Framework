@@ -35,21 +35,22 @@
 
 namespace Divide {
 
-FWD_DECLARE_MANAGED_CLASS(Texture);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+class Texture;
+class ShaderProgram;
 
 class GFXDevice;
 class ResourceCache;
 class GUISplash {
    public:
-    GUISplash(ResourceCache* cache, std::string_view splashImageName, vec2<U16> dimensions);
+    GUISplash(std::string_view splashImageName, vec2<U16> dimensions);
+    ~GUISplash();
 
     void render(GFXDevice& context) const;
 
    private:
     vec2<U16> _dimensions;
-    Texture_ptr _splashImage = nullptr;
-    ShaderProgram_ptr _splashShader = nullptr;
+    Handle<Texture> _splashImage = INVALID_HANDLE<Texture>;
+    Handle<ShaderProgram> _splashShader = INVALID_HANDLE<ShaderProgram>;
 };
 
 };  // namespace Divide

@@ -56,7 +56,7 @@ public:
     void clear() override;
     void declareRenderSize(const Sizef& sz) override;
 
-    [[nodiscard]] Divide::Texture* getAttachmentTex() const;
+    [[nodiscard]] Divide::Handle<Divide::Texture> getAttachmentTex() const;
     [[nodiscard]] Divide::SamplerDescriptor getSampler() const noexcept;
 
 #pragma region TextureTarget Interface

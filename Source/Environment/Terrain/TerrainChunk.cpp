@@ -16,16 +16,12 @@ TerrainChunk::TerrainChunk(Terrain* const parentTerrain,
                            QuadtreeNode& parentNode) noexcept
     : _id(_chunkID++)
     , _quadtreeNode(parentNode)
-    , _xOffset(0)
-    , _yOffset(0)
-    , _sizeX(0)
-    , _sizeY(0)
     , _parentTerrain(parentTerrain)
-    , _vegetation(nullptr)
 {
 }
 
-void TerrainChunk::load(const U8 depth, const vec2<U32> pos, const U32 targetChunkDimension, const vec2<U32> HMSize, BoundingBox& bbInOut) {
+void TerrainChunk::load(const U8 depth, const vec2<U32> pos, const U32 targetChunkDimension, const vec2<U32> HMSize, BoundingBox& bbInOut)
+{
     _xOffset = to_F32(pos.x) - HMSize.x * 0.5f;
     _yOffset = to_F32(pos.y) - HMSize.y * 0.5f;
     _sizeX = _sizeY = to_F32(targetChunkDimension);
@@ -75,21 +71,24 @@ void TerrainChunk::load(const U8 depth, const vec2<U32> pos, const U32 targetChu
     Attorney::TerrainChunk::registerTerrainChunk(*_parentTerrain, this);
 }
 
-Vegetation& TerrainChunk::initializeVegetation(GFXDevice& context, const VegetationDetails& vegDetails) {
-    _vegetation.reset(new Vegetation(context, *this, vegDetails));
-    return *_vegetation;
-}
-
-const BoundingBox& TerrainChunk::bounds() const noexcept {
+const BoundingBox& TerrainChunk::bounds() const noexcept
+{
     return _quadtreeNode.getBoundingBox();
 }
 
-U8 TerrainChunk::LoD() const noexcept {
+U8 TerrainChunk::LoD() const noexcept
+{
     return _quadtreeNode.LoD();
 }
 
-void TerrainChunk::drawBBox(GFXDevice& context) const {
+void TerrainChunk::drawBBox(GFXDevice& context) const
+{
     _quadtreeNode.drawBBox(context);
 }
 
+void TerrainChunk::initVegetation( PlatformContext& context, const Handle<Vegetation> handle )
+{
+    _vegetation = std::make_unique<VegetationInstance>( context, handle, this );
+    _vegetation->computeTransforms();
+}
 } //namespace Divide

@@ -45,8 +45,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   add_compile_options(/Zc:__cplusplus)
   add_compile_options(/Zm256)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
-  add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING) #ToDo(Ionut): This should be disabled only for third party libs
-
   add_link_options(/INCREMENTAL)
 else ()
   set(CMAKE_DEBUG_PREFIX -D)

@@ -5,48 +5,62 @@
 
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/StringHelper.h"
+#include "Managers/Headers/ProjectManager.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "Geometry/Material/Headers/Material.h"
-#include "Geometry/Animations/Headers/SceneAnimator.h"
-#include "Managers/Headers/ProjectManager.h"
+#include "Geometry/Importer/Headers/MeshImporter.h"
 
 namespace Divide {
 
-Mesh::Mesh(PlatformContext& context,
-           ResourceCache* parentCache,
-           const size_t descriptorHash,
-           const std::string_view name,
-           const std::string_view resourceName,
-           const ResourcePath& resourceLocation)
-    : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, SceneNodeType::TYPE_MESH, Object3D::ObjectFlag::OBJECT_FLAG_NONE),
-      _animator(nullptr)
+Mesh::Mesh( PlatformContext& context, const ResourceDescriptor<Mesh>& descriptor )
+    : Object3D(context, descriptor, GetSceneNodeType<Mesh>() )
 {
     setBounds(_boundingBox);
 }
 
-void Mesh::addSubMesh(const SubMesh_ptr& subMesh) {
-    // Hold a reference to the SubMesh by ID
-    _subMeshList.emplace_back(MeshData{subMesh, subMesh->id() });
-    Attorney::SubMeshMesh::setParentMesh(*subMesh, this);
+void Mesh::addSubMesh(const Handle<SubMesh> subMesh, const U32 index)
+{
+    _subMeshList.emplace_back(MeshData{ subMesh, index });
 }
 
-void Mesh::setNodeData(const MeshNodeData& nodeStructure) {
+void Mesh::setNodeData(const MeshNodeData& nodeStructure)
+{
     _nodeStructure = nodeStructure;
 }
 
-void Mesh::setMaterialTpl(const Material_ptr& material) {
+void Mesh::setMaterialTpl( const Handle<Material> material)
+{
     Object3D::setMaterialTpl(material);
 
-    for (const Mesh::MeshData& subMesh : _subMeshList) {
-        if (material != nullptr) {
-            subMesh._mesh->setMaterialTpl(material->clone(subMesh._mesh->getMaterialTpl()->resourceName()));
-        }
+    for (const Mesh::MeshData& subMesh : _subMeshList)
+    {
+        Get(subMesh._mesh)->setMaterialTpl(material);
     }
 }
 
-SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshIndex) {
+void Mesh::setAnimationCount( const size_t animationCount )
+{
+    _animationCount = animationCount;
+    if ( _animationCount == 0 && _animator != nullptr)
+    {
+        _animator.reset();
+    }
+    else if ( _animationCount > 0u && _animator == nullptr)
+    {
+        _animator = std::make_unique<SceneAnimator>();
+    }
+}
+
+SceneAnimator* Mesh::getAnimator() const noexcept
+{
+    return _animator.get();
+}
+
+SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshIndex)
+{
     constexpr U32 normalMask = to_base(ComponentType::NAVIGATION) |
                                to_base(ComponentType::TRANSFORM) |
                                to_base(ComponentType::BOUNDS) |
@@ -62,16 +76,16 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
 
     const MeshData& meshData = _subMeshList[meshIndex];
     DIVIDE_ASSERT(meshData._index == meshIndex);
-    const SubMesh_ptr& subMesh = meshData._mesh;
+    SubMesh* subMesh = Get( meshData._mesh );
     
     SceneGraphNodeDescriptor subMeshDescriptor;
     subMeshDescriptor._usageContext = parentNode->usageContext();
     subMeshDescriptor._instanceCount = parentNode->instanceCount();
-    subMeshDescriptor._node = subMesh;
+    subMeshDescriptor._nodeHandle = FromHandle(meshData._mesh);
     subMeshDescriptor._componentMask = normalMask;
 
-    if (subMesh->getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED)) {
-        assert(getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED));
+    if ( subMesh->boneCount() > 0u )
+    {
         subMeshDescriptor._componentMask |= skinnedMask;
     }
 
@@ -83,21 +97,29 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
     return sgn;
 }
 
-void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node) {
-    for (const U32 idx : node._meshIndices) {
+void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node)
+{
+    for (const U32 idx : node._meshIndices)
+    {
         addSubMeshNode(parentNode, idx);
     }
 
-    if (!node._children.empty()) {
+    if (!node._children.empty())
+    {
+        ResourceDescriptor<TransformNode> nodeDescriptor{ node._name + "_transform" };
+
         SceneGraphNodeDescriptor tempNodeDescriptor;
         tempNodeDescriptor._usageContext = parentNode->usageContext();
         tempNodeDescriptor._instanceCount = parentNode->instanceCount();
         tempNodeDescriptor._name = node._name.c_str();
+        tempNodeDescriptor._nodeHandle = FromHandle(CreateResource( nodeDescriptor ));
         tempNodeDescriptor._componentMask = to_base(ComponentType::TRANSFORM) |
                                             to_base(ComponentType::NETWORKING);
-        for (const MeshNodeData& it : node._children) {
+        for (const MeshNodeData& it : node._children)
+        {
             SceneGraphNode* targetSGN = parentNode;
-            if (!it._transform.isIdentity()) {
+            if (!it._transform.isIdentity())
+            {
                 targetSGN = parentNode->addChildNode(tempNodeDescriptor);
                 targetSGN->get<TransformComponent>()->setTransforms(it._transform);
             }
@@ -107,20 +129,61 @@ void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node) {
 }
 
 /// After we loaded our mesh, we need to add submeshes as children nodes
-void Mesh::postLoad(SceneGraphNode* sgn) {
+void Mesh::postLoad(SceneGraphNode* sgn)
+{
     sgn->get<TransformComponent>()->setTransforms(_nodeStructure._transform);
     processNode(sgn, _nodeStructure);
-    if (_animator) {
+    if (_animator)
+    {
         Attorney::SceneAnimatorMeshImporter::buildBuffers(*_animator, _context);
+
+        PlatformContext& pContext = sgn->context();
+        registerEditorComponent( pContext );
+        DIVIDE_ASSERT( _editorComponent != nullptr );
+
+        EditorComponentField playAnimationsField = {};
+        playAnimationsField._name = "Toogle Animation Playback";
+        playAnimationsField._data = &_playAnimationsOverride;
+        playAnimationsField._type = EditorComponentFieldType::SWITCH_TYPE;
+        playAnimationsField._basicType = PushConstantType::BOOL;
+        playAnimationsField._readOnly = false;
+        _editorComponent->registerField( MOV( playAnimationsField ) );
     }
+
     Object3D::postLoad(sgn);
+}
+
+bool Mesh::postLoad()
+{
+    return Object3D::postLoad();
+}
+
+bool Mesh::load( PlatformContext& context )
+{
+    if ( MeshImporter::loadMesh( context, this ) )
+    {
+        return Object3D::load(context);
+    }
+
+    return false;
+}
+
+bool Mesh::unload()
+{
+    for ( Mesh::MeshData& subMesh : _subMeshList )
+    {
+        DestroyResource(subMesh._mesh);
+    }
+    _subMeshList.clear();
+    return Object3D::unload();
 }
 
 bool MeshNodeData::serialize(ByteBuffer& dataOut) const {
     dataOut << _transform;
     dataOut << _meshIndices;
     dataOut << to_U32(_children.size());
-    for (const MeshNodeData& child : _children) {
+    for (const MeshNodeData& child : _children)
+    {
         child.serialize(dataOut);
     }
     dataOut << _name;
@@ -133,7 +196,8 @@ bool MeshNodeData::deserialize(ByteBuffer& dataIn) {
     U32 childCount = 0u;
     dataIn >> childCount;
     _children.resize(childCount);
-    for (MeshNodeData& child : _children) {
+    for (MeshNodeData& child : _children)
+    {
         child.deserialize(dataIn);
     }
     dataIn >> _name;

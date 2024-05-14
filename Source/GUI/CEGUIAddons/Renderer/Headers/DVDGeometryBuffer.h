@@ -60,15 +60,15 @@ private:
     //! type to track info for per-texture sub batches of geometry
     struct BatchInfo
     {
-        Divide::Texture* texture{ nullptr };
+        Divide::Handle<Divide::Texture> texture{ Divide::INVALID_HANDLE<Divide::Texture> };
         uint vertexCount{0u};
         bool clip{false};
     };
 
     //! type of container that tracks BatchInfos.
-    using BatchList = Divide::vector_fast<BatchInfo>;
+    using BatchList = Divide::vector<BatchInfo>;
     //! type of container used to queue the geometry
-    using VertexList = Divide::vector_fast<DVDVertex>;
+    using VertexList = Divide::vector<DVDVertex>;
 
 public:
     DVDGeometryBuffer( CEGUIRenderer& owner );

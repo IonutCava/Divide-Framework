@@ -48,11 +48,13 @@ class SceneGraphNode;
 
 struct Ray;
 struct SGNRayResult;
-struct SceneGraphNodeDescriptor;
 
-namespace Attorney {
+namespace Attorney
+{
     class SceneGraphSGN;
 };
+
+struct SceneGraphNodeDescriptor;
 
 FWD_DECLARE_MANAGED_CLASS(ECSManager);
 
@@ -67,6 +69,7 @@ class SceneGraph final : NonCopyable,
     explicit SceneGraph(Scene& parentScene);
     ~SceneGraph() override;
 
+    void load();
     void unload();
 
     const SceneGraphNode* getRoot() const noexcept { return _root; }
@@ -81,7 +84,7 @@ class SceneGraph final : NonCopyable,
 
     bool intersect(const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut) const;
 
-    SceneGraphNode* createSceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor);
+    SceneGraphNode* createSceneGraphNode(PlatformContext& context, SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor);
 
     void destroySceneGraphNode(SceneGraphNode*& node, bool inPlace = true);
     void addToDeleteQueue(SceneGraphNode* node, size_t childIdx);
@@ -94,9 +97,11 @@ class SceneGraph final : NonCopyable,
 
     const vector<SceneGraphNode*>& getNodesByType(SceneNodeType type) const;
 
-    void getNodesByType(std::initializer_list<SceneNodeType> types, vector<SceneGraphNode*>& nodesOut) const {
+    void getNodesByType(std::initializer_list<SceneNodeType> types, vector<SceneGraphNode*>& nodesOut) const
+    {
         efficient_clear( nodesOut );
-        for (const SceneNodeType type : types) {
+        for (const SceneNodeType type : types)
+        {
             const vector<SceneGraphNode*>& nodes = getNodesByType(type);
             nodesOut.insert(cend(nodesOut), cbegin(nodes), cend(nodes));
         }
@@ -150,7 +155,6 @@ class SceneGraph final : NonCopyable,
    private:
     ECS::ECSEngine _ecsEngine;
     ECSManager_uptr _ecsManager;
-
     bool _nodeListChanged = false;
 
     SceneGraphNode* _root = nullptr;
@@ -165,10 +169,10 @@ class SceneGraph final : NonCopyable,
     hashMap<SceneGraphNode*, vector<size_t>> _pendingDeletion;
 
     mutable Mutex _nodeEventLock;
-    eastl::fixed_vector<SceneGraphNode*, 1024, true,  eastl::dvd_allocator> _nodeEventQueue;
+    eastl::fixed_vector<SceneGraphNode*, 1024, true> _nodeEventQueue;
 
     mutable Mutex _nodeParentChangeLock;
-    eastl::fixed_vector<SceneGraphNode*, 256, true, eastl::dvd_allocator> _nodeParentChangeQueue;
+    eastl::fixed_vector<SceneGraphNode*, 256, true> _nodeParentChangeQueue;
 };
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraph);

@@ -5,6 +5,8 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 
+#include "Core/Resources/Headers/ResourceCache.h"
+
 namespace Divide
 {
     vkRenderTarget::vkRenderTarget( GFXDevice& context, const RenderTargetDescriptor& descriptor )
@@ -75,15 +77,15 @@ namespace Divide
             const RTAttachment_uptr& inAtt = input->_attachments[entry._input._index];
             const RTAttachment_uptr& outAtt = output->_attachments[entry._output._index];
 
-            vkTexture* vkTexIn = static_cast<vkTexture*>(inAtt->texture().get());
-            vkTexture* vkTexOut = static_cast<vkTexture*>(outAtt->texture().get());
+            vkTexture* vkTexIn  = static_cast<vkTexture*>(Get(inAtt->texture()));
+            vkTexture* vkTexOut = static_cast<vkTexture*>(Get(outAtt->texture()));
 
-            const bool isDepthTextureIn = IsDepthTexture( vkTexIn->descriptor().packing() );
-            const bool isDepthTextureOut = IsDepthTexture( vkTexOut->descriptor().packing() );
+            const bool isDepthTextureIn = IsDepthTexture( vkTexIn->descriptor()._packing );
+            const bool isDepthTextureOut = IsDepthTexture( vkTexOut->descriptor()._packing );
 
             U16 layerCount = entry._layerCount;
             DIVIDE_ASSERT(layerCount != U16_MAX && entry._mipCount != U16_MAX );
-            if ( IsCubeTexture( vkTexIn->descriptor().texType() ) )
+            if ( IsCubeTexture( vkTexIn->descriptor()._texType ) )
             {
                 layerCount *= 6u;
             }
@@ -110,8 +112,8 @@ namespace Divide
                 vkTexture::TransitionTexture( targetTransition, subResourceOut, vkTexOut->image()->_image, imageBarriers[imageBarrierCount++] );
             }
 
-            const U16 srcDepth = vkTexIn->descriptor().texType() == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
-            const U16 dstDepth = vkTexOut->descriptor().texType() == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
+            const U16 srcDepth = vkTexIn->descriptor()._texType == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
+            const U16 dstDepth = vkTexOut->descriptor()._texType == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
 
             if ( imageBarrierCount > 0u )
             {
@@ -248,13 +250,13 @@ namespace Divide
                         continue;
                     }
 
-                    vkTexture* vkTexRender = static_cast<vkTexture*>(att->renderTexture().get());
+                    vkTexture* vkTexRender = static_cast<vkTexture*>(Get(att->renderTexture()));
 
                     ImageView targetView = vkTexRender->getView();
                     
                     const DrawLayerEntry targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[i];
 
-                    if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
+                    if ( IsCubeTexture( vkTexRender->descriptor()._texType ) )
                     {
                         targetView._subRange._layerRange = { to_U16(targetColourLayer._cubeFace + (targetColourLayer._layer * 6u)), descriptor._layeredRendering ? U16_MAX : U16_ONE };
                     }
@@ -310,7 +312,7 @@ namespace Divide
 
                         if ( resolveMSAA )
                         {
-                            vkTexture* vkTexResolve = static_cast<vkTexture*>(_attachments[i]->resolvedTexture().get());
+                            vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(_attachments[i]->resolvedTexture()));
                             DIVIDE_ASSERT( vkTexRender->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT && vkTexResolve->sampleFlagBits() == VK_SAMPLE_COUNT_1_BIT );
 
                             PROFILE_SCOPE( "Colour Resolve", Profiler::Category::Graphics );
@@ -336,11 +338,11 @@ namespace Divide
             if ( (toWrite && usage != RTAttachment::Layout::ATTACHMENT) ||
                  (!toWrite && usage != RTAttachment::Layout::SHADER_READ) )
             {
-                vkTexture* vkTexRender = static_cast<vkTexture*>(att->renderTexture().get());
+                vkTexture* vkTexRender = static_cast<vkTexture*>(Get(att->renderTexture()));
 
                 ImageView targetView = vkTexRender->getView();
                 const DrawLayerEntry depthEntry = srcDepthLayer._layer == INVALID_INDEX ? targetDepthLayer : srcDepthLayer;
-                if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
+                if ( IsCubeTexture( vkTexRender->descriptor()._texType ) )
                 {
                     targetView._subRange._layerRange = { to_U16(depthEntry._cubeFace + (depthEntry._layer * 6u)), descriptor._layeredRendering ? U16_MAX : U16_ONE };
                 }
@@ -397,7 +399,7 @@ namespace Divide
 
                     if ( resolveMSAA )
                     {
-                        vkTexture* vkTexResolve = static_cast<vkTexture*>(att->resolvedTexture().get());
+                        vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(att->resolvedTexture()));
                         DIVIDE_ASSERT(vkTexRender->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT && vkTexResolve->sampleFlagBits() == VK_SAMPLE_COUNT_1_BIT );
 
                         PROFILE_SCOPE( "Depth Resolve", Profiler::Category::Graphics );
@@ -466,13 +468,13 @@ namespace Divide
             {
                 if ( _attachmentsUsed[i] && descriptor._drawMask[i] )
                 {
-                    vkTexture* vkTexRender = static_cast<vkTexture*>(_attachments[i]->renderTexture().get());
+                    vkTexture* vkTexRender = static_cast<vkTexture*>(Get(_attachments[i]->renderTexture()));
                     imageViewDescriptor._subRange = vkTexRender->getView()._subRange;
                     if ( descriptor._writeLayers[i]._layer != INVALID_INDEX || needLayeredColour )
                     {
                         layerCount = std::max( layerCount, vkTexRender->depth() );
                         targetColourLayer = descriptor._writeLayers[i]._layer == INVALID_INDEX ? targetColourLayer : descriptor._writeLayers[i];
-                        if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
+                        if ( IsCubeTexture( vkTexRender->descriptor()._texType ) )
                         {
                             imageViewDescriptor._subRange._layerRange = { to_U16(targetColourLayer._cubeFace + (targetColourLayer._layer * 6u)), descriptor._layeredRendering ? U16_MAX : U16_ONE };
                             layerCount *= 6u;
@@ -529,7 +531,7 @@ namespace Divide
 
                         info.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
                         info.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                        info.resolveImageView = static_cast<vkTexture*>(_attachments[i]->resolvedTexture().get())->getImageView( imageViewDescriptor );
+                        info.resolveImageView = static_cast<vkTexture*>(Get(_attachments[i]->resolvedTexture()))->getImageView( imageViewDescriptor );
                     }
 
                     _stagingColourAttachmentInfo[stagingIndex] = info;
@@ -557,13 +559,13 @@ namespace Divide
             const auto& att = _attachments[RT_DEPTH_ATTACHMENT_IDX];
             const bool hasStencil = att->_descriptor._type == RTAttachmentType::DEPTH_STENCIL;
 
-            vkTexture* vkTexRender = static_cast<vkTexture*>(att->renderTexture().get());
+            vkTexture* vkTexRender = static_cast<vkTexture*>(Get(att->renderTexture()));
             imageViewDescriptor._subRange = vkTexRender->getView()._subRange;
             if ( descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer != INVALID_INDEX || needLayeredDepth )
             {
                 layerCount = std::max( layerCount, vkTexRender->depth() );
                 targetDepthLayer = descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer == INVALID_INDEX ? targetDepthLayer : descriptor._writeLayers[RT_DEPTH_ATTACHMENT_IDX];
-                if ( IsCubeTexture( vkTexRender->descriptor().texType() ) )
+                if ( IsCubeTexture( vkTexRender->descriptor()._texType ) )
                 {
                     imageViewDescriptor._subRange._layerRange = { to_U16(targetDepthLayer._cubeFace + (targetDepthLayer._layer * 6u)), descriptor._layeredRendering ? U16_MAX : U16_ONE };
                     layerCount *= 6u;
@@ -613,7 +615,7 @@ namespace Divide
 
                 _depthAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
                 _depthAttachmentInfo.resolveImageLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-                _depthAttachmentInfo.resolveImageView = static_cast<vkTexture*>(att->resolvedTexture().get())->getImageView( imageViewDescriptor );
+                _depthAttachmentInfo.resolveImageView = static_cast<vkTexture*>(Get(att->resolvedTexture()))->getImageView( imageViewDescriptor );
             }
 
             pipelineRenderingCreateInfoOut.depthAttachmentFormat = vkTexRender->vkFormat();

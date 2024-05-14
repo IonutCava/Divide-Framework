@@ -37,8 +37,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Geometry/Importer/Headers/MeshImporter.h"
 
 namespace Divide {
-    FWD_DECLARE_MANAGED_CLASS(Texture);
-    FWD_DECLARE_MANAGED_CLASS(Mesh);
+    class Mesh;
+    class Texture;
 
     struct File
     {
@@ -58,13 +58,14 @@ namespace Divide {
     {
         ResourcePath _path;
         ResourcePath _name;
-        vector_fast<File> _files;
-        vector_fast<Directory_uptr> _children;
+        vector<File> _files;
+        vector<Directory_uptr> _children;
     };
 
     class ContentExplorerWindow final : public DockedWindow {
     public:
         ContentExplorerWindow(Editor& parent, const Descriptor& descriptor);
+        ~ContentExplorerWindow();
 
         void drawInternal() override;
         void init();
@@ -74,18 +75,21 @@ namespace Divide {
         void getDirectoryStructureForPath(const ResourcePath& directoryPath, Directory& directoryOut) const;
         void printDirectoryStructure(const Directory& dir, bool open) const;
 
-        Texture_ptr getTextureForPath(const ResourcePath& texturePath, std::string_view textureName) const;
-        Mesh_ptr getModelForPath(const ResourcePath& modelPath, std::string_view modelName) const;
+        Handle<Texture> getTextureForPath(const ResourcePath& texturePath, std::string_view textureName) const;
+        Handle<Mesh> getModelForPath(const ResourcePath& modelPath, std::string_view modelName) const;
         
     private:
-        Texture_ptr _fileIcon = nullptr;
-        Texture_ptr _shaderIcon = nullptr;
-        Texture_ptr _soundIcon = nullptr;
-        std::array<Texture_ptr, to_base(GeometryFormat::COUNT) + 1> _geometryIcons = {};
+        Handle<Texture> _fileIcon = INVALID_HANDLE<Texture>;
+        Handle<Texture> _shaderIcon = INVALID_HANDLE<Texture>;
+        Handle<Texture> _soundIcon = INVALID_HANDLE<Texture>;
+        std::array<Handle<Texture>, to_base(GeometryFormat::COUNT) + 1> _geometryIcons = {};
         mutable const Directory* _selectedDir = nullptr;
-        vector_fast<Directory> _currentDirectories;
+        vector<Directory> _currentDirectories;
 
-        hashMap<size_t, Texture_ptr> _loadedTextures;
+        hashMap<size_t, Handle<Texture>> _loadedTextures;
+
+        Handle<Texture> _previewTexture = INVALID_HANDLE<Texture>;
+        Handle<Mesh>    _spawnMesh = INVALID_HANDLE<Mesh>;
 
         bool _textureLoadQueueLocked = false;
         eastl::stack<EditorFileEntry> _textureLoadQueue;

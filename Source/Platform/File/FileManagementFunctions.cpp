@@ -10,7 +10,7 @@ namespace Divide {
 
 ResourcePath getWorkingDirectory()
 {
-    return ResourcePath { std::filesystem::current_path().lexically_normal() };
+    return ResourcePath { std::filesystem::current_path().lexically_normal().string() };
 }
 
 FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::ifstream& sreamOut)
@@ -20,7 +20,7 @@ FileError readFile(const ResourcePath& filePath, std::string_view fileName, File
         return FileError::FILE_NOT_FOUND;
     }
 
-    sreamOut = std::ifstream((filePath / fileName).string(),
+    sreamOut = std::ifstream((filePath / fileName).fileSystemPath(),
                               fileType == FileType::BINARY
                                         ? std::ios::in | std::ios::binary
                                         : std::ios::in);
@@ -32,6 +32,22 @@ FileError readFile(const ResourcePath& filePath, std::string_view fileName, File
 }
 
 FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, string& contentOut)
+{
+    std::ifstream streamIn;
+    const FileError ret = readFile(filePath, fileName, fileType, streamIn);
+    if ( ret != FileError::NONE)
+    {
+       return ret;
+    }
+
+    std::stringstream buffer;
+    buffer << streamIn.rdbuf();
+    contentOut = buffer.str();
+
+    return contentOut.empty() ? FileError::FILE_EMPTY : FileError::NONE;
+}
+
+FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::string& contentOut)
 {
     std::ifstream streamIn;
     const FileError ret = readFile(filePath, fileName, fileType, streamIn);
@@ -85,7 +101,7 @@ FileError writeFile(const ResourcePath& filePath, const std::string_view fileNam
             return FileError::FILE_NOT_FOUND;
         }
 
-        std::ofstream outputFile((filePath / fileName).string(),
+        std::ofstream outputFile((filePath / fileName).fileSystemPath(),
                                  fileType == FileType::BINARY
                                            ? std::ios::out | std::ios::binary
                                            : std::ios::out);
@@ -120,8 +136,8 @@ FileNameAndPath splitPathToNameAndLocation(const ResourcePath& input)
 {
     return FileNameAndPath
     {
-        input.fileSystemPath().filename().generic_string(),
-        ResourcePath( input.fileSystemPath().parent_path().generic_string())
+        input.fileSystemPath().filename().generic_string().c_str(),
+        ResourcePath( input.fileSystemPath().parent_path().generic_string().c_str() )
     };
 }
 
@@ -218,7 +234,7 @@ bool createFile(const ResourcePath& filePathAndName, const bool overwriteExistin
 {
     if (overwriteExisting && fileExists(filePathAndName))
     {
-        return std::ofstream(filePathAndName.string(), std::fstream::in | std::fstream::trunc).good();
+        return std::ofstream(filePathAndName.string().c_str(), std::fstream::in | std::fstream::trunc).good();
     }
 
     if (createDirectory(const_sysInfo()._workingDirectory / splitPathToNameAndLocation(filePathAndName)._path) != FileError::NONE )
@@ -226,10 +242,10 @@ bool createFile(const ResourcePath& filePathAndName, const bool overwriteExistin
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    return std::ifstream(filePathAndName.string(), std::fstream::in).good();
+    return std::ifstream(filePathAndName.string().c_str(), std::fstream::in).good();
 }
 
-FileError openFile(const char* cmd, const ResourcePath& filePath, const std::string_view fileName)
+FileError openFile(const std::string_view cmd, const ResourcePath& filePath, const std::string_view fileName)
 {
     if (fileName.empty() || !fileExists(filePath, fileName))
     {
@@ -239,7 +255,7 @@ FileError openFile(const char* cmd, const ResourcePath& filePath, const std::str
     const ResourcePath file = const_sysInfo()._workingDirectory / filePath / fileName;
 
     bool ret = false;
-    if (strlen(cmd) == 0)
+    if (cmd.empty())
     {
         ret = CallSystemCmd(file.string(), "");
     }
@@ -364,12 +380,12 @@ string getExtension(const std::string_view fileName)
 
 string getExtension(const ResourcePath& fileName )
 {
-    return fileName.fileSystemPath().extension().string();
+    return string { fileName.fileSystemPath().extension().string().c_str() };
 }
 
 ResourcePath getTopLevelFolderName(const ResourcePath& filePath)
 {
-    return ResourcePath { filePath.fileSystemPath().filename() };
+    return ResourcePath { filePath.fileSystemPath().filename().string() };
 }
 
 string stripExtension( const std::string_view fileName ) noexcept
@@ -379,7 +395,7 @@ string stripExtension( const std::string_view fileName ) noexcept
 
 ResourcePath stripExtension( const ResourcePath& filePath ) noexcept
 {
-    return ResourcePath{ filePath.fileSystemPath().stem() };
+    return ResourcePath{ filePath.fileSystemPath().stem().string() };
 }
 
 bool hasExtension(const ResourcePath& filePath, const std::string_view extensionNoDot)
@@ -432,7 +448,7 @@ bool deleteAllFiles(const ResourcePath& filePath, const char* extension, const c
                 else
                 {
                     //ToDo: check if this recurse in subfolders actually works
-                    if (!deleteAllFiles(ResourcePath{ p.path() }, extension , extensionToSkip))
+                    if (!deleteAllFiles(ResourcePath{ p.path().string() }, extension , extensionToSkip))
                     {
                         NOP();
                     }
@@ -467,7 +483,7 @@ bool getAllFilesInDirectory( const ResourcePath& filePath, FileList& listInOut, 
 
                         listInOut.emplace_back(FileEntry
                         {
-                            ._name = ResourcePath{p.path().filename()},
+                            ._name = ResourcePath{ p.path().filename().string() },
                             ._lastWriteTime = timeOutSec
                         });
                         ret = true;
@@ -475,7 +491,7 @@ bool getAllFilesInDirectory( const ResourcePath& filePath, FileList& listInOut, 
                 }
                 else
                 {
-                    if (!getAllFilesInDirectory(ResourcePath{ p.path() }, listInOut, extensionNoDot))
+                    if (!getAllFilesInDirectory(ResourcePath{ p.path().string() }, listInOut, extensionNoDot))
                     {
                         NOP();
                     }
@@ -499,7 +515,7 @@ string extractFilePathAndName(char* argv0)
     std::error_code ec;
     std::filesystem::path p(canonical(currentPath, ec));
 
-    return p.make_preferred().string();
+    return p.make_preferred().string().c_str();
 }
 
 }; //namespace Divide

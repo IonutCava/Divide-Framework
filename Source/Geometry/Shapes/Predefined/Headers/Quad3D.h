@@ -37,7 +37,8 @@
 
 namespace Divide {
 
-class Quad3D final : public Object3D {
+DEFINE_3D_OBJECT_TYPE(Quad3D, SceneNodeType::TYPE_QUAD_3D)
+{
   public:
     enum class CornerLocation : U8 {
         TOP_LEFT = 0,
@@ -47,12 +48,7 @@ class Quad3D final : public Object3D {
         CORNER_ALL
     };
 
-    explicit Quad3D( PlatformContext& context,
-                    ResourceCache* parentCache,
-                    size_t descriptorHash,
-                    const std::string_view name,
-                    bool doubleSided,
-                    const vec3<F32>& sideLength);
+    explicit Quad3D( PlatformContext& context, const ResourceDescriptor<Quad3D>& descriptor );
 
     vec3<F32> getCorner(CornerLocation corner);
 
@@ -63,8 +59,6 @@ class Quad3D final : public Object3D {
     // rect.xy = Top Left; rect.zw = Bottom right
     // Remember to invert for 2D mode
     void setDimensions(const vec4<F32>& rect);
-
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Quad3D"; }
 
    protected:
      void recomputeBounds();

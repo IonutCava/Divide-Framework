@@ -207,6 +207,5 @@ constexpr auto ENGINE_VERSION_PATCH = 0u;
 
 constexpr char OUTPUT_LOG_FILE[] = "console.log";
 constexpr char ERROR_LOG_FILE[] = "errors.log";
-constexpr char MEM_LOG_FILE[] = "mem.log";
 
 #endif  //DVD_CONFIG_H_

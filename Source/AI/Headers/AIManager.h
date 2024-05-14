@@ -57,8 +57,8 @@ namespace Navigation {
 class AIManager final : public SceneComponent
 {
   public:
-    using AITeamMap = hashMap<U32, AITeam*>;
-    using NavMeshMap = hashMap<AIEntity::PresetAgentRadius, Navigation::NavigationMesh*>;
+    using AITeamMap = hashMap<U32, std::unique_ptr<AITeam>>;
+    using NavMeshMap = hashMap<AIEntity::PresetAgentRadius, std::unique_ptr<Navigation::NavigationMesh>>;
 
     explicit AIManager(Scene& parentScene, TaskPool& pool);
     ~AIManager();
@@ -84,25 +84,28 @@ class AIManager final : public SceneComponent
             const AITeamMap::const_iterator it = _aiTeams.find(AITeamID);
             if (it != std::end(_aiTeams))
             {
-                return it->second;
+                return it->second.get();
             }
         }
         return nullptr;
     }
     /// Add a NavMesh
-    bool addNavMesh(AIEntity::PresetAgentRadius radius, Navigation::NavigationMesh* navMesh);
+    Navigation::NavigationMesh* addNavMesh( PlatformContext& context, Navigation::DivideRecast& recastInterface, Scene& parentScene, AIEntity::PresetAgentRadius radius );
+    bool destroyNavMesh( AIEntity::PresetAgentRadius radius );
 
-    Navigation::NavigationMesh* getNavMesh(const AIEntity::PresetAgentRadius radius) const {
+    inline Navigation::NavigationMesh* getNavMesh(const AIEntity::PresetAgentRadius radius) const
+    {
         const NavMeshMap::const_iterator it = _navMeshes.find(radius);
-        if (it != std::end(_navMeshes)) {
-            return it->second;
+        if (it != std::end(_navMeshes))
+        {
+            return it->second.get();
         }
         return nullptr;
     }
     /// Remove a NavMesh
-    void destroyNavMesh(AIEntity::PresetAgentRadius radius);
 
-    void setSceneCallback(const DELEGATE<void>& callback) {
+    inline void setSceneCallback(const DELEGATE<void>& callback)
+    {
         LockGuard<Mutex> w_lock(_updateMutex);
         _sceneCallback = callback;
     }
@@ -123,12 +126,13 @@ class AIManager final : public SceneComponent
 
     bool running() const noexcept { return _running; }
 
+    /// Register an AI Team
+    AITeam* registerTeam( U32 id );
+    /// Unregister an AI Team
+    bool unregisterTeam( U32 id);
+
   protected:
     friend class AITeam;
-    /// Register an AI Team
-    void registerTeam(AITeam* team);
-    /// Unregister an AI Team
-    void unregisterTeam(AITeam* team);
 
     bool shouldStop() const noexcept;
 

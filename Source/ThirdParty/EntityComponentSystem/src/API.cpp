@@ -35,17 +35,17 @@ namespace ECS
 
 	namespace Memory { 
 
-		namespace Internal {
 
-			MemoryManager*				ECSMemoryManager = new Memory::Internal::MemoryManager();
+		GlobalMemoryUser::GlobalMemoryUser()
+		{
+			ECS_MEMORY_MANAGER = std::make_unique<Internal::MemoryManager>();
 		}
 
-
-		GlobalMemoryUser::GlobalMemoryUser() : ECS_MEMORY_MANAGER(Internal::ECSMemoryManager)
-		{}
-
 		GlobalMemoryUser::~GlobalMemoryUser()
-		{}
+		{
+			// check for memory leaks
+			ECS_MEMORY_MANAGER->CheckMemoryLeaks();
+		}
 
 		const void* GlobalMemoryUser::Allocate(size_t memSize, const char* user)
 		{
@@ -59,14 +59,4 @@ namespace ECS
 
 	} // namespace Memory
 
-	void Initialize()
-	{
-	}
-
-	void Terminate()
-	{
-
-		// check for memory leaks
-		Memory::Internal::ECSMemoryManager->CheckMemoryLeaks();
-	}
 } // namespace ECS

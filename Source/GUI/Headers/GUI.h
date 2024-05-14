@@ -61,6 +61,7 @@ class Scene;
 class Pipeline;
 class GUIConsole;
 class GUIElement;
+class ShaderProgram;
 class ResourceCache;
 class SceneGraphNode;
 class PlatformContext;
@@ -70,7 +71,6 @@ struct ImageView;
 struct TextElementBatch;
 struct SizeChangeParams;
 
-FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
 FWD_DECLARE_MANAGED_STRUCT( DVDFONSContext );
 
 /// Graphical User Interface
@@ -87,7 +87,7 @@ class GUI final : public GUIInterface,
         ~GUI() override;
 
         /// Create the GUI
-        [[nodiscard]] ErrorCode init( PlatformContext& context, ResourceCache* cache );
+        [[nodiscard]] ErrorCode init( PlatformContext& context );
         void destroy();
 
         /// Render all elements that need their own internal render targets (e.g. CEGUI)
@@ -117,7 +117,7 @@ class GUI final : public GUIInterface,
         /// Get a pointer to the root sheet that CEGUI renders into
         [[nodiscard]] CEGUI::Window* rootSheet() const noexcept { return _rootSheet; }
         /// Return a pointer to the default, general purpose message box
-        [[nodiscard]] GUIMessageBox* getDefaultMessageBox() const noexcept { return _defaultMsgBox; }
+        [[nodiscard]] GUIMessageBox* getDefaultMessageBox() const noexcept { return _defaultMsgBox.get(); }
         /// Mouse cursor forced to a certain position
         void setCursorPosition( I32 x, I32 y );
         /// Provides direct access to the CEGUI context. Used by plugins  (e.g. GUIConsole, GUIInput, etc)
@@ -186,9 +186,9 @@ class GUI final : public GUIInterface,
         /// Used to render CEGUI elements into. We blit this on top of our scene target.
         CEGUI::DVDTextureTarget* _renderTextureTarget{nullptr};
         /// Our custom in-game console (for logs and commands. A la Quake's ~-console)
-        GUIConsole* _console{nullptr};
+        std::unique_ptr<GUIConsole> _console;
         /// Pointer to a default message box used for general purpose messages
-        GUIMessageBox* _defaultMsgBox{nullptr};
+        std::unique_ptr<GUIMessageBox> _defaultMsgBox;
         /// Each scene has its own gui elements! (0 = global). We keep a pointer to the scene but we really shouldn't. Scene should feed itself into GUI.
         Scene* _activeScene{nullptr};
         /// All the GUI elements created per scene
@@ -204,8 +204,8 @@ class GUI final : public GUIInterface,
         /// The text rendering pipeline we used to draw Font Stash text
         Pipeline* _textRenderPipeline{nullptr};
         /// The text rendering shaderProgram we used to draw Font Stash text
-        ShaderProgram_ptr _textRenderShader;
-        ShaderProgram_ptr _ceguiRenderShader;
+        Handle<ShaderProgram> _textRenderShader = INVALID_HANDLE<ShaderProgram>;
+        Handle<ShaderProgram> _ceguiRenderShader = INVALID_HANDLE<ShaderProgram>;
     };
 
 };  // namespace Divide

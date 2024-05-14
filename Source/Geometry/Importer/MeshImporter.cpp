@@ -25,41 +25,64 @@ namespace {
     const char* g_parsedAssetAnimationExt = "DVDAnim";
 };
 
-GeometryFormat GetGeometryFormatForExtension(const char* extension) noexcept {
-    if (Util::CompareIgnoreCase(extension, "3ds")) {
+GeometryFormat GetGeometryFormatForExtension(const char* extension) noexcept
+{
+    if (Util::CompareIgnoreCase(extension, "3ds"))
+    {
         return GeometryFormat::_3DS;
     }
-    if (Util::CompareIgnoreCase(extension, "ase")) {
+
+    if (Util::CompareIgnoreCase(extension, "ase"))
+    {
         return GeometryFormat::ASE;
     }
-    if (Util::CompareIgnoreCase(extension, "fbx")) {
+
+    if (Util::CompareIgnoreCase(extension, "fbx"))
+    {
         return GeometryFormat::FBX;
     }
-    if (Util::CompareIgnoreCase(extension, "md2")) {
+
+    if (Util::CompareIgnoreCase(extension, "md2"))
+    {
         return GeometryFormat::MD2;
     }
-    if (Util::CompareIgnoreCase(extension, "md5mesh")) {
+
+    if (Util::CompareIgnoreCase(extension, "md5mesh"))
+    {
         return GeometryFormat::MD5;
     }
-    if (Util::CompareIgnoreCase(extension, "obj")) {
+
+    if (Util::CompareIgnoreCase(extension, "obj"))
+    {
         return GeometryFormat::OBJ;
     }
-    if (Util::CompareIgnoreCase(extension, "x")) {
+
+    if (Util::CompareIgnoreCase(extension, "x"))
+    {
         return GeometryFormat::X;
     }
-    if (Util::CompareIgnoreCase(extension, "dae")) {
+
+    if (Util::CompareIgnoreCase(extension, "dae"))
+    {
         return GeometryFormat::DAE;
     }
+
     if (Util::CompareIgnoreCase(extension, "gltf") ||
-        Util::CompareIgnoreCase(extension, "glb")) {
+        Util::CompareIgnoreCase(extension, "glb"))
+    {
         return GeometryFormat::GLTF;
     }
-    if (Util::CompareIgnoreCase(extension, g_parsedAssetAnimationExt)) {
+
+    if (Util::CompareIgnoreCase(extension, g_parsedAssetAnimationExt))
+    {
         return GeometryFormat::DVD_ANIM;
     }
-    if (Util::CompareIgnoreCase(extension, g_parsedAssetGeometryExt)) {
+
+    if (Util::CompareIgnoreCase(extension, g_parsedAssetGeometryExt))
+    {
         return GeometryFormat::DVD_GEOM;
     }
+
     return GeometryFormat::COUNT;
 }
 
@@ -73,18 +96,23 @@ namespace Import
         tempBuffer << _ID("BufferEntryPoint");
         tempBuffer << _modelName;
         tempBuffer << _modelPath;
-        if (_vertexBuffer->serialize(tempBuffer)) {
+        tempBuffer << _animationCount;
+
+        if (_vertexBuffer->serialize(tempBuffer))
+        {
             tempBuffer << to_U32(_subMeshData.size());
-            for (const SubMeshData& subMesh : _subMeshData) {
-                if (!subMesh.serialize(tempBuffer)) {
+            for (const SubMeshData& subMesh : _subMeshData)
+            {
+                if (!subMesh.serialize(tempBuffer))
+                {
                     //handle error
                 }
             }
-            if (!_nodeData.serialize(tempBuffer)) {
+            if (!_nodeData.serialize(tempBuffer))
+            {
                 //handle error
             }
 
-            tempBuffer << _hasAnimations;
             // Animations are handled by the SceneAnimator I/O
             return tempBuffer.dumpToFile(path, Util::StringFormat("{}.{}", fileName, g_parsedAssetGeometryExt));
         }
@@ -99,36 +127,52 @@ namespace Import
         {
             auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
             tempBuffer >> tempVer;
-            if (tempVer == BYTE_BUFFER_VERSION) {
+            if (tempVer == BYTE_BUFFER_VERSION)
+            {
                 U64 signature;
                 tempBuffer >> signature;
-                if (signature != _ID("BufferEntryPoint")) {
+                if (signature != _ID("BufferEntryPoint"))
+                {
                     return false;
                 }
+
                 tempBuffer >> _modelName;
                 tempBuffer >> _modelPath;
-                _vertexBuffer = context.gfx().newVB( true, _modelName );
-                if (_vertexBuffer->deserialize(tempBuffer)) {
+                tempBuffer >> _animationCount;
+
+                VertexBuffer::Descriptor vbDescriptor{};
+                vbDescriptor._name = _modelName;
+                vbDescriptor._allowDynamicUpdates = false;
+                vbDescriptor._keepCPUData = true;
+                vbDescriptor._largeIndices = true;
+
+                _vertexBuffer = context.gfx().newVB( vbDescriptor );
+                if (_vertexBuffer->deserialize(tempBuffer))
+                {
                     U32 subMeshCount = 0;
                     tempBuffer >> subMeshCount;
                     _subMeshData.resize(subMeshCount);
-                    for (SubMeshData& subMesh : _subMeshData) {
-                        if (!subMesh.deserialize(tempBuffer)) {
+                    for (SubMeshData& subMesh : _subMeshData)
+                    {
+                        if (!subMesh.deserialize(tempBuffer))
+                        {
                             //handle error
                             DIVIDE_UNEXPECTED_CALL();
                         }
                     }
-                    if (!_nodeData.deserialize(tempBuffer)) {
+
+                    if (!_nodeData.deserialize(tempBuffer))
+                    {
                         //handle error
                         DIVIDE_UNEXPECTED_CALL();
                     }
 
-                    tempBuffer >> _hasAnimations;
                     _loadedFromFile = true;
                     return true;
                 }
             }
         }
+
         return false;
     }
 
@@ -259,7 +303,7 @@ namespace Import
         return true;
     }
 };
-    bool MeshImporter::loadMeshDataFromFile(PlatformContext& context, Import::ImportData& dataOut)
+    bool MeshImporter::loadMeshDataFromFile( PlatformContext& context, Import::ImportData& dataOut )
     {
         Time::ProfileTimer importTimer = {};
         importTimer.start();
@@ -271,15 +315,21 @@ namespace Import
         {
             Console::printfn(LOCALE_STR("MESH_NOT_LOADED_FROM_FILE"), dataOut.modelName());
 
-            if (DVDConverter::Load(context, dataOut)) {
-                if (dataOut.saveToFile(context, Paths::g_geometryCacheLocation, dataOut.modelName())) {
+            if (DVDConverter::Load(context, dataOut))
+            {
+                if (dataOut.saveToFile(context, Paths::g_geometryCacheLocation, dataOut.modelName()))
+                {
                     Console::printfn(LOCALE_STR("MESH_SAVED_TO_FILE"), dataOut.modelName());
-                } else {
+                }
+                else
+                {
                     Console::printfn(LOCALE_STR("MESH_NOT_SAVED_TO_FILE"), dataOut.modelName());
                 }
                 success = true;
             }
-        } else {
+        }
+        else 
+        {
             Console::printfn(LOCALE_STR("MESH_LOADED_FROM_FILE"), dataOut.modelName());
             dataOut.fromFile(true);
             success = true;
@@ -293,29 +343,43 @@ namespace Import
         return success;
     }
 
-    bool MeshImporter::loadMesh(const bool loadedFromCache, Mesh* mesh, PlatformContext& context, ResourceCache* cache, const Import::ImportData& dataIn) {
+    bool MeshImporter::loadMesh( PlatformContext& context, ResourcePtr<Mesh> mesh )
+    {
         Time::ProfileTimer importTimer;
+ 
         importTimer.start();
-
-        mesh->setObjectFlag(dataIn.hasAnimations() ? Object3D::ObjectFlag::OBJECT_FLAG_SKINNED : Object3D::ObjectFlag::OBJECT_FLAG_NONE);
+        Import::ImportData tempMeshData( mesh->assetLocation(), mesh->assetName() );
+        if (!MeshImporter::loadMeshDataFromFile( context, tempMeshData ))
+        {
+            return false;
+        }
         mesh->renderState().drawState(true);
-        mesh->geometryBuffer()->fromBuffer(*dataIn._vertexBuffer);
-        mesh->geometryDirty(true);
-        mesh->geometryBuffer()->create(true, true);
+        mesh->geometryBuffer( tempMeshData._vertexBuffer );
+        mesh->setAnimationCount(tempMeshData._animationCount);
 
         std::atomic_uint taskCounter(0u);
 
-        for (const Import::SubMeshData& subMeshData : dataIn._subMeshData)
+        for (const Import::SubMeshData& subMeshData : tempMeshData._subMeshData)
         {
-            // Submesh is created as a resource when added to the scenegraph
-            SubMesh_ptr tempSubMesh = CreateResource<SubMesh>(cache, ResourceDescriptor(subMeshData.name().c_str()));
-            tempSubMesh->id(subMeshData.index());
-            tempSubMesh->setObjectFlag(subMeshData.boneCount() > 0u ? Object3D::ObjectFlag::OBJECT_FLAG_SKINNED : Object3D::ObjectFlag::OBJECT_FLAG_NONE);
+            const size_t boneCount = tempMeshData._animationCount > 0u ? subMeshData.boneCount() : 0u;
 
+            // Submesh is created as a resource when added to the SceneGraph
+            ResourceDescriptor<SubMesh> subMeshDescriptor( subMeshData.name().c_str() );
+            subMeshDescriptor.data(
+            { 
+                boneCount,
+                subMeshData.index(), 
+                0u
+            });
+
+            Handle<SubMesh> tempSubMeshHandle = CreateResource(subMeshDescriptor );
+
+            SubMesh* tempSubMesh = Get(tempSubMeshHandle);
             // it may already be loaded
             if (!tempSubMesh->parentMesh())
             {
-                Attorney::MeshImporter::addSubMesh(*mesh, tempSubMesh);
+                Attorney::MeshImporter::addSubMesh(*mesh, tempSubMeshHandle, subMeshData.index());
+                Attorney::SubMeshMesh::setParentMesh( *tempSubMesh, mesh );
 
                 for (U8 lod = 0u, j = 0u; lod < subMeshData.lodCount(); ++lod)
                 {
@@ -329,37 +393,36 @@ namespace Import
 
                 Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData.minPos(), subMeshData.maxPos(), subMeshData.worldOffset());
 
-                if (!tempSubMesh->getMaterialTpl())
+                if (tempSubMesh->getMaterialTpl() != INVALID_HANDLE<Material>)
                 {
-                    tempSubMesh->setMaterialTpl(loadSubMeshMaterial(cache, subMeshData._material, loadedFromCache, subMeshData.boneCount() > 0, taskCounter));
+                    tempSubMesh->setMaterialTpl(loadSubMeshMaterial(subMeshData._material, tempMeshData.fromFile(), boneCount > 0, taskCounter));
                 }
             }
         }
 
-        Attorney::MeshImporter::setNodeData(*mesh, dataIn._nodeData);
+        Attorney::MeshImporter::setNodeData(*mesh, tempMeshData._nodeData);
 
-        WAIT_FOR_CONDITION(taskCounter.load() == 0);
-
-        if (dataIn.hasAnimations())
+        if ( tempMeshData._animationCount > 0u )
         {
-            std::shared_ptr<SceneAnimator> animator;
+            SceneAnimator* animator = mesh->getAnimator();
+            DIVIDE_ASSERT(animator != nullptr);
+
             // Animation versioning is handled internally.
             ByteBuffer tempBuffer;
-            animator.reset(new SceneAnimator());
 
-            const string saveFileName = Util::StringFormat( "{}.{}", dataIn.modelName(), g_parsedAssetAnimationExt );
+            const string saveFileName = Util::StringFormat( "{}.{}", tempMeshData.modelName(), g_parsedAssetAnimationExt );
             if (tempBuffer.loadFromFile(Paths::g_geometryCacheLocation, saveFileName ))
             {
                 animator->load(context, tempBuffer);
             }
             else
             {
-                if (!dataIn.loadedFromFile())
+                if (!tempMeshData.loadedFromFile())
                 {
                     // We lose ownership of animations here ...
-                    Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, dataIn._animations);
+                    Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, tempMeshData._animations);
 
-                    animator->init(context, dataIn._skeleton, dataIn._bones);
+                    animator->init(context, tempMeshData._skeleton, tempMeshData._bones);
                     animator->save(context, tempBuffer);
                     if (!tempBuffer.dumpToFile(Paths::g_geometryCacheLocation, saveFileName ))
                     {
@@ -373,26 +436,32 @@ namespace Import
                     DIVIDE_UNEXPECTED_CALL();
                 }
             }
-
-            mesh->setAnimator(animator);
         }
+
+        WAIT_FOR_CONDITION(taskCounter.load() == 0);
 
         importTimer.stop();
         Console::d_printfn(LOCALE_STR("PARSE_MESH_TIME"),
-                           dataIn.modelName(),
+                           tempMeshData.modelName(),
                            Time::MicrosecondsToMilliseconds<F32>(importTimer.get()));
 
-        return true;
+        return mesh->load( context );
     }
 
     /// Load the material for the current SubMesh
-    Material_ptr MeshImporter::loadSubMeshMaterial(ResourceCache* cache, const Import::MaterialData& importData, const bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter) {
+    Handle<Material> MeshImporter::loadSubMeshMaterial( const Import::MaterialData& importData, const bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter)
+    {
         bool wasInCache = false;
-        Material_ptr tempMaterial = CreateResource<Material>(cache, ResourceDescriptor(importData.name().c_str()), wasInCache);
-        if (wasInCache) {
-            return tempMaterial;
+        Handle<Material> tempMaterialHandle = CreateResource(ResourceDescriptor<Material>(importData.name().c_str()), wasInCache);
+        if (wasInCache)
+        {
+            return tempMaterialHandle;
         }
-        if (!loadedFromCache) {
+
+        ResourcePtr<Material> tempMaterial = Get(tempMaterialHandle);
+
+        if (!loadedFromCache)
+        {
             tempMaterial->ignoreXMLData(true);
         }
 
@@ -414,7 +483,10 @@ namespace Import
 
         SamplerDescriptor textureSampler = {};
 
-        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
+        TextureDescriptor textureDescriptor
+        {
+            ._texType = TextureType::TEXTURE_2D_ARRAY
+        };
 
         for (U32 i = 0; i < to_base(TextureSlot::COUNT); ++i)
         {
@@ -425,31 +497,28 @@ namespace Import
                 textureSampler._wrapV = tex.wrapV();
                 textureSampler._wrapW = tex.wrapW();
 
-                ImageTools::ImportOptions importOptions{};
-                importOptions._useDDSCache = tex.useDDSCache();
-                importOptions._isNormalMap = tex.isNormalMap();
-                importOptions._alphaChannelTransparency = tex.alphaForTransparency();
-
                 if ( tex.srgb() )
                 {
-                    textureDescriptor.packing(GFXImagePacking::NORMALIZED_SRGB);
+                    textureDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
                 }
 
-                textureDescriptor.textureOptions(importOptions);
-                ResourceDescriptor texture(tex.textureName());
+                textureDescriptor._textureOptions._useDDSCache = tex.useDDSCache();
+                textureDescriptor._textureOptions._isNormalMap = tex.isNormalMap();
+                textureDescriptor._textureOptions._alphaChannelTransparency = tex.alphaForTransparency();
+
+                ResourceDescriptor<Texture> texture(tex.textureName(), textureDescriptor );
                 texture.assetName(tex.textureName());
                 texture.assetLocation(tex.texturePath());
-                texture.propertyDescriptor(textureDescriptor);
                 // No need to fire off additional threads just to wait on the result immediately after
                 texture.waitForReady(true);
-                Texture_ptr texPtr = CreateResource<Texture>(cache, texture, taskCounter);
-                texPtr->addStateCallback(ResourceState::RES_LOADED, [tempMaterial, i, texPtr, tex, textureSampler](CachedResource*)
-                {
-                    tempMaterial->setTexture(static_cast<TextureSlot>(i), texPtr, textureSampler,tex.operation());
-                });
+
+                tempMaterial->setTexture(static_cast<TextureSlot>(i),
+                                         CreateResource( texture, taskCounter ),
+                                         textureSampler,
+                                         tex.operation());
             }
         }
 
-        return tempMaterial;
+        return tempMaterialHandle;
     }
 } //namespace Divide

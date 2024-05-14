@@ -57,7 +57,7 @@ inline void DVDTexture::updateCachedScaleValues()
     _texelScaling.d_y = _size.d_height == 0.f ? 0.f : 1.f / _size.d_height;
 }
 
-inline Divide::Texture_ptr DVDTexture::getDVDTexture() const
+inline Divide::Handle<Divide::Texture> DVDTexture::getDVDTexture() const
 {
     return _texture;
 }

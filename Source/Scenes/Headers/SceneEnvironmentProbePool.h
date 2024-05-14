@@ -45,10 +45,10 @@ namespace GFX {
 }
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class Camera;
 class Pipeline;
+class ShaderProgram;
 class EnvironmentProbeComponent;
 using EnvironmentProbeList = vector<EnvironmentProbeComponent*>;
 
@@ -135,10 +135,10 @@ private:
     static RenderTargetHandle s_prefiltered;
     static RenderTargetHandle s_irradiance;
     static RenderTargetHandle s_brdfLUT;
-    static ShaderProgram_ptr s_previewShader;
-    static ShaderProgram_ptr s_irradianceComputeShader;
-    static ShaderProgram_ptr s_prefilterComputeShader;
-    static ShaderProgram_ptr s_lutComputeShader;
+    static Handle<ShaderProgram> s_previewShader;
+    static Handle<ShaderProgram> s_irradianceComputeShader;
+    static Handle<ShaderProgram> s_prefilterComputeShader;
+    static Handle<ShaderProgram> s_lutComputeShader;
     static Pipeline*         s_pipelineCalcPrefiltered;
     static Pipeline*         s_pipelineCalcIrradiance;
     static bool s_lutTextureDirty;

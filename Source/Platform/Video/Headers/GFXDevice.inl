@@ -140,7 +140,7 @@ inline const GFXRTPool& GFXDevice::renderTargetPool() const noexcept
     return *_rtPool;
 }
 
-inline const ShaderProgram_ptr& GFXDevice::getRTPreviewShader(const bool depthOnly) const noexcept
+inline Handle<ShaderProgram> GFXDevice::getRTPreviewShader(const bool depthOnly) const noexcept
 {
     return depthOnly ? _previewRenderTargetDepth : _previewRenderTargetColour;
 }
@@ -211,35 +211,14 @@ inline const GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const Descrip
     return _descriptorSets[to_base(usage)];
 }
 
-
-inline ShaderProgram_ptr GFXDevice::newShaderProgram( const size_t descriptorHash,
-                                                      const std::string_view resourceName,
-                                                      const std::string_view assetName,
-                                                      const ResourcePath& assetLocation,
-                                                      const ShaderProgramDescriptor& descriptor,
-                                                      ResourceCache& parentCache )
-{
-    return _api->newShaderProgram( descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
-}
-
 inline ShaderBuffer_uptr GFXDevice::newSB( const ShaderBufferDescriptor& descriptor )
 {
     return _api->newSB( descriptor );
 }
 
-inline GenericVertexData_ptr GFXDevice::newGVD( const U32 ringBufferLength, const bool renderIndirect, const std::string_view name )
+inline GenericVertexData_ptr GFXDevice::newGVD( const U32 ringBufferLength, const std::string_view name )
 {
-    return _api->newGVD( ringBufferLength, renderIndirect, name );
-}
-
-inline Texture_ptr GFXDevice::newTexture( const size_t descriptorHash,
-                                          const std::string_view resourceName,
-                                          const std::string_view assetNames,
-                                          const ResourcePath& assetLocations,
-                                          const TextureDescriptor& texDescriptor,
-                                          ResourceCache& parentCache )
-{
-    return _api->newTexture( descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
+    return _api->newGVD( ringBufferLength, name );
 }
 
 inline GFXDevice::GFXBuffers::PerFrameBuffers& GFXDevice::GFXBuffers::crtBuffers() noexcept

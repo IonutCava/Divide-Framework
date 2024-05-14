@@ -37,14 +37,10 @@ namespace Divide::GFX
 {
     struct PushConstant
     {
-        template<typename T>
+        template<typename T> requires !std::is_same_v<bool, T>
         PushConstant(const U64 bindingHash, const PushConstantType type, const T& data);
-        template<typename T>
+        template<typename T> requires !std::is_same_v<bool, T>
         PushConstant(const U64 bindingHash, const PushConstantType type, const T* data, const size_t count);
-
-        template<typename T>
-        void set(const T* data, const size_t count);
-        void clear() noexcept;
 
         const Byte* data() const noexcept;
 
@@ -55,8 +51,7 @@ namespace Divide::GFX
         bool operator==(const PushConstant& rhs) const = default;
 
     private:
-        // Most often than not, data will be the size of a mat4 or lower, otherwise we'd just use shader storage buffers
-        eastl::fixed_vector<Byte, sizeof(F32) * 16, true, eastl::dvd_allocator> _buffer;
+        eastl::fixed_vector<Byte, 8, true> _buffer;
     };
 
 } //namespace Divide::GFX

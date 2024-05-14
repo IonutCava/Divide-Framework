@@ -6,6 +6,11 @@
 
 namespace Divide::Util {
 
+namespace detail
+{
+    dvd_allocator<char> s_allocator;
+} //namespace detail
+
 bool FindCommandLineArgument(const int argc, char** argv, const char* target_arg, const char* arg_prefix)
 {
     string tempArg(arg_prefix);

@@ -14,7 +14,6 @@
 #include "Platform/File/Headers/ResourcePath.h"
 #include "Platform/Headers/PlatformDataTypes.h"
 #include "Platform/Headers/PlatformDefines.h"
-#include "Platform/Headers/PlatformMemoryDefines.h"
 #include "Platform/Threading/Headers/SharedMutex.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 #include "Core/Headers/ErrorCodes.h"
@@ -418,7 +417,7 @@ namespace Divide
         newActor->_actor = createActorForGroup( parentComp.physicsCollisionGroup(), posePxTransform );
         if ( newActor->_actor == nullptr )
         {
-            MemoryManager::DELETE( newActor );
+            delete newActor;
             return nullptr;
         }
 
@@ -427,7 +426,10 @@ namespace Divide
         const auto meshName = sNode.assetName().empty() ? sNode.resourceName() : sNode.assetName();
         const U64 nameHash = _ID( meshName.c_str() );
 
-        ResourcePath cachePath = Paths::g_collisionMeshCacheLocation / meshName; cachePath.append("."); cachePath.append(g_collisionMeshExtension);
+        ResourcePath cachePath = Paths::g_collisionMeshCacheLocation / meshName;
+        cachePath.append(".");
+        cachePath.append(g_collisionMeshExtension);
+        const string cachePathStr = cachePath.string();
 
         if ( Is3DObject( sNode.type() ) )
         {
@@ -463,7 +465,7 @@ namespace Divide
 
                     if ( triangles.empty() )
                     {
-                        MemoryManager::DELETE( newActor );
+                        delete newActor;
                         return nullptr;
                     }
 
@@ -484,7 +486,7 @@ namespace Divide
                         meshDesc.triangles.stride = sizeof( triangles.front() );
                         meshDesc.triangles.data = triangles.data();
 
-                        physx::PxDefaultFileOutputStream outputStream( cachePath.string().c_str() );
+                        physx::PxDefaultFileOutputStream outputStream( cachePathStr.c_str() );
                         if ( obj.type() == SceneNodeType::TYPE_TERRAIN )
                         {
                             const auto& verts = node->getNode<Terrain>().getVerts();
@@ -536,7 +538,7 @@ namespace Divide
                         Console::printfn( LOCALE_STR( "COLLISION_MESH_LOADED_FROM_FILE" ), meshName );
                     }
 
-                    physx::PxDefaultFileInputData inData( cachePath.string().c_str() );
+                    physx::PxDefaultFileInputData inData( cachePathStr.c_str() );
                     nodeGeometry = _gPhysicsSDK->createTriangleMesh( inData );
                     if ( nodeGeometry )
                     {
@@ -564,7 +566,6 @@ namespace Divide
         }
         else if ( sNode.type() == SceneNodeType::TYPE_INFINITEPLANE ||
                   sNode.type() == SceneNodeType::TYPE_WATER ||
-                  sNode.type() == SceneNodeType::TYPE_TRIGGER ||
                   sNode.type() == SceneNodeType::TYPE_PARTICLE_EMITTER )
         {
             // Use AABB

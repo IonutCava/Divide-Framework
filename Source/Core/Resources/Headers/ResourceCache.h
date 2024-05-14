@@ -34,203 +34,122 @@
 #define DVD_RESOURCE_CACHE_H_
 
 #include "Resource.h"
-#include "ResourceDescriptor.h"
 #include "Utility/Headers/Localization.h"
 #include "Core/Time/Headers/ProfileTimer.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/PlatformContextComponent.h"
 
 namespace Divide
 {
-
-    class ResourceCache;
-    // Used to delete resources
-    struct DeleteResource
-    {
-        explicit DeleteResource( ResourceCache* context ) noexcept
-            : _context( context )
-        {
-        }
-
-        void operator()( CachedResource* res ) const;
-
-        ResourceCache* _context = nullptr;
-    };
-
-    struct ResourceLoader
-    {
-        template<typename ResourceType>  requires std::is_base_of_v<Resource, ResourceType>
-        static CachedResource_ptr Build( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash );
-
-        protected:
-        static bool Load( CachedResource_ptr res )
-        {
-            if ( res == nullptr )
-            {
-                return false;
-            }
-
-            res->setState( ResourceState::RES_LOADING );
-            return res->load();
-        }
-    };
-
     class ResourceLoadLock final : NonCopyable, NonMovable
     {
         public:
-        explicit ResourceLoadLock( size_t hash, PlatformContext& context );
-        ~ResourceLoadLock();
-
-        static void notifyTaskPool( PlatformContext& context );
+            explicit ResourceLoadLock( size_t hash, PlatformContext& context );
+            ~ResourceLoadLock();
 
         private:
-        static bool IsLoading( size_t hash );
-        static bool SetLoading( size_t hash );
-        static bool SetLoadingFinished( size_t hash );
+            [[nodiscard]] static bool SetLoading( size_t hash );
+            [[nodiscard]] static bool SetLoadingFinished( size_t hash );
 
         private:
-        const size_t _loadingHash;
-        const bool _threaded;
+            const size_t _loadingHash;
+
+            static SharedMutex s_hashLock;
+            static eastl::set<size_t> s_loadingHashes;
     };
-    /// Resource Cache responsibilities:
-    /// - keep track of already loaded resources
-    /// - load new resources using appropriate resource loader and store them in cache
-    /// - remove resources by name / pointer or remove all
-    class ResourceCache final : public PlatformContextComponent, NonMovable
+
+    class ResourceCache final : private NonMovable
     {
         public:
-        explicit ResourceCache( PlatformContext& context );
-        ~ResourceCache() override;
+            static void Init(RenderAPI renderAPI, PlatformContext& context);
+            static void Clear();
 
-        /// Each resource entity should have a 'resource name'Loader implementation.
-        template <typename T, bool UseAtomicCounter> requires std::is_base_of_v<CachedResource, T>
-        inline std::shared_ptr<T> loadResource( const ResourceDescriptor& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
-        {
-            F32 timeInMS = 0.f;
-            std::shared_ptr<T> ptr;
-            {
-                if constexpr ( UseAtomicCounter )
-                {
-                    taskCounter.fetch_add( 1u );
-                }
+            template <typename T> requires std::is_base_of_v<CachedResource, T>
+            [[nodiscard]] static T* Get( Handle<T> handle);
 
-                // The loading process may change the resource descriptor so always use the user-specified descriptor hash for lookup!
-                const size_t loadingHash = descriptor.getHash();
+            template <typename T> requires std::is_base_of_v<CachedResource, T>
+            static void Destroy( Handle<T>& handle );
 
-                // If two threads are trying to load the same resource at the same time, by the time one of them adds the resource to the cache, it's too late
-                // So check if the hash is currently in the "processing" list, and if it is, just busy-spin until done
-                // Once done, lock the hash for ourselves
-                ResourceLoadLock res_lock( loadingHash, _context );
-                /// Check cache first to avoid loading the same resource twice (or if we have stale, expired pointers in there)
-                bool cacheHit = false;
-                ptr = std::static_pointer_cast<T>(find( loadingHash, cacheHit ));
-                /// If the cache did not contain our resource ...
-                wasInCache = ptr != nullptr;
-                if ( !wasInCache )
-                {
-                    Console::printfn( LOCALE_STR("RESOURCE_CACHE_GET_RES"), descriptor.resourceName().c_str(), loadingHash );
+            template <typename T> requires std::is_base_of_v<CachedResource, T>
+            [[nodiscard]] static Handle<T> LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter );
 
-                    Time::ProfileTimer loadTimer = {};
-                    loadTimer.start();
-                    /// ...acquire the resource's loader and get our resource as the loader creates it
-                    ptr = std::static_pointer_cast<T>(ResourceLoader::Build<T>( this, _context, descriptor, loadingHash ));
-                    assert( ptr != nullptr );
-                    add( ptr, cacheHit );
-                    loadTimer.stop();
-                    timeInMS = Time::MicrosecondsToMilliseconds<F32>( loadTimer.get() );
-                }
-
-                if constexpr ( UseAtomicCounter )
-                {
-                    ptr->addStateCallback( ResourceState::RES_LOADED, [&taskCounter]( auto ) noexcept
-                                           {
-                                               taskCounter.fetch_sub( 1u );
-                                           } );
-                }
-            }
-            if ( descriptor.waitForReady() )
-            {
-                WAIT_FOR_CONDITION_CALLBACK( ptr->getState() == ResourceState::RES_LOADED || ptr->getState() == ResourceState::RES_UNKNOWN, ResourceLoadLock::notifyTaskPool, _context );
-            }
-
-            // Print load times
-            if ( wasInCache )
-            {
-                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_RETRIEVE" ), descriptor.resourceName().c_str() );
-            }
-            else
-            {
-                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_LOAD" ), descriptor.resourceName().c_str(), timeInMS );
-            }
-
-            if ( ptr->getState() == ResourceState::RES_UNKNOWN )
-            {
-                Console::printfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ), descriptor.resourceName().c_str() );
-                return nullptr;
-            }
-
-            return ptr;
-        }
-
-        CachedResource_ptr find( size_t descriptorHash, bool& entryInMap );
-        void add( const CachedResource_wptr& resource, bool overwriteEntry );
-        /// Empty the entire cache of resources
-        void clear();
-
-        void printContents() const;
-
-        /// unload a single resource and pend deletion
-        void remove( CachedResource* resource );
+            template <typename T> requires std::is_base_of_v<CachedResource, T>
+            [[nodiscard]] static Handle<T> RetrieveFromCache( size_t descriptorHash, bool& wasInCache );
 
         protected:
-        /// multithreaded resource creation
-        //using ResourceMap = ska::bytell_hash_map<size_t, CachedResource_wptr>;
-        using ResourceMap = hashMap<size_t, CachedResource_wptr>;
+            friend struct ResourcePoolBase;
+            static void RegisterPool( ResourcePoolBase* pool );
 
-        ResourceMap _resDB{};
-        mutable SharedMutex _creationMutex{};
+        private:
+
+            template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base> && std::is_base_of_v<Base, Derived>
+            [[nodiscard]] static ResourcePtr<Base> AllocateInternal( const ResourceDescriptor<Base>& descriptor );
+            
+            template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base> && std::is_base_of_v<Base, Derived>
+            [[nodiscard]] static void BuildInternal( ResourcePtr<Base> ptr );
+
+            template<typename T> requires std::is_base_of_v<Resource, T>
+            static ResourcePtr<T> Allocate( Handle<T> handle, const ResourceDescriptor<T>& descriptor, size_t descriptorHash );
+
+            template<typename T> requires std::is_base_of_v<Resource, T>
+            static void Deallocate(Handle<T> handle);
+
+            template<typename T> requires std::is_base_of_v<Resource, T>
+            static void Build( ResourcePtr<T> ptr, const ResourceDescriptor<T>& descriptor );
+
+            static Mutex s_poolLock;
+            static vector<ResourcePoolBase*> s_resourcePools;
+
+            static PlatformContext* s_context;
+            static RenderAPI s_renderAPI;
     };
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, bool& wasInCache )
+    [[nodiscard]] FORCE_INLINE Handle<T> CreateResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
+    {
+        return ResourceCache::LoadResource<T>( descriptor, wasInCache, taskCounter );
+    }
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    [[nodiscard]] FORCE_INLINE Handle<T> CreateResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache )
     {
         std::atomic_uint taskCounter = 0u;
-        return cache->loadResource<T, false>( descriptor, wasInCache, taskCounter );
+        return CreateResource( descriptor, wasInCache, taskCounter );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
-    {
-        return cache->loadResource<T, true>( descriptor, wasInCache, taskCounter );
-    }
-
-    template <typename T> requires std::is_base_of_v<CachedResource, T>
-    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor )
+    [[nodiscard]] FORCE_INLINE Handle<T> CreateResource( const ResourceDescriptor<T>& descriptor, std::atomic_uint& taskCounter )
     {
         bool wasInCache = false;
-        return CreateResource<T>( cache, descriptor, wasInCache );
+        return CreateResource( descriptor, wasInCache, taskCounter );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    inline std::shared_ptr<T> CreateResource( ResourceCache* cache, const ResourceDescriptor& descriptor, std::atomic_uint& taskCounter )
+    [[nodiscard]] FORCE_INLINE Handle<T> CreateResource( const ResourceDescriptor<T>& descriptor )
     {
         bool wasInCache = false;
-        return CreateResource<T>( cache, descriptor, wasInCache, taskCounter );
+        std::atomic_uint taskCounter = 0u;
+        return CreateResource(descriptor, wasInCache, taskCounter);
     }
 
-    FWD_DECLARE_MANAGED_CLASS( Mesh );
-    namespace detail
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    [[nodiscard]] FORCE_INLINE Handle<T> GetResourceRef( const size_t descriptorHash )
     {
-        struct MeshLoadData
-        {
-            Mesh_ptr _mesh;
-            ResourceCache* _cache;
-            PlatformContext* _context;
-            ResourceDescriptor* _descriptor;
+        bool wasInCache = false;
+        return ResourceCache::RetrieveFromCache<T>(descriptorHash, wasInCache);
+    }
 
-            Mesh_ptr build();
-        };
-    } //namespace detail
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    FORCE_INLINE void DestroyResource( Handle<T>& handle)
+    {
+        ResourceCache::Destroy<T>(handle);
+    }
 
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    [[nodiscard]] FORCE_INLINE T* Get( const Handle<T> handle )
+    {
+        return ResourceCache::Get( handle );
+    }
 }  // namespace Divide
 
 #endif //DVD_RESOURCE_CACHE_H_

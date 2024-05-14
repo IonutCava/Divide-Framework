@@ -51,5 +51,4 @@ namespace ImGui {
 #define IM_ASSERT(_EXPR) Divide::Assert::DIVIDE_ASSERT_FUNC(_EXPR, #_EXPR, __FILE__, __LINE__, "IMGUI_ASSERT")
 #define IM_DEBUG_BREAK() Divide::DebugBreak(true)
 #define AddBezierCurve AddBezierCubic
-
 #endif //DVD_IMGUI_CUSTOM_CONFIG_H_

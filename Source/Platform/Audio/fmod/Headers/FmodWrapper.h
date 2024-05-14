@@ -52,9 +52,9 @@ public:
 
     void closeAudioAPI() noexcept override {}
 
-    void playSound( [[maybe_unused]] const AudioDescriptor_ptr& sound) noexcept override {}
+    void playSound( [[maybe_unused]] const Handle<AudioDescriptor> sound) noexcept override {}
 
-    void playMusic( [[maybe_unused]] const AudioDescriptor_ptr& music) noexcept override {}
+    void playMusic( [[maybe_unused]] const  Handle<AudioDescriptor> music) noexcept override {}
 
     void pauseMusic() noexcept override {}
     void stopMusic() noexcept override {}

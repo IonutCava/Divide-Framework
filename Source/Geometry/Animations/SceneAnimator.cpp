@@ -32,16 +32,18 @@ SceneAnimator::~SceneAnimator()
 void SceneAnimator::release(const bool releaseAnimations)
 {
     _bones.clear();
-    MemoryManager::SAFE_DELETE(_skeleton);
+    delete _skeleton;
+    _skeleton = nullptr;
 
     // this should clean everything up
     _skeletonLines.clear();
     _skeletonLinesContainer.clear();
     _skeletonDepthCache = -2;
-    if (releaseAnimations) {
+    if (releaseAnimations)
+    {
         // clear all animations
         _animationNameToID.clear();
-        MemoryManager::DELETE_CONTAINER(_animations);
+        _animations.clear();
     }
 }
 
@@ -55,16 +57,19 @@ bool SceneAnimator::init([[maybe_unused]] PlatformContext& context) {
     _skeletonLines.resize(animationCount);
 
     // pre-calculate the animations
-    for (U32 i = 0u; i < animationCount; ++i) {
-        AnimEvaluator* crtAnimation = _animations[i];
+    for (U32 i = 0u; i < animationCount; ++i)
+    {
+        AnimEvaluator* crtAnimation = _animations[i].get();
         const D64 duration = crtAnimation->duration();
         const D64 tickStep = crtAnimation->ticksPerSecond() / ANIMATION_TICKS_PER_SECOND;
         D64 dt = 0;
-        for (D64 ticks = 0; ticks < duration; ticks += tickStep) {
+        for (D64 ticks = 0; ticks < duration; ticks += tickStep)
+        {
             dt += timeStep;
             calculate(i, dt);
             transforms.resize(_skeletonDepthCache, MAT4_IDENTITY);
-            for (I32 a = 0; a < _skeletonDepthCache; ++a) {
+            for (I32 a = 0; a < _skeletonDepthCache; ++a)
+            {
                 Bone* bone = _bones[a];
                 transforms[a] = bone->offsetMatrix() * bone->globalTransform();
                 bone->boneID(a);
@@ -81,15 +86,17 @@ bool SceneAnimator::init([[maybe_unused]] PlatformContext& context) {
     return _skeletonDepthCache > 0;
 }
 
-void SceneAnimator::buildBuffers(GFXDevice& gfxDevice) {
+void SceneAnimator::buildBuffers(GFXDevice& gfxDevice)
+{
     // pay the cost upfront
-    for (AnimEvaluator* crtAnimation : _animations) {
+    for (auto& crtAnimation : _animations)
+    {
         crtAnimation->initBuffers(gfxDevice);
     }
 }
 
 /// This will build the skeleton based on the scene passed to it and CLEAR EVERYTHING
-bool SceneAnimator::init(PlatformContext& context, Bone* skeleton, const vector<Bone*>& bones) {
+bool SceneAnimator::init( PlatformContext& context, Bone* skeleton, const vector<Bone*>& bones) {
     release(false);
 
     DIVIDE_ASSERT(_bones.size() < U8_MAX, "SceneAnimator::init error: Too many bones for current node!");

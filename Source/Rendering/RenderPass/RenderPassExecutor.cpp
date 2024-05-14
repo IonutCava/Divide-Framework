@@ -314,9 +314,9 @@ namespace Divide
         Material::OnShutdown();
     }
 
-    void RenderPassExecutor::postInit( const ShaderProgram_ptr& OITCompositionShader,
-                                       const ShaderProgram_ptr& OITCompositionShaderMS,
-                                       const ShaderProgram_ptr& ResolveGBufferShaderMS )
+    void RenderPassExecutor::postInit( const Handle<ShaderProgram> OITCompositionShader,
+                                       const Handle<ShaderProgram> OITCompositionShaderMS,
+                                       const Handle<ShaderProgram> ResolveGBufferShaderMS )
     {
 
         if ( !s_globalDataInit )
@@ -329,7 +329,7 @@ namespace Divide
             pipelineDescriptor._stateBlock._depthTestEnabled = false;
             pipelineDescriptor._stateBlock._depthWriteEnabled = false;
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-            pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS->handle();
+            pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS;
             s_ResolveGBufferPipeline = _context.newPipeline( pipelineDescriptor );
 
             BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::ALBEDO )];
@@ -338,10 +338,10 @@ namespace Divide
             state0.blendSrc( BlendProperty::INV_SRC_ALPHA );
             state0.blendDest( BlendProperty::ONE );
 
-            pipelineDescriptor._shaderProgramHandle = OITCompositionShader->handle();
+            pipelineDescriptor._shaderProgramHandle = OITCompositionShader;
             s_OITCompositionPipeline = _context.newPipeline( pipelineDescriptor );
 
-            pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS->handle();
+            pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS;
             s_OITCompositionMSPipeline = _context.newPipeline( pipelineDescriptor );
 
         }
@@ -946,7 +946,7 @@ namespace Divide
         {
             GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = Util::StringFormat( "Post Render pass for stage [ {} ]", TypeUtil::RenderStageToString( stagePass._stage ), to_U32( stagePass._stage ) ).c_str();
 
-            _renderQueue->postRender( Attorney::ProjectManagerRenderPass::renderState( _parent.parent().projectManager() ),
+            _renderQueue->postRender( Attorney::ProjectManagerRenderPass::renderState( _parent.parent().projectManager().get() ),
                                       params._stagePass,
                                       bufferInOut );
 
@@ -1042,20 +1042,20 @@ namespace Divide
                 RTAttachment* normalsAtt = MSSource->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::NORMALS );
 
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
+                Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
             }
             if ( hasHiZ )
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget( params._targetHIZ );
                 RTAttachment* hizAtt = hizTarget->getAttachment( RTAttachmentType::COLOUR );
-                Set( binding._data, hizAtt->texture()->getView(), hizAtt->_descriptor._sampler );
+                Set( binding._data, hizAtt->texture(), hizAtt->_descriptor._sampler );
             }
             else if ( prePassExecuted )
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
                 RTAttachment* depthAtt = target.getAttachment( RTAttachmentType::DEPTH );
-                Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+                Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
             }
 
             prepareRenderQueues( params, cameraSnapshot, false, RenderingOrder::COUNT, bufferInOut, memCmdInOut );
@@ -1114,15 +1114,15 @@ namespace Divide
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, accumAtt->texture()->getView(), accumAtt->_descriptor._sampler );
+                Set( binding._data, accumAtt->texture(), accumAtt->_descriptor._sampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, revAtt->texture()->getView(), revAtt->_descriptor._sampler );
+                Set( binding._data, revAtt->texture(), revAtt->_descriptor._sampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
+                Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
             }
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
@@ -1170,7 +1170,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
+            Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( bufferInOut );
@@ -1225,7 +1225,7 @@ namespace Divide
             I64 ignoreGUID = params._sourceNode == nullptr ? -1 : params._sourceNode->getGUID();
 
             NodeCullParams cullParams = {};
-            Attorney::ProjectManagerRenderPass::initDefaultCullValues( _parent.parent().projectManager(), _stage, cullParams );
+            Attorney::ProjectManagerRenderPass::initDefaultCullValues( _parent.parent().projectManager().get(), _stage, cullParams );
 
             cullParams._clippingPlanes = params._clippingPlanes;
             cullParams._stage = _stage;
@@ -1245,11 +1245,11 @@ namespace Divide
             {
                 cullFlags |= to_base( CullOptions::CULL_STATIC_NODES );
             }
-            Attorney::ProjectManagerRenderPass::cullScene( _parent.parent().projectManager(), cullParams, cullFlags, _visibleNodesCache );
+            Attorney::ProjectManagerRenderPass::cullScene( _parent.parent().projectManager().get(), cullParams, cullFlags, _visibleNodesCache );
         }
         else
         {
-            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
+            Attorney::ProjectManagerRenderPass::findNode( _parent.parent().projectManager().get(), camera->snapshot()._eye, params._singleNodeRenderGUID, _visibleNodesCache );
         }
 
         const bool drawTranslucents = (params._drawMask & to_U8( 1 << to_base( RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES))) && _stage != RenderStage::SHADOW;
@@ -1307,7 +1307,7 @@ namespace Divide
 
         if ( params._refreshLightData )
         {
-            Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager(), _stage, camSnapshot, memCmdInOut );
+            Attorney::ProjectManagerRenderPass::prepareLightData( _parent.parent().projectManager().get(), _stage, camSnapshot, memCmdInOut );
         }
 
         GFX::EnqueueCommand<GFX::SetClipPlanesCommand>( bufferInOut )->_clippingPlanes =  params._clippingPlanes;

@@ -36,6 +36,7 @@
 #include "SceneNodeFwd.h"
 #include "SGNRelationshipCache.h"
 #include "IntersectionRecord.h"
+#include "Core/Resources/Headers/Resource.h"
 
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "ECS/Components/Headers/SGNComponent.h"
@@ -48,6 +49,7 @@ namespace Divide
         struct MemoryBarrierCommand;
     };
 
+    class SceneNode;
     class SceneGraph;
     class SceneState;
     class PropertyWindow;
@@ -64,16 +66,32 @@ namespace Divide
     struct RenderStagePass;
     struct RenderPassCuller;
 
-    FWD_DECLARE_MANAGED_CLASS( SceneNode );
+
+    struct SceneNodeHandle
+    {
+        Handle<SceneNode> _handle = INVALID_HANDLE<SceneNode>;
+        SceneNode* _nodePtr = nullptr;
+        SceneNodeType _type = SceneNodeType::COUNT;
+        DELEGATE<void> _deleter;
+        bool operator==(const SceneNodeHandle&) const = default;
+    };
+
+    template<typename T> requires std::is_base_of_v<SceneNode, T>
+    Handle<T> ToHandle( const SceneNodeHandle handle );
+
+    template<typename T> requires std::is_base_of_v<SceneNode, T>
+    SceneNodeHandle FromHandle( const Handle<T> handle);
 
     struct SceneGraphNodeDescriptor
     {
-        SceneNode_ptr    _node = nullptr;
         Str<64>            _name = "";
-        size_t           _instanceCount = 1;
-        U32              _componentMask = 0u;
-        NodeUsageContext _usageContext = NodeUsageContext::NODE_STATIC;
-        bool             _serialize = true;
+        size_t             _instanceCount = 1u;
+        SceneNodeHandle    _nodeHandle{};
+        U32                _componentMask = 0u;
+        U32                _dataFlag = U32_MAX;
+        NodeUsageContext   _usageContext = NodeUsageContext::NODE_STATIC;
+        bool               _serialize = true;
+
     };
 
     namespace Attorney
@@ -117,7 +135,7 @@ namespace Divide
         struct ChildContainer
         {
             mutable SharedMutex _lock;
-            eastl::fixed_vector<SceneGraphNode*, 32, true, eastl::dvd_allocator> _data;
+            eastl::fixed_vector<SceneGraphNode*, 32, true> _data;
             std::atomic_uint _count{ 0u };
 
             /// Return a specific child by index. Does not recurse.
@@ -130,9 +148,9 @@ namespace Divide
             }
         };
 
-        public:
+       public:
         /// Avoid creating SGNs directly. Use the "addChildNode" on an existing node (even root) or "addNode" on the existing SceneGraph
-        explicit SceneGraphNode( SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor );
+        explicit SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor );
         ~SceneGraphNode() override;
 
         /// Return a reference to the parent graph. Operator= should be disabled
@@ -206,6 +224,11 @@ namespace Divide
             return static_cast<T&>(*_node);
         }
 
+        FORCE_INLINE SceneNodeHandle handle() const noexcept
+        {
+            return _descriptor._nodeHandle;
+        }
+
         /// Always use the level of redirection needed to reduce virtual function overhead.
         /// Use getNode<SceneNode> if you need material properties for ex. or getNode<SkinnedSubMesh> for animation transforms
         template <typename T = SceneNode>  requires std::is_base_of_v<SceneNode, T>
@@ -214,17 +237,14 @@ namespace Divide
             return static_cast<const T&>(*_node);
         }
 
-        const SceneNode_ptr& getNodePtr() const noexcept
-        {
-            return _node;
-        }
-
         /// Returns a pointer to a specific component. Returns null if the SGN does not have the component requested
         template <typename T>
         [[nodiscard]] FORCE_INLINE T* get() const
         {
             return GetComponent<T>();
         }
+
+        FORCE_INLINE U32 dataFlag() const noexcept { return _descriptor._dataFlag; }
 
         void SendEvent( ECS::CustomEvent&& event );
 
@@ -272,9 +292,11 @@ namespace Divide
         protected:
         void updateCollisions( const SceneGraphNode& parentNode, IntersectionContainer& intersections, Mutex& intersectionsLock ) const;
 
-        private:
+      private:
         /// Process any events that might of queued up during the ECS Update stages
         void processEvents();
+        SceneGraphNode* addChildNode( SceneGraphNode* sgn );
+
         /// Returns a collision result that determines if the node SHOULD be culled (is not visible for the current stage). 
         FrustumCollision stateCullNode( const NodeCullParams& params, U16 cullFlags, U32 filterMask, const F32 distanceToClosestPointSQ ) const;
         FrustumCollision clippingCullNode( const NodeCullParams& params ) const;
@@ -324,7 +346,7 @@ namespace Divide
         // ToDo: Remove this HORRIBLE hack -Ionut
         struct hacks
         {
-            vector_fast<EditorComponent*> _editorComponents;
+            vector<EditorComponent*> _editorComponents;
             TransformComponent* _transformComponentCache = nullptr;
             BoundsComponent* _boundsComponentCache = nullptr;
             RenderingComponent* _renderingComponent = nullptr;
@@ -339,7 +361,7 @@ namespace Divide
         } Events;
 
         POINTER_R( SceneGraph, sceneGraph, nullptr );
-        PROPERTY_R( SceneNode_ptr, node, nullptr );
+        POINTER_R( SceneNode, node, nullptr );
         POINTER_R( ECS::ComponentManager, compManager, nullptr );
         POINTER_R( SceneGraphNode, parent, nullptr );
         PROPERTY_R( Str<64>, name, "" );
@@ -352,18 +374,21 @@ namespace Divide
         PROPERTY_R( NodeUsageContext, usageContext, NodeUsageContext::NODE_STATIC );
         //ToDo: make this work in a multi-threaded environment
         mutable I8 _frustPlaneCache = -1;
+
+        private:
+          const SceneGraphNodeDescriptor _descriptor;
     };
 
     namespace Attorney
     {
         class SceneGraphNodeEditor
         {
-            static vector_fast<EditorComponent*>& editorComponents( SceneGraphNode* node ) noexcept
+            static vector<EditorComponent*>& editorComponents( SceneGraphNode* node ) noexcept
             {
                 return node->Hacks._editorComponents;
             }
 
-            static const vector_fast<EditorComponent*>& editorComponents( const SceneGraphNode* node ) noexcept
+            static const vector<EditorComponent*>& editorComponents( const SceneGraphNode* node ) noexcept
             {
                 return node->Hacks._editorComponents;
             }

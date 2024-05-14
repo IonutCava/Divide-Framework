@@ -157,9 +157,9 @@ namespace Divide
         }
 
         const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(RenderTargetNames::BACK_BUFFER);
-        const Texture_ptr& gameView = rt->getAttachment(RTAttachmentType::COLOUR)->texture();
+        const Handle<Texture> gameView = rt->getAttachment(RTAttachmentType::COLOUR)->texture();
 
-        NodePreviewWindow::drawInternal(gameView.get());
+        NodePreviewWindow::drawInternal(gameView);
 
         if (play || !enableGizmo)
         {

@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_DIVIDE_BOOST_ASIO_TPL_H_
 
 #include "WorldPacket.h"
+#include "Client.h"
 
 namespace Divide
 {
@@ -44,7 +45,7 @@ namespace Divide
 #endif
 
     class OPCodes;
-    class Client;
+    FWD_DECLARE_MANAGED_CLASS( Client );
     class ASIO
     {
         public:
@@ -85,7 +86,7 @@ namespace Divide
         boost::asio::io_context _ioService;
         std::unique_ptr<boost::asio::io_context::work> _work;
         std::unique_ptr<std::thread> _thread;
-        Client* _localClient{nullptr};
+        Client_uptr _localClient;
         bool _connected{false};
         bool _debugOutput{true};
         string _address, _port;

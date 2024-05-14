@@ -5,6 +5,7 @@
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Physics/Headers/PXDevice.h"
@@ -16,51 +17,26 @@
 
 namespace Divide {
 
-Object3D::Object3D( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const U32 flagMask)
-    : SceneNode(parentCache,
-                descriptorHash,
-                name,
-                resourceName,
-                resourceLocation,
+Object3D::Object3D( PlatformContext& context, const ResourceDescriptorBase& descriptor, const SceneNodeType type)
+    : SceneNode(descriptor,
                 type,
-                to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS) | to_base(ComponentType::RENDERING)),
-    _context(context.gfx()),
-    _geometryPartitionIDs{},
-    _geometryFlagMask(flagMask)
+                to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS) | to_base(ComponentType::RENDERING))
+    , _context(context.gfx())
+    , _geometryPartitionIDs{}
 {
     _geometryPartitionIDs.fill(VertexBuffer::INVALID_PARTITION_ID);
     _geometryPartitionIDs[0] = 0u;
-
-    if (!getObjectFlag(ObjectFlag::OBJECT_FLAG_NO_VB)) {
-        _geometryBuffer = _context.newVB(true, name);
-    }
-
-    if (getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED)) {
-        EditorComponentField playAnimationsField = {};
-        playAnimationsField._name = "Toogle Animation Playback";
-        playAnimationsField._data = &_playAnimationsOverride;
-        playAnimationsField._type = EditorComponentFieldType::SWITCH_TYPE;
-        playAnimationsField._basicType = PushConstantType::BOOL;
-        playAnimationsField._readOnly = false;
-        _editorComponent.registerField(MOV(playAnimationsField));
-    }
 }
 
-Object3D::Object3D( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const std::string_view resourceName, const ResourcePath& resourceLocation, const SceneNodeType type, const ObjectFlag flag)
-    : Object3D(context, parentCache, descriptorHash, name, resourceName, resourceLocation, type, to_U32(flag))
+void Object3D::rebuildInternal()
 {
-}
-
-void Object3D::editorFieldChanged([[maybe_unused]] const std::string_view field) {
-    NOP();
-}
-
-void Object3D::rebuildInternal() {
     NOP();
 }
 
 const VertexBuffer_ptr& Object3D::geometryBuffer()
 {
+    DIVIDE_ASSERT(_geometryBuffer != nullptr);
+
     if (geometryDirty())
     {
         geometryDirty(false);
@@ -70,15 +46,18 @@ const VertexBuffer_ptr& Object3D::geometryBuffer()
     return _geometryBuffer;
 }
 
-void Object3D::setMaterialTpl(const Material_ptr& material) {
+void Object3D::setMaterialTpl(const Handle<Material> material)
+{
     SceneNode::setMaterialTpl(material);
 
-    if (_materialTemplate != nullptr && geometryBuffer() != nullptr) {
-        _materialTemplate->setPipelineLayout(GetGeometryBufferType(type()), geometryBuffer()->generateAttributeMap());
+    if (_materialTemplate != INVALID_HANDLE<Material> && geometryBuffer() != nullptr)
+    {
+        Get<Material>(material)->setPipelineLayout(GetGeometryBufferType(type()), geometryBuffer()->generateAttributeMap());
     }
 }
 
-void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) {
+void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut)
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     if (geometryBuffer() != nullptr)
@@ -87,6 +66,8 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
         {
             const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand& cmd = cmdsOut.emplace_back();
+            toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
+
             cmd._sourceBuffer = geometryBuffer()->handle();
             cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(partitionID));
             cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(partitionID));
@@ -113,59 +94,62 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
 
 // Create a list of triangles from the vertices + indices lists based on primitive type
 bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
-    if (getObjectFlag(ObjectFlag::OBJECT_FLAG_NO_VB)) {
+    if ( _geometryBuffer == nullptr )
+    {
         return true;
     }
 
-    auto& geometry = geometryBuffer();
+    if ( _geometryBuffer->getIndexCount() == 0)
+    {
+        return false;
+    }
 
-    DIVIDE_ASSERT(geometry != nullptr,
-        "Object3D error: Please specify a valid VertexBuffer before "
-        "calculating the triangle list!");
     // We can't have a VB without vertex positions
-    DIVIDE_ASSERT(!geometry->getVertices().empty(),
-        "Object3D error: computeTriangleList called with no position "
-        "data available!");
+    DIVIDE_ASSERT(!_geometryBuffer->getVertices().empty(), "Object3D error: computeTriangleList called with no position data available!");
 
-    if(partitionID >= _geometryTriangles.size()) {
+    if(partitionID >= _geometryTriangles.size())
+    {
         _geometryTriangles.resize(partitionID + 1);
     }
 
     vector<vec3<U32>>& triangles = _geometryTriangles[partitionID];
-    if (!force && !triangles.empty()) {
+    if (!force && !triangles.empty())
+    {
         return true;
     }
 
     efficient_clear( triangles );
 
-    const size_t partitionOffset = geometry->getPartitionOffset(_geometryPartitionIDs[0]);
-    const size_t partitionCount = geometry->getPartitionIndexCount(_geometryPartitionIDs[0]);
+    const size_t partitionOffset = _geometryBuffer->getPartitionOffset(_geometryPartitionIDs[0]);
+    const size_t partitionCount = _geometryBuffer->getPartitionIndexCount(_geometryPartitionIDs[0]);
     const PrimitiveTopology topology = GetGeometryBufferType(type());
 
-    if (geometry->getIndexCount() == 0) {
-        return false;
-    }
-
     size_t indiceCount = partitionCount;
-    if ( topology == PrimitiveTopology::TRIANGLE_STRIP) {
+    if ( topology == PrimitiveTopology::TRIANGLE_STRIP)
+    {
         const size_t indiceStart = 2 + partitionOffset;
         const size_t indiceEnd = indiceCount + partitionOffset;
         vec3<U32> curTriangle;
         triangles.reserve(indiceCount / 2);
-        const vector<U32>& indices = geometry->getIndices();
-        for (size_t i = indiceStart; i < indiceEnd; i++) {
+        const vector<U32>& indices = _geometryBuffer->getIndices();
+        for (size_t i = indiceStart; i < indiceEnd; i++)
+        {
             curTriangle.set(indices[i - 2], indices[i - 1], indices[i]);
             // Check for correct winding
-            if (i % 2 != 0) {
+            if (i % 2 != 0)
+            {
                 std::swap(curTriangle.y, curTriangle.z);
             }
             triangles.push_back(curTriangle);
         }
-    } else if ( topology == PrimitiveTopology::TRIANGLES) {
+    }
+    else if ( topology == PrimitiveTopology::TRIANGLES)
+    {
         indiceCount /= 3;
         triangles.reserve(indiceCount);
-        const vector<U32>& indices = geometry->getIndices();
-        for (size_t i = 0; i < indiceCount; i += 3) {
+        const vector<U32>& indices = _geometryBuffer->getIndices();
+        for (size_t i = 0; i < indiceCount; i += 3)
+        {
             triangles.push_back(vec3<U32>(indices[i + 0],
                                           indices[i + 1],
                                           indices[i + 2]));
@@ -176,7 +160,8 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
     triangles.erase(
         eastl::partition(
             begin(triangles), end(triangles),
-            [](const vec3<U32>& triangle) -> bool {
+            [](const vec3<U32>& triangle) -> bool
+            {
                 return triangle.x != triangle.y && triangle.x != triangle.z &&
                     triangle.y != triangle.z;
             }),
@@ -186,11 +171,16 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
     return true;
 }
 
-bool Object3D::saveCache(ByteBuffer& outputBuffer) const {
-    if (SceneNode::saveCache(outputBuffer)) {
-        if (IsPrimitive(type())) {
+bool Object3D::saveCache(ByteBuffer& outputBuffer) const
+{
+    if (SceneNode::saveCache(outputBuffer))
+    {
+        if (IsPrimitive(type()))
+        {
             outputBuffer << to_U8(type());
-        } else {
+        }
+        else
+        {
             outputBuffer << string(resourceName().c_str());
         }
         return true;
@@ -199,15 +189,21 @@ bool Object3D::saveCache(ByteBuffer& outputBuffer) const {
     return false;
 };
 
-bool Object3D::loadCache(ByteBuffer& inputBuffer) {
-    if (SceneNode::loadCache(inputBuffer)) {
-        if (IsPrimitive(type())) {
+bool Object3D::loadCache(ByteBuffer& inputBuffer)
+{
+    if (SceneNode::loadCache(inputBuffer))
+    {
+        if (IsPrimitive(type()))
+        {
             U8 index = 0u;
             inputBuffer >> index;
-            if (index != to_U8(type())) {
+            if (index != to_U8(type()))
+            {
                 return false;
             }
-        } else {
+        }
+        else
+        {
             string tempName = {};
             inputBuffer >> tempName;
             assert(tempName == resourceName().c_str());
@@ -219,22 +215,30 @@ bool Object3D::loadCache(ByteBuffer& inputBuffer) {
     return false;
 }
 
-void Object3D::saveToXML(boost::property_tree::ptree& pt) const {
-    if (IsPrimitive(type())) {
+void Object3D::saveToXML(boost::property_tree::ptree& pt) const
+{
+    if (IsPrimitive(type()))
+    {
         pt.put("model", Names::sceneNodeType[to_base(type())]);
-    } else {
+    }
+    else
+    {
         pt.put("model", resourceName().c_str());
     }
 
     SceneNode::saveToXML(pt);
 }
 
-void Object3D::loadFromXML(const boost::property_tree::ptree& pt) {
+void Object3D::loadFromXML(const boost::property_tree::ptree& pt)
+{
     string temp;
-    if (IsPrimitive(type())) {
+    if (IsPrimitive(type()))
+    {
         temp = pt.get("model", Names::sceneNodeType[to_base( type() )]);
         assert(temp == Names::sceneNodeType[to_base( type() )]);
-    } else {
+    }
+    else
+    {
         temp = pt.get("model", resourceName().c_str());
         assert(temp == resourceName().c_str());
     }

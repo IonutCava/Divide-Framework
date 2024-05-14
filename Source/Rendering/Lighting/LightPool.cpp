@@ -18,8 +18,13 @@
 
 namespace Divide
 {
-
-    std::array<U8, to_base( ShadowType::COUNT )> LightPool::_shadowLocation = { {
+    Handle<Texture>       LightPool::s_lightIconsTexture = INVALID_HANDLE<Texture>;
+    Handle<ShaderProgram> LightPool::s_lightImpostorShader = INVALID_HANDLE<ShaderProgram>;
+    ShaderBuffer_uptr LightPool::s_lightBuffer = nullptr;
+    ShaderBuffer_uptr LightPool::s_sceneBuffer = nullptr;
+    ShaderBuffer_uptr LightPool::s_shadowBuffer = nullptr;
+    std::array<U8, to_base( ShadowType::COUNT )> LightPool::s_shadowLocation =
+    {{
         4,  //SINGLE
         5,  //LAYERED
         6   //CUBE
@@ -47,44 +52,8 @@ namespace Divide
         return frustum.ContainsSphere( light->boundingVolume(), frustumPlaneCache ) != FrustumCollision::FRUSTUM_OUT;
     }
 
-    LightPool::LightPool( Scene& parentScene, PlatformContext& context )
-        : FrameListener( "LightPool", context.kernel().frameListenerMgr(), 231 ),
-        SceneComponent( parentScene ),
-        PlatformContextComponent( context ),
-        _shadowPassTimer( Time::ADD_TIMER( "Shadow Pass Timer" ) )
+    void LightPool::InitStaticData( PlatformContext& context )
     {
-        for ( U8 i = 0u; i < to_U8( RenderStage::COUNT ); ++i )
-        {
-            _activeLightCount[i].fill( 0 );
-            _sortedLights[i].reserve( Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME );
-        }
-
-        _lightTypeState.fill( true );
-
-        init();
-    }
-
-    LightPool::~LightPool()
-    {
-        ShadowMap::reset();
-
-        const SharedLock<SharedMutex> r_lock( _lightLock );
-        for ( const LightList& lightList : _lights )
-        {
-            if ( !lightList.empty() )
-            {
-                Console::errorfn( LOCALE_STR( "ERROR_LIGHT_POOL_LIGHT_LEAKED" ) );
-            }
-        }
-    }
-
-    void LightPool::init()
-    {
-        if ( _init )
-        {
-            return;
-        }
-
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
@@ -96,7 +65,7 @@ namespace Divide
             bufferDescriptor._bufferParams._elementCount = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME * (to_base( RenderStage::COUNT ) - 1); ///< no shadows
             bufferDescriptor._bufferParams._elementSize = sizeof( LightProperties );
             // Holds general info about the currently active lights: position, colour, etc.
-            _lightBuffer = _context.gfx().newSB( bufferDescriptor );
+            s_lightBuffer = context.gfx().newSB( bufferDescriptor );
         }
         {
             // Holds info about the currently active shadow casting lights:
@@ -104,7 +73,7 @@ namespace Divide
             bufferDescriptor._name = "LIGHT_SHADOW";
             bufferDescriptor._bufferParams._elementCount = 1;
             bufferDescriptor._bufferParams._elementSize = sizeof( ShadowProperties );
-            _shadowBuffer = _context.gfx().newSB( bufferDescriptor );
+            s_shadowBuffer = context.gfx().newSB( bufferDescriptor );
         }
         {
             bufferDescriptor._name = "LIGHT_SCENE";
@@ -112,7 +81,7 @@ namespace Divide
             bufferDescriptor._bufferParams._elementCount = to_base( RenderStage::COUNT ) - 1; ///< no shadows
             bufferDescriptor._bufferParams._elementSize = sizeof( SceneData );
             // Holds general info about the currently active scene: light count, ambient colour, etc.
-            _sceneBuffer = _context.gfx().newSB( bufferDescriptor );
+            s_sceneBuffer = context.gfx().newSB( bufferDescriptor );
         }
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
@@ -132,35 +101,65 @@ namespace Divide
         shaderDescriptor._modules.push_back( fragModule );
 
         std::atomic_uint loadingTasks = 0u;
-        ResourceDescriptor lightImpostorShader( "lightImpostorShader" );
-        lightImpostorShader.propertyDescriptor( shaderDescriptor );
+        ResourceDescriptor<ShaderProgram> lightImpostorShader( "lightImpostorShader", shaderDescriptor );
         lightImpostorShader.waitForReady( false );
-        _lightImpostorShader = CreateResource<ShaderProgram>( _parentScene.resourceCache(), lightImpostorShader, loadingTasks );
+        s_lightImpostorShader = CreateResource( lightImpostorShader, loadingTasks );
 
-        const TextureDescriptor iconDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
-
-        ResourceDescriptor iconImage( "LightIconTexture" );
+        ResourceDescriptor<Texture> iconImage( "LightIconTexture" );
         iconImage.assetLocation( Paths::g_imagesLocation );
         iconImage.assetName( "lightIcons.png" );
-        iconImage.propertyDescriptor( iconDescriptor );
         iconImage.waitForReady( false );
+        TextureDescriptor& iconDescriptor = iconImage._propertyDescriptor;
+        iconDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+        iconDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
 
-        _lightIconsTexture = CreateResource<Texture>( _parentScene.resourceCache(), iconImage, loadingTasks );
+        s_lightIconsTexture = CreateResource( iconImage, loadingTasks );
 
         WAIT_FOR_CONDITION( loadingTasks.load() == 0u );
-
-        _init = true;
     }
+
+    void LightPool::DestroyStaticData()
+    {
+        DestroyResource( s_lightImpostorShader );
+        DestroyResource( s_lightIconsTexture );
+
+        s_lightBuffer.reset();
+        s_shadowBuffer.reset();
+        s_sceneBuffer.reset();
+    }
+
+    LightPool::LightPool( Scene& parentScene, PlatformContext& context )
+        : FrameListener( "LightPool", context.kernel().frameListenerMgr(), 231 )
+        , SceneComponent( parentScene )
+        , PlatformContextComponent( context )
+        , _shadowPassTimer( Time::ADD_TIMER( "Shadow Pass Timer" ) )
+    {
+        for ( U8 i = 0u; i < to_U8( RenderStage::COUNT ); ++i )
+        {
+            _activeLightCount[i].fill( 0 );
+            _sortedLights[i].reserve( Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME );
+        }
+
+        _lightTypeState.fill( true );
+    }
+
+    LightPool::~LightPool()
+    {
+        ShadowMap::reset();
+
+        const SharedLock<SharedMutex> r_lock( _lightLock );
+        for ( const LightList& lightList : _lights )
+        {
+            if ( !lightList.empty() )
+            {
+                Console::errorfn( LOCALE_STR( "ERROR_LIGHT_POOL_LIGHT_LEAKED" ) );
+            }
+        }
+    }
+
 
     bool LightPool::clear() noexcept
     {
-        if ( !_init )
-        {
-            return true;
-        }
-        _lightBuffer.reset();
-        _shadowBuffer.reset();
-        _sceneBuffer.reset();
         return _lights.empty();
     }
 
@@ -249,7 +248,7 @@ namespace Divide
         for ( Light* light : sortedLights )
         {
             const LightType lType = light->getLightType();
-            computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
+            computeMipMapsCommand._texture = ShadowMap::getShadowMap( lType )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
             computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
 
             // Skip non-shadow casting lights (and free up resources if any are used by it)
@@ -346,7 +345,7 @@ namespace Divide
 
         ShadowMap::generateWorldAO( playerCamera, bufferInOut, memCmdInOut );
 
-        memCmdInOut._bufferLocks.push_back( _shadowBuffer->writeData( _shadowBufferData.data() ) );
+        memCmdInOut._bufferLocks.push_back( s_shadowBuffer->writeData( _shadowBufferData.data() ) );
 
         _shadowBufferDirty = true;
 
@@ -491,12 +490,12 @@ namespace Divide
 
         {
             PROFILE_SCOPE( "LightPool::UploadLightDataToGPU", Profiler::Category::Graphics );
-            memCmdInOut._bufferLocks.push_back(_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
+            memCmdInOut._bufferLocks.push_back(s_lightBuffer->writeData( { stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, totalLightCount }, &_sortedLightProperties[stageIndex] ) );
         }
 
         {
             PROFILE_SCOPE( "LightPool::UploadSceneDataToGPU", Profiler::Category::Graphics );
-            memCmdInOut._bufferLocks.push_back( _sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
+            memCmdInOut._bufferLocks.push_back(s_sceneBuffer->writeData( { stageIndex, 1 }, &crtData ) );
         }
     }
 
@@ -564,12 +563,12 @@ namespace Divide
 
         if ( _shadowBufferDirty )
         {
-            _shadowBuffer->incQueue();
+            s_shadowBuffer->incQueue();
             _shadowBufferDirty = false;
         }
 
-        _lightBuffer->incQueue();
-        _sceneBuffer->incQueue();
+        s_lightBuffer->incQueue();
+        s_sceneBuffer->incQueue();
     }
 
     void LightPool::drawLightImpostors( GFX::CommandBuffer& bufferInOut ) const
@@ -591,7 +590,7 @@ namespace Divide
         if ( totalLightCount > 0u )
         {
             PipelineDescriptor pipelineDescriptor{};
-            pipelineDescriptor._shaderProgramHandle = _lightImpostorShader->handle();
+            pipelineDescriptor._shaderProgramHandle = s_lightImpostorShader;
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _context.gfx().newPipeline( pipelineDescriptor );
@@ -600,7 +599,7 @@ namespace Divide
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, _lightIconsTexture->getView(), iconSampler );
+                Set( binding._data, s_lightIconsTexture, iconSampler );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.back()._drawCount = to_U16( totalLightCount );

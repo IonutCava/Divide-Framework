@@ -38,22 +38,22 @@
 namespace Divide {
 
 namespace AI {
-class AIEntity;
+    class AIEntity;
 }
 
-/// NPC base class. Every character in the game is an NPC by default except the
-/// Player
-class NPC final : public Character {
+/// NPC base class. Every character in the game is an NPC by default except the Player
+class NPC final : public Character
+{
    public:
     /// NPCs don't need AI by default
-    explicit NPC(AI::AIEntity* aiEntity);
+    explicit NPC( const vec3<F32>& currentPosition, std::string_view name );
     ~NPC() override = default;
     void update(U64 deltaTimeUS) override;
     
     [[nodiscard]] AI::AIEntity* getAIEntity() const noexcept;
 
 protected:
-    AI::AIEntity* _aiUnit;
+    std::unique_ptr<AI::AIEntity> _aiUnit;
 };
 
 }  // namespace Divide

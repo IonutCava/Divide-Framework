@@ -35,7 +35,7 @@ constexpr std::string getFile(std::string_view sv)
 } //detail
 
 template<bool include>
-vector<string> getFiles( const std::string& sv )
+vector<string> getFiles( const string& sv )
 {
     istringstream inputStream( sv );
     string line;
@@ -345,9 +345,10 @@ TEST_CASE( "Runtime Hash Test", "[string_tests]" )
 TEST_CASE( "Allocator Test", "[string_tests]" )
 {
     const char* input = "TEST test TEST";
-    string input1(input);
-    string_fast input2(input);
-    for( size_t i = 0; i < input1.size(); ++i) {
+    std::string input1(input);
+    Divide::string input2(input);
+    for( size_t i = 0; i < input1.size(); ++i) 
+    {
         CHECK_EQUAL(input1[i], input2[i]);
     }
 }
@@ -355,16 +356,11 @@ TEST_CASE( "Allocator Test", "[string_tests]" )
 TEST_CASE( "Stringstream Test", "[string_tests]" )
 {
     string result1;
-    string_fast result2;
-    stringstream_fast s;
+    stringstream s;
     const char* input = "TEST-test-TEST";
     s << input;
     s >> result1;
     CHECK_EQUAL(result1, string(input));
-    s.clear();
-    s << input;
-    s >> result2;
-    CHECK_EQUAL(result2, string_fast(input));
 }
 
 } //namespace Divide

@@ -16,7 +16,7 @@
 
 namespace Divide {
 
-SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
+SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
     : PreRenderOperator(context, parent, FilterType::FILTER_SS_REFLECTIONS)
 {
     ShaderModuleDescriptor vertModule{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" };
@@ -26,19 +26,17 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
 
-    ResourceDescriptor ssr("ScreenSpaceReflections");
+    ResourceDescriptor<ShaderProgram> ssr("ScreenSpaceReflections", shaderDescriptor );
     ssr.waitForReady(false);
-    ssr.propertyDescriptor(shaderDescriptor);
-    _ssrShader = CreateResource<ShaderProgram>(cache, ssr);
-    _ssrShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
-        PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _ssrShader->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        _pipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-    });
+    _ssrShader = CreateResource( ssr);
 
+    PipelineDescriptor pipelineDescriptor = {};
+    pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+    pipelineDescriptor._shaderProgramHandle = _ssrShader;
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
+    _pipelineCmd._pipeline = _context.newPipeline( pipelineDescriptor );
     const vec2<U16> res = _parent.screenRT()._rt->getResolution();
 
     _constantsCmd._constants.set(_ID("size"), PushConstantType::VEC2, res);
@@ -54,8 +52,15 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     parametersChanged();
 }
 
-bool SSRPreRenderOperator::ready() const noexcept {
-    if (_ssrShader->getState() == ResourceState::RES_LOADED) {
+SSRPreRenderOperator::~SSRPreRenderOperator()
+{
+    WAIT_FOR_CONDITION(ready());
+    DestroyResource(_ssrShader);
+}
+bool SSRPreRenderOperator::ready() const noexcept
+{
+    if (Get(_ssrShader)->getState() == ResourceState::RES_LOADED)
+    {
         return PreRenderOperator::ready();
     }
 
@@ -114,10 +119,10 @@ bool SSRPreRenderOperator::execute( [[maybe_unused]] const PlayerIndex idx, cons
     RTAttachment* depthAtt = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
     const auto& normalsAtt = _context.renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment( RTAttachmentType::COLOUR );
 
-    const auto& screenTex = screenAtt->texture()->getView();
-    const auto& normalsTex = normalsAtt->texture()->getView();
-    const auto& depthTex = depthAtt->texture()->getView();
-    U16 screenMipCount = screenAtt->texture()->mipCount();
+    const Handle<Texture> screenTex = screenAtt->texture();
+    const Handle<Texture> normalsTex = normalsAtt->texture();
+    const Handle<Texture> depthTex = depthAtt->texture();
+    U16 screenMipCount = Get(screenAtt->texture())->mipCount();
     if (screenMipCount > 2u) {
         screenMipCount -= 2u;
     }
@@ -131,7 +136,7 @@ bool SSRPreRenderOperator::execute( [[maybe_unused]] const PlayerIndex idx, cons
     _constantsCmd._constants.set(_ID("previousViewMatrix"), PushConstantType::MAT4, prevFrameData._previousViewMatrix);
     _constantsCmd._constants.set(_ID("previousProjectionMatrix"), PushConstantType::MAT4, prevFrameData._previousProjectionMatrix);
     _constantsCmd._constants.set(_ID("previousViewProjectionMatrix"), PushConstantType::MAT4, prevFrameData._previousViewProjectionMatrix);
-    _constantsCmd._constants.set(_ID("screenDimensions"), PushConstantType::VEC2, vec2<F32>(screenAtt->texture()->width(), screenAtt->texture()->height()));
+    _constantsCmd._constants.set(_ID("screenDimensions"), PushConstantType::VEC2, vec2<F32>( Get(screenTex)->width(), Get(screenTex)->height()));
     _constantsCmd._constants.set(_ID("maxScreenMips"), PushConstantType::UINT, screenMipCount);
     _constantsCmd._constants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
 

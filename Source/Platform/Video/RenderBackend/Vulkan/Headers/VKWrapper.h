@@ -97,9 +97,7 @@ protected:
     void initDescriptorSets() override;
 
     [[nodiscard]] RenderTarget_uptr     newRT( const RenderTargetDescriptor& descriptor ) const override;
-    [[nodiscard]] GenericVertexData_ptr newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const override;
-    [[nodiscard]] Texture_ptr           newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const override;
-    [[nodiscard]] ShaderProgram_ptr     newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const override;
+    [[nodiscard]] GenericVertexData_ptr newGVD( U32 ringBufferLength, const std::string_view name ) const override;
     [[nodiscard]] ShaderBuffer_uptr     newSB( const ShaderBufferDescriptor& descriptor ) const override;
 
 private:

@@ -33,137 +33,100 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_TEMPLATE_ALLOCATOR_H_
 #define DVD_TEMPLATE_ALLOCATOR_H_
 
-#ifndef EASTL_USER_DEFINED_ALLOCATOR
-#define EASTL_USER_DEFINED_ALLOCATOR
-#endif //EASTL_USER_DEFINED_ALLOCATOR
-
-#ifndef EASTLAllocatorType
-#define EASTLAllocatorType eastl::aligned_allocator
-#endif
-
-#ifndef EASTLAllocatorDefault
-#define EASTLAllocatorDefault eastl::GetDefaultDvdAllocator
-#endif
-
-#include "Platform/Headers/PlatformMemoryDefines.h"
-
-#include <Allocator/stl_allocator.h>
 #include <EASTL/internal/config.h>
 
-template <typename Type>
-using dvd_allocator = stl_allocator<Type>;
+template<class T>
+using dvd_allocator = mi_stl_allocator<T>;
 
-namespace eastl {
-    class allocator;
-
-    struct dvd_allocator
-    {
-        dvd_allocator()
-            : dvd_allocator( "Default Allocator")
-        {
-        }
-
-        dvd_allocator(const char* pName) noexcept
-            : _name( pName )
-        {
-        }
-
-        dvd_allocator([[maybe_unused]] const dvd_allocator& x, const char* pName) noexcept 
-            : dvd_allocator(pName)
-        {
-        }
-
-        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) noexcept 
-        {
-            return xmalloc(n);
-        }
-
-        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] size_t alignment, [[maybe_unused]] size_t offset, [[maybe_unused]] int flags = 0) noexcept
-        {
-            return xmalloc(n);
-        }
-
-        void deallocate(void* p, [[maybe_unused]] size_t n) noexcept
-        {
-            xfree(p);
-        }
-
-        [[nodiscard]]
-        const char* get_name()                  const noexcept { return _name; }
-        void        set_name(const char* pName)       noexcept { _name = pName; }
-
-      private:
-        const char* _name;
-    };
+namespace eastl
+{
+	inline allocator::allocator( const char* EASTL_NAME( pName ) )
+	{
+#if EASTL_NAME_ENABLED
+		mpName = pName ? pName : EASTL_ALLOCATOR_DEFAULT_NAME;
+#endif
+	}
 
 
-    // All allocators are considered equal, as they merely use global new/delete.
-    [[nodiscard]] inline bool operator==([[maybe_unused]] const dvd_allocator& a, [[maybe_unused]] const dvd_allocator& b) noexcept
-    {
-        return true;
-    }
+	inline allocator::allocator( const allocator& EASTL_NAME( alloc ) )
+	{
+#if EASTL_NAME_ENABLED
+		mpName = alloc.mpName;
+#endif
+	}
 
-    [[nodiscard]] inline bool operator!=([[maybe_unused]] const dvd_allocator& a, [[maybe_unused]] const dvd_allocator& b) noexcept
-    {
-        return false;
-    }
 
-    struct aligned_allocator
-    {
-        aligned_allocator()
-            :aligned_allocator( "Default Aligned Allocator" )
-        {
-        }
+	inline allocator::allocator( const allocator&, const char* EASTL_NAME( pName ) )
+	{
+#if EASTL_NAME_ENABLED
+		mpName = pName ? pName : EASTL_ALLOCATOR_DEFAULT_NAME;
+#endif
+	}
 
-        aligned_allocator(const char* pName) noexcept 
-            : _name(pName)
-        {
-        }
 
-        aligned_allocator([[maybe_unused]] const allocator & x, const char* pName) noexcept
-             : aligned_allocator(pName)
-        {
-        }
+	inline allocator& allocator::operator=( const allocator& EASTL_NAME( alloc ) )
+	{
+#if EASTL_NAME_ENABLED
+		mpName = alloc.mpName;
+#endif
+		return *this;
+	}
 
-        aligned_allocator& operator=(const aligned_allocator & EASTL_NAME(x)) = default;
 
-        [[nodiscard]] void* allocate(const size_t n, [[maybe_unused]] int flags = 0) noexcept
-        {
-            return malloc_aligned(n, EASTL_ALLOCATOR_MIN_ALIGNMENT );
-        }
+	inline const char* allocator::get_name() const
+	{
+#if EASTL_NAME_ENABLED
+		return mpName;
+#else
+		return EASTL_ALLOCATOR_DEFAULT_NAME;
+#endif
+	}
 
-        [[nodiscard]] void* allocate(const size_t n, const size_t alignment, const size_t offset, [[maybe_unused]] int flags = 0) noexcept
-        {
-            return malloc_aligned(n, alignment, offset);
-        }
 
-        void deallocate(void* p, [[maybe_unused]] size_t n) noexcept
-        {
-            free_aligned(p);
-        }
+	inline void allocator::set_name( const char* EASTL_NAME( pName ) )
+	{
+#if EASTL_NAME_ENABLED
+		mpName = pName;
+#endif
+	}
 
-        
-        [[nodiscard]]
-        const char* get_name()               const noexcept { return _name; }
-        void        set_name(const char* pName)    noexcept { _name = pName; }
 
-      private:
-        const char* _name;
-    };
+	inline void* allocator::allocate( size_t n, [[maybe_unused]] int flags )
+	{
+#if EASTL_NAME_ENABLED
+#define pName mpName
+#else
+#define pName EASTL_ALLOCATOR_DEFAULT_NAME
+#endif
+		return mi_new( n );
+	}
 
-    // All allocators are considered equal, as they merely use global new/delete.
-    [[nodiscard]] inline bool operator==([[maybe_unused]] const aligned_allocator& a, [[maybe_unused]] const aligned_allocator& b) noexcept
-    {
-        return true;
-    }
 
-    [[nodiscard]] inline bool operator!=([[maybe_unused]] const aligned_allocator& a, [[maybe_unused]] const aligned_allocator& b) noexcept
-    {
-        return false;
-    }
+	inline void* allocator::allocate( size_t n, size_t alignment, [[maybe_unused]] size_t offset, [[maybe_unused]] int flags )
+	{
+		return mi_new_aligned(n, alignment);
+#undef pName  // See above for the definition of this.
+	}
 
-    EASTL_API aligned_allocator* GetDefaultDvdAllocator() noexcept;
-    EASTL_API aligned_allocator* SetDefaultAllocator(aligned_allocator* pAllocator) noexcept;
-} //namespace eastl
+
+	inline void allocator::deallocate( void* p, size_t )
+	{
+		mi_free(p);
+	}
+
+
+	inline bool operator==( const allocator&, const allocator& )
+	{
+		return true; // All allocators are considered equal, as they merely use global new/delete.
+	}
+
+#if !defined(EA_COMPILER_HAS_THREE_WAY_COMPARISON)
+	inline bool operator!=( const allocator&, const allocator& )
+	{
+		return false; // All allocators are considered equal, as they merely use global new/delete.
+	}
+#endif
+
+} // namespace eastl
 
 #endif //DVD_TEMPLATE_ALLOCATOR_H_

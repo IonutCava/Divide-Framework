@@ -62,7 +62,7 @@ DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Sizef& s
     setTextureSize(size);
 }
 
-DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::Texture_ptr& tex, const Sizef& size )
+DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::Handle<Divide::Texture> tex, const Sizef& size )
     : _size(size)
     , _dataSize(size)
     , _owner(owner)
@@ -71,6 +71,11 @@ DVDTexture::DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::
     , _texture(tex)
 {
     updateCachedScaleValues();
+}
+
+DVDTexture::~DVDTexture()
+{
+    DestroyResource( _texture );
 }
 
 void DVDTexture::loadFromFile(const String& filename, const String& resourceGroup)
@@ -159,7 +164,7 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
 
     Divide::DIVIDE_ASSERT(!( _size.d_width > maxSize || _size.d_height > maxSize), "DVDTexture:: size too big");
 
-    _texture->createWithData( nullptr, 0u, vec2<U16>( _size.d_width, _size.d_height), {} );
+    Get(_texture)->createWithData( nullptr, 0u, vec2<U16>( _size.d_width, _size.d_height), {} );
 }
 
 void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
@@ -213,7 +218,7 @@ void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
     dimensions.width = to_U16(area.getWidth());
     dimensions.height = to_U16(area.getHeight());
     dimensions.depth = 1u;
-    _texture->replaceData( (const Byte*)sourceData, image_size, offset, dimensions, pixelUnpackAlignment );
+    Get(_texture)->replaceData( (const Byte*)sourceData, image_size, offset, dimensions, pixelUnpackAlignment );
 }
 
 void DVDTexture::blitToMemory(void* targetData) {
@@ -221,7 +226,7 @@ void DVDTexture::blitToMemory(void* targetData) {
         ._alignment = 1u
     };
 
-    auto data = _texture->readData(0u, pixelPackAlignment);
+    auto data = Get(_texture)->readData(0u, pixelPackAlignment);
     memcpy(targetData, data._data.data(), data._data.size());
 }
 
@@ -278,19 +283,17 @@ void DVDTexture::generateDVDTexture()
         } break;
     }
 
-    TextureDescriptor texDescriptor( TextureType::TEXTURE_2D,
-                                     dataFormat,
-                                     targetFormat,
-                                     targetPacking );
-
-    texDescriptor.allowRegionUpdates(true);
-    texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-
-    ResourceDescriptor resDescriptor( Util::StringFormat("CEGUI_texture_{}", TEXTURE_IDX++).c_str() );
-    resDescriptor.propertyDescriptor( texDescriptor );
+    ResourceDescriptor<Divide::Texture> resDescriptor( Util::StringFormat("CEGUI_texture_{}", TEXTURE_IDX++).c_str() );
     resDescriptor.waitForReady( true );
-    ResourceCache* parentCache = _owner.context().context().kernel().resourceCache();
-    _texture = CreateResource<Divide::Texture>( parentCache, resDescriptor );
+    TextureDescriptor& texDescriptor = resDescriptor._propertyDescriptor;
+    texDescriptor._dataType = dataFormat;
+    texDescriptor._baseFormat = targetFormat;
+    texDescriptor._packing = targetPacking;
+    texDescriptor._allowRegionUpdates = true;
+    texDescriptor._mipMappingState = MipMappingState::OFF;
+
+    DestroyResource( _texture );
+    _texture = CreateResource( resDescriptor );
 
     _sampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
     _sampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
@@ -301,8 +304,10 @@ void DVDTexture::generateDVDTexture()
     _sampler._mipSampling = TextureMipSampling::NONE;
 }
 
-void DVDTexture::setDVDTexture( Divide::Texture_ptr tex, const Sizef& size)
+void DVDTexture::setDVDTexture( const Divide::Handle<Divide::Texture> tex, const Sizef& size)
 {
+    DestroyResource( _texture );
+
     _texture = tex;
     _dataSize = _size = size;
     updateCachedScaleValues();

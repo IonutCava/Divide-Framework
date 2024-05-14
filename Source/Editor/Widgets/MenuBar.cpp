@@ -109,9 +109,9 @@ namespace Divide
 
             ImGui::EndMainMenuBar();
 
-            for ( vector<Texture_ptr>::iterator it = std::begin( _previewTextures ); it != std::end( _previewTextures ); )
+            for ( vector<Handle<Texture>>::iterator it = std::begin( _previewTextures ); it != std::end( _previewTextures ); )
             {
-                if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", (*it)->resourceName().c_str() ).c_str(), (*it).get(), vec2<F32>( 512, 512 ), true, false ) )
+                if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", Get(*it)->resourceName().c_str() ).c_str(), *it, vec2<F32>( 512, 512 ), true, false ) )
                 {
                     it = _previewTextures.erase( it );
                 }
@@ -344,6 +344,8 @@ namespace Divide
 
             const auto createPrimitive = [&]()
             {
+                Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
+
                 g_nodeDescriptor._componentMask = to_U32( ComponentType::TRANSFORM ) |
                     to_U32( ComponentType::BOUNDS ) |
                     to_U32( ComponentType::RIGID_BODY ) |
@@ -356,18 +358,25 @@ namespace Divide
                 {
                     g_nodeDescriptor._name = Util::StringFormat( "Primitive_{}", DefaultObjectIndex++ ).c_str();
                 }
-                ResourceCache* parentCache = _context.kernel().resourceCache();
-                ResourceDescriptor nodeDescriptor( (g_nodeDescriptor._name + "_n").c_str() );
+
+                SceneNodeHandle handle{};
+                Handle<Material> materialHandle = INVALID_HANDLE<Material>;
+
                 switch ( _newPrimitiveType )
                 {
                     case SceneNodeType::TYPE_SPHERE_3D:
                     {
+                        ResourceDescriptor<Sphere3D> nodeDescriptor( (g_nodeDescriptor._name + "_n").c_str() );
                         nodeDescriptor.ID( resolution );
                         nodeDescriptor.enumValue( Util::FLOAT_TO_UINT( sphereRadius ) );
-                        g_nodeDescriptor._node = CreateResource<Sphere3D>( parentCache, nodeDescriptor );
+
+                        Handle<Sphere3D> handleTmp = CreateResource( nodeDescriptor );
+                        materialHandle = Get( handleTmp )->getMaterialTpl();
+                        handle = FromHandle(handleTmp);
                     } break;
                     case SceneNodeType::TYPE_BOX_3D:
                     {
+                        ResourceDescriptor<Box3D> nodeDescriptor( (g_nodeDescriptor._name + "_n").c_str() );
                         nodeDescriptor.data(
                             {
                                 Util::FLOAT_TO_UINT( sides.x ),
@@ -375,38 +384,45 @@ namespace Divide
                                 Util::FLOAT_TO_UINT( sides.z )
                             }
                         );
-                        g_nodeDescriptor._node = CreateResource<Box3D>( parentCache, nodeDescriptor );
+
+                        const Handle<Box3D> handleTmp = CreateResource( nodeDescriptor );
+                        materialHandle = Get( handleTmp )->getMaterialTpl();
+                        handle = FromHandle(handleTmp);
                     } break;
                     case SceneNodeType::TYPE_QUAD_3D:
                     {
+                        ResourceDescriptor<Quad3D> nodeDescriptor( (g_nodeDescriptor._name + "_n").c_str() );
+
                         P32 quadMask;
                         quadMask.i = 0;
                         quadMask.b[0] = doubleSided ? 0 : 1;
                         nodeDescriptor.mask( quadMask );
                         const vec3<F32> halfSides = sides * 0.5f;
-                        Quad3D_ptr node = CreateResource<Quad3D>( parentCache, nodeDescriptor );
+                        const Handle<Quad3D> handleTmp = CreateResource( nodeDescriptor );
+                        materialHandle = Get( handleTmp )->getMaterialTpl();
+                        handle = FromHandle( handleTmp );
+
+                        ResourcePtr<Quad3D> node = Get( handleTmp );
                         node->setCorner( Quad3D::CornerLocation::TOP_LEFT, vec3<F32>( -halfSides.x, halfSides.y, 0 ) );
                         node->setCorner( Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>( halfSides.x, halfSides.y, 0 ) );
                         node->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>( -halfSides.x, -halfSides.y, 0 ) );
                         node->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( halfSides.x, -halfSides.y, 0 ) );
-
-                        g_nodeDescriptor._node = node;
                     } break;
+
                     default:
                         DIVIDE_UNEXPECTED_CALL();
                         break;
                 }
-                if ( g_nodeDescriptor._node != nullptr )
-                {
-                    g_nodeDescriptor._node->getMaterialTpl()->properties().shadingMode( ShadingMode::PBR_MR );
-                    g_nodeDescriptor._node->getMaterialTpl()->properties().baseColour( FColour4( 0.4f, 0.4f, 0.4f, 1.0f ) );
-                    g_nodeDescriptor._node->getMaterialTpl()->properties().roughness( 0.5f );
-                    g_nodeDescriptor._node->getMaterialTpl()->properties().metallic( 0.5f );
-                    Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
-                    activeScene->sceneGraph()->getRoot()->addChildNode( g_nodeDescriptor );
-                    Attorney::EditorGeneralWidget::registerUnsavedSceneChanges( _context.editor() );
-                    g_nodeDescriptor._node.reset();
-                }
+
+                ResourcePtr<Material> mat = Get( materialHandle );
+                mat->properties().shadingMode( ShadingMode::PBR_MR );
+                mat->properties().baseColour( FColour4( 0.4f, 0.4f, 0.4f, 1.0f ) );
+                mat->properties().roughness( 0.5f );
+                mat->properties().metallic( 0.5f );
+                g_nodeDescriptor._nodeHandle = handle;
+
+                activeScene->sceneGraph()->getRoot()->addChildNode( g_nodeDescriptor );
+                Attorney::EditorGeneralWidget::registerUnsavedSceneChanges( _context.editor() );
 
                 _newPrimitiveType = SceneNodeType::COUNT;
             };
@@ -849,13 +865,13 @@ namespace Divide
                                 {
                                     continue;
                                 }
-                                const Texture_ptr& tex = attachment->texture();
-                                if ( tex == nullptr )
+                                const Handle<Texture> tex = attachment->texture();
+                                if ( tex == INVALID_HANDLE<Texture> )
                                 {
                                     continue;
                                 }
 
-                                if ( ImGui::MenuItem( tex->resourceName().c_str() ) )
+                                if ( ImGui::MenuItem( Get(tex)->resourceName().c_str() ) )
                                 {
                                     _previewTextures.push_back( tex );
                                 }
@@ -1142,7 +1158,7 @@ namespace Divide
 
             if ( ImGui::BeginMenu( "Debug Gizmos" ) )
             {
-                ProjectManager* projectManager = context().kernel().projectManager();
+                ProjectManager* projectManager = context().kernel().projectManager().get();
                 SceneRenderState& renderState = projectManager->activeProject()->getActiveScene()->state()->renderState();
 
                 bool temp = renderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_AABB );
@@ -1292,14 +1308,14 @@ namespace Divide
     {
         if ( object == DebugObject::SPONZA)
         {
-            ResourceDescriptor model( "Debug_Sponza" );
+            ResourceDescriptor<Mesh> model( "Debug_Sponza" );
             model.assetLocation( Paths::g_modelsLocation );
             model.assetName( "sponza.obj" );
             model.flag( true );
             //model.waitForReady(true);
 
-            Mesh_ptr spawnMesh = CreateResource<Mesh>( _context.kernel().resourceCache(), model );
-            if ( spawnMesh == nullptr )
+            Handle<Mesh> spawnMesh = CreateResource( model );
+            if ( spawnMesh == INVALID_HANDLE<Mesh> )
             {
                 Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), "ERROR: Couldn't load Sponza model!", Time::SecondsToMilliseconds<F32>( 3 ), true );
             }

@@ -4,6 +4,7 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/ByteBuffer.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/FrameListenerManager.h"
@@ -55,33 +56,47 @@ namespace Divide
     }
 
     SceneGraph::SceneGraph( Scene& parentScene )
-        : FrameListener( "SceneGraph", parentScene.context().kernel().frameListenerMgr(), 1 ),
-        SceneComponent( parentScene )
+        : FrameListener( "SceneGraph", parentScene.context().kernel().frameListenerMgr(), 1 )
+        , SceneComponent( parentScene )
     {
         _ecsManager = std::make_unique<ECSManager>( parentScene.context(), GetECSEngine() );
-
-        SceneGraphNodeDescriptor rootDescriptor = {};
-        rootDescriptor._name = "ROOT";
-        rootDescriptor._node = std::make_shared<SceneNode>( parentScene.resourceCache(), generateGUID(), "ROOT", "ROOT", ResourcePath{ "" }, SceneNodeType::TYPE_TRANSFORM, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) );
-        rootDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS );
-        rootDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
-
-        _root = createSceneGraphNode( this, rootDescriptor );
-        _root->postLoad();
-        onNodeAdd( _root );
     }
 
     SceneGraph::~SceneGraph()
     {
-        Console::d_printfn( LOCALE_STR( "DELETE_SCENEGRAPH" ) );
-        // Should recursively delete the entire scene graph
-        unload();
+        DIVIDE_ASSERT(_root == nullptr);
+    }
+
+    SceneGraphNode* SceneGraph::createSceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor )
+    {
+        LockGuard<Mutex> u_lock( _nodeCreateMutex );
+        const ECS::EntityId nodeID = GetEntityManager()->CreateEntity<SceneGraphNode>( context, sceneGraph, descriptor );
+        return static_cast<SceneGraphNode*>(GetEntityManager()->GetEntity( nodeID ));
+    }
+
+    void SceneGraph::load()
+    {
+        DIVIDE_ASSERT( _root == nullptr );
+
+        ResourceDescriptor<TransformNode> nodeDescriptor{"ROOT"};
+        
+        SceneGraphNodeDescriptor rootDescriptor = {};
+        rootDescriptor._name = "ROOT";
+        rootDescriptor._nodeHandle = FromHandle(CreateResource(  nodeDescriptor ));
+        rootDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS );
+        rootDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
+
+       _root = createSceneGraphNode( parentScene().context(), this, rootDescriptor );
+        onNodeAdd( _root );
     }
 
     void SceneGraph::unload()
     {
+        Console::d_printfn( LOCALE_STR( "DELETE_SCENEGRAPH" ) );
+
         destroySceneGraphNode( _root );
-        assert( _root == nullptr );
+        DIVIDE_ASSERT( _root == nullptr );
+
     }
 
     void SceneGraph::addToDeleteQueue( SceneGraphNode* node, const size_t childIdx )
@@ -432,14 +447,6 @@ namespace Divide
     void SceneGraph::postLoad()
     {
         NOP();
-    }
-
-    SceneGraphNode* SceneGraph::createSceneGraphNode( SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor )
-    {
-        LockGuard<Mutex> u_lock( _nodeCreateMutex );
-
-        const ECS::EntityId nodeID = GetEntityManager()->CreateEntity<SceneGraphNode>( sceneGraph, descriptor );
-        return static_cast<SceneGraphNode*>(GetEntityManager()->GetEntity( nodeID ));
     }
 
     void SceneGraph::destroySceneGraphNode( SceneGraphNode*& node, const bool inPlace )

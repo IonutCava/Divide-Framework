@@ -35,16 +35,6 @@
 
 namespace Divide {
 
-inline bool operator==(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept
-{
-    return lhs.getHash() == rhs.getHash();
-}
-
-inline bool operator!=(const TextureDescriptor& lhs, const TextureDescriptor& rhs) noexcept
-{
-    return lhs.getHash() != rhs.getHash();
-}
-
 inline bool Is1DTexture( const TextureType texType ) noexcept
 {
     return texType == TextureType::TEXTURE_1D ||
@@ -128,6 +118,49 @@ inline bool IsBGRTexture( GFXImageFormat format ) noexcept
 {
     return format == GFXImageFormat::BGR ||
            format == GFXImageFormat::BGRA;
+}
+
+FORCE_INLINE void AddImageUsageFlag( PropertyDescriptor<Texture>& descriptor, const ImageUsage usage ) noexcept
+{
+    descriptor._usageMask |= (1u << to_base( usage ));
+}
+
+FORCE_INLINE void RemoveImageUsageFlag( PropertyDescriptor<Texture>& descriptor, const ImageUsage usage ) noexcept
+{
+    descriptor._usageMask &= ~(1u << to_base( usage ));
+}
+
+FORCE_INLINE bool HasUsageFlagSet( const PropertyDescriptor<Texture>& descriptor, const ImageUsage usage ) noexcept
+{
+    return descriptor._usageMask & (1u << to_base( usage ));
+}
+
+template<>
+inline size_t GetHash( const PropertyDescriptor<Texture>& descriptor ) noexcept
+{
+    size_t hash = 1337;
+
+    Util::Hash_combine( hash,
+                        descriptor._layerCount,
+                        descriptor._mipBaseLevel,
+                        to_base( descriptor._mipMappingState ),
+                        descriptor._msaaSamples,
+                        to_U32( descriptor._dataType ),
+                        to_U32( descriptor._baseFormat ),
+                        to_U32( descriptor._packing ),
+                        to_U32( descriptor._texType ),
+                        descriptor._usageMask,
+                        descriptor._textureOptions._alphaChannelTransparency,
+                        descriptor._textureOptions._fastCompression,
+                        descriptor._textureOptions._isNormalMap,
+                        descriptor._textureOptions._mipFilter,
+                        descriptor._textureOptions._skipMipMaps,
+                        descriptor._textureOptions._outputFormat,
+                        descriptor._textureOptions._outputSRGB,
+                        descriptor._textureOptions._useDDSCache
+                      );
+
+    return hash;
 }
 } //namespace Divide
 

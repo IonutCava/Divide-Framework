@@ -208,8 +208,8 @@ namespace Divide
         void setTarget( TransformComponent* tComp, const vec3<F32>& offsetDirection = VECTOR3_ZERO ) noexcept;
         bool moveFromPlayerState( const SceneStatePerPlayer& playerState );
 
-        void saveToXML( boost::property_tree::ptree& pt, string prefix = "" ) const;
-        void loadFromXML( const boost::property_tree::ptree& pt, string prefix = "" );
+        void saveToXML( boost::property_tree::ptree& pt, std::string prefix = "" ) const;
+        void loadFromXML( const boost::property_tree::ptree& pt, std::string prefix = "" );
 
         /// Returns the world space direction for the specified winCoords for this camera
         /// Use snapshot()._eye + unProject(...) * distance for a world-space position

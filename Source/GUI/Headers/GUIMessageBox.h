@@ -68,13 +68,13 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
         visible(true);
     }
 
-   protected:
     GUIMessageBox(const string& name,
                   const string& title,
                   const string& message,
                   vec2<I32> offsetFromCentre = vec2<I32>(0),
                   CEGUI::Window* parent = nullptr);
 
+   protected:
     void visible(bool visible) noexcept override;
     void active(bool active) noexcept override;
 

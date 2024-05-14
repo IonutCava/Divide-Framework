@@ -61,13 +61,7 @@ class glShaderProgram final : public ShaderProgram {
      using glShaders = eastl::fixed_vector<glShaderEntry, to_base( ShaderType::COUNT ), false>;
 
    public:
-    explicit glShaderProgram(GFXDevice& context,
-                             size_t descriptorHash,
-                             const std::string_view name,
-                             std::string_view assetName,
-                             const ResourcePath& assetLocation,
-                             const ShaderProgramDescriptor& descriptor,
-                             ResourceCache& parentCache);
+    explicit glShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor );
 
     ~glShaderProgram() override;
 

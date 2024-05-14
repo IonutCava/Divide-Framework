@@ -6,6 +6,7 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Utility/Headers/Localization.h"
 
@@ -239,7 +240,7 @@ namespace Divide
 
         using DynamicBufferEntry = std::array<DynamicEntry, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
         thread_local std::array<DynamicBufferEntry, to_base(DescriptorSetUsage::COUNT)> s_dynamicBindings;
-        thread_local eastl::fixed_vector<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET * to_base(DescriptorSetUsage::COUNT), false, eastl::dvd_allocator> s_dynamicOffsets;
+        thread_local eastl::fixed_vector<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET * to_base(DescriptorSetUsage::COUNT), false> s_dynamicOffsets;
         thread_local bool s_pipelineReset = true;
 
         void ResetDescriptorDynamicOffsets()
@@ -1271,11 +1272,11 @@ namespace Divide
                     case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
                     default: return false;
                 }
-                VKUtil::SubmitRenderCommand(drawCmd, cmdBuffer, false, false);
+                VKUtil::SubmitRenderCommand(drawCmd, cmdBuffer, false);
             }
             else
             {
-                VKUtil::SubmitRenderCommand( cmd, cmdBuffer, false, false );
+                VKUtil::SubmitRenderCommand( cmd, cmdBuffer, false );
             }
         }
         else
@@ -1286,7 +1287,6 @@ namespace Divide
 
             if ( s_lastID != cmd._sourceBuffer )
             {
-                SharedLock<SharedMutex> r_lock( VertexDataInterface::s_VDIPoolLock );
                 s_lastID = cmd._sourceBuffer;
                 s_lastBuffer = VertexDataInterface::s_VDIPool.find( s_lastID );
             }
@@ -1447,7 +1447,7 @@ namespace Divide
                             descriptor._type = TargetType( imageSampler._image );
                             descriptor._subRange = imageSampler._image._subRange;
 
-                            const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor().packing() ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                            const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor()._packing ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                             size_t samplerHash = imageSampler._samplerHash;
                             const VkSampler samplerHandle = GetSamplerHandle( imageSampler._sampler, samplerHash );
@@ -1801,11 +1801,11 @@ namespace Divide
             }
 
             const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
-            ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
+            ShaderProgram* program = Get( pipelineDescriptor._shaderProgramHandle );
             if ( program == nullptr )
             {
                 const auto handle = pipelineDescriptor._shaderProgramHandle;
-                Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_HANDLE" ), handle._id, handle._generation, handle._tag );
+                Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_HANDLE" ), handle._index, handle._generation );
                 return ShaderResult::Failed;
             }
 
@@ -2417,9 +2417,9 @@ namespace Divide
 
                 const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
                 vkTexture::Copy( cmdBuffer,
-                                 static_cast<vkTexture*>(crtCmd->_source),
+                                 static_cast<vkTexture*>(Get(crtCmd->_source)),
                                  crtCmd->_sourceMSAASamples,
-                                 static_cast<vkTexture*>(crtCmd->_destination),
+                                 static_cast<vkTexture*>(Get(crtCmd->_destination)),
                                  crtCmd->_destinationMSAASamples,
                                  crtCmd->_params );
             }break;
@@ -2428,9 +2428,9 @@ namespace Divide
                 PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ClearTextureCommand* crtCmd = cmd->As<GFX::ClearTextureCommand>();
-                if ( crtCmd->_texture != nullptr )
+                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
                 {
-                    static_cast<vkTexture*>(crtCmd->_texture)->clearData( cmdBuffer, crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
+                    static_cast<vkTexture*>(Get(crtCmd->_texture))->clearData( cmdBuffer, crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
                 }
             }break;
             case GFX::CommandType::READ_TEXTURE:
@@ -2438,8 +2438,11 @@ namespace Divide
                 PROFILE_SCOPE( "READ_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
-                const ImageReadbackData data = static_cast<vkTexture*>(crtCmd->_texture)->readData( cmdBuffer, crtCmd->_mipLevel, crtCmd->_pixelPackAlignment);
-                crtCmd->_callback( data );
+                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
+                {
+                    const ImageReadbackData data = static_cast<vkTexture*>(Get(crtCmd->_texture))->readData( cmdBuffer, crtCmd->_mipLevel, crtCmd->_pixelPackAlignment);
+                    crtCmd->_callback( data );
+                }
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
@@ -2450,7 +2453,7 @@ namespace Divide
                 if ( bindPipeline( *pipeline, cmdBuffer ) == ShaderResult::Failed )
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
-                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._id, handle._generation, handle._tag );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._index, handle._generation );
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
@@ -2507,7 +2510,10 @@ namespace Divide
                 DIVIDE_ASSERT(crtCmd->_usage != ImageUsage::COUNT);
 
                 PROFILE_SCOPE( "VK: View - based computation", Profiler::Category::Graphics );
-                static_cast<vkTexture*>(crtCmd->_texture)->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange._offset, crtCmd->_layerRange._count, crtCmd->_usage );
+                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
+                {
+                    static_cast<vkTexture*>(Get( crtCmd->_texture ))->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange._offset, crtCmd->_layerRange._count, crtCmd->_usage );
+                }
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
             {
@@ -2722,7 +2728,7 @@ namespace Divide
 
                     const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
-                    const bool isDepthTexture = IsDepthTexture( vkTex->descriptor().packing() );
+                    const bool isDepthTexture = IsDepthTexture( vkTex->descriptor()._packing );
 
                     vkTexture::TransitionType transitionType = vkTexture::TransitionType::COUNT;
 
@@ -3191,19 +3197,9 @@ namespace Divide
         return std::make_unique<vkRenderTarget>( _context, descriptor );
     }
 
-    GenericVertexData_ptr VK_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
+    GenericVertexData_ptr VK_API::newGVD( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<vkGenericVertexData>( _context, ringBufferLength, renderIndirect, name );
-    }
-
-    Texture_ptr VK_API::newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
-    {
-        return std::make_shared<vkTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
-    }
-
-    ShaderProgram_ptr VK_API::newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
-    {
-        return std::make_shared<vkShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
+        return std::make_shared<vkGenericVertexData>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr VK_API::newSB( const ShaderBufferDescriptor& descriptor ) const

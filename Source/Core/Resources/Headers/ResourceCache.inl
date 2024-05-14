@@ -35,496 +35,509 @@
 #ifndef DVD_RESOURCE_CACHE_INL_
 #define DVD_RESOURCE_CACHE_INL_
 
-#include "Core/Headers/PlatformContext.h"
-#include "Geometry/Material/Headers/Material.h"
-#include "Platform/Audio/Headers/AudioDescriptor.h"
-#include "Geometry/Shapes/Predefined/Headers/Box3D.h"
-#include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
-#include "Geometry/Shapes/Predefined/Headers/Sphere3D.h"
-#include "Environment/Terrain/Headers/InfinitePlane.h"
-#include "Geometry/Shapes/Headers/Mesh.h"
-#include "Geometry/Shapes/Headers/SubMesh.h"
-#include "Geometry/Importer/Headers/MeshImporter.h"
-#include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
-#include "Environment/Sky/Headers/Sky.h"
-#include "Environment/Water/Headers/Water.h"
-#include "Environment/Terrain/Headers/Terrain.h"
-#include "Environment/Terrain/Headers/TerrainLoader.h"
-#include "Environment/Terrain/Headers/TerrainDescriptor.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Shaders/Headers/ShaderProgram.h"
-#include "Platform/Video/Textures/Headers/TextureDescriptor.h"
-#include "Dynamics/Entities/Triggers/Headers/Trigger.h"
+#include "Platform/Video/RenderBackend/None/Headers/NonePlaceholderObjects.h"
+#include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
+#include "Platform/Video/RenderBackend/Vulkan/Shaders/Headers/vkShaderProgram.h"
+#include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glTexture.h"
+#include "Platform/Video/RenderBackend/OpenGL/Shaders/Headers/glShaderProgram.h"
 
-namespace Divide {
-
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<Material>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+namespace Divide
+{
+    struct ResourcePoolBase
     {
-        Material_ptr ptr( MemoryManager_NEW Material( context,
-                                                      cache,
-                                                      loadingDescriptorHash,
-                                                      descriptor.resourceName() ),
-                          DeleteResource( cache ) );
+        ResourcePoolBase();
+        virtual ~ResourcePoolBase();
+        virtual void printResources( bool error ) = 0;
+    };
 
-        assert( ptr != nullptr );
-        if ( !Load( ptr ) )
+    template<typename T>
+    struct ResourcePool final : public ResourcePoolBase
+    {
+        struct Entry
         {
-            ptr.reset();
-        }
+            ResourcePtr<T> _ptr{ nullptr };
+            size_t _descriptorHash{ 0u };
+            U32    _refCount{ 0u };
+        };
 
-        return ptr;
+        constexpr static size_t ResourcePoolSize = 512u;
+
+        ResourcePool();
+
+        void resize( size_t size);
+
+        [[nodiscard]] ResourcePtr<T> get( Handle<T> handle );
+
+        void deallocate( RenderAPI api, Handle<T>& handle );
+        void deallocateInternal( RenderAPI api, Entry& entry );
+
+        [[nodiscard]] Handle<T> allocate( size_t descriptorHash );
+        [[nodiscard]] Handle<T> allocateLocked( size_t descriptorHash );
+
+        void commit(Handle<T> handle, ResourcePtr<T> ptr);
+
+
+        void printResources( bool error ) final;
+
+        RecursiveMutex _lock;
+        eastl::fixed_vector<std::pair<bool, U8>, ResourcePoolSize, true> _freeList;
+        eastl::fixed_vector<Entry, ResourcePoolSize, true> _resPool;
+    };
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    using MemPool = MemoryPool<T, prevPOW2( sizeof( T ) ) * 1u << 5u>;
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    MemPool<T>& GetMemPool()
+    {
+        static MemPool<T> s_memPool;
+        return s_memPool;
     }
 
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<ShaderProgram>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    ResourcePool<T>& GetPool()
     {
-
-        const std::shared_ptr<ShaderProgramDescriptor>& shaderDescriptor = descriptor.propertyDescriptor<ShaderProgramDescriptor>();
-        assert( shaderDescriptor != nullptr );
-
-        if ( descriptor.assetName().empty() )
-        {
-            descriptor.assetName( descriptor.resourceName() );
-        }
-
-        if ( descriptor.assetLocation().empty() )
-        {
-            descriptor.assetLocation( Paths::g_shadersLocation );
-        }
-
-        ShaderProgram_ptr ptr = context.gfx().newShaderProgram( loadingDescriptorHash,
-                                                                descriptor.resourceName(),
-                                                                descriptor.assetName(),
-                                                                descriptor.assetLocation(),
-                                                                *shaderDescriptor,
-                                                                *cache );
-
-        if ( !Load( ptr ) )
-        {
-            ptr.reset();
-        }
-        else
-        {
-            ptr->highPriority( !descriptor.flag() );
-        }
-
-        return ptr;
+        static ResourcePool<T> s_pool;
+        return s_pool;
     }
 
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<Texture>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    template<typename T>
+    void ResourcePool<T>::printResources( const bool error )
     {
-        assert( descriptor.enumValue() < to_base( TextureType::COUNT ) );
+        UniqueLock<RecursiveMutex> r_lock( _lock );
 
-        const std::shared_ptr<TextureDescriptor>& texDescriptor = descriptor.propertyDescriptor<TextureDescriptor>();
-        assert( texDescriptor != nullptr );
-
-        if ( !descriptor.assetName().empty() )
+        bool first = true;
+        const size_t poolSize = _freeList.size();
+        for ( size_t i = 0u; i < poolSize; ++i)
         {
-
-            const bool isCubeMap = IsCubeTexture( texDescriptor->texType() );
-
-            const string resourceLocation = descriptor.assetLocation().string();
-
-            const U16 numCommas = to_U16( std::count( std::cbegin( descriptor.assetName() ), std::cend( descriptor.assetName() ), ',' ) );
-            if ( numCommas > 0u )
+            if (!_freeList[i].first)
             {
-                const U16 targetLayers = numCommas + 1u;
+                DIVIDE_ASSERT(_resPool[i]._ptr != nullptr);
 
-                if ( isCubeMap )
+                if ( first )
                 {
-                    // Each layer needs 6 images
-                    DIVIDE_ASSERT( targetLayers >= 6u && targetLayers % 6u == 0u, "TextureLoaderImpl error: Invalid number of source textures specified for cube map!" );
-
-                    if ( texDescriptor->layerCount() == 0u )
+                    if ( error )
                     {
-                        texDescriptor->layerCount( targetLayers % 6 );
+                        Console::errorfn( LOCALE_STR( "RESOURCE_CACHE_POOL_TYPE" ), _resPool[i]._ptr->typeName() );
                     }
-
-                    DIVIDE_ASSERT( texDescriptor->layerCount() == targetLayers % 6 );
-
-                    // We only use cube arrays to simplify some logic in the texturing code
-                    if ( texDescriptor->texType() == TextureType::TEXTURE_CUBE_MAP )
+                    else
                     {
-                        texDescriptor->texType( TextureType::TEXTURE_CUBE_ARRAY );
+                        Console::printfn( LOCALE_STR( "RESOURCE_CACHE_POOL_TYPE" ), _resPool[i]._ptr->typeName() );
                     }
+                    first = false;
+                }
+
+                if (error)
+                {
+                    Console::errorfn( LOCALE_STR( "RESOURCE_CACHE_GET_RES_INC" ), _resPool[i]._ptr->resourceName(), _resPool[i]._refCount );
                 }
                 else
                 {
-                    if ( texDescriptor->layerCount() == 0u )
-                    {
-                        texDescriptor->layerCount( targetLayers );
-                    }
+                    Console::printfn( LOCALE_STR("RESOURCE_CACHE_GET_RES_INC"), _resPool[i]._ptr->resourceName(), _resPool[i]._refCount );
+                }
+            }
+        }
+    }
 
-                    DIVIDE_ASSERT( texDescriptor->layerCount() == targetLayers, "TextureLoaderImpl error: Invalid number of source textures specified for texture array!" );
+    template<typename T>
+    ResourcePtr<T> ResourcePool<T>::get( const Handle<T> handle )
+    {
+        DIVIDE_ASSERT(handle != INVALID_HANDLE<T>);
+
+        UniqueLock<RecursiveMutex> r_lock( _lock );
+        DIVIDE_ASSERT( _freeList[handle._index].second == handle._generation );
+        
+        return _resPool[handle._index]._ptr;
+    }
+
+    template<typename T>
+    ResourcePool<T>::ResourcePool()
+        : ResourcePoolBase()
+    {
+        
+        resize( ResourcePoolSize );
+    }
+
+    template<typename T>
+    void ResourcePool<T>::resize( const size_t size )
+    {
+        _freeList.resize( size, std::make_pair( true, 0u ) );
+        _resPool.resize( size, {} );
+    }
+
+    template<typename T>
+    Handle<T> ResourcePool<T>::allocateLocked( const size_t descriptorHash )
+    {
+        Handle<T> handleOut = {};
+        for ( auto& it : _freeList )
+        {
+            if ( it.first )
+            {
+                it.first = false;
+                handleOut._generation = it.second;
+                Entry& entry = _resPool[handleOut._index];
+                entry._descriptorHash = descriptorHash;
+                entry._refCount = 1u;
+
+                return handleOut;
+            }
+
+            ++handleOut._index;
+        }
+
+        resize( _freeList.size() + ResourcePoolSize );
+
+        return allocateLocked(descriptorHash);
+    }
+
+    template<typename T>
+    Handle<T> ResourcePool<T>::allocate( const size_t descriptorHash )
+    {
+        LockGuard<RecursiveMutex> lock( _lock );
+        return allocateLocked( descriptorHash );
+    }
+
+    template <typename T>
+    void ResourcePool<T>::deallocateInternal( [[maybe_unused]] const RenderAPI api, Entry& entry )
+    {
+        GetMemPool<T>().deleteElement( entry._ptr );
+        entry = {};
+    }
+
+    template<>
+    inline void ResourcePool<Texture>::deallocateInternal( const RenderAPI api, Entry& entry )
+    {
+        switch ( api )
+        {
+            case RenderAPI::None:   GetMemPool<noTexture>().deleteElement( static_cast<ResourcePtr<noTexture>>( entry._ptr ) ); break;
+            case RenderAPI::OpenGL: GetMemPool<glTexture>().deleteElement( static_cast<ResourcePtr<glTexture>>( entry._ptr ) ); break;
+            case RenderAPI::Vulkan: GetMemPool<vkTexture>().deleteElement( static_cast<ResourcePtr<vkTexture>>( entry._ptr ) ); break;
+            case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
+        }
+        entry._ptr = nullptr;
+    }
+
+    template<>
+    inline void ResourcePool<ShaderProgram>::deallocateInternal( const RenderAPI api, Entry& entry )
+    {
+        switch ( api )
+        {
+            case RenderAPI::None:   GetMemPool<noShaderProgram>().deleteElement( static_cast<ResourcePtr<noShaderProgram>>(entry._ptr) ); break;
+            case RenderAPI::OpenGL: GetMemPool<glShaderProgram>().deleteElement( static_cast<ResourcePtr<glShaderProgram>>(entry._ptr) ); break;
+            case RenderAPI::Vulkan: GetMemPool<vkShaderProgram>().deleteElement( static_cast<ResourcePtr<vkShaderProgram>>(entry._ptr) ); break;
+            case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
+        }
+        entry._ptr = nullptr;
+    }
+
+    template <typename T>
+    void ResourcePool<T>::deallocate( const RenderAPI api, Handle<T>& handle )
+    {
+        if ( handle == INVALID_HANDLE<T> )
+        {
+            Console::errorfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_UNKNOWN_RESOURCE" ) );
+            return;
+        }
+
+        LockGuard<RecursiveMutex> lock( _lock );
+        if ( _freeList[handle._index].second != handle._generation )
+        {
+            // Already free
+            return;
+        }
+
+        Entry& entry = _resPool[handle._index];
+
+        if ( --entry._refCount == 0u)
+        {
+            Console::printfn( LOCALE_STR( "RESOURCE_CACHE_REM_RES" ), entry._ptr->resourceName().c_str(), entry._descriptorHash );
+
+            entry._descriptorHash = 0u;
+
+            if (entry._ptr->getState() == ResourceState::RES_LOADED)
+            {
+                entry._ptr->setState(ResourceState::RES_UNLOADING);
+                if (!entry._ptr->unload())
+                {
+                    Console::errorfn( LOCALE_STR( "ERROR_RESOURCE_REM" ), entry._ptr->resourceName().c_str(), entry._ptr->getGUID() );
+                    entry._ptr->setState(ResourceState::RES_UNKNOWN);
+                }
+                else
+                {
+                    entry._ptr->setState(ResourceState::RES_CREATED);
                 }
             }
 
-            if ( resourceLocation.empty() )
-            {
-                descriptor.assetLocation( Paths::g_texturesLocation );
-            }
-            else
-            {
-                DIVIDE_ASSERT( std::count( std::cbegin( resourceLocation ), std::cend( resourceLocation ), ',' ) == 0u, "TextureLoaderImpl error: All textures for a single array must be loaded from the same location!" );
-            }
-        }
+            DIVIDE_ASSERT(entry._ptr->safeToDelete());
+            deallocateInternal( api, entry );
 
-        if ( texDescriptor->layerCount() == 0u )
-        {
-            texDescriptor->layerCount( 1u );
-        }
-
-        Texture_ptr ptr = context.gfx().newTexture( loadingDescriptorHash,
-                                                    descriptor.resourceName(),
-                                                    descriptor.assetName(),
-                                                    descriptor.assetLocation(),
-                                                    *texDescriptor,
-                                                    *cache );
-
-        if ( !Load( ptr ) )
-        {
-            Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_FILE" ),
-                              descriptor.assetLocation(),
-                              descriptor.assetName(),
-                              descriptor.resourceName() );
-            ptr.reset();
-        }
-
-        return ptr;
-    }
-
-    template <>
-    inline CachedResource_ptr ResourceLoader::Build<AudioDescriptor>( ResourceCache* cache, [[maybe_unused]] PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
-    {
-        AudioDescriptor_ptr ptr( MemoryManager_NEW AudioDescriptor( loadingDescriptorHash,
-                                                                    descriptor.resourceName(),
-                                                                    descriptor.assetName(),
-                                                                    descriptor.assetLocation() ),
-                                 DeleteResource( cache ) );
-        if ( !Load( ptr ) )
-        {
-            ptr.reset();
+            ++_freeList[handle._index].second;
+            _freeList[handle._index].first = true;
         }
         else
         {
-            ptr->isLooping( descriptor.flag() );
+            Console::printfn( LOCALE_STR("RESOURCE_CACHE_REM_RES_DEC"), entry._ptr->resourceName().c_str(), entry._refCount );
         }
 
-        return ptr;
+        handle = INVALID_HANDLE<T>;
+    }
+
+    template <typename T>
+    void ResourcePool<T>::commit( const Handle<T> handle, ResourcePtr<T> ptr )
+    {
+        LockGuard<RecursiveMutex> lock( _lock );
+        _resPool[handle._index]._ptr = ptr;
+    }
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    Handle<T> ResourceCache::RetrieveFromCache( const size_t descriptorHash, bool& wasInCache )
+    {
+        wasInCache = false;
+
+        Handle<T> ret = {};
+        ResourcePool<T>& pool = GetPool<T>();
+        UniqueLock<RecursiveMutex> r_lock(pool._lock);
+
+        for ( const auto& it : pool._freeList)
+        {
+            if ( !it.first && pool._resPool[ret._index]._descriptorHash == descriptorHash)
+            {
+                ret._generation = it.second;
+                wasInCache = true;
+
+                const U32 refCount = ++pool._resPool[ret._index]._refCount;
+
+                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_RETRIEVE" ), pool._resPool[ret._index]._ptr->resourceName().c_str(), refCount );
+                return ret;
+            }
+            ++ret._index;
+        }
+
+        return pool.allocateLocked(descriptorHash);
     }
 
 
-    template <>
-    inline CachedResource_ptr ResourceLoader::Build<Box3D>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    T* ResourceCache::Get( const Handle<T> handle )
     {
-        constexpr F32 s_minSideLength = 0.0001f;
-
-        const vec3<F32> targetSize{
-            std::max( Util::UINT_TO_FLOAT( descriptor.data().x ), s_minSideLength ),
-            std::max( Util::UINT_TO_FLOAT( descriptor.data().y ), s_minSideLength ),
-            std::max( Util::UINT_TO_FLOAT( descriptor.data().z ), s_minSideLength )
-        };
-
-        std::shared_ptr<Box3D> ptr( MemoryManager_NEW Box3D( context,
-                                                             cache,
-                                                             loadingDescriptorHash,
-                                                             descriptor.resourceName(),
-                                                             targetSize ),
-                                    DeleteResource( cache ) );
-
-        if ( !descriptor.flag() )
+        if ( handle != INVALID_HANDLE<T> )
         {
-            const ResourceDescriptor matDesc( "Material_" + descriptor.resourceName() );
-            Material_ptr matTemp = CreateResource<Material>( cache, matDesc );
-            matTemp->properties().shadingMode( ShadingMode::PBR_MR );
-            ptr->setMaterialTpl( matTemp );
+            ResourcePool<T>& pool = GetPool<T>();
+            UniqueLock<RecursiveMutex> r_lock( pool._lock );
+            if ( pool._freeList[handle._index].second == handle._generation )
+            {
+                return pool._resPool[handle._index]._ptr;
+            }
         }
 
-        if ( !Load( ptr ) )
-        {
-            ptr.reset();
-        }
-
-        return ptr;
+        return nullptr;
     }
 
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<Quad3D>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    void ResourceCache::Destroy( Handle<T>& handle )
     {
-        constexpr F32 s_minSideLength = 0.0001f;
-
-        const vec3<U32> sizeIn = descriptor.data();
-
-        vec3<F32> targetSize{
-            Util::UINT_TO_FLOAT( sizeIn.x ),
-            Util::UINT_TO_FLOAT( sizeIn.y ),
-            Util::UINT_TO_FLOAT( sizeIn.z )
-        };
-        if ( sizeIn.x == 0u && sizeIn.y == 0u && sizeIn.z == 0u )
+        if ( handle != INVALID_HANDLE<T> )
         {
-            targetSize.xy = { s_minSideLength, s_minSideLength };
+            GetPool<T>().deallocate(s_renderAPI, handle);
         }
-        else if ( (sizeIn.x == 0u && sizeIn.y == 0u) ||
-                  (sizeIn.x == 0u && sizeIn.z == 0u) )
+        else
         {
-            targetSize.x = s_minSideLength;
+            // Not an actual error at this point. It's OK to delete a handle we haven't assigned a resource to yet.
+            Console::warnfn(LOCALE_STR( "ERROR_RESOURCE_CACHE_UNKNOWN_RESOURCE" ) );
         }
-        else if ( sizeIn.y == 0u && sizeIn.z == 0u )
-        {
-            targetSize.y = s_minSideLength;
-        }
+    }
 
-        std::shared_ptr<Quad3D> ptr( MemoryManager_NEW Quad3D( context,
-                                                               cache,
-                                                               loadingDescriptorHash,
-                                                               descriptor.resourceName(),
-                                                               descriptor.mask().b[0] == 0,
-                                                               targetSize ),
-                                     DeleteResource( cache ) );
-        if ( !descriptor.flag() )
-        {
-            const ResourceDescriptor matDesc( "Material_" + descriptor.resourceName() );
-            Material_ptr matTemp = CreateResource<Material>( cache, matDesc );
-            matTemp->properties().shadingMode( ShadingMode::PBR_MR );
-            ptr->setMaterialTpl( matTemp );
-        }
-
-        if ( !Load( ptr ) )
-        {
-            ptr.reset();
-        }
-
-        return ptr;
+    template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base>&& std::is_base_of_v<Base, Derived>
+    ResourcePtr<Base> ResourceCache::AllocateInternal( const ResourceDescriptor<Base>& descriptor )
+    {
+        LockGuard<RecursiveMutex> lock( GetPool<Base>()._lock );
+        return GetMemPool<Derived>().newElement( *s_context, descriptor );
     }
 
     template<>
-    inline CachedResource_ptr ResourceLoader::Build<Sphere3D>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    inline ResourcePtr<ShaderProgram> ResourceCache::AllocateInternal<ShaderProgram, ShaderProgram>( const ResourceDescriptor<ShaderProgram>& descriptor )
     {
-        constexpr F32 s_minRadius = 0.0001f;
-
-        std::shared_ptr<Sphere3D> ptr( MemoryManager_NEW Sphere3D( context,
-                                                                   cache,
-                                                                   loadingDescriptorHash,
-                                                                   descriptor.resourceName(),
-                                                                   std::max( Util::UINT_TO_FLOAT( descriptor.enumValue() ), s_minRadius ),
-                                                                   descriptor.ID() == 0u
-                                                                   ? 16u
-                                                                   : descriptor.ID() ),
-                                       DeleteResource( cache ) );
-
-        if ( !descriptor.flag() )
+        switch ( s_context->gfx().renderAPI() )
         {
-            const ResourceDescriptor matDesc( "Material_" + descriptor.resourceName() );
-            Material_ptr matTemp = CreateResource<Material>( cache, matDesc );
-            matTemp->properties().shadingMode( ShadingMode::PBR_MR );
-            ptr->setMaterialTpl( matTemp );
+            case RenderAPI::None:   return AllocateInternal<ShaderProgram, noShaderProgram>( descriptor );
+            case RenderAPI::OpenGL: return AllocateInternal<ShaderProgram, glShaderProgram>( descriptor );
+            case RenderAPI::Vulkan: return AllocateInternal<ShaderProgram, vkShaderProgram>( descriptor );
+
+            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
 
-        if ( !Load( ptr ) )
-        {
-            ptr.reset();
-        }
-
-        return ptr;
+        return nullptr;
     }
 
     template<>
-    inline CachedResource_ptr ResourceLoader::Build<InfinitePlane>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    inline ResourcePtr<Texture> ResourceCache::AllocateInternal<Texture, Texture>( const ResourceDescriptor<Texture>& descriptor )
     {
-        std::shared_ptr<InfinitePlane> ptr( MemoryManager_NEW InfinitePlane( context.gfx(),
-                                                                             cache,
-                                                                             loadingDescriptorHash,
-                                                                             descriptor.resourceName(),
-                                                                             descriptor.data().xy ),
-                                            DeleteResource( cache ) );
-
-        if ( !Load( ptr ) )
+        switch ( s_context->gfx().renderAPI() )
         {
-            ptr.reset();
+            case RenderAPI::None:   return AllocateInternal<Texture, noTexture>( descriptor );
+            case RenderAPI::OpenGL: return AllocateInternal<Texture, glTexture>( descriptor );
+            case RenderAPI::Vulkan: return AllocateInternal<Texture, vkTexture>( descriptor );
+            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
 
-        return ptr;
+        return nullptr;
     }
 
-    struct MeshLoadData
+
+    template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base>&& std::is_base_of_v<Base, Derived>
+    void ResourceCache::BuildInternal( ResourcePtr<Base> ptr )
     {
-        explicit MeshLoadData( Mesh_ptr mesh,
-                               ResourceCache* cache,
-                               PlatformContext* context,
-                               const ResourceDescriptor& descriptor )
-            : _mesh( MOV( mesh ) ),
-            _cache( cache ),
-            _context( context ),
-            _descriptor( descriptor )
-        {
-        }
-
-        Mesh_ptr _mesh;
-        ResourceCache* _cache;
-        PlatformContext* _context;
-        ResourceDescriptor _descriptor;
-
-    };
-
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<Sky>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
-    {
-        std::shared_ptr<Sky> ptr( MemoryManager_NEW Sky( context.gfx(),
-                                                         cache,
-                                                         loadingDescriptorHash,
-                                                         descriptor.resourceName(),
-                                                         descriptor.ID() ),
-                                  DeleteResource( cache ) );
-
-        if ( !Load( ptr ) )
-        {
-            ptr.reset();
-        }
-
-        return ptr;
-    }
-
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<Terrain>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
-    {
-        std::shared_ptr<Terrain> ptr( MemoryManager_NEW Terrain( context, cache, loadingDescriptorHash, descriptor.resourceName() ),
-                                      DeleteResource( cache ) );
-
-        Console::printfn( LOCALE_STR( "TERRAIN_LOAD_START" ), descriptor.resourceName().c_str() );
-        const std::shared_ptr<TerrainDescriptor>& terrain = descriptor.propertyDescriptor<TerrainDescriptor>();
-
-        if ( ptr )
-        {
-            ptr->setState( ResourceState::RES_LOADING );
-        }
-
-        if ( !ptr || !TerrainLoader::loadTerrain( ptr, terrain, context, true ) )
-        {
-            Console::errorfn( LOCALE_STR( "ERROR_TERRAIN_LOAD" ), descriptor.resourceName().c_str() );
-            ptr.reset();
-        }
-
-        return ptr;
-    }
-
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<WaterPlane>( ResourceCache* cache, [[maybe_unused]] PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
-    {
-
-        std::shared_ptr<WaterPlane> ptr( MemoryManager_NEW WaterPlane( cache,
-                                                                       loadingDescriptorHash,
-                                                                       descriptor.resourceName() ),
-                                         DeleteResource( cache ) );
-
+        DIVIDE_ASSERT( ptr != nullptr );
+        
         ptr->setState( ResourceState::RES_LOADING );
-        if ( !Load( ptr ) )
+
+        if (!ptr->load( *s_context ) )
         {
-            ptr.reset();
+            ptr->setState( ResourceState::RES_UNKNOWN );
         }
-
-        return ptr;
-    }
-
-    namespace
-    {
-        void threadedMeshLoad( MeshLoadData loadData, ResourcePath modelPath, const std::string_view modelName )
+        else
         {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
-
-            Import::ImportData tempMeshData( modelPath, modelName );
-            if ( MeshImporter::loadMeshDataFromFile( *loadData._context, tempMeshData ) &&
-                 MeshImporter::loadMesh( tempMeshData.loadedFromFile(), loadData._mesh.get(), *loadData._context, loadData._cache, tempMeshData ) &&
-                 loadData._mesh->load() )
-            {
-                NOP();
-            }
-            else
-            {
-                loadData._cache->remove( loadData._mesh.get() );
-                loadData._mesh.reset();
-                Console::errorfn( LOCALE_STR( "ERROR_IMPORTER_MESH" ), modelName );
-                return;
-            }
+            ptr->setState( ResourceState::RES_THREAD_LOADED );
         }
-
     }
 
     template<>
-    inline CachedResource_ptr ResourceLoader::Build<Mesh>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    inline void ResourceCache::BuildInternal<ShaderProgram, ShaderProgram>( ResourcePtr<ShaderProgram> ptr )
     {
-        Mesh_ptr ptr( MemoryManager_NEW Mesh( context,
-                                              cache,
-                                              loadingDescriptorHash,
-                                              descriptor.resourceName(),
-                                              descriptor.assetName(),
-                                              descriptor.assetLocation() ),
-                      DeleteResource( cache ) );
-
-        if ( ptr )
+        switch ( s_context->gfx().renderAPI() )
         {
-            ptr->setState( ResourceState::RES_LOADING );
+            case RenderAPI::None:   BuildInternal<ShaderProgram, noShaderProgram>( ptr ); break;
+            case RenderAPI::OpenGL: BuildInternal<ShaderProgram, glShaderProgram>( ptr ); break;
+            case RenderAPI::Vulkan: BuildInternal<ShaderProgram, vkShaderProgram>( ptr ); break;
+
+            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
+    }
 
-        MeshLoadData loadingData( ptr, cache, &context, descriptor );
-        Task* task = CreateTask( [assetLocaltion = descriptor.assetLocation(), assetName = descriptor.assetName(), loadingData]( const Task& )
-                                 {
-                                     threadedMeshLoad( loadingData, assetLocaltion, assetName );
-                                 } );
+    template<>
+    inline void  ResourceCache::BuildInternal<Texture, Texture>( ResourcePtr<Texture> ptr )
+    {
+        switch ( s_context->gfx().renderAPI() )
+        {
+            case RenderAPI::None:   BuildInternal<Texture, noTexture>( ptr ); break;
+            case RenderAPI::OpenGL: BuildInternal<Texture, glTexture>( ptr ); break;
+            case RenderAPI::Vulkan: BuildInternal<Texture, vkTexture>( ptr ); break;
+            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+        }
+    }
 
-        Start( *task, context.taskPool( TaskPoolType::ASSET_LOADER ) );
+    template<typename T> requires std::is_base_of_v<Resource, T>
+    void ResourceCache::Build( ResourcePtr<T> ptr, const ResourceDescriptor<T>& descriptor )
+    {
+        Time::ProfileTimer loadTimer{};
+
+        loadTimer.start();
+        BuildInternal<T, T>(ptr);
+        loadTimer.stop();
+
+        if ( ptr != nullptr )
+        {
+            Console::printfn( LOCALE_STR( "RESOURCE_CACHE_BUILD" ),
+                              ptr->resourceName().c_str(),
+                              ptr->typeName(),
+                              ptr->getGUID(),
+                              descriptor.getHash(),
+                              Time::MicrosecondsToMilliseconds<F32>( loadTimer.get() ) );
+        }
+        else
+        {
+            Console::errorfn( LOCALE_STR( "RESOURCE_CACHE_BUILD_FAILED" ), descriptor.resourceName() );
+        }
+    }
+
+    template<typename T> requires std::is_base_of_v<Resource, T>
+    ResourcePtr<T> ResourceCache::Allocate( Handle<T> handle, const ResourceDescriptor<T>& descriptor, const size_t descriptorHash )
+    {
+        Time::ProfileTimer loadTimer{};
+
+        loadTimer.start();
+        ResourcePtr<T> ptr = AllocateInternal<T, T>(descriptor );
+
+        if ( ptr != nullptr )
+        {
+            GetPool<T>().commit( handle, ptr );
+
+            loadTimer.stop();
+            Console::printfn( LOCALE_STR( "RESOURCE_CACHE_ALLOCATE" ),
+                              ptr->resourceName().c_str(),
+                              ptr->typeName(),
+                              ptr->getGUID(),
+                              descriptorHash,
+                              Time::MicrosecondsToMilliseconds<F32>( loadTimer.get() ) );
+        }
+        else
+        {
+            Console::errorfn(LOCALE_STR("RESOURCE_CACHE_ALLOCATE_FAILED"), descriptor.resourceName());
+        }
 
         return ptr;
     }
 
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<SubMesh>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    template<typename T> requires std::is_base_of_v<Resource, T>
+    void ResourceCache::Deallocate( Handle<T> handle )
     {
-        SubMesh_ptr ptr( MemoryManager_NEW SubMesh( context,
-                                                    cache,
-                                                    loadingDescriptorHash,
-                                                    descriptor.resourceName() ),
-                         DeleteResource( cache ) );
-        if ( !Load( ptr ) )
-        {
-            ptr.reset();
-        }
-
-        return ptr;
+        GetPool<T>().deallocate( s_renderAPI, handle );
     }
 
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<ParticleEmitter>( ResourceCache* cache, PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    Handle<T> ResourceCache::LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
     {
-        std::shared_ptr<ParticleEmitter> ptr( MemoryManager_NEW ParticleEmitter( context.gfx(),
-                                                                                 cache,
-                                                                                 loadingDescriptorHash,
-                                                                                 descriptor.resourceName() ),
-                                              DeleteResource( cache ) );
+        taskCounter.fetch_add( 1u );
 
-        if ( !Load( ptr ) )
+        // The loading process may change the resource descriptor so always use the user-specified descriptor hash for lookup!
+        const size_t loadingHash = descriptor.getHash();
+
+        // If two threads are trying to load the same resource at the same time, by the time one of them adds the resource to the cache, it's too late
+        // So check if the hash is currently in the "processing" list, and if it is, just busy-spin until done
+        // Once done, lock the hash for ourselves
+        ResourceLoadLock res_lock( loadingHash, *s_context );
+        /// Check cache first to avoid loading the same resource twice (or if we have stale, expired pointers in there)
+
+        Handle<T> ret = RetrieveFromCache<T>( loadingHash, wasInCache );
+        if ( wasInCache )
         {
-            ptr.reset();
+            taskCounter.fetch_sub( 1u );
+            return ret;
         }
 
-        return ptr;
-    }
+        Console::printfn( LOCALE_STR( "RESOURCE_CACHE_GET_RES" ), descriptor.resourceName().c_str(), loadingHash );
 
-    template<>
-    inline CachedResource_ptr ResourceLoader::Build<Trigger>( ResourceCache* cache, [[maybe_unused]] PlatformContext& context, ResourceDescriptor descriptor, const size_t loadingDescriptorHash )
-    {
-        std::shared_ptr<Trigger> ptr( MemoryManager_NEW Trigger( cache,
-                                                                 loadingDescriptorHash,
-                                                                 descriptor.resourceName() ),
-                                      DeleteResource( cache ) );
+        ResourcePtr<T> ptr = ResourceCache::Allocate<T>(ret, descriptor, loadingHash);
 
-        if ( !Load( ptr ) )
+        if ( ptr != nullptr )
         {
-            ptr.reset();
+            Start( *CreateTask( [ptr, descriptor]( const Task& )
+                    {
+                        ResourceCache::Build<T>( ptr, descriptor );
+                    }),
+                    s_context->taskPool( TaskPoolType::ASSET_LOADER ), 
+                    descriptor.waitForReady() ? TaskPriority::REALTIME : TaskPriority::DONT_CARE,
+                    [ptr, ret, &taskCounter, resName = descriptor.resourceName()]()
+                    {
+                        DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);
+
+                        if ( ptr->getState() == ResourceState::RES_THREAD_LOADED  && ptr->postLoad()) [[likely]]
+                        {
+                            ptr->setState( ResourceState::RES_LOADED );
+                        }
+                        else
+                        {
+                            Console::printfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ), resName.c_str() );
+                            Deallocate( ret );
+                        }
+
+                        taskCounter.fetch_sub( 1u );
+                    }
+                );
         }
 
-        return ptr;
+        return ret;
     }
 
 } //namespace Divide

@@ -64,7 +64,7 @@ class Order {
 
 class AITeam final : public GUIDWrapper {
    public:
-    using CrowdPtr = Navigation::DivideDtCrowd*;
+    using CrowdPtr = std::unique_ptr<Navigation::DivideDtCrowd>;
     using AITeamCrowd = hashMap<AIEntity::PresetAgentRadius, CrowdPtr>;
     using MemberVariable = hashMap<AIEntity*, F32>;
     using TeamMap = hashMap<I64, AIEntity*>;
@@ -75,11 +75,11 @@ class AITeam final : public GUIDWrapper {
     AITeam(U32 id, AIManager& parentManager);
     ~AITeam() override;
 
-    CrowdPtr getCrowd(const AIEntity::PresetAgentRadius radius) const {
+    inline Navigation::DivideDtCrowd* getCrowd(const AIEntity::PresetAgentRadius radius) const {
         SharedLock<SharedMutex> r_lock(_crowdMutex);
         const AITeamCrowd::const_iterator it = _aiTeamCrowd.find(radius);
         if (it != std::end(_aiTeamCrowd)) {
-            return it->second;
+            return it->second.get();
         }
         return nullptr;
     }

@@ -10,6 +10,7 @@
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Utility/Headers/Localization.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 namespace Divide
 {
@@ -57,7 +58,7 @@ namespace Divide
         return sortOrder;
     }
 
-    RenderBinType RenderQueue::getBinForNode( const SceneGraphNode* node, const Material_ptr& matInstance )
+    RenderBinType RenderQueue::getBinForNode( const SceneGraphNode* node, const Handle<Material> matInstance )
     {
         switch ( node->getNode().type() )
         {
@@ -67,7 +68,6 @@ namespace Divide
             case SceneNodeType::TYPE_WATER:            return RenderBinType::WATER;
             case SceneNodeType::TYPE_INFINITEPLANE:    return RenderBinType::TERRAIN_AUX;
             case SceneNodeType::TYPE_TERRAIN:          return RenderBinType::TERRAIN;
-            case SceneNodeType::TYPE_DECAL:            return RenderBinType::TRANSLUCENT;
             case SceneNodeType::TYPE_TRANSFORM:
             {
                 constexpr U32 compareMask = to_U32( ComponentType::SPOT_LIGHT ) |
@@ -84,7 +84,7 @@ namespace Divide
                 if ( Is3DObject( node->getNode().type() ) )
                 {
                     // Check if the object has a material with transparency/translucency
-                    if ( matInstance != nullptr && matInstance->hasTransparency() )
+                    if ( matInstance != INVALID_HANDLE<Material> && Get(matInstance)->hasTransparency() )
                     {
                         // Add it to the appropriate bin if so ...
                         return RenderBinType::TRANSLUCENT;
@@ -94,8 +94,7 @@ namespace Divide
                     return RenderBinType::OPAQUE;
                 }
             } break;
-            case SceneNodeType::TYPE_TRIGGER:
-            case SceneNodeType::COUNT: break;
+            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
 
         return RenderBinType::COUNT;

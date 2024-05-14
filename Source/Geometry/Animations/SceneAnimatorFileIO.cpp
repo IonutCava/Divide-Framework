@@ -184,8 +184,9 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn) {
         dataIn >> nsize;
         _animations.resize(nsize);
 
-        for (uint32_t idx = 0; idx < nsize; ++idx) {
-            _animations[idx] = MemoryManager_NEW AnimEvaluator();
+        for (uint32_t idx = 0; idx < nsize; ++idx)
+        {
+            _animations[idx] = std::make_unique<AnimEvaluator>();
             AnimEvaluator::load(*_animations[idx], dataIn);
             // get all the animation names so I can reference them by name and get the correct id
             insert(_animationNameToID, _ID(_animations[idx]->name().c_str()), idx);
@@ -226,7 +227,7 @@ Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parent) {
         // the name of the bone
         dataIn >> tempString;
         // create a node
-        Bone* internalNode = MemoryManager_NEW Bone(tempString);
+        Bone* internalNode = new Bone(tempString);
         // set the parent, in the case this is the root node, it will be null
         internalNode->_parent = parent;
         mat4<F32> temp;

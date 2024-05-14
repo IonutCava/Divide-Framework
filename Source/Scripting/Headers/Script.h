@@ -72,16 +72,16 @@ protected:
     void compile();
     void bootstrap();
     void extractAtoms();
-    void preprocessIncludes(const string& source, I32 level /*= 0 */);
+    void preprocessIncludes(const std::string& source, I32 level /*= 0 */);
     void caughtException(const char* message, bool isEvalException) const;
 
 protected:
-    static void handleOutput(const string& msg);
+    static void handleOutput(std::string_view msg);
 
 protected:
     //ToDo: Move this somewhere else to avoid having the include in this file -Ionut
     chaiscript::ChaiScript_uptr _script;
-    string  _scriptSource;
+    std::string  _scriptSource;
     FileNameAndPath _scriptFile;
     FileType    _scriptFileType;
     vector<ResourcePath> _usedAtoms;

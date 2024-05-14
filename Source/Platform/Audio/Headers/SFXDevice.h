@@ -58,8 +58,8 @@ public:
     [[nodiscard]] AudioState& getActiveAudioState() noexcept { return _state; }
 
     void idle();
-    void playSound(const AudioDescriptor_ptr& sound) override;
-    void playMusic(const AudioDescriptor_ptr& music) override;
+    void playSound( Handle<AudioDescriptor> sound ) override;
+    void playMusic( Handle<AudioDescriptor> music ) override;
 
     void pauseMusic() override;
     void stopMusic() override;
@@ -67,7 +67,7 @@ public:
     void setMusicVolume(I8 value) override;
     void setSoundVolume(I8 value) override;
 
-    void addMusic(U32 playlistEntry, const AudioDescriptor_ptr& music);
+    void addMusic(U32 playlistEntry, Handle<AudioDescriptor> music);
     [[nodiscard]] bool playMusic(U32 playlistEntry);
     [[nodiscard]] bool playMusic(const MusicPlaylist& playlist);
 

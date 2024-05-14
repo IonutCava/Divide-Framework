@@ -36,6 +36,7 @@
 #include "CEGUI/Vertex.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
@@ -58,7 +59,7 @@ DVDGeometryBuffer::DVDGeometryBuffer( CEGUIRenderer& owner)
 {
     thread_local size_t BUFFER_IDX = 0u;
 
-    _gvd = owner.context().newGVD(Divide::Config::MAX_FRAMES_IN_FLIGHT + 1u, false, Divide::Util::StringFormat("IMGUI_{}", BUFFER_IDX++).c_str());
+    _gvd = owner.context().newGVD(Divide::Config::MAX_FRAMES_IN_FLIGHT + 1u, Divide::Util::StringFormat("IMGUI_{}", BUFFER_IDX++).c_str());
 
     recreateBuffer(nullptr, 0u);
 
@@ -121,13 +122,13 @@ void DVDGeometryBuffer::draw() const
 
             _owner->bindDefaultState( currentBatch.clip, d_blendMode, modelViewProjectionMatrix );
 
-            if (currentBatch.texture != nullptr )
+            if (currentBatch.texture != Divide::INVALID_HANDLE<Divide::Texture> )
             {
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( *cmdBuffer );
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, currentBatch.texture->getView(), _sampler );
+                Set( binding._data, currentBatch.texture, _sampler );
             }
 
             drawCmd._cmd.baseVertex = pos;
@@ -232,7 +233,7 @@ void DVDGeometryBuffer::updateBuffers()
 
 void DVDGeometryBuffer::performBatchManagement()
 {
-    Divide::Texture* tex = _activeTexture ? _activeTexture->getDVDTexture().get() : nullptr;
+    Divide::Handle<Divide::Texture> tex = _activeTexture ? _activeTexture->getDVDTexture() : Divide::INVALID_HANDLE<Divide::Texture>;
 
     // create a new batch if there are no batches yet, or if the active texture differs from that used by the current batch.
     if ( _batches.empty() ||

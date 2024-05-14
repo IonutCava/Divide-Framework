@@ -64,7 +64,7 @@ ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage)
 
     const ResourcePath file = Paths::g_localisationPath / ( detail::g_localeFile + g_languageFileExtension );
 
-    if (languageFile.LoadFile(file.string().c_str()) != SI_OK)
+    if (languageFile.LoadFile(file.string().c_str() ) != SI_OK)
     {
         return ErrorCode::NO_LANGUAGE_INI;
     }

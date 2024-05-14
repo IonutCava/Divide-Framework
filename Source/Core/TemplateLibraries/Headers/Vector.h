@@ -33,28 +33,16 @@
 #ifndef DVD_VECTOR_H_
 #define DVD_VECTOR_H_
 
-#include "TemplateAllocator.h"
-
 #include <EASTL/sort.h>
 #include <EASTL/vector.h>
 
 namespace Divide
 {
-    /// dvd_allocator uses xmalloc/xfree for memory management whereas std::allocator uses the classic new/delete pair.
-    template<bool Fast>
-    using vector_allocator = typename std::conditional<Fast, eastl::dvd_allocator, eastl::aligned_allocator>::type;
-
-    template<typename Type, bool Fast>
-    using vector_impl = eastl::vector<Type, vector_allocator<Fast>>;
-
-    template <typename Type>
-    using vector = vector_impl<Type, false>;
-    template <typename Type>
-    using vector_fast = vector_impl<Type, true>;
-
+    template<typename Type>
+    using vector = eastl::vector<Type>;
 
     template<typename T, typename Type>
-    concept is_non_fixed_vector = std::is_same_v<T, vector_fast<Type>> || std::is_same_v<T, vector<Type>>;
+    concept is_non_fixed_vector = std::is_same_v<T, vector<Type>>;
     template<typename T, typename... Ts>
     concept is_fixed_vector = std::is_same_v<T, eastl::fixed_vector<Ts...>>;
     template<typename T, typename... Ts>

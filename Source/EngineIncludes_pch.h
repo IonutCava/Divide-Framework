@@ -33,8 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PCH_
 #define DVD_PCH_
 
-#define _ENFORCE_MATCHING_ALLOCATORS 0
-#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+#include <mimalloc.h>
 
 #include "Platform/Headers/PlatformDefinesOS.h"
 
@@ -43,18 +42,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Divide Framework requires C++20 support at a minimum!"
 #endif 
 
-#ifdef _MSC_VER
-#pragma warning(disable: 4201) //warning C4201: nonstandard extension used: nameless struct/union
-#pragma warning(push)
-#pragma warning(disable: 4244) //warning C4244: 'return': conversion from 'int' to 'int8_t', possible loss of data
-#pragma warning(disable: 4458) //warning C4458: declaration of 'shift' hides class member
-#pragma warning(disable: 4310) //warning C4310: cast truncates constant value 
-#endif
 #include <stdexcept>
 #include <bytell_hash_map.hpp>
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 #include <EASTL/set.h>
 #include <EASTL/map.h>
@@ -92,8 +81,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/functional/factory.hpp>
 
-#define HAVE_M_PI
-#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
 #include "Core/Headers/Profiler.h"
@@ -102,21 +89,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #undef VKAPI_PTR
 #endif //VKAPI_PTR
 
-#ifdef _MSC_VER
-#pragma warning (push)
-#pragma warning (disable: 4624) // warning C4624: destructor was implicitly defined as deleted (union Slot_{})
-#pragma warning (disable: 4100) // warning C4624: unreferenced formal parameter
-#endif
 // Let's face it. This will never get fixed
 #define freeSlots freeSlots_
 #include <StackAlloc.h>
 #include <C-11/MemoryPool.h>
 #undef freeSlots
-#ifdef _MSC_VER
-#pragma warning (pop)
-#endif
-
-#include <ArenaAllocator/arena_allocator.h>
 
 #include <concurrentqueue/concurrentqueue.h>
 #include <concurrentqueue/blockingconcurrentqueue.h>
@@ -130,10 +107,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Headers/Console.h"
 #include <EntityComponentSystem/include/ECS/ComponentManager.h>
 #include <EntityComponentSystem/include/ECS/Entity.h>
-
-#undef _ENFORCE_MATCHING_ALLOCATORS
-#define _ENFORCE_MATCHING_ALLOCATORS 1
-#undef _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 
 #include "Platform/Headers/ConditionalWait.h"
 #include "Core/Headers/NonCopyable.h"

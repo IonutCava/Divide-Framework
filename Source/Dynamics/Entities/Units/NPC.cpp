@@ -5,22 +5,21 @@
 
 namespace Divide {
 
-NPC::NPC(AI::AIEntity* const aiEntity)
-    : Character(CharacterType::CHARACTER_TYPE_NPC),
-      _aiUnit(aiEntity)
+NPC::NPC( const vec3<F32>& currentPosition, const std::string_view name )
+    : Character(CharacterType::CHARACTER_TYPE_NPC)
+    , _aiUnit(std::make_unique<AI::AIEntity>( this, currentPosition, name))
 {
-    if (_aiUnit) {
-        assert(!_aiUnit->getUnitRef());
-        _aiUnit->addUnitRef(this);
-    }
+    _aiUnit->load(currentPosition);
 }
 
-void NPC::update(const U64 deltaTimeUS) {
+void NPC::update(const U64 deltaTimeUS)
+{
     Character::update(deltaTimeUS);
 }
 
-AI::AIEntity* NPC::getAIEntity() const noexcept {
-    return _aiUnit;
+AI::AIEntity* NPC::getAIEntity() const noexcept
+{
+    return _aiUnit.get();
 }
 
 } //namespace Divide

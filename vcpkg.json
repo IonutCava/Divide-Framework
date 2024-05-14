@@ -47,6 +47,10 @@
         {
             "name": "imgui",
             "features": [ "docking-experimental", "no-obsolete-keyio", "no-obsolete-functions" ]
+        },
+        {
+            "name": "mimalloc",
+            "features": ["override"]
         }
     ]
 }

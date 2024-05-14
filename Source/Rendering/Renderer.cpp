@@ -23,7 +23,7 @@ namespace Divide {
         constexpr bool g_rebuildLightGridEachFrame = false;
     }
 
-Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
+Renderer::Renderer(PlatformContext& context)
     : PlatformContextComponent(context)
 {
     const Configuration& config = context.config();
@@ -39,12 +39,11 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         ShaderProgramDescriptor cullDescritpor = {};
         cullDescritpor._modules.push_back(computeDescriptor);
 
-        ResourceDescriptor cullShaderDesc("lightCull");
-        cullShaderDesc.propertyDescriptor(cullDescritpor);
-        _lightCullComputeShader = CreateResource<ShaderProgram>(cache, cullShaderDesc);
+        ResourceDescriptor<ShaderProgram> cullShaderDesc("lightCull", cullDescritpor );
+        _lightCullComputeShader = CreateResource(cullShaderDesc);
 
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._shaderProgramHandle = _lightCullComputeShader->handle();
+        pipelineDescriptor._shaderProgramHandle = _lightCullComputeShader;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         _lightCullPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
@@ -53,12 +52,11 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         computeDescriptor._variant = "ResetCounter";
         cullDescritpor._modules.push_back(computeDescriptor);
 
-        ResourceDescriptor cullShaderDesc("lightCounterReset");
-        cullShaderDesc.propertyDescriptor(cullDescritpor);
-        _lightCounterResetComputeShader = CreateResource<ShaderProgram>(cache, cullShaderDesc);
+        ResourceDescriptor<ShaderProgram> cullShaderDesc("lightCounterReset", cullDescritpor );
+        _lightCounterResetComputeShader = CreateResource(cullShaderDesc);
 
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._shaderProgramHandle = _lightCounterResetComputeShader->handle();
+        pipelineDescriptor._shaderProgramHandle = _lightCounterResetComputeShader;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         _lightResetCounterPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
@@ -70,12 +68,10 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         buildDescritpor._globalDefines.emplace_back( "inverseProjectionMatrix PushData0" );
         buildDescritpor._globalDefines.emplace_back( "viewport ivec4(PushData1[0])" );
         buildDescritpor._globalDefines.emplace_back( "_zPlanes PushData1[1].xy" );
-        ResourceDescriptor buildShaderDesc("lightBuildClusteredAABBs");
-        buildShaderDesc.propertyDescriptor(buildDescritpor);
-        _lightBuildClusteredAABBsComputeShader = CreateResource<ShaderProgram>(cache, buildShaderDesc);
+        _lightBuildClusteredAABBsComputeShader = CreateResource( ResourceDescriptor<ShaderProgram>( "lightBuildClusteredAABBs", buildDescritpor ) );
 
         PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._shaderProgramHandle = _lightBuildClusteredAABBsComputeShader->handle();
+        pipelineDescriptor._shaderProgramHandle = _lightBuildClusteredAABBsComputeShader;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         _lightBuildClusteredAABBsPipelineCmd._pipeline = _context.gfx().newPipeline(pipelineDescriptor);
     }
@@ -121,7 +117,7 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
         }
     }
 
-    _postFX = std::make_unique<PostFX>(context, cache);
+    _postFX = std::make_unique<PostFX>(context);
 
     if (config.rendering.postFX.postAA.qualityLevel > 0) {
         _postFX->pushFilter(FilterType::FILTER_SS_ANTIALIASING);
@@ -148,6 +144,9 @@ Renderer::Renderer(PlatformContext& context, ResourceCache* cache)
 
 Renderer::~Renderer()
 {
+    DestroyResource( _lightCullComputeShader );
+    DestroyResource( _lightCounterResetComputeShader );
+    DestroyResource( _lightBuildClusteredAABBsComputeShader );
 }
 
 void Renderer::prepareLighting(const RenderStage stage,
@@ -169,16 +168,14 @@ void Renderer::prepareLighting(const RenderStage stage,
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_PASS;
 
-            LightPool* pool = context().kernel().projectManager()->activeProject()->getActiveScene()->lightPool().get();
-
             const size_t stageIndex = to_size( stage );
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 8u, ShaderStageVisibility::COMPUTE_AND_DRAW );
-                Set(binding._data, pool->sceneBuffer(), {stageIndex, 1u});
+                Set(binding._data, LightPool::SceneBuffer(), {stageIndex, 1u});
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::COMPUTE_AND_DRAW );
-                Set(binding._data, pool->lightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
+                Set(binding._data, LightPool::LightBuffer(), {stageIndex * Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME } );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );

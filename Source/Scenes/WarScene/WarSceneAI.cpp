@@ -12,6 +12,7 @@
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "ECS/Components/Headers/UnitComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
+#include "ECS/Components/Headers/RigidBodyComponent.h"
 #include "AI/PathFinding/NavMeshes/Headers/NavMesh.h"
 #include "Core/Headers/Application.h"
 
@@ -137,8 +138,9 @@ void WarScene::registerPoint(const U16 teamID, const string& unitName) {
 bool WarScene::initializeAI(bool /*continueOnErrors*/) {
     //------------------------Artificial Intelligence------------------------//
     // Create 2 AI teams
-    for (U8 i = 0; i < 2; ++i) {
-        _faction[i] = MemoryManager_NEW AI::AITeam(i, *_aiManager);
+    for (U8 i = 0; i < 2; ++i)
+    {
+        _faction[i] = _aiManager->registerTeam(i);
     }
     // Make the teams fight each other
     _faction[0]->addEnemyTeam(_faction[1]->teamID());
@@ -155,10 +157,13 @@ bool WarScene::initializeAI(bool /*continueOnErrors*/) {
     //return false;
 }
 
-bool WarScene::removeUnits() {
+bool WarScene::removeUnits()
+{
     WAIT_FOR_CONDITION(!_aiManager->updating());
-    for (U8 i = 0; i < 2; ++i) {
-        for (SceneGraphNode* npc : _armyNPCs[i]) {
+    for (U8 i = 0; i < 2; ++i)
+    {
+        for (SceneGraphNode* npc : _armyNPCs[i])
+        {
             _aiManager->unregisterEntity(npc->get<UnitComponent>()->getUnit<NPC>()->getAIEntity());
             _sceneGraph->removeNode(npc);
         }
@@ -269,62 +274,68 @@ bool WarScene::addUnits() {
     heavyPackage._goalList.push_back(scoreFlag);
     heavyPackage._goalList.push_back(protectFlagCarrier);
     lightPackage._goalList.push_back(protectFlagCarrier);
-#if 0
+
+#if 1
     SceneGraphNode* lightNode(_sceneGraph->findNode("Soldier1"));
     SceneGraphNode* animalNode(_sceneGraph->findNode("Soldier2"));
     SceneGraphNode* heavyNode(_sceneGraph->findNode("Soldier3"));
 
-    SceneNode_ptr lightNodeMesh = lightNode->getNode();
-    SceneNode_ptr animalNodeMesh = animalNode->getNode();
-    SceneNode_ptr heavyNodeMesh = heavyNode->getNode();
-    assert(lightNodeMesh && animalNodeMesh && heavyNodeMesh);
+    const SceneNodeHandle lightNodeMesh = lightNode->handle();
+    const SceneNodeHandle animalNodeMesh = animalNode->handle();
+    const SceneNodeHandle heavyNodeMesh = heavyNode->handle();
 
     AIEntity* aiSoldier = nullptr;
-    SceneNode_ptr currentMesh;
 
     vec3<F32> currentScale;
     string currentName;
 
     constexpr U32 normalMask = to_base(ComponentType::NAVIGATION) |
-                                to_base(ComponentType::TRANSFORM) |
-                                to_base(ComponentType::RIGID_BODY) |
-                                to_base(ComponentType::BOUNDS) |
-                                to_base(ComponentType::RENDERING) |
-                                to_base(ComponentType::UNIT) |
-                                to_base(ComponentType::NETWORKING);
+                               to_base(ComponentType::TRANSFORM) |
+                               to_base(ComponentType::RIGID_BODY) |
+                               to_base(ComponentType::BOUNDS) |
+                               to_base(ComponentType::RENDERING) |
+                               to_base(ComponentType::UNIT) |
+                               to_base(ComponentType::SELECTION) |
+                               to_base(ComponentType::NETWORKING);
 
     SceneGraphNode* root = _sceneGraph->getRoot();
-    for (I32 k = 0; k < 2; ++k) {
-        for (I32 i = 0; i < 15; ++i) {
-
+    for (I32 k = 0; k < 2; ++k)
+    {
+        for (I32 i = 0; i < 15; ++i)
+        {
             F32 speed = Metric::Base(-1.0f);
             F32 acc = Metric::Base(-1.0f);
 
             F32 zFactor = 0.0f;
             I32 damage = 5;
             AI::WarSceneAIProcessor::AIType type;
-            if (IS_IN_RANGE_INCLUSIVE(i, 0, 4)) {
-                currentMesh = lightNodeMesh;
-                currentScale =
-                    lightNode->get<TransformComponent>()->getScale();
+
+            SceneGraphNodeDescriptor npcNodeDescriptor;
+            npcNodeDescriptor._serialize = false;
+            if (IS_IN_RANGE_INCLUSIVE(i, 0, 4))
+            {
+                npcNodeDescriptor._nodeHandle = lightNodeMesh;
+                currentScale = lightNode->get<TransformComponent>()->getWorldScale();
                 currentName = Util::StringFormat("Soldier_1_{}_{}", k, i);
                 speed = Metric::Base(Random(6.5f, 9.5f));
                 acc = Metric::Base(Random(4.5f, 8.0f));
                 type = AI::WarSceneAIProcessor::AIType::LIGHT;
-            } else if (IS_IN_RANGE_INCLUSIVE(i, 5, 9)) {
-                currentMesh = animalNodeMesh;
-                currentScale =
-                    animalNode->get<TransformComponent>()->getScale();
+            }
+            else if (IS_IN_RANGE_INCLUSIVE(i, 5, 9))
+            {
+                npcNodeDescriptor._nodeHandle = animalNodeMesh;
+                currentScale = animalNode->get<TransformComponent>()->getWorldScale();
                 currentName = Util::StringFormat("Soldier_2_{}_{}", k, i % 5);
                 speed = Metric::Base(Random(8.5f, 11.5f));
                 acc = Metric::Base(Random(6.0f, 9.0f));
                 zFactor = 1.0f;
                 type = AI::WarSceneAIProcessor::AIType::ANIMAL;
                 damage = 10;
-            } else {
-                currentMesh = heavyNodeMesh;
-                currentScale =
-                    heavyNode->get<TransformComponent>()->getScale();
+            }
+            else
+            {
+                npcNodeDescriptor._nodeHandle = heavyNodeMesh;
+                currentScale = heavyNode->get<TransformComponent>()->getWorldScale();
                 currentName = Util::StringFormat("Soldier_3_{}_{}", k, i % 10);
                 speed = Metric::Base(Random(4.5f, 7.5f));
                 acc = Metric::Base(Random(4.0f, 6.5f));
@@ -333,27 +344,25 @@ bool WarScene::addUnits() {
                 damage = 15;
             }
 
-            SceneGraphNodeDescriptor npcNodeDescriptor;
-            npcNodeDescriptor._serialize = false;
-            npcNodeDescriptor._node = currentMesh;
             npcNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
             npcNodeDescriptor._componentMask = normalMask | to_base(ComponentType::SELECTION);
             npcNodeDescriptor._name = currentName;
 
-            SceneGraphNode* currentNode = root.addNode(npcNodeDescriptor);
-            currentNode->setSelectable(true);
+            SceneGraphNode* currentNode = root->addChildNode(npcNodeDescriptor);
 
-            currentNode->get<RigidBodyComponent>()->physicsGroup(PhysicsGroup::GROUP_KINEMATIC);
+            currentNode->get<RigidBodyComponent>()->physicsCollisionGroup(PhysicsGroup::GROUP_KINEMATIC);
 
-            TransformComponent* tComp =
-                currentNode->get<TransformComponent>();
+            TransformComponent* tComp = currentNode->get<TransformComponent>();
             tComp->setScale(currentScale);
 
-            if (k == 0) {
+            if (k == 0)
+            {
                 zFactor *= -25;
                 zFactor -= 200;
                 tComp->translateX(Metric::Base(-25.0f));
-            } else {
+            }
+            else
+            {
                 zFactor *= 25;
                 zFactor += 200;
                 tComp->rotateY(Angle::DEGREES<F32>(180.0f));
@@ -365,21 +374,27 @@ bool WarScene::addUnits() {
                                          Metric::Base(-0.01f),
                                          Metric::Base(zFactor)));
 
-            aiSoldier = MemoryManager_NEW AI::AIEntity(tComp->getPosition(),
-                                                       currentNode->name());
-            aiSoldier->addSensor(AI::SensorType::VISUAL_SENSOR);
-
-            AI::WarSceneAIProcessor* brain = MemoryManager_NEW AI::WarSceneAIProcessor(type, *_aiManager);
-
-            // GOAP
-            brain->registerGOAPPackage(goapPackages[to_U32(type)]);
-            aiSoldier->setAIProcessor(brain);
-            std::shared_ptr<NPC> soldier = std::make_shared<NPC>(aiSoldier, context().kernel().frameListenerMgr(), 1988);
+            std::shared_ptr<NPC> soldier = std::make_shared<NPC>( tComp->getWorldPosition(), currentNode->name() );
             soldier->setAttribute(to_base(AI::UnitAttributes::HEALTH_POINTS), 100);
             soldier->setAttribute(to_base(AI::UnitAttributes::DAMAGE), damage);
             soldier->setAttribute(to_base(AI::UnitAttributes::ALIVE_FLAG), 1);
             soldier->setMovementSpeed(speed);
             soldier->setAcceleration(acc);
+
+            aiSoldier = soldier->getAIEntity();
+            if (!aiSoldier->addSensor( AI::SensorType::VISUAL_SENSOR ))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+
+            AI::WarSceneAIProcessor* brain = new AI::WarSceneAIProcessor( type, *_aiManager );
+            // GOAP
+            brain->registerGOAPPackage( goapPackages[to_U32( type )] );
+            if (!aiSoldier->setAndSurrenderAIProcessor( brain ))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+
             currentNode->get<UnitComponent>()->setUnit(soldier);
             _armyNPCs[k].push_back(currentNode);
             _aiManager->registerEntity(k, aiSoldier);
@@ -389,8 +404,9 @@ bool WarScene::addUnits() {
 
     //----------------------- AI controlled units ---------------------//
     return !(_armyNPCs[0].empty() || _armyNPCs[1].empty());
-#endif
+#else
     return true;
+#endif
 }
 
 AI::AIEntity* WarScene::findAI(SceneGraphNode* node) {
@@ -419,9 +435,18 @@ bool WarScene::resetUnits() {
 
 bool WarScene::deinitializeAI(bool /*continueOnErrors*/) {
     _aiManager->pauseUpdate(true);
-    if (removeUnits()) {
-        for (U8 i = 0; i < 2; ++i) {
-            MemoryManager::DELETE(_faction[i]);
+    if (removeUnits())
+    {
+        for (U8 i = 0; i < 2; ++i)
+        {
+            if (_aiManager->unregisterTeam(i))
+            {
+                _faction[i] = nullptr;
+            }
+            else
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
         return true;
     }
@@ -447,29 +472,34 @@ void WarScene::startSimulation(I64 /*btnGUID*/)
 
     AI::AIEntity* aiEntity = _armyNPCs[0][0]->get<UnitComponent>()->getUnit<NPC>()->getAIEntity();
 
-    if (_lastNavMeshBuildTime == 0UL || diffTime > Time::SecondsToMicroseconds(10)) {
-        AI::Navigation::NavigationMesh* navMesh =  _aiManager->getNavMesh(aiEntity->getAgentRadiusCategory());
+    if (_lastNavMeshBuildTime == 0UL || diffTime > Time::SecondsToMicroseconds(10))
+    {
+        const AI::AIEntity::PresetAgentRadius radius = aiEntity->getAgentRadiusCategory();
+
+        AI::Navigation::NavigationMesh* navMesh =  _aiManager->getNavMesh(radius);
         if (navMesh)
         {
             previousMesh = true;
-            _aiManager->destroyNavMesh(aiEntity->getAgentRadiusCategory());
+            _aiManager->destroyNavMesh( radius );
         }
-        navMesh = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *_parent.parent().recast(), *this);
+
+        navMesh = _aiManager->addNavMesh(_context, *_parent.parent().recast(), *this, radius);
         navMesh->setFileName(resourceName());
 
-        if (!navMesh->load(_sceneGraph->getRoot())) {
+        if (!navMesh->load(_sceneGraph->getRoot()))
+        {
             loadedFromFile = false;
-            AI::AIEntity::PresetAgentRadius radius = aiEntity->getAgentRadiusCategory();
-            navMesh->build(
-                _sceneGraph->getRoot(),
-                [&radius, this](AI::Navigation::NavigationMesh* mesh) {
+            navMesh->build(_sceneGraph->getRoot(),
+            [this](AI::Navigation::NavigationMesh*)
+            {
                 _aiManager->toggleNavMeshDebugDraw(true);
-                _aiManager->addNavMesh(radius, mesh);
                 g_navMeshStarted = false;
             });
-        } else {
-            _aiManager->addNavMesh(aiEntity->getAgentRadiusCategory(), navMesh);
-            if constexpr(Config::Build::IS_DEBUG_BUILD) {
+        }
+        else
+        {
+            if constexpr(Config::Build::IS_DEBUG_BUILD)
+            {
                 navMesh->debugDraw(true);
             }
         }

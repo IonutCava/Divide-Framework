@@ -1,6 +1,5 @@
 #include "UnitTests/unitTestCommon.h"
-
-#include "Core/Resources/Headers/ResourceDescriptor.h"
+#include "Core/Resources/Headers/Resource.h"
 
 namespace Divide
 {
@@ -17,27 +16,24 @@ TEST_CASE( "String Hash Combine Tests", "[hash_test]" )
     CHECK_EQUAL(seed1, seed2);
 }
 
-
 TEST_CASE( "ResourceDescriptor Hash Combine Tests", "[hash_test]" )
 {
-    ResourceDescriptor inputA("testDescriptor");
+    ResourceDescriptor<CachedResource> inputA("testDescriptor");
     inputA.flag(true);
 
-    ResourceDescriptor inputB("testDescriptor");
+    ResourceDescriptor<CachedResource> inputB("testDescriptor");
     inputB.flag(true);
 
-    const size_t result1 = inputA.getHash();
-    size_t result2 = inputB.getHash();
-
-    CHECK_EQUAL(result1, result2);
+    CHECK_EQUAL( inputA.getHash(), inputB.getHash() );
+    CHECK_EQUAL( inputA, inputB );
 
     P32 testMask;
     testMask.i = 0;
     testMask.b[2] = true;
     inputB.mask(testMask);
-    result2 = inputB.getHash();
 
-    CHECK_NOT_EQUAL(result1, result2);
+    CHECK_NOT_EQUAL( inputA.getHash(), inputB.getHash() );
+    CHECK_NOT_EQUAL( inputA, inputB );
 }
 
 } //namespace Divide

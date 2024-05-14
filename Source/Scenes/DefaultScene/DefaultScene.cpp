@@ -25,8 +25,8 @@ namespace Divide
 {
 
 
-DefaultScene::DefaultScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry)
-    : Scene(context, cache, parent, entry)
+DefaultScene::DefaultScene(PlatformContext& context, Project& parent, const SceneEntry& entry)
+    : Scene(context, parent, entry)
 {
     Scene::DEFAULT_SCENE_GUID = getGUID();
 }

@@ -8,6 +8,7 @@
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
+
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "Editor/Widgets/DockedWindows/Headers/ContentExplorerWindow.h"
 #include "Editor/Widgets/DockedWindows/Headers/NodePreviewWindow.h"
@@ -39,11 +40,11 @@ namespace Divide
 {
     namespace
     {
-        const ResourcePath g_editorFontFile{ "Roboto-Medium.ttf" };
-        const ResourcePath g_editorFontFileBold{ "OpenSans-Bold.ttf" };
-        const ResourcePath g_editorIconFile{ FONT_ICON_FILE_NAME_FK };
-        const ResourcePath g_editorSaveFile{ "Editor.xml" };
-        const ResourcePath g_editorSaveFileBak{ "Editor.xml.bak" };
+        const string g_editorFontFile{ "Roboto-Medium.ttf" };
+        const string g_editorFontFileBold{ "OpenSans-Bold.ttf" };
+        const string g_editorIconFile{ FONT_ICON_FILE_NAME_FK };
+        const string g_editorSaveFile{ "Editor.xml" };
+        const string g_editorSaveFileBak{ "Editor.xml.bak" };
 
         WindowManager* g_windowManager = nullptr;
 
@@ -95,24 +96,34 @@ namespace Divide
             PlatformContext* _context = nullptr;
         };
 
-        FORCE_INLINE void*
-            MallocWrapper( const size_t size, [[maybe_unused]] void* user_data ) noexcept
+        FORCE_INLINE void* MallocWrapper( const size_t size, [[maybe_unused]] void* user_data ) noexcept
         {
             // PlatformContext* user_data;
-            return xmalloc( size );
+            return mi_new( size );
         }
 
-        FORCE_INLINE void
-            FreeWrapper( void* ptr, [[maybe_unused]] void* user_data ) noexcept
+        FORCE_INLINE void FreeWrapper( void* ptr, [[maybe_unused]] void* user_data ) noexcept
         {
             // PlatformContext* user_data;
-            xfree( ptr );
+            mi_free( ptr );
         }
 
         static ImGuiMemAllocFunc g_ImAllocatorAllocFunc = MallocWrapper;
         static ImGuiMemFreeFunc g_ImAllocatorFreeFunc = FreeWrapper;
         static ImGuiAllocatorUserData g_ImAllocatorUserData{};
     }; // namespace ImGuiCustom
+
+    ImTextureID to_TexID( Handle<Texture> handle )
+    {
+        const U32 texData = handle._data;
+        return ImTextureID(intptr_t(texData));
+    }
+
+    Handle<Texture> from_TexID( ImTextureID texID )
+    {
+        const intptr_t texData = intptr_t(texID);
+        return Handle<Texture>{ ._data = to_U32(texData) };
+    }
 
     void InitBasicImGUIState( ImGuiIO& io ) noexcept
     {
@@ -193,11 +204,6 @@ namespace Divide
     Editor::~Editor()
     {
         close();
-        for ( DockedWindow* window : _dockedWindows )
-        {
-            MemoryManager::SAFE_DELETE( window );
-        }
-
         g_windowManager = nullptr;
     }
 
@@ -212,27 +218,24 @@ namespace Divide
         constexpr F32 fontSizeBold = 16.f;
         constexpr F32 iconSize = 16.f;
 
-        if ( !_fontTexture )
+        if ( _fontTexture == INVALID_HANDLE<Texture> )
         {
-            TextureDescriptor texDescriptor( TextureType::TEXTURE_2D,
-                                             GFXDataFormat::UNSIGNED_BYTE,
-                                             GFXImageFormat::RGBA);
-            texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
 
-            ResourceDescriptor resDescriptor( "IMGUI_font_texture" );
-            resDescriptor.propertyDescriptor( texDescriptor );
-            ResourceCache* parentCache = _context.kernel().resourceCache();
-            _fontTexture = CreateResource<Texture>( parentCache, resDescriptor );
+            ResourceDescriptor<Texture> resDescriptor( "IMGUI_font_texture" );
+            TextureDescriptor& texDescriptor = resDescriptor._propertyDescriptor;
+            texDescriptor._mipMappingState = MipMappingState::OFF;
+
+            _fontTexture = CreateResource( resDescriptor );
         }
-        assert( _fontTexture );
+        DIVIDE_ASSERT( _fontTexture != INVALID_HANDLE<Texture> );
 
         ImGuiIO& io = _imguiContexts[to_base( ImGuiContextType::Editor )]->IO;
         U8* pPixels = nullptr;
         I32 iWidth = 0;
         I32 iHeight = 0;
-        ResourcePath textFontPath( Paths::g_fontsPath / g_editorFontFile );
-        ResourcePath textFontBoldPath( Paths::g_fontsPath / g_editorFontFileBold );
-        ResourcePath iconFontPath( Paths::g_fontsPath / g_editorIconFile );
+        const string textFontPath = ( Paths::g_fontsPath / g_editorFontFile ).string();
+        const string textFontBoldPath = ( Paths::g_fontsPath / g_editorFontFileBold ).string();
+        const string iconFontPath = ( Paths::g_fontsPath / g_editorIconFile ).string();
 
         ImFontConfig font_cfg;
         font_cfg.OversampleH = font_cfg.OversampleV = 1;
@@ -243,29 +246,29 @@ namespace Divide
         ImFormatString( font_cfg.Name,
                         IM_ARRAYSIZE( font_cfg.Name ),
                         "%s, %dpx",
-                        g_editorFontFile.string().c_str(),
+                        g_editorFontFile.c_str(),
                         (int)font_cfg.SizePixels );
 
         io.Fonts->Clear();
-        io.Fonts->AddFontFromFileTTF( textFontPath.string().c_str(), fontSize * DPIScaleFactor, &font_cfg );
+        io.Fonts->AddFontFromFileTTF( textFontPath.c_str(), fontSize * DPIScaleFactor, &font_cfg );
 
         font_cfg.MergeMode = true;
         font_cfg.SizePixels = iconSize * DPIScaleFactor;
         font_cfg.GlyphOffset.y = 1.0f * IM_TRUNC( font_cfg.SizePixels / iconSize ); // Add +1 offset per 16 units
 
         static const ImWchar icons_ranges[] = { ICON_MIN_FK, ICON_MAX_FK, 0 };
-        io.Fonts->AddFontFromFileTTF( iconFontPath.string().c_str(), iconSize * DPIScaleFactor, &font_cfg, icons_ranges );
+        io.Fonts->AddFontFromFileTTF( iconFontPath.c_str(), iconSize * DPIScaleFactor, &font_cfg, icons_ranges );
 
         font_cfg.MergeMode = false;
         font_cfg.SizePixels = fontSizeBold * DPIScaleFactor;
         font_cfg.GlyphOffset.y = 0.f; // 1.0f * IM_TRUNC(font_cfg.SizePixels / fontSizeBold);  // Add +1
         // offset per fontSize units
-        io.Fonts->AddFontFromFileTTF( textFontBoldPath.string().c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
+        io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
         io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
-        _fontTexture->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>( iWidth, iHeight ), {});
+        Get(_fontTexture)->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>( iWidth, iHeight ), {});
         // Store our identifier as reloading data may change the handle!
-        io.Fonts->SetTexID( (void*)_fontTexture.get() );
+        io.Fonts->SetTexID( to_TexID(_fontTexture) );
     }
 
     bool Editor::init( const vec2<U16> renderResolution )
@@ -308,8 +311,6 @@ namespace Divide
 
         createFontTexture( mainMonitor.dpi / PlatformDefaultDPI() );
 
-        ResourceCache* parentCache = _context.kernel().resourceCache();
-
         {
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
@@ -319,7 +320,8 @@ namespace Divide
             fragModule._moduleType = ShaderType::FRAGMENT;
             fragModule._sourceFile = "IMGUI.glsl";
 
-            ShaderProgramDescriptor shaderDescriptor = {};
+            ResourceDescriptor<ShaderProgram> shaderResDescriptor( "IMGUI" );
+            ShaderProgramDescriptor& shaderDescriptor = shaderResDescriptor._propertyDescriptor;
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
             shaderDescriptor._globalDefines.emplace_back("toggleChannel ivec4(PushData0[0])");
@@ -331,9 +333,7 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back("flip uint(PushData0[2].z)");
             shaderDescriptor._globalDefines.emplace_back("convertToSRGB (uint(PushData0[2].w) == 1)");
 
-            ResourceDescriptor shaderResDescriptor( "IMGUI" );
-            shaderResDescriptor.propertyDescriptor( shaderDescriptor );
-            _imguiProgram = CreateResource<ShaderProgram>( parentCache, shaderResDescriptor );
+            _imguiProgram = CreateResource( shaderResDescriptor );
         }
         {
             _infiniteGridPipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
@@ -350,14 +350,14 @@ namespace Divide
             fragModule._defines.emplace_back( "axisWidth PushData0[0].x" );
             fragModule._defines.emplace_back( "gridScale PushData0[0].y" );
 
-            ShaderProgramDescriptor shaderDescriptor = {};
+
+            ResourceDescriptor<ShaderProgram> shaderResDescriptor( "InfiniteGrid.Colour" );
+            ShaderProgramDescriptor& shaderDescriptor = shaderResDescriptor._propertyDescriptor;
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
 
-            ResourceDescriptor shaderResDescriptor( "InfiniteGrid.Colour" );
-            shaderResDescriptor.propertyDescriptor( shaderDescriptor );
-            _infiniteGridProgram = CreateResource<ShaderProgram>( parentCache, shaderResDescriptor );
-            _infiniteGridPipelineDesc._shaderProgramHandle = _infiniteGridProgram->handle();
+            _infiniteGridProgram = CreateResource( shaderResDescriptor );
+            _infiniteGridPipelineDesc._shaderProgramHandle = _infiniteGridProgram;
             BlendingSettings& blend = _infiniteGridPipelineDesc._blendStates._settings[to_U8( GFXDevice::ScreenTargets::ALBEDO )];
             blend.enabled( true );
             blend.blendSrc( BlendProperty::SRC_ALPHA );
@@ -365,7 +365,7 @@ namespace Divide
             blend.blendOp( BlendOperation::ADD );
 
             _axisGizmoPipelineDesc._stateBlock = _context.gfx().getNoDepthTestBlock();
-            _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture()->handle();
+            _axisGizmoPipelineDesc._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture();
         }
 
         _infiniteGridPrimitive = _context.gfx().newIMP( "Editor Infinite Grid" );
@@ -405,7 +405,7 @@ namespace Divide
         descUV._strideInBytes = to_U32( offsetof( ImDrawVert, uv ) );
         descColour._strideInBytes = to_U32( offsetof( ImDrawVert, col ) );
 
-        pipelineDesc._shaderProgramHandle = _imguiProgram->handle();
+        pipelineDesc._shaderProgramHandle = _imguiProgram;
 
         BlendingSettings& blend = pipelineDesc._blendStates._settings[to_U8( GFXDevice::ScreenTargets::ALBEDO )];
         blend.enabled( true );
@@ -660,14 +660,16 @@ namespace Divide
 
                 Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer("IMGUI Render Window");
 
+                GFX::CommandBuffer& buf = *GFX::Get( buffer );
+
                 GFX::MemoryBarrierCommand memCmd;
                 editor->renderDrawList(pDrawData,
                                        2 + targetWindow->getGUID(),
                                        targetViewport,
                                        true,
-                                       *buffer._ptr,
+                                       buf,
                                        memCmd);
-                GFX::EnqueueCommand( buffer, memCmd );
+                GFX::EnqueueCommand( buf, memCmd );
 
                 context->gfx().flushCommandBuffer( MOV(buffer) );
             }
@@ -739,50 +741,50 @@ namespace Divide
         descriptor.minSize = ImVec2( 200, 200 );
         descriptor.name = ICON_FK_HUBZILLA " Solution Explorer";
         descriptor.showCornerButton = true;
-        _dockedWindows[to_base( WindowType::SolutionExplorer )] = MemoryManager_NEW SolutionExplorerWindow( *this, _context, descriptor );
+        _dockedWindows[to_base( WindowType::SolutionExplorer )] = std::make_unique<SolutionExplorerWindow>( *this, _context, descriptor );
 
         descriptor.position = ImVec2( 0, 0 );
         descriptor.minSize = ImVec2( 200, 200 );
         descriptor.name = ICON_FK_PICTURE_O " PostFX Settings";
-        _dockedWindows[to_base( WindowType::PostFX )] = MemoryManager_NEW PostFXWindow( *this, _context, descriptor );
+        _dockedWindows[to_base( WindowType::PostFX )] = std::make_unique<PostFXWindow>( *this, _context, descriptor );
 
         descriptor.showCornerButton = false;
         descriptor.position = ImVec2( to_F32( renderResolution.width ) - 300, 0 );
         descriptor.name = ICON_FK_PENCIL_SQUARE_O " Property Explorer";
-        _dockedWindows[to_base( WindowType::Properties )] = MemoryManager_NEW PropertyWindow( *this, _context, descriptor );
+        _dockedWindows[to_base( WindowType::Properties )] = std::make_unique<PropertyWindow>( *this, _context, descriptor );
 
         descriptor.position = ImVec2( 0, 550.0f );
         descriptor.size = ImVec2( to_F32( renderResolution.width * 0.5f ),
                                   to_F32( renderResolution.height ) - 550 - 3 );
         descriptor.name = ICON_FK_FOLDER_OPEN " Content Explorer";
         descriptor.flags |= ImGuiWindowFlags_NoTitleBar;
-        _dockedWindows[to_base( WindowType::ContentExplorer )] = MemoryManager_NEW ContentExplorerWindow( *this, descriptor );
+        _dockedWindows[to_base( WindowType::ContentExplorer )] = std::make_unique<ContentExplorerWindow>( *this, descriptor );
 
         descriptor.position = ImVec2( to_F32( renderResolution.width * 0.5f ), 550 );
         descriptor.size = ImVec2( to_F32( renderResolution.width * 0.5f ),
                                   to_F32( renderResolution.height ) - 550 - 3 );
         descriptor.name = ICON_FK_PRINT " Application Output";
-        _dockedWindows[to_base( WindowType::Output )] = MemoryManager_NEW OutputWindow( *this, descriptor );
+        _dockedWindows[to_base( WindowType::Output )] = std::make_unique<OutputWindow>( *this, descriptor );
 
         descriptor.position = ImVec2( 150, 150 );
         descriptor.size = ImVec2( 640, 480 );
         descriptor.name = ICON_FK_EYE " Node Preview";
         descriptor.minSize = ImVec2( 100, 100 );
         descriptor.flags = 0;
-        _dockedWindows[to_base( WindowType::NodePreview )] = MemoryManager_NEW NodePreviewWindow( *this, descriptor );
+        _dockedWindows[to_base( WindowType::NodePreview )] = std::make_unique<NodePreviewWindow>( *this, descriptor );
 
         descriptor.name = "Scene View ###AnimatedTitlePlayState";
-        _dockedWindows[to_base( WindowType::SceneView )] = MemoryManager_NEW SceneViewWindow( *this, descriptor );
+        _dockedWindows[to_base( WindowType::SceneView )] = std::make_unique<SceneViewWindow>( *this, descriptor );
 
         _editorSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
         _editorSampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
         _editorSampler._wrapW = TextureWrap::CLAMP_TO_EDGE;
         _editorSampler._anisotropyLevel = 0u;
 
-        TextureDescriptor editorDescriptor( TextureType::TEXTURE_2D,
-                                            GFXDataFormat::UNSIGNED_BYTE,
-                                            GFXImageFormat::RGBA );
-        editorDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+        TextureDescriptor editorDescriptor
+        {
+            ._mipMappingState = MipMappingState::OFF
+        };
 
 
         RenderTargetDescriptor editorDesc = {};
@@ -793,11 +795,15 @@ namespace Divide
 
         editorDesc._resolution = renderResolution;
         editorDesc._name = "Node_Preview";
-        TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D,
-                                           GFXDataFormat::FLOAT_32,
-                                           GFXImageFormat::RED,
-                                           GFXImagePacking::DEPTH );
-        depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+
+        TextureDescriptor depthDescriptor
+        {
+            ._dataType = GFXDataFormat::FLOAT_32,
+            ._packing = GFXImagePacking::DEPTH,
+            ._baseFormat = GFXImageFormat::RED,
+            ._mipMappingState = MipMappingState::OFF
+        };
+
         editorDesc._attachments.emplace_back(InternalRTAttachmentDescriptor
         {
             depthDescriptor, _editorSampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0
@@ -822,9 +828,10 @@ namespace Divide
         {
             DebugBreak();
         }
-        _infiniteGridProgram.reset();
-        _fontTexture.reset();
-        _imguiProgram.reset();
+        DestroyResource(_infiniteGridProgram);
+        DestroyResource(_fontTexture);
+        DestroyResource(_imguiProgram);
+
         _gizmo.reset();
         _imguiBuffers.clear();
 
@@ -840,6 +847,11 @@ namespace Divide
             ImGui::DestroyContext( context );
         }
         _imguiContexts.fill( nullptr );
+
+        for ( auto& window : _dockedWindows)
+        {
+            window.reset();
+        }
 
         if ( !_context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) )
         {
@@ -875,7 +887,7 @@ namespace Divide
             return;
         }
 
-        ProjectManager* sMgr = _context.kernel().projectManager();
+        auto& sMgr = _context.kernel().projectManager();
         Scene* activeScene = sMgr->activeProject()->getActiveScene();
 
         running( state );
@@ -901,7 +913,7 @@ namespace Divide
             playerState.overrideCamera( editorCamera() );
             sceneGizmoEnabled( true );
             activeScene->state()->renderState().enableOption( SceneRenderState::RenderOptions::SELECTION_GIZMO );
-            static_cast<ContentExplorerWindow*>( _dockedWindows[to_base( WindowType::ContentExplorer )] )->init();
+            static_cast<ContentExplorerWindow*>( _dockedWindows[to_base( WindowType::ContentExplorer )].get() )->init();
             /*const Selections& selections = activeScene->getCurrentSelection();
             if (selections._selectionCount == 0)
             {
@@ -1040,9 +1052,9 @@ namespace Divide
             _statusBar->update( deltaTimeUS );
             _optionsWindow->update( deltaTimeUS );
 
-            static_cast<ContentExplorerWindow*>(_dockedWindows[to_base( WindowType::ContentExplorer )])->update( deltaTimeUS );
+            static_cast<ContentExplorerWindow*>(_dockedWindows[to_base( WindowType::ContentExplorer )].get())->update( deltaTimeUS );
 
-            ProjectManager* sMgr = _context.kernel().projectManager();
+            auto& sMgr = _context.kernel().projectManager();
             const bool scenePaused = (simulationPaused() && _stepQueue == 0);
 
             Scene* activeScene = sMgr->activeProject()->getActiveScene();
@@ -1082,7 +1094,7 @@ namespace Divide
             static bool movedToNode = false;
             if ( !_isScenePaused || stepQueue() > 0 )
             {
-                Attorney::ProjectManagerEditor::editorPreviewNode( sMgr, -1 );
+                Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
                 playerState.overrideCamera( nullptr );
                 nodePreviewCamera()->setTarget( nullptr );
                 movedToNode = false;
@@ -1092,7 +1104,7 @@ namespace Divide
                 if ( nodePreviewWindowVisible() )
                 {
                     playerState.overrideCamera( nodePreviewCamera() );
-                    Attorney::ProjectManagerEditor::editorPreviewNode( sMgr, _previewNode == nullptr ? 0 : _previewNode->getGUID() );
+                    Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), _previewNode == nullptr ? 0 : _previewNode->getGUID() );
                     if ( !movedToNode && _previewNode != nullptr )
                     {
                         teleportToNode( nodePreviewCamera(), _previewNode );
@@ -1107,7 +1119,7 @@ namespace Divide
                 else
                 {
                     playerState.overrideCamera( editorCamera() );
-                    Attorney::ProjectManagerEditor::editorPreviewNode( sMgr, -1 );
+                    Attorney::ProjectManagerEditor::editorPreviewNode( sMgr.get(), -1 );
                     nodePreviewCamera()->setTarget( nullptr );
                     movedToNode = false;
                 }
@@ -1155,7 +1167,7 @@ namespace Divide
         _menuBar->draw();
 
         if ( readOnly ) { PushReadOnly(true); }
-        for ( DockedWindow* const window : _dockedWindows )
+        for ( auto& window : _dockedWindows )
         {
             window->draw();
         }
@@ -1292,7 +1304,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        for ( DockedWindow* window : _dockedWindows )
+        for ( auto& window : _dockedWindows )
         {
             window->backgroundUpdate();
         }
@@ -1378,23 +1390,25 @@ namespace Divide
         }
 
         const WindowType type = _windowFocusState._focusedNodePreview ? WindowType::NodePreview : WindowType::SceneView;
-        const NodePreviewWindow* viewWindow = static_cast<NodePreviewWindow*>(_dockedWindows[to_base( type )]);
+        const NodePreviewWindow* viewWindow = static_cast<NodePreviewWindow*>(_dockedWindows[to_base( type )].get());
         return viewWindow->sceneRect( globalCoords );
     }
 
     GenericVertexData* Editor::getOrCreateIMGUIBuffer( const I64 bufferGUID, const U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        const auto it = _imguiBuffers.find( bufferGUID );
-        if ( it != eastl::cend( _imguiBuffers ) )
+        for (const auto&[id, ptr] : _imguiBuffers)
         {
-            GenericVertexData* buffer = it->second.get();
-            buffer->incQueue();
-            return buffer;
+            if (id == bufferGUID)
+            {
+                GenericVertexData* buffer = ptr.get();
+                buffer->incQueue();
+                return buffer;
+            }
         }
 
-        auto& newBuffer = _imguiBuffers[bufferGUID];
+        auto& newBuffer = _imguiBuffers.emplace_back(std::make_pair(bufferGUID, nullptr)).second;
 
-        newBuffer = _context.gfx().newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, false, Util::StringFormat("IMGUI_{}", bufferGUID).c_str() );
+        newBuffer = _context.gfx().newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_{}", bufferGUID).c_str() );
 
         GenericVertexData::IndexBuffer idxBuff{};
         idxBuff.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
@@ -1584,18 +1598,18 @@ namespace Divide
 
                     if ( imguiTexID != crtImguiTexID )
                     {
-                        Texture* tex = (Texture*)(imguiTexID);
+                        const Handle<Texture> tex = from_TexID( imguiTexID );
 
                         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
                         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
                         {
                             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                            Set(binding._data, tex == nullptr ? Texture::DefaultTexture2D()->getView() : tex->getView(), _editorSampler );
+                            Set(binding._data, (tex == INVALID_HANDLE<Texture> ? Texture::DefaultTexture2D() : tex), _editorSampler );
                         }
                         {
                             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                            Set(binding._data, Texture::DefaultTexture2DArray()->getView(), Texture::DefaultSampler());
+                            Set(binding._data, Texture::DefaultTexture2DArray(), Texture::DefaultSampler());
                         }
                         crtImguiTexID = imguiTexID;
                         newCommand = true;
@@ -1630,7 +1644,7 @@ namespace Divide
         }
     }
 
-    void Editor::selectionChangeCallback( const PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes ) const
+    void Editor::selectionChangeCallback( const PlayerIndex idx, const vector<SceneGraphNode*>& nodes ) const
     {
         if ( idx != 0 )
         {
@@ -1642,7 +1656,7 @@ namespace Divide
 
     void Editor::copyPlayerCamToEditorCam() noexcept
     {
-        _editorCamera->fromCamera( *Attorney::ProjectManagerEditor::playerCamera( _context.kernel().projectManager(), 0, true ) );
+        _editorCamera->fromCamera( *Attorney::ProjectManagerEditor::playerCamera( _context.kernel().projectManager().get(), 0, true ) );
     }
 
     void Editor::setEditorCamLookAt( const vec3<F32>& eye,
@@ -1833,10 +1847,10 @@ namespace Divide
             };
         }
 
-        const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::SceneView )]);
+        const SceneViewWindow* sceneView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::SceneView )].get());
         _windowFocusState._hoveredScenePreview = sceneView->hovered() && sceneView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
-        const NodePreviewWindow* nodeView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )]);
+        const NodePreviewWindow* nodeView = static_cast<SceneViewWindow*>(_dockedWindows[to_base( WindowType::NodePreview )].get());
         _windowFocusState._hoveredNodePreview = nodeView->hovered() && nodeView->sceneRect( true ).contains( mousePos.x, mousePos.y );
 
         _windowFocusState._globalMousePos = mousePos;
@@ -2277,12 +2291,12 @@ namespace Divide
     }
 
     bool Editor::modalTextureView( const char* modalName,
-                                   Texture* tex,
+                                   const Handle<Texture> tex,
                                    const vec2<F32> dimensions,
                                    const bool preserveAspect,
                                    const bool useModal ) const
     {
-        if ( tex == nullptr )
+        if ( tex == INVALID_HANDLE<Texture> )
         {
             return false;
         }
@@ -2301,9 +2315,11 @@ namespace Divide
             GFX::CommandBuffer& buffer = *(data->_cmdBuffer);
 
             bool isArrayTexture = false;
-            if ( data->_texture != nullptr )
+            if ( data->_texture != INVALID_HANDLE<Texture> )
             {
-                const TextureType texType = data->_texture->descriptor().texType();
+                Texture* tex = Get(data->_texture);
+
+                const TextureType texType = tex->descriptor()._texType;
                 const bool isTextureArray = IsArrayTexture( texType );
                 const bool isTextureCube = IsCubeTexture( texType );
 
@@ -2315,9 +2331,9 @@ namespace Divide
                     cmd->_usage = DescriptorSetUsage::PER_DRAW;
                     {
                         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                        const ImageView texView = Texture::DefaultTexture2D()->getView(TextureType::TEXTURE_2D,
-                                                                                       { 0u, 1u },
-                                                                                       { 0u, 1u });
+                        const ImageView texView = Get(Texture::DefaultTexture2D())->getView(TextureType::TEXTURE_2D,
+                                                                                            { 0u, 1u },
+                                                                                            { 0u, 1u });
                         Set( binding._data, texView, Texture::DefaultSampler() );
                     }
                     {
@@ -2325,15 +2341,15 @@ namespace Divide
 
                         if ( isTextureCube )
                         {
-                            const ImageView texView = data->_texture->getView( TextureType::TEXTURE_2D_ARRAY,
-                                                                              { 0u, data->_texture->mipCount() },
-                                                                              { 0u, to_U16(data->_texture->depth() * 6u) });
+                            const ImageView texView = tex->getView( TextureType::TEXTURE_2D_ARRAY,
+                                                                                    { 0u, tex->mipCount() },
+                                                                                    { 0u, to_U16( tex->depth() * 6u) });
 
                             Set( binding._data, texView, defaultSampler );
                         }
                         else
                         {
-                            Set( binding._data, data->_texture->getView(), defaultSampler );
+                            Set( binding._data, tex->getView(), defaultSampler );
                         }
                     }
                 }
@@ -2359,17 +2375,19 @@ namespace Divide
 
         if ( opened )
         {
-            assert( tex != nullptr );
+            assert( tex != INVALID_HANDLE<Texture> );
             assert( modalName != nullptr );
 
             static IMGUICallbackData defaultData{
                 ._flip = false
             };
 
+            Texture* texPtr = Get(tex);
+
             g_modalTextureData._texture = tex;
-            g_modalTextureData._isDepthTexture = IsDepthTexture( tex->descriptor().packing() );
+            g_modalTextureData._isDepthTexture = IsDepthTexture( texPtr->descriptor()._packing );
             
-            const U8 numChannels = NumChannels( tex->descriptor().baseFormat() );
+            const U8 numChannels = NumChannels( texPtr->descriptor()._baseFormat );
 
             assert( numChannels > 0 );
 
@@ -2423,11 +2441,11 @@ namespace Divide
             ImGui::Text( "Flip: " );
             ImGui::SameLine();
             ImGui::ToggleButton( "Flip", &g_modalTextureData._flip );
-            if ( IsArrayTexture( tex->descriptor().texType() ) )
+            if ( IsArrayTexture( texPtr->descriptor()._texType ) )
             {
                 isArray = true;
-                U32 maxLayers = tex->depth();
-                if ( IsCubeTexture( tex->descriptor().texType() ) )
+                U32 maxLayers = texPtr->depth();
+                if ( IsCubeTexture( texPtr->descriptor()._texType ) )
                 {
                     maxLayers *= 6u;
                 }
@@ -2441,7 +2459,7 @@ namespace Divide
                                      &minLayers,
                                      &maxLayers );
             }
-            U16 maxMip = tex->mipCount();
+            U16 maxMip = texPtr->mipCount();
             if ( maxMip > 1u )
             {
                 maxMip -= 1u;
@@ -2466,14 +2484,14 @@ namespace Divide
             F32 aspect = 1.0f;
             if ( preserveAspect )
             {
-                const U16 w = tex->width();
-                const U16 h = tex->height();
+                const U16 w = texPtr->width();
+                const U16 h = texPtr->height();
                 aspect = w / to_F32( h );
             }
 
             static F32 zoom = 1.0f;
             static ImVec2 zoomCenter( 0.5f, 0.5f );
-            ImGui::ImageZoomAndPan( (void*)tex,
+            ImGui::ImageZoomAndPan( to_TexID(tex),
                                     ImVec2( dimensions.width, dimensions.height / aspect ),
                                     aspect,
                                     zoom,
@@ -2499,7 +2517,7 @@ namespace Divide
                 {
                     ImGui::CloseCurrentPopup();
                 }
-                g_modalTextureData._texture = nullptr;
+                g_modalTextureData._texture = INVALID_HANDLE<Texture>;
                 closed = true;
             }
 
@@ -2520,12 +2538,12 @@ namespace Divide
         return closed;
     }
 
-    bool Editor::modalModelSpawn( const Mesh_ptr& mesh,
+    bool Editor::modalModelSpawn( const Handle<Mesh> mesh,
                                   const bool quick,
                                   const vec3<F32>& scale,
                                   const vec3<F32>& position )
     {
-        if ( mesh == nullptr )
+        if ( mesh == INVALID_HANDLE<Mesh> )
         {
             return false;
         }
@@ -2534,19 +2552,19 @@ namespace Divide
 
         if ( quick )
         {
-            const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera( _context.kernel().projectManager() );
+            const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera( _context.kernel().projectManager().get() );
             if ( !spawnGeometry( mesh,
                                  scale,
                                  playerCam->snapshot()._eye,
                                  position,
-                                 mesh->resourceName().c_str() ) )
+                                 Get(mesh)->resourceName().c_str() ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
             return true;
         }
 
-        if ( _queuedModelSpawn._mesh == nullptr )
+        if ( _queuedModelSpawn._mesh == INVALID_HANDLE<Mesh> )
         {
             _queuedModelSpawn._mesh = mesh;
             _queuedModelSpawn._position = position;
@@ -2559,7 +2577,7 @@ namespace Divide
 
     void Editor::renderModelSpawnModal()
     {
-        if ( _queuedModelSpawn._mesh == nullptr )
+        if ( _queuedModelSpawn._mesh == INVALID_HANDLE<Mesh> )
         {
             return;
         }
@@ -2580,12 +2598,12 @@ namespace Divide
                 wasClosed = false;
             }
 
-            assert( _queuedModelSpawn._mesh != nullptr );
+            DIVIDE_ASSERT( _queuedModelSpawn._mesh != INVALID_HANDLE<Mesh> );
             if ( Util::IsEmptyOrNull( inputBuf ) )
             {
-                strcpy( &inputBuf[0], _queuedModelSpawn._mesh->resourceName().c_str() );
+                strcpy( &inputBuf[0], Get(_queuedModelSpawn._mesh)->resourceName().c_str() );
             }
-            ImGui::Text( "Spawn [ %s ]?", _queuedModelSpawn._mesh->resourceName().c_str() );
+            ImGui::Text( "Spawn [ %s ]?", inputBuf );
             ImGui::Separator();
 
             ImGui::Text( "Scale:" ); ImGui::SameLine();
@@ -2636,7 +2654,7 @@ namespace Divide
             }
             if ( wasClosed )
             {
-                _queuedModelSpawn._mesh.reset();
+                _queuedModelSpawn._mesh = INVALID_HANDLE<Mesh>;
             }
             ImGui::EndPopup();
         }
@@ -2649,19 +2667,19 @@ namespace Divide
         _statusBar->showMessage( message, durationMS, error );
     }
 
-    bool Editor::spawnGeometry( const Mesh_ptr& mesh,
+    bool Editor::spawnGeometry( const Handle<Mesh> mesh,
                                 const vec3<F32>& scale,
                                 const vec3<F32>& position,
                                 const vec3<Angle::DEGREES<F32>>& rotation,
-                                const string& name ) const
+                                const std::string_view name) const
     {
         constexpr U32 normalMask = to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::NETWORKING ) | to_base( ComponentType::RENDERING );
 
         SceneGraphNodeDescriptor nodeDescriptor = {};
-        nodeDescriptor._name = name.c_str();
+        nodeDescriptor._name = name;
         nodeDescriptor._componentMask = normalMask;
-        nodeDescriptor._node = mesh;
-        
+        nodeDescriptor._nodeHandle = FromHandle(mesh);
+
         Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
         const SceneGraphNode* node = activeScene->sceneGraph()->getRoot()->addChildNode( nodeDescriptor );
         if ( node != nullptr )
@@ -2695,17 +2713,17 @@ namespace Divide
 
     SceneEnvironmentProbePool* Editor::getActiveEnvProbePool() const noexcept
     {
-        return Attorney::ProjectManagerEditor::getEnvProbes( _context.kernel().projectManager() );
+        return Attorney::ProjectManagerEditor::getEnvProbes( _context.kernel().projectManager().get() );
     }
 
     BoundingSphere Editor::teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const
     {
-        return Attorney::ProjectManagerCameraAccessor::moveCameraToNode( _context.kernel().projectManager(), camera, sgn );
+        return Attorney::ProjectManagerCameraAccessor::moveCameraToNode( _context.kernel().projectManager().get(), camera, sgn );
     }
 
     void Editor::onRemoveComponent( const EditorComponent& comp ) const
     {
-        for ( DockedWindow* window : _dockedWindows )
+        for ( auto& window : _dockedWindows )
         {
             window->onRemoveComponent( comp );
         }
@@ -2713,14 +2731,14 @@ namespace Divide
 
     void Editor::saveNode( const SceneGraphNode* sgn ) const
     {
-        if ( Attorney::ProjectManagerEditor::saveNode( _context.kernel().projectManager(), sgn ) )
+        if ( Attorney::ProjectManagerEditor::saveNode( _context.kernel().projectManager().get(), sgn ) )
         {
             bool savedParent = false, savedScene = false;
             // Save the parent as well (if it isn't the root node) as this node may be
             // one that's been newly added
             if ( sgn->parent() != nullptr && sgn->parent()->parent() != nullptr )
             {
-                savedParent = Attorney::ProjectManagerEditor::saveNode( _context.kernel().projectManager(), sgn->parent() );
+                savedParent = Attorney::ProjectManagerEditor::saveNode( _context.kernel().projectManager().get(), sgn->parent() );
             }
             if ( unsavedSceneChanges() )
             {
@@ -2740,8 +2758,7 @@ namespace Divide
 
     void Editor::loadNode( SceneGraphNode* sgn ) const
     {
-        if ( Attorney::ProjectManagerEditor::loadNode( _context.kernel().projectManager(),
-                                                     sgn ) )
+        if ( Attorney::ProjectManagerEditor::loadNode( _context.kernel().projectManager().get(), sgn ) )
         {
             showStatusMessage( Util::StringFormat( "Reloaded node [ {} ] from file!",
                                                    sgn->name().c_str() ),
@@ -2817,11 +2834,6 @@ namespace Divide
         return ret;
     }
 
-    SceneNode_ptr Editor::createNode( const SceneNodeType type, const ResourceDescriptor& descriptor )
-    {
-        return Attorney::ProjectManagerEditor::createNode(context().kernel().projectManager(), type, descriptor );
-    }
-
     bool Editor::saveToXML() const
     {
         boost::property_tree::ptree pt;
@@ -2856,9 +2868,9 @@ namespace Divide
         if ( createDirectory( editorPath ) == FileError::NONE )
         {
             if ( copyFile( editorPath,
-                           g_editorSaveFile.string(),
+                           g_editorSaveFile,
                            editorPath,
-                           g_editorSaveFileBak.string(),
+                           g_editorSaveFileBak,
                            true )
                  == FileError::NONE )
             {
@@ -2881,9 +2893,9 @@ namespace Divide
             if ( fileExists( editorPath / g_editorSaveFileBak ) )
             {
                 if ( copyFile( editorPath,
-                               g_editorSaveFileBak.string(),
+                               g_editorSaveFileBak,
                                editorPath,
-                               g_editorSaveFile.string(),
+                               g_editorSaveFile,
                                true )
                      != FileError::NONE )
                 {

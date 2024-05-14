@@ -21,10 +21,8 @@
 
 namespace Divide {
 
-GUIConsoleCommandParser::GUIConsoleCommandParser(PlatformContext& context, ResourceCache* cache)
-    : PlatformContextComponent(context),
-      _resCache(cache),
-      _sound(nullptr)
+GUIConsoleCommandParser::GUIConsoleCommandParser(PlatformContext& context)
+    : PlatformContextComponent(context)
 {
     _commands[_ID("say")] = [this](const string& args) { handleSayCommand(args); };
     _commands[_ID("quit")] = [this](const string& args) { handleQuitCommand(args); };
@@ -122,7 +120,7 @@ void GUIConsoleCommandParser::handleEditParamCommand(const string& args) {
 void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
     const ResourcePath filename(Paths::g_assetsLocation / args);
 
-    const std::ifstream soundfile(filename.string());
+    const std::ifstream soundfile(filename.string().c_str() );
     if (soundfile) {
         // Check extensions (not really, musicwav.abc would still be valid, but
         // still ...)
@@ -136,10 +134,10 @@ void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
         const FileNameAndPath data = splitPathToNameAndLocation(filename);
 
         // The file is valid, so create a descriptor for it
-        ResourceDescriptor sound("consoleFilePlayback");
+        ResourceDescriptor<AudioDescriptor> sound("consoleFilePlayback");
         sound.assetName(data._fileName);
         sound.assetLocation(data._path);
-        _sound = CreateResource<AudioDescriptor>(_resCache, sound);
+        _sound = CreateResource(sound);
         if (filename.string().find("music") != string::npos) {
             // play music
             _context.sfx().playMusic(_sound);
@@ -149,12 +147,12 @@ void GUIConsoleCommandParser::handlePlaySoundCommand(const string& args) {
             _context.sfx().playSound(_sound);
         }
     } else {
-        Console::errorfn(LOCALE_STR("CONSOLE_PLAY_SOUND_INVALID_FILE"),filename.string());
+        Console::errorfn(LOCALE_STR("CONSOLE_PLAY_SOUND_INVALID_FILE"), filename.string());
     }
 }
 
 void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
-    ProjectManager* sMgr = _context.kernel().projectManager();
+    ProjectManager* sMgr = _context.kernel().projectManager().get();
     auto& sceneGraph = sMgr->activeProject()->getActiveScene()->sceneGraph();
     if (!args.empty()) {
         const SceneGraphNode* sgn = sceneGraph->findNode(args.c_str());
@@ -167,24 +165,25 @@ void GUIConsoleCommandParser::handleNavMeshCommand(const string& args) {
     // Check if we already have a NavMesh created
     AI::Navigation::NavigationMesh* temp = aiManager->getNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL);
     // Create a new NavMesh if we don't currently have one
-    if (!temp) {
-        temp = MemoryManager_NEW AI::Navigation::NavigationMesh(_context, *sMgr->recast(), sceneGraph->parentScene());
+    if (temp == nullptr)
+    {
+        temp = aiManager->addNavMesh( _context, *sMgr->recast(), sceneGraph->parentScene(), AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL );
     }
     // Set it's file name
     temp->setFileName( sMgr->activeProject()->getActiveScene()->resourceName());
     // Try to load it from file
     bool loaded = temp->load(sceneGraph->getRoot());
-    if (!loaded) {
+    if (!loaded)
+    {
         // If we failed to load it from file, we need to build it first
-        loaded = temp->build(
-            sceneGraph->getRoot(),
-            AI::Navigation::NavigationMesh::CreationCallback(), false);
+        loaded = temp->build( sceneGraph->getRoot(), AI::Navigation::NavigationMesh::CreationCallback(), false);
         // Then save it to file
         temp->save(sceneGraph->getRoot());
     }
     // If we loaded/built the NavMesh correctly, add it to the AIManager
-    if (loaded) {
-        aiManager->addNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL, temp);
+    if (loaded)
+    {
+        aiManager->destroyNavMesh(AI::AIEntity::PresetAgentRadius::AGENT_RADIUS_SMALL);
     }
 }
 
@@ -200,7 +199,7 @@ void GUIConsoleCommandParser::handleFOVCommand(const string& args) {
 
     const I32 FoV = CLAMPED<I32>(atoi(args.c_str()), 40, 140);
 
-    Attorney::ProjectManagerCameraAccessor::playerCamera(_context.kernel().projectManager())->setHorizontalFoV(Angle::DEGREES<F32>(FoV));
+    Attorney::ProjectManagerCameraAccessor::playerCamera(_context.kernel().projectManager().get())->setHorizontalFoV(Angle::DEGREES<F32>(FoV));
 }
 
 void GUIConsoleCommandParser::handleInvalidCommand(const string& args) {

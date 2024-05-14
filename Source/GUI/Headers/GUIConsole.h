@@ -51,7 +51,7 @@ class GUIConsoleCommandParser;
 /// GUIConsole implementation, CEGUI based, as in the practical tutorial series
 class GUIConsole final : public PlatformContextComponent {
    public:
-    explicit GUIConsole(GUI& parent, PlatformContext& context, ResourceCache* cache);
+    explicit GUIConsole(GUI& parent, PlatformContext& context);
     ~GUIConsole() override;
 
     /// Hide or show the console
@@ -88,7 +88,7 @@ class GUIConsole final : public PlatformContextComponent {
     /// the console
     CEGUI::Listbox* _outputWindow;
     /// pointer to the command parser instance used
-    GUIConsoleCommandParser* _cmdParser;
+    std::unique_ptr<GUIConsoleCommandParser> _cmdParser;
     /// This will be a pointer to the ConsoleRoot Window.
     CEGUI::Window* _consoleWindow;
     /// Used to check the text we are typing so that we don't close the console

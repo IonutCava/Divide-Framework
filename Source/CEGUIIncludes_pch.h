@@ -2,7 +2,6 @@
 #ifndef DVD_CEGUI_INCLUDE_PCH_
 #define DVD_CEGUI_INCLUDE_PCH_
 
-
 #include <CEGUI/Image.h>
 #include <CEGUI/CentredRenderedString.h>
 #include <CEGUI/LeftAlignedRenderedString.h>

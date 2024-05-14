@@ -46,6 +46,7 @@ struct RenderStagePass;
 struct RenderPassParams;
 
 class RenderTarget;
+class ShaderProgram;
 class RenderPassManager;
 class RenderingComponent;
 
@@ -55,7 +56,6 @@ namespace GFX {
 
 FWD_DECLARE_MANAGED_CLASS(RenderQueue);
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class RenderPassExecutor
 {
@@ -138,9 +138,9 @@ public:
     explicit RenderPassExecutor(RenderPassManager& parent, GFXDevice& context, RenderStage stage);
 
     void doCustomPass(PlayerIndex idx, Camera* camera, RenderPassParams params, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
-    void postInit(const ShaderProgram_ptr& OITCompositionShader, 
-                  const ShaderProgram_ptr& OITCompositionShaderMS,
-                  const ShaderProgram_ptr& ResolveGBufferShaderMS);
+    void postInit(Handle<ShaderProgram> OITCompositionShader, 
+                  Handle<ShaderProgram> OITCompositionShaderMS,
+                  Handle<ShaderProgram> ResolveGBufferShaderMS);
 
     void postRender();
 

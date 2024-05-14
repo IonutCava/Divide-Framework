@@ -60,20 +60,16 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
         shaderDescriptor._modules.push_back(fragModule);
         shaderDescriptor._globalDefines.emplace_back(Util::StringFormat("GS_MAX_INVOCATIONS {}", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS));
 
-        ResourceDescriptor blurDepthMapShader(Util::StringFormat("GaussBlur_{}_invocations", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS).c_str());
+        ResourceDescriptor<ShaderProgram> blurDepthMapShader(Util::StringFormat("GaussBlur_{}_invocations", Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS), shaderDescriptor );
         blurDepthMapShader.waitForReady(true);
-        blurDepthMapShader.propertyDescriptor(shaderDescriptor);
 
-        _blurDepthMapShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), blurDepthMapShader);
-        _blurDepthMapShader->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
-        {
-            PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-            pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader->handle();
-            pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+        _blurDepthMapShader = CreateResource(blurDepthMapShader);
+        PipelineDescriptor pipelineDescriptor = {};
+        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = _blurDepthMapShader;
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
 
-            _blurPipeline = _context.newPipeline(pipelineDescriptor);
-        });
+        _blurPipeline = _context.newPipeline( pipelineDescriptor );
     }
 
     _shaderConstants.data[0]._vec[1].y = 1.f;
@@ -109,20 +105,27 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     sampler._anisotropyLevel = 0u;
 
     const RenderTarget* rt = ShadowMap::getShadowMap(_type)._rt;
-    const TextureDescriptor& texDescriptor = rt->getAttachment(RTAttachmentType::COLOUR)->texture()->descriptor();
+    const auto& texDescriptor = Get(rt->getAttachment(RTAttachmentType::COLOUR)->texture())->descriptor();
 
     //Draw FBO
     {
         RenderTargetDescriptor desc = {};
         desc._resolution = rt->getResolution();
 
-        TextureDescriptor colourDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat() );
-        colourDescriptor.layerCount(1u);
-        colourDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor colourDescriptor{};
+        colourDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+        colourDescriptor._dataType = texDescriptor._dataType;
+        colourDescriptor._baseFormat = texDescriptor._baseFormat;
+        colourDescriptor._layerCount = 1u;
+        colourDescriptor._mipMappingState = MipMappingState::OFF;
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH);
-        depthDescriptor.layerCount( 1u );
-        depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor depthDescriptor{};
+        depthDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+        depthDescriptor._dataType = GFXDataFormat::UNSIGNED_INT;
+        depthDescriptor._baseFormat = GFXImageFormat::RED;
+        depthDescriptor._packing = GFXImagePacking::DEPTH;
+        depthDescriptor._layerCount = 1u;
+        depthDescriptor._mipMappingState = MipMappingState::OFF;
 
         desc._attachments = 
         {
@@ -138,9 +141,12 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
     //Blur FBO
     {
-        TextureDescriptor blurMapDescriptor(TextureType::TEXTURE_2D_ARRAY, texDescriptor.dataType(), texDescriptor.baseFormat() );
-        blurMapDescriptor.layerCount(1u);
-        blurMapDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor blurMapDescriptor{};
+        blurMapDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+        blurMapDescriptor._dataType = texDescriptor._dataType;
+        blurMapDescriptor._baseFormat = texDescriptor._baseFormat;
+        blurMapDescriptor._layerCount = 1u;
+        blurMapDescriptor._mipMappingState = MipMappingState::OFF;
 
         RenderTargetDescriptor desc = {};
         desc._attachments = 
@@ -163,6 +169,7 @@ SingleShadowMapGenerator::~SingleShadowMapGenerator()
     {
         DIVIDE_UNEXPECTED_CALL();
     }
+    DestroyResource( _blurDepthMapShader );
 }
 
 void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
@@ -248,7 +255,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, shadowAtt->texture()->getView(), shadowAtt->_descriptor._sampler );
+        Set( binding._data, shadowAtt->texture(), shadowAtt->_descriptor._sampler );
     }
 
     _shaderConstants.data[0]._vec[1].x = 0.f;
@@ -272,7 +279,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, blurAtt->texture()->getView(), blurAtt->_descriptor._sampler );
+        Set( binding._data, blurAtt->texture(), blurAtt->_descriptor._sampler );
     }
 
 

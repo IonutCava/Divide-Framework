@@ -49,7 +49,7 @@ namespace AI {
 };
 
 BEGIN_SCENE(WarScene)
-    explicit WarScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry);
+    explicit WarScene(PlatformContext& context, Project& parent, const SceneEntry& entry);
     ~WarScene() override;
 
     bool load() override;

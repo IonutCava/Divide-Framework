@@ -117,22 +117,22 @@ DEFINE_COMMAND_BEGIN(BlitRenderTargetCommand, CommandType::BLIT_RT);
 DEFINE_COMMAND_END(BlitRenderTargetCommand);
 
 DEFINE_COMMAND_BEGIN(CopyTextureCommand, CommandType::COPY_TEXTURE);
-    Texture* _source{ nullptr };
-    Texture* _destination{ nullptr };
+    Handle<Texture> _source{ INVALID_HANDLE<Texture> };
+    Handle<Texture> _destination{ INVALID_HANDLE<Texture> };
     U8 _sourceMSAASamples{ 0u };
     U8 _destinationMSAASamples{ 0u };
     CopyTexParams _params;
 DEFINE_COMMAND_END(CopyTextureCommand);
 
 DEFINE_COMMAND_BEGIN( ReadTextureCommand, CommandType::READ_TEXTURE );
-    Texture* _texture{ nullptr };
+    Handle<Texture> _texture{ INVALID_HANDLE<Texture> };
     PixelAlignment _pixelPackAlignment{};
     U8 _mipLevel{0u};
     DELEGATE_STD<void, const ImageReadbackData&> _callback;
 DEFINE_COMMAND_END( ReadTextureCommand );
 
 DEFINE_COMMAND_BEGIN(ClearTextureCommand, CommandType::CLEAR_TEXTURE);
-    Texture* _texture{ nullptr };
+    Handle<Texture> _texture{ INVALID_HANDLE<Texture> };
     /// r = depth, g = stencil if target is a depth(+stencil) attachment
     UColour4 _clearColour;
     SubRange _layerRange{0u, U16_MAX};
@@ -140,7 +140,7 @@ DEFINE_COMMAND_BEGIN(ClearTextureCommand, CommandType::CLEAR_TEXTURE);
 DEFINE_COMMAND_END(ClearTextureCommand);
 
 DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
-    Texture* _texture{ nullptr };
+    Handle<Texture> _texture{ INVALID_HANDLE<Texture> };
     SubRange _layerRange{ 0u, 1u };
     SubRange _mipRange{ 0u, U16_MAX };
     ImageUsage _usage{ ImageUsage::COUNT };

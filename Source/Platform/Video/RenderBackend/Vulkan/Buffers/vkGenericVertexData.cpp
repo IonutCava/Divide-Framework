@@ -11,8 +11,8 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const std::string_view name)
-        : GenericVertexData(context, ringBufferLength, renderIndirect, name)
+    vkGenericVertexData::vkGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const std::string_view name)
+        : GenericVertexData(context, ringBufferLength, name)
     {
     }
 
@@ -53,13 +53,13 @@ namespace Divide {
             }
 
             // Submit the draw command
-            VK_PROFILE(VKUtil::SubmitRenderCommand, command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr, renderIndirect() );
+            VK_PROFILE(VKUtil::SubmitRenderCommand, command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr );
         }
         else
         {
             DIVIDE_ASSERT( command._bufferFlag == 0u );
             PROFILE_VK_EVENT( "Submit non-indexed" );
-            VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, false, renderIndirect() );
+            VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, false );
         }
 
     }

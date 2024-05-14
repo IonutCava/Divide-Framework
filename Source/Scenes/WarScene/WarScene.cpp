@@ -12,6 +12,8 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
@@ -36,12 +38,12 @@
 
 namespace Divide {
 
-WarScene::WarScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry)
-   : Scene(context, cache, parent, entry),
+WarScene::WarScene(PlatformContext& context, Project& parent, const SceneEntry& entry)
+   : Scene(context, parent, entry),
     _timeLimitMinutes(5),
     _scoreLimit(3)
 {
-    const size_t idx = parent.parent().addSelectionCallback([&](PlayerIndex /*idx*/, const vector_fast<SceneGraphNode*>& node)
+    const size_t idx = parent.parent().addSelectionCallback([&](PlayerIndex /*idx*/, const vector<SceneGraphNode*>& node)
     {
         string selectionText;
         for (SceneGraphNode* it : node)
@@ -77,7 +79,7 @@ void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut,
         {
             _targetLines = _context.gfx().newIMP("WarScene Target Lines");
             PipelineDescriptor pipelineDescriptor = {};
-            pipelineDescriptor._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture()->handle();
+            pipelineDescriptor._shaderProgramHandle = _context.gfx().imShaders()->imWorldShaderNoTexture();
 
             pipelineDescriptor._stateBlock = _context.gfx().getNoDepthTestBlock();
             _targetLines->setPipelineDescriptor(pipelineDescriptor);
@@ -300,10 +302,10 @@ bool WarScene::load() {
         tComp->setScale(baseNode->get<TransformComponent>()->getScale());
         tComp->setPosition(position);
         {
-            ResourceDescriptor tempLight(Util::StringFormat("Light_point_random_1", currentName.c_str()));
+            ResourceDescriptor<Light> tempLight(Util::StringFormat("Light_point_random_1", currentName.c_str()));
             tempLight.setEnumValue(to_base(LightType::POINT));
             tempLight.setUserPtr(_lightPool);
-            std::shared_ptr<Light> light = CreateResource<Light>(_resCache, tempLight);
+            std::shared_ptr<Light> light = CreateResource(_resCache, tempLight);
             light->setDrawImpostor(false);
             light->setRange(25.0f);
             //light->setCastShadows(i == 0 ? true : false);
@@ -313,10 +315,10 @@ bool WarScene::load() {
             lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
         }
         {
-            ResourceDescriptor tempLight(Util::StringFormat("Light_point_{}_2", currentName.c_str()));
+            ResourceDescriptor<Light> tempLight(Util::StringFormat("Light_point_{}_2", currentName.c_str()));
             tempLight.setEnumValue(to_base(LightType::POINT));
             tempLight.setUserPtr(_lightPool);
-            std::shared_ptr<Light> light = CreateResource<Light>(_resCache, tempLight);
+            std::shared_ptr<Light> light = CreateResource(_resCache, tempLight);
             light->setDrawImpostor(false);
             light->setRange(35.0f);
             light->setCastShadows(false);
@@ -325,10 +327,10 @@ bool WarScene::load() {
             lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
         }
         {
-            ResourceDescriptor tempLight(Util::StringFormat("Light_spot_{}", currentName.c_str()));
+            ResourceDescriptor<Light> tempLight(Util::StringFormat("Light_spot_{}", currentName.c_str()));
             tempLight.setEnumValue(to_base(LightType::SPOT));
             tempLight.setUserPtr(_lightPool);
-            std::shared_ptr<Light> light = CreateResource<Light>(_resCache, tempLight);
+            std::shared_ptr<Light> light = CreateResource(_resCache, tempLight);
             light->setDrawImpostor(false);
             light->setRange(55.0f);
             //light->setCastShadows(i == 1 ? true : false);
@@ -419,8 +421,10 @@ bool WarScene::load() {
 
     //state().renderState().generalVisibility(state().renderState().generalVisibility() * 2);
 
-    
+    ResourceDescriptor<TransformNode> transformDescriptor("LightTransform");
+
     SceneGraphNodeDescriptor lightParentNodeDescriptor;
+    lightParentNodeDescriptor._nodeHandle = FromHandle( CreateResource( transformDescriptor ) );
     lightParentNodeDescriptor._serialize = false;
     lightParentNodeDescriptor._name = "Point Lights";
     lightParentNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
@@ -440,17 +444,25 @@ bool WarScene::load() {
 
     constexpr U8 rowCount = 10;
     constexpr U8 colCount = 10;
-    for (U8 row = 0; row < rowCount; row++) {
-        for (U8 col = 0; col < colCount; col++) {
+    for (U8 row = 0; row < rowCount; row++)
+    {
+        for (U8 col = 0; col < colCount; col++)
+        {
             lightNodeDescriptor._name = Util::StringFormat("Light_point_{}_{}", row, col).c_str();
+            lightNodeDescriptor._nodeHandle = FromHandle( CreateResource( transformDescriptor ) );
+
             SceneGraphNode* lightSGN = pointLightNode->addChildNode(lightNodeDescriptor);
+
             PointLightComponent* pointLight = lightSGN->get<PointLightComponent>();
             pointLight->castsShadows(false);
             pointLight->range(50.0f);
             pointLight->setDiffuseColour(DefaultColours::RANDOM().rgb);
+
             TransformComponent* tComp = lightSGN->get<TransformComponent>();
             tComp->setPosition(vec3<F32>(-21.0f + 115 * row, 20.0f, -21.0f + 115 * col));
+
             lightSGN->get<BoundsComponent>()->collisionsEnabled(false);
+
             _lightNodeTransforms.push_back(tComp);
         }
     }

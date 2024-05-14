@@ -8,9 +8,8 @@
 namespace Divide
 {
 
-    ShaderComputeQueue::ShaderComputeQueue( ResourceCache* cache )
-        : _cache( cache ),
-          _queueComputeTimer( Time::ADD_TIMER( "Shader Queue Timer" ) )
+    ShaderComputeQueue::ShaderComputeQueue()
+        : _queueComputeTimer( Time::ADD_TIMER( "Shader Queue Timer" ) )
     {
     }
 
@@ -37,10 +36,10 @@ namespace Divide
     void ShaderComputeQueue::process( ShaderQueueElement& element )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
-        ResourceDescriptor resDescriptor( element._shaderDescriptor._name );
-        resDescriptor.propertyDescriptor( element._shaderDescriptor );
+        ResourceDescriptor<ShaderProgram> resDescriptor( element._shaderDescriptor._name );
+        resDescriptor._propertyDescriptor = element._shaderDescriptor;
         resDescriptor.waitForReady( false );
-        element._shaderRef = CreateResource<ShaderProgram>( _cache, resDescriptor, _maxShaderLoadsInFlight );
+        *element._shaderRef = CreateResource( resDescriptor, _maxShaderLoadsInFlight );
     }
 
     bool ShaderComputeQueue::stepQueue()

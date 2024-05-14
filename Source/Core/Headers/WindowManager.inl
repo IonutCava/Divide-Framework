@@ -36,7 +36,7 @@ namespace Divide {
 
 inline DisplayWindow& WindowManager::getWindow(const I64 guid)
 {
-    for (DisplayWindow* win : _windows)
+    for (auto& win : _windows)
     {
         if (win->getGUID() == guid)
         {
@@ -49,7 +49,7 @@ inline DisplayWindow& WindowManager::getWindow(const I64 guid)
 
 inline const DisplayWindow& WindowManager::getWindow(const I64 guid) const
 {
-    for (const DisplayWindow* win : _windows)
+    for (const auto& win : _windows)
     {
         if (win->getGUID() == guid)
         {
@@ -79,11 +79,11 @@ inline size_t WindowManager::popActiveWindow()
 
 inline DisplayWindow* WindowManager::getFocusedWindow() noexcept
 {
-    for (DisplayWindow* win : _windows)
+    for ( auto& win : _windows)
     {
         if (win->hasFocus())
         {
-            return win;
+            return win.get();
         }
     }
 
@@ -92,11 +92,11 @@ inline DisplayWindow* WindowManager::getFocusedWindow() noexcept
 
 inline const DisplayWindow* WindowManager::getFocusedWindow() const noexcept
 {
-    for (const DisplayWindow* win : _windows)
+    for (const auto& win : _windows)
     {
         if (win->hasFocus())
         {
-            return win;
+            return win.get();
         }
     }
 
@@ -105,11 +105,11 @@ inline const DisplayWindow* WindowManager::getFocusedWindow() const noexcept
 
 inline DisplayWindow* WindowManager::getHoveredWindow() noexcept
 {
-    for (DisplayWindow* win : _windows)
+    for ( auto& win : _windows)
     {
         if (win->isHovered())
         {
-            return win;
+            return win.get();
         }
     }
 
@@ -118,11 +118,11 @@ inline DisplayWindow* WindowManager::getHoveredWindow() noexcept
 
 inline const DisplayWindow* WindowManager::getHoveredWindow() const noexcept
 {
-    for (const DisplayWindow* win : _windows)
+    for (const auto& win : _windows)
     {
         if (win->isHovered())
         {
-            return win;
+            return win.get();
         }
     }
 
@@ -143,11 +143,11 @@ inline const DisplayWindow& WindowManager::getWindow(const U32 index) const
 
 DisplayWindow* WindowManager::getWindowByID(const U32 ID) noexcept
 {
-    for (DisplayWindow* win : _windows)
+    for ( auto& win : _windows)
     {
-        if (win->_windowID == ID)
+        if (win->windowID() == ID)
         {
-            return win;
+            return win.get();
         }
     }
 
@@ -156,11 +156,11 @@ DisplayWindow* WindowManager::getWindowByID(const U32 ID) noexcept
 
 const DisplayWindow* WindowManager::getWindowByID(const U32 ID) const noexcept
 {
-    for (const DisplayWindow* win : _windows)
+    for (const auto& win : _windows)
     {
-        if (win->_windowID == ID)
+        if (win->windowID() == ID)
         {
-            return win;
+            return win.get();
         }
     }
 

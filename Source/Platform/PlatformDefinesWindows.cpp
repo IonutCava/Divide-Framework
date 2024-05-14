@@ -12,9 +12,6 @@
 #include <ShellScalingApi.h>
 #include <comdef.h>
 
-#pragma comment(lib, "Shcore.lib")
-#pragma comment(lib, "Winmm.lib")
-
 #ifdef WIN32_LEAN_AND_MEAN
 #undef WIN32_LEAN_AND_MEAN
 // SDL redefines WIN32_LEAN_AND_MEAN
@@ -27,21 +24,6 @@ extern "C"
 {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
     _declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
-}
-
-void* malloc_aligned(const size_t size, const size_t alignment, const size_t offset) noexcept
-{
-    if (offset > 0u)
-    {
-        return _aligned_offset_malloc(size, alignment, offset);
-    }
-
-    return _aligned_malloc(size, alignment);
-}
-
-void  free_aligned(void*& ptr) noexcept
-{
-    _aligned_free(ptr);
 }
 
 LRESULT DlgProc([[maybe_unused]] HWND hWnd, [[maybe_unused]] UINT uMsg, [[maybe_unused]] WPARAM wParam, [[maybe_unused]] LPARAM lParam) noexcept

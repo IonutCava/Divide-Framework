@@ -48,7 +48,6 @@
 #include "ECS/Components/Headers/TransformComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 
-#include "Dynamics/Entities/Triggers/Headers/Trigger.h"
 #include "Dynamics/Entities/Units/Headers/Player.h"
 #include "Dynamics/Entities/Particles/Headers/ParticleEmitter.h"
 
@@ -73,13 +72,10 @@ namespace Divide
     }
 
     I64 Scene::DEFAULT_SCENE_GUID = 0;
-    NO_DESTROY Mutex Scene::s_perFrameArenaMutex{};
-    NO_DESTROY MyArena<TO_MEGABYTES( 64 )> Scene::s_perFrameArena{};
 
-    Scene::Scene( PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& entry )
-        : Resource( ResourceType::DEFAULT, entry._name )
+    Scene::Scene( PlatformContext& context, Project& parent, const SceneEntry& entry )
+        : Resource( entry._name, "Scene" )
         , PlatformContextComponent( context )
-        , _resourceCache( &cache )
         , _entry( entry )
         , _parent( parent )
     {
@@ -87,10 +83,9 @@ namespace Divide
         _flashLight.fill( nullptr );
         _currentHoverTarget.fill( -1 );
         _cameraUpdateListeners.fill( 0u );
-
+        _sceneGraph = std::make_unique<SceneGraph>( *this );
         _state = std::make_unique<SceneState>( *this );
         _input = std::make_unique<SceneInput>( *this );
-        _sceneGraph = std::make_unique<SceneGraph>( *this );
         _aiManager = std::make_unique<AI::AIManager>( *this, _context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
         _lightPool = std::make_unique<LightPool>( *this, _context );
         _envProbePool = std::make_unique<SceneEnvironmentProbePool>( *this );
@@ -100,7 +95,7 @@ namespace Divide
 
         PipelineDescriptor pipeDesc;
         pipeDesc._stateBlock._depthTestEnabled = false;
-        pipeDesc._shaderProgramHandle = _context.gfx().imShaders()->imShaderNoTexture()->handle();
+        pipeDesc._shaderProgramHandle = _context.gfx().imShaders()->imShaderNoTexture();
         _linesPrimitive->setPipelineDescriptor( pipeDesc );
     }
 
@@ -137,11 +132,6 @@ namespace Divide
 
     bool Scene::frameStarted()
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-
-        LockGuard<Mutex> lk( s_perFrameArenaMutex );
-        s_perFrameArena.clear();
-
         return true;
     }
 
@@ -174,16 +164,18 @@ namespace Divide
         return true;
     }
 
-    void Scene::addMusic( const MusicType type, const std::string_view name, const ResourcePath& srcFile ) const
+    void Scene::addMusic( const MusicType type, const std::string_view name, const ResourcePath& srcFile )
     {
         const auto [musicFile, musicFilePath] = splitPathToNameAndLocation( srcFile );
 
-        ResourceDescriptor music( name );
+        ResourceDescriptor<AudioDescriptor> music( name );
         music.assetName( musicFile );
         music.assetLocation( musicFilePath );
         music.flag( true );
 
-        insert( state()->music( type ), _ID( name ), CreateResource<AudioDescriptor>( resourceCache(), music ) );
+        Handle<AudioDescriptor> handle = CreateResource( music, _loadingTasks );
+
+        insert( state()->music( type ), _ID( name ), handle );
     }
 
     bool Scene::saveNodeToXML( const SceneGraphNode* node ) const
@@ -389,37 +381,37 @@ namespace Divide
         }
 
         state()->renderState().lodThresholds().set( lodThresholds );
-        sceneGraph()->loadFromXML( ResourcePath{ pt.get( "assets", "assets.xml" ) } );
+        sceneGraph()->loadFromXML( ResourcePath{ pt.get( "assets", "assets.xml" ).c_str() } );
         loadMusicPlaylist( sceneLocation, pt.get( "musicPlaylist", "" ).c_str(), this, config );
 
         return true;
     }
 
-    SceneNode_ptr Scene::createNode( const SceneNodeType type, const ResourceDescriptor& descriptor ) const
-    {
-        switch ( type )
-        {
-            case SceneNodeType::TYPE_WATER:            return CreateResource<WaterPlane>( resourceCache(), descriptor );
-            case SceneNodeType::TYPE_TRIGGER:          return CreateResource<Trigger>( resourceCache(), descriptor );
-            case SceneNodeType::TYPE_PARTICLE_EMITTER: return CreateResource<ParticleEmitter>( resourceCache(), descriptor );
-            case SceneNodeType::TYPE_INFINITEPLANE:    return CreateResource<InfinitePlane>( resourceCache(), descriptor );
 
-            case SceneNodeType::TYPE_SPHERE_3D:
-            case SceneNodeType::TYPE_BOX_3D:
-            case SceneNodeType::TYPE_QUAD_3D:
-            case SceneNodeType::TYPE_PATCH_3D:
-            case SceneNodeType::TYPE_MESH:
-            case SceneNodeType::TYPE_SUBMESH:
-            case SceneNodeType::TYPE_TERRAIN:
-            case SceneNodeType::TYPE_DECAL:
-            case SceneNodeType::TYPE_TRANSFORM:
-            case SceneNodeType::TYPE_SKY:
-            case SceneNodeType::TYPE_VEGETATION:
-            case SceneNodeType::COUNT: return nullptr;
+    template<typename T>
+    SceneGraphNode* addSGN( SceneGraphNode* parent, const std::string_view name, const U32 componentMask, const Handle<T> handle, const bool nodeStatic, boost::property_tree::ptree& nodeTree)
+    {
+        SceneGraphNodeDescriptor nodeDescriptor = {};
+        nodeDescriptor._name = name;
+        nodeDescriptor._componentMask = componentMask;
+        nodeDescriptor._nodeHandle = FromHandle(handle);
+        nodeDescriptor._usageContext = nodeStatic ? NodeUsageContext::NODE_STATIC : NodeUsageContext::NODE_DYNAMIC;
+
+        for ( auto i = 1u; i < to_base( ComponentType::COUNT ) + 1; ++i )
+        {
+            const U32 componentBit = 1u << i;
+            const ComponentType type = static_cast<ComponentType>(componentBit);
+            if ( nodeTree.count( TypeUtil::ComponentTypeToString( type ) ) != 0 )
+            {
+                nodeDescriptor._componentMask |= componentBit;
+            }
         }
 
-        DIVIDE_UNEXPECTED_CALL();
-        return nullptr;
+        SceneGraphNode* crtNode = parent->addChildNode( nodeDescriptor );
+
+        crtNode->loadFromXML( nodeTree );
+
+        return crtNode;
     }
 
     void Scene::loadAsset( const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent )
@@ -434,18 +426,12 @@ namespace Divide
         {
 
             U32 normalMask = to_base( ComponentType::TRANSFORM ) |
-                to_base( ComponentType::BOUNDS ) |
-                to_base( ComponentType::NETWORKING );
+                             to_base( ComponentType::BOUNDS ) |
+                             to_base( ComponentType::NETWORKING );
 
 
             boost::property_tree::ptree nodeTree = {};
             XML::readXML( nodePath, nodeTree );
-
-            const auto loadModelComplete = [this, &nodeTree]( CachedResource* res )
-            {
-                static_cast<SceneNode*>(res)->loadFromXML( nodeTree );
-                _loadingTasks.fetch_sub( 1 );
-            };
 
             const auto IsPrimitive = []( const U64 nameHash )
             {
@@ -467,45 +453,55 @@ namespace Divide
                 return false;
             };
 
-            const string modelName = nodeTree.get( "model", "" );
+            const std::string modelName = nodeTree.get( "model", "" );
 
-            SceneNode_ptr ret = nullptr;
-            bool skipAdd = true;
             bool nodeStatic = true;
 
             if ( IsPrimitive( sceneNode.typeHash ) )
             {// Primitive types (only top level)
                 normalMask |= to_base( ComponentType::RENDERING ) |
-                    to_base( ComponentType::RIGID_BODY );
+                              to_base( ComponentType::RIGID_BODY );
 
+                SceneNode* ret = nullptr;
                 if ( !modelName.empty() )
                 {
-                    _loadingTasks.fetch_add( 1 );
-
-                    ResourceDescriptor item( sceneNode.name.c_str() );
-                    item.assetName( modelName );
-
                     if ( Util::CompareIgnoreCase( modelName, "BOX_3D" ) )
                     {
-                        ret = CreateResource<Box3D>( resourceCache(), item );
+                        ResourceDescriptor<Box3D> item( sceneNode.name.c_str() );
+                        item.assetName( modelName.c_str() );
+                        const Handle<Box3D> handle = CreateResource( item, _loadingTasks );
+                        ret = Get(handle);
+
+                        crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
                     else if ( Util::CompareIgnoreCase( modelName, "SPHERE_3D" ) )
                     {
-                        ret = CreateResource<Sphere3D>( resourceCache(), item );
+                        ResourceDescriptor<Sphere3D> item( sceneNode.name.c_str() );
+                        item.assetName( modelName.c_str() );
+                        const Handle<Sphere3D> handle = CreateResource( item, _loadingTasks );
+                        ret = Get(handle);
+
+                        crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
                     else if ( Util::CompareIgnoreCase( modelName, "QUAD_3D" ) )
                     {
+                        ResourceDescriptor<Quad3D> item( sceneNode.name.c_str() );
+                        item.assetName( modelName.c_str() );
+
                         P32 quadMask;
                         quadMask.i = 0;
                         quadMask.b[0] = 1;
                         item.mask( quadMask );
-                        ret = CreateResource<Quad3D>( resourceCache(), item );
+                        Handle<Quad3D> handle = CreateResource( item, _loadingTasks );
+                        ret = Get(handle);
 
-                        Quad3D* quad = static_cast<Quad3D*>(ret.get());
+                        Quad3D* quad = static_cast<Quad3D*>(ret);
                         quad->setCorner( Quad3D::CornerLocation::TOP_LEFT, vec3<F32>( 0, 1, 0 ) );
                         quad->setCorner( Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>( 1, 1, 0 ) );
                         quad->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>( 0, 0, 0 ) );
                         quad->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( 1, 0, 0 ) );
+
+                        crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
                     else
                     {
@@ -514,13 +510,12 @@ namespace Divide
                 }
                 if ( ret != nullptr )
                 {
-                    ResourceDescriptor materialDescriptor( (sceneNode.name + "_material").c_str() );
-                    Material_ptr tempMaterial = CreateResource<Material>( resourceCache(), materialDescriptor );
-                    tempMaterial->properties().shadingMode( ShadingMode::PBR_MR );
+                    ResourceDescriptor<Material> materialDescriptor( (sceneNode.name + "_material").c_str() );
+                    Handle<Material> tempMaterial = CreateResource( materialDescriptor, _loadingTasks );
+                    Get(tempMaterial)->properties().shadingMode( ShadingMode::PBR_MR );
                     ret->setMaterialTpl( tempMaterial );
-                    ret->addStateCallback( ResourceState::RES_LOADED, loadModelComplete );
+                    ret->loadFromXML( nodeTree );
                 }
-                skipAdd = false;
             }
             else
             {
@@ -532,7 +527,6 @@ namespace Divide
                     } break;
                     case _ID( "TERRAIN" ):
                     {
-                        _loadingTasks.fetch_add( 1 );
                         normalMask |= to_base( ComponentType::RENDERING );
                         addTerrain( parent, nodeTree, sceneNode.name );
                     } break;
@@ -543,7 +537,6 @@ namespace Divide
                     } break;
                     case _ID( "INFINITE_PLANE" ):
                     {
-                        _loadingTasks.fetch_add( 1 );
                         normalMask |= to_base( ComponentType::RENDERING );
                         if ( !addInfPlane( parent, nodeTree, sceneNode.name ) )
                         {
@@ -552,7 +545,6 @@ namespace Divide
                     } break;
                     case _ID( "WATER" ):
                     {
-                        _loadingTasks.fetch_add( 1 );
                         normalMask |= to_base( ComponentType::RENDERING );
                         addWater( parent, nodeTree, sceneNode.name );
                     } break;
@@ -560,22 +552,18 @@ namespace Divide
                     {
                         if ( !modelName.empty() )
                         {
-                            _loadingTasks.fetch_add( 1 );
-                            ResourceDescriptor model( modelName );
+                            ResourceDescriptor<Mesh> model( modelName );
                             model.assetLocation( Paths::g_modelsLocation );
-                            model.assetName( modelName );
+                            model.assetName( modelName.c_str() );
                             model.flag( true );
-                            model.waitForReady( true );
-                            Mesh_ptr meshPtr = CreateResource<Mesh>( resourceCache(), model );
-                            if ( meshPtr->getObjectFlag( Object3D::ObjectFlag::OBJECT_FLAG_SKINNED ) )
-                            {
-                                nodeStatic = false;
-                            }
-                            ret = meshPtr;
-                            ret->addStateCallback( ResourceState::RES_LOADED, loadModelComplete );
-                        }
+                            const Handle<Mesh> handle = CreateResource( model, _loadingTasks );
 
-                        skipAdd = false;
+                            ResourcePtr<Mesh> meshPtr = Get(handle);
+                            nodeStatic = meshPtr->animationCount() == 0u;
+                            meshPtr->loadFromXML( nodeTree );
+
+                            crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
+                        }
                     } break;
                     // SubMesh (change component properties, as the meshes should already be loaded)
                     case _ID( "SUBMESH" ):
@@ -606,33 +594,13 @@ namespace Divide
                     default:
                     case _ID( "TRANSFORM" ):
                     {
-                        skipAdd = false;
+                        ResourceDescriptor<TransformNode> transform(sceneNode.name);
+                        Handle<TransformNode> handle = CreateResource(transform);
+
                         normalMask &= ~to_base( ComponentType::BOUNDS );
+                        crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     } break;
                 }
-            }
-
-            if ( !skipAdd )
-            {
-                SceneGraphNodeDescriptor nodeDescriptor = {};
-                nodeDescriptor._name = sceneNode.name;
-                nodeDescriptor._componentMask = normalMask;
-                nodeDescriptor._node = ret;
-                nodeDescriptor._usageContext = nodeStatic ? NodeUsageContext::NODE_STATIC : NodeUsageContext::NODE_DYNAMIC;
-
-                for ( auto i = 1u; i < to_base( ComponentType::COUNT ) + 1; ++i )
-                {
-                    const U32 componentBit = 1u << i;
-                    const ComponentType type = static_cast<ComponentType>(componentBit);
-                    if ( nodeTree.count( TypeUtil::ComponentTypeToString( type ) ) != 0 )
-                    {
-                        nodeDescriptor._componentMask |= componentBit;
-                    }
-                }
-
-                crtNode = parent->addChildNode( nodeDescriptor );
-
-                crtNode->loadFromXML( nodeTree );
             }
         }
 
@@ -661,21 +629,20 @@ namespace Divide
 
     SceneGraphNode* Scene::addParticleEmitter( const std::string_view name,
                                               std::shared_ptr<ParticleData> data,
-                                              SceneGraphNode* parentNode ) const
+                                              SceneGraphNode* parentNode )
     {
         DIVIDE_ASSERT( !name.empty(),
                       "Scene::addParticleEmitter error: invalid name specified!" );
 
-        const ResourceDescriptor particleEmitter( name );
-        std::shared_ptr<ParticleEmitter> emitter = CreateResource<ParticleEmitter>( resourceCache(), particleEmitter );
+        const ResourceDescriptor<ParticleEmitter> particleEmitter( name );
+        Handle<ParticleEmitter> emitter = CreateResource( particleEmitter, _loadingTasks );
 
-        DIVIDE_ASSERT( emitter != nullptr,
-                      "Scene::addParticleEmitter error: Could not instantiate emitter!" );
+        DIVIDE_ASSERT( emitter != INVALID_HANDLE<ParticleEmitter>, "Scene::addParticleEmitter error: Could not instantiate emitter!" );
 
 
         auto initData = [emitter, data]( )
         {
-            if ( !emitter->initData( data ) )
+            if ( !Get(emitter)->initData( data ) )
             {
                 DIVIDE_UNEXPECTED_CALL();
             }
@@ -687,7 +654,7 @@ namespace Divide
         Wait( *initTask, pool);
 
         SceneGraphNodeDescriptor particleNodeDescriptor;
-        particleNodeDescriptor._node = emitter;
+        particleNodeDescriptor._nodeHandle = FromHandle(emitter);
         particleNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
         particleNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
                                                 to_base( ComponentType::BOUNDS ) |
@@ -703,41 +670,38 @@ namespace Divide
         Console::printfn( LOCALE_STR( "XML_LOAD_TERRAIN" ), nodeName.c_str() );
 
         // Load the rest of the terrain
-        TerrainDescriptor ter( (nodeName + "_descriptor").c_str() );
-        if ( !ter.loadFromXML( pt, nodeName.c_str() ) )
+        TerrainDescriptor ter{};
+        Init(ter, nodeName + "_descriptor" );
+
+        if ( !LoadFromXML( ter, pt, nodeName.c_str() ) )
         {
             return;
         }
 
-        const auto registerTerrain = [this, nodeName, parentNode, pt]( CachedResource* res )
-        {
-            SceneGraphNodeDescriptor terrainNodeDescriptor;
-            terrainNodeDescriptor._name = nodeName;
-            terrainNodeDescriptor._node = std::static_pointer_cast<Terrain>(res->shared_from_this());
-            terrainNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
-            terrainNodeDescriptor._componentMask = to_base( ComponentType::NAVIGATION ) |
-                                                   to_base( ComponentType::TRANSFORM ) |
-                                                   to_base( ComponentType::RIGID_BODY ) |
-                                                   to_base( ComponentType::BOUNDS ) |
-                                                   to_base( ComponentType::RENDERING ) |
-                                                   to_base( ComponentType::NETWORKING );
-            terrainNodeDescriptor._node->loadFromXML( pt );
+        ResourceDescriptor<Terrain> descriptor( GetVariable( ter, "terrainName" ), ter );
+        descriptor.flag( ter._active );
 
-            SceneGraphNode* terrainTemp = parentNode->addChildNode( terrainNodeDescriptor );
+        Handle<Terrain> terrain = CreateResource( descriptor, _loadingTasks );
+        Get(terrain)->loadFromXML( pt );
 
-            NavigationComponent* nComp = terrainTemp->get<NavigationComponent>();
-            nComp->navigationContext( NavigationComponent::NavigationContext::NODE_OBSTACLE );
+        SceneGraphNodeDescriptor terrainNodeDescriptor;
+        terrainNodeDescriptor._name = nodeName;
+        terrainNodeDescriptor._nodeHandle = FromHandle( terrain );
+        terrainNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
+        terrainNodeDescriptor._componentMask = to_base( ComponentType::NAVIGATION ) |
+                                               to_base( ComponentType::TRANSFORM ) |
+                                               to_base( ComponentType::RIGID_BODY ) |
+                                               to_base( ComponentType::BOUNDS ) |
+                                               to_base( ComponentType::RENDERING ) |
+                                               to_base( ComponentType::NETWORKING );
 
-            terrainTemp->loadFromXML( pt );
-            _loadingTasks.fetch_sub( 1 );
-        };
+        SceneGraphNode* terrainTemp = parentNode->addChildNode( terrainNodeDescriptor );
 
-        ResourceDescriptor descriptor( ter.getVariable( "terrainName" ) );
-        descriptor.propertyDescriptor( ter );
-        descriptor.flag( ter.active() );
-        descriptor.waitForReady( false );
-        Terrain_ptr ret = CreateResource<Terrain>( resourceCache(), descriptor );
-        ret->addStateCallback( ResourceState::RES_LOADED, registerTerrain );
+        NavigationComponent* nComp = terrainTemp->get<NavigationComponent>();
+        nComp->navigationContext( NavigationComponent::NavigationContext::NODE_OBSTACLE );
+
+        terrainTemp->loadFromXML( pt );
+
     }
 
     void Scene::toggleFlashlight( const PlayerIndex idx )
@@ -745,9 +709,12 @@ namespace Divide
         SceneGraphNode*& flashLight = _flashLight[idx];
         if ( !flashLight )
         {
+            ResourceDescriptor<TransformNode> descriptor( Util::StringFormat( "Flashlight_{}", idx ) );
+
             SceneGraphNodeDescriptor lightNodeDescriptor;
             lightNodeDescriptor._serialize = false;
-            lightNodeDescriptor._name = Util::StringFormat( "Flashlight_{}", idx ).c_str();
+            lightNodeDescriptor._nodeHandle = FromHandle( CreateResource(descriptor) );
+            lightNodeDescriptor._name = descriptor.resourceName().c_str();
             lightNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
             lightNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
                                                  to_base( ComponentType::BOUNDS ) |
@@ -780,20 +747,18 @@ namespace Divide
 
     SceneGraphNode* Scene::addSky( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
     {
-        ResourceDescriptor skyDescriptor( ("DefaultSky_" + nodeName).c_str() );
-
-
+        ResourceDescriptor<Sky> skyDescriptor( ("DefaultSky_" + nodeName).c_str() );
         //skyDescriptor.ID(2);
 
         //ToDo: Double check that this diameter is correct, otherwise fall back to default of "2"
         skyDescriptor.ID( to_U32( std::floor( Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->snapshot()._zPlanes.max * 2 ) ) );
 
-        Sky_ptr skyItem = CreateResource<Sky>( resourceCache(), skyDescriptor );
-        DIVIDE_ASSERT( skyItem != nullptr, "Scene::addSky error: Could not create sky resource!" );
+        const Handle<Sky> handle = CreateResource( skyDescriptor, _loadingTasks );
+        ResourcePtr<Sky> skyItem = Get(handle);
         skyItem->loadFromXML( pt );
 
         SceneGraphNodeDescriptor skyNodeDescriptor;
-        skyNodeDescriptor._node = skyItem;
+        skyNodeDescriptor._nodeHandle = FromHandle( handle );
         skyNodeDescriptor._name = nodeName;
         skyNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
         skyNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
@@ -811,52 +776,42 @@ namespace Divide
 
     void Scene::addWater( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
     {
-        const auto registerWater = [this, nodeName, &parentNode, pt]( CachedResource* res )
-        {
-            SceneGraphNodeDescriptor waterNodeDescriptor;
-            waterNodeDescriptor._name = nodeName;
-            waterNodeDescriptor._node = std::static_pointer_cast<WaterPlane>(res->shared_from_this());
-            waterNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
-            waterNodeDescriptor._componentMask = to_base( ComponentType::NAVIGATION ) |
-                                                 to_base( ComponentType::TRANSFORM ) |
-                                                 to_base( ComponentType::RIGID_BODY ) |
-                                                 to_base( ComponentType::BOUNDS ) |
-                                                 to_base( ComponentType::RENDERING ) |
-                                                 to_base( ComponentType::NETWORKING );
 
-            waterNodeDescriptor._node->loadFromXML( pt );
+        ResourceDescriptor<WaterPlane> waterDescriptor( ("Water_" + nodeName).c_str() );
+        Handle<WaterPlane> water = CreateResource( waterDescriptor, _loadingTasks );
+        Get(water)->loadFromXML( pt );
 
-            SceneGraphNode* waterNode = parentNode->addChildNode( waterNodeDescriptor );
-            waterNode->loadFromXML( pt );
-            _loadingTasks.fetch_sub( 1 );
-        };
+        SceneGraphNodeDescriptor waterNodeDescriptor;
+        waterNodeDescriptor._name = nodeName;
+        waterNodeDescriptor._nodeHandle = FromHandle( water );
+        waterNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
+        waterNodeDescriptor._componentMask = to_base( ComponentType::NAVIGATION ) |
+                                             to_base( ComponentType::TRANSFORM ) |
+                                             to_base( ComponentType::RIGID_BODY ) |
+                                             to_base( ComponentType::BOUNDS ) |
+                                             to_base( ComponentType::RENDERING ) |
+                                             to_base( ComponentType::NETWORKING );
 
-        ResourceDescriptor waterDescriptor( ("Water_" + nodeName).c_str() );
-        waterDescriptor.waitForReady( false );
-        WaterPlane_ptr ret = CreateResource<WaterPlane>( resourceCache(), waterDescriptor );
-        ret->addStateCallback( ResourceState::RES_LOADED, registerWater );
+
+        SceneGraphNode* waterNode = parentNode->addChildNode( waterNodeDescriptor );
+        waterNode->loadFromXML( pt );
     }
 
     SceneGraphNode* Scene::addInfPlane( SceneGraphNode* parentNode, const boost::property_tree::ptree& pt, const Str<64>& nodeName )
     {
-        ResourceDescriptor planeDescriptor( ("InfPlane_" + nodeName).c_str() );
+        ResourceDescriptor<InfinitePlane> planeDescriptor( ("InfPlane_" + nodeName).c_str() );
 
         const Camera* baseCamera = Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT );
 
         const U32 cameraFarPlane = to_U32( baseCamera->snapshot()._zPlanes.max );
         planeDescriptor.data().set( cameraFarPlane, cameraFarPlane, 0u );
+        Handle<InfinitePlane> planeItem = CreateResource( planeDescriptor, _loadingTasks );
+        Get(planeItem)->loadFromXML( pt );
 
-        auto planeItem = CreateResource<InfinitePlane>( resourceCache(), planeDescriptor );
-
-        DIVIDE_ASSERT( planeItem != nullptr, "Scene::addInfPlane error: Could not create infinite plane resource!" );
-        planeItem->addStateCallback( ResourceState::RES_LOADED, [this]( [[maybe_unused]] CachedResource* res ) noexcept
-        {
-            _loadingTasks.fetch_sub( 1 );
-        } );
-        planeItem->loadFromXML( pt );
+        DIVIDE_ASSERT( planeItem != INVALID_HANDLE<InfinitePlane>, "Scene::addInfPlane error: Could not create infinite plane resource!" );
 
         SceneGraphNodeDescriptor planeNodeDescriptor;
-        planeNodeDescriptor._node = planeItem;
+        planeNodeDescriptor._nodeHandle = FromHandle( planeItem );
         planeNodeDescriptor._name = nodeName;
         planeNodeDescriptor._usageContext = NodeUsageContext::NODE_STATIC;
         planeNodeDescriptor._componentMask = to_base( ComponentType::TRANSFORM ) |
@@ -1260,6 +1215,8 @@ namespace Divide
     bool Scene::load()
     {
         // Load the main scene from XML
+        _sceneGraph->load();
+
         if ( !loadXML() )
         {
             return false;
@@ -1489,18 +1446,21 @@ namespace Divide
         SceneGraphNode* playerSGN( _sceneGraph->findNode( playerName.c_str() ) );
         if ( !playerSGN )
         {
+            ResourceDescriptor<TransformNode> playerDescriptor{ playerName };
+            playerDescriptor.ID(playerCount());
+
             SceneGraphNode* root = _sceneGraph->getRoot();
 
             SceneGraphNodeDescriptor playerNodeDescriptor;
             playerNodeDescriptor._serialize = false;
-            playerNodeDescriptor._node = std::make_shared<SceneNode>( resourceCache(), to_size( generateGUID() + playerCount() ), playerName, playerName, ResourcePath{}, SceneNodeType::TYPE_TRANSFORM, 0u);
+            playerNodeDescriptor._nodeHandle = FromHandle( CreateResource( playerDescriptor ) );
             playerNodeDescriptor._name = playerName.c_str();
             playerNodeDescriptor._usageContext = NodeUsageContext::NODE_DYNAMIC;
             playerNodeDescriptor._componentMask = to_base( ComponentType::UNIT ) |
                                                   to_base( ComponentType::TRANSFORM ) |
                                                   to_base( ComponentType::BOUNDS ) |
                                                   to_base( ComponentType::NETWORKING );
-
+                                                  
             playerSGN = root->addChildNode( playerNodeDescriptor );
         }
 
@@ -2125,7 +2085,7 @@ namespace Divide
         return tempSelections._selectionCount == 0u;
     }
 
-    void Scene::setSelected( const PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, const bool recursive )
+    void Scene::setSelected( const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive )
     {
         Selections& playerSelections = _currentSelection[idx];
 
@@ -2263,7 +2223,7 @@ namespace Divide
             {
                 const Camera* crtCamera = playerCamera( idx );
 
-                NO_DESTROY thread_local vector_fast<SceneGraphNode*> nodes;
+                NO_DESTROY thread_local vector<SceneGraphNode*> nodes;
                 Attorney::ProjectManagerScene::getNodesInScreenRect( _parent.parent(), selectionRect, *crtCamera, nodes );
 
                 _parent.parent().setSelected( idx, nodes, false );

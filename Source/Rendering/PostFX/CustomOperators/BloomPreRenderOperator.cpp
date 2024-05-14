@@ -21,7 +21,7 @@ namespace {
     F32 resolutionDownscaleFactor = 2.0f;
 }
 
-BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
+BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
     : PreRenderOperator(context, parent, FilterType::FILTER_BLOOM)
 {
     ShaderModuleDescriptor vertModule = {};
@@ -39,39 +39,35 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     shaderDescriptor._modules.push_back(fragModule);
     shaderDescriptor._globalDefines.emplace_back( "luminanceBias PushData0[0].x" );
 
-    ResourceDescriptor bloomCalc("BloomCalc");
-    bloomCalc.propertyDescriptor(shaderDescriptor);
+    ResourceDescriptor<ShaderProgram> bloomCalc("BloomCalc", shaderDescriptor );
     bloomCalc.waitForReady(false);
 
-    _bloomCalc = CreateResource<ShaderProgram>(cache, bloomCalc);
-    _bloomCalc->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+    _bloomCalc = CreateResource(bloomCalc);
     {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _bloomCalc->handle();
+        pipelineDescriptor._shaderProgramHandle = _bloomCalc;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        _bloomCalcPipeline = _context.newPipeline(pipelineDescriptor);
-    });
+        _bloomCalcPipeline = _context.newPipeline( pipelineDescriptor );
+    }
 
     fragModule._variant = "BloomApply";
     shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
 
-    ResourceDescriptor bloomApply("BloomApply");
-    bloomApply.propertyDescriptor(shaderDescriptor);
+    ResourceDescriptor<ShaderProgram> bloomApply("BloomApply", shaderDescriptor );
     bloomApply.waitForReady(false);
-    _bloomApply = CreateResource<ShaderProgram>(cache, bloomApply);
-    _bloomApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
+    _bloomApply = CreateResource(bloomApply);
     {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _bloomApply->handle();
+        pipelineDescriptor._shaderProgramHandle = _bloomApply;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        _bloomApplyPipeline = _context.newPipeline(pipelineDescriptor);
-    });
+        _bloomApplyPipeline = _context.newPipeline( pipelineDescriptor );
+    }
 
     const vec2<U16> res = parent.screenRT()._rt->getResolution();
     if (res.height > 1440)
@@ -80,8 +76,8 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     }
 
     const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-    TextureDescriptor screenDescriptor = screenAtt->texture()->descriptor();
-    screenDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+    TextureDescriptor screenDescriptor = Get(screenAtt->texture())->descriptor();
+    screenDescriptor._mipMappingState = MipMappingState::OFF;
 
     RenderTargetDescriptor desc = {};
     desc._attachments =
@@ -110,6 +106,9 @@ BloomPreRenderOperator::~BloomPreRenderOperator()
     {
         DIVIDE_UNEXPECTED_CALL();
     }
+
+    DestroyResource( _bloomCalc );
+    DestroyResource( _bloomApply );
 }
 
 bool BloomPreRenderOperator::ready() const noexcept
@@ -146,7 +145,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
     assert(input._targetID != output._targetID);
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-    const auto& screenTex = screenAtt->texture()->getView();
+    const auto& screenTex = Get(screenAtt->texture())->getView();
 
     { // Step 1: generate bloom - render all of the "bright spots"
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
@@ -169,7 +168,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _parent.luminanceTex()->getView(), _parent.lumaSampler());
+            Set( binding._data, _parent.luminanceTex(), _parent.lumaSampler());
         }
 
 
@@ -189,7 +188,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
     }
     {// Step 3: apply bloom
         const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR );
-        const auto& bloomTex = bloomAtt->texture()->getView();
+        const auto& bloomTex = Get(bloomAtt->texture())->getView();
 
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._target = output._targetID;

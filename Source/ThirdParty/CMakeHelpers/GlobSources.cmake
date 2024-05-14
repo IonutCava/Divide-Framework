@@ -1,11 +1,5 @@
 
-set( THIRD_PARTY_LOCAL_HEADER_FILES ThirdParty/Allocator/Allocator.h
-                                    ThirdParty/Allocator/DataTypes.h
-                                    ThirdParty/Allocator/Fault.h
-                                    ThirdParty/Allocator/stl_allocator.h
-                                    ThirdParty/Allocator/xallocator.h
-                                    ThirdParty/ArenaAllocator/arena_allocator.h
-                                    ThirdParty/EntityComponentSystem/include/ECS/API.h
+set( THIRD_PARTY_LOCAL_HEADER_FILES ThirdParty/EntityComponentSystem/include/ECS/API.h
                                     ThirdParty/EntityComponentSystem/include/ECS/Component.h
                                     ThirdParty/EntityComponentSystem/include/ECS/ComponentManager.h
                                     ThirdParty/EntityComponentSystem/include/ECS/ECS.h
@@ -46,11 +40,7 @@ set( THIRD_PARTY_LOCAL_HEADER_FILES ThirdParty/Allocator/Allocator.h
                                     ThirdParty/ImGuiMisc/imguistyleserializer/imguistyleserializer.h
 )
 
-set( THIRD_PARTY_LOCAL_SRC_FILES ThirdParty/Allocator/Allocator_.cpp
-                                 ThirdParty/Allocator/Fault.cpp
-                                 ThirdParty/Allocator/xallocator.cpp
-                                 ThirdParty/ArenaAllocator/arena_allocator.cpp
-                                 ThirdParty/EntityComponentSystem/src/API.cpp
+set( THIRD_PARTY_LOCAL_SRC_FILES ThirdParty/EntityComponentSystem/src/API.cpp
                                  ThirdParty/EntityComponentSystem/src/ComponentManager.cpp
                                  ThirdParty/EntityComponentSystem/src/Engine.cpp
                                  ThirdParty/EntityComponentSystem/src/EntityManager.cpp

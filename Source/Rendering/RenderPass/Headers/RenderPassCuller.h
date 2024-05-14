@@ -84,7 +84,7 @@ struct VisibleNode {
     bool _materialReady = true;
 };
 
-using FeedBackContainer = vector_fast<VisibleNode>;
+using FeedBackContainer = vector<VisibleNode>;
 
 template<typename T = VisibleNode, size_t N = Config::MAX_VISIBLE_NODES>
 struct VisibleNodeList
@@ -150,8 +150,7 @@ struct RenderPassCuller {
         WATER = toBit( 4 ),
         SKY = toBit( 5 ),
         PARTICLES = toBit( 6 ),
-        DECALS = toBit( 7 ),
-        COUNT = 8
+        COUNT = 7
     };
 
     static void FrustumCull(const NodeCullParams& params, U16 cullFlags, const SceneGraph& sceneGraph, const SceneState& sceneState, PlatformContext& context, VisibleNodeList<>& nodesOut);

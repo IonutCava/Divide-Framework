@@ -42,18 +42,18 @@ namespace Time {
     class ProfileTimer;
 };
 
-class ResourceCache;
 class PlatformContext;
 
 class ShaderComputeQueue {
 public:
-    struct ShaderQueueElement {
-        ShaderProgram_ptr& _shaderRef;
+    struct ShaderQueueElement
+    {
+        Handle<ShaderProgram>* _shaderRef{nullptr};
         ShaderProgramDescriptor _shaderDescriptor;
     };
 
 public:
-    explicit ShaderComputeQueue(ResourceCache* cache);
+    explicit ShaderComputeQueue();
 
     // This is the main loop that steps through the queue and processes each entry
     void idle();
@@ -72,7 +72,6 @@ private:
     [[nodiscard]] bool stepQueueLocked();
 
 private:
-    ResourceCache* _cache = nullptr;
 
     Time::ProfileTimer& _queueComputeTimer;
 

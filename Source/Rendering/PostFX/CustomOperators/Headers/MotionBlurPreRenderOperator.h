@@ -40,7 +40,8 @@ namespace Divide {
 
 class MotionBlurPreRenderOperator final : public PreRenderOperator {
    public:
-    explicit MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
+    explicit MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    ~MotionBlurPreRenderOperator();
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
 
@@ -50,7 +51,7 @@ class MotionBlurPreRenderOperator final : public PreRenderOperator {
 
     PROPERTY_RW(U8, maxSamples, 16u);
    private:
-    ShaderProgram_ptr _blurApply = nullptr;
+    Handle<ShaderProgram> _blurApply = INVALID_HANDLE<ShaderProgram>;
     GFX::BindPipelineCommand      _blurApplyPipelineCmd;
 };
 

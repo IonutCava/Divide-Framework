@@ -10,8 +10,8 @@
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
-constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
+constexpr U16 BYTE_BUFFER_VERSION = 2u;
 
 namespace {
 // Once vertex buffers reach a certain size, the for loop grows really really fast up to millions of iterations.
@@ -19,31 +19,37 @@ namespace {
 template<bool TexCoords, bool Normals, bool Tangents, bool Colour, bool Bones>
 void FillSmallData5(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut) noexcept
 {
-    for (const VertexBuffer::Vertex& data : dataIn) {
+    for (const VertexBuffer::Vertex& data : dataIn)
+    {
         std::memcpy(dataOut, data._position._v, sizeof data._position);
         dataOut += sizeof data._position;
 
-        if constexpr (TexCoords) {
+        if constexpr (TexCoords)
+        {
             std::memcpy(dataOut, data._texcoord._v, sizeof data._texcoord);
             dataOut += sizeof data._texcoord;
         }
 
-        if constexpr(Normals) {
+        if constexpr(Normals)
+        {
             std::memcpy(dataOut, &data._normal, sizeof data._normal);
             dataOut += sizeof data._normal;
         }
 
-        if constexpr(Tangents) {
+        if constexpr(Tangents)
+        {
             std::memcpy(dataOut, &data._tangent, sizeof data._tangent);
             dataOut += sizeof data._tangent;
         }
 
-        if constexpr(Colour) {
+        if constexpr(Colour)
+        {
             std::memcpy(dataOut, data._colour._v, sizeof data._colour);
             dataOut += sizeof data._colour;
         }
 
-        if constexpr(Bones) {
+        if constexpr(Bones)
+        {
             std::memcpy(dataOut, data._weights._v, sizeof data._weights);
             dataOut += sizeof data._weights;
 
@@ -56,9 +62,12 @@ void FillSmallData5(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut) n
 template <bool TexCoords, bool Normals, bool Tangents, bool Colour>
 void FillSmallData4(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool bones) noexcept
 {
-    if (bones) {
+    if (bones)
+    {
         FillSmallData5<TexCoords, Normals, Tangents, Colour, true>(dataIn, dataOut);
-    } else {
+    }
+    else
+    {
         FillSmallData5<TexCoords, Normals, Tangents, Colour, false>(dataIn, dataOut);
     }
 }
@@ -66,9 +75,12 @@ void FillSmallData4(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, c
 template <bool TexCoords, bool Normals, bool Tangents>
 void FillSmallData3(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool colour, const bool bones) noexcept
 {
-    if (colour) {
+    if (colour)
+    {
         FillSmallData4<TexCoords, Normals, Tangents, true>(dataIn, dataOut, bones);
-    } else {
+    }
+    else
+    {
         FillSmallData4<TexCoords, Normals, Tangents, false>(dataIn, dataOut, bones);
     }
 }
@@ -76,9 +88,12 @@ void FillSmallData3(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, c
 template <bool TexCoords, bool Normals>
 void FillSmallData2(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool tangents, const bool colour, const bool bones) noexcept
 {
-    if (tangents) {
+    if (tangents)
+    {
         FillSmallData3<TexCoords, Normals, true>(dataIn, dataOut, colour, bones);
-    } else {
+    }
+    else
+    {
         FillSmallData3<TexCoords, Normals, false>(dataIn, dataOut, colour, bones);
     }
 }
@@ -86,102 +101,111 @@ void FillSmallData2(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, c
 template <bool TexCoords>
 void FillSmallData1(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool normals, const bool tangents, const bool colour, const bool bones) noexcept
 {
-    if (normals) {
+    if (normals)
+    {
         FillSmallData2<TexCoords, true>(dataIn, dataOut, tangents, colour, bones);
-    } else {
+    }
+    else
+    {
         FillSmallData2<TexCoords, false>(dataIn, dataOut, tangents, colour, bones);
     }
 }
 
 void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, const bool texCoords, const bool normals, const bool tangents, const bool colour, const bool bones) noexcept
 {
-    if (texCoords) {
+    if (texCoords)
+    {
         FillSmallData1<true>(dataIn, dataOut, normals, tangents, colour, bones);
-    } else {
+    }
+    else
+    {
         FillSmallData1<false>(dataIn, dataOut, normals, tangents, colour, bones);
     }
 }
 
 } //namespace
 
-VertexBuffer::VertexBuffer(GFXDevice& context, const bool renderIndirect, const std::string_view name)
-    : VertexDataInterface(context, name )
-    , _internalGVD(context.newGVD(1u, renderIndirect, name))
+VertexBuffer::VertexBuffer(GFXDevice& context, const Descriptor& descriptor )
+    : VertexDataInterface(context, descriptor._name )
+    , _descriptor(descriptor)
+    , _internalGVD(context.newGVD(1u, descriptor._name))
 {
 }
 
-bool VertexBuffer::create(const bool staticDraw, const bool keepData)
+void VertexBuffer::setVertexCount(const size_t size)
 {
-    DIVIDE_ASSERT(!_data.empty(), LOCALE_STR("ERROR_VB_POSITION"));
-
-    _staticBuffer = staticDraw;
-    _keepData = keepData;
-
-    _refreshQueued = true;
-
-    return true;
+    resizeVertexCount(size, {});
 }
 
-void VertexBuffer::setVertexCount(const size_t size) {
-    _dataLayoutChanged = true;
-    _data.resize(size);
-}
-
-size_t VertexBuffer::getVertexCount() const noexcept {
+size_t VertexBuffer::getVertexCount() const noexcept
+{
     return _data.size();
 }
 
 
-const vector<VertexBuffer::Vertex>& VertexBuffer::getVertices() const noexcept {
+const vector<VertexBuffer::Vertex>& VertexBuffer::getVertices() const noexcept
+{
     return _data;
 }
 
-void VertexBuffer::reserveIndexCount(const size_t size) {
+void VertexBuffer::reserveIndexCount(const size_t size)
+{
     _indices.reserve(size);
 }
 
-void VertexBuffer::resizeVertexCount(const size_t size, const Vertex& defaultValue) {
+void VertexBuffer::resizeVertexCount(const size_t size, const Vertex& defaultValue)
+{
     _dataLayoutChanged = true;
     _data.resize(size, defaultValue);
+    _refreshQueued = true;
 }
 
-const vec3<F32>& VertexBuffer::getPosition(const U32 index) const {
+const vec3<F32>& VertexBuffer::getPosition(const U32 index) const
+{
     return _data[index]._position;
 }
 
-vec2<F32> VertexBuffer::getTexCoord(const U32 index) const {
+vec2<F32> VertexBuffer::getTexCoord(const U32 index) const
+{
     return _data[index]._texcoord;
 }
 
-F32 VertexBuffer::getNormal(const U32 index) const {
+F32 VertexBuffer::getNormal(const U32 index) const
+{
     return _data[index]._normal;
 }
 
-F32 VertexBuffer::getNormal(const U32 index, vec3<F32>& normalOut) const {
+F32 VertexBuffer::getNormal(const U32 index, vec3<F32>& normalOut) const
+{
     const F32 normal = getNormal(index);
     Util::UNPACK_VEC3(normal, normalOut.x, normalOut.y, normalOut.z);
     return normal;
 }
 
-F32 VertexBuffer::getTangent(const U32 index) const {
+F32 VertexBuffer::getTangent(const U32 index) const
+{
     return _data[index]._tangent;
 }
 
-F32 VertexBuffer::getTangent(const U32 index, vec3<F32>& tangentOut) const {
+F32 VertexBuffer::getTangent(const U32 index, vec3<F32>& tangentOut) const
+{
     const F32 tangent = getTangent(index);
     Util::UNPACK_VEC3(tangent, tangentOut.x, tangentOut.y, tangentOut.z);
     return tangent;
 }
 
-vec4<U8> VertexBuffer::getBoneIndices(const U32 index) const {
+vec4<U8> VertexBuffer::getBoneIndices(const U32 index) const
+{
     return _data[index]._indices;
 }
 
-vec4<U8> VertexBuffer::getBoneWeightsPacked(const U32 index) const {
+vec4<U8> VertexBuffer::getBoneWeightsPacked(const U32 index) const
+{
     return _data[index]._weights;
 }
 
-vec4<F32> VertexBuffer::getBoneWeights(const U32 index) const {
+vec4<F32> VertexBuffer::getBoneWeights(const U32 index) const
+{
     const vec4<U8>& weight = _data[index]._weights;
     return vec4<F32>(UNORM_CHAR_TO_FLOAT(weight.x),
                      UNORM_CHAR_TO_FLOAT(weight.y),
@@ -189,26 +213,31 @@ vec4<F32> VertexBuffer::getBoneWeights(const U32 index) const {
                      UNORM_CHAR_TO_FLOAT(weight.w));
 }
 
-size_t VertexBuffer::getIndexCount() const noexcept {
+size_t VertexBuffer::getIndexCount() const noexcept
+{
     return _indices.size();
 }
 
-U32 VertexBuffer::getIndex(const size_t index) const {
-    assert(index < getIndexCount());
+U32 VertexBuffer::getIndex(const size_t index) const
+{
+    DIVIDE_ASSERT(index < getIndexCount());
     return _indices[index];
 }
 
-const vector<U32>& VertexBuffer::getIndices() const noexcept {
+const vector<U32>& VertexBuffer::getIndices() const noexcept
+{
     return _indices;
 }
 
-void VertexBuffer::addIndex(const U32 index) {
-    assert(useLargeIndices() || index <= U16_MAX);
+void VertexBuffer::addIndex(const U32 index)
+{
+    DIVIDE_ASSERT(_descriptor._largeIndices || index <= U16_MAX);
     _indices.push_back(index);
     _indicesChanged = true;
 }
 
-void VertexBuffer::addIndices(const vector_fast<U16>& indices) {
+void VertexBuffer::addIndices(const vector<U16>& indices)
+{
     eastl::transform(eastl::cbegin(indices),
                      eastl::cend(indices),
                      back_inserter(_indices),
@@ -217,24 +246,26 @@ void VertexBuffer::addIndices(const vector_fast<U16>& indices) {
     _indicesChanged = true;
 }
 
-void VertexBuffer::addIndices(const vector_fast<U32>& indices) {
+void VertexBuffer::addIndices(const vector<U32>& indices)
+{
     _indices.insert(eastl::cend(_indices), eastl::cbegin(indices), eastl::cend(_indices));
     _indicesChanged = true;
 }
 
-void VertexBuffer::addRestartIndex() {
+void VertexBuffer::addRestartIndex()
+{
     primitiveRestartRequired(true);
-    addIndex(useLargeIndices() ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S);
+    addIndex( _descriptor._largeIndices ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S );
 }
 
-void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<vec3<F32>>& newValues) {
-    assert(indexOffset + newValues.size() - 1 < _data.size());
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<vec3<F32>>& newValues)
+{
+    DIVIDE_ASSERT(indexOffset + newValues.size() - 1 < _data.size());
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     vector<Vertex>::iterator it = _data.begin() + indexOffset;
-    for (const vec3<F32>& value : newValues) {
+    for (const vec3<F32>& value : newValues)
+    {
         it++->_position.set(value);
     }
 
@@ -243,16 +274,15 @@ void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<vec3
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyPositionValue(const U32 index, const vec3<F32>& newValue) {
+void VertexBuffer::modifyPositionValue(const U32 index, const vec3<F32>& newValue)
+{
     modifyPositionValue(index, newValue.x, newValue.y, newValue.z);
 }
 
-void VertexBuffer::modifyPositionValue(const U32 index, const F32 x, const F32 y, const F32 z) {
-    assert(index < _data.size());
-
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+void VertexBuffer::modifyPositionValue(const U32 index, const F32 x, const F32 y, const F32 z)
+{
+    DIVIDE_ASSERT(index < _data.size());
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!" );
 
     _data[index]._position.set(x, y, z);
     _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::POSITION)];
@@ -260,16 +290,15 @@ void VertexBuffer::modifyPositionValue(const U32 index, const F32 x, const F32 y
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyColourValue(const U32 index, const UColour4& newValue) {
+void VertexBuffer::modifyColourValue(const U32 index, const UColour4& newValue)
+{
     modifyColourValue(index, newValue.r, newValue.g, newValue.b, newValue.a);
 }
 
-void VertexBuffer::modifyColourValue(const U32 index, const U8 r, const U8 g, const U8 b, const U8 a) {
-    assert(index < _data.size());
-
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+void VertexBuffer::modifyColourValue(const U32 index, const U8 r, const U8 g, const U8 b, const U8 a)
+{
+    DIVIDE_ASSERT(index < _data.size());
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     _data[index]._colour.set(r, g, b, a);
     _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::COLOR)];
@@ -277,16 +306,15 @@ void VertexBuffer::modifyColourValue(const U32 index, const U8 r, const U8 g, co
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyNormalValue(const U32 index, const vec3<F32>& newValue) {
+void VertexBuffer::modifyNormalValue(const U32 index, const vec3<F32>& newValue)
+{
     modifyNormalValue(index, newValue.x, newValue.y, newValue.z);
 }
 
-void VertexBuffer::modifyNormalValue(const U32 index, const F32 x, const F32 y, const F32 z) {
-    assert(index < _data.size());
-
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+void VertexBuffer::modifyNormalValue(const U32 index, const F32 x, const F32 y, const F32 z)
+{
+    DIVIDE_ASSERT(index < _data.size());
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     _data[index]._normal = Util::PACK_VEC3(x, y, z);
     _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::NORMAL)];
@@ -294,16 +322,15 @@ void VertexBuffer::modifyNormalValue(const U32 index, const F32 x, const F32 y, 
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyTangentValue(const U32 index, const vec3<F32>& newValue) {
+void VertexBuffer::modifyTangentValue(const U32 index, const vec3<F32>& newValue)
+{
     modifyTangentValue(index, newValue.x, newValue.y, newValue.z);
 }
 
-void VertexBuffer::modifyTangentValue(const U32 index, const F32 x, const F32 y, const F32 z) {
-    assert(index < _data.size());
-
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+void VertexBuffer::modifyTangentValue(const U32 index, const F32 x, const F32 y, const F32 z)
+{
+    DIVIDE_ASSERT(index < _data.size());
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     _data[index]._tangent = Util::PACK_VEC3(x, y, z);
     _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::TANGENT)];
@@ -311,16 +338,15 @@ void VertexBuffer::modifyTangentValue(const U32 index, const F32 x, const F32 y,
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyTexCoordValue(const U32 index, const vec2<F32> newValue) {
+void VertexBuffer::modifyTexCoordValue(const U32 index, const vec2<F32> newValue)
+{
     modifyTexCoordValue(index, newValue.s, newValue.t);
 }
 
-void VertexBuffer::modifyTexCoordValue(const U32 index, const F32 s, const F32 t) {
-    assert(index < _data.size());
-
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+void VertexBuffer::modifyTexCoordValue(const U32 index, const F32 s, const F32 t)
+{
+    DIVIDE_ASSERT(index < _data.size());
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     _data[index]._texcoord.set(s, t);
     _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::TEXCOORD)];
@@ -328,12 +354,10 @@ void VertexBuffer::modifyTexCoordValue(const U32 index, const F32 s, const F32 t
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyBoneIndices(const U32 index, const vec4<U8> indices) {
-    assert(index < _data.size());
-
-    DIVIDE_ASSERT(_staticBuffer == false ||
-        _staticBuffer == true && !_data.empty(),
-        "VertexBuffer error: Modifying static buffers after creation is not allowed!");
+void VertexBuffer::modifyBoneIndices(const U32 index, const vec4<U8> indices)
+{
+    DIVIDE_ASSERT(index < _data.size());
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     _data[index]._indices = indices;
     _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base(AttribLocation::BONE_INDICE)];
@@ -341,7 +365,8 @@ void VertexBuffer::modifyBoneIndices(const U32 index, const vec4<U8> indices) {
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyBoneWeights(const U32 index, const FColour4& weights) {
+void VertexBuffer::modifyBoneWeights(const U32 index, const FColour4& weights)
+{
     vec4<U8> boneWeights;
     boneWeights.x = FLOAT_TO_CHAR_UNORM(weights.x);
     boneWeights.y = FLOAT_TO_CHAR_UNORM(weights.y);
@@ -352,11 +377,8 @@ void VertexBuffer::modifyBoneWeights(const U32 index, const FColour4& weights) {
 
 void VertexBuffer::modifyBoneWeights( const U32 index, const vec4<U8> packedWeights )
 {
-    assert( index < _data.size() );
-
-    DIVIDE_ASSERT( _staticBuffer == false ||
-                   _staticBuffer == true && !_data.empty(),
-                   "VertexBuffer error: Modifying static buffers after creation is not allowed!" );
+    DIVIDE_ASSERT( index < _data.size() );
+    DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     _data[index]._weights = packedWeights;
     _dataLayoutChanged = _dataLayoutChanged || !_useAttribute[to_base( AttribLocation::BONE_WEIGHT )];
@@ -364,12 +386,13 @@ void VertexBuffer::modifyBoneWeights( const U32 index, const vec4<U8> packedWeig
     _refreshQueued = true;
 }
 
-
-size_t VertexBuffer::partitionCount() const noexcept {
+size_t VertexBuffer::partitionCount() const noexcept
+{
     return _partitions.size();
 }
 
-U16 VertexBuffer::partitionBuffer() {
+U16 VertexBuffer::partitionBuffer()
+{
     const size_t previousIndexCount = _partitions.empty() ? 0 : _partitions.back().second;
     const size_t previousOffset = _partitions.empty() ? 0 : _partitions.back().first;
     size_t partitionedIndexCount = previousIndexCount + previousOffset;
@@ -377,34 +400,45 @@ U16 VertexBuffer::partitionBuffer() {
     return to_U16(_partitions.size() - 1);
 }
 
-size_t VertexBuffer::getPartitionIndexCount(const U16 partitionID) {
-    if (_partitions.empty()) {
+size_t VertexBuffer::getPartitionIndexCount(const U16 partitionID)
+{
+    if (_partitions.empty())
+    {
         return getIndexCount();
     }
-    assert(partitionID < _partitions.size() && "VertexBuffer error: Invalid partition offset!");
+
+    DIVIDE_ASSERT(partitionID < _partitions.size() && "VertexBuffer error: Invalid partition offset!");
     return _partitions[partitionID].second;
 }
 
-size_t VertexBuffer::getPartitionOffset(const U16 partitionID) const {
-    if (_partitions.empty()) {
-        return 0;
+size_t VertexBuffer::getPartitionOffset(const U16 partitionID) const
+{
+    if (_partitions.empty())
+    {
+        return 0u;
     }
-    assert(partitionID < _partitions.size() && "VertexBuffer error: Invalid partition offset!");
+
+    DIVIDE_ASSERT(partitionID < _partitions.size() && "VertexBuffer error: Invalid partition offset!");
     return _partitions[partitionID].first;
 }
 
-size_t VertexBuffer::lastPartitionOffset() const {
-    if (_partitions.empty()) {
-        return 0;
+size_t VertexBuffer::lastPartitionOffset() const
+{
+    if (_partitions.empty())
+    {
+        return 0u;
     }
+
     return getPartitionOffset(to_U16(_partitions.size() - 1));
 }
 
 /// Trim down the Vertex vector to only upload the minimal amount of data to the GPU
-bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, const size_t dataOutBufferLength) {
-    assert(dataOut != nullptr);
+bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, const size_t dataOutBufferLength)
+{
+    DIVIDE_ASSERT(dataOut != nullptr);
 
-    if (dataOutBufferLength >= dataIn.size() * GetTotalDataSize(_useAttribute)) {
+    if (dataOutBufferLength >= dataIn.size() * GetTotalDataSize(_useAttribute))
+    {
         FillSmallData(dataIn,
                      dataOut,
                      _useAttribute[to_base(AttribLocation::TEXCOORD)],
@@ -418,51 +452,62 @@ bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, c
     return false;
 }
 
-bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut ) {
-    if (!_refreshQueued) {
-        // Everything is fine, carry on.
+bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut )
+{
+    if (!_refreshQueued)
+    {
         return false;
     }
+
     _refreshQueued = false;
 
-    assert(!_indices.empty() && "glVertexArray::refresh error: Invalid index data on Refresh()!");
-
+    DIVIDE_ASSERT(!_indices.empty() && "glVertexArray::refresh error: Invalid index data on Refresh()!");
     {
         const size_t effectiveEntrySize = GetTotalDataSize( _useAttribute );
 
-        vector_fast<Byte> smallData(_data.size() * effectiveEntrySize);
-        if (!getMinimalData(_data, smallData.data(), smallData.size())) {
+        vector<Byte> smallData(_data.size() * effectiveEntrySize);
+        if (!getMinimalData(_data, smallData.data(), smallData.size()))
+        {
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        if (_dataLayoutChanged) {
+        if (_dataLayoutChanged)
+        {
             GenericVertexData::SetBufferParams setBufferParams{};
             setBufferParams._bufferParams._elementSize = effectiveEntrySize;
             setBufferParams._bufferParams._elementCount = to_U32(_data.size());
-            setBufferParams._bufferParams._flags._updateFrequency = _staticBuffer ? BufferUpdateFrequency::ONCE : BufferUpdateFrequency::OFTEN;
+            setBufferParams._bufferParams._flags._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
             setBufferParams._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
             setBufferParams._initialData = { smallData.data(), smallData.size() };
             setBufferParams._elementStride = setBufferParams._bufferParams._elementSize;
             dataLockOut = _internalGVD->setBuffer(setBufferParams);
-        } else {
-            assert(!_staticBuffer);
+        }
+        else
+        {
+            DIVIDE_ASSERT( _descriptor._allowDynamicUpdates );
+
             dataLockOut = _internalGVD->updateBuffer(0u, 0u, to_U32(_data.size()), smallData.data());
         }
-        if (_staticBuffer && !_keepData) {
+
+        if (!_descriptor._keepCPUData && !_descriptor._allowDynamicUpdates)
+        {
             _data.clear();
-        } else {
+        }
+        else
+        {
             _data.shrink_to_fit();
         }
     }
 
-    if (_indicesChanged) {
+    if (_indicesChanged)
+    {
         // Check if we need to update the IBO (will be true for the first Refresh() call)
         GenericVertexData::IndexBuffer idxBuffer{};
         idxBuffer.count = _indices.size();
-        idxBuffer.smallIndices = !useLargeIndices();
+        idxBuffer.smallIndices = !_descriptor._largeIndices;
         idxBuffer.indicesNeedCast = idxBuffer.smallIndices;
         idxBuffer.data = _indices.data();
-        idxBuffer.dynamic = !_staticBuffer;
+        idxBuffer.dynamic = _descriptor._allowDynamicUpdates;
         indexLockOut = _internalGVD->setIndexBuffer(idxBuffer);
         _indicesChanged = false;
     }
@@ -470,7 +515,8 @@ bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut ) 
     return true;
 }
 
-void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data) {
+void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data)
+{
     // Check if we have a refresh request queued up
     BufferLock dataLock, indexLock{};
     const bool refreshed = refresh(dataLock, indexLock);
@@ -529,7 +575,8 @@ AttributeMap VertexBuffer::generateAttributeMap()
         desc._strideInBytes = offsets[positionLoc];
     }
 
-    if (_useAttribute[texCoordLoc]) {
+    if (_useAttribute[texCoordLoc])
+    {
         AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::TEXCOORD)];
         desc._componentsPerElement = 2;
         desc._dataType = GFXDataFormat::FLOAT_32;
@@ -537,7 +584,8 @@ AttributeMap VertexBuffer::generateAttributeMap()
         desc._strideInBytes = offsets[texCoordLoc];
     }
 
-    if (_useAttribute[normalLoc]) {
+    if (_useAttribute[normalLoc])
+    {
         AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::NORMAL)];
         desc._componentsPerElement = 1;
         desc._dataType = GFXDataFormat::FLOAT_32;
@@ -545,7 +593,8 @@ AttributeMap VertexBuffer::generateAttributeMap()
         desc._strideInBytes = offsets[normalLoc];
     }
 
-    if (_useAttribute[tangentLoc]) {
+    if (_useAttribute[tangentLoc])
+    {
         AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::TANGENT)];
         desc._componentsPerElement = 1;
         desc._dataType = GFXDataFormat::FLOAT_32;
@@ -553,7 +602,8 @@ AttributeMap VertexBuffer::generateAttributeMap()
         desc._strideInBytes = offsets[tangentLoc];
     }
 
-    if (_useAttribute[colourLoc]) {
+    if (_useAttribute[colourLoc])
+    {
         AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::COLOR)];
         desc._componentsPerElement = 4;
         desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
@@ -561,8 +611,9 @@ AttributeMap VertexBuffer::generateAttributeMap()
         desc._strideInBytes = offsets[colourLoc];
     }
 
-    if (_useAttribute[boneWeightLoc]) {
-        assert(_useAttribute[boneIndiceLoc]);
+    if (_useAttribute[boneWeightLoc])
+    {
+        DIVIDE_ASSERT( _useAttribute[boneIndiceLoc]);
         {
             AttributeDescriptor& desc = retMap._attributes[to_base(AttribLocation::BONE_WEIGHT)];
             desc._componentsPerElement = 4;
@@ -583,16 +634,20 @@ AttributeMap VertexBuffer::generateAttributeMap()
 }
 
 //ref: https://www.iquilezles.org/www/articles/normals/normals.htm
-void VertexBuffer::computeNormals() {
+void VertexBuffer::computeNormals()
+{
     const size_t vertCount = getVertexCount();
     const size_t indexCount = getIndexCount();
 
     vector<vec3<F32>> normalBuffer(vertCount, 0.0f);
-    for (size_t i = 0u; i < indexCount; i += 3) {
+    for (size_t i = 0u; i < indexCount; i += 3u)
+    {
 
         const U32 idx0 = getIndex(i + 0);
-        if (idx0 == PRIMITIVE_RESTART_INDEX_L || idx0 == PRIMITIVE_RESTART_INDEX_S) {
-            assert(i > 2);
+
+        if (idx0 == PRIMITIVE_RESTART_INDEX_L || idx0 == PRIMITIVE_RESTART_INDEX_S)
+        {
+            DIVIDE_ASSERT( i > 2);
             i -= 2;
             continue;
         }
@@ -613,12 +668,14 @@ void VertexBuffer::computeNormals() {
         normalBuffer[idx2] += no;
     }
 
-    for (U32 i = 0u; i < vertCount; ++i) {
+    for (U32 i = 0u; i < vertCount; ++i)
+    {
         modifyNormalValue(i, Normalized(normalBuffer[i]));
     }
 }
 
-void VertexBuffer::computeTangents() {
+void VertexBuffer::computeTangents()
+{
     const size_t indexCount = getIndexCount();
 
     // Code from:
@@ -628,11 +685,13 @@ void VertexBuffer::computeTangents() {
     vec2<F32> deltaUV1, deltaUV2;
     vec3<F32> tangent;
 
-    for (U32 i = 0u; i < indexCount; i += 3) {
+    for (U32 i = 0u; i < indexCount; i += 3)
+    {
         // get the three vertices that make the faces
         const U32 idx0 = getIndex(i + 0);
-        if (idx0 == PRIMITIVE_RESTART_INDEX_L || idx0 == PRIMITIVE_RESTART_INDEX_S) {
-            assert(i > 2);
+        if (idx0 == PRIMITIVE_RESTART_INDEX_L || idx0 == PRIMITIVE_RESTART_INDEX_S)
+        {
+            DIVIDE_ASSERT( i > 2);
             i -= 2;
             continue;
         }
@@ -668,8 +727,8 @@ void VertexBuffer::computeTangents() {
     }
 }
 
-void VertexBuffer::reset() {
-    _staticBuffer = false;
+void VertexBuffer::reset()
+{
     primitiveRestartRequired(false);
     _partitions.clear();
     _data.clear();
@@ -680,36 +739,39 @@ void VertexBuffer::reset() {
 void VertexBuffer::fromBuffer(const VertexBuffer& other)
 {
     reset();
-    staticBuffer(other.staticBuffer());
-    useLargeIndices(other.useLargeIndices());
-    primitiveRestartRequired(other.primitiveRestartRequired());
-    unchecked_copy(_indices, other._indices);
-    unchecked_copy(_data, other._data);
+
+    _descriptor = other._descriptor;
     _partitions = other._partitions;
-    _keepData = other._keepData;
     _useAttribute = other._useAttribute;
     _refreshQueued = true;
     _dataLayoutChanged = true;
+
+    primitiveRestartRequired(other.primitiveRestartRequired());
+    unchecked_copy(_indices, other._indices);
+    unchecked_copy(_data, other._data);
 }
 
-bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
-    assert(!dataIn.bufferEmpty());
+bool VertexBuffer::deserialize(ByteBuffer& dataIn)
+{
+    DIVIDE_ASSERT( !dataIn.bufferEmpty());
 
     auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     dataIn >> tempVer;
 
-    if (tempVer == BYTE_BUFFER_VERSION) {
+    if (tempVer == BYTE_BUFFER_VERSION)
+    {
         U64 idString = 0u;
         dataIn >> idString;
-        if (idString == _ID("VB")) {
+        if (idString == _ID("VB"))
+        {
             reset();
-            dataIn >> _staticBuffer;
-            dataIn >> _keepData;
+            dataIn >> _descriptor._allowDynamicUpdates;
+            dataIn >> _descriptor._keepCPUData;
+            dataIn >> _descriptor._largeIndices;
             dataIn >> _partitions;
             dataIn >> _indices;
             dataIn >> _data;
             dataIn >> _useAttribute;
-            dataIn >> _useLargeIndices;
             dataIn >> _primitiveRestartRequired;
 
             return true;
@@ -719,22 +781,25 @@ bool VertexBuffer::deserialize(ByteBuffer& dataIn) {
     return false;
 }
 
-bool VertexBuffer::serialize(ByteBuffer& dataOut) const {
-    if (!_data.empty()) {
-        dataOut << BYTE_BUFFER_VERSION;
-        dataOut << _ID("VB");
-        dataOut << _staticBuffer;
-        dataOut << _keepData;
-        dataOut << _partitions;
-        dataOut << _indices;
-        dataOut << _data;
-        dataOut << _useAttribute;
-        dataOut << _useLargeIndices;
-        dataOut << _primitiveRestartRequired;
-
-        return true;
+bool VertexBuffer::serialize(ByteBuffer& dataOut) const
+{
+    if (_data.empty())
+    {
+        return false;
     }
-    return false;
+
+    dataOut << BYTE_BUFFER_VERSION;
+    dataOut << _ID("VB");
+    dataOut << _descriptor._allowDynamicUpdates;
+    dataOut << _descriptor._keepCPUData;
+    dataOut << _descriptor._largeIndices;
+    dataOut << _partitions;
+    dataOut << _indices;
+    dataOut << _data;
+    dataOut << _useAttribute;
+    dataOut << _primitiveRestartRequired;
+
+    return true;
 }
 
 size_t VertexBuffer::GetTotalDataSize( const AttributeFlags& usedAttributes )
@@ -756,29 +821,35 @@ AttributeOffsets VertexBuffer::GetAttributeOffsets(const AttributeFlags& usedAtt
 
     totalDataSizeOut = sizeof(vec3<F32>);
 
-    if (usedAttributes[to_base(AttribLocation::TEXCOORD)]) {
+    if (usedAttributes[to_base(AttribLocation::TEXCOORD)])
+    {
         offsets[to_base(AttribLocation::TEXCOORD)] = to_U32(totalDataSizeOut);
         totalDataSizeOut += sizeof(vec2<F32>);
     }
 
-    if (usedAttributes[to_base(AttribLocation::NORMAL)]) {
+    if (usedAttributes[to_base(AttribLocation::NORMAL)])
+    {
         offsets[to_base(AttribLocation::NORMAL)] = to_U32(totalDataSizeOut);
         totalDataSizeOut += sizeof(F32);
     }
 
-    if (usedAttributes[to_base(AttribLocation::TANGENT)]) {
+    if (usedAttributes[to_base(AttribLocation::TANGENT)])
+    {
         offsets[to_base(AttribLocation::TANGENT)] = to_U32(totalDataSizeOut);
         totalDataSizeOut += sizeof(F32);
     }
 
-    if (usedAttributes[to_base(AttribLocation::COLOR)]) {
+    if (usedAttributes[to_base(AttribLocation::COLOR)])
+    {
         offsets[to_base(AttribLocation::COLOR)] = to_U32(totalDataSizeOut);
         totalDataSizeOut += sizeof(UColour4);
     }
 
-    if (usedAttributes[to_base(AttribLocation::BONE_INDICE)]) {
+    if (usedAttributes[to_base(AttribLocation::BONE_INDICE)])
+    {
         offsets[to_base(AttribLocation::BONE_WEIGHT)] = to_U32(totalDataSizeOut);
         totalDataSizeOut += sizeof(vec4<U8>);
+
         offsets[to_base(AttribLocation::BONE_INDICE)] = to_U32(totalDataSizeOut);
         totalDataSizeOut += sizeof( vec4<U8> );
     }

@@ -52,7 +52,7 @@ public:
         U16 _level = 0u; // 0 - child, 1 - grandchild etc or 0 - parent, 1 - grandparent, etc
     };
 
-    using Cache = vector_fast<CacheEntry>;
+    using Cache = vector<CacheEntry>;
 public:
     SGNRelationshipCache(SceneGraphNode* parent) noexcept;
 

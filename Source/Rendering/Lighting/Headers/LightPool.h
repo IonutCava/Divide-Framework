@@ -48,11 +48,11 @@ namespace Time {
 };
 
 class Frustum;
+class ShaderProgram;
 class SceneGraphNode;
 class SceneRenderState;
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 class LightPool final : public FrameListener, 
                         public SceneComponent,
@@ -112,7 +112,10 @@ class LightPool final : public FrameListener,
         BoundingSphere _volume;
         bool _staticSource = false;
     };
-    using LightList = eastl::fixed_vector<Light*, 32u, true, eastl::dvd_allocator>;
+    using LightList = eastl::fixed_vector<Light*, 32u, true>;
+
+    static void InitStaticData( PlatformContext& context );
+    static void DestroyStaticData();
 
     explicit LightPool(Scene& parentScene, PlatformContext& context);
     ~LightPool() override;
@@ -151,7 +154,7 @@ class LightPool final : public FrameListener,
 
     /// Get the appropriate shadow bind slot for every light's shadow
     [[nodiscard]] static U8 GetShadowBindSlotOffset(const ShadowType type) noexcept {
-        return _shadowLocation[to_U32(type)];
+        return s_shadowLocation[to_U32(type)];
     }
 
     PROPERTY_RW(bool, lightImpostorsEnabled, false);
@@ -187,14 +190,15 @@ class LightPool final : public FrameListener,
 
 
     friend class ShadowMap;
-    ShaderBuffer* shadowBuffer() const { return _shadowBuffer.get(); }
+    static ShaderBuffer* ShadowBuffer() { return s_shadowBuffer.get(); }
 
     friend class Renderer;
-    [[nodiscard]] ShaderBuffer* lightBuffer() const { return _lightBuffer.get(); }
-    [[nodiscard]] ShaderBuffer* sceneBuffer() const { return _sceneBuffer.get(); }
+    [[nodiscard]] static ShaderBuffer* LightBuffer() { return s_lightBuffer.get(); }
+    [[nodiscard]] static ShaderBuffer* SceneBuffer() { return s_sceneBuffer.get(); }
+
     [[nodiscard]] U32           sortedLightCount(const RenderStage stage) const { return _sortedLightPropertiesCount[to_base(stage)]; }
+
   private:
-      void init();
       U32 uploadLightList(RenderStage stage,
                           const LightList& lights,
                           const mat4<F32>& viewMatrix);
@@ -223,21 +227,19 @@ class LightPool final : public FrameListener,
     ShadowProperties _shadowBufferData;
 
     mutable SharedMutex _movedSceneVolumesLock;
-    eastl::fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true, eastl::dvd_allocator> _movedSceneVolumes;
+    eastl::fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true> _movedSceneVolumes;
 
     mutable SharedMutex _lightLock{};
-
-    Texture_ptr _lightIconsTexture;
-    ShaderProgram_ptr _lightImpostorShader;
-    ShaderBuffer_uptr _lightBuffer;
-    ShaderBuffer_uptr _sceneBuffer;
-    ShaderBuffer_uptr _shadowBuffer;
     Time::ProfileTimer& _shadowPassTimer;
-    U32               _totalLightCount = 0u;
-    bool _shadowBufferDirty = false;
-    bool _init = false;
+    U32                 _totalLightCount = 0u;
+    bool                _shadowBufferDirty = false;
 
-    static std::array<U8, to_base(ShadowType::COUNT)> _shadowLocation;
+    static std::array<U8, to_base(ShadowType::COUNT)> s_shadowLocation;
+    static Handle<Texture>       s_lightIconsTexture;
+    static Handle<ShaderProgram> s_lightImpostorShader;
+    static ShaderBuffer_uptr s_lightBuffer;
+    static ShaderBuffer_uptr s_sceneBuffer;
+    static ShaderBuffer_uptr s_shadowBuffer;
 };
 
 FWD_DECLARE_MANAGED_CLASS(LightPool);

@@ -44,7 +44,7 @@ void NavMeshDebugDraw::beginBatch() {
         pipeDesc._stateBlock._cullMode = CullMode::NONE;
         pipeDesc._stateBlock._depthTestEnabled = _depthMask;
         pipeDesc._stateBlock._depthWriteEnabled = false;
-        pipeDesc._shaderProgramHandle = _context.imShaders()->imShaderNoTexture()->handle();
+        pipeDesc._shaderProgramHandle = _context.imShaders()->imShaderNoTexture();
         _primitive->setPipelineDescriptor(pipeDesc);
     }
 

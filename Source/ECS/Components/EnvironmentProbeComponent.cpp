@@ -9,7 +9,6 @@
 #include "Scenes/Headers/Scene.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -137,15 +136,15 @@ EnvironmentProbeComponent::~EnvironmentProbeComponent()
     enabled(false);
 }
 
-SceneGraphNode* EnvironmentProbeComponent::findNodeToIgnore() const noexcept {
+SceneGraphNode* EnvironmentProbeComponent::findNodeToIgnore() const noexcept
+{
     //If we are not a root-level probe. Avoid rendering our parent and children into the reflection
-    if (parentSGN()->parent() != nullptr) {
+    if (parentSGN()->parent() != nullptr)
+    {
         SceneGraphNode* parent = parentSGN()->parent();
-        while (parent != nullptr) {
-            const SceneNodeType type = parent->getNode().type();
-
-            if (type != SceneNodeType::TYPE_TRANSFORM &&
-                type != SceneNodeType::TYPE_TRIGGER)
+        while (parent != nullptr)
+        {
+            if ( parent->getNode().type() != SceneNodeType::TYPE_TRANSFORM)
             {
                 return parent;
             }
@@ -238,7 +237,7 @@ bool EnvironmentProbeComponent::enabled() const
 void EnvironmentProbeComponent::enabled(const bool state)
 {
     Parent::enabled(state);
-    const auto sceneData = _context.gfx().sceneData();
+    const auto& sceneData = _context.gfx().sceneData();
     if (sceneData != nullptr)
     {
         sceneData->probeState(poolIndex(), state);
@@ -246,7 +245,7 @@ void EnvironmentProbeComponent::enabled(const bool state)
 }
 
 void EnvironmentProbeComponent::updateProbeData() const noexcept {
-    const auto sceneData = _context.gfx().sceneData();
+    const auto& sceneData = _context.gfx().sceneData();
     sceneData->probeData(poolIndex(), _aabb.getCenter(), _aabb.getHalfExtent());
 }
 

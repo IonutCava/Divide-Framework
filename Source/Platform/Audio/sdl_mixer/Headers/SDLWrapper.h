@@ -47,8 +47,8 @@ public:
     ErrorCode initAudioAPI() override;
     void closeAudioAPI() override;
 
-    void playSound(const AudioDescriptor_ptr& sound) override;
-    void playMusic(const AudioDescriptor_ptr& music) override;
+    void playSound(const Handle<AudioDescriptor> sound) override;
+    void playMusic(const Handle<AudioDescriptor> music) override;
 
     void stopMusic() noexcept override;
     void stopAllSounds() noexcept override {}
@@ -61,8 +61,8 @@ protected:
     void musicFinished() noexcept override;
 
 private:
-    using MusicMap = hashMap<I64, Mix_Music*>;
-    using SoundMap = hashMap<I64, Mix_Chunk*>;
+    using MusicMap = hashMap<U32, Mix_Music*>;
+    using SoundMap = hashMap<U32, Mix_Chunk*>;
 
     MusicMap _musicMap;
     SoundMap _soundMap;

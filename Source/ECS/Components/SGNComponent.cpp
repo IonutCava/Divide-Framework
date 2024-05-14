@@ -16,49 +16,50 @@ namespace Divide {
         : PlatformContextComponent(context)
         , _parentSGN(parentSGN)
         , _type(type)
-        , _editorComponent(this, &context.editor(), type, TypeUtil::ComponentTypeToString(type))
+        , _editorComponent(context, type, TypeUtil::ComponentTypeToString(type))
     {
     }
 
-    bool SGNComponent::saveCache(ByteBuffer& outputBuffer) const {
-        if (_editorComponent.saveCache(outputBuffer)) {
-            outputBuffer << BYTE_BUFFER_VERSION;
-            outputBuffer << uniqueID();
-            return true;
-        }
-
-        return false;
+    bool SGNComponent::saveCache(ByteBuffer& outputBuffer) const
+    {
+        outputBuffer << BYTE_BUFFER_VERSION;
+        outputBuffer << uniqueID();
+        return Attorney::EditorComponentSceneGraphNode::saveCache(_editorComponent, outputBuffer);
     }
 
-    bool SGNComponent::loadCache(ByteBuffer& inputBuffer) {
-        if (_editorComponent.loadCache(inputBuffer)) {
+    bool SGNComponent::loadCache(ByteBuffer& inputBuffer)
+    {
             auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
-            inputBuffer >> tempVer;
-            if (tempVer != BYTE_BUFFER_VERSION) {
-                // Older version
-                return false;
-            }
-
-            U64 tempID = 0u;
-            inputBuffer >> tempID;
-            if (tempID != uniqueID()) {
-                // corrupt save
-                return false;
-            }
-
-            return true;
+        inputBuffer >> tempVer;
+        if (tempVer != BYTE_BUFFER_VERSION)
+        {
+            // Older version
+            return false;
         }
 
-        return false;
+        U64 tempID = 0u;
+        inputBuffer >> tempID;
+        if (tempID != uniqueID())
+        {
+            // corrupt save
+            return false;
+        }
+
+        return Attorney::EditorComponentSceneGraphNode::loadCache(_editorComponent, inputBuffer);
     }
 
-    void SGNComponent::saveToXML([[maybe_unused]] boost::property_tree::ptree& pt) const {
+    void SGNComponent::saveToXML(boost::property_tree::ptree& pt) const
+    {
+        Attorney::EditorComponentSceneGraphNode::saveToXML(_editorComponent, pt);
     }
 
-    void SGNComponent::loadFromXML([[maybe_unused]] const boost::property_tree::ptree& pt) {
+    void SGNComponent::loadFromXML(const boost::property_tree::ptree& pt)
+    {
+        Attorney::EditorComponentSceneGraphNode::loadFromXML(_editorComponent, pt);
     }
 
-    U64 SGNComponent::uniqueID() const {
+    U64 SGNComponent::uniqueID() const
+    {
         return _ID(Util::StringFormat("{}_{}", _parentSGN->name().c_str(), _editorComponent.name().c_str()).c_str());
     }
 
@@ -72,7 +73,8 @@ namespace Divide {
         _enabled = state;
     }
 
-    void SGNComponent::OnData([[maybe_unused]] const ECS::CustomEvent& data) {
+    void SGNComponent::OnData([[maybe_unused]] const ECS::CustomEvent& data)
+    {
        
     }
 

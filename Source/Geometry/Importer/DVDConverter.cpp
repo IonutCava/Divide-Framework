@@ -51,8 +51,9 @@ namespace {
     };
 
     /// Recursively creates an internal node structure matching the current scene and animation.
-    Bone* CreateBoneTree(aiNode* pNode, Bone* parent) {
-        Bone* internalNode = MemoryManager_NEW Bone(pNode->mName.data);
+    Bone* CreateBoneTree(aiNode* pNode, Bone* parent)
+    {
+        Bone* internalNode = new Bone(pNode->mName.data);
         // set the parent; in case this is the root node, it will be null
         internalNode->_parent = parent;
         mat4<F32> out;
@@ -63,7 +64,8 @@ namespace {
 
         // continue for all child nodes and assign the created internal nodes as our
         // children recursively call this function on all children
-        for (U32 i = 0u; i < pNode->mNumChildren; ++i) {
+        for (U32 i = 0u; i < pNode->mNumChildren; ++i)
+        {
             internalNode->_children.push_back(CreateBoneTree(pNode->mChildren[i], internalNode));
         }
 
@@ -202,15 +204,18 @@ bool Load(PlatformContext& context, Import::ImportData& target)
                              aiProcess_GenBoundingBoxes |
                              aiProcess_TransformUVCoords;// Preprocess UV transformations (scaling, translation ...)
 
-    const aiScene* aiScenePointer = importer.ReadFile((filePath / fileName).string(), to_U32(ppSteps));
+    const string modelPath = (filePath / fileName).string();
+    const aiScene* aiScenePointer = importer.ReadFile( modelPath.c_str(), to_U32(ppSteps) );
 
-    if (!aiScenePointer) {
+    if (!aiScenePointer)
+    {
         Console::errorfn(LOCALE_STR("ERROR_IMPORTER_FILE"), fileName, importer.GetErrorString());
         return false;
     }
 
     aiMatrix4x4 axisCorrectionBasis;
-    if (aiScenePointer->mMetaData) {
+    if (aiScenePointer->mMetaData)
+    {
         I32 UpAxis = 1, UpAxisSign = 1, FrontAxis = 2, FrontAxisSign = 1, CoordAxis = 0, CoordAxisSign = 1;
         D64 UnitScaleFactor = 1.0;
         aiScenePointer->mMetaData->Get<int>("UpAxis", UpAxis);
@@ -234,14 +239,14 @@ bool Load(PlatformContext& context, Import::ImportData& target)
 
     const GeometryFormat format = GetGeometryFormatForExtension(getExtension(fileName).substr(1).c_str());
 
-    if (format == GeometryFormat::COUNT) {
+    if (format == GeometryFormat::COUNT)
+    {
         // unsupported
         return false;
     }
 
-    target.hasAnimations(aiScenePointer->HasAnimations());
-
-    if (target.hasAnimations()) {
+    if ( aiScenePointer->HasAnimations() )
+    {
         target._skeleton = CreateBoneTree(aiScenePointer->mRootNode, nullptr);
 
         target._bones.reserve( target._skeleton->hierarchyDepth() );
@@ -268,12 +273,16 @@ bool Load(PlatformContext& context, Import::ImportData& target)
             }
         }
 
-        for (U32 i = 0u; i < aiScenePointer->mNumAnimations; i++) {
+        for (U32 i = 0u; i < aiScenePointer->mNumAnimations; ++i)
+        {
             const aiAnimation* animation = aiScenePointer->mAnimations[i];
-            if (IS_ZERO(animation->mDuration)) {
+            if (IS_ZERO(animation->mDuration))
+            {
                 Console::errorfn(LOCALE_STR("LOADED_0_LENGTH_ANIMATION"), animation->mName.C_Str());
-            } else {
-                target._animations.push_back(MemoryManager_NEW AnimEvaluator(animation, i));
+            }
+            else
+            {
+                target._animations.emplace_back(new AnimEvaluator(animation, i));
             }
         }
     }
@@ -303,7 +312,7 @@ bool Load(PlatformContext& context, Import::ImportData& target)
         }
 
         const string subMeshName = currentMesh->mName.length == 0 ? Util::StringFormat("submesh_{}", n) : currentMesh->mName.C_Str();
-        const string fullName = Util::StringFormat("{}_{}_{}", subMeshName.c_str(), n, modelName);
+        const string fullName = Util::StringFormat("{}_{}_{}", subMeshName, n, modelName);
 
         Import::SubMeshData subMeshTemp = {};
         subMeshTemp.name(fullName.length() >= maxMeshNameLength ? fullName.substr(0, maxMeshNameLength - 1u).c_str() : fullName.c_str());
@@ -331,13 +340,11 @@ bool Load(PlatformContext& context, Import::ImportData& target)
 
 namespace detail {
 
-void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) {
-    target._vertexBuffer = context.gfx().newVB(true, target.modelName());
-
-    VertexBuffer* vb = target._vertexBuffer.get();
-
+void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target)
+{
     size_t indexCount = 0u, vertexCount = 0u;
-    for (const Import::SubMeshData& data : target._subMeshData) {
+    for (const Import::SubMeshData& data : target._subMeshData)
+    {
         for ( U8 lod = 0u; lod < data.lodCount(); ++lod )
         {
             indexCount += data._indices[lod].size();
@@ -345,7 +352,15 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
         }
     }
 
-    vb->useLargeIndices(vertexCount >= U16_MAX);
+    VertexBuffer::Descriptor descriptor{};
+    descriptor._allowDynamicUpdates = false;
+    descriptor._keepCPUData = true;
+    descriptor._largeIndices = vertexCount >= U16_MAX;
+    descriptor._name = target.modelName();
+
+    target._vertexBuffer = context.gfx().newVB( descriptor );
+    VertexBuffer* vb = target._vertexBuffer.get();
+
     vb->setVertexCount(vertexCount);
     vb->reserveIndexCount(indexCount);
 
@@ -361,7 +376,8 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
         {
             const size_t idxCount = data._indices[lod].size();
 
-            if (idxCount == 0u) {
+            if (idxCount == 0u)
+            {
                 assert(lod > 0u);
                 subMeshBoneOffset += data.boneCount();
                 data._partitionIDs[lod] = data._partitionIDs[lod - 1];
@@ -370,8 +386,10 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
 
             data._triangles[lod].reserve(idxCount / 3);
             const auto& indices = data._indices[lod];
-            for (size_t i = 0; i < idxCount; i += 3) {
-                const U32 triangleTemp[3] = {
+            for (size_t i = 0; i < idxCount; i += 3)
+            {
+                const U32 triangleTemp[3] =
+                {
                     indices[i + 0] + previousOffset,
                     indices[i + 1] + previousOffset,
                     indices[i + 2] + previousOffset
@@ -387,7 +405,8 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
             auto& vertices = data._vertices[lod];
             const U32 vertCount = to_U32(vertices.size());
 
-            for (U32 i = 0; i < vertCount; ++i) {
+            for (U32 i = 0; i < vertCount; ++i)
+            {
                 const U32 targetIdx = i + previousOffset;
 
                 const Import::SubMeshData::Vertex& vert = vertices[i];
@@ -395,21 +414,26 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
                 vb->modifyPositionValue(targetIdx, vert.position);
                 vb->modifyNormalValue(targetIdx, vert.normal);
 
-                if (hasTexCoord) {
+                if (hasTexCoord)
+                {
                     vb->modifyTexCoordValue(targetIdx, vert.texcoord.xy);
                 }
-                if (hasTangent) {
+                if (hasTangent)
+                {
                     vb->modifyTangentValue(targetIdx, vert.tangent.xyz);
                 }
             }//vertCount
 
-            if (hasBones) {
-                for (U32 i = 0; i < vertCount; ++i) {
+            if (hasBones)
+            {
+                for (U32 i = 0; i < vertCount; ++i)
+                {
                     const U32 targetIdx = i + previousOffset;
 
                     Import::SubMeshData::Vertex& vert = vertices[i];
                     vec4<U8>& boneIndices = vert.indices;
-                    for (U8& idx : boneIndices._v) {
+                    for (U8& idx : boneIndices._v)
+                    {
                         idx += subMeshBoneOffset;
                     }
 
@@ -428,7 +452,7 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target) 
 
 void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData, Import::ImportData& target)
 {
-    const bool isAnimated = target.hasAnimations();
+    const bool isAnimated = target._animations.size();
 
     subMeshData.maxPos( { source->mAABB.mMax.x, source->mAABB.mMax.y, source->mAABB.mMax.z } );
     subMeshData.minPos( { source->mAABB.mMin.x, source->mAABB.mMin.y, source->mAABB.mMin.z } );

@@ -42,7 +42,7 @@ namespace Divide
 {
     struct SceneEntry;
 
-    FWD_DECLARE_MANAGED_CLASS(Texture);
+    class Texture;
 
     class MenuBar final : public PlatformContextComponent, NonMovable {
         enum class DebugObject : U8 {
@@ -80,7 +80,7 @@ namespace Divide
         DebugObject _debugObject = DebugObject::COUNT;
         
         string _errorMsg = "";
-        vector<Texture_ptr> _previewTextures;
+        vector<Handle<Texture>> _previewTextures;
         
         ImGuiFs::Dialog _sceneOpenDialog;
         ImGuiFs::Dialog _sceneSaveDialog;

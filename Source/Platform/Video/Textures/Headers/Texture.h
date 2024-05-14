@@ -65,7 +65,7 @@ namespace TypeUtil
     [[nodiscard]] TextureMipSampling StringToTextureMipSampling( const string& sampling );
 };
 
-FWD_DECLARE_MANAGED_CLASS( Texture );
+class Texture;
 
 struct TextureLayoutChange
 {
@@ -88,21 +88,15 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
     friend class Attorney::TextureKernel;
 
     public:
-        explicit Texture( GFXDevice& context,
-                          size_t descriptorHash,
-                          const std::string_view name,
-                          const std::string_view assetNames,
-                          const ResourcePath& assetLocations,
-                          const TextureDescriptor& texDescriptor,
-                          ResourceCache& parentCache );
+        explicit Texture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor );
 
         virtual ~Texture() override;
 
         static void OnStartup( GFXDevice& gfx );
         static void OnShutdown() noexcept;
         [[nodiscard]] static bool UseTextureDDSCache() noexcept;
-        [[nodiscard]] static const Texture_ptr& DefaultTexture2D() noexcept;
-        [[nodiscard]] static const Texture_ptr& DefaultTexture2DArray() noexcept;
+        [[nodiscard]] static Handle<Texture> DefaultTexture2D() noexcept;
+        [[nodiscard]] static Handle<Texture> DefaultTexture2DArray() noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
 
@@ -138,21 +132,19 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
         PROPERTY_R( bool, hasTranslucency, false );
         /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
         PROPERTY_R( bool, hasTransparency, false );
-
+        PROPERTY_R( bool, loadedFromFile, false );
         [[nodiscard]] U8 numChannels() const noexcept;
 
+        bool load( PlatformContext& context ) override;
+        bool postLoad() override;
      protected:
         /// Use STB to load a file into a Texture Object
         bool loadFile( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
         bool checkTransparency( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
         /// Load texture data using the specified file name
-        bool load() override;
-        virtual void threadedLoad();
-        virtual void postLoad();
+        bool loadInternal();
 
         void validateDescriptor();
-
-        [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Texture"; }
 
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
@@ -160,13 +152,10 @@ class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
         virtual void submitTextureData();
 
     protected:
-        ResourceCache& _parentCache;
-
-    protected:
         static bool s_useDDSCache;
         static SamplerDescriptor s_defaultSampler;
-        static Texture_ptr s_defaultTexture2D;
-        static Texture_ptr s_defaultTexture2DArray;
+        static Handle<Texture> s_defaultTexture2D;
+        static Handle<Texture> s_defaultTexture2DArray;
         static Str<64> s_missingTextureFileName;
 };
 

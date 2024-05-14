@@ -48,7 +48,7 @@ namespace Divide
 
         GFXDevice* _parent{ nullptr };
         GenericVertexData_ptr _fontRenderingBuffer{};
-        Texture_ptr _fontRenderingTexture{};
+        Handle<Texture> _fontRenderingTexture{INVALID_HANDLE<Texture>};
         I32 _width{ 1u };
 
         GFX::CommandBuffer* _commandBuffer{ nullptr };
@@ -82,29 +82,25 @@ namespace Divide
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
-            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, false, "GUIFontBuffer" );
+            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, "GUIFontBuffer" );
 
             RefreshBufferSize(dvd);
 
-            TextureDescriptor texDescriptor( TextureType::TEXTURE_2D,
-                                             GFXDataFormat::UNSIGNED_BYTE,
-                                             GFXImageFormat::RED,
-                                             GFXImagePacking::NORMALIZED );
-            texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-            texDescriptor.allowRegionUpdates(true);
+            ResourceDescriptor<Texture> resDescriptor( "FONTSTASH_font_texture" );
+            TextureDescriptor& texDescriptor = resDescriptor._propertyDescriptor;
+            texDescriptor._baseFormat = GFXImageFormat::RED;
+            texDescriptor._mipMappingState = MipMappingState::OFF;
+            texDescriptor._allowRegionUpdates = true;
 
-            ResourceDescriptor resDescriptor( "FONTSTASH_font_texture" );
-            resDescriptor.propertyDescriptor( texDescriptor );
-
-            dvd->_fontRenderingTexture = CreateResource<Texture>( dvd->_parent->context().kernel().resourceCache(), resDescriptor );
-            if ( dvd->_fontRenderingTexture )
+            dvd->_fontRenderingTexture = CreateResource( resDescriptor );
+            if ( dvd->_fontRenderingTexture != INVALID_HANDLE<Texture>)
             {
-                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec2<U16>( width, height), {});
-            }
+                Get(dvd->_fontRenderingTexture)->createWithData( nullptr, 0u, vec2<U16>( width, height), {});
 
-            if ( dvd->_fontRenderingTexture && dvd->_fontRenderingBuffer )
-            {
-                return 1;
+                if ( dvd->_fontRenderingBuffer )
+                {
+                    return 1;
+                }
             }
 
             return 0;
@@ -215,7 +211,7 @@ namespace Divide
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, _fonsContext->_fontRenderingTexture->getView(), sampler );
+        Set( binding._data, _fonsContext->_fontRenderingTexture, sampler );
 
         size_t drawCount = 0;
         size_t previousStyle = 0;
@@ -353,7 +349,7 @@ namespace Divide
 
         if ( _ceguiRenderer != nullptr )
         {
-            context.drawTextureInViewport( _renderTextureTarget->getAttachmentTex()->getView(), _renderTextureTarget->getSampler(), viewport, false, false, true, bufferInOut);
+            context.drawTextureInViewport( Get(_renderTextureTarget->getAttachmentTex())->getView(), _renderTextureTarget->getSampler(), viewport, false, false, true, bufferInOut);
         }
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
@@ -400,7 +396,7 @@ namespace Divide
         return true;
     }
 
-    ErrorCode GUI::init( PlatformContext& context, ResourceCache* cache )
+    ErrorCode GUI::init( PlatformContext& context )
     {
         if ( _init )
         {
@@ -411,10 +407,9 @@ namespace Divide
 
         _ceguiInput.init( parent().platformContext().config() );
 
-        _console = MemoryManager_NEW GUIConsole( *this, context, cache );
-        assert( _console );
+        _console = std::make_unique<GUIConsole>( *this, context );
 
-        GUIButton::soundCallback( [&context]( const AudioDescriptor_ptr& sound )
+        GUIButton::soundCallback( [&context]( const Handle<AudioDescriptor>& sound )
                                   {
                                       context.sfx().playSound( sound );
                                   } );
@@ -433,9 +428,9 @@ namespace Divide
         {
             const DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
-            if ( dvd->_fontRenderingTexture )
+            if ( dvd->_fontRenderingTexture != INVALID_HANDLE<Texture>)
             {
-                dvd->_fontRenderingTexture->createWithData( nullptr, 0u, vec2<U16>( width, height), {} );
+                Get(dvd->_fontRenderingTexture)->createWithData( nullptr, 0u, vec2<U16>( width, height), {} );
                 return 1;
             }
 
@@ -445,7 +440,7 @@ namespace Divide
         {
             const DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
-            if ( !dvd->_fontRenderingTexture )
+            if ( dvd->_fontRenderingTexture == INVALID_HANDLE<Texture> )
             {
                 FONSRenderCreate( userPtr, dvd->_width, dvd->_width );
             }
@@ -461,12 +456,12 @@ namespace Divide
                 ._skipRows = to_size( rect[1] )
             };
 
-            dvd->_fontRenderingTexture->replaceData( (const Divide::Byte*)data, sizeof( U8 ) * w * h, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, pixelUnpackAlignment );
+            Get(dvd->_fontRenderingTexture)->replaceData( (const Divide::Byte*)data, sizeof( U8 ) * w * h, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, pixelUnpackAlignment );
         };
         params.renderDraw = []( void* userPtr, const FONSvert* verts, int nverts )
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
-            if ( !dvd->_fontRenderingTexture || !dvd->_fontRenderingBuffer || !dvd->_commandBuffer )
+            if ( dvd->_fontRenderingTexture == INVALID_HANDLE<Texture> || !dvd->_fontRenderingBuffer || !dvd->_commandBuffer )
             {
                 return;
             }
@@ -494,7 +489,7 @@ namespace Divide
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
             dvd->_fontRenderingBuffer.reset();
-            dvd->_fontRenderingTexture.reset();
+            DestroyResource(dvd->_fontRenderingTexture);
         };
         params.userPtr = _fonsContext.get();
 
@@ -511,56 +506,50 @@ namespace Divide
             fragModule._sourceFile = "ImmediateModeEmulation.glsl";
             fragModule._variant = "GUI";
 
-
-            ShaderProgramDescriptor shaderDescriptor = {};
+            ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulationGUI" );
+            immediateModeShader.waitForReady( true );
+            ShaderProgramDescriptor& shaderDescriptor = immediateModeShader._propertyDescriptor;
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
 
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulationGUI" );
-            immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _textRenderShader = CreateResource<ShaderProgram>( cache, immediateModeShader, loadTasks );
-            _textRenderShader->addStateCallback( ResourceState::RES_LOADED, [this, &context]( CachedResource* )
-            {
-                PipelineDescriptor descriptor = {};
-                descriptor._shaderProgramHandle = _textRenderShader->handle();
-                descriptor._stateBlock = context.gfx().get2DStateBlock();
-                descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-                descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 ) + 4 * sizeof( U8 );
-                AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec2
-                AttributeDescriptor& descUV = descriptor._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];  //vec2
-                AttributeDescriptor& descColour = descriptor._vertexFormat._attributes[to_base( AttribLocation::COLOR )]; //vec4
+            _textRenderShader = CreateResource( immediateModeShader, loadTasks );
+            PipelineDescriptor descriptor = {};
+            descriptor._shaderProgramHandle = _textRenderShader;
+            descriptor._stateBlock = context.gfx().get2DStateBlock();
+            descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+            descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 ) + 4 * sizeof( U8 );
+            AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec2
+            AttributeDescriptor& descUV = descriptor._vertexFormat._attributes[to_base( AttribLocation::TEXCOORD )];  //vec2
+            AttributeDescriptor& descColour = descriptor._vertexFormat._attributes[to_base( AttribLocation::COLOR )]; //vec4
 
-                descPos._vertexBindingIndex = 0u;
-                descPos._componentsPerElement = 2u;
-                descPos._dataType = GFXDataFormat::FLOAT_32;
+            descPos._vertexBindingIndex = 0u;
+            descPos._componentsPerElement = 2u;
+            descPos._dataType = GFXDataFormat::FLOAT_32;
 
-                descUV._vertexBindingIndex = 0u;
-                descUV._componentsPerElement = 2u;
-                descUV._dataType = GFXDataFormat::FLOAT_32;
+            descUV._vertexBindingIndex = 0u;
+            descUV._componentsPerElement = 2u;
+            descUV._dataType = GFXDataFormat::FLOAT_32;
 
-                descColour._vertexBindingIndex = 0u;
-                descColour._componentsPerElement = 4u;
-                descColour._dataType = GFXDataFormat::UNSIGNED_BYTE;
-                descColour._normalized = true;
+            descColour._vertexBindingIndex = 0u;
+            descColour._componentsPerElement = 4u;
+            descColour._normalized = true;
 
-                descPos._strideInBytes = 0u;
-                descUV._strideInBytes = 2 * sizeof( F32 );
-                descColour._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 );
+            descPos._strideInBytes = 0u;
+            descUV._strideInBytes = 2 * sizeof( F32 );
+            descColour._strideInBytes = 2 * sizeof( F32 ) + 2 * sizeof( F32 );
 
-                BlendingSettings& blend = descriptor._blendStates._settings[0u];
-                descriptor._blendStates._blendColour = DefaultColours::BLACK_U8;
+            BlendingSettings& blend = descriptor._blendStates._settings[0u];
+            descriptor._blendStates._blendColour = DefaultColours::BLACK_U8;
 
-                blend.enabled( true );
-                blend.blendSrc( BlendProperty::SRC_ALPHA );
-                blend.blendDest( BlendProperty::INV_SRC_ALPHA );
-                blend.blendOp( BlendOperation::ADD );
-                blend.blendSrcAlpha( BlendProperty::ONE );
-                blend.blendDestAlpha( BlendProperty::ZERO );
-                blend.blendOpAlpha( BlendOperation::COUNT );
+            blend.enabled( true );
+            blend.blendSrc( BlendProperty::SRC_ALPHA );
+            blend.blendDest( BlendProperty::INV_SRC_ALPHA );
+            blend.blendOp( BlendOperation::ADD );
+            blend.blendSrcAlpha( BlendProperty::ONE );
+            blend.blendDestAlpha( BlendProperty::ZERO );
+            blend.blendOpAlpha( BlendOperation::COUNT );
 
-                _textRenderPipeline = context.gfx().newPipeline( descriptor );
-            } );
+            _textRenderPipeline = context.gfx().newPipeline( descriptor );
         }
         {
             ShaderModuleDescriptor vertModule = {};
@@ -572,14 +561,14 @@ namespace Divide
             fragModule._sourceFile = "ImmediateModeEmulation.glsl";
             fragModule._variant = "CEGUI";
 
-            ShaderProgramDescriptor shaderDescriptor = {};
-            shaderDescriptor._modules.push_back( vertModule );
-            shaderDescriptor._modules.push_back( fragModule );
 
-            ResourceDescriptor ceguiShader( "CEGUIShader" );
+            ResourceDescriptor<ShaderProgram> ceguiShader( "CEGUIShader" );
             ceguiShader.waitForReady( true );
-            ceguiShader.propertyDescriptor( shaderDescriptor );
-            _ceguiRenderShader = CreateResource<ShaderProgram>( cache, ceguiShader, loadTasks );
+
+            ShaderProgramDescriptor& shaderDescriptor = ceguiShader._propertyDescriptor;
+            shaderDescriptor._modules.push_back( fragModule );
+            shaderDescriptor._modules.push_back( vertModule );
+            _ceguiRenderShader = CreateResource( ceguiShader, loadTasks );
         }
 
         const Configuration::GUI& guiConfig = parent().platformContext().config().gui;
@@ -589,7 +578,8 @@ namespace Divide
             const CEGUI::Sizef size( static_cast<float>(renderSize.width), static_cast<float>(renderSize.height) );
             _ceguiRenderer = &CEGUI::CEGUIRenderer::create( context.gfx(), _ceguiRenderShader, size );
 
-            CEGUI::System::create( *_ceguiRenderer, nullptr, nullptr, nullptr, nullptr, "", (Paths::g_logPath / "CEGUI.log").string() );
+            const string logFile = (Paths::g_logPath / "CEGUI.log").string();
+            CEGUI::System::create( *_ceguiRenderer, nullptr, nullptr, nullptr, nullptr, "", logFile.c_str() );
             if constexpr ( Config::Build::IS_DEBUG_BUILD )
             {
                 CEGUI::Logger::getSingleton().setLoggingLevel( CEGUI::Informative );
@@ -597,7 +587,7 @@ namespace Divide
 
             CEGUI::DefaultResourceProvider* rp = static_cast<CEGUI::DefaultResourceProvider*>(CEGUI::System::getSingleton().getResourceProvider());
 
-            const CEGUI::String CEGUIInstallSharePath( Paths::g_GUILocation.string() + Paths::g_pathSeparator );
+            const CEGUI::String CEGUIInstallSharePath( (Paths::g_GUILocation.string() + Paths::g_pathSeparator).c_str() );
             rp->setResourceGroupDirectory( "schemes", CEGUIInstallSharePath + "schemes/" );
             rp->setResourceGroupDirectory( "imagesets", CEGUIInstallSharePath + "imagesets/" );
             rp->setResourceGroupDirectory( "fonts", CEGUIInstallSharePath + "fonts/" );
@@ -656,21 +646,17 @@ namespace Divide
 
     void GUI::recreateDefaultMessageBox()
     {
-        g_assertMsgBox = nullptr;
-        if ( _defaultMsgBox != nullptr )
-        {
-            MemoryManager::DELETE( _defaultMsgBox );
-        }
+        _defaultMsgBox.reset();
 
         if ( _ceguiRenderer != nullptr )
         {
-            _defaultMsgBox = MemoryManager_NEW GUIMessageBox( "AssertMsgBox",
+            _defaultMsgBox = std::make_unique<GUIMessageBox>( "AssertMsgBox",
                                                               "Assertion failure",
                                                               "Assertion failed with message: ",
                                                               vec2<I32>( 0 ),
                                                               _context->rootSheet() );
         }
-        g_assertMsgBox = _defaultMsgBox;
+        g_assertMsgBox = _defaultMsgBox.get();
     }
 
     void GUI::destroy()
@@ -682,8 +668,8 @@ namespace Divide
             _fonts.clear();
 
             Console::printfn( LOCALE_STR( "STOP_GUI" ) );
-            MemoryManager::SAFE_DELETE( _console );
-            MemoryManager::SAFE_DELETE( _defaultMsgBox );
+            _console.reset();
+            _defaultMsgBox.reset();
             g_assertMsgBox = nullptr;
 
             {
@@ -693,7 +679,7 @@ namespace Divide
                 {
                     for ( auto& [nameHash, entry] : _guiElements[i] )
                     {
-                        MemoryManager::DELETE( entry.first );
+                        delete entry.first;
                     }
                     _guiElements[i].clear();
                 }
@@ -714,8 +700,8 @@ namespace Divide
                 _ceguiRenderer = nullptr;
             }
 
-            _textRenderShader.reset();
-            _ceguiRenderShader.reset();
+            DestroyResource(_textRenderShader);
+            DestroyResource(_ceguiRenderShader);
             _init = false;
         }
     }

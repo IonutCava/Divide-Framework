@@ -67,7 +67,7 @@ enum class TaskPoolType : U8
     COUNT
 };
 
-class PlatformContext final
+class PlatformContext final : private NonCopyable, private NonMovable
 {
     friend class Attorney::PlatformContextKernel;
 
@@ -159,29 +159,29 @@ class PlatformContext final
     Kernel* _kernel{nullptr};
 
     /// Task pools
-    std::array<TaskPool*, to_base(TaskPoolType::COUNT)> _taskPool;
+    std::array<std::unique_ptr<TaskPool>, to_base(TaskPoolType::COUNT)> _taskPool;
     /// Param handler
-    ParamHandler* _paramHandler{ nullptr };
+    std::unique_ptr<ParamHandler> _paramHandler;
     /// User configured settings
-    Configuration* _config{ nullptr };
+    std::unique_ptr<Configuration> _config;
     /// Debugging interface: read only / editable variables
-    DebugInterface* _debug{ nullptr };
+    std::unique_ptr<DebugInterface> _debug;
     /// Input handler
-    Input::InputHandler* _inputHandler{ nullptr };
+    std::unique_ptr<Input::InputHandler> _inputHandler;
     /// Access to the GPU
-    GFXDevice* _gfx{ nullptr };
+    std::unique_ptr<GFXDevice> _gfx;
     /// The graphical user interface
-    GUI* _gui{ nullptr };
+    std::unique_ptr<GUI> _gui;
     /// Access to the audio device
-    SFXDevice* _sfx{ nullptr };
+    std::unique_ptr<SFXDevice> _sfx;
     /// Access to the physics system
-    PXDevice* _pfx{ nullptr };
+    std::unique_ptr<PXDevice> _pfx;
     /// Networking client
-    LocalClient* _client{ nullptr };
+    std::unique_ptr<LocalClient> _client;
     /// Networking server
-    Server* _server{ nullptr };
+    std::unique_ptr<Server> _server;
     /// Game editor
-    Editor* _editor{ nullptr };
+    std::unique_ptr<Editor> _editor;
 };
 
 namespace Attorney

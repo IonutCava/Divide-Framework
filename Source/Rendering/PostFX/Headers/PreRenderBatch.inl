@@ -63,7 +63,7 @@ namespace Divide {
         return _sceneEdges;
     }
 
-    [[nodiscard]] inline Texture_ptr PreRenderBatch::luminanceTex() const noexcept {
+    [[nodiscard]] inline Handle<Texture> PreRenderBatch::luminanceTex() const noexcept {
         return _currentLuminance;
     }
 

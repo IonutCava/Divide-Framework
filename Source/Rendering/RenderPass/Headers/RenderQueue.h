@@ -78,7 +78,7 @@ class RenderQueue final : public KernelComponent {
     [[nodiscard]] RenderingOrder getSortOrder(RenderStagePass stagePass, RenderBinType rbType) const;
 
     [[nodiscard]] FORCE_INLINE RenderBin& getBin(const RenderBinType rbType) noexcept { return _renderBins[to_base(rbType)]; }
-    [[nodiscard]] RenderBinType getBinForNode(const SceneGraphNode* node, const Material_ptr& matInstance);
+    [[nodiscard]] RenderBinType getBinForNode(const SceneGraphNode* node, Handle<Material> matInstance);
 
   private:
     const RenderStage _stage;

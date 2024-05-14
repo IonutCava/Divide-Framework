@@ -34,77 +34,99 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-inline void Material::lockInstancesForRead() const noexcept {
+inline void Material::lockInstancesForRead() const noexcept
+{
     _instanceLock.lock_shared();
 }
 
-inline void Material::unlockInstancesForRead() const noexcept {
+inline void Material::unlockInstancesForRead() const noexcept
+{
     _instanceLock.unlock_shared();
 }
 
-inline void Material::lockInstancesForWrite() const noexcept {
+inline void Material::lockInstancesForWrite() const noexcept
+{
     _instanceLock.lock();
 }
 
-inline void Material::unlockInstancesForWrite() const noexcept {
+inline void Material::unlockInstancesForWrite() const noexcept
+{
     _instanceLock.unlock();
 }
 
-inline const vector<Material*>& Material::getInstancesLocked() const noexcept {
+inline const vector<Handle<Material>>& Material::getInstancesLocked() const noexcept
+{
     return _instances;
 }
 
-inline const vector<Material*>& Material::getInstances() const {
+inline const vector<Handle<Material>>& Material::getInstances() const
+{
     SharedLock<SharedMutex> r_lock(_instanceLock);
     return getInstancesLocked();
 }
 
-inline Texture_wptr Material::getTexture(const TextureSlot textureUsage) const {
+inline Handle<Texture> Material::getTexture(const TextureSlot textureUsage) const
+{
     SharedLock<SharedMutex> r_lock(_textureLock);
     return _textures[to_U32(textureUsage)]._ptr;
 }
 
-inline bool Material::hasTransparency() const noexcept {
+inline bool Material::hasTransparency() const noexcept
+{
     return properties().translucencySource() != TranslucencySource::COUNT &&
            properties().overrides().transparencyEnabled();
 }
 
-inline bool Material::isReflective() const noexcept {
-    return properties().metallic() > 0.05f && properties().roughness() < 0.99f;
+inline bool Material::isReflective() const noexcept
+{
+    return properties().metallic() > 0.05f &&
+           properties().roughness() < 0.99f;
 }
 
-inline bool Material::isRefractive() const noexcept {
-    return hasTransparency() && properties().isRefractive();
+inline bool Material::isRefractive() const noexcept
+{
+    return hasTransparency() &&
+           properties().isRefractive();
 }
 
-inline ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass) {
+inline ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass)
+{
     return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][to_base(renderStagePass._variant)];
 }
 
-inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass) const {
+inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass) const
+{
     return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][to_base(renderStagePass._variant)];
 }
 
-inline void Material::addShaderDefine(const ShaderType type, const string& define, const bool addPrefix = true) {
-    if (type != ShaderType::COUNT) {
+inline void Material::addShaderDefine(const ShaderType type, const string& define, const bool addPrefix = true)
+{
+    if (type != ShaderType::COUNT)
+    {
         addShaderDefineInternal(type, define, addPrefix);
-    } else {
-        for (U8 i = 0u; i < to_U8(ShaderType::COUNT); ++i) {
+    }
+    else
+    {
+        for (U8 i = 0u; i < to_U8(ShaderType::COUNT); ++i)
+        {
             addShaderDefine(static_cast<ShaderType>(i), define, addPrefix);
         }
     }
 }
 
-inline const Material::TextureInfo& Material::getTextureInfo(const TextureSlot usage) const {
+inline const Material::TextureInfo& Material::getTextureInfo(const TextureSlot usage) const
+{
     return _textures[to_base(usage)];
 }
 
-inline void Material::addShaderDefineInternal(const ShaderType type, const string& define, bool addPrefix) {
+inline void Material::addShaderDefineInternal(const ShaderType type, const string& define, bool addPrefix)
+{
     ModuleDefines& defines = _extraShaderDefines[to_base(type)];
 
     if (!eastl::any_of(eastl::cbegin(defines),
                        eastl::cend(defines),
-                       [&define, addPrefix](const ModuleDefine& it) {
+                       [&define, addPrefix](const ModuleDefine& it)
+                       {
                             return it._addPrefix == addPrefix &&
                                    it._define.compare(define.c_str()) == 0;
                         }))
@@ -113,9 +135,9 @@ inline void Material::addShaderDefineInternal(const ShaderType type, const strin
     }
 }
 
-inline const ModuleDefines& Material::shaderDefines(const ShaderType type) const {
+inline const ModuleDefines& Material::shaderDefines(const ShaderType type) const
+{
     assert(type != ShaderType::COUNT);
-
     return _extraShaderDefines[to_base(type)];
 }
 

@@ -5,49 +5,99 @@
 namespace Divide {
 namespace GFX {
 
-NO_DESTROY static CommandBufferPool g_sCommandBufferPool;
+static CommandBufferPool* g_sCommandBufferPool = nullptr;
+
+void InitPools(const size_t poolSizeFactor)
+{
+    DIVIDE_ASSERT(g_sCommandBufferPool == nullptr);
+
+    g_sCommandBufferPool = new CommandBufferPool(poolSizeFactor);
+}
 
 void DestroyPools() noexcept
 {
-    g_sCommandBufferPool.reset();
+    delete g_sCommandBufferPool;
+}
+
+CommandBufferPool::CommandBufferPool(const size_t poolSizeFactor)
+    : _poolSizeFactor( poolSizeFactor )
+{
+    _pool.resize( _poolSizeFactor, nullptr);
+    _freeList.resize( _poolSizeFactor, std::make_pair(true, U8_ZERO));
 }
 
 CommandBufferPool::~CommandBufferPool()
 {
-    DIVIDE_ASSERT(_bufferCount == 0);
 }
 
 void CommandBufferPool::reset() noexcept
 {
-    LockGuard<Mutex> lock( _mutex );
-    _pool = {};
-    ++_generation;
+    LockGuard<SharedMutex> lock( _mutex );
+    for (auto& it : _freeList )
+    {
+        it.first = true; // is available = true
+        ++it.second;     // inc generation
+    }
 }
 
 Handle<CommandBuffer> CommandBufferPool::allocateBuffer( const char* name, const size_t reservedCmdCount )
 {
-    LockGuard<Mutex> lock(_mutex);
-    return Handle<CommandBuffer>
-    {
-        ._ptr = _pool.newElement( name, reservedCmdCount ),
-        ._generation = _generation,
-        ._index = _bufferCount++
-    };
+    LockGuard<SharedMutex> lock(_mutex);
+    return allocateBufferLocked(name, reservedCmdCount);
 }
 
-void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& buffer)
+Handle<CommandBuffer> CommandBufferPool::allocateBufferLocked( const char* name, size_t reservedCmdCount, bool retry )
 {
-    if (buffer != INVALID_HANDLE<CommandBuffer>)
-    {
+    Handle<CommandBuffer> ret{};
 
-        LockGuard<Mutex> lock(_mutex);
-        if (buffer._generation == _generation)
+    bool found = false;
+    for (auto& it : _freeList)
+    {
+        if (it.first)
         {
-            if ( buffer._ptr != nullptr )
+            it.first = false;
+            ret._generation = it.second;
+            CommandBuffer*& buf = _pool[ret._index];
+            if (buf)
             {
-                _pool.deleteElement( buffer._ptr );
+                buf->clear( name, reservedCmdCount );
             }
-            --_bufferCount;
+            else
+            {
+                buf = _memPool.newElement();
+            }
+            found = true;
+            break;
+        }
+        ++ret._index;
+    }
+
+    if (!found)
+    {
+        if (retry)
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
+
+        const size_t newSize = _pool.size() + _poolSizeFactor;
+        _pool.resize( newSize, nullptr );
+        _freeList.resize( newSize, std::make_pair( true, U8_ZERO ) );
+        return allocateBufferLocked(name, reservedCmdCount, true);
+    }
+
+    return ret;
+}
+
+void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& handle )
+{
+    if ( handle != INVALID_HANDLE<CommandBuffer>)
+    {
+        LockGuard<SharedMutex> lock(_mutex);
+        auto& it = _freeList[handle._index];
+        if (it.second == handle._generation)
+        {
+            it.first = true;
+            ++it.second;
         }
         else
         {
@@ -55,22 +105,43 @@ void CommandBufferPool::deallocateBuffer( Handle<CommandBuffer>& buffer)
             NOP();
         }
 
-        buffer = INVALID_HANDLE<CommandBuffer>;
+        handle = INVALID_HANDLE<CommandBuffer>;
     }
+}
+
+CommandBuffer* CommandBufferPool::get( Handle<CommandBuffer> handle )
+{
+    if ( handle != INVALID_HANDLE<CommandBuffer> )
+    {
+        SharedLock<SharedMutex> lock( _mutex );
+        if ( _freeList[handle._index].second == handle._generation )
+        {
+            return _pool[handle._index];
+        }
+    }
+
+    return nullptr;
+}
+
+CommandBuffer* Get( Handle<CommandBuffer> handle )
+{
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+    return g_sCommandBufferPool->get( handle );
 }
 
 Handle<CommandBuffer> AllocateCommandBuffer(const char* name, const size_t reservedCmdCount)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    return g_sCommandBufferPool.allocateBuffer(name, reservedCmdCount);
+    return g_sCommandBufferPool->allocateBuffer(name, reservedCmdCount);
 }
 
 void DeallocateCommandBuffer( Handle<CommandBuffer>& buffer)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    g_sCommandBufferPool.deallocateBuffer(buffer);
+    g_sCommandBufferPool->deallocateBuffer(buffer);
 }
 
 }; //namespace GFX

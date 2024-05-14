@@ -12,6 +12,7 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Editor/Headers/Editor.h"
 
@@ -105,7 +106,7 @@ namespace Divide
             if ( std::filesystem::is_directory( *iter )  &&
                  iter->path().filename().string().compare( Config::DELETED_FOLDER_NAME ) != 0 )
             {
-                string name = iter->path().filename().string();
+                auto name = iter->path().filename().string();
                 if ( name.length() > 255 )
                 {
                     name = name.substr( 0, 255 );
@@ -227,7 +228,7 @@ namespace Divide
              [this, scene, unloadPrevious, &sceneToUnload]()
              {
                  bool foundInCache = false;
-                 Scene* loadedScene = _scenePool.getOrCreateScene( parent().platformContext(), parent().resourceCache(), *this, scene, foundInCache );
+                 Scene* loadedScene = _scenePool.getOrCreateScene( parent().platformContext(), *this, scene, foundInCache );
                  assert( loadedScene != nullptr && foundInCache );
                  
                  if ( loadedScene->getState() == ResourceState::RES_LOADING )
@@ -252,7 +253,7 @@ namespace Divide
     Scene* Project::loadScene( const SceneEntry& sceneEntry )
     {
         bool foundInCache = false;
-        Scene* loadingScene = _scenePool.getOrCreateScene( parent().platformContext(), parent().resourceCache(), *this, sceneEntry, foundInCache );
+        Scene* loadingScene = _scenePool.getOrCreateScene( parent().platformContext(), *this, sceneEntry, foundInCache );
 
         if ( !loadingScene )
         {
@@ -369,6 +370,8 @@ namespace Divide
             {
                 _sceneGraphCullTimers[i] = &Time::ADD_TIMER( Util::StringFormat( "SceneGraph cull timer: {}", TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ) ).c_str() );
             }
+
+            LightPool::InitStaticData( parent().platformContext() );
         }
 
         efficient_clear(_availableProjects);
@@ -381,12 +384,12 @@ namespace Divide
                 continue;
             }
 
-            const string projectName = iter->path().filename().string();
+            const std::string projectName = iter->path().filename().string();
 
             _availableProjects.emplace_back( ProjectID
             {
                 ._guid = _ID( projectName ),
-                ._name = projectName
+                ._name = projectName.c_str()
             });
         }
 
@@ -397,7 +400,7 @@ namespace Divide
     {
         if ( _init )
         {
-            Vegetation::destroyStaticData();
+            LightPool::DestroyStaticData();
             Console::printfn( LOCALE_STR( "STOP_SCENE_MANAGER" ) );
             // Console::printfn(Locale::Get("SCENE_MANAGER_DELETE"));
             _recast.reset();
@@ -588,7 +591,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut ) const
+    void ProjectManager::getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector<SceneGraphNode*>& nodesOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -812,7 +815,7 @@ namespace Divide
             : DefaultColours::WHITE.rgb;
 
         const GFXDevice& gfx = parent().platformContext().gfx();
-        SceneShaderData* sceneData = gfx.sceneData();
+        SceneShaderData* sceneData = gfx.sceneData().get();
 
         const Angle::DEGREES<F32> sunAltitude = Angle::RadiansToDegrees( activeScene->getCurrentSunDetails().altitude);
         const Angle::DEGREES<F32> sunAltitudeMax = Angle::RadiansToDegrees( activeScene->getCurrentSunDetails().altitudeMax);
@@ -987,8 +990,8 @@ namespace Divide
         erase_if( allNodes,
                  []( SceneGraphNode* node ) noexcept ->  bool
         {
-            const Material_ptr& mat = node->get<RenderingComponent>()->getMaterialInstance();
-            return node->getNode().type() != SceneNodeType::TYPE_WATER && (mat == nullptr || !mat->isReflective());
+            Handle<Material> mat = node->get<RenderingComponent>()->getMaterialInstance();
+            return node->getNode().type() != SceneNodeType::TYPE_WATER && (mat == INVALID_HANDLE<Material> || !Get(mat)->isReflective());
         } );
 
         if ( inView )
@@ -1018,8 +1021,8 @@ namespace Divide
         erase_if( allNodes,
                  []( SceneGraphNode* node ) noexcept ->  bool
         {
-            const Material_ptr& mat = node->get<RenderingComponent>()->getMaterialInstance();
-            return node->getNode().type() != SceneNodeType::TYPE_WATER && (mat == nullptr || !mat->isRefractive());
+            Handle<Material> mat = node->get<RenderingComponent>()->getMaterialInstance();
+            return node->getNode().type() != SceneNodeType::TYPE_WATER && (mat == INVALID_HANDLE<Material> || !Get(mat)->isRefractive());
         } );
         if ( inView )
         {
@@ -1148,7 +1151,7 @@ namespace Divide
         return false;
     }
 
-    void ProjectManager::setSelected( const PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, const bool recursive )
+    void ProjectManager::setSelected( const PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, const bool recursive )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1176,11 +1179,6 @@ namespace Divide
         Attorney::SceneProjectManager::clearHoverTarget( activeProject()->getActiveScene(), arg );
     }
 
-    SceneNode_ptr ProjectManager::createNode( const SceneNodeType type, const ResourceDescriptor& descriptor )
-    {
-        return Attorney::SceneProjectManager::createNode( activeProject()->getActiveScene(), type, descriptor );
-    }
-
     SceneEnvironmentProbePool* ProjectManager::getEnvProbes() const noexcept
     {
         return Attorney::SceneProjectManager::getEnvProbes( activeProject()->getActiveScene() );
@@ -1191,19 +1189,16 @@ namespace Divide
         return activeProject()->getActiveScene()->playerCount();
     }
 
-    std::pair<Texture_ptr, SamplerDescriptor> ProjectManager::getSkyTexture() const
+    std::pair<Handle<Texture>, SamplerDescriptor> ProjectManager::getSkyTexture() const
     {
         const auto& skies = activeProject()->getActiveScene()->sceneGraph()->getNodesByType( SceneNodeType::TYPE_SKY );
         if ( !skies.empty() )
         {
             const Sky& sky = skies.front()->getNode<Sky>();
-            return std::make_pair(
-                sky.activeSkyBox(),
-                sky.skyboxSampler()
-            );
+            return std::make_pair( sky.activeSkyBox(), sky.skyboxSampler() );
         }
 
-        return { nullptr, {} };
+        return { INVALID_HANDLE<Texture>, {} };
     }
 
     ///--------------------------Input Management-------------------------------------///
@@ -1347,16 +1342,6 @@ namespace Divide
     const PlatformContext& ProjectManager::platformContext() const noexcept
     {
         return parent().platformContext();
-    }
-
-    const ResourceCache& ProjectManager::resourceCache() const noexcept
-    {
-        return *parent().resourceCache();
-    }
-
-    ResourceCache& ProjectManager::resourceCache() noexcept
-    {
-        return *parent().resourceCache();
     }
 
     namespace

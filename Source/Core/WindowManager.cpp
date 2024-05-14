@@ -114,6 +114,11 @@ ErrorCode WindowManager::init(PlatformContext& context,
         _monitors.push_back(data);
     }
 
+    for ( U8 i = 0; i < to_U8( CursorStyle::COUNT ); ++i )
+    {
+        s_cursors[i] = SDL_CreateSystemCursor( CursorToSDL( static_cast<CursorStyle>(i) ) );
+    }
+
     const I32 displayIndex = std::max(std::min(targetDisplayIndex, displayCount - 1), 0);
 
     SDL_GetCurrentDisplayMode(displayIndex, &s_mainDisplayMode );
@@ -198,11 +203,8 @@ ErrorCode WindowManager::init(PlatformContext& context,
                 Attorney::DisplayManagerWindowManager::RegisterDisplayMode(to_U8(display), tempDisplayMode);
             }
         }
-    }
 
-    for (U8 i = 0; i < to_U8(CursorStyle::COUNT); ++i)
-    {
-        s_cursors[i] = SDL_CreateSystemCursor(CursorToSDL(static_cast<CursorStyle>(i)));
+        GFX::InitPools(64u);
     }
 
     return err;
@@ -210,12 +212,12 @@ ErrorCode WindowManager::init(PlatformContext& context,
 
 void WindowManager::close()
 {
-    for (DisplayWindow* window : _windows)
+    for ( auto& window : _windows)
     {
         window->destroyWindow();
     }
 
-    MemoryManager::DELETE_CONTAINER(_windows);
+    _windows.clear();
 
     for (SDL_Cursor* it : s_cursors)
     {
@@ -236,20 +238,12 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         return nullptr;
     }
 
-    DisplayWindow* window = MemoryManager_NEW DisplayWindow(*this, *_context);
+    std::unique_ptr<DisplayWindow> window = std::make_unique<DisplayWindow>(*this, *_context);
     DIVIDE_ASSERT(window != nullptr);
 
     if (err != ErrorCode::NO_ERR)
     {
-        MemoryManager::SAFE_DELETE(window);
         return nullptr;
-    }
-
-    const bool isMainWindow = _mainWindow == nullptr;
-    if ( isMainWindow )
-    {
-        DIVIDE_ASSERT(descriptor.parentWindow == nullptr);
-        _mainWindow = window;
     }
 
     U32 windowFlags = descriptor.targetAPI == RenderAPI::Vulkan ? SDL_WINDOW_VULKAN : descriptor.targetAPI == RenderAPI::OpenGL ? SDL_WINDOW_OPENGL : 0u;
@@ -298,7 +292,6 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
 
     if (err != ErrorCode::NO_ERR)
     {
-        MemoryManager::SAFE_DELETE(window);
         return nullptr;
     }
 
@@ -320,20 +313,28 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
 
     if (err != ErrorCode::NO_ERR)
     {
-        MemoryManager::SAFE_DELETE(window);
         return nullptr;
     }
 
-    err = ApplyAPISettings( *_context, descriptor.targetAPI, window, crtWindow != nullptr ? crtWindow : mainWindow() );
+    const bool isMainWindow = _mainWindow == nullptr;
+    if ( isMainWindow )
+    {
+        DIVIDE_ASSERT( descriptor.parentWindow == nullptr );
+        _mainWindow = window.get();
+    }
+
+    err = ApplyAPISettings( *_context, descriptor.targetAPI, window.get(), crtWindow != nullptr ? crtWindow : mainWindow() );
 
     if ( err != ErrorCode::NO_ERR )
     {
-        MemoryManager::SAFE_DELETE( window );
+        if ( isMainWindow )
+        {
+            _mainWindow = nullptr;
+        }
+
         return nullptr;
     }
  
-    _windows.emplace_back(window);
-
     window->addEventListener(WindowEvent::SIZE_CHANGED, [&](const DisplayWindow::WindowEventArgs& args)
     {
         SizeChangeParams params{};
@@ -341,7 +342,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         params.height = to_U16(args.y);
         params.isFullScreen = args._flag;
         params.winGUID = args._windowGUID;
-        params.isMainWindow = args._windowGUID == _mainWindow->getGUID();
+        params.isMainWindow = isMainWindow;
         // Only if rendering window
         return _context->app().onWindowSizeChange(params);
     });
@@ -358,11 +359,12 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
             }
             else
             {
-                for (DisplayWindow*& win : _windows)
+                for ( auto& win : _windows)
                 {
                     if (win->getGUID() == args._windowGUID)
                     {
-                        if (!destroyWindow(win))
+                        auto tempWindow = win.get();
+                        if (!destroyWindow(tempWindow))
                         {
                             Console::errorfn(LOCALE_STR("WINDOW_CLOSE_EVENT_ERROR"), args._windowGUID);
                             win->hidden(true);
@@ -375,8 +377,8 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
             return true;
         });
     }
-
-    return window;
+    
+    return _windows.emplace_back(MOV(window)).get();
 }
 
 bool WindowManager::destroyWindow(DisplayWindow*& window)
@@ -390,8 +392,14 @@ bool WindowManager::destroyWindow(DisplayWindow*& window)
 
     if (window->destroyWindow() == ErrorCode::NO_ERR)
     {
-        erase_if(_windows, [targetGUID = window->getGUID()](DisplayWindow* win) noexcept { return win->getGUID() == targetGUID;});
-        MemoryManager::SAFE_DELETE(window);
+        if (window->getGUID() == _mainWindowGUID)
+        {
+            _mainWindowGUID = -1;
+            _mainWindow = nullptr;
+        }
+
+        erase_if(_windows, [targetGUID = window->getGUID()](auto& win) noexcept { return win->getGUID() == targetGUID;});
+        window = nullptr;
         return true;
     }
 
@@ -405,14 +413,14 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
         return;
     }
 
-    if ( window->_userData._glContext  != nullptr)
+    if ( window->userData()._glContext  != nullptr)
     {
-        if ( window->_userData._ownsContext)
+        if ( window->userData()._ownsContext)
         {
-            SDL_GL_DeleteContext( window->_userData._glContext );
+            SDL_GL_DeleteContext( window->userData()._glContext );
         }
 
-        window->_userData._glContext = nullptr;
+        window->userData()._glContext = nullptr;
     }
 }
 
@@ -483,20 +491,20 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
     // Create a context and make it current
     if ( targetWindow->parentWindow() != nullptr)
     {
-        targetWindow->_userData = targetWindow->parentWindow()->userData();
-        targetWindow->_userData._ownsContext = false;
+        targetWindow->userData( targetWindow->parentWindow()->userData() );
+        targetWindow->userData()._ownsContext = false;
     }
 
     if (api == RenderAPI::OpenGL)
     {
-        if ( targetWindow->_userData._glContext == nullptr )
+        if ( targetWindow->userData()._glContext == nullptr )
         {
-            targetWindow->_userData._glContext = SDL_GL_CreateContext( targetWindow->getRawWindow() );
-            targetWindow->_userData._ownsContext = true;
+            targetWindow->userData()._glContext = SDL_GL_CreateContext( targetWindow->getRawWindow() );
+            targetWindow->userData()._ownsContext = true;
             ValidateAssert( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
         }
 
-        if ( targetWindow->_userData._glContext == nullptr)
+        if ( targetWindow->userData()._glContext == nullptr)
         {
             Console::errorfn(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError());
             Console::warnfn(LOCALE_STR("WARN_SWITCH_API"));
@@ -504,7 +512,7 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
             return ErrorCode::GL_OLD_HARDWARE;
         }
 
-        if ( targetWindow->_flags & to_base(WindowFlags::VSYNC))
+        if ( targetWindow->flags() & to_base(WindowFlags::VSYNC))
         {
             // Vsync is toggled on or off via the external config file
             bool vsyncSet = false;
@@ -763,7 +771,7 @@ void WindowManager::snapCursorToCenter()
 
 void WindowManager::hideAll() noexcept
 {
-    for (DisplayWindow* win : _windows)
+    for ( const auto& win : _windows)
     {
         win->hidden(true);
     }

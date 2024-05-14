@@ -81,8 +81,8 @@ struct RenderStateBlock
 
 
 size_t GetHash( const RenderStateBlock& block );
-void SaveToXML( const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt );
-void LoadFromXML( const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut );
+void SaveToXML( const RenderStateBlock& block, const std::string& entryName, boost::property_tree::ptree& pt );
+void LoadFromXML( const std::string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut );
 
 };  // namespace Divide
 #endif //DVD_RENDER_STATE_BLOCK_H_

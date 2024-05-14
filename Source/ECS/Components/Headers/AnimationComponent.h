@@ -77,7 +77,7 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     PROPERTY_R(bool, showSkeleton, false);
     PROPERTY_RW(F32, animationSpeed, 1.f);
     /// Pointer to the mesh's animator. Owned by the mesh!
-    PROPERTY_RW(SceneAnimator_ptr, animator, nullptr);
+    POINTER_RW(SceneAnimator, animator, nullptr);
     /// Current animation index for the current SGN
     PROPERTY_R(U32, animationIndex, U32_MAX);
     PROPERTY_RW(U32, previousAnimationIndex, U32_MAX);

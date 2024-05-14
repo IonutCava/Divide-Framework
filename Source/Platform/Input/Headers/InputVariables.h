@@ -158,10 +158,10 @@ class VariableEffect {
 
     ~VariableEffect()
     {
-        MemoryManager::DELETE(_pEffect);
-        for (MapVariables::iterator iterVars = std::begin(_mapVariables);
-             iterVars != std::end(_mapVariables); ++iterVars) {
-            MemoryManager::DELETE(iterVars->second);
+        delete _pEffect;
+        for (MapVariables::iterator iterVars = std::begin(_mapVariables); iterVars != std::end(_mapVariables); ++iterVars)
+        {
+            delete iterVars->second;
         }
     }
 

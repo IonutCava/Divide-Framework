@@ -43,12 +43,12 @@ class Camera;
 class Pipeline;
 class GFXDevice;
 class ShaderBuffer;
+class ShaderProgram;
 class DirectionalLightComponent;
 
 struct DebugView;
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 /// Directional lights can't deliver good quality shadows using a single shadow map.
 /// This technique offers an implementation of the CSM method
@@ -75,8 +75,8 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
   protected:
     Pipeline* _blurPipelineCSM = nullptr;
     Pipeline* _blurPipelineAO = nullptr;
-    ShaderProgram_ptr _blurDepthMapShader = nullptr;
-    ShaderProgram_ptr _blurAOMapShader = nullptr;
+    Handle<ShaderProgram> _blurDepthMapShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _blurAOMapShader = INVALID_HANDLE<ShaderProgram>;
     PushConstantsStruct _shaderConstants;
     RenderTargetHandle _drawBufferDepth;
     RenderTargetHandle _blurBuffer;

@@ -99,7 +99,7 @@ struct CommandBufferQueue
         bool _owning{false};
     };
 
-    eastl::fixed_vector<Entry, COMMAND_BUFFER_INIT_SIZE, true, eastl::dvd_allocator> _commandBuffers;
+    eastl::fixed_vector<Entry, COMMAND_BUFFER_INIT_SIZE, true> _commandBuffers;
 };
 
 void ResetCommandBufferQueue( CommandBufferQueue& queue );
@@ -110,9 +110,11 @@ class CommandBuffer : private NonCopyable
 {
   public:
     static constexpr U32 COMMAND_BUFFER_INIT_SIZE = 32u;
-    using CommandList = eastl::fixed_vector<CommandBase*, COMMAND_BUFFER_INIT_SIZE, true, eastl::dvd_allocator>;
+    using CommandList = eastl::fixed_vector<CommandBase*, COMMAND_BUFFER_INIT_SIZE, true>;
 
   public:
+    ~CommandBuffer();
+
     template<typename T> requires std::is_base_of_v<CommandBase, T>
     T* add();
     template<typename T> requires std::is_base_of_v<CommandBase, T>
@@ -126,6 +128,7 @@ class CommandBuffer : private NonCopyable
 
     void batch();
     void clear();
+    void clear( const char* name, size_t reservedCmdCount);
 
     /// Multi-line. indented list of all commands (and params for some of them)
     [[nodiscard]] string toString() const;
@@ -136,19 +139,13 @@ class CommandBuffer : private NonCopyable
     PROPERTY_R( CommandList, commands);
 
   protected:
-    template <typename T, size_t BlockSize>
-    friend class ::MemoryPool;
-    CommandBuffer( const char* name, size_t reservedCmdCount);
-    ~CommandBuffer();
 
     void clean();
     bool cleanInternal();
-    
-
 
   protected:
       bool _batched{ false };
-      const char* _name{ nullptr };
+      Str<64> _name;
 };
 
 static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
@@ -169,15 +166,6 @@ FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T& cmd) { return buffer.ad
 
 template<typename T> requires std::is_base_of_v<CommandBase, T>
 FORCE_INLINE T* EnqueueCommand(CommandBuffer& buffer, T&& cmd) { return buffer.add( MOV(cmd) ); }
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer) { return buffer._ptr->add<T>(); }
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer, T& cmd) { return buffer._ptr->add(cmd); }
-
-template<typename T> requires std::is_base_of_v<CommandBase, T>
-FORCE_INLINE T* EnqueueCommand(Handle<CommandBuffer> buffer, T&& cmd) { return buffer._ptr->add( MOV(cmd) ); }
 
 }; //namespace GFX
 }; //namespace Divide

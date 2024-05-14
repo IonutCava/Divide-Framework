@@ -82,7 +82,7 @@ namespace Divide
 
     namespace XMLParser
     {
-        void saveToXML(const SamplerDescriptor& sampler, const string& entryName, boost::property_tree::ptree& pt)
+        void saveToXML(const SamplerDescriptor& sampler, const std::string& entryName, boost::property_tree::ptree& pt)
         {
             pt.put(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(sampler._minFilter));
             pt.put(entryName + ".Sampler.Filter.<xmlattr>.mag", TypeUtil::TextureFilterToString(sampler._magFilter));
@@ -102,7 +102,7 @@ namespace Divide
             pt.put(entryName + ".Sampler.customBorderColour.<xmlattr>.a", sampler._customBorderColour.a);
         }
 
-        SamplerDescriptor loadFromXML(const string& entryName, const boost::property_tree::ptree& pt)
+        SamplerDescriptor loadFromXML(const std::string& entryName, const boost::property_tree::ptree& pt)
         {
             SamplerDescriptor sampler = {};
             sampler._minFilter = TypeUtil::StringToTextureFilter(pt.get<string>(entryName + ".Sampler.Filter.<xmlattr>.min", TypeUtil::TextureFilterToString(TextureFilter::LINEAR)));

@@ -42,13 +42,7 @@ namespace Divide {
 class glTexture final : public Texture {
 
    public:
-    explicit glTexture(GFXDevice& context,
-                       size_t descriptorHash,
-                       const std::string_view name,
-                       const std::string_view resourceName,
-                       const ResourcePath& resourceLocation,
-                       const TextureDescriptor& texDescriptor,
-                       ResourceCache& parentCache);
+    explicit glTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor );
 
     ~glTexture() override;
 
@@ -63,7 +57,7 @@ class glTexture final : public Texture {
     static void Copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
    protected:
-    void postLoad() override;
+    bool postLoad() override;
     void reserveStorage();
     void loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
     void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;

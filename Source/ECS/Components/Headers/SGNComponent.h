@@ -197,6 +197,8 @@ class SGNComponent : protected PlatformContextComponent,
         PROPERTY_R(EditorComponent, editorComponent);
 
     protected:
+        friend class EditorComponent;
+
         std::atomic_bool _enabled{true};
         mutable std::atomic_bool _hasChanged{false};
 };

@@ -38,31 +38,14 @@
 namespace Divide {
 namespace AI {
 
-namespace Attorney {
-    class AudioSensorConstructor;
-}
-
-class AudioSensor final : public Sensor {
-    friend class Attorney::AudioSensorConstructor;
-
-   public:
-    void update(U64 deltaTimeUS) override;
-    ~AudioSensor() override = default;
-
-   protected:
+class AudioSensor final : public Sensor
+{
+public:
     AudioSensor(AIEntity* parentEntity);
+
+    void update(U64 deltaTimeUS) override;
 };
 
-namespace Attorney {
-class AudioSensorConstructor {
-   private:
-    static AudioSensor* construct(AIEntity* const parentEntity) {
-        return MemoryManager_NEW AudioSensor(parentEntity);
-    }
-
-    friend class AI::AIEntity;
-};
-}  // namespace Attorney
 }  // namespace AI
 }  // namespace Divide
 

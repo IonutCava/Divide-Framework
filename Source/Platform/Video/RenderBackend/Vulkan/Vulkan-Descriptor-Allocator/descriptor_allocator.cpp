@@ -127,7 +127,7 @@
     {
         PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Graphics );
 
-        thread_local Divide::vector_fast<VkDescriptorPoolSize> sizes;
+        thread_local Divide::vector<VkDescriptorPoolSize> sizes;
 
         sizes.clear();
         sizes.reserve(_poolSizes.sizes.size());
