@@ -15,7 +15,7 @@
             "installDir": "${sourceDir}/Install/${presetName}",
             "warnings": { "dev": false },
             "environment": {
-                "MIMALLOC_DISABLE_REDIRECT": 1
+                "MIMALLOC_DISABLE_REDIRECT": "1"
             }
         },
         {
