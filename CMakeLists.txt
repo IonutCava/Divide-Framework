@@ -74,9 +74,11 @@ if (DIVIDE_STARTUP_TYPE STREQUAL "IN_EDITOR")
 endif()
 
 if (BUILD_TESTING_INTERNAL)
+    message("Unit testing enabled!")
     list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
     enable_testing()
 endif()
+
 add_subdirectory(Source)
 
 set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" PROPERTY VS_STARTUP_PROJECT Divide-Framework)
