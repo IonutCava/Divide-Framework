@@ -58,6 +58,7 @@ namespace Divide
             static eastl::set<size_t> s_loadingHashes;
     };
 
+    struct ResourcePoolBase;
     class ResourceCache final : private NonMovable, private NonCopyable
     {
         public:

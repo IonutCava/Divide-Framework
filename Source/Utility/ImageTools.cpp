@@ -520,11 +520,11 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
     U32* dataUINT = nullptr;
     glm::detail::hdata* dataHalf = nullptr;
 
-    if ( stbi_is_hdr_from_file( f ) == TRUE )
+    if ( stbi_is_hdr_from_file( f ) == 1 )
     {
         _sourceDataType = SourceDataType::FLOAT;
     }
-    else if ( stbi_is_16_bit_from_file( f ) == TRUE )
+    else if ( stbi_is_16_bit_from_file( f ) == 1 )
     {
         _sourceDataType = SourceDataType::SHORT;
     }
@@ -721,7 +721,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
     }
 
     // If TRUE: flip the image vertically, so the first pixel in the output array is the bottom left
-    stbi_set_flip_vertically_on_load_thread(UseUpperLeftOrigin() ? FALSE : TRUE);
+    stbi_set_flip_vertically_on_load_thread(UseUpperLeftOrigin() ? 0 : 1);
 
     _hasDummyAlphaChannel = false;
     {
@@ -1438,10 +1438,10 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
 
     switch (format)
     {
-        case SaveImageFormat::PNG: return stbi_write_png(filename.string().c_str(), width, height, 3, pix.data(), width * 3 * sizeof(Byte)) == TRUE;
-        case SaveImageFormat::BMP: return stbi_write_bmp(filename.string().c_str(), width, height, 3, pix.data())                           == TRUE;
-        case SaveImageFormat::TGA: return stbi_write_tga(filename.string().c_str(), width, height, 3, pix.data())                           == TRUE;
-        case SaveImageFormat::JPG: return stbi_write_jpg(filename.string().c_str(), width, height, 3, pix.data(), 85)                       == TRUE;
+        case SaveImageFormat::PNG: return stbi_write_png(filename.string().c_str(), width, height, 3, pix.data(), width * 3 * sizeof(Byte)) == 1;
+        case SaveImageFormat::BMP: return stbi_write_bmp(filename.string().c_str(), width, height, 3, pix.data())                           == 1;
+        case SaveImageFormat::TGA: return stbi_write_tga(filename.string().c_str(), width, height, 3, pix.data())                           == 1;
+        case SaveImageFormat::JPG: return stbi_write_jpg(filename.string().c_str(), width, height, 3, pix.data(), 85)                       == 1;
         default: DIVIDE_UNEXPECTED_CALL(); break;
     }
 
@@ -1450,7 +1450,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
 
 bool SaveImageHDR(const ResourcePath& filename, const U16 width, const U16 height, const U8 numberOfComponents, [[maybe_unused]] const U8 bytesPerPixel, [[maybe_unused]] const bool sourceIsBGR, const F32* imageData)
 {
-    return stbi_write_hdr(filename.string().c_str(), width, height, numberOfComponents, imageData) == TRUE;
+    return stbi_write_hdr(filename.string().c_str(), width, height, numberOfComponents, imageData) == 1;
 }
 }  // namespace Divide::ImageTools
 

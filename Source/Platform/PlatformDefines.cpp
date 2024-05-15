@@ -1,6 +1,5 @@
 
 
-#include <mimalloc-new-delete.h>
 
 #include "config.h"
 
@@ -13,6 +12,7 @@
 #include "Platform/File/Headers/FileManagement.h"
 
 #include <iostream>
+#include <mimalloc-new-delete.h>
 
 namespace Divide
 {

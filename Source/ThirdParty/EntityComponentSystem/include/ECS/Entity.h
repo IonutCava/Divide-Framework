@@ -34,12 +34,6 @@ namespace ECS {
 	template<class E>
 	class Entity : public IEntity
 	{
-	#if defined(USING_MSVC)
-		// Entity destruction always happens through EntityManager !!! (ToDo: This only kinda works on MSVC)
-		void operator delete(void*) = delete;
-		void operator delete[](void*) = delete;
-	#endif
-
 	public:
 
 		static const EntityTypeId STATIC_ENTITY_TYPE_ID;

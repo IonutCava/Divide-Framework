@@ -330,7 +330,7 @@ namespace Divide
     Handle<T> ResourcePool<T>::retrieveHandleLocked( const size_t descriptorHash )
     {
         Handle<T> ret{};
-        for ( const auto [free, generation] : _freeList )
+        for ( const auto&[free, generation] : _freeList )
         {
             if ( !free )
             {
