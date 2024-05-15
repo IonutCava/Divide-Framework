@@ -441,126 +441,126 @@
         },
         {
             "name": "test-windows-msvc-debug-editor",
-            "displayName": "Strict",
+            "displayName": "Test-MSVC-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-msvc-debug-editor"
         },
         {
             "name": "test-windows-msvc-profile-editor",
-            "displayName": "Strict",
+            "displayName": "Test-MSVC-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-msvc-profile-editor"
         },
         {
             "name": "test-windows-msvc-release-editor",
-            "displayName": "Strict",
+            "displayName": "Test-MSVC-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-msvc-release-editor"
         },
         {
             "name": "test-windows-msvc-debug",
-            "displayName": "Strict",
+            "displayName": "Test-MSVC-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-msvc-debug"
         },
         {
             "name": "test-windows-msvc-profile",
-            "displayName": "Strict",
+            "displayName": "Test-MSVC-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-msvc-profile"
         },
         {
             "name": "test-windows-msvc-release",
-            "displayName": "Strict",
+            "displayName": "Test-MSVC-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-msvc-release"
         },
         {
             "name": "test-windows-clang-debug",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Win64-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-clang-debug"
         },
         {
             "name": "test-windows-clang-profile",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Win64-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-clang-profile"
         },
         {
             "name": "test-windows-clang-release",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Win64-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-clang-release"
         },
         {
             "name": "test-windows-clang-debug-editor",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Win64-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-clang-debug-editor"
         },
         {
             "name": "test-windows-clang-profile-editor",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Win64-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-clang-profile-editor"
         },
         {
             "name": "test-windows-clang-release-editor",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Win64-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "windows-clang-release-editor"
         },
         {
             "name": "test-unixlike-gcc-debug",
-            "displayName": "Strict",
+            "displayName": "Test-GCC-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-gcc-debug"
         },
         {
             "name": "test-unixlike-gcc-profile",
-            "displayName": "Strict",
+            "displayName": "Test-GCC-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-gcc-profile"
         },
         {
             "name": "test-unixlike-gcc-release",
-            "displayName": "Strict",
+            "displayName": "Test-GCC-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-gcc-release"
         },
         {
             "name": "test-unixlike-clang-debug-editor",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Unix-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-clang-debug-editor"
         },
         {
             "name": "test-unixlike-clang-profile-editor",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Unix-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-clang-profile-editor"
         },
         {
             "name": "test-unixlike-clang-release-editor",
-            "displayName": "Strict",
+            "displayName": "Test-Clang-Unix-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-clang-release-editor"
