@@ -169,7 +169,7 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(SceneNode);
 DEFINE_NODE_TYPE(TransformNode, SceneNodeType::TYPE_TRANSFORM)
 {
    public:
-    explicit TransformNode( PlatformContext& context, const ResourceDescriptor<TransformNode>& descriptor );
+    explicit TransformNode( const ResourceDescriptor<TransformNode>& descriptor );
 };
 
 namespace Attorney {

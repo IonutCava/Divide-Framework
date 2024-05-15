@@ -55,16 +55,22 @@ namespace
         { 1.0f,  1.0f, -1.0f}
     };
 };
-Box3D::Box3D( PlatformContext& context, const ResourceDescriptor<Box3D>& descriptor )
-    : Object3D(context, descriptor, GetSceneNodeType<Box3D>() )
+
+Box3D::Box3D( const ResourceDescriptor<Box3D>& descriptor )
+    : Object3D( descriptor, GetSceneNodeType<Box3D>() )
+    , _descriptor(descriptor)
+{
+}
+
+bool Box3D::load( PlatformContext& context )
 {
     constexpr F32 s_minSideLength = 0.0001f;
 
     const vec3<F32> targetSize
     {
-        std::max( Util::UINT_TO_FLOAT( descriptor.data().x ), s_minSideLength ),
-        std::max( Util::UINT_TO_FLOAT( descriptor.data().y ), s_minSideLength ),
-        std::max( Util::UINT_TO_FLOAT( descriptor.data().z ), s_minSideLength )
+        std::max( Util::UINT_TO_FLOAT( _descriptor.data().x ), s_minSideLength ),
+        std::max( Util::UINT_TO_FLOAT( _descriptor.data().y ), s_minSideLength ),
+        std::max( Util::UINT_TO_FLOAT( _descriptor.data().z ), s_minSideLength )
     };
 
     static const vec2<F32> texCoords[4] =
@@ -114,14 +120,16 @@ Box3D::Box3D( PlatformContext& context, const ResourceDescriptor<Box3D>& descrip
     geometryBuffer(vb);
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 
-    if ( !descriptor.flag() )
+    if ( !_descriptor.flag() )
     {
-        ResourceDescriptor<Material> matDesc( "Material_" + descriptor.resourceName() );
+        ResourceDescriptor<Material> matDesc( "Material_" + resourceName() );
         matDesc.waitForReady( true );
         Handle<Material> matTemp = CreateResource( matDesc );
         Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
         setMaterialTpl( matTemp );
     }
+
+    return Object3D::load( context );
 }
 
 void Box3D::setHalfExtent(const vec3<F32>& halfExtent)

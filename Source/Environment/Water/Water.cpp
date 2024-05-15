@@ -31,7 +31,7 @@ namespace Divide
         constexpr F32 g_reflectionPlaneCorrectionHeight = -1.0f;
     }
 
-    WaterPlane::WaterPlane( [[maybe_unused]] PlatformContext& context, const ResourceDescriptor<WaterPlane>& descriptor )
+    WaterPlane::WaterPlane( const ResourceDescriptor<WaterPlane>& descriptor )
         : SceneNode( descriptor,
                      GetSceneNodeType<WaterPlane>(),
                      to_base( ComponentType::TRANSFORM ) )

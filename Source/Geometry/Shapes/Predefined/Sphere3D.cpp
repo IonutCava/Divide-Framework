@@ -15,10 +15,15 @@ namespace
     constexpr F32 s_minRadius = 0.0001f;
 }
 
-Sphere3D::Sphere3D( PlatformContext& context, const ResourceDescriptor<Sphere3D>& descriptor )
-    : Object3D(context, descriptor, GetSceneNodeType<Sphere3D>() )
+Sphere3D::Sphere3D( const ResourceDescriptor<Sphere3D>& descriptor )
+    : Object3D( descriptor, GetSceneNodeType<Sphere3D>() )
     , _radius( std::max( Util::UINT_TO_FLOAT( descriptor.enumValue() ), s_minRadius ) )
     , _resolution( descriptor.ID() == 0u ? 16u : descriptor.ID() )
+    , _descriptor(descriptor)
+{
+}
+
+bool Sphere3D::load( PlatformContext& context )
 {
     const U32 vertexCount = SQUARED( _resolution );
 
@@ -29,20 +34,22 @@ Sphere3D::Sphere3D( PlatformContext& context, const ResourceDescriptor<Sphere3D>
     vbDescriptor._largeIndices = vertexCount + 1 > U16_MAX;
 
     auto vb = context.gfx().newVB( vbDescriptor );
-    vb->setVertexCount(vertexCount);
-    vb->reserveIndexCount(vertexCount);
-    geometryBuffer(vb);
+    vb->setVertexCount( vertexCount );
+    vb->reserveIndexCount( vertexCount );
+    geometryBuffer( vb );
 
-    geometryDirty(true);
+    geometryDirty( true );
 
-    if ( !descriptor.flag() )
+    if ( !_descriptor.flag() )
     {
-        ResourceDescriptor<Material> matDesc( "Material_" + descriptor.resourceName() );
+        ResourceDescriptor<Material> matDesc( "Material_" + resourceName() );
         matDesc.waitForReady( true );
         Handle<Material> matTemp = CreateResource( matDesc );
         Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
         setMaterialTpl( matTemp );
     }
+
+    return Object3D::load(context);
 }
 
 void Sphere3D::setRadius(const F32 radius) noexcept

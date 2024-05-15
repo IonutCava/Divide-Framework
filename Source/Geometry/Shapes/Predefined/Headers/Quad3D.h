@@ -48,7 +48,9 @@ DEFINE_3D_OBJECT_TYPE(Quad3D, SceneNodeType::TYPE_QUAD_3D)
         CORNER_ALL
     };
 
-    explicit Quad3D( PlatformContext& context, const ResourceDescriptor<Quad3D>& descriptor );
+    explicit Quad3D( const ResourceDescriptor<Quad3D>& descriptor );
+
+    bool load( PlatformContext& context ) override;
 
     vec3<F32> getCorner(CornerLocation corner);
 
@@ -62,6 +64,8 @@ DEFINE_3D_OBJECT_TYPE(Quad3D, SceneNodeType::TYPE_QUAD_3D)
 
    protected:
      void recomputeBounds();
+
+     const ResourceDescriptor<Quad3D> _descriptor;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Quad3D);

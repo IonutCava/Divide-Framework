@@ -185,7 +185,14 @@ void Kernel::onLoop()
     {
         Time::ScopedTimer timer(_appLoopTimerMain);
 
-        if (!keepAlive()) {
+        ResourceCache::OnFrameStart();
+        SCOPE_EXIT
+        {
+            ResourceCache::OnFrameEnd();
+        };
+
+        if (!keepAlive())
+        {
             // exiting the rendering loop will return us to the last control point
             _platformContext.app().mainLoopActive(false);
 
@@ -196,7 +203,8 @@ void Kernel::onLoop()
             return;
         }
 
-        if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+        if constexpr(!Config::Build::IS_SHIPPING_BUILD)
+        {
             // Check for any file changes (shaders, scripts, etc)
             FileWatcherManager::update();
         }
@@ -942,13 +950,14 @@ void Kernel::shutdown()
     _renderPassManager.reset();
 
     SceneEnvironmentProbePool::OnShutdown(_platformContext.gfx());
+    ResourceCache::Stop();
     _platformContext.terminate();
     Camera::DestroyPool();
-    ResourceCache::Clear();
     for ( U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i )
     {
         _platformContext.taskPool( static_cast<TaskPoolType>(i) ).shutdown();
     }
+    ResourceCache::PrintLeakedResources();
     Console::printfn(LOCALE_STR("STOP_ENGINE_OK"));
 }
 

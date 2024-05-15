@@ -67,8 +67,10 @@ bool ResourceLoadLock::SetLoadingFinished(const size_t hash)
 
 PlatformContext* ResourceCache::s_context = nullptr;
 RenderAPI ResourceCache::s_renderAPI = RenderAPI::COUNT;
+bool ResourceCache::s_enabled = false;
 
-ResourcePoolBase::ResourcePoolBase()
+ResourcePoolBase::ResourcePoolBase(const RenderAPI api)
+   : _api(api)
 {
     ResourceCache::RegisterPool( this );
 }
@@ -87,18 +89,41 @@ void ResourceCache::Init( RenderAPI renderAPI, PlatformContext& context)
 {
     s_context = &context;
     s_renderAPI = renderAPI;
+    s_enabled = true;
 }
 
-void ResourceCache::Clear()
+void ResourceCache::Stop()
 {
+    s_enabled = false;
     Console::printfn(LOCALE_STR("STOP_RESOURCE_CACHE"));
 
     for ( ResourcePoolBase* pool : s_resourcePools)
+    {
+        pool->processDeletionQueue();
+    }
+}
+
+void ResourceCache::PrintLeakedResources()
+{
+    for ( ResourcePoolBase* pool : s_resourcePools )
     {
         pool->printResources( true );
     }
 
     Console::Flush();
+}
+
+void ResourceCache::OnFrameStart()
+{
+    for ( ResourcePoolBase* pool : s_resourcePools )
+    {
+        pool->processDeletionQueue();
+    }
+}
+
+void ResourceCache::OnFrameEnd()
+{
+    NOP();
 }
 
 } //namespace Divide

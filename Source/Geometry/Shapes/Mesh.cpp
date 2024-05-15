@@ -15,8 +15,8 @@
 
 namespace Divide {
 
-Mesh::Mesh( PlatformContext& context, const ResourceDescriptor<Mesh>& descriptor )
-    : Object3D(context, descriptor, GetSceneNodeType<Mesh>() )
+Mesh::Mesh( const ResourceDescriptor<Mesh>& descriptor )
+    : Object3D(descriptor, GetSceneNodeType<Mesh>() )
 {
     setBounds(_boundingBox);
 }
@@ -135,9 +135,10 @@ void Mesh::postLoad(SceneGraphNode* sgn)
     processNode(sgn, _nodeStructure);
     if (_animator)
     {
-        Attorney::SceneAnimatorMeshImporter::buildBuffers(*_animator, _context);
-
         PlatformContext& pContext = sgn->context();
+
+        Attorney::SceneAnimatorMeshImporter::buildBuffers(*_animator, pContext.gfx() );
+
         registerEditorComponent( pContext );
         DIVIDE_ASSERT( _editorComponent != nullptr );
 

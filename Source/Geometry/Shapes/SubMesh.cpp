@@ -15,8 +15,8 @@
 
 namespace Divide {
 
-SubMesh::SubMesh( PlatformContext& context, const ResourceDescriptor<SubMesh>& descriptor )
-    : Object3D(context, descriptor, GetSceneNodeType<SubMesh>() )
+SubMesh::SubMesh( const ResourceDescriptor<SubMesh>& descriptor )
+    : Object3D( descriptor, GetSceneNodeType<SubMesh>() )
     , _id( descriptor.data().y )
     , _boneCount( to_U8( std::min<U32>( descriptor.data().x, U8_MAX ) ) )
 {
@@ -116,7 +116,7 @@ void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const U32 animInd
     });
 
     Start(*computeBBTask,
-        _context.context().taskPool(TaskPoolType::HIGH_PRIORITY),
+        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY),
         TaskPriority::DONT_CARE,
         [this, animIndex, animComp]()
         {

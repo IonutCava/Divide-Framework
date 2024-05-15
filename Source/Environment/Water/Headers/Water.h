@@ -46,7 +46,7 @@ class ShaderProgram;
 DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
 {
    public:
-    explicit WaterPlane( PlatformContext& context, const ResourceDescriptor<WaterPlane>& descriptor );
+    explicit WaterPlane( const ResourceDescriptor<WaterPlane>& descriptor );
     ~WaterPlane() override;
 
     static bool PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept;

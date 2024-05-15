@@ -47,11 +47,10 @@ namespace Divide
         constexpr F32 g_slopeLimitTrees = 10.0f;
     }
 
-    Vegetation::Vegetation( PlatformContext& context, const ResourceDescriptor<Vegetation>& descriptor )
+    Vegetation::Vegetation( const ResourceDescriptor<Vegetation>& descriptor )
         : SceneNode( descriptor,
                      GetSceneNodeType<Vegetation>(),
                      to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::RENDERING ) )
-        , _context( context.gfx() )
         , _descriptor( descriptor._propertyDescriptor )
     {
         _treeMeshNames.insert( cend( _treeMeshNames ), 
@@ -81,24 +80,6 @@ namespace Divide
         renderState().drawState( false );
 
         CachedResource::setState( ResourceState::RES_LOADING );
-
-        registerEditorComponent( _context.context() );
-        DIVIDE_ASSERT( _editorComponent != nullptr );
-        EditorComponentField visDistanceGrassField = {};
-        visDistanceGrassField._name = "Grass Draw distance";
-        visDistanceGrassField._data = &_grassDistance;
-        visDistanceGrassField._type = EditorComponentFieldType::PUSH_TYPE;
-        visDistanceGrassField._readOnly = true;
-        visDistanceGrassField._basicType = PushConstantType::FLOAT;
-        _editorComponent->registerField( MOV( visDistanceGrassField ) );
-
-        EditorComponentField visDistanceTreesField = {};
-        visDistanceTreesField._name = "Tree Draw Instance";
-        visDistanceTreesField._data = &_treeDistance;
-        visDistanceTreesField._type = EditorComponentFieldType::PUSH_TYPE;
-        visDistanceTreesField._readOnly = true;
-        visDistanceTreesField._basicType = PushConstantType::FLOAT;
-        _editorComponent->registerField( MOV( visDistanceTreesField ) );
     }
 
     Vegetation::~Vegetation()
@@ -139,6 +120,24 @@ namespace Divide
     {
         // Make sure this is ONLY CALLED FROM THE MAIN LOADING THREAD. All instances should call this in a serialized fashion
         DIVIDE_ASSERT( _buffer == nullptr );
+
+        registerEditorComponent( context );
+        DIVIDE_ASSERT( _editorComponent != nullptr );
+        EditorComponentField visDistanceGrassField = {};
+        visDistanceGrassField._name = "Grass Draw distance";
+        visDistanceGrassField._data = &_grassDistance;
+        visDistanceGrassField._type = EditorComponentFieldType::PUSH_TYPE;
+        visDistanceGrassField._readOnly = true;
+        visDistanceGrassField._basicType = PushConstantType::FLOAT;
+        _editorComponent->registerField( MOV( visDistanceGrassField ) );
+
+        EditorComponentField visDistanceTreesField = {};
+        visDistanceTreesField._name = "Tree Draw Instance";
+        visDistanceTreesField._data = &_treeDistance;
+        visDistanceTreesField._type = EditorComponentFieldType::PUSH_TYPE;
+        visDistanceTreesField._readOnly = true;
+        visDistanceTreesField._basicType = PushConstantType::FLOAT;
+        _editorComponent->registerField( MOV( visDistanceTreesField ) );
 
         _lodPartitions.fill( 0u );
 
@@ -407,6 +406,13 @@ namespace Divide
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0u );
 
+        PipelineDescriptor pipeDesc;
+        pipeDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
+        pipeDesc._shaderProgramHandle = _cullShaderGrass;
+        _cullPipelineGrass = context.gfx().newPipeline( pipeDesc );
+        pipeDesc._shaderProgramHandle = _cullShaderTrees;
+        _cullPipelineTrees = context.gfx().newPipeline( pipeDesc );
+
         Get( _vegetationMaterial )->computeShaderCBK( [grassInstances = _maxGrassInstances]( [[maybe_unused]] Material* material, const RenderStagePass stagePass )
         {
             ShaderProgramDescriptor shaderDescriptor = {};
@@ -485,14 +491,6 @@ namespace Divide
             sgn->get<RenderingComponent>()->instantiateMaterial( _vegetationMaterial );
             sgn->get<RenderingComponent>()->occlusionCull( false ); ///< We handle our own culling
             sgn->get<BoundsComponent>()->collisionsEnabled( false );///< Grass collision detection should be handled in shaders (for now)
-
-            PipelineDescriptor pipeDesc;
-            pipeDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
-            pipeDesc._shaderProgramHandle = _cullShaderGrass;
-            _cullPipelineGrass = _context.newPipeline( pipeDesc );
-            pipeDesc._shaderProgramHandle = _cullShaderTrees;
-            _cullPipelineTrees = _context.newPipeline( pipeDesc );
-
             renderState().drawState( true );
         }
 
@@ -613,7 +611,7 @@ namespace Divide
         {
             return;
         }
-
+        
         pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
 
         Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( pkg );
@@ -647,7 +645,7 @@ namespace Divide
                                                                            ? RenderTargetNames::HI_Z_REFLECT
                                                                            : RenderTargetNames::HI_Z;
 
-            const RenderTarget* hizTarget = _context.renderTargetPool().getRenderTarget( hiZSourceTarget );
+            const RenderTarget* hizTarget = sgn->context().gfx().renderTargetPool().getRenderTarget( hiZSourceTarget );
             const RTAttachment* hizAttachment = hizTarget->getAttachment( RTAttachmentType::COLOUR );
 
             if ( hizAttachment != nullptr )
@@ -858,11 +856,11 @@ namespace Divide
     void Vegetation::registerInstance( const U32 chunkID, VegetationInstance* instance )
     {
         UniqueLock<SharedMutex> w_lock(_instanceLock);
-        for ( auto&[id, instance] : _instances)
+        for ( auto&[id, vegInstance] : _instances)
         {
             if ( id == chunkID)
             {
-                instance = instance;
+                vegInstance = instance;
                 return;
             }
         }

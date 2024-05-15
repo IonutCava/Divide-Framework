@@ -100,7 +100,7 @@ class NOINITVTABLE ShadowMap {
     // Reset usage flags and set render targets back to default settings
     static void resetShadowMaps();
 
-    static void bindShadowMaps( LightPool& pool, GFX::CommandBuffer& bufferInOut);
+    static void bindShadowMaps(GFX::CommandBuffer& bufferInOut);
     static U32  getLightLayerRequirements(const Light& light);
     static bool freeShadowMapOffset(const Light& light);
     static bool markShadowMapsUsed(Light& light);

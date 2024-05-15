@@ -19,8 +19,8 @@ RTAttachment::RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& d
 
 RTAttachment::~RTAttachment()
 {
-    DestroyResource(_renderTexture);
-    DestroyResource(_resolvedTexture);
+    DestroyResource( _resolvedTexture );
+    DestroyResource( _renderTexture );
 }
 
 Handle<Texture> RTAttachment::texture() const

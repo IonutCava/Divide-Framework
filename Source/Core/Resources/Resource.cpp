@@ -24,15 +24,23 @@ void Resource::setState(const ResourceState currentState)
     _resourceState.store(currentState, std::memory_order_relaxed);
 }
 
-void Resource::waitForReady() const
+void WaitForReady( Resource* res )
 {
-    WAIT_FOR_CONDITION(getState() == ResourceState::RES_LOADED);
+    if ( res != nullptr )
+    {
+        WAIT_FOR_CONDITION( res->getState() == ResourceState::RES_LOADED );
+    }
 }
 
-bool Resource::safeToDelete()
+bool SafeToDelete( Resource* res )
 {
-    return _resourceState == ResourceState::RES_CREATED ||
-           _resourceState == ResourceState::RES_LOADED;
+    if ( res != nullptr )
+    {
+        const ResourceState state = res->getState();
+        return state == ResourceState::RES_CREATED || state == ResourceState::RES_LOADED;
+    }
+
+    return true;
 }
 
 //---------------------------- Cached Resource ------------------------------------//

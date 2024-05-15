@@ -137,7 +137,7 @@ bool RenderTarget::create()
         }
         else
         {
-            resolveTexture = renderTexture;
+            resolveTexture = GetResourceRef(renderTexture);
         }
 
         att->setTexture(renderTexture, resolveTexture);
@@ -150,10 +150,13 @@ bool RenderTarget::create()
 
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )
     {
-        RTAttachment* att = updateAttachment(attDesc);
-        att->setTexture(attDesc._externalAttachment->renderTexture(), attDesc._externalAttachment->resolvedTexture());
-        DIVIDE_ASSERT(Get(attDesc._externalAttachment->renderTexture())->descriptor()._msaaSamples == _descriptor._msaaSamples);
+        Handle<Texture> renderTexture  = GetResourceRef(attDesc._externalAttachment->renderTexture());
+        Handle<Texture> resolveTexture = GetResourceRef(attDesc._externalAttachment->resolvedTexture());
 
+        DIVIDE_ASSERT(Get( renderTexture )->descriptor()._msaaSamples == _descriptor._msaaSamples);
+
+        RTAttachment* att = updateAttachment(attDesc);
+        att->setTexture( renderTexture, resolveTexture );
         if ( !initAttachment( att, attDesc._type, attDesc._slot ) )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -270,11 +273,7 @@ bool RenderTarget::updateSampleCount(U8 newSampleCount)
 
 bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type, const RTColourAttachmentSlot slot)
 {
-    if (att->_descriptor._externalAttachment != nullptr)
-    {
-        att->setTexture( att->_descriptor._externalAttachment->renderTexture(), att->_descriptor._externalAttachment->resolvedTexture());
-    }
-    else
+    if (att->_descriptor._externalAttachment == nullptr)
     {
         ResourcePtr<Texture> attTex = Get(att->texture());
 

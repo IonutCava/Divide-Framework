@@ -849,7 +849,7 @@ namespace Divide {
 
             if (ImGui::Button("Yes", ImVec2(120, 0)))
             {
-                createNode(_parentNode); 
+                createNode(); 
                 Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
 
                 ImGui::CloseCurrentPopup();
@@ -961,7 +961,7 @@ namespace Divide {
         Attorney::EditorSolutionExplorerWindow::loadNode(_parent, sgn);
     }
 
-    void SolutionExplorerWindow::createNode( SceneGraphNode* parentNode )
+    void SolutionExplorerWindow::createNode()
     {
         switch ( g_currentNodeType )
         {

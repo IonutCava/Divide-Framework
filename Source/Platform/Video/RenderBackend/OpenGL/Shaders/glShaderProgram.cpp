@@ -98,7 +98,6 @@ glShaderProgram::glShaderProgram( PlatformContext& context, const ResourceDescri
 
 glShaderProgram::~glShaderProgram()
 {
-    safeToDelete();
 }
 
 bool glShaderProgram::unload() 

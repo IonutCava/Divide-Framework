@@ -36,28 +36,32 @@ namespace
     constexpr U64 g_updateInterval = Time::MillisecondsToMicroseconds(33);
 }
 
-ParticleEmitter::ParticleEmitter( PlatformContext& context, const ResourceDescriptor<ParticleEmitter>& descriptor )
+ParticleEmitter::ParticleEmitter( const ResourceDescriptor<ParticleEmitter>& descriptor )
     : SceneNode(descriptor,
                 GetSceneNodeType<ParticleEmitter>(),
                 to_base(ComponentType::TRANSFORM) |
                 to_base(ComponentType::BOUNDS) |
                 to_base(ComponentType::RENDERING))
-    , _context(context.gfx())
 {
-    for (U8 i = 0u; i < s_MaxPlayerBuffers; ++i)
-    {
-        for (U8 j = 0u; j < to_base(RenderStage::COUNT); ++j)
-        {
-            _particleGPUBuffers[i][j] = _context.newGVD(g_particleBufferSizeFactor, Util::StringFormat("{}_buffer_{}_{}", resourceName(), i,j).c_str());
-        }
-    }
-
     _buffersDirty.fill(false);
 }
 
 ParticleEmitter::~ParticleEmitter()
 { 
     assert(_particles == nullptr);
+}
+
+bool ParticleEmitter::load( PlatformContext& context )
+{
+    for ( U8 i = 0u; i < s_MaxPlayerBuffers; ++i )
+    {
+        for ( U8 j = 0u; j < to_base( RenderStage::COUNT ); ++j )
+        {
+            _particleGPUBuffers[i][j] = context.gfx().newGVD( g_particleBufferSizeFactor, Util::StringFormat( "{}_buffer_{}_{}", resourceName(), i, j ).c_str() );
+        }
+    }
+
+    return SceneNode::load( context );
 }
 
 GenericVertexData& ParticleEmitter::getDataBuffer(const RenderStage stage, const PlayerIndex idx)
@@ -277,7 +281,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
 {
     if ( _enabled &&  getAliveParticleCount() > 0)
     {
-        Wait(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+        Wait(*_bufferUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
         if (refreshData && _buffersDirty[to_U32(renderStagePass._stage)])
         {
             GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
@@ -316,7 +320,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                 }
             };
 
-            parallel_for(_context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
+            parallel_for( sgn->context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
 
             _bufferUpdate = CreateTask(
                 [this, &renderStagePass](const Task&)
@@ -326,7 +330,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                     _buffersDirty[to_U32(renderStagePass._stage)] = true;
                 });
 
-            Start(*_bufferUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+            Start(*_bufferUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
         }
     }
 
@@ -375,7 +379,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             }
         };
 
-        parallel_for(_context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
+        parallel_for( sgn->context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
 
         ParticleData& data = *_particles;
         for (const std::shared_ptr<ParticleUpdater>& up : _updaters)
@@ -383,7 +387,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             up->update(g_updateInterval, data);
         }
 
-        Wait(*_bbUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+        Wait(*_bbUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
 
         _bbUpdate = CreateTask([this, aliveCount, averageEmitRate](const Task&)
         {
@@ -394,7 +398,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             }
             setBounds(aabb);
         });
-        Start(*_bbUpdate, _context.context().taskPool(TaskPoolType::HIGH_PRIORITY));
+        Start(*_bbUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
     }
 
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);

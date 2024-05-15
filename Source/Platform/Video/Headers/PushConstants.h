@@ -60,16 +60,16 @@ struct PushConstants
 
     void set(const PushConstantsStruct& fastData);
 
-    template<typename T> requires !std::is_same_v<bool, T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     void set(U64 bindingHash, PushConstantType type, const T* values, size_t count);
 
     template<typename T>
     void set(U64 bindingHash, PushConstantType type, const T& value);
 
-    template<typename T> requires !std::is_same_v<bool, T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     void set(U64 bindingHash, PushConstantType type, const vector<T>& values);
 
-    template<typename T, size_t N> requires !std::is_same_v<bool, T>
+    template<typename T, size_t N> requires (!std::is_same_v<bool, T>)
     void set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values);
 
     void clear() noexcept;

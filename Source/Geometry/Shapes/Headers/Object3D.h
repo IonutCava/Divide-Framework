@@ -62,7 +62,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 {
    public:
 
-    explicit Object3D( PlatformContext& context, const ResourceDescriptorBase& descriptor, SceneNodeType type);
+    explicit Object3D( const ResourceDescriptorBase& descriptor, SceneNodeType type);
 
     void setMaterialTpl( Handle<Material> material) override;
 
@@ -134,7 +134,6 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
    protected:
-    GFXDevice& _context;
     std::array<U16, 4> _geometryPartitionIDs;
     /// 3 indices, pointing to position values, that form a triangle in the mesh.
     /// used, for example, for cooking collision meshes

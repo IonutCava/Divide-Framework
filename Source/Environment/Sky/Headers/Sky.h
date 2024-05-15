@@ -61,7 +61,7 @@ enum class RebuildCommandsState : U8
 DEFINE_NODE_TYPE( Sky, SceneNodeType::TYPE_SKY )
 {
    public:
-    explicit Sky( PlatformContext& context, const ResourceDescriptor<Sky>& descriptor );
+    explicit Sky( const ResourceDescriptor<Sky>& descriptor );
 
     static void OnStartup(PlatformContext& context);
     // Returns the sun position and intensity details for the specified date-time
@@ -136,7 +136,6 @@ DEFINE_NODE_TYPE( Sky, SceneNodeType::TYPE_SKY )
     void setSkyShaderData( RenderStagePass renderStagePass, PushConstants& constantsInOut);
 
 protected:
-    GFXDevice& _context;
     Sun _sun;
     Handle<Texture> _skybox{ INVALID_HANDLE<Texture> };
     Handle<Texture> _weatherTex{ INVALID_HANDLE<Texture> };

@@ -70,9 +70,6 @@ namespace Divide
         explicit Resource( std::string_view resourceName, std::string_view typeName );
 
         [[nodiscard]] ResourceState getState() const noexcept;
-        void waitForReady() const;
-
-        bool safeToDelete();
 
         PROPERTY_R( Str<32>, typeName );
         PROPERTY_R( Str<256>, resourceName );
@@ -83,6 +80,9 @@ namespace Divide
       protected:
         std::atomic<ResourceState> _resourceState;
     };
+
+    void WaitForReady( Resource* res );
+    [[nodiscard]] bool SafeToDelete( Resource* res );
 
     struct ResourceDescriptorBase;
 

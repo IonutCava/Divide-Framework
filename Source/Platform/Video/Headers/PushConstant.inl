@@ -36,13 +36,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide::GFX
 {
 
-    template<typename T> requires !std::is_same_v<bool, T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     PushConstant::PushConstant(const U64 bindingHash, const PushConstantType type, const T& data)
         : PushConstant(bindingHash, type, &data, 1)
     {
     }
 
-    template<typename T> requires !std::is_same_v<bool, T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     PushConstant::PushConstant(const U64 bindingHash, const PushConstantType type, const T* data, const size_t count)
         : _dataSize(sizeof(T) * count)
         , _bindingHash(bindingHash)

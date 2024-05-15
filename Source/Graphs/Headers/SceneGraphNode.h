@@ -73,7 +73,6 @@ namespace Divide
         SceneNode* _nodePtr = nullptr;
         SceneNodeType _type = SceneNodeType::COUNT;
         DELEGATE<void> _deleter;
-        bool operator==(const SceneNodeHandle&) const = default;
     };
 
     template<typename T> requires std::is_base_of_v<SceneNode, T>

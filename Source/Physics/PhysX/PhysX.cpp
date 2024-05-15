@@ -370,7 +370,6 @@ namespace Divide
                 return false;
             }
             /// Destroy physics (:D)
-            _targetScene->release();
             _targetScene.reset();
         }
 

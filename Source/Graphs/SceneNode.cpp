@@ -169,8 +169,10 @@ void SceneNode::loadFromXML(const boost::property_tree::ptree& pt)
     }
 }
 
-TransformNode::TransformNode( PlatformContext& context, const ResourceDescriptor<TransformNode>& descriptor )
-    : SceneNode( descriptor, SceneNodeType::TYPE_TRANSFORM, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) )
+TransformNode::TransformNode( const ResourceDescriptor<TransformNode>& descriptor )
+    : SceneNode( descriptor, 
+                 GetSceneNodeType<TransformNode>(),
+                 to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) )
 {
 }
 

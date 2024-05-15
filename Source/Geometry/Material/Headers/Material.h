@@ -231,7 +231,7 @@ class Material final : public CachedResource {
     };
 
    public:
-    explicit Material( PlatformContext& context, const ResourceDescriptor<Material>& descriptor );
+    explicit Material( const ResourceDescriptor<Material>& descriptor );
 
     static void OnStartup();
     static void OnShutdown();
@@ -240,6 +240,7 @@ class Material final : public CachedResource {
 
     /// Return a new instance of this material with the name composed of the base material's name and the give name suffix (clone calls CreateResource internally!).
     [[nodiscard]] Handle<Material> clone(const std::string_view nameSuffix);
+    [[nodiscard]] bool load(PlatformContext& context) override;
     [[nodiscard]] bool unload() override;
     /// Returns a bit mask composed of UpdateResult flags
     [[nodiscard]] U32 update(U64 deltaTimeUS);
@@ -358,7 +359,7 @@ class Material final : public CachedResource {
     [[nodiscard]] bool usesTextureInShader(TextureSlot slot, bool isPrePass, bool isShadowPass) const noexcept;
 
    private:
-    GFXDevice& _context;
+     GFXDevice* _context = nullptr;
 
     struct RenderStateBlockEntry
     {

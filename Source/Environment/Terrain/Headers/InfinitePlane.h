@@ -45,7 +45,7 @@ DEFINE_NODE_TYPE(InfinitePlane, SceneNodeType::TYPE_INFINITEPLANE)
 {
 
 public:
-    explicit InfinitePlane( PlatformContext& context, const ResourceDescriptor<InfinitePlane>& descriptor );
+    explicit InfinitePlane( const ResourceDescriptor<InfinitePlane>& descriptor );
 
 protected:
     friend class ResourceCache;
@@ -62,7 +62,6 @@ protected:
 
 
 private:
-    GFXDevice& _context;
     vec2<U32> _dimensions;
     Handle<Quad3D> _plane = INVALID_HANDLE<Quad3D>;
     size_t _planeRenderStateHash = 0u;

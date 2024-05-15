@@ -138,12 +138,9 @@ namespace Divide
         s_shadersDirty = false;
     }
 
-    Material::Material( PlatformContext& context, const ResourceDescriptor<Material>& descriptor )
+    Material::Material( const ResourceDescriptor<Material>& descriptor )
         : CachedResource( descriptor, "Material")
-        , _context( context.gfx() )
     {
-        properties().receivesShadows( context.config().rendering.shadowMapping.enabled );
-
         const ShaderProgramInfo defaultShaderInfo = {};
         // Could just direct copy the arrays, but this looks cool
         for ( U8 s = 0u; s < to_U8( RenderStage::COUNT ); ++s )
@@ -214,6 +211,14 @@ namespace Divide
         };
     }
 
+    bool Material::load( PlatformContext& context )
+    {
+        _context = &context.gfx();
+        properties().receivesShadows( context.config().rendering.shadowMapping.enabled );
+
+        return CachedResource::load( context );
+    }
+
     Handle<Material> Material::clone( const std::string_view nameSuffix )
     {
         DIVIDE_ASSERT( !nameSuffix.empty(), "Material error: clone called without a valid name suffix!" );
@@ -239,7 +244,7 @@ namespace Divide
             const TextureInfo& texInfo = this->_textures[i];
             if ( texInfo._ptr != INVALID_HANDLE<Texture> )
             {
-                const Handle<Texture> cloneTex = GetResourceRef<Texture>( Get( texInfo._ptr )->descriptorHash() );
+                const Handle<Texture> cloneTex = GetResourceRef( texInfo._ptr );
                 cloneMat->setTexture(
                     static_cast<TextureSlot>(i),
                     cloneTex,
@@ -461,20 +466,20 @@ namespace Divide
         ShaderComputeQueue::ShaderQueueElement shaderElement{ &info._shaderRef, shaderDescriptor };
         if ( updatePriorirty() == UpdatePriority::High )
         {
-            _context.shaderComputeQueue().process( shaderElement );
+            _context->shaderComputeQueue().process( shaderElement );
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
             DIVIDE_ASSERT( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
-            Get(info._shaderRef)->waitForReady();
+            WaitForReady( Get(info._shaderRef) );
         }
         else
         {
             if ( updatePriorirty() == UpdatePriority::Medium )
             {
-                _context.shaderComputeQueue().addToQueueFront( shaderElement );
+                _context->shaderComputeQueue().addToQueueFront( shaderElement );
             }
             else
             {
-                _context.shaderComputeQueue().addToQueueBack( shaderElement );
+                _context->shaderComputeQueue().addToQueueBack( shaderElement );
             }
             info._shaderCompStage = ShaderBuildStage::QUEUED;
         }
@@ -517,7 +522,7 @@ namespace Divide
         {
             if ( !canDraw( renderStagePass, justFinishedLoading ) )
             {
-                if ( !_context.shaderComputeQueue().stepQueue() )
+                if ( !_context->shaderComputeQueue().stepQueue() )
                 {
                     NOP();
                 }
@@ -528,7 +533,7 @@ namespace Divide
             }
         }
 
-        return _context.imShaders()->imWorldShaderNoTexture();
+        return _context->imShaders()->imWorldShaderNoTexture();
     }
 
     Handle<ShaderProgram> Material::getProgramHandle( const RenderStagePass renderStagePass ) const
@@ -543,7 +548,7 @@ namespace Divide
         }
         DIVIDE_UNEXPECTED_CALL();
 
-        return _context.imShaders()->imWorldShaderNoTexture();
+        return _context->imShaders()->imWorldShaderNoTexture();
     }
 
     bool Material::canDraw( const RenderStagePass renderStagePass, bool& shaderJustFinishedLoading )
@@ -575,7 +580,7 @@ namespace Divide
         {
             assert( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
             // ... wait for the shader to finish loading
-            Get(info._shaderRef)->waitForReady();
+            WaitForReady( Get(info._shaderRef) );
             // Once it has finished loading, it is ready for drawing
             shaderJustFinishedLoading = true;
             info._shaderCompStage = ShaderBuildStage::READY;
@@ -611,7 +616,7 @@ namespace Divide
         DIVIDE_ASSERT( properties().shadingMode() != ShadingMode::COUNT, "Material computeShader error: Invalid shading mode specified!" );
         std::array<ModuleDefines, to_base( ShaderType::COUNT )> moduleDefines = {};
 
-        if ( _context.context().config().rendering.MSAASamples > 0u )
+        if ( _context->context().config().rendering.MSAASamples > 0u )
         {
             shaderDescriptor._globalDefines.emplace_back( "MSAA_SCREEN_TARGET", true );
         }
@@ -724,7 +729,7 @@ namespace Divide
             }
         }
 
-        const Configuration& config = _context.context().config();
+        const Configuration& config = _context->context().config();
         if ( !config.rendering.shadowMapping.enabled )
         {
             moduleDefines[to_base( ShaderType::FRAGMENT )].emplace_back( "DISABLE_SHADOW_MAPPING", true );

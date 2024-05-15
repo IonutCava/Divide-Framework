@@ -40,7 +40,7 @@ namespace Divide {
 
 class AudioDescriptor final : public CachedResource {
    public:
-    AudioDescriptor( [[maybe_unused]] PlatformContext& context, const ResourceDescriptor<AudioDescriptor>& descriptor )
+    AudioDescriptor( const ResourceDescriptor<AudioDescriptor>& descriptor )
         : CachedResource( descriptor, "AudioDescriptor")
     {
     }

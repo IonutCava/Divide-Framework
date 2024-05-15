@@ -17,11 +17,10 @@
 namespace Divide
 {
 
-    InfinitePlane::InfinitePlane( PlatformContext& context, const ResourceDescriptor<InfinitePlane>& descriptor )
+    InfinitePlane::InfinitePlane( const ResourceDescriptor<InfinitePlane>& descriptor )
         : SceneNode( descriptor,
                      GetSceneNodeType<InfinitePlane>(),
                      to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) )
-        , _context( context.gfx() )
         , _dimensions( descriptor.data().xy )
     {
         _renderState.addToDrawExclusionMask( RenderStage::SHADOW );

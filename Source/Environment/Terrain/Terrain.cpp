@@ -94,8 +94,8 @@ void TessellationParams::fromDescriptor(const TerrainDescriptor& descriptor) noe
     WorldScale(descriptor._dimensions * 0.5f / to_F32(PATCHES_PER_TILE_EDGE));
 }
 
-Terrain::Terrain( PlatformContext& context, const ResourceDescriptor<Terrain>& descriptor )
-    : Object3D(context, descriptor, GetSceneNodeType<Terrain>() )
+Terrain::Terrain( const ResourceDescriptor<Terrain>& descriptor )
+    : Object3D(descriptor, GetSceneNodeType<Terrain>() )
     , _terrainQuadtree()
     , _descriptor( descriptor._propertyDescriptor )
 {
@@ -754,11 +754,11 @@ bool Terrain::loadResources( PlatformContext& context )
     }
 
     // Then compute quadtree and all additional terrain-related structures
-    postBuild();
+    postBuild(context);
 
     createVegetation(context );
 
-    TaskPool& pool = _context.context().taskPool( TaskPoolType::HIGH_PRIORITY );
+    TaskPool& pool = context.taskPool( TaskPoolType::HIGH_PRIORITY );
     Task* buildTask = CreateTask(TASK_NOP);
     for ( TerrainChunk* chunk : terrainChunks() )
     {
@@ -981,7 +981,7 @@ void Terrain::onEditorChange(const std::string_view field)
     }
 }
 
-void Terrain::postBuild()
+void Terrain::postBuild( PlatformContext& context )
 {
     const U16 terrainWidth = _descriptor._dimensions.width;
     const U16 terrainHeight = _descriptor._dimensions.height;
@@ -1043,7 +1043,7 @@ void Terrain::postBuild()
             idxBuff.data = indices.data();
             idxBuff.dynamic = false;
 
-            _terrainBuffer = _context.newGVD(1, _descriptor._name.c_str());
+            _terrainBuffer = context.gfx().newGVD(1, _descriptor._name.c_str());
             {
                 const BufferLock lock = _terrainBuffer->setIndexBuffer(idxBuff);
                 DIVIDE_UNUSED(lock);

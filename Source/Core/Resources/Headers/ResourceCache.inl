@@ -46,9 +46,14 @@ namespace Divide
 {
     struct ResourcePoolBase
     {
-        ResourcePoolBase();
+        explicit ResourcePoolBase( RenderAPI api );
+
         virtual ~ResourcePoolBase();
         virtual void printResources( bool error ) = 0;
+        virtual void processDeletionQueue() = 0;
+
+       protected:
+        const RenderAPI _api;
     };
 
     template<typename T>
@@ -63,26 +68,35 @@ namespace Divide
 
         constexpr static size_t ResourcePoolSize = 512u;
 
-        ResourcePool();
+        explicit ResourcePool( RenderAPI api );
 
         void resize( size_t size);
 
-        [[nodiscard]] ResourcePtr<T> get( Handle<T> handle );
+        void queueDeletion(Handle<T>& handle);
+        void processDeletionQueue() override;
 
-        void deallocate( RenderAPI api, Handle<T>& handle );
-        void deallocateInternal( RenderAPI api, Entry& entry );
+        [[nodiscard]] ResourcePtr<T> get( Handle<T> handle );
+        
+        Handle<T> retrieveHandleLocked( const size_t descriptorHash );
+
+        void deallocate( Handle<T>& handle );
 
         [[nodiscard]] Handle<T> allocate( size_t descriptorHash );
-        [[nodiscard]] Handle<T> allocateLocked( size_t descriptorHash );
 
-        void commit(Handle<T> handle, ResourcePtr<T> ptr);
-
+        void commitLocked(Handle<T> handle, ResourcePtr<T> ptr);
 
         void printResources( bool error ) final;
 
-        RecursiveMutex _lock;
+        SharedMutex _lock;
         eastl::fixed_vector<std::pair<bool, U8>, ResourcePoolSize, true> _freeList;
         eastl::fixed_vector<Entry, ResourcePoolSize, true> _resPool;
+
+        void deallocateInternal( ResourcePtr<T> ptr );
+        [[nodiscard]] Handle<T> allocateLocked( size_t descriptorHash );
+
+    private:
+        Mutex _deletionLock;
+        eastl::queue<Handle<T>> _deletionQueue;
     };
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -96,16 +110,40 @@ namespace Divide
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    ResourcePool<T>& GetPool()
+    ResourcePool<T>& GetPool( const RenderAPI api)
     {
-        static ResourcePool<T> s_pool;
+        static ResourcePool<T> s_pool(api);
+
         return s_pool;
+    }
+
+    template<typename T>
+    void ResourcePool<T>::queueDeletion( Handle<T>& handle )
+    {
+        if ( handle != INVALID_HANDLE<T> )
+        {
+            UniqueLock<Mutex> w_lock( _deletionLock);
+            _deletionQueue.push(handle);
+            handle = INVALID_HANDLE<T>;
+        }
+    }
+
+    template<typename T>
+    void ResourcePool<T>::processDeletionQueue()
+    {
+        UniqueLock<Mutex> w_lock( _deletionLock );
+        while (!_deletionQueue.empty())
+        {
+            Handle<T> handle = _deletionQueue.front();
+            _deletionQueue.pop();
+            deallocate( handle );
+        }
     }
 
     template<typename T>
     void ResourcePool<T>::printResources( const bool error )
     {
-        UniqueLock<RecursiveMutex> r_lock( _lock );
+        SharedLock<SharedMutex> r_lock( _lock );
 
         bool first = true;
         const size_t poolSize = _freeList.size();
@@ -145,15 +183,15 @@ namespace Divide
     {
         DIVIDE_ASSERT(handle != INVALID_HANDLE<T>);
 
-        UniqueLock<RecursiveMutex> r_lock( _lock );
+        SharedLock<SharedMutex> r_lock( _lock );
         DIVIDE_ASSERT( _freeList[handle._index].second == handle._generation );
         
         return _resPool[handle._index]._ptr;
     }
 
     template<typename T>
-    ResourcePool<T>::ResourcePool()
-        : ResourcePoolBase()
+    ResourcePool<T>::ResourcePool(const RenderAPI api)
+        : ResourcePoolBase(api)
     {
         
         resize( ResourcePoolSize );
@@ -194,45 +232,42 @@ namespace Divide
     template<typename T>
     Handle<T> ResourcePool<T>::allocate( const size_t descriptorHash )
     {
-        LockGuard<RecursiveMutex> lock( _lock );
+        LockGuard<SharedMutex> lock( _lock );
         return allocateLocked( descriptorHash );
     }
 
     template <typename T>
-    void ResourcePool<T>::deallocateInternal( [[maybe_unused]] const RenderAPI api, Entry& entry )
+    void ResourcePool<T>::deallocateInternal( ResourcePtr<T> ptr )
     {
-        GetMemPool<T>().deleteElement( entry._ptr );
-        entry = {};
+        GetMemPool<T>().deleteElement( ptr );
     }
 
     template<>
-    inline void ResourcePool<Texture>::deallocateInternal( const RenderAPI api, Entry& entry )
+    inline void ResourcePool<Texture>::deallocateInternal( ResourcePtr<Texture> ptr )
     {
-        switch ( api )
+        switch ( _api )
         {
-            case RenderAPI::None:   GetMemPool<noTexture>().deleteElement( static_cast<ResourcePtr<noTexture>>( entry._ptr ) ); break;
-            case RenderAPI::OpenGL: GetMemPool<glTexture>().deleteElement( static_cast<ResourcePtr<glTexture>>( entry._ptr ) ); break;
-            case RenderAPI::Vulkan: GetMemPool<vkTexture>().deleteElement( static_cast<ResourcePtr<vkTexture>>( entry._ptr ) ); break;
+            case RenderAPI::None:   GetMemPool<noTexture>().deleteElement( static_cast<ResourcePtr<noTexture>>( ptr ) ); break;
+            case RenderAPI::OpenGL: GetMemPool<glTexture>().deleteElement( static_cast<ResourcePtr<glTexture>>( ptr ) ); break;
+            case RenderAPI::Vulkan: GetMemPool<vkTexture>().deleteElement( static_cast<ResourcePtr<vkTexture>>( ptr ) ); break;
             case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
         }
-        entry._ptr = nullptr;
     }
 
     template<>
-    inline void ResourcePool<ShaderProgram>::deallocateInternal( const RenderAPI api, Entry& entry )
+    inline void ResourcePool<ShaderProgram>::deallocateInternal( ResourcePtr<ShaderProgram> ptr )
     {
-        switch ( api )
+        switch ( _api )
         {
-            case RenderAPI::None:   GetMemPool<noShaderProgram>().deleteElement( static_cast<ResourcePtr<noShaderProgram>>(entry._ptr) ); break;
-            case RenderAPI::OpenGL: GetMemPool<glShaderProgram>().deleteElement( static_cast<ResourcePtr<glShaderProgram>>(entry._ptr) ); break;
-            case RenderAPI::Vulkan: GetMemPool<vkShaderProgram>().deleteElement( static_cast<ResourcePtr<vkShaderProgram>>(entry._ptr) ); break;
+            case RenderAPI::None:   GetMemPool<noShaderProgram>().deleteElement( static_cast<ResourcePtr<noShaderProgram>>( ptr) ); break;
+            case RenderAPI::OpenGL: GetMemPool<glShaderProgram>().deleteElement( static_cast<ResourcePtr<glShaderProgram>>( ptr) ); break;
+            case RenderAPI::Vulkan: GetMemPool<vkShaderProgram>().deleteElement( static_cast<ResourcePtr<vkShaderProgram>>( ptr) ); break;
             case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
         }
-        entry._ptr = nullptr;
     }
 
     template <typename T>
-    void ResourcePool<T>::deallocate( const RenderAPI api, Handle<T>& handle )
+    void ResourcePool<T>::deallocate( Handle<T>& handle )
     {
         if ( handle == INVALID_HANDLE<T> )
         {
@@ -240,80 +275,130 @@ namespace Divide
             return;
         }
 
-        LockGuard<RecursiveMutex> lock( _lock );
-        if ( _freeList[handle._index].second != handle._generation )
+        ResourcePtr<T> ptr = nullptr;
+        size_t descriptorHash = 0u;
+
         {
-            // Already free
-            return;
-        }
-
-        Entry& entry = _resPool[handle._index];
-
-        if ( --entry._refCount == 0u)
-        {
-            Console::printfn( LOCALE_STR( "RESOURCE_CACHE_REM_RES" ), entry._ptr->resourceName().c_str(), entry._descriptorHash );
-
-            entry._descriptorHash = 0u;
-
-            if (entry._ptr->getState() == ResourceState::RES_LOADED)
+            LockGuard<SharedMutex> w_lock( _lock );
+            if ( _freeList[handle._index].second != handle._generation )
             {
-                entry._ptr->setState(ResourceState::RES_UNLOADING);
-                if (!entry._ptr->unload())
+                // Already free
+                return;
+            }
+
+            Entry& entry = _resPool[handle._index];
+            if ( --entry._refCount == 0u)
+            {
+                ptr = entry._ptr;
+                descriptorHash = entry._descriptorHash;
+
+                entry = {};
+                ++_freeList[handle._index].second;
+                _freeList[handle._index].first = true;
+            }
+            else
+            {
+                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_REM_RES_DEC" ), entry._ptr->resourceName().c_str(), entry._refCount );
+            }
+        }
+        handle = INVALID_HANDLE<T>;
+
+        if ( ptr != nullptr )
+        {
+            Console::printfn( LOCALE_STR( "RESOURCE_CACHE_REM_RES" ), ptr->resourceName().c_str(), descriptorHash );
+
+            if ( ptr->getState() == ResourceState::RES_LOADED)
+            {
+                ptr->setState(ResourceState::RES_UNLOADING);
+                if (!ptr->unload())
                 {
-                    Console::errorfn( LOCALE_STR( "ERROR_RESOURCE_REM" ), entry._ptr->resourceName().c_str(), entry._ptr->getGUID() );
-                    entry._ptr->setState(ResourceState::RES_UNKNOWN);
+                    Console::errorfn( LOCALE_STR( "ERROR_RESOURCE_REM" ), ptr->resourceName().c_str(), ptr->getGUID() );
+                    ptr->setState(ResourceState::RES_UNKNOWN);
                 }
                 else
                 {
-                    entry._ptr->setState(ResourceState::RES_CREATED);
+                    ptr->setState(ResourceState::RES_CREATED);
                 }
             }
 
-            DIVIDE_ASSERT(entry._ptr->safeToDelete());
-            deallocateInternal( api, entry );
-
-            ++_freeList[handle._index].second;
-            _freeList[handle._index].first = true;
+            DIVIDE_ASSERT( SafeToDelete( ptr ));
+            deallocateInternal( ptr );
         }
-        else
-        {
-            Console::printfn( LOCALE_STR("RESOURCE_CACHE_REM_RES_DEC"), entry._ptr->resourceName().c_str(), entry._refCount );
-        }
-
-        handle = INVALID_HANDLE<T>;
     }
 
-    template <typename T>
-    void ResourcePool<T>::commit( const Handle<T> handle, ResourcePtr<T> ptr )
+    template<typename T>
+    Handle<T> ResourcePool<T>::retrieveHandleLocked( const size_t descriptorHash )
     {
-        LockGuard<RecursiveMutex> lock( _lock );
-        _resPool[handle._index]._ptr = ptr;
-    }
-
-    template <typename T> requires std::is_base_of_v<CachedResource, T>
-    Handle<T> ResourceCache::RetrieveFromCache( const size_t descriptorHash, bool& wasInCache )
-    {
-        wasInCache = false;
-
-        Handle<T> ret = {};
-        ResourcePool<T>& pool = GetPool<T>();
-        UniqueLock<RecursiveMutex> r_lock(pool._lock);
-
-        for ( const auto& it : pool._freeList)
+        Handle<T> ret{};
+        for ( const auto [free, generation] : _freeList )
         {
-            if ( !it.first && pool._resPool[ret._index]._descriptorHash == descriptorHash)
+            if ( !free )
             {
-                ret._generation = it.second;
-                wasInCache = true;
+                Entry& entry = _resPool[ret._index];
 
-                const U32 refCount = ++pool._resPool[ret._index]._refCount;
+                if ( entry._descriptorHash == descriptorHash )
+                {
+                    ret._generation = generation;
+                    ++entry._refCount;
 
-                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_RETRIEVE" ), pool._resPool[ret._index]._ptr->resourceName().c_str(), refCount );
-                return ret;
+                    Console::printfn( LOCALE_STR( "RESOURCE_CACHE_GET_RES_INC" ), entry._ptr->resourceName(), entry._refCount );
+                    return ret;
+                }
             }
             ++ret._index;
         }
 
+        return INVALID_HANDLE<T>;
+    }
+
+    template <typename T>
+    void ResourcePool<T>::commitLocked( const Handle<T> handle, ResourcePtr<T> ptr )
+    {
+        _resPool[handle._index]._ptr = ptr;
+    }
+
+    template <typename T> requires std::is_base_of_v<CachedResource, T>
+    [[nodiscard]] Handle<T> ResourceCache::RetrieveFromCache( const Handle<T> handle )
+    {
+        if ( handle != INVALID_HANDLE<T>)
+        {
+            ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+            SharedLock<SharedMutex> r_lock( pool._lock );
+            if ( pool._freeList[handle._index].second == handle._generation )
+            {
+                auto& entry = pool._resPool[handle._index];
+                ++entry._refCount;
+                Console::printfn( LOCALE_STR( "RESOURCE_CACHE_GET_RES_INC" ), entry._ptr->resourceName(), entry._refCount );
+            }
+        }
+
+        return handle;
+    }
+
+    template<typename T> requires std::is_base_of_v<CachedResource, T>
+    Handle<T> ResourceCache::RetrieveOrAllocateHandle( const size_t descriptorHash, bool& wasInCache )
+    {
+        ResourcePool<T>& pool = GetPool<T>(s_renderAPI);
+        {
+            SharedLock<SharedMutex> r_lock(pool._lock);
+            const Handle<T> ret = pool.retrieveHandleLocked(descriptorHash);
+            if ( ret != INVALID_HANDLE<T> )
+            {
+                wasInCache = true;
+                return ret;
+            }
+        }
+
+        UniqueLock<SharedMutex> r_lock( pool._lock );
+        // Check again
+        const Handle<T> ret = pool.retrieveHandleLocked( descriptorHash );
+        if ( ret != INVALID_HANDLE<T> )
+        {
+            wasInCache = true;
+            return ret;
+        }
+
+        // Cache miss. Allocate new resource
         return pool.allocateLocked(descriptorHash);
     }
 
@@ -321,10 +406,10 @@ namespace Divide
     template <typename T> requires std::is_base_of_v<CachedResource, T>
     T* ResourceCache::Get( const Handle<T> handle )
     {
-        if ( handle != INVALID_HANDLE<T> )
+        if ( handle != INVALID_HANDLE<T> ) [[likely]]
         {
-            ResourcePool<T>& pool = GetPool<T>();
-            UniqueLock<RecursiveMutex> r_lock( pool._lock );
+            ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+            SharedLock<SharedMutex> r_lock( pool._lock );
             if ( pool._freeList[handle._index].second == handle._generation )
             {
                 return pool._resPool[handle._index]._ptr;
@@ -335,96 +420,74 @@ namespace Divide
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    void ResourceCache::Destroy( Handle<T>& handle )
+    void ResourceCache::Destroy( Handle<T>& handle, const bool immediate )
     {
-        if ( handle != INVALID_HANDLE<T> )
+        if ( handle == INVALID_HANDLE<T> ) [[unlikely]]
         {
-            GetPool<T>().deallocate(s_renderAPI, handle);
+            //Perfectly valid operation (e.g. material texture slots). Easier to check here instead of every single DestroyResourceCall.
+            NOP();
+            return;
+        }
+
+        if ( immediate || !s_enabled ) [[unlikely]]
+        {
+            GetPool<T>( s_renderAPI ).deallocate( handle );
         }
         else
         {
-            // Not an actual error at this point. It's OK to delete a handle we haven't assigned a resource to yet.
-            Console::warnfn(LOCALE_STR( "ERROR_RESOURCE_CACHE_UNKNOWN_RESOURCE" ) );
+            GetPool<T>( s_renderAPI ).queueDeletion( handle );
         }
-    }
-
-    template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base>&& std::is_base_of_v<Base, Derived>
-    ResourcePtr<Base> ResourceCache::AllocateInternal( const ResourceDescriptor<Base>& descriptor )
-    {
-        LockGuard<RecursiveMutex> lock( GetPool<Base>()._lock );
-        return GetMemPool<Derived>().newElement( *s_context, descriptor );
-    }
-
-    template<>
-    inline ResourcePtr<ShaderProgram> ResourceCache::AllocateInternal<ShaderProgram, ShaderProgram>( const ResourceDescriptor<ShaderProgram>& descriptor )
-    {
-        switch ( s_context->gfx().renderAPI() )
-        {
-            case RenderAPI::None:   return AllocateInternal<ShaderProgram, noShaderProgram>( descriptor );
-            case RenderAPI::OpenGL: return AllocateInternal<ShaderProgram, glShaderProgram>( descriptor );
-            case RenderAPI::Vulkan: return AllocateInternal<ShaderProgram, vkShaderProgram>( descriptor );
-
-            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
-        }
-
-        return nullptr;
-    }
-
-    template<>
-    inline ResourcePtr<Texture> ResourceCache::AllocateInternal<Texture, Texture>( const ResourceDescriptor<Texture>& descriptor )
-    {
-        switch ( s_context->gfx().renderAPI() )
-        {
-            case RenderAPI::None:   return AllocateInternal<Texture, noTexture>( descriptor );
-            case RenderAPI::OpenGL: return AllocateInternal<Texture, glTexture>( descriptor );
-            case RenderAPI::Vulkan: return AllocateInternal<Texture, vkTexture>( descriptor );
-            case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
-        }
-
-        return nullptr;
-    }
-
-
-    template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base>&& std::is_base_of_v<Base, Derived>
-    void ResourceCache::BuildInternal( ResourcePtr<Base> ptr )
-    {
-        DIVIDE_ASSERT( ptr != nullptr );
         
-        ptr->setState( ResourceState::RES_LOADING );
+    }
 
-        if (!ptr->load( *s_context ) )
-        {
-            ptr->setState( ResourceState::RES_UNKNOWN );
-        }
-        else
-        {
-            ptr->setState( ResourceState::RES_THREAD_LOADED );
-        }
+    template<typename T> requires std::is_base_of_v<Resource, T>
+    ResourcePtr<T> ResourceCache::AllocateInternal( const ResourceDescriptor<T>& descriptor )
+    {
+        return GetMemPool<T>().newElement( descriptor );
     }
 
     template<>
-    inline void ResourceCache::BuildInternal<ShaderProgram, ShaderProgram>( ResourcePtr<ShaderProgram> ptr )
+    inline ResourcePtr<ShaderProgram> ResourceCache::AllocateInternal<ShaderProgram>( const ResourceDescriptor<ShaderProgram>& descriptor )
     {
-        switch ( s_context->gfx().renderAPI() )
+        switch ( s_renderAPI )
         {
-            case RenderAPI::None:   BuildInternal<ShaderProgram, noShaderProgram>( ptr ); break;
-            case RenderAPI::OpenGL: BuildInternal<ShaderProgram, glShaderProgram>( ptr ); break;
-            case RenderAPI::Vulkan: BuildInternal<ShaderProgram, vkShaderProgram>( ptr ); break;
+            case RenderAPI::None:   return GetMemPool<noShaderProgram>().newElement( *s_context, descriptor );
+            case RenderAPI::OpenGL: return GetMemPool<glShaderProgram>().newElement( *s_context, descriptor );
+            case RenderAPI::Vulkan: return GetMemPool<vkShaderProgram>().newElement( *s_context, descriptor );
 
             case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
+
+        return nullptr;
     }
 
     template<>
-    inline void  ResourceCache::BuildInternal<Texture, Texture>( ResourcePtr<Texture> ptr )
+    inline ResourcePtr<Texture> ResourceCache::AllocateInternal<Texture>( const ResourceDescriptor<Texture>& descriptor )
     {
-        switch ( s_context->gfx().renderAPI() )
+        switch ( s_renderAPI )
         {
-            case RenderAPI::None:   BuildInternal<Texture, noTexture>( ptr ); break;
-            case RenderAPI::OpenGL: BuildInternal<Texture, glTexture>( ptr ); break;
-            case RenderAPI::Vulkan: BuildInternal<Texture, vkTexture>( ptr ); break;
+            case RenderAPI::None:   return GetMemPool<noTexture>().newElement( *s_context, descriptor );
+            case RenderAPI::OpenGL: return GetMemPool<glTexture>().newElement( *s_context, descriptor );
+            case RenderAPI::Vulkan: return GetMemPool<vkTexture>().newElement( *s_context, descriptor );
             case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
+
+        return nullptr;
+    }
+
+    template<typename T> requires std::is_base_of_v<Resource, T>
+    ResourcePtr<T> ResourceCache::AllocateAndCommit( const Handle<T> handle, const ResourceDescriptor<T>& descriptor )
+    {
+        ResourcePool<T>& pool = GetPool<T>( s_renderAPI );
+
+        LockGuard<SharedMutex> lock( pool._lock );
+        ResourcePtr<T> ptr = AllocateInternal<T>( descriptor );
+        if ( ptr != nullptr )
+        {
+            pool.commitLocked( handle, ptr );
+        }
+
+        return ptr;
     }
 
     template<typename T> requires std::is_base_of_v<Resource, T>
@@ -433,61 +496,72 @@ namespace Divide
         Time::ProfileTimer loadTimer{};
 
         loadTimer.start();
-        BuildInternal<T, T>(ptr);
-        loadTimer.stop();
-
         if ( ptr != nullptr )
         {
+            ptr->setState( ResourceState::RES_LOADING );
+
+            if ( ptr->load( *s_context ) ) [[likely]]
+            {
+                ptr->setState( ResourceState::RES_THREAD_LOADED );
+            }
+            else
+            {
+                ptr->setState( ResourceState::RES_UNKNOWN );
+            }
+        }
+        loadTimer.stop();
+        const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( loadTimer.get() );
+
+        if ( ptr != nullptr && ptr->getState() == ResourceState::RES_THREAD_LOADED ) [[likely]]
+        {
             Console::printfn( LOCALE_STR( "RESOURCE_CACHE_BUILD" ),
-                              ptr->resourceName().c_str(),
+                              descriptor.resourceName(),
                               ptr->typeName(),
                               ptr->getGUID(),
                               descriptor.getHash(),
-                              Time::MicrosecondsToMilliseconds<F32>( loadTimer.get() ) );
+                              durationMS );
         }
         else
         {
-            Console::errorfn( LOCALE_STR( "RESOURCE_CACHE_BUILD_FAILED" ), descriptor.resourceName() );
+            Console::errorfn( LOCALE_STR( "RESOURCE_CACHE_BUILD_FAILED" ),
+                              descriptor.resourceName(),
+                              durationMS );
         }
     }
 
     template<typename T> requires std::is_base_of_v<Resource, T>
-    ResourcePtr<T> ResourceCache::Allocate( Handle<T> handle, const ResourceDescriptor<T>& descriptor, const size_t descriptorHash )
+    ResourcePtr<T> ResourceCache::Allocate( const Handle<T> handle, const ResourceDescriptor<T>& descriptor, const size_t descriptorHash )
     {
         Time::ProfileTimer loadTimer{};
-
         loadTimer.start();
-        ResourcePtr<T> ptr = AllocateInternal<T, T>(descriptor );
+        ResourcePtr<T> ptr = AllocateAndCommit<T>( handle, descriptor );
+        loadTimer.stop();
+        const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( loadTimer.get() );
 
-        if ( ptr != nullptr )
+        if ( ptr != nullptr ) [[likely]]
         {
-            GetPool<T>().commit( handle, ptr );
-
-            loadTimer.stop();
             Console::printfn( LOCALE_STR( "RESOURCE_CACHE_ALLOCATE" ),
-                              ptr->resourceName().c_str(),
+                              descriptor.resourceName(),
                               ptr->typeName(),
                               ptr->getGUID(),
                               descriptorHash,
-                              Time::MicrosecondsToMilliseconds<F32>( loadTimer.get() ) );
+                              durationMS );
         }
         else
         {
-            Console::errorfn(LOCALE_STR("RESOURCE_CACHE_ALLOCATE_FAILED"), descriptor.resourceName());
+            Console::errorfn( LOCALE_STR("RESOURCE_CACHE_ALLOCATE_FAILED"),
+                              descriptor.resourceName(),
+                              durationMS );
         }
 
         return ptr;
     }
 
-    template<typename T> requires std::is_base_of_v<Resource, T>
-    void ResourceCache::Deallocate( Handle<T> handle )
-    {
-        GetPool<T>().deallocate( s_renderAPI, handle );
-    }
-
     template <typename T> requires std::is_base_of_v<CachedResource, T>
     Handle<T> ResourceCache::LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter )
     {
+        DIVIDE_ASSERT(s_enabled);
+
         taskCounter.fetch_add( 1u );
 
         // The loading process may change the resource descriptor so always use the user-specified descriptor hash for lookup!
@@ -499,7 +573,7 @@ namespace Divide
         ResourceLoadLock res_lock( loadingHash, *s_context );
         /// Check cache first to avoid loading the same resource twice (or if we have stale, expired pointers in there)
 
-        Handle<T> ret = RetrieveFromCache<T>( loadingHash, wasInCache );
+        Handle<T> ret = RetrieveOrAllocateHandle<T>( loadingHash, wasInCache );
         if ( wasInCache )
         {
             taskCounter.fetch_sub( 1u );
@@ -522,14 +596,15 @@ namespace Divide
                     {
                         DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);
 
-                        if ( ptr->getState() == ResourceState::RES_THREAD_LOADED  && ptr->postLoad()) [[likely]]
+                        if ( ptr->getState() == ResourceState::RES_THREAD_LOADED && ptr->postLoad()) [[likely]]
                         {
                             ptr->setState( ResourceState::RES_LOADED );
                         }
                         else
                         {
                             Console::printfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ), resName.c_str() );
-                            Deallocate( ret );
+                            Handle<T> retCpy = ret;
+                            GetPool<T>(s_renderAPI).deallocate( retCpy );
                         }
 
                         taskCounter.fetch_sub( 1u );

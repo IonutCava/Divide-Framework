@@ -4,7 +4,6 @@
 
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/ProjectManager.h"
@@ -17,12 +16,10 @@
 
 namespace Divide {
 
-Object3D::Object3D( PlatformContext& context, const ResourceDescriptorBase& descriptor, const SceneNodeType type)
+Object3D::Object3D( const ResourceDescriptorBase& descriptor, const SceneNodeType type)
     : SceneNode(descriptor,
                 type,
                 to_base(ComponentType::TRANSFORM) | to_base(ComponentType::BOUNDS) | to_base(ComponentType::RENDERING))
-    , _context(context.gfx())
-    , _geometryPartitionIDs{}
 {
     _geometryPartitionIDs.fill(VertexBuffer::INVALID_PARTITION_ID);
     _geometryPartitionIDs[0] = 0u;

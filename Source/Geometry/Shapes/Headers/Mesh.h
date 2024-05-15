@@ -85,7 +85,7 @@ DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
 };
 
    public:
-    explicit Mesh( PlatformContext& context, const ResourceDescriptor<Mesh>& descriptor );
+    explicit Mesh( const ResourceDescriptor<Mesh>& descriptor );
 
     void postLoad(SceneGraphNode* sgn) override;
     bool postLoad() override;

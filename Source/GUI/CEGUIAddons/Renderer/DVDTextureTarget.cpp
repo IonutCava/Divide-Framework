@@ -34,6 +34,7 @@
 #include "CEGUI/PropertyHelper.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -139,7 +140,7 @@ void DVDTextureTarget::initialiseRenderTexture()
     _requiresClear = true;
 
     auto attachment = _renderTarget._rt->getAttachment( RTAttachmentType::COLOUR );
-    _CEGUITexture->setDVDTexture(attachment->texture(), _area.getSize());
+    _CEGUITexture->setDVDTexture( Divide::GetResourceRef( attachment->texture() ), _area.getSize());
 }
 
 void DVDTextureTarget::resizeRenderTexture()
@@ -165,7 +166,7 @@ void DVDTextureTarget::resizeRenderTexture()
     clear();
 
     auto attachment = _renderTarget._rt->getAttachment( Divide::RTAttachmentType::COLOUR );
-    _CEGUITexture->setDVDTexture( attachment->texture(), sz);
+    _CEGUITexture->setDVDTexture( Divide::GetResourceRef(attachment->texture()), sz);
 }
 
 void DVDTextureTarget::createCEGUITexture()

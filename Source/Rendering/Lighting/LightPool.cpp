@@ -349,7 +349,7 @@ namespace Divide
 
         _shadowBufferDirty = true;
 
-        ShadowMap::bindShadowMaps( *this, bufferInOut);
+        ShadowMap::bindShadowMaps( bufferInOut );
     }
 
     void LightPool::debugLight( Light* light )

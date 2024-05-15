@@ -286,11 +286,10 @@ void Sky::OnStartup( PlatformContext& context )
     }
 }
 
-Sky::Sky( PlatformContext& context, const ResourceDescriptor<Sky>& descriptor )
+Sky::Sky( const ResourceDescriptor<Sky>& descriptor )
     : SceneNode( descriptor,
                  GetSceneNodeType<Sky>(),
                  to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::SCRIPT ) )
-    , _context( context.gfx() )
     , _diameter( descriptor.ID() )
 {
     nightSkyColour( { 0.05f, 0.06f, 0.1f, 1.f } );
@@ -495,7 +494,7 @@ bool Sky::load( PlatformContext& context )
         return shaderDescriptor;
     });
 
-    Get(_weatherTex)->waitForReady();
+    WaitForReady( Get(_weatherTex) );
 
     skyMatPtr->setTexture( TextureSlot::UNIT0, _skybox, _skyboxSampler, TextureOperation::NONE );
     skyMatPtr->setTexture( TextureSlot::HEIGHTMAP, _weatherTex, noiseSamplerMipMap, TextureOperation::NONE );

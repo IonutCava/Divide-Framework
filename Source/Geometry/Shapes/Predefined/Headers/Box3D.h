@@ -40,7 +40,9 @@ namespace Divide {
 DEFINE_3D_OBJECT_TYPE(Box3D, SceneNodeType::TYPE_BOX_3D)
 {
    public:
-   explicit Box3D( PlatformContext& context, const ResourceDescriptor<Box3D>& descriptor );
+   explicit Box3D( const ResourceDescriptor<Box3D>& descriptor );
+
+   bool load( PlatformContext& context ) override;
 
    void setHalfExtent(const vec3<F32>& halfExtent);
 
@@ -53,6 +55,7 @@ DEFINE_3D_OBJECT_TYPE(Box3D, SceneNodeType::TYPE_BOX_3D)
    void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
    private:
+      const ResourceDescriptor<Box3D>& _descriptor;
       vec3<F32> _halfExtent;
 };
 

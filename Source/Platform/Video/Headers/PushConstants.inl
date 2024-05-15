@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
-    template<typename T> requires !std::is_same_v<bool, T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     void PushConstants::set(U64 bindingHash, PushConstantType type, const T* values, size_t count)
     {
         for (GFX::PushConstant& constant : _data)
@@ -63,13 +63,13 @@ namespace Divide
         set(bindingHash, type, &newValue, 1);
     }
 
-    template<typename T> requires !std::is_same_v<bool, T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     void PushConstants::set(U64 bindingHash, PushConstantType type, const vector<T>& values)
     {
         set(bindingHash, type, values.data(), values.size());
     }
 
-    template<typename T, size_t N> requires !std::is_same_v<bool, T>
+    template<typename T, size_t N> requires (!std::is_same_v<bool, T>)
     void PushConstants::set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values)
     {
         set(bindingHash, type, values.data(), N);

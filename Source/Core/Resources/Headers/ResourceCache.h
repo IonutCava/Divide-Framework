@@ -58,41 +58,44 @@ namespace Divide
             static eastl::set<size_t> s_loadingHashes;
     };
 
-    class ResourceCache final : private NonMovable
+    class ResourceCache final : private NonMovable, private NonCopyable
     {
         public:
             static void Init(RenderAPI renderAPI, PlatformContext& context);
-            static void Clear();
+            static void Stop();
+            static void OnFrameStart();
+            static void OnFrameEnd();
+            static void PrintLeakedResources();
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
             [[nodiscard]] static T* Get( Handle<T> handle);
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
-            static void Destroy( Handle<T>& handle );
+            static void Destroy( Handle<T>& handle, const bool immediate );
 
             template <typename T> requires std::is_base_of_v<CachedResource, T>
             [[nodiscard]] static Handle<T> LoadResource( const ResourceDescriptor<T>& descriptor, bool& wasInCache, std::atomic_uint& taskCounter );
 
+
             template <typename T> requires std::is_base_of_v<CachedResource, T>
-            [[nodiscard]] static Handle<T> RetrieveFromCache( size_t descriptorHash, bool& wasInCache );
+            [[nodiscard]] static Handle<T> RetrieveFromCache( Handle<T> handle );
 
         protected:
             friend struct ResourcePoolBase;
             static void RegisterPool( ResourcePoolBase* pool );
 
         private:
+            template <typename T> requires std::is_base_of_v<CachedResource, T>
+            [[nodiscard]] static Handle<T> RetrieveOrAllocateHandle( size_t descriptorHash, bool& wasInCache );
 
-            template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base> && std::is_base_of_v<Base, Derived>
-            [[nodiscard]] static ResourcePtr<Base> AllocateInternal( const ResourceDescriptor<Base>& descriptor );
-            
-            template<typename Base, typename Derived> requires std::is_base_of_v<Resource, Base> && std::is_base_of_v<Base, Derived>
-            [[nodiscard]] static void BuildInternal( ResourcePtr<Base> ptr );
+            template<typename T> requires std::is_base_of_v<Resource, T>
+            [[nodiscard]] static ResourcePtr<T> AllocateAndCommit( Handle<T> handle, const ResourceDescriptor<T>& descriptor );
 
             template<typename T> requires std::is_base_of_v<Resource, T>
             static ResourcePtr<T> Allocate( Handle<T> handle, const ResourceDescriptor<T>& descriptor, size_t descriptorHash );
 
             template<typename T> requires std::is_base_of_v<Resource, T>
-            static void Deallocate(Handle<T> handle);
+            [[nodiscard]] static ResourcePtr<T> AllocateInternal( const ResourceDescriptor<T>& descriptor );
 
             template<typename T> requires std::is_base_of_v<Resource, T>
             static void Build( ResourcePtr<T> ptr, const ResourceDescriptor<T>& descriptor );
@@ -102,6 +105,7 @@ namespace Divide
 
             static PlatformContext* s_context;
             static RenderAPI s_renderAPI;
+            static bool s_enabled;
     };
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -133,16 +137,15 @@ namespace Divide
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    [[nodiscard]] FORCE_INLINE Handle<T> GetResourceRef( const size_t descriptorHash )
+    [[nodiscard]] FORCE_INLINE Handle<T> GetResourceRef( const Handle<T> handle )
     {
-        bool wasInCache = false;
-        return ResourceCache::RetrieveFromCache<T>(descriptorHash, wasInCache);
+        return ResourceCache::RetrieveFromCache<T>( handle );
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
-    FORCE_INLINE void DestroyResource( Handle<T>& handle)
+    FORCE_INLINE void DestroyResource( Handle<T>& handle, const bool immediate = false)
     {
-        ResourceCache::Destroy<T>(handle);
+        ResourceCache::Destroy<T>(handle, immediate);
     }
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>

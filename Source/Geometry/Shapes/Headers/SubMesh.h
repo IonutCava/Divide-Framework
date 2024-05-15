@@ -79,7 +79,7 @@ DEFINE_3D_OBJECT_TYPE(SubMesh, SceneNodeType::TYPE_SUBMESH)
     using BoundingBoxPerAnimationStatus = vector<BoundingBoxState>;
 
    public:
-    explicit SubMesh(PlatformContext& context, const ResourceDescriptor<SubMesh>& descriptor);
+    explicit SubMesh( const ResourceDescriptor<SubMesh>& descriptor );
 
     void postLoad(SceneGraphNode* sgn) override;
     bool postLoad() override;

@@ -64,7 +64,7 @@ class SolutionExplorerWindow final : public DockedWindow, public PlatformContext
       void loadNode(SceneGraphNode* sgn) const;
       [[nodiscard]] bool nodeHasChildrenInView(const SceneGraphNode* sgn) const;
 
-      void createNode( SceneGraphNode* parentNode );
+      void createNode();
   private:
       ImGuiTextFilter _filter;
       I64 _nodeToRemove = -1;

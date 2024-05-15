@@ -16,7 +16,7 @@ ShaderProgramInfo ShaderProgramInfo::clone() const
     ret._shaderCompStage = _shaderCompStage;
     if ( _shaderRef != INVALID_HANDLE<ShaderProgram> )
     {
-        ret._shaderRef = GetResourceRef<ShaderProgram>( Get( _shaderRef )->descriptorHash() );
+        ret._shaderRef = GetResourceRef( _shaderRef );
     }
 
     return ret;

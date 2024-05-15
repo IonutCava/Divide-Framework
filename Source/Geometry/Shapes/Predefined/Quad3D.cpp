@@ -10,13 +10,17 @@
 
 namespace Divide
 {
-    Quad3D::Quad3D( PlatformContext& context, const ResourceDescriptor<Quad3D>& descriptor )
-        : Object3D( context, descriptor, GetSceneNodeType<Quad3D>() )
+    Quad3D::Quad3D( const ResourceDescriptor<Quad3D>& descriptor )
+        : Object3D( descriptor, GetSceneNodeType<Quad3D>() )
+        , _descriptor( descriptor )
     {
+    }
 
+    bool Quad3D::load( PlatformContext& context )
+    {
         constexpr F32 s_minSideLength = 0.0001f;
 
-        const vec3<U32> sizeIn = descriptor.data();
+        const vec3<U32> sizeIn = _descriptor.data();
 
         vec3<F32> targetSize{
             Util::UINT_TO_FLOAT( sizeIn.x ),
@@ -43,7 +47,7 @@ namespace Divide
         const F32 halfExtentY = targetSize.y * 0.5f;
         const F32 halfExtentZ = targetSize.z * 0.5f;
 
-        const bool doubleSided = descriptor.mask().b[0] == 0;
+        const bool doubleSided = _descriptor.mask().b[0] == 0;
 
         VertexBuffer::Descriptor vbDescriptor{};
         vbDescriptor._name = resourceName();
@@ -85,14 +89,16 @@ namespace Divide
 
         recomputeBounds();
 
-        if ( !descriptor.flag() )
+        if ( !_descriptor.flag() )
         {
-            ResourceDescriptor<Material> matDesc( "Material_" + descriptor.resourceName() );
+            ResourceDescriptor<Material> matDesc( "Material_" + resourceName() );
             matDesc.waitForReady( true );
             Handle<Material> matTemp = CreateResource( matDesc );
             Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
             setMaterialTpl( matTemp );
         }
+
+        return Object3D::load(context);
     }
 
     vec3<F32> Quad3D::getCorner( const CornerLocation corner )

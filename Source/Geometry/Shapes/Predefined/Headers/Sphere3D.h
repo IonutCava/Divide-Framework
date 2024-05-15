@@ -41,18 +41,21 @@ DEFINE_3D_OBJECT_TYPE( Sphere3D, SceneNodeType::TYPE_SPHERE_3D )
 {
    public:
     /// Change resolution to affect the spacing between vertices
-    explicit Sphere3D( PlatformContext& context, const ResourceDescriptor<Sphere3D>& descriptor );
+    explicit Sphere3D( const ResourceDescriptor<Sphere3D>& descriptor );
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
     void setRadius(F32 radius) noexcept;
     void setResolution(U32 resolution) noexcept;
 
+    bool load( PlatformContext& context ) override;
+
     PROPERTY_R(F32, radius, 1.f);
     PROPERTY_R(U32, resolution, 16u);
 
   private:
     void rebuildInternal() override;
+    const ResourceDescriptor<Sphere3D> _descriptor;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Sphere3D);

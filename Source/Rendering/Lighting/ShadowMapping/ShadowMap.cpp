@@ -302,7 +302,7 @@ namespace Divide
         }
     }
 
-    void ShadowMap::bindShadowMaps( LightPool& pool, GFX::CommandBuffer& bufferInOut )
+    void ShadowMap::bindShadowMaps( GFX::CommandBuffer& bufferInOut )
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_FRAME;

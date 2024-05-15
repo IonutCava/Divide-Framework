@@ -48,7 +48,7 @@ FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 {
    public:
-    explicit ParticleEmitter( PlatformContext& context, const ResourceDescriptor<ParticleEmitter>& descriptor );
+    explicit ParticleEmitter( const ResourceDescriptor<ParticleEmitter>& descriptor );
     ~ParticleEmitter() override;
 
     void prepareRender(SceneGraphNode* sgn,
@@ -68,6 +68,7 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     [[nodiscard]] bool initData(const std::shared_ptr<ParticleData>& particleData);
 
     /// SceneNode concrete implementations
+    bool load( PlatformContext& context ) override;
     bool unload() override;
 
     void addUpdater(const std::shared_ptr<ParticleUpdater>& updater) {
@@ -94,7 +95,6 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
    private:
     static constexpr U8 s_MaxPlayerBuffers = 4;
 
-    GFXDevice& _context;
     std::shared_ptr<ParticleData> _particles;
 
     vector<std::shared_ptr<ParticleSource>> _sources;

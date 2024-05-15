@@ -37,9 +37,9 @@ namespace Divide::GFX
 {
     struct PushConstant
     {
-        template<typename T> requires !std::is_same_v<bool, T>
+        template<typename T> requires (!std::is_same_v<bool, T>)
         PushConstant(const U64 bindingHash, const PushConstantType type, const T& data);
-        template<typename T> requires !std::is_same_v<bool, T>
+        template<typename T> requires (!std::is_same_v<bool, T>)
         PushConstant(const U64 bindingHash, const PushConstantType type, const T* data, const size_t count);
 
         const Byte* data() const noexcept;

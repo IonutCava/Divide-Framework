@@ -93,7 +93,7 @@ class VegetationInstance;
 DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
 {
    public:
-    explicit Vegetation( PlatformContext& context, const ResourceDescriptor<Vegetation>& descriptor );
+    explicit Vegetation( const ResourceDescriptor<Vegetation>& descriptor );
     ~Vegetation() override;
 
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
@@ -129,7 +129,6 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     vector<std::pair<U32, VegetationInstance*>> _instances;
 
   private:
-    GFXDevice& _context;
     const VegetationDescriptor _descriptor;
 
     F32 _windX = 0.0f, _windZ = 0.0f, _windS = 0.0f;

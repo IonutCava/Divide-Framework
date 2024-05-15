@@ -120,7 +120,7 @@ DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
        };
 
    public:
-    explicit Terrain(PlatformContext& context, const ResourceDescriptor<Terrain>& descriptor);
+    explicit Terrain( const ResourceDescriptor<Terrain>& descriptor );
     bool unload() override;
 
     void toggleBoundingBoxes();
@@ -146,7 +146,7 @@ DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
      [[nodiscard]] Vert getSmoothVert(F32 x_clampf, F32 z_clampf) const;
 
      bool load( PlatformContext& context ) override;
-     void postBuild();
+     void postBuild( PlatformContext& context );
 
      void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
