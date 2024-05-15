@@ -5,7 +5,6 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Managers/Headers/RenderPassManager.h"
@@ -17,6 +16,7 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Headers/SceneShaderData.h"
 
@@ -45,10 +45,10 @@ RenderTargetHandle SceneEnvironmentProbePool::s_reflection;
 RenderTargetHandle SceneEnvironmentProbePool::s_prefiltered;
 RenderTargetHandle SceneEnvironmentProbePool::s_irradiance;
 RenderTargetHandle SceneEnvironmentProbePool::s_brdfLUT;
-NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_previewShader;
-NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_irradianceComputeShader;
-NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_prefilterComputeShader;
-NO_DESTROY ShaderProgram_ptr SceneEnvironmentProbePool::s_lutComputeShader;
+Handle<ShaderProgram> SceneEnvironmentProbePool::s_previewShader = INVALID_HANDLE<ShaderProgram>;
+Handle<ShaderProgram> SceneEnvironmentProbePool::s_irradianceComputeShader = INVALID_HANDLE<ShaderProgram>;
+Handle<ShaderProgram> SceneEnvironmentProbePool::s_prefilterComputeShader = INVALID_HANDLE<ShaderProgram>;
+Handle<ShaderProgram> SceneEnvironmentProbePool::s_lutComputeShader = INVALID_HANDLE<ShaderProgram>;
 Pipeline* SceneEnvironmentProbePool::s_pipelineCalcPrefiltered = nullptr;
 Pipeline* SceneEnvironmentProbePool::s_pipelineCalcIrradiance = nullptr;
 bool SceneEnvironmentProbePool::s_debuggingSkyLight = false;
@@ -107,13 +107,18 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
 
     const U32 reflectRes = to_U32(context.context().config().rendering.reflectionProbeResolution);
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
-        environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
+        TextureDescriptor environmentDescriptor{};
+        environmentDescriptor._texType = TextureType::TEXTURE_CUBE_ARRAY;
+        environmentDescriptor._layerCount = Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u;
+        environmentDescriptor._mipMappingState = MipMappingState::MANUAL;
 
-        TextureDescriptor depthDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
-        depthDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
-        depthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
+        TextureDescriptor depthDescriptor{};
+        depthDescriptor._texType = TextureType::TEXTURE_CUBE_ARRAY;
+        depthDescriptor._dataType = GFXDataFormat::UNSIGNED_INT;
+        depthDescriptor._baseFormat = GFXImageFormat::RED;
+        depthDescriptor._packing = GFXImagePacking::DEPTH;
+        depthDescriptor._layerCount = Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u;
+        depthDescriptor._mipMappingState = MipMappingState::MANUAL;
 
         RenderTargetDescriptor desc = {};
         desc._attachments = 
@@ -127,10 +132,14 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         s_reflection = context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-        environmentDescriptor.layerCount(Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u);
-        environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::MANUAL);
-        environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
+        TextureDescriptor environmentDescriptor{};
+        environmentDescriptor._texType = TextureType::TEXTURE_CUBE_ARRAY;
+        environmentDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        environmentDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        environmentDescriptor._layerCount = Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u;
+        environmentDescriptor._mipMappingState = MipMappingState::MANUAL;
+        AddImageUsageFlag( environmentDescriptor, ImageUsage::SHADER_WRITE);
+
         RenderTargetDescriptor desc = {};
         desc._attachments = 
         {
@@ -144,10 +153,12 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         s_irradiance = context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor environmentDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG, GFXImagePacking::UNNORMALIZED );
-        environmentDescriptor.mipMappingState(TextureDescriptor::MipMappingState::AUTO);
-        environmentDescriptor.addImageUsageFlag(ImageUsage::SHADER_WRITE);
-        environmentDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+        TextureDescriptor environmentDescriptor{};
+        environmentDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        environmentDescriptor._baseFormat = GFXImageFormat::RG;
+        environmentDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        environmentDescriptor._mipMappingState = MipMappingState::OFF;
+        AddImageUsageFlag( environmentDescriptor, ImageUsage::SHADER_WRITE);
 
         RenderTargetDescriptor desc = {};
         desc._attachments = 
@@ -173,10 +184,9 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor shadowPreviewShader("fbPreview.Cube");
-        shadowPreviewShader.propertyDescriptor(shaderDescriptor);
+        ResourceDescriptor<ShaderProgram> shadowPreviewShader("fbPreview.Cube", shaderDescriptor );
         shadowPreviewShader.waitForReady(true);
-        s_previewShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), shadowPreviewShader);
+        s_previewShader = CreateResource(shadowPreviewShader);
     }
     {
         ShaderModuleDescriptor computeModule = {};
@@ -192,49 +202,47 @@ void SceneEnvironmentProbePool::OnStartup(GFXDevice& context) {
         {
             shaderDescriptor._modules.back()._variant = "Irradiance";
 
-            ResourceDescriptor irradianceShader("IrradianceCalc");
-            irradianceShader.propertyDescriptor(shaderDescriptor);
+            ResourceDescriptor<ShaderProgram> irradianceShader("IrradianceCalc", shaderDescriptor );
             irradianceShader.waitForReady(true);
-            s_irradianceComputeShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), irradianceShader);
+            s_irradianceComputeShader = CreateResource(irradianceShader);
         }
         {
             shaderDescriptor._modules.back()._variant = "LUT";
-            ResourceDescriptor lutShader("LUTCalc");
-            lutShader.propertyDescriptor(shaderDescriptor);
+            ResourceDescriptor<ShaderProgram> lutShader("LUTCalc", shaderDescriptor );
             lutShader.waitForReady(true);
-            s_lutComputeShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), lutShader);
+            s_lutComputeShader = CreateResource(lutShader);
         }
         {
             shaderDescriptor._modules.back()._variant = "PreFilter";
             shaderDescriptor._globalDefines.emplace_back( "mipLevel uint(PushData0[1].x)" );
             shaderDescriptor._globalDefines.emplace_back( "roughness PushData0[1].y" );
-            ResourceDescriptor prefilterShader("PrefilterEnv");
-            prefilterShader.propertyDescriptor(shaderDescriptor);
+            ResourceDescriptor<ShaderProgram> prefilterShader("PrefilterEnv", shaderDescriptor );
             prefilterShader.waitForReady(true);
-            s_prefilterComputeShader = CreateResource<ShaderProgram>(context.context().kernel().resourceCache(), prefilterShader);
+            s_prefilterComputeShader = CreateResource(prefilterShader);
         }
     }
     {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateBlock = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader->handle();
+        pipelineDescriptor._shaderProgramHandle = s_prefilterComputeShader;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         s_pipelineCalcPrefiltered = context.newPipeline(pipelineDescriptor);
     }
     {
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateBlock = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader->handle();
+        pipelineDescriptor._shaderProgramHandle = s_irradianceComputeShader;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
         s_pipelineCalcIrradiance = context.newPipeline(pipelineDescriptor);
     }
 }
 
 void SceneEnvironmentProbePool::OnShutdown(GFXDevice& context) {
-    s_previewShader.reset();
-    s_irradianceComputeShader.reset();
-    s_prefilterComputeShader.reset();
-    s_lutComputeShader.reset();
+    DestroyResource(s_previewShader);
+    DestroyResource(s_irradianceComputeShader);
+    DestroyResource(s_prefilterComputeShader);
+    DestroyResource(s_lutComputeShader);
+
     if (!context.renderTargetPool().deallocateRT(s_reflection) ||
         !context.renderTargetPool().deallocateRT(s_prefiltered) ||
         !context.renderTargetPool().deallocateRT(s_irradiance) ||
@@ -316,18 +324,18 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         PipelineDescriptor pipelineDescriptor{};
         pipelineDescriptor._stateBlock = context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = s_lutComputeShader->handle();
+        pipelineDescriptor._shaderProgramHandle = s_lutComputeShader;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
 
         const Pipeline* pipelineCalcLut = context.newPipeline(pipelineDescriptor);
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = pipelineCalcLut;
 
-        Texture* brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture().get();
+        Handle<Texture> brdfLutTexture = SceneEnvironmentProbePool::BRDFLUTTarget()._rt->getAttachment(RTAttachmentType::COLOUR)->texture();
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
-        const ImageView targetView = brdfLutTexture->getView( TextureType::TEXTURE_2D, { 0u, 1u }, { 0u, 1u });
+        const ImageView targetView = Get(brdfLutTexture)->getView( TextureType::TEXTURE_2D, { 0u, 1u }, { 0u, 1u });
         
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -423,20 +431,20 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         cmd->_usage = DescriptorSetUsage::PER_FRAME;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, prefiltered->texture()->getView(), prefiltered->_descriptor._sampler );
+            Set( binding._data, prefiltered->texture(), prefiltered->_descriptor._sampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, irradiance->texture()->getView(), irradiance->_descriptor._sampler );
+            Set( binding._data, irradiance->texture(), irradiance->_descriptor._sampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, brdfLut->texture()->getView(), brdfLut->_descriptor._sampler );
+            Set( binding._data, brdfLut->texture(), brdfLut->_descriptor._sampler );
         }
         {
             RTAttachment* targetAtt = context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_CUBE )->getAttachment( RTAttachmentType::COLOUR );
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, targetAtt->texture()->getView(), targetAtt->_descriptor._sampler );
+            Set( binding._data, targetAtt->texture(), targetAtt->_descriptor._sampler );
         }
     }
 }
@@ -466,7 +474,7 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(const U16 layerID,
 
             GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
             computeMipMapsCommand._layerRange = { layerID, 1 };
-            computeMipMapsCommand._texture = sourceAtt->texture().get();
+            computeMipMapsCommand._texture = sourceAtt->texture();
             computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
             GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
@@ -498,7 +506,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
 
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
-    const Texture* sourceTex = sourceAtt->texture().get();
+    const ResourcePtr<Texture> sourceTex = Get(sourceAtt->texture());
 
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("PreFilter environment map #{}", layerID);
 
@@ -513,7 +521,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
         Set( binding._data, sourceTex->getView(), sourceAtt->_descriptor._sampler );
     }
 
-    ImageView destinationImage = destinationAtt->texture()->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
+    ImageView destinationImage = Get(destinationAtt->texture())->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
 
     const F32 fWidth = to_F32(width);
 
@@ -554,7 +562,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._layerRange = { layerID, 1 };
-    computeMipMapsCommand._texture = destinationAtt->texture().get();
+    computeMipMapsCommand._texture = destinationAtt->texture();
     computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
@@ -572,7 +580,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = s_pipelineCalcIrradiance;
 
-    ImageView destinationView = destinationAtt->texture()->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
+    ImageView destinationView = Get(destinationAtt->texture())->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back( TextureLayoutChange
     {
@@ -585,7 +593,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-        Set( binding._data, sourceAtt->texture()->getView(), sourceAtt->_descriptor._sampler );
+        Set( binding._data, sourceAtt->texture(), sourceAtt->_descriptor._sampler );
     }
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
@@ -609,7 +617,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
     computeMipMapsCommand._layerRange = { layerID, 1 };
-    computeMipMapsCommand._texture = destinationAtt->texture().get();
+    computeMipMapsCommand._texture = destinationAtt->texture();
     computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 

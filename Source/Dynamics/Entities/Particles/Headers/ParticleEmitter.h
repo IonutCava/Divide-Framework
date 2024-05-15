@@ -41,13 +41,14 @@
 /// https://github.com/fenbf/particles/blob/public/particlesCode
 namespace Divide {
 
-FWD_DECLARE_MANAGED_CLASS(Texture);
+class Texture;
 FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 
 /// A Particle emitter scene node. Nothing smarter to say, sorry :"> - Ionut
-class ParticleEmitter final : public SceneNode {
+DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
+{
    public:
-    explicit ParticleEmitter(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
+    explicit ParticleEmitter( const ResourceDescriptor<ParticleEmitter>& descriptor );
     ~ParticleEmitter() override;
 
     void prepareRender(SceneGraphNode* sgn,
@@ -64,10 +65,10 @@ class ParticleEmitter final : public SceneNode {
 
     void setDrawImpostor(const bool state) noexcept { _drawImpostor = state; }
 
-    [[nodiscard]] bool updateData();
     [[nodiscard]] bool initData(const std::shared_ptr<ParticleData>& particleData);
 
     /// SceneNode concrete implementations
+    bool load( PlatformContext& context ) override;
     bool unload() override;
 
     void addUpdater(const std::shared_ptr<ParticleUpdater>& updater) {
@@ -91,12 +92,9 @@ class ParticleEmitter final : public SceneNode {
 
     [[nodiscard]] GenericVertexData& getDataBuffer(RenderStage stage, PlayerIndex idx);
 
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "ParticleEmitter"; }
-
    private:
     static constexpr U8 s_MaxPlayerBuffers = 4;
 
-    GFXDevice& _context;
     std::shared_ptr<ParticleData> _particles;
 
     vector<std::shared_ptr<ParticleSource>> _sources;
@@ -114,7 +112,6 @@ class ParticleEmitter final : public SceneNode {
 
     Task* _bufferUpdate = nullptr;
     Task* _bbUpdate = nullptr;
-    Texture_ptr _particleTexture = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(ParticleEmitter);

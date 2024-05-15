@@ -18,41 +18,40 @@ namespace {
     constexpr U32 CEGUI_MAX_CONSOLE_ENTRIES = Config::Build::IS_DEBUG_BUILD ? 128 : 512;
 };
 
-GUIConsole::GUIConsole(GUI& parent, PlatformContext& context, ResourceCache* cache)
-    : PlatformContextComponent(context),
-      _parent(parent),
-      _init(false),
-      _closing(false),
-      _lastMsgType(Console::EntryType::INFO),
-      _editBox(nullptr),
-      _outputWindow(nullptr),
-      _consoleWindow(nullptr),
-      _inputHistoryIndex(0),
-      _consoleCallbackIndex(0)
+GUIConsole::GUIConsole(GUI& parent, PlatformContext& context)
+    : PlatformContextComponent(context)
+      , _parent(parent)
+      , _init(false)
+      , _closing(false)
+      , _lastMsgType(Console::EntryType::INFO)
+      , _editBox(nullptr)
+      , _outputWindow(nullptr)
+      , _cmdParser(std::make_unique<GUIConsoleCommandParser>(_context))
+      , _consoleWindow(nullptr)
+      , _inputHistoryIndex(0)
+      , _consoleCallbackIndex(0)
 {
-    // we need a default command parser, so just create it here
-    _cmdParser = MemoryManager_NEW GUIConsoleCommandParser(_context, cache);
-
-    _consoleCallbackIndex = Console::BindConsoleOutput([this](const Console::OutputEntry& entry) {
+    _consoleCallbackIndex = Console::BindConsoleOutput([this](const Console::OutputEntry& entry)
+    {
         printText(entry);
     });
 }
 
 GUIConsole::~GUIConsole()
 {
-    if (!Console::UnbindConsoleOutput(_consoleCallbackIndex)) {
+    if (!Console::UnbindConsoleOutput(_consoleCallbackIndex))
+    {
         DIVIDE_UNEXPECTED_CALL();
     }
     _closing = true;
 
-    if (_consoleWindow) {
+    if (_consoleWindow)
+    {
         setVisible(false);
         _init = false;
         _parent.getCEGUIContext()->getRootWindow()->removeChild(_consoleWindow);
         CEGUI::WindowManager::getSingletonPtr()->destroyWindow(_consoleWindow);
     }
-
-    MemoryManager::DELETE(_cmdParser);
 }
 
 void GUIConsole::createCEGUIWindow() {

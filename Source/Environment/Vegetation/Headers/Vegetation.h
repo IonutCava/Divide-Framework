@@ -32,22 +32,27 @@
 #ifndef DVD_VEGETATION_H_
 #define DVD_VEGETATION_H_
 
+#include "VegetationDescriptor.h"
+
 #include "Utility/Headers/ImageTools.h"
 #include "Graphs/Headers/SceneNode.h"
+#include "Environment/Terrain/Headers/Terrain.h"
 #include "Platform/Threading/Headers/Task.h"
 #include "Platform/Video/Headers/RenderStagePass.h"
 
-namespace eastl {
-    template <>
-    struct hash<Divide::vec2<Divide::F32>>
+namespace eastl
+{
+template <>
+struct hash<Divide::vec2<Divide::F32>>
+{
+    size_t operator()( const Divide::vec2<Divide::F32>& a ) const
     {
-        size_t operator()(const Divide::vec2<Divide::F32>& a) const {
-            size_t h = 17;
-            Divide::Util::Hash_combine(h, a.x, a.y);
-            return h;
-        }
-    };
-}
+        size_t h = 17;
+        Divide::Util::Hash_combine( h, a.x, a.y );
+        return h;
+    }
+};
+} //namespace eastl
 
 namespace Divide {
 
@@ -55,37 +60,25 @@ namespace GFX {
     class CommandBuffer;
 };
 
+class Mesh;
+class Texture;
+class Terrain;
 class Pipeline;
 class GFXDevice;
 class SceneState;
-class VertexBuffer;
 class RenderTarget;
 class TerrainChunk;
+class ShaderProgram;
 class SceneGraphNode;
 class PlatformContext;
 class GenericVertexData;
 enum class RenderStage : U8;
 
-FWD_DECLARE_MANAGED_CLASS(Mesh);
-FWD_DECLARE_MANAGED_CLASS(Texture);
-FWD_DECLARE_MANAGED_CLASS(Terrain);
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
-struct VegetationDetails {
-    U16 billboardCount = 0;
-    Str<256> name = "";
-    string billboardTextureArray = "";
-    std::shared_ptr<ImageTools::ImageData> grassMap;
-    std::shared_ptr<ImageTools::ImageData> treeMap;
-    Terrain_wptr parentTerrain;
-    vector<Str<256>> treeMeshes;
-    vec4<F32> grassScales, treeScales;
-    std::array<vec3<F32>, 4> treeRotations;
-};
-
-struct VegetationData {
+struct VegetationData
+{
     vec4<F32> _positionAndScale;
     vec4<F32> _orientationQuat;
     //x - array index, y - chunk ID, z - render flag, w - height scale
@@ -93,25 +86,22 @@ struct VegetationData {
 };
 //RenderDoc: mat4 transform; vec4 posAndIndex; vec4 extentAndRender;
 
+class VegetationInstance;
+
 /// Generates grass on the terrain.
 /// Grass VB's + all resources are stored locally in the class.
-class Vegetation final : public SceneNode {
+DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
+{
    public:
-    explicit Vegetation(GFXDevice& context, TerrainChunk& parentChunk, const VegetationDetails& details);
+    explicit Vegetation( const ResourceDescriptor<Vegetation>& descriptor );
     ~Vegetation() override;
 
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
-    void getStats(U32& maxGrassInstances, U32& maxTreeInstances) const;
-
-    //ToDo: Multiple terrains will NOT support this! To fix! -Ionut
-    static void destroyStaticData();
-    static void precomputeStaticData(GFXDevice& gfxDevice, U32 chunkSize, U32 maxChunkCount);
-    static void createAndUploadGPUData(GFXDevice& gfxDevice, const Terrain_ptr& terrain, const VegetationDetails& vegDetails);
+    bool load( PlatformContext & context ) override;
+    bool unload() override;
 
   protected:
-    static void createVegetationMaterial(GFXDevice& gfxDevice, const Terrain_ptr& terrain, const VegetationDetails& vegDetails);
-
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
                        RenderPackage& pkg,
@@ -125,63 +115,78 @@ class Vegetation final : public SceneNode {
                      SceneState& sceneState) override;
    private:
     void uploadVegetationData(vector<Byte>& grassDataOut, vector<Byte> treeDataOut);
-    void computeVegetationTransforms(bool treeData);
     void prepareDraw(SceneGraphNode* sgn);
 
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Vegetation"; }
+   protected:
+    friend class VegetationInstance;
 
-   private:
-    GFXDevice& _context;
-    TerrainChunk& _terrainChunk;
-    // variables
-    Terrain_wptr _terrain;
+    void registerInstance( U32 chunkID, VegetationInstance* instance);
+    void unregisterInstance(U32 chunkID);
+
+    vector<Str<256>> _treeMeshNames;
+
+    SharedMutex _instanceLock;
+    vector<std::pair<U32, VegetationInstance*>> _instances;
+
+  private:
+    const VegetationDescriptor _descriptor;
+
     F32 _windX = 0.0f, _windZ = 0.0f, _windS = 0.0f;
     U64 _stateRefreshIntervalUS = Time::SecondsToMicroseconds(1);
     U64 _stateRefreshIntervalBufferUS = 0ULL;
-    vec4<F32> _grassScales = VECTOR4_UNIT;
-    vec4<F32> _treeScales = VECTOR4_UNIT;
-    std::array<vec3<F32>, 4> _treeRotations;
     vec4<F32> _grassExtents = VECTOR4_UNIT;
     vec4<F32> _treeExtents = VECTOR4_UNIT;
-    vector<Str<256>> _treeMeshNames;
-    std::shared_ptr<ImageTools::ImageData> _grassMap = nullptr;  ///< Dispersion map for grass placement
-    std::shared_ptr<ImageTools::ImageData> _treeMap = nullptr;  ///< Dispersion map for tree placement
 
     SceneGraphNode* _treeParentNode = nullptr;
 
-    U32 _instanceCountGrass = 0u;
-    U32 _instanceCountTrees = 0u;
     F32 _grassDistance = -1.0f;
     F32 _treeDistance = -1.0f;
-
-    Task* _buildTask = nullptr;
+    U32 _maxGrassInstances = 0u;
+    U32 _maxTreeInstances = 0u;
 
     Pipeline* _cullPipelineGrass = nullptr;
     Pipeline* _cullPipelineTrees = nullptr;
-    vector<VegetationData> _tempGrassData;
-    vector<VegetationData> _tempTreeData;
+    SharedMutex _treeMeshLock;
 
-    static std::array<U16, 3> s_lodPartitions;
-    static U32 s_maxGrassInstances;
-    static U32 s_maxTreeInstances;
-    static ShaderProgram_ptr s_cullShaderGrass;
-    static ShaderProgram_ptr s_cullShaderTrees;
-    static std::atomic_uint s_bufferUsage;
-    static VertexBuffer_ptr s_buffer;
-    static ShaderBuffer_uptr s_treeData;
-    static ShaderBuffer_uptr s_grassData;
-    static vector<Mesh_ptr> s_treeMeshes;
+    std::array<U16, 3> _lodPartitions;
+    VertexBuffer_ptr _buffer;
+    ShaderBuffer_uptr _treeData;
+    ShaderBuffer_uptr _grassData;
+    vector<Handle<Mesh>> _treeMeshes;
 
-    static eastl::unordered_set<vec2<F32>> s_treePositions;
-    static eastl::unordered_set<vec2<F32>> s_grassPositions;
+    eastl::unordered_set<vec2<F32>> _grassPositions;
+    eastl::unordered_set<vec2<F32>> _treePositions;
 
-    static U32 s_maxChunks;
-
-    static Material_ptr s_treeMaterial;
-    static Material_ptr s_vegetationMaterial;
+    Handle<ShaderProgram> _cullShaderGrass = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _cullShaderTrees = INVALID_HANDLE<ShaderProgram>;
+    Handle<Material> _treeMaterial = INVALID_HANDLE<Material>;
+    Handle<Material> _vegetationMaterial = INVALID_HANDLE<Material>;
 };
 
-TYPEDEF_SMART_POINTERS_FOR_TYPE(Vegetation);
+FWD_DECLARE_MANAGED_CLASS(Vegetation);
+
+class VegetationInstance : public PlatformContextComponent
+{
+public:
+    explicit VegetationInstance( PlatformContext& context, Handle<Vegetation> parent, TerrainChunk* chunk );
+    ~VegetationInstance();
+
+    void computeTransforms();
+
+private:
+    vector<VegetationData> computeTransforms( bool treeData );
+
+protected:
+    friend class Vegetation;
+
+    U32 _instanceCountGrass = 0u;
+    U32 _instanceCountTrees = 0u;
+private:
+    const Handle<Vegetation> _parent = INVALID_HANDLE<Vegetation>;
+    const TerrainChunk* _chunk = nullptr;
+};
+
+FWD_DECLARE_MANAGED_CLASS( VegetationInstance );
 
 }  // namespace Divide
 

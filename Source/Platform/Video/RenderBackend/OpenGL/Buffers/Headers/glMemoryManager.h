@@ -40,6 +40,7 @@ namespace GLUtil {
 namespace GLMemory{
     enum class GLMemoryType {
         SHADER_BUFFER = 0u,
+        UNIFORM_BUFFER,
         VERTEX_BUFFER,
         INDEX_BUFFER,
         OTHER,
@@ -81,7 +82,7 @@ namespace GLMemory{
         [[nodiscard]] FORCE_INLINE bool poolAllocations() const noexcept { return _poolAllocations;  }
 
     protected:
-        vector_fast<Block> _blocks;
+        vector<Block> _blocks;
         Byte* _memory{ nullptr };
         const bool _poolAllocations{ false };
     };
@@ -92,12 +93,12 @@ namespace GLMemory{
         explicit ChunkAllocator(size_t size) noexcept;
 
         // if size > mSize, allocate to the next power of 2
-        [[nodiscard]] Chunk* allocate(bool poolAllocations,
-                                      size_t size,
-                                      size_t alignment,
-                                      gl46core::BufferStorageMask storageMask,
-                                      gl46core::BufferAccessMask accessMask,
-                                      gl46core::GLenum usage) const;
+        [[nodiscard]] std::unique_ptr<Chunk> allocate(bool poolAllocations,
+                                                      size_t size,
+                                                      size_t alignment,
+                                                      gl46core::BufferStorageMask storageMask,
+                                                      gl46core::BufferAccessMask accessMask,
+                                                      gl46core::GLenum usage) const;
 
     private:
         const size_t _size{ 0u };
@@ -128,7 +129,7 @@ namespace GLMemory{
         mutable Mutex _chunkAllocatorLock;
         const GLMemoryType _memoryType{ GLMemoryType::COUNT };
         ChunkAllocator_uptr _chunkAllocator{ nullptr };
-        vector_fast<Chunk*> _chunks;
+        vector<std::unique_ptr<Chunk>> _chunks;
     };
 } // namespace GLMemory
 

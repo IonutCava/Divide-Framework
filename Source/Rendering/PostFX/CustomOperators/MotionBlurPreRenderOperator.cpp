@@ -17,7 +17,7 @@
 
 namespace Divide {
 
-MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
+MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
     : PreRenderOperator(context, parent, FilterType::FILTER_MOTION_BLUR)
 {
     ShaderModuleDescriptor vertModule = {};
@@ -36,22 +36,23 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
     shaderDescriptor._globalDefines.emplace_back( "dvd_velocityScale PushData0[0].x" );
     shaderDescriptor._globalDefines.emplace_back( "dvd_maxSamples int(PushData0[0].y)" );
 
-    ResourceDescriptor motionBlur("MotionBlur");
-    motionBlur.propertyDescriptor(shaderDescriptor);
+    ResourceDescriptor<ShaderProgram> motionBlur("MotionBlur", shaderDescriptor );
     motionBlur.waitForReady(false);
+    _blurApply = CreateResource(motionBlur);
 
-    _blurApply = CreateResource<ShaderProgram>(cache, motionBlur);
-    _blurApply->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*)
-    {
-        PipelineDescriptor pipelineDescriptor = {};
-        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _blurApply->handle();
-        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+    PipelineDescriptor pipelineDescriptor = {};
+    pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+    pipelineDescriptor._shaderProgramHandle = _blurApply;
+    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        _blurApplyPipelineCmd._pipeline = _context.newPipeline(pipelineDescriptor);
-    });
+    _blurApplyPipelineCmd._pipeline = _context.newPipeline( pipelineDescriptor );
 
     parametersChanged();
+}
+
+MotionBlurPreRenderOperator::~MotionBlurPreRenderOperator()
+{
+    DestroyResource( _blurApply );
 }
 
 bool MotionBlurPreRenderOperator::ready() const noexcept
@@ -90,11 +91,11 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, screenAtt->texture()->getView(), screenAtt->_descriptor._sampler );
+        Set( binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler );
     }
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, velocityAtt->texture()->getView(), velocityAtt->_descriptor._sampler );
+        Set( binding._data, velocityAtt->texture(), velocityAtt->_descriptor._sampler );
     }
 
     PushConstantsStruct params{};

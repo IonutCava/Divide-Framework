@@ -22,37 +22,36 @@ namespace Divide
                 {
                     case _ID( "dmat4" ):              //128 bytes
                     case _ID( "dmat4x3" ): return 0;  // 96 bytes
-                    case _ID( "dmat3" ): return 1;  // 72 bytes
+                    case _ID( "dmat3" )  : return 1;  // 72 bytes
                     case _ID( "dmat4x2" ):            // 64 bytes
-                    case _ID( "mat4" ): return 2;  // 64 bytes
+                    case _ID( "mat4" )   : return 2;  // 64 bytes
                     case _ID( "dmat3x2" ):            // 48 bytes
-                    case _ID( "mat4x3" ): return 3;  // 48 bytes
-                    case _ID( "mat3" ): return 4;  // 36 bytes
+                    case _ID( "mat4x3" ) : return 3;  // 48 bytes
+                    case _ID( "mat3" )   : return 4;  // 36 bytes
                     case _ID( "dmat2" ):              // 32 bytes
                     case _ID( "dvec4" ):              // 32 bytes
-                    case _ID( "mat4x2" ): return 5;  // 32 bytes
+                    case _ID( "mat4x2" ) : return 5;  // 32 bytes
                     case _ID( "dvec3" ):              // 24 bytes
-                    case _ID( "mat3x2" ): return 6;  // 24 bytes
+                    case _ID( "mat3x2" ) : return 6;  // 24 bytes
                     case _ID( "mat2" ):               // 16 bytes
                     case _ID( "dvec2" ):              // 16 bytes
                     case _ID( "bvec4" ):              // 16 bytes
                     case _ID( "ivec4" ):              // 16 bytes
                     case _ID( "uvec4" ):              // 16 bytes
-                    case _ID( "vec4" ): return 7;  // 16 bytes
+                    case _ID( "vec4" )   : return 7;  // 16 bytes
                     case _ID( "bvec3" ):              // 12 bytes
                     case _ID( "ivec3" ):              // 12 bytes
                     case _ID( "uvec3" ):              // 12 bytes
-                    case _ID( "vec3" ): return 8;  // 12 bytes
+                    case _ID( "vec3" )   : return 8;  // 12 bytes
                     case _ID( "double" ):             //  8 bytes
                     case _ID( "bvec2" ):              //  8 bytes
                     case _ID( "ivec2" ):              //  8 bytes
                     case _ID( "uvec2" ):              //  8 bytes
-                    case _ID( "vec2" ): return 9;  //  8 bytes
+                    case _ID( "vec2" )   : return 9;  //  8 bytes
                     case _ID( "int" ):                //  4 bytes
                     case _ID( "uint" ):               //  4 bytes
-                    case _ID( "float" ): return 10; //  4 bytes
-                        // No real reason for this, but generated shader code looks cleaner
-                    case _ID( "bool" ): return 11; //  4 bytes
+                    case _ID( "float" )  : return 10; //  4 bytes
+                    case _ID( "bool" )   : return 11; //  4 bytes (converted to uint)
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
 
@@ -413,7 +412,6 @@ namespace Divide
 
     void UniformBlockUploader::resizeBlockBuffer( const bool increaseSize )
     {
-
         const U16 newSize = _buffer == nullptr ? RingBufferLength : _bufferSizeFactor;
 
         ShaderBufferDescriptor bufferDescriptor{};
@@ -430,32 +428,35 @@ namespace Divide
         _uniformBlockDirty = true;
     }
 
-    void UniformBlockUploader::uploadPushConstant( const GFX::PushConstant& constant, const bool force ) noexcept
+    void UniformBlockUploader::uploadPushConstant( const PushConstants& constants ) noexcept
     {
-        if ( constant.type() == PushConstantType::COUNT || constant.bindingHash() == 0u )
-        {
-            return;
-        }
-
         if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr )
         {
-            for ( BlockMember& member : _blockMembers )
+            for ( const GFX::PushConstant& constant : constants.data() )
             {
-                if ( member._nameHash == constant.bindingHash() )
+                if ( constant.type() == PushConstantType::COUNT || constant.bindingHash() == 0u )
                 {
-                    DIVIDE_ASSERT( constant.dataSize() <= member._size );
+                    continue;
+                }
 
-                    Byte* dst = &_localDataCopy.data()[member._offset];
-                    const Byte* src = constant.data();
-                    const size_t numBytes = constant.dataSize();
-
-                    if ( force || std::memcmp( dst, src, numBytes ) != 0 )
+                for ( BlockMember& member : _blockMembers )
+                {
+                    if ( member._nameHash == constant.bindingHash() )
                     {
-                        std::memcpy( dst, src, numBytes );
-                        _uniformBlockDirty = true;
-                    }
+                        DIVIDE_ASSERT( constant.dataSize() <= member._size );
 
-                    return;
+                        Byte* dst = &_localDataCopy.data()[member._offset];
+                        const Byte* src = constant.data();
+                        const size_t numBytes = constant.dataSize();
+
+                        if ( std::memcmp( dst, src, numBytes ) != 0 )
+                        {
+                            std::memcpy( dst, src, numBytes );
+                            _uniformBlockDirty = true;
+                        }
+
+                        continue;
+                    }
                 }
             }
         }
@@ -465,7 +466,6 @@ namespace Divide
     {
         if ( _uniformBlockDirty )
         {
-
             DIVIDE_ASSERT( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr );
 
             if ( _needsResize )

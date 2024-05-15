@@ -72,10 +72,12 @@ struct IndirectNonIndexedDrawCommand
 
 static_assert(sizeof( IndirectNonIndexedDrawCommand ) == 16, "Wrong non-indexed indirect command size!");
 
-enum class CmdRenderOptions : U8 {
+enum class CmdRenderOptions : U8
+{
     RENDER_GEOMETRY           = toBit(1),
     RENDER_WIREFRAME          = toBit(2),
-    COUNT = 2
+    RENDER_INDIRECT           = toBit(3),
+    COUNT = 3
 };
 
 #pragma pack(push, 1)
@@ -91,9 +93,9 @@ struct GenericDrawCommand {
 
 static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
-using GenericDrawCommandContainer = eastl::fixed_vector<GenericDrawCommand, 1, true, eastl::dvd_allocator>;
+using GenericDrawCommandContainer = eastl::fixed_vector<GenericDrawCommand, 1, true>;
 
-bool isEnabledOption(const GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
+[[nodiscard]] bool isEnabledOption(const GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
 void toggleOption(GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
 
 void enableOption(GenericDrawCommand& cmd, CmdRenderOptions option) noexcept;
@@ -106,7 +108,7 @@ void setOptions(GenericDrawCommand& cmd, BaseType<CmdRenderOptions> optionsMask,
 
 void resetOptions(GenericDrawCommand& cmd) noexcept;
 
-bool Compatible(const GenericDrawCommand& lhs, const GenericDrawCommand& rhs) noexcept;
+[[nodiscard]] bool Compatible(const GenericDrawCommand& lhs, const GenericDrawCommand& rhs) noexcept;
 
 }; //namespace Divide
 

@@ -97,8 +97,8 @@ namespace Divide
             Input::InputState _state{ Input::InputState::COUNT };
         };
 
-        using KeyLog = vector_fast<KeyLogState>;
-        using MouseBtnLog = vector_fast<MouseLogState>;
+        using KeyLog = vector<KeyLogState>;
+        using MouseBtnLog = vector<MouseLogState>;
 
         explicit SceneInput( Scene& parentScene );
 

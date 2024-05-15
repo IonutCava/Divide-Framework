@@ -37,78 +37,95 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-    inline SDL_Window* DisplayWindow::getRawWindow() const noexcept {
+    inline SDL_Window* DisplayWindow::getRawWindow() const noexcept
+    {
         return _sdlWindow;
     }
 
-    inline bool DisplayWindow::fullscreen() const noexcept {
+    inline bool DisplayWindow::fullscreen() const noexcept
+    {
         return type() == WindowType::FULLSCREEN ||
                type() == WindowType::FULLSCREEN_WINDOWED;
     }
 
-    inline void DisplayWindow::setPosition(const vec2<I32> position, const bool global) {
+    inline void DisplayWindow::setPosition(const vec2<I32> position, const bool global)
+    {
         setPosition(position.x, position.y, global);
     }
 
-    inline bool DisplayWindow::isHovered() const noexcept {
+    inline bool DisplayWindow::isHovered() const noexcept
+    {
         return _flags & to_base(WindowFlags::IS_HOVERED);
     }
 
-    inline bool DisplayWindow::hasFocus() const noexcept {
+    inline bool DisplayWindow::hasFocus() const noexcept
+    {
         return _flags & to_base(WindowFlags::HAS_FOCUS);
     }
 
-    inline U8 DisplayWindow::prevOpacity() const noexcept {
+    inline U8 DisplayWindow::prevOpacity() const noexcept
+    {
         return _prevOpacity;
     }
 
-    inline bool DisplayWindow::minimized() const noexcept {
+    inline bool DisplayWindow::minimized() const noexcept
+    {
         return _flags & to_base(WindowFlags::MINIMIZED);
     }
 
-    inline bool DisplayWindow::maximized() const noexcept {
+    inline bool DisplayWindow::maximized() const noexcept
+    {
         return _flags & to_base(WindowFlags::MAXIMIZED);
     }
 
-    inline bool DisplayWindow::decorated() const noexcept {
+    inline bool DisplayWindow::decorated() const noexcept
+    {
         return _flags & to_base(WindowFlags::DECORATED);
     }
 
-        inline bool DisplayWindow::hidden() const noexcept {
+    inline bool DisplayWindow::hidden() const noexcept
+    {
         return _flags & to_base(WindowFlags::HIDDEN);
     }
 
-    inline void DisplayWindow::changeType(const WindowType newType) {
+    inline void DisplayWindow::changeType(const WindowType newType)
+    {
         handleChangeWindowType(newType);
     }
 
-    inline void DisplayWindow::changeToPreviousType() {
+    inline void DisplayWindow::changeToPreviousType()
+    {
         changeType(_previousType);
     }
 
     inline const char* DisplayWindow::title() const noexcept
     {
-        return _title.c_str();
+        return SDL_GetWindowTitle(_sdlWindow);
     }
 
-    inline void DisplayWindow::addEventListener(const WindowEvent windowEvent, const EventListener& listener) {
+    inline void DisplayWindow::addEventListener(const WindowEvent windowEvent, const EventListener& listener)
+    {
         _eventListeners[to_base(windowEvent)].push_back(listener);
     }
 
-    inline void DisplayWindow::clearEventListeners(const WindowEvent windowEvent) {
+    inline void DisplayWindow::clearEventListeners(const WindowEvent windowEvent)
+    {
         _eventListeners[to_base(windowEvent)].clear();
     }
 
-    inline void DisplayWindow::destroyCbk(const DELEGATE<void>& destroyCbk) {
+    inline void DisplayWindow::destroyCbk(const DELEGATE<void>& destroyCbk)
+    {
         _destroyCbk = destroyCbk;
     }
 
-    inline Rect<I32> DisplayWindow::windowViewport() const noexcept {
+    inline Rect<I32> DisplayWindow::windowViewport() const noexcept
+    {
         const vec2<U16> dim = getDimensions();
         return Rect<I32>(0, 0, to_I32(dim.width), to_I32(dim.height));
     }
 
-    inline const Rect<I32>& DisplayWindow::renderingViewport() const noexcept {
+    inline const Rect<I32>& DisplayWindow::renderingViewport() const noexcept
+    {
         return _renderingViewport;
     }
 
@@ -117,14 +134,12 @@ namespace Divide {
     {
         if constexpr(sizeof...(Args) > 0)
         {
-            _title = Util::StringFormat( format, static_cast<Args&&>(args)... );
+            SDL_SetWindowTitle( _sdlWindow, Util::StringFormat( format, static_cast<Args&&>(args)... ).c_str());
         }
         else
         {
-            _title = format;
+            SDL_SetWindowTitle( _sdlWindow, format);
         }
-        
-        SDL_SetWindowTitle(_sdlWindow, _title.c_str());
     }
 }; //namespace Divide
 

@@ -26,10 +26,9 @@
 
 namespace Divide
 {
-
     Mutex ShadowMap::s_shadowMapUsageLock;
     std::array<ShadowMap::LayerLifetimeMask, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMapLifetime;
-    std::array<ShadowMapGenerator*, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMapGenerators;
+    vector<std::unique_ptr<ShadowMapGenerator>> ShadowMap::s_shadowMapGenerators;
 
     vector<DebugView_ptr> ShadowMap::s_debugViews;
     std::array<RenderTargetHandle, to_base( ShadowType::COUNT )> ShadowMap::s_shadowMaps;
@@ -113,6 +112,8 @@ namespace Divide
         shadowMapSamplerCache._mipSampling = TextureMipSampling::NONE;
         shadowMapSamplerCache._anisotropyLevel = 0u;
 
+        s_shadowMapGenerators.resize(0u);
+
         for ( U8 i = 0; i < to_U8( ShadowType::COUNT ); ++i )
         {
             switch ( static_cast<ShadowType>(i) )
@@ -133,11 +134,14 @@ namespace Divide
                     shadowMapSampler._anisotropyLevel = isCSM ? settings.csm.maxAnisotropicFilteringLevel : settings.spot.maxAnisotropicFilteringLevel;
 
                     // Default filters, LINEAR is OK for this
-                    TextureDescriptor shadowMapDescriptor( TextureType::TEXTURE_2D_ARRAY, isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16, GFXImageFormat::RG, GFXImagePacking::UNNORMALIZED );
-                    shadowMapDescriptor.layerCount( isCSM ? (Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) + 1u /* world AO*/
-                                                          : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS);
-
-                    shadowMapDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
+                    TextureDescriptor shadowMapDescriptor{};
+                    shadowMapDescriptor._dataType = isCSM ? GFXDataFormat::FLOAT_32 : GFXDataFormat::FLOAT_16;
+                    shadowMapDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+                    shadowMapDescriptor._baseFormat = GFXImageFormat::RG;
+                    shadowMapDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+                    shadowMapDescriptor._mipMappingState = MipMappingState::MANUAL;
+                    shadowMapDescriptor._layerCount = isCSM ? (Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) + 1u /* world AO*/
+                                                            : Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS;
 
                     RenderTargetDescriptor desc = {};
                     desc._resolution.set( to_U16( isCSM ? settings.csm.shadowMapResolution : settings.spot.shadowMapResolution ) );
@@ -152,7 +156,7 @@ namespace Divide
                     }
                     {
                         TextureDescriptor shadowMapCacheDescriptor = shadowMapDescriptor;
-                        shadowMapCacheDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+                        shadowMapCacheDescriptor._mipMappingState = MipMappingState::OFF;
 
                         desc._attachments = 
                         {
@@ -164,14 +168,14 @@ namespace Divide
                     }
                     if ( isCSM )
                     {
-                        s_shadowMapGenerators[i] = MemoryManager_NEW CascadedShadowMapsGenerator( context );
+                        s_shadowMapGenerators.emplace_back(std::make_unique<CascadedShadowMapsGenerator>( context ) );
                     }
                     else
                     {
-                        s_shadowMapGenerators[i] = MemoryManager_NEW SingleShadowMapGenerator( context );
+                        s_shadowMapGenerators.emplace_back(std::make_unique<SingleShadowMapGenerator>( context ));
                     }
 
-                    s_shadowMapLifetime[i].resize( shadowMapDescriptor.layerCount() );
+                    s_shadowMapLifetime[i].resize( shadowMapDescriptor._layerCount );
                 } break;
                 case ShadowType::CUBEMAP:
                 {
@@ -180,15 +184,23 @@ namespace Divide
                         continue;
                     }
 
-                    TextureDescriptor colourMapDescriptor( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::FLOAT_16, GFXImageFormat::RG, GFXImagePacking::UNNORMALIZED );
-                    colourMapDescriptor.layerCount( Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS );
-                    colourMapDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
+                    TextureDescriptor colourMapDescriptor{};
+                    colourMapDescriptor._texType = TextureType::TEXTURE_CUBE_ARRAY;
+                    colourMapDescriptor._dataType = GFXDataFormat::FLOAT_16;
+                    colourMapDescriptor._baseFormat = GFXImageFormat::RG;
+                    colourMapDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+                    colourMapDescriptor._layerCount = Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS;
+                    colourMapDescriptor._mipMappingState = MipMappingState::MANUAL;
                     shadowMapSampler._mipSampling = TextureMipSampling::NONE;
                     shadowMapSampler._anisotropyLevel = 0u;
 
-                    TextureDescriptor depthDescriptor( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
-                    depthDescriptor.layerCount( colourMapDescriptor.layerCount() );
-                    depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
+                    TextureDescriptor depthDescriptor{};
+                    depthDescriptor._texType = TextureType::TEXTURE_CUBE_ARRAY;
+                    depthDescriptor._dataType = GFXDataFormat::UNSIGNED_INT;
+                    depthDescriptor._baseFormat = GFXImageFormat::RED;
+                    depthDescriptor._packing = GFXImagePacking::DEPTH;
+                    depthDescriptor._layerCount = colourMapDescriptor._layerCount;
+                    depthDescriptor._mipMappingState = MipMappingState::MANUAL;
 
                     RenderTargetDescriptor desc = {};
 
@@ -204,7 +216,7 @@ namespace Divide
                     }
                     {
                         TextureDescriptor shadowMapCacheDescriptor = colourMapDescriptor;
-                        shadowMapCacheDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+                        shadowMapCacheDescriptor._mipMappingState = MipMappingState::OFF;
 
                         desc._attachments = 
                         {
@@ -216,8 +228,8 @@ namespace Divide
                         s_shadowMapCaches[i] = context.renderTargetPool().allocateRT( desc );
                     }
 
-                    s_shadowMapGenerators[i] = MemoryManager_NEW CubeShadowMapGenerator( context );
-                    s_shadowMapLifetime[i].resize( colourMapDescriptor.layerCount() );
+                    s_shadowMapGenerators.emplace_back(std::make_unique<CubeShadowMapGenerator>( context ));
+                    s_shadowMapLifetime[i].resize( colourMapDescriptor._layerCount );
                 } break;
                 case ShadowType::COUNT: break;
             }
@@ -255,12 +267,7 @@ namespace Divide
             handle._rt = nullptr;
         }
 
-        for ( ShadowMapGenerator* smg : s_shadowMapGenerators )
-        {
-            MemoryManager::SAFE_DELETE( smg );
-        }
-
-        s_shadowMapGenerators.fill( nullptr );
+        s_shadowMapGenerators.resize( 0 );
     }
 
     void ShadowMap::reset()
@@ -295,7 +302,7 @@ namespace Divide
         }
     }
 
-    void ShadowMap::bindShadowMaps( LightPool& pool, GFX::CommandBuffer& bufferInOut )
+    void ShadowMap::bindShadowMaps( GFX::CommandBuffer& bufferInOut )
     {
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_FRAME;
@@ -312,14 +319,11 @@ namespace Divide
             const U8 bindSlot = LightPool::GetShadowBindSlotOffset( shadowType );
             RTAttachment* shadowTexture = sm._rt->getAttachment( RTAttachmentType::COLOUR );
             DescriptorSetBinding& binding = AddBinding( cmd->_set, bindSlot, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, shadowTexture->texture()->getView(), shadowTexture->_descriptor._sampler );
+            Set( binding._data, shadowTexture->texture(), shadowTexture->_descriptor._sampler );
         }
 
-        if ( pool.shadowBuffer() != nullptr )
-        {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, pool.shadowBuffer(), { 0u, 1u } );
-        }
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 9u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, LightPool::ShadowBuffer(), { 0u, 1u } );
     }
 
     bool ShadowMap::freeShadowMapOffset( const Light& light )
@@ -485,7 +489,7 @@ namespace Divide
 
     void ShadowMap::generateWorldAO( const Camera& playerCamera, GFX::CommandBuffer& bufferInOut,GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )])->generateWorldAO( playerCamera , bufferInOut, memCmdInOut );
+        static_cast<CascadedShadowMapsGenerator*>(s_shadowMapGenerators[to_base( ShadowType::CSM )].get())->generateWorldAO( playerCamera , bufferInOut, memCmdInOut );
     }
 
     const RenderTargetHandle& ShadowMap::getShadowMap( const LightType type )
@@ -557,10 +561,9 @@ namespace Divide
                     shaderDescriptor._modules.push_back( vertModule );
                     shaderDescriptor._modules.push_back( fragModule );
 
-                    ResourceDescriptor shadowPreviewShader( "fbPreview.Layered.LinearDepth" );
-                    shadowPreviewShader.propertyDescriptor( shaderDescriptor );
+                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Layered.LinearDepth", shaderDescriptor );
                     shadowPreviewShader.waitForReady( true );
-                    ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
+                    Handle<ShaderProgram> previewShader = CreateResource( shadowPreviewShader );
                     const U8 splitCount = static_cast<DirectionalLightComponent&>(*light).csmSplitCount();
 
                     constexpr I16 Base = 2;
@@ -586,14 +589,13 @@ namespace Divide
                     shaderDescriptor._modules.push_back( vertModule );
                     shaderDescriptor._modules.push_back( fragModule );
 
-                    ResourceDescriptor shadowPreviewShader( "fbPreview.Layered.LinearDepth" );
-                    shadowPreviewShader.propertyDescriptor( shaderDescriptor );
+                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Layered.LinearDepth", shaderDescriptor );
                     shadowPreviewShader.waitForReady( true );
 
                     DebugView_ptr shadow = std::make_shared<DebugView>( to_I16( I16_MAX - 1 ) );
                     shadow->_texture = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->texture();
                     shadow->_sampler = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
-                    shadow->_shader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
+                    shadow->_shader = CreateResource( shadowPreviewShader );
                     shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
                     shadow->_name = Util::StringFormat( "SM_{}", light->getShadowArrayOffset() );
                     shadow->_enabled = true;
@@ -610,10 +612,9 @@ namespace Divide
                     shaderDescriptor._modules.back()._defines.emplace_back( "SPLAT_R_CHANNEL" );
                     shaderDescriptor._modules.push_back( fragModule );
 
-                    ResourceDescriptor shadowPreviewShader( "fbPreview.Cube.Shadow" );
-                    shadowPreviewShader.propertyDescriptor( shaderDescriptor );
+                    ResourceDescriptor<ShaderProgram> shadowPreviewShader( "fbPreview.Cube.Shadow", shaderDescriptor );
                     shadowPreviewShader.waitForReady( true );
-                    ShaderProgram_ptr previewShader = CreateResource<ShaderProgram>( context.context().kernel().resourceCache(), shadowPreviewShader );
+                    Handle<ShaderProgram> previewShader = CreateResource( shadowPreviewShader );
 
                     for ( U8 i = 0u; i < 6u; ++i )
                     {

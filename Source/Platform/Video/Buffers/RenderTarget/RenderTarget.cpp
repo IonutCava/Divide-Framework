@@ -95,8 +95,7 @@ bool RenderTarget::create()
                                                   getAttachmentName(attDesc._type),
                                                   to_base(attDesc._slot),
                                                   getGUID());
-        
-        attDesc._texDescriptor.addImageUsageFlag(attDesc._type == RTAttachmentType::COLOUR 
+        AddImageUsageFlag( attDesc._texDescriptor, attDesc._type == RTAttachmentType::COLOUR
                                                                 ? ImageUsage::RT_COLOUR_ATTACHMENT
                                                                 : attDesc._type == RTAttachmentType::DEPTH_STENCIL
                                                                                  ? ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT
@@ -104,47 +103,41 @@ bool RenderTarget::create()
 
         const bool needsMSAAResolve = autoResolveAttachment(att);
 
-        Texture_ptr renderTexture = nullptr;
-        Texture_ptr resolveTexture = nullptr;
-        const TextureDescriptor::MipMappingState mipMapState = attDesc._texDescriptor.mipMappingState();
+        Handle<Texture> renderTexture = INVALID_HANDLE<Texture>;
+        Handle<Texture> resolveTexture = INVALID_HANDLE<Texture>;
+        const MipMappingState mipMapState = attDesc._texDescriptor._mipMappingState;
         {
             if ( needsMSAAResolve )
             {
-                attDesc._texDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
-                attDesc._texDescriptor.removeImageUsageFlag( ImageUsage::SHADER_READ );
-                attDesc._texDescriptor.msaaSamples( _descriptor._msaaSamples );
+                RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::SHADER_READ );
+                attDesc._texDescriptor._mipMappingState = MipMappingState::OFF;
+                attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
             }
 
-            ResourceDescriptor textureAttachment(texName + "_RENDER");
+            ResourceDescriptor<Texture> textureAttachment(texName + "_RENDER", attDesc._texDescriptor );
             textureAttachment.waitForReady(true);
-            textureAttachment.propertyDescriptor(attDesc._texDescriptor);
 
-            ResourceCache* parentCache = context().context().kernel().resourceCache();
-            renderTexture = CreateResource<Texture>(parentCache, textureAttachment);
-            assert( renderTexture );
+            renderTexture = CreateResource(textureAttachment);
 
-            renderTexture->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
+            Get(renderTexture)->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
         }
 
         if ( needsMSAAResolve )
         {
-            attDesc._texDescriptor.mipMappingState(mipMapState);
-            attDesc._texDescriptor.addImageUsageFlag( ImageUsage::SHADER_READ );
-            attDesc._texDescriptor.msaaSamples(0u);
+            AddImageUsageFlag( attDesc._texDescriptor, ImageUsage::SHADER_READ );
+            attDesc._texDescriptor._mipMappingState = mipMapState;
+            attDesc._texDescriptor._msaaSamples = 0u;
 
-            ResourceDescriptor textureAttachment( texName + "_RESOLVE" );
+            ResourceDescriptor<Texture> textureAttachment( texName + "_RESOLVE", attDesc._texDescriptor );
             textureAttachment.waitForReady( true );
-            textureAttachment.propertyDescriptor( attDesc._texDescriptor );
 
-            ResourceCache* parentCache = context().context().kernel().resourceCache();
-            resolveTexture = CreateResource<Texture>( parentCache, textureAttachment );
-            assert( resolveTexture );
+            resolveTexture = CreateResource( textureAttachment );
 
-            resolveTexture->createWithData( nullptr, 0u, vec2<U16>( getWidth(), getHeight() ), {} );
+            Get(resolveTexture)->createWithData( nullptr, 0u, vec2<U16>( getWidth(), getHeight() ), {} );
         }
         else
         {
-            resolveTexture = renderTexture;
+            resolveTexture = GetResourceRef(renderTexture);
         }
 
         att->setTexture(renderTexture, resolveTexture);
@@ -157,10 +150,13 @@ bool RenderTarget::create()
 
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )
     {
-        RTAttachment* att = updateAttachment(attDesc);
-        att->setTexture(attDesc._externalAttachment->renderTexture(), attDesc._externalAttachment->resolvedTexture());
-        DIVIDE_ASSERT(attDesc._externalAttachment->renderTexture()->descriptor().msaaSamples() == _descriptor._msaaSamples);
+        Handle<Texture> renderTexture  = GetResourceRef(attDesc._externalAttachment->renderTexture());
+        Handle<Texture> resolveTexture = GetResourceRef(attDesc._externalAttachment->resolvedTexture());
 
+        DIVIDE_ASSERT(Get( renderTexture )->descriptor()._msaaSamples == _descriptor._msaaSamples);
+
+        RTAttachment* att = updateAttachment(attDesc);
+        att->setTexture( renderTexture, resolveTexture );
         if ( !initAttachment( att, attDesc._type, attDesc._slot ) )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -277,23 +273,22 @@ bool RenderTarget::updateSampleCount(U8 newSampleCount)
 
 bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type, const RTColourAttachmentSlot slot)
 {
-    if (att->_descriptor._externalAttachment != nullptr)
+    if (att->_descriptor._externalAttachment == nullptr)
     {
-        att->setTexture( att->_descriptor._externalAttachment->renderTexture(), att->_descriptor._externalAttachment->resolvedTexture());
-    }
-    else
-    {
+        ResourcePtr<Texture> attTex = Get(att->texture());
+
         // Do we need to resize the attachment?
-        const bool shouldResize = att->texture()->width() != getWidth() || att->texture()->height() != getHeight();
+        const bool shouldResize = attTex->width() != getWidth() || attTex->height() != getHeight();
         if (shouldResize)
         {
-            att->texture()->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
+            attTex->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
         }
 
-        const bool updateSampleCount = att->renderTexture()->descriptor().msaaSamples() != _descriptor._msaaSamples;
+        ResourcePtr<Texture> attRenderTex = Get( att->renderTexture() );
+        const bool updateSampleCount = attRenderTex->descriptor()._msaaSamples != _descriptor._msaaSamples;
         if (updateSampleCount)
         {
-            att->renderTexture()->setSampleCount(_descriptor._msaaSamples);
+            attRenderTex->setSampleCount(_descriptor._msaaSamples);
         }
     }
 

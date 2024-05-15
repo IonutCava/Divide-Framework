@@ -47,7 +47,7 @@ public:
     void drawInternal() override;
 private:
     PostFX& _postFX;
-    Texture* _previewTexture = nullptr;
+    Handle<Texture> _previewTexture = INVALID_HANDLE<Texture>;
 };
 } //namespace Divide
 

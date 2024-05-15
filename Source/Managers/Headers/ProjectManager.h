@@ -89,6 +89,7 @@ namespace Divide
     };
 
     class Editor;
+    class Texture;
     class ShadowMap;
     class UnitComponent;
     class RenderPassExecutor;
@@ -103,7 +104,6 @@ namespace Divide
     struct SizeChangeParams;
 
     FWD_DECLARE_MANAGED_CLASS( Player );
-    FWD_DECLARE_MANAGED_CLASS( Texture );
 
     [[nodiscard]] bool operator==(const SceneEntry& lhs, const SceneEntry& rhs) noexcept;
 
@@ -215,7 +215,7 @@ namespace Divide
         [[nodiscard]] ErrorCode loadProject( const ProjectID& targetProject, bool deferToStartOfFrame );
 
         // returns selection callback id
-        size_t addSelectionCallback( const DELEGATE<void, U8, const vector_fast<SceneGraphNode*>&>& selectionCallback )
+        size_t addSelectionCallback( const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback )
         {
             static std::atomic_size_t index = 0u;
 
@@ -233,7 +233,7 @@ namespace Divide
         }
 
         [[nodiscard]] bool resetSelection( PlayerIndex idx, const bool resetIfLocked );
-        void setSelected( PlayerIndex idx, const vector_fast<SceneGraphNode*>& SGNs, bool recursive );
+        void setSelected( PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive );
         void onNodeDestroy( Scene* parentScene, SceneGraphNode* node );
         /// cull the SceneGraph against the current view frustum. 
         void cullSceneGraph( const NodeCullParams& cullParams, const U16 cullFlags, VisibleNodeList<>& nodesOut );
@@ -310,9 +310,6 @@ namespace Divide
         [[nodiscard]] const PlatformContext& platformContext() const noexcept;
         [[nodiscard]]       PlatformContext& platformContext()       noexcept;
 
-        [[nodiscard]] const ResourceCache& resourceCache() const noexcept;
-        [[nodiscard]]       ResourceCache& resourceCache()       noexcept;
-
     protected:
         bool networkUpdate( U64 frameCount );
 
@@ -333,7 +330,7 @@ namespace Divide
         // Returns true if the player was previously registered
         // On success, player pointer will be reset
         void removePlayer( Scene* parentScene, SceneGraphNode* playerNode, bool queue );
-        void getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut ) const;
+        void getNodesInScreenRect( const Rect<I32>& screenRect, const Camera& camera, vector<SceneGraphNode*>& nodesOut ) const;
 
         void waitForSaveTask();
 
@@ -352,8 +349,7 @@ namespace Divide
         BoundingSphere moveCameraToNode( Camera* camera, const SceneGraphNode* targetNode ) const;
         bool saveNode( const SceneGraphNode* targetNode ) const;
         bool loadNode( SceneGraphNode* targetNode ) const;
-        SceneNode_ptr createNode( SceneNodeType type, const ResourceDescriptor& descriptor );
-        std::pair<Texture_ptr, SamplerDescriptor> getSkyTexture() const;
+        std::pair<Handle<Texture>, SamplerDescriptor> getSkyTexture() const;
         [[nodiscard]] ErrorCode loadProjectInternal();
 
     private:
@@ -377,7 +373,7 @@ namespace Divide
 
         SwitchProjectTarget _projectSwitchTarget{};
 
-        vector<std::pair<size_t, DELEGATE<void, U8 /*player index*/, const vector_fast<SceneGraphNode*>& /*nodes*/>> > _selectionChangeCallbacks;
+        vector<std::pair<size_t, DELEGATE<void, U8 /*player index*/, const vector<SceneGraphNode*>& /*nodes*/>> > _selectionChangeCallbacks;
         VisibleNodeList<> _recentlyRenderedNodes;
 
     };
@@ -432,7 +428,7 @@ namespace Divide
                 manager.removePlayer( parentScene, playerNode, queue );
             }
 
-            static void getNodesInScreenRect( const Divide::ProjectManager& manager, const Rect<I32>& screenRect, const Camera& camera, vector_fast<SceneGraphNode*>& nodesOut )
+            static void getNodesInScreenRect( const Divide::ProjectManager& manager, const Rect<I32>& screenRect, const Camera& camera, vector<SceneGraphNode*>& nodesOut )
             {
                 manager.getNodesInScreenRect( screenRect, camera, nodesOut );
             }
@@ -467,11 +463,6 @@ namespace Divide
 
         class ProjectManagerEditor
         {
-            static SceneNode_ptr createNode( Divide::ProjectManager* manager, const SceneNodeType type, const ResourceDescriptor& descriptor )
-            {
-                return manager->createNode( type, descriptor );
-            }
-
             static SceneEnvironmentProbePool* getEnvProbes( const Divide::ProjectManager* manager ) noexcept
             {
                 return manager->getEnvProbes();
@@ -507,7 +498,7 @@ namespace Divide
         class ProjectManagerSSRAccessor
         {
 
-            static std::pair<Texture_ptr, SamplerDescriptor> getSkyTexture( const Divide::ProjectManager* mgr )
+            static std::pair<Handle<Texture>, SamplerDescriptor> getSkyTexture( const Divide::ProjectManager* mgr )
             {
                 return mgr->getSkyTexture();
             }

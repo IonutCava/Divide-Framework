@@ -47,7 +47,7 @@ namespace Divide {
 
     private:
         static SharedMutex s_eventListenerLock;
-        static vector_fast<SDLEventListener*> s_eventListeners;
+        static vector<SDLEventListener*> s_eventListeners;
     };
 
 }; //namespace Divide

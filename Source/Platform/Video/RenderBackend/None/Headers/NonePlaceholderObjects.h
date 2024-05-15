@@ -50,8 +50,8 @@ namespace Divide {
 
     class noGenericVertexData final : public GenericVertexData {
      public:
-        noGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const bool renderIndirect, const std::string_view name)
-            : GenericVertexData(context, ringBufferLength, renderIndirect, name)
+        noGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const std::string_view name)
+            : GenericVertexData(context, ringBufferLength, name)
         {}
 
         void reset() override {}
@@ -67,14 +67,8 @@ namespace Divide {
 
     class noTexture final : public Texture {
     public:
-        noTexture(GFXDevice& context,
-                  const size_t descriptorHash,
-                  const std::string_view name,
-                  const std::string_view assetNames,
-                  const ResourcePath& assetLocations,
-                  const TextureDescriptor& texDescriptor,
-                  ResourceCache& parentCache)
-            : Texture(context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache)
+        noTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor )
+            : Texture(context, descriptor)
         {
         }
 
@@ -86,14 +80,10 @@ namespace Divide {
 
     class noShaderProgram final : public ShaderProgram {
     public:
-        noShaderProgram(GFXDevice& context, const size_t descriptorHash,
-                        const std::string_view name,
-                        const std::string_view assetName,
-                        const ResourcePath& assetLocation,
-                        const ShaderProgramDescriptor& descriptor,
-                        ResourceCache& parentCache)
-            : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, parentCache)
-        {}
+        noShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor )
+            : ShaderProgram(context, descriptor)
+        {
+        }
     };
 
     class noUniformBuffer final : public ShaderBuffer {

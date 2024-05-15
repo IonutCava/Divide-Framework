@@ -71,8 +71,6 @@ public:
     virtual ~ShadowMapGenerator() = default;
 
 protected:
-    SET_DELETE_FRIEND
-
     explicit ShadowMapGenerator(GFXDevice& context, ShadowType type) noexcept;
 
     friend class ShadowMap;
@@ -102,7 +100,7 @@ class NOINITVTABLE ShadowMap {
     // Reset usage flags and set render targets back to default settings
     static void resetShadowMaps();
 
-    static void bindShadowMaps( LightPool& pool, GFX::CommandBuffer& bufferInOut);
+    static void bindShadowMaps(GFX::CommandBuffer& bufferInOut);
     static U32  getLightLayerRequirements(const Light& light);
     static bool freeShadowMapOffset(const Light& light);
     static bool markShadowMapsUsed(Light& light);
@@ -137,7 +135,7 @@ class NOINITVTABLE ShadowMap {
     using LayerLifetimeMask = vector<ShadowLayerData>;
     static Mutex s_shadowMapUsageLock;
     static std::array<LayerLifetimeMask, to_base(ShadowType::COUNT)> s_shadowMapLifetime;
-    static std::array<ShadowMapGenerator*, to_base(ShadowType::COUNT)> s_shadowMapGenerators;
+    static vector<std::unique_ptr<ShadowMapGenerator>> s_shadowMapGenerators;
 
     static std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> s_shadowMaps;
     static std::array<RenderTargetHandle, to_base(ShadowType::COUNT)> s_shadowMapCaches;

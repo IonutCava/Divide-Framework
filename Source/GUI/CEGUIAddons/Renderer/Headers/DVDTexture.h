@@ -62,7 +62,7 @@ public:
     \brief
         set the Divide::Texture that this Texture is based on to the specified texture, with the specified size.
     */
-    void setDVDTexture(Divide::Texture_ptr tex, const Sizef& size);
+    void setDVDTexture(Divide::Handle<Divide::Texture> tex, const Sizef& size);
 
     /*!
     \brief
@@ -71,7 +71,7 @@ public:
     \return
         Divide::Texture pointer that this object is using.
     */
-    [[nodiscard]] Divide::Texture_ptr getDVDTexture() const;
+    [[nodiscard]] Divide::Handle<Divide::Texture> getDVDTexture() const;
 
     /*!
     \brief
@@ -100,7 +100,7 @@ private:
     friend Texture& CEGUIRenderer::createTexture(const String&);
     friend Texture& CEGUIRenderer::createTexture(const String&, const String&, const String&);
     friend Texture& CEGUIRenderer::createTexture(const String&, const Sizef&);
-    friend Texture& CEGUIRenderer::createTexture(const String&, const Divide::Texture_ptr&, const Sizef&);
+    friend Texture& CEGUIRenderer::createTexture(const String&, const Divide::Handle<Divide::Texture>, const Sizef&);
     friend void CEGUIRenderer::destroyTexture(Texture&);
     friend void CEGUIRenderer::destroyTexture(const String&);
 
@@ -111,7 +111,8 @@ private:
     //! Constructor that creates a Texture with a given size.
     DVDTexture( CEGUIRenderer& owner, const String& name, const Sizef& size);
     //! Constructor that wraps an existing GL texture.
-    DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::Texture_ptr& tex, const Sizef& size);
+    DVDTexture( CEGUIRenderer& owner, const String& name, const Divide::Handle<Divide::Texture> tex, const Sizef& size);
+    ~DVDTexture();
 
     //! generate the DVD texture and set some initial options.
     void generateDVDTexture();
@@ -138,7 +139,7 @@ private:
     //! Whether Texture format is a compressed format
     bool _isCompressed{false};
     //! The Divide texture used for storing this DVDTexture's data
-    Divide::Texture_ptr _texture;
+    Divide::Handle<Divide::Texture> _texture{Divide::INVALID_HANDLE<Divide::Texture>};
     //! A Divide sampler hash used for sampling from this texture in shaders
     Divide::SamplerDescriptor _sampler{};
 };

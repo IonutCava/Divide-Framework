@@ -7,6 +7,8 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
+#include "Core/Resources/Headers/ResourceCache.h"
+
 namespace Divide {
 
 RTAttachment::RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept
@@ -15,14 +17,20 @@ RTAttachment::RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& d
 {
 }
 
-const Texture_ptr& RTAttachment::texture() const
+RTAttachment::~RTAttachment()
+{
+    DestroyResource( _resolvedTexture );
+    DestroyResource( _renderTexture );
+}
+
+Handle<Texture> RTAttachment::texture() const
 {
     return _resolvedTexture;
 }
 
-void RTAttachment::setTexture( const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture ) noexcept
+void RTAttachment::setTexture( const Handle<Texture> renderTexture, const Handle<Texture> resolveTexture ) noexcept
 {
-    assert( renderTexture != nullptr);
+    assert( renderTexture != INVALID_HANDLE<Texture>);
 
     _renderTexture = renderTexture;
     _resolvedTexture = resolveTexture;

@@ -108,7 +108,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Resources/Headers/Resource.h
                          Core/Resources/Headers/ResourceCache.h
                          Core/Resources/Headers/ResourceCache.inl
-                         Core/Resources/Headers/ResourceDescriptor.h
                          Core/TemplateLibraries/Headers/CircularBuffer.h
                          Core/TemplateLibraries/Headers/EnumToString.h
                          Core/TemplateLibraries/Headers/HashMap.h
@@ -153,13 +152,17 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/Networking/Session.cpp
                  Core/Resources/Resource.cpp
                  Core/Resources/ResourceCache.cpp
-                 Core/Resources/ResourceDescriptor.cpp
                  Core/Time/ApplicationTimer.cpp
                  Core/Time/FrameRateHandler.cpp
                  Core/Time/ProfileTimer.cpp
 )
 
-set ( DYNAMICS_SOURCE_HEADERS Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleBoxGenerator.h
+set ( DYNAMICS_SOURCE_HEADERS Dynamics/Entities/Particles/Headers/ParticleData.h
+                              Dynamics/Entities/Particles/Headers/ParticleEmitter.h
+                              Dynamics/Entities/Particles/Headers/ParticleGenerator.h
+                              Dynamics/Entities/Particles/Headers/ParticleSource.h
+                              Dynamics/Entities/Particles/Headers/ParticleUpdater.h
+                              Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleBoxGenerator.h
                               Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleColourGenerator.h
                               Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleRoundGenerator.h
                               Dynamics/Entities/Particles/ConcreteGenerators/Headers/ParticleSphereVelocityGenerator.h
@@ -174,20 +177,10 @@ set ( DYNAMICS_SOURCE_HEADERS Dynamics/Entities/Particles/ConcreteGenerators/Hea
                               Dynamics/Entities/Particles/ConcreteUpdaters/Headers/ParticleFountainUpdater.h
                               Dynamics/Entities/Particles/ConcreteUpdaters/Headers/ParticlePositionColourUpdater.h
                               Dynamics/Entities/Particles/ConcreteUpdaters/Headers/ParticleVelocityColourUpdater.h
-                              Dynamics/Entities/Particles/Headers/ParticleData.h
-                              Dynamics/Entities/Particles/Headers/ParticleEmitter.h
-                              Dynamics/Entities/Particles/Headers/ParticleGenerator.h
-                              Dynamics/Entities/Particles/Headers/ParticleSource.h
-                              Dynamics/Entities/Particles/Headers/ParticleUpdater.h
-                              Dynamics/Entities/Triggers/Headers/Trigger.h
                               Dynamics/Entities/Units/Headers/Character.h
                               Dynamics/Entities/Units/Headers/NPC.h
                               Dynamics/Entities/Units/Headers/Player.h
                               Dynamics/Entities/Units/Headers/Unit.h
-                              Dynamics/Entities/Units/Headers/Vehicle.h
-                              Dynamics/WeaponSystem/Ammunition/Headers/Ammunition.h
-                              Dynamics/WeaponSystem/Projectile/Headers/Projectile.h
-                              Dynamics/WeaponSystem/Weapons/Headers/Weapon.h
 )
 
 set( DYNAMICS_SOURCE Dynamics/Entities/Particles/ParticleData.cpp
@@ -209,15 +202,10 @@ set( DYNAMICS_SOURCE Dynamics/Entities/Particles/ParticleData.cpp
                      Dynamics/Entities/Particles/ConcreteUpdaters/ParticleFountainUpdater.cpp
                      Dynamics/Entities/Particles/ConcreteUpdaters/ParticlePositionColourUpdater.cpp
                      Dynamics/Entities/Particles/ConcreteUpdaters/ParticleVelocityColourUpdater.cpp
-                     Dynamics/Entities/Triggers/Trigger.cpp
                      Dynamics/Entities/Units/Character.cpp
                      Dynamics/Entities/Units/NPC.cpp
                      Dynamics/Entities/Units/Player.cpp
                      Dynamics/Entities/Units/Unit.cpp
-                     Dynamics/Entities/Units/Vehicle.cpp
-                     Dynamics/WeaponSystem/Ammunition/Ammunition.cpp
-                     Dynamics/WeaponSystem/Projectile/Projectile.cpp
-                     Dynamics/WeaponSystem/Weapons/Weapon.cpp
 )
 
 set( ECS_SOURCE_HEADERS ECS/Components/Headers/AnimationComponent.h
@@ -333,11 +321,13 @@ set( ENVIRONMENT_SOURCE_HEADERS Environment/Sky/Headers/Sky.h
                                 Environment/Terrain/Headers/Terrain.h
                                 Environment/Terrain/Headers/TerrainChunk.h
                                 Environment/Terrain/Headers/TerrainDescriptor.h
-                                Environment/Terrain/Headers/TerrainLoader.h
+                                Environment/Terrain/Headers/TerrainDescriptor.inl
                                 Environment/Terrain/Headers/TileRing.h
                                 Environment/Terrain/Quadtree/Headers/Quadtree.h
                                 Environment/Terrain/Quadtree/Headers/QuadtreeNode.h
                                 Environment/Vegetation/Headers/Vegetation.h
+                                Environment/Vegetation/Headers/VegetationDescriptor.h
+                                Environment/Vegetation/Headers/VegetationDescriptor.inl
                                 Environment/Water/Headers/Water.h
 )
 
@@ -347,7 +337,6 @@ set( ENVIRONMENT_SOURCE Environment/Sky/Sky.cpp
                         Environment/Terrain/Terrain.cpp
                         Environment/Terrain/TerrainChunk.cpp
                         Environment/Terrain/TerrainDescriptor.cpp
-                        Environment/Terrain/TerrainLoader.cpp
                         Environment/Terrain/TileRing.cpp
                         Environment/Terrain/Quadtree/Quadtree.cpp
                         Environment/Terrain/Quadtree/QuadtreeNode.cpp
@@ -384,6 +373,7 @@ set( GEOMETRY_SOURCE Geometry/Animations/AnimationEvaluator.cpp
                      Geometry/Material/Material.cpp
                      Geometry/Material/MaterialProperties.cpp
                      Geometry/Material/ShaderComputeQueue.cpp
+                     Geometry/Material/ShaderProgramInfo.cpp
                      Geometry/Shapes/Mesh.cpp
                      Geometry/Shapes/Object3D.cpp
                      Geometry/Shapes/SubMesh.cpp
@@ -515,7 +505,6 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Headers/PlatformDefinesOS.h
                              Platform/Headers/PlatformDefinesUnix.h
                              Platform/Headers/PlatformDefinesWindows.h
-                             Platform/Headers/PlatformMemoryDefines.h
                              Platform/Headers/PlatformRuntime.h
                              Platform/Headers/PlatformRuntime.inl
                              Platform/Headers/SDLEventListener.h
@@ -622,6 +611,7 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Shaders/Headers/ShaderDataUploader.h
                              Platform/Video/Shaders/Headers/ShaderProgram.h
                              Platform/Video/Shaders/Headers/ShaderProgramFwd.h
+                             Platform/Video/Shaders/Headers/ShaderProgramFwd.inl
                              Platform/Video/Textures/Headers/SamplerDescriptor.h
                              Platform/Video/Textures/Headers/SamplerDescriptor.inl
                              Platform/Video/Textures/Headers/Texture.h
@@ -667,7 +657,6 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Video/IMPrimitive.cpp
                      Platform/Video/LockManager.cpp
                      Platform/Video/Pipeline.cpp
-                     Platform/Video/PushConstant.cpp
                      Platform/Video/PushConstants.cpp
                      Platform/Video/RenderPackage.cpp
                      Platform/Video/RenderStagePass.cpp
@@ -825,7 +814,6 @@ set ( UTILITY_SOURCE_HEADERS Utility/Headers/Colours.h
                              Utility/Headers/ImageTools.h
                              Utility/Headers/ImageToolsFwd.h
                              Utility/Headers/Localization.h
-                             Utility/Headers/MemoryTracker.h
                              Utility/Headers/StateTracker.h
                              Utility/Headers/TextLabel.h
                              Utility/Headers/XMLParser.h

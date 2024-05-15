@@ -43,22 +43,25 @@ namespace Divide {
 class GFXDevice;
 struct PushConstants;
 
-FWD_DECLARE_MANAGED_CLASS(Texture);
-FWD_DECLARE_MANAGED_CLASS(Sphere3D);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+class Texture;
+class Sphere3D;
+class ShaderProgram;
+
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
 
 enum class RenderStage : U8;
 
-enum class RebuildCommandsState : U8 {
+enum class RebuildCommandsState : U8 
+{
     NONE,
     REQUESTED,
     DONE
 };
 
-class Sky final : public SceneNode {
+DEFINE_NODE_TYPE( Sky, SceneNodeType::TYPE_SKY )
+{
    public:
-    explicit Sky(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name, U32 diameter = 2);
+    explicit Sky( const ResourceDescriptor<Sky>& descriptor );
 
     static void OnStartup(PlatformContext& context);
     // Returns the sun position and intensity details for the specified date-time
@@ -100,7 +103,14 @@ class Sky final : public SceneNode {
     void nightSkyColour(FColour4 val);
     void groundColour(FColour4 val);
 
-    [[nodiscard]] const Texture_ptr& activeSkyBox() const noexcept;
+    [[nodiscard]] Handle<Texture> activeSkyBox() const noexcept;
+
+   protected:
+    friend class ResourceCache;
+    template <typename T> friend struct ResourcePool;
+
+    bool postLoad() override;
+    bool unload() override;
 
    protected:
     void postLoad(SceneGraphNode* sgn) override;
@@ -121,20 +131,18 @@ class Sky final : public SceneNode {
     template <typename T>
     friend class ImplResourceLoader;
 
-    bool load() override;
+    bool load( PlatformContext& context ) override;
 
-    [[nodiscard]] const char* getResourceTypeName() const noexcept  override { return "Sky"; }
     void setSkyShaderData( RenderStagePass renderStagePass, PushConstants& constantsInOut);
 
 protected:
-    GFXDevice& _context;
     Sun _sun;
-    Texture_ptr _skybox{ nullptr };
-    Texture_ptr _weatherTex{ nullptr };
-    Texture_ptr _curlNoiseTex{ nullptr };
-    Texture_ptr _worlNoiseTex{ nullptr };
-    Texture_ptr _perWorlNoiseTex{ nullptr };
-    Sphere3D_ptr _sky{ nullptr };
+    Handle<Texture> _skybox{ INVALID_HANDLE<Texture> };
+    Handle<Texture> _weatherTex{ INVALID_HANDLE<Texture> };
+    Handle<Texture> _curlNoiseTex{ INVALID_HANDLE<Texture> };
+    Handle<Texture> _worlNoiseTex{ INVALID_HANDLE<Texture> };
+    Handle<Texture> _perlWorlNoiseTex{ INVALID_HANDLE<Texture> };
+    Handle<Sphere3D> _sky{ INVALID_HANDLE<Sphere3D> };
     U32  _diameter{1u};
     bool _atmosphereChanged{true};
 };

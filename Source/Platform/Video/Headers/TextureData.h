@@ -54,7 +54,7 @@ enum class TextureUpdateState : U8 {
 
 struct ImageReadbackData
 {
-    vector_fast<Byte> _data;
+    vector<Byte> _data;
     U16 _width{0u};
     U16 _height{0u};
     U8  _bpp{0u};

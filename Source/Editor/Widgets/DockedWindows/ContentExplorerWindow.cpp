@@ -6,9 +6,10 @@
 #include "Core/Headers/Kernel.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Platform/File/Headers/FileManagement.h"
-#include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Geometry/Shapes/Headers/Mesh.h"
 
@@ -80,6 +81,23 @@ namespace Divide {
     {
     }
 
+    ContentExplorerWindow::~ContentExplorerWindow()
+    {
+        DestroyResource( _fileIcon );
+        DestroyResource( _soundIcon );
+        DestroyResource( _shaderIcon );
+        for ( Handle<Texture>& icon : _geometryIcons )
+        {
+            DestroyResource( icon );
+        }
+        for ( auto& icon : _loadedTextures)
+        {
+            DestroyResource( icon.second );
+        }
+        DestroyResource(_previewTexture);
+        DestroyResource(_spawnMesh);
+    }
+
     void ContentExplorerWindow::init()
     {
         _currentDirectories.resize(2);
@@ -115,7 +133,7 @@ namespace Divide {
         {
             const EditorFileEntry entry = _textureLoadQueue.top();
             _textureLoadQueue.pop();
-            _loadedTextures[_ID((entry._path / entry._file._path).string().c_str())] = getTextureForPath( entry._path, entry._file._path.string());
+            _loadedTextures[_ID((entry._path / entry._file._path).string())] = getTextureForPath( entry._path, entry._file._path.string());
         }
 
         _textureLoadQueueLocked = false;
@@ -133,9 +151,9 @@ namespace Divide {
             {
                 if (std::filesystem::is_regular_file(x.path()))
                 {
-                    if (IsValidFile(ResourcePath { x.path() }))
+                    if (IsValidFile(ResourcePath { x.path().string() }))
                     {
-                        const ResourcePath filename{ x.path().filename() };
+                        const ResourcePath filename{ x.path().filename().string() };
                         directoryOut._files.emplace_back(filename, getExtension(filename).substr(1).c_str());
 
                     }
@@ -143,7 +161,7 @@ namespace Divide {
                 else if (std::filesystem::is_directory(x.path()))
                 {
                     auto& childDirectory = directoryOut._children.emplace_back(std::make_unique<Directory>());
-                    getDirectoryStructureForPath(ResourcePath(x.path()), *childDirectory);
+                    getDirectoryStructureForPath(ResourcePath(x.path().string()), *childDirectory);
                 }
             }
         }
@@ -176,10 +194,10 @@ namespace Divide {
     void ContentExplorerWindow::drawInternal() {
         PROFILE_SCOPE_AUTO(Profiler::Category::GUI);
 
-        const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_parent, Editor::ImGuiContextType::Editor);
+        static bool previewTexture = false;
+        static bool spawnMesh = false;
 
-        static Texture_ptr previewTexture = nullptr;
-        static Mesh_ptr spawnMesh = nullptr;
+        const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_parent, Editor::ImGuiContextType::Editor);
 
         const auto isSoundFile = [](const char* extension) {
             for (const char* ext : g_soundExtensions) {
@@ -210,7 +228,7 @@ namespace Divide {
             }
             else
             {
-                if (openFile(textEditor.string().c_str(), path, file._path.string()) != FileError::NONE)
+                if (openFile(textEditor.string(), path, file._path.string()) != FileError::NONE)
                 {
                     Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>(3), true);
                 }
@@ -259,14 +277,16 @@ namespace Divide {
 
                 for (const auto& file : _selectedDir->_files)
                 {
-                    Texture_ptr tex = nullptr;
+                    Handle<Texture> tex = INVALID_HANDLE<Texture>;
                     { // Textures
                         for (const char* extension : g_imageExtensions)
                         {
                             if (Util::CompareIgnoreCase(file._extension.c_str(), extension))
                             {
-                                const auto it = _loadedTextures.find(_ID((_selectedDir->_path / file._path).string().c_str()));
-                                if (it == std::cend(_loadedTextures) || it->second == nullptr)
+                                const string path = (_selectedDir->_path / file._path).string();
+
+                                const auto it = _loadedTextures.find(_ID(path));
+                                if (it == std::cend(_loadedTextures) || it->second == INVALID_HANDLE<Texture>)
                                 {
                                     if (!_textureLoadQueueLocked)
                                     {
@@ -282,7 +302,7 @@ namespace Divide {
                                         lockTextureQueue = true;
                                     }
                                 }
-                                else if (it->second->getState() == ResourceState::RES_LOADED)
+                                else if (Get(it->second)->getState() == ResourceState::RES_LOADED)
                                 {
                                     tex = it->second;
                                 }
@@ -291,35 +311,38 @@ namespace Divide {
                         }
                     }
 
-                    ImGui::PushID( _selectedDir->_path.string().c_str());
+                    ImGui::PushID( _selectedDir->_path.fileSystemPath().c_str() );
 
-                    const GeometryFormat format = tex != nullptr ? GeometryFormat::COUNT : GetGeometryFormatForExtension(file._extension.c_str());
+                    const GeometryFormat format = tex != INVALID_HANDLE<Texture> ? GeometryFormat::COUNT : GetGeometryFormatForExtension(file._extension.c_str());
 
                     bool hasTooltip = false;
-                    if (tex != nullptr)
+                    if (tex != INVALID_HANDLE<Texture>)
                     {
-                        const U16 w = tex->width();
-                        const U16 h = tex->height();
+                        const U16 w = Get(tex)->width();
+                        const U16 h = Get(tex)->height();
                         const F32 aspect = w / to_F32(h);
                     
-                        if (ImGui::ImageButton(tex->resourceName().c_str(), (void*)tex.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Get(tex)->resourceName().c_str(), to_TexID(tex), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
-                            previewTexture = tex;
+                            DestroyResource( _previewTexture );
+                            _previewTexture = tex;
+                            previewTexture = true;
                         }
                     }
                     else if (format != GeometryFormat::COUNT)
                     {
-                        const Texture_ptr& icon = _geometryIcons[to_base(format)];
-                        const U16 w = icon->width();
-                        const U16 h = icon->height();
+                        const Handle<Texture> icon = _geometryIcons[to_base(format)];
+                        const U16 w = Get(icon)->width();
+                        const U16 h = Get(icon)->height();
                         const F32 aspect = w / to_F32(h);
 
                         const bool modifierPressed = imguiContext.IO.KeyShift;
                         const ImVec4 bgColour(modifierPressed ? 1.f : 0.f, 0.f, 0.f, modifierPressed ? 1.f : 0.f);
-                        if (ImGui::ImageButton(icon->resourceName().c_str(), (void*)icon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1)))
+                        if (ImGui::ImageButton(Get(icon)->resourceName().c_str(), to_TexID(icon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1)))
                         {
-                            spawnMesh = getModelForPath(_selectedDir->_path, file._path.string());
-                            if (spawnMesh == nullptr)
+                            DestroyResource( _spawnMesh );
+                            _spawnMesh = getModelForPath(_selectedDir->_path, file._path.string());
+                            if ( _spawnMesh == INVALID_HANDLE<Mesh>)
                             {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
                             }
@@ -332,42 +355,45 @@ namespace Divide {
                     }
                     else if (isSoundFile(file._extension.c_str()))
                     {
-                        const U16 w = _soundIcon->width();
-                        const U16 h = _soundIcon->height();
+                        const U16 w = Get(_soundIcon)->width();
+                        const U16 h = Get(_soundIcon)->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(_soundIcon->resourceName().c_str(), (void*)_soundIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Get(_soundIcon)->resourceName().c_str(), to_TexID(_soundIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
                             //ToDo: Play sound file -Ionut
                         }
                     } else if (isShaderFile(file._extension.c_str())) {
-                        const U16 w = _shaderIcon->width();
-                        const U16 h = _shaderIcon->height();
+                        const U16 w = Get(_shaderIcon)->width();
+                        const U16 h = Get(_shaderIcon)->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(_shaderIcon->resourceName().c_str(), (void*)_shaderIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Get(_shaderIcon)->resourceName().c_str(), to_TexID(_shaderIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
                             openFileInEditor(_selectedDir->_path, file);
                         }
                     }
                     else
                     {
-                        const U16 w = _fileIcon->width();
-                        const U16 h = _fileIcon->height();
+                        const U16 w = Get(_fileIcon)->width();
+                        const U16 h = Get(_fileIcon)->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(_fileIcon->resourceName().c_str(), (void*)_fileIcon.get(), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Get(_fileIcon)->resourceName().c_str(), to_TexID(_fileIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
                             openFileInEditor( _selectedDir->_path, file);
                         }
                     }
 
+                    static string pathString = "";
+
+                    pathString = file._path.string();
                     if (!hasTooltip && ImGui::IsItemHovered())
                     {
-                        ImGui::SetTooltip(file._path.string().c_str());
+                        ImGui::SetTooltip( pathString.c_str() );
                     }
 
-                    ImGui::Text(file._path.string().c_str());
+                    ImGui::Text( pathString.c_str() );
 
                     ImGui::PopID();
                     ImGui::NextColumn();
@@ -380,39 +406,37 @@ namespace Divide {
             ImGui::EndChild();
         }
 
-        if (Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", previewTexture.get(), vec2<F32>(512, 512), true, true)) {
-            previewTexture = nullptr;
+        if ( previewTexture && Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", _previewTexture, vec2<F32>(512, 512), true, true)) {
+            previewTexture = false;
         }
 
-        const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera(_parent.context().kernel().projectManager());
-        if (Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, imguiContext.IO.KeyShift, VECTOR3_UNIT, playerCam->snapshot()._eye)) {
-            spawnMesh = nullptr;
+        const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera(_parent.context().kernel().projectManager().get());
+        if ( spawnMesh && Attorney::EditorGeneralWidget::modalModelSpawn(_parent, _spawnMesh, imguiContext.IO.KeyShift, VECTOR3_UNIT, playerCam->snapshot()._eye)) {
+            spawnMesh = false;
         }
 
         ImGui::PopStyleVar();
     }
 
-    Texture_ptr ContentExplorerWindow::getTextureForPath(const ResourcePath& texturePath, const std::string_view textureName) const {
-        ImageTools::ImportOptions options{};
-        options._useDDSCache = false;
-
-        TextureDescriptor texturePreviewDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
-        texturePreviewDescriptor.textureOptions(options);
-
-        ResourceDescriptor textureResource(textureName);
+    Handle<Texture> ContentExplorerWindow::getTextureForPath(const ResourcePath& texturePath, const std::string_view textureName) const
+    {
+        ResourceDescriptor<Texture> textureResource(textureName);
         textureResource.assetName( textureName );
         textureResource.assetLocation(texturePath);
-        textureResource.propertyDescriptor(texturePreviewDescriptor);
 
-        return CreateResource<Texture>(_parent.context().kernel().resourceCache(), textureResource);
+        TextureDescriptor& descriptor = textureResource._propertyDescriptor;
+        descriptor._textureOptions._useDDSCache = false;
+
+        return CreateResource(textureResource);
     }
 
-    Mesh_ptr ContentExplorerWindow::getModelForPath(const ResourcePath& modelPath, const std::string_view modelName) const {
-        ResourceDescriptor model(modelName);
+    Handle<Mesh> ContentExplorerWindow::getModelForPath(const ResourcePath& modelPath, const std::string_view modelName) const
+    {
+        ResourceDescriptor<Mesh> model(modelName);
         model.assetLocation(modelPath);
         model.assetName( modelName );
         model.flag(true);
 
-        return CreateResource<Mesh>(_parent.context().kernel().resourceCache(), model);
+        return CreateResource(model);
     }
 } //namespace Divide

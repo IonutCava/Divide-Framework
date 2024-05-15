@@ -44,13 +44,15 @@ FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 /// Vertex Buffer interface class to allow API-independent implementation of data
 /// This class does NOT represent an API-level VB, such as: GL_ARRAY_BUFFER / D3DVERTEXBUFFER
 /// It is only a "buffer" for "vertex info" abstract of implementation. (e.g.: OGL uses a vertex array object for this)
-class VertexBuffer final : public VertexDataInterface {
+class VertexBuffer final : public VertexDataInterface
+{
    public:
     constexpr static U32 PRIMITIVE_RESTART_INDEX_L = 0xFFFFFFFF;
     constexpr static U32 PRIMITIVE_RESTART_INDEX_S = 0xFFFF;
     constexpr static U16 INVALID_PARTITION_ID = 0xFFFF;
 
-    struct Vertex {
+    struct Vertex
+    {
         UColour4  _colour{0u, 0u, 0u, 1u};
         vec3<F32> _position{};
         vec2<F32> _texcoord{};
@@ -60,9 +62,15 @@ class VertexBuffer final : public VertexDataInterface {
         F32       _tangent{0.f};
     };
 
-    VertexBuffer(GFXDevice& context, bool renderIndirect, const std::string_view name);
+    struct Descriptor
+    {
+        Str<256> _name;
+        bool     _largeIndices{false};
+        bool     _keepCPUData{false};
+        bool     _allowDynamicUpdates{false};
+    };
 
-    bool create(bool staticDraw, bool keepData);
+    VertexBuffer(GFXDevice& context, const Descriptor& descriptor);
 
     void reserveIndexCount(const size_t size);
 
@@ -101,9 +109,9 @@ class VertexBuffer final : public VertexDataInterface {
 
     void addIndex(const U32 index);
 
-    void addIndices(const vector_fast<U16>& indices);
+    void addIndices(const vector<U16>& indices);
 
-    void addIndices(const vector_fast<U32>& indices);
+    void addIndices(const vector<U32>& indices);
 
     void addRestartIndex();
 
@@ -156,13 +164,7 @@ class VertexBuffer final : public VertexDataInterface {
     void computeNormals();
     void computeTangents();
 
-    /// Flag used to prevent clearing of the _data vector for static buffers
-    PROPERTY_RW(bool, useLargeIndices, false);
-    /// If this flag is true, no further modification are allowed on the buffer (static geometry)
-    PROPERTY_R_IW(bool, staticBuffer, false);
-
    protected:
-
     /// Returns true if data was updated
     bool refresh(BufferLock& dataLockOut, BufferLock& indexLockOut);
 
@@ -174,6 +176,7 @@ class VertexBuffer final : public VertexDataInterface {
     [[nodiscard]] static AttributeOffsets GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut);
 
    protected:
+    Descriptor _descriptor;
     // first: offset, second: count
     vector<std::pair<size_t, size_t>> _partitions;
     vector<Vertex> _data;
@@ -184,8 +187,6 @@ class VertexBuffer final : public VertexDataInterface {
     bool _refreshQueued = false;
     bool _dataLayoutChanged = false;
     bool _indicesChanged = true;
-    bool _keepData = false;
-
 };
 
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);

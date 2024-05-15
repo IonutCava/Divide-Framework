@@ -41,29 +41,15 @@ namespace Divide::Profiler
 
     void Initialise()
     {
-        constexpr bool USE_XMALLOC = false;
-
         if constexpr( detail::enabled )
         {
             OPTICK_SET_MEMORY_ALLOCATOR([](size_t size) -> void*
                                          {
-                                             if constexpr ( USE_XMALLOC )
-                                             {
-                                                 return xmalloc( size );
-                                             }
-
-                                             return operator new(size);
+                                             return mi_new(size);
                                          },
                                          []( void* p )
                                          {
-                                             if constexpr ( USE_XMALLOC )
-                                             {
-                                                 xfree( p );
-                                             }
-                                             else
-                                             {
-                                                 operator delete(p);
-                                             }
+                                             mi_free(p);
                                          },
                                          []()
                                          {

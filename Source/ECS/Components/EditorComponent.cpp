@@ -15,16 +15,20 @@ namespace Divide {
     constexpr U16 BYTE_BUFFER_VERSION = 1u;
 
     namespace {
-        string GetFullFieldName(const char* componentName, const Str<32>& fieldName)
+        std::string GetFullFieldName(const char* componentName, const Str<32>& fieldName)
         {
-            return Util::StringFormat("{}.{}", componentName, Util::MakeXMLSafe(fieldName.c_str()).c_str());
+            return std::string{ Util::StringFormat("{}.{}", componentName, Util::MakeXMLSafe(fieldName)).c_str() };
         }
     }
 
-    namespace TypeUtil {
-        const char* ComponentTypeToString(const ComponentType compType) noexcept {
-            for (U32 i = 1u; i < to_U32(ComponentType::COUNT) + 1; ++i) {
-                if (1u << i == to_base(compType)) {
+    namespace TypeUtil
+    {
+        const char* ComponentTypeToString(const ComponentType compType) noexcept
+        {
+            for (U32 i = 1u; i < to_U32(ComponentType::COUNT) + 1; ++i)
+            {
+                if (1u << i == to_base(compType))
+                {
                     return Names::componentType[i - 1u];
                 }
             }
@@ -32,9 +36,12 @@ namespace Divide {
             return Names::componentType[to_base(ComponentType::COUNT)];
         }
 
-        ComponentType StringToComponentType(const string& name) {
-            for (U32 i = 1u; i < to_U32(ComponentType::COUNT) + 1; ++i) {
-                if (strcmp(name.c_str(), Names::componentType[i - 1u]) == 0) {
+        ComponentType StringToComponentType(const std::string_view name)
+        {
+            for (U32 i = 1u; i < to_U32(ComponentType::COUNT) + 1; ++i)
+            {
+                if (name == Names::componentType[i - 1u] )
+                {
                     return static_cast<ComponentType>(1 << i);
                 }
             }
@@ -43,72 +50,81 @@ namespace Divide {
         }
     }
 
-    EditorComponent::EditorComponent(SGNComponent* parentComp, Editor* editor, const ComponentType parentComponentType, const Str<128>& name)
-        : GUIDWrapper(),
-          _name(name),
-          _parentComponentType(parentComponentType),
-          _parentComp(parentComp),
-          _editor(editor)
+    EditorComponent::EditorComponent( PlatformContext& context, const ComponentType type, const std::string_view name)
+        : PlatformContextComponent(context)
+        , GUIDWrapper()
+        , _name(name)
+        , _componentType(type)
     {
     }
 
     EditorComponent::~EditorComponent()
     {
-        if constexpr(Config::Build::ENABLE_EDITOR) {
-            assert(_editor != nullptr);
-            Attorney::EditorEditorComponent::onRemoveComponent(*_editor, *this);
+        if constexpr(Config::Build::ENABLE_EDITOR)
+        {
+            Attorney::EditorEditorComponent::onRemoveComponent(context().editor(), *this);
         }
     }
 
-    void EditorComponent::registerField(EditorComponentField&& field) {
+    void EditorComponent::registerField(EditorComponentField&& field)
+    {
         dvd_erase_if(_fields, [&field](const EditorComponentField& it) { return it._name.compare(field._name) == 0 && it._type == field._type; });
         assert(field._basicTypeSize == PushConstantSize::DWORD || field.supportsByteCount());
 
         _fields.push_back(field);
     }
 
-    void EditorComponent::onChanged(const EditorComponentField& field) const {
-        if (_onChangedCbk) {
+    void EditorComponent::onChanged(const EditorComponentField& field) const
+    {
+        if (_onChangedCbk)
+        {
             _onChangedCbk(field._name.c_str());
         }
     }
 
     // May be wrong endpoint
-    bool EditorComponent::saveCache(ByteBuffer& outputBuffer) const {
+    bool EditorComponent::saveCache(ByteBuffer& outputBuffer) const
+    {
         outputBuffer << BYTE_BUFFER_VERSION;
-        outputBuffer << to_U32(_parentComponentType);
+        NOP();
         return true;
     }
 
     // May be wrong endpoint
-    bool EditorComponent::loadCache(ByteBuffer& inputBuffer) {
+    bool EditorComponent::loadCache(ByteBuffer& inputBuffer)
+    {
         auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
         inputBuffer >> tempVer;
-        U32 tempCompType = 0u;
-        inputBuffer >> tempCompType;
-        if (tempVer == BYTE_BUFFER_VERSION && static_cast<ComponentType>(tempCompType) == _parentComponentType) {
+        if (tempVer == BYTE_BUFFER_VERSION )
+        {
+            NOP();
             return true;
         }
 
         return false;
     }
 
-
-    void EditorComponent::saveToXML(boost::property_tree::ptree& pt) const {
+    void EditorComponent::saveToXML(boost::property_tree::ptree& pt) const
+    {
         pt.put(_name.c_str(), "");
 
-        for (const EditorComponentField& field : _fields) {
+        for (const EditorComponentField& field : _fields)
+        {
             auto entryName = GetFullFieldName(_name.c_str(), field._name);
-            if (!field._serialise) {
+            if (!field._serialise)
+            {
                 continue;
             }
 
-            switch(field._type) {
+            switch(field._type)
+            {
                 case EditorComponentFieldType::SLIDER_TYPE:
-                case EditorComponentFieldType::PUSH_TYPE: {
+                case EditorComponentFieldType::PUSH_TYPE:
+                {
                     saveFieldToXML(field, pt);
                 } break;
-                case EditorComponentFieldType::TRANSFORM: {
+                case EditorComponentFieldType::TRANSFORM:
+                {
                     const TransformComponent* transform = field.getPtr<TransformComponent>();
 
                     const vec3<F32> scale = transform->getLocalScale();
@@ -130,14 +146,17 @@ namespace Divide {
                     pt.put(entryName + ".scale.<xmlattr>.y", scale.y);
                     pt.put(entryName + ".scale.<xmlattr>.z", scale.z);
                 }break;
-                case EditorComponentFieldType::MATERIAL: {
+                case EditorComponentFieldType::MATERIAL:
+                {
                     field.getPtr<Material>()->saveToXML(entryName, pt);
                 }break;
                 default:
-                case EditorComponentFieldType::BUTTON: {
+                case EditorComponentFieldType::BUTTON:
+                {
                     //Skip
                 } break;
-                case EditorComponentFieldType::BOUNDING_BOX: {
+                case EditorComponentFieldType::BOUNDING_BOX:
+                {
                     BoundingBox bb = {};
                     field.get<BoundingBox>(bb);
 
@@ -148,10 +167,12 @@ namespace Divide {
                     pt.put(entryName + ".aabb.max.<xmlattr>.y", bb.getMax().y);
                     pt.put(entryName + ".aabb.max.<xmlattr>.z", bb.getMax().z);
                 } break;
-                case EditorComponentFieldType::ORIENTED_BOUNDING_BOX: {
+                case EditorComponentFieldType::ORIENTED_BOUNDING_BOX:
+                {
                     // We don't save this to XML!
                 }break;
-                case EditorComponentFieldType::BOUNDING_SPHERE: {
+                case EditorComponentFieldType::BOUNDING_SPHERE:
+                {
                     BoundingSphere bs = {};
                     field.get<BoundingSphere>(bs);
 
@@ -162,26 +183,29 @@ namespace Divide {
                 }break;
             }
         }
-
-        if (_parentComp != nullptr) {
-            _parentComp->saveToXML(pt);
-        }
     }
 
-    void EditorComponent::loadFromXML(const boost::property_tree::ptree& pt) {
-        if (!pt.get(_name.c_str(), "").empty()) {
-            for (EditorComponentField& field : _fields) {
+    void EditorComponent::loadFromXML(const boost::property_tree::ptree& pt)
+    {
+        if (!pt.get(_name.c_str(), "").empty())
+        {
+            for (EditorComponentField& field : _fields)
+            {
                 auto entryName = GetFullFieldName(_name.c_str(), field._name);
-                if (!field._serialise) {
+                if (!field._serialise)
+                {
                     continue;
                 }
 
-                switch (field._type) {
+                switch (field._type)
+                {
                     case EditorComponentFieldType::SLIDER_TYPE:
-                    case EditorComponentFieldType::PUSH_TYPE: {
+                    case EditorComponentFieldType::PUSH_TYPE:
+                    {
                         loadFieldFromXML(field, pt);
                     } break;
-                    case EditorComponentFieldType::TRANSFORM: {
+                    case EditorComponentFieldType::TRANSFORM:
+                    {
                         TransformComponent* transform = field.getPtr<TransformComponent>();
 
                         vec3<F32> scale;
@@ -189,16 +213,16 @@ namespace Divide {
                         vec3<Angle::DEGREES<F32>> orientationEuler;
 
                         position.set(pt.get<F32>(entryName + ".position.<xmlattr>.x", 0.0f),
-                            pt.get<F32>(entryName + ".position.<xmlattr>.y", 0.0f),
-                            pt.get<F32>(entryName + ".position.<xmlattr>.z", 0.0f));
+                                     pt.get<F32>(entryName + ".position.<xmlattr>.y", 0.0f),
+                                     pt.get<F32>(entryName + ".position.<xmlattr>.z", 0.0f));
 
                         orientationEuler.pitch = pt.get<F32>(entryName + ".orientation.<xmlattr>.x", 0.0f);
                         orientationEuler.yaw = pt.get<F32>(entryName + ".orientation.<xmlattr>.y", 0.0f);
                         orientationEuler.roll = pt.get<F32>(entryName + ".orientation.<xmlattr>.z", 0.0f);
 
                         scale.set(pt.get<F32>(entryName + ".scale.<xmlattr>.x", 1.0f),
-                            pt.get<F32>(entryName + ".scale.<xmlattr>.y", 1.0f),
-                            pt.get<F32>(entryName + ".scale.<xmlattr>.z", 1.0f));
+                                  pt.get<F32>(entryName + ".scale.<xmlattr>.y", 1.0f),
+                                  pt.get<F32>(entryName + ".scale.<xmlattr>.z", 1.0f));
 
                         Quaternion<F32> rotation;
                         rotation.fromEuler(orientationEuler);
@@ -206,17 +230,20 @@ namespace Divide {
                         transform->setRotation(rotation);
                         transform->setPosition(position);
                         transform->resetCache();
-                    }break;
-                    case EditorComponentFieldType::MATERIAL: {
+                    } break;
+                    case EditorComponentFieldType::MATERIAL:
+                    {
                         Material* mat = field.getPtr<Material>();
                         mat->loadFromXML(entryName, pt);
-                    }break;
+                    } break;
                     default:
                     case EditorComponentFieldType::DROPDOWN_TYPE:
-                    case EditorComponentFieldType::BUTTON: {
+                    case EditorComponentFieldType::BUTTON:
+                    {
                         // Skip
-                    }  break;
-                    case EditorComponentFieldType::BOUNDING_BOX: {
+                    } break;
+                    case EditorComponentFieldType::BOUNDING_BOX:
+                    {
                         BoundingBox bb = {};
                         bb.setMin(
                         {
@@ -236,7 +263,8 @@ namespace Divide {
                     {
                         // We don't load this from XML!
                     }break;
-                    case EditorComponentFieldType::BOUNDING_SPHERE: {
+                    case EditorComponentFieldType::BOUNDING_SPHERE:
+                    {
                         BoundingSphere bs = {};
                         bs.setCenter(
                         {
@@ -249,17 +277,17 @@ namespace Divide {
                     } break;
                 }
             }
-            if (_parentComp != nullptr) {
-                _parentComp->loadFromXML(pt);
-            }
         }
     }
 
-    namespace {
+    namespace
+    {
         template<typename T>
-        T GetClamped(const EditorComponentField& field, const boost::property_tree::ptree& pt, const char* name) {
+        T GetClamped(const EditorComponentField& field, const boost::property_tree::ptree& pt, const char* name)
+        {
             T val = pt.get(name, field.get<T>());
-            if (field._range.max - field._range.min > 1.f) {
+            if (field._range.max - field._range.min > 1.f)
+            {
                 CLAMP(val, static_cast<T>(field._range.min), static_cast<T>(field._range.max));
             }
 
@@ -267,42 +295,51 @@ namespace Divide {
         }
 
         template<typename T, size_t num_comp>
-        void saveVector(const string& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt) {
+        void saveVector(const std::string& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt)
+        {
             T data = {};
             field.get<T>(data);
 
             pt.put((entryName + ".<xmlattr>.x").c_str(), data.x);
             pt.put((entryName + ".<xmlattr>.y").c_str(), data.y);
-            if constexpr (num_comp > 2) {
+            if constexpr (num_comp > 2)
+            {
                 pt.put((entryName + ".<xmlattr>.z").c_str(), data.z);
-                if constexpr(num_comp > 3) {
+                if constexpr(num_comp > 3)
+                {
                     pt.put((entryName + ".<xmlattr>.w").c_str(), data.w);
                 }
             }
         }
 
         template<typename T, size_t num_comp>
-        void loadVector(const string& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt) {
+        void loadVector(const std::string& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt)
+        {
             T data = field.get<T>();
 
             data.x = pt.get((entryName + ".<xmlattr>.x").c_str(), data.x);
             data.y = pt.get((entryName + ".<xmlattr>.y").c_str(), data.y);
 
-            if constexpr(num_comp > 2) {
+            if constexpr(num_comp > 2)
+            {
                 data.z = pt.get((entryName + ".<xmlattr>.z").c_str(), data.z);
-                if constexpr(num_comp > 3) {
+                if constexpr(num_comp > 3)
+                {
                     data.w = pt.get((entryName + ".<xmlattr>.w").c_str(), data.w);
                 }
             }
 
-            if (field._range.max - field._range.min > 1.f) {
+            if (field._range.max - field._range.min > 1.f)
+            {
                 using U = decltype(data.x);
 
                 CLAMP(data.x, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
                 CLAMP(data.y, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
-                if constexpr(num_comp > 2) {
+                if constexpr(num_comp > 2)
+                {
                     CLAMP(data.z, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
-                    if constexpr(num_comp > 3) {
+                    if constexpr(num_comp > 3)
+                    {
                         CLAMP(data.w, static_cast<U>(field._range.min), static_cast<U>(field._range.max));
                     }
                 }
@@ -312,7 +349,8 @@ namespace Divide {
         }
 
         template<typename T, size_t num_rows>
-        void saveMatrix(const string& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt) {
+        void saveMatrix(const std::string& entryName, const EditorComponentField& field, boost::property_tree::ptree& pt)
+        {
             T data = {};
             field.get<T>(data);
 
@@ -321,14 +359,16 @@ namespace Divide {
             pt.put((entryName + ".<xmlattr>.10").c_str(), data.m[1][0]);
             pt.put((entryName + ".<xmlattr>.11").c_str(), data.m[1][1]);
 
-            if constexpr(num_rows > 2) {
+            if constexpr(num_rows > 2)
+            {
                 pt.put((entryName + ".<xmlattr>.02").c_str(), data.m[0][2]);
                 pt.put((entryName + ".<xmlattr>.12").c_str(), data.m[1][2]);
                 pt.put((entryName + ".<xmlattr>.20").c_str(), data.m[2][0]);
                 pt.put((entryName + ".<xmlattr>.21").c_str(), data.m[2][1]);
                 pt.put((entryName + ".<xmlattr>.22").c_str(), data.m[2][2]);
 
-                if constexpr(num_rows > 3) {
+                if constexpr(num_rows > 3)
+                {
                     pt.put((entryName + ".<xmlattr>.03").c_str(), data.m[0][3]);
                     pt.put((entryName + ".<xmlattr>.13").c_str(), data.m[1][3]);
                     pt.put((entryName + ".<xmlattr>.23").c_str(), data.m[2][3]);
@@ -341,7 +381,8 @@ namespace Divide {
         }
 
         template<typename T, size_t num_rows>
-        void loadMatrix(const string& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt) {
+        void loadMatrix(const std::string& entryName, EditorComponentField& field, const boost::property_tree::ptree& pt)
+        {
             T data = field.get<T>();
 
             data.m[0][0] = pt.get((entryName + ".<xmlattr>.00").c_str(), data.m[0][0]);
@@ -349,14 +390,16 @@ namespace Divide {
             data.m[1][0] = pt.get((entryName + ".<xmlattr>.10").c_str(), data.m[1][0]);
             data.m[1][1] = pt.get((entryName + ".<xmlattr>.11").c_str(), data.m[1][1]);
 
-            if constexpr(num_rows > 2) {
+            if constexpr(num_rows > 2)
+            {
                 data.m[0][2] = pt.get((entryName + ".<xmlattr>.02").c_str(), data.m[0][2]);
                 data.m[1][2] = pt.get((entryName + ".<xmlattr>.12").c_str(), data.m[1][2]);
                 data.m[2][0] = pt.get((entryName + ".<xmlattr>.20").c_str(), data.m[2][0]);
                 data.m[2][1] = pt.get((entryName + ".<xmlattr>.21").c_str(), data.m[2][1]);
                 data.m[2][2] = pt.get((entryName + ".<xmlattr>.22").c_str(), data.m[2][2]);
 
-                if constexpr(num_rows > 3) {
+                if constexpr(num_rows > 3)
+                {
                     data.m[0][3] = pt.get((entryName + ".<xmlattr>.03").c_str(), data.m[0][3]);
                     data.m[1][3] = pt.get((entryName + ".<xmlattr>.13").c_str(), data.m[1][3]);
                     data.m[2][3] = pt.get((entryName + ".<xmlattr>.23").c_str(), data.m[2][3]);
@@ -367,9 +410,11 @@ namespace Divide {
                 }
             }
 
-            if (field._range.max - field._range.min > 1.f) {
+            if (field._range.max - field._range.min > 1.f)
+            {
                 using U = typename std::remove_reference<decltype(T::mat[0])>::type;
-                for (U8 i = 0u; i < num_rows * num_rows; ++i) {
+                for (U8 i = 0u; i < num_rows * num_rows; ++i)
+                {
                     CLAMP(data.mat[i], static_cast<U>(field._range.min), static_cast<U>(field._range.max));
                 }
             }
@@ -378,15 +423,20 @@ namespace Divide {
         }
     }
 
-    void EditorComponent::saveFieldToXML(const EditorComponentField& field, boost::property_tree::ptree& pt) const {
+    void EditorComponent::saveFieldToXML(const EditorComponentField& field, boost::property_tree::ptree& pt) const
+    {
         auto entryName = GetFullFieldName(_name.c_str(), field._name);
 
-        switch (field._basicType) {
-            case PushConstantType::BOOL: {
+        switch (field._basicType)
+        {
+            case PushConstantType::BOOL:
+            {
                 pt.put(entryName.c_str(), field.get<bool>());
             } break;
-            case PushConstantType::INT: {
-                switch (field._basicTypeSize) {
+            case PushConstantType::INT:
+            {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: pt.put(entryName.c_str(), field.get<I64>()); break;
                     case PushConstantSize::DWORD: pt.put(entryName.c_str(), field.get<I32>()); break;
                     case PushConstantSize::WORD:  pt.put(entryName.c_str(), field.get<I16>()); break;
@@ -394,8 +444,10 @@ namespace Divide {
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::UINT: {
-                switch (field._basicTypeSize) {
+            case PushConstantType::UINT:
+            {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: pt.put(entryName.c_str(), field.get<U64>()); break;
                     case PushConstantSize::DWORD: pt.put(entryName.c_str(), field.get<U32>()); break;
                     case PushConstantSize::WORD:  pt.put(entryName.c_str(), field.get<U16>()); break;
@@ -403,260 +455,347 @@ namespace Divide {
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::FLOAT: {
+            case PushConstantType::FLOAT:
+            {
                 pt.put(entryName.c_str(), field.get<F32>());
             } break;
-            case PushConstantType::DOUBLE: {
+            case PushConstantType::DOUBLE:
+            {
                 pt.put(entryName.c_str(), field.get<D64>());
             } break;
-            case PushConstantType::IVEC2: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::IVEC2:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveVector<vec2<I64>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveVector<vec2<I32>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveVector<vec2<I16>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveVector<vec2<I8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::IVEC3: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::IVEC3:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveVector<vec3<I64>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveVector<vec3<I32>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveVector<vec3<I16>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveVector<vec3<I8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::IVEC4: {
-               switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::IVEC4:
+            {
+               switch (field._basicTypeSize)
+               {
+                    case PushConstantSize::QWORD:
+                    {
                         saveVector<vec4<I64>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveVector<vec4<I32>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveVector<vec4<I16>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveVector<vec4<I8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::UVEC2: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::UVEC2:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveVector<vec2<U64>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveVector<vec2<U32>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveVector<vec2<U16>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveVector<vec2<U8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::UVEC3: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::UVEC3:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveVector<vec3<U64>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveVector<vec3<U32>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveVector<vec3<U16>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveVector<vec3<U8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::UVEC4: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::UVEC4:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveVector<vec4<U64>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveVector<vec4<U32>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveVector<vec4<U16>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveVector<vec4<U8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::VEC2: {
+            case PushConstantType::VEC2:
+            {
                 saveVector<vec2<F32>, 2>(entryName, field, pt);
             } break;
-            case PushConstantType::VEC3: {
+            case PushConstantType::VEC3:
+            {
                 saveVector<vec3<F32>, 3>(entryName, field, pt);
             } break;
-            case PushConstantType::VEC4: {
+            case PushConstantType::VEC4:
+            {
                 saveVector<vec4<F32>, 4>(entryName, field, pt);
             } break;
-            case PushConstantType::DVEC2: {
+            case PushConstantType::DVEC2:
+            {
                 saveVector<vec2<D64>, 2>(entryName, field, pt);
             } break;
-            case PushConstantType::DVEC3: {
+            case PushConstantType::DVEC3:
+            {
                 saveVector<vec3<D64>, 3>(entryName, field, pt);
             } break;
-            case PushConstantType::DVEC4: {
+            case PushConstantType::DVEC4:
+            {
                 saveVector<vec4<D64>, 4>(entryName, field, pt);
             } break;
-            case PushConstantType::IMAT2: {
+            case PushConstantType::IMAT2:
+            {
                 switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+                    case PushConstantSize::QWORD:
+                    {
                         saveMatrix<mat2<I64>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveMatrix<mat2<I32>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveMatrix<mat2<I16>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveMatrix<mat2<I8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::IMAT3: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::IMAT3:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveMatrix<mat3<I64>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveMatrix<mat3<I32>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveMatrix<mat3<I16>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveMatrix<mat3<I8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::IMAT4: {
-                 switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::IMAT4:
+            {
+                 switch (field._basicTypeSize)
+                 {
+                    case PushConstantSize::QWORD:
+                    {
                         saveMatrix<mat4<I64>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveMatrix<mat4<I32>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveMatrix<mat4<I16>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveMatrix<mat4<I8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::UMAT2: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::UMAT2:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveMatrix<mat2<U64>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveMatrix<mat2<U32>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveMatrix<mat2<U16>, 2>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveMatrix<mat2<U8>, 2>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::UMAT3: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::UMAT3:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveMatrix<mat3<U64>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveMatrix<mat3<U32>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveMatrix<mat3<U16>, 3>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveMatrix<mat3<U8>, 3>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::UMAT4: {
-                switch (field._basicTypeSize) {
-                    case PushConstantSize::QWORD: {
+            case PushConstantType::UMAT4:
+            {
+                switch (field._basicTypeSize)
+                {
+                    case PushConstantSize::QWORD:
+                    {
                         saveMatrix<mat4<U64>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::DWORD: {
+                    case PushConstantSize::DWORD:
+                    {
                         saveMatrix<mat4<U32>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::WORD: {
+                    case PushConstantSize::WORD:
+                    {
                         saveMatrix<mat4<U16>, 4>(entryName, field, pt);
                     } break;
-                    case PushConstantSize::BYTE: {
+                    case PushConstantSize::BYTE:
+                    {
                         saveMatrix<mat4<U8>, 4>(entryName, field, pt);
                     } break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
-            case PushConstantType::MAT2: {
+            case PushConstantType::MAT2:
+            {
                 saveMatrix<mat2<F32>, 2>(entryName, field, pt);
             } break;
-            case PushConstantType::MAT3: {
+            case PushConstantType::MAT3:
+            {
                 saveMatrix<mat3<F32>, 3>(entryName, field, pt);
             } break;
-            case PushConstantType::MAT4: {
+            case PushConstantType::MAT4:
+            {
                 saveMatrix<mat4<F32>, 4>(entryName, field, pt);
             } break;
-            case PushConstantType::DMAT2: {
+            case PushConstantType::DMAT2:
+            {
                 saveMatrix<mat2<D64>, 2>(entryName, field, pt);
             } break;
-            case PushConstantType::DMAT3: {
+            case PushConstantType::DMAT3:
+            {
                 saveMatrix<mat3<D64>, 3>(entryName, field, pt);
             } break;
-            case PushConstantType::DMAT4: {
+            case PushConstantType::DMAT4:
+            {
                 saveMatrix<mat4<D64>, 4>(entryName, field, pt);
             } break;
-            case PushConstantType::FCOLOUR3: {
+            case PushConstantType::FCOLOUR3:
+            {
                 FColour3 data = {};
                 field.get<FColour3>(data);
                 pt.put((entryName + ".<xmlattr>.r").c_str(), data.r);
                 pt.put((entryName + ".<xmlattr>.g").c_str(), data.g);
                 pt.put((entryName + ".<xmlattr>.b").c_str(), data.b);
             } break;
-            case PushConstantType::FCOLOUR4: {
+            case PushConstantType::FCOLOUR4:
+            {
                 FColour4 data = {};
                 field.get<FColour4>(data);
                 pt.put((entryName + ".<xmlattr>.r").c_str(), data.r);
@@ -668,10 +807,12 @@ namespace Divide {
         }
     }
 
-    void EditorComponent::loadFieldFromXML(EditorComponentField& field, const boost::property_tree::ptree& pt) {
+    void EditorComponent::loadFieldFromXML(EditorComponentField& field, const boost::property_tree::ptree& pt)
+    {
         auto entryName = GetFullFieldName(_name.c_str(), field._name);
         
-        switch (field._basicType) {
+        switch (field._basicType)
+        {
             case PushConstantType::BOOL:
             {
                 bool val = pt.get(entryName.c_str(), field.get<bool>());
@@ -679,7 +820,8 @@ namespace Divide {
             } break;
             case PushConstantType::INT:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: field.set<I64>(GetClamped<I64>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::DWORD: field.set<I32>(GetClamped<I32>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::WORD:  field.set<I16>(GetClamped<I16>(field, pt, entryName.c_str())); break;
@@ -689,7 +831,8 @@ namespace Divide {
             } break;
             case PushConstantType::UINT:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: field.set<U64>(GetClamped<U64>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::DWORD: field.set<U32>(GetClamped<U32>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::WORD:  field.set<U16>(GetClamped<U16>(field, pt, entryName.c_str())); break;
@@ -707,7 +850,8 @@ namespace Divide {
             } break;
             case PushConstantType::IVEC2:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadVector<vec2<I64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec2<I32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec2<I16>, 2>(entryName, field, pt); break;
@@ -718,7 +862,8 @@ namespace Divide {
             } break;
             case PushConstantType::IVEC3:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadVector<vec3<I64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec3<I32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec3<I16>, 3>(entryName, field, pt); break;
@@ -729,7 +874,8 @@ namespace Divide {
             } break;
             case PushConstantType::IVEC4:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadVector<vec4<I64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec4<I32>, 5>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec4<I16>, 4>(entryName, field, pt); break;
@@ -740,7 +886,8 @@ namespace Divide {
             } break;
             case PushConstantType::UVEC2:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadVector<vec2<U64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec2<U32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec2<U16>, 2>(entryName, field, pt); break;
@@ -751,7 +898,8 @@ namespace Divide {
             } break;
             case PushConstantType::UVEC3:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadVector<vec3<U64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec3<U32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec3<U16>, 3>(entryName, field, pt); break;
@@ -762,7 +910,8 @@ namespace Divide {
             } break;
             case PushConstantType::UVEC4:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadVector<vec4<U64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec4<U32>, 4>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec4<U16>, 4>(entryName, field, pt); break;
@@ -797,7 +946,8 @@ namespace Divide {
             } break;
             case PushConstantType::IMAT2:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadMatrix<mat2<I64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat2<I32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat2<I16>, 2>(entryName, field, pt); break;
@@ -808,7 +958,8 @@ namespace Divide {
             } break;
             case PushConstantType::IMAT3:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadMatrix<mat3<I64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat3<I32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat3<I16>, 3>(entryName, field, pt); break;
@@ -819,7 +970,8 @@ namespace Divide {
             } break;
             case PushConstantType::IMAT4:
             {
-                switch (field._basicTypeSize) {
+                switch (field._basicTypeSize)
+                {
                     case PushConstantSize::QWORD: loadMatrix<mat4<I64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat4<I32>, 4>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat4<I16>, 4>(entryName, field, pt); break;
@@ -830,7 +982,8 @@ namespace Divide {
             } break;
             case PushConstantType::UMAT2:
             {
-               switch (field._basicTypeSize) {
+               switch (field._basicTypeSize)
+               {
                     case PushConstantSize::QWORD: loadMatrix<mat2<U64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat2<U32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat2<U16>, 2>(entryName, field, pt); break;
@@ -841,7 +994,8 @@ namespace Divide {
             } break;
             case PushConstantType::UMAT3:
             {
-               switch (field._basicTypeSize) {
+               switch (field._basicTypeSize)
+               {
                     case PushConstantSize::QWORD: loadMatrix<mat3<U64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat3<U32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat3<U16>, 3>(entryName, field, pt); break;
@@ -852,7 +1006,8 @@ namespace Divide {
             } break;
             case PushConstantType::UMAT4:
             {
-                   switch (field._basicTypeSize) {
+                   switch (field._basicTypeSize)
+                   {
                     case PushConstantSize::QWORD: loadMatrix<mat4<U64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat4<U32>, 4>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat4<U16>, 4>(entryName, field, pt); break;

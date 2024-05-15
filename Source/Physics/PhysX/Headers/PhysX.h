@@ -52,14 +52,20 @@ constexpr auto MAX_ACTOR_QUEUE = 30;
 namespace Divide {
 
 class PhysX;
-class PxDefaultAllocator final : public physx::PxAllocatorCallback {
-    void* allocate(const size_t size, const char*, const char*, int) noexcept  override {
-        return malloc_aligned(size, 16);
+class PxDefaultAllocator final : public physx::PxAllocatorCallback
+{
+    void* allocate(const size_t size, const char*, const char*, int) noexcept override
+    {
+        return mi_new_aligned_nothrow(size, 16);
     }
 
-    void deallocate(void* ptr) noexcept override {
-        free_aligned(ptr);
+    void deallocate(void* ptr) noexcept override
+    {
+        mi_free_aligned(ptr, s_alignment);
     }
+
+private:
+    static constexpr size_t s_alignment = 16u;
 };
 
 class PhysicsAsset;

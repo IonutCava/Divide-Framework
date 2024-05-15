@@ -69,43 +69,32 @@ class NavModelData {
    public:
        NavModelData() = default;
 
-    void clear(const bool del = true) {
+    void clear()
+    {
         _valid = false;
 
         _vertexCount = _triangleCount = 0;
         _vertexCapacity = _vertexCount = 0;
         _triangleCapacity = _triangleCount = 0;
-
-        if (del) {
-            MemoryManager::DELETE_ARRAY(_vertices);
-        } else {
-            _vertices = nullptr;
-        }
-        if (del) {
-            MemoryManager::DELETE_ARRAY(_triangles);
-        } else {
-            _triangles = nullptr;
-        }
-        if (del) {
-            MemoryManager::DELETE_ARRAY(_normals);
-        } else {
-            _normals = nullptr;
-        }
+        _vertices.clear();
+        _triangles.clear();
+        _normals.clear();
         _triangleAreaType.clear();
         name("");
     }
 
-    [[nodiscard]] const F32* getVerts()     const noexcept { return _vertices; }
-    [[nodiscard]] const F32* getNormals()    const noexcept { return _normals; }
-    [[nodiscard]] const I32* getTris()      const noexcept { return _triangles; }
+    [[nodiscard]] const F32* getVerts()     const noexcept { return _vertices.empty() ? nullptr : _vertices.data(); }
+    [[nodiscard]] const F32* getNormals()    const noexcept { return _normals.empty() ? nullptr : _normals.data(); }
+    [[nodiscard]] const I32* getTris()      const noexcept { return _triangles.empty() ? nullptr : _triangles.data(); }
     [[nodiscard]]       U32  getVertCount() const noexcept { return _vertexCount; }
     [[nodiscard]]       U32  getTriCount()  const noexcept { return _triangleCount; }
 
     [[nodiscard]] vector<SamplePolyAreas>& getAreaTypes() noexcept { return _triangleAreaType; }
 
-    F32* _vertices = nullptr;
-    F32* _normals = nullptr;
-    I32* _triangles = nullptr;
+    vector<F32> _vertices;
+    vector<F32> _normals;
+    vector<I32> _triangles;
+
     U32 _vertexCapacity = 0u;
     U32 _vertexCount = 0u;
     U32 _triangleCount = 0u;

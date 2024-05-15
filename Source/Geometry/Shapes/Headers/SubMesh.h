@@ -63,7 +63,9 @@ namespace Attorney {
 class MeshImporter;
 
 class AnimationComponent;
-class SubMesh final : public Object3D {
+
+DEFINE_3D_OBJECT_TYPE(SubMesh, SceneNodeType::TYPE_SUBMESH)
+{
     friend class Attorney::SubMeshMesh;
     friend class Attorney::SubMeshMeshImporter;
 
@@ -77,18 +79,14 @@ class SubMesh final : public Object3D {
     using BoundingBoxPerAnimationStatus = vector<BoundingBoxState>;
 
    public:
-    explicit SubMesh(PlatformContext& context,
-                     ResourceCache* parentCache,
-                     size_t descriptorHash,
-                     const std::string_view name);
+    explicit SubMesh( const ResourceDescriptor<SubMesh>& descriptor );
 
     void postLoad(SceneGraphNode* sgn) override;
+    bool postLoad() override;
 
-    POINTER_R_IW(Mesh, parentMesh, nullptr);
-    PROPERTY_RW(U32, id, 0u);
-
-protected:
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SubMesh"; }
+    PROPERTY_R_IW(ResourcePtr<Mesh>, parentMesh, nullptr);
+    PROPERTY_R(U32, id, 0u);
+    PROPERTY_R(U8, boneCount, 0u);
 
 private:
     void computeBBForAnimation(SceneGraphNode* sgn, U32 animIndex);
@@ -111,21 +109,28 @@ private:
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(SubMesh);
 
-namespace Attorney {
-class SubMeshMesh {
-    static void setParentMesh(SubMesh& subMesh, Mesh* const parentMesh) {
+namespace Attorney
+{
+
+class SubMeshMesh
+{
+    static void setParentMesh(SubMesh& subMesh, ResourcePtr<Mesh> parentMesh)
+    {
         subMesh.parentMesh(parentMesh);
         subMesh.geometryBuffer(parentMesh->geometryBuffer());
     }
 
     friend class Divide::Mesh;
+    friend class Divide::MeshImporter;
 };
 
-class SubMeshMeshImporter {
+class SubMeshMeshImporter
+{
     static void setBoundingBox(SubMesh& subMesh,
                                const vec3<F32>& min,
                                const vec3<F32>& max,
-                               const vec3<F32>& worldOffset) noexcept {
+                               const vec3<F32>& worldOffset) noexcept
+                               {
         subMesh._boundingBox.set(min, max);
         subMesh._worldOffset.set(worldOffset);
     }

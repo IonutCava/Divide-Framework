@@ -8,6 +8,8 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/ProjectManager.h"
@@ -264,7 +266,7 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        ProjectManager* projectManager = context().kernel().projectManager();
+        ProjectManager* projectManager = context().kernel().projectManager().get();
         Scene* activeScene = projectManager->activeProject()->getActiveScene();
 
         const bool sceneValid = activeScene->getState() == ResourceState::RES_LOADED;
@@ -844,12 +846,12 @@ namespace Divide {
             }
             ImGui::SetItemDefaultFocus();
             ImGui::SameLine();
+
             if (ImGui::Button("Yes", ImVec2(120, 0)))
             {
-                g_nodeDescriptor._node = createNode();
-                _parentNode->addChildNode(g_nodeDescriptor);
+                createNode(); 
                 Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
-                g_nodeDescriptor._node.reset();
+
                 ImGui::CloseCurrentPopup();
               
                 _parentNode = nullptr;
@@ -959,37 +961,59 @@ namespace Divide {
         Attorney::EditorSolutionExplorerWindow::loadNode(_parent, sgn);
     }
 
-    SceneNode_ptr SolutionExplorerWindow::createNode()
+    void SolutionExplorerWindow::createNode()
     {
-        const ResourceDescriptor descriptor(Util::StringFormat("{}_node", g_nodeDescriptor._name.c_str()));
-        SceneNode_ptr ptr =  Attorney::EditorSolutionExplorerWindow::createNode(_parent, g_currentNodeType, descriptor);
-        if (ptr)
+        switch ( g_currentNodeType )
         {
-            if (g_currentNodeType == SceneNodeType::TYPE_PARTICLE_EMITTER)
+            case SceneNodeType::TYPE_PARTICLE_EMITTER:
             {
-                ParticleEmitter* emitter = static_cast<ParticleEmitter*>(ptr.get());
-                if (emitter->initData(g_particleEmitterData))
+                const ResourceDescriptor<ParticleEmitter> descriptor( Util::StringFormat( "{}_node", g_nodeDescriptor._name.c_str() ) );
+                Handle<ParticleEmitter> handle = CreateResource(descriptor);
+                if ( handle == INVALID_HANDLE<ParticleEmitter>)
                 {
-                    emitter->addSource(g_particleSource);
+                    return;
+                }
 
-                    std::shared_ptr<ParticleEulerUpdater> eulerUpdater = std::make_shared<ParticleEulerUpdater>(context());
-                    eulerUpdater->_globalAcceleration.set(g_particleAcceleration);
-                    emitter->addUpdater(eulerUpdater);
-                    const std::shared_ptr<ParticleFloorUpdater> floorUpdater = std::make_shared<ParticleFloorUpdater>(context());
-                    floorUpdater->_bounceFactor = g_particleBounceFactor;
-                    emitter->addUpdater(floorUpdater);
-                    emitter->addUpdater(std::make_shared<ParticleBasicTimeUpdater>(context()));
-                    emitter->addUpdater(std::make_shared<ParticleBasicColourUpdater>(context()));
-                }
-                else
+                ResourcePtr<ParticleEmitter> emitter = Get(handle);
+                DIVIDE_ASSERT( emitter != nullptr );
+                
+                if ( emitter->initData( g_particleEmitterData ) )
                 {
-                    ptr.reset();
+                    emitter->addSource( g_particleSource );
+
+                    std::shared_ptr<ParticleEulerUpdater> eulerUpdater = std::make_shared<ParticleEulerUpdater>( context() );
+                    eulerUpdater->_globalAcceleration.set( g_particleAcceleration );
+                    emitter->addUpdater( eulerUpdater );
+                    const std::shared_ptr<ParticleFloorUpdater> floorUpdater = std::make_shared<ParticleFloorUpdater>( context() );
+                    floorUpdater->_bounceFactor = g_particleBounceFactor;
+                    emitter->addUpdater( floorUpdater );
+                    emitter->addUpdater( std::make_shared<ParticleBasicTimeUpdater>( context() ) );
+                    emitter->addUpdater( std::make_shared<ParticleBasicColourUpdater>( context() ) );
                 }
+                
+                g_nodeDescriptor._nodeHandle = FromHandle(handle);
+                _parentNode->addChildNode( g_nodeDescriptor );
+
                 g_particleEmitterData.reset();
                 g_particleSource.reset();
+                
             }
+            case SceneNodeType::TYPE_WATER:   
+            case SceneNodeType::TYPE_INFINITEPLANE:
+            case SceneNodeType::TYPE_SPHERE_3D:
+            case SceneNodeType::TYPE_BOX_3D:
+            case SceneNodeType::TYPE_QUAD_3D:
+            case SceneNodeType::TYPE_MESH:
+            case SceneNodeType::TYPE_SUBMESH:
+            case SceneNodeType::TYPE_TERRAIN:
+            case SceneNodeType::TYPE_TRANSFORM:
+            case SceneNodeType::TYPE_SKY:
+            case SceneNodeType::TYPE_VEGETATION: break;
+
+            case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
-        return ptr;
+
+        return;
     }
 
     void SolutionExplorerWindow::drawChangeParentWindow()
@@ -1000,7 +1024,7 @@ namespace Divide {
 
             if (ImGui::BeginPopupModal("Select New Parent", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
             {
-                ProjectManager* projectManager = context().kernel().projectManager();
+                ProjectManager* projectManager = context().kernel().projectManager().get();
                 SceneGraphNode* root = projectManager->activeProject()->getActiveScene()->sceneGraph()->getRoot();
 
                 ImGui::Text("Selecting a new parent for SGN [ %d ][ %s ]?", _childNode->getGUID(), _childNode->name().c_str());

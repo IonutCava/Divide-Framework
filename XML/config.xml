@@ -33,7 +33,7 @@
 	<startupProject>Default</startupProject>
 	<!-- RUNTIME: Values use by the application after loading is complete -->
 	<runtime>
-		<title>DIVIDE Framework - (C) Ionut Cava 2023</title>
+		<title>DIVIDE Framework</title>
 		<!-- 0 = primary display, 1 = secondary display, etc. Value is clamped between [1, LAST_DISPLAY] -->
 		<targetDisplay>1</targetDisplay>
 		<!-- 0 = NULL, 1 - OpenGL4, 2 - Vulkan-->

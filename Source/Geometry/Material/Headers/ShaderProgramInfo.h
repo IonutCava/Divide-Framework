@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+class ShaderProgram;
 
 enum class ShaderBuildStage : U8 {
     QUEUED = 0,
@@ -45,10 +45,15 @@ enum class ShaderBuildStage : U8 {
     COUNT
 };
 
-struct ShaderProgramInfo {
+struct ShaderProgramInfo
+{
+    ~ShaderProgramInfo();
+
+    ShaderProgramInfo clone() const;
+
     I64 _shaderKeyCache = I64_LOWEST;
 
-    ShaderProgram_ptr _shaderRef = nullptr;
+    Handle<ShaderProgram> _shaderRef = INVALID_HANDLE<ShaderProgram>;
     ShaderBuildStage _shaderCompStage = ShaderBuildStage::COUNT;
 };
 

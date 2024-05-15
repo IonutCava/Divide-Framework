@@ -33,17 +33,15 @@
 #ifndef DVD_TERRAIN_H_
 #define DVD_TERRAIN_H_
 
+#include "TileRing.h"
 #include "TerrainDescriptor.h"
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
-#include "Environment/Vegetation/Headers/Vegetation.h"
 #include "Environment/Terrain/Quadtree/Headers/Quadtree.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 
 namespace Divide {
-
-class TerrainLoader;
 
 template <typename T>
 T TER_COORD(T x, T y, T width) noexcept {
@@ -58,18 +56,17 @@ enum class TerrainTextureChannel : U8 {
     COUNT
 };
 
+class Vegetation;
 class VertexBuffer;
 class TerrainChunk;
-class TerrainDescriptor;
+class ShaderProgram;
 
 FWD_DECLARE_MANAGED_CLASS(Quad3D);
-FWD_DECLARE_MANAGED_CLASS(TileRing);
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
 
-namespace Attorney {
+namespace Attorney
+{
     class TerrainChunk;
-    class TerrainLoader;
 }
 
 struct TessellationParams
@@ -82,13 +79,12 @@ struct TessellationParams
     static constexpr U8 PATCHES_PER_TILE_EDGE = VTX_PER_TILE_EDGE - 1;
     static constexpr U16 QUAD_LIST_INDEX_COUNT = (VTX_PER_TILE_EDGE - 1) * (VTX_PER_TILE_EDGE - 1) * 4;
 
-    void fromDescriptor(const std::shared_ptr<TerrainDescriptor>& descriptor) noexcept;
+    void fromDescriptor(const TerrainDescriptor& descriptor) noexcept;
 };
 
-class Terrain final : public Object3D {
+DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
+{
     friend class Attorney::TerrainChunk;
-    friend class Attorney::TerrainLoader;
-
 
    public:
        enum class WireframeMode : U8
@@ -109,6 +105,14 @@ class Terrain final : public Object3D {
            OCCLUSION
        };
 
+       enum class TextureUsageType : U8
+       {
+           ALBEDO_ROUGHNESS = 0,
+           NORMAL,
+           DISPLACEMENT_AO,
+           COUNT
+       };
+
        struct Vert {
            vec3<F32> _position;
            vec3<F32> _normal;
@@ -116,7 +120,8 @@ class Terrain final : public Object3D {
        };
 
    public:
-    explicit Terrain(PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
+    explicit Terrain( const ResourceDescriptor<Terrain>& descriptor );
+    bool unload() override;
 
     void toggleBoundingBoxes();
 
@@ -131,7 +136,7 @@ class Terrain final : public Object3D {
     void getVegetationStats(U32& maxGrassInstances, U32& maxTreeInstances) const;
 
     [[nodiscard]] const vector<TerrainChunk*>& terrainChunks() const noexcept { return _terrainChunks; }
-    [[nodiscard]] const std::shared_ptr<TerrainDescriptor>& descriptor() const noexcept { return _descriptor; }
+    [[nodiscard]] const TerrainDescriptor& descriptor() const noexcept { return _descriptor; }
 
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
@@ -140,7 +145,8 @@ class Terrain final : public Object3D {
      [[nodiscard]] Vert getVert(F32 x_clampf, F32 z_clampf) const;
      [[nodiscard]] Vert getSmoothVert(F32 x_clampf, F32 z_clampf) const;
 
-     void postBuild();
+     bool load( PlatformContext& context ) override;
+     void postBuild( PlatformContext& context );
 
      void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
@@ -153,84 +159,52 @@ class Terrain final : public Object3D {
                         bool refreshData) override;
 
      void postLoad(SceneGraphNode* sgn) override;
-     
+
      void onEditorChange(std::string_view field);
-     
-     [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Terrain"; }
+
+     [[nodiscard]] bool loadResources( PlatformContext& context );
+     [[nodiscard]] void createVegetation( PlatformContext& context );
 
      PROPERTY_R(TessellationParams, tessParams);
+
+   protected:
+     friend class ResourceCache;
+     bool postLoad() override;
 
    public:
      vector<VertexBuffer::Vertex> _physicsVerts;
 
    protected:
-
-    VegetationDetails _vegDetails;
-
     Quadtree _terrainQuadtree;
     vector<TerrainChunk*> _terrainChunks;
     GenericVertexData_ptr _terrainBuffer = nullptr;
-    vector<TileRing_uptr> _tileRings;
+    vector<TileRing> _tileRings;
 
     bool _initialSetupDone = false;
 
     SceneGraphNode* _vegetationGrassNode = nullptr;
-    std::shared_ptr<TerrainDescriptor> _descriptor;
+    TerrainDescriptor _descriptor;
     //0 - normal, 1 - wireframe, 2 - normals
-    std::array<ShaderProgram_ptr, to_base(WireframeMode::COUNT)> _terrainColourShader;
-    std::array<ShaderProgram_ptr, to_base(WireframeMode::COUNT)> _terrainPrePassShader;
+    std::array<Handle<ShaderProgram>, to_base(WireframeMode::COUNT)> _terrainColourShader;
+    std::array<Handle<ShaderProgram>, to_base(WireframeMode::COUNT)> _terrainPrePassShader;
+
+    Handle<Vegetation> _vegetation = INVALID_HANDLE<Vegetation>;
 };
+
+inline size_t GetHash( Terrain* terrain ) noexcept
+{
+    return GetHash( terrain->descriptor() );
+}
 
 namespace Attorney {
 class TerrainChunk {
 private:
-    [[nodiscard]] static const VegetationDetails& vegetationDetails(const Terrain& terrain) noexcept {
-        return terrain._vegDetails;
-    }
-
-    static void registerTerrainChunk(Terrain& terrain, Divide::TerrainChunk* const chunk) {
+    static void registerTerrainChunk(Terrain& terrain, Divide::TerrainChunk* const chunk)
+    {
         terrain._terrainChunks.push_back(chunk);
     }
 
     friend class Divide::TerrainChunk;
-};
-
-class TerrainLoader {
-   private:
-    [[nodiscard]] static VegetationDetails& vegetationDetails(Terrain& terrain) noexcept {
-        return terrain._vegDetails;
-    }
-
-    [[nodiscard]] static BoundingBox& boundingBox(Terrain& terrain) noexcept {
-        return terrain._boundingBox;
-    }
-
-    static void postBuild(Terrain& terrain) {
-        return terrain.postBuild();
-    }
-
-    static void descriptor(Terrain& terrain, const std::shared_ptr<TerrainDescriptor>& descriptor) noexcept {
-        terrain._descriptor = descriptor;
-        terrain._tessParams.fromDescriptor(descriptor);
-    }
-
-    static void setShaderProgram(Terrain& terrain, const ShaderProgram_ptr& shader, const bool prePass, const Terrain::WireframeMode mode) noexcept {
-        if (!prePass) {
-            terrain._terrainColourShader[to_base(mode)] = shader;
-        } else {
-            terrain._terrainPrePassShader[to_base(mode)] = shader;
-        }
-    }
-
-    [[nodiscard]] static const ShaderProgram_ptr& getShaderProgram(Terrain& terrain, const bool prePass, const Terrain::WireframeMode mode) noexcept {
-        if (!prePass) {
-            return terrain._terrainColourShader[to_base(mode)];
-        }
-
-        return terrain._terrainPrePassShader[to_base(mode)];
-    }
-
-    friend class Divide::TerrainLoader;
 };
 
 }  // namespace Attorney

@@ -75,8 +75,8 @@ bool Script::OnStartup() {
 
             s_fileWatcherListener.addIgnoredEndCharacter('~');
             s_fileWatcherListener.addIgnoredExtension("tmp");
-            scriptFileWatcher().addWatch(Paths::Scripts::g_scriptsLocation.string(), &s_fileWatcherListener);
-            scriptFileWatcher().addWatch(Paths::Scripts::g_scriptsAtomsLocation.string(), &s_fileWatcherListener);
+            scriptFileWatcher().addWatch(Paths::Scripts::g_scriptsLocation.string().c_str(), &s_fileWatcherListener);
+            scriptFileWatcher().addWatch(Paths::Scripts::g_scriptsAtomsLocation.string().c_str(), &s_fileWatcherListener);
         }
         catch(const std::exception& e)
         {
@@ -115,8 +115,8 @@ void Script::compile()
 
 void Script::bootstrap()
 {
-    std::vector<std::string> scriptPath{Paths::Scripts::g_scriptsLocation.string() + Paths::g_pathSeparator,
-                                        Paths::Scripts::g_scriptsAtomsLocation.string() + Paths::g_pathSeparator };
+    std::vector<std::string> scriptPath{std::string{Paths::Scripts::g_scriptsLocation.string() + Paths::g_pathSeparator}.c_str(),
+                                        std::string{Paths::Scripts::g_scriptsAtomsLocation.string() + Paths::g_pathSeparator}.c_str() };
 
     _script =  std::make_unique<chaiscript::ChaiScript>(scriptPath,
                                                           scriptPath,
@@ -131,12 +131,12 @@ void Script::bootstrap()
     _script->add(chaiscript::fun(&Script::handleOutput), "handle_output");
 }
 
-void Script::preprocessIncludes(const string& source, const I32 level /*= 0 */) {
+void Script::preprocessIncludes(const std::string& source, const I32 level /*= 0 */) {
     if (level > 32) {
         Console::errorfn(LOCALE_STR("ERROR_SCRIPT_INCLUD_LIMIT"));
     }
 
-    string line, include_string;
+    std::string line, include_string;
 
     istringstream input(source);
 
@@ -183,9 +183,9 @@ void Script::extractAtoms()
     }
 }
 
-void Script::handleOutput(const std::string &msg)
+void Script::handleOutput(const std::string_view msg)
 {
-    Console::printfn(LOCALE_STR("SCRIPT_CONSOLE_OUTPUT"), msg.c_str());
+    Console::printfn(LOCALE_STR("SCRIPT_CONSOLE_OUTPUT"), msg);
 }
 
 void Script::onScriptModify(const std::string_view script, FileUpdateEvent& /*evt*/)

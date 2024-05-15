@@ -89,7 +89,7 @@ namespace Divide {
         ECS::ECSEngine& _engine;
 
         ECSSerializer<T, U> _serializer;
-        vector_fast<U*> _componentCache;
+        vector<U*> _componentCache;
 
     };
 

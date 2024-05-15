@@ -6,8 +6,8 @@
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
-#include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"
 #include "Managers/Headers/ProjectManager.h"
@@ -44,9 +44,9 @@ namespace Divide
         return "Unknown";
     };
 
-    PostFX::PostFX( PlatformContext& context, ResourceCache* cache )
-        : PlatformContextComponent( context ),
-        _preRenderBatch( context.gfx(), *this, cache )
+    PostFX::PostFX( PlatformContext& context )
+        : PlatformContextComponent( context )
+        , _preRenderBatch( context.gfx(), *this )
     {
         std::atomic_uint loadTasks = 0u;
 
@@ -57,6 +57,41 @@ namespace Divide
 
         Console::printfn( LOCALE_STR( "START_POST_FX" ) );
 
+        _drawConstantsCmd._constants.set( _ID( "_noiseTile" ), PushConstantType::FLOAT, 0.1f );
+        _drawConstantsCmd._constants.set( _ID( "_noiseFactor" ), PushConstantType::FLOAT, 0.02f );
+        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), PushConstantType::BOOL, false );
+        _drawConstantsCmd._constants.set( _ID( "_zPlanes" ), PushConstantType::VEC2, vec2<F32>( 0.01f, 500.0f ) );
+
+        TextureDescriptor texDescriptor{};
+        texDescriptor._textureOptions._isNormalMap = true;
+        texDescriptor._textureOptions._useDDSCache = true;
+        texDescriptor._textureOptions._outputSRGB = false;
+        texDescriptor._textureOptions._alphaChannelTransparency = false;
+
+        ResourceDescriptor<Texture> textureWaterCaustics( "Underwater Normal Map", texDescriptor );
+        textureWaterCaustics.assetName( "terrain_water_NM.jpg" );
+        textureWaterCaustics.assetLocation( Paths::g_imagesLocation );
+        textureWaterCaustics.waitForReady( false );
+        _underwaterTexture = CreateResource( textureWaterCaustics, loadTasks );
+
+        texDescriptor._textureOptions._isNormalMap = false;
+        ResourceDescriptor<Texture> noiseTexture( "noiseTexture", texDescriptor );
+        noiseTexture.assetName( "bruit_gaussien.jpg" );
+        noiseTexture.assetLocation( Paths::g_imagesLocation );
+        noiseTexture.waitForReady( false );
+        _noise = CreateResource( noiseTexture, loadTasks );
+
+        ResourceDescriptor<Texture> borderTexture( "borderTexture", texDescriptor );
+        borderTexture.assetName( "vignette.jpeg" );
+        borderTexture.assetLocation(  Paths::g_imagesLocation );
+        borderTexture.waitForReady( false );
+        _screenBorder = CreateResource( borderTexture, loadTasks );
+
+        _noiseTimer = 0.0;
+        _tickInterval = 1.0f / 24.0f;
+        _randomNoiseCoefficient = 0;
+        _randomFlashCoefficient = 0;
+
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "baseVertexShaders.glsl";
@@ -66,66 +101,18 @@ namespace Divide
         fragModule._moduleType = ShaderType::FRAGMENT;
         fragModule._sourceFile = "postProcessing.glsl";
 
-        ShaderProgramDescriptor postFXShaderDescriptor = {};
+        ResourceDescriptor<ShaderProgram> postFXShader( "postProcessing" );
+        ShaderProgramDescriptor& postFXShaderDescriptor = postFXShader._propertyDescriptor;
         postFXShaderDescriptor._modules.push_back( vertModule );
         postFXShaderDescriptor._modules.push_back( fragModule );
+        _postProcessingShader = CreateResource( postFXShader, loadTasks );
 
-        _drawConstantsCmd._constants.set( _ID( "_noiseTile" ), PushConstantType::FLOAT, 0.1f );
-        _drawConstantsCmd._constants.set( _ID( "_noiseFactor" ), PushConstantType::FLOAT, 0.02f );
-        _drawConstantsCmd._constants.set( _ID( "_fadeActive" ), PushConstantType::BOOL, false );
-        _drawConstantsCmd._constants.set( _ID( "_zPlanes" ), PushConstantType::VEC2, vec2<F32>( 0.01f, 500.0f ) );
+        PipelineDescriptor pipelineDescriptor;
+        pipelineDescriptor._stateBlock = context.gfx().get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = _postProcessingShader;
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        TextureDescriptor texDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-
-        ImageTools::ImportOptions options;
-        options._isNormalMap = true;
-        options._useDDSCache = true;
-        options._outputSRGB = false;
-        options._alphaChannelTransparency = false;
-
-        texDescriptor.textureOptions( options );
-
-        ResourceDescriptor textureWaterCaustics( "Underwater Normal Map" );
-        textureWaterCaustics.assetName( "terrain_water_NM.jpg" );
-        textureWaterCaustics.assetLocation( Paths::g_imagesLocation );
-        textureWaterCaustics.propertyDescriptor( texDescriptor );
-        textureWaterCaustics.waitForReady( false );
-        _underwaterTexture = CreateResource<Texture>( cache, textureWaterCaustics, loadTasks );
-
-        options._isNormalMap = false;
-        texDescriptor.textureOptions( options );
-        ResourceDescriptor noiseTexture( "noiseTexture" );
-        noiseTexture.assetName( "bruit_gaussien.jpg" );
-        noiseTexture.assetLocation( Paths::g_imagesLocation );
-        noiseTexture.propertyDescriptor( texDescriptor );
-        noiseTexture.waitForReady( false );
-        _noise = CreateResource<Texture>( cache, noiseTexture, loadTasks );
-
-        ResourceDescriptor borderTexture( "borderTexture" );
-        borderTexture.assetName( "vignette.jpeg" );
-        borderTexture.assetLocation(  Paths::g_imagesLocation );
-        borderTexture.propertyDescriptor( texDescriptor );
-        borderTexture.waitForReady( false );
-        _screenBorder = CreateResource<Texture>( cache, borderTexture, loadTasks );
-
-        _noiseTimer = 0.0;
-        _tickInterval = 1.0f / 24.0f;
-        _randomNoiseCoefficient = 0;
-        _randomFlashCoefficient = 0;
-
-        ResourceDescriptor postFXShader( "postProcessing" );
-        postFXShader.propertyDescriptor( postFXShaderDescriptor );
-        _postProcessingShader = CreateResource<ShaderProgram>( cache, postFXShader, loadTasks );
-        _postProcessingShader->addStateCallback( ResourceState::RES_LOADED, [this, &context]( CachedResource* )
-                                                 {
-                                                     PipelineDescriptor pipelineDescriptor;
-                                                     pipelineDescriptor._stateBlock = context.gfx().get2DStateBlock();
-                                                     pipelineDescriptor._shaderProgramHandle = _postProcessingShader->handle();
-                                                     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-
-                                                     _drawPipeline = context.gfx().newPipeline( pipelineDescriptor );
-                                                 } );
-
+        _drawPipeline = context.gfx().newPipeline( pipelineDescriptor );
         WAIT_FOR_CONDITION( loadTasks.load() == 0 );
     }
 
@@ -133,6 +120,10 @@ namespace Divide
     {
         // Destroy our post processing system
         Console::printfn( LOCALE_STR( "STOP_POST_FX" ) );
+        DestroyResource(_screenBorder);
+        DestroyResource(_noise);
+        DestroyResource(_underwaterTexture);
+        DestroyResource(_postProcessingShader);
     }
 
     void PostFX::updateResolution( const U16 newWidth, const U16 newHeight )
@@ -194,7 +185,8 @@ namespace Divide
         const auto& ssrDataAtt = rtPool.getRenderTarget( RenderTargetNames::SSR_RESULT )->getAttachment( RTAttachmentType::COLOUR );
         const auto& velocityAtt = rtPool.getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::VELOCITY );
 
-        const SamplerDescriptor defaultSampler = {
+        const SamplerDescriptor defaultSampler =
+        {
             ._wrapU = TextureWrap::REPEAT,
             ._wrapV = TextureWrap::REPEAT,
             ._wrapW = TextureWrap::REPEAT
@@ -204,31 +196,31 @@ namespace Divide
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 6u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, velocityAtt->texture()->getView(), defaultSampler );
+            Set( binding._data, velocityAtt->texture(), defaultSampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 5u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, ssrDataAtt->texture()->getView(), defaultSampler );
+            Set( binding._data, ssrDataAtt->texture(), defaultSampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, linDepthDataAtt->texture()->getView(), defaultSampler );
+            Set( binding._data, linDepthDataAtt->texture(), defaultSampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _underwaterTexture->getView(), defaultSampler );
+            Set( binding._data, _underwaterTexture, defaultSampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _noise->getView(), defaultSampler );
+            Set( binding._data, _noise, defaultSampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _screenBorder->getView(), defaultSampler );
+            Set( binding._data, _screenBorder, defaultSampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, prbAtt->texture()->getView(), prbAtt->_descriptor._sampler );
+            Set( binding._data, prbAtt->texture(), prbAtt->_descriptor._sampler );
         }
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 

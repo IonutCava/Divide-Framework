@@ -92,7 +92,7 @@ void Material::Properties::shadingMode(const ShadingMode mode) noexcept {
     }
 }
 
-void Material::Properties::saveToXML(const string& entryName, boost::property_tree::ptree& pt) const {
+void Material::Properties::saveToXML(const std::string& entryName, boost::property_tree::ptree& pt) const {
     pt.put(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()));
 
     pt.put(entryName + ".colour.<xmlattr>.r", baseColour().r);
@@ -137,10 +137,12 @@ void Material::Properties::saveToXML(const string& entryName, boost::property_tr
     pt.put(entryName + ".isRefractive", isRefractive());
 }
 
-void Material::Properties::loadFromXML(const string& entryName, const boost::property_tree::ptree& pt) {
-     const ShadingMode shadingModeCrt = shadingMode();
-    ShadingMode shadingModeFile = TypeUtil::StringToShadingMode(pt.get<string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingModeCrt)));
-    if (shadingModeFile == ShadingMode::COUNT) {
+void Material::Properties::loadFromXML(const std::string& entryName, const boost::property_tree::ptree& pt)
+{
+    const ShadingMode shadingModeCrt = shadingMode();
+    ShadingMode shadingModeFile = TypeUtil::StringToShadingMode(pt.get<std::string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingModeCrt)));
+    if (shadingModeFile == ShadingMode::COUNT)
+    {
         shadingModeFile = shadingModeCrt;
     }
 
@@ -178,7 +180,7 @@ void Material::Properties::loadFromXML(const string& entryName, const boost::pro
 
     ignoreTexDiffuseAlpha(pt.get<bool>(entryName + ".ignoreTexDiffuseAlpha", overrides().ignoreTexDiffuseAlpha()));
 
-    bumpMethod(TypeUtil::StringToBumpMethod(pt.get<string>(entryName + ".bumpMethod", TypeUtil::BumpMethodToString(bumpMethod()))));
+    bumpMethod(TypeUtil::StringToBumpMethod(pt.get<std::string>(entryName + ".bumpMethod", TypeUtil::BumpMethodToString(bumpMethod()))));
 
     toggleTransparency(pt.get<bool>(entryName + ".transparencyEnabled", overrides().transparencyEnabled()));
     

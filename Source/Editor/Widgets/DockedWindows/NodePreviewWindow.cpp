@@ -7,6 +7,7 @@
 #include "Editor/Widgets/Headers/ImGuiExtensions.h"
 
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -26,10 +27,10 @@ namespace Divide
     void NodePreviewWindow::drawInternal()
     {
         const RenderTarget* rt = _parent.getNodePreviewTarget()._rt;
-        const Texture_ptr& gameView = rt->getAttachment( RTAttachmentType::COLOUR )->texture();
+        const Handle<Texture> gameView = rt->getAttachment( RTAttachmentType::COLOUR )->texture();
 
         Attorney::EditorSceneViewWindow::editorEnableGizmo( _parent, true );
-        drawInternal( gameView.get() );
+        drawInternal( gameView );
 
         bool enableGrid = _parent.infiniteGridEnabledNode();
         if ( ImGui::Checkbox( ICON_FK_PLUS_SQUARE_O" Infinite Grid", &enableGrid ) )
@@ -67,7 +68,7 @@ namespace Divide
         return ret;
     }
 
-    void NodePreviewWindow::drawInternal( Texture* tex )
+    void NodePreviewWindow::drawInternal( const Handle<Texture> tex )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
@@ -88,10 +89,8 @@ namespace Divide
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( *data->_cmdBuffer )->_constants.set( pushConstants );
         };
 
-        assert( tex != nullptr );
+        DIVIDE_ASSERT( tex != INVALID_HANDLE<Texture> );
 
-        const I32 w = to_I32( tex->width() );
-        const I32 h = to_I32( tex->height() );
 
         const ImVec2 curPos = ImGui::GetCursorPos();
         const ImVec2 wndSz( ImGui::GetWindowSize().x - curPos.x - 30.0f, ImGui::GetWindowSize().y - curPos.y - 30.0f );
@@ -101,6 +100,9 @@ namespace Divide
         ImGui::ItemSize( bb );
         if ( ImGui::ItemAdd( bb, ImGui::GetID("##nodePreviewRect") ) )
         {
+            Texture* texPtr = Get(tex);
+            const I32 w = to_I32( texPtr->width() );
+            const I32 h = to_I32( texPtr->height() );
             ImVec2 imageSz = wndSz - ImVec2( 0.2f, 0.2f );
             ImVec2 remainingWndSize( 0, 0 );
             const F32 aspectRatio = w / to_F32( h );
@@ -154,7 +156,7 @@ namespace Divide
             const ImVec2 uv1{ 1.f, flipImages ? 0.f : 1.f };
 
             window->DrawList->AddCallback( toggleAlphaBlend, &noAlphaBlendData );
-            window->DrawList->AddImage( (void*)tex, startPos, endPos, uv0, uv1);
+            window->DrawList->AddImage( to_TexID(tex), startPos, endPos, uv0, uv1);
             window->DrawList->AddCallback( toggleAlphaBlend, &defaultData );
 
             updateBounds( { startPos.x, startPos.y, imageSz.x, imageSz.y } );

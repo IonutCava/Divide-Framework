@@ -4,16 +4,18 @@
 
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
-namespace Divide {
+namespace Divide
+{
     size_t GetHash( const ImageViewDescriptor& descriptor) noexcept
     {
         size_t hash = 1337;
         Util::Hash_combine(hash,
                            descriptor._msaaSamples,
-                            descriptor._dataType,
-                            descriptor._baseFormat,
-                            descriptor._packing);
+                           descriptor._dataType,
+                           descriptor._baseFormat,
+                           descriptor._packing);
         return hash;
     }
     
@@ -22,12 +24,12 @@ namespace Divide {
         size_t hash = 1337;
         Util::Hash_combine(hash,
                            GetHash(imageView._descriptor),
-                            imageView._srcTexture != nullptr ? imageView._srcTexture->getGUID() : 0,
-                            TargetType( imageView ),
-                            imageView._subRange._layerRange._offset,
-                            imageView._subRange._layerRange._count,
-                            imageView._subRange._mipLevels._offset,
-                            imageView._subRange._mipLevels._count);
+                           imageView._srcTexture != nullptr ? imageView._srcTexture->getGUID() : 0,
+                           TargetType( imageView ),
+                           imageView._subRange._layerRange._offset,
+                           imageView._subRange._layerRange._count,
+                           imageView._subRange._mipLevels._offset,
+                           imageView._subRange._mipLevels._count);
 
         return hash;
     }
@@ -37,7 +39,7 @@ namespace Divide {
         if (imageView._targetType == TextureType::COUNT &&
             imageView._srcTexture != nullptr)
         {
-            return imageView._srcTexture->descriptor().texType();
+            return imageView._srcTexture->descriptor()._texType;
         }
 
         return imageView._targetType;
@@ -63,6 +65,11 @@ namespace Divide {
         dataInOut._buffer = { buffer, range, buffer->queueReadIndex() };
         dataInOut._type = buffer->getUsage() == BufferUsageType::CONSTANT_BUFFER ? DescriptorSetBindingType::UNIFORM_BUFFER
                                                                                  : DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+    }
+
+    void Set( DescriptorSetBindingData& dataInOut, const Handle<Texture> defaultTextureView, const SamplerDescriptor sampler ) noexcept
+    {
+        Set( dataInOut, Get( defaultTextureView )->getView(), sampler );
     }
 
 } //namespace Divide

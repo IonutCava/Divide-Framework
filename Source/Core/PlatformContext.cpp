@@ -22,10 +22,10 @@ namespace Divide {
 
 PlatformContext::PlatformContext(Application& app)
   : _app(app)
-  , _paramHandler(MemoryManager_NEW ParamHandler())
-  , _config(MemoryManager_NEW Configuration())
-  , _debug(MemoryManager_NEW DebugInterface())
-  , _server(MemoryManager_NEW Server())
+  , _paramHandler(std::make_unique<ParamHandler>())
+  , _config(std::make_unique<Configuration>())
+  , _debug(std::make_unique<DebugInterface>())
+  , _server(std::make_unique<Server>())
 {
     const char* taskPoolNames[] =
     {
@@ -39,21 +39,13 @@ PlatformContext::PlatformContext(Application& app)
 
     for ( U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i )
     {
-        _taskPool[i] = MemoryManager_NEW TaskPool(taskPoolNames[i]);
+        _taskPool[i] = std::make_unique<TaskPool>(taskPoolNames[i]);
     }
 }
 
 PlatformContext::~PlatformContext()
 {
     assert(_gfx == nullptr);
-    for ( U8 i = 0u; i < to_U32( TaskPoolType::COUNT ); ++i )
-    {
-        MemoryManager::DELETE( _taskPool[i] );
-    }
-    MemoryManager::DELETE( _server );
-    MemoryManager::DELETE( _paramHandler );
-    MemoryManager::DELETE( _debug );
-    MemoryManager::DELETE( _config );
 }
 
 void PlatformContext::init(Kernel& kernel)
@@ -62,58 +54,61 @@ void PlatformContext::init(Kernel& kernel)
 
     _kernel = &kernel;
 
-    _inputHandler = MemoryManager_NEW Input::InputHandler( kernel, _app );
-    _gfx = MemoryManager_NEW GFXDevice(*this);
-    _sfx = MemoryManager_NEW SFXDevice(*this);
-    _pfx = MemoryManager_NEW PXDevice(*this);
-    _gui =  MemoryManager_NEW GUI( kernel );
-    _client = MemoryManager_NEW LocalClient( kernel );
-    _editor = (Config::Build::ENABLE_EDITOR ? MemoryManager_NEW Editor(*this) : nullptr);
-
+    _inputHandler = std::make_unique<Input::InputHandler>( kernel, _app );
+    _gfx = std::make_unique<GFXDevice>(*this);
+    _sfx = std::make_unique<SFXDevice>(*this);
+    _pfx = std::make_unique<PXDevice>(*this);
+    _gui =  std::make_unique<GUI>( kernel );
+    _client = std::make_unique<LocalClient>( kernel );
+    _editor = (Config::Build::ENABLE_EDITOR ? std::make_unique<Editor>(*this) : nullptr);
 }
 
 void PlatformContext::terminate()
 {
-    MemoryManager::SAFE_DELETE(_editor);
-    MemoryManager::DELETE(_client);
-    MemoryManager::DELETE(_gui);
-    MemoryManager::DELETE(_pfx);
-    MemoryManager::DELETE(_sfx);
-    MemoryManager::DELETE(_gfx);
-    MemoryManager::DELETE(_inputHandler);
+    _editor.reset();
+    _client.reset();
+    _gui.reset();
+    _pfx.reset();
+    _sfx.reset();
+    _gfx.reset();
+    _inputHandler.reset();
 }
 
 void PlatformContext::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTimeUSApp )
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
-    for (TaskPool* pool : _taskPool)
-    {
-        pool->flushCallbackQueue();
-    }
-
     if (componentMask() & to_base(SystemComponentType::GFXDevice))
     {
         _gfx->idle(fast, deltaTimeUSGame, deltaTimeUSApp );
     }
+
     if (componentMask() & to_base(SystemComponentType::SFXDevice))
     {
         _sfx->idle();
     }
+
     if (componentMask() & to_base(SystemComponentType::PXDevice))
     {
         _pfx->idle();
     }
+
     if (componentMask() & to_base(SystemComponentType::DebugInterface))
     {
         _debug->idle(*this);
-    }
+    } 
+    
     if constexpr(Config::Build::ENABLE_EDITOR)
     {
         if (componentMask() & to_base(SystemComponentType::Editor))
         {
             _editor->idle();
         }
+    }
+
+    for (U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i)
+    {
+        _taskPool[i]->flushCallbackQueue();
     }
 }
 

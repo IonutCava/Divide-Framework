@@ -23,7 +23,7 @@ ResourcePath& ResourcePath::append(const std::string_view str)
 
 ResourcePath& ResourcePath::makeRelative( const ResourcePath& base )
 {
-    _fileSystemPath = std::filesystem::relative( _fileSystemPath, base.fileSystemPath() );
+    _fileSystemPath = std::filesystem::relative( _fileSystemPath, base._fileSystemPath );
     return *this;
 }
 
@@ -35,7 +35,7 @@ ResourcePath ResourcePath::getRelative( const ResourcePath& base ) const
 
 ResourcePath operator/ ( const ResourcePath& lhs, const ResourcePath& rhs )
 {
-    return ResourcePath { lhs.fileSystemPath() / rhs.fileSystemPath() };
+    return ResourcePath { (lhs.fileSystemPath() / rhs.fileSystemPath()).string() };
 }
 
 ResourcePath& operator/=( ResourcePath& lhs, const ResourcePath& rhs )
@@ -46,7 +46,7 @@ ResourcePath& operator/=( ResourcePath& lhs, const ResourcePath& rhs )
 
 ResourcePath  operator/ ( const ResourcePath& lhs, const std::string_view rhs )
 {
-    return ResourcePath{ lhs.fileSystemPath() / std::filesystem::path{rhs} };
+    return ResourcePath{ (lhs.fileSystemPath() / rhs).string() };
 }
 
 ResourcePath& operator/=( ResourcePath& lhs, const std::string_view rhs )

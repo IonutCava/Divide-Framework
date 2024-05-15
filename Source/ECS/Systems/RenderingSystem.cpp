@@ -4,6 +4,7 @@
 
 #include "Graphs/Headers/SceneNode.h"
 #include "Geometry/Material/Headers/Material.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 namespace Divide
 {
@@ -23,9 +24,9 @@ namespace Divide
 
         for ( RenderingComponent* comp : _componentCache )
         {
-            if ( comp->_materialInstance != nullptr )
+            if ( comp->_materialInstance != INVALID_HANDLE<Material> )
             {
-                comp->_materialUpdateMask |= comp->_materialInstance->update( microSec );
+                comp->_materialUpdateMask |= Get(comp->_materialInstance)->update( microSec );
             }
         }
 
@@ -56,18 +57,19 @@ namespace Divide
             {
                 continue;
             }
-            DIVIDE_ASSERT( comp->_materialInstance != nullptr );
+
+            DIVIDE_ASSERT( comp->_materialInstance != INVALID_HANDLE<Material> );
 
             if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_SHADER ) ||
                  comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_CULL ) )
             {
                 comp->clearDrawPackages();
-                comp->_materialInstance->clearRenderStates();
+                Get(comp->_materialInstance)->clearRenderStates();
             }
 
             if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_CULL ) )
             {
-                comp->_materialInstance->updateCullState();
+                Get(comp->_materialInstance)->updateCullState();
             }
             if ( comp->_materialUpdateMask & to_base(MaterialUpdateResult::NEW_TRANSPARENCY ) )
             {

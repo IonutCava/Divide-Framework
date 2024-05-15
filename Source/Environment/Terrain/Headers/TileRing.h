@@ -72,7 +72,7 @@ namespace Divide {
 //    ###################
 //    ###################
 //
-class TileRing final : NonCopyable
+class TileRing final
 {
 public:
     struct Adjacency
@@ -118,8 +118,6 @@ private:
     const I32 _outerWidth = 0;
     const I32 _ringWidth = 0;
 };
-
-FWD_DECLARE_MANAGED_CLASS(TileRing);
 
 }  // namespace Divide
 

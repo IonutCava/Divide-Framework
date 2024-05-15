@@ -42,7 +42,7 @@ namespace
 }
 
 //ref: http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
-SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
+SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
     : PreRenderOperator(context, parent, FilterType::FILTER_SS_AMBIENT_OCCLUSION)
 {
     const auto& config = context.context().config().rendering.postFX.ssao;
@@ -98,16 +98,21 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _noiseSampler._mipSampling = TextureMipSampling::NONE;
     _noiseSampler._anisotropyLevel = 0u;
 
-    TextureDescriptor noiseDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-    noiseDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+    ResourceDescriptor<Texture> textureAttachment( "SSAOPreRenderOperator_NoiseTexture" );
+    TextureDescriptor& noiseDescriptor = textureAttachment._propertyDescriptor;
 
-    ResourceDescriptor textureAttachment( "SSAOPreRenderOperator_NoiseTexture" );
-    textureAttachment.propertyDescriptor(noiseDescriptor);
-    _noiseTexture = CreateResource<Texture>(cache, textureAttachment);
-    _noiseTexture->createWithData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec4<F32>), vec2<U16>(SSAO_NOISE_SIZE, SSAO_NOISE_SIZE), {});
+    noiseDescriptor._dataType = GFXDataFormat::FLOAT_32;
+    noiseDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+    noiseDescriptor._mipMappingState = MipMappingState::OFF;
+
+    _noiseTexture = CreateResource( textureAttachment);
+    Get(_noiseTexture)->createWithData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec4<F32>), vec2<U16>(SSAO_NOISE_SIZE, SSAO_NOISE_SIZE), {});
     {
-        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED, GFXImagePacking::UNNORMALIZED );
-        outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor outputDescriptor{};
+        outputDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        outputDescriptor._baseFormat = GFXImageFormat::RED;
+        outputDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        outputDescriptor._mipMappingState = MipMappingState::OFF;
         const vec2<U16> res = parent.screenRT()._rt->getResolution();
 
         RenderTargetDescriptor desc = {};
@@ -130,8 +135,10 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         _ssaoHalfResOutput = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor outputDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-        outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor outputDescriptor{};
+        outputDescriptor._dataType = GFXDataFormat::FLOAT_32;
+        outputDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        outputDescriptor._mipMappingState = MipMappingState::OFF;
 
         RenderTargetDescriptor desc = {};
         desc._attachments = 
@@ -160,10 +167,9 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor ssaoGenerate("SSAOCalc");
-        ssaoGenerate.propertyDescriptor(ssaoShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> ssaoGenerate("SSAOCalc", ssaoShaderDescriptor );
         ssaoGenerate.waitForReady(false);
-        _ssaoGenerateShader = CreateResource<ShaderProgram>(cache, ssaoGenerate);
+        _ssaoGenerateShader = CreateResource(ssaoGenerate);
     }
     { //Calc Half
         fragModule._variant = "SSAOCalc";
@@ -175,10 +181,9 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor ssaoGenerateHalfRes("SSAOCalcHalfRes");
-        ssaoGenerateHalfRes.propertyDescriptor(ssaoShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> ssaoGenerateHalfRes( "SSAOCalcHalfRes", ssaoShaderDescriptor );
         ssaoGenerateHalfRes.waitForReady(false);
-        _ssaoGenerateHalfResShader = CreateResource<ShaderProgram>(cache, ssaoGenerateHalfRes);
+        _ssaoGenerateHalfResShader = CreateResource(ssaoGenerateHalfRes);
     }
 
     { //Blur
@@ -191,17 +196,15 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ssaoShaderDescriptor._modules.push_back(fragModule);
 
         ssaoShaderDescriptor._modules.back()._defines.emplace_back("HORIZONTAL");
-        ResourceDescriptor ssaoBlurH("SSAOBlur.Horizontal");
-        ssaoBlurH.propertyDescriptor(ssaoShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> ssaoBlurH( "SSAOBlur.Horizontal", ssaoShaderDescriptor );
         ssaoBlurH.waitForReady(false);
-        _ssaoBlurShaderHorizontal = CreateResource<ShaderProgram>(cache, ssaoBlurH);
+        _ssaoBlurShaderHorizontal = CreateResource(ssaoBlurH);
 
         ssaoShaderDescriptor._modules.back()._defines.back() = { "VERTICAL" };
 
-        ResourceDescriptor ssaoBlurV("SSAOBlur.Vertical");
-        ssaoBlurV.propertyDescriptor(ssaoShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> ssaoBlurV( "SSAOBlur.Vertical", ssaoShaderDescriptor );
         ssaoBlurV.waitForReady(false);
-        _ssaoBlurShaderVertical = CreateResource<ShaderProgram>(cache, ssaoBlurV);
+        _ssaoBlurShaderVertical = CreateResource(ssaoBlurV);
     }
     { //Pass-through
         fragModule._variant = "SSAOPassThrough";
@@ -211,11 +214,10 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor ssaoPassThrough("SSAOPassThrough");
-        ssaoPassThrough.propertyDescriptor(ssaoShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> ssaoPassThrough( "SSAOPassThrough", ssaoShaderDescriptor );
         ssaoPassThrough.waitForReady(false);
 
-        _ssaoPassThroughShader = CreateResource<ShaderProgram>(cache, ssaoPassThrough);
+        _ssaoPassThroughShader = CreateResource(ssaoPassThrough);
     }
     { //DownSample
         fragModule._variant = "SSAODownsample";
@@ -225,11 +227,10 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor ssaoDownSample("SSAODownSample");
-        ssaoDownSample.propertyDescriptor(ssaoShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> ssaoDownSample( "SSAODownSample", ssaoShaderDescriptor );
         ssaoDownSample.waitForReady(false);
 
-        _ssaoDownSampleShader = CreateResource<ShaderProgram>(cache, ssaoDownSample);
+        _ssaoDownSampleShader = CreateResource(ssaoDownSample);
     }
     { //UpSample
         fragModule._variant = "SSAOUpsample";
@@ -239,11 +240,10 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ssaoShaderDescriptor._modules.push_back(vertModule);
         ssaoShaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor ssaoUpSample("SSAOUpSample");
-        ssaoUpSample.propertyDescriptor(ssaoShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> ssaoUpSample( "SSAOUpSample", ssaoShaderDescriptor );
         ssaoUpSample.waitForReady(false);
 
-        _ssaoUpSampleShader = CreateResource<ShaderProgram>(cache, ssaoUpSample);
+        _ssaoUpSampleShader = CreateResource(ssaoUpSample);
     }
 
     _ssaoGenerateConstantsCmd._constants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
@@ -263,17 +263,17 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     PipelineDescriptor pipelineDescriptor = {};
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
     pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-    pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader->handle();
+    pipelineDescriptor._shaderProgramHandle = _ssaoDownSampleShader;
 
     _downsamplePipeline = _context.newPipeline(pipelineDescriptor);
 
-    pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader->handle();
+    pipelineDescriptor._shaderProgramHandle = _ssaoGenerateHalfResShader;
     _generateHalfResPipeline = _context.newPipeline(pipelineDescriptor);
 
-    pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader->handle();
+    pipelineDescriptor._shaderProgramHandle = _ssaoUpSampleShader;
     _upsamplePipeline = _context.newPipeline(pipelineDescriptor);
 
-    pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader->handle();
+    pipelineDescriptor._shaderProgramHandle = _ssaoGenerateShader;
     _generateFullResPipeline = _context.newPipeline(pipelineDescriptor);
 
     RenderStateBlock redChannelOnly = _context.get2DStateBlock();
@@ -281,13 +281,13 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     redChannelOnly._colourWrite.b[1] = redChannelOnly._colourWrite.b[2] = redChannelOnly._colourWrite.b[3] = false;
 
     pipelineDescriptor._stateBlock = redChannelOnly;
-    pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal->handle();
+    pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderHorizontal;
     _blurHorizontalPipeline = _context.newPipeline(pipelineDescriptor);
 
-    pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical->handle();
+    pipelineDescriptor._shaderProgramHandle = _ssaoBlurShaderVertical;
     _blurVerticalPipeline = _context.newPipeline(pipelineDescriptor);
 
-    pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader->handle();
+    pipelineDescriptor._shaderProgramHandle = _ssaoPassThroughShader;
     _passThroughPipeline = _context.newPipeline(pipelineDescriptor);
 }
 
@@ -300,17 +300,26 @@ SSAOPreRenderOperator::~SSAOPreRenderOperator()
     {
         DIVIDE_UNEXPECTED_CALL();
     }
+
+    DestroyResource(_ssaoGenerateShader);
+    DestroyResource(_ssaoGenerateHalfResShader);
+    DestroyResource(_ssaoBlurShaderHorizontal);
+    DestroyResource(_ssaoBlurShaderVertical);
+    DestroyResource(_ssaoPassThroughShader);
+    DestroyResource(_ssaoDownSampleShader);
+    DestroyResource(_ssaoUpSampleShader);
+    DestroyResource(_noiseTexture);
 }
 
 bool SSAOPreRenderOperator::ready() const noexcept
 {
-    if (_ssaoBlurShaderHorizontal->getState() == ResourceState::RES_LOADED && 
-        _ssaoBlurShaderVertical->getState() == ResourceState::RES_LOADED && 
-        _ssaoGenerateShader->getState() == ResourceState::RES_LOADED && 
-        _ssaoGenerateHalfResShader->getState() == ResourceState::RES_LOADED &&
-        _ssaoDownSampleShader->getState() == ResourceState::RES_LOADED &&
-        _ssaoPassThroughShader->getState() == ResourceState::RES_LOADED &&
-        _ssaoUpSampleShader->getState() == ResourceState::RES_LOADED)
+    if (_ssaoBlurShaderHorizontal  != INVALID_HANDLE<ShaderProgram> && Get(_ssaoBlurShaderHorizontal)->getState()  == ResourceState::RES_LOADED && 
+        _ssaoBlurShaderVertical    != INVALID_HANDLE<ShaderProgram> && Get(_ssaoBlurShaderVertical)->getState()    == ResourceState::RES_LOADED &&
+        _ssaoGenerateShader        != INVALID_HANDLE<ShaderProgram> && Get(_ssaoGenerateShader)->getState()        == ResourceState::RES_LOADED &&
+        _ssaoGenerateHalfResShader != INVALID_HANDLE<ShaderProgram> && Get(_ssaoGenerateHalfResShader)->getState() == ResourceState::RES_LOADED &&
+        _ssaoDownSampleShader      != INVALID_HANDLE<ShaderProgram> && Get(_ssaoDownSampleShader)->getState()      == ResourceState::RES_LOADED &&
+        _ssaoPassThroughShader     != INVALID_HANDLE<ShaderProgram> && Get(_ssaoPassThroughShader)->getState()     == ResourceState::RES_LOADED &&
+        _ssaoUpSampleShader        != INVALID_HANDLE<ShaderProgram> && Get(_ssaoUpSampleShader)->getState()        == ResourceState::RES_LOADED)
     {
         return PreRenderOperator::ready();
     }
@@ -569,11 +578,11 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+                Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
+                Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
@@ -596,11 +605,11 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, _noiseTexture->getView(), _noiseSampler );
+                Set( binding._data, _noiseTexture, _noiseSampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, halfDepthAtt->texture()->getView(), halfDepthAtt->_descriptor._sampler );
+                Set( binding._data, halfDepthAtt->texture(), halfDepthAtt->_descriptor._sampler );
             }
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
@@ -629,19 +638,19 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, halfResAOAtt->texture()->getView(), linearSampler );
+                Set( binding._data, halfResAOAtt->texture(), linearSampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+                Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, halfDepthAtt->texture()->getView(), halfDepthAtt->_descriptor._sampler );
+                Set( binding._data, halfDepthAtt->texture(), halfDepthAtt->_descriptor._sampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, halfResAOAtt->texture()->getView(), halfResAOAtt->_descriptor._sampler );
+                Set( binding._data, halfResAOAtt->texture(), halfResAOAtt->_descriptor._sampler );
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -662,15 +671,15 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, _noiseTexture->getView(), _noiseSampler );
+                Set( binding._data, _noiseTexture, _noiseSampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+                Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
+                Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
             }
             GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
 
@@ -685,7 +694,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
         {
             _ssaoBlurConstantsCmd._constants.set(_ID("invProjectionMatrix"), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
             _ssaoBlurConstantsCmd._constants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
-            _ssaoBlurConstantsCmd._constants.set(_ID("texelSize"), PushConstantType::VEC2, vec2<F32>{ 1.f / ssaoAtt->texture()->width(), 1.f / ssaoAtt->texture()->height() });
+            _ssaoBlurConstantsCmd._constants.set(_ID("texelSize"), PushConstantType::VEC2, vec2<F32>{ 1.f / Get(ssaoAtt->texture())->width(), 1.f / Get(ssaoAtt->texture())->height() });
 
             // Blur AO
             { //Horizontal
@@ -703,15 +712,15 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, ssaoAtt->texture()->getView(), ssaoAtt->_descriptor._sampler );
+                    Set( binding._data, ssaoAtt->texture(), ssaoAtt->_descriptor._sampler );
                 }
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+                    Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
                 }
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
+                    Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
@@ -733,15 +742,15 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, horizBlur->texture()->getView(), ssaoAtt->_descriptor._sampler );
+                    Set( binding._data, horizBlur->texture(), ssaoAtt->_descriptor._sampler );
                 }
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+                    Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
                 }
                 {
                     DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-                    Set( binding._data, normalsAtt->texture()->getView(), normalsAtt->_descriptor._sampler );
+                    Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
                 }
 
                 GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
@@ -762,7 +771,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, ssaoAtt->texture()->getView(), ssaoAtt->_descriptor._sampler );
+                Set( binding._data, ssaoAtt->texture(), ssaoAtt->_descriptor._sampler );
             }
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

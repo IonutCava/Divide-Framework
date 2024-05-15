@@ -36,54 +36,26 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide::GFX
 {
 
-    template<typename T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     PushConstant::PushConstant(const U64 bindingHash, const PushConstantType type, const T& data)
         : PushConstant(bindingHash, type, &data, 1)
     {
     }
 
-    template<typename T>
+    template<typename T> requires (!std::is_same_v<bool, T>)
     PushConstant::PushConstant(const U64 bindingHash, const PushConstantType type, const T* data, const size_t count)
-        : _bindingHash(bindingHash),
-            _type(type)
+        : _dataSize(sizeof(T) * count)
+        , _bindingHash(bindingHash)
+        , _type(type)
     {
-        set(data, count);
+        DIVIDE_ASSERT( _dataSize > 0u );
+        _buffer.resize( _dataSize );
+        std::memcpy( _buffer.data(), data, _dataSize );
     }
 
-    template<typename T>
-    void PushConstant::set(const T* data, const size_t count) {
-        if (count > 0u) {
-            const size_t bufferSize = count * sizeof(T);
-            if (_buffer.size() < bufferSize) {
-                _buffer.resize(bufferSize);
-            }
-            std::memcpy(_buffer.data(), data, bufferSize);
-            dataSize(bufferSize);
-        } else {
-            efficient_clear( _buffer );
-            dataSize(0u);
-        }
-    }
-
-    [[nodiscard]] inline const Byte* PushConstant::data() const noexcept { return _buffer.data(); }
-
-    template <>
-    inline void PushConstant::set<bool>(const bool* data, const size_t count) {
-        assert(data != nullptr);
-
-        if (count == 0) {
-            efficient_clear( _buffer );
-            dataSize(0u);
-        } else if (count == 1) {
-            //fast path
-            const U32 value = *data ? 1 : 0;
-            set(&value, 1);
-        } else {
-            //Slooow. Avoid using in the rendering loop. Try caching
-            vector<U32> temp(count);
-            std::transform(data, data + count, std::back_inserter(temp), [](const bool e) noexcept { return e ? 1u : 0u; });
-            set(temp.data(), count);
-        }
+    [[nodiscard]] inline const Byte* PushConstant::data() const noexcept
+    { 
+        return _buffer.data();
     }
 
 } //namespace Divide::GFX

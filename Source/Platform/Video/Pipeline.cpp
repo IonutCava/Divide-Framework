@@ -11,7 +11,7 @@ size_t GetHash( const PipelineDescriptor& descriptor )
     size_t hash = GetHash(descriptor._stateBlock);
     Util::Hash_combine( hash, descriptor._multiSampleCount,
                         descriptor._shaderProgramHandle._generation,
-                        descriptor._shaderProgramHandle._id,
+                        descriptor._shaderProgramHandle._index,
                         descriptor._primitiveTopology,
                         descriptor._alphaToCoverage );
 
@@ -88,7 +88,7 @@ namespace
         Util::Hash_combine( hash,
                             descriptor._multiSampleCount,
                             descriptor._shaderProgramHandle._generation,
-                            descriptor._shaderProgramHandle._id,
+                            descriptor._shaderProgramHandle._index,
                             descriptor._primitiveTopology,
                             descriptor._alphaToCoverage);
 

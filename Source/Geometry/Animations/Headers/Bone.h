@@ -59,7 +59,10 @@ public:
 
     ~Bone()
     {
-        MemoryManager::DELETE_CONTAINER(_children);
+        for (Bone* child : _children)
+        {
+            delete child;
+        }
     }
 
     [[nodiscard]] size_t hierarchyDepth() const {

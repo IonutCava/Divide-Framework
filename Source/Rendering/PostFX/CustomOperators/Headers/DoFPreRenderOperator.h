@@ -41,7 +41,8 @@ namespace Divide {
 
 class DoFPreRenderOperator final : public PreRenderOperator {
    public:
-    explicit DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
+    explicit DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    ~DoFPreRenderOperator();
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
@@ -51,7 +52,7 @@ class DoFPreRenderOperator final : public PreRenderOperator {
     [[nodiscard]] bool ready() const noexcept override;
 
    private:
-     ShaderProgram_ptr _dofShader = nullptr;
+     Handle<ShaderProgram> _dofShader = INVALID_HANDLE<ShaderProgram>;
      Pipeline* _pipeline = nullptr;
      PushConstantsStruct _constants{};
 };

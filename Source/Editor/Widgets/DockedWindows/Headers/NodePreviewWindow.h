@@ -48,7 +48,7 @@ namespace Divide
         [[nodiscard]] const Rect<I32>& sceneRect( bool globalCoords ) const noexcept;
 
         protected:
-        void drawInternal( Texture* tex );
+        void drawInternal( Handle<Texture> tex );
         void updateBounds( Rect<I32> imageRect );
 
         bool button( bool enabled, const char* label, const char* tooltip, bool small = false );

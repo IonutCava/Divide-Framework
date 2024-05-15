@@ -61,7 +61,7 @@ class ParticleData {
     static constexpr U32 g_threadPartitionSize = 256;
 
     /// helper array used for sorting
-    vector_fast<std::pair<U32, F32>> _indices;
+    vector<std::pair<U32, F32>> _indices;
     vector<vec4<F32>> _renderingPositions;
     vector<UColour4>  _renderingColours;
     /// x,y,z = position; w = size

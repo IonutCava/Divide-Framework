@@ -35,9 +35,9 @@ ErrorCode OpenAL_API::initAudioAPI() noexcept {
 
 void OpenAL_API::closeAudioAPI() noexcept {}
 
-void OpenAL_API::playSound([[maybe_unused]] const AudioDescriptor_ptr& sound) noexcept {}
+void OpenAL_API::playSound([[maybe_unused]] const Handle<AudioDescriptor> sound) noexcept {}
 
-void OpenAL_API::playMusic([[maybe_unused]] const AudioDescriptor_ptr& music) noexcept {}
+void OpenAL_API::playMusic([[maybe_unused]] const Handle<AudioDescriptor> music) noexcept {}
 
 void OpenAL_API::pauseMusic() noexcept {}
 

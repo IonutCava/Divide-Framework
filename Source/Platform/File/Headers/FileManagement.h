@@ -195,10 +195,11 @@ using FileList = vector<FileEntry>;
 /// Read the contents of a file into an ifstream. Will not close the stream!
 [[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::ifstream& sreamOut);
 [[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, string& contentOut);
+[[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::string& contentOut);
 [[nodiscard]] FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, Byte* contentOut, size_t& sizeInOut);
 
 [[nodiscard]] FileError openFile(const ResourcePath& filePath, std::string_view fileName);
-[[nodiscard]] FileError openFile(const char* cmd, const ResourcePath& filePath, std::string_view fileName);
+[[nodiscard]] FileError openFile(std::string_view cmd, const ResourcePath& filePath, std::string_view fileName);
 
 [[nodiscard]] FileError writeFile(const ResourcePath& filePath, std::string_view fileName, bufferPtr content, size_t length, FileType fileType);
 [[nodiscard]] FileError writeFile(const ResourcePath& filePath, std::string_view fileName, const char* content, size_t length, FileType fileType);

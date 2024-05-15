@@ -77,6 +77,7 @@ namespace Divide
     }
     class Scene;
     class Camera;
+    class Texture;
     class LightPool;
     class RenderPass;
     class ECSManager;
@@ -87,6 +88,7 @@ namespace Divide
     class PanelManager;
     class PostFXWindow;
     class DisplayWindow;
+    class ShaderProgram;
     class PropertyWindow;
     class SceneGraphNode;
     class SceneViewWindow;
@@ -99,10 +101,8 @@ namespace Divide
 
     FWD_DECLARE_MANAGED_CLASS( Gizmo );
     FWD_DECLARE_MANAGED_CLASS( Mesh );
-    FWD_DECLARE_MANAGED_CLASS( Texture );
     FWD_DECLARE_MANAGED_CLASS( MenuBar );
     FWD_DECLARE_MANAGED_CLASS( StatusBar );
-    FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
     FWD_DECLARE_MANAGED_CLASS( GenericVertexData );
     FWD_DECLARE_MANAGED_CLASS( EditorOptionsWindow );
 
@@ -119,7 +119,7 @@ namespace Divide
     struct IMGUICallbackData
     {
         GFX::CommandBuffer* _cmdBuffer = nullptr;
-        Texture* _texture = nullptr;
+        Handle<Texture> _texture = INVALID_HANDLE<Texture>;
         vec4<I32> _colourData = { 1, 1, 1, 1 };
         vec2<F32> _depthRange = { 0.002f, 1.f };
         U32 _arrayLayer = 0u;
@@ -130,6 +130,9 @@ namespace Divide
     };
 
     PushConstantsStruct IMGUICallbackToPushConstants(const IMGUICallbackData& data, bool isArrayTexture);
+
+    ImTextureID to_TexID(Handle<Texture> handle);
+    Handle<Texture> from_TexID(ImTextureID texID);
 
     class Editor final : public PlatformContextComponent,
                          public FrameListener,
@@ -196,7 +199,7 @@ namespace Divide
         void toggle( bool state );
         void onWindowSizeChange( const SizeChangeParams& params );
         void onResolutionChange( const SizeChangeParams& params );
-        void selectionChangeCallback( PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes ) const;
+        void selectionChangeCallback( PlayerIndex idx, const vector<SceneGraphNode*>& nodes ) const;
         void onChangeScene( Scene* newScene );
 
         [[nodiscard]] bool Undo() const;
@@ -302,11 +305,11 @@ namespace Divide
         [[nodiscard]] bool switchScene( const SceneEntry& scene, bool createIfNotExists = false );
         [[nodiscard]] bool openProject( const ProjectID& projectID );
         /// Returns true if the window was closed
-        [[nodiscard]] bool modalTextureView( const char* modalName, Texture* tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
+        [[nodiscard]] bool modalTextureView( const char* modalName, Handle<Texture> tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
         /// Returns true if the model was queued
-        [[nodiscard]] bool modalModelSpawn( const Mesh_ptr& mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO );
+        [[nodiscard]] bool modalModelSpawn( Handle<Mesh> mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO );
         /// Return true if the model was spawned as a scene node
-        [[nodiscard]] bool spawnGeometry( const Mesh_ptr& mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, const string& name ) const;
+        [[nodiscard]] bool spawnGeometry( Handle<Mesh> mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, std::string_view name ) const;
         /// Return true if the specified node passed frustum culling during the main render pass
         [[nodiscard]] bool isNodeInView( const SceneGraphNode& node ) const noexcept;
 
@@ -327,7 +330,6 @@ namespace Divide
         [[nodiscard]] bool addComponent( const Selections& selections, ComponentType newComponentType ) const;
         [[nodiscard]] bool removeComponent( SceneGraphNode* selection, ComponentType newComponentType ) const;
         [[nodiscard]] bool removeComponent( const Selections& selections, ComponentType newComponentType ) const;
-        [[nodiscard]] SceneNode_ptr createNode( SceneNodeType type, const ResourceDescriptor& descriptor );
 
         GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut );
 
@@ -345,21 +347,21 @@ namespace Divide
         Gizmo_uptr               _gizmo ;
 
         DisplayWindow* _mainWindow = nullptr;
-        Texture_ptr       _fontTexture = nullptr;
-        ShaderProgram_ptr _imguiProgram;
+        Handle<Texture>       _fontTexture = INVALID_HANDLE<Texture>;
+        Handle<ShaderProgram> _imguiProgram = INVALID_HANDLE<ShaderProgram>;
+        Handle<ShaderProgram> _infiniteGridProgram = INVALID_HANDLE<ShaderProgram>;
 
         IMPrimitive* _infiniteGridPrimitive = nullptr;
-        ShaderProgram_ptr _infiniteGridProgram;
         PipelineDescriptor  _infiniteGridPipelineDesc;
         PipelineDescriptor _axisGizmoPipelineDesc;
         IMPrimitive* _axisGizmo = nullptr;
         Pipeline* _editorPipeline = nullptr;
 
-        hashMap<I64, GenericVertexData_ptr> _imguiBuffers;
+        eastl::fixed_vector<std::pair<I64, GenericVertexData_ptr>, 5, true> _imguiBuffers;
 
         std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};
-        std::array<DockedWindow*, to_base( WindowType::COUNT )> _dockedWindows = {};
+        std::array<std::unique_ptr<DockedWindow>, to_base( WindowType::COUNT )> _dockedWindows = {};
 
         ResourcePath _externalTextEditorPath;
 
@@ -380,7 +382,7 @@ namespace Divide
         RenderTargetHandle _nodePreviewRTHandle{};
         struct QueueModelSpawn
         {
-            Mesh_ptr _mesh{ nullptr };
+            Handle<Mesh> _mesh{ INVALID_HANDLE<Mesh> };
             vec3<F32> _scale{ VECTOR3_UNIT };
             vec3<F32> _position{ VECTOR3_ZERO };
         } _queuedModelSpawn;
@@ -484,11 +486,6 @@ namespace Divide
             static void queueRemoveNode( Editor& editor, const I64 nodeGUID )
             {
                 editor.queueRemoveNode( nodeGUID );
-            }
-
-            [[nodiscard]] static SceneNode_ptr createNode( Editor& editor, const SceneNodeType type, const ResourceDescriptor& descriptor )
-            {
-                return editor.createNode( type, descriptor );
             }
 
             [[nodiscard]] static bool lockSolutionExplorer( const Editor& editor )
@@ -676,12 +673,12 @@ namespace Divide
                 editor._memoryEditorData = data;
             }
 
-            [[nodiscard]] static bool modalTextureView( const Editor& editor, const char* modalName, Texture* tex, const vec2<F32> dimensions, const bool preserveAspect, const bool useModal )
+            [[nodiscard]] static bool modalTextureView( const Editor& editor, const char* modalName, Handle<Texture> tex, const vec2<F32> dimensions, const bool preserveAspect, const bool useModal )
             {
                 return editor.modalTextureView( modalName, tex, dimensions, preserveAspect, useModal );
             }
 
-            [[nodiscard]] static bool modalModelSpawn( Editor& editor, const Mesh_ptr& mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO )
+            [[nodiscard]] static bool modalModelSpawn( Editor& editor, Handle<Mesh> mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO )
             {
                 return editor.modalModelSpawn( mesh, quick, scale, position );
             }

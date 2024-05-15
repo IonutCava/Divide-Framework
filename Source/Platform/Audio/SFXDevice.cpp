@@ -79,7 +79,7 @@ bool SFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     return true;
 }
 
-void SFXDevice::playSound(const AudioDescriptor_ptr& sound) {
+void SFXDevice::playSound(const Handle<AudioDescriptor> sound) {
     PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
 
     DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: playSound called without init!");
@@ -87,7 +87,7 @@ void SFXDevice::playSound(const AudioDescriptor_ptr& sound) {
     _api->playSound(sound);
 }
 
-void SFXDevice::addMusic(const U32 playlistEntry, const AudioDescriptor_ptr& music) {
+void SFXDevice::addMusic(const U32 playlistEntry, const Handle<AudioDescriptor> music) {
     auto& [crtPlaylistIndex, songs] = _musicPlaylists[playlistEntry];
     songs.push_back(music);
     crtPlaylistIndex = 0;
@@ -114,7 +114,7 @@ bool SFXDevice::playMusic(const MusicPlaylist& playlist) {
     return false;
 }
 
-void SFXDevice::playMusic(const AudioDescriptor_ptr& music) {
+void SFXDevice::playMusic(const Handle<AudioDescriptor> music) {
     PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
 
     _api->playMusic(music);

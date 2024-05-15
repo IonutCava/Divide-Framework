@@ -39,7 +39,6 @@
 #include "Utility/Headers/Colours.h"
 
 #include "Core/Resources/Headers/Resource.h"
-#include "Core/Resources/Headers/ResourceDescriptor.h"
 
 #include "Platform/Video/Headers/RenderStagePass.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
@@ -59,7 +58,6 @@ namespace Attorney {
 
 class RenderBin;
 class RenderingComponent;
-class ResourceDescriptor;
 
 struct NodeMaterialData;
 struct RenderStateBlock;
@@ -109,19 +107,19 @@ static_assert(std::size(Names::textureSlot) == to_base(TextureSlot::COUNT) + 1);
 
 namespace TypeUtil {
     [[nodiscard]] const char* MaterialDebugFlagToString(const MaterialDebugFlag unitType) noexcept;
-    [[nodiscard]] MaterialDebugFlag StringToMaterialDebugFlag(const string& name);
+    [[nodiscard]] MaterialDebugFlag StringToMaterialDebugFlag(std::string_view name);
 
     [[nodiscard]] const char* ShadingModeToString(ShadingMode shadingMode) noexcept;
-    [[nodiscard]] ShadingMode StringToShadingMode(const string& name);
+    [[nodiscard]] ShadingMode StringToShadingMode(std::string_view name);
 
     [[nodiscard]] const char* TextureSlotToString(TextureSlot texUsage) noexcept;
-    [[nodiscard]] TextureSlot StringToTextureSlot(const string& name);
+    [[nodiscard]] TextureSlot StringToTextureSlot(std::string_view name);
 
     [[nodiscard]] const char* TextureOperationToString(TextureOperation textureOp) noexcept;
-    [[nodiscard]] TextureOperation StringToTextureOperation(const string& operation);
+    [[nodiscard]] TextureOperation StringToTextureOperation(std::string_view operation);
 
     [[nodiscard]] const char* BumpMethodToString(BumpMethod bumpMethod) noexcept;
-    [[nodiscard]] BumpMethod StringToBumpMethod(const string& name);
+    [[nodiscard]] BumpMethod StringToBumpMethod(std::string_view name);
 };
 
 class Material final : public CachedResource {
@@ -219,13 +217,13 @@ class Material final : public CachedResource {
         void baseColour(const FColour4& colour) noexcept;
 
     protected:
-        void saveToXML(const string& entryName, boost::property_tree::ptree& pt) const;
-        void loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
+        void saveToXML(const std::string& entryName, boost::property_tree::ptree& pt) const;
+        void loadFromXML(const std::string& entryName, const boost::property_tree::ptree& pt);
     };
 
     struct TextureInfo 
     {
-        Texture_ptr _ptr{ nullptr };
+        Handle<Texture> _ptr{ INVALID_HANDLE<Texture> };
         SamplerDescriptor _sampler{};
         TextureOperation _operation{ TextureOperation::NONE };
         bool _srgb{false};
@@ -233,7 +231,7 @@ class Material final : public CachedResource {
     };
 
    public:
-    explicit Material( PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
+    explicit Material( const ResourceDescriptor<Material>& descriptor );
 
     static void OnStartup();
     static void OnShutdown();
@@ -241,7 +239,8 @@ class Material final : public CachedResource {
     static void Update(U64 deltaTimeUS);
 
     /// Return a new instance of this material with the name composed of the base material's name and the give name suffix (clone calls CreateResource internally!).
-    [[nodiscard]] Material_ptr clone(const std::string_view nameSuffix);
+    [[nodiscard]] Handle<Material> clone(const std::string_view nameSuffix);
+    [[nodiscard]] bool load(PlatformContext& context) override;
     [[nodiscard]] bool unload() override;
     /// Returns a bit mask composed of UpdateResult flags
     [[nodiscard]] U32 update(U64 deltaTimeUS);
@@ -252,12 +251,20 @@ class Material final : public CachedResource {
 
     void setPipelineLayout(PrimitiveTopology topology, const AttributeMap& shaderAttributes);
 
-    bool setSampler(TextureSlot textureUsageSlot, SamplerDescriptor sampler);
+    bool setSampler(TextureSlot textureUsageSlot,
+                    SamplerDescriptor sampler);
+
     bool setTexture(TextureSlot textureUsageSlot,
-                    const Texture_ptr& texture,
+                    Handle<Texture> texture,
                     SamplerDescriptor sampler,
                     TextureOperation op,
                     bool useInGeometryPasses = false);
+
+    bool setTexture( TextureSlot textureUsageSlot,
+                     const ResourceDescriptor<Texture>& texture,
+                     SamplerDescriptor sampler,
+                     TextureOperation op,
+                     bool useInGeometryPasses = false );
     void setTextureOperation(TextureSlot textureUsageSlot, TextureOperation op);
 
     void lockInstancesForRead() const noexcept;
@@ -265,8 +272,8 @@ class Material final : public CachedResource {
     void lockInstancesForWrite() const noexcept;
     void unlockInstancesForWrite() const noexcept;
 
-    [[nodiscard]] const vector<Material*>& getInstancesLocked() const noexcept;
-    [[nodiscard]] const vector<Material*>& getInstances() const;
+    [[nodiscard]] const vector<Handle<Material>>& getInstancesLocked() const noexcept;
+    [[nodiscard]] const vector<Handle<Material>>& getInstances() const;
 
     /// Add the specified renderStateBlock to specific RenderStagePass parameters. Use "COUNT" and/or "g_AllVariantsID" for global options
     /// e.g. a RenderPassType::COUNT will use the block in the specified stage+variant combo but for all of the passes
@@ -275,19 +282,19 @@ class Material final : public CachedResource {
     // Returns the material's hash value (just for the uploadable data)
     void getData(U32 bestProbeID, NodeMaterialData& dataOut);
 
-    [[nodiscard]] FColour4 getBaseColour(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    [[nodiscard]] FColour3 getEmissive(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    [[nodiscard]] FColour3 getAmbient(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    [[nodiscard]] FColour3 getSpecular(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    [[nodiscard]] F32 getMetallic(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    [[nodiscard]] F32 getRoughness(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
-    [[nodiscard]] F32 getOcclusion(bool& hasTextureOverride, Texture*& textureOut) const noexcept;
+    [[nodiscard]] FColour4 getBaseColour(bool& hasTextureOverride, Handle<Texture>& textureOut) const noexcept;
+    [[nodiscard]] FColour3 getEmissive(bool& hasTextureOverride, Handle<Texture>& textureOut) const noexcept;
+    [[nodiscard]] FColour3 getAmbient(bool& hasTextureOverride, Handle<Texture>& textureOut) const noexcept;
+    [[nodiscard]] FColour3 getSpecular(bool& hasTextureOverride, Handle<Texture>& textureOut) const noexcept;
+    [[nodiscard]] F32 getMetallic(bool& hasTextureOverride, Handle<Texture>& textureOut) const noexcept;
+    [[nodiscard]] F32 getRoughness(bool& hasTextureOverride, Handle<Texture>& textureOut) const noexcept;
+    [[nodiscard]] F32 getOcclusion(bool& hasTextureOverride, Handle<Texture>& textureOut) const noexcept;
     [[nodiscard]] const TextureInfo& getTextureInfo(TextureSlot usage) const;
     [[nodiscard]] const RenderStateBlock& getOrCreateRenderStateBlock(RenderStagePass renderStagePass);
-    [[nodiscard]] Texture_wptr getTexture(TextureSlot textureUsage) const;
+    [[nodiscard]] Handle<Texture> getTexture(TextureSlot textureUsage) const;
     [[nodiscard]] DescriptorSet& getDescriptorSet(const RenderStagePass& renderStagePass);
-    [[nodiscard]] ShaderProgramHandle getProgramHandle(RenderStagePass renderStagePass) const;
-    [[nodiscard]] ShaderProgramHandle computeAndGetProgramHandle(RenderStagePass renderStagePass);
+    [[nodiscard]] Handle<ShaderProgram> getProgramHandle(RenderStagePass renderStagePass) const;
+    [[nodiscard]] Handle<ShaderProgram> computeAndGetProgramHandle(RenderStagePass renderStagePass);
     [[nodiscard]] bool hasTransparency() const noexcept;
     [[nodiscard]] bool isReflective() const noexcept;
     [[nodiscard]] bool isRefractive() const noexcept;
@@ -297,8 +304,8 @@ class Material final : public CachedResource {
     // type == ShaderType::Count = add to all stages
     void addShaderDefine(ShaderType type, const string& define, bool addPrefix);
 
-    void saveToXML(const string& entryName, boost::property_tree::ptree& pt) const;
-    void loadFromXML(const string& entryName, const boost::property_tree::ptree& pt);
+    void saveToXML( const std::string& entryName, boost::property_tree::ptree& pt) const;
+    void loadFromXML( const std::string& entryName, const boost::property_tree::ptree& pt);
 
     PROPERTY_RW(Properties, properties);
     PROPERTY_RW(ShaderData, baseShaderData);
@@ -322,29 +329,29 @@ class Material final : public CachedResource {
     void updateTransparency();
 
     void recomputeShaders();
-    void setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
-                                  RenderStagePass stagePass);
 
-    void setShaderProgramInternal(const ShaderProgramDescriptor& shaderDescriptor,
-                                  ShaderProgramInfo& shaderInfo,
-                                  RenderStagePass stagePass) const;
+    void setShaderProgramInternal(ShaderProgramDescriptor shaderDescriptor, RenderStagePass stagePass);
 
-    void computeAndAppendShaderDefines(ShaderProgramDescriptor& shaderDescriptor, RenderStagePass renderStagePass) const;
+    void computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, RenderStagePass renderStagePass) const;
 
     [[nodiscard]] ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass);
 
     [[nodiscard]] const ShaderProgramInfo& shaderInfo(RenderStagePass renderStagePass) const;
 
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Material"; }
+    void saveRenderStatesToXML(const std::string& entryName, boost::property_tree::ptree& pt) const;
+    void loadRenderStatesFromXML(const std::string& entryName, const boost::property_tree::ptree& pt);
 
-    void saveRenderStatesToXML(const string& entryName, boost::property_tree::ptree& pt) const;
-    void loadRenderStatesFromXML(const string& entryName, const boost::property_tree::ptree& pt);
-
-    void saveTextureDataToXML(const string& entryName, boost::property_tree::ptree& pt) const;
-    void loadTextureDataFromXML(const string& entryName, const boost::property_tree::ptree& pt);
+    void saveTextureDataToXML(const std::string& entryName, boost::property_tree::ptree& pt) const;
+    void loadTextureDataFromXML(const std::string& entryName, const boost::property_tree::ptree& pt);
 
     bool setTextureLocked(TextureSlot textureUsageSlot,
-                          const Texture_ptr& texture,
+                          Handle<Texture> texture,
+                          SamplerDescriptor sampler,
+                          TextureOperation op,
+                          bool useInGeometryPasses);
+
+    bool setTextureLocked(TextureSlot textureUsageSlot,
+                          const ResourceDescriptor<Texture>& texture,
                           SamplerDescriptor sampler,
                           TextureOperation op,
                           bool useInGeometryPasses);
@@ -352,8 +359,7 @@ class Material final : public CachedResource {
     [[nodiscard]] bool usesTextureInShader(TextureSlot slot, bool isPrePass, bool isShadowPass) const noexcept;
 
    private:
-    GFXDevice& _context;
-    ResourceCache* _parentCache = nullptr;
+     GFXDevice* _context = nullptr;
 
     struct RenderStateBlockEntry
     {
@@ -368,7 +374,7 @@ class Material final : public CachedResource {
     mutable SharedMutex _textureLock{};
 
     mutable SharedMutex _instanceLock;
-    vector<Material*> _instances{};
+    vector<Handle<Material>> _instances{};
 
     std::array<TextureInfo, to_base(TextureSlot::COUNT)> _textures;
 
@@ -381,8 +387,8 @@ TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);
 
 namespace Attorney {
 class MaterialRenderBin {
-    static void getSortKeys(const Material& material, const RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& hasTransparency) {
-        material.getSortKeys(renderStagePass, shaderKey, textureKey, hasTransparency);
+    static void getSortKeys(Material* material, const RenderStagePass renderStagePass, I64& shaderKey, I64& textureKey, bool& hasTransparency) {
+        material->getSortKeys(renderStagePass, shaderKey, textureKey, hasTransparency);
     }
 
     friend class Divide::RenderBin;

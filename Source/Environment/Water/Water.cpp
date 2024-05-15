@@ -31,8 +31,10 @@ namespace Divide
         constexpr F32 g_reflectionPlaneCorrectionHeight = -1.0f;
     }
 
-    WaterPlane::WaterPlane( ResourceCache* parentCache, size_t descriptorHash, const std::string_view name )
-        : SceneNode( parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_WATER, to_base( ComponentType::TRANSFORM ) )
+    WaterPlane::WaterPlane( const ResourceDescriptor<WaterPlane>& descriptor )
+        : SceneNode( descriptor,
+                     GetSceneNodeType<WaterPlane>(),
+                     to_base( ComponentType::TRANSFORM ) )
     {
         _fogStartEnd = { 648.f, 1300.f };
         _noiseTile = { 15.0f, 15.0f };
@@ -42,112 +44,7 @@ namespace Divide
         _dimensions = { 500u, 500u, 500u };
         // The water doesn't cast shadows, doesn't need ambient occlusion and doesn't have real "depth"
         renderState().addToDrawExclusionMask( RenderStage::SHADOW );
-
-
-        EditorComponentField blurReflectionField = {};
-        blurReflectionField._name = "Blur reflections";
-        blurReflectionField._data = &_blurReflections;
-        blurReflectionField._type = EditorComponentFieldType::PUSH_TYPE;
-        blurReflectionField._readOnly = false;
-        blurReflectionField._basicType = PushConstantType::BOOL;
-
-        getEditorComponent().registerField( MOV( blurReflectionField ) );
-
-        EditorComponentField blurKernelSizeField = {};
-        blurKernelSizeField._name = "Blur kernel size";
-        blurKernelSizeField._data = &_blurKernelSize;
-        blurKernelSizeField._type = EditorComponentFieldType::SLIDER_TYPE;
-        blurKernelSizeField._readOnly = false;
-        blurKernelSizeField._basicType = PushConstantType::UINT;
-        blurKernelSizeField._basicTypeSize = PushConstantSize::WORD;
-        blurKernelSizeField._range = { 2.f, 20.f };
-        blurKernelSizeField._step = 1.f;
-
-        getEditorComponent().registerField( MOV( blurKernelSizeField ) );
-
-        EditorComponentField reflPlaneOffsetField = {};
-        reflPlaneOffsetField._name = "Reflection Plane Offset";
-        reflPlaneOffsetField._data = &_reflPlaneOffset;
-        reflPlaneOffsetField._range = { -5.0f, 5.0f };
-        reflPlaneOffsetField._type = EditorComponentFieldType::PUSH_TYPE;
-        reflPlaneOffsetField._readOnly = false;
-        reflPlaneOffsetField._basicType = PushConstantType::FLOAT;
-
-        getEditorComponent().registerField( MOV( reflPlaneOffsetField ) );
-
-        EditorComponentField refrPlaneOffsetField = {};
-        refrPlaneOffsetField._name = "Refraction Plane Offset";
-        refrPlaneOffsetField._data = &_refrPlaneOffset;
-        refrPlaneOffsetField._range = { -5.0f, 5.0f };
-        refrPlaneOffsetField._type = EditorComponentFieldType::PUSH_TYPE;
-        refrPlaneOffsetField._readOnly = false;
-        refrPlaneOffsetField._basicType = PushConstantType::FLOAT;
-
-        getEditorComponent().registerField( MOV( refrPlaneOffsetField ) );
-
-        EditorComponentField fogDistanceField = {};
-        fogDistanceField._name = "Fog start/end distances";
-        fogDistanceField._data = &_fogStartEnd;
-        fogDistanceField._range = { 0.0f, 4096.0f };
-        fogDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
-        fogDistanceField._readOnly = false;
-        fogDistanceField._basicType = PushConstantType::VEC2;
-
-        getEditorComponent().registerField( MOV( fogDistanceField ) );
-
-        EditorComponentField waterFogField = {};
-        waterFogField._name = "Water fog colour";
-        waterFogField._data = &_waterDistanceFogColour;
-        waterFogField._type = EditorComponentFieldType::PUSH_TYPE;
-        waterFogField._readOnly = false;
-        waterFogField._basicType = PushConstantType::FCOLOUR3;
-
-        getEditorComponent().registerField( MOV( waterFogField ) );
-
-        EditorComponentField noiseTileSizeField = {};
-        noiseTileSizeField._name = "Noise tile factor";
-        noiseTileSizeField._data = &_noiseTile;
-        noiseTileSizeField._range = { 0.0f, 1000.0f };
-        noiseTileSizeField._type = EditorComponentFieldType::PUSH_TYPE;
-        noiseTileSizeField._readOnly = false;
-        noiseTileSizeField._basicType = PushConstantType::VEC2;
-
-        getEditorComponent().registerField( MOV( noiseTileSizeField ) );
-
-        EditorComponentField noiseFactorField = {};
-        noiseFactorField._name = "Noise factor";
-        noiseFactorField._data = &_noiseFactor;
-        noiseFactorField._range = { 0.0f, 10.0f };
-        noiseFactorField._type = EditorComponentFieldType::PUSH_TYPE;
-        noiseFactorField._readOnly = false;
-        noiseFactorField._basicType = PushConstantType::VEC2;
-
-        getEditorComponent().registerField( MOV( noiseFactorField ) );
-
-        EditorComponentField refractionTintField = {};
-        refractionTintField._name = "Refraction tint";
-        refractionTintField._data = &_refractionTint;
-        refractionTintField._type = EditorComponentFieldType::PUSH_TYPE;
-        refractionTintField._readOnly = false;
-        refractionTintField._basicType = PushConstantType::FCOLOUR3;
-
-        getEditorComponent().registerField( MOV( refractionTintField ) );
-
-        EditorComponentField specularShininessField = {};
-        specularShininessField._name = "Specular Shininess";
-        specularShininessField._data = &_specularShininess;
-        specularShininessField._type = EditorComponentFieldType::PUSH_TYPE;
-        specularShininessField._readOnly = false;
-        specularShininessField._range = { 0.01f, Material::MAX_SHININESS };
-        specularShininessField._basicType = PushConstantType::FLOAT;
-
-        getEditorComponent().registerField( MOV( specularShininessField ) );
-
-        getEditorComponent().onChangedCbk( [this]( const std::string_view field ) noexcept
-        {
-            onEditorChange( field );
-        });
-}
+    }
 
     WaterPlane::~WaterPlane()
     {
@@ -163,9 +60,9 @@ namespace Divide
         }
     }
 
-    bool WaterPlane::load()
+    bool WaterPlane::load( PlatformContext& context )
     {
-        if ( _plane != nullptr )
+        if ( _plane != INVALID_HANDLE<Quad3D> )
         {
             return false;
         }
@@ -176,11 +73,11 @@ namespace Divide
 
         const auto name = resourceName();
 
-        ResourceDescriptor waterPlane( "waterPlane" );
+        ResourceDescriptor<Quad3D> waterPlane( "waterPlane" );
         waterPlane.flag( true );  // No default material
         waterPlane.waitForReady( true );
 
-        _plane = CreateResource<Quad3D>( _parentCache, waterPlane );
+        _plane = CreateResource( waterPlane );
 
         SamplerDescriptor defaultSampler = {};
         defaultSampler._wrapU = TextureWrap::REPEAT;
@@ -188,20 +85,23 @@ namespace Divide
         defaultSampler._wrapW = TextureWrap::REPEAT;
         defaultSampler._anisotropyLevel = 4u;
 
-        TextureDescriptor texDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA );
-        texDescriptor.textureOptions()._alphaChannelTransparency = false;
         std::atomic_uint loadTasks = 0u;
 
-        ResourceDescriptor waterTexture( "waterTexture_" + name );
+        ResourceDescriptor<Texture> waterTexture( "waterTexture_" + name );
         waterTexture.assetName( "terrain_water_NM_old.jpg" );
         waterTexture.assetLocation( Paths::g_imagesLocation );
-        waterTexture.propertyDescriptor( texDescriptor );
         waterTexture.waitForReady( false );
 
-        Texture_ptr waterNM = CreateResource<Texture>( _parentCache, waterTexture, loadTasks );
+        TextureDescriptor& texDescriptor = waterTexture._propertyDescriptor;
+        texDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+        texDescriptor._textureOptions._alphaChannelTransparency = false;
 
-        ResourceDescriptor waterMaterial( "waterMaterial_" + name );
-        Material_ptr waterMat = CreateResource<Material>( _parentCache, waterMaterial );
+        Handle<Texture> waterNM = CreateResource( waterTexture, loadTasks );
+
+        ResourceDescriptor<Material> waterMaterial( "waterMaterial_" + name );
+        Handle<Material> waterMatHandle = CreateResource( waterMaterial );
+        ResourcePtr<Material> waterMat = Get(waterMatHandle);
+
         waterMat->updatePriorirty( Material::UpdatePriority::Medium );
         waterMat->properties().shadingMode( ShadingMode::BLINN_PHONG );
         waterMat->properties().bumpMethod( BumpMethod::NORMAL );
@@ -255,20 +155,127 @@ namespace Divide
         } );
 
         waterMat->properties().roughness( 0.01f );
-        waterMat->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, _plane->geometryBuffer()->generateAttributeMap() );
+        waterMat->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, Get(_plane)->geometryBuffer()->generateAttributeMap() );
 
-        setMaterialTpl( waterMat );
+        setMaterialTpl( waterMatHandle );
 
         const F32 halfWidth = _dimensions.width * 0.5f;
         const F32 halfLength = _dimensions.height * 0.5f;
 
         setBounds( BoundingBox( vec3<F32>( -halfWidth, -_dimensions.depth, -halfLength ), vec3<F32>( halfWidth, 0, halfLength ) ) );
 
-        return SceneNode::load();
+        return SceneNode::load( context );
     }
 
     void WaterPlane::postLoad( SceneGraphNode* sgn )
     {
+        PlatformContext& pContext = sgn->context();
+        registerEditorComponent( pContext );
+        DIVIDE_ASSERT( _editorComponent != nullptr );
+
+        EditorComponentField blurReflectionField = {};
+        blurReflectionField._name = "Blur reflections";
+        blurReflectionField._data = &_blurReflections;
+        blurReflectionField._type = EditorComponentFieldType::PUSH_TYPE;
+        blurReflectionField._readOnly = false;
+        blurReflectionField._basicType = PushConstantType::BOOL;
+
+        _editorComponent->registerField( MOV( blurReflectionField ) );
+
+        EditorComponentField blurKernelSizeField = {};
+        blurKernelSizeField._name = "Blur kernel size";
+        blurKernelSizeField._data = &_blurKernelSize;
+        blurKernelSizeField._type = EditorComponentFieldType::SLIDER_TYPE;
+        blurKernelSizeField._readOnly = false;
+        blurKernelSizeField._basicType = PushConstantType::UINT;
+        blurKernelSizeField._basicTypeSize = PushConstantSize::WORD;
+        blurKernelSizeField._range = { 2.f, 20.f };
+        blurKernelSizeField._step = 1.f;
+
+        _editorComponent->registerField( MOV( blurKernelSizeField ) );
+
+        EditorComponentField reflPlaneOffsetField = {};
+        reflPlaneOffsetField._name = "Reflection Plane Offset";
+        reflPlaneOffsetField._data = &_reflPlaneOffset;
+        reflPlaneOffsetField._range = { -5.0f, 5.0f };
+        reflPlaneOffsetField._type = EditorComponentFieldType::PUSH_TYPE;
+        reflPlaneOffsetField._readOnly = false;
+        reflPlaneOffsetField._basicType = PushConstantType::FLOAT;
+
+        _editorComponent->registerField( MOV( reflPlaneOffsetField ) );
+
+        EditorComponentField refrPlaneOffsetField = {};
+        refrPlaneOffsetField._name = "Refraction Plane Offset";
+        refrPlaneOffsetField._data = &_refrPlaneOffset;
+        refrPlaneOffsetField._range = { -5.0f, 5.0f };
+        refrPlaneOffsetField._type = EditorComponentFieldType::PUSH_TYPE;
+        refrPlaneOffsetField._readOnly = false;
+        refrPlaneOffsetField._basicType = PushConstantType::FLOAT;
+
+        _editorComponent->registerField( MOV( refrPlaneOffsetField ) );
+
+        EditorComponentField fogDistanceField = {};
+        fogDistanceField._name = "Fog start/end distances";
+        fogDistanceField._data = &_fogStartEnd;
+        fogDistanceField._range = { 0.0f, 4096.0f };
+        fogDistanceField._type = EditorComponentFieldType::PUSH_TYPE;
+        fogDistanceField._readOnly = false;
+        fogDistanceField._basicType = PushConstantType::VEC2;
+
+        _editorComponent->registerField( MOV( fogDistanceField ) );
+
+        EditorComponentField waterFogField = {};
+        waterFogField._name = "Water fog colour";
+        waterFogField._data = &_waterDistanceFogColour;
+        waterFogField._type = EditorComponentFieldType::PUSH_TYPE;
+        waterFogField._readOnly = false;
+        waterFogField._basicType = PushConstantType::FCOLOUR3;
+
+        _editorComponent->registerField( MOV( waterFogField ) );
+
+        EditorComponentField noiseTileSizeField = {};
+        noiseTileSizeField._name = "Noise tile factor";
+        noiseTileSizeField._data = &_noiseTile;
+        noiseTileSizeField._range = { 0.0f, 1000.0f };
+        noiseTileSizeField._type = EditorComponentFieldType::PUSH_TYPE;
+        noiseTileSizeField._readOnly = false;
+        noiseTileSizeField._basicType = PushConstantType::VEC2;
+
+        _editorComponent->registerField( MOV( noiseTileSizeField ) );
+
+        EditorComponentField noiseFactorField = {};
+        noiseFactorField._name = "Noise factor";
+        noiseFactorField._data = &_noiseFactor;
+        noiseFactorField._range = { 0.0f, 10.0f };
+        noiseFactorField._type = EditorComponentFieldType::PUSH_TYPE;
+        noiseFactorField._readOnly = false;
+        noiseFactorField._basicType = PushConstantType::VEC2;
+
+        _editorComponent->registerField( MOV( noiseFactorField ) );
+
+        EditorComponentField refractionTintField = {};
+        refractionTintField._name = "Refraction tint";
+        refractionTintField._data = &_refractionTint;
+        refractionTintField._type = EditorComponentFieldType::PUSH_TYPE;
+        refractionTintField._readOnly = false;
+        refractionTintField._basicType = PushConstantType::FCOLOUR3;
+
+        _editorComponent->registerField( MOV( refractionTintField ) );
+
+        EditorComponentField specularShininessField = {};
+        specularShininessField._name = "Specular Shininess";
+        specularShininessField._data = &_specularShininess;
+        specularShininessField._type = EditorComponentFieldType::PUSH_TYPE;
+        specularShininessField._readOnly = false;
+        specularShininessField._range = { 0.01f, Material::MAX_SHININESS };
+        specularShininessField._basicType = PushConstantType::FLOAT;
+
+        _editorComponent->registerField( MOV( specularShininessField ) );
+
+        _editorComponent->onChangedCbk( [this]( const std::string_view field ) noexcept
+        {
+            onEditorChange( field );
+        });
         NavigationComponent* nComp = sgn->get<NavigationComponent>();
         if ( nComp != nullptr )
         {
@@ -284,11 +291,11 @@ namespace Divide
         const F32 halfWidth = _dimensions.width * 0.5f;
         const F32 halfLength = _dimensions.height * 0.5f;
 
-        _plane->setCorner( Quad3D::CornerLocation::TOP_LEFT, vec3<F32>( -halfWidth, 0, -halfLength ) );
-        _plane->setCorner( Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>( halfWidth, 0, -halfLength ) );
-        _plane->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>( -halfWidth, 0, halfLength ) );
-        _plane->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( halfWidth, 0, halfLength ) );
-        _plane->setNormal( Quad3D::CornerLocation::CORNER_ALL, WORLD_Y_AXIS );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_LEFT, vec3<F32>( -halfWidth, 0, -halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>( halfWidth, 0, -halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>( -halfWidth, 0, halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( halfWidth, 0, halfLength ) );
+        Get(_plane)->setNormal( Quad3D::CornerLocation::CORNER_ALL, WORLD_Y_AXIS );
         _boundingBox.set( vec3<F32>( -halfWidth, -_dimensions.depth, -halfLength ), vec3<F32>( halfWidth, 0, halfLength ) );
 
         RenderingComponent* renderable = sgn->get<RenderingComponent>();
@@ -312,6 +319,17 @@ namespace Divide
         renderable->toggleRenderOption( RenderingComponent::RenderOptions::CAST_SHADOWS, false );
 
         SceneNode::postLoad( sgn );
+    }
+
+    bool WaterPlane::postLoad()
+    {
+        return SceneNode::postLoad();
+    }
+
+    bool WaterPlane::unload()
+    {
+        DestroyResource(_plane);
+        return SceneNode::unload();
     }
 
     void WaterPlane::sceneUpdate( const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState )
@@ -354,8 +372,10 @@ namespace Divide
     void WaterPlane::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
         GenericDrawCommand& cmd = cmdsOut.emplace_back();
-        cmd._cmd.indexCount = to_U32( _plane->geometryBuffer()->getIndexCount() );
-        cmd._sourceBuffer = _plane->geometryBuffer()->handle();
+        toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
+
+        cmd._cmd.indexCount = to_U32( Get(_plane)->geometryBuffer()->getIndexCount() );
+        cmd._sourceBuffer = Get(_plane)->geometryBuffer()->handle();
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );
     }
@@ -395,7 +415,7 @@ namespace Divide
         const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget( params._target );
 
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
+        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture();
         computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
     }
@@ -470,7 +490,7 @@ namespace Divide
         const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget( params._target );
 
         GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
-        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture().get();
+        computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture();
         computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
     }

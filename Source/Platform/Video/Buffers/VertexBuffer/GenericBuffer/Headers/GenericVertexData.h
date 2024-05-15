@@ -56,7 +56,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          bool indicesNeedCast{ false };
          bool dynamic{ false };
 
-         vector_fast<U16> _smallIndicesTemp;
+         vector<U16> _smallIndicesTemp;
      };
 
      struct SetBufferParams
@@ -76,7 +76,7 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
      };
 
    public:
-    GenericVertexData(GFXDevice& context, U16 ringBufferLength, const bool renderIndirect, const std::string_view name);
+    GenericVertexData(GFXDevice& context, U16 ringBufferLength, const std::string_view name);
 
     virtual BufferLock setIndexBuffer(const IndexBuffer& indices) = 0;
 
@@ -90,8 +90,6 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                                                   U32 elementCountOffset,
                                                   U32 elementCountRange,
                                                   bufferPtr data) = 0;
-
-    PROPERTY_R_IW(bool, renderIndirect, true);
 
    protected:
     Str<256> _name;

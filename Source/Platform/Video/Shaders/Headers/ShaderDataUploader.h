@@ -33,7 +33,7 @@
 #ifndef DVD_SHADER_DATA_UPLOADER_H_
 #define DVD_SHADER_DATA_UPLOADER_H_
 
-#include "Platform/Video/Headers/PushConstant.h"
+#include "Platform/Video/Headers/PushConstants.h"
 #include "Platform/Video/Headers/DescriptorSetsFwd.h"
 
 namespace Divide
@@ -156,7 +156,7 @@ public:
 
     explicit UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask );
 
-    void uploadPushConstant( const GFX::PushConstant& constant, bool force = false ) noexcept;
+    void uploadPushConstant( const PushConstants& constants ) noexcept;
     [[nodiscard]] bool commit( DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
     void onFrameEnd() noexcept;
     void toggleStageVisibility( U16 visibilityMask, bool state);

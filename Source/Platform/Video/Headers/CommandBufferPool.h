@@ -38,28 +38,37 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 namespace GFX {
 
-class CommandBufferPool {
+class CommandBufferPool
+{
  public:
-    static constexpr size_t CommandBufferPoolBufferSize = 8192 * 2;
-    using MemPool = MemoryPool<CommandBuffer, CommandBufferPoolBufferSize>;
-
+    CommandBufferPool(size_t poolSizeFactor);
     ~CommandBufferPool();
 
     Handle<CommandBuffer> allocateBuffer( const char* name, size_t reservedCmdCount );
-    void deallocateBuffer(Handle<CommandBuffer>& buffer);
+    void deallocateBuffer(Handle<CommandBuffer>& handle );
+    CommandBuffer* get( Handle<CommandBuffer> handle );
 
     void reset() noexcept;
 
  private:
-    Mutex _mutex;
-    MemPool _pool;
-    U8 _generation{0u};
-    U32 _bufferCount{0u};
+    Handle<CommandBuffer> allocateBufferLocked( const char* name, size_t reservedCmdCount, bool retry = false );
+ private:
+
+    const size_t _poolSizeFactor;
+
+    SharedMutex _mutex;
+    vector<CommandBuffer*> _pool;
+    vector<std::pair<bool, U8>> _freeList;
+
+    MemoryPool<CommandBuffer, prevPOW2( sizeof( CommandBuffer ) ) * (1u << 3u)> _memPool;
 };
 
+void InitPools(const size_t poolSizeFactor);
 void DestroyPools() noexcept;
+
 Handle<CommandBuffer> AllocateCommandBuffer(const char* name, size_t reservedCmdCount = CommandBuffer::COMMAND_BUFFER_INIT_SIZE );
 void DeallocateCommandBuffer(Handle<CommandBuffer>& buffer);
+CommandBuffer* Get(Handle<CommandBuffer> handle);
 
 }; //namespace GFX
 }; //namespace Divide

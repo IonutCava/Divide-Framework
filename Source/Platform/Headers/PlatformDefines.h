@@ -34,7 +34,6 @@
 #define DVD_PLATFORM_DEFINES_H_
 
 #include "config.h"
-#include "PlatformMemoryDefines.h"
 #include "Core/Headers/ErrorCodes.h"
 #include "Core/Headers/NonMovable.h"
 #include "Platform/File/Headers/ResourcePath.h"
@@ -518,20 +517,30 @@ namespace detail {
 template <typename T>
 struct Handle
 {
-    T* _ptr{nullptr};
+    union
+    {
+        struct
+        {
+            U32 _generation: 8;
+            U32 _index : 24;
+        };
 
-    U32 _generation: 8;
-    U32 _index : 24;
+        U32 _data;
+    };
 
-    bool operator==( const Handle& ) const = default;
+    FORCE_INLINE bool operator==( const Handle& rhs ) const
+    {
+        return _data == rhs._data;
+    }
 };
 
-template<typename T>
-inline constexpr Handle<T> INVALID_HANDLE{ nullptr, U8_MAX, U24_MAX };
 
-#define SCOPE_FAIL auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
+template<typename T>
+inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
+
+#define SCOPE_FAIL    auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
 #define SCOPE_SUCCESS auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnSuccess() + [&]()
-#define SCOPE_EXIT auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept
+#define SCOPE_EXIT    auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept
 
 constexpr F32 EPSILON_F32 = std::numeric_limits<F32>::epsilon();
 constexpr D64 EPSILON_D64 = std::numeric_limits<D64>::epsilon();

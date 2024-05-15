@@ -5,6 +5,8 @@
 #include "Headers/glFramebuffer.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
@@ -59,10 +61,10 @@ namespace Divide
             return false;
         }
          
-        if ( att->_descriptor._externalAttachment == nullptr && att->resolvedTexture()->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
+        if ( att->_descriptor._externalAttachment == nullptr && Get(att->resolvedTexture())->descriptor()._mipMappingState == MipMappingState::AUTO )
         {
             // We do this here to avoid any undefined data if we use this attachment as a texture before we actually draw to it
-            gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(att->resolvedTexture().get())->textureHandle() );
+            gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(Get(att->resolvedTexture()))->textureHandle() );
         }
 
         // Find the appropriate binding point
@@ -71,7 +73,7 @@ namespace Divide
         {
             binding = type == RTAttachmentType::DEPTH ? to_U32( gl46core::GL_DEPTH_ATTACHMENT ) : to_U32( gl46core::GL_DEPTH_STENCIL_ATTACHMENT );
             // Most of these aren't even valid, but hey, doesn't hurt to check
-            _isLayeredDepth = SupportsZOffsetTexture( att->resolvedTexture()->descriptor().texType() );
+            _isLayeredDepth = SupportsZOffsetTexture( Get(att->resolvedTexture())->descriptor()._texType );
         }
 
         att->binding( binding );
@@ -85,16 +87,18 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         const RTAttachment_uptr& attachment = _attachments[ attachmentIdx ];
-        const Texture_ptr& tex = attachment->renderTexture();
-        if ( tex == nullptr )
+        const Handle<Texture> tex = attachment->renderTexture();
+        if ( tex == INVALID_HANDLE<Texture> )
         {
             return false;
         }
 
-        if ( tex->depth() == 1u )
+        ResourcePtr<Texture> texPtr = Get(tex);
+
+        if ( texPtr->depth() == 1u )
         {
             DIVIDE_ASSERT( layerOffset._layer == 0u );
-            if ( !IsCubeTexture( tex->descriptor().texType() ) || layerOffset._cubeFace == 0u )
+            if ( !IsCubeTexture( texPtr->descriptor()._texType ) || layerOffset._cubeFace == 0u )
             {
                 layeredRendering = true;
             }
@@ -123,23 +127,25 @@ namespace Divide
             }
             else
             {
-                DIVIDE_ASSERT( bState._layer._layer < tex->depth() && bState._levelOffset < tex->mipCount());
+                DIVIDE_ASSERT( bState._layer._layer < texPtr->depth() && bState._levelOffset < texPtr->mipCount());
 
-                const gl46core::GLuint handle = static_cast<glTexture*>(tex.get())->textureHandle();
+                ResourcePtr<Texture> resolvedTexPtr = Get( attachment->resolvedTexture() );
+
+                const gl46core::GLuint handle = static_cast<glTexture*>(texPtr)->textureHandle();
                 if ( bState._layer._layer == 0u && bState._layer._cubeFace == 0u && layeredRendering )
                 {
                     gl46core::glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        gl46core::glNamedFramebufferTexture( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset );
+                        gl46core::glNamedFramebufferTexture( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset );
                     }
                 }
-                else if ( IsCubeTexture( tex->descriptor().texType() ) )
+                else if ( IsCubeTexture( texPtr->descriptor()._texType ) )
                 {
                     gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
                     }
                 }
                 else
@@ -148,7 +154,7 @@ namespace Divide
                     gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(attachment->resolvedTexture().get())->textureHandle(), bState._levelOffset, bState._layer._layer );
+                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layer._layer );
                     }
                 }
             }
@@ -304,7 +310,7 @@ namespace Divide
             bool blitted = false, inputDirty = false, outputDirty = false;;
             U16 layerCount = entry._layerCount;
             DIVIDE_ASSERT( layerCount != U16_MAX && entry._mipCount != U16_MAX);
-            if ( IsCubeTexture( inAtt->resolvedTexture()->descriptor().texType() ) )
+            if ( IsCubeTexture( Get(inAtt->resolvedTexture())->descriptor()._texType ) )
             {
                 layerCount *= 6u;
             }
@@ -545,10 +551,10 @@ namespace Divide
             return;
         }
 
-        const Texture_ptr& texture = attachment->resolvedTexture();
-        if ( texture != nullptr && texture->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::AUTO )
+        const Handle<Texture> texture = attachment->resolvedTexture();
+        if ( texture != INVALID_HANDLE<Texture> && Get(texture)->descriptor()._mipMappingState == MipMappingState::AUTO )
         {
-            gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(texture.get())->textureHandle() );
+            gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(Get(texture))->textureHandle() );
         }
     }
 
@@ -572,13 +578,15 @@ namespace Divide
                 {
                     const gl46core::GLint buffer = static_cast<gl46core::GLint>(binding - static_cast<gl46core::GLint>(gl46core::GL_COLOR_ATTACHMENT0));
                     const FColour4& colour = descriptor[i]._colour;
-                    if ( IsNormalizedTexture(att->renderTexture()->descriptor().packing()) )
+
+                    const auto& descriptor = Get( att->renderTexture() )->descriptor();
+                    if ( IsNormalizedTexture(descriptor._packing) )
                     {
                         gl46core::glClearNamedFramebufferfv( _framebufferHandle, gl46core::GL_COLOR, buffer, colour._v );
                     }
                     else
                     {
-                        switch ( att->renderTexture()->descriptor().dataType() )
+                        switch ( descriptor._dataType )
                         {
                             case GFXDataFormat::FLOAT_16:
                             case GFXDataFormat::FLOAT_32:

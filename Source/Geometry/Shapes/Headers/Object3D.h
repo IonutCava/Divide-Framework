@@ -58,36 +58,13 @@ enum class RigidBodyShape : U8;
     return PrimitiveTopology::TRIANGLE_STRIP;
 }
 
-class Object3D : public SceneNode {
+DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
+{
    public:
 
-    enum class ObjectFlag : U8 {
-        OBJECT_FLAG_NONE = 0,
-        OBJECT_FLAG_SKINNED = toBit(1),
-        OBJECT_FLAG_NO_VB = toBit(2),
-        COUNT = 3
-    };
+    explicit Object3D( const ResourceDescriptorBase& descriptor, SceneNodeType type);
 
-    explicit Object3D( PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 flagMask);
-    explicit Object3D( PlatformContext& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, ObjectFlag flag);
-
-    void setMaterialTpl(const Material_ptr& material) override;
-
-    void setObjectFlag(const ObjectFlag flag) noexcept {
-        _geometryFlagMask |= to_base(flag);
-    }
-
-    void clearObjectFlag(const ObjectFlag flag) noexcept {
-        _geometryFlagMask &= ~to_base(flag);
-    }
-
-    bool getObjectFlag(const ObjectFlag flag) const noexcept {
-        return _geometryFlagMask & to_base(flag);
-    }
-
-    U32 getObjectFlagMask() const noexcept {
-        return _geometryFlagMask;
-    }
+    void setMaterialTpl( Handle<Material> material) override;
 
     [[nodiscard]] const VertexBuffer_ptr& geometryBuffer();
 
@@ -117,15 +94,20 @@ class Object3D : public SceneNode {
         }
     }
 
-    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID) {
-         if (!computeTriangleList(partitionID)) {
+    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID)
+    {
+         if (!computeTriangleList(partitionID))
+         {
              DIVIDE_UNEXPECTED_CALL();
          }
+
          return _geometryTriangles[partitionID];
     }
 
-    void addTriangles(const U16 partitionID, const vector<vec3<U32>>& triangles) {
-        if (partitionID >= _geometryTriangles.size()) {
+    void addTriangles(const U16 partitionID, const vector<vec3<U32>>& triangles)
+    {
+        if (partitionID >= _geometryTriangles.size())
+        {
             _geometryTriangles.resize(to_size(partitionID) + 1);
         }
 
@@ -151,14 +133,8 @@ class Object3D : public SceneNode {
 
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Object3D"; }
-
-    void editorFieldChanged(std::string_view field) override;
-
    protected:
-    GFXDevice& _context;
     std::array<U16, 4> _geometryPartitionIDs;
-    U32 _geometryFlagMask = 0u;
     /// 3 indices, pointing to position values, that form a triangle in the mesh.
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition

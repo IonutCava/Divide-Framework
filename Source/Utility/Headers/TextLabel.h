@@ -79,7 +79,7 @@ class TextLabelStyle final : public Hashable {
 };
 
 struct TextElement {
-    using TextType = vector_fast<eastl::string>;
+    using TextType = vector<eastl::string>;
 
     TextElement() = default;
     explicit TextElement(const TextLabelStyle& textLabelStyle, const RelativePosition2D& position);
@@ -93,7 +93,7 @@ struct TextElement {
 };
 
 struct TextElementBatch {
-    using BatchType = vector_fast<TextElement>;
+    using BatchType = vector<TextElement>;
 
     TextElementBatch() = default;
     explicit TextElementBatch(const TextElement& element);

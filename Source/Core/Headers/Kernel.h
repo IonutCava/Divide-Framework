@@ -48,7 +48,6 @@ class GFXDevice;
 class SFXDevice;
 class GUISplash;
 class Application;
-class ResourceCache;
 class ProjectManager;
 class PlatformContext;
 class SceneRenderState;
@@ -120,16 +119,14 @@ class Kernel final : public Input::InputAggregatorInterface,
 
     PROPERTY_RW(LoopTimingData, timingData);
     PROPERTY_RW(bool, keepAlive, true);
-    POINTER_R(ResourceCache, resourceCache, nullptr);
-    POINTER_R(ProjectManager, projectManager, nullptr);
-    POINTER_R(RenderPassManager, renderPassManager, nullptr);
-
+    PROPERTY_R(std::unique_ptr<ProjectManager>, projectManager);
+    PROPERTY_R(std::unique_ptr<RenderPassManager>, renderPassManager);
 
     PROPERTY_R(FrameListenerManager, frameListenerMgr);
     PROPERTY_R(PlatformContext, platformContext);
 
-    FrameListenerManager& frameListenerMgr() noexcept { return _frameListenerMgr; }
-    PlatformContext& platformContext() noexcept { return _platformContext; }
+    FORCE_INLINE FrameListenerManager& frameListenerMgr() noexcept { return _frameListenerMgr; }
+    FORCE_INLINE PlatformContext& platformContext() noexcept { return _platformContext; }
 
     static size_t TotalThreadCount(TaskPoolType type) noexcept;
 
@@ -173,7 +170,7 @@ class Kernel final : public Input::InputAggregatorInterface,
     vector<Time::ProfileTimer*> _renderTimer{};
 
     std::atomic_bool _splashScreenUpdating{};
-    GUISplash* _splashScreen{nullptr};
+    std::unique_ptr<GUISplash> _splashScreen;
 
     // Command line arguments
     I32 _argc;

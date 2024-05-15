@@ -36,7 +36,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 class Project;
-class ResourceCache;
 class PlatformContext;
 
 struct SceneEntry;
@@ -46,12 +45,11 @@ FWD_DECLARE_MANAGED_CLASS( Scene );
 class ScenePool
 {
   protected:
-    SET_DELETE_FRIEND
     friend class Project;
     ScenePool(Project& parentProject);
     ~ScenePool();
 
-    Scene* getOrCreateScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& sceneEntry, bool& foundInCache);
+    Scene* getOrCreateScene(PlatformContext& context, Project& parent, const SceneEntry& sceneEntry, bool& foundInCache);
     bool   deleteScene(I64 targetGUID);
 
   public:

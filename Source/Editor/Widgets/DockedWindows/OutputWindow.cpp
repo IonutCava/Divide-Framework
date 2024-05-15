@@ -229,7 +229,7 @@ namespace Divide
     {
         PrintText(
             {
-                Util::StringFormat( "# {}\n", command_line ),
+                Util::StringFormat( "# {}\n", command_line ).c_str(),
                 Console::EntryType::COMMAND
             }
         );

@@ -38,10 +38,10 @@
 
 namespace Divide {
 
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 class PostFX;
+class ShaderProgram;
 
 struct ToneMapParams
 {
@@ -80,7 +80,6 @@ namespace TypeUtil {
     [[nodiscard]] ToneMapParams::MapFunctions StringToToneMapFunctions(const string& name);
 };
 
-class ResourceCache;
 class PreRenderBatch {
    private:
     struct HDRTargets {
@@ -111,7 +110,7 @@ class PreRenderBatch {
        };
 
    public:
-    PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache* cache);
+    PreRenderBatch(GFXDevice& context, PostFX& parent);
     ~PreRenderBatch();
 
     [[nodiscard]] PostFX& parent() const noexcept { return _parent; }
@@ -129,7 +128,7 @@ class PreRenderBatch {
 
     [[nodiscard]] RenderTargetHandle screenRT() const noexcept;
     [[nodiscard]] RenderTargetHandle edgesRT() const noexcept;
-    [[nodiscard]] Texture_ptr luminanceTex() const noexcept;
+    [[nodiscard]] Handle<Texture> luminanceTex() const noexcept;
 
     [[nodiscard]] PreRenderOperator* getOperator(FilterType type) const;
 
@@ -176,18 +175,18 @@ class PreRenderBatch {
     PostFX&    _parent;
 
     std::array<OperatorBatch, to_base(FilterSpace::COUNT)> _operators;
-    std::array<ShaderProgram_ptr, to_base(EdgeDetectionMethod::COUNT)> _edgeDetection{};
+    std::array<Handle<ShaderProgram>, to_base(EdgeDetectionMethod::COUNT)> _edgeDetection{};
     std::array<Pipeline*, to_base(EdgeDetectionMethod::COUNT)> _edgeDetectionPipelines{};
 
     ScreenTargets _screenRTs{};
     ShaderBuffer_uptr _histogramBuffer{ nullptr };
-    Texture_ptr _currentLuminance{ nullptr };
-    ShaderProgram_ptr _toneMap{ nullptr };
-    ShaderProgram_ptr _toneMapAdaptive{ nullptr };
-    ShaderProgram_ptr _createHistogram{ nullptr };
-    ShaderProgram_ptr _averageHistogram{ nullptr };
-    ShaderProgram_ptr _lineariseDepthBuffer{ nullptr };
-    ResourceCache* _resCache{ nullptr };
+    Handle<Texture> _currentLuminance{ INVALID_HANDLE<Texture> };
+    Handle<ShaderProgram> _toneMap{ INVALID_HANDLE<ShaderProgram> };
+    Handle<ShaderProgram> _toneMapAdaptive{ INVALID_HANDLE<ShaderProgram> };
+    Handle<ShaderProgram> _createHistogram{ INVALID_HANDLE<ShaderProgram> };
+    Handle<ShaderProgram> _averageHistogram{ INVALID_HANDLE<ShaderProgram> };
+    Handle<ShaderProgram> _lineariseDepthBuffer{ INVALID_HANDLE<ShaderProgram> };
+ 
     Pipeline* _pipelineLumCalcHistogram{ nullptr };
     Pipeline* _pipelineLumCalcAverage{ nullptr };
     Pipeline* _pipelineToneMap{ nullptr };

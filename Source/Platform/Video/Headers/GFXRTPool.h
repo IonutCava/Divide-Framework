@@ -38,12 +38,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 class GFXRTPool {
-protected:
-    friend class GFXDevice;
+
+public:
     explicit GFXRTPool(GFXDevice& parent);
     ~GFXRTPool() = default;
 
-public:
     [[nodiscard]] RenderTargetHandle allocateRT(const RenderTargetDescriptor& descriptor);
     [[nodiscard]] bool               deallocateRT(RenderTargetHandle& handle);
     [[nodiscard]] RenderTarget*      getRenderTarget(const RenderTargetID target) const;
@@ -51,8 +50,6 @@ public:
     [[nodiscard]] inline const vector<RenderTarget_uptr>& getRenderTargets() const noexcept { return _renderTargets; }
 
 protected:
-    SET_SAFE_DELETE_FRIEND
-
     GFXDevice& _parent;
     mutable SharedMutex _renderTargetLock;
     vector<RenderTarget_uptr> _renderTargets;

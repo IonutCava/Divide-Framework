@@ -96,6 +96,8 @@ namespace Divide
 
     using Byte = std::byte;
 
+constexpr Byte Byte_ZERO = Byte{0u};
+
 constexpr U8  U8_MAX  = std::numeric_limits<U8>::max();
 constexpr U16 U16_MAX = std::numeric_limits<U16>::max();
 constexpr U32 U24_MAX = (1 << 24u) - 1u;
@@ -553,28 +555,31 @@ constexpr D64 D64_ZERO = 0.0;
         return fits_in_registers<T>() && can_be_returned_by_value<T>();
     }
 
-#define GET_RET_TYPE(Type) typename std::conditional<pass_by_value<Type>(), Type, Type const&>::type
-#define GET_PASS_TYPE(Type) typename std::conditional<pass_by_value<Type>(), std::conditional<std::is_move_assignable_v<Type>, Type, const Type>::type, Type const&>::type
+template<typename Type>
+using GET_RET_TYPE = typename std::conditional<pass_by_value<Type>(), Type, Type const&>::type;
+
+template<typename Type>
+using GET_PASS_TYPE = typename std::conditional<pass_by_value<Type>(), typename std::conditional<std::is_move_assignable_v<Type>, Type, const Type>::type, Type const&>::type;
 
 #define PROPERTY_GET_SET(Type, Name)                                                         \
 public:                                                                                      \
-    inline void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }        \
+    inline void Name(GET_PASS_TYPE<Type> val) noexcept { _##Name = val; }        \
     [[nodiscard]] inline Type& Name() noexcept { return _##Name; }                     \
-    [[nodiscard]] inline GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] inline GET_RET_TYPE<Type> Name() const noexcept { return _##Name; }
 
 #define PROPERTY_GET(Type, Name)                                                             \
 public:                                                                                      \
-    [[nodiscard]] inline GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] inline GET_RET_TYPE<Type> Name() const noexcept { return _##Name; }
 
 #define VIRTUAL_PROPERTY_GET_SET(Type, Name)                                             \
 public:                                                                                  \
-    virtual void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }         \
+    virtual void Name(GET_PASS_TYPE<Type> val) noexcept { _##Name = val; }         \
     [[nodiscard]] virtual Type& Name() noexcept { return _##Name; }                      \
-    [[nodiscard]] virtual GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] virtual GET_RET_TYPE<Type> Name() const noexcept { return _##Name; }
 
 #define VIRTUAL_PROPERTY_GET(Type, Name)                                              \
 public:                                                                               \
-    [[nodiscard]] virtual GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] virtual GET_RET_TYPE<Type> Name() const noexcept { return _##Name; }
 
 #define POINTER_GET_SET(Type, Name)                                                  \
 public:                                                                              \
@@ -587,11 +592,11 @@ public:                                                                         
 
 #define PROPERTY_GET_INTERNAL(Type, Name)                                                  \
 protected:                                                                                 \
-    [[nodiscard]] inline GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] inline GET_RET_TYPE<Type> Name() const noexcept { return _##Name; }
 
 #define VIRTUAL_PROPERTY_GET_INTERNAL(Type, Name)                                     \
 protected:                                                                            \
-    [[nodiscard]] virtual GET_RET_TYPE(Type) Name() const noexcept { return _##Name; }
+    [[nodiscard]] virtual GET_RET_TYPE<Type> Name() const noexcept { return _##Name; }
 
 #define POINTER_GET_INTERNAL(Type, Name)                                             \
 protected:                                                                           \
@@ -599,11 +604,11 @@ protected:                                                                      
 
 #define PROPERTY_SET_INTERNAL(Type, Name)                                             \
 protected:                                                                            \
-    inline void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
+    inline void Name(GET_PASS_TYPE<Type> val) noexcept { _##Name = val; }
 
 #define VIRTUAL_PROPERTY_SET_INTERNAL(Type, Name)                                \
 protected:                                                                       \
-    virtual void Name(GET_PASS_TYPE(Type) val) noexcept { _##Name = val; }
+    virtual void Name(GET_PASS_TYPE<Type> val) noexcept { _##Name = val; }
 
 #define POINTER_SET_INTERNAL(Type, Name)                                \
 protected:                                                              \

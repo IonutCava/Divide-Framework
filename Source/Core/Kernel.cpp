@@ -100,15 +100,13 @@ Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
     _flushToScreenTimer.addChildTimer(_postRenderTimer);
     _sceneUpdateTimer.addChildTimer(_sceneUpdateLoopTimer);
 
-    _projectManager = MemoryManager_NEW ProjectManager(*this); // Scene Manager
-    _resourceCache = MemoryManager_NEW ResourceCache(_platformContext);
-    _renderPassManager = MemoryManager_NEW RenderPassManager(*this, _platformContext.gfx());
+    _projectManager    = std::make_unique<ProjectManager>(*this); // Scene Manager
+    _renderPassManager = std::make_unique<RenderPassManager>(*this, _platformContext.gfx());
 }
 
 Kernel::~Kernel()
 {
-    DIVIDE_ASSERT(projectManager() == nullptr && resourceCache() == nullptr && renderPassManager() == nullptr,
-                  "Kernel destructor: not all resources have been released properly!");
+    DIVIDE_ASSERT(projectManager() == nullptr && renderPassManager() == nullptr, "Kernel destructor: not all resources have been released properly!");
 }
 
 void Kernel::startSplashScreen() {
@@ -126,7 +124,7 @@ void Kernel::startSplashScreen() {
     window.hidden(false);
     SDLEventManager::pollEvents();
 
-    _splashScreen = MemoryManager_NEW GUISplash( resourceCache(), "divideLogo.jpg", _platformContext.config().runtime.splashScreenSize );
+    _splashScreen = std::make_unique<GUISplash>( "divideLogo.jpg", _platformContext.config().runtime.splashScreenSize );
 
     _platformContext.app().windowManager().drawToWindow(window);
     _splashScreen->render(_platformContext.gfx());
@@ -150,7 +148,7 @@ void Kernel::stopSplashScreen()
     }
     SDLEventManager::pollEvents();
 
-    MemoryManager::SAFE_DELETE( _splashScreen );
+    _splashScreen.reset();
 }
 
 void Kernel::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTimeUSApp )
@@ -187,7 +185,14 @@ void Kernel::onLoop()
     {
         Time::ScopedTimer timer(_appLoopTimerMain);
 
-        if (!keepAlive()) {
+        ResourceCache::OnFrameStart();
+        SCOPE_EXIT
+        {
+            ResourceCache::OnFrameEnd();
+        };
+
+        if (!keepAlive())
+        {
             // exiting the rendering loop will return us to the last control point
             _platformContext.app().mainLoopActive(false);
 
@@ -198,7 +203,8 @@ void Kernel::onLoop()
             return;
         }
 
-        if constexpr(!Config::Build::IS_SHIPPING_BUILD) {
+        if constexpr(!Config::Build::IS_SHIPPING_BUILD)
+        {
             // Check for any file changes (shaders, scripts, etc)
             FileWatcherManager::update();
         }
@@ -427,7 +433,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
     if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / Config::Networking::NETWORK_SEND_FREQUENCY_HZ) == 0)
     {
         U32 retryCount = 0;
-        while (!Attorney::ProjectManagerKernel::networkUpdate(_projectManager, GFXDevice::FrameCount()))
+        while (!Attorney::ProjectManagerKernel::networkUpdate(_projectManager.get(), GFXDevice::FrameCount()))
         {
             if (retryCount++ > Config::Networking::NETWORK_SEND_RETRY_COUNT)
             {
@@ -590,7 +596,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     renderParams._sceneRenderState = &_projectManager->activeProject()->getActiveScene()->state()->renderState();
 
     for (U8 i = 0u; i < playerCount; ++i) {
-        Attorney::ProjectManagerKernel::currentPlayerPass(_projectManager, i);
+        Attorney::ProjectManagerKernel::currentPlayerPass(_projectManager.get(), i);
         renderParams._playerPass = i;
 
         if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_START, evt))
@@ -644,7 +650,7 @@ void Kernel::warmup()
 
     stopSplashScreen();
 
-    Attorney::ProjectManagerKernel::initPostLoadState(_projectManager);
+    Attorney::ProjectManagerKernel::initPostLoadState(_projectManager.get());
 }
 
 
@@ -717,18 +723,19 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     Locale::ChangeLanguage(config.language.c_str());
-    ECS::Initialize();
 
     Console::printfn(LOCALE_STR("START_RENDER_INTERFACE"));
 
     const RenderAPI renderingAPI = static_cast<RenderAPI>(config.runtime.targetRenderingAPI);
 
     ErrorCode initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
+
     if (initError != ErrorCode::NO_ERR)
     {
         return initError;
     }
 
+    ResourceCache::Init(renderingAPI, _platformContext);
     Attorney::TextureKernel::UseTextureDDSCache( config.debug.cache.enabled && config.debug.cache.textureDDS );
 
     Camera::InitPool();
@@ -777,7 +784,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     _inputConsumers[to_base(InputConsumerType::GUI)] = &_platformContext.gui();
-    _inputConsumers[to_base(InputConsumerType::Scene)] = _projectManager;
+    _inputConsumers[to_base(InputConsumerType::Scene)] = _projectManager.get();
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
     _renderPassManager->setRenderPass(RenderStage::SHADOW,       {   });
@@ -789,12 +796,12 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Console::printfn(LOCALE_STR("SCENE_ADD_DEFAULT_CAMERA"));
 
     WindowManager& winManager = _platformContext.app().windowManager();
-    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& )
+    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _projectManager.get()](const DisplayWindow::WindowEventArgs& )
     {
         mgr->onChangeFocus(false);
         return true;
     });
-    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _projectManager](const DisplayWindow::WindowEventArgs& )
+    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _projectManager.get()](const DisplayWindow::WindowEventArgs& )
     {
         mgr->onChangeFocus(true);
         return true;
@@ -803,7 +810,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Script::OnStartup();
     ProjectManager::OnStartup(_platformContext);
     // Initialize GUI with our current resolution
-    initError = _platformContext.gui().init(_platformContext, resourceCache());
+    initError = _platformContext.gui().init(_platformContext);
     if ( initError != ErrorCode::NO_ERR )
     {
         return initError;
@@ -836,7 +843,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         Console::printfn( LOCALE_STR( "START_FRAMEWORK_GAME" ), startupProject.c_str() );
     }
 
-    ProjectIDs& projects = Attorney::ProjectManagerKernel::init(_projectManager);
+    ProjectIDs& projects = Attorney::ProjectManagerKernel::init(_projectManager.get());
     if ( projects.empty() )
     {
         Console::errorfn( LOCALE_STR( "ERROR_PROJECTS_LOAD" ) );
@@ -908,7 +915,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         {
             return ErrorCode::EDITOR_INIT_ERROR;
         }
-        _projectManager->addSelectionCallback([ctx = &_platformContext](const PlayerIndex idx, const vector_fast<SceneGraphNode*>& nodes)
+        _projectManager->addSelectionCallback([ctx = &_platformContext](const PlayerIndex idx, const vector<SceneGraphNode*>& nodes)
         {
             ctx->editor().selectionChangeCallback(idx, nodes);
         });
@@ -937,21 +944,20 @@ void Kernel::shutdown()
 
     ProjectManager::OnShutdown(_platformContext);
     Script::OnShutdown();
-    MemoryManager::SAFE_DELETE(_projectManager);
-    ECS::Terminate();
+    _projectManager.reset();
 
     ShadowMap::destroyShadowMaps(_platformContext.gfx());
-    MemoryManager::SAFE_DELETE(_renderPassManager);
+    _renderPassManager.reset();
 
     SceneEnvironmentProbePool::OnShutdown(_platformContext.gfx());
+    ResourceCache::Stop();
     _platformContext.terminate();
     Camera::DestroyPool();
-    resourceCache()->clear();
-    MemoryManager::SAFE_DELETE(_resourceCache);
     for ( U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i )
     {
         _platformContext.taskPool( static_cast<TaskPoolType>(i) ).shutdown();
     }
+    ResourceCache::PrintLeakedResources();
     Console::printfn(LOCALE_STR("STOP_ENGINE_OK"));
 }
 

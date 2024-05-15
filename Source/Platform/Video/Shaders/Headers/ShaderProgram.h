@@ -60,7 +60,7 @@ namespace Divide
 
     using SpvWord = U32;
 
-    FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
+    class ShaderProgram;
 
     namespace TypeUtil
     {
@@ -164,11 +164,11 @@ namespace Divide
         using RenderTargets = std::array<bool, to_base( RTColourAttachmentSlot::COUNT )>;
         using ShaderLoadData = std::array<LoadData, to_base( ShaderType::COUNT )>;
 
-        using ShaderProgramMap = std::array<ShaderProgramMapEntry, U16_MAX>;
+        using ShaderProgramMap = eastl::fixed_vector<ShaderProgram*, U16_MAX, true>;
 
         using AtomMap = hashMap<U64 /*name hash*/, string>;
         using AtomInclusionMap = hashMap<U64 /*name hash*/, eastl::set<U64>>;
-        using ShaderQueue = eastl::stack<ShaderQueueEntry, vector_fast<ShaderQueueEntry>>;
+        using ShaderQueue = eastl::stack<ShaderQueueEntry, vector<ShaderQueueEntry>>;
 
         struct BindingsPerSet
         {
@@ -181,17 +181,12 @@ namespace Divide
         using BindingSetData = std::array<BindingsPerSetArray, to_base( DescriptorSetUsage::COUNT )>;
 
     public:
-        explicit ShaderProgram( GFXDevice& context,
-                                size_t descriptorHash,
-                                std::string_view shaderName,
-                                std::string_view shaderFileName,
-                                const ResourcePath& shaderFileLocation,
-                                ShaderProgramDescriptor descriptor,
-                                ResourceCache& parentCache );
+        explicit ShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor );
 
         ~ShaderProgram() override;
 
-        bool load() override;
+        bool load( PlatformContext& context ) override;
+        bool postLoad() override;
         bool unload() override;
 
         inline bool recompile()
@@ -211,7 +206,7 @@ namespace Divide
         static void InitStaticData();
         static void DestroyStaticData();
 
-        [[nodiscard]] static ErrorCode OnStartup( ResourceCache* parentCache );
+        [[nodiscard]] static ErrorCode OnStartup( PlatformContext& context);
         [[nodiscard]] static bool OnShutdown();
         static void OnBeginFrame( GFXDevice& gfx );
         static void OnEndFrame( GFXDevice& gfx );
@@ -219,11 +214,9 @@ namespace Divide
         /// Queue a shaderProgram recompile request
         static bool RecompileShaderProgram( const std::string_view name );
         /// Remove a shaderProgram from the program cache
-        static bool UnregisterShaderProgram( ShaderProgramHandle shaderHandle );
+        static bool UnregisterShaderProgram( ShaderProgram* shaderProgram );
         /// Add a shaderProgram to the program cache
         static void RegisterShaderProgram( ShaderProgram* shaderProgram );
-        /// Find a specific shader program by handle.
-        [[nodiscard]] static ShaderProgram* FindShaderProgram( ShaderProgramHandle shaderHandle );
 
         static void RebuildAllShaders();
 
@@ -234,14 +227,9 @@ namespace Divide
             return s_shaderCount.load( std::memory_order_relaxed );
         }
 
-        [[nodiscard]] const ShaderProgramDescriptor& descriptor() const noexcept
+        [[nodiscard]] inline const ShaderProgramDescriptor& descriptor() const noexcept
         {
             return _descriptor;
-        }
-
-        [[nodiscard]] const char* getResourceTypeName() const noexcept override
-        {
-            return "ShaderProgram";
         }
 
         static void OnAtomChange( std::string_view atomName, FileUpdateEvent evt );
@@ -257,7 +245,6 @@ namespace Divide
 
         PROPERTY_RW( bool, highPriority, true );
         PROPERTY_RW( bool, useShaderCache, true );
-        PROPERTY_R_IW( ShaderProgramHandle, handle, SHADER_INVALID_HANDLE );
         PROPERTY_R_IW( BindingsPerSetArray, perDrawDescriptorSetLayout );
         PROPERTY_R_IW( RenderTargets, fragmentOutputs );
         PROPERTY_R_IW( SetUsageData, setUsage );
@@ -279,7 +266,7 @@ namespace Divide
         struct LastRequestedShader
         {
             ShaderProgram* _program{ nullptr };
-            ShaderProgramHandle _handle{ SHADER_INVALID_HANDLE };
+            Handle<ShaderProgram> _handle{ INVALID_HANDLE<ShaderProgram> };
         };
         static LastRequestedShader s_lastRequestedShaderProgram;
         static SharedMutex s_programLock;
@@ -319,7 +306,6 @@ namespace Divide
         template <typename T>
         friend class ImplResourceLoader;
 
-        ResourceCache& _parentCache;
         const ShaderProgramDescriptor _descriptor;
 
     protected:

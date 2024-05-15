@@ -26,12 +26,12 @@ namespace Divide::AI::Navigation
         : GUIDWrapper()
         , PlatformContextComponent( context )
         , _parentScene(parentScene)
+        , _debugDrawInterface( std::make_unique<NavMeshDebugDraw>( context.gfx() ) )
         , _recastInterface( recastInterface )
     {
         _filePath =  Scene::GetSceneFullPath( _parentScene ) / Paths::g_navMeshesLocation;
         _configFile = (_filePath / "navMeshConfig.ini").string();
 
-        _debugDrawInterface = MemoryManager_NEW NavMeshDebugDraw( context.gfx() );
         _buildThreaded = true;
         _debugDraw = false;
         _renderConnections = false;
@@ -51,7 +51,6 @@ namespace Divide::AI::Navigation
     NavigationMesh::~NavigationMesh()
     {
         unload();
-        MemoryManager::DELETE( _debugDrawInterface );
     }
 
     bool NavigationMesh::unload()
@@ -320,7 +319,7 @@ namespace Divide::AI::Navigation
 
         Util::ReplaceStringInPlace( geometrySaveFile, ".nm", ".ig" );
 
-        data.clear( false );
+        data.clear();
         data.name( nodeName );
 
         if ( !NavigationMeshLoader::LoadMeshFile( data, _filePath, geometrySaveFile.c_str() ) )
@@ -472,7 +471,7 @@ namespace Divide::AI::Navigation
             return false;
         }
 
-        U8* areas = MemoryManager_NEW U8[data.getTriCount()];
+        U8* areas = new U8[data.getTriCount()];
 
         if ( !areas )
         {
@@ -493,7 +492,7 @@ namespace Divide::AI::Navigation
 
         if ( !_saveIntermediates )
         {
-            MemoryManager::DELETE_ARRAY( areas );
+            delete[] areas;
         }
 
         // Filter out areas with low ceilings and other stuff
@@ -654,31 +653,31 @@ namespace Divide::AI::Navigation
                 case RenderMode::RENDER_NAVMESH:
                     if ( _navMesh )
                     {
-                        duDebugDrawNavMesh( _debugDrawInterface, *_navMesh, 0 );
+                        duDebugDrawNavMesh( _debugDrawInterface.get(), *_navMesh, 0 );
                     }
                     break;
                 case RenderMode::RENDER_CONTOURS:
                     if ( _countourSet )
                     {
-                        duDebugDrawContours( _debugDrawInterface, *_countourSet );
+                        duDebugDrawContours( _debugDrawInterface.get(), *_countourSet );
                     }
                     break;
                 case RenderMode::RENDER_POLYMESH:
                     if ( _polyMesh )
                     {
-                        duDebugDrawPolyMesh( _debugDrawInterface, *_polyMesh );
+                        duDebugDrawPolyMesh( _debugDrawInterface.get(), *_polyMesh );
                     }
                     break;
                 case RenderMode::RENDER_DETAILMESH:
                     if ( _polyMeshDetail )
                     {
-                        duDebugDrawPolyMeshDetail( _debugDrawInterface, *_polyMeshDetail );
+                        duDebugDrawPolyMeshDetail( _debugDrawInterface.get(), *_polyMeshDetail );
                     }
                     break;
                 case RenderMode::RENDER_PORTALS:
                     if ( _navMesh )
                     {
-                        duDebugDrawNavMeshPortals( _debugDrawInterface, *_navMesh );
+                        duDebugDrawNavMeshPortals( _debugDrawInterface.get(), *_navMesh );
                     }
                     break;
             }
@@ -687,7 +686,7 @@ namespace Divide::AI::Navigation
             {
                 if ( _countourSet && _renderConnections )
                 {
-                    duDebugDrawRegionConnections( _debugDrawInterface, *_countourSet );
+                    duDebugDrawRegionConnections( _debugDrawInterface.get(), *_countourSet );
                 }
             }
 
@@ -713,7 +712,9 @@ namespace Divide::AI::Navigation
         const ResourcePath file{ Util::StringFormat("{}{}.nm", _filePath, nodeName ) };
 
         // Parse objects from level into RC-compatible format
-        FILE* fp = fopen( (_filePath / file ).string().c_str(), "rb" );
+        const string sourceFile = (_filePath / file).string();
+
+        FILE* fp = fopen( sourceFile.c_str(), "rb" );
         if ( !fp )
         {
             return false;
@@ -793,7 +794,8 @@ namespace Divide::AI::Navigation
         const ResourcePath file{ Util::StringFormat( "{}{}.nm", _filePath, nodeName.c_str() ) };
 
         // Save our NavigationMesh into a file to load from next time
-        FILE* fp = fopen( (_filePath / file).string().c_str(), "wb" );
+        const string sourceFile = (_filePath / file).string();
+        FILE* fp = fopen( sourceFile.c_str(), "wb" );
         if ( !fp )
         {
             return false;

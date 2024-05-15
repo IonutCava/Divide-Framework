@@ -105,13 +105,10 @@ namespace Divide {
         [[nodiscard]] bool GetLine(istringstream& input, T_str& line, char delimiter = '\n');
 
         template <typename... Args>
-        [[nodiscard]] FORCE_INLINE string StringFormat(const std::string_view fmt, Args&& ...args)
-        {
-            return fmt::vformat(fmt, fmt::make_format_args( args... ) );
-        }
+        [[nodiscard]] string StringFormat(const std::string_view fmt, Args&& ...args);
 
         template<typename T>
-        [[nodiscard]] string to_string(T value);
+        [[nodiscard]] string to_string( GET_PASS_TYPE<T> value);
 
         template<typename T_str = string> requires is_string<T_str>
         [[nodiscard]] U32 LineCount(const T_str& str);

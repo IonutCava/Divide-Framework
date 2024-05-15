@@ -20,7 +20,7 @@ set(APP_BUILD_TARGETS
     ${APP_LIB_DIVIDE}
     ${APP_BUILD_EXES}
 )
-
+ 
 include_directories( "${CMAKE_SOURCE_DIR}/Source" )
 include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
 
@@ -43,7 +43,13 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     )
 
     set(PCH_COMPILE_OPTIONS /bigobj
+                            /wd4005 #_WIN32_WINNT redefinition
+                            /wd4100 #unreferecend format parameter
+                            /wd4201 #nonstandard extension used: nameless struct/union
+                            /wd4310 #cast truncates constant value
+                            /wd4624 #destructor was implicitly defines as deleted
                             /wd5031 #pragma push/pop mismatch triggering in some EASTL headers as they split push and pop in separate headers for some things
+                            /wd4996 
     )
 
     # All of these (including the Clang/GCC equivalents) could just be avoided with /W0..3, but I want to be explicit about the warnings I encounter with external libs
@@ -70,74 +76,29 @@ else()
 
     if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 
-        set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS}
-                                -Wno-macro-redefined
-                                -Wno-clang-cl-pch
-                                -Wno-old-style-cast
-                                -Wno-format-nonliteral
-                                -Wno-c++98-compat
-                                -Wno-c++98-compat-pedantic
-                                -Wno-cast-function-type-strict
-                                -Wno-global-constructors #Really now?
+        set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS}  -Wno-macro-redefined           -Wno-clang-cl-pch
+                                   -Wno-old-style-cast        -Wno-format-nonliteral         -Wno-c++98-compat
+                                   -Wno-c++98-compat-pedantic -Wno-cast-function-type-strict -Wno-global-constructors #Really now?
         )
-        set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}
-                                        -Wno-reserved-macro-identifier
-                                        -Wno-documentation
-                                        -Wno-documentation-unknown-command
-                                        -Wno-ignored-attributes
-                                        -Wno-undef
-                                        -Wno-cast-qual
-                                        -Wno-cast-align
-                                        -Wno-cast-function-type
-                                        -Wno-sign-conversion
-                                        -Wno-float-conversion
-                                        -Wno-string-conversion
-                                        -Wno-string-plus-int
-                                        -Wno-double-promotion
-                                        -Wno-unused-member-function
-                                        -Wno-conditional-uninitialized
-                                        -Wno-implicit-int-conversion
-                                        -Wno-implicit-float-conversion
-                                        -Wno-unsafe-buffer-usage
-                                        -Wno-covered-switch-default
-                                        -Wno-unused-private-field
-                                        -Wno-missing-braces
-                                        -Wno-gnu-zero-variadic-macro-arguments
-                                        -Wno-float-equal
-                                        -Wno-extra-semi
-                                        -Wno-switch-enum
-                                        -Wno-shadow-uncaptured-local
-                                        -Wno-disabled-macro-expansion
-                                        -Wno-nullability-extension
-                                        -Wno-zero-as-null-pointer-constant
-                                        -Wno-suggest-override
-                                        -Wno-suggest-destructor-override
-                                        -Wno-reserved-identifier
-                                        -Wno-implicit-int-float-conversion
-                                        -Wno-unknown-pragmas
-                                        -Wno-strict-prototypes
-                                        -Wno-unused-template
-                                        -Wno-unused-macros
-                                        -Wno-shorten-64-to-32
-                                        -Wno-missing-prototypes
-                                        -Wno-newline-eof
-                                        -Wno-extra-semi-stmt
-                                        -Wno-comma
-                                        -Wno-shadow
-                                        -Wno-microsoft-enum-value
-                                        -Wno-language-extension-token
-                                        -Wno-deprecated-dynamic-exception-spec
-                                        -Wno-exit-time-destructors
-                                        -Wno-shadow-field-in-constructor
-                                        -Wno-implicit-fallthrough
-                                        -Wno-inconsistent-missing-override
-                                        -Wno-inconsistent-missing-destructor-override
-                                        -Wno-deprecated-declarations
-                                        -Wno-deprecated-copy-with-dtor
-                                        -Wno-deprecated-copy-with-user-provided-dtor
-                                        -Wno-parentheses-equality
-                                        -Wno-return-type-c-linkage
-                                        -Wno-missing-field-initializers
+        set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}         -Wno-reserved-macro-identifier                -Wno-documentation
+                                        -Wno-documentation-unknown-command     -Wno-ignored-attributes                       -Wno-undef
+                                        -Wno-cast-qual                         -Wno-cast-align                               -Wno-cast-function-type
+                                        -Wno-sign-conversion                   -Wno-float-conversion                         -Wno-string-conversion
+                                        -Wno-string-plus-int                   -Wno-double-promotion                         -Wno-unused-member-function
+                                        -Wno-conditional-uninitialized         -Wno-implicit-int-conversion                  -Wno-implicit-float-conversion
+                                        -Wno-unsafe-buffer-usage               -Wno-covered-switch-default                   -Wno-unused-private-field
+                                        -Wno-missing-braces                    -Wno-gnu-zero-variadic-macro-arguments        -Wno-float-equal
+                                        -Wno-extra-semi                        -Wno-switch-enum -Wno-shadow-uncaptured-local -Wno-disabled-macro-expansion
+                                        -Wno-nullability-extension             -Wno-zero-as-null-pointer-constant            -Wno-suggest-override
+                                        -Wno-suggest-destructor-override       -Wno-reserved-identifier                      -Wno-implicit-int-float-conversion
+                                        -Wno-unknown-pragmas                   -Wno-strict-prototypes                        -Wno-unused-template
+                                        -Wno-unused-macros                     -Wno-shorten-64-to-32                         -Wno-missing-prototypes
+                                        -Wno-newline-eof                       -Wno-extra-semi-stmt                          -Wno-comma
+                                        -Wno-shadow                            -Wno-microsoft-enum-value                     -Wno-language-extension-token
+                                        -Wno-deprecated-dynamic-exception-spec -Wno-exit-time-destructors                    -Wno-shadow-field-in-constructor
+                                        -Wno-implicit-fallthrough              -Wno-inconsistent-missing-override            -Wno-inconsistent-missing-destructor-override
+                                        -Wno-deprecated-declarations           -Wno-deprecated-copy-with-dtor                -Wno-deprecated-copy-with-user-provided-dtor
+                                        -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
                                         -Wno-nonportable-system-include-path
         )
     else() #GCC
@@ -149,6 +110,11 @@ endif()
 
 add_library( ${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_FETCH_SRC_FILES} )
 target_link_libraries(${APP_THIRD_PARTY_LIB} PUBLIC OpenMP::OpenMP_CXX)
+
+if(WIN32)
+    target_link_libraries(${APP_THIRD_PARTY_LIB} PUBLIC Shcore.lib Winmm.lib)
+endif()
+
 target_compile_options(${APP_THIRD_PARTY_LIB} PUBLIC ${DIVIDE_COMPILE_OPTIONS} ${PCH_COMPILE_OPTIONS} ${THIRD_PARTY_COMPILE_OPTIONS})
 
 set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
@@ -165,7 +131,8 @@ target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS})
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
 
-set(COMMON_LIBS ${APP_LIB_DIVIDE} 
+set(COMMON_LIBS mimalloc-static
+                ${APP_LIB_DIVIDE} 
                 ${APP_THIRD_PARTY_LIB}
                 ${EXTERNAL_LIBS}
 )

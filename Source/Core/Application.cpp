@@ -9,13 +9,7 @@
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/File/Headers/FileManagement.h"
 
-#include "Utility/Headers/MemoryTracker.h"
-
 namespace Divide {
-
-bool MemoryManager::MemoryTracker::Ready = false;
-bool MemoryManager::MemoryTracker::LogAllAllocations = false;
-NO_DESTROY MemoryManager::MemoryTracker MemoryManager::AllocTracer;
 
 U8 DisplayManager::s_activeDisplayCount{1u};
 U8 DisplayManager::s_maxMSAASAmples{0u};
@@ -26,11 +20,6 @@ Application::Application() noexcept
     , _mainLoopActive{false}
     , _freezeRendering{false}
 {
-    if constexpr (Config::Build::IS_DEBUG_BUILD)
-    {
-        MemoryManager::MemoryTracker::Ready = true; ///< faster way of disabling memory tracking
-        MemoryManager::MemoryTracker::LogAllAllocations = false;
-    }
 }
 
 Application::~Application()
@@ -59,12 +48,12 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     }
 
     // Create a new kernel
-    _kernel = MemoryManager_NEW Kernel(argc, argv, *this);
+    _kernel = std::make_unique<Kernel>(argc, argv, *this);
 
     _timer.reset();
 
     // and load it via an XML file config
-    const ErrorCode err = Attorney::KernelApplication::initialize(_kernel, entryPoint);
+    const ErrorCode err = Attorney::KernelApplication::initialize(_kernel.get(), entryPoint);
 
     // failed to start, so cleanup
     if (err != ErrorCode::NO_ERR)
@@ -73,7 +62,7 @@ ErrorCode Application::start(const string& entryPoint, const I32 argc, char** ar
     }
     else
     {
-        Attorney::KernelApplication::warmup(_kernel);
+        Attorney::KernelApplication::warmup(_kernel.get() );
         Console::printfn(LOCALE_STR("START_MAIN_LOOP"));
         Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, false);
         mainLoopActive(true);
@@ -135,10 +124,10 @@ void Application::stop( const AppStepResult stepResult )
         return;
     }
 
-    Attorney::KernelApplication::shutdown(_kernel);
+    Attorney::KernelApplication::shutdown(_kernel.get() );
 
     _windowManager.close();
-    MemoryManager::DELETE(_kernel);
+    _kernel.reset();
     Attorney::DisplayManagerApplication::Reset();
 
     if ( stepResult == AppStepResult::RESTART_CLEAR_CACHE || stepResult == AppStepResult::STOP_CLEAR_CACHE )
@@ -147,23 +136,6 @@ void Application::stop( const AppStepResult stepResult )
         {
             NOP();
         }
-    }
-
-    if constexpr(Config::Build::IS_DEBUG_BUILD)
-    {
-        MemoryManager::MemoryTracker::Ready = false;
-
-        bool leakDetected = false;
-        size_t sizeLeaked = 0u;
-        const string allocLog = MemoryManager::AllocTracer.Dump(leakDetected, sizeLeaked);
-        if (leakDetected)
-        {
-            Console::errorfn(LOCALE_STR("ERROR_MEMORY_NEW_DELETE_MISMATCH"), to_I32(std::ceil(to_F32(sizeLeaked) / 1024)));
-        }
-
-        std::ofstream memLog{ (Paths::g_logPath / MEM_LOG_FILE).string() };
-        memLog << allocLog;
-        memLog.close();
     }
 }
 
@@ -174,7 +146,7 @@ AppStepResult Application::step()
     if ( mainLoopActive() )
     {
         PROFILE_FRAME( "Main Thread" );
-        Attorney::KernelApplication::onLoop(_kernel);
+        Attorney::KernelApplication::onLoop(_kernel.get() );
     }
     else
     {
@@ -253,13 +225,13 @@ bool Application::onSDLEvent(const SDL_Event event) noexcept
 
 bool Application::onWindowSizeChange(const SizeChangeParams& params) const
 {
-    Attorney::KernelApplication::onWindowSizeChange(_kernel, params);
+    Attorney::KernelApplication::onWindowSizeChange(_kernel.get(), params);
     return true;
 }
 
 bool Application::onResolutionChange(const SizeChangeParams& params) const
 {
-    Attorney::KernelApplication::onResolutionChange(_kernel, params);
+    Attorney::KernelApplication::onResolutionChange(_kernel.get(), params);
     return true;
 }
 

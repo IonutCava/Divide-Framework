@@ -47,10 +47,10 @@
 
 namespace Divide
 {
-    class GFXDevice;
+    class Texture;
     class Pipeline;
-    FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
-    FWD_DECLARE_MANAGED_CLASS( Texture );
+    class GFXDevice;
+    class ShaderProgram;
 
     namespace GFX
     {
@@ -80,16 +80,16 @@ public:
 
 private:
     //! container type used to hold TextureTargets we create.
-    using TextureTargetList = Divide::vector_fast<TextureTarget*>;
+    using TextureTargetList = Divide::vector<TextureTarget*>;
     //! container type used to hold GeometryBuffers created.
-    using GeometryBufferList = Divide::vector_fast<DVDGeometryBuffer*>;
+    using GeometryBufferList = Divide::vector<DVDGeometryBuffer*>;
     //! container type used to hold Textures we create.
     using TextureMap = std::map<String, DVDTexture*, StringFastLessCompare CEGUI_MAP_ALLOC( String, DVDTexture* )>;
     //! container type used to hold our various compiled pipelines needed for rendering
     using PipelineContainer = std::array<Divide::Pipeline*, Divide::to_base( PipelineType::COUNT )>;
 
 public:
-    static CEGUIRenderer& create( Divide::GFXDevice& context, Divide::ShaderProgram_ptr shader, CEGUI::Sizef resolution, int abi = CEGUI_VERSION_ABI );
+    static CEGUIRenderer& create( Divide::GFXDevice& context, Divide::Handle<Divide::ShaderProgram> shader, CEGUI::Sizef resolution, int abi = CEGUI_VERSION_ABI );
     static void destroy( CEGUIRenderer& renderer );
 
 #pragma region Renderer Interface
@@ -119,7 +119,7 @@ public:
     [[nodiscard]] const String& getIdentifierString() const override;
 #pragma endregion
 
-    Texture& createTexture(const String& name, const Divide::Texture_ptr& tex, const Sizef& sz);
+    Texture& createTexture(const String& name, const Divide::Handle<Divide::Texture> tex, const Sizef& sz);
     void setViewProjectionMatrix(const glm::mat4& viewProjectionMatrix);
     void setActiveRenderTarget(RenderTarget* renderTarget);
 
@@ -127,7 +127,7 @@ public:
     void bindDefaultState( bool scissor, BlendMode mode, const glm::mat4& viewProjMat );
 
     [[nodiscard]] const Rectf& getActiveViewPort() const;
-    [[nodiscard]] Divide::Texture* getTextureTarget() const;
+    [[nodiscard]] Divide::Handle<Divide::Texture> getTextureTarget() const;
     [[nodiscard]] Divide::GFXDevice& context();
     [[nodiscard]] bool flipClippingHeight() const noexcept;
     [[nodiscard]] Divide::GFX::CommandBuffer* cmdBuffer() const;
@@ -135,7 +135,7 @@ public:
     [[nodiscard]] const glm::mat4& getViewProjectionMatrix() const noexcept;
 
 private:
-    CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_ptr shader, CEGUI::Sizef resolution);
+    CEGUIRenderer( Divide::GFXDevice& context, Divide::Handle<Divide::ShaderProgram> shader, CEGUI::Sizef resolution);
     virtual ~CEGUIRenderer() override;
 
     /// Helper to safely log the creation of a named texture

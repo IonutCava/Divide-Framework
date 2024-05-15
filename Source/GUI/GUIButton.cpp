@@ -147,10 +147,14 @@ bool GUIButton::soundCallback(const AudioCallback& cbk) {
     return hasCbk;
 }
 
-bool GUIButton::onEvent(const Event event, const CEGUI::EventArgs& /*e*/) {
-    if (_callbackFunction[to_base(event)]) {
+bool GUIButton::onEvent(const Event event, const CEGUI::EventArgs& /*e*/)
+{
+    if (_callbackFunction[to_base(event)])
+    {
         _callbackFunction[to_base(event)](getGUID());
-        if (_eventSound[to_base(event)] && s_soundCallback) {
+
+        if (_eventSound[to_base(event)] != INVALID_HANDLE<AudioDescriptor> && s_soundCallback)
+        {
             s_soundCallback(_eventSound[to_base(event)]);
         }
         return true;
@@ -162,11 +166,11 @@ void GUIButton::setEventCallback(const Event event, const ButtonCallback& callba
     _callbackFunction[to_base(event)] = callback;
 }
 
-void GUIButton::setEventSound(const Event event, const AudioDescriptor_ptr& sound) {
+void GUIButton::setEventSound(const Event event, const Handle<AudioDescriptor> sound) {
     _eventSound[to_base(event)] = sound;
 }
 
-void GUIButton::setEventCallback(const Event event, const ButtonCallback& callback, const AudioDescriptor_ptr& sound) {
+void GUIButton::setEventCallback(const Event event, const ButtonCallback& callback, const Handle<AudioDescriptor> sound) {
     setEventCallback(event, callback);
     setEventSound(event, sound);
 }

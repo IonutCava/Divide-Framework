@@ -42,11 +42,10 @@ namespace Divide {
 class AudioDescriptor;
 TYPEDEF_SMART_POINTERS_FOR_TYPE(AudioDescriptor);
 
-class ResourceCache;
 class PlatformContext;
 class GUIConsoleCommandParser final : public CommandParser, public PlatformContextComponent {
    public:
-    GUIConsoleCommandParser(PlatformContext& context, ResourceCache* cache);
+    GUIConsoleCommandParser(PlatformContext& context);
 
     [[nodiscard]] bool processCommand(const string& commandString) override;
 
@@ -64,11 +63,10 @@ class GUIConsoleCommandParser final : public CommandParser, public PlatformConte
     void handleInvalidCommand(const string& args);
 
    private:
-    ResourceCache* _resCache = nullptr;
     /// Help text for every command
     hashMap<U64, const char*> _commandHelp;
     /// used for sound playback
-    AudioDescriptor_ptr _sound;
+    Handle<AudioDescriptor> _sound{INVALID_HANDLE<AudioDescriptor>};
 };
 
 };  // namespace Divide

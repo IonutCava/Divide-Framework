@@ -11,7 +11,7 @@ namespace Divide
 {
     namespace
     {
-        constexpr I32 g_maxDequeueItems = 5;
+        constexpr I32 g_maxDequeueItems = 1 << 3;
         std::atomic_uint g_taskIDCounter = 0u;
         NO_DESTROY thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
         thread_local U64  g_allocatedTasks = 0u;
@@ -55,7 +55,7 @@ namespace Divide
             _threads.emplace_back(
                 [&, idx]
                 {
-                    const string threadName = Util::StringFormat( "{}_{}", _threadNamePrefix, idx );
+                    const auto threadName = Util::StringFormat( "{}_{}", _threadNamePrefix, idx );
 
                     Profiler::OnThreadStart( threadName );
 

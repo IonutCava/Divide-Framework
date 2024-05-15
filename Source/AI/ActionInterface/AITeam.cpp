@@ -18,15 +18,13 @@ AITeam::AITeam(const U32 id, AIManager& parentManager)
        _parentManager(parentManager)
 {
     _team.clear();
-    _parentManager.registerTeam(this);
 }
 
 AITeam::~AITeam()
 {
-    _parentManager.unregisterTeam(this);
     {
         LockGuard<SharedMutex> w_lock(_crowdMutex);
-        MemoryManager::DELETE_HASHMAP(_aiTeamCrowd);
+        _aiTeamCrowd.clear();
     }
     {
         LockGuard<SharedMutex> w_lock(_updateMutex);
@@ -38,10 +36,9 @@ AITeam::~AITeam()
 }
 
 void AITeam::addCrowd(const AIEntity::PresetAgentRadius radius, Navigation::NavigationMesh* navMesh) {
-    DIVIDE_ASSERT(_aiTeamCrowd.find(radius) == std::end(_aiTeamCrowd),
-                  "AITeam error: DtCrowd already existed for new navmesh!");
-    emplace(_aiTeamCrowd, radius,
-            MemoryManager_NEW Navigation::DivideDtCrowd(navMesh));
+    DIVIDE_ASSERT(_aiTeamCrowd.find(radius) == std::end(_aiTeamCrowd), "AITeam error: DtCrowd already existed for new navmesh!");
+
+    _aiTeamCrowd[radius] = std::make_unique<Navigation::DivideDtCrowd>(navMesh);
 }
 
 void AITeam::removeCrowd(const AIEntity::PresetAgentRadius radius) {
@@ -49,7 +46,6 @@ void AITeam::removeCrowd(const AIEntity::PresetAgentRadius radius) {
     DIVIDE_ASSERT(
         it != std::end(_aiTeamCrowd),
         "AITeam error: DtCrowd does not exist for specified navmesh!");
-    MemoryManager::DELETE(it->second);
     _aiTeamCrowd.erase(it);
 }
 

@@ -32,6 +32,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SGN_EDITOR_COMPONENT_H_
 #define DVD_SGN_EDITOR_COMPONENT_H_
 
+#include "Core/Headers/PlatformContextComponent.h"
+
 namespace Divide
 {
     class Editor;
@@ -157,14 +159,14 @@ namespace Divide
         [[nodiscard]] bool isMatrix() const noexcept;
     };
 
-    class EditorComponent final : public GUIDWrapper
+    class EditorComponent final : public PlatformContextComponent, public GUIDWrapper
     {
         friend class Attorney::EditorComponentEditor;
         friend class Attorney::EditorComponentSceneGraphNode;
 
       public:
 
-        explicit EditorComponent(SGNComponent* parentComp, Editor* editor, ComponentType parentComponentType, const Str<128>& name);
+        explicit EditorComponent( PlatformContext& context, ComponentType type, std::string_view name);
         ~EditorComponent() override;
 
         void addHeader(const Str<32>& name) {
@@ -183,23 +185,22 @@ namespace Divide
         void onChangedCbk(const DELEGATE<void, std::string_view>& cbk) { _onChangedCbk = cbk; }
         void onChangedCbk(DELEGATE<void, std::string_view>&& cbk) noexcept { _onChangedCbk = MOV(cbk); }
 
-        bool saveCache(ByteBuffer& outputBuffer) const;
-        bool loadCache(ByteBuffer& inputBuffer);
 
         PROPERTY_RW(Str<128>, name, "");
-        PROPERTY_RW(ComponentType, parentComponentType, ComponentType::COUNT);
+        PROPERTY_R( ComponentType, componentType, ComponentType::COUNT );
 
       protected:
         void onChanged(const EditorComponentField& field) const;
         void saveToXML(boost::property_tree::ptree& pt) const;
         void loadFromXML(const boost::property_tree::ptree& pt);
 
+        bool saveCache(ByteBuffer& outputBuffer) const;
+        bool loadCache(ByteBuffer& inputBuffer);
+
         void saveFieldToXML(const EditorComponentField& field, boost::property_tree::ptree& pt) const;
         void loadFieldFromXML(EditorComponentField& field, const boost::property_tree::ptree& pt);
 
       protected:
-        SGNComponent* _parentComp = nullptr;
-        Editor* _editor = nullptr;
         DELEGATE<void, std::string_view> _onChangedCbk;
         vector<EditorComponentField> _fields;
     };
@@ -222,15 +223,28 @@ namespace Divide
         };
 
         class EditorComponentSceneGraphNode {
-            static void saveToXML(const EditorComponent& comp, boost::property_tree::ptree& pt) {
+            static void saveToXML(const EditorComponent& comp, boost::property_tree::ptree& pt)
+            {
                 comp.saveToXML(pt);
             }
 
-            static void loadFromXML(EditorComponent& comp, const boost::property_tree::ptree& pt) {
+            static void loadFromXML(EditorComponent& comp, const boost::property_tree::ptree& pt)
+            {
                 comp.loadFromXML(pt);
             }
 
+            static bool saveCache( const EditorComponent& comp, ByteBuffer& outputBuffer )
+            {
+                return comp.saveCache(outputBuffer);
+            }
+
+            static bool loadCache( EditorComponent& comp, ByteBuffer& inputBuffer )
+            {
+                return comp.loadCache(inputBuffer);
+            }
+
             friend class Divide::SceneNode;
+            friend class Divide::SGNComponent;
             friend class Divide::SceneGraphNode;
         };
     };  // namespace Attorney

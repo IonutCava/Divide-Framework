@@ -2,32 +2,71 @@
 
 #include "Headers/Sphere3D.h"
 
-namespace Divide {
+#include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+#include "Geometry/Material/Headers/Material.h"
 
-Sphere3D::Sphere3D( PlatformContext& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, const F32 radius, const U32 resolution)
-    : Object3D(context, parentCache, descriptorHash, name, {}, {}, SceneNodeType::TYPE_SPHERE_3D, Object3D::ObjectFlag::OBJECT_FLAG_NONE)
-    , _radius(radius)
-    , _resolution(resolution)
+#include "Platform/Video/Headers/GFXDevice.h"
+
+namespace Divide
 {
-    const U32 vertexCount = SQUARED(resolution);
-    geometryBuffer()->setVertexCount(vertexCount);
-    geometryBuffer()->reserveIndexCount(vertexCount);
-    geometryBuffer()->useLargeIndices(vertexCount + 1 > U16_MAX);
-    geometryDirty(true);
+namespace
+{
+    constexpr F32 s_minRadius = 0.0001f;
 }
 
-void Sphere3D::setRadius(const F32 radius) noexcept {
+Sphere3D::Sphere3D( const ResourceDescriptor<Sphere3D>& descriptor )
+    : Object3D( descriptor, GetSceneNodeType<Sphere3D>() )
+    , _radius( std::max( Util::UINT_TO_FLOAT( descriptor.enumValue() ), s_minRadius ) )
+    , _resolution( descriptor.ID() == 0u ? 16u : descriptor.ID() )
+    , _descriptor(descriptor)
+{
+}
+
+bool Sphere3D::load( PlatformContext& context )
+{
+    const U32 vertexCount = SQUARED( _resolution );
+
+    VertexBuffer::Descriptor vbDescriptor{};
+    vbDescriptor._name = resourceName();
+    vbDescriptor._allowDynamicUpdates = false;
+    vbDescriptor._keepCPUData = true;
+    vbDescriptor._largeIndices = vertexCount + 1 > U16_MAX;
+
+    auto vb = context.gfx().newVB( vbDescriptor );
+    vb->setVertexCount( vertexCount );
+    vb->reserveIndexCount( vertexCount );
+    geometryBuffer( vb );
+
+    geometryDirty( true );
+
+    if ( !_descriptor.flag() )
+    {
+        ResourceDescriptor<Material> matDesc( "Material_" + resourceName() );
+        matDesc.waitForReady( true );
+        Handle<Material> matTemp = CreateResource( matDesc );
+        Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
+        setMaterialTpl( matTemp );
+    }
+
+    return Object3D::load(context);
+}
+
+void Sphere3D::setRadius(const F32 radius) noexcept
+{
     _radius = radius;
     geometryDirty(true);
 }
 
-void Sphere3D::setResolution(const U32 resolution) noexcept {
+void Sphere3D::setResolution(const U32 resolution) noexcept
+{
     _resolution = resolution;
     geometryDirty(true);
 }
 
 // SuperBible stuff
-void Sphere3D::rebuildInternal() {
+void Sphere3D::rebuildInternal()
+{
     const U32 slices = _resolution;
     const U32 stacks = _resolution;
 
@@ -79,7 +118,6 @@ void Sphere3D::rebuildInternal() {
         t -= dt;
     }
 
-    geometryBuffer()->create(true, true);
     efficient_clear( _geometryTriangles );
 
     // ToDo: add some depth padding for collision and nav meshes

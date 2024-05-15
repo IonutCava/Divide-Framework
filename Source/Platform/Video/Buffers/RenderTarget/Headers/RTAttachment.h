@@ -39,7 +39,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-FWD_DECLARE_MANAGED_CLASS(Texture);
+class Texture;
 FWD_DECLARE_MANAGED_CLASS(RTAttachment);
 
 
@@ -116,10 +116,11 @@ class RTAttachment final
 
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
+        ~RTAttachment();
 
-        [[nodiscard]] const Texture_ptr& texture() const;
+        [[nodiscard]] Handle<Texture> texture() const;
 
-        void setTexture(const Texture_ptr& renderTexture, const Texture_ptr& resolveTexture) noexcept;
+        void setTexture( Handle<Texture> renderTexture, Handle<Texture> resolveTexture) noexcept;
 
         RenderTarget& parent() noexcept;
         [[nodiscard]] const RenderTarget& parent() const noexcept;
@@ -127,8 +128,8 @@ class RTAttachment final
         RTAttachmentDescriptor _descriptor;
         Layout _attachmentUsage{ Layout::UNDEFINED };
 
-        PROPERTY_R_IW(Texture_ptr, renderTexture, nullptr );
-        PROPERTY_R_IW(Texture_ptr, resolvedTexture, nullptr );
+        PROPERTY_R_IW(Handle<Texture>, renderTexture, INVALID_HANDLE<Texture> );
+        PROPERTY_R_IW(Handle<Texture>, resolvedTexture, INVALID_HANDLE<Texture> );
 
         PROPERTY_RW(U32, binding, 0u);
         PROPERTY_RW(bool, changed, false);

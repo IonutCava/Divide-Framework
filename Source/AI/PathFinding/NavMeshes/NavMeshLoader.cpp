@@ -8,6 +8,7 @@
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Water/Headers/Water.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/NavigationComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
@@ -107,7 +108,7 @@ bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const cha
         return false;
     }
 
-    char* buf = MemoryManager_NEW char[tempBuffer.storageSize()];
+    char* buf = new char[tempBuffer.storageSize()];
     std::memcpy(buf, reinterpret_cast<const char*>(tempBuffer.contents()), tempBuffer.storageSize());
     char* srcEnd = buf + tempBuffer.storageSize();
 
@@ -148,10 +149,10 @@ bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const cha
         }
     }
 
-    MemoryManager::DELETE_ARRAY(buf);
+    delete[] buf;
 
     // Calculate normals.
-    outData._normals = MemoryManager_NEW F32[outData._triangleCount * 3];
+    outData._normals.resize(outData._triangleCount * 3);
 
     for (I32 i = 0; i < to_I32(outData._triangleCount) * 3; i += 3) {
         const F32* v0 = &outData._vertices[outData._triangles[i] * 3];
@@ -189,8 +190,8 @@ bool SaveMeshFile(const NavModelData& inData, const ResourcePath& filePath, cons
     ByteBuffer tempBuffer;
     tempBuffer << BYTE_BUFFER_VERSION;
 
-    const F32* vStart = inData._vertices;
-    const I32* tStart = inData._triangles;
+    const F32* vStart = inData._vertices.data();
+    const I32* tStart = inData._triangles.data();
     for (U32 i = 0; i < inData.getVertCount(); i++) {
         const F32* vp = vStart + i * 3;
         tempBuffer << "v " << *vp << " " << *(vp + 1) << " " << *(vp + 2) << "\n";
@@ -225,12 +226,12 @@ NavModelData MergeModels(NavModelData& a,
             newCap *= 2;
         }
 
-        mergedData._vertices = MemoryManager_NEW F32[newCap * 3];
+        mergedData._vertices.resize(newCap * 3);
         mergedData._vertexCapacity = newCap;
         mergedData._vertexCount = totalVertCt;
 
-        memcpy(mergedData._vertices, a.getVerts(), a.getVertCount() * 3 * sizeof(F32));
-        memcpy(mergedData._vertices + a.getVertCount() * 3, b.getVerts(), b.getVertCount() * 3 * sizeof(F32));
+        memcpy(mergedData._vertices.data(), a.getVerts(), a.getVertCount() * 3 * sizeof(F32));
+        memcpy(mergedData._vertices.data() + a.getVertCount() * 3, b.getVerts(), b.getVertCount() * 3 * sizeof(F32));
 
         const I32 totalTriCt = a.getTriCount() + b.getTriCount();
         newCap = 8;
@@ -239,14 +240,14 @@ NavModelData MergeModels(NavModelData& a,
             newCap *= 2;
         }
 
-        mergedData._triangles = MemoryManager_NEW I32[newCap * 3];
+        mergedData._triangles.resize(newCap * 3);
         mergedData._triangleCapacity = newCap;
         mergedData._triangleCount = totalTriCt;
         const I32 aFaceSize = a.getTriCount() * 3;
-        memcpy(mergedData._triangles, a.getTris(), aFaceSize * sizeof(I32));
+        memcpy(mergedData._triangles.data(), a.getTris(), aFaceSize * sizeof(I32));
 
         const I32 bFaceSize = b.getTriCount() * 3;
-        I32* bFacePt = mergedData._triangles + a.getTriCount() * 3;  // i like pointing at faces
+        I32* bFacePt = mergedData._triangles.data() + a.getTriCount() * 3;  // i like pointing at faces
         memcpy(bFacePt, b.getTris(), bFaceSize * sizeof(I32));
 
         for (U32 i = 0; i < to_U32(bFaceSize); i++) {
@@ -263,25 +264,18 @@ NavModelData MergeModels(NavModelData& a,
         }
     }
 
-    mergedData.name(Util::StringFormat("{}+{}", a.name(), b.name() ));
+    mergedData.name(Util::StringFormat("{}+{}", a.name(), b.name() ).c_str());
     return mergedData;
 }
 
 void AddVertex(NavModelData* modelData, const vec3<F32>& vertex) {
     assert(modelData != nullptr);
 
-    if (modelData->getVertCount() + 1 > modelData->_vertexCapacity) {
+    if (modelData->getVertCount() + 1 > modelData->_vertexCapacity)
+    {
         modelData->_vertexCapacity = !modelData->_vertexCapacity ? 8 : modelData->_vertexCapacity * 2;
 
-        F32* nv = MemoryManager_NEW F32[modelData->_vertexCapacity * 3];
-
-        if (modelData->getVertCount()) {
-            memcpy(nv, modelData->getVerts(), modelData->getVertCount() * 3 * sizeof(F32));
-        }
-        if (modelData->getVerts()) {
-            MemoryManager::DELETE_ARRAY(modelData->_vertices);
-        }
-        modelData->_vertices = nv;
+        modelData->_vertices.resize(modelData->_vertexCapacity * 3);
     }
 
     F32* dst = &modelData->_vertices[modelData->getVertCount() * 3];
@@ -296,18 +290,11 @@ void AddTriangle(NavModelData* modelData,
                  const vec3<U32>& triangleIndices,
                  const U32 triangleIndexOffset,
                  const SamplePolyAreas& areaType) {
-    if (modelData->getTriCount() + 1 > modelData->_triangleCapacity) {
+    if (modelData->getTriCount() + 1 > modelData->_triangleCapacity)
+    {
         modelData->_triangleCapacity = !modelData->_triangleCapacity ? 8 : modelData->_triangleCapacity * 2;
 
-        I32* nv = MemoryManager_NEW I32[modelData->_triangleCapacity * 3];
-
-        if (modelData->getTriCount()) {
-            memcpy(nv, modelData->_triangles, modelData->getTriCount() * 3 * sizeof(I32));
-        }
-        if (modelData->getTris()) {
-            MemoryManager::DELETE_ARRAY(modelData->_triangles);
-        }
-        modelData->_triangles = nv;
+        modelData->_triangles.resize(modelData->_triangleCapacity * 3);
     }
 
     I32* dst = &modelData->_triangles[modelData->getTriCount() * 3];
@@ -338,7 +325,8 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
             goto next;
         }
 
-        if (nodeType == SceneNodeType::TYPE_MESH || nodeType == SceneNodeType::TYPE_DECAL) {
+        if (nodeType == SceneNodeType::TYPE_MESH)
+        {
             // Even though we allow Object3Ds, we do not parse MESH nodes, instead we grab its children so we get an accurate triangle list per node
             goto next;
         }
@@ -373,7 +361,8 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
         const U32 currentTriangleIndexOffset = outData.getVertCount();
         VertexBuffer* geometry = nullptr;
-        if (level == MeshDetailLevel::MAXIMUM) {
+        if (level == MeshDetailLevel::MAXIMUM)
+        {
             Object3D* obj = nullptr;
             if (Is3DObject(nodeType))
             {
@@ -381,7 +370,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
             }
             else if (nodeType == SceneNodeType::TYPE_WATER)
             {
-                obj = sgn->getNode<WaterPlane>().getQuad().get();
+                obj = Get(sgn->getNode<WaterPlane>().getQuad());
             }
             assert(obj != nullptr);
             geometry = obj->geometryBuffer().get();

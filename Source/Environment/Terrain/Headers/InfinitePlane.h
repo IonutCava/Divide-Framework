@@ -41,28 +41,29 @@ class GFXDevice;
 
 FWD_DECLARE_MANAGED_CLASS(Quad3D);
 
-class InfinitePlane final : public SceneNode {
+DEFINE_NODE_TYPE(InfinitePlane, SceneNodeType::TYPE_INFINITEPLANE)
+{
+
 public:
-    explicit InfinitePlane(GFXDevice& context, ResourceCache* parentCache, size_t descriptorHash, std::string_view name, vec2<U32> dimensions);
+    explicit InfinitePlane( const ResourceDescriptor<InfinitePlane>& descriptor );
 
 protected:
+    friend class ResourceCache;
+    template <typename T> friend struct ResourcePool;
+
+    bool postLoad() override;
+    bool unload() override;
     void postLoad(SceneGraphNode* sgn) override;
+
+    bool load( PlatformContext& context ) override;
 
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
     void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
 
-protected:
-    template <typename T>
-    friend class ImplResourceLoader;
-
-    bool load() override;
-
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "InfinitePlane"; }
 
 private:
-    GFXDevice& _context;
     vec2<U32> _dimensions;
-    Quad3D_ptr _plane = nullptr;
+    Handle<Quad3D> _plane = INVALID_HANDLE<Quad3D>;
     size_t _planeRenderStateHash = 0u;
     size_t _planeRenderStateHashPrePass = 0u;
 }; //InfinitePlane

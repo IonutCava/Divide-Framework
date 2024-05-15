@@ -16,9 +16,9 @@ namespace Divide
         {
             DIVIDE_ASSERT(usage != ImageUsage::COUNT);
 
-            const bool multisampled = descriptor.msaaSamples() > 0u;
-            const bool compressed = IsCompressed( descriptor.baseFormat() );
-            const bool isDepthTexture = IsDepthTexture( descriptor.packing() );
+            const bool multisampled = descriptor._msaaSamples > 0u;
+            const bool compressed = IsCompressed( descriptor._baseFormat );
+            const bool isDepthTexture = IsDepthTexture( descriptor._packing );
             bool supportsStorageBit = !multisampled && !compressed && !isDepthTexture;
 
             
@@ -46,7 +46,7 @@ namespace Divide
                 case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
             }
 
-            if ( descriptor.allowRegionUpdates() )
+            if ( descriptor._allowRegionUpdates )
             {
                 ret |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
             }
@@ -176,21 +176,15 @@ namespace Divide
 
     VkImageAspectFlags vkTexture::GetAspectFlags( const TextureDescriptor& descriptor ) noexcept
     {
-        const bool hasDepthStencil = descriptor.hasUsageFlagSet( ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT );
-        const bool hasDepth = descriptor.hasUsageFlagSet( ImageUsage::RT_DEPTH_ATTACHMENT ) || hasDepthStencil;
+        const bool hasDepthStencil = HasUsageFlagSet( descriptor, ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT );
+        const bool hasDepth = HasUsageFlagSet( descriptor, ImageUsage::RT_DEPTH_ATTACHMENT ) || hasDepthStencil;
 
         return hasDepth ? VK_IMAGE_ASPECT_DEPTH_BIT | (hasDepthStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0u)
                         : VK_IMAGE_ASPECT_COLOR_BIT;
     }
 
-    vkTexture::vkTexture( GFXDevice& context,
-                          const size_t descriptorHash,
-                          const std::string_view name,
-                          std::string_view assetNames,
-                          const ResourcePath& assetLocations,
-                          const TextureDescriptor& texDescriptor,
-                          ResourceCache& parentCache )
-        : Texture( context, descriptorHash, name, assetNames, assetLocations, texDescriptor, parentCache )
+    vkTexture::vkTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor )
+        : Texture( context, descriptor )
     {
     }
 
@@ -232,14 +226,14 @@ namespace Divide
         dependencyInfo.imageMemoryBarrierCount = 1u;
         dependencyInfo.pImageMemoryBarriers = &memBarrier;
 
-        if ( IsCubeTexture( descriptor().texType() ) )
+        if ( IsCubeTexture( _descriptor._texType ) )
         {
             baseLayer *= 6u;
             layerCount *= 6u;
         }
 
         VkImageSubresourceRange subResourceRange = {
-            .aspectMask = GetAspectFlags( descriptor() ),
+            .aspectMask = GetAspectFlags( _descriptor ),
             .baseMipLevel = baseLevel,
             .levelCount = 1u,
             .baseArrayLayer = baseLayer,
@@ -255,7 +249,7 @@ namespace Divide
                 } break;
                 case ImageUsage::SHADER_READ:
                 {
-                    TransitionTexture( IsDepthTexture( _descriptor.packing() ) ? TransitionType::SHADER_READ_TO_COPY_READ_DEPTH : TransitionType::SHADER_READ_TO_COPY_READ_COLOUR, subResourceRange, image()->_image, memBarrier);
+                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::SHADER_READ_TO_COPY_READ_DEPTH : TransitionType::SHADER_READ_TO_COPY_READ_COLOUR, subResourceRange, image()->_image, memBarrier);
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 } break;
                 case ImageUsage::SHADER_WRITE:
@@ -277,7 +271,7 @@ namespace Divide
         image_blit.srcSubresource.aspectMask = GetAspectFlags( _descriptor );
         image_blit.srcSubresource.baseArrayLayer = baseLayer;
         image_blit.srcSubresource.layerCount = layerCount;
-        image_blit.dstSubresource.aspectMask = GetAspectFlags( _descriptor );
+        image_blit.dstSubresource.aspectMask = image_blit.srcSubresource.aspectMask;
         image_blit.dstSubresource.baseArrayLayer = baseLayer;
         image_blit.dstSubresource.layerCount = layerCount;
         image_blit.srcOffsets[1].z = 1;
@@ -336,7 +330,7 @@ namespace Divide
                 case ImageUsage::UNDEFINED:
                 case ImageUsage::SHADER_READ:
                 {
-                    TransitionTexture( IsDepthTexture( _descriptor.packing() ) ? TransitionType::COPY_READ_TO_SHADER_READ_DEPTH : TransitionType::COPY_READ_TO_SHADER_READ_COLOUR, subResourceRange, image()->_image, memBarrier );
+                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_READ_TO_SHADER_READ_DEPTH : TransitionType::COPY_READ_TO_SHADER_READ_COLOUR, subResourceRange, image()->_image, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 } break;
                 case ImageUsage::SHADER_WRITE:
@@ -357,7 +351,7 @@ namespace Divide
 
         Texture::prepareTextureData( width, height, depth, emptyAllocation );
 
-        vkFormat( VKUtil::InternalFormat( _descriptor.baseFormat(), _descriptor.dataType(), _descriptor.packing() ) );
+        vkFormat( VKUtil::InternalFormat( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing ) );
         
         if ( _image != nullptr )
         {
@@ -366,17 +360,17 @@ namespace Divide
         clearImageViewCache();
 
         _image = std::make_unique<AllocatedImage>();
-        _vkType = vkTextureTypeTable[to_base( descriptor().texType() )];
+        _vkType = vkTextureTypeTable[to_base( _descriptor._texType )];
 
         sampleFlagBits( VK_SAMPLE_COUNT_1_BIT );
-        if ( _descriptor.msaaSamples() > 0u )
+        if ( _descriptor._msaaSamples > 0u )
         {
-            assert( isPowerOfTwo( _descriptor.msaaSamples() ) );
-            sampleFlagBits( static_cast<VkSampleCountFlagBits>(_descriptor.msaaSamples()) );
+            assert( isPowerOfTwo( _descriptor._msaaSamples ) );
+            sampleFlagBits( static_cast<VkSampleCountFlagBits>(_descriptor._msaaSamples) );
         }
 
         VkImageCreateInfo imageInfo = vk::imageCreateInfo();
-        imageInfo.tiling = _descriptor.allowRegionUpdates() ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.tiling = _descriptor._allowRegionUpdates ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.samples = sampleFlagBits();
@@ -386,7 +380,7 @@ namespace Divide
         imageInfo.extent.width = to_U32( _width );
         imageInfo.extent.height = to_U32( _height );
 
-        if ( descriptor().texType() == TextureType::TEXTURE_3D )
+        if ( _descriptor._texType == TextureType::TEXTURE_3D )
         {
             imageInfo.extent.depth = to_U32( _depth );
             imageInfo.arrayLayers = 1;
@@ -405,14 +399,14 @@ namespace Divide
         for ( U8 i = 0u; i < to_base( ImageUsage::COUNT ); ++i )
         {
             const ImageUsage testUsage = static_cast<ImageUsage>(i);
-            if ( !_descriptor.hasUsageFlagSet( testUsage ) )
+            if ( !HasUsageFlagSet( _descriptor, testUsage ) )
             {
                 continue;
             }
             imageInfo.usage |= GetFlagForUsage( testUsage, _descriptor);
         }
 
-        if ( !IsCompressed( _descriptor.baseFormat() ) )
+        if ( !IsCompressed( _descriptor._baseFormat ) )
         {
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         }
@@ -421,7 +415,7 @@ namespace Divide
         {
             imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
         }
-        if ( IsCubeTexture( _descriptor.texType() ) )
+        if ( IsCubeTexture( _descriptor._texType ) )
         {
             imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
@@ -460,7 +454,7 @@ namespace Divide
 
     void vkTexture::loadDataInternal( const Byte* data, const size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
-        DIVIDE_ASSERT(_descriptor.allowRegionUpdates());
+        DIVIDE_ASSERT( _descriptor._allowRegionUpdates);
         loadDataInternal(data, size, targetMip, offset, dimensions, pixelUnpackAlignment, false);
     }
 
@@ -485,7 +479,7 @@ namespace Divide
 
         DIVIDE_ASSERT( offset.z == 0u && dimensions.z == 1u, "vkTexture::loadDataInternal: 3D textures not supported for sub-image updates!");
 
-        const U8 bpp_dest = GetBytesPerPixel( _descriptor.dataType(), _descriptor.baseFormat(), _descriptor.packing() );
+        const U8 bpp_dest = GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing );
         const size_t rowOffset_dest = (bpp_dest * pixelUnpackAlignment._alignment) * _width;
         const U16 subHeight = bottomRightY - topLeftY;
         const U16 subWidth = bottomRightX - topLeftX;
@@ -587,7 +581,7 @@ namespace Divide
                     //copy the buffer into the image
                     VK_PROFILE( vkCmdCopyBufferToImage, cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
 
-                    TransitionTexture( IsDepthTexture( _descriptor.packing() ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
+                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
 
                     dataOffset += _mipData[m]._size;
@@ -639,7 +633,7 @@ namespace Divide
             }
         }
 
-        const bool needsMipMaps = _descriptor.mipMappingState() == TextureDescriptor::MipMappingState::AUTO && numMips < mipCount();
+        const bool needsMipMaps = _descriptor._mipMappingState == MipMappingState::AUTO && numMips < mipCount();
         const bool hasMipMaps = mipCount() > 1u;
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
@@ -702,7 +696,7 @@ namespace Divide
                     }
                     else
                     {
-                        TransitionTexture( IsDepthTexture( _descriptor.packing() ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
+                        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
                     }
 
                     //barrier the image into the shader readable layout
@@ -717,7 +711,7 @@ namespace Divide
                 generateMipmaps( cmd, 0u, 0u, numLayers, ImageUsage::UNDEFINED );
             }
 
-            if ( !_descriptor.allowRegionUpdates() )
+            if ( !_descriptor._allowRegionUpdates )
             {
                 _stagingBuffer.reset();
             }
@@ -747,10 +741,10 @@ namespace Divide
         dependencyInfo.imageMemoryBarrierCount = 1u;
         dependencyInfo.pImageMemoryBarriers = &memBarrier;
 
-        TransitionTexture( IsDepthTexture( _descriptor.packing() ) ? TransitionType::SHADER_READ_TO_BLIT_WRITE_DEPTH : TransitionType::SHADER_READ_TO_BLIT_WRITE_COLOUR, range, _image->_image, memBarrier );
+        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::SHADER_READ_TO_BLIT_WRITE_DEPTH : TransitionType::SHADER_READ_TO_BLIT_WRITE_COLOUR, range, _image->_image, memBarrier );
         VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
 
-        if ( IsDepthTexture( _descriptor.packing() ) )
+        if ( IsDepthTexture( _descriptor._packing ) )
         {
             const VkClearDepthStencilValue clearValue = {
                 .depth = to_F32(clearColour.r),
@@ -769,7 +763,7 @@ namespace Divide
             VK_PROFILE( vkCmdClearColorImage, cmdBuffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
         }
 
-        TransitionTexture( IsDepthTexture( _descriptor.packing() ) ? TransitionType::BLIT_WRITE_TO_SHADER_READ_DEPTH : TransitionType::BLIT_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
+        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::BLIT_WRITE_TO_SHADER_READ_DEPTH : TransitionType::BLIT_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
         VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
     }
 
@@ -794,14 +788,14 @@ namespace Divide
         ImageReadbackData grabData{};
         grabData._numComponents = numChannels();
 
-        const auto desiredDataFormat = _descriptor.dataType();
-        const auto desiredImageFormat = _descriptor.baseFormat();
-        const auto desiredPacking = _descriptor.packing();
+        const auto desiredDataFormat = _descriptor._dataType;
+        const auto desiredImageFormat = _descriptor._baseFormat;
+        const auto desiredPacking = _descriptor._packing;
 
         grabData._sourceIsBGR = IsBGRTexture( desiredImageFormat );
         grabData._bpp = GetBytesPerPixel( desiredDataFormat, desiredImageFormat, desiredPacking );
 
-        DIVIDE_ASSERT( (grabData._bpp == 3 || grabData._bpp == 4) && _depth == 1u && !IsCubeTexture( _descriptor.texType() ), "vkTexture:readData: unsupported image for readback. Support is very limited!" );
+        DIVIDE_ASSERT( (grabData._bpp == 3 || grabData._bpp == 4) && _depth == 1u && !IsCubeTexture( _descriptor._texType ), "vkTexture:readData: unsupported image for readback. Support is very limited!" );
         grabData._width = _width >> mipLevel;
         grabData._height = _height >> mipLevel;
 
@@ -852,12 +846,15 @@ namespace Divide
         copyParams._targetMipLevel = mipLevel;
         copyParams._dimensions.width = grabData._width;
         copyParams._dimensions.height = grabData._height;
+
+        VkImageAspectFlags aspectFlags = GetAspectFlags( _descriptor );
+
         CopyInternal(cmdBuffer,
                      image()->_image,
-                     GetAspectFlags( descriptor() ),
-                     IsDepthTexture( _descriptor.packing() ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
+                     aspectFlags,
+                     IsDepthTexture( _descriptor._packing ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
                      dstImage,
-                     GetAspectFlags( descriptor() ),
+                     aspectFlags,
                      CopyTextureType::GENERAL,
                      copyParams,
                      1u);
@@ -884,7 +881,7 @@ namespace Divide
         image_copy_region.bufferOffset = 0u;
         image_copy_region.bufferRowLength = grabData._width;
         image_copy_region.bufferImageHeight = grabData._height;
-        image_copy_region.imageSubresource.aspectMask = GetAspectFlags( descriptor() );
+        image_copy_region.imageSubresource.aspectMask = aspectFlags;
         image_copy_region.imageSubresource.mipLevel = mipLevel;
         image_copy_region.imageSubresource.baseArrayLayer = 0u;
         image_copy_region.imageSubresource.layerCount = 1u;
@@ -934,7 +931,7 @@ namespace Divide
             newView._descriptor = viewDescriptor;
 
             VkImageSubresourceRange range{};
-            if ( descriptor().hasUsageFlagSet( ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT ) )
+            if ( HasUsageFlagSet( _descriptor, ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT ) )
             {
                 range.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
             }
@@ -977,8 +974,8 @@ namespace Divide
         DIVIDE_ASSERT( sourceSamples == destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );
         DIVIDE_ASSERT( source != nullptr && destination != nullptr, "vkTexture::copy Invalid source and/or destination textures specified!" );
 
-        const TextureType srcType = source->descriptor().texType();
-        const TextureType dstType = destination->descriptor().texType();
+        const TextureType srcType = source->_descriptor._texType;
+        const TextureType dstType = destination->_descriptor._texType;
         assert( srcType != TextureType::COUNT && dstType != TextureType::COUNT );
 
         U32 layerOffset = params._layerRange.offset;
@@ -994,18 +991,18 @@ namespace Divide
         {
 
             U16 depth = 1u;
-            if ( source->descriptor().texType() == TextureType::TEXTURE_3D )
+            if ( source->_descriptor._texType == TextureType::TEXTURE_3D )
             {
                 depth = source->_depth;
             }
 
             CopyInternal( cmdBuffer, 
                           source->_image->_image,
-                          GetAspectFlags( source->descriptor() ),
-                          IsDepthTexture( source->descriptor().packing() ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
+                          GetAspectFlags( source->_descriptor ),
+                          IsDepthTexture( source->_descriptor._packing ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
                           destination->_image->_image,
-                          GetAspectFlags( destination->descriptor() ),
-                          IsDepthTexture( destination->descriptor().packing() ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
+                          GetAspectFlags( destination->_descriptor ),
+                          IsDepthTexture( destination->_descriptor._packing ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
                           params,
                           depth );
         }

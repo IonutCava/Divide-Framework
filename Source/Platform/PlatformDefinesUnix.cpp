@@ -9,15 +9,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-void* malloc_aligned(const size_t size, size_t alignment, size_t offset) noexcept {
-    (void)offset;
-    return _mm_malloc(size, alignment);
-}
-
-void  free_aligned(void*& ptr) noexcept {
-    _mm_free(ptr);
-}
-
 int _vscprintf (const char * format, va_list pargs) {
     int retval;
     va_list argcopy;

@@ -41,10 +41,6 @@ FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
 
 namespace AI {
 
-namespace Attorney {
-    class VisualSensorConstructor;
-}
-
 /// SGN GUID, SGN pointer
 using NodeContainer = hashMap<I64, SceneGraphNode*>;
 /// Container ID, NodeContainer
@@ -54,9 +50,10 @@ using NodePositions = hashMap<I64, vec3<F32> >;
 /// Container ID, NodePositions
 using NodePositionsMap = hashMap<U32, NodePositions>;
 
-class VisualSensor final : public Sensor {
-    friend class Attorney::VisualSensorConstructor;
+class VisualSensor final : public Sensor
+{
    public:
+    explicit VisualSensor(AIEntity* parentEntity);
      ~VisualSensor() override;
 
     void update(U64 deltaTimeUS) override;
@@ -77,24 +74,12 @@ class VisualSensor final : public Sensor {
     vec3<F32> getNodePosition(U32 containerID, I64 nodeGUID);
     SceneGraphNode* findClosestNode(U32 containerID);
 
-   protected:
-    explicit VisualSensor(AIEntity* parentEntity);
-
 
    protected:
     NodeContainerMap _nodeContainerMap;
     NodePositionsMap _nodePositionsMap;
 };
 
-namespace Attorney {
-class VisualSensorConstructor {
-    static VisualSensor* construct(AIEntity* const parentEntity) {
-        return MemoryManager_NEW VisualSensor(parentEntity);
-    }
-
-    friend class AI::AIEntity;
-};
-}  // namespace Attorney
 }  // namespace AI
 }  // namespace Divide
 

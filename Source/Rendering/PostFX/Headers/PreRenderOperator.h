@@ -20,7 +20,6 @@ namespace GFX {
     class CommandBuffer;
 };
 
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 enum class RenderStage : U8;
 

@@ -115,7 +115,7 @@ public:
     void deallocate(const glHardwareQueryRing& query);
 
 private:
-    hashMap<gl46core::GLenum, vector<glHardwareQueryRing*>> _queryPool;
+    hashMap<gl46core::GLenum, vector<std::unique_ptr<glHardwareQueryRing>>> _queryPool;
     hashMap<gl46core::GLenum, U32> _index;
 
     GFXDevice& _context;

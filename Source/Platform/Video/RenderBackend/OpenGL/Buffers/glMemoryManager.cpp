@@ -18,13 +18,13 @@ namespace
         constexpr size_t zeroDataBaseSize = TO_MEGABYTES(64u);
     };
 
-    eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, Byte{ 0u });
+    eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, Byte_ZERO );
 
     FORCE_INLINE Byte* GetZeroData( const size_t bufferSize )
     {
         while ( g_zeroData.size() < bufferSize )
         {
-            g_zeroData.resize( g_zeroData.size() + detail::zeroDataBaseSize, Byte{ 0u } );
+            g_zeroData.resize( g_zeroData.size() + detail::zeroDataBaseSize, Byte_ZERO );
         }
 
         return g_zeroData.data();
@@ -178,17 +178,17 @@ ChunkAllocator::ChunkAllocator(const size_t size) noexcept
     assert(size > 0u && isPowerOfTwo(size));
 }
 
-Chunk* ChunkAllocator::allocate(const bool poolAllocations,
-                                const size_t size,
-                                const size_t alignment,
-                                const gl46core::BufferStorageMask storageMask,
-                                const gl46core::BufferAccessMask accessMask,
-                                const gl46core::GLenum usage) const
+std::unique_ptr<Chunk> ChunkAllocator::allocate(const bool poolAllocations,
+                                                const size_t size,
+                                                const size_t alignment,
+                                                const gl46core::BufferStorageMask storageMask,
+                                                const gl46core::BufferAccessMask accessMask,
+                                                const gl46core::GLenum usage) const
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     const size_t overflowSize = to_size(1) << to_size(std::log2(size) + 1);
-    return MemoryManager_NEW Chunk(poolAllocations, (size > _size ? overflowSize : _size), alignment, storageMask, accessMask, usage);
+    return std::make_unique<Chunk>(poolAllocations, (size > _size ? overflowSize : _size), alignment, storageMask, accessMask, usage);
 }
 
 DeviceAllocator::DeviceAllocator(const GLMemoryType memoryType) noexcept
@@ -216,7 +216,7 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
     Block block;
-    for (Chunk* chunk : _chunks)
+    for (auto& chunk : _chunks)
     {
         if (chunk->storageMask() == storageMask && 
             chunk->accessMask() == accessMask &&
@@ -245,7 +245,7 @@ void DeviceAllocator::deallocate(const Block &block) const
 
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
 
-    for (Chunk* chunk : _chunks)
+    for (auto& chunk : _chunks)
     {
         if (chunk->containsBlock(block))
         {
@@ -260,7 +260,7 @@ void DeviceAllocator::deallocate(const Block &block) const
 void DeviceAllocator::deallocate()
 {
     LockGuard<Mutex> w_lock(_chunkAllocatorLock);
-    MemoryManager::DELETE_CONTAINER(_chunks);
+    _chunks.clear();
 }
 
 } // namespace GLMemory

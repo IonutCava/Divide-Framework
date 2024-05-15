@@ -45,10 +45,9 @@ namespace TypeUtil {
     }
 }
 
-PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache* cache)
-    : _context(context),
-      _parent(parent),
-      _resCache(cache)
+PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
+    : _context(context)
+    , _parent(parent)
 {
     const auto& configParams = _context.context().config().rendering.postFX.toneMap;
 
@@ -84,8 +83,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     RenderTargetDescriptor desc = {};
     desc._resolution = _screenRTs._hdr._screenRef._rt->getResolution();
 
-    TextureDescriptor outputDescriptor = _screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture()->descriptor();
-    outputDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+    TextureDescriptor outputDescriptor = Get(_screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture())->descriptor();
+
+    outputDescriptor._mipMappingState = MipMappingState::OFF;
     {
         desc._attachments =
         {
@@ -96,9 +96,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _screenRTs._hdr._screenCopy = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        outputDescriptor.dataType(GFXDataFormat::UNSIGNED_BYTE);
-        outputDescriptor.packing(GFXImagePacking::NORMALIZED);
-
         //Colour0 holds the LDR screen texture
         desc._attachments =
         {
@@ -113,8 +110,11 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         _screenRTs._ldr._temp[1] = _context.renderTargetPool().allocateRT(desc);
     }
     {
-        TextureDescriptor edgeDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG, GFXImagePacking::UNNORMALIZED );
-        edgeDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor edgeDescriptor{};
+        edgeDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        edgeDescriptor._baseFormat = GFXImageFormat::RG;
+        edgeDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        edgeDescriptor._mipMappingState = MipMappingState::OFF;
 
         desc._attachments =
         {
@@ -126,20 +126,24 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
     }
     {
         // Could be FLOAT_16 but due to host-readback, keeping it as 32 makes it a bit easier to manage
-        TextureDescriptor lumaDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RED, GFXImagePacking::UNNORMALIZED );
-        lumaDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
-        lumaDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
-
-        ResourceDescriptor texture("Luminance Texture");
-        texture.propertyDescriptor(lumaDescriptor);
+        ResourceDescriptor<Texture> texture("Luminance Texture");
         texture.waitForReady(true);
-        _currentLuminance = CreateResource<Texture>(cache, texture);
+
+        TextureDescriptor& lumaDescriptor = texture._propertyDescriptor;
+        lumaDescriptor._dataType = GFXDataFormat::FLOAT_32;
+        lumaDescriptor._baseFormat = GFXImageFormat::RED;
+        lumaDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        lumaDescriptor._mipMappingState = MipMappingState::OFF;
+        AddImageUsageFlag( lumaDescriptor, ImageUsage::SHADER_READ);
+
+        _currentLuminance = CreateResource(texture);
 
         F32 val = 1.f;
-        _currentLuminance->createWithData((Byte*)&val, 1u * sizeof(F32), vec2<U16>(1u), {});
+        Get(_currentLuminance)->createWithData((Byte*)&val, 1u * sizeof(F32), vec2<U16>(1u), {});
     }
     {
-        const SamplerDescriptor defaultSampler = {
+        const SamplerDescriptor defaultSampler =
+        {
             ._minFilter = TextureFilter::NEAREST,
             ._magFilter = TextureFilter::NEAREST,
             ._mipSampling = TextureMipSampling::NONE,
@@ -149,8 +153,11 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             ._anisotropyLevel = 0u
         };
 
-        TextureDescriptor linearDepthDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED, GFXImagePacking::UNNORMALIZED );
-        linearDepthDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor linearDepthDescriptor{};
+        linearDepthDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        linearDepthDescriptor._baseFormat = GFXImageFormat::RED;
+        linearDepthDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        linearDepthDescriptor._mipMappingState = MipMappingState::OFF;
 
         desc._attachments =
         {
@@ -173,11 +180,11 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             switch (fType)
             {
                 case FilterType::FILTER_SS_AMBIENT_OCCLUSION:
-                    hdrBatch.emplace_back(std::make_unique<SSAOPreRenderOperator>(_context, *this, _resCache));
+                    hdrBatch.emplace_back(std::make_unique<SSAOPreRenderOperator>(_context, *this));
                     break;
 
                 case FilterType::FILTER_SS_REFLECTIONS:
-                    hdrBatch.emplace_back(std::make_unique<SSRPreRenderOperator>(_context, *this, _resCache));
+                    hdrBatch.emplace_back(std::make_unique<SSRPreRenderOperator>(_context, *this));
                     break;
 
                 default:
@@ -197,15 +204,15 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             switch (fType)
             {
                case FilterType::FILTER_DEPTH_OF_FIELD:
-                   hdr2Batch.emplace_back(std::make_unique<DoFPreRenderOperator>(_context, *this, _resCache));
+                   hdr2Batch.emplace_back(std::make_unique<DoFPreRenderOperator>(_context, *this));
                    break;
 
                case FilterType::FILTER_MOTION_BLUR:
-                   hdr2Batch.emplace_back(std::make_unique<MotionBlurPreRenderOperator>(_context, *this, _resCache));
+                   hdr2Batch.emplace_back(std::make_unique<MotionBlurPreRenderOperator>(_context, *this));
                    break;
 
                case FilterType::FILTER_BLOOM:
-                   hdr2Batch.emplace_back(std::make_unique<BloomPreRenderOperator>(_context, *this, _resCache));
+                   hdr2Batch.emplace_back(std::make_unique<BloomPreRenderOperator>(_context, *this));
                    break;
 
                default:
@@ -224,7 +231,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         {
             if (fType == FilterType::FILTER_SS_ANTIALIASING) [[likely]]
             {
-                ldrBatch.push_back( std::make_unique<PostAAPreRenderOperator>( _context, *this, _resCache ) );
+                ldrBatch.push_back( std::make_unique<PostAAPreRenderOperator>( _context, *this ) );
             }
             else
             {
@@ -248,34 +255,27 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         }
         fragModule._sourceFile = "toneMap.glsl";
 
-        ShaderProgramDescriptor mapDescriptor1 = {};
-        mapDescriptor1._modules.push_back(vertModule);
-        mapDescriptor1._modules.push_back(fragModule);
-        mapDescriptor1._globalDefines.emplace_back( "manualExposureFactor PushData0[0].x" );
-        mapDescriptor1._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
-        mapDescriptor1._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
-        mapDescriptor1._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
-
-        ResourceDescriptor toneMap("toneMap");
+        ResourceDescriptor<ShaderProgram> toneMap("toneMap");
+        toneMap._propertyDescriptor._modules.push_back(vertModule);
+        toneMap._propertyDescriptor._modules.push_back(fragModule);
+        toneMap._propertyDescriptor._globalDefines.emplace_back( "manualExposureFactor PushData0[0].x" );
+        toneMap._propertyDescriptor._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
+        toneMap._propertyDescriptor._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
+        toneMap._propertyDescriptor._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
         toneMap.waitForReady(false);
-        toneMap.propertyDescriptor(mapDescriptor1);
-        _toneMap = CreateResource<ShaderProgram>(_resCache, toneMap, loadTasks);
+        _toneMap = CreateResource( toneMap, loadTasks);
 
         fragModule._defines.emplace_back("USE_ADAPTIVE_LUMINANCE");
 
-        ShaderProgramDescriptor toneMapAdaptiveDescriptor{};
-        toneMapAdaptiveDescriptor._modules.push_back(vertModule);
-        toneMapAdaptiveDescriptor._modules.push_back(fragModule);
-        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "manualExposureFactor PushData0[0].x" );
-        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
-        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
-        toneMapAdaptiveDescriptor._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
-
-        ResourceDescriptor toneMapAdaptive("toneMap.Adaptive");
+        ResourceDescriptor<ShaderProgram> toneMapAdaptive("toneMap.Adaptive" );
+        toneMapAdaptive._propertyDescriptor._modules.push_back(vertModule);
+        toneMapAdaptive._propertyDescriptor._modules.push_back(fragModule);
+        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "manualExposureFactor PushData0[0].x" );
+        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
+        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
+        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
         toneMapAdaptive.waitForReady(false);
-        toneMapAdaptive.propertyDescriptor(toneMapAdaptiveDescriptor);
-
-        _toneMapAdaptive = CreateResource<ShaderProgram>(_resCache, toneMapAdaptive, loadTasks);
+        _toneMapAdaptive = CreateResource( toneMapAdaptive, loadTasks);
 
     }
     {
@@ -287,28 +287,25 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
         computeModule._defines.emplace_back(Util::StringFormat("THREADS_Y {}", GROUP_Y_THREADS));
         {
             computeModule._variant = "Create";
-            ShaderProgramDescriptor calcDescriptor = {};
-            calcDescriptor._modules.push_back(computeModule);
-            calcDescriptor._globalDefines.emplace_back( "u_params PushData0[0]" );
 
-            ResourceDescriptor histogramCreate("luminanceCalc.HistogramCreate");
+
+            ResourceDescriptor<ShaderProgram> histogramCreate("luminanceCalc.HistogramCreate");
             histogramCreate.waitForReady(false);
-            histogramCreate.propertyDescriptor(calcDescriptor);
-            _createHistogram = CreateResource<ShaderProgram>(_resCache, histogramCreate, loadTasks);
+            histogramCreate._propertyDescriptor._modules.push_back( computeModule );
+            histogramCreate._propertyDescriptor._globalDefines.emplace_back( "u_params PushData0[0]" );
+            _createHistogram = CreateResource(histogramCreate, loadTasks);
         }
         {
             computeModule._variant = "Average";
-            ShaderProgramDescriptor calcDescriptor = {};
-            calcDescriptor._modules.push_back(computeModule);
-            calcDescriptor._globalDefines.emplace_back( "dvd_minLogLum PushData0[0].x" );
-            calcDescriptor._globalDefines.emplace_back( "dvd_logLumRange PushData0[0].y" );
-            calcDescriptor._globalDefines.emplace_back( "dvd_timeCoeff PushData0[0].z" );
-            calcDescriptor._globalDefines.emplace_back( "dvd_numPixels PushData0[0].w" );
 
-            ResourceDescriptor histogramAverage("luminanceCalc.HistogramAverage");
+            ResourceDescriptor<ShaderProgram> histogramAverage("luminanceCalc.HistogramAverage");
             histogramAverage.waitForReady(false);
-            histogramAverage.propertyDescriptor(calcDescriptor);
-            _averageHistogram = CreateResource<ShaderProgram>(_resCache, histogramAverage, loadTasks);
+            histogramAverage._propertyDescriptor._modules.push_back( computeModule );
+            histogramAverage._propertyDescriptor._globalDefines.emplace_back( "dvd_minLogLum PushData0[0].x" );
+            histogramAverage._propertyDescriptor._globalDefines.emplace_back( "dvd_logLumRange PushData0[0].y" );
+            histogramAverage._propertyDescriptor._globalDefines.emplace_back( "dvd_timeCoeff PushData0[0].z" );
+            histogramAverage._propertyDescriptor._globalDefines.emplace_back( "dvd_numPixels PushData0[0].w" );
+            _averageHistogram = CreateResource(histogramAverage, loadTasks);
         }
     }
     {
@@ -327,30 +324,27 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
             fragModule._variant = "Depth";
             edgeDetectionDescriptor._modules = { vertModule, fragModule };
 
-            ResourceDescriptor edgeDetectionDepth("edgeDetection.Depth");
+            ResourceDescriptor<ShaderProgram> edgeDetectionDepth("edgeDetection.Depth", edgeDetectionDescriptor );
             edgeDetectionDepth.waitForReady(false);
-            edgeDetectionDepth.propertyDescriptor(edgeDetectionDescriptor);
 
-            _edgeDetection[to_base(EdgeDetectionMethod::Depth)] = CreateResource<ShaderProgram>(_resCache, edgeDetectionDepth, loadTasks);
+            _edgeDetection[to_base(EdgeDetectionMethod::Depth)] = CreateResource(edgeDetectionDepth, loadTasks);
         }
         {
             fragModule._variant = "Luma";
             edgeDetectionDescriptor._modules = { vertModule, fragModule };
 
-            ResourceDescriptor edgeDetectionLuma("edgeDetection.Luma");
+            ResourceDescriptor<ShaderProgram> edgeDetectionLuma("edgeDetection.Luma", edgeDetectionDescriptor );
             edgeDetectionLuma.waitForReady(false);
-            edgeDetectionLuma.propertyDescriptor(edgeDetectionDescriptor);
-            _edgeDetection[to_base(EdgeDetectionMethod::Luma)] = CreateResource<ShaderProgram>(_resCache, edgeDetectionLuma, loadTasks);
+            _edgeDetection[to_base(EdgeDetectionMethod::Luma)] = CreateResource(edgeDetectionLuma, loadTasks);
 
         }
         {
             fragModule._variant = "Colour";
             edgeDetectionDescriptor._modules = { vertModule, fragModule };
 
-            ResourceDescriptor edgeDetectionColour("edgeDetection.Colour");
+            ResourceDescriptor<ShaderProgram> edgeDetectionColour("edgeDetection.Colour", edgeDetectionDescriptor );
             edgeDetectionColour.waitForReady(false);
-            edgeDetectionColour.propertyDescriptor(edgeDetectionDescriptor);
-            _edgeDetection[to_base(EdgeDetectionMethod::Colour)] = CreateResource<ShaderProgram>(_resCache, edgeDetectionColour, loadTasks);
+            _edgeDetection[to_base(EdgeDetectionMethod::Colour)] = CreateResource(edgeDetectionColour, loadTasks);
         }
     }
     {
@@ -369,10 +363,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
         lineariseDepthBufferDescriptor._modules = { vertModule, fragModule };
 
-        ResourceDescriptor lineariseDepthBuffer("lineariseDepthBuffer");
+        ResourceDescriptor<ShaderProgram> lineariseDepthBuffer("lineariseDepthBuffer", lineariseDepthBufferDescriptor );
         lineariseDepthBuffer.waitForReady(false);
-        lineariseDepthBuffer.propertyDescriptor(lineariseDepthBufferDescriptor);
-        _lineariseDepthBuffer = CreateResource<ShaderProgram>(_resCache, lineariseDepthBuffer, loadTasks);
+        _lineariseDepthBuffer = CreateResource(lineariseDepthBuffer, loadTasks);
     }
 
     ShaderBufferDescriptor bufferDescriptor = {};
@@ -386,30 +379,30 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent, ResourceCache
 
     _histogramBuffer = _context.newSB(bufferDescriptor);
 
-    WAIT_FOR_CONDITION(operatorsReady());
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
+    DIVIDE_ASSERT(operatorsReady()); // The previous loadTasks atomic should account for all threaded loads. If not, fix it.
 
     PipelineDescriptor pipelineDescriptor{};
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
 
     pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-    pipelineDescriptor._shaderProgramHandle = _createHistogram->handle();
+    pipelineDescriptor._shaderProgramHandle = _createHistogram;
 
     _pipelineLumCalcHistogram = _context.newPipeline(pipelineDescriptor);
 
-    pipelineDescriptor._shaderProgramHandle = _averageHistogram->handle();
+    pipelineDescriptor._shaderProgramHandle = _averageHistogram;
     _pipelineLumCalcAverage = _context.newPipeline(pipelineDescriptor);
 
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive->handle();
+    pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive;
     _pipelineToneMapAdaptive = _context.newPipeline(pipelineDescriptor);
 
-    pipelineDescriptor._shaderProgramHandle = _toneMap->handle();
+    pipelineDescriptor._shaderProgramHandle = _toneMap;
     _pipelineToneMap = _context.newPipeline(pipelineDescriptor);
 
     for (U8 i = 0u; i < to_U8(EdgeDetectionMethod::COUNT); ++i) {
-        pipelineDescriptor._shaderProgramHandle = _edgeDetection[i]->handle();
+        pipelineDescriptor._shaderProgramHandle = _edgeDetection[i];
         _edgeDetectionPipelines[i] = _context.newPipeline(pipelineDescriptor);
     }
 
@@ -424,6 +417,17 @@ PreRenderBatch::~PreRenderBatch()
         !_context.renderTargetPool().deallocateRT(_linearDepthRT))
     {
         DIVIDE_UNEXPECTED_CALL();
+    }
+    DestroyResource(_currentLuminance);
+    DestroyResource(_toneMap);
+    DestroyResource(_toneMapAdaptive);
+    DestroyResource(_createHistogram);
+    DestroyResource(_averageHistogram);
+    DestroyResource(_lineariseDepthBuffer);
+
+    for (auto& shader : _edgeDetection)
+    {
+        DestroyResource(shader);
     }
 }
 
@@ -510,7 +514,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
 
         PipelineDescriptor pipelineDescriptor = {};
         pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer->handle();
+        pipelineDescriptor._shaderProgramHandle = _lineariseDepthBuffer;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         GFX::BindPipelineCommand bindPipelineCmd{};
@@ -525,7 +529,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+        Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
 
         PushConstantsStruct pushData{};
         pushData.data[0]._vec[0].xy = cameraSnapshot._zPlanes;
@@ -560,11 +564,11 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     cmd->_usage = DescriptorSetUsage::PER_PASS;
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, ssrDataAtt->texture()->getView(), ssrDataAtt->_descriptor._sampler );
+        Set( binding._data, ssrDataAtt->texture(), ssrDataAtt->_descriptor._sampler );
     }
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::FRAGMENT );
-        Set( binding._data, ssaoDataAtt->texture()->getView(), ssaoDataAtt->_descriptor._sampler );
+        Set( binding._data, ssaoDataAtt->texture(), ssaoDataAtt->_descriptor._sampler );
     }
 }
 
@@ -578,8 +582,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
 
     { // Histogram Pass
-        const Texture_ptr& screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
-        const ImageView screenImage = screenColour->getView();
+        const Handle<Texture> screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
+        const ImageView screenImage = Get(screenColour)->getView();
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "CreateLuminanceHistogram";
 
@@ -633,12 +637,15 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
 
+    const ImageView luminanceView = Get( _currentLuminance )->getView();
+
     { // Averaging pass
+
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "AverageLuminanceHistogram";
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
-            ._targetView = _currentLuminance->getView(),
+            ._targetView   = luminanceView,
             ._sourceLayout = ImageUsage::SHADER_READ,
             ._targetLayout = ImageUsage::SHADER_WRITE,
         });
@@ -653,7 +660,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
-            Set(binding._data, _currentLuminance->getView(), ImageUsage::SHADER_WRITE );
+            Set(binding._data, luminanceView, ImageUsage::SHADER_WRITE );
         }
 
 
@@ -677,7 +684,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
             memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
             {
-                ._targetView = _currentLuminance->getView(),
+                ._targetView   = luminanceView,
                 ._sourceLayout = ImageUsage::SHADER_WRITE,
                 ._targetLayout = ImageUsage::SHADER_READ,
             });
@@ -688,7 +695,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             _adaptiveExposureValueNeedsUpdate = false;
 
             auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>(bufferInOut);
-            readTextureCmd->_texture = _currentLuminance.get();
+            readTextureCmd->_texture = _currentLuminance;
             readTextureCmd->_pixelPackAlignment._alignment = 1u;
             readTextureCmd->_callback = [&](const ImageReadbackData& data)
             {
@@ -751,7 +758,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
-    auto& prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
+    Handle<Texture> prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;
@@ -769,7 +776,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     GFX::EnqueueCommand(bufferInOut, blitScreenColourCmd);
 
     GFX::ComputeMipMapsCommand computeMipMapsCommand{};
-    computeMipMapsCommand._texture = prevScreenTex.get();
+    computeMipMapsCommand._texture = prevScreenTex;
     computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
@@ -783,15 +790,15 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenAtt->texture()->getView(), screenAtt->_descriptor._sampler );
+            Set( binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _currentLuminance->getView(), lumaSampler() );
+            Set( binding._data, luminanceView, lumaSampler() );
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenDepthAtt->texture()->getView(), screenDepthAtt->_descriptor._sampler );
+            Set( binding._data, screenDepthAtt->texture(), screenDepthAtt->_descriptor._sampler );
         }
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
@@ -830,13 +837,13 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             const auto& screenAtt = getInput(false)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
 
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenAtt->texture()->getView(), screenAtt->_descriptor._sampler );
+            Set( binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler );
 
         } else {
             const auto& depthAtt = getInput(false)._rt->getAttachment(RTAttachmentType::DEPTH);
 
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, depthAtt->texture()->getView(), depthAtt->_descriptor._sampler );
+            Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
         }
 
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);

@@ -40,8 +40,8 @@ namespace Divide {
 
 class AudioDescriptor final : public CachedResource {
    public:
-    AudioDescriptor(const size_t descriptorHash, const std::string_view name, const std::string_view audioFileName, const ResourcePath& audioFilePath)
-        : CachedResource(ResourceType::DEFAULT, descriptorHash, name, audioFileName, audioFilePath)
+    AudioDescriptor( const ResourceDescriptor<AudioDescriptor>& descriptor )
+        : CachedResource( descriptor, "AudioDescriptor")
     {
     }
 
@@ -58,8 +58,6 @@ class AudioDescriptor final : public CachedResource {
     }
 
     void clean() noexcept { dirty(false); }
-
-    [[nodiscard]] const char* getResourceTypeName() const noexcept  override { return "AudioDescriptor"; }
 
     PROPERTY_RW(F32, frequency, 44.2f);
     PROPERTY_RW(I8, bitDepth, 16);

@@ -31,9 +31,11 @@ GUIInterface::~GUIInterface()
 {
     using namespace eastl;
 
-    for (U8 i = 0; i < to_base(GUIType::COUNT); ++i) {
-        for (auto& [nameHash, entry] : _guiElements[i]) {
-            MemoryManager::DELETE(entry.first);
+    for (U8 i = 0; i < to_base(GUIType::COUNT); ++i)
+    {
+        for (auto& [nameHash, entry] : _guiElements[i])
+        {
+            delete entry.first;
         }
     }
 }
@@ -48,10 +50,14 @@ void GUIInterface::addElement(const U64 id, GUIElement* element) {
     GUIMap& targetMap = _guiElements[typeIndex];
 
     const GUIMap::iterator it = targetMap.find(id);
-    if (it != std::end(targetMap)) {
-        MemoryManager::SAFE_UPDATE(it->second.first, element);
+    if (it != std::end(targetMap))
+    {
+        delete it->second.first;
+        it->second.first = element;
         it->second.second = element ? element->visible() : false;
-    } else {
+    }
+    else
+    {
         insert(targetMap, id, std::make_pair(element, element ? element->visible() : false));
     }
 }
@@ -120,17 +126,17 @@ GUIButton* GUIInterface::addButton(const char* name,
             parent = parent->getChild(rootSheetID.c_str());
         }
     }
-    ResourceDescriptor beepSound("buttonClick");
+    ResourceDescriptor<AudioDescriptor> beepSound("buttonClick");
     beepSound.assetName("beep.wav");
     beepSound.assetLocation(Paths::g_soundsLocation);
-    const AudioDescriptor_ptr onClickSound = CreateResource<AudioDescriptor>(_context->parent().resourceCache(), beepSound);
+    Handle<AudioDescriptor> onClickSound = CreateResource(beepSound);
 
-    GUIButton* btn = MemoryManager_NEW GUIButton(name,
-                                                 text,
-                                                 _context->defaultGUIScheme(),
-                                                 offset,
-                                                 size,
-                                                 parent);
+    GUIButton* btn = new GUIButton(name,
+                                   text,
+                                   _context->defaultGUIScheme(),
+                                   offset,
+                                   size,
+                                   parent);
 
     btn->setEventSound(GUIButton::Event::MouseClick, onClickSound);
 
@@ -147,11 +153,11 @@ GUIMessageBox* GUIInterface::addMsgBox(const char* name,
 
     assert(getGUIElement<GUIMessageBox>(guiID) == nullptr);
 
-    GUIMessageBox* box = MemoryManager_NEW GUIMessageBox(name,
-                                                         title,
-                                                         message,
-                                                         offsetFromCentre,
-                                                         _context->rootSheet());
+    GUIMessageBox* box = new GUIMessageBox(name,
+                                           title,
+                                           message,
+                                           offsetFromCentre,
+                                           _context->rootSheet());
     addElement(guiID, box);
 
     return box;
@@ -168,14 +174,14 @@ GUIText* GUIInterface::addText(const char* name,
 
     assert(getGUIElement<GUIText>(guiID) == nullptr);
 
-    GUIText* t = MemoryManager_NEW GUIText(name,
-                                           text,
-                                           multiLine,
-                                           position,
-                                           font,
-                                           colour,
-                                           _context->rootSheet(),
-                                           fontSize);
+    GUIText* t = new GUIText(name,
+                             text,
+                             multiLine,
+                             position,
+                             font,
+                             colour,
+                             _context->rootSheet(),
+                             fontSize);
     addElement(guiID, t);
 
     return t;
@@ -187,7 +193,7 @@ GUIFlash* GUIInterface::addFlash(const char* name,
     const U64 guiID = _ID(name);
     assert(getGUIElement<GUIFlash>(guiID) == nullptr);
     
-    GUIFlash* flash = MemoryManager_NEW GUIFlash(name, _context->rootSheet());
+    GUIFlash* flash = new GUIFlash(name, _context->rootSheet());
     addElement(guiID, flash);
 
     return flash;

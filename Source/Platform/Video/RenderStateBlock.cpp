@@ -111,7 +111,7 @@ size_t GetHash( const RenderStateBlock& block )
     return hash;
 }
 
-void SaveToXML(const RenderStateBlock& block, const string& entryName, boost::property_tree::ptree& pt)
+void SaveToXML(const RenderStateBlock& block, const std::string& entryName, boost::property_tree::ptree& pt)
 {
 
     pt.put(entryName + ".colourWrite.<xmlattr>.r", block._colourWrite.b[0] == 1);
@@ -142,7 +142,7 @@ void SaveToXML(const RenderStateBlock& block, const string& entryName, boost::pr
     pt.put(entryName + ".stencilWriteMask", block._stencilWriteMask);
 }
 
-void LoadFromXML(const string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut)
+void LoadFromXML(const std::string& entryName, const boost::property_tree::ptree& pt, RenderStateBlock& blockInOut)
 {
     blockInOut._colourWrite.b[0] = pt.get(entryName + ".colourWrite.<xmlattr>.r", blockInOut._colourWrite.b[0]);
     blockInOut._colourWrite.b[1] = pt.get(entryName + ".colourWrite.<xmlattr>.g", blockInOut._colourWrite.b[1]);

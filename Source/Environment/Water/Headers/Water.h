@@ -43,14 +43,15 @@ class Texture;
 class StaticCamera;
 class ShaderProgram;
 
-class WaterPlane : public SceneNode {
+DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
+{
    public:
-    explicit WaterPlane(ResourceCache* parentCache, size_t descriptorHash, const std::string_view name);
+    explicit WaterPlane( const ResourceDescriptor<WaterPlane>& descriptor );
     ~WaterPlane() override;
 
     static bool PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept;
 
-    const std::shared_ptr<Quad3D>& getQuad() const noexcept { return _plane; }
+    Handle<Quad3D> getQuad() const noexcept { return _plane; }
 
     void updatePlaneEquation(const SceneGraphNode* sgn,
                              Plane<F32>& plane,
@@ -75,9 +76,17 @@ class WaterPlane : public SceneNode {
     PROPERTY_RW(bool, blurReflections, true);
 
    protected:
+    friend class ResourceCache;
+    template <typename T> friend struct ResourcePool;
+
+    bool postLoad() override;
+    bool unload() override;
+
+   protected:
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
     void postLoad(SceneGraphNode* sgn) override;
+
     void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
     void prepareRender(SceneGraphNode* sgn,
                        RenderingComponent& rComp,
@@ -90,10 +99,8 @@ class WaterPlane : public SceneNode {
     template <typename T>
     friend class ImplResourceLoader;
 
-    bool load() override;
+    bool load( PlatformContext& context ) override;
     void onEditorChange(std::string_view field) noexcept;
-
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "WaterPlane"; }
 
    private:
     void updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
@@ -101,7 +108,7 @@ class WaterPlane : public SceneNode {
 
    private:
     vec3<U16> _dimensions{1u};
-    Quad3D_ptr _plane{ nullptr };
+    Handle<Quad3D> _plane{ INVALID_HANDLE<Quad3D> };
     Camera* _reflectionCam{ nullptr };
 };
 

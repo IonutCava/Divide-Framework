@@ -38,26 +38,28 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-template<typename T, size_t N>
+template<typename T, size_t N, bool allowResize>
 class ObjectPool {
 public:
-    template<typename... Args>
-    PoolHandle allocate(void* mem, Args... args);
-    void deallocate(void* mem, PoolHandle handle);
+    ObjectPool();
 
     template<typename... Args>
-    PoolHandle allocate(Args... args);
-    void deallocate(PoolHandle handle);
+    [[nodiscard]] PoolHandle allocate(Args... args);
+                        void deallocate(PoolHandle handle);
 
-    PoolHandle registerExisting(T& object);
-    void unregisterExisting(PoolHandle handle);
+    [[nodiscard]] PoolHandle registerExisting(T& object);
+                        void unregisterExisting(PoolHandle handle);
 
-    T* find(PoolHandle handle) const;
+    [[nodiscard]] T* find(PoolHandle handle) const;
+
+protected:
+    [[nodiscard]] PoolHandle registerExistingInternal( T& object, bool retry );
 
 protected:
     mutable SharedMutex _poolLock;
-    std::array<PoolHandle, N> _ids{};
-    std::array<T*, N> _pool{};
+    
+    eastl::fixed_vector<PoolHandle, N, allowResize> _ids{};
+    eastl::fixed_vector<T*, N, allowResize> _pool{};
 };
 
 } //namespace Divide

@@ -43,7 +43,8 @@ namespace Divide {
 
 class PostAAPreRenderOperator final : public PreRenderOperator {
    public:
-    explicit PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
+    explicit PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    ~PostAAPreRenderOperator();
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
@@ -57,13 +58,12 @@ class PostAAPreRenderOperator final : public PreRenderOperator {
     PROPERTY_INTERNAL(U8, currentPostAAQualityLevel, 2u);
     PROPERTY_INTERNAL(bool, currentUseSMAA, false);
 
-    ShaderProgram_ptr _fxaa = nullptr;
+    Handle<ShaderProgram> _fxaa = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _smaaWeightComputation = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _smaaBlend = INVALID_HANDLE<ShaderProgram>;
 
-    ShaderProgram_ptr _smaaWeightComputation = nullptr;
-    ShaderProgram_ptr _smaaBlend = nullptr;
-
-    Texture_ptr _searchTexture = nullptr;
-    Texture_ptr _areaTexture = nullptr;
+    Handle<Texture> _searchTexture = INVALID_HANDLE<Texture>;
+    Handle<Texture> _areaTexture = INVALID_HANDLE<Texture>;
 
     RenderTargetHandle _smaaWeights;
 

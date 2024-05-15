@@ -39,9 +39,9 @@
 namespace Divide {
 
 class Pipeline;
+class ShaderProgram;
 class SpotLightComponent;
 
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
 
 /// A single shadow map system. Used, for example, by spot lights.
 class SingleShadowMapGenerator final : public ShadowMapGenerator {
@@ -58,7 +58,7 @@ class SingleShadowMapGenerator final : public ShadowMapGenerator {
 
   protected:
     Pipeline* _blurPipeline = nullptr;
-    ShaderProgram_ptr _blurDepthMapShader = nullptr;
+    Handle<ShaderProgram> _blurDepthMapShader = INVALID_HANDLE<ShaderProgram>;
     RenderTargetHandle _drawBufferDepth;
     RenderTargetHandle _blurBuffer;
     PushConstantsStruct _shaderConstants;

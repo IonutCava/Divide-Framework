@@ -11,12 +11,14 @@ namespace Divide {
     {
     }
 
-    void AnimationSystem::PreUpdate(const F32 dt) {
+    void AnimationSystem::PreUpdate(const F32 dt)
+    {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::PreUpdate(dt);
 
-        for (AnimationComponent* comp : _componentCache) {
+        for (AnimationComponent* comp : _componentCache)
+        {
             if (comp->animationIndex() == U32_MAX)
             {
                 comp->playAnimation(0);
@@ -26,15 +28,18 @@ namespace Divide {
         }
     }
 
-    void AnimationSystem::Update(const F32 dt) {
+    void AnimationSystem::Update(const F32 dt)
+    {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         Parent::Update(dt);
 
-        for (AnimationComponent* comp : _componentCache) {
-            const SceneAnimator_ptr animator = comp->animator();
+        for (AnimationComponent* comp : _componentCache)
+        {
+            const SceneAnimator* animator = comp->animator();
 
-            if (!animator || COMPARE(comp->_parentTimeStamp, comp->_currentTimeStamp)) {
+            if (!animator || COMPARE(comp->_parentTimeStamp, comp->_currentTimeStamp))
+            {
                 return;
             }
 
@@ -53,48 +58,61 @@ namespace Divide {
             }
 
             // Resolve IK
-            //if (comp->_resolveIK) {
+            //if (comp->_resolveIK)
+            //{
                 /// Use CCD to move target joints to target positions
             //}
 
             // Resolve ragdoll
-            // if (comp->_resolveRagdoll) {
+            // if (comp->_resolveRagdoll)
+            //{
                 /// Use PhysX actor from RigidBodyComponent to feed new bone positions/orientation
                 /// And read back ragdoll results to update transforms accordingly
             //}
         }
     }
 
-    void AnimationSystem::PostUpdate(const F32 dt) {
+    void AnimationSystem::PostUpdate(const F32 dt)
+    {
         Parent::PostUpdate(dt);
-        for (AnimationComponent* const comp : _componentCache) {
-            if (comp->frameTicked()) {
+        for (AnimationComponent* const comp : _componentCache)
+        {
+            if (comp->frameTicked())
+            {
                 comp->parentSGN()->SendEvent(
-                    ECS::CustomEvent{
-                         ._type = ECS::CustomEvent::Type::AnimationUpdated,
-                         ._sourceCmp = comp
+                    ECS::CustomEvent
+                    {
+                        ._type = ECS::CustomEvent::Type::AnimationUpdated,
+                        ._sourceCmp = comp
                     }
                 );
             }
         }
     }
 
-    bool AnimationSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) {
-        if (Parent::saveCache(sgn, outputBuffer)) {
+    bool AnimationSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer)
+    {
+        if (Parent::saveCache(sgn, outputBuffer))
+        {
             const AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
-            if (aComp != nullptr && !aComp->saveCache(outputBuffer)) {
+            if (aComp != nullptr && !aComp->saveCache(outputBuffer))
+            {
                 return false;
             }
+
             return true;
         }
 
         return false;
     }
 
-    bool AnimationSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) {
-        if (Parent::loadCache(sgn, inputBuffer)) {
+    bool AnimationSystem::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer)
+    {
+        if (Parent::loadCache(sgn, inputBuffer))
+        {
             AnimationComponent* aComp = sgn->GetComponent<AnimationComponent>();
-            if (aComp != nullptr && !aComp->loadCache(inputBuffer)) {
+            if (aComp != nullptr && !aComp->loadCache(inputBuffer))
+            {
                 return false;
             }
             return true;
@@ -103,11 +121,13 @@ namespace Divide {
         return false;
     }
 
-    void AnimationSystem::toggleAnimationState(const bool state) noexcept {
+    void AnimationSystem::toggleAnimationState(const bool state) noexcept
+    {
         AnimationComponent::GlobalAnimationState(state);
     }
 
-    bool AnimationSystem::getAnimationState() const noexcept {
+    bool AnimationSystem::getAnimationState() const noexcept
+    {
         return AnimationComponent::GlobalAnimationState();
     }
 

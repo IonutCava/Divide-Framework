@@ -6,10 +6,10 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 
-
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Time/Headers/ProfileTimer.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Utility/Headers/Localization.h"
 
@@ -38,21 +38,23 @@ namespace Divide
     U32 GL_API::s_fenceSyncCounter[GL_API::s_LockFrameLifetime]{};
     SharedMutex GL_API::s_samplerMapLock;
     NO_DESTROY GL_API::SamplerObjectMap GL_API::s_samplerMap{};
-    glHardwareQueryPool* GL_API::s_hardwareQueryPool = nullptr;
+    std::unique_ptr<glHardwareQueryPool> GL_API::s_hardwareQueryPool = nullptr;
     NO_DESTROY eastl::fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS, false> GL_API::s_TexBindQueue;
 
     NO_DESTROY std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = {
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER ),
+        GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::UNIFORM_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::OTHER )
     };
 
     NO_DESTROY std::array<size_t, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocatorSizes{
-        TO_MEGABYTES( 512 ),
-        TO_MEGABYTES( 1024 ),
-        TO_MEGABYTES( 256 ),
-        TO_MEGABYTES( 256 )
+        TO_MEGABYTES( 1 << 10 ),
+        TO_MEGABYTES( 1 << 8 ),
+        TO_MEGABYTES( 1 << 9 ),
+        TO_MEGABYTES( 1 << 7 ),
+        TO_MEGABYTES( 1 << 7 )
     };
 
     constexpr bool g_breakOnGLCall = false;
@@ -278,7 +280,7 @@ namespace Divide
 
         if ( s_hardwareQueryPool == nullptr )
         {
-            s_hardwareQueryPool = MemoryManager_NEW glHardwareQueryPool( _context );
+            s_hardwareQueryPool = std::make_unique<glHardwareQueryPool>( _context );
         }
 
         // If we got here, let's figure out what capabilities we have available
@@ -504,7 +506,7 @@ namespace Divide
         {
             for ( auto& sampler : s_samplerMap )
             {
-                glSamplerObject::Destruct( sampler.second );
+                glSamplerObject::Destruct( sampler._glHandle );
             }
             s_samplerMap.clear();
         }
@@ -513,7 +515,7 @@ namespace Divide
         if ( s_hardwareQueryPool != nullptr )
         {
             s_hardwareQueryPool->destroy();
-            MemoryManager::DELETE( s_hardwareQueryPool );
+            s_hardwareQueryPool.reset();
         }
         for ( GLUtil::GLMemory::DeviceAllocator& allocator : s_memoryAllocators )
         {
@@ -542,7 +544,7 @@ namespace Divide
     /// Prepare the GPU for rendering a frame
     bool GL_API::drawToWindow( DisplayWindow& window )
     {
-        //GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
+        GLUtil::ValidateSDL( SDL_GL_MakeCurrent( window.getRawWindow(), window.userData()._glContext ) );
         GLUtil::s_glMainRenderWindow = &window;
         return true;
     }
@@ -704,11 +706,11 @@ namespace Divide
                     case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
                     default : return false;
                 }
-                GLUtil::SubmitRenderCommand( drawCmd, false, gl46core::GL_NONE);
+                GLUtil::SubmitRenderCommand( drawCmd, gl46core::GL_NONE);
             }
             else
             {
-                GLUtil::SubmitRenderCommand(cmd, false, gl46core::GL_NONE);
+                GLUtil::SubmitRenderCommand(cmd, gl46core::GL_NONE);
             }
         }
         else [[likely]]
@@ -831,11 +833,11 @@ namespace Divide
         efficient_clear(s_TexBindQueue);
     }
 
-    gl46core::GLuint GL_API::getGLTextureView( const ImageView srcView, const U8 lifetimeInFrames ) const
+    gl46core::GLuint GL_API::getGLTextureView( const ImageView srcView, const size_t srcViewHash, const U8 lifetimeInFrames ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        auto [handle, cacheHit] = s_textureViewCache.allocate( GetHash( srcView ) );
+        auto [handle, cacheHit] = s_textureViewCache.allocate( srcViewHash );
 
         if ( !cacheHit )
         {
@@ -1040,9 +1042,9 @@ namespace Divide
                 PROFILE_SCOPE( "COPY_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::CopyTextureCommand* crtCmd = cmd->As<GFX::CopyTextureCommand>();
-                glTexture::Copy( static_cast<glTexture*>(crtCmd->_source),
+                glTexture::Copy( static_cast<glTexture*>(Get(crtCmd->_source)),
                                  crtCmd->_sourceMSAASamples,
-                                 static_cast<glTexture*>(crtCmd->_destination),
+                                 static_cast<glTexture*>(Get(crtCmd->_destination)),
                                  crtCmd->_destinationMSAASamples,
                                  crtCmd->_params );
             }break;
@@ -1051,9 +1053,9 @@ namespace Divide
                 PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ClearTextureCommand* crtCmd = cmd->As<GFX::ClearTextureCommand>();
-                if ( crtCmd->_texture != nullptr )
+                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
                 {
-                    static_cast<glTexture*>(crtCmd->_texture)->clearData( crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
+                    static_cast<glTexture*>(Get(crtCmd->_texture))->clearData( crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
                 }
             }break;
             case GFX::CommandType::READ_TEXTURE:
@@ -1061,7 +1063,7 @@ namespace Divide
                 PROFILE_SCOPE( "READ_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
-                glTexture* tex = static_cast<glTexture*>(crtCmd->_texture);
+                glTexture* tex = static_cast<glTexture*>(Get(crtCmd->_texture));
                 const ImageReadbackData readData = tex->readData( crtCmd->_mipLevel, crtCmd->_pixelPackAlignment );
                 crtCmd->_callback( readData );
             }break;
@@ -1074,7 +1076,7 @@ namespace Divide
                 if ( BindPipeline(_context, *pipeline ) == ShaderResult::Failed )
                 {
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
-                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._id, handle._generation, handle._tag );
+                    Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._index, handle._generation );
                 }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
@@ -1141,20 +1143,21 @@ namespace Divide
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
                 DIVIDE_ASSERT( crtCmd->_usage != ImageUsage::COUNT );
 
-                const U16 texLayers = IsCubeTexture( crtCmd->_texture->descriptor().texType() ) ? crtCmd->_texture->depth() * 6u : crtCmd->_texture->depth();
+                ResourcePtr<Texture> tex = Get(crtCmd->_texture);
+                const U16 texLayers = IsCubeTexture( tex->descriptor()._texType ) ? tex->depth() * 6u : tex->depth();
                 const U16 layerCount = crtCmd->_layerRange._count == U16_MAX ? texLayers : crtCmd->_layerRange._count;
 
                 if ( crtCmd->_layerRange._offset == 0 && layerCount >= texLayers )
                 {
                     PROFILE_SCOPE( "GL: In-place computation - Full", Profiler::Category::Graphics );
-                    gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(crtCmd->_texture)->textureHandle() );
+                    gl46core::glGenerateTextureMipmap( static_cast<glTexture*>(tex)->textureHandle() );
                 }
                 else
                 {
                     PROFILE_SCOPE( "GL: View-based computation", Profiler::Category::Graphics );
                     assert( crtCmd->_mipRange._count != 0u );
 
-                    ImageView view = crtCmd->_texture->getView();
+                    ImageView view = tex->getView();
                     view._subRange._layerRange = crtCmd->_layerRange;
                     view._subRange._mipLevels =  crtCmd->_mipRange;
 
@@ -1185,7 +1188,7 @@ namespace Divide
                          view._subRange._mipLevels._count - view._subRange._mipLevels._offset > 0 )
                     {
                         PROFILE_SCOPE( "GL: In-place computation - Image", Profiler::Category::Graphics );
-                        gl46core::glGenerateTextureMipmap( getGLTextureView( view, 6u ) );
+                        gl46core::glGenerateTextureMipmap( getGLTextureView( view, GetHash( view ), 6u ) );
                     }
                 }
             }break;
@@ -1547,8 +1550,8 @@ namespace Divide
                             continue;
                         }
 
-                        size_t samplerHash = srcBinding._data._sampledImage._samplerHash;
-                        if ( !makeTextureViewResident( glBindingSlot, srcBinding._data._sampledImage._image, srcBinding._data._sampledImage._sampler, samplerHash) )
+                        const DescriptorCombinedImageSampler& imageSampler = srcBinding._data._sampledImage;
+                        if ( !makeTextureViewResident( glBindingSlot, imageSampler._image, imageSampler._imageHash, imageSampler._sampler, imageSampler._samplerHash ) )
                         {
                             DIVIDE_UNEXPECTED_CALL();
                         }
@@ -1604,19 +1607,20 @@ namespace Divide
         return true;
     }
 
-    bool GL_API::makeTextureViewResident( const gl46core::GLubyte bindingSlot, const ImageView& imageView, const SamplerDescriptor sampler, size_t& samplerHashInOut ) const
+    bool GL_API::makeTextureViewResident( const gl46core::GLubyte bindingSlot, const ImageView& imageView, const size_t imageViewHash, const SamplerDescriptor sampler, const size_t samplerHash ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if ( imageView._srcTexture == nullptr )
         {
             //unbind request;
-            TexBindEntry entry{};
-            entry._slot = bindingSlot;
-            entry._handle = 0u;
-            entry._sampler = 0u;
+            s_TexBindQueue.emplace_back(TexBindEntry
+            {
+                ._handle = 0u,
+                ._sampler = 0u,
+                ._slot = bindingSlot
+            });
 
-            s_TexBindQueue.push_back( MOV( entry ) );
             return true;
         }
 
@@ -1625,7 +1629,7 @@ namespace Divide
 
         if ( imageView._srcTexture != nullptr && imageView != imageView._srcTexture->getView())
         {
-            entry._handle = getGLTextureView(imageView, 3u);
+            entry._handle = getGLTextureView(imageView, imageViewHash, 3u);
         }
         else
         {
@@ -1637,24 +1641,19 @@ namespace Divide
             return false;
         }
 
-        entry._sampler = GetSamplerHandle( sampler, samplerHashInOut );
-        bool found = false;
+        size_t tempSampler = samplerHash;
+        entry._sampler = GetSamplerHandle( sampler, tempSampler );
 
         for ( TexBindEntry& it : s_TexBindQueue )
         {
             if ( it._slot == bindingSlot )
             {
                 it = entry;
-                found = true;
-                break;
+                return true;
             }
         }
         
-        if (!found )
-        {
-            s_TexBindQueue.push_back( MOV( entry ) );
-        }
-
+        s_TexBindQueue.push_back( MOV( entry ) );
         return true;
     }
 
@@ -1700,7 +1699,7 @@ namespace Divide
         }
 
         ShaderResult ret = ShaderResult::Failed;
-        ShaderProgram* program = ShaderProgram::FindShaderProgram( pipelineDescriptor._shaderProgramHandle );
+        ResourcePtr<ShaderProgram> program = Get( pipelineDescriptor._shaderProgramHandle );
         glShaderProgram* glProgram = static_cast<glShaderProgram*>(program);
         if ( glProgram != nullptr )
         {
@@ -1737,7 +1736,7 @@ namespace Divide
         else
         {
             const auto handle = pipelineDescriptor._shaderProgramHandle;
-            Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_HANDLE" ), handle._id, handle._generation, handle._tag );
+            Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_HANDLE" ), handle._index, handle._generation );
         }
 
         return ret;
@@ -1751,12 +1750,14 @@ namespace Divide
     GLUtil::GLMemory::GLMemoryType GL_API::GetMemoryTypeForUsage( const gl46core::GLenum usage ) noexcept
     {
         assert( usage != gl46core::GL_NONE );
-        if ( usage == gl46core::GL_UNIFORM_BUFFER ||
-             usage == gl46core::GL_SHADER_STORAGE_BUFFER)
+        if ( usage == gl46core::GL_SHADER_STORAGE_BUFFER )
         {
              return GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER;
         }
-
+        if ( usage == gl46core::GL_UNIFORM_BUFFER )
+        {
+            return GLUtil::GLMemory::GLMemoryType::UNIFORM_BUFFER;
+        }
         if (usage == gl46core::GL_ELEMENT_ARRAY_BUFFER)
         {
             return GLUtil::GLMemory::GLMemoryType::INDEX_BUFFER;
@@ -1940,46 +1941,44 @@ namespace Divide
         {
             return cached_handle;
         }
+
         cached_hash = samplerHashInOut;
 
         {
             SharedLock<SharedMutex> r_lock( s_samplerMapLock );
             // If we fail to find the sampler object for the given hash, we print an error and return the default OpenGL handle
-            const SamplerObjectMap::const_iterator it = s_samplerMap.find( cached_hash );
-            if ( it != std::cend( s_samplerMap ) )
+            for ( const auto& sampler : s_samplerMap )
+            {
+                if ( sampler._hash == cached_hash )
+                {
+                    // Return the OpenGL handle for the sampler object matching the specified hash value
+                    cached_handle = sampler._glHandle;
+                    return cached_handle;
+                }
+            }
+        }
+
+        LockGuard<SharedMutex> w_lock( s_samplerMapLock );
+        // Check again
+        for ( const auto& sampler : s_samplerMap )
+        {
+            if ( sampler._hash == cached_hash )
             {
                 // Return the OpenGL handle for the sampler object matching the specified hash value
-                cached_handle = it->second;
+                cached_handle = sampler._glHandle;
                 return cached_handle;
             }
         }
 
-        cached_handle = GL_NULL_HANDLE;
-        {
-            LockGuard<SharedMutex> w_lock( s_samplerMapLock );
-            // Check again
-            const SamplerObjectMap::const_iterator it = s_samplerMap.find( cached_hash );
-            if ( it == std::cend( s_samplerMap ) )
-            {
-                // Cache miss. Create the sampler object now.
-                // Create and store the newly created sample object. GL_API is responsible for deleting these!
-                const gl46core::GLuint samplerHandle = glSamplerObject::Construct( sampler );
-                s_samplerMap[cached_hash] = samplerHandle;
-
-                cached_handle = samplerHandle;
-            }
-            else
-            {
-                cached_handle = it->second;
-            }
-        }
-
+        // Create and store the newly created sample object. GL_API is responsible for deleting these!
+        cached_handle = glSamplerObject::Construct( sampler );
+        s_samplerMap.emplace_back(cached_hash, cached_handle );
         return cached_handle;
     }
 
     glHardwareQueryPool* GL_API::GetHardwareQueryPool() noexcept
     {
-        return s_hardwareQueryPool;
+        return s_hardwareQueryPool.get();
     }
 
     gl46core::GLsync GL_API::CreateFenceSync()
@@ -2008,19 +2007,9 @@ namespace Divide
         return std::make_unique<glFramebuffer>( _context, descriptor );
     }
 
-    GenericVertexData_ptr GL_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
+    GenericVertexData_ptr GL_API::newGVD( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<glGenericVertexData>( _context, ringBufferLength, renderIndirect, name );
-    }
-
-    Texture_ptr GL_API::newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
-    {
-        return std::make_shared<glTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
-    }
-
-    ShaderProgram_ptr GL_API::newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
-    {
-        return std::make_shared<glShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
+        return std::make_shared<glGenericVertexData>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr GL_API::newSB( const ShaderBufferDescriptor& descriptor ) const

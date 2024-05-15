@@ -153,10 +153,8 @@ namespace Divide
     GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 
 
-    ImShaders::ImShaders(GFXDevice& context)
+    ImShaders::ImShaders()
     {
-        auto cache = context.context().kernel().resourceCache();
-
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;
         vertModule._sourceFile = "ImmediateModeEmulation.glsl";
@@ -169,56 +167,56 @@ namespace Divide
         shaderDescriptor._modules.push_back( vertModule );
         shaderDescriptor._modules.push_back( fragModule );
         {
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation" );
+            ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation", shaderDescriptor );
             immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _imShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
-            assert( _imShader != nullptr );
+            _imShader = CreateResource( immediateModeShader );
         }
         {
             shaderDescriptor._globalDefines.emplace_back( "NO_TEXTURE" );
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-NoTexture" );
+            ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation-NoTexture", shaderDescriptor );
             immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _imShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
-            assert( _imShaderNoTexture != nullptr );
+            _imShaderNoTexture = CreateResource( immediateModeShader );
         }
         {
             efficient_clear( shaderDescriptor._globalDefines );
             shaderDescriptor._modules.back()._defines.emplace_back( "WORLD_PASS" );
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-World" );
+            ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation-World", shaderDescriptor );
             immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _imWorldShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
-            assert( _imWorldShader != nullptr );
+            _imWorldShader = CreateResource( immediateModeShader );
         }
         {
             shaderDescriptor._globalDefines.emplace_back( "NO_TEXTURE" );
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-World-NoTexture" );
+            ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation-World-NoTexture", shaderDescriptor );
             immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _imWorldShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
+            _imWorldShaderNoTexture = CreateResource( immediateModeShader );
         }
 
 
         {
             efficient_clear( shaderDescriptor._globalDefines );
             shaderDescriptor._modules.back()._defines.emplace_back( "OIT_PASS" );
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-OIT" );
+            ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation-OIT", shaderDescriptor );
             immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _imWorldOITShader = CreateResource<ShaderProgram>( cache, immediateModeShader );
-            assert( _imWorldOITShader != nullptr );
+            _imWorldOITShader = CreateResource( immediateModeShader );
         }
         {
             shaderDescriptor._modules.back()._defines.emplace_back( "NO_TEXTURE" );
-            ResourceDescriptor immediateModeShader( "ImmediateModeEmulation-OIT-NoTexture" );
+            ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation-OIT-NoTexture", shaderDescriptor );
             immediateModeShader.waitForReady( true );
-            immediateModeShader.propertyDescriptor( shaderDescriptor );
-            _imWorldOITShaderNoTexture = CreateResource<ShaderProgram>( cache, immediateModeShader );
-            assert( _imWorldOITShaderNoTexture != nullptr );
+            _imWorldOITShaderNoTexture = CreateResource( immediateModeShader );
         }
     }
+
+    ImShaders::~ImShaders()
+    {
+        DestroyResource( _imShader );
+        DestroyResource( _imShaderNoTexture );
+        DestroyResource( _imWorldShader );
+        DestroyResource( _imWorldShaderNoTexture );
+        DestroyResource( _imWorldOITShader );
+        DestroyResource( _imWorldOITShaderNoTexture );
+    }
+
 #pragma region Construction, destruction, initialization
 
     ErrorCode GFXDevice::initDescriptorSets()
@@ -451,7 +449,7 @@ namespace Divide
             }
         }
 
-        _rtPool = MemoryManager_NEW GFXRTPool( *this );
+        _rtPool = std::make_unique<GFXRTPool>( *this );
 
         I32 numLightsPerCluster = config.rendering.numLightsPerCluster;
         if ( numLightsPerCluster < 0 )
@@ -475,7 +473,7 @@ namespace Divide
         }
 
 
-        hardwareState = ShaderProgram::OnStartup( context().kernel().resourceCache() );
+        hardwareState = ShaderProgram::OnStartup( context() );
         if ( hardwareState == ErrorCode::NO_ERR )
         {
             hardwareState = initDescriptorSets();
@@ -600,7 +598,6 @@ namespace Divide
     ErrorCode GFXDevice::postInitRenderingAPI( const vec2<U16> renderResolution )
     {
         std::atomic_uint loadTasks = 0;
-        ResourceCache* cache = context().kernel().resourceCache();
         const Configuration& config = context().config();
 
         IMPrimitive::InitStaticData();
@@ -610,7 +607,7 @@ namespace Divide
 
         resizeGPUBlocks( TargetBufferSizeCam, Config::MAX_FRAMES_IN_FLIGHT + 1u );
 
-        _shaderComputeQueue = MemoryManager_NEW ShaderComputeQueue( cache );
+        _shaderComputeQueue = std::make_unique<ShaderComputeQueue>();
 
         // Create general purpose render state blocks
         _defaultStateNoDepthTest._depthTestEnabled = false;
@@ -641,20 +638,36 @@ namespace Divide
         defaultSamplerMips._anisotropyLevel = 0u;
 
         //PrePass
-        TextureDescriptor depthDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RED, GFXImagePacking::DEPTH );
-        TextureDescriptor velocityDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG, GFXImagePacking::UNNORMALIZED );
+        TextureDescriptor depthDescriptor{};
+        depthDescriptor._dataType = GFXDataFormat::FLOAT_32;
+        depthDescriptor._baseFormat = GFXImageFormat::RED;
+        depthDescriptor._packing = GFXImagePacking::DEPTH;
+        depthDescriptor._mipMappingState = MipMappingState::OFF;
+
+        TextureDescriptor velocityDescriptor{};
+        velocityDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        velocityDescriptor._baseFormat = GFXImageFormat::RG;
+        velocityDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        velocityDescriptor._mipMappingState = MipMappingState::OFF;
+
         //RG - packed normal, B - roughness, A - unused
-        TextureDescriptor normalsDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-        depthDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-        velocityDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-        normalsDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+        TextureDescriptor normalsDescriptor{};
+        normalsDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        normalsDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        normalsDescriptor._mipMappingState =  MipMappingState::OFF;
 
         //MainPass
-        TextureDescriptor screenDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-        screenDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-        screenDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
-        TextureDescriptor materialDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RG, GFXImagePacking::UNNORMALIZED );
-        materialDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+        TextureDescriptor screenDescriptor{};
+        screenDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        screenDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        screenDescriptor._mipMappingState = MipMappingState::OFF;
+        AddImageUsageFlag( screenDescriptor, ImageUsage::SHADER_READ);
+
+        TextureDescriptor materialDescriptor{};
+        materialDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        materialDescriptor._baseFormat = GFXImageFormat::RG;
+        materialDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        materialDescriptor._mipMappingState = MipMappingState::OFF;
 
         // Normal, Previous and MSAA
         {
@@ -674,8 +687,8 @@ namespace Divide
             RenderTargetNames::SCREEN = _rtPool->allocateRT( screenDesc )._targetID;
 
             auto& screenAttachment = attachments[to_base( ScreenTargets::ALBEDO )];
-            screenAttachment._texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
-            screenAttachment._texDescriptor.addImageUsageFlag(ImageUsage::SHADER_READ);
+            screenAttachment._texDescriptor._mipMappingState = MipMappingState::MANUAL;
+            AddImageUsageFlag( screenAttachment._texDescriptor, ImageUsage::SHADER_READ);
             screenAttachment._sampler = defaultSamplerMips;
             screenDesc._msaaSamples = 0u;
             screenDesc._name = "Screen Prev";
@@ -684,8 +697,8 @@ namespace Divide
 
             auto& normalAttachment = attachments[to_base( ScreenTargets::NORMALS )];
             normalAttachment._slot = RTColourAttachmentSlot::SLOT_0;
-            normalAttachment._texDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-            normalAttachment._texDescriptor.addImageUsageFlag( ImageUsage::SHADER_READ );
+            normalAttachment._texDescriptor._mipMappingState = MipMappingState::OFF ;
+            AddImageUsageFlag( normalAttachment._texDescriptor, ImageUsage::SHADER_READ );
             normalAttachment._sampler = defaultSamplerMips;
             screenDesc._msaaSamples = 0u;
             screenDesc._name = "Normals Resolved";
@@ -705,9 +718,9 @@ namespace Divide
             // This could've been RGB, but Vulkan doesn't seem to support VK_FORMAT_R8G8B8_UNORM in this situation, so ... well ... whatever.
             // This will contained the final tonemaped image, so unless we desire HDR output, RGBA8 here is fine as anything else will require
             // changes to the swapchain images!
-            TextureDescriptor backBufferDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA ); 
-            backBufferDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-            backBufferDescriptor.addImageUsageFlag( ImageUsage::SHADER_READ );
+            TextureDescriptor backBufferDescriptor{};
+            backBufferDescriptor._mipMappingState = MipMappingState::OFF;
+            AddImageUsageFlag( backBufferDescriptor, ImageUsage::SHADER_READ );
             InternalRTAttachmentDescriptors attachments
             {
                 InternalRTAttachmentDescriptor{ backBufferDescriptor, samplerBackBuffer, RTAttachmentType::COLOUR, ScreenTargets::ALBEDO },
@@ -721,8 +734,11 @@ namespace Divide
             RenderTargetNames::BACK_BUFFER = _rtPool->allocateRT( screenDesc )._targetID;
         }
         {
-            TextureDescriptor ssaoDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED, GFXImagePacking::UNNORMALIZED );
-            ssaoDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            TextureDescriptor ssaoDescriptor{};
+            ssaoDescriptor._dataType = GFXDataFormat::FLOAT_16;
+            ssaoDescriptor._baseFormat = GFXImageFormat::RED;
+            ssaoDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+            ssaoDescriptor._mipMappingState = MipMappingState::OFF;
 
             RenderTargetDescriptor ssaoDesc = {};
             ssaoDesc._attachments = 
@@ -736,8 +752,10 @@ namespace Divide
             RenderTargetNames::SSAO_RESULT = _rtPool->allocateRT( ssaoDesc )._targetID;
         }
         {
-            TextureDescriptor ssrDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-            ssrDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            TextureDescriptor ssrDescriptor{};
+            ssrDescriptor._dataType = GFXDataFormat::FLOAT_16;
+            ssrDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+            ssrDescriptor._mipMappingState = MipMappingState::OFF;
 
             RenderTargetDescriptor ssrResultDesc = {};
             ssrResultDesc._attachments = 
@@ -753,9 +771,12 @@ namespace Divide
         }
         const U32 reflectRes = nextPOW2( CLAMPED( to_U32( config.rendering.reflectionPlaneResolution ), 16u, 4096u ) - 1u );
 
-        TextureDescriptor hiZDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_32, GFXImageFormat::RED, GFXImagePacking::UNNORMALIZED );
-        hiZDescriptor.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
-        hiZDescriptor.addImageUsageFlag( ImageUsage::SHADER_WRITE );
+        TextureDescriptor hiZDescriptor{};
+        hiZDescriptor._dataType = GFXDataFormat::FLOAT_32;
+        hiZDescriptor._baseFormat = GFXImageFormat::RED;
+        hiZDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        hiZDescriptor._mipMappingState = MipMappingState::MANUAL;
+        AddImageUsageFlag( hiZDescriptor, ImageUsage::SHADER_WRITE );
 
         SamplerDescriptor hiZSampler = {};
         hiZSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -792,11 +813,14 @@ namespace Divide
         reflectionSampler._mipSampling = TextureMipSampling::NONE;
 
         {
-            TextureDescriptor environmentDescriptorPlanar( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
-            TextureDescriptor depthDescriptorPlanar( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
+            TextureDescriptor environmentDescriptorPlanar{};
+            environmentDescriptorPlanar._mipMappingState = MipMappingState::MANUAL;
 
-            environmentDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::MANUAL );
-            depthDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            TextureDescriptor depthDescriptorPlanar{};
+            depthDescriptorPlanar._dataType = GFXDataFormat::UNSIGNED_INT;
+            depthDescriptorPlanar._baseFormat = GFXImageFormat::RED;
+            depthDescriptorPlanar._packing = GFXImagePacking::DEPTH;
+            depthDescriptorPlanar._mipMappingState = MipMappingState::OFF;
 
             {
                 RenderTargetDescriptor refDesc = {};
@@ -820,7 +844,7 @@ namespace Divide
                     RenderTargetNames::REFRACTION_PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
-                environmentDescriptorPlanar.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+                environmentDescriptorPlanar._mipMappingState = MipMappingState::OFF;
                 refDesc._attachments = 
                 {//skip depth
                     InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
@@ -839,12 +863,17 @@ namespace Divide
             accumulationSampler._magFilter = TextureFilter::NEAREST;
             accumulationSampler._mipSampling = TextureMipSampling::NONE;
 
-            TextureDescriptor accumulationDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-            accumulationDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            TextureDescriptor accumulationDescriptor{};
+            accumulationDescriptor._dataType = GFXDataFormat::FLOAT_16;
+            accumulationDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+            accumulationDescriptor._mipMappingState = MipMappingState::OFF;
 
             //R = revealage
-            TextureDescriptor revealageDescriptor( TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RED, GFXImagePacking::UNNORMALIZED );
-            revealageDescriptor.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            TextureDescriptor revealageDescriptor{};
+            revealageDescriptor._dataType = GFXDataFormat::FLOAT_16;
+            revealageDescriptor._baseFormat = GFXImageFormat::RED;
+            revealageDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+            revealageDescriptor._mipMappingState = MipMappingState::OFF;
 
             InternalRTAttachmentDescriptors oitAttachments
             {
@@ -895,11 +924,17 @@ namespace Divide
             }
         }
         {
-            TextureDescriptor environmentDescriptorCube( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
-            TextureDescriptor depthDescriptorCube( TextureType::TEXTURE_CUBE_ARRAY, GFXDataFormat::UNSIGNED_INT, GFXImageFormat::RED, GFXImagePacking::DEPTH );
+            TextureDescriptor environmentDescriptorCube{};
+            environmentDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
+            environmentDescriptorCube._mipMappingState = MipMappingState::OFF;
 
-            environmentDescriptorCube.mipMappingState( TextureDescriptor::MipMappingState::OFF );
-            depthDescriptorCube.mipMappingState( TextureDescriptor::MipMappingState::OFF );
+            TextureDescriptor depthDescriptorCube{};
+            depthDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
+            depthDescriptorCube._dataType = GFXDataFormat::UNSIGNED_INT;
+            depthDescriptorCube._baseFormat = GFXImageFormat::RED;
+            depthDescriptorCube._packing = GFXImagePacking::DEPTH;
+
+            depthDescriptorCube._mipMappingState = MipMappingState::OFF;
 
             RenderTargetDescriptor refDesc = {};
             refDesc._attachments = 
@@ -927,19 +962,15 @@ namespace Divide
             shaderDescriptor._modules.push_back( compModule );
 
             // Initialized our HierarchicalZ construction shader (takes a depth attachment and down-samples it for every mip level)
-            ResourceDescriptor descriptor1( "HiZConstruct" );
+            ResourceDescriptor<ShaderProgram> descriptor1( "HiZConstruct", shaderDescriptor );
             descriptor1.waitForReady( false );
-            descriptor1.propertyDescriptor( shaderDescriptor );
-            _hIZConstructProgram = CreateResource<ShaderProgram>( cache, descriptor1, loadTasks );
-            _hIZConstructProgram->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
-                                                    {
-                                                        PipelineDescriptor pipelineDesc{};
-                                                        pipelineDesc._shaderProgramHandle = _hIZConstructProgram->handle();
-                                                        pipelineDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
-                                                        pipelineDesc._stateBlock = getNoDepthTestBlock();
+            _hIZConstructProgram = CreateResource( descriptor1, loadTasks );
 
-                                                        _hIZPipeline = newPipeline( pipelineDesc );
-                                                    } );
+            PipelineDescriptor pipelineDesc{};
+            pipelineDesc._shaderProgramHandle = _hIZConstructProgram;
+            pipelineDesc._primitiveTopology = PrimitiveTopology::COMPUTE;
+            pipelineDesc._stateBlock = getNoDepthTestBlock();
+            _hIZPipeline = newPipeline( pipelineDesc );
         }
         {
             ShaderModuleDescriptor compModule = {};
@@ -950,17 +981,15 @@ namespace Divide
             ShaderProgramDescriptor shaderDescriptor = {};
             shaderDescriptor._modules.push_back( compModule );
 
-            ResourceDescriptor descriptor2( "HiZOcclusionCull" );
+            ResourceDescriptor<ShaderProgram> descriptor2( "HiZOcclusionCull", shaderDescriptor );
             descriptor2.waitForReady( false );
-            descriptor2.propertyDescriptor( shaderDescriptor );
-            _hIZCullProgram = CreateResource<ShaderProgram>( cache, descriptor2, loadTasks );
-            _hIZCullProgram->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
-                                               {
-                                                   PipelineDescriptor pipelineDescriptor = {};
-                                                   pipelineDescriptor._shaderProgramHandle = _hIZCullProgram->handle();
-                                                   pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
-                                                   _hIZCullPipeline = newPipeline( pipelineDescriptor );
-                                               } );
+
+            _hIZCullProgram = CreateResource( descriptor2, loadTasks );
+
+            PipelineDescriptor pipelineDescriptor = {};
+            pipelineDescriptor._shaderProgramHandle = _hIZCullProgram;
+            pipelineDescriptor._primitiveTopology = PrimitiveTopology::COMPUTE;
+            _hIZCullPipeline = newPipeline( pipelineDescriptor );
         }
         {
             ShaderModuleDescriptor vertModule = {};
@@ -976,14 +1005,11 @@ namespace Divide
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
 
-            ResourceDescriptor previewRTShader( "fbPreview" );
+            ResourceDescriptor<ShaderProgram> previewRTShader( "fbPreview", shaderDescriptor );
             previewRTShader.waitForReady( true );
-            previewRTShader.propertyDescriptor( shaderDescriptor );
-            _renderTargetDraw = CreateResource<ShaderProgram>( cache, previewRTShader, loadTasks );
-            _renderTargetDraw->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* ) noexcept
-                                                 {
-                                                     _previewRenderTargetColour = _renderTargetDraw;
-                                                 } );
+
+            _renderTargetDraw = CreateResource( previewRTShader, loadTasks );
+            _previewRenderTargetColour = _renderTargetDraw;
         }
         {
             ShaderModuleDescriptor vertModule = {};
@@ -1000,10 +1026,9 @@ namespace Divide
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
 
-            ResourceDescriptor previewReflectionRefractionDepth( "fbPreviewLinearDepthScenePlanes" );
+            ResourceDescriptor<ShaderProgram> previewReflectionRefractionDepth( "fbPreviewLinearDepthScenePlanes", shaderDescriptor );
             previewReflectionRefractionDepth.waitForReady( false );
-            previewReflectionRefractionDepth.propertyDescriptor( shaderDescriptor );
-            _previewRenderTargetDepth = CreateResource<ShaderProgram>( cache, previewReflectionRefractionDepth, loadTasks );
+            _previewRenderTargetDepth = CreateResource( previewReflectionRefractionDepth, loadTasks );
         }
         ShaderModuleDescriptor blurVertModule = {};
         blurVertModule._moduleType = ShaderType::VERTEX;
@@ -1023,18 +1048,14 @@ namespace Divide
                 shaderDescriptorSingle._modules.push_back( blurVertModule );
                 shaderDescriptorSingle._modules.push_back( fragModule );
 
-                ResourceDescriptor blur( "BoxBlur_Single" );
-                blur.propertyDescriptor( shaderDescriptorSingle );
-                _blurBoxShaderSingle = CreateResource<ShaderProgram>( cache, blur, loadTasks );
-                _blurBoxShaderSingle->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* res )
-                                                        {
-                                                            const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
-                                                            PipelineDescriptor pipelineDescriptor;
-                                                            pipelineDescriptor._stateBlock = get2DStateBlock();
-                                                            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-                                                            pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                                                            _blurBoxPipelineSingleCmd._pipeline = newPipeline( pipelineDescriptor );
-                                                        } );
+                ResourceDescriptor<ShaderProgram> blur( "BoxBlur_Single", shaderDescriptorSingle );
+                _blurBoxShaderSingle = CreateResource( blur, loadTasks );
+
+                PipelineDescriptor pipelineDescriptor;
+                pipelineDescriptor._stateBlock = get2DStateBlock();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+                pipelineDescriptor._shaderProgramHandle = _blurBoxShaderSingle;
+                _blurBoxPipelineSingleCmd._pipeline = newPipeline( pipelineDescriptor );
             }
             {
                 ShaderProgramDescriptor shaderDescriptorLayered = {};
@@ -1043,18 +1064,14 @@ namespace Divide
                 shaderDescriptorLayered._modules.back()._variant += ".Layered";
                 shaderDescriptorLayered._modules.back()._defines.emplace_back( "LAYERED" );
 
-                ResourceDescriptor blur( "BoxBlur_Layered" );
-                blur.propertyDescriptor( shaderDescriptorLayered );
-                _blurBoxShaderLayered = CreateResource<ShaderProgram>( cache, blur, loadTasks );
-                _blurBoxShaderLayered->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* res )
-                                                         {
-                                                             const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
-                                                             PipelineDescriptor pipelineDescriptor;
-                                                             pipelineDescriptor._stateBlock = get2DStateBlock();
-                                                             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-                                                             pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                                                             _blurBoxPipelineLayeredCmd._pipeline = newPipeline( pipelineDescriptor );
-                                                         } );
+                ResourceDescriptor<ShaderProgram> blur( "BoxBlur_Layered", shaderDescriptorLayered );
+                _blurBoxShaderLayered = CreateResource( blur, loadTasks );
+
+                PipelineDescriptor pipelineDescriptor;
+                pipelineDescriptor._stateBlock = get2DStateBlock();
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+                pipelineDescriptor._shaderProgramHandle = _blurBoxShaderLayered;
+                _blurBoxPipelineLayeredCmd._pipeline = newPipeline( pipelineDescriptor );
             }
         }
         {
@@ -1081,18 +1098,14 @@ namespace Divide
                     shaderDescriptorSingle._modules.push_back( fragModule );
                     shaderDescriptorSingle._globalDefines.emplace_back( "GS_MAX_INVOCATIONS 1" );
 
-                    ResourceDescriptor blur( "GaussBlur_Single" );
-                    blur.propertyDescriptor( shaderDescriptorSingle );
-                    _blurGaussianShaderSingle = CreateResource<ShaderProgram>( cache, blur, loadTasks );
-                    _blurGaussianShaderSingle->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* res )
-                                                                 {
-                                                                     const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
-                                                                     PipelineDescriptor pipelineDescriptor;
-                                                                     pipelineDescriptor._stateBlock = get2DStateBlock();
-                                                                     pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                                                                     pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
-                                                                     _blurGaussianPipelineSingleCmd._pipeline = newPipeline( pipelineDescriptor );
-                                                                 } );
+                    ResourceDescriptor<ShaderProgram> blur( "GaussBlur_Single", shaderDescriptorSingle );
+                    _blurGaussianShaderSingle = CreateResource( blur, loadTasks );
+
+                    PipelineDescriptor pipelineDescriptor;
+                    pipelineDescriptor._stateBlock = get2DStateBlock();
+                    pipelineDescriptor._shaderProgramHandle = _blurGaussianShaderSingle;
+                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+                    _blurGaussianPipelineSingleCmd._pipeline = newPipeline( pipelineDescriptor );
                 }
                 {
                     ShaderProgramDescriptor shaderDescriptorLayered = {};
@@ -1103,23 +1116,19 @@ namespace Divide
                     shaderDescriptorLayered._modules.back()._defines.emplace_back( "LAYERED" );
                     shaderDescriptorLayered._globalDefines.emplace_back( Util::StringFormat( "GS_MAX_INVOCATIONS {}", MAX_INVOCATIONS_BLUR_SHADER_LAYERED ) );
 
-                    ResourceDescriptor blur( "GaussBlur_Layered" );
-                    blur.propertyDescriptor( shaderDescriptorLayered );
-                    _blurGaussianShaderLayered = CreateResource<ShaderProgram>( cache, blur, loadTasks );
-                    _blurGaussianShaderLayered->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* res )
-                                                                  {
-                                                                      const ShaderProgram* blurShader = static_cast<ShaderProgram*>(res);
-                                                                      PipelineDescriptor pipelineDescriptor;
-                                                                      pipelineDescriptor._stateBlock = get2DStateBlock();
-                                                                      pipelineDescriptor._shaderProgramHandle = blurShader->handle();
-                                                                      pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+                    ResourceDescriptor<ShaderProgram> blur( "GaussBlur_Layered", shaderDescriptorLayered );
+                    _blurGaussianShaderLayered = CreateResource( blur, loadTasks );
 
-                                                                      _blurGaussianPipelineLayeredCmd._pipeline = newPipeline( pipelineDescriptor );
-                                                                  } );
+                    PipelineDescriptor pipelineDescriptor;
+                    pipelineDescriptor._stateBlock = get2DStateBlock();
+                    pipelineDescriptor._shaderProgramHandle = _blurGaussianShaderLayered;
+                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::POINTS;
+
+                    _blurGaussianPipelineLayeredCmd._pipeline = newPipeline( pipelineDescriptor );
                 }
             }
             // Create an immediate mode rendering shader that simulates the fixed function pipeline
-            _imShaders = std::make_unique<ImShaders>(*this);
+            _imShaders = std::make_unique<ImShaders>();
         }
         {
             ShaderModuleDescriptor vertModule = {};
@@ -1132,42 +1141,38 @@ namespace Divide
             fragModule._sourceFile = "display.glsl";
             fragModule._defines.emplace_back( "convertToSRGB uint(PushData0[0].x)" );
 
-            ResourceDescriptor descriptor3( "display" );
             ShaderProgramDescriptor shaderDescriptor = {};
             shaderDescriptor._modules.push_back( vertModule );
             shaderDescriptor._modules.push_back( fragModule );
-            descriptor3.propertyDescriptor( shaderDescriptor );
-            {
-                _displayShader = CreateResource<ShaderProgram>( cache, descriptor3, loadTasks );
-                _displayShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
-                                                  {
-                                                      PipelineDescriptor pipelineDescriptor = {};
-                                                      pipelineDescriptor._stateBlock = get2DStateBlock();
-                                                      pipelineDescriptor._shaderProgramHandle = _displayShader->handle();
-                                                      pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-                                                      _drawFSTexturePipelineCmd._pipeline = newPipeline( pipelineDescriptor );
 
-                                                      BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[0];
-                                                      blendState.enabled( true );
-                                                      blendState.blendSrc( BlendProperty::SRC_ALPHA );
-                                                      blendState.blendDest( BlendProperty::INV_SRC_ALPHA );
-                                                      blendState.blendOp( BlendOperation::ADD );
-                                                      _drawFSTexturePipelineBlendCmd._pipeline = newPipeline( pipelineDescriptor );
-                                                  } );
+            {
+                ResourceDescriptor<ShaderProgram> descriptor3( "display", shaderDescriptor );
+                _displayShader = CreateResource( descriptor3, loadTasks );
+            
+                PipelineDescriptor pipelineDescriptor = {};
+                pipelineDescriptor._stateBlock = get2DStateBlock();
+                pipelineDescriptor._shaderProgramHandle = _displayShader;
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+                _drawFSTexturePipelineCmd._pipeline = newPipeline( pipelineDescriptor );
+
+                BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[0];
+                blendState.enabled( true );
+                blendState.blendSrc( BlendProperty::SRC_ALPHA );
+                blendState.blendDest( BlendProperty::INV_SRC_ALPHA );
+                blendState.blendOp( BlendOperation::ADD );
+                _drawFSTexturePipelineBlendCmd._pipeline = newPipeline( pipelineDescriptor );
             }
             {
                 shaderDescriptor._modules.back()._defines.emplace_back( "DEPTH_ONLY" );
-                descriptor3.propertyDescriptor( shaderDescriptor );
-                _depthShader = CreateResource<ShaderProgram>( cache, descriptor3, loadTasks );
-                _depthShader->addStateCallback( ResourceState::RES_LOADED, [this]( CachedResource* )
-                                                {
-                                                    PipelineDescriptor pipelineDescriptor = {};
-                                                    pipelineDescriptor._stateBlock = _stateDepthOnlyRendering;
-                                                    pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
-                                                    pipelineDescriptor._shaderProgramHandle = _depthShader->handle();
+                ResourceDescriptor<ShaderProgram> descriptor3( "display_depth", shaderDescriptor );
 
-                                                    _drawFSDepthPipelineCmd._pipeline = newPipeline( pipelineDescriptor );
-                                                } );
+                _depthShader = CreateResource( descriptor3, loadTasks );
+                PipelineDescriptor pipelineDescriptor = {};
+                pipelineDescriptor._stateBlock = _stateDepthOnlyRendering;
+                pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+                pipelineDescriptor._shaderProgramHandle = _depthShader;
+
+                _drawFSDepthPipelineCmd._pipeline = newPipeline( pipelineDescriptor );
             }
         }
 
@@ -1178,7 +1183,7 @@ namespace Divide
 
             PipelineDescriptor pipelineDesc;
             pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
-            pipelineDesc._shaderProgramHandle = _imShaders->imWorldShaderNoTexture()->handle();
+            pipelineDesc._shaderProgramHandle = _imShaders->imWorldShaderNoTexture();
             pipelineDesc._stateBlock = primitiveStateBlock;
 
             _debugGizmoPipeline = pipelineDesc;
@@ -1198,7 +1203,7 @@ namespace Divide
             _debugGizmoPipelineNoCull = pipelineDesc;
         }
 
-        _renderer = std::make_unique<Renderer>( context(), cache );
+        _renderer = std::make_unique<Renderer>( context() );
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0 );
         const DisplayWindow* mainWindow = context().app().windowManager().mainWindow();
@@ -1213,7 +1218,7 @@ namespace Divide
             NOP();
         }
 
-        _sceneData = MemoryManager_NEW SceneShaderData( *this );
+        _sceneData = std::make_unique<SceneShaderData>( *this );
 
         // Everything is ready from the rendering point of view
         return ErrorCode::NO_ERR;
@@ -1251,24 +1256,26 @@ namespace Divide
         Console::printfn( LOCALE_STR( "CLOSING_RENDERER" ) );
         _renderer.reset( nullptr );
 
-        MemoryManager::SAFE_DELETE( _rtPool );
-        _previewDepthMapShader = nullptr;
-        _previewRenderTargetColour = nullptr;
-        _previewRenderTargetDepth = nullptr;
-        _renderTargetDraw = nullptr;
-        _hIZConstructProgram = nullptr;
-        _hIZCullProgram = nullptr;
-        _displayShader = nullptr;
-        _depthShader = nullptr;
-        _blurBoxShaderSingle = nullptr;
-        _blurBoxShaderLayered = nullptr;
-        _blurGaussianShaderSingle = nullptr;
-        _blurGaussianShaderLayered = nullptr;
+        _rtPool.reset();
+
+        DestroyResource(_previewDepthMapShader );
+        DestroyResource(_previewRenderTargetColour );
+        DestroyResource(_previewRenderTargetDepth );
+        DestroyResource(_renderTargetDraw );
+        DestroyResource(_hIZConstructProgram );
+        DestroyResource(_hIZCullProgram );
+        DestroyResource(_displayShader );
+        DestroyResource(_depthShader );
+        DestroyResource(_blurBoxShaderSingle );
+        DestroyResource(_blurBoxShaderLayered );
+        DestroyResource(_blurGaussianShaderSingle );
+        DestroyResource(_blurGaussianShaderLayered );
+
         _imShaders.reset();
         _gfxBuffers.reset( true, true );
-        MemoryManager::SAFE_DELETE( _sceneData );
+        _sceneData.reset();
         // Close the shader manager
-        MemoryManager::DELETE( _shaderComputeQueue );
+        _shaderComputeQueue.reset();
         if ( !ShaderProgram::OnShutdown() )
         {
             DIVIDE_UNEXPECTED_CALL();
@@ -1286,17 +1293,13 @@ namespace Divide
         if ( !_graphicResources.empty() )
         {
             string list = " [ ";
-            for ( const std::tuple<GraphicsResource::Type, I64, U64>& res : _graphicResources )
+            for ( const auto& [type, guid, nameHash] : _graphicResources )
             {
-                list.append( TypeUtil::GraphicResourceTypeToName( std::get<0>( res ) ) );
-                list.append( "_" );
-                list.append( Util::to_string( std::get<1>( res ) ) );
-                list.append( "_" );
-                list.append( Util::to_string( std::get<2>( res ) ) );
-                list.append( "," );
+                list.append( Util::StringFormat("\n{}_{}_{},", TypeUtil::GraphicResourceTypeToName( type ), guid, nameHash) );
             }
             list.pop_back();
-            list += " ]";
+            list.append("\n ]");
+
             Console::errorfn( LOCALE_STR( "ERROR_GFX_LEAKED_RESOURCES" ), _graphicResources.size() );
             Console::errorfn( list.c_str() );
         }
@@ -1406,22 +1409,23 @@ namespace Divide
         {
             PROFILE_SCOPE("Blit Backbuffer", Profiler::Category::Graphics);
 
-            Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer("Blit Backbuffer");
+            Handle<GFX::CommandBuffer> bufferHandle = GFX::AllocateCommandBuffer("Blit Backbuffer");
+            GFX::CommandBuffer* buffer = GFX::Get(bufferHandle);
 
             GFX::BeginRenderPassCommand beginRenderPassCmd{};
             beginRenderPassCmd._target = SCREEN_TARGET_ID;
             beginRenderPassCmd._name = "Blit Backbuffer";
             beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
             beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-            GFX::EnqueueCommand( buffer, beginRenderPassCmd );
+            GFX::EnqueueCommand( *buffer, beginRenderPassCmd );
 
             const auto& screenAtt = renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
-            const auto& texData = screenAtt->texture()->getView();
+            const auto& texData = Get(screenAtt->texture())->getView();
 
-            drawTextureInViewport( texData, screenAtt->_descriptor._sampler, context().mainWindow().renderingViewport(), false, false, false, *buffer._ptr );
+            drawTextureInViewport( texData, screenAtt->_descriptor._sampler, context().mainWindow().renderingViewport(), false, false, false, *buffer );
 
-            GFX::EnqueueCommand<GFX::EndRenderPassCommand>( buffer );
-            flushCommandBuffer( MOV(buffer) );
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>( *buffer );
+            flushCommandBuffer( MOV(bufferHandle) );
         }
 
         context().app().windowManager().flushWindow();
@@ -1512,12 +1516,12 @@ namespace Divide
         if ( cubeMapTarget->hasAttachment( RTAttachmentType::COLOUR ) )
         {
             // We only need the colour attachment
-            isValidFB = IsCubeTexture( cubeMapTarget->getAttachment( RTAttachmentType::COLOUR )->texture()->descriptor().texType() );
+            isValidFB = IsCubeTexture( Get(cubeMapTarget->getAttachment( RTAttachmentType::COLOUR )->texture())->descriptor()._texType );
         }
         else if ( cubeMapTarget->hasAttachment( RTAttachmentType::DEPTH ) )
         {
             // We don't have a colour attachment, so we require a cube map depth attachment
-            isValidFB = IsCubeTexture( cubeMapTarget->getAttachment( RTAttachmentType::DEPTH )->texture()->descriptor().texType() );
+            isValidFB = IsCubeTexture( Get(cubeMapTarget->getAttachment( RTAttachmentType::DEPTH )->texture())->descriptor()._texType );
         }
 
         // Make sure we have a proper render target to draw to
@@ -1534,7 +1538,7 @@ namespace Divide
 
         DIVIDE_ASSERT( cubeMapTarget->getWidth() == cubeMapTarget->getHeight());
 
-        RenderPassManager* passMgr = context().kernel().renderPassManager();
+        auto& passMgr = context().kernel().renderPassManager();
 
         Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::CUBE );
 
@@ -1587,13 +1591,13 @@ namespace Divide
         {
             RTAttachment* colourAttachment = paraboloidTarget->getAttachment( RTAttachmentType::COLOUR );
             // We only need the colour attachment
-            isValidFB = IsArrayTexture( colourAttachment->texture()->descriptor().texType() );
+            isValidFB = IsArrayTexture( Get(colourAttachment->texture())->descriptor()._texType );
         }
         else
         {
             RTAttachment* depthAttachment = paraboloidTarget->getAttachment( RTAttachmentType::DEPTH );
             // We don't have a colour attachment, so we require a cube map depth attachment
-            isValidFB = hasDepth && IsArrayTexture( depthAttachment->texture()->descriptor().texType() );
+            isValidFB = hasDepth && IsArrayTexture( Get(depthAttachment->texture())->descriptor()._texType );
         }
         // Make sure we have a proper render target to draw to
         if ( !isValidFB )
@@ -1605,7 +1609,7 @@ namespace Divide
 
         params._passName = "DualParaboloid";
         const D64 aspect = to_D64( targetResolution.width ) / targetResolution.height;
-        RenderPassManager* passMgr = context().kernel().renderPassManager();
+        auto& passMgr = context().kernel().renderPassManager();
 
         Camera* camera = Camera::GetUtilityCamera( Camera::UtilityCamera::DUAL_PARABOLOID );
 
@@ -1675,7 +1679,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, inputAttachment->texture()->getView(), inputAttachment->_descriptor._sampler );
+            Set( binding._data, inputAttachment->texture(), inputAttachment->_descriptor._sampler );
 
     
             if ( !gaussian && layerCount > 1 )
@@ -1711,7 +1715,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, bufferAttachment->texture()->getView(), bufferAttachment->_descriptor._sampler );
+            Set( binding._data, bufferAttachment->texture(), bufferAttachment->_descriptor._sampler );
 
             GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
 
@@ -2128,7 +2132,7 @@ namespace Divide
 
         _api->preFlushCommandBuffer( commandBuffer );
 
-        const GFX::CommandBuffer::CommandList& commands = commandBuffer._ptr->commands();
+        const GFX::CommandBuffer::CommandList& commands = GFX::Get(commandBuffer)->commands();
         for ( GFX::CommandBase* cmd : commands )
         {
             if ( IsSubmitCommand( cmd->type() ) )
@@ -2262,7 +2266,7 @@ namespace Divide
     /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
     /// Based on RasterGrid implementation: http://rastergrid.com/blog/2010/10/hierarchical-z-map-based-occlusion-culling/
     /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
-    std::pair<const Texture_ptr&, SamplerDescriptor> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut )
+    std::pair<Handle<Texture>, SamplerDescriptor> GFXDevice::constructHIZ( RenderTargetID depthBuffer, RenderTargetID HiZTarget, GFX::CommandBuffer& cmdBufferInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -2270,8 +2274,8 @@ namespace Divide
 
         const RTAttachment* SrcAtt = _rtPool->getRenderTarget( depthBuffer )->getAttachment( RTAttachmentType::DEPTH );
         const RTAttachment* HiZAtt = _rtPool->getRenderTarget( HiZTarget )->getAttachment( RTAttachmentType::COLOUR );
-        Texture* HiZTex = HiZAtt->texture().get();
-        DIVIDE_ASSERT( HiZTex->descriptor().mipMappingState() == TextureDescriptor::MipMappingState::MANUAL );
+        ResourcePtr<Texture> HiZTex = Get(HiZAtt->texture());
+        DIVIDE_ASSERT( HiZTex->descriptor()._mipMappingState == MipMappingState::MANUAL );
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( cmdBufferInOut )->_scopeName = "Construct Hi-Z";
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( cmdBufferInOut )->_pipeline = _hIZPipeline;
@@ -2291,7 +2295,7 @@ namespace Divide
 
             ImageView outImage = HiZTex->getView( { i, 1u } );
 
-            const ImageView inImage = i == 0u ? SrcAtt->texture()->getView( ) 
+            const ImageView inImage = i == 0u ? Get(SrcAtt->texture())->getView( ) 
                                               : HiZTex->getView( { to_U16(i - 1u), 1u }, { 0u, 1u });
 
             
@@ -2344,7 +2348,7 @@ namespace Divide
     }
 
     void GFXDevice::occlusionCull( const RenderPass::BufferData& bufferData,
-                                   const Texture_ptr& hizBuffer,
+                                   const Handle<Texture> hizBuffer,
                                    const SamplerDescriptor sampler,
                                    const CameraSnapshot& cameraSnapshot,
                                    const bool countCulledNodes,
@@ -2361,6 +2365,8 @@ namespace Divide
             return;
         }
 
+        ResourcePtr<Texture> hizTex = Get(hizBuffer);
+
         ShaderBuffer* cullBuffer = _gfxBuffers.crtBuffers()._cullCounter.get();
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Occlusion Cull";
 
@@ -2370,7 +2376,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
-            Set( binding._data, hizBuffer->getView(), sampler );
+            Set( binding._data, hizTex->getView(), sampler );
         }
         {
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -2386,7 +2392,7 @@ namespace Divide
         auto& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants;
         pushConstants.set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
         pushConstants.set( _ID( "dvd_numEntities" ), PushConstantType::UINT, cmdCount );
-        pushConstants.set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizBuffer->width(), hizBuffer->height() ) );
+        pushConstants.set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTex->width(), hizTex->height() ) );
         pushConstants.set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
         pushConstants.set( fastConstants );
 
@@ -2476,7 +2482,7 @@ namespace Divide
     void GFXDevice::initDebugViews()
     {
         // Lazy-load preview shader
-        if ( !_previewDepthMapShader )
+        if ( _previewDepthMapShader != INVALID_HANDLE<ShaderProgram>)
         {
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
@@ -2493,10 +2499,7 @@ namespace Divide
             shaderDescriptor._modules.push_back( fragModule );
 
             // The LinearDepth variant converts the depth values to linear values between the 2 scene z-planes
-            ResourceDescriptor fbPreview( "fbPreviewLinearDepth" );
-            fbPreview.propertyDescriptor( shaderDescriptor );
-            _previewDepthMapShader = CreateResource<ShaderProgram>( context().kernel().resourceCache(), fbPreview );
-            assert( _previewDepthMapShader != nullptr );
+            _previewDepthMapShader = CreateResource( ResourceDescriptor<ShaderProgram>( "fbPreviewLinearDepth", shaderDescriptor ) );
 
             DebugView_ptr HiZ = std::make_shared<DebugView>();
             HiZ->_shader = _renderTargetDraw;
@@ -2616,7 +2619,8 @@ namespace Divide
             addDebugView( AlphaRevealageHigh );
             addDebugView( Luminance );
             addDebugView( Edges );
-            WAIT_FOR_CONDITION( _previewDepthMapShader->getState() == ResourceState::RES_LOADED );
+
+            WAIT_FOR_CONDITION( Get(_previewDepthMapShader)->getState() == ResourceState::RES_LOADED );
         }
     }
 
@@ -2624,7 +2628,7 @@ namespace Divide
     {
         static size_t labelStyleHash = TextLabelStyle( Font::DROID_SERIF_BOLD, UColour4( 196 ), 96 ).getHash();
 
-        thread_local vector_fast<std::tuple<string, I32, Rect<I32>>> labelStack;
+        thread_local vector<std::tuple<string, I32, Rect<I32>>> labelStack;
 
         initDebugViews();
 
@@ -2657,7 +2661,7 @@ namespace Divide
 
         PipelineDescriptor pipelineDesc{};
         pipelineDesc._stateBlock = _state2DRendering;
-        pipelineDesc._shaderProgramHandle = SHADER_INVALID_HANDLE;
+        pipelineDesc._shaderProgramHandle = INVALID_HANDLE<ShaderProgram>;
         pipelineDesc._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
         const Rect<I32> previousViewport = activeViewport();
@@ -2676,15 +2680,16 @@ namespace Divide
 
             if ( view->_cycleMips )
             {
-                const F32 lodLevel = to_F32( mipTimer % view->_texture->mipCount() );
+                const F32 lodLevel = to_F32( mipTimer % Get(view->_texture)->mipCount() );
                 view->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, lodLevel );
                 labelStack.emplace_back( Util::StringFormat( "Mip level: {}", to_U8( lodLevel ) ), viewport.sizeY * 4, viewport );
             }
-            const ShaderProgramHandle crtShader = pipelineDesc._shaderProgramHandle;
-            const ShaderProgramHandle newShader = view->_shader->handle();
+            const Handle<ShaderProgram> crtShader = pipelineDesc._shaderProgramHandle;
+            const Handle<ShaderProgram> newShader = view->_shader;
+
             if ( crtShader != newShader )
             {
-                pipelineDesc._shaderProgramHandle = view->_shader->handle();
+                pipelineDesc._shaderProgramHandle = view->_shader;
                 crtPipeline = newPipeline( pipelineDesc );
             }
 
@@ -2695,7 +2700,7 @@ namespace Divide
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             DescriptorSetBinding& binding = AddBinding( cmd->_set, view->_textureBindSlot, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, view->_texture->getView(), view->_sampler );
+            Set( binding._data, view->_texture, view->_sampler );
 
             GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 
@@ -3068,7 +3073,7 @@ namespace Divide
     Pipeline* GFXDevice::newPipeline( const PipelineDescriptor& descriptor )
     {
         // Pipeline with no shader is no pipeline at all
-        DIVIDE_ASSERT( descriptor._shaderProgramHandle != SHADER_INVALID_HANDLE, "Missing shader handle during pipeline creation!" );
+        DIVIDE_ASSERT( descriptor._shaderProgramHandle != INVALID_HANDLE<ShaderProgram>, "Missing shader handle during pipeline creation!" );
         DIVIDE_ASSERT( descriptor._primitiveTopology != PrimitiveTopology::COUNT, "Missing primitive topology during pipeline creation!" );
 
         const size_t hash = GetHash( descriptor );
@@ -3092,9 +3097,9 @@ namespace Divide
         primitive = nullptr;
     }
 
-    VertexBuffer_ptr GFXDevice::newVB(const bool renderIndirect, const std::string_view name )
+    VertexBuffer_ptr GFXDevice::newVB( const VertexBuffer::Descriptor& descriptor )
     {
-        return std::make_shared<VertexBuffer>( *this, renderIndirect, name );
+        return std::make_shared<VertexBuffer>( *this, descriptor );
     }
 #pragma endregion
 
@@ -3115,7 +3120,7 @@ namespace Divide
     {
         const RenderTarget* screenRT = _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER );
         auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>( bufferInOut );
-        readTextureCmd->_texture = screenRT->getAttachment(RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->texture().get();
+        readTextureCmd->_texture = screenRT->getAttachment(RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->texture();
         readTextureCmd->_pixelPackAlignment._alignment = 1u;
         readTextureCmd->_callback = [fileName]( const ImageReadbackData& data )
         {

@@ -79,7 +79,7 @@ Scene* ScenePool::defaultScene() const noexcept
     return _defaultScene;
 }
 
-Scene* ScenePool::getOrCreateScene(PlatformContext& context, ResourceCache& cache, Project& parent, const SceneEntry& sceneEntry, bool& foundInCache)
+Scene* ScenePool::getOrCreateScene(PlatformContext& context, Project& parent, const SceneEntry& sceneEntry, bool& foundInCache)
 {
     DIVIDE_ASSERT(!sceneEntry._name.empty());
 
@@ -102,11 +102,11 @@ Scene* ScenePool::getOrCreateScene(PlatformContext& context, ResourceCache& cach
         const auto creationFunc = SceneList::sceneFactoryMap()[_ID(sceneEntry._name.c_str())];
         if (creationFunc)
         {
-            ret = creationFunc(context, cache, parent, sceneEntry );
+            ret = creationFunc(context, parent, sceneEntry );
         }
         else
         {
-            ret = std::make_shared<Scene>(context, cache, parent, sceneEntry );
+            ret = std::make_shared<Scene>(context, parent, sceneEntry );
         }
 
         // Default scene is the first scene we load

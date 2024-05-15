@@ -103,14 +103,8 @@ namespace Divide {
         return true;
     }
 
-    vkShaderProgram::vkShaderProgram(GFXDevice& context,
-                                     const size_t descriptorHash,
-                                     const std::string_view name,
-                                     std::string_view assetName,
-                                     const ResourcePath& assetLocation,
-                                     const ShaderProgramDescriptor& descriptor,
-                                     ResourceCache& parentCache)
-        : ShaderProgram(context, descriptorHash, name, assetName, assetLocation, descriptor, parentCache)
+    vkShaderProgram::vkShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor )
+        : ShaderProgram(context, descriptor)
     {
     }
 

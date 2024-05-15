@@ -68,14 +68,14 @@ class AIEntity final : public GUIDWrapper {
         COUNT
     };
 
-    AIEntity(const vec3<F32>& currentPosition, string name);
+    AIEntity( NPC* parent, const vec3<F32>& currentPosition, std::string_view name);
     ~AIEntity() override;
 
-    void load(const vec3<F32>& position);
+    void load( const vec3<F32>& currentPosition );
     void unload();
 
     [[nodiscard]] bool addSensor(SensorType type);
-    [[nodiscard]] bool setAIProcessor(AIProcessor* processor);
+    [[nodiscard]] bool setAndSurrenderAIProcessor(AIProcessor* processor);
 
     void sendMessage(AIEntity& receiver, AIMsg msg, const std::any& msg_content);
     void receiveMessage(AIEntity& sender, AIMsg msg, const std::any& msg_content);
@@ -87,7 +87,6 @@ class AIEntity final : public GUIDWrapper {
     [[nodiscard]] U32 getTeamID() const;
     [[nodiscard]] const string& name() const noexcept { return _name; }
 
-    void addUnitRef(NPC* npc);
     [[nodiscard]] NPC* getUnitRef() const noexcept { return _unitRef; }
 
     /// PathFinding
@@ -176,12 +175,12 @@ class AIEntity final : public GUIDWrapper {
    private:
     string _name;
     AITeam* _teamPtr;
-    AIProcessor* _processor;
+    std::unique_ptr<AIProcessor> _processor;
 
     mutable SharedMutex _updateMutex;
     mutable SharedMutex _managerQueryMutex;
 
-    using SensorMap = hashMap<SensorType, Sensor*>;
+    using SensorMap = hashMap<SensorType, std::unique_ptr<Sensor>>;
     SensorMap _sensorList;
     NPC* _unitRef;
     /// PathFinding

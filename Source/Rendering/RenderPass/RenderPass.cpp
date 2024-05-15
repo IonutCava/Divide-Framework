@@ -141,7 +141,7 @@ namespace Divide
 
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Main Display Pass";
 
-                Camera* playerCamera = Attorney::ProjectManagerCameraAccessor::playerCamera( _parent.parent().projectManager() );
+                Camera* playerCamera = Attorney::ProjectManagerCameraAccessor::playerCamera( _parent.parent().projectManager().get() );
                 _parent.doCustomPass( playerCamera, params, bufferInOut, memCmdInOut );
                 const CameraSnapshot& camSnapshot = playerCamera->snapshot();
 
@@ -153,7 +153,7 @@ namespace Divide
                 beginRenderPassCmd->_descriptor._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
 
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Debug Draw Pass";
-                Attorney::ProjectManagerRenderPass::debugDraw( _parent.parent().projectManager(), bufferInOut, memCmdInOut );
+                Attorney::ProjectManagerRenderPass::debugDraw( _parent.parent().projectManager().get(), bufferInOut, memCmdInOut );
                 GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
 
                 if constexpr ( Config::Build::ENABLE_EDITOR )
@@ -212,7 +212,7 @@ namespace Divide
                 PROFILE_SCOPE( "RenderPass - Shadow", Profiler::Category::Scene );
                 if ( _config.rendering.shadowMapping.enabled )
                 {
-                    ProjectManager* mgr = _parent.parent().projectManager();
+                    ProjectManager* mgr = _parent.parent().projectManager().get();
                     LightPool& lightPool = Attorney::ProjectManagerRenderPass::lightPool( mgr );
 
                     const Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
@@ -227,7 +227,7 @@ namespace Divide
 
             case RenderStage::REFLECTION:
             {
-                ProjectManager* mgr = _parent.parent().projectManager();
+                ProjectManager* mgr = _parent.parent().projectManager().get();
                 Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
 
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = "Reflection Pass";
@@ -285,7 +285,7 @@ namespace Divide
 
                 PROFILE_SCOPE( "RenderPass - Refraction", Profiler::Category::Scene );
                 // Get list of refractive nodes from the scene manager
-                const ProjectManager* mgr = _parent.parent().projectManager();
+                const ProjectManager* mgr = _parent.parent().projectManager().get();
                 Camera* camera = Attorney::ProjectManagerCameraAccessor::playerCamera( mgr );
                 {
                     mgr->getSortedRefractiveNodes( camera, RenderStage::REFRACTION, true, s_Nodes );

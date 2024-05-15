@@ -503,8 +503,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         return true;
     }
     
-    const ResourcePath fullPath = _path / _name;
-    FILE* f = stbi__fopen(fullPath.string().c_str(), "rb");
+    const string fullPath = (_path / _name).string();
+    FILE* f = stbi__fopen(fullPath.c_str(), "rb");
     if ( !f )
     {
         return false;
@@ -558,7 +558,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
         const ResourcePath cachePath = Paths::Textures::g_metadataLocation / _path;
         const string cacheFileName = Util::StringFormat( "{}.{}", _name, Paths::Textures::g_ddsExtension );
-        const ResourcePath cacheFilePath = cachePath / cacheFileName;
+        const string cacheFilePath = (cachePath / cacheFileName).string();
 
         // Try and save regular images to DDS for better compression next time
         if ( createDirectory(cachePath) != FileError::NONE )
@@ -567,7 +567,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         }
 
         Task* ddsConversionTask = nullptr;
-        if ( !fileExists(cacheFilePath) )
+        if ( !fileExists(ResourcePath{ cacheFilePath }) )
         {
             ddsConversionTask = CreateTask( [fullPath, cacheFilePath, options]( const Task& )
             {
@@ -578,7 +578,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
                 nvtt::Surface image;
                 bool hasAlpha = false;
-                if (image.load(fullPath.string().c_str(), &hasAlpha))
+                if (image.load(fullPath.c_str(), &hasAlpha))
                 {
                     constexpr bool isGreyScale = false;
                     const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, isGreyScale);
@@ -608,7 +608,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                     }
 
                     nvtt::OutputOptions outputOptions;
-                    outputOptions.setFileName(cacheFilePath.string().c_str());
+                    outputOptions.setFileName(cacheFilePath.c_str() );
                     nvttHelpers::ErrorHandler errorHandler;
                     outputOptions.setErrorHandler(&errorHandler);
                     if (outputFormat == nvtt::Format_BC6 || outputFormat == nvtt::Format_BC7)
@@ -694,7 +694,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                 ddsConversionTask = nullptr;
             }
 
-            if ( fileExists( cacheFilePath ) && !ddsConversionTask )
+            if ( fileExists( ResourcePath{ cacheFilePath }) && !ddsConversionTask )
             {
                 if (loadDDS_NVTT( srgb, refWidth, refHeight, cachePath, cacheFileName ))
                 {
@@ -991,20 +991,13 @@ bool ImageData::loadDDS_NVTT([[maybe_unused]] const bool srgb, const U16 refWidt
 
 bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
 {
-    const ResourcePath fullPath = path / name;
 
     LockGuard<Mutex> lock(s_imageLoadingMutex);
+    string devilErrors;
 
     ILuint imageID = 0u;
     ilGenImages(1, &imageID);
     ilBindImage(imageID);
-    
-    string devilErrors;
-    if (checkError( devilErrors ))
-    {
-        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
-    }
-
     SCOPE_EXIT{
         ilDeleteImage(imageID);
         if ( checkError( devilErrors ) )
@@ -1012,8 +1005,15 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
             Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
         }
     };
+    
+    if (checkError( devilErrors ))
+    {
+        Console::errorfn( LOCALE_STR( "ERROR_IMAGE_TOOLS_DEVIL_ERROR" ), devilErrors );
+    }
 
-    if (ilLoadImage(fullPath.string().c_str()) == IL_FALSE)
+
+    const string fullPath = (path / name).string();
+    if (ilLoadImage(fullPath.c_str() ) == IL_FALSE)
     {
         if ( checkError( devilErrors ) )
         {
@@ -1420,7 +1420,7 @@ bool SaveImage(const ResourcePath& filename, const U16 width, const U16 height, 
         return false;
     }
 
-    vector_fast<Byte> pix( width * height * 3 );
+    vector<Byte> pix( width * height * 3 );
     Byte* dest = pix.data();
 
     switch (numberOfComponents )

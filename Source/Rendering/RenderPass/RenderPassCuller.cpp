@@ -29,8 +29,7 @@ namespace Divide
                 (filter.vegetation ? 0u : to_base(EntityFilter::VEGETATION )) |
                 (filter.water      ? 0u : to_base(EntityFilter::WATER )) |
                 (filter.sky        ? 0u : to_base(EntityFilter::SKY )) |
-                (filter.particles  ? 0u : to_base(EntityFilter::PARTICLES )) |
-                (filter.decals     ? 0u : to_base(EntityFilter::DECALS ));
+                (filter.particles  ? 0u : to_base(EntityFilter::PARTICLES ));
     }
 
     void RenderPassCuller::PostCullNodes( const NodeCullParams& params, const U16 cullFlags, const U32 filterMask, VisibleNodeList<>& nodesInOut )

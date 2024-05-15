@@ -51,21 +51,19 @@ enum class ErrorCode : I8;
 
 template <typename T> class vec4;
 
+class Texture;
+class ShaderProgram;
 class ResourceCache;
 class DisplayWindow;
-class TextureDescriptor;
 
 struct Configuration;
 struct TextElementBatch;
 struct RenderTargetDescriptor;
 struct ShaderBufferDescriptor;
-struct ShaderProgramDescriptor;
 
-FWD_DECLARE_MANAGED_CLASS( Texture );
 FWD_DECLARE_MANAGED_CLASS( Renderer );
 FWD_DECLARE_MANAGED_CLASS( RenderTarget );
 FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
-FWD_DECLARE_MANAGED_CLASS( ShaderProgram );
 FWD_DECLARE_MANAGED_CLASS( GenericVertexData );
 
 struct VideoModes {
@@ -182,9 +180,7 @@ protected:
     virtual void initDescriptorSets() = 0;
     
     virtual RenderTarget_uptr      newRT( const RenderTargetDescriptor& descriptor ) const = 0;
-    virtual GenericVertexData_ptr  newGVD( U32 ringBufferLength, bool renderIndirect, std::string_view name ) const = 0;
-    virtual Texture_ptr            newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const = 0;
-    virtual ShaderProgram_ptr      newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view  assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const = 0;
+    virtual GenericVertexData_ptr  newGVD( U32 ringBufferLength, std::string_view name ) const = 0;
     virtual ShaderBuffer_uptr      newSB( const ShaderBufferDescriptor& descriptor ) const = 0;
 };
 

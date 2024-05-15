@@ -339,11 +339,27 @@ namespace Divide
             return false;
         }
 
-        template<typename T>
-        string to_string( T value )
+        namespace detail
         {
-            return fmt::format( "{}", value );
+            extern dvd_allocator<char> s_allocator;
+
+            FORCE_INLINE string vformat( fmt::string_view format_str, fmt::format_args args )
+            {
+                using custom_memory_buffer = fmt::basic_memory_buffer<char, fmt::inline_buffer_size, dvd_allocator<char>>;
+                auto buf = custom_memory_buffer( s_allocator );
+                fmt::vformat_to( std::back_inserter( buf ), format_str, args );
+                return string( buf.data(), buf.size(), s_allocator );
+            }
+        } //namespace detail
+
+        template <typename... Args>
+        FORCE_INLINE string StringFormat( const std::string_view fmt, Args&& ...args )
+        {
+            return detail::vformat( fmt, fmt::make_format_args( args... ) );
         }
+
+        template<typename T>
+        FORCE_INLINE string to_string( T value ) { return Util::StringFormat("{}", value ); }
 
     } //namespace Util
 } //namespace Divide

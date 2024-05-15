@@ -45,11 +45,10 @@ namespace CEGUI {
 namespace Divide {
 
 class AudioDescriptor;
-TYPEDEF_SMART_POINTERS_FOR_TYPE(AudioDescriptor);
 
 class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     using ButtonCallback = DELEGATE<void, I64>;
-    using AudioCallback = DELEGATE<void, AudioDescriptor_ptr>;
+    using AudioCallback = DELEGATE<void, Handle<AudioDescriptor>>;
 
     friend class GUIInterface;
     friend class SceneGUIElements;
@@ -75,8 +74,8 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     void visible(bool visible) noexcept override;
 
     void setEventCallback(Event event, const ButtonCallback& callback);
-    void setEventSound(Event event, const AudioDescriptor_ptr& sound);
-    void setEventCallback(Event event, const ButtonCallback& callback, const AudioDescriptor_ptr& sound);
+    void setEventSound(Event event, Handle<AudioDescriptor> sound);
+    void setEventCallback(Event event, const ButtonCallback& callback, Handle<AudioDescriptor> sound);
 
     // return false if we replace an existing callback
     static bool soundCallback(const AudioCallback& cbk);
@@ -96,7 +95,7 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
    protected:
     /// A pointer to a function to call if the button is pressed
     std::array<ButtonCallback, to_base(Event::COUNT)> _callbackFunction;
-    std::array<AudioDescriptor_ptr, to_base(Event::COUNT)> _eventSound;
+    std::array<Handle<AudioDescriptor>, to_base(Event::COUNT)> _eventSound;
     std::array<CEGUI::Event::Connection, to_base(Event::COUNT)> _connections;
 
     CEGUI::Window* _btnWindow;

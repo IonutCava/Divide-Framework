@@ -13,7 +13,10 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/Build/${presetName}",
             "installDir": "${sourceDir}/Install/${presetName}",
-            "warnings": {"dev": false }
+            "warnings": { "dev": false },
+            "environment": {
+                "MIMALLOC_DISABLE_REDIRECT": "1"
+            }
         },
         {
             "name": "conf-windows-common",

@@ -40,7 +40,7 @@ namespace Divide {
 
 class SSAOPreRenderOperator final : public PreRenderOperator {
    public:
-    SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache);
+    SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
     ~SSAOPreRenderOperator() override;
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
@@ -87,13 +87,13 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
    private:
     GFX::SendPushConstantsCommand _ssaoGenerateConstantsCmd;
     GFX::SendPushConstantsCommand _ssaoBlurConstantsCmd;
-    ShaderProgram_ptr _ssaoGenerateShader = nullptr;
-    ShaderProgram_ptr _ssaoGenerateHalfResShader = nullptr;
-    ShaderProgram_ptr _ssaoBlurShaderHorizontal = nullptr;
-    ShaderProgram_ptr _ssaoBlurShaderVertical = nullptr;
-    ShaderProgram_ptr _ssaoPassThroughShader = nullptr;
-    ShaderProgram_ptr _ssaoDownSampleShader = nullptr;
-    ShaderProgram_ptr _ssaoUpSampleShader = nullptr;
+    Handle<ShaderProgram> _ssaoGenerateShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _ssaoGenerateHalfResShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _ssaoBlurShaderHorizontal = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _ssaoBlurShaderVertical = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _ssaoPassThroughShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _ssaoDownSampleShader = INVALID_HANDLE<ShaderProgram>;
+    Handle<ShaderProgram> _ssaoUpSampleShader = INVALID_HANDLE<ShaderProgram>;
     Pipeline* _downsamplePipeline = nullptr;
     Pipeline* _generateHalfResPipeline = nullptr;
     Pipeline* _upsamplePipeline = nullptr;
@@ -102,7 +102,7 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
     Pipeline* _blurVerticalPipeline = nullptr;
     Pipeline* _passThroughPipeline = nullptr;
 
-    Texture_ptr _noiseTexture = nullptr;
+    Handle<Texture> _noiseTexture = INVALID_HANDLE<Texture>;
     SamplerDescriptor _noiseSampler{};
     RenderTargetHandle _ssaoOutput;
     RenderTargetHandle _ssaoHalfResOutput;

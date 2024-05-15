@@ -52,7 +52,7 @@ namespace CEGUI
 
 String CEGUIRenderer::s_rendererID("Divide CEGUI Renderer");
 
-CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_ptr shader, const CEGUI::Sizef resolution )
+CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::Handle<Divide::ShaderProgram> shader, const CEGUI::Sizef resolution )
     : _flipClippingHeight(context.renderAPI() == Divide::RenderAPI::Vulkan)
     , _context(context)
     , _displaySize(resolution)
@@ -72,7 +72,7 @@ CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::ShaderProgram_
     defaultStateNoScissor._scissorTestEnabled = false;
 
     PipelineDescriptor descriptor = {};
-    descriptor._shaderProgramHandle = shader->handle();
+    descriptor._shaderProgramHandle = shader;
     descriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
     descriptor._vertexFormat._vertexBindings.emplace_back()._strideInBytes = sizeof(DVDGeometryBuffer::DVDVertex);
     AttributeDescriptor& descPos = descriptor._vertexFormat._attributes[to_base( AttribLocation::POSITION )]; //vec3
@@ -135,7 +135,7 @@ CEGUIRenderer::~CEGUIRenderer()
     destroyAllTextures();
 }
 
-CEGUIRenderer& CEGUIRenderer::create( Divide::GFXDevice& context, Divide::ShaderProgram_ptr shader, CEGUI::Sizef resolution, const int abi )
+CEGUIRenderer& CEGUIRenderer::create( Divide::GFXDevice& context, Divide::Handle<Divide::ShaderProgram> shader, CEGUI::Sizef resolution, const int abi )
 {
     System::performVersionTest( CEGUI_VERSION_ABI, abi, CEGUI_FUNCTION_NAME );
 
@@ -147,7 +147,7 @@ void CEGUIRenderer::destroy( CEGUIRenderer& renderer )
     CEGUI_DELETE_AO& renderer;
 }
 
-Divide::Texture* CEGUIRenderer::getTextureTarget() const
+Divide::Handle<Divide::Texture> CEGUIRenderer::getTextureTarget() const
 {
     DVDTextureTarget* target = static_cast<DVDTextureTarget*>(_defaultTarget);
     return target->getAttachmentTex();
@@ -311,7 +311,7 @@ uint CEGUIRenderer::getMaxTextureSize() const
     return Divide::GFXDevice::GetDeviceInformation()._maxTextureSize;
 }
 
-Texture& CEGUIRenderer::createTexture(const String& name, const Divide::Texture_ptr& tex, const Sizef& sz)
+Texture& CEGUIRenderer::createTexture(const String& name, const Divide::Handle<Divide::Texture> tex, const Sizef& sz)
 {
     Divide::DIVIDE_ASSERT(_textures.find(name) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
 

@@ -96,15 +96,6 @@ namespace
         });
     }
 
-    CommandBuffer::CommandBuffer( const char* name, const size_t reservedCmdCount )
-        : _name( name )
-    {
-        if ( _commands.max_size() < reservedCmdCount )
-        {
-            _commands.reserve( reservedCmdCount );
-        }
-    }
-
     CommandBuffer::~CommandBuffer()
     {
         clear();
@@ -125,6 +116,16 @@ namespace
         _batched = true;
     }
 
+    void CommandBuffer::clear( const char* name, const size_t reservedCmdCount )
+    {
+        clear();
+        _name = name;
+        if ( _commands.max_size() < reservedCmdCount )
+        {
+            _commands.reserve( reservedCmdCount );
+        }
+    }
+
     void CommandBuffer::add( const CommandBuffer& other )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -140,9 +141,14 @@ namespace
 
     void CommandBuffer::add( Handle<CommandBuffer> other )
     {
-        DIVIDE_ASSERT(other != INVALID_HANDLE<GFX::CommandBuffer> && other._ptr != nullptr);
-
-        add(*other._ptr);
+        if(other != INVALID_HANDLE<GFX::CommandBuffer> )
+        {
+            GFX::CommandBuffer* buf = Get(other);
+            if (buf != nullptr )
+            {
+                add( *buf );
+            }
+        }
     }
 
     void CommandBuffer::batch()
@@ -228,17 +234,17 @@ namespace
                 case CommandType::READ_TEXTURE:
                 {
                     const ReadTextureCommand* crtCmd = cmd->As<ReadTextureCommand>();
-                    hasWork = crtCmd->_texture != nullptr && crtCmd->_callback;
+                    hasWork = crtCmd->_texture != INVALID_HANDLE<Texture> && crtCmd->_callback;
                 } break;
                 case CommandType::COPY_TEXTURE:
                 {
                     const CopyTextureCommand* crtCmd = cmd->As<CopyTextureCommand>();
-                    hasWork = crtCmd->_source != nullptr && crtCmd->_destination != nullptr;
+                    hasWork = crtCmd->_source != INVALID_HANDLE<Texture> && crtCmd->_destination != INVALID_HANDLE<Texture>;
                 }break;
                 case CommandType::CLEAR_TEXTURE:
                 {
                     const ClearTextureCommand* crtCmd = cmd->As<ClearTextureCommand>();
-                    hasWork = crtCmd->_texture != nullptr;
+                    hasWork = crtCmd->_texture != INVALID_HANDLE<Texture>;
                 }break;
                 case CommandType::BIND_PIPELINE:
                 {

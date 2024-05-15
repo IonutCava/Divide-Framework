@@ -1,7 +1,6 @@
 
 
 #include "Headers/SceneGraphNode.h"
-#include "Headers/SceneGraph.h"
 
 #include "Core/Headers/PlatformContext.h"
 #include "Utility/Headers/Localization.h"
@@ -41,91 +40,6 @@ namespace
     }
 };
 
-SceneGraphNode::SceneGraphNode(SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor)
-    : PlatformContextComponent(sceneGraph->parentScene().context()),
-      _relationshipCache(this),
-      _sceneGraph(sceneGraph),
-      _node(descriptor._node),
-      _instanceCount(to_U32(descriptor._instanceCount)),
-      _serialize(descriptor._serialize),
-      _usageContext(descriptor._usageContext)
-{
-    for (auto& it : Events._eventsFreeList)
-    {
-        it.store(true);
-    }
-    _name = descriptor._name;
-    if (_name.empty())
-    {
-        if (_node == nullptr || _node->resourceName().empty())
-        {
-            _name = Util::StringFormat("{}_SGN", getGUID()).c_str();
-        }
-        else
-        {
-            _name = Util::StringFormat("{}_SGN", _node->resourceName().c_str()).c_str();
-        }
-    }
-    _nameHash = _ID(_name.c_str());
-
-    setFlag(Flags::ACTIVE);
-    clearFlag(Flags::VISIBILITY_LOCKED);
-
-    if (_node == nullptr)
-    {
-        _node = std::make_shared<SceneNode>(sceneGraph->parentScene().resourceCache(),
-                                              generateGUID(),
-                                              "EMPTY",
-                                              "EMPTY",
-                                              ResourcePath{},
-                                              SceneNodeType::TYPE_TRANSFORM,
-                                              to_base(ComponentType::TRANSFORM));
-    }
-
-    if (_node->type() == SceneNodeType::TYPE_TRANSFORM)
-    {
-        _node->load();
-    }
-
-    assert(_node != nullptr);
-    const U32 dynamicNodeComponents = to_base( ComponentType::ANIMATION ) |
-                                      to_base ( ComponentType::INVERSE_KINEMATICS ) |
-                                      to_base ( ComponentType::RAGDOLL );
-    if ( descriptor._componentMask & dynamicNodeComponents )
-    {
-        _usageContext = NodeUsageContext::NODE_DYNAMIC;
-    }
-
-    AddComponents(descriptor._componentMask, false);
-    AddComponents(_node->requiredComponentMask(), false);
-    if (IsTransformNode( _node->type() ))
-    {
-        setFlag(Flags::IS_CONTAINER);
-    }
-
-}
-
-/// If we are destroying the current graph node
-SceneGraphNode::~SceneGraphNode()
-{
-    Console::printfn(LOCALE_STR("REMOVE_SCENEGRAPH_NODE"), name().c_str(), _node->resourceName().c_str());
-
-    Attorney::SceneGraphSGN::onNodeDestroy(_sceneGraph, this);
-    // Bottom up
-    {
-        LockGuard<SharedMutex> w_lock(_children._lock);
-        const U32 childCount = _children._count;
-        for (U32 i = 0u; i < childCount; ++i)
-        {
-            _sceneGraph->destroySceneGraphNode(_children._data[i]);
-        }
-        efficient_clear( _children._data );
-        //_children._count.store(0u);
-    }
-
-    RemoveAllComponents();
-}
-
 ECS::ECSEngine& SceneGraphNode::GetECSEngine() const noexcept
 {
     return _sceneGraph->GetECSEngine();
@@ -133,7 +47,6 @@ ECS::ECSEngine& SceneGraphNode::GetECSEngine() const noexcept
 
 void SceneGraphNode::AddComponents(const U32 componentMask, const bool allowDuplicates)
 {
-
     for (auto i = 1u; i < to_base(ComponentType::COUNT) + 1; ++i)
     {
         const U32 componentBit = 1 << i;
@@ -234,6 +147,89 @@ void SceneGraphNode::setTransformDirty(const U32 transformMask)
             Attorney::TransformComponentSGN::onParentTransformDirty(*tComp, transformMask);
         }
     }
+}
+
+SceneGraphNode::SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor )
+    : PlatformContextComponent( context )
+    , _relationshipCache( this )
+    , _sceneGraph( sceneGraph )
+    , _name( descriptor._name )
+    , _instanceCount( to_U32( descriptor._instanceCount ) )
+    , _serialize( descriptor._serialize )
+    , _usageContext( descriptor._usageContext )
+    , _descriptor( descriptor )
+{
+    for ( auto& it : Events._eventsFreeList )
+    {
+        it.store( true );
+    }
+
+    DIVIDE_ASSERT( descriptor._nodeHandle._handle != INVALID_HANDLE<SceneNode> );
+    _node = descriptor._nodeHandle._nodePtr;
+    DIVIDE_ASSERT( _node != nullptr );
+
+    if ( _name.empty() )
+    {
+        if ( _node->resourceName().empty() )
+        {
+            _name = Util::StringFormat( "{}_SGN", getGUID() ).c_str();
+        }
+        else
+        {
+            _name = Util::StringFormat( "{}_SGN", _node->resourceName().c_str() ).c_str();
+        }
+    }
+
+    _nameHash = _ID( _name.c_str() );
+
+    setFlag( Flags::ACTIVE );
+    clearFlag( Flags::VISIBILITY_LOCKED );
+
+    const U32 dynamicNodeComponents = to_base( ComponentType::ANIMATION ) |
+        to_base( ComponentType::INVERSE_KINEMATICS ) |
+        to_base( ComponentType::RAGDOLL );
+
+    if ( descriptor._componentMask & dynamicNodeComponents )
+    {
+        _usageContext = NodeUsageContext::NODE_DYNAMIC;
+    }
+
+    AddComponents( descriptor._componentMask, false );
+    AddComponents( _node->requiredComponentMask(), false );
+    if ( IsTransformNode( _descriptor._nodeHandle._type ) )
+    {
+        setFlag( Flags::IS_CONTAINER );
+    }
+}
+
+/// If we are destroying the current graph node
+SceneGraphNode::~SceneGraphNode()
+{
+    Console::printfn( LOCALE_STR( "REMOVE_SCENEGRAPH_NODE" ), name().c_str(), _node->resourceName().c_str() );
+
+    Attorney::SceneGraphSGN::onNodeDestroy( _sceneGraph, this );
+    // Bottom up
+    {
+        LockGuard<SharedMutex> w_lock( _children._lock );
+        const U32 childCount = _children._count;
+        for ( U32 i = 0u; i < childCount; ++i )
+        {
+            _sceneGraph->destroySceneGraphNode( _children._data[i] );
+        }
+        efficient_clear( _children._data );
+        //_children._count.store(0u);
+    }
+
+    if( _descriptor._nodeHandle._deleter )
+    {
+        _descriptor._nodeHandle._deleter();
+    }
+    else
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+
+    RemoveAllComponents();
 }
 
 void SceneGraphNode::changeUsageContext(const NodeUsageContext& newContext)
@@ -337,42 +333,28 @@ void SceneGraphNode::setParentInternal()
 }
 
 /// Add a new SceneGraphNode to the current node's child list based on a SceneNode
-SceneGraphNode* SceneGraphNode::addChildNode(const SceneGraphNodeDescriptor& descriptor)
+SceneGraphNode* SceneGraphNode::addChildNode( SceneGraphNode* sgn)
 {
-    // Create a new SceneGraphNode with the SceneNode's info
-    // We need to name the new SceneGraphNode
-    // If we did not supply a custom name use the SceneNode's name
-
-    SceneGraphNode* sceneGraphNode = _sceneGraph->createSceneGraphNode(_sceneGraph, descriptor);
-    assert(sceneGraphNode != nullptr && sceneGraphNode->_node->getState() != ResourceState::RES_CREATED);
-
     // Set the current node as the new node's parent
-    sceneGraphNode->setParent(this);
+    sgn->setParent(this);
 
-    if (sceneGraphNode->_node->getState() == ResourceState::RES_LOADED)
+    if ( sgn->_node->getState() == ResourceState::RES_LOADED)
     {
-        PostLoad(sceneGraphNode->_node.get(), sceneGraphNode);
+        PostLoad( sgn->_node, sgn );
     }
-    else if (sceneGraphNode->_node->getState() == ResourceState::RES_LOADING)
+    else if ( sgn->_node->getState() == ResourceState::RES_LOADING)
     {
         setFlag(Flags::LOADING);
-        sceneGraphNode->_node->addStateCallback(ResourceState::RES_LOADED,
-            [this, sceneGraphNode](CachedResource* res)
-            {
-                PostLoad(static_cast<SceneNode*>(res), sceneGraphNode);
-                clearFlag(Flags::LOADING);
-            }
-        );
     }
 
     // return the newly created node
-    return sceneGraphNode;
+    return sgn;
 }
 
 void SceneGraphNode::PostLoad(SceneNode* sceneNode, SceneGraphNode* sgn)
 {
     Attorney::SceneNodeSceneGraph::postLoad(sceneNode, sgn);
-    sgn->Hacks._editorComponents.emplace_back(&Attorney::SceneNodeSceneGraph::getEditorComponent(sceneNode));
+
     if (!sgn->_relationshipCache.isValid())
     {
         sgn->_relationshipCache.rebuild();
@@ -599,7 +581,15 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState)
 
     if (hasFlag(Flags::ACTIVE))
     {
-        Attorney::SceneNodeSceneGraph::sceneUpdate(_node.get(), deltaTimeUS, this, sceneState);
+        Attorney::SceneNodeSceneGraph::sceneUpdate(_node, deltaTimeUS, this, sceneState);
+    }
+    else if (hasFlag(Flags::LOADING))
+    {
+        if (_node->getState() == ResourceState::RES_LOADED)
+        {
+            PostLoad( _node, this );
+            clearFlag( Flags::LOADING );
+        }
     }
 
     clearFlag(Flags::PARENT_POST_RENDERED);
@@ -740,8 +730,7 @@ namespace
 
         if (nodeType == SceneNodeType::TYPE_SKY ||
             nodeType == SceneNodeType::TYPE_WATER ||
-            nodeType == SceneNodeType::TYPE_INFINITEPLANE ||
-            (nodeType == SceneNodeType::TYPE_DECAL))
+            nodeType == SceneNodeType::TYPE_INFINITEPLANE)
         {
             return false;
         }
@@ -779,14 +768,6 @@ namespace
                 case SceneNodeType::TYPE_TERRAIN:
                 {
                     if ( renderFilter & to_base(RenderPassCuller::EntityFilter::TERRAIN ) )
-                    {
-                        ret = false;
-                    }
-
-                } break;
-                case SceneNodeType::TYPE_DECAL:
-                {
-                    if ( renderFilter & to_base(RenderPassCuller::EntityFilter::DECALS ) )
                     {
                         ret = false;
                     }
@@ -833,6 +814,19 @@ namespace
         return ret;
     }
 }
+
+/// Add a new SceneGraphNode to the current node's child list based on a SceneNode
+SceneGraphNode* SceneGraphNode::addChildNode( const SceneGraphNodeDescriptor& descriptor )
+{
+    // Create a new SceneGraphNode with the SceneNode's info
+    // We need to name the new SceneGraphNode
+    // If we did not supply a custom name use the SceneNode's name
+
+    SceneGraphNode* sceneGraphNode = _sceneGraph->createSceneGraphNode( _context, _sceneGraph, descriptor );
+    DIVIDE_ASSERT( sceneGraphNode != nullptr && sceneGraphNode->_node->getState() != ResourceState::RES_CREATED );
+    return addChildNode( sceneGraphNode );
+}
+
 
 FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
                                                const U16 cullFlags,

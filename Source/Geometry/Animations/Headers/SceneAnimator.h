@@ -134,7 +134,7 @@ class SceneAnimator {
     {
         assert( animationIndex < _animations.size() );
 
-        const AnimEvaluator* animation = _animations[animationIndex];
+        const AnimEvaluator* animation = _animations[animationIndex].get();
         assert(animation != nullptr);
         return *animation;
     }
@@ -143,7 +143,7 @@ class SceneAnimator {
     {
         assert( animationIndex < _animations.size() );
 
-        AnimEvaluator* animation = _animations[animationIndex];
+        AnimEvaluator* animation = _animations[animationIndex].get();
         assert(animation != nullptr);
         return *animation;
     }
@@ -154,7 +154,7 @@ class SceneAnimator {
         return _animations[animationIndex]->frameCount();
     }
 
-    inline const vector<AnimEvaluator*>& animations() const noexcept
+    inline const vector<std::unique_ptr<AnimEvaluator>>& animations() const noexcept
     {
         return _animations;
     }
@@ -256,7 +256,7 @@ class SceneAnimator {
     I16   _skeletonDepthCache = -1;
     vector<Bone*> _bones;
     /// A vector that holds each animation
-    vector<AnimEvaluator*> _animations;
+    vector<std::unique_ptr<AnimEvaluator>> _animations;
     /// find animations quickly
     hashMap<U64, U32> _animationNameToID;
     mat4<F32> _boneTransformCache;
@@ -267,11 +267,13 @@ class SceneAnimator {
 namespace Attorney {
     class SceneAnimatorMeshImporter {
         /// PASS OWNERSHIP OF ANIMATIONS TO THE ANIMATOR!!!
-        static void registerAnimations(SceneAnimator& animator, const vector<AnimEvaluator*>& animations) {
+        static void registerAnimations(SceneAnimator& animator, const vector<AnimEvaluator*>& animations)
+        {
             const size_t animationCount = animations.size();
             animator._animations.reserve(animationCount);
-            for (size_t i = 0; i < animationCount; ++i) {
-                animator._animations.push_back(animations[i]);
+            for (size_t i = 0; i < animationCount; ++i)
+            {
+                animator._animations.emplace_back(animations[i]);
                 insert(animator._animationNameToID, _ID(animator._animations[i]->name().c_str()), to_U32(i));
             }
         }

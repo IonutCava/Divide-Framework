@@ -43,19 +43,16 @@ namespace Divide {
         NODE_STATIC
     };
 
-    /// ToDo: Move particle emitter and triggers to components (it will make them way more dynamic) - Ionut
+    /// ToDo: Move particle emitter to components (it will make them way more dynamic) - Ionut
     enum class SceneNodeType : U16 {
         TYPE_SPHERE_3D = 0,
         TYPE_BOX_3D,
         TYPE_QUAD_3D,
-        TYPE_PATCH_3D,
         TYPE_MESH,
         TYPE_SUBMESH,
         TYPE_TERRAIN,
-        TYPE_DECAL,
         TYPE_TRANSFORM,
         TYPE_WATER,
-        TYPE_TRIGGER,
         TYPE_PARTICLE_EMITTER,
         TYPE_SKY,
         TYPE_INFINITEPLANE,
@@ -89,7 +86,6 @@ namespace Divide {
     {
         return type == SceneNodeType::TYPE_BOX_3D ||
                type == SceneNodeType::TYPE_QUAD_3D ||
-               type == SceneNodeType::TYPE_PATCH_3D ||
                type == SceneNodeType::TYPE_SPHERE_3D;
     }
 
@@ -103,16 +99,36 @@ namespace Divide {
     {
         return IsPrimitive(type) ||
                IsMesh(type) ||
-               type == SceneNodeType::TYPE_TERRAIN ||
-               type == SceneNodeType::TYPE_DECAL;
+               type == SceneNodeType::TYPE_TERRAIN;
     }
 
     [[nodiscard]] FORCE_INLINE constexpr bool IsTransformNode( const SceneNodeType nodeType ) noexcept
     {
-        return nodeType == SceneNodeType::TYPE_TRANSFORM ||
-               nodeType == SceneNodeType::TYPE_TRIGGER ||
-               nodeType == SceneNodeType::TYPE_MESH;
+        return nodeType == SceneNodeType::TYPE_TRANSFORM || nodeType == SceneNodeType::TYPE_MESH;
     }
+
+    template<typename T>
+    constexpr SceneNodeType GetSceneNodeType() { return SceneNodeType::COUNT; }
+
+    #define DEFINE_NODE_TYPE_OVERLOAD(Name, Enum) \
+    class Name; \
+    template<> \
+    constexpr SceneNodeType GetSceneNodeType<Name>() { return Enum; } \
+
+    #define DEFINE_NODE_TYPE_INHERIT(Name, Enum, Base) \
+
+    #define DEFINE_NODE_TYPE(Name, Enum) \
+    DEFINE_NODE_TYPE_OVERLOAD(Name, Enum) \
+    class Name final : public SceneNode
+
+    #define DEFINE_NODE_BASE_TYPE(Name, Enum) \
+    DEFINE_NODE_TYPE_OVERLOAD(Name, Enum) \
+    class Name : public SceneNode
+
+    #define DEFINE_3D_OBJECT_TYPE(Name, Enum) \
+    DEFINE_NODE_TYPE_OVERLOAD(Name, Enum) \
+    class Name final : public Object3D
+
 }; //namespace Divide
 
 #endif //DVD_SCENE_NODE_FWD_H_

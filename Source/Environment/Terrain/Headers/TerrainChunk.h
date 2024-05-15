@@ -34,6 +34,7 @@
 #define DVD_TERRAIN_CHUNK_H
 
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
+#include "Environment/Vegetation/Headers/Vegetation.h"
 
 namespace Divide {
 
@@ -44,25 +45,24 @@ class QuadtreeNode;
 class ShaderProgram;
 class SceneGraphNode;
 class SceneRenderState;
+
 struct FileData;
 struct RenderPackage;
-struct VegetationDetails;
 
-FWD_DECLARE_MANAGED_CLASS(Vegetation);
-
-namespace Attorney {
-    class TerrainChunkTerrain;
+namespace Attorney
+{
+    class TerrainChunkVegetation;
 }
 
 class TerrainChunk {
     static U32 _chunkID;
-    friend class Attorney::TerrainChunkTerrain;
+    friend class Attorney::TerrainChunkVegetation;
 
    public:
     TerrainChunk(Terrain* parentTerrain, QuadtreeNode& parentNode) noexcept;
 
     void load(U8 depth, const vec2<U32> pos, U32 targetChunkDimension, vec2<U32> HMSize, BoundingBox& bbInOut);
-
+    
 
     [[nodiscard]] vec4<F32> getOffsetAndSize() const noexcept {
         return vec4<F32>(_xOffset, _yOffset, _sizeX, _sizeY);
@@ -78,31 +78,40 @@ class TerrainChunk {
 
     PROPERTY_R(U32, id, 0u);
 
-   protected:
-    [[nodiscard]] const Vegetation_ptr& getVegetation() const noexcept { return _vegetation; }
 
-    friend class Vegetation;
-    Vegetation& initializeVegetation(GFXDevice& context, const VegetationDetails& vegDetails);
+   private:
+    void initVegetation( PlatformContext& context, Handle<Vegetation> handle );
 
    private:
     QuadtreeNode& _quadtreeNode;
 
-    F32 _xOffset;
-    F32 _yOffset;
-    F32 _sizeX;
-    F32 _sizeY;
-    Terrain* _parentTerrain;
-    Vegetation_ptr _vegetation;
+    F32 _xOffset{0.f};
+    F32 _yOffset{0.f};
+    F32 _sizeX{0.f};
+    F32 _sizeY{0.f};
+    Terrain* _parentTerrain{nullptr};
+    VegetationInstance_uptr _vegetation;
 };
 
 FWD_DECLARE_MANAGED_CLASS(TerrainChunk);
 
-namespace Attorney {
-class TerrainChunkTerrain {
-    static const Vegetation_ptr& getVegetation(const Divide::TerrainChunk& chunk) noexcept {
-        return chunk.getVegetation();
+namespace Attorney
+{
+
+class TerrainChunkVegetation
+{
+    static void initVegetation(Divide::TerrainChunk& chunk, PlatformContext& context, const Handle<Vegetation> handle) noexcept
+    {
+        chunk.initVegetation(context, handle);
     }
+
+    static VegetationInstance* getVegetation(const Divide::TerrainChunk& chunk) noexcept
+    {
+        return chunk._vegetation.get();
+    }
+
     friend class Divide::Terrain;
+    friend class Divide::Vegetation;
 };
 }  // namespace Attorney
 

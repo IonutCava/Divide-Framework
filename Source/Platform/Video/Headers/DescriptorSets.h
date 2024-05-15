@@ -68,12 +68,13 @@ namespace Divide
 
     struct ImageView
     {
+        static constexpr size_t INVALID_VIEW_HASH = std::numeric_limits<size_t>::max();
+
         ImageViewDescriptor _descriptor{};
-        const Texture* _srcTexture{nullptr};
+        const Texture* _srcTexture{ nullptr };
         ImageSubRange _subRange{};
 
         TextureType _targetType{ TextureType::COUNT };
-
 
         bool operator==( const ImageView& other ) const noexcept;
         bool operator!=( const ImageView& other ) const noexcept;
@@ -87,6 +88,7 @@ namespace Divide
         SamplerDescriptor _sampler{};
 
         size_t _samplerHash{SamplerDescriptor::INVALID_SAMPLER_HASH};
+        size_t _imageHash{ImageView::INVALID_VIEW_HASH};
 
         bool operator==(const DescriptorCombinedImageSampler&) const noexcept = default;
     };

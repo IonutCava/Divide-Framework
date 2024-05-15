@@ -50,7 +50,6 @@ class Player;
 class SceneGraph;
 class SceneState;
 class WorldPacket;
-class ResourceCache;
 class SceneRenderState;
 class BoundsSystem;
 class BoundsComponent;
@@ -75,7 +74,8 @@ namespace GFX
 FWD_DECLARE_MANAGED_CLASS(SceneGraphNode);
 FWD_DECLARE_MANAGED_CLASS(Material);
 
-namespace Attorney {
+namespace Attorney
+{
     class SceneNodePlayer;
     class SceneNodeSceneGraph;
     class SceneNodeLightComponent;
@@ -83,7 +83,8 @@ namespace Attorney {
     class SceneNodeNetworkComponent;
 };
 
-class SceneNode : public CachedResource {
+class SceneNode : public CachedResource 
+{
     friend class Attorney::SceneNodePlayer;
     friend class Attorney::SceneNodeSceneGraph;
     friend class Attorney::SceneNodeLightComponent;
@@ -91,7 +92,8 @@ class SceneNode : public CachedResource {
     friend class Attorney::SceneNodeNetworkComponent;
 
   public:
-    explicit SceneNode(ResourceCache* parentCache, size_t descriptorHash, std::string_view name, std::string_view resourceName, const ResourcePath& resourceLocation, SceneNodeType type, U32 requiredComponentMask);
+    explicit SceneNode( const ResourceDescriptorBase& descriptor, SceneNodeType type, U32 requiredComponentMask );
+
     virtual ~SceneNode() override;
 
     /// Perform any pre-draw operations POST-command build
@@ -106,15 +108,14 @@ class SceneNode : public CachedResource {
 
     virtual void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut);
 
+    bool load( PlatformContext& context ) override;
+    bool postLoad() override;
     bool unload() override;
-    virtual void setMaterialTpl(const Material_ptr& material);
-    const Material_ptr& getMaterialTpl() const;
+    virtual void setMaterialTpl( Handle<Material> material);
+    Handle<Material> getMaterialTpl() const;
 
     [[nodiscard]] inline SceneNodeRenderState& renderState() noexcept { return _renderState; }
     [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
-
-    [[nodiscard]] inline ResourceCache* parentResourceCache() noexcept { return _parentCache; }
-    [[nodiscard]] inline const ResourceCache* parentResourceCache() const noexcept { return _parentCache; }
 
     [[nodiscard]] inline const BoundingBox& getBounds() const noexcept { return _boundingBox; }
     [[nodiscard]] inline const vec3<F32>& getWorldOffset() const noexcept { return _worldOffset; }
@@ -127,6 +128,8 @@ class SceneNode : public CachedResource {
     virtual void saveToXML(boost::property_tree::ptree& pt) const;
     virtual void loadFromXML(const boost::property_tree::ptree& pt);
 
+    EditorComponent* editorComponent() const noexcept { return _editorComponent.get(); }
+
    protected:
     /// Called from SceneGraph "sceneUpdate"
     virtual void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState);
@@ -136,24 +139,19 @@ class SceneNode : public CachedResource {
 
     void setBounds(const BoundingBox& aabb, const vec3<F32>& worldOffset = {});
 
-    [[nodiscard]] inline EditorComponent& getEditorComponent() noexcept { return _editorComponent; }
-    [[nodiscard]] inline const EditorComponent& getEditorComponent() const noexcept { return _editorComponent; }
+    void registerEditorComponent( PlatformContext& context );
 
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "SceneNode"; }
-
-    PROPERTY_RW(SceneNodeType, type, SceneNodeType::COUNT);
+    PROPERTY_R(SceneNodeType, type, SceneNodeType::COUNT);
     PROPERTY_RW(bool, rebuildDrawCommands, false);
 
    protected:
-     virtual void editorFieldChanged(std::string_view field);
      virtual void onNetworkSend(SceneGraphNode* sgn, WorldPacket& dataOut) const;
      virtual void onNetworkReceive(SceneGraphNode* sgn, WorldPacket& dataIn) const;
 
    protected:
-    EditorComponent _editorComponent;
-    Material_ptr _materialTemplate = nullptr;
+    std::unique_ptr<EditorComponent> _editorComponent;
+    Handle<Material> _materialTemplate = INVALID_HANDLE<Material>;
 
-    ResourceCache* _parentCache = nullptr;
     /// The various states needed for rendering
     SceneNodeRenderState _renderState;
 
@@ -168,9 +166,16 @@ private:
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(SceneNode);
 
+DEFINE_NODE_TYPE(TransformNode, SceneNodeType::TYPE_TRANSFORM)
+{
+   public:
+    explicit TransformNode( const ResourceDescriptor<TransformNode>& descriptor );
+};
+
 namespace Attorney {
 class SceneNodeSceneGraph {
-    static void postLoad(SceneNode* node, SceneGraphNode* sgn) {
+    static void postLoad(SceneNode* node, SceneGraphNode* sgn)
+    {
         node->postLoad(sgn);
     }
 
@@ -179,10 +184,6 @@ class SceneNodeSceneGraph {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
         node->sceneUpdate(deltaTimeUS, sgn, sceneState);
-    }
-
-    static EditorComponent& getEditorComponent(SceneNode* node) noexcept {
-        return node->_editorComponent;
     }
 
     friend class Divide::SceneGraph;

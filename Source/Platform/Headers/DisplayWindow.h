@@ -124,12 +124,6 @@ public:
     using EventListener = DELEGATE<bool, const WindowEventArgs&>;
 
     virtual ~DisplayWindow() override;
-
-protected:
-    SET_SAFE_DELETE_FRIEND
-    SET_DELETE_CONTAINER_FRIEND
-
-    friend class WindowManager;
     DisplayWindow(WindowManager& parent, PlatformContext& context);
 
 public:
@@ -216,6 +210,7 @@ public:
     PROPERTY_R(U32, flags, 0u);
     PROPERTY_R(WindowType, type, WindowType::COUNT);
     PROPERTY_R(U8, opacity, U8_MAX);
+    PROPERTY_R(Uint32, windowID, 0u);
     PROPERTY_RW(UserData, userData);
     POINTER_R(DisplayWindow, parentWindow, nullptr);
 
@@ -230,13 +225,11 @@ private:
     using EventListeners = vector<DELEGATE<bool, WindowEventArgs>>;
     std::array<EventListeners, to_base(WindowEvent::COUNT)> _eventListeners;
     DELEGATE<void> _destroyCbk;
-    Str<256>  _title{Config::DEFAULT_SCENE_NAME};
     FColour4  _clearColour;
     Rect<I32> _renderingViewport;
 
     vec2<U16> _prevDimensions;
     vec2<U16> _drawableSize;
-    Uint32 _windowID = 0u;
 
     WindowManager& _parent;
     SDL_Window* _sdlWindow = nullptr;

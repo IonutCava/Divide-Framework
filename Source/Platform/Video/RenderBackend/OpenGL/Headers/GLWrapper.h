@@ -111,7 +111,7 @@ private:
 
     [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
-    [[nodiscard]] bool makeTextureViewResident( gl46core::GLubyte bindingSlot, const ImageView& imageView, SamplerDescriptor sampler, size_t& samplerHashInOut ) const;
+    [[nodiscard]] bool makeTextureViewResident( gl46core::GLubyte bindingSlot, const ImageView& imageView, size_t imageViewHash, SamplerDescriptor sampler, size_t samplerHash ) const;
 
     bool setViewportInternal(const Rect<I32>& viewport) override;
     bool setScissorInternal( const Rect<I32>& scissor ) override;
@@ -119,16 +119,14 @@ private:
 
     void flushTextureBindQueue();
 
-    [[nodiscard]] gl46core::GLuint getGLTextureView(ImageView srcView, U8 lifetimeInFrames) const;
+    [[nodiscard]] gl46core::GLuint getGLTextureView(ImageView srcView, size_t srcViewHash, U8 lifetimeInFrames) const;
 
     void initDescriptorSets() override;
 
     void flushPushConstantsLocks();
 
     [[nodiscard]] RenderTarget_uptr     newRT( const RenderTargetDescriptor& descriptor ) const override;
-    [[nodiscard]] GenericVertexData_ptr newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const override;
-    [[nodiscard]] Texture_ptr           newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const override;
-    [[nodiscard]] ShaderProgram_ptr     newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const override;
+    [[nodiscard]] GenericVertexData_ptr newGVD( U32 ringBufferLength, const std::string_view name ) const override;
     [[nodiscard]] ShaderBuffer_uptr     newSB( const ShaderBufferDescriptor& descriptor ) const override;
 
 public:
@@ -178,15 +176,22 @@ private:
 
     struct TexBindEntry
     {
+        gl46core::GLuint  _handle{ GL_NULL_HANDLE };
+        gl46core::GLuint  _sampler{ GL_NULL_HANDLE };
         gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
-        gl46core::GLuint _handle{ GL_NULL_HANDLE };
-        gl46core::GLuint _sampler{ GL_NULL_HANDLE };
     };
 
     static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
-    using SamplerObjectMap = hashMap<size_t, gl46core::GLuint>;
+    static constexpr size_t InitialSamplerMapSize = 64u;
+
+    struct CachedSamplerEntry
+    {
+        size_t _hash = SIZE_MAX;
+        gl46core::GLuint _glHandle = GL_NULL_HANDLE;
+    };
+    using SamplerObjectMap = eastl::fixed_vector<CachedSamplerEntry, InitialSamplerMapSize, true>;
 
 private:
     GFXDevice& _context;
@@ -217,7 +222,7 @@ private:
 
     static GLUtil::glTextureViewCache s_textureViewCache;
 
-    static glHardwareQueryPool* s_hardwareQueryPool;
+    static std::unique_ptr<glHardwareQueryPool> s_hardwareQueryPool;
 
     static U32 s_fenceSyncCounter[s_LockFrameLifetime];
 };

@@ -59,10 +59,9 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
 
 RenderPassManager::~RenderPassManager()
 {
-    for (auto& data : _renderPassData)
-    {
-        MemoryManager::SAFE_DELETE(data._pass);
-    }
+    DestroyResource( _oitCompositionShader );
+    DestroyResource( _oitCompositionShaderMS );
+    DestroyResource( _gbufferResolveShader );
 }
 
 void RenderPassManager::postInit()
@@ -76,16 +75,14 @@ void RenderPassManager::postInit()
         shaderDescriptor._modules.push_back(fragModule);
 
         {
-            ResourceDescriptor shaderResDesc("OITComposition");
-            shaderResDesc.propertyDescriptor(shaderDescriptor);
-            _oitCompositionShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResDesc);
+            ResourceDescriptor<ShaderProgram> shaderResDesc("OITComposition", shaderDescriptor );
+            _oitCompositionShader = CreateResource(shaderResDesc);
         }
         {
             shaderDescriptor._modules.back()._defines.emplace_back("USE_MSAA_TARGET");
 
-            ResourceDescriptor shaderResMSDesc("OITCompositionMS");
-            shaderResMSDesc.propertyDescriptor(shaderDescriptor);
-            _oitCompositionShaderMS = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResMSDesc);
+            ResourceDescriptor<ShaderProgram> shaderResMSDesc("OITCompositionMS", shaderDescriptor );
+            _oitCompositionShaderMS = CreateResource(shaderResMSDesc);
         }
     }
     {
@@ -94,13 +91,12 @@ void RenderPassManager::postInit()
         ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "display.glsl", "ResolveGBuffer"};
         fragModule._defines.emplace_back(Util::StringFormat("NUM_SAMPLES {}", config.rendering.MSAASamples));
 
-        ShaderProgramDescriptor shaderDescriptor = {};
+        ResourceDescriptor<ShaderProgram> shaderResolveDesc("GBufferResolveShader");
+        ShaderProgramDescriptor& shaderDescriptor = shaderResolveDesc._propertyDescriptor;
         shaderDescriptor._modules.push_back(vertModule);
         shaderDescriptor._modules.push_back(fragModule);
 
-        ResourceDescriptor shaderResolveDesc("GBufferResolveShader");
-        shaderResolveDesc.propertyDescriptor(shaderDescriptor);
-        _gbufferResolveShader = CreateResource<ShaderProgram>(parent().resourceCache(), shaderResolveDesc);
+        _gbufferResolveShader = CreateResource(shaderResolveDesc);
     }
 
     for (auto& executor : _executors)
@@ -133,13 +129,14 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                            PROFILE_SCOPE("RenderPass: BuildCommandBuffer", Profiler::Category::Scene );
                                            PROFILE_TAG("Pass IDX", i);
 
-                                           Handle<GFX::CommandBuffer> cmdBuffer = GFX::AllocateCommandBuffer( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ), 1024 );
+                                           Handle<GFX::CommandBuffer> cmdBufferHandle = GFX::AllocateCommandBuffer( TypeUtil::RenderStageToString( static_cast<RenderStage>(i) ), 1024 );
+                                           GFX::CommandBuffer* cmdBuffer = GFX::Get(cmdBufferHandle);
 
                                            passData._memCmd = {};
-                                           passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *cmdBuffer._ptr, passData._memCmd);
+                                           passData._pass->render(params._playerPass, parentTask, *params._sceneRenderState, *cmdBuffer, passData._memCmd);
 
                                            Time::ScopedTimer timeGPUFlush( *_processCommandBufferTimer[i] );
-                                           cmdBuffer._ptr->batch();
+                                           cmdBuffer->batch();
 
                                            if (!passData._pass->dependencies().empty())
                                            {
@@ -158,7 +155,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                                });
                                             }
 
-                                            gfx.flushCommandBuffer( MOV(cmdBuffer) );
+                                            gfx.flushCommandBuffer( MOV(cmdBufferHandle) );
                                             _renderPassCompleted[i].store(true);
 
                                            LockGuard<Mutex> w_lock( _waitForDependenciesLock );
@@ -183,7 +180,7 @@ void RenderPassManager::render(const RenderParams& params)
 
     GFXDevice& gfx = _context;
     PlatformContext& context = parent().platformContext();
-    ProjectManager* projectManager = parent().projectManager();
+    ProjectManager* projectManager = parent().projectManager().get();
 
     const Camera* cam = Attorney::ProjectManagerRenderPass::playerCamera(projectManager);
 
@@ -194,51 +191,55 @@ void RenderPassManager::render(const RenderParams& params)
 
     activeLightPool.preRenderAllPasses(cam);
 
-    Handle<GFX::CommandBuffer> skyLightRenderBuffer = GFX::AllocateCommandBuffer( "Sky Light" );
-    Handle<GFX::CommandBuffer> postFXCmdBuffer = GFX::AllocateCommandBuffer( "PostFX" );
-    Handle<GFX::CommandBuffer> postRenderBuffer = GFX::AllocateCommandBuffer( "Post Render" );
+    Handle<GFX::CommandBuffer> skyLightRenderBufferHandle = GFX::AllocateCommandBuffer( "Sky Light" );
+    Handle<GFX::CommandBuffer> postFXCmdBufferHandle = GFX::AllocateCommandBuffer( "PostFX" );
+    Handle<GFX::CommandBuffer> postRenderBufferHandle = GFX::AllocateCommandBuffer( "Post Render" );
+
+    GFX::CommandBuffer* skyLightRenderBuffer = GFX::Get( skyLightRenderBufferHandle );
+    GFX::CommandBuffer* postFXCmdBuffer = GFX::Get( postFXCmdBufferHandle );
+    GFX::CommandBuffer* postRenderBuffer = GFX::Get( postRenderBufferHandle );
 
     {
        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
        GFX::MemoryBarrierCommand memCmd{};
        {
             PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
-            gfx.updateSceneDescriptorSet(*skyLightRenderBuffer._ptr, memCmd );
-            SceneEnvironmentProbePool::UpdateSkyLight(gfx, *skyLightRenderBuffer._ptr, memCmd );
+            gfx.updateSceneDescriptorSet(*skyLightRenderBuffer, memCmd );
+            SceneEnvironmentProbePool::UpdateSkyLight(gfx, *skyLightRenderBuffer, memCmd );
        }
 
        const Rect<I32>& targetViewport = params._targetViewport;
-       context.gui().preDraw( gfx, targetViewport, *postFXCmdBuffer._ptr, memCmd );
+       context.gui().preDraw( gfx, targetViewport, *postFXCmdBuffer, memCmd );
        {
            GFX::BeginRenderPassCommand beginRenderPassCmd{};
            beginRenderPassCmd._name = "Flush Display";
            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
            beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
            beginRenderPassCmd._target = RenderTargetNames::BACK_BUFFER;
-           GFX::EnqueueCommand(*postFXCmdBuffer._ptr, beginRenderPassCmd);
+           GFX::EnqueueCommand(*postFXCmdBuffer, beginRenderPassCmd);
 
            const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-           const auto& texData = screenAtt->texture()->getView();
+           const auto& texData = Get(screenAtt->texture())->getView();
      
-           gfx.drawTextureInViewport(texData, screenAtt->_descriptor._sampler, targetViewport, false, false, false, *postFXCmdBuffer._ptr );
+           gfx.drawTextureInViewport(texData, screenAtt->_descriptor._sampler, targetViewport, false, false, false, *postFXCmdBuffer );
 
            {
                Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
-               Attorney::ProjectManagerRenderPass::drawCustomUI(projectManager, targetViewport, *postFXCmdBuffer._ptr, memCmd);
+               Attorney::ProjectManagerRenderPass::drawCustomUI(projectManager, targetViewport, *postFXCmdBuffer, memCmd);
                if constexpr(Config::Build::ENABLE_EDITOR)
                {
-                   context.editor().drawScreenOverlay(cam, targetViewport, *postFXCmdBuffer._ptr, memCmd);
+                   context.editor().drawScreenOverlay(cam, targetViewport, *postFXCmdBuffer, memCmd);
                }
-               context.gui().draw(gfx, targetViewport, *postFXCmdBuffer._ptr, memCmd);
+               context.gui().draw(gfx, targetViewport, *postFXCmdBuffer, memCmd);
                projectManager->getEnvProbes()->prepareDebugData();
-               gfx.renderDebugUI(targetViewport, *postFXCmdBuffer._ptr, memCmd);
+               gfx.renderDebugUI(targetViewport, *postFXCmdBuffer, memCmd);
            }
 
-           GFX::EnqueueCommand<GFX::EndRenderPassCommand>( *postFXCmdBuffer._ptr );
+           GFX::EnqueueCommand<GFX::EndRenderPassCommand>( *postFXCmdBuffer );
        }
 
-        Attorney::ProjectManagerRenderPass::postRender( projectManager, *postFXCmdBuffer._ptr, memCmd );
-        GFX::EnqueueCommand( *postFXCmdBuffer._ptr, memCmd );
+        Attorney::ProjectManagerRenderPass::postRender( projectManager, *postFXCmdBuffer, memCmd );
+        GFX::EnqueueCommand( *postFXCmdBuffer, memCmd );
     }
 
     TaskPool& pool = context.taskPool(TaskPoolType::RENDERER);
@@ -251,21 +252,22 @@ void RenderPassManager::render(const RenderParams& params)
         PROFILE_SCOPE("RenderPassManager::FlushCommandBuffers", Profiler::Category::Scene );
         Time::ScopedTimer timeCommands(*_flushCommandBufferTimer);
 
-        gfx.flushCommandBuffer(MOV(skyLightRenderBuffer));
+        gfx.flushCommandBuffer(MOV(skyLightRenderBufferHandle));
 
         { //PostFX should be pretty fast
             PROFILE_SCOPE( "PostFX: CommandBuffer build", Profiler::Category::Scene );
 
             Time::ScopedTimer time( *_postFxRenderTimer );
-            _context.getRenderer().postFX().apply( params._playerPass, cam->snapshot(), *postFXCmdBuffer._ptr );
+            _context.getRenderer().postFX().apply( params._playerPass, cam->snapshot(), *postFXCmdBuffer );
 
-            postFXCmdBuffer._ptr->batch();
+            postFXCmdBuffer->batch();
         }
-        Wait( *renderTask, pool );
-
+        
+        WAIT_FOR_CONDITION( Finished( *renderTask ) );
+        
         if constexpr ( Config::Build::ENABLE_EDITOR )
         {
-            Attorney::EditorRenderPassExecutor::getCommandBuffer(context.editor(), *postRenderBuffer._ptr, flushMemCmd);
+            Attorney::EditorRenderPassExecutor::getCommandBuffer(context.editor(), *postRenderBuffer, flushMemCmd);
         }
         _parent.platformContext().idle();
 
@@ -277,15 +279,14 @@ void RenderPassManager::render(const RenderParams& params)
             }
         }
     }
-
     {
         PROFILE_SCOPE( "PostFX: CommandBuffer flush", Profiler::Category::Scene );
-        _context.flushCommandBuffer( MOV(postFXCmdBuffer) );
+        _context.flushCommandBuffer( MOV(postFXCmdBufferHandle) );
     }
     {
         Time::ScopedTimer time(*_blitToDisplayTimer);
-        GFX::EnqueueCommand( postRenderBuffer, flushMemCmd );
-        gfx.flushCommandBuffer( MOV(postRenderBuffer) );
+        GFX::EnqueueCommand( *postRenderBuffer, flushMemCmd );
+        gfx.flushCommandBuffer( MOV(postRenderBufferHandle) );
     }
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
@@ -315,18 +316,14 @@ RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, cons
 
     RenderPass* item = nullptr;
 
-    if (_executors[to_base(renderStage)] != nullptr)
-    {
-        item = _renderPassData[to_base(renderStage)]._pass;
-        item->dependencies(dependencies);
-    }
-    else
+    if (_executors[to_base(renderStage)] == nullptr)
     {
         _executors[to_base(renderStage)] = std::make_unique<RenderPassExecutor>(*this, _context, renderStage);
-        item = MemoryManager_NEW RenderPass(*this, _context, renderStage, dependencies);
-        _renderPassData[to_base(renderStage)]._pass = item;
+        _renderPassData[to_base(renderStage)]._pass = std::make_unique<RenderPass>( *this, _context, renderStage, dependencies );
     }
 
+    item = _renderPassData[to_base( renderStage )]._pass.get();
+    item->dependencies( dependencies );
     return *item;
 }
 

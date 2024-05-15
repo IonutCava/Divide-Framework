@@ -4,6 +4,8 @@
 #include "Headers/Pipeline.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
@@ -60,7 +62,7 @@ static string ToString(const BindPipelineCommand& cmd, U16 indent)
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(Util::StringFormat("Shader handle : {} - {}\n", cmd._pipeline->descriptor()._shaderProgramHandle._id, cmd._pipeline->descriptor()._shaderProgramHandle._generation));
+    ret.append(Util::StringFormat("Shader handle : {} - {}\n", cmd._pipeline->descriptor()._shaderProgramHandle._index, cmd._pipeline->descriptor()._shaderProgramHandle._generation));
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
@@ -70,7 +72,7 @@ static string ToString(const BindPipelineCommand& cmd, U16 indent)
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ShaderProgram* shader = ShaderProgram::FindShaderProgram(cmd._pipeline->descriptor()._shaderProgramHandle);
+    ShaderProgram* shader = Get(cmd._pipeline->descriptor()._shaderProgramHandle);
     if (shader) {
         ret.append(Util::StringFormat("Primitive topology : {}\n", Divide::Names::primitiveType[to_base(cmd._pipeline->descriptor()._primitiveTopology)]));
         ret.append("    ");

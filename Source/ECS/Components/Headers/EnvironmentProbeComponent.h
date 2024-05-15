@@ -44,7 +44,7 @@ class Camera;
 class Pipeline;
 class GFXDevice;
 class IMPrimitive;
-FWD_DECLARE_MANAGED_CLASS(ShaderProgram);
+class ShaderProgram;
 
 namespace GFX {
     class CommandBuffer;

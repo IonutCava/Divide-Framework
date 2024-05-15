@@ -155,8 +155,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void getMaterialData(NodeMaterialData& dataOut) const;
     void rebuildMaterial();
 
-                         void                instantiateMaterial(const Material_ptr& material);
-    [[nodiscard]] inline const Material_ptr& getMaterialInstance() const noexcept { return _materialInstance; }
+                         void             instantiateMaterial(Handle<Material> material);
+    [[nodiscard]] inline Handle<Material> getMaterialInstance() const noexcept { return _materialInstance; }
 
     [[nodiscard]] inline DrawCommands& drawCommands() noexcept { return _drawCommands; }
 
@@ -169,7 +169,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void drawSelectionGizmo();
     void drawSkeleton();
     void drawBounds(bool AABB, bool OBB, bool Sphere);
-
+    
     PROPERTY_R(bool, showAxis, false);
     PROPERTY_R(bool, receiveShadows, false);
     PROPERTY_RW(bool, primitiveRestartRequired, false);
@@ -242,7 +242,7 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
     vector<EnvironmentProbeComponent*> _envProbes{};
 
-    Material_ptr _materialInstance{ nullptr };
+    Handle<Material> _materialInstance{ INVALID_HANDLE<Material> };
     RenderCallback _reflectionCallback{};
     RenderCallback _refractionCallback{};
 
@@ -253,8 +253,8 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     SharedMutex _renderPackagesLock;
 
     DrawCommands _drawCommands;
-    std::pair<Texture*, SamplerDescriptor> _reflectionPlanar{nullptr, {}};
-    std::pair<Texture*, SamplerDescriptor> _refractionPlanar{nullptr, {}};
+    std::pair<Handle<Texture>, SamplerDescriptor> _reflectionPlanar{INVALID_HANDLE<Texture>, {}};
+    std::pair<Handle<Texture>, SamplerDescriptor> _refractionPlanar{INVALID_HANDLE<Texture>, {}};
 
     std::array<U8, to_base(RenderStage::COUNT)> _lodLevels{};
     std::array<std::pair<size_t, size_t>, MAX_LOD_LEVEL> _lodIndexOffsets{};

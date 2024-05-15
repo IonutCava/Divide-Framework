@@ -14,10 +14,10 @@
 namespace Divide {
 
 DisplayWindow::DisplayWindow(WindowManager& parent, PlatformContext& context)
- : PlatformContextComponent(context),
-   _clearColour(DefaultColours::BLACK),
-   _windowID(U32_MAX),
-   _parent(parent)
+    : PlatformContextComponent(context)
+    , _windowID(U32_MAX)
+    , _clearColour(DefaultColours::BLACK)
+    , _parent(parent)
 {
     _prevDimensions.set(1u, 1u);
     _drawableSize.set(0u, 0u);
@@ -81,9 +81,7 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
         position.y = SDL_WINDOWPOS_CENTERED_DISPLAY(descriptor.targetDisplay);
     }
 
-    _title = descriptor.title;
-
-    _sdlWindow = SDL_CreateWindow(_title.c_str(),
+    _sdlWindow = SDL_CreateWindow( descriptor.title.c_str(),
                                   position.x,
                                   position.y,
                                   descriptor.dimensions.width,

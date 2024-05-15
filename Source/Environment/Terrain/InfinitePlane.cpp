@@ -17,26 +17,27 @@
 namespace Divide
 {
 
-    InfinitePlane::InfinitePlane( GFXDevice& context, ResourceCache* parentCache, const size_t descriptorHash, const std::string_view name, vec2<U32> dimensions )
-        : SceneNode( parentCache, descriptorHash, name, name, {}, SceneNodeType::TYPE_INFINITEPLANE, to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) ),
-        _context( context ),
-        _dimensions( dimensions )
+    InfinitePlane::InfinitePlane( const ResourceDescriptor<InfinitePlane>& descriptor )
+        : SceneNode( descriptor,
+                     GetSceneNodeType<InfinitePlane>(),
+                     to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) )
+        , _dimensions( descriptor.data().xy )
     {
         _renderState.addToDrawExclusionMask( RenderStage::SHADOW );
         _renderState.addToDrawExclusionMask( RenderStage::REFLECTION );
         _renderState.addToDrawExclusionMask( RenderStage::REFRACTION );
     }
 
-    bool InfinitePlane::load()
+    bool InfinitePlane::load( PlatformContext& context )
     {
-        if ( _plane != nullptr )
+        if ( _plane != INVALID_HANDLE<Quad3D> )
         {
             return false;
         }
 
         setState( ResourceState::RES_LOADING );
 
-        ResourceDescriptor infinitePlane( "infinitePlane" );
+        ResourceDescriptor<Quad3D> infinitePlane( "infinitePlane" );
         infinitePlane.flag( true );  // No default material
         infinitePlane.waitForReady( true );
         infinitePlane.ID( 150u );
@@ -44,14 +45,16 @@ namespace Divide
                                  0u,
                                  Util::FLOAT_TO_UINT( _dimensions.y * 2.f ) );
 
-        _plane = CreateResource<Quad3D>( _parentCache, infinitePlane );
+        _plane = CreateResource( infinitePlane );
 
-        ResourceDescriptor planeMaterialDescriptor( "infinitePlaneMaterial" );
-        Material_ptr planeMaterial = CreateResource<Material>( _parentCache, planeMaterialDescriptor );
-        planeMaterial->properties().shadingMode( ShadingMode::BLINN_PHONG );
-        planeMaterial->properties().baseColour( FColour4( DefaultColours::WHITE.rgb * 0.5f, 1.0f ) );
-        planeMaterial->properties().roughness( 1.0f );
-        planeMaterial->properties().isStatic( true );
+        ResourceDescriptor<Material> planeMaterialDescriptor( "infinitePlaneMaterial" );
+        Handle<Material> planeMaterial = CreateResource( planeMaterialDescriptor );
+        ResourcePtr<Material> planeMaterialPtr = Get(planeMaterial);
+
+        planeMaterialPtr->properties().shadingMode( ShadingMode::BLINN_PHONG );
+        planeMaterialPtr->properties().baseColour( FColour4( DefaultColours::WHITE.rgb * 0.5f, 1.0f ) );
+        planeMaterialPtr->properties().roughness( 1.0f );
+        planeMaterialPtr->properties().isStatic( true );
 
         SamplerDescriptor albedoSampler = {};
         albedoSampler._wrapU = TextureWrap::REPEAT;
@@ -59,17 +62,18 @@ namespace Divide
         albedoSampler._wrapW = TextureWrap::REPEAT;
         albedoSampler._anisotropyLevel = 8u;
 
-        TextureDescriptor miscTexDescriptor( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA, GFXImagePacking::NORMALIZED_SRGB );
-        miscTexDescriptor.textureOptions()._alphaChannelTransparency = false;
-
-        ResourceDescriptor textureWaterCaustics( "Plane Water Caustics" );
+        ResourceDescriptor<Texture> textureWaterCaustics( "Plane Water Caustics" );
         textureWaterCaustics.assetLocation( Paths::g_imagesLocation );
         textureWaterCaustics.assetName( "terrain_water_caustics.jpg" );
-        textureWaterCaustics.propertyDescriptor( miscTexDescriptor );
 
-        planeMaterial->setTexture( TextureSlot::UNIT0, CreateResource<Texture>( _parentCache, textureWaterCaustics ), albedoSampler, TextureOperation::REPLACE );
+        TextureDescriptor& miscTexDescriptor = textureWaterCaustics._propertyDescriptor;
+        miscTexDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
+        miscTexDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
+        miscTexDescriptor._textureOptions._alphaChannelTransparency = false;
 
-        planeMaterial->computeShaderCBK( []( [[maybe_unused]] Material* material, const RenderStagePass stagePass )
+        planeMaterialPtr->setTexture( TextureSlot::UNIT0, textureWaterCaustics, albedoSampler, TextureOperation::REPLACE );
+
+        planeMaterialPtr->computeShaderCBK( []( [[maybe_unused]] Material* material, const RenderStagePass stagePass )
         {
             ShaderModuleDescriptor vertModule = {};
             vertModule._moduleType = ShaderType::VERTEX;
@@ -96,19 +100,19 @@ namespace Divide
             return shaderDescriptor;
         } );
 
-        planeMaterial->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, _plane->geometryBuffer()->generateAttributeMap() );
+        planeMaterialPtr->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, Get(_plane)->geometryBuffer()->generateAttributeMap() );
 
         setMaterialTpl( planeMaterial );
 
         _boundingBox.set( vec3<F32>( -(_dimensions.x * 1.5f), -0.5f, -(_dimensions.y * 1.5f) ),
                          vec3<F32>( _dimensions.x * 1.5f, 0.5f, _dimensions.y * 1.5f ) );
 
-        return SceneNode::load();
+        return SceneNode::load( context );
     }
 
     void InfinitePlane::postLoad( SceneGraphNode* sgn )
     {
-        assert( _plane != nullptr );
+        assert( _plane != INVALID_HANDLE<Quad3D> );
 
         RenderingComponent* renderable = sgn->get<RenderingComponent>();
         if ( renderable )
@@ -117,6 +121,17 @@ namespace Divide
         }
 
         SceneNode::postLoad( sgn );
+    }
+
+    bool InfinitePlane::postLoad()
+    {
+        return SceneNode::postLoad();
+    }
+
+    bool InfinitePlane::unload()
+    {
+        DestroyResource(_plane);
+        return SceneNode::unload();
     }
 
     void InfinitePlane::sceneUpdate( [[maybe_unused]] const U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState )
@@ -135,11 +150,14 @@ namespace Divide
     void InfinitePlane::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
         //infinite plane
-        GenericDrawCommand& planeCmd = cmdsOut.emplace_back();
-        planeCmd._cmd.firstIndex = 0u;
-        planeCmd._cmd.indexCount = to_U32( _plane->geometryBuffer()->getIndexCount() );
-        planeCmd._sourceBuffer = _plane->geometryBuffer()->handle();
-        
+        GenericDrawCommand& cmd = cmdsOut.emplace_back();
+        toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
+
+        ResourcePtr<Quad3D> planePtr = Get( _plane );
+
+        cmd._cmd.firstIndex = 0u;
+        cmd._cmd.indexCount = to_U32(planePtr->geometryBuffer()->getIndexCount() );
+        cmd._sourceBuffer = planePtr->geometryBuffer()->handle();
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );
     }

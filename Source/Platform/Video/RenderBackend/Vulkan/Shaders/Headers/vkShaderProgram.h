@@ -76,13 +76,7 @@ namespace Divide {
     public:
         using vkShaders = eastl::fixed_vector<vkShaderEntry, to_base( ShaderType::COUNT ), false>;
     public:
-        vkShaderProgram(GFXDevice& context,
-                        const size_t descriptorHash,
-                        const std::string_view name,
-                        std::string_view assetName,
-                        const ResourcePath& assetLocation,
-                        const ShaderProgramDescriptor& descriptor,
-                        ResourceCache& parentCache);
+        vkShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor );
         ~vkShaderProgram() override;
 
         [[nodiscard]] const vkShaders& shaderStages() const noexcept;

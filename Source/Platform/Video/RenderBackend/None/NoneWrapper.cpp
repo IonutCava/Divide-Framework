@@ -4,6 +4,7 @@
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 
@@ -94,7 +95,8 @@ namespace Divide
             return ErrorCode::SDL_WINDOW_INIT_ERROR;
         }
 
-        _background = SDL_LoadBMP( (Paths::g_imagesLocation / "divideLogo.bmp").string().c_str() );
+        const string logoPath = (Paths::g_imagesLocation / "divideLogo.bmp").string();
+        _background = SDL_LoadBMP( logoPath.c_str() );
         if ( _background == nullptr )
         {
             return ErrorCode::PLATFORM_INIT_ERROR;
@@ -170,19 +172,9 @@ namespace Divide
         return std::make_unique<noRenderTarget>( _context, descriptor );
     }
 
-    GenericVertexData_ptr NONE_API::newGVD( U32 ringBufferLength, bool renderIndirect, const std::string_view name ) const
+    GenericVertexData_ptr NONE_API::newGVD( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<noGenericVertexData>( _context, ringBufferLength, renderIndirect, name );
-    }
-
-    Texture_ptr NONE_API::newTexture( size_t descriptorHash, std::string_view resourceName, std::string_view assetNames, const ResourcePath& assetLocations, const TextureDescriptor& texDescriptor, ResourceCache& parentCache ) const
-    {
-        return std::make_shared<noTexture>( _context, descriptorHash, resourceName, assetNames, assetLocations, texDescriptor, parentCache );
-    }
-
-    ShaderProgram_ptr NONE_API::newShaderProgram( size_t descriptorHash, std::string_view resourceName, std::string_view assetName, const ResourcePath& assetLocation, const ShaderProgramDescriptor& descriptor, ResourceCache& parentCache ) const
-    {
-        return std::make_shared<noShaderProgram>( _context, descriptorHash, resourceName, assetName, assetLocation, descriptor, parentCache );
+        return std::make_shared<noGenericVertexData>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr NONE_API::newSB( const ShaderBufferDescriptor& descriptor ) const

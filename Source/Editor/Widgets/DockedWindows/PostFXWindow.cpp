@@ -6,6 +6,8 @@
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
+
 #include "Editor/Headers/Editor.h"
 #include "Editor/Headers/Utils.h"
 #include "Managers/Headers/ProjectManager.h"
@@ -21,8 +23,10 @@
 
 namespace Divide {
 namespace {
-    bool PreviewTextureButton(I32 &id, Texture* tex, const bool readOnly)
+    bool PreviewTextureButton(I32 &id, const Handle<Texture> tex, const bool readOnly)
     {
+        DIVIDE_ASSERT(tex != INVALID_HANDLE<Texture>);
+
         bool ret = false;
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 15);
         ImGui::PushID(4321234 + id++);
@@ -36,7 +40,7 @@ namespace {
         }
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip(Util::StringFormat("Preview texture : {}", tex->assetName()).c_str());
+            ImGui::SetTooltip(Util::StringFormat("Preview texture : {}", Get(tex)->assetName()).c_str());
         }
         if (readOnly)
         {
@@ -89,7 +93,7 @@ namespace {
 
         if (ImGui::CollapsingHeader("Fog Settings")) {
             bool sceneChanged = false;
-            ProjectManager* projectManager = context().kernel().projectManager();
+            auto& projectManager = context().kernel().projectManager();
             auto& activeSceneState = projectManager->activeProject()->getActiveScene()->state();
             bool fogEnabled = context().config().rendering.enableFog;
             if (ImGui::Checkbox("Enabled", &fogEnabled)) {
@@ -448,8 +452,9 @@ namespace {
 
                 ImGui::Text("Current exposure value: %5.2f", exposure);
                 I32 id = 32132131;
-                if (PreviewTextureButton(id, batch.luminanceTex().get(), false)) {
-                    _previewTexture = batch.luminanceTex().get();
+                if (PreviewTextureButton(id, batch.luminanceTex(), false))
+                {
+                    _previewTexture = batch.luminanceTex();
                 }
             }
 
@@ -475,9 +480,11 @@ namespace {
             checkBox(FilterType::FILTER_LUT_CORECTION, PostFX::FilterName(FilterType::FILTER_LUT_CORECTION), true);
         }
 
-        if (_previewTexture != nullptr) {
-            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), Util::StringFormat("Image Preview: {}", _previewTexture->resourceName().c_str()).c_str(), _previewTexture, vec2<F32>(512, 512), true, false)) {
-                _previewTexture = nullptr;
+        if (_previewTexture != INVALID_HANDLE<Texture>)
+        {
+            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), Util::StringFormat("Image Preview: {}", Get(_previewTexture)->resourceName().c_str()).c_str(), _previewTexture, vec2<F32>(512, 512), true, false))
+            {
+                _previewTexture = INVALID_HANDLE<Texture>;
             }
         }
     }

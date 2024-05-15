@@ -3,6 +3,7 @@
 #include "Headers/RenderingComponent.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Core/Headers/Configuration.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
 
 namespace Divide {
@@ -46,16 +47,19 @@ void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS
     _drawOBB = showOBB;
 }
 
-void RenderingComponent::onRenderOptionChanged(const RenderOptions option, const bool state) {
-    switch (option) {
+void RenderingComponent::onRenderOptionChanged(const RenderOptions option, const bool state)
+{
+    switch (option)
+    {
       case RenderOptions::RECEIVE_SHADOWS:
       {
           if (state && !_config.rendering.shadowMapping.enabled) {
               toggleRenderOption(RenderOptions::RECEIVE_SHADOWS, false);
               return;
           }
-          if (_materialInstance != nullptr) {
-              _materialInstance->properties().receivesShadows(state);
+          if (_materialInstance != INVALID_HANDLE<Material>)
+          {
+              Get(_materialInstance)->properties().receivesShadows(state);
           }
       } break;
       default: break;

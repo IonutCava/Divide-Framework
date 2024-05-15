@@ -27,7 +27,6 @@ namespace Divide
         if ( _localClient != nullptr )
         {
             _localClient->stop();
-            MemoryManager::SAFE_DELETE( _localClient );
         }
     }
 
@@ -47,7 +46,7 @@ namespace Divide
         try
         {
             tcp_resolver res( _ioService );
-            _localClient = new Client( this, _ioService, _debugOutput );
+            _localClient = std::make_unique<Client>( this, _ioService, _debugOutput );
             _work.reset( new boost::asio::io_context::work( _ioService ) );
             _localClient->start( res.resolve( address, Util::to_string( port ) ) );
             _thread = std::make_unique<std::thread>( [&]

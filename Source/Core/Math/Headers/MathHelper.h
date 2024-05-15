@@ -44,7 +44,7 @@
 
 namespace Divide {
 
-#define TO_MEGABYTES(X) (X * 1024u * 1024u)
+#define TO_MEGABYTES(X) ((X) * 1024u * 1024u)
 
 template<typename T>
 concept ValidMathType = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;

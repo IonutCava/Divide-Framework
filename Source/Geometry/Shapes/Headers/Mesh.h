@@ -49,20 +49,22 @@ the mesh.
 */
 
 #include "Object3D.h"
+#include "Geometry/Animations/Headers/SceneAnimator.h"
 
 struct aiScene;
 namespace Divide {
 
 FWD_DECLARE_MANAGED_CLASS(SubMesh);
+FWD_DECLARE_MANAGED_CLASS(SceneAnimator);
 
 namespace Attorney {
     class MeshImporter;
 }
 
 class MeshImporter;
-class SceneAnimator;
 
-struct MeshNodeData {
+struct MeshNodeData
+{
     mat4<F32> _transform;
     vector<U32> _meshIndices; ///<Index into Mesh::MeshData
     vector<MeshNodeData> _children;
@@ -72,40 +74,33 @@ struct MeshNodeData {
     bool deserialize(ByteBuffer& dataIn);
 };
 
-class Mesh final : public Object3D {
+DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
+{
     friend class Attorney::MeshImporter;
 
    public:
     struct MeshData {
-        SubMesh_ptr _mesh;
-        U32 _index = 0u;
+        Handle<SubMesh> _mesh{INVALID_HANDLE<SubMesh>};
+        U32 _index{0u};
 };
 
    public:
-    explicit Mesh(PlatformContext& context,
-                  ResourceCache* parentCache,
-                  size_t descriptorHash,
-                  std::string_view name,
-                  std::string_view resourceName,
-                  const ResourcePath& resourceLocation);
+    explicit Mesh( const ResourceDescriptor<Mesh>& descriptor );
 
     void postLoad(SceneGraphNode* sgn) override;
+    bool postLoad() override;
+    bool load( PlatformContext& context ) override;
+    bool unload() override;
+    void setMaterialTpl(Handle<Material> material) override;
 
-    void setMaterialTpl(const Material_ptr& material) override;
+    void setAnimationCount(const size_t count);
 
-    void setAnimator(const std::shared_ptr<SceneAnimator>& animator) noexcept {
-        assert(getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED));
-        _animator = animator;
-    }
+    [[nodiscard]] SceneAnimator* getAnimator() const noexcept;
 
-    std::shared_ptr<SceneAnimator> getAnimator() const noexcept {
-        assert(getObjectFlag(ObjectFlag::OBJECT_FLAG_SKINNED));
-        return _animator; 
-    }
+    PROPERTY_R(size_t, animationCount, 0u);
 
    protected:
-    [[nodiscard]] const char* getResourceTypeName() const noexcept override { return "Mesh"; }
-    void addSubMesh(const SubMesh_ptr& subMesh);
+    void addSubMesh(Handle<SubMesh> subMesh, U32 index);
     void processNode(SceneGraphNode* parentNode, const MeshNodeData& node);
     SceneGraphNode* addSubMeshNode(SceneGraphNode* parentNode, const U32 meshIndex);
     void setNodeData(const MeshNodeData& nodeStructure);
@@ -113,19 +108,21 @@ class Mesh final : public Object3D {
    protected:
     U64 _lastTimeStamp = 0ull;
     /// Animation player to animate the mesh if necessary
-    std::shared_ptr<SceneAnimator> _animator;
+    SceneAnimator_uptr _animator;
     vector<MeshData> _subMeshList;
     MeshNodeData _nodeStructure;
 };
 
 namespace Attorney {
     class MeshImporter {
-        static void setNodeData(Mesh& parentMesh, const MeshNodeData& nodeStructure) {
+        static void setNodeData(Mesh& parentMesh, const MeshNodeData& nodeStructure)
+        {
             parentMesh.setNodeData(nodeStructure);
         }
 
-        static void addSubMesh(Mesh& parentMesh, const SubMesh_ptr& subMesh) {
-            parentMesh.addSubMesh(subMesh);
+        static void addSubMesh(Mesh& parentMesh, const Handle<SubMesh> subMesh, const U32 index)
+        {
+            parentMesh.addSubMesh(subMesh, index);
         }
 
         friend class Divide::MeshImporter;

@@ -6,6 +6,7 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Editor/Headers/Editor.h"
 #include "Geometry/Material/Headers/Material.h"
@@ -73,6 +74,7 @@ namespace Divide
 
             return false;
         }
+
         template<typename Pred>
         void ApplyToMaterials( const Material& baseMaterial, Material* instanceRoot, Pred&& predicate )
         {
@@ -83,9 +85,9 @@ namespace Divide
                 //ToDo: Not thread safe 
                 instanceRoot->lockInstancesForRead();
                 const auto& instances = instanceRoot->getInstancesLocked();
-                for ( Material* mat : instances )
+                for ( Handle<Material> mat : instances )
                 {
-                    ApplyToMaterials( baseMaterial, mat, predicate );
+                    ApplyToMaterials( baseMaterial, Get(mat), predicate );
                 }
                 instanceRoot->unlockInstancesForRead();
             }
@@ -115,7 +117,7 @@ namespace Divide
             ImGui::PopID();
         }
 
-        bool PreviewTextureButton( I32& id, Texture* tex, const bool readOnly )
+        bool PreviewTextureButton( I32& id, const Handle<Texture> tex, const bool readOnly )
         {
             bool ret = false;
             ImGui::SameLine( ImGui::GetWindowContentRegionMax().x - 15 );
@@ -128,9 +130,9 @@ namespace Divide
             {
                 ret = true;
             }
-            if ( tex != nullptr && ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
+            if ( tex != INVALID_HANDLE<Texture> && ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
             {
-                ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", tex->assetName()).c_str() );
+                ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", Get(tex)->assetName()).c_str() );
             }
             if ( readOnly )
             {
@@ -142,8 +144,8 @@ namespace Divide
     }
 
     PropertyWindow::PropertyWindow( Editor& parent, PlatformContext& context, const Descriptor& descriptor )
-        : DockedWindow( parent, descriptor ),
-        PlatformContextComponent( context )
+        : DockedWindow( parent, descriptor )
+        , PlatformContextComponent( context )
     {
     }
 
@@ -450,7 +452,7 @@ namespace Divide
         }
 
         // always keep transforms open by default for convenience
-        const bool fieldAlwaysOpen = comp->parentComponentType() == ComponentType::TRANSFORM;
+        const bool fieldAlwaysOpen = comp->componentType() == ComponentType::TRANSFORM || comp->componentType() == ComponentType::COUNT;
 
         const string fieldNameStr = fieldWasOpen ? Util::StringFormat( "{} ({})", comp->name().c_str(), _lockedComponent._parentSGN->name().c_str() ) : comp->name().c_str();
         const char* fieldName = fieldNameStr.c_str();
@@ -494,14 +496,14 @@ namespace Divide
                 {
                     Attorney::EditorGeneralWidget::inspectMemory( _context.editor(), std::make_pair( comp, sizeof( EditorComponent ) ) );
                 }
-                if ( !isLockedField && comp->parentComponentType() != ComponentType::COUNT && !IsRequiredComponentType( sgnNode, comp->parentComponentType() ) )
+                if ( !isLockedField && comp->componentType() != ComponentType::COUNT && !IsRequiredComponentType( sgnNode, comp->componentType() ) )
                 {
                     ImGui::SameLine();
                     if ( ImGui::Button( ICON_FK_MINUS" REMOVE", ImVec2( smallButtonWidth, 20 ) ) )
                     {
                         Attorney::EditorGeneralWidget::inspectMemory( _context.editor(), std::make_pair( nullptr, 0 ) );
 
-                        if ( Attorney::EditorGeneralWidget::removeComponent( _context.editor(), sgnNode, comp->parentComponentType() ) )
+                        if ( Attorney::EditorGeneralWidget::removeComponent( _context.editor(), sgnNode, comp->componentType() ) )
                         {
                             sceneChanged = true;
                             return true;
@@ -616,7 +618,7 @@ namespace Divide
 
                     if ( ImGui::CollapsingHeader( "Scene Shadow Settings", ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth ) )
                     {
-                        ProjectManager* projectManager = context().kernel().projectManager();
+                        auto& projectManager = context().kernel().projectManager();
                         auto& activeSceneState = projectManager->activeProject()->getActiveScene()->state();
 
                         {
@@ -680,8 +682,10 @@ namespace Divide
 
         bool sceneChanged = false;
         F32 xOffset = ImGui::GetWindowSize().x * 0.5f - (smallButtonWidth * 2);
-        if ( _lockedComponent._editorComp )
+        I64 lockedGUID = -1;
+        if ( _lockedComponent._editorComp != nullptr )
         {
+            lockedGUID = _lockedComponent._editorComp->getGUID();
             sceneChanged = printComponent( _lockedComponent._parentSGN, _lockedComponent._editorComp, xOffset, smallButtonWidth );
         }
 
@@ -747,14 +751,19 @@ namespace Divide
                         ImGui::Separator();
                     }
 
-                    vector_fast<EditorComponent*>& editorComp = Attorney::SceneGraphNodeEditor::editorComponents( sgnNode );
+                    EditorComponent* nodeComp = sgnNode->node()->editorComponent();
+                    if ( nodeComp != nullptr && lockedGUID != nodeComp->getGUID() && printComponent( sgnNode, nodeComp, xOffset, smallButtonWidth))
+                    {
+                        sceneChanged = true;
+                    }
+
+                    vector<EditorComponent*>& editorComp = Attorney::SceneGraphNodeEditor::editorComponents( sgnNode );
                     for ( EditorComponent* comp : editorComp )
                     {
-                        if ( _lockedComponent._editorComp != nullptr && _lockedComponent._editorComp->getGUID() == comp->getGUID() )
+                        if ( lockedGUID != comp->getGUID() && printComponent( sgnNode, comp, xOffset, smallButtonWidth ) )
                         {
-                            continue;
+                            sceneChanged = true;
                         }
-                        sceneChanged = printComponent( sgnNode, comp, xOffset, smallButtonWidth ) || sceneChanged;
                     }
                     ImGui::Separator();
                     ImGui::NewLine();
@@ -861,11 +870,11 @@ namespace Divide
             ImGui::Separator();
         }
 
-        if ( _previewTexture != nullptr )
+        if ( _previewTexture != INVALID_HANDLE<Texture> )
         {
-            if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", _previewTexture->resourceName().c_str() ).c_str(), _previewTexture, vec2<F32>( 512, 512 ), true, false ) )
+            if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", Get(_previewTexture)->resourceName().c_str() ).c_str(), _previewTexture, vec2<F32>( 512, 512 ), true, false ) )
             {
-                _previewTexture = nullptr;
+                _previewTexture = INVALID_HANDLE<Texture>;
             }
         }
 
@@ -1356,10 +1365,10 @@ namespace Divide
         ShaderProgram* program = nullptr;
         if ( currentStagePass._stage != RenderStage::COUNT && currentStagePass._passType != RenderPassType::COUNT )
         {
-            const ShaderProgramHandle shaderHandle = material->computeAndGetProgramHandle( currentStagePass );
-            program = ShaderProgram::FindShaderProgram( shaderHandle );
-            if ( program != nullptr )
+            const Handle<ShaderProgram> shaderHandle = material->computeAndGetProgramHandle( currentStagePass );
+            if ( shaderHandle != INVALID_HANDLE<ShaderProgram> )
             {
+                program = Get( shaderHandle );
                 shaderName = program->resourceName().c_str();
             }
             stateBlock = material->getOrCreateRenderStateBlock( currentStagePass );
@@ -1393,7 +1402,7 @@ namespace Divide
                             }
                             else
                             {
-                                if ( openFile( textEditor.string().c_str(), Paths::Shaders::GLSL::g_GLSLShaderLoc, module._sourceFile.c_str() ) != FileError::NONE )
+                                if ( openFile( textEditor.string(), Paths::Shaders::GLSL::g_GLSLShaderLoc, module._sourceFile.c_str() ) != FileError::NONE )
                                 {
                                     Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), "ERROR: Couldn't open specified source file!", Time::SecondsToMilliseconds<F32>( 3 ), true );
                                 }
@@ -1945,7 +1954,7 @@ namespace Divide
                             } );
 
             bool fromTexture = false;
-            Texture* texture = nullptr;
+            Handle<Texture> texture = INVALID_HANDLE<Texture>;
             { //Base colour
                 ImGui::Separator();
                 ImGui::PushItemWidth( 250 );
@@ -1974,8 +1983,8 @@ namespace Divide
                                          ImGui::Separator();
             }
             { //Second texture
-                Texture_ptr detailTex = material->getTexture( TextureSlot::UNIT1 ).lock();
-                const bool ro = detailTex == nullptr;
+                Handle<Texture> detailTex = material->getTexture( TextureSlot::UNIT1 );
+                const bool ro = detailTex == INVALID_HANDLE<Texture>;
                 ImGui::PushID( 4321234 + id++ );
                 if ( ro || readOnly )
                 {
@@ -2000,19 +2009,19 @@ namespace Divide
                     }
                     else
                     {
-                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", detailTex->assetName() ).c_str() );
+                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", Get(detailTex)->assetName() ).c_str() );
                     }
                     skipAutoTooltip( true );
                 }
                 ImGui::PopID();
                 if ( showTexture && !ro )
                 {
-                    _previewTexture = detailTex.get();
+                    _previewTexture = detailTex;
                 }
             }
             { //Normal
-                Texture_ptr normalTex = material->getTexture( TextureSlot::NORMALMAP ).lock();
-                const bool ro = normalTex == nullptr;
+                Handle<Texture> normalTex = material->getTexture( TextureSlot::NORMALMAP );
+                const bool ro = normalTex == INVALID_HANDLE<Texture>;
                 ImGui::PushID( 4321234 + id++ );
                 if ( ro || readOnly )
                 {
@@ -2036,14 +2045,14 @@ namespace Divide
                     }
                     else
                     {
-                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", normalTex->assetName() ).c_str() );
+                        ImGui::SetTooltip( Util::StringFormat( "Preview texture : {}", Get(normalTex)->assetName() ).c_str() );
                     }
                     skipAutoTooltip( true );
                 }
                 ImGui::PopID();
                 if ( showTexture && !ro )
                 {
-                    _previewTexture = normalTex.get();
+                    _previewTexture = normalTex;
                 }
             }
             { //Emissive
@@ -2298,7 +2307,7 @@ namespace Divide
                         : i == 1 ? TextureSlot::UNIT1
                         : TextureSlot::SPECULAR;
 
-                    const bool hasTexture = material->getTexture( targetTex ).lock() != nullptr;
+                    const bool hasTexture = material->getTexture( targetTex ) != INVALID_HANDLE<Texture>;
 
                     ImGui::PushID( 4321234 + id++ );
                     if ( !hasTexture )

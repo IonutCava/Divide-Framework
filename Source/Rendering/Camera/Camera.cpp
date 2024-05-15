@@ -255,8 +255,8 @@ namespace Divide
     }
 
     Camera::Camera( const std::string_view name, const Mode mode, const vec3<F32>& eye )
-        : Resource( ResourceType::DEFAULT, name ),
-         _mode( mode )
+        : Resource( name, "Camera" )
+        , _mode( mode )
     {
         _data._eye.set( eye );
         _data._fov = 60.0f;
@@ -966,12 +966,12 @@ namespace Divide
         return ret;
     }
 
-    void Camera::saveToXML( boost::property_tree::ptree& pt, const string prefix ) const
+    void Camera::saveToXML( boost::property_tree::ptree& pt, const std::string prefix ) const
     {
         const vec4<F32> orientation = _data._orientation.asVec4();
 
-        string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
-        savePath.append(Util::MakeXMLSafe(resourceName().c_str()));
+        std::string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
+        savePath.append(Util::MakeXMLSafe(resourceName()));
 
         pt.put( savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x );
         pt.put( savePath + ".reflectionPlane.normal.<xmlattr>.y", _reflectionPlane._normal.y );
@@ -1014,12 +1014,12 @@ namespace Divide
         pt.put( savePath + ".offsetDir.<xmlattr>.z", _offsetDir.z );
     }
 
-    void Camera::loadFromXML( const boost::property_tree::ptree& pt, const string prefix )
+    void Camera::loadFromXML( const boost::property_tree::ptree& pt, const std::string prefix )
     {
         const vec4<F32> orientation = _data._orientation.asVec4();
 
-        string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
-        savePath.append(Util::MakeXMLSafe(resourceName().c_str()));
+        std::string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
+        savePath.append(Util::MakeXMLSafe(resourceName()));
 
         _reflectionPlane.set(
             pt.get( savePath + ".reflectionPlane.normal.<xmlattr>.x", _reflectionPlane._normal.x ),

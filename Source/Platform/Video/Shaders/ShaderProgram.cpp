@@ -271,22 +271,6 @@ namespace Divide
             s_bufferSlot     = 0u;
         }
 
-        [[nodiscard]] size_t DefinesHash( const ModuleDefines& defines ) noexcept
-        {
-            if ( defines.empty() )
-            {
-                return 0u;
-            }
-
-            size_t hash = 7919;
-            for ( const auto& [defineString, appendPrefix] : defines )
-            {
-                Util::Hash_combine( hash, _ID( defineString.c_str() ) );
-                Util::Hash_combine( hash, appendPrefix );
-            }
-            return hash;
-        }
-
         [[nodiscard]] ResourcePath ShaderAPILocation()
         {
             return (s_targetVulkan ? Paths::Shaders::g_cacheLocationVK : Paths::Shaders::g_cacheLocationGL);
@@ -784,37 +768,6 @@ namespace Divide
     {
     }
 
-    ShaderProgramDescriptor::ShaderProgramDescriptor() noexcept
-        : PropertyDescriptor( DescriptorType::DESCRIPTOR_SHADER )
-    {
-    }
-
-    size_t ShaderProgramDescriptor::getHash() const noexcept
-    {
-        _hash = PropertyDescriptor::getHash();
-        for ( const ShaderModuleDescriptor& desc : _modules )
-        {
-            Util::Hash_combine( _hash, DefinesHash( desc._defines ),
-                                std::string( desc._variant.c_str() ),
-                                desc._sourceFile.data(),
-                                desc._moduleType );
-        }
-
-        return _hash;
-    }
-
-    bool operator==( const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs ) noexcept
-    {
-        return lhs._generation == rhs._generation &&
-               lhs._program == rhs._program;
-    }
-
-    bool operator!=( const ShaderProgramMapEntry& lhs, const ShaderProgramMapEntry& rhs ) noexcept
-    {
-        return lhs._generation != rhs._generation ||
-               lhs._program != rhs._program;
-    }
-
     std::atomic_bool ShaderModule::s_modulesRemoved;
     SharedMutex ShaderModule::s_shaderNameLock;
     NO_DESTROY ShaderModule::ShaderMap ShaderModule::s_shaderNameMap;
@@ -926,49 +879,50 @@ namespace Divide
         }
     }
 
-    ShaderProgram::ShaderProgram( GFXDevice& context,
-                                  const size_t descriptorHash,
-                                  const std::string_view shaderName,
-                                  const std::string_view shaderFileName,
-                                  const ResourcePath& shaderFileLocation,
-                                  ShaderProgramDescriptor descriptor,
-                                  ResourceCache& parentCache )
-        : CachedResource( ResourceType::GPU_OBJECT, descriptorHash, shaderName, shaderFileName, shaderFileLocation )
-        , GraphicsResource( context, Type::SHADER_PROGRAM, getGUID(), _ID_VIEW( shaderName.data(), shaderName.size() ) )
-        , _useShaderCache( descriptor._useShaderCache )
-        , _parentCache( parentCache )
-        , _descriptor( MOV( descriptor ) )
+    ShaderProgram::ShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor )
+        : CachedResource( descriptor, "ShaderProgram" )
+        , GraphicsResource( context.gfx(), Type::SHADER_PROGRAM, getGUID(), _ID( resourceName() ) )
+        , _highPriority( descriptor.flag() )
+        , _descriptor( descriptor._propertyDescriptor )
     {
-        if ( shaderFileName.empty() )
+        if ( assetName().empty() )
         {
             assetName( resourceName() );
         }
+
+        if ( assetLocation().empty() )
+        {
+            assetLocation( Paths::g_shadersLocation );
+        }
+
+        DIVIDE_ASSERT ( !assetName().empty() );
+        _useShaderCache = _descriptor._useShaderCache;
         s_shaderCount.fetch_add( 1, std::memory_order_relaxed );
     }
 
     ShaderProgram::~ShaderProgram()
     {
-        _parentCache.remove( this );
         Console::d_printfn( LOCALE_STR( "SHADER_PROGRAM_REMOVE" ), resourceName().c_str() );
         s_shaderCount.fetch_sub( 1, std::memory_order_relaxed );
     }
 
-    bool ShaderProgram::load()
+    bool ShaderProgram::load( PlatformContext& context )
     {
-        Start( *CreateTask( [this]( const Task& )
-                            {
-                                PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
+        PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-                                hashMap<U64, PerFileShaderData> loadDataByFile{};
-                                if ( loadInternal( loadDataByFile, false ))
-                                {
-                                    RegisterShaderProgram( this );
-                                    CachedResource::load();
-                                }
-                            } ),
-               _context.context().taskPool( TaskPoolType::ASSET_LOADER ) );
+        hashMap<U64, PerFileShaderData> loadDataByFile{};
+        if ( loadInternal( loadDataByFile, false ))
+        {
+            return CachedResource::load( context );
+        }
 
-        return true;
+        return false;
+    }
+
+    bool ShaderProgram::postLoad()
+    {
+        RegisterShaderProgram( this );
+        return CachedResource::postLoad();
     }
 
     bool ShaderProgram::unload()
@@ -976,9 +930,9 @@ namespace Divide
         // Our GPU Arena will clean up the memory, but we should still destroy these
         _uniformBlockBuffers.clear();
         // Unregister the program from the manager
-        if ( UnregisterShaderProgram( handle() ) )
+        if ( !UnregisterShaderProgram( this ) )
         {
-            handle( SHADER_INVALID_HANDLE );
+            DIVIDE_UNEXPECTED_CALL();
         }
 
         return true;
@@ -1080,10 +1034,9 @@ namespace Divide
         SharedLock<SharedMutex> lock( s_programLock );
 
         // Find the shader program
-        for ( const ShaderProgramMapEntry& entry : s_shaderPrograms )
+        for ( ShaderProgram* program : s_shaderPrograms )
         {
-            ShaderProgram* program = entry._program;
-            assert( program != nullptr );
+            DIVIDE_ASSERT( program != nullptr );
 
             const string shaderName{ program->resourceName().c_str() };
             // Check if the name matches any of the program's name components
@@ -1104,7 +1057,7 @@ namespace Divide
         return state;
     }
 
-    ErrorCode ShaderProgram::OnStartup( ResourceCache* parentCache )
+    ErrorCode ShaderProgram::OnStartup( PlatformContext& context )
     {
         RefreshBindingSlots();
 
@@ -1122,7 +1075,7 @@ namespace Divide
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
-                watcher().addWatch( loc.string(), &g_sFileWatcherListener );
+                watcher().addWatch( loc.string().c_str(), &g_sFileWatcherListener );
             }
         }
 
@@ -1147,10 +1100,9 @@ namespace Divide
             shaderAtomExtensionHash[i] = _ID( shaderAtomExtensionName[i].c_str() );
         }
 
-        const PlatformContext& ctx = parentCache->context();
-        const Configuration& config = ctx.config();
+        const Configuration& config = context.config();
         s_useShaderCache = config.debug.cache.enabled && config.debug.cache.shaders;
-        s_targetVulkan = ctx.gfx().renderAPI() == RenderAPI::Vulkan;
+        s_targetVulkan = context.gfx().renderAPI() == RenderAPI::Vulkan;
 
         FileList list{};
         if ( s_useShaderCache )
@@ -1192,7 +1144,7 @@ namespace Divide
         {
             s_recompileQueue.pop();
         }
-        s_shaderPrograms.fill( {} );
+        efficient_clear(s_shaderPrograms);
         s_lastRequestedShaderProgram = {};
 
         FileWatcherManager::deallocateWatcher( s_shaderFileWatcherID );
@@ -1330,109 +1282,45 @@ namespace Divide
     /// Whenever a new program is created, it's registered with the manager
     void ShaderProgram::RegisterShaderProgram( ShaderProgram* shaderProgram )
     {
-        const auto cleanOldShaders = []()
-        {
-            DIVIDE_UNEXPECTED_CALL_MSG( "Not Implemented!" );
-        };
-
-        assert( shaderProgram != nullptr );
+        DIVIDE_ASSERT( shaderProgram != nullptr );
 
         LockGuard<SharedMutex> lock( s_programLock );
-        if ( shaderProgram->handle() != SHADER_INVALID_HANDLE )
+        for ( ShaderProgram*& program : s_shaderPrograms )
         {
-            const ShaderProgramMapEntry& existingEntry = s_shaderPrograms[shaderProgram->handle()._id];
-            if ( existingEntry._generation == shaderProgram->handle()._generation )
+            if ( program == nullptr )
             {
-                // Nothing to do. Probably a reload of some kind.
-                assert( existingEntry._program != nullptr && existingEntry._program->getGUID() == shaderProgram->getGUID() );
+                program = shaderProgram;
                 return;
             }
         }
-
-        U16 idx = 0u;
-        bool retry = false;
-        for ( ShaderProgramMapEntry& entry : s_shaderPrograms )
-        {
-            if ( entry._program == nullptr && entry._generation < U8_MAX )
-            {
-                entry._program = shaderProgram;
-                shaderProgram->_handle = { idx, entry._generation };
-                return;
-            }
-            if ( ++idx == 0u )
-            {
-                if ( retry )
-                {
-                    // We only retry once!
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-                retry = true;
-                // Handle overflow
-                cleanOldShaders();
-            }
-        }
+        s_shaderPrograms.push_back(shaderProgram);
     }
 
     /// Unloading/Deleting a program will unregister it from the manager
-    bool ShaderProgram::UnregisterShaderProgram( const ShaderProgramHandle shaderHandle )
+    bool ShaderProgram::UnregisterShaderProgram( ShaderProgram* shaderProgram )
     {
-        if ( shaderHandle != SHADER_INVALID_HANDLE )
+        DIVIDE_ASSERT( shaderProgram != nullptr );
+        const I64 guid = shaderProgram->getGUID();
+        LockGuard<SharedMutex> lock( s_programLock );
+        for ( ShaderProgram*& program : s_shaderPrograms )
         {
-            LockGuard<SharedMutex> lock( s_programLock );
-            ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
-
-            if ( entry._generation == shaderHandle._generation )
+            if ( program != nullptr && program->getGUID() == guid)
             {
-                if ( entry._program && entry._program == s_lastRequestedShaderProgram._program )
-                {
-                    s_lastRequestedShaderProgram = {};
-                }
-                entry._program = nullptr;
-                if ( entry._generation < U8_MAX )
-                {
-                    entry._generation += 1u;
-                }
+                program = nullptr;
                 return true;
             }
         }
 
-        // application shutdown?
         return false;
-    }
-
-    ShaderProgram* ShaderProgram::FindShaderProgram( const ShaderProgramHandle shaderHandle )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        SharedLock<SharedMutex> lock( s_programLock );
-
-        if ( shaderHandle == s_lastRequestedShaderProgram._handle )
-        {
-            return s_lastRequestedShaderProgram._program;
-        }
-
-        assert( shaderHandle._id != U16_MAX && shaderHandle._generation != U8_MAX );
-        const ShaderProgramMapEntry& entry = s_shaderPrograms[shaderHandle._id];
-        if ( entry._generation == shaderHandle._generation )
-        {
-            s_lastRequestedShaderProgram = { entry._program, shaderHandle };
-
-            return entry._program;
-        }
-
-        s_lastRequestedShaderProgram = {};
-        return nullptr;
     }
 
     void ShaderProgram::RebuildAllShaders()
     {
         SharedLock<SharedMutex> lock( s_programLock );
-        for ( const ShaderProgramMapEntry& entry : s_shaderPrograms )
+        for ( ShaderProgram* program : s_shaderPrograms )
         {
-            if ( entry._program != nullptr )
-            {
-                s_recompileQueue.push( ShaderQueueEntry{ ._program = entry._program } );
-            }
+            DIVIDE_ASSERT ( program != nullptr );
+            s_recompileQueue.push( ShaderQueueEntry{ ._program = program } );
         }
     }
 
@@ -1949,11 +1837,7 @@ namespace Divide
         bool ret = false;
         for ( auto& blockBuffer : _uniformBlockBuffers )
         {
-            const auto constants = data.data();
-            for ( const GFX::PushConstant& constant : constants )
-            {
-                blockBuffer.uploadPushConstant( constant );
-            }
+            blockBuffer.uploadPushConstant( data );
 
             if ( blockBuffer.commit( set, memCmdInOut ) )
             {
@@ -2225,7 +2109,6 @@ namespace Divide
         }
     }
 
-
     void ShaderProgram::OnAtomChange( const std::string_view atomName, const FileUpdateEvent evt )
     {
         DIVIDE_ASSERT( evt != FileUpdateEvent::COUNT );
@@ -2242,17 +2125,16 @@ namespace Divide
 
         //Get list of shader programs that use the atom and rebuild all shaders in list;
         SharedLock<SharedMutex> lock( s_programLock );
-        for ( const ShaderProgramMapEntry& entry : s_shaderPrograms )
+        for ( ShaderProgram* program : s_shaderPrograms )
         {
-            if ( entry._program != nullptr )
+            DIVIDE_ASSERT( program != nullptr );
+
+            for ( const U64 atomID : program->_usedAtomIDs )
             {
-                for ( const U64 atomID : entry._program->_usedAtomIDs )
+                if ( atomID == atomNameHash )
                 {
-                    if ( atomID == atomNameHash )
-                    {
-                        s_recompileQueue.push( ShaderQueueEntry{ ._program = entry._program } );
-                        break;
-                    }
+                    s_recompileQueue.push( ShaderQueueEntry{ ._program = program } );
+                    break;
                 }
             }
         }

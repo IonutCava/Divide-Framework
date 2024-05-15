@@ -32,7 +32,7 @@ namespace
 
 namespace detail
 {
-    bool LoadSave::read(const ResourcePath& filePath, const char* fileName, const string& rootNode)
+    bool LoadSave::read(const ResourcePath& filePath, const char* fileName, const std::string& rootNode)
     {
         _filePath = filePath;
         _fileName = fileName;
@@ -40,11 +40,9 @@ namespace detail
 
         const ResourcePath loadPath = filePath / fileName;
 
-        const ResourcePath testPath(loadPath);
-
-        if (!fileExists(testPath) || fileIsEmpty(testPath))
+        if (!fileExists( loadPath ) || fileIsEmpty( loadPath ))
         {
-            const FileNameAndPath data = splitPathToNameAndLocation(testPath);
+            const FileNameAndPath data = splitPathToNameAndLocation( loadPath );
             const FileError backupReturnCode = copyFile( data._path, (data._fileName + ".bak"), data._path, data._fileName, true);
             if (backupReturnCode != FileError::NONE &&
                 backupReturnCode != FileError::FILE_NOT_FOUND &&
@@ -59,7 +57,7 @@ namespace detail
 
         try
         {
-            read_xml(loadPath.string(),
+            read_xml(loadPath.string().c_str(),
                      XmlTree,
                      boost::property_tree::xml_parser::trim_whitespace);
 
@@ -100,7 +98,7 @@ namespace detail
 
         try
         {
-            write_xml(savePath.string(),
+            write_xml(savePath.string().c_str(),
                       XmlTree,
                       std::locale(),
                       boost::property_tree::xml_writer_make_settings<boost::property_tree::iptree::key_type>('\t', 1));
@@ -176,7 +174,7 @@ static void PopulatePressRelease(const ptree & attributes, PressReleaseActions::
 void loadDefaultKeyBindings(const ResourcePath& file, const Scene* scene) {
     ptree pt;
     Console::printfn(LOCALE_STR("XML_LOAD_DEFAULT_KEY_BINDINGS"), file);
-    read_xml(file.string(), pt);
+    read_xml(file.string().c_str(), pt);
 
     for(const auto & [tag, data] : pt.get_child("actions", g_emptyPtree))
     {
@@ -200,39 +198,41 @@ void loadDefaultKeyBindings(const ResourcePath& file, const Scene* scene) {
 
     for (const auto & [tag, data] : pt.get_child("mouseButtons", g_emptyPtree))
     {
-        if (tag == "<xmlcomment>") {
+        if (tag.compare("<xmlcomment>") == 0)
+        {
             continue;
         }
 
         const ptree & attributes = data.get_child("<xmlattr>", g_emptyPtree);
         PopulatePressRelease(attributes, entry);
 
-        const Input::MouseButton btn = Input::mouseButtonByName(Util::Trim(data.data()));
+        const Input::MouseButton btn = Input::mouseButtonByName(Util::Trim(data.data()).c_str());
 
         scene->input()->addMouseMapping(btn, entry);
     }
 
-    const string label("joystickButtons.joystick");
+    const std::string label("joystickButtons.joystick");
     for (U32 i = 0 ; i < to_base(Input::Joystick::COUNT); ++i) {
         const Input::Joystick joystick = static_cast<Input::Joystick>(i);
         
         for (const auto & [tag, value] : pt.get_child(label + std::to_string(i + 1), g_emptyPtree))
         {
-            if (tag == "<xmlcomment>") {
+            if ( tag.compare( "<xmlcomment>" ) == 0 )
+            {
                 continue;
             }
 
             const ptree & attributes = value.get_child("<xmlattr>", g_emptyPtree);
             PopulatePressRelease(attributes, entry);
 
-            const Input::JoystickElement element = Input::joystickElementByName(Util::Trim(value.data()));
+            const Input::JoystickElement element = Input::joystickElementByName(Util::Trim(value.data()).c_str());
 
             scene->input()->addJoystickMapping(joystick, element._type, element._elementIndex, entry);
         }
     }
 }
 
-void loadMusicPlaylist(const ResourcePath& scenePath, const Str<64>& fileName, const Scene* const scene, [[maybe_unused]] const Configuration& config)
+void loadMusicPlaylist(const ResourcePath& scenePath, const Str<64>& fileName, Scene* scene, [[maybe_unused]] const Configuration& config)
 {
     const ResourcePath file = scenePath / fileName;
 
@@ -244,7 +244,7 @@ void loadMusicPlaylist(const ResourcePath& scenePath, const Str<64>& fileName, c
     Console::printfn(LOCALE_STR("XML_LOAD_MUSIC"), file);
 
     ptree pt;
-    read_xml(file.string(), pt);
+    read_xml(file.string().c_str(), pt);
 
     for (const auto & [tag, data] : pt.get_child("backgroundThemes", g_emptyPtree))
     {
@@ -259,14 +259,14 @@ void writeXML(const ResourcePath& path, const ptree& tree)
 {
     static boost::property_tree::xml_writer_settings<std::string> settings(' ', 4);
 
-    write_xml(path.string(), tree, std::locale(), settings);
+    write_xml(path.string().c_str(), tree, std::locale(), settings);
 }
 
 void readXML(const ResourcePath& path, ptree& tree)
 {
     try
     {
-        read_xml(path.string(), tree);
+        read_xml(path.string().c_str(), tree);
     }
     catch (const boost::property_tree::xml_parser_error& e)
     {

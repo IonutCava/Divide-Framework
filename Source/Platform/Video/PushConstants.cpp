@@ -55,7 +55,7 @@ void PushConstants::countHint(const size_t count)
     _data.reserve(count);
 }
 
-const vector_fast<GFX::PushConstant>& PushConstants::data() const noexcept
+const vector<GFX::PushConstant>& PushConstants::data() const noexcept
 {
     return _data;
 }

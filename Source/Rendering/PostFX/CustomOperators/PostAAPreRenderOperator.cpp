@@ -15,11 +15,11 @@
 
 namespace Divide {
 
-PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, ResourceCache* cache)
+PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
     : PreRenderOperator(context, parent, FilterType::FILTER_SS_ANTIALIASING)
 {
-    useSMAA(cache->context().config().rendering.postFX.postAA.type == "SMAA");
-    postAAQualityLevel(cache->context().config().rendering.postFX.postAA.qualityLevel);
+    useSMAA(context.context().config().rendering.postFX.postAA.type == "SMAA");
+    postAAQualityLevel(context.context().config().rendering.postFX.postAA.qualityLevel);
 
     RenderTargetDescriptor desc = {};
     desc._resolution = parent.screenRT()._rt->getResolution();
@@ -31,8 +31,10 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         sampler._mipSampling = TextureMipSampling::NONE;
         sampler._anisotropyLevel = 0u;
 
-        TextureDescriptor weightsDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::FLOAT_16, GFXImageFormat::RGBA, GFXImagePacking::UNNORMALIZED );
-        weightsDescriptor.mipMappingState(TextureDescriptor::MipMappingState::OFF);
+        TextureDescriptor weightsDescriptor{};
+        weightsDescriptor._dataType = GFXDataFormat::FLOAT_16;
+        weightsDescriptor._packing = GFXImagePacking::UNNORMALIZED;
+        weightsDescriptor._mipMappingState = MipMappingState::OFF;
 
         desc._attachments =
         {
@@ -51,18 +53,16 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
             ShaderModuleDescriptor{ ShaderType::FRAGMENT, "FXAA.glsl" } 
         };
 
-        ResourceDescriptor fxaa("FXAA");
-        fxaa.propertyDescriptor(aaShaderDescriptor);
+        ResourceDescriptor<ShaderProgram> fxaa("FXAA", aaShaderDescriptor );
         fxaa.waitForReady(false);
-        _fxaa = CreateResource<ShaderProgram>(cache, fxaa);
-        _fxaa->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
-            PipelineDescriptor pipelineDescriptor;
-            pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-            pipelineDescriptor._shaderProgramHandle = _fxaa->handle();
-            pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+        _fxaa = CreateResource(fxaa);
 
-            _fxaaPipeline = _context.newPipeline(pipelineDescriptor);
-        });
+        PipelineDescriptor pipelineDescriptor;
+        pipelineDescriptor._stateBlock = _context.get2DStateBlock();
+        pipelineDescriptor._shaderProgramHandle = _fxaa;
+        pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
+
+        _fxaaPipeline = _context.newPipeline( pipelineDescriptor );
     }
     { //SMAA Shaders
         ShaderModuleDescriptor vertModule = {};
@@ -80,60 +80,70 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         weightsDescriptor._modules = { vertModule, fragModule };
         weightsDescriptor._globalDefines.emplace_back( "dvd_qualityMultiplier int(PushData0[0].x)" );
 
-        ResourceDescriptor smaaWeights("SMAA.Weights");
-        smaaWeights.propertyDescriptor(weightsDescriptor);
+        ResourceDescriptor<ShaderProgram> smaaWeights("SMAA.Weights", weightsDescriptor );
         smaaWeights.waitForReady(false);
-        _smaaWeightComputation = CreateResource<ShaderProgram>(cache, smaaWeights);
-        _smaaWeightComputation->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+        _smaaWeightComputation = CreateResource(smaaWeights);
+
+        {
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-            pipelineDescriptor._shaderProgramHandle = _smaaWeightComputation->handle();
+            pipelineDescriptor._shaderProgramHandle = _smaaWeightComputation;
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-            _smaaWeightPipeline = _context.newPipeline(pipelineDescriptor);
-        });
-
+            _smaaWeightPipeline = _context.newPipeline( pipelineDescriptor );
+        }
         vertModule._variant = "Blend";
         fragModule._variant = "Blend";
         ShaderProgramDescriptor blendDescriptor = {};
         blendDescriptor._modules = { vertModule, fragModule };
 
-        ResourceDescriptor smaaBlend("SMAA.Blend");
-        smaaBlend.propertyDescriptor(blendDescriptor);
+        ResourceDescriptor<ShaderProgram> smaaBlend("SMAA.Blend", blendDescriptor );
         smaaBlend.waitForReady(false);
-        _smaaBlend = CreateResource<ShaderProgram>(cache, smaaBlend);
-        _smaaBlend->addStateCallback(ResourceState::RES_LOADED, [this](CachedResource*) {
+        _smaaBlend = CreateResource(smaaBlend);
+
+        {
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-            pipelineDescriptor._shaderProgramHandle = _smaaBlend->handle();
+            pipelineDescriptor._shaderProgramHandle = _smaaBlend;
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-            _smaaBlendPipeline = _context.newPipeline(pipelineDescriptor);
-        });
+            _smaaBlendPipeline = _context.newPipeline( pipelineDescriptor );
+        }
     }
     { //SMAA Textures
-        TextureDescriptor textureDescriptor(TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, GFXImageFormat::RGBA);
-        textureDescriptor.textureOptions()._alphaChannelTransparency = false;
+        TextureDescriptor textureDescriptor{};
+        textureDescriptor._textureOptions._alphaChannelTransparency = false;
 
-        ResourceDescriptor searchDescriptor("SMAA_Search");
+        ResourceDescriptor<Texture> searchDescriptor("SMAA_Search", textureDescriptor );
         searchDescriptor.assetName("smaa_search.png");
         searchDescriptor.assetLocation(Paths::g_imagesLocation);
-        searchDescriptor.propertyDescriptor(textureDescriptor);
         searchDescriptor.waitForReady(false);
-        _searchTexture = CreateResource<Texture>(cache, searchDescriptor);
+        _searchTexture = CreateResource(searchDescriptor);
 
-        ResourceDescriptor areaDescriptor("SMAA_Area");
+        ResourceDescriptor<Texture> areaDescriptor("SMAA_Area", textureDescriptor );
         areaDescriptor.assetName("smaa_area.png");
         areaDescriptor.assetLocation(Paths::g_imagesLocation);
-        areaDescriptor.propertyDescriptor(textureDescriptor);
         areaDescriptor.waitForReady(false);
-        _areaTexture = CreateResource<Texture>(cache, areaDescriptor);
+        _areaTexture = CreateResource(areaDescriptor);
     }
 }
 
-bool PostAAPreRenderOperator::ready() const noexcept {
-    if (_smaaBlendPipeline != nullptr && _smaaWeightPipeline != nullptr && _fxaaPipeline != nullptr) {
-        if (_searchTexture->getState() == ResourceState::RES_LOADED && _areaTexture->getState() == ResourceState::RES_LOADED) {
+PostAAPreRenderOperator::~PostAAPreRenderOperator()
+{
+    WAIT_FOR_CONDITION(ready());
+    DestroyResource( _fxaa );
+    DestroyResource( _smaaWeightComputation );
+    DestroyResource( _smaaBlend );
+    DestroyResource( _searchTexture );
+    DestroyResource( _areaTexture );
+}
+
+bool PostAAPreRenderOperator::ready() const noexcept
+{
+    if (_smaaBlendPipeline != nullptr && _smaaWeightPipeline != nullptr && _fxaaPipeline != nullptr) 
+    {
+        if (Get(_searchTexture)->getState() == ResourceState::RES_LOADED && Get(_areaTexture)->getState() == ResourceState::RES_LOADED)
+        {
             return PreRenderOperator::ready();
         }
     }
@@ -169,7 +179,6 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
     }
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-    const auto& screenTex = screenAtt->texture()->getView();
 
     if (useSMAA()) {
         { //Step 1: Compute weights
@@ -181,9 +190,6 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
             const auto& att = _parent.edgesRT()._rt->getAttachment(RTAttachmentType::COLOUR);
-            const auto& edgesTex = att->texture()->getView();
-            const auto& areaTex = _areaTexture->getView();
-            const auto& searchTex = _searchTexture->getView();
 
             SamplerDescriptor samplerDescriptor = {};
 
@@ -192,18 +198,18 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
 
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, edgesTex, att->_descriptor._sampler );
+                Set( binding._data, att->texture(), att->_descriptor._sampler );
             }
             samplerDescriptor._mipSampling = TextureMipSampling::NONE;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, areaTex, samplerDescriptor );
+                Set( binding._data, _areaTexture, samplerDescriptor );
             }
             samplerDescriptor._minFilter = TextureFilter::NEAREST;
             samplerDescriptor._magFilter = TextureFilter::NEAREST;
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, searchTex, samplerDescriptor );
+                Set( binding._data, _searchTexture, samplerDescriptor );
             }
             
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _smaaWeightPipeline;
@@ -223,19 +229,18 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
             beginRenderPassCmd._name = "DO_SMAA_BLEND_PASS";
             GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-            const auto& att = _smaaWeights._rt->getAttachment(RTAttachmentType::COLOUR);
-            const auto& blendTex = att->texture()->getView();
+            const auto& weightAtt = _smaaWeights._rt->getAttachment(RTAttachmentType::COLOUR);
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, screenTex, screenAtt->_descriptor._sampler );
+                Set( binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-                Set( binding._data, blendTex, screenAtt->_descriptor._sampler );
+                Set( binding._data, weightAtt->texture(), screenAtt->_descriptor._sampler );
             }
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _smaaBlendPipeline;
@@ -263,7 +268,7 @@ bool PostAAPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[
 
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenTex, screenAtt->_descriptor._sampler );
+            Set( binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler );
         }
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
