@@ -156,7 +156,7 @@ public:
 
     explicit UniformBlockUploader( GFXDevice& context, const eastl::string& parentShaderName, const Reflection::BufferEntry& uniformBlock, const U16 shaderStageVisibilityMask );
 
-    void uploadPushConstant( const PushConstants& constants ) noexcept;
+    void uploadUniformData( const UniformData& uniforms ) noexcept;
     [[nodiscard]] bool commit( DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
     void onFrameEnd() noexcept;
     void toggleStageVisibility( U16 visibilityMask, bool state);

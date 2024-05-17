@@ -63,7 +63,7 @@ struct GFXShaderData {
         mat4<F32> _previousViewMatrix = MAT4_IDENTITY;
         mat4<F32> _previousProjectionMatrix = MAT4_IDENTITY;
         mat4<F32> _previousViewProjectionMatrix = MAT4_IDENTITY;
-    } _prevFrameData;
+    } _prevFrameData[Config::MAX_LOCAL_PLAYER_COUNT];
 
     bool _camNeedsUpload = true;
 };

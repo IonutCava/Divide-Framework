@@ -78,7 +78,7 @@ bool AnimEvaluator::initBuffers(GFXDevice& context)
     {
         ShaderBufferDescriptor bufferDescriptor{};
         bufferDescriptor._ringBufferLength = 1;
-        bufferDescriptor._name = Util::StringFormat("BONE_BUFFER_{}", name().c_str());
+        Util::StringFormat( bufferDescriptor._name, "BONE_BUFFER_{}", name() );
         bufferDescriptor._bufferParams._elementCount = to_U32(animationData.size());
         bufferDescriptor._bufferParams._elementSize = sizeof(mat4<F32>);
         bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;

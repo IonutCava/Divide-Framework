@@ -134,7 +134,7 @@ namespace Divide {
     {
         if constexpr(sizeof...(Args) > 0)
         {
-            SDL_SetWindowTitle( _sdlWindow, Util::StringFormat( format, static_cast<Args&&>(args)... ).c_str());
+            SDL_SetWindowTitle( _sdlWindow, Util::StringFormat<string>( format, static_cast<Args&&>(args)... ).c_str());
         }
         else
         {

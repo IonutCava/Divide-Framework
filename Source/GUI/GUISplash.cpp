@@ -37,6 +37,12 @@ GUISplash::GUISplash(const std::string_view splashImageName, vec2<U16> dimension
 
     ResourceDescriptor<ShaderProgram> splashShader("fbPreview", shaderDescriptor);
     _splashShader = CreateResource(splashShader);
+
+    _uniformData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 1.f );
+    _uniformData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
+    _uniformData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
+    _uniformData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
+    _uniformData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.f );
 }
 
 GUISplash::~GUISplash()
@@ -44,7 +50,8 @@ GUISplash::~GUISplash()
     DestroyResource(_splashImage );
 }
 
-void GUISplash::render(GFXDevice& context) const {
+void GUISplash::render(GFXDevice& context)
+{
 
     SamplerDescriptor splashSampler = {};
     splashSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -74,13 +81,7 @@ void GUISplash::render(GFXDevice& context) const {
     pipelineCmd._pipeline = context.newPipeline(pipelineDescriptor);
     GFX::EnqueueCommand( buffer, pipelineCmd);
 
-    GFX::SendPushConstantsCommand pushConstantsCommand = {};
-    pushConstantsCommand._constants.set(_ID("lodLevel"), PushConstantType::FLOAT, 1.f);
-    pushConstantsCommand._constants.set(_ID("channelsArePacked"), PushConstantType::BOOL, false);
-    pushConstantsCommand._constants.set(_ID("channelCount"), PushConstantType::UINT, 4u);
-    pushConstantsCommand._constants.set(_ID("startChannel"), PushConstantType::UINT, 0u);
-    pushConstantsCommand._constants.set(_ID("multiplier"), PushConstantType::FLOAT, 1.f);
-    GFX::EnqueueCommand( buffer, pushConstantsCommand);
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_uniformData = &_uniformData;
 
     GFX::SetViewportCommand viewportCommand;
     viewportCommand._viewport.set(0, 0, _dimensions.width, _dimensions.height);

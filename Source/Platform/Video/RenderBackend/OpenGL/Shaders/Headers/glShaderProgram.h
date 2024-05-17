@@ -82,8 +82,6 @@ class glShaderProgram final : public ShaderProgram {
 
     void uploadPushConstants(const PushConstantsStruct& pushConstants);
 
-    static void ProcessValidationQueue();
-
    private:
     gl46core::GLuint _glHandle = GL_NULL_HANDLE;
 

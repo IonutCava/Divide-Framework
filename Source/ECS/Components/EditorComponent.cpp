@@ -17,7 +17,7 @@ namespace Divide {
     namespace {
         std::string GetFullFieldName(const char* componentName, const Str<32>& fieldName)
         {
-            return std::string{ Util::StringFormat("{}.{}", componentName, Util::MakeXMLSafe(fieldName)).c_str() };
+            return std::string{ Util::StringFormat<string>("{}.{}", componentName, Util::MakeXMLSafe(fieldName)).c_str() };
         }
     }
 

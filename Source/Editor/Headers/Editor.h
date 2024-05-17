@@ -305,7 +305,7 @@ namespace Divide
         [[nodiscard]] bool switchScene( const SceneEntry& scene, bool createIfNotExists = false );
         [[nodiscard]] bool openProject( const ProjectID& projectID );
         /// Returns true if the window was closed
-        [[nodiscard]] bool modalTextureView( const char* modalName, Handle<Texture> tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
+        [[nodiscard]] bool modalTextureView( std::string_view modalName, Handle<Texture> tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
         /// Returns true if the model was queued
         [[nodiscard]] bool modalModelSpawn( Handle<Mesh> mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO );
         /// Return true if the model was spawned as a scene node
@@ -673,7 +673,7 @@ namespace Divide
                 editor._memoryEditorData = data;
             }
 
-            [[nodiscard]] static bool modalTextureView( const Editor& editor, const char* modalName, Handle<Texture> tex, const vec2<F32> dimensions, const bool preserveAspect, const bool useModal )
+            [[nodiscard]] static bool modalTextureView( const Editor& editor, const std::string_view modalName, Handle<Texture> tex, const vec2<F32> dimensions, const bool preserveAspect, const bool useModal )
             {
                 return editor.modalTextureView( modalName, tex, dimensions, preserveAspect, useModal );
             }

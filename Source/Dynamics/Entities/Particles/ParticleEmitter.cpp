@@ -312,15 +312,13 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = aliveCount;
             descriptor._partitionSize = 1000u;
-            descriptor._cbk = [&eyePos, &misc, &pos](const Task*, const U32 start, const U32 end)
+            Parallel_For( sgn->context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&eyePos, &misc, &pos](const Task*, const U32 start, const U32 end)
             {
                 for (U32 i = start; i < end; ++i)
                 {
                     misc[i].w = pos[i].xyz.distanceSquared(eyePos);
                 }
-            };
-
-            parallel_for( sgn->context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
+            });
 
             _bufferUpdate = CreateTask(
                 [this, &renderStagePass](const Task&)
@@ -370,16 +368,14 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = aliveCount;
         descriptor._partitionSize = s_particlesPerThread;
-        descriptor._cbk = [this](const Task*, const U32 start, const U32 end)
+        Parallel_For( sgn->context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [this](const Task*, const U32 start, const U32 end)
         {
             for (U32 i = start; i < end; ++i)
             {
                 _particles->_position[i].w = _particles->_misc[i].z;
                 _particles->_acceleration[i].set(0.0f);
             }
-        };
-
-        parallel_for( sgn->context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
+        });
 
         ParticleData& data = *_particles;
         for (const std::shared_ptr<ParticleUpdater>& up : _updaters)

@@ -155,7 +155,7 @@ bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const
     GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipeline;
-    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _constants );
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData = _constants;
     
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();

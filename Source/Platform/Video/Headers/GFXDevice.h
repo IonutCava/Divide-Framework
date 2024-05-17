@@ -135,7 +135,7 @@ struct DebugView final : GUIDWrapper
     {
     }
 
-    PushConstants _shaderData;
+    UniformData _shaderData;
     string _name;
     Handle<ShaderProgram> _shader = INVALID_HANDLE<ShaderProgram>;
     Handle<Texture> _texture = INVALID_HANDLE<Texture>;
@@ -285,7 +285,7 @@ public:  // GPU interface
                                    mat4<F32>* viewProjectionOut = nullptr);
 
     const GFXShaderData::CamData& cameraData() const noexcept;
-    const GFXShaderData::PrevFrameData& previousFrameData() const noexcept;
+    const GFXShaderData::PrevFrameData& previousFrameData( PlayerIndex player ) const noexcept;
 
     /// Returns true if the viewport was changed
     bool setViewport(const Rect<I32>& viewport);
@@ -293,7 +293,7 @@ public:  // GPU interface
     bool setScissor(const Rect<I32>& scissor);
     bool setScissor( I32 x, I32 y, I32 width, I32 height );
     void setDepthRange(vec2<F32> depthRange);
-    void setPreviousViewProjectionMatrix(const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix);
+    void setPreviousViewProjectionMatrix( PlayerIndex player, const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix );
 
     void setCameraSnapshot(PlayerIndex index, const CameraSnapshot& snapshot) noexcept;
     CameraSnapshot& getCameraSnapshot(PlayerIndex index) noexcept;
@@ -437,8 +437,8 @@ protected:
     friend class RenderPass;
     friend class RenderPassExecutor;
 
-    void occlusionCull(const RenderPass::BufferData& bufferData,
-                        Handle<Texture> hizBuffer,
+    void occlusionCull(const RenderPass::PassData& passData,
+                       Handle<Texture> hizBuffer,
                        SamplerDescriptor sampler,
                        const CameraSnapshot& cameraSnapshot,
                        bool countCulledNodes,

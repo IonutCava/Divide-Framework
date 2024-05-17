@@ -36,7 +36,8 @@
 #include "Core/Headers/NonCopyable.h"
 #include "Platform/Headers/PlatformDefines.h"
 
-namespace Divide {
+namespace Divide 
+{
 
 constexpr int MAX_CONSOLE_ENTRIES = 128;
 struct Console : NonCopyable
@@ -98,7 +99,8 @@ struct Console : NonCopyable
         INFO = 0,
         WARNING,
         ERR,
-        COMMAND
+        COMMAND,
+        COUNT
     };
 
     enum class Flags : U8
@@ -127,7 +129,7 @@ struct Console : NonCopyable
     };
 
     static void Flush();
-    static void Start() noexcept;
+    static void Start( std::string_view logFilePath, std::string_view erroFilePath, bool printCopyright ) noexcept;
     static void Stop();
 
     static void  ToggleFlag( const Flags flag, const bool state )
@@ -140,8 +142,6 @@ struct Console : NonCopyable
     [[nodiscard]] static size_t BindConsoleOutput(const ConsolePrintCallback& guiConsoleCallback);
     [[nodiscard]] static bool   UnbindConsoleOutput(size_t& index);
 
-    static void PrintCopyrightNotice();
-
     protected:
         static void Output(std::string_view text, bool newline, EntryType type);
         static void Output(std::ostream& outStream, std::string_view text, bool newline, EntryType type);
@@ -149,10 +149,12 @@ struct Console : NonCopyable
         static void PrintToFile(const OutputEntry& entry);
 
     private:
+        static std::ofstream                     s_logStream;
+        static std::ofstream                     s_errorStream;
         static SharedMutex                       s_callbackLock;
         static vector<ConsolePrintCallbackEntry> s_guiConsoleCallbacks;
         static U32                               s_flags;
-        static std::                             atomic_bool s_running;
+        static std::atomic_bool                  s_running;
 };
 
 }  // namespace Divide

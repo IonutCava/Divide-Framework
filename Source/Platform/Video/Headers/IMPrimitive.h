@@ -65,7 +65,10 @@ class IMPrimitive final {
      IMPrimitive(GFXDevice& context, const Str<64>& name);
      ~IMPrimitive() = default;
 
-    void setPushConstants(const PushConstants& constants);
+    void setPushConstants(const PushConstantsStruct& fastData);
+    void setUniformData(const UniformData& constants);
+    void setUniformDataAndConstants(const UniformData& constants, const PushConstantsStruct& fastData);
+
     void setPipelineDescriptor(const PipelineDescriptor& descriptor);
     void setTexture(const ImageView& texture, SamplerDescriptor sampler);
 
@@ -136,7 +139,8 @@ class IMPrimitive final {
 
    private:
     GFXDevice& _context;
-    PushConstants _additionalConstats;
+    UniformData _additionalUniforms;
+    PushConstantsStruct _fastData;
     NS_GLIM::GLIM_BATCH_uptr _imInterface;
     PipelineDescriptor _basePipelineDescriptor{};
     ImageView _texture{};

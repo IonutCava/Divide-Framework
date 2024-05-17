@@ -33,7 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_UNDO_MANAGER_H_
 #define DVD_UNDO_MANAGER_H_
 
-#include "Platform/Video/Headers/PushConstant.h"
+enum class PushConstantType;
 
 namespace Divide {
     struct IUndoEntry {

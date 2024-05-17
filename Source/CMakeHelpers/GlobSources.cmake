@@ -518,6 +518,8 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Threading/Headers/Task.h
                              Platform/Threading/Headers/Task.inl
                              Platform/Threading/Headers/TaskGPUSync.h
+                             Platform/Video/Buffers/Headers/BufferRange.h
+                             Platform/Video/Buffers/Headers/BufferRange.inl
                              Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h
                              Platform/Video/Buffers/RenderTarget/Headers/RTAttachment.h
                              Platform/Video/Buffers/RenderTarget/Headers/RTDrawDescriptor.h
@@ -526,8 +528,6 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h
-                             Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h
-                             Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.inl
                              Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h
                              Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h
                              Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.inl
@@ -562,8 +562,6 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/IMPrimitiveDescriptors.h
                              Platform/Video/Headers/LockManager.h
                              Platform/Video/Headers/Pipeline.h
-                             Platform/Video/Headers/PushConstant.h
-                             Platform/Video/Headers/PushConstant.inl
                              Platform/Video/Headers/PushConstants.h
                              Platform/Video/Headers/PushConstants.inl
                              Platform/Video/Headers/RenderAPIEnums.h

@@ -292,8 +292,25 @@ TEST_CASE( "Format Test", "[string_tests]" )
     const string result1("A is ok, b is 2 \n");
     const string result2("12.21");
 
-    CHECK_EQUAL(Util::StringFormat(input1, "is ok,", 2, "\n"), result1);
-    CHECK_EQUAL(Util::StringFormat(input2, 12.2111f), result2);
+    CHECK_EQUAL(Util::StringFormat<string>(input1, "is ok,", 2, "\n"), result1);
+    CHECK_EQUAL(Util::StringFormat<string>(input2, 12.2111f), result2);
+}
+
+TEST_CASE( "Format Test In Place", "[string_tests]" )
+{
+    const char* input1( "A {} b is {} {}" );
+    const char* input2( "{:2.2f}" );
+    const string result1( "A is ok, b is 2 \n" );
+    const string result2( "12.21" );
+
+    string temp1;
+    string temp2;
+
+    Util::StringFormat<string>( temp1, input1, "is ok,", 2, "\n" );
+    Util::StringFormat<string>( temp2, input2, 12.2111f );
+
+    CHECK_EQUAL( temp1, result1 );
+    CHECK_EQUAL( temp2, result2 );
 }
 
 TEST_CASE( "Remove Char Test", "[string_tests]" )

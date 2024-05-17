@@ -567,7 +567,7 @@ namespace Divide
 
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
-                bufferDescriptor._name = Util::StringFormat( "DVD_GPU_CAM_DATA_{}", i );
+                Util::StringFormat( bufferDescriptor._name, "DVD_GPU_CAM_DATA_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB( bufferDescriptor );
                 _gfxBuffers._perFrameBuffers[i]._camBufferWriteRange = {};
             }
@@ -588,7 +588,7 @@ namespace Divide
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
-                bufferDescriptor._name = Util::StringFormat( "CULL_COUNTER_{}", i );
+                Util::StringFormat( bufferDescriptor._name, "CULL_COUNTER_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB( bufferDescriptor );
             }
         }
@@ -834,13 +834,13 @@ namespace Divide
 
                 for ( U32 i = 0; i < Config::MAX_REFLECTIVE_NODES_IN_VIEW; ++i )
                 {
-                    refDesc._name = Util::StringFormat( "Reflection_Planar_{}", i ).c_str();
+                    Util::StringFormat( refDesc._name, "Reflection_Planar_{}", i );
                     RenderTargetNames::REFLECTION_PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
                 for ( U32 i = 0; i < Config::MAX_REFRACTIVE_NODES_IN_VIEW; ++i )
                 {
-                    refDesc._name = Util::StringFormat( "Refraction_Planar_{}", i ).c_str();
+                    Util::StringFormat( refDesc._name, "Refraction_Planar_{}", i );
                     RenderTargetNames::REFRACTION_PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
@@ -915,7 +915,7 @@ namespace Divide
                         ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
 
-                    oitDesc._name = Util::StringFormat( "OIT_REFLECT_RES_{}", i ).c_str();
+                    Util::StringFormat( oitDesc._name, "OIT_REFLECT_RES_{}", i );
                     oitDesc._resolution = vec2<U16>( reflectRes );
                     oitDesc._externalAttachments = externalAttachments;
                     oitDesc._msaaSamples = 0;
@@ -1692,7 +1692,7 @@ namespace Divide
                 if ( !gaussian && loop > 0u )
                 {
                     pushData.data[0]._vec[0].x = to_F32( loop );
-                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set( pushData );
+                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_fastData = pushData;
                 }
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
             }
@@ -1717,14 +1717,14 @@ namespace Divide
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
             Set( binding._data, bufferAttachment->texture(), bufferAttachment->_descriptor._sampler );
 
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = pushData;
 
             for ( U8 loop = 0u; loop < loopCount; ++loop )
             {
                 if ( !gaussian && loop > 0u )
                 {
                     pushData.data[0]._vec[0].x = to_F32( loop );
-                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushData );
+                    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = pushData;
                 }
                 GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
             }
@@ -2022,26 +2022,29 @@ namespace Divide
         _gpuBlock._camNeedsUpload = true;
     }
 
-    void GFXDevice::setPreviousViewProjectionMatrix( const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix )
+    void GFXDevice::setPreviousViewProjectionMatrix( const PlayerIndex index, const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
 
         bool projectionDirty = false, viewDirty = false;
-        if ( _gpuBlock._prevFrameData._previousViewMatrix != prevViewMatrix )
+
+        GFXShaderData::PrevFrameData& frameData = _gpuBlock._prevFrameData[index];
+
+        if ( frameData._previousViewMatrix != prevViewMatrix )
         {
-            _gpuBlock._prevFrameData._previousViewMatrix = prevViewMatrix;
+            frameData._previousViewMatrix = prevViewMatrix;
             viewDirty = true;
         }
-        if ( _gpuBlock._prevFrameData._previousProjectionMatrix != prevProjectionMatrix )
+        if ( frameData._previousProjectionMatrix != prevProjectionMatrix )
         {
-            _gpuBlock._prevFrameData._previousProjectionMatrix = prevProjectionMatrix;
+            frameData._previousProjectionMatrix = prevProjectionMatrix;
             projectionDirty = true;
         }
 
         if ( projectionDirty || viewDirty )
         {
-            mat4<F32>::Multiply( _gpuBlock._prevFrameData._previousProjectionMatrix, _gpuBlock._prevFrameData._previousViewMatrix, _gpuBlock._prevFrameData._previousViewProjectionMatrix );
+            mat4<F32>::Multiply( frameData._previousProjectionMatrix, frameData._previousViewMatrix, frameData._previousViewProjectionMatrix );
         }
     }
 
@@ -2077,9 +2080,9 @@ namespace Divide
         return _gpuBlock._camData;
     }
 
-    const GFXShaderData::PrevFrameData& GFXDevice::previousFrameData() const noexcept
+    const GFXShaderData::PrevFrameData& GFXDevice::previousFrameData( const PlayerIndex index ) const noexcept
     {
-        return _gpuBlock._prevFrameData;
+        return _gpuBlock._prevFrameData[index];
     }
 #pragma endregion
 
@@ -2286,8 +2289,6 @@ namespace Divide
         U32 owidth = twidth;
         U32 oheight = theight;
 
-        PushConstantsStruct pushConstants{};
-
         for ( U16 i = 0u; i < HiZTex->mipCount(); ++i )
         {
             twidth = twidth < 1u ? 1u : twidth;
@@ -2317,9 +2318,9 @@ namespace Divide
                 Set( binding._data, inImage, HiZAtt->_descriptor._sampler );
             }
 
+            PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( cmdBufferInOut )->_fastData;
             pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
             pushConstants.data[0]._vec[1].x = wasEven ? 1.f : 0.f;
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( cmdBufferInOut )->_constants.set( pushConstants );
 
             GFX::EnqueueCommand<GFX::DispatchComputeCommand>( cmdBufferInOut )->_computeGroupSize =
             {
@@ -2347,7 +2348,7 @@ namespace Divide
         return { HiZAtt->texture(), HiZAtt->_descriptor._sampler };
     }
 
-    void GFXDevice::occlusionCull( const RenderPass::BufferData& bufferData,
+    void GFXDevice::occlusionCull( const RenderPass::PassData& passData,
                                    const Handle<Texture> hizBuffer,
                                    const SamplerDescriptor sampler,
                                    const CameraSnapshot& cameraSnapshot,
@@ -2356,7 +2357,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        const U32 cmdCount = *bufferData._lastCommandCount;
+        const U32 cmdCount = *passData._lastCommandCount;
         const U32 threadCount = getGroupCount( cmdCount, GROUP_SIZE_AABB );
 
         if ( threadCount == 0u || !enableOcclusionCulling() )
@@ -2385,16 +2386,18 @@ namespace Divide
             Set( binding._data, cullBuffer, { 0u, 1u });
         }
 
-        PushConstantsStruct fastConstants{};
+        passData._uniforms->set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
+        passData._uniforms->set( _ID( "dvd_numEntities" ), PushConstantType::UINT, cmdCount );
+        passData._uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTex->width(), hizTex->height() ) );
+        passData._uniforms->set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
+
+        auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+
+        pushConstantsCmd->_uniformData = passData._uniforms;
+
+        PushConstantsStruct& fastConstants = pushConstantsCmd->_fastData;
         mat4<F32>::Multiply( cameraSnapshot._projectionMatrix, cameraSnapshot._viewMatrix, fastConstants.data[0] );
         fastConstants.data[1] = cameraSnapshot._viewMatrix;
-
-        auto& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants;
-        pushConstants.set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
-        pushConstants.set( _ID( "dvd_numEntities" ), PushConstantType::UINT, cmdCount );
-        pushConstants.set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTex->width(), hizTex->height() ) );
-        pushConstants.set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
-        pushConstants.set( fastConstants );
 
         GFX::EnqueueCommand<GFX::DispatchComputeCommand>( bufferInOut )->_computeGroupSize = { threadCount, 1, 1 };
 
@@ -2444,9 +2447,7 @@ namespace Divide
 
         if ( !drawToDepthOnly )
         {
-            PushConstantsStruct pushData{};
-            pushData.data[0]._vec[0].x = convertToSrgb ? 1.f : 0.f;
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_constants.set(pushData);
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut)->_fastData.data[0]._vec[0].x = convertToSrgb ? 1.f : 0.f;
         }
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
@@ -2694,7 +2695,7 @@ namespace Divide
             }
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = crtPipeline;
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants = view->_shaderData;
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_uniformData = &view->_shaderData;
             GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut )->_viewport.set( viewport );
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );

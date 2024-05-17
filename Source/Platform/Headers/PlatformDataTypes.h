@@ -534,6 +534,10 @@ constexpr D64 D64_ZERO = 0.0;
 #define GET_6TH_ARG(arg1, arg2, arg3, arg4, arg5, arg6, ...) arg6
 #endif //EXP
 
+    template <typename T> struct is_const_char : std::false_type {};
+    template <std::size_t N> struct is_const_char<const char[N]> : std::true_type {};
+    template <typename T> concept concept_const_char = is_const_char<T>::value;
+
     //https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170
     //Any argument that doesn't fit in 8 bytes, or isn't 1, 2, 4, or 8 bytes, must be passed by reference. A single argument is never spread across multiple registers.
     template<typename T>

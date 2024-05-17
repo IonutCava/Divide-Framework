@@ -155,10 +155,9 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
         beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
         GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
 
-        PushConstantsStruct params{};
-        params.data[0]._vec[0].x = luminanceBias();
         GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _bloomCalcPipeline;
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( params );
+        PushConstantsStruct& params = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
+        params.data[0]._vec[0].x = luminanceBias();
     
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
         cmd->_usage = DescriptorSetUsage::PER_DRAW;

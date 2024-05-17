@@ -11,8 +11,9 @@ See "license.txt" or "http://copyfree.org/licenses/mit/license.txt".
 #include "utility.frag"
 #include "sceneData.cmn"
 
-uniform mat4 projectionMatrix;
-uniform mat4 invProjectionMatrix;
+#define projectionMatrix PushData0
+#define invProjectionMatrix PushData1
+
 uniform vec2 SSAO_NOISE_SCALE;
 uniform vec2 _zPlanes;
 uniform float SSAO_RADIUS;
@@ -107,7 +108,7 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texSSAO;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
-uniform mat4 invProjectionMatrix;
+#define invProjectionMatrix PushData0
 uniform vec2 _zPlanes;
 uniform vec2 texelSize;
 uniform float depthThreshold;
@@ -189,7 +190,8 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texSSAO;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepthMap;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
-uniform mat4 invProjectionMatrix;
+#define invProjectionMatrix PushData0
+
 uniform vec2 _zPlanes;
 uniform vec2 texelSize;
 uniform float depthThreshold;

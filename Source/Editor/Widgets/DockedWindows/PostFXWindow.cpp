@@ -482,7 +482,8 @@ namespace {
 
         if (_previewTexture != INVALID_HANDLE<Texture>)
         {
-            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), Util::StringFormat("Image Preview: {}", Get(_previewTexture)->resourceName().c_str()).c_str(), _previewTexture, vec2<F32>(512, 512), true, false))
+            const string modalName = Util::StringFormat( "Image Preview: {}", Get( _previewTexture )->resourceName() );
+            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), modalName, _previewTexture, vec2<F32>(512, 512), true, false))
             {
                 _previewTexture = INVALID_HANDLE<Texture>;
             }

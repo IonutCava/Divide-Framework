@@ -22,15 +22,9 @@ namespace
 
 void glShaderProgram::Idle( [[maybe_unused]] PlatformContext& platformContext )
 {
-    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-    // One validation per Idle call
-    ProcessValidationQueue();
-}
-
-void glShaderProgram::ProcessValidationQueue()
-{
     NO_DESTROY thread_local ValidationEntry s_validationOutputCache;
+
+    PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     if (!g_sValidationQueue.try_dequeue(s_validationOutputCache))
     {
@@ -272,7 +266,7 @@ ShaderResult glShaderProgram::bind()
 
 void glShaderProgram::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
-    if (pushConstants._set)
+    if (pushConstants.set())
     {
         for ( glShaderEntry& shader : _shaderStage)
         {

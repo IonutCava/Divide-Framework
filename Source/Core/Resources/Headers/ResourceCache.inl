@@ -95,8 +95,7 @@ namespace Divide
         [[nodiscard]] Handle<T> allocateLocked( size_t descriptorHash );
 
     private:
-        Mutex _deletionLock;
-        eastl::queue<Handle<T>> _deletionQueue;
+        moodycamel::ConcurrentQueue<Handle<T>> _deletionQueue;
     };
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>
@@ -122,8 +121,7 @@ namespace Divide
     {
         if ( handle != INVALID_HANDLE<T> )
         {
-            UniqueLock<Mutex> w_lock( _deletionLock);
-            _deletionQueue.push(handle);
+            _deletionQueue.enqueue(handle);
             handle = INVALID_HANDLE<T>;
         }
     }
@@ -131,11 +129,9 @@ namespace Divide
     template<typename T>
     void ResourcePool<T>::processDeletionQueue()
     {
-        UniqueLock<Mutex> w_lock( _deletionLock );
-        while (!_deletionQueue.empty())
+        Handle<T> handle{};
+        while (_deletionQueue.try_dequeue( handle ))
         {
-            Handle<T> handle = _deletionQueue.front();
-            _deletionQueue.pop();
             deallocate( handle );
         }
     }

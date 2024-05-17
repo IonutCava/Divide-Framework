@@ -560,8 +560,9 @@ static void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& t
 }
 
 static Time::ProfileTimer& GetTimer(Time::ProfileTimer& parentTimer, vector<Time::ProfileTimer*>& timers, const U8 index, const char* name) {
-    while (timers.size() < to_size(index) + 1) {
-        timers.push_back(&Time::ADD_TIMER(Util::StringFormat("{} {}", name, timers.size()).c_str()));
+    while (timers.size() < to_size(index) + 1)
+    {
+        timers.push_back(&Time::ADD_TIMER( Util::StringFormat<string>( "{} {}", name, timers.size() ).c_str() ));
         parentTimer.addChildTimer(*timers.back());
     }
 
@@ -595,7 +596,8 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
     RenderPassManager::RenderParams renderParams{};
     renderParams._sceneRenderState = &_projectManager->activeProject()->getActiveScene()->state()->renderState();
 
-    for (U8 i = 0u; i < playerCount; ++i) {
+    for (U8 i = 0u; i < playerCount; ++i)
+    {
         Attorney::ProjectManagerKernel::currentPlayerPass(_projectManager.get(), i);
         renderParams._playerPass = i;
 
@@ -613,19 +615,22 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
             _renderPassManager->render(renderParams);
         }
 
-        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_END, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_END, evt))
+        {
             return false;
         }
     }
 
     {
         Time::ScopedTimer time4(_postRenderTimer);
-        if(!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_POSTRENDER, evt)) {
+        if(!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_POSTRENDER, evt))
+        {
             return false;
         }
     }
 
-    for (U32 i = playerCount; i < to_U32(_renderTimer.size()); ++i) {
+    for (U32 i = playerCount; i < to_U32(_renderTimer.size()); ++i)
+    {
         Time::ProfileTimer::removeTimer(*_renderTimer[i]);
         _renderTimer.erase(begin(_renderTimer) + i);
     }

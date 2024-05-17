@@ -469,7 +469,8 @@ void SceneEnvironmentProbePool::ProcessEnvironmentMapInternal(const U16 layerID,
         {
             PROFILE_SCOPE( "Generate Mipmaps", Profiler::Category::Graphics );
 
-            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut )->_scopeName = Util::StringFormat("Process environment map #{}-MipMapsSource", layerID);
+            auto scopeCmd  = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut );
+            Util::StringFormat( scopeCmd->_scopeName, "Process environment map #{}-MipMapsSource", layerID);
             RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
             GFX::ComputeMipMapsCommand computeMipMapsCommand = {};
@@ -508,7 +509,8 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::PrefilteredTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     const ResourcePtr<Texture> sourceTex = Get(sourceAtt->texture());
 
-    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("PreFilter environment map #{}", layerID);
+    auto scopeCmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
+    Util::StringFormat( scopeCmd->_scopeName, "PreFilter environment map #{}", layerID);
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = s_pipelineCalcPrefiltered;
 
@@ -534,7 +536,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
 
         const F32 roughness = mipLevel / maxMipLevel;
         fastData.data[0]._vec[1].xy.set(mipLevel, roughness);
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData = fastData;
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
 
@@ -576,7 +578,8 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
     RTAttachment* sourceAtt = SceneEnvironmentProbePool::ReflectionTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
     RTAttachment* destinationAtt = SceneEnvironmentProbePool::IrradianceTarget()._rt->getAttachment(RTAttachmentType::COLOUR);
 
-    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = Util::StringFormat("Compute Irradiance #{}", layerID);
+    auto scopeCmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
+    Util::StringFormat( scopeCmd->_scopeName, "Compute Irradiance #{}", layerID);
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = s_pipelineCalcIrradiance;
 
@@ -600,9 +603,8 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
         Set(binding._data, destinationView, ImageUsage::SHADER_WRITE );
     }
 
-    PushConstantsStruct fastData{};
+    PushConstantsStruct& fastData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
     fastData.data[0]._vec[0].xyz.set(to_F32(s_IrradianceTextureSize), to_F32(s_IrradianceTextureSize), to_F32(layerID));
-    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(fastData);
 
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
@@ -731,15 +733,15 @@ void SceneEnvironmentProbePool::createDebugView(const U16 layerIndex)
         probeView->_shaderData.set(_ID("face"), PushConstantType::INT, i % 6u);
         if (i > 11)
         {
-            probeView->_name = Util::StringFormat("Probe_{}_Filtered_face_{}", layerIndex, i % 6u);
+            Util::StringFormat( probeView->_name, "Probe_{}_Filtered_face_{}", layerIndex, i % 6u );
         }
         else if (i > 5) 
         {
-            probeView->_name = Util::StringFormat("Probe_{}_Irradiance_face_{}", layerIndex, i % 6u);
+            Util::StringFormat( probeView->_name, "Probe_{}_Irradiance_face_{}", layerIndex, i % 6u );
         }
         else
         {
-            probeView->_name = Util::StringFormat("Probe_{}_Reference_face_{}", layerIndex, i % 6u);
+            Util::StringFormat( probeView->_name, "Probe_{}_Reference_face_{}", layerIndex, i % 6u );
         }
 
         probeView->_groupID = g_debugViewBase + layerIndex;

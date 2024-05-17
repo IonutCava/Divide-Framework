@@ -2,96 +2,60 @@
 
 #include "Headers/PushConstants.h"
 
-namespace Divide {
-PushConstants::PushConstants(const GFX::PushConstant& constant)
-    : _data{ constant }
+namespace Divide 
 {
-}
 
-PushConstants::PushConstants(const PushConstantsStruct& pushConstants)
-    : _fastData(pushConstants)
-{
-    _fastData._set = true;
-}
-
-PushConstants::PushConstants(GFX::PushConstant&& constant)
-    : _data{ MOV(constant) }
-{
-}
-
-void PushConstants::set(const GFX::PushConstant& constant)
-{
-    for (GFX::PushConstant& iter : _data)
-    {
-        if (iter.bindingHash() == constant.bindingHash())
-        {
-            iter = constant;
-            return;
-        }
-    }
-
-    _data.emplace_back(constant);
-}
-
-void PushConstants::set(const PushConstantsStruct& fastData)
-{
-    _fastData = fastData;
-    _fastData._set = true;
-}
-
-void PushConstants::clear() noexcept
-{
-    _data.clear();
-    _fastData._set = false;
-}
-
-[[nodiscard]] bool PushConstants::empty() const noexcept
-{
-    return _data.empty() && !_fastData._set;
-}
-
-void PushConstants::countHint(const size_t count)
-{
-    _data.reserve(count);
-}
-
-const vector<GFX::PushConstant>& PushConstants::data() const noexcept
+const UniformData::UniformDataContainer& UniformData::entries() const noexcept
 {
     return _data;
 }
 
-const PushConstantsStruct& PushConstants::fastData() const noexcept
+const Byte* UniformData::data( const size_t offset ) const noexcept
 {
-    return _fastData;
+    DIVIDE_ASSERT(offset < _buffer.size());
+    return &_buffer[offset];
 }
 
-bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial)
+bool UniformData::remove( const U64 bindingHash )
 {
-    if (lhs._fastData != rhs._fastData)
+    for ( UniformData::Entry& uniform : _data )
     {
-        return false;
-    }
-
-    for (const GFX::PushConstant& ourConstant : lhs._data)
-    {
-        for (const GFX::PushConstant& otherConstant : rhs._data)
+        if (uniform._bindingHash == bindingHash)
         {
-            // If we have the same binding, but different data, merging isn't possible
-            if (ourConstant.bindingHash() == otherConstant.bindingHash() &&
-                ourConstant != otherConstant)
-            {
-                return false;
-            }
+            std::memset(&_buffer[uniform._range._startOffset], 0, uniform._range._length);
+            uniform = {};
+            return true;
         }
     }
 
-    // Merge stage
-    partial = true;
-    insert_unique(lhs._data, rhs._data);
+    return false;
+}
 
-    if (!lhs._fastData._set && rhs._fastData._set)
+bool Merge( UniformData& lhs, UniformData& rhs, bool& partial)
+{
+    for (const UniformData::Entry& ourUniform : lhs._data)
     {
-        lhs._fastData = rhs._fastData;
+        for (const UniformData::Entry& otherUniform : rhs._data)
+        {
+            // If we have the same binding check data on each side to see if it matches
+            if ( ourUniform._bindingHash == otherUniform._bindingHash)
+            {
+                // If we have different types or ranges for the same binding, something is probably wrong, but for our specific case, we just fail to merge.
+                if ( ourUniform._type != otherUniform._type || ourUniform._range != otherUniform._range)
+                {
+                    return false;
+                }
+                // If we got here, everything apart from the data (maybe) matches, so we can just overwrite it.
+            }
+
+            lhs.set(otherUniform._bindingHash, otherUniform._type, &rhs._buffer[otherUniform._range._startOffset], otherUniform._range._length);
+            if (!rhs.remove(otherUniform._bindingHash))
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
+
+            partial = true;
+        }
     }
 
     return true;

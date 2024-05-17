@@ -53,7 +53,6 @@ namespace Divide
     class Material;
     class ResourceCache;
 
-    struct PushConstants;
     struct Configuration;
 
     enum class FileUpdateEvent : U8;
@@ -199,7 +198,7 @@ namespace Divide
 
         virtual ShaderResult validatePreBind( bool rebind = true );
 
-        [[nodiscard]] bool uploadUniformData( const PushConstants& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
+        [[nodiscard]] bool uploadUniformData( const UniformData& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
 
         //==================== static methods ===============================//
         static void Idle( PlatformContext& platformContext, bool fast );

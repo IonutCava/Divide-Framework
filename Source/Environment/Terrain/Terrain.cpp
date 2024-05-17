@@ -184,7 +184,8 @@ bool Terrain::load( PlatformContext& context )
 
             for (U8 k = 0u; k < to_base( TextureUsageType::COUNT); ++k)
             {
-                FindOrInsert(textureQuality, textures[k], ResourcePath{ Util::StringFormat("{}.{}", textureNames[k], k == to_base( TextureUsageType::ALBEDO_ROUGHNESS) ? "png" : "jpg") }, currentMaterial);
+                const string textureName = Util::StringFormat( "{}.{}", textureNames[k], k == to_base( TextureUsageType::ALBEDO_ROUGHNESS ) ? "png" : "jpg" );
+                FindOrInsert(textureQuality, textures[k], ResourcePath{ textureName }, currentMaterial);
             }
         }
     }
@@ -324,7 +325,7 @@ bool Terrain::load( PlatformContext& context )
     terrainMaterial->properties().toggleTransparency(false);
 
     const TerrainDescriptor::LayerData& layerTileData = _descriptor._layerDataEntries;
-    string tileFactorStr = Util::StringFormat("const vec2 CURRENT_TILE_FACTORS[{}] = {\n", layerCount * 4).c_str();
+    string tileFactorStr = Util::StringFormat("const vec2 CURRENT_TILE_FACTORS[{}] = {\n", layerCount * 4);
     for (U8 i = 0u; i < layerCount; ++i) {
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
         for (U8 j = 0u; j < 4u; ++j) {
@@ -958,7 +959,7 @@ void Terrain::postLoad(SceneGraphNode* sgn)
     for ( const TerrainChunk* chunk : _terrainChunks )
     {
         vegetationNodeDescriptor._nodeHandle = FromHandle(_vegetation);
-        vegetationNodeDescriptor._name = Util::StringFormat( "Vegetation_chunk_{}", chunk->id() ).c_str();
+        Util::StringFormat( vegetationNodeDescriptor._name, "Vegetation_chunk_{}", chunk->id() );
         vegetationNodeDescriptor._dataFlag = chunk->id();
         vegParent->addChildNode( vegetationNodeDescriptor );
     }
@@ -1127,11 +1128,12 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                                     vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
                                     mat3<F32>());
 
-    PushConstants& constants = pkg.pushConstantsCmd()._constants;
-    constants.set(_ID("dvd_terrainWorld"), PushConstantType::MAT4, terrainWorldMat);
-    constants.set(_ID("dvd_uvEyeOffset"), PushConstantType::VEC2, uvEye);
-    constants.set(_ID("dvd_tessTriangleWidth"),  PushConstantType::FLOAT, triangleWidth);
-    constants.set(_ID("dvd_frustumPlanes"), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
+    STUBBED("ToDo: Convert terrain uniforms from UBO to push constants! -Ionut");
+    UniformData* uniforms = pkg.pushConstantsCmd()._uniformData;
+    uniforms->set(_ID("dvd_terrainWorld"), PushConstantType::MAT4, terrainWorldMat);
+    uniforms->set(_ID("dvd_uvEyeOffset"), PushConstantType::VEC2, uvEye);
+    uniforms->set(_ID("dvd_tessTriangleWidth"),  PushConstantType::FLOAT, triangleWidth);
+    uniforms->set(_ID("dvd_frustumPlanes"), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
 
     Object3D::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
 }

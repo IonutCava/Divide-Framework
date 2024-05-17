@@ -32,7 +32,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_LOCK_MANAGER_H_
 #define DVD_LOCK_MANAGER_H_
 
-#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
+#include "Platform/Video/Buffers/Headers/BufferRange.h"
 
 
 //ref: https://github.com/nvMcJohn/apitest

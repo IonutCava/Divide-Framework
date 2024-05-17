@@ -229,15 +229,13 @@ namespace Divide
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = to_U32( nbActiveActors );
             descriptor._partitionSize = g_parallelPartitionSize;
-            descriptor._cbk = [activeActors]( const Task*, const U32 start, const U32 end )
+            Parallel_For( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [activeActors]( const Task*, const U32 start, const U32 end )
             {
                 for ( U32 i = start; i < end; ++i )
                 {
                     UpdateActor( activeActors[i] );
                 }
-            };
-
-            parallel_for( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
+            });
         }
     }
 

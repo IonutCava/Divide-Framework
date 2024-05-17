@@ -731,6 +731,10 @@ static const mat4<F32> MAT4_ZERO{ 0.f, 0.f, 0.f, 0.f,
                                   0.f, 0.f, 0.f, 0.f,
                                   0.f, 0.f, 0.f, 0.f };
 
+static const mat4<F32> MAT4_NEGATIVE_ONE{ -1.f, -1.f, -1.f, -1.f,
+                                          -1.f, -1.f, -1.f, -1.f,
+                                          -1.f, -1.f, -1.f, -1.f,
+                                          -1.f, -1.f, -1.f, -1.f };
 static const mat2<F32> MAT2_IDENTITY{};
 static const mat3<F32> MAT3_IDENTITY{};
 static const mat4<F32> MAT4_IDENTITY{};

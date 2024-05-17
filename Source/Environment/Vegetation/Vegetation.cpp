@@ -555,7 +555,7 @@ namespace Divide
             nodeDescriptor._serialize = false;
             nodeDescriptor._instanceCount = instance->_instanceCountTrees;
             nodeDescriptor._nodeHandle = FromHandle(crtMesh);
-            nodeDescriptor._name = Util::StringFormat( "Trees_chunk_{}", ID ).c_str();
+            Util::StringFormat( nodeDescriptor._name, "Trees_chunk_{}", ID );
             _treeParentNode = sgn->addChildNode( nodeDescriptor );
 
             TransformComponent* tComp = _treeParentNode->get<TransformComponent>();
@@ -612,7 +612,7 @@ namespace Divide
             return;
         }
         
-        pkg.pushConstantsCmd()._constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
+        pkg.pushConstantsCmd()._uniformData->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
 
         Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( pkg );
         DIVIDE_ASSERT(cmdBuffer != INVALID_HANDLE<GFX::CommandBuffer>);
@@ -655,21 +655,21 @@ namespace Divide
                 mat4<F32> viewProjectionMatrix;
                 mat4<F32>::Multiply( cameraSnapshot._projectionMatrix, cameraSnapshot._viewMatrix, viewProjectionMatrix );
 
-                PushConstantsStruct fastConstants{};
-                fastConstants.data[0] = viewProjectionMatrix;
-                fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
                 GFX::SendPushConstantsCommand cullConstantsCmd{};
-                PushConstants& constants = cullConstantsCmd._constants;
-                constants.set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTexture->width(), hizTexture->height() ) );
-                constants.set( _ID( "dvd_cameraPosition" ), PushConstantType::VEC3, cameraSnapshot._eye );
-                constants.set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
-                constants.set( _ID( "dvd_grassVisibilityDistance" ), PushConstantType::FLOAT, _grassDistance );
-                constants.set( _ID( "dvd_treeVisibilityDistance" ), PushConstantType::FLOAT, _treeDistance );
-                constants.set( _ID( "dvd_treeExtents" ), PushConstantType::VEC4, _treeExtents );
-                constants.set( _ID( "dvd_grassExtents" ), PushConstantType::VEC4, _grassExtents );
-                constants.set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
-                constants.set( fastConstants );
+                UniformData* uniforms = cullConstantsCmd._uniformData;
+                uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTexture->width(), hizTexture->height() ) );
+                uniforms->set( _ID( "dvd_cameraPosition" ), PushConstantType::VEC3, cameraSnapshot._eye );
+                uniforms->set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
+                uniforms->set( _ID( "dvd_grassVisibilityDistance" ), PushConstantType::FLOAT, _grassDistance );
+                uniforms->set( _ID( "dvd_treeVisibilityDistance" ), PushConstantType::FLOAT, _treeDistance );
+                uniforms->set( _ID( "dvd_treeExtents" ), PushConstantType::VEC4, _treeExtents );
+                uniforms->set( _ID( "dvd_grassExtents" ), PushConstantType::VEC4, _grassExtents );
+                uniforms->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
+                
+                PushConstantsStruct& fastConstants = cullConstantsCmd._fastData;
+                fastConstants.data[0] = viewProjectionMatrix;
+                fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
                 GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut)->_scopeName = "Occlusion Cull Vegetation";
 

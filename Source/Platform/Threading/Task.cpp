@@ -10,7 +10,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        if ( !pool.enqueue( task, priority, task._id, onCompletionFunction ) ) [[unlikely]]
+        if ( !pool.enqueue( task, priority, onCompletionFunction ) ) [[unlikely]]
         {
             Console::errorfn( LOCALE_STR( "TASK_SCHEDULE_FAIL" ), 1 );
             Start( task, pool, TaskPriority::REALTIME, onCompletionFunction );

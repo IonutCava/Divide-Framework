@@ -334,7 +334,12 @@ namespace
                 {
                     PROFILE_SCOPE( "Clean Push Constants", Profiler::Category::Graphics );
 
-                    erase = cmd->As<SendPushConstantsCommand>()->_constants.empty();
+                    SendPushConstantsCommand* sendPushConstantsCommand = cmd->As<SendPushConstantsCommand>();
+                    if ( !sendPushConstantsCommand->_fastData.set() &&
+                         (sendPushConstantsCommand->_uniformData == nullptr || sendPushConstantsCommand->_uniformData->entries().empty()))
+                    {
+                        erase = true;
+                    }
                 }break;
                 case CommandType::BIND_SHADER_RESOURCES:
                 {
@@ -770,8 +775,33 @@ namespace
 
     bool Merge(SendPushConstantsCommand* lhs, SendPushConstantsCommand* rhs)
     {
+        if ( lhs->_fastData.set() )
+        {
+            if ( rhs->_fastData.set() && lhs->_fastData != rhs->_fastData)
+            {
+                return false;
+            }
+        }
+        else if ( rhs->_fastData.set() )
+        {
+            lhs->_fastData = rhs->_fastData;
+        }
+
         bool partial = false;
-        return Merge(static_cast<SendPushConstantsCommand*>(lhs)->_constants, static_cast<SendPushConstantsCommand*>(rhs)->_constants, partial);
+
+        UniformData* lhsUniforms = static_cast<SendPushConstantsCommand*>(lhs)->_uniformData;
+        UniformData* rhsUniforms = static_cast<SendPushConstantsCommand*>(rhs)->_uniformData;
+        if ( lhsUniforms == nullptr )
+        {
+            lhsUniforms = rhsUniforms;
+            return true;
+        }
+        else if ( rhsUniforms == nullptr )
+        {
+            return true;
+        }
+
+        return Merge(*lhsUniforms, *rhsUniforms, partial);
     }
 
 }; //namespace Divide::GFX

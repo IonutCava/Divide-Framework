@@ -39,7 +39,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     _pipelineCmd._pipeline = _context.newPipeline( pipelineDescriptor );
     const vec2<U16> res = _parent.screenRT()._rt->getResolution();
 
-    _constantsCmd._constants.set(_ID("size"), PushConstantType::VEC2, res);
+    _uniforms.set(_ID("size"), PushConstantType::VEC2, res);
 
     const vec2<F32> s = res * 0.5f;
     _projToPixelBasis = mat4<F32>
@@ -67,23 +67,25 @@ bool SSRPreRenderOperator::ready() const noexcept
     return false;
 }
 
-void SSRPreRenderOperator::parametersChanged() {
+void SSRPreRenderOperator::parametersChanged()
+{
 
     const auto& parameters = _context.context().config().rendering.postFX.ssr;
-    _constantsCmd._constants.set(_ID("maxSteps"), PushConstantType::FLOAT, to_F32(parameters.maxSteps));
-    _constantsCmd._constants.set(_ID("binarySearchIterations"), PushConstantType::FLOAT, to_F32(parameters.binarySearchIterations));
-    _constantsCmd._constants.set(_ID("jitterAmount"), PushConstantType::FLOAT, parameters.jitterAmount);
-    _constantsCmd._constants.set(_ID("maxDistance"), PushConstantType::FLOAT, parameters.maxDistance);
-    _constantsCmd._constants.set(_ID("stride"), PushConstantType::FLOAT, parameters.stride);
-    _constantsCmd._constants.set(_ID("zThickness"), PushConstantType::FLOAT, parameters.zThickness);
-    _constantsCmd._constants.set(_ID("strideZCutoff"), PushConstantType::FLOAT, parameters.strideZCutoff);
-    _constantsCmd._constants.set(_ID("screenEdgeFadeStart"), PushConstantType::FLOAT, parameters.screenEdgeFadeStart);
-    _constantsCmd._constants.set(_ID("eyeFadeStart"), PushConstantType::FLOAT, parameters.eyeFadeStart);
-    _constantsCmd._constants.set(_ID("eyeFadeEnd"), PushConstantType::FLOAT, parameters.eyeFadeEnd);
+    _uniforms.set( _ID( "maxSteps" ), PushConstantType::FLOAT, to_F32( parameters.maxSteps ) );
+    _uniforms.set( _ID( "binarySearchIterations" ), PushConstantType::FLOAT, to_F32( parameters.binarySearchIterations ) );
+    _uniforms.set( _ID( "jitterAmount" ), PushConstantType::FLOAT, parameters.jitterAmount );
+    _uniforms.set( _ID( "maxDistance" ), PushConstantType::FLOAT, parameters.maxDistance );
+    _uniforms.set( _ID( "stride" ), PushConstantType::FLOAT, parameters.stride );
+    _uniforms.set( _ID( "zThickness" ), PushConstantType::FLOAT, parameters.zThickness );
+    _uniforms.set( _ID( "strideZCutoff" ), PushConstantType::FLOAT, parameters.strideZCutoff );
+    _uniforms.set( _ID( "screenEdgeFadeStart" ), PushConstantType::FLOAT, parameters.screenEdgeFadeStart );
+    _uniforms.set( _ID( "eyeFadeStart" ), PushConstantType::FLOAT, parameters.eyeFadeStart );
+    _uniforms.set(_ID("eyeFadeEnd"), PushConstantType::FLOAT, parameters.eyeFadeEnd);
     _constantsDirty = true;
 }
 
-void SSRPreRenderOperator::reshape(const U16 width, const U16 height) {
+void SSRPreRenderOperator::reshape(const U16 width, const U16 height)
+{
     PreRenderOperator::reshape(width, height);
     const vec2<F32> s{ width * 0.5f, height * 0.5f };
     _projToPixelBasis = mat4<F32>
@@ -95,10 +97,12 @@ void SSRPreRenderOperator::reshape(const U16 width, const U16 height) {
     };
 }
 
-void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut) {
+void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::CommandBuffer& bufferInOut)
+{
     PreRenderOperator::prepare(idx, bufferInOut);
 
-    if (_stateChanged && !_enabled) {
+    if (_stateChanged && !_enabled)
+    {
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_SSR_CLEAR_TARGET";
         renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
@@ -112,7 +116,8 @@ void SSRPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX::
     _stateChanged = false;
 }
 
-bool SSRPreRenderOperator::execute( [[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) {
+bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
+{
     assert(_enabled);
 
     RTAttachment* screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
@@ -127,33 +132,22 @@ bool SSRPreRenderOperator::execute( [[maybe_unused]] const PlayerIndex idx, cons
         screenMipCount -= 2u;
     }
 
-    const GFXShaderData::PrevFrameData& prevFrameData = _context.previousFrameData();
+    const GFXShaderData::PrevFrameData& prevFrameData = _context.previousFrameData( idx );
 
-    _constantsCmd._constants.set(_ID("projToPixel"), PushConstantType::MAT4, cameraSnapshot._projectionMatrix * _projToPixelBasis);
-    _constantsCmd._constants.set(_ID("projectionMatrix"), PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
-    _constantsCmd._constants.set(_ID("invProjectionMatrix"), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
-    _constantsCmd._constants.set(_ID("invViewMatrix"), PushConstantType::MAT4, cameraSnapshot._invViewMatrix);
-    _constantsCmd._constants.set(_ID("previousViewMatrix"), PushConstantType::MAT4, prevFrameData._previousViewMatrix);
-    _constantsCmd._constants.set(_ID("previousProjectionMatrix"), PushConstantType::MAT4, prevFrameData._previousProjectionMatrix);
-    _constantsCmd._constants.set(_ID("previousViewProjectionMatrix"), PushConstantType::MAT4, prevFrameData._previousViewProjectionMatrix);
-    _constantsCmd._constants.set(_ID("screenDimensions"), PushConstantType::VEC2, vec2<F32>( Get(screenTex)->width(), Get(screenTex)->height()));
-    _constantsCmd._constants.set(_ID("maxScreenMips"), PushConstantType::UINT, screenMipCount);
-    _constantsCmd._constants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
-
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
-        cmd->_usage = DescriptorSetUsage::PER_DRAW;
-        {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenTex, screenAtt->_descriptor._sampler );
-        }
-        {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, depthTex, depthAtt->_descriptor._sampler );
-        }
-        {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, normalsTex, normalsAtt->_descriptor._sampler );
-        }
+    auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+    cmd->_usage = DescriptorSetUsage::PER_DRAW;
+    {
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, screenTex, screenAtt->_descriptor._sampler );
+    }
+    {
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, depthTex, depthAtt->_descriptor._sampler );
+    }
+    {
+        DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
+        Set( binding._data, normalsTex, normalsAtt->_descriptor._sampler );
+    }
 
     GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
     renderPassCmd->_target = RenderTargetNames::SSR_RESULT;
@@ -163,8 +157,19 @@ bool SSRPreRenderOperator::execute( [[maybe_unused]] const PlayerIndex idx, cons
 
     GFX::EnqueueCommand(bufferInOut, _pipelineCmd);
 
-    GFX::EnqueueCommand(bufferInOut, _constantsCmd);
+    _uniforms.set( _ID( "invProjectionMatrix" ), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix );
+    _uniforms.set( _ID( "invViewMatrix" ), PushConstantType::MAT4, cameraSnapshot._invViewMatrix );
+    _uniforms.set( _ID( "previousViewMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewMatrix );
+    _uniforms.set( _ID( "previousProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousProjectionMatrix );
+    _uniforms.set( _ID( "previousViewProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewProjectionMatrix );
+    _uniforms.set( _ID( "screenDimensions" ), PushConstantType::VEC2, vec2<F32>( Get( screenTex )->width(), Get( screenTex )->height() ) );
+    _uniforms.set( _ID( "maxScreenMips" ), PushConstantType::UINT, screenMipCount );
+    _uniforms.set( _ID( "_zPlanes" ), PushConstantType::VEC2, cameraSnapshot._zPlanes );
 
+    auto sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+    sendPushConstantsCmd->_uniformData = &_uniforms;
+    sendPushConstantsCmd->_fastData.data[0] = (cameraSnapshot._projectionMatrix * _projToPixelBasis);
+    sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._projectionMatrix;
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 

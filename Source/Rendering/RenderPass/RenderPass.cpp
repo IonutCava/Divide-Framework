@@ -80,8 +80,8 @@ namespace Divide
         , _context( context )
         , _parent( parent )
         , _config( context.context().config() )
-        , _stageFlag( renderStage )
         , _name( TypeUtil::RenderStageToString( renderStage ) )
+        , _stageFlag( renderStage )
     {
         for ( U8 i = 0u; i < to_base( _stageFlag ); ++i )
         {
@@ -90,12 +90,13 @@ namespace Divide
         }
     }
 
-    RenderPass::BufferData RenderPass::getBufferData() const noexcept
+    RenderPass::PassData RenderPass::getPassData() const noexcept
     {
         return
         {
             ._lastCommandCount = &_lastCmdCount,
-            ._lastNodeCount = &_lastNodeCount
+            ._lastNodeCount = &_lastNodeCount,
+            ._uniforms = &_uniforms
         };
     }
 

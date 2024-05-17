@@ -356,7 +356,7 @@ namespace Divide
 
                 if ( g_nodeDescriptor._name.empty() )
                 {
-                    g_nodeDescriptor._name = Util::StringFormat( "Primitive_{}", DefaultObjectIndex++ ).c_str();
+                    Util::StringFormat( g_nodeDescriptor._name, "Primitive_{}", DefaultObjectIndex++ );
                 }
 
                 SceneNodeHandle handle{};

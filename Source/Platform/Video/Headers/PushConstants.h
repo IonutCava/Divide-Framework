@@ -33,59 +33,55 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PUSH_CONSTANTS_H_
 #define DVD_PUSH_CONSTANTS_H_
 
-#include "PushConstant.h"
+#include "Platform/Video/Buffers/Headers/BufferRange.h"
 
-namespace Divide {
+namespace Divide
+{
 struct PushConstantsStruct
 {
-    static constexpr U8 PUSH_MATRIX_COUNT = 2u;
+    mat4<F32> data[2]{ MAT4_NEGATIVE_ONE, MAT4_NEGATIVE_ONE };
 
-    mat4<F32> data[PUSH_MATRIX_COUNT] = {MAT4_ZERO, MAT4_ZERO};
-    bool _set{false};
+    [[nodiscard]] inline bool set() const noexcept
+    { 
+        return data[0] != MAT4_NEGATIVE_ONE ||
+               data[1] != MAT4_NEGATIVE_ONE;
+    }
 
     [[nodiscard]] static constexpr size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
     [[nodiscard]] inline const F32* dataPtr() const { return data[0].mat; }
 
+    
     bool operator==(const PushConstantsStruct& rhs) const = default;
 };
 
-struct PushConstants
+struct UniformData
 {
-    PushConstants() = default;
-    explicit PushConstants(const PushConstantsStruct& pushConstants);
-    explicit PushConstants(const GFX::PushConstant& constant);
-    explicit PushConstants(GFX::PushConstant&& constant);
+    struct Entry
+    {
+        U64 _bindingHash{0u};
+        BufferRange _range;
+        PushConstantType _type{PushConstantType::COUNT};
+    };
 
-    void set(const GFX::PushConstant& constant);
-
-    void set(const PushConstantsStruct& fastData);
-
-    template<typename T> requires (!std::is_same_v<bool, T>)
-    void set(U64 bindingHash, PushConstantType type, const T* values, size_t count);
+    using UniformDataContainer = vector<Entry>;
 
     template<typename T>
     void set(U64 bindingHash, PushConstantType type, const T& value);
 
     template<typename T> requires (!std::is_same_v<bool, T>)
-    void set(U64 bindingHash, PushConstantType type, const vector<T>& values);
+    void set(U64 bindingHash, PushConstantType type, const T* values, size_t count);
 
-    template<typename T, size_t N> requires (!std::is_same_v<bool, T>)
-    void set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values);
+    bool remove( U64 bindingHash );
 
-    void clear() noexcept;
-    bool empty() const noexcept;
-    void countHint(const size_t count);
-
-    [[nodiscard]] const vector<GFX::PushConstant>& data() const noexcept;
-    [[nodiscard]] const PushConstantsStruct& fastData() const noexcept;
+    [[nodiscard]] const UniformDataContainer& entries() const noexcept;
+    [[nodiscard]] const Byte* data( size_t offset ) const noexcept;
 
 private:
-    friend bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
-    PushConstantsStruct _fastData{};
-    vector<GFX::PushConstant> _data;
-};
+    friend bool Merge( UniformData& lhs, UniformData& rhs, bool& partial );
 
-bool Merge(PushConstants& lhs, const PushConstants& rhs, bool& partial);
+    UniformDataContainer _data;
+    eastl::fixed_vector<Byte, 32, true> _buffer;
+};
 
 }; //namespace Divide
 

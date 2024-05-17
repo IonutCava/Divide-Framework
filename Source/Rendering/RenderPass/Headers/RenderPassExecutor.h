@@ -186,17 +186,19 @@ private:
                              GFX::CommandBuffer& bufferInOut,
                              GFX::MemoryBarrierCommand& memCmdInOut);
 
-    void processVisibleNodeTransform( RenderingComponent* rComp );
+    void processVisibleNodeTransform( PlayerIndex index, RenderingComponent* rComp );
 
     [[nodiscard]] U16 processVisibleNodeMaterial(RenderingComponent* rComp, bool& cacheHit);
 
-    size_t buildDrawCommands(const RenderPassParams& params,
+    size_t buildDrawCommands(PlayerIndex index, 
+                             const RenderPassParams& params,
                              bool doPrePass,
                              bool doOITPass,
                              GFX::CommandBuffer& bufferInOut,
                              GFX::MemoryBarrierCommand& memCmdInOut);
 
-    size_t prepareNodeData(const RenderPassParams& params,
+    size_t prepareNodeData(PlayerIndex index, 
+                           const RenderPassParams& params,
                            const CameraSnapshot& cameraSnapshot,
                            bool hasInvalidNodes,
                            const bool doPrePass,

@@ -104,8 +104,11 @@ namespace Divide {
         template<typename T_str = string>  requires is_string<T_str>
         [[nodiscard]] bool GetLine(istringstream& input, T_str& line, char delimiter = '\n');
 
-        template <typename... Args>
-        [[nodiscard]] string StringFormat(const std::string_view fmt, Args&& ...args);
+        template <typename Str = string, typename... Args> requires (!concept_const_char<Str>)
+        [[nodiscard]] Str StringFormat(const char* fmt, Args&& ...args);
+
+        template <typename Str = string, typename... Args> requires (!concept_const_char<Str>)
+        void StringFormat( Str& output, const char* fmt, Args&& ...args );
 
         template<typename T>
         [[nodiscard]] string to_string( GET_PASS_TYPE<T> value);

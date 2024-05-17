@@ -142,7 +142,7 @@ private:
     VkPipelineCache _pipelineCache{ VK_NULL_HANDLE };
     VkDescriptorSet _dummyDescriptorSet{VK_NULL_HANDLE};
 
-    GFX::MemoryBarrierCommand _pushConstantsMemCommand{};
+    GFX::MemoryBarrierCommand _uniformsMemCommand{};
     DescriptorLayoutCache_uptr _descriptorLayoutCache{nullptr};
 
     hashMap<I64, VKPerWindowState> _perWindowState;
@@ -153,7 +153,7 @@ private:
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
 
-    bool _pushConstantsNeedLock{ false };
+    bool _uniformsNeedLock{ false };
     
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;

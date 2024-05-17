@@ -41,7 +41,7 @@
 namespace Divide {
 
 class GFXDevice;
-struct PushConstants;
+struct PushConstantsStruct;
 
 class Texture;
 class Sphere3D;
@@ -133,7 +133,7 @@ DEFINE_NODE_TYPE( Sky, SceneNodeType::TYPE_SKY )
 
     bool load( PlatformContext& context ) override;
 
-    void setSkyShaderData( RenderStagePass renderStagePass, PushConstants& constantsInOut);
+    void setSkyShaderData( RenderStagePass renderStagePass, PushConstantsStruct& constantsInOut);
 
 protected:
     Sun _sun;

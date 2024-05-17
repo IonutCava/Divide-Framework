@@ -98,9 +98,8 @@ bool MotionBlurPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx
         Set( binding._data, velocityAtt->texture(), velocityAtt->_descriptor._sampler );
     }
 
-    PushConstantsStruct params{};
+    PushConstantsStruct& params = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
     params.data[0]._vec[0].xy.set( velocityFactor, to_F32( maxSamples() ) );
-    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

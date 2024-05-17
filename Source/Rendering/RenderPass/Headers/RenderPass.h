@@ -33,6 +33,8 @@
 #ifndef DVD_RENDERING_RENDER_PASS_RENDERPASS_H_
 #define DVD_RENDERING_RENDER_PASS_RENDERPASS_H_
 
+#include "Platform/Video/Headers/PushConstants.h"
+
 namespace Divide {
 
 namespace Time {
@@ -60,9 +62,11 @@ enum class RenderStage : U8;
 // E.g.: PRE_PASS + MAIN_PASS share the same RenderQueue
 class RenderPass final : NonCopyable {
    public:
-       struct BufferData {
+       struct PassData
+       {
            U32* _lastCommandCount = nullptr;
            U32* _lastNodeCount = nullptr;
+           UniformData* _uniforms = nullptr;
        };
 
   public:
@@ -77,23 +81,22 @@ class RenderPass final : NonCopyable {
 
     [[nodiscard]] inline RenderStage stageFlag() const noexcept { return _stageFlag; }
 
-    BufferData getBufferData() const noexcept;
+    PassData getPassData() const noexcept;
 
     PROPERTY_RW(vector<RenderStage>, dependencies);
 
    private:
-
     GFXDevice& _context;
     RenderPassManager& _parent;
     Configuration& _config;
 
-    RenderStage _stageFlag = RenderStage::COUNT;
-
-    U32 _transformIndexOffset = 0u;
+    mutable UniformData _uniforms;
     mutable U32 _lastCmdCount = 0u;
     mutable U32 _lastNodeCount = 0u;
 
     Str<64> _name = "";
+    U32 _transformIndexOffset = 0u;
+    RenderStage _stageFlag = RenderStage::COUNT;
 };
 
 }  // namespace Divide

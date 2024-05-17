@@ -204,8 +204,8 @@ private:
     eastl::stack<HardwareQueryContext> _queryContext;
     bool _runQueries{false};
 
-    bool _pushConstantsNeedLock{false};
-    GFX::MemoryBarrierCommand _pushConstantsMemCommand{};
+    bool _uniformsNeedLock{false};
+    GFX::MemoryBarrierCommand _uniformsMemCommand{};
 
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
 

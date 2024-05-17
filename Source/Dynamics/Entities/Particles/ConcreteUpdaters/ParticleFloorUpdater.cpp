@@ -19,7 +19,8 @@ void ParticleFloorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, Parti
     ParallelForDescriptor descriptor = {};
     descriptor._iterCount = endID;
     descriptor._partitionSize = s_particlesPerThread;
-    descriptor._cbk = [&p, floorY, bounce](const Task*, const U32 start, const U32 end) {
+    Parallel_For( context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&p, floorY, bounce](const Task*, const U32 start, const U32 end)
+    {
         for (U32 i = start; i < end; ++i) {
             if (p._position[i].y - p._position[i].w / 2 < floorY) {
                 vec3<F32> force(p._acceleration[i]);
@@ -34,9 +35,7 @@ void ParticleFloorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, Parti
                 p._acceleration[i].xyz = force;
             }
         }
-    };
-
-    parallel_for(context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
+    });
 }
 
 } //namespace Divide

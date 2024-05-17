@@ -170,7 +170,7 @@ private:
     bool _filtersDirty = true;
 
     Pipeline* _drawPipeline = nullptr;
-    GFX::SendPushConstantsCommand _drawConstantsCmd;
+    UniformData _uniformData;
     GFX::SetCameraCommand _setCameraCmd;
 };
 

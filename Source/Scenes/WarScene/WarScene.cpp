@@ -448,7 +448,7 @@ bool WarScene::load() {
     {
         for (U8 col = 0; col < colCount; col++)
         {
-            lightNodeDescriptor._name = Util::StringFormat("Light_point_{}_{}", row, col).c_str();
+            Util::StringFormat( lightNodeDescriptor._name, "Light_point_{}_{}", row, col);
             lightNodeDescriptor._nodeHandle = FromHandle( CreateResource( transformDescriptor ) );
 
             SceneGraphNode* lightSGN = pointLightNode->addChildNode(lightNodeDescriptor);

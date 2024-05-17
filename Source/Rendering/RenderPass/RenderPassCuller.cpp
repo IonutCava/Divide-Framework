@@ -95,14 +95,13 @@ namespace Divide
                 descriptor._partitionSize = g_nodesPerCullingPartition;
                 descriptor._priority = TaskPriority::DONT_CARE;
                 descriptor._useCurrentThread = true;
-                descriptor._cbk = [&]( const Task*, const U32 start, const U32 end )
+                Parallel_For( context.taskPool( TaskPoolType::RENDERER ), descriptor, [&]( const Task*, const U32 start, const U32 end )
                 {
                     for ( U32 i = start; i < end; ++i )
                     {
                         FrustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
                     }
-                };
-                parallel_for( context.taskPool( TaskPoolType::RENDERER ), descriptor );
+                });
             }
             else
             {
@@ -168,14 +167,13 @@ namespace Divide
                     descriptor._partitionSize = g_nodesPerCullingPartition;
                     descriptor._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
                     descriptor._useCurrentThread = true;
-                    descriptor._cbk = [&]( const Task*, const U32 start, const U32 end )
+                    Parallel_For( currentNode->context().taskPool( TaskPoolType::RENDERER ), descriptor, [&]( const Task*, const U32 start, const U32 end )
                     {
                         for ( U32 i = start; i < end; ++i )
                         {
                             FrustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
                         }
-                    };
-                    parallel_for( currentNode->context().taskPool( TaskPoolType::RENDERER ), descriptor );
+                    });
                 }
                 else
                 {

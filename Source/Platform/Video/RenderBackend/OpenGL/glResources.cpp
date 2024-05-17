@@ -855,18 +855,18 @@ namespace Divide
             const gl46core::GLuint activeProgram = GL_API::GetStateTracker()._activeShaderProgramHandle;
             const gl46core::GLuint activePipeline = GL_API::GetStateTracker()._activeShaderPipelineHandle;
 
-            constexpr const char* programMsg = "[{} Thread][Source: {}][Type: {}][ID: {}][Severity: {}][Bound Program : {}][DebugGroup: {}][Message: {}]";
-            constexpr const char* pipelineMsg = "[{} Thread][Source: {}][Type: {}][ID: {}][Severity: {}][Bound Pipeline : {}][DebugGroup: {}][Message: {}]";
+            const bool isPipeline = activeProgram == 0u;
 
-            const string outputError = Util::StringFormat(activeProgram != 0u ? programMsg : pipelineMsg,
-                                                          userParam == nullptr ? "Main" : "Worker",
-                                                          gl_source,
-                                                          gl_type,
-                                                          id,
-                                                          gl_severity,
-                                                          activeProgram != 0u ? activeProgram : activePipeline,
-                                                          fullScope.c_str(),
-                                                          message );
+            const string outputError = Util::StringFormat<string>("[{} Thread][Source: {}][Type: {}][ID: {}][Severity: {}][Bound {} : {}][DebugGroup: {}][Message: {}]",
+                                                                  userParam == nullptr ? "Main" : "Worker",
+                                                                  gl_source,
+                                                                  gl_type,
+                                                                  id,
+                                                                  gl_severity,
+                                                                  isPipeline ? "Pipeline" : "Program",
+                                                                  isPipeline ? activePipeline : activeProgram,
+                                                                  fullScope,
+                                                                  message );
 
             const bool isConsoleImmediate = Console::IsFlagSet( Console::Flags::PRINT_IMMEDIATE );
             const bool severityDecoration = Console::IsFlagSet( Console::Flags::DECORATE_SEVERITY );

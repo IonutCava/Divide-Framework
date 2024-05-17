@@ -33,24 +33,29 @@
 #ifndef DVD_GUI_SPLASH_H
 #define DVD_GUI_SPLASH_H
 
-namespace Divide {
+#include "Platform/Video/Headers/PushConstants.h"
+
+namespace Divide
+{
 
 class Texture;
 class ShaderProgram;
 
 class GFXDevice;
 class ResourceCache;
-class GUISplash {
+class GUISplash
+{
    public:
     GUISplash(std::string_view splashImageName, vec2<U16> dimensions);
     ~GUISplash();
 
-    void render(GFXDevice& context) const;
+    void render(GFXDevice& context);
 
    private:
     vec2<U16> _dimensions;
     Handle<Texture> _splashImage = INVALID_HANDLE<Texture>;
     Handle<ShaderProgram> _splashShader = INVALID_HANDLE<ShaderProgram>;
+    UniformData _uniformData{};
 };
 
 };  // namespace Divide

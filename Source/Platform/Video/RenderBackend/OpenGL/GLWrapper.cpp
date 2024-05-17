@@ -872,11 +872,11 @@ namespace Divide
 
     void GL_API::flushPushConstantsLocks()
     {
-        if ( _pushConstantsNeedLock )
+        if ( _uniformsNeedLock )
         {
-            _pushConstantsNeedLock = false;
-            flushCommand( &_pushConstantsMemCommand );
-            _pushConstantsMemCommand._bufferLocks.clear();
+            _uniformsNeedLock = false;
+            flushCommand( &_uniformsMemCommand );
+            _uniformsMemCommand._bufferLocks.clear();
         }
     }
 
@@ -1107,13 +1107,17 @@ namespace Divide
                     break;
                 }
 
-                const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-                if ( s_stateTracker._activeShaderProgram->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _pushConstantsMemCommand ) )
+                GFX::SendPushConstantsCommand* pushConstantsCmd = cmd->As<GFX::SendPushConstantsCommand>();
+                UniformData* uniforms = pushConstantsCmd->_uniformData;
+                if ( uniforms != nullptr )
                 {
-                    _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
-                    _pushConstantsNeedLock = _pushConstantsNeedLock || _pushConstantsMemCommand._bufferLocks.empty();
+                    if ( s_stateTracker._activeShaderProgram->uploadUniformData( *uniforms, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _uniformsMemCommand ) )
+                    {
+                        _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
+                        _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
+                    }
                 }
-                Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstants.fastData() );
+                Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstantsCmd->_fastData );
 
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:

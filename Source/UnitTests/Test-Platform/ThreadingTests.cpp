@@ -10,7 +10,14 @@ namespace Divide
 
 namespace
 {
-     void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {})
+    Mutex s_printLock;
+    void PrintLine( const std::string_view line )
+    {
+        LockGuard<Mutex> lock( s_printLock );
+        std::cout << line << std::endl;
+    };
+
+    void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {})
     {
         Start( task, pool, priority, onCompletionFunction );
         Wait( task, pool );
@@ -75,16 +82,14 @@ TEST_CASE( "Parallel For Test", "[threading_tests]" )
     ParallelForDescriptor descriptor = {};
     descriptor._iterCount = loopCount;
     descriptor._partitionSize = partitionSize;
-    descriptor._cbk = [&totalCounter, &loopCounter]( [[maybe_unused]] const Task* parentTask, const U32 start, const U32 end ) noexcept
+    Parallel_For( test, descriptor, [&totalCounter, &loopCounter]( [[maybe_unused]] const Task* parentTask, const U32 start, const U32 end ) noexcept
     {
         ++loopCounter;
         for ( U32 i = start; i < end; ++i )
         {
             ++totalCounter;
         }
-    };
-
-    parallel_for( test, descriptor );
+    });
 
     CHECK_EQUAL( loopCounter, 5u );
     CHECK_EQUAL( totalCounter, 18u );
@@ -107,32 +112,32 @@ TEST_CASE( "Task Callback Test", "[threading_tests]" )
                             {
                                 Time::ProfileTimer timer;
                                 timer.start();
-                                TaskPool::PrintLine( "TaskCallbackTest: Thread sleeping for 500ms" );
+                                PrintLine( "TaskCallbackTest: Thread sleeping for 500ms" );
                                 SleepThread(Time::Milliseconds(500) );
 
                                 timer.stop();
                                 const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - Time::ProfileTimer::overhead() );
-                                TaskPool::PrintLine( "TaskCallbackTest: Thread waking up (" + std::to_string( durationMS ) + "ms )" );
+                                PrintLine( "TaskCallbackTest: Thread waking up (" + std::to_string( durationMS ) + "ms )" );
                             } );
 
     Start( *job, test, TaskPriority::DONT_CARE, [&testValue]()
             {
-                TaskPool::PrintLine( "TaskCallbackTest: Callback called!" );
+                PrintLine( "TaskCallbackTest: Callback called!" );
                 testValue = true;
-                TaskPool::PrintLine( "TaskCallbackTest: Value changed to: [ " + std::string( testValue ? "true" : "false" ) + " ]!" );
+                PrintLine( "TaskCallbackTest: Value changed to: [ " + std::string( testValue ? "true" : "false" ) + " ]!" );
             } );
 
     CHECK_FALSE( testValue );
-    TaskPool::PrintLine( "TaskCallbackTest: waiting for task!" );
+    PrintLine( "TaskCallbackTest: waiting for task!" );
     Wait( *job, test );
 
     CHECK_TRUE( Finished( *job ) );
     CHECK_FALSE( testValue );
 
-    TaskPool::PrintLine( "TaskCallbackTest: flushing queue!" );
+    PrintLine( "TaskCallbackTest: flushing queue!" );
     const size_t callbackCount = test.flushCallbackQueue();
     CHECK_EQUAL( callbackCount, 1u );
-    TaskPool::PrintLine( "TaskCallbackTest: flushing test! Value: " + std::string( testValue ? "true" : "false" ) );
+    PrintLine( "TaskCallbackTest: flushing test! Value: " + std::string( testValue ? "true" : "false" ) );
     CHECK_TRUE( testValue );
 
     test.shutdown();
@@ -160,7 +165,7 @@ namespace
             SleepThread( Time::Milliseconds( 300 ) );
             timer.stop();
             const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - Time::ProfileTimer::overhead() );
-            TaskPool::PrintLine( "threadedFunction completed in: " + std::to_string( durationMS ) + " ms." );
+            PrintLine( "threadedFunction completed in: " + std::to_string( durationMS ) + " ms." );
 
             setTestValue( true );
         }
@@ -235,7 +240,7 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
 
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
-        TaskPool::PrintLine( "Threading speed test: " + std::to_string( loopCountA ) + " tasks completed in: " + std::to_string( durationMS ) + " ms." );
+        PrintLine( "Threading speed test: " + std::to_string( loopCountA ) + " tasks completed in: " + std::to_string( durationMS ) + " ms." );
 
         test.shutdown();
     }
@@ -251,15 +256,13 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
         descriptor._iterCount = loopCountB;
         descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = false;
-        descriptor._cbk = []( [[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end )
+        Parallel_For( test, descriptor, []( [[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end )
         {
             NOP();
-        };
-
-        parallel_for( test, descriptor );
+        });
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
-        TaskPool::PrintLine( "Threading speed test (parallel_for): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
+        PrintLine( "Threading speed test (Parallel_For): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
 
         test.shutdown();
     }
@@ -275,16 +278,14 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
         descriptor._iterCount = loopCountB;
         descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = true;
-        descriptor._cbk = []( [[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end )
+        Parallel_For( test, descriptor, []( [[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end )
         {
             NOP();
-        };
-
-        parallel_for( test, descriptor );
+        });
 
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
-        TaskPool::PrintLine( "Threading speed test (parallel_for - use current thread): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
+        PrintLine( "Threading speed test (Parallel_For - use current thread): " + std::to_string( loopCountB / partitionSize ) + " partitions tasks completed in: " + std::to_string( durationMS ) + " ms." );
 
         test.shutdown();
     }

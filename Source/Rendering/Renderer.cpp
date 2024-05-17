@@ -87,7 +87,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = totalLights;
         bufferDescriptor._bufferParams._elementSize = sizeof(U32);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("LIGHT_INDEX_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormat( bufferDescriptor._name, "LIGHT_INDEX_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightIndexBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -95,7 +95,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("GLOBAL_CLUSTER_AABB_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormat( bufferDescriptor._name, "GLOBAL_CLUSTER_AABB_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightClusterAABBsBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -103,7 +103,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = sizeof(vec4<U32>);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("LIGHT_GRID_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormat( bufferDescriptor._name, "LIGHT_GRID_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -112,7 +112,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = 1u;
         bufferDescriptor._bufferParams._elementSize =  sizeof(vec4<U32>);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            bufferDescriptor._name = Util::StringFormat("GLOBAL_INDEX_COUNT_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormat( bufferDescriptor._name, "GLOBAL_INDEX_COUNT_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -248,13 +248,11 @@ void Renderer::prepareLighting(const RenderStage stage,
                 ._buffer = data._lightClusterAABBsBuffer->getBufferImpl()
             });
 
-            PushConstantsStruct pushConstants{};
+            GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
+            PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
             pushConstants.data[0] = data._gridData._invProjectionMatrix;
             pushConstants.data[1]._vec[0] = data._gridData._viewport;
             pushConstants.data[1]._vec[1].xy = data._gridData._zPlanes;
-
-            GFX::EnqueueCommand(bufferInOut, _lightBuildClusteredAABBsPipelineCmd);
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushConstants);
             GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize =
             { 
                 Config::Lighting::ClusteredForward::CLUSTERS_X,

@@ -363,7 +363,6 @@ void CEGUIRenderer::endRendering()
 void CEGUIRenderer::bindDefaultState( bool const scissor, const BlendMode mode, const glm::mat4& viewProjMat )
 {
     using namespace Divide;
-    thread_local PushConstantsStruct pushConstants{};
 
     DIVIDE_ASSERT(mode != BlendMode::BM_INVALID);
 
@@ -381,9 +380,8 @@ void CEGUIRenderer::bindDefaultState( bool const scissor, const BlendMode mode, 
 
     if (_activePipelineType != PipelineType::COUNT )
     {
+        PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( *_bufferInOut )->_fastData;
         memcpy(pushConstants.data[0].mat, glm::value_ptr( viewProjMat ), 16 * sizeof(float));
-        pushConstants._set = true;
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( *_bufferInOut )->_constants.set( pushConstants );
     }
 }
 

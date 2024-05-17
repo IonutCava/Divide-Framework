@@ -93,7 +93,7 @@ namespace Divide {
             const bool isSubMesh = node.type() == SceneNodeType::TYPE_SUBMESH;
             const bool isRoot = sgn->parent() == nullptr;
 
-            ImGui::Text(Util::StringFormat("{} [{}]", getIconForNode(sgn), sgn->name().c_str()).c_str());
+            ImGui::Text(Util::StringFormat("{} [{}]", getIconForNode(sgn), sgn->name()).c_str());
             ImGui::Separator();
             if (isSubMesh) {
                 PushReadOnly();
@@ -113,7 +113,7 @@ namespace Divide {
                 g_particleSource.reset();
 
                 g_nodeDescriptor = {};
-                g_nodeDescriptor._name = Util::StringFormat("New_Child_Node_{}", sgn->getGUID()).c_str();
+                Util::StringFormat( g_nodeDescriptor._name, "New_Child_Node_{}", sgn->getGUID());
                 g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM);
                 g_currentNodeType = SceneNodeType::TYPE_TRANSFORM;
                 _parentNode = sgn;
@@ -550,10 +550,8 @@ namespace Divide {
             }
             s_maxLocksInFlight = 0u;
         }
-        
-        static string dayNightText = Util::StringFormat("{}/{} Day/Night Settings", ICON_FK_SUN_O, ICON_FK_MOON_O).c_str();
 
-        if (ImGui::CollapsingHeader(dayNightText.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
+        if (ImGui::CollapsingHeader( ICON_FK_SUN_O " / " ICON_FK_MOON_O " Day/Night Settings", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth))
         {
             bool dayNightEnabled = activeScene->dayNightCycleEnabled();
             if (ImGui::Checkbox("Enable day/night cycle", &dayNightEnabled))
@@ -967,7 +965,7 @@ namespace Divide {
         {
             case SceneNodeType::TYPE_PARTICLE_EMITTER:
             {
-                const ResourceDescriptor<ParticleEmitter> descriptor( Util::StringFormat( "{}_node", g_nodeDescriptor._name.c_str() ) );
+                const ResourceDescriptor<ParticleEmitter> descriptor( g_nodeDescriptor._name + "_node" );
                 Handle<ParticleEmitter> handle = CreateResource(descriptor);
                 if ( handle == INVALID_HANDLE<ParticleEmitter>)
                 {

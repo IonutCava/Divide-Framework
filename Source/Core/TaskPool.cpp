@@ -11,21 +11,11 @@ namespace Divide
 {
     namespace
     {
-        constexpr I32 g_maxDequeueItems = 1 << 3;
         std::atomic_uint g_taskIDCounter = 0u;
+
         NO_DESTROY thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
         thread_local U64  g_allocatedTasks = 0u;
-
-        std::array<U32, g_maxDequeueItems> g_completedTaskIndices{};
     }
-
-    NO_DESTROY Mutex TaskPool::s_printLock{};
-
-    void TaskPool::PrintLine(const std::string_view line )
-    {
-        LockGuard<Mutex> lock( s_printLock );
-        std::cout << line << std::endl;
-    };
 
     TaskPool::TaskPool( const std::string_view workerName )
         : _threadNamePrefix( workerName )
@@ -68,7 +58,7 @@ namespace Divide
 
                     while ( _isRunning )
                     {
-                        executeOneTask( true );
+                        executeOneTask( false );
                     }
 
                     Profiler::OnThreadStop();
@@ -86,62 +76,102 @@ namespace Divide
         join();
         waitForAllTasks( true );
         efficient_clear( _threads );
-        _taskCallbacks.clear();
+        _taskCallbacks.resize(0);
         _threadCreateCbk = {};
     }
 
-    bool TaskPool::enqueue( Task& task, const TaskPriority priority, const U32 taskIndex, const DELEGATE<void>& onCompletionFunction )
+    bool TaskPool::enqueue( Task& task, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
+        if (priority == TaskPriority::REALTIME)
+        {
+            return runRealTime( task, onCompletionFunction);
+        }
 
-        const bool isRealtime = priority == TaskPriority::REALTIME;
-        const bool hasOnCompletionFunction = !isRealtime && onCompletionFunction;
+        bool hasOnCompletionFunction = false;
+        if ( onCompletionFunction )
+        {
+            hasOnCompletionFunction = true;
+            UniqueLock<SharedMutex> w_lock( _taskCallbacksLock );
+            bool found = false;
+            for ( CallbackEntry& entry : _taskCallbacks )
+            {
+                if ( entry._taskID == U32_MAX)
+                {
+                    entry._taskID = task._id;
+                    entry._cbk = onCompletionFunction;
+                    found = true;
+                    break;
+                }
+            }
+
+            if ( !found )
+            {
+                _taskCallbacks.emplace_back( onCompletionFunction, task._id );
+            }
+        }
 
         //Returning false from a PoolTask lambda will just reschedule it for later execution again. 
         //This may leave the task in an infinite loop, always re-queuing!
-        const auto poolTask = [this, &task, hasOnCompletionFunction]( const bool threadWaitingCall )
+        const auto poolTask = [this, &task, hasOnCompletionFunction]( const bool isIdleCall )
         {
             while ( task._unfinishedJobs.load() > 1u )
             {
-                if ( threadWaitingCall )
+                if ( isIdleCall )
                 {
                     // Can't be run at this time. It will be executed again later!
                     return false;
                 }
 
+                // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
                 threadWaiting();
             }
 
-            if ( !threadWaitingCall || task._runWhileIdle )
+            // Can't run this task at the current moment. We're in an idle loop and the task needs express execution (e.g. render pass task)
+            if ( !task._runWhileIdle && isIdleCall )
             {
-                if ( task._callback ) [[likely]]
-                {
-                    task._callback( task );
-                }
-
-                taskCompleted( task, hasOnCompletionFunction );
-                return true;
+                return false;
             }
 
-            return false;
+            taskStarted( task );
+
+            if ( task._callback ) [[likely]]
+            {
+                task._callback( task );
+            }
+            if ( hasOnCompletionFunction )
+            {
+                _threadedCallbackBuffer.enqueue( task._id );
+            }
+
+            taskCompleted( task );
+
+            return true;
         };
 
-        _runningTaskCount.fetch_add( 1u );
+        return addTask( MOV( poolTask ) );
+    }
 
-        if ( !isRealtime ) [[likely]]
+    bool TaskPool::runRealTime( Task& task, const DELEGATE<void>& onCompletionFunction )
+    {
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
+
+        while ( task._unfinishedJobs.load() > 1u )
         {
-            if ( onCompletionFunction )
+            if ( flushCallbackQueue() == 0u)
             {
-                _taskCallbacks[taskIndex] = onCompletionFunction;
+                threadWaiting();
             }
-
-            return addTask( MOV( poolTask ) );
         }
 
-        if ( !poolTask( false ) ) [[unlikely]]
+        taskStarted( task );
+
+        if ( task._callback ) [[likely]]
         {
-            DIVIDE_UNEXPECTED_CALL();
+            task._callback( task );
         }
+
+        taskCompleted( task );
 
         if ( onCompletionFunction )
         {
@@ -171,25 +201,44 @@ namespace Divide
     size_t TaskPool::flushCallbackQueue()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
+
         DIVIDE_ASSERT( Runtime::isMainThread() );
 
+        constexpr I32 maxDequeueItems = 1 << 3;
+        U32 completedTaskIndices[maxDequeueItems];
+
         size_t ret = 0u;
-        size_t count = 0u;
-        do
+        while ( true )
         {
-            count = _threadedCallbackBuffer.try_dequeue_bulk( std::begin( g_completedTaskIndices ), g_maxDequeueItems );
+            const size_t count = _threadedCallbackBuffer.try_dequeue_bulk( completedTaskIndices, maxDequeueItems );
+            if ( count == 0u )
+            {
+                break;
+            }
+
+            UniqueLock<SharedMutex> w_lock( _taskCallbacksLock );
+            const size_t callbackCount = _taskCallbacks.size();
+            DIVIDE_ASSERT( callbackCount > 0u );
+
             for ( size_t i = 0u; i < count; ++i )
             {
-                auto& cbk = _taskCallbacks[g_completedTaskIndices[i]];
-                if ( cbk ) [[likely]]
+                const U32 idx = completedTaskIndices[i];
+                for ( size_t j = 0u; j < callbackCount; ++j )
                 {
-                    cbk();
-                    cbk = {};
+                    CallbackEntry& entry = _taskCallbacks[j];
+                    if ( entry._taskID == idx)
+                    {
+                        if ( entry._cbk )
+                        {
+                            entry._cbk();
+                        }
+                        entry = {};
+                        break;
+                    }
                 }
             }
             ret += count;
         }
-        while ( count > 0u );
 
         return ret;
     }
@@ -214,15 +263,16 @@ namespace Divide
         }
     }
 
-    void TaskPool::taskCompleted( Task& task, const bool hasOnCompletionFunction )
+    void TaskPool::taskStarted( Task& task )
+    {
+        _runningTaskCount.fetch_add( 1 );
+    }
+
+    void TaskPool::taskCompleted( Task& task )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         task._callback = {}; ///<Needed to cleanup any stale resources (e.g. captured by lambdas)
-        if ( hasOnCompletionFunction )
-        {
-            _threadedCallbackBuffer.enqueue( task._id );
-        }
 
         if ( task._parent != nullptr )
         {
@@ -230,6 +280,7 @@ namespace Divide
         }
 
         task._unfinishedJobs.fetch_sub(1);
+
         _runningTaskCount.fetch_sub(1);
 
         LockGuard<Mutex> lock( _taskFinishedMutex );
@@ -290,7 +341,7 @@ namespace Divide
     void TaskPool::threadWaiting()
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-        executeOneTask( false );
+        executeOneTask( true );
     }
 
     void TaskPool::join()
@@ -312,81 +363,69 @@ namespace Divide
 
     void TaskPool::wait() const noexcept
     {
-        if ( _isRunning )
+        if ( !_isRunning )
+        {
+            return;
+        }
+
+        while ( _runningTaskCount.load() > 0u )
         {
             // Busy wait
-            while ( _tasksLeft.load() > 0 )
-            {
-                std::this_thread::yield();
-            }
+            std::this_thread::yield();
         }
     }
 
     bool TaskPool::addTask( PoolTask&& job )
     {
-        if ( _queue.enqueue( MOV( job ) ) )
-        {
-            _tasksLeft.fetch_add( 1 );
-            return true;
-        }
-
-        return false;
+        return _queue.enqueue( MOV( job ) );
     }
 
-    void TaskPool::executeOneTask( const bool waitForTask )
+    void TaskPool::executeOneTask( const bool isIdleCall )
     {
         PoolTask task = {};
-        if ( deque( waitForTask, task ) )
+        if ( deque( isIdleCall, task ) &&
+             !task( isIdleCall ) )
         {
-            if ( !task( !waitForTask ) ) [[unlikely]]
-            {
-                addTask( MOV( task ) );
-            }
-            _tasksLeft.fetch_sub( 1 );
+            addTask( MOV( task ) );
         }
     }
 
-    bool TaskPool::deque( const bool waitForTask, PoolTask& taskOut )
+    bool TaskPool::deque( const bool isIdleCall, PoolTask& taskOut )
     {
-        bool ret = true;
+        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        if ( waitForTask )
+        if ( isIdleCall )
         {
-            if constexpr ( IsBlocking )
-            {
-                while( !_queue.wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
-                {
-                    if (!_isRunning) [[unlikely]]
-                    {
-                        ret = false;
-                        break;
-                    }
-                    std::this_thread::yield();
-                }
-            }
-            else
-            {
-                while ( !_queue.try_dequeue( taskOut ) )
-                {
-                    if ( !_isRunning ) [[unlikely]]
-                    {
-                        ret = false;
-                        break;
-                    }
-
-                    std::this_thread::yield();
-                }
-            }
-        }
-        else if ( !_queue.try_dequeue( taskOut ) )
-        {
-            ret = false;
+            return _queue.try_dequeue( taskOut );
         }
 
-        return ret;
+        if constexpr ( IsBlocking )
+        {
+            while( !_queue.wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
+            {
+                if (!_isRunning) [[unlikely]]
+                {
+                    return false;
+                }
+                std::this_thread::yield();
+            }
+        }
+        else
+        {
+            while ( !_queue.try_dequeue( taskOut ) )
+            {
+                if ( !_isRunning ) [[unlikely]]
+                {
+                    return false;
+                }
+                std::this_thread::yield();
+            }
+        }
+
+        return true;
     }
 
-    void parallel_for( TaskPool& pool, const ParallelForDescriptor& descriptor )
+    void Parallel_For( TaskPool& pool, const ParallelForDescriptor& descriptor, const DELEGATE<void, const Task*, U32/*start*/, U32/*end*/>& cbk )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
@@ -401,8 +440,6 @@ namespace Divide
         const U32 adjustedCount = descriptor._useCurrentThread ? partitionCount - 1u : partitionCount;
 
         std::atomic_uint jobCount = adjustedCount + (remainder > 0u ? 1u : 0u);
-        const auto& cbk = descriptor._cbk;
-
         for ( U32 i = 0u; i < adjustedCount; ++i )
         {
             const U32 start = i * crtPartitionSize;

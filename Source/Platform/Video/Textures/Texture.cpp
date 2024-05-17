@@ -472,7 +472,7 @@ namespace Divide
                 descriptor._iterCount = width;
                 descriptor._partitionSize = std::max( 16u, to_U32( width / 10 ) );
                 descriptor._useCurrentThread = true;
-                descriptor._cbk = [&]( const Task* /*parent*/, const U32 start, const U32 end )
+                Parallel_For( _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&]( const Task* /*parent*/, const U32 start, const U32 end )
                 {
                     U8 tempA = 0u;
                     for ( U32 i = start; i < end; ++i )
@@ -503,13 +503,13 @@ namespace Divide
                             }
                         }
                     }
-                };
+                });
                 if ( _hasTransparency && !_hasTranslucency && !hasTransulenctOrOpaquePixels )
                 {
                     // All the alpha values are 0, so this channel is useless.
                     _hasTransparency = _hasTranslucency = false;
                 }
-                parallel_for( _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
+
                 metadataCache << BYTE_BUFFER_VERSION;
                 metadataCache << _hasTransparency;
                 metadataCache << _hasTranslucency;

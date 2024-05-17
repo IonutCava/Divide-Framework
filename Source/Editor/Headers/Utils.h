@@ -34,8 +34,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_EDITOR_UTILS_H_
 
 #include "UndoManager.h"
-#include "Platform/Video/Headers/PushConstant.h"
 #include "Editor/Headers/Editor.h"
+
+enum class PushConstantType;
 
 namespace ImGui {
     bool InputDoubleN(const char* label, double* v, int components, const char* display_format, ImGuiInputTextFlags extra_flags);

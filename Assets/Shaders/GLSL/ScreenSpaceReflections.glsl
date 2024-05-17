@@ -9,8 +9,10 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texScreen;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 1) uniform sampler2D texDepth;
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 2) uniform sampler2D texNormal;
 
-uniform mat4 projToPixel; // A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
-uniform mat4 projectionMatrix;
+// A projection matrix that maps to pixel coordinates (not [-1, +1] normalized device coordinates)
+#define projToPixel PushData0
+#define projectionMatrix PushData1
+
 uniform mat4 invProjectionMatrix;
 uniform mat4 invViewMatrix;
 uniform mat4 previousViewMatrix;

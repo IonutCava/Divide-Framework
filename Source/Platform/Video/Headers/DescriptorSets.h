@@ -34,7 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_DESCRIPTOR_SETS_H_
 
 #include "DescriptorSetsFwd.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/BufferRange.h"
+#include "Platform/Video/Buffers/Headers/BufferRange.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 namespace Divide

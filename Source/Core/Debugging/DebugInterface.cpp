@@ -30,7 +30,7 @@ namespace Divide
 
         if ( GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0 )
         {
-            _output = Util::StringFormat( "Scene Update Loops: {}", timingData.updateLoops() );
+            Util::StringFormat( _output, "Scene Update Loops: {}", timingData.updateLoops() );
 
             if constexpr( Config::Profile::ENABLE_FUNCTION_PROFILING )
             {

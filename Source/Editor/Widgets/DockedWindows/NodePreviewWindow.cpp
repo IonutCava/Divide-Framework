@@ -84,9 +84,7 @@ namespace Divide
             IMGUICallbackData* data = static_cast<IMGUICallbackData*>(imCmd->UserCallbackData);
             DIVIDE_ASSERT( data->_cmdBuffer != nullptr );
 
-            const PushConstantsStruct pushConstants = IMGUICallbackToPushConstants(*data, false);
-
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( *data->_cmdBuffer )->_constants.set( pushConstants );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( *data->_cmdBuffer )->_fastData = IMGUICallbackToPushConstants( *data, false );
         };
 
         DIVIDE_ASSERT( tex != INVALID_HANDLE<Texture> );

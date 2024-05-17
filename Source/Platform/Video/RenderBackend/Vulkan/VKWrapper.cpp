@@ -1986,11 +1986,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( _pushConstantsNeedLock )
+        if ( _uniformsNeedLock )
         {
-            _pushConstantsNeedLock = false;
-            flushCommand( &_pushConstantsMemCommand );
-            _pushConstantsMemCommand._bufferLocks.clear();
+            _uniformsNeedLock = false;
+            flushCommand( &_uniformsMemCommand );
+            _uniformsMemCommand._bufferLocks.clear();
         }
     }
 
@@ -2462,21 +2462,24 @@ namespace Divide
 
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
-                    const PushConstants& pushConstants = cmd->As<GFX::SendPushConstantsCommand>()->_constants;
-                    if ( stateTracker._pipeline._program->uploadUniformData( pushConstants, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _pushConstantsMemCommand ) )
+                    GFX::SendPushConstantsCommand* pushConstantsCmd = cmd->As<GFX::SendPushConstantsCommand>();
+                    UniformData* uniforms = pushConstantsCmd->_uniformData;
+                    if ( uniforms != nullptr )
                     {
-                        _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
-                        _pushConstantsNeedLock = _pushConstantsNeedLock || _pushConstantsMemCommand._bufferLocks.empty();
+                        if ( stateTracker._pipeline._program->uploadUniformData( *uniforms, _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).impl(), _uniformsMemCommand ) )
+                        {
+                            _context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty( true );
+                            _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
+                        }
                     }
-
-                    if ( pushConstants.fastData()._set )
+                    if ( pushConstantsCmd->_fastData.set() )
                     {
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
                                                         to_U32( PushConstantsStruct::Size() ),
-                                                        pushConstants.fastData().dataPtr() );
+                                                        pushConstantsCmd->_fastData.dataPtr() );
 
                         stateTracker._pushConstantsValid = true;
                     }

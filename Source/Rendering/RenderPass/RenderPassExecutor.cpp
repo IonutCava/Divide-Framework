@@ -293,7 +293,7 @@ namespace Divide
         bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
         bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        bufferDescriptor._name = Util::StringFormat( "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
+        Util::StringFormat( bufferDescriptor._name, "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
         _cmdBuffer = _context.newSB( bufferDescriptor );
     }
 
@@ -318,7 +318,6 @@ namespace Divide
                                        const Handle<ShaderProgram> OITCompositionShaderMS,
                                        const Handle<ShaderProgram> ResolveGBufferShaderMS )
     {
-
         if ( !s_globalDataInit )
         {
             s_globalDataInit = true;
@@ -357,7 +356,7 @@ namespace Divide
         {// Node Transform buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _transformBuffer._data._gpuData.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeTransformData );
-            bufferDescriptor._name = Util::StringFormat( "NODE_TRANSFORM_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
+            Util::StringFormat( bufferDescriptor._name, "NODE_TRANSFORM_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
             _transformBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _transformBuffer._range._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
             _transformBuffer._queueLength = bufferDescriptor._ringBufferLength;
@@ -365,7 +364,7 @@ namespace Divide
         {// Node Material buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _materialBuffer._data._gpuData.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeMaterialData );
-            bufferDescriptor._name = Util::StringFormat( "NODE_MATERIAL_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
+            Util::StringFormat( bufferDescriptor._name, "NODE_MATERIAL_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
             _materialBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _materialBuffer._range._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
             _materialBuffer._queueLength = bufferDescriptor._ringBufferLength;
@@ -373,14 +372,14 @@ namespace Divide
         {// Indirection Buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _indirectionBuffer._data.size() );
             bufferDescriptor._bufferParams._elementSize = sizeof( NodeIndirectionData );
-            bufferDescriptor._name = Util::StringFormat( "NODE_INDIRECTION_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
+            Util::StringFormat( bufferDescriptor._name, "NODE_INDIRECTION_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
             _indirectionBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
             _indirectionBuffer._range._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
             _indirectionBuffer._queueLength = bufferDescriptor._ringBufferLength;
         }
     }
 
-    void RenderPassExecutor::processVisibleNodeTransform( RenderingComponent* rComp )
+    void RenderPassExecutor::processVisibleNodeTransform( const PlayerIndex playerIdx, RenderingComponent* rComp )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -413,7 +412,7 @@ namespace Divide
 
         NodeTransformData& transformOut = _transformBuffer._data._gpuData[transformIdx];
         // Out last used transform matrix is now our previous transform
-        mat4<F32>::Multiply( _context.previousFrameData()._previousViewProjectionMatrix, transformOut._worldMatrix, transformOut._prevWVPMatrix);
+        mat4<F32>::Multiply( _context.previousFrameData( playerIdx )._previousViewProjectionMatrix, transformOut._worldMatrix, transformOut._prevWVPMatrix);
 
         const SceneGraphNode* node = rComp->parentSGN();
 
@@ -593,13 +592,13 @@ namespace Divide
         return N == 0u ? L : N;
     }
 
-    size_t RenderPassExecutor::buildDrawCommands( const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+    size_t RenderPassExecutor::buildDrawCommands( const PlayerIndex index, const RenderPassParams& params, const bool doPrePass, const bool doOITPass, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         constexpr bool doMainPass = true;
 
-        RenderPass::BufferData bufferData = _parent.getPassForStage( _stage ).getBufferData();
+        RenderPass::PassData passData = _parent.getPassForStage( _stage ).getPassData();
 
         efficient_clear( _drawCommands );
 
@@ -627,25 +626,25 @@ namespace Divide
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Transforms", Profiler::Category::Scene );
 
-            U32& nodeCount = *bufferData._lastNodeCount;
+            U32& nodeCount = *passData._lastNodeCount;
             nodeCount = 0u;
             for ( RenderBin::SortedQueue& queue : _sortedQueues )
             {
                 const U32 queueSize = to_U32( queue.size() );
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
-                    Start( *CreateTask( updateTask, [this, &queue, queueSize]( const Task& )
+                    Start( *CreateTask( updateTask, [this, index, &queue, queueSize]( const Task& )
                                         {
                                             for ( U32 i = 0u; i < queueSize / 2; ++i )
                                             {
-                                                processVisibleNodeTransform( queue[i] );
+                                                processVisibleNodeTransform( index, queue[i] );
                                             }
                                         } ), pool );
-                    Start( *CreateTask( updateTask, [this, &queue, queueSize]( const Task& )
+                    Start( *CreateTask( updateTask, [this, index, &queue, queueSize]( const Task& )
                                         {
                                             for ( U32 i = queueSize / 2; i < queueSize; ++i )
                                             {
-                                                processVisibleNodeTransform( queue[i] );
+                                                processVisibleNodeTransform( index, queue[i] );
                                             }
                                         } ), pool );
                     updateTaskDirty = true;
@@ -654,7 +653,7 @@ namespace Divide
                 {
                     for ( U32 i = 0u; i < queueSize; ++i )
                     {
-                        processVisibleNodeTransform( queue[i] );
+                        processVisibleNodeTransform( index, queue[i] );
                     }
                 }
                 nodeCount += queueSize;
@@ -735,7 +734,7 @@ namespace Divide
         }
 
         const U32 cmdCount = to_U32( _drawCommands.size() );
-        *bufferData._lastCommandCount = cmdCount;
+        *passData._lastCommandCount = cmdCount;
 
 
         if ( cmdCount > 0u )
@@ -782,7 +781,8 @@ namespace Divide
         return queueTotalSize;
     }
 
-    size_t RenderPassExecutor::prepareNodeData( const RenderPassParams& params,
+    size_t RenderPassExecutor::prepareNodeData( const PlayerIndex index,
+                                                const RenderPassParams& params,
                                                 const CameraSnapshot& cameraSnapshot,
                                                 const bool hasInvalidNodes,
                                                 const bool doPrePass,
@@ -816,9 +816,8 @@ namespace Divide
             Mutex memCmdLock;
 
             _renderQueue->clear();
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = to_U32( _visibleNodesCache.size() );
-            descriptor._cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
+
+            const auto cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
             {
                 GFX::MemoryBarrierCommand postDrawMemCmd{};
                 for ( U32 i = start; i < end; ++i )
@@ -835,16 +834,18 @@ namespace Divide
                 memCmdInOut._bufferLocks.insert(memCmdInOut._bufferLocks.cend(), postDrawMemCmd._bufferLocks.cbegin(), postDrawMemCmd._bufferLocks.cend());
             };
 
-            if ( descriptor._iterCount < g_nodesPerPrepareDrawPartition )
+            if ( _visibleNodesCache.size() < g_nodesPerPrepareDrawPartition )
             {
-                descriptor._cbk( nullptr, 0, descriptor._iterCount );
+                cbk( nullptr, 0, to_U32(_visibleNodesCache.size()) );
             }
             else
             {
+                ParallelForDescriptor descriptor = {};
+                descriptor._iterCount = to_U32( _visibleNodesCache.size() );
                 descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
                 descriptor._priority = TaskPriority::DONT_CARE;
                 descriptor._useCurrentThread = true;
-                parallel_for( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor );
+                Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
             }
             _renderQueue->sort( stagePass );
         }
@@ -857,7 +858,7 @@ namespace Divide
         queueParams._filterByBinType = false;
         _renderQueue->populateRenderQueues( queueParams, _renderQueuePackages );
 
-        return buildDrawCommands( params, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        return buildDrawCommands( index, params, doPrePass, doOITPass, bufferInOut, memCmdInOut );
     }
 
     void RenderPassExecutor::prepareRenderQueues( const RenderPassParams& params,
@@ -879,8 +880,8 @@ namespace Divide
         GFX::MemoryBarrierCommand postDrawMemCmd{};
 
         const U32 nodeCount = to_U32( _visibleNodesCache.size() );
-        ParallelForDescriptor descriptor = {};
-        descriptor._cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
+
+        const auto cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
         {
             for ( U32 i = start; i < end; ++i )
             {
@@ -902,16 +903,17 @@ namespace Divide
         if ( nodeCount > g_nodesPerPrepareDrawPartition * 2 )
         {
             PROFILE_SCOPE( "prepareRenderQueues - parallel gather", Profiler::Category::Scene );
+            ParallelForDescriptor descriptor = {};
             descriptor._iterCount = nodeCount;
             descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
             descriptor._priority = TaskPriority::DONT_CARE;
             descriptor._useCurrentThread = true;
-            parallel_for( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor );
+            Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
         }
         else
         {
             PROFILE_SCOPE( "prepareRenderQueues - serial gather", Profiler::Category::Scene );
-            descriptor._cbk( nullptr, 0u, nodeCount );
+            cbk( nullptr, 0u, nodeCount );
         }
 
         // Sort all bins
@@ -944,7 +946,8 @@ namespace Divide
 
         if ( params._stagePass._passType != RenderPassType::PRE_PASS )
         {
-            GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = Util::StringFormat( "Post Render pass for stage [ {} ]", TypeUtil::RenderStageToString( stagePass._stage ), to_U32( stagePass._stage ) ).c_str();
+            auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
+            Util::StringFormat( cmd->_scopeName, "Post Render pass for stage [ {} ]", TypeUtil::RenderStageToString( stagePass._stage ), to_U32( stagePass._stage ) );
 
             _renderQueue->postRender( Attorney::ProjectManagerRenderPass::renderState( _parent.parent().projectManager().get() ),
                                       params._stagePass,
@@ -998,7 +1001,7 @@ namespace Divide
         // Update HiZ Target
         const auto [hizTexture, hizSampler] = _context.constructHIZ( sourceDepthBuffer, targetHiZBuffer, bufferInOut );
         // Run occlusion culling CS
-        _context.occlusionCull( _parent.getPassForStage( _stage ).getBufferData(),
+        _context.occlusionCull( _parent.getPassForStage( _stage ).getPassData(),
                                 hizTexture,
                                 hizSampler,
                                 cameraSnapshot,
@@ -1209,7 +1212,17 @@ namespace Divide
         }
         const CameraSnapshot& camSnapshot = camera->snapshot();
 
-        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut )->_scopeName = Util::StringFormat( "Custom pass ( {} - {} )", TypeUtil::RenderStageToString( _stage ), params._passName.empty() ? "N/A" : params._passName.c_str() ).c_str();
+        GFX::BeginDebugScopeCommand* beginDebugScopeCmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
+        if ( params._passName.empty() )
+        {
+            Util::StringFormat<Str<64>>( beginDebugScopeCmd->_scopeName, "Custom pass ( {} )", TypeUtil::RenderStageToString( _stage ) );
+        }
+        else
+        {
+            Util::StringFormat<Str<64>>( beginDebugScopeCmd->_scopeName, "Custom pass ( {} - {} )", TypeUtil::RenderStageToString( _stage ), params._passName );
+        }
+
+        
 
         RenderTarget* target = _context.renderTargetPool().getRenderTarget( params._target );
 
@@ -1314,7 +1327,7 @@ namespace Divide
 
         // We prepare all nodes for the MAIN_PASS rendering. PRE_PASS and OIT_PASS are support passes only. Their order and sorting are less important.
         params._stagePass._passType = RenderPassType::MAIN_PASS;
-        const size_t visibleNodeCount = prepareNodeData( params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut, memCmdInOut );
+        const size_t visibleNodeCount = prepareNodeData( playerIdx, params, camSnapshot, hasInvalidNodes, doPrePass, doOITPass, bufferInOut, memCmdInOut );
 
 #   pragma region PRE_PASS
         // We need the pass to be PRE_PASS even if we skip the prePass draw stage as it is the default state subsequent operations expect

@@ -16,6 +16,16 @@ namespace Divide
     static std::atomic_size_t g_writeIndex = 0;
     static vector<Console::OutputEntry> g_log;
 
+    namespace 
+    {
+        void PrintColouredText(const string& text, const ImVec4& colour)
+        {
+            ImGui::PushStyleColor( ImGuiCol_Text, colour );
+            ImGui::TextUnformatted( text.c_str(), text.c_str() + text.length() );
+            ImGui::PopStyleColor();
+        }
+    }
+
     OutputWindow::OutputWindow( Editor& parent, const Descriptor& descriptor )
         : DockedWindow( parent, descriptor ),
         _inputBuf{}
@@ -58,6 +68,10 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
+        static bool infoFlag = true;
+        static bool warningFlag = true;
+        static bool errorFlag = true;
+
         ImGui::PushStyleColor( ImGuiCol_ChildBg, ImVec4( 0.3f, 0.3f, 0.3f, 1.0f ) );
         {
             bool tooltip = false;
@@ -80,6 +94,21 @@ namespace Divide
                 {
                     g_logEntries = CLAMPED<U16>( logSize, 1u, g_maxLogEntries );
                 }
+            }
+            ImGui::SameLine();
+            if ( ImGui::Checkbox( "Info", &infoFlag ) )
+            {
+                _scrollToButtomReset = true;
+            }
+            ImGui::SameLine();
+            if ( ImGui::Checkbox( "Warning", &warningFlag ) )
+            {
+                _scrollToButtomReset = true;
+            }
+            ImGui::SameLine();
+            if ( ImGui::Checkbox( "Error", &errorFlag ) )
+            {
+                _scrollToButtomReset = true;
             }
         }
         ImGui::PopStyleVar();
@@ -131,8 +160,11 @@ namespace Divide
         {
             PROFILE_SCOPE( "Print Scrolling region ", Profiler::Category::GUI );
 
-            Console::EntryType previousType = Console::EntryType::INFO;
-            ImGui::PushStyleColor( ImGuiCol_Text, colours[to_U8(previousType)]);
+            Console::EntryType previousType = Console::EntryType::COUNT;
+
+            static string output="";
+
+            output.resize(0);
 
             for ( U16 i = 0u; i < g_logEntries; ++i )
             {
@@ -144,19 +176,57 @@ namespace Divide
                 {
                     continue;
                 }
+                switch (message._type)
+                {
+                    case Console::EntryType::COUNT: 
+                    {
+                        DIVIDE_UNEXPECTED_CALL();
+                        continue;
+                    } break;
+                    case Console::EntryType::INFO:
+                    case Console::EntryType::COMMAND:
+                    {
+                        if ( !infoFlag )
+                        {
+                            continue;
+                        }
+                    } break;
+                    case Console::EntryType::WARNING:
+                    {
+                        if ( !warningFlag )
+                        {
+                            continue;
+                        }
+                    } break;
+                    case Console::EntryType::ERR:
+                    {
+                        if ( !errorFlag)
+                        {
+                            continue;
+                        }
+                    } break;
+                };
 
                 if ( previousType != message._type )
                 {
-                    ImGui::PopStyleColor();
-                    ImGui::PushStyleColor( ImGuiCol_Text, colours[to_U8( message._type )] );
+                    if ( !output.empty() )
+                    {
+                        PrintColouredText(output, colours[to_U8( previousType )]);
+                        output.resize(0);
+                    }
                     previousType = message._type;
                 }
 
-                ImGui::TextUnformatted( msgBegin, msgEnd );
+                output.append( message._text );
+                output.append( "\n" );
             }
 
-            ImGui::PopStyleColor();
+            if ( !output.empty() )
+            {
+                PrintColouredText( output, colours[to_U8( previousType )] );
+            }
         }
+
 
         if ( _scrollToBottom && _scrollToButtomReset )
         {

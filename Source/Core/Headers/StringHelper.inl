@@ -343,19 +343,29 @@ namespace Divide
         {
             extern dvd_allocator<char> s_allocator;
 
-            FORCE_INLINE string vformat( fmt::string_view format_str, fmt::format_args args )
+            using custom_memory_buffer = fmt::basic_memory_buffer<char, fmt::inline_buffer_size, dvd_allocator<char>>;
+
+            FORCE_INLINE custom_memory_buffer vformat( fmt::string_view format_str, fmt::format_args args )
             {
-                using custom_memory_buffer = fmt::basic_memory_buffer<char, fmt::inline_buffer_size, dvd_allocator<char>>;
-                auto buf = custom_memory_buffer( s_allocator );
+                custom_memory_buffer buf(s_allocator );
                 fmt::vformat_to( std::back_inserter( buf ), format_str, args );
-                return string( buf.data(), buf.size(), s_allocator );
+                return buf;
             }
+
         } //namespace detail
 
-        template <typename... Args>
-        FORCE_INLINE string StringFormat( const std::string_view fmt, Args&& ...args )
+        template <typename Str, typename... Args> requires (!concept_const_char<Str>)
+        FORCE_INLINE Str StringFormat( const char* fmt, Args&& ...args )
         {
-            return detail::vformat( fmt, fmt::make_format_args( args... ) );
+            const detail::custom_memory_buffer buffer = detail::vformat( fmt, fmt::make_format_args( args... ) );
+            return Str( buffer.data(), buffer.size(), detail::s_allocator );
+        }
+
+        template <typename Str, typename... Args> requires (!concept_const_char<Str>)
+        FORCE_INLINE void StringFormat( Str& output, const char* fmt, Args&& ...args )
+        {
+            const detail::custom_memory_buffer buffer = detail::vformat( fmt, fmt::make_format_args( args... ) );
+            output.assign(buffer.data(), buffer.size());
         }
 
         template<typename T>

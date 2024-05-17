@@ -1128,11 +1128,8 @@ namespace Divide
             if ( _gridSettingsDirty )
             {
                 PushConstantsStruct fastData{};
-                fastData.data[0]._vec[0].xy.set( infiniteGridAxisWidth(),
-                                               infiniteGridScale() );
-                PushConstants constants{};
-                constants.set( fastData );
-                _infiniteGridPrimitive->setPushConstants( constants );
+                fastData.data[0]._vec[0].xy.set( infiniteGridAxisWidth(), infiniteGridScale() );
+                _infiniteGridPrimitive->setPushConstants( fastData );
                 _gridSettingsDirty = false;
             }
         }
@@ -1513,8 +1510,7 @@ namespace Divide
             ._flip = false
         };
 
-        const PushConstantsStruct pushConstants = IMGUICallbackToPushConstants( defaultData, false );
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( pushConstants );
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = IMGUICallbackToPushConstants( defaultData, false );
         GFX::EnqueueCommand<GFX::SetViewportCommand>( bufferInOut)->_viewport = targetViewport;
 
         const F32 scale[] = {
@@ -2290,7 +2286,7 @@ namespace Divide
         return activeScene->getGUID() == Scene::DEFAULT_SCENE_GUID;
     }
 
-    bool Editor::modalTextureView( const char* modalName,
+    bool Editor::modalTextureView( const std::string_view modalName,
                                    const Handle<Texture> tex,
                                    const vec2<F32> dimensions,
                                    const bool preserveAspect,
@@ -2355,28 +2351,28 @@ namespace Divide
                 }
             }
 
-            const PushConstantsStruct pushConstants = IMGUICallbackToPushConstants(*data, isArrayTexture);
-            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_constants.set( pushConstants );
+            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_fastData = IMGUICallbackToPushConstants( *data, isArrayTexture );
         };
 
         bool closed = false;
         bool opened = false;
 
+        DIVIDE_ASSERT( !modalName.empty() );
+
         if ( useModal )
         {
-            Util::OpenCenteredPopup( modalName );
-            opened = ImGui::BeginPopupModal( modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize );
+            Util::OpenCenteredPopup( modalName.data() );
+            opened = ImGui::BeginPopupModal( modalName.data(), nullptr, ImGuiWindowFlags_AlwaysAutoResize );
         }
         else
         {
             Util::CenterNextWindow();
-            opened = ImGui::Begin( modalName, nullptr, ImGuiWindowFlags_AlwaysAutoResize );
+            opened = ImGui::Begin( modalName.data(), nullptr, ImGuiWindowFlags_AlwaysAutoResize );
         }
 
         if ( opened )
         {
             assert( tex != INVALID_HANDLE<Texture> );
-            assert( modalName != nullptr );
 
             static IMGUICallbackData defaultData{
                 ._flip = false

@@ -35,44 +35,53 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
-    template<typename T> requires (!std::is_same_v<bool, T>)
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const T* values, size_t count)
-    {
-        for (GFX::PushConstant& constant : _data)
-        {
-            if (constant.bindingHash() == bindingHash)
-            {
-                constant = GFX::PushConstant(bindingHash, type, values, count);
-                return;
-            }
-        }
-
-        _data.emplace_back(bindingHash, type, values, count);
-    }
-
     template<typename T>
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const T& value)
+    void UniformData::set( const U64 bindingHash, const PushConstantType type, const T& value )
     {
-        set(bindingHash, type, &value, 1);
+        set( bindingHash, type, &value, 1u);
     }
 
     template<>
-    inline void PushConstants::set( U64 bindingHash, PushConstantType type, const bool& value )
+    inline void UniformData::set( const U64 bindingHash, const PushConstantType type, const bool& value )
     {
         const U32 newValue = value ? 1u : 0u;
         set(bindingHash, type, &newValue, 1);
     }
 
     template<typename T> requires (!std::is_same_v<bool, T>)
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const vector<T>& values)
+    void UniformData::set( const U64 bindingHash, const PushConstantType type, const T* values, const size_t count )
     {
-        set(bindingHash, type, values.data(), values.size());
-    }
+        const size_t dataSize = sizeof(T) * count;
 
-    template<typename T, size_t N> requires (!std::is_same_v<bool, T>)
-    void PushConstants::set(U64 bindingHash, PushConstantType type, const std::array<T, N>& values)
-    {
-        set(bindingHash, type, values.data(), N);
+        bool found = false;
+        BufferRange range{};
+
+        for ( Entry& entry : _data)
+        {
+            if ( entry._bindingHash == bindingHash)
+            {
+                DIVIDE_ASSERT(dataSize <= entry._range._length);
+                range = entry._range;
+                found = true;
+                break;
+            }
+        }
+        if ( !found )
+        {
+            range = 
+            {
+                ._startOffset = _buffer.size(),
+                ._length = dataSize
+            };
+            _buffer.insert(_buffer.end(), dataSize, Byte_ZERO);
+
+            Entry& newEntry = _data.emplace_back( bindingHash );
+            newEntry._bindingHash = bindingHash;
+            newEntry._range = range;
+            newEntry._type = type;
+        }
+
+        std::memcpy(&_buffer[range._startOffset], values, sizeof(T) * count);
     }
 
 } //namespace Divide

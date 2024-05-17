@@ -336,7 +336,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
             ResourceDescriptor<ShaderProgram> edgeDetectionLuma("edgeDetection.Luma", edgeDetectionDescriptor );
             edgeDetectionLuma.waitForReady(false);
             _edgeDetection[to_base(EdgeDetectionMethod::Luma)] = CreateResource(edgeDetectionLuma, loadTasks);
-
         }
         {
             fragModule._variant = "Colour";
@@ -531,9 +530,8 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
 
-        PushConstantsStruct pushData{};
+        PushConstantsStruct& pushData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
         pushData.data[0]._vec[0].xy = cameraSnapshot._zPlanes;
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -607,13 +605,11 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
             Set(binding._data, _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()});
         }
-        PushConstantsStruct params{};
+        PushConstantsStruct& params = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
         params.data[0]._vec[0].set( _toneMapParams._minLogLuminance,
                                     1.f / logLumRange,
                                     to_F32( _toneMapParams._width ),
                                     to_F32( _toneMapParams._height ) );
-
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( params );
 
         const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
         const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
@@ -664,14 +660,13 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
 
 
-        PushConstantsStruct params{};
+        PushConstantsStruct& params = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
         params.data[0]._vec[0].set(_toneMapParams._minLogLuminance,
                                     logLumRange,
                                     CLAMPED_01( 1.0f - std::exp( -Time::MicrosecondsToSeconds<F32>( _lastDeltaTimeUS ) * _toneMapParams._tau ) ),
                                     to_F32( _toneMapParams._width ) * _toneMapParams._height );
 
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(params);
         GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { 1, 1, 1, };
         {
             auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
@@ -811,13 +806,11 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
 
-        PushConstantsStruct pushData{};
+        PushConstantsStruct& pushData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
         pushData.data[0]._vec[0].set( _toneMapParams._manualExposureFactor,
                                      to_F32( mappingFunction ),
                                      adaptiveExposureControl() ? 1.f : 0.f,
                                      _context.materialDebugFlag() != MaterialDebugFlag::COUNT ? 1.f : 0.f);
-
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -854,9 +847,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _edgeDetectionPipelines[to_base(edgeDetectionMethod())];
 
-        PushConstantsStruct pushData{};
+        PushConstantsStruct& pushData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
         pushData.data[0]._vec[0].x = edgeDetectionThreshold();
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set(pushData);
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
 
@@ -870,7 +862,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         if ( filterStack & 1u << to_U32(op->operatorType()))
         {
             auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
-            cmd->_scopeName = Util::StringFormat( "PostFX: Execute LDR operator [ {} ]", PostFX::FilterName( op->operatorType() ) );
+            Util::StringFormat( cmd->_scopeName, "PostFX: Execute LDR operator [ {} ]", PostFX::FilterName( op->operatorType() ) );
             cmd->_scopeId = to_U32( op->operatorType() );
 
             if (op->execute(idx, cameraSnapshot, getInput(false), getOutput(false), bufferInOut))

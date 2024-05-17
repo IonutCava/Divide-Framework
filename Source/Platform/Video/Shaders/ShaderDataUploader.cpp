@@ -367,7 +367,7 @@ namespace Divide
                     for ( size_t j = 0u; j < bMember._arrayInnerSize; ++j )
                     {
                         BlockMember newMember = bMember;
-                        newMember._name = Util::StringFormat( "{}[{}][{}]", bMember._name.c_str(), i, j );
+                        Util::StringFormat( newMember._name, "{}[{}][{}]", bMember._name.c_str(), i, j );
                         newMember._nameHash = _ID( newMember._name.c_str() );
                         newMember._size -= offset;
                         newMember._offset = offset;
@@ -380,7 +380,7 @@ namespace Divide
                 for ( size_t i = 0u; i < bMember._arrayOuterSize; ++i )
                 {
                     BlockMember newMember = bMember;
-                    newMember._name = Util::StringFormat( "{}[{}]", bMember._name.c_str(), i );
+                    Util::StringFormat( newMember._name, "{}[{}]", bMember._name.c_str(), i );
                     newMember._nameHash = _ID( newMember._name.c_str() );
                     newMember._size -= i * (bMember._arrayInnerSize * bMember._elementSize);
                     newMember._offset = i * (bMember._arrayInnerSize * bMember._elementSize);
@@ -393,7 +393,7 @@ namespace Divide
                 for ( size_t i = 0u; i < bMember._arrayOuterSize; ++i )
                 {
                     BlockMember newMember = bMember;
-                    newMember._name = Util::StringFormat( "{}[{}]", bMember._name.c_str(), i );
+                    Util::StringFormat( newMember._name, "{}[{}]", bMember._name.c_str(), i );
                     newMember._nameHash = _ID( newMember._name.c_str() );
                     newMember._size -= offset;
                     newMember._offset = offset;
@@ -428,26 +428,26 @@ namespace Divide
         _uniformBlockDirty = true;
     }
 
-    void UniformBlockUploader::uploadPushConstant( const PushConstants& constants ) noexcept
+    void UniformBlockUploader::uploadUniformData( const UniformData& uniforms ) noexcept
     {
         if ( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr )
         {
-            for ( const GFX::PushConstant& constant : constants.data() )
+            for ( const UniformData::Entry& uniform : uniforms.entries() )
             {
-                if ( constant.type() == PushConstantType::COUNT || constant.bindingHash() == 0u )
+                if ( uniform._type == PushConstantType::COUNT || uniform._bindingHash == 0u )
                 {
                     continue;
                 }
 
                 for ( BlockMember& member : _blockMembers )
                 {
-                    if ( member._nameHash == constant.bindingHash() )
+                    if ( member._nameHash == uniform._bindingHash )
                     {
-                        DIVIDE_ASSERT( constant.dataSize() <= member._size );
+                        DIVIDE_ASSERT( uniform._range._length <= member._size );
 
                         Byte* dst = &_localDataCopy.data()[member._offset];
-                        const Byte* src = constant.data();
-                        const size_t numBytes = constant.dataSize();
+                        const Byte* src = uniforms.data(uniform._range._startOffset);
+                        const size_t numBytes = uniform._range._length;
 
                         if ( std::memcmp( dst, src, numBytes ) != 0 )
                         {

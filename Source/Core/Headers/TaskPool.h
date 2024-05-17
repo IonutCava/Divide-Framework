@@ -37,15 +37,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct ParallelForDescriptor {
-    DELEGATE<void, const Task*, U32/*start*/, U32/*end*/> _cbk{};
+struct ParallelForDescriptor
+{
     /// For loop iteration count
     U32 _iterCount = 0u;
     /// How many elements should we process per async task
     U32 _partitionSize = 0u;
     /// Each async task will start with the same priority specified here
     TaskPriority _priority = TaskPriority::DONT_CARE;
-    /// If this is false, the parallel_for call won't block the current thread
+    /// If this is false, the Parallel_For call won't block the current thread
     bool _waitForFinish = true;
     /// If true, we'll process a for partition on the calling thread
     bool _useCurrentThread = true;
@@ -91,9 +91,7 @@ public:
     // Wait for all running jobs to finish
     void wait() const noexcept;
 
-    void executeOneTask( bool waitForTask );
-
-    static void PrintLine( std::string_view );
+    void executeOneTask( bool isIdleCall );
 
     PROPERTY_R( vector<std::thread>, threads );
 
@@ -101,34 +99,43 @@ public:
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
     friend struct Task;
-    friend void Wait(const Task& task, TaskPool& pool);
-
     friend void Start(Task& task, TaskPool& pool, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction);
-    friend void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
+    friend void Wait(const Task& task, TaskPool& pool);
+    friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor);
 
-    void taskCompleted(Task& task, bool hasOnCompletionFunction);
+    void taskStarted(Task& task);
+    void taskCompleted(Task& task);
     
-    bool enqueue(Task& task, TaskPriority priority, U32 taskIndex, const DELEGATE<void>& onCompletionFunction);
-    bool deque( bool waitForTask, PoolTask& taskOut );
+    bool enqueue(Task& task, TaskPriority priority, const DELEGATE<void>& onCompletionFunction);
+    bool runRealTime(Task& task, const DELEGATE<void>& onCompletionFunction );
+
+    bool deque( bool isIdleCall, PoolTask& taskOut );
     void waitForTask(const Task& task);
 
   private:
-     static Mutex s_printLock;
      const string _threadNamePrefix;
+
+     struct CallbackEntry
+     {
+         DELEGATE<void> _cbk;
+         U32 _taskID = U32_MAX;
+     };
+
+     SharedMutex _taskCallbacksLock;
+     eastl::fixed_vector<CallbackEntry, 1 << 9, true> _taskCallbacks;
+
+     moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
 
      using QueueType = std::conditional_t<IsBlocking, moodycamel::BlockingConcurrentQueue<PoolTask>, moodycamel::ConcurrentQueue<PoolTask>>;
      QueueType _queue;
 
-     hashMap<U32, DELEGATE<void>> _taskCallbacks{};
-
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
      DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
-     moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
 
      std::atomic_uint _runningTaskCount = 0u;
-     std::atomic_uint _tasksLeft{ 0 };
      std::atomic_size_t _activeThreads{ 0u };
+
      bool _isRunning{ true };
 };
 
@@ -138,7 +145,7 @@ Task* CreateTask(Predicate&& threadedFunction, bool allowedInIdle = true);
 template<class Predicate>
 Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle = true);
 
-void parallel_for(TaskPool& pool, const ParallelForDescriptor& descriptor);
+void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor, const DELEGATE<void, const Task*, U32/*start*/, U32/*end*/>& cbk);
 
 } //namespace Divide
 

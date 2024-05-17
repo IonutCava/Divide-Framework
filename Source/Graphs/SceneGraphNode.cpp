@@ -172,15 +172,15 @@ SceneGraphNode::SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph
     {
         if ( _node->resourceName().empty() )
         {
-            _name = Util::StringFormat( "{}_SGN", getGUID() ).c_str();
+            Util::StringFormat( _name, "{}_SGN", getGUID() );
         }
         else
         {
-            _name = Util::StringFormat( "{}_SGN", _node->resourceName().c_str() ).c_str();
+            Util::StringFormat( _name, "{}_SGN", _node->resourceName().c_str() );
         }
     }
 
-    _nameHash = _ID( _name.c_str() );
+    _nameHash = _ID( _name );
 
     setFlag( Flags::ACTIVE );
     clearFlag( Flags::VISIBILITY_LOCKED );

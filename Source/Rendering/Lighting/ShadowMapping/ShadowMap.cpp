@@ -574,9 +574,9 @@ namespace Divide
                         shadow->_sampler = getShadowMap( LightType::DIRECTIONAL )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                         shadow->_shader = previewShader;
                         shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, i + light->getShadowArrayOffset() );
-                        shadow->_name = Util::StringFormat( "CSM_{}", i + light->getShadowArrayOffset() );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
                         shadow->_enabled = true;
+                        Util::StringFormat( shadow->_name, "CSM_{}", i + light->getShadowArrayOffset() );
                         s_debugViews.push_back( shadow );
                     }
                 } break;
@@ -597,9 +597,9 @@ namespace Divide
                     shadow->_sampler = getShadowMap( LightType::SPOT )._rt->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
                     shadow->_shader = CreateResource( shadowPreviewShader );
                     shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
-                    shadow->_name = Util::StringFormat( "SM_{}", light->getShadowArrayOffset() );
                     shadow->_enabled = true;
                     shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
+                    Util::StringFormat( shadow->_name, "SM_{}", light->getShadowArrayOffset() );
                     s_debugViews.push_back( shadow );
                 }break;
                 case LightType::POINT:
@@ -625,8 +625,8 @@ namespace Divide
                         shadow->_shaderData.set( _ID( "layer" ), PushConstantType::INT, light->getShadowArrayOffset() );
                         shadow->_shaderData.set( _ID( "face" ), PushConstantType::INT, i );
                         shadow->_groupID = Base + to_I16( light->shadowPropertyIndex() );
-                        shadow->_name = Util::StringFormat( "CubeSM_{}_face_{}", light->getShadowArrayOffset(), i );
                         shadow->_enabled = true;
+                        Util::StringFormat( shadow->_name, "CubeSM_{}_face_{}", light->getShadowArrayOffset(), i );
                         s_debugViews.push_back( shadow );
                     }
                 } break;

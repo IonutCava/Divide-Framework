@@ -37,7 +37,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
 
     for (U8 cascade = 0; cascade < Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT; ++cascade) {
         EditorComponentField sceneFitField = {};
-        sceneFitField._name = Util::StringFormat("Fit CSM To AABB [ {} ]", cascade).c_str();
+        Util::StringFormat( sceneFitField._name, "Fit CSM To AABB [ {} ]", cascade);
         sceneFitField._data = &_csmUseSceneAABBFit[cascade];
         sceneFitField._type = EditorComponentFieldType::PUSH_TYPE;
         sceneFitField._readOnly = cascade >= csmSplitCount();

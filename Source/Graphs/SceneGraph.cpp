@@ -306,15 +306,13 @@ namespace Divide
                 ParallelForDescriptor descriptor = {};
                 descriptor._iterCount = nodeCount;
                 descriptor._partitionSize = g_nodesPerPartition;
-                descriptor._cbk = [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
+                Parallel_For( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
                 {
                     for ( U32 i = start; i < end; ++i )
                     {
                         _nodeList[i]->sceneUpdate( deltaTimeUS, sceneState );
                     }
-                };
-
-                parallel_for( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
+                });
             }
             else
             {
@@ -335,15 +333,13 @@ namespace Divide
                 ParallelForDescriptor descriptor = {};
                 descriptor._iterCount = nodeCount;
                 descriptor._partitionSize = g_nodesPerPartition;
-                descriptor._cbk = [this]( const Task* /*parentTask*/, const U32 start, const U32 end )
+                Parallel_For( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [this]( const Task* /*parentTask*/, const U32 start, const U32 end )
                 {
                     for ( U32 i = start; i < end; ++i )
                     {
                         Attorney::SceneGraphNodeSceneGraph::processEvents( _nodeEventQueue[i] );
                     }
-                };
-
-                parallel_for( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
+                });
             }
             else
             {

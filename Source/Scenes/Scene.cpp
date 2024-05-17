@@ -616,14 +616,13 @@ namespace Divide
             descriptor._partitionSize = 3u;
             descriptor._priority = TaskPriority::DONT_CARE;
             descriptor._useCurrentThread = true;
-            descriptor._cbk = [this, &sceneNode, &crtNode]( const Task* innerTask, const U32 start, const U32 end )
+            Parallel_For( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor, [this, &sceneNode, &crtNode]( const Task* innerTask, const U32 start, const U32 end )
             {
                 for ( U32 i = start; i < end; ++i )
                 {
                     loadAsset( innerTask, sceneNode.children[i], crtNode );
                 }
-            };
-            parallel_for( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor );
+            });
         }
     }
 
@@ -1248,14 +1247,13 @@ namespace Divide
             descriptor._useCurrentThread = true;
             descriptor._allowPoolIdle = true;
             descriptor._waitForFinish = true;
-            descriptor._cbk = [this, &rootNode, &rootChildren]( const Task* parentTask, const U32 start, const U32 end )
+            Parallel_For( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor, [this, &rootNode, &rootChildren]( const Task* parentTask, const U32 start, const U32 end )
             {
                 for ( U32 i = start; i < end; ++i )
                 {
                     loadAsset( parentTask, rootChildren[i], rootNode );
                 }
-            };
-            parallel_for( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor );
+            });
         }
         else
         {

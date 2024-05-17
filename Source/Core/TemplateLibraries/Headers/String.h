@@ -46,6 +46,8 @@ namespace Divide
         using Base = eastl::fixed_string<char, N, true>;
         using Base::Base;
 
+        Str(const char* str, const size_t length, [[maybe_unused]] dvd_allocator<char>& allocator) : Base(str, length) {}
+
         Str(const string& str) : Base(str.c_str()) {}
         Str(const std::string_view str) : Base(str.data(), str.size()) {}
 

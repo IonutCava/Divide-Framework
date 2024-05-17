@@ -399,7 +399,7 @@ namespace Divide
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
         auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut);
-        cmd->_scopeName = Util::StringFormat( "Cascaded Shadow Pass Light: [ {} ]", lightIndex );
+        Util::StringFormat( cmd->_scopeName, "Cascaded Shadow Pass Light: [ {} ]", lightIndex );
         cmd->_scopeId = lightIndex;
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager().get();
@@ -409,7 +409,7 @@ namespace Divide
             params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = i;
             params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = i;
 
-            params._passName = Util::StringFormat( "CSM_PASS_{}", i ).c_str();
+            Util::StringFormat( params._passName, "CSM_PASS_{}", i );
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
             params._minExtents.set( g_minExtentsFactors[i] );
             if ( i > 0 && dirLight.csmUseSceneAABBFit()[i] )
@@ -556,7 +556,7 @@ namespace Divide
         _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
         _shaderConstants.data[0]._vec[1].w = 0.f;
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = _shaderConstants;
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 
@@ -584,7 +584,7 @@ namespace Divide
         _shaderConstants.data[0]._vec[1].z = 0.f;
         _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
 
-        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
+        GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = _shaderConstants;
 
         GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
 

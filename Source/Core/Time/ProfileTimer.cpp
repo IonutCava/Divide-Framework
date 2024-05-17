@@ -86,9 +86,8 @@ U64 ProfileTimer::getChildTotal() const
 
 string ProfileTimer::print(const U32 level) const
 {
-    string ret(Util::StringFormat("[ {} ] : [ {:5.3f} ms]",
-                                        _name.c_str(),
-                                        MicrosecondsToMilliseconds<F32>(get())));
+    string ret = Util::StringFormat("[ {} ] : [ {:5.3f} ms]", _name, MicrosecondsToMilliseconds<F32>(get()));
+
     for (const U32 child : _children)
     {
         if (g_profileTimersState[child])

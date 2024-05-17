@@ -37,15 +37,17 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct RenderPackage {
+struct RenderPackage
+{
     static constexpr U32 INVALID_CMD_OFFSET = U32_MAX;
     static constexpr U8 INVALID_STAGE_INDEX = U8_MAX;
 
+    RenderPackage();
     ~RenderPackage();
 
     PROPERTY_RW(GFX::BindPipelineCommand, pipelineCmd);
     PROPERTY_RW(GFX::BindShaderResourcesCommand, descriptorSetCmd);
-    PROPERTY_RW(GFX::SendPushConstantsCommand,  pushConstantsCmd);
+    PROPERTY_RW(GFX::SendPushConstantsCommand, pushConstantsCmd);
 
     PROPERTY_RW(U32, drawCmdOffset, INVALID_CMD_OFFSET);
     PROPERTY_RW(U8,  stagePassBaseIndex, INVALID_STAGE_INDEX);
@@ -55,6 +57,8 @@ private:
     friend void Clear( RenderPackage& pkg ) noexcept;
 
     Handle<GFX::CommandBuffer> _additionalCommands =  INVALID_HANDLE<GFX::CommandBuffer>;
+
+    UniformData _uniforms{};
 };
 
 void Clear(RenderPackage& pkg) noexcept;

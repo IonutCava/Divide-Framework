@@ -4,6 +4,7 @@
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/File/Headers/FileManagement.h"
 
 #include <iostream>
 
@@ -11,6 +12,8 @@ namespace Divide {
 
 SharedMutex Console::s_callbackLock;
 NO_DESTROY  vector<Console::ConsolePrintCallbackEntry> Console::s_guiConsoleCallbacks;
+std::ofstream Console::s_logStream;
+std::ofstream Console::s_errorStream;
 
 constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
                               to_base( Console::Flags::DECORATE_THREAD_ID ) |
@@ -33,29 +36,6 @@ namespace
         NO_DESTROY static moodycamel::BlockingConcurrentQueue<Console::OutputEntry> s_OutputBuffer;
         return s_OutputBuffer;
     }
-}
-
-//! Do not remove the following license without express permission granted by DIVIDE-Studio
-void Console::PrintCopyrightNotice()
-{
-    std::cout << "------------------------------------------------------------------------------\n"
-              << "Copyright (c) 2018 DIVIDE-Studio\n"
-              << "Copyright (c) 2009 Ionut Cava\n\n"
-              << "This file is part of DIVIDE Framework.\n\n"
-              << "Permission is hereby granted, free of charge, to any person obtaining a copy of this software\n"
-              << "and associated documentation files (the 'Software'), to deal in the Software without restriction,\n"
-              << "including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,\n"
-              << "and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,\n"
-              << "subject to the following conditions:\n\n"
-              << "The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\n"
-              << "THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,\n"
-              << "INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n"
-              << "IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\n"
-              << "WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE\n"
-              << "OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n"
-              << "For any problems or licensing issues I may have overlooked, please contact: \n"
-              << "E-mail: ionut.cava@divide-studio.com | Website: \n http://wwww.divide-studio.com\n"
-              << "-------------------------------------------------------------------------------\n\n";
 }
 
 void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view text, const bool newline, const EntryType type) {
@@ -127,7 +107,7 @@ void Console::PrintToFile(const OutputEntry& entry)
 {
     if ( s_running ) [[likely]]
     {
-        auto& outStream = (entry._type == EntryType::ERR && s_flags & to_base( Flags::ENABLE_ERROR_STREAM ) ? std::cerr : std::cout);
+        std::ofstream& outStream = (entry._type == EntryType::ERR && s_flags & to_base( Flags::ENABLE_ERROR_STREAM ) ? s_errorStream : s_logStream );
         outStream << entry._text.c_str();
 
         SharedLock<SharedMutex> lock( s_callbackLock );
@@ -161,10 +141,39 @@ void Console::Flush()
     }
 }
 
-void Console::Start() noexcept
+void Console::Start( const std::string_view logFilePath, const std::string_view erroFilePath, const bool printCopyright ) noexcept
 {
     s_flags = DEFAULT_FLAGS;
     s_running.store(true);
+
+    s_logStream   = std::ofstream{ (Paths::g_logPath / logFilePath).fileSystemPath(),  std::ofstream::out | std::ofstream::trunc };
+    s_errorStream = std::ofstream{ (Paths::g_logPath / erroFilePath).fileSystemPath(), std::ofstream::out | std::ofstream::trunc };
+
+    std::cout.rdbuf( s_logStream.rdbuf() );
+    std::cerr.rdbuf( s_errorStream.rdbuf() );
+
+    //! Do not remove the following license without express permission granted by Divide-Studio or Ionut Cava
+    if ( printCopyright )
+    {
+        s_logStream << "------------------------------------------------------------------------------\n"
+                    << "Copyright (c) 2018 DIVIDE-Studio\n"
+                    << "Copyright (c) 2009 Ionut Cava\n\n"
+                    << "This file is part of DIVIDE Framework.\n\n"
+                    << "Permission is hereby granted, free of charge, to any person obtaining a copy of this software\n"
+                    << "and associated documentation files (the 'Software'), to deal in the Software without restriction,\n"
+                    << "including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,\n"
+                    << "and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,\n"
+                    << "subject to the following conditions:\n\n"
+                    << "The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\n"
+                    << "THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,\n"
+                    << "INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n"
+                    << "IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\n"
+                    << "WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE\n"
+                    << "OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n\n"
+                    << "For any problems or licensing issues I may have overlooked, please contact: \n"
+                    << "E-mail: ionut.cava@divide-studio.com | Website: \n http://wwww.divide-studio.com\n"
+                    << "-------------------------------------------------------------------------------\n\n";
+    }
 }
 
 void Console::Stop() 
@@ -174,7 +183,9 @@ void Console::Stop()
     {
         Flush();
         s_flags = DEFAULT_FLAGS;
-        std::cout << "------------------------------------------\n\n\n\n";
+        s_logStream << "------------------------------------------\n\n\n\n";
+        s_logStream.flush();
+        s_errorStream.flush();
         std::cerr << std::flush;
         std::cout << std::flush;
     }

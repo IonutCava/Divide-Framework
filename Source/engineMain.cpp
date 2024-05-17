@@ -7,8 +7,6 @@
 #include "Platform/File/Headers/FileManagement.h"
 #include "Utility/Headers/Localization.h"
 
-#include <iostream>
-
 namespace Divide {
 
 ErrorCode Engine::init(const int argc, char** argv)
@@ -37,29 +35,9 @@ ErrorCode Engine::run(const int argc, char** argv)
         return errorCode;
     }
 
-    if ( Paths::g_logPath.empty() )
-    {
-        return ErrorCode::PATHS_ERROR;
-    }
-
-    const string consoleLogFile = (Paths::g_logPath / OUTPUT_LOG_FILE).string();
-    const string errorLogFile = (Paths::g_logPath / ERROR_LOG_FILE).string();
-
-    const std::ofstream outputStreamsCOUT{ consoleLogFile.c_str(), std::ofstream::out | std::ofstream::trunc };
-    const std::ofstream outputStreamsCERR{ errorLogFile.c_str(), std::ofstream::out | std::ofstream::trunc };
-
-    std::cout.rdbuf( outputStreamsCOUT.rdbuf());
-    std::cerr.rdbuf( outputStreamsCERR.rdbuf());
-
 
     //Win32: SetProcessDpiAwareness
     EnforceDPIScaling();
-
-    // Print a copyright notice in the log file
-    if ( !Util::FindCommandLineArgument( argc, argv, "disableCopyright" ) )
-    {
-        Console::PrintCopyrightNotice();
-    }
 
     // Read language table
     errorCode = Locale::Init();
@@ -91,19 +69,11 @@ ErrorCode Engine::run(const int argc, char** argv)
             _app->stop(result);
             _app.reset();
 
-            const auto endTime = std::chrono::high_resolution_clock::now();
-
-            std::cout << "Engine shutdown request: " << TypeUtil::AppStepResultToString(result) << std::endl;
-
-            std::cout << "Divide engine shutdown after "
-                      << stepCount
-                      << " engine steps and " 
-                      << restartCount
-                      << " restart(s). "
-                      << "Total time: "
-                      << std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count()
-                      << " seconds."
-                      << std::endl;
+            Console::printfn("Engine shutdown request : {}\nDivide engine shutdown after {} engine steps and {} restart(s). Total time: {} seconds.",
+                              TypeUtil::AppStepResultToString( result ),
+                              stepCount,
+                              restartCount,
+                              std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startTime).count());
 
             ++restartCount;
 

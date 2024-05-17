@@ -61,14 +61,13 @@ namespace Divide {
         if (descriptor._iterCount > g_parallelPartitionSize * 3)
         {
             descriptor._partitionSize = g_parallelPartitionSize;
-            descriptor._cbk = [interpFactor](const Task*, const U32 start, const U32 end)
+            Parallel_For( _context.taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [interpFactor](const Task*, const U32 start, const U32 end)
             {
                 for (U32 i = start; i < end; ++i)
                 {
                     events[i].first->updateLocalMatrix( interpFactor );
                 }
-            };
-            parallel_for(_context.taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor);
+            });
         }
         else
         {

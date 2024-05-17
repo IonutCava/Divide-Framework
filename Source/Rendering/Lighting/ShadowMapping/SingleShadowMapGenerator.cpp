@@ -203,7 +203,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
     auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
-    cmd->_scopeName = Util::StringFormat("Single Shadow Pass Light: [ {} ]", lightIndex);
+    Util::StringFormat( cmd->_scopeName, "Single Shadow Pass Light: [ {} ]", lightIndex);
     cmd->_scopeId = lightIndex;
 
     _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);
@@ -263,7 +263,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
     _shaderConstants.data[0]._vec[1].z = to_F32( layerOffset );
     _shaderConstants.data[0]._vec[1].w = 0.f;
 
-    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_constants.set( _shaderConstants );
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData = _shaderConstants;
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
 
@@ -288,7 +288,7 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
     _shaderConstants.data[0]._vec[1].z = 0.f;
     _shaderConstants.data[0]._vec[1].w = to_F32( layerOffset );
 
-    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_constants.set( _shaderConstants );
+    GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = _shaderConstants;
 
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
 

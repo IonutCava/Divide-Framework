@@ -11,8 +11,6 @@
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
 
-#include <iostream>
-
 namespace Divide
 {
 
@@ -35,7 +33,7 @@ namespace Divide
                         return DIVIDE_ASSERT_FUNC( false, expressionStr, file, line, "Message truncated" );
                     }
 
-                    const auto msgOut = Util::StringFormat( "ASSERT [{} : {}]: {} : {}", file, line, expressionStr, failMessage );
+                    const string msgOut = Util::StringFormat( "ASSERT [{} : {}]: {} : {}", file, line, expressionStr, failMessage );
                     if constexpr ( Config::Assert::LOG_ASSERTS )
                     {
                         Console::errorfn( msgOut.c_str() );
@@ -75,8 +73,14 @@ namespace Divide
         SeedRandom();
 
         InitSysInfo( sysInfo(), argc, argv );
-        Paths::initPaths( );
-        Console::Start();
+        Paths::initPaths();
+        if ( Paths::g_logPath.empty() )
+        {
+            return ErrorCode::PATHS_ERROR;
+        }
+        Console::Start( OUTPUT_LOG_FILE,
+                        ERROR_LOG_FILE,
+                        !Util::FindCommandLineArgument( argc, argv, "disableCopyright" ) );
         
         return ErrorCode::NO_ERR;
     }

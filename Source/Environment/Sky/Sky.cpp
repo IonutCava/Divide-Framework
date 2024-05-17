@@ -188,14 +188,13 @@ namespace Divide
                 ParallelForDescriptor descriptor = {};
                 descriptor._iterCount = slices * width * height * 4u;
                 descriptor._partitionSize = slices;
-                descriptor._cbk = [&]( const Task*, const U32 start, const U32 end ) -> void
+                Parallel_For( context.taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&]( const Task*, const U32 start, const U32 end ) -> void
                 {
                     for ( U32 i = start; i < end; i += 4 )
                     {
                         cbk(i);
                     }
-                };
-                parallel_for( context.taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor );
+                });
             }
             else
             {
@@ -511,7 +510,7 @@ bool Sky::load( PlatformContext& context )
     return SceneNode::load( context );
 }
 
-void Sky::setSkyShaderData( const RenderStagePass renderStagePass, PushConstants& constantsInOut )
+void Sky::setSkyShaderData( const RenderStagePass renderStagePass, PushConstantsStruct& constantsInOut )
 {
     U16 targetRayCount = rayCount();
     if ( targetRayCount > 16u &&
@@ -521,16 +520,14 @@ void Sky::setSkyShaderData( const RenderStagePass renderStagePass, PushConstants
         targetRayCount = std::max<U16>(targetRayCount / 4, 4u);
     }
 
-    PushConstantsStruct fastData{};
-    fastData.data[0]._vec[0].set( nightSkyColour().rgb, to_F32( targetRayCount ) );
-    fastData.data[0]._vec[1].set( moonColour().rgb, moonScale() );
-    fastData.data[0]._vec[2].set( useDaySkybox() ? 1.f : 0.f, useNightSkybox() ? 1.f : 0.f, _atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max );
-    fastData.data[0]._vec[3].set( _atmosphere._sunDiskSize, _atmosphere._planetRadius, _atmosphere._cloudDensity, _atmosphere._cloudCoverage );
-    fastData.data[1]._vec[0].set( enableProceduralClouds() ? 1.f : 0.f, exposure(), _atmosphere._mieEccentricity, _atmosphere._turbidity );
-    fastData.data[1]._vec[1].set( _atmosphere._rayleighColour.r, _atmosphere._rayleighColour.g, _atmosphere._rayleighColour.b, _atmosphere._rayleigh );
-    fastData.data[1]._vec[2].set( _atmosphere._mieColour.r, _atmosphere._mieColour.g, _atmosphere._mieColour.b, _atmosphere._mie );
-    fastData.data[1]._vec[3].set( _groundColour.r, _groundColour.g, _groundColour.b, 0.f );
-    constantsInOut.set( fastData );
+    constantsInOut.data[0]._vec[0].set( nightSkyColour().rgb, to_F32( targetRayCount ) );
+    constantsInOut.data[0]._vec[1].set( moonColour().rgb, moonScale() );
+    constantsInOut.data[0]._vec[2].set( useDaySkybox() ? 1.f : 0.f, useNightSkybox() ? 1.f : 0.f, _atmosphere._cloudLayerMinMaxHeight.min, _atmosphere._cloudLayerMinMaxHeight.max );
+    constantsInOut.data[0]._vec[3].set( _atmosphere._sunDiskSize, _atmosphere._planetRadius, _atmosphere._cloudDensity, _atmosphere._cloudCoverage );
+    constantsInOut.data[1]._vec[0].set( enableProceduralClouds() ? 1.f : 0.f, exposure(), _atmosphere._mieEccentricity, _atmosphere._turbidity );
+    constantsInOut.data[1]._vec[1].set( _atmosphere._rayleighColour.r, _atmosphere._rayleighColour.g, _atmosphere._rayleighColour.b, _atmosphere._rayleigh );
+    constantsInOut.data[1]._vec[2].set( _atmosphere._mieColour.r, _atmosphere._mieColour.g, _atmosphere._mieColour.b, _atmosphere._mie );
+    constantsInOut.data[1]._vec[3].set( _groundColour.r, _groundColour.g, _groundColour.b, 0.f );
 }
 
 void Sky::postLoad( SceneGraphNode* sgn )
@@ -971,7 +968,7 @@ void Sky::prepareRender( SceneGraphNode* sgn,
                          const bool refreshData )
 {
 
-    setSkyShaderData( renderStagePass, pkg.pushConstantsCmd()._constants );
+    setSkyShaderData( renderStagePass, pkg.pushConstantsCmd()._fastData );
     SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
 }
 

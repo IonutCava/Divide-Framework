@@ -7,6 +7,11 @@
 
 namespace Divide {
 
+RenderPackage::RenderPackage()
+{
+    pushConstantsCmd()._uniformData = &_uniforms;
+}
+
 RenderPackage::~RenderPackage()
 {
     GFX::DeallocateCommandBuffer( _additionalCommands );
@@ -19,6 +24,7 @@ void Clear(RenderPackage& pkg) noexcept
     pkg.pipelineCmd(GFX::BindPipelineCommand{});
     pkg.descriptorSetCmd(GFX::BindShaderResourcesCommand{});
     pkg.pushConstantsCmd(GFX::SendPushConstantsCommand{});
+    pkg.pushConstantsCmd()._uniformData = &pkg._uniforms;
 
     GFX::DeallocateCommandBuffer( pkg._additionalCommands );
 }

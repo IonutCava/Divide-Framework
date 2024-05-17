@@ -73,7 +73,8 @@ DEFINE_COMMAND_BEGIN(BindPipelineCommand, CommandType::BIND_PIPELINE);
 DEFINE_COMMAND_END(BindPipelineCommand);
 
 DEFINE_COMMAND_BEGIN(SendPushConstantsCommand, CommandType::SEND_PUSH_CONSTANTS);
-    PushConstants _constants{};
+    UniformData* _uniformData = nullptr;
+    PushConstantsStruct _fastData{};
 DEFINE_COMMAND_END(SendPushConstantsCommand);
 
 DEFINE_COMMAND_BEGIN(DrawCommand, CommandType::DRAW_COMMANDS);

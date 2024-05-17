@@ -109,13 +109,14 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
 
     ImGui::SameLine();
 
+    const string fieldName = Util::StringFormat( "##_value_{}_", label );
     if constexpr(isSlider)
     {
-        ret = ImGui::DragScalar( Util::StringFormat( "##_value_{}_", label ).c_str(), data_type, &value, 0.1f, &minValue, &maxValue, format, readOnly ? ImGuiSliderFlags_NoInput : 0u ) || ret;
+        ret = ImGui::DragScalar( fieldName.c_str(), data_type, &value, 0.1f, &minValue, &maxValue, format, readOnly ? ImGuiSliderFlags_NoInput : 0u ) || ret;
     }
     else
     {
-        ret = ImGui::InputScalar(Util::StringFormat("##_value_{}_", label).c_str(), data_type, &value, step_ptr, step_fast_ptr, format, flags) || ret;
+        ret = ImGui::InputScalar( fieldName.c_str(), data_type, &value, step_ptr, step_fast_ptr, format, flags) || ret;
     }
 
     if (ret && ImGui::IsItemDeactivated()) {

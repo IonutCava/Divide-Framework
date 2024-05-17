@@ -610,8 +610,20 @@ void IMPrimitive::fromLinesInternal(const Line* lines, size_t count) {
     end();
 }
 
-void IMPrimitive::setPushConstants(const PushConstants& constants) {
-    _additionalConstats = constants;
+void IMPrimitive::setPushConstants( const PushConstantsStruct& fastData )
+{
+    _fastData = fastData;
+}
+
+void IMPrimitive::setUniformData( const UniformData& constants )
+{
+    _additionalUniforms = constants;
+}
+
+void IMPrimitive::setUniformDataAndConstants(const UniformData& constants, const PushConstantsStruct& fastData )
+{
+    _additionalUniforms = constants;
+    _fastData = fastData;
 }
 
 void IMPrimitive::setPipelineDescriptor(const PipelineDescriptor& descriptor) {
@@ -650,8 +662,8 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     }
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != INVALID_HANDLE<ShaderProgram>, "IMPrimitive error: Draw call received without a valid shader defined!");
 
-    _additionalConstats.set(_ID("dvd_WorldMatrix"), PushConstantType::MAT4, worldMatrix);
-    _additionalConstats.set(_ID("useTexture"), PushConstantType::BOOL, useTexture);
+    _additionalUniforms.set(_ID("dvd_WorldMatrix"), PushConstantType::MAT4, worldMatrix);
+    _additionalUniforms.set(_ID("useTexture"), PushConstantType::BOOL, useTexture);
 
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;
@@ -685,7 +697,9 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
                 drawCmd._bufferFlag = _indexBufferId[i];
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(commandBufferInOut)->_pipeline = _pipelines[i];
-                GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(commandBufferInOut)->_constants = _additionalConstats;
+                auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(commandBufferInOut);
+                pushConstantsCmd->_uniformData = &_additionalUniforms;
+                pushConstantsCmd->_fastData = _fastData;
                 GFX::EnqueueCommand<GFX::DrawCommand>(commandBufferInOut)->_drawCommands.emplace_back(drawCmd);
             }
         }

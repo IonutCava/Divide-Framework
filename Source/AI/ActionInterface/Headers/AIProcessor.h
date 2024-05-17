@@ -196,7 +196,7 @@ class NOINITVTABLE AIProcessor : NonCopyable {
         const GOAPPlan& plan = _activeGoal->getCurrentPlan();
         for (const GOAPAction* action : plan)
         {
-            returnString = Util::StringFormat("{} - {}\n", returnString, printActionStats(*action));
+            Util::StringFormat( returnString, "{} - {}\n", returnString, printActionStats(*action) );
         }
 
         return returnString;

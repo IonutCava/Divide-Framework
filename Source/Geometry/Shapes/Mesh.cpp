@@ -89,7 +89,7 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
         subMeshDescriptor._componentMask |= skinnedMask;
     }
 
-    subMeshDescriptor._name = Util::StringFormat("{}_{}", parentNode->name().c_str(), meshIndex).c_str();
+    Util::StringFormat( subMeshDescriptor._name, "{}_{}", parentNode->name().c_str(), meshIndex );
 
     SceneGraphNode* sgn = parentNode->addChildNode(subMeshDescriptor);
     sgn->get<TransformComponent>()->setPosition(subMesh->getWorldOffset());

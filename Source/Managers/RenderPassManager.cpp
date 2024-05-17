@@ -187,7 +187,7 @@ void RenderPassManager::render(const RenderParams& params)
     LightPool& activeLightPool = Attorney::ProjectManagerRenderPass::lightPool(projectManager);
 
     const CameraSnapshot& prevSnapshot = _context.getCameraSnapshot(params._playerPass);
-    _context.setPreviousViewProjectionMatrix(prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix);
+    _context.setPreviousViewProjectionMatrix( params._playerPass, prevSnapshot._viewMatrix, prevSnapshot._projectionMatrix);
 
     activeLightPool.preRenderAllPasses(cam);
 

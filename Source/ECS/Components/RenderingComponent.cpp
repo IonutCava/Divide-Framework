@@ -496,7 +496,7 @@ namespace Divide
 
                 if ( isInstanced() )
                 {
-                    pkg.pushConstantsCmd()._constants.set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, 0u );
+                    pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, 0u );
                     if ( _materialInstance != INVALID_HANDLE<Material> )
                     {
                         Get(_materialInstance)->properties().isInstanced( true );
@@ -616,7 +616,7 @@ namespace Divide
             RenderPackage& pkg = getDrawPackage( stagePass );
             if ( isInstanced() )
             {
-                pkg.pushConstantsCmd()._constants.set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, iBufferEntry );
+                pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, iBufferEntry );
             }
             pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
 

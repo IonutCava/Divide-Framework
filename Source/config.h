@@ -111,7 +111,7 @@ constexpr U16 MIN_SLEEP_THRESHOLD_MS = 5u;
 constexpr size_t REQUIRED_RAM_SIZE_IN_BYTES = 2u * (1024u * 1024 * 1024); //2Gb
 
 /// How many tasks should we keep in a per-thread pool to avoid using new/delete (must be power of two)
-constexpr U32 MAX_POOLED_TASKS = 1 << 17;
+constexpr U32 MAX_POOLED_TASKS = 1 << 16;
 
 /// Maximum number of bones available per node
 constexpr U16 MAX_BONE_COUNT_PER_NODE = 1 << 7;

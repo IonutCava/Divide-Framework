@@ -246,17 +246,17 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         _ssaoUpSampleShader = CreateResource(ssaoUpSample);
     }
 
-    _ssaoGenerateConstantsCmd._constants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
-    _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
-    _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
-    _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
-    _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, (parent.screenRT()._rt->getResolution() * (_genHalfRes ? 0.5f : 1.f)) / SSAO_NOISE_SIZE);
-    _ssaoGenerateConstantsCmd._constants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
-    _ssaoGenerateConstantsCmd._constants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
+    _ssaoGenerateConstants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
+    _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
+    _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
+    _ssaoGenerateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
+    _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, vec2<F32>((parent.screenRT()._rt->getResolution() * (_genHalfRes ? 0.5f : 1.f)) / SSAO_NOISE_SIZE));
+    _ssaoGenerateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
+    _ssaoGenerateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
 
-    _ssaoBlurConstantsCmd._constants.set(_ID("depthThreshold"), PushConstantType::FLOAT, blurThreshold());
-    _ssaoBlurConstantsCmd._constants.set(_ID("blurSharpness"), PushConstantType::FLOAT, blurSharpness());
-    _ssaoBlurConstantsCmd._constants.set(_ID("blurKernelSize"), PushConstantType::INT, blurKernelSize());
+    _ssaoBlurConstants.set(_ID("depthThreshold"), PushConstantType::FLOAT, blurThreshold());
+    _ssaoBlurConstants.set(_ID("blurSharpness"), PushConstantType::FLOAT, blurSharpness());
+    _ssaoBlurConstants.set(_ID("blurKernelSize"), PushConstantType::INT, blurKernelSize());
 
     WAIT_FOR_CONDITION(ready());
 
@@ -336,7 +336,7 @@ void SSAOPreRenderOperator::reshape(const U16 width, const U16 height)
 
     const vec2<F32> targetDim = vec2<F32>(width, height) * (_genHalfRes ? 0.5f : 1.f);
 
-    _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, targetDim  / SSAO_NOISE_SIZE);
+    _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, targetDim  / SSAO_NOISE_SIZE);
 }
 
 void SSAOPreRenderOperator::genHalfRes(const bool state)
@@ -350,16 +350,16 @@ void SSAOPreRenderOperator::genHalfRes(const bool state)
         const U16 width = state ? _halfDepthAndNormals._rt->getWidth() : _ssaoOutput._rt->getWidth();
         const U16 height = state ? _halfDepthAndNormals._rt->getHeight() : _ssaoOutput._rt->getHeight();
 
-        _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, vec2<F32>(width, height) / SSAO_NOISE_SIZE);
-        _ssaoGenerateConstantsCmd._constants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
-        _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
-        _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
-        _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
-        _ssaoGenerateConstantsCmd._constants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
-        _ssaoGenerateConstantsCmd._constants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
-        _ssaoBlurConstantsCmd._constants.set(_ID("depthThreshold"), PushConstantType::FLOAT, blurThreshold());
-        _ssaoBlurConstantsCmd._constants.set(_ID("blurSharpness"), PushConstantType::FLOAT, blurSharpness());
-        _ssaoBlurConstantsCmd._constants.set(_ID("blurKernelSize"), PushConstantType::INT, blurKernelSize());
+        _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, vec2<F32>(width, height) / SSAO_NOISE_SIZE);
+        _ssaoGenerateConstants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
+        _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
+        _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
+        _ssaoGenerateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
+        _ssaoGenerateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
+        _ssaoGenerateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
+        _ssaoBlurConstants.set(_ID("depthThreshold"), PushConstantType::FLOAT, blurThreshold());
+        _ssaoBlurConstants.set(_ID("blurSharpness"), PushConstantType::FLOAT, blurSharpness());
+        _ssaoBlurConstants.set(_ID("blurKernelSize"), PushConstantType::INT, blurKernelSize());
     }
 }
 
@@ -368,7 +368,7 @@ void SSAOPreRenderOperator::radius(const F32 val)
     if (!COMPARE(radius(), val))
     {
         _radius[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, val);
+        _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.Radius = val;
@@ -386,7 +386,7 @@ void SSAOPreRenderOperator::power(const F32 val)
     if (!COMPARE(power(), val))
     {
         _power[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, val);
+        _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.Power = val;
@@ -404,7 +404,7 @@ void SSAOPreRenderOperator::bias(const F32 val)
     if (!COMPARE(bias(), val))
     {
         _bias[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstantsCmd._constants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, val);
+        _ssaoGenerateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.Bias = val;
@@ -439,7 +439,7 @@ void SSAOPreRenderOperator::blurThreshold(const F32 val)
     if (!COMPARE(blurThreshold(), val))
     {
         _blurThreshold[_genHalfRes ? 1 : 0] = val;
-        _ssaoBlurConstantsCmd._constants.set(_ID("depthThreshold"), PushConstantType::FLOAT, val);
+        _ssaoBlurConstants.set(_ID("depthThreshold"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.BlurThreshold = val;
@@ -457,7 +457,7 @@ void SSAOPreRenderOperator::blurSharpness(const F32 val)
     if (!COMPARE(blurSharpness(), val))
     {
         _blurSharpness[_genHalfRes ? 1 : 0] = val;
-        _ssaoBlurConstantsCmd._constants.set(_ID("blurSharpness"), PushConstantType::FLOAT, val);
+        _ssaoBlurConstants.set(_ID("blurSharpness"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.BlurSharpness = val;
@@ -475,7 +475,7 @@ void SSAOPreRenderOperator::blurKernelSize(const I32 val)
     if (blurKernelSize() != val)
     {
         _kernelSize[_genHalfRes ? 1 : 0] = val;
-        _ssaoBlurConstantsCmd._constants.set(_ID("blurKernelSize"), PushConstantType::INT, val);
+        _ssaoBlurConstants.set(_ID("blurKernelSize"), PushConstantType::INT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.BlurKernelSize = val;
@@ -495,7 +495,7 @@ void SSAOPreRenderOperator::maxRange(F32 val)
     if (!COMPARE(maxRange(), val))
     {
         _maxRange[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstantsCmd._constants.set(_ID("maxRange"), PushConstantType::FLOAT, val);
+        _ssaoGenerateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.MaxRange = val;
@@ -515,7 +515,7 @@ void SSAOPreRenderOperator::fadeStart(F32 val)
     if (!COMPARE(fadeStart(), val))
     {
         _fadeStart[_genHalfRes ? 1 : 0] = val;
-        _ssaoGenerateConstantsCmd._constants.set(_ID("fadeStart"), PushConstantType::FLOAT, val);
+        _ssaoGenerateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, val);
         if (_genHalfRes)
         {
             _context.context().config().rendering.postFX.ssao.HalfRes.FadeDistance = val;
@@ -556,9 +556,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 {
     assert(_enabled);
 
-    _ssaoGenerateConstantsCmd._constants.set(_ID("_zPlanes"),            PushConstantType::VEC2, cameraSnapshot._zPlanes);
-    _ssaoGenerateConstantsCmd._constants.set(_ID("projectionMatrix"),    PushConstantType::MAT4, cameraSnapshot._projectionMatrix);
-    _ssaoGenerateConstantsCmd._constants.set(_ID("invProjectionMatrix"), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
+    _ssaoGenerateConstants.set(_ID("_zPlanes"),            PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
     const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
     const auto& normalsAtt = _context.renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment(RTAttachmentType::COLOUR);
@@ -597,7 +595,10 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _generateHalfResPipeline;
 
-            GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
+            GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+            sendPushConstantsCmd->_uniformData = &_ssaoGenerateConstants;
+            sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._projectionMatrix;
+            sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._invProjectionMatrix;
 
             const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR);
 
@@ -681,7 +682,11 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
                 Set( binding._data, normalsAtt->texture(), normalsAtt->_descriptor._sampler );
             }
-            GFX::EnqueueCommand(bufferInOut, _ssaoGenerateConstantsCmd);
+
+            GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+            sendPushConstantsCmd->_uniformData = &_ssaoGenerateConstants;
+            sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._projectionMatrix;
+            sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._invProjectionMatrix;
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -692,9 +697,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
         if (blurResults() && blurKernelSize() > 0)
         {
-            _ssaoBlurConstantsCmd._constants.set(_ID("invProjectionMatrix"), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix);
-            _ssaoBlurConstantsCmd._constants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
-            _ssaoBlurConstantsCmd._constants.set(_ID("texelSize"), PushConstantType::VEC2, vec2<F32>{ 1.f / Get(ssaoAtt->texture())->width(), 1.f / Get(ssaoAtt->texture())->height() });
+            _ssaoBlurConstants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
+            _ssaoBlurConstants.set(_ID("texelSize"), PushConstantType::VEC2, vec2<F32>{ 1.f / Get(ssaoAtt->texture())->width(), 1.f / Get(ssaoAtt->texture())->height() });
 
             // Blur AO
             { //Horizontal
@@ -706,7 +710,9 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurHorizontalPipeline;
 
-                GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
+                GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+                sendPushConstantsCmd->_uniformData = &_ssaoBlurConstants;
+                sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._invProjectionMatrix;
 
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -735,7 +741,9 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _blurVerticalPipeline;
 
-                GFX::EnqueueCommand(bufferInOut, _ssaoBlurConstantsCmd);
+                GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
+                sendPushConstantsCmd->_uniformData = &_ssaoBlurConstants;
+                sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._invProjectionMatrix;
 
                 const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::COLOUR);
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);

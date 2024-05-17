@@ -85,8 +85,8 @@ class SSAOPreRenderOperator final : public PreRenderOperator {
        void prepare(PlayerIndex idx, GFX::CommandBuffer& bufferInOut) override;
 
    private:
-    GFX::SendPushConstantsCommand _ssaoGenerateConstantsCmd;
-    GFX::SendPushConstantsCommand _ssaoBlurConstantsCmd;
+    UniformData _ssaoGenerateConstants;
+    UniformData _ssaoBlurConstants;
     Handle<ShaderProgram> _ssaoGenerateShader = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _ssaoGenerateHalfResShader = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _ssaoBlurShaderHorizontal = INVALID_HANDLE<ShaderProgram>;

@@ -1830,14 +1830,14 @@ namespace Divide
         }
     }
 
-    bool ShaderProgram::uploadUniformData( const PushConstants& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut )
+    bool ShaderProgram::uploadUniformData( const UniformData& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         bool ret = false;
         for ( auto& blockBuffer : _uniformBlockBuffers )
         {
-            blockBuffer.uploadPushConstant( data );
+            blockBuffer.uploadUniformData( data );
 
             if ( blockBuffer.commit( set, memCmdInOut ) )
             {
@@ -2044,7 +2044,7 @@ namespace Divide
                 : ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_DRAW,
                                                                 loadDataInOut._reflectionData._uniformBlockBindingIndex );
 
-            uniformBlock = Util::StringFormat( uniformBlock, layoutIndex, Util::StringFormat( "dvd_UniformBlock_{}", blockIndexInOut ).c_str() );
+            Util::StringFormat( uniformBlock, uniformBlock.c_str(), layoutIndex, Util::StringFormat( "dvd_UniformBlock_{}", blockIndexInOut ) );
 
             previousUniformsInOut = loadDataInOut._uniforms;
         }

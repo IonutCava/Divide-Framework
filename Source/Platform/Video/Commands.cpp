@@ -137,21 +137,24 @@ static string ToString(const SendPushConstantsCommand& cmd, U16 indent)
 {
     string ret = "\n";
 
-    for (const auto& it : cmd._constants.data()) {
-        ret.append("    ");
-        for (U16 j = 0; j < indent; ++j) {
+    if ( cmd._uniformData != nullptr )
+    {
+        for (const auto& it : cmd._uniformData->entries())
+        {
             ret.append("    ");
+            for (U16 j = 0; j < indent; ++j) {
+                ret.append("    ");
+            }
+            ret.append(Util::StringFormat("Constant binding: {} Type: {} Data range: [ {} - {} ]\n", it._bindingHash, to_base(it._type), it._range._startOffset, it._range._startOffset + it._range._length));
         }
-        ret.append(Util::StringFormat("Constant binding: {} Type: {} Data size: {}\n", it.bindingHash(), to_base(it.type()), it.dataSize()));
     }
-    
     ret.append("    ");
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(cmd._constants.fastData()._set ? "Has push constants specified: \n" : "No push constant data specified");
+    ret.append(cmd._fastData.set() ? "Has push constants specified: \n" : "No push constant data specified");
 
-    if ( cmd._constants.fastData()._set )
+    if ( cmd._fastData.set() )
     {
         for (U8 d = 0u; d < 2u; ++d ) {
             ret.append( "    " );
@@ -160,7 +163,7 @@ static string ToString(const SendPushConstantsCommand& cmd, U16 indent)
                 ret.append( "    " );
             }
 
-            const mat4<F32>& datad = cmd._constants.fastData().data[d];
+            const mat4<F32>& datad = cmd._fastData.data[d];
             ret.append(Util::StringFormat("Data {}:\n", d));
 
             indent += 1u;
