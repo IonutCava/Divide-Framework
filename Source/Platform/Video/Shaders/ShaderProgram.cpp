@@ -1256,7 +1256,7 @@ namespace Divide
         return count;
     }
 
-    void ShaderProgram::OnBeginFrame( [[maybe_unused]] GFXDevice& gfx )
+    void ShaderProgram::OnBeginFrame([[maybe_unused]] GFXDevice& gfx )
     {
         efficient_clear(s_usedShaderPrograms);
     }

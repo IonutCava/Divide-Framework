@@ -153,7 +153,7 @@ namespace ECS { namespace Event {
                         lastIndex = this->m_EventStorage.size();
                     }
                 } else {
-					LOG_ERROR("Skip corrupted event [ {} ]", event->GetEventTypeID());
+					LOG_ERROR("Skip corrupted event");
                     continue;
                 }
 			}

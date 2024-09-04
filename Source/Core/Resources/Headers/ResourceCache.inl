@@ -385,7 +385,7 @@ namespace Divide
             }
         }
 
-        UniqueLock<SharedMutex> r_lock( pool._lock );
+        LockGuard<SharedMutex> w_lock( pool._lock );
         // Check again
         const Handle<T> ret = pool.retrieveHandleLocked( descriptorHash );
         if ( ret != INVALID_HANDLE<T> )

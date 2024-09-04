@@ -855,7 +855,7 @@ namespace Divide
 
     void Vegetation::registerInstance( const U32 chunkID, VegetationInstance* instance )
     {
-        UniqueLock<SharedMutex> w_lock(_instanceLock);
+        LockGuard<SharedMutex> w_lock(_instanceLock);
         for ( auto&[id, vegInstance] : _instances)
         {
             if ( id == chunkID)
@@ -870,7 +870,7 @@ namespace Divide
 
     void Vegetation::unregisterInstance( const U32 chunkID )
     {
-        UniqueLock<SharedMutex> w_lock( _instanceLock );
+        LockGuard<SharedMutex> w_lock( _instanceLock );
         dvd_erase_if(_instances, [chunkID]( const auto& entry ){ return entry.first == chunkID; });
     }
 

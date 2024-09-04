@@ -81,7 +81,7 @@ ResourcePoolBase::~ResourcePoolBase()
 
 void ResourceCache::RegisterPool( ResourcePoolBase* pool )
 {
-    UniqueLock<Mutex> w_lock( s_poolLock );
+    LockGuard<Mutex> w_lock( s_poolLock );
     s_resourcePools.push_back( pool );
 }
 

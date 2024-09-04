@@ -105,12 +105,9 @@ bool operator!=(const FileNameAndPath& lhs, const FileNameAndPath& rhs);
 }; //namespace Divide
 
 template<>
-struct fmt::formatter<Divide::ResourcePath>
+struct fmt::formatter<Divide::ResourcePath> : fmt::formatter<string_view>
 {
-    constexpr auto parse( format_parse_context& ctx ) { return ctx.begin(); }
-
-    template<typename FormatContext>
-    auto format( Divide::ResourcePath const& path, FormatContext& ctx ) -> decltype(ctx.out())
+    auto format( Divide::ResourcePath const& path, fmt::format_context& ctx ) const -> format_context::iterator
     {
         return fmt::format_to( ctx.out(), "{}", path.string() );
     }

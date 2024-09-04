@@ -92,7 +92,7 @@ namespace Divide
         if ( onCompletionFunction )
         {
             hasOnCompletionFunction = true;
-            UniqueLock<SharedMutex> w_lock( _taskCallbacksLock );
+            LockGuard<SharedMutex> w_lock( _taskCallbacksLock );
             bool found = false;
             for ( CallbackEntry& entry : _taskCallbacks )
             {
@@ -216,7 +216,7 @@ namespace Divide
                 break;
             }
 
-            UniqueLock<SharedMutex> w_lock( _taskCallbacksLock );
+            LockGuard<SharedMutex> w_lock( _taskCallbacksLock );
             const size_t callbackCount = _taskCallbacks.size();
             DIVIDE_ASSERT( callbackCount > 0u );
 

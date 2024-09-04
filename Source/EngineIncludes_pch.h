@@ -71,6 +71,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <condition_variable>
 
+#include <fmt/printf.h>
+
 #include "Core/TemplateLibraries/Headers/TemplateAllocator.h"
 #include "Core/TemplateLibraries/Headers/HashMap.h"
 #include "Core/TemplateLibraries/Headers/Vector.h"
@@ -97,8 +99,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <concurrentqueue/concurrentqueue.h>
 #include <concurrentqueue/blockingconcurrentqueue.h>
-
-#include <fmt/printf.h>
 
 #include <ctre.hpp>
 

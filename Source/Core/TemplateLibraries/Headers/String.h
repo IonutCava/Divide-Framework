@@ -35,8 +35,6 @@
 
 #include "STLString.h"
 
-#include <fmt/format.h>
-
 namespace Divide
 {
     template<size_t N>
