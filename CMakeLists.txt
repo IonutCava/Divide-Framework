@@ -2,7 +2,7 @@
 cmake_minimum_required (VERSION 3.28)
 
 option(BUILD_TESTING_INTERNAL "Build unit test executables" ON)
-option(RUN_TESTING_INTERNAL "Run unit test after every build" OFF)
+option(RUN_TESTING_INTERNAL "Run unit test after every build" ON)
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
 option(ENABLE_AVX2 "Build with AVX2 support" ON)
 option(ENABLE_ASAN "Enable address sanitization" OFF)
