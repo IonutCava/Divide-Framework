@@ -651,64 +651,68 @@ bool Terrain::loadResources( PlatformContext& context )
 
         const bool flipHeight = !ImageTools::UseUpperLeftOrigin();
 
-#pragma omp parallel for
-        for ( I32 height = 0; height < terrainHeight; ++height )
+        ParallelForDescriptor descriptor = {};
+        descriptor._iterCount = terrainHeight;
+        descriptor._partitionSize = std::min(terrainHeight, 64);
+        Parallel_For(context.taskPool(TaskPoolType::HIGH_PRIORITY), descriptor, [&](const Task*, const U32 start, const U32 end)
         {
-            for ( I32 width = 0; width < terrainWidth; ++width )
+            for ( I32 height = start; height < end; ++height )
             {
-                const I32 idxTER = TER_COORD( width, height, terrainWidth );
-                vec3<F32>& vertexData = _physicsVerts[idxTER]._position;
-
-
-                F32 yOffset = 0.0f;
-                const U16* heightData = reinterpret_cast<U16*>(data.data());
-
-                const I32 coordX = width < terrainWidth - 1 ? width : width - 1;
-                I32 coordY = (height < terrainHeight - 1 ? height : height - 1);
-                if ( flipHeight )
+                for ( I32 width = 0; width < terrainWidth; ++width )
                 {
-                    coordY = terrainHeight - 1 - coordY;
+                    const I32 idxTER = TER_COORD( width, height, terrainWidth );
+                    vec3<F32>& vertexData = _physicsVerts[idxTER]._position;
+
+
+                    F32 yOffset = 0.0f;
+                    const U16* heightData = reinterpret_cast<U16*>(data.data());
+
+                    const I32 coordX = width < terrainWidth - 1 ? width : width - 1;
+                    I32 coordY = (height < terrainHeight - 1 ? height : height - 1);
+                    if ( flipHeight )
+                    {
+                        coordY = terrainHeight - 1 - coordY;
+                    }
+                    const I32 idxIMG = TER_COORD( coordX, coordY, terrainWidth );
+                    yOffset = altitudeRange * (heightData[idxIMG] / ushortMax) + minAltitude;
+
+
+                    //Surely the id is unique and memory has also been allocated beforehand
+                    vertexData.set( bMin.x + to_F32( width ) * bXRange / (terrainWidth - 1),       //X
+                                    yOffset,                                                     //Y
+                                    bMin.z + to_F32( height ) * bZRange / (terrainHeight - 1) );    //Z
                 }
-                const I32 idxIMG = TER_COORD( coordX, coordY, terrainWidth );
-                yOffset = altitudeRange * (heightData[idxIMG] / ushortMax) + minAltitude;
-
-
-                //#pragma omp critical
-                //Surely the id is unique and memory has also been allocated beforehand
-                vertexData.set( bMin.x + to_F32( width ) * bXRange / (terrainWidth - 1),       //X
-                                yOffset,                                                     //Y
-                                bMin.z + to_F32( height ) * bZRange / (terrainHeight - 1) );    //Z
             }
-        }
+        });
 
         constexpr I32 offset = 2;
-#pragma omp parallel for
-        for ( I32 j = offset; j < terrainHeight - offset; ++j )
+        Parallel_For(context.taskPool(TaskPoolType::HIGH_PRIORITY), descriptor, [&](const Task*, const U32 start, const U32 end)
         {
-            for ( I32 i = offset; i < terrainWidth - offset; ++i )
+            for ( I32 j = start; j > offset && j < end && j < terrainHeight - offset; ++j )
             {
-                vec3<F32> vU, vV, vUV;
-
-                vU.set( _physicsVerts[TER_COORD( i + offset, j + 0, terrainWidth )]._position -
-                        _physicsVerts[TER_COORD( i - offset, j + 0, terrainWidth )]._position );
-                vV.set( _physicsVerts[TER_COORD( i + 0, j + offset, terrainWidth )]._position -
-                        _physicsVerts[TER_COORD( i + 0, j - offset, terrainWidth )]._position );
-
-                vUV.cross( vV, vU );
-                vUV.normalize();
-                vU = -vU;
-                vU.normalize();
-
-                //Again, not needed, I think
-                //#pragma omp critical
+                for ( I32 i = offset; i < terrainWidth - offset; ++i )
                 {
-                    const I32 idx = TER_COORD( i, j, terrainWidth );
-                    VertexBuffer::Vertex& vert = _physicsVerts[idx];
-                    vert._normal = Util::PACK_VEC3( vUV );
-                    vert._tangent = Util::PACK_VEC3( vU );
+                    vec3<F32> vU, vV, vUV;
+
+                    vU.set( _physicsVerts[TER_COORD( i + offset, j + 0, terrainWidth )]._position -
+                            _physicsVerts[TER_COORD( i - offset, j + 0, terrainWidth )]._position );
+                    vV.set( _physicsVerts[TER_COORD( i + 0, j + offset, terrainWidth )]._position -
+                            _physicsVerts[TER_COORD( i + 0, j - offset, terrainWidth )]._position );
+
+                    vUV.cross( vV, vU );
+                    vUV.normalize();
+                    vU = -vU;
+                    vU.normalize();
+
+                    {
+                        const I32 idx = TER_COORD( i, j, terrainWidth );
+                        VertexBuffer::Vertex& vert = _physicsVerts[idx];
+                        vert._normal = Util::PACK_VEC3( vUV );
+                        vert._tangent = Util::PACK_VEC3( vU );
+                    }
                 }
             }
-        }
+        });
 
         for ( I32 j = 0; j < offset; ++j )
         {

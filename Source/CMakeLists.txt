@@ -109,7 +109,6 @@ else()
 endif()
 
 add_library( ${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_FETCH_SRC_FILES} )
-target_link_libraries(${APP_THIRD_PARTY_LIB} PUBLIC OpenMP::OpenMP_CXX)
 
 if(WIN32)
     target_link_libraries(${APP_THIRD_PARTY_LIB} PUBLIC Shcore.lib Winmm.lib)
