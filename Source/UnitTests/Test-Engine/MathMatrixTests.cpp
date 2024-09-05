@@ -103,7 +103,7 @@ TEST_CASE( "Mat Union Tests", "[math_matrix_test]" )
     input2.set(1, 2, 3, 4, 5, 6, 7, 8, 9);
 
     input3.set({ -8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8 });
-    for (U8 i = 0; i < 16; ++i) {
+    for (U8 i = 0u; i < 16u; ++i) {
         input4.mat[i] = 22.345f * (i + 1);
     }
 
@@ -116,9 +116,9 @@ TEST_CASE( "Mat Union Tests", "[math_matrix_test]" )
     CHECK_TRUE(COMPARE(input4.element(2, 2), input4.m[2][2]));
 
     U8 row = 0u, column = 0u;
-    U8 elementsPerLine = 2;
-    for (row = 0; row < elementsPerLine; ++row) {
-        for (column = 0; column < elementsPerLine; ++column) {
+    U8 elementsPerLine = 2u;
+    for (row = 0u; row < elementsPerLine; ++row) {
+        for (column = 0u; column < elementsPerLine; ++column) {
             CHECK_EQUAL(input1.element(row, column), input1.mat[row * elementsPerLine + column]);
         }
     }

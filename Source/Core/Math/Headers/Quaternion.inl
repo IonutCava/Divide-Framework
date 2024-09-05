@@ -34,6 +34,7 @@
 
 namespace Divide {
 
+#if defined(HAS_AVX2)
 namespace AVX {
     //ref: http://stackoverflow.com/questions/18542894/how-to-multiply-two-quaternions-with-minimal-instructions?lq=1
     static __m128 multiplynew(const __m128 xyzw, const __m128 abcd) noexcept {
@@ -66,7 +67,8 @@ namespace AVX {
         /* now we only need to shuffle the components in place and return the result      */
         return _mm_shuffle_ps(XZWY, XZWY, _MM_SHUFFLE(2, 1, 3, 0));
     }
-}
+} // namespace AVX
+#endif //HAS_AVX2
 
 template <typename T>
 Quaternion<T>::Quaternion() noexcept
@@ -183,10 +185,12 @@ Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const noexcept {
                          W() * rq.W() - X() * rq.X() - Y() * rq.Y() - Z() * rq.Z());
 }
 
+#if defined(HAS_AVX2)
 template <>
 inline Quaternion<F32> Quaternion<F32>::operator*(const Quaternion<F32>& rq) const noexcept {
     return Quaternion<F32>(AVX::multiplynew(_elements._reg._reg, rq._elements._reg._reg));
 }
+#endif //HAS_AVX2
 
 template <typename T>
 Quaternion<T>& Quaternion<T>::operator*=(const Quaternion<T>& rq) noexcept {

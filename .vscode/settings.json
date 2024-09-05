@@ -95,6 +95,7 @@
         "hash_map": "cpp",
         "hash_set": "cpp",
         "scoped_allocator": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "parentbad": "cpp"
     }
 }

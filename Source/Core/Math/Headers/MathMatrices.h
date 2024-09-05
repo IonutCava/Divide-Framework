@@ -459,8 +459,6 @@ class mat3 {
 /***************
  * mat4
  ***************/
-#pragma pack(push)
-#pragma pack(1)
 template <typename T>
 class mat4 {
     static_assert(ValidMathType<T>, "Invalid base type!");
@@ -710,7 +708,6 @@ class mat4 {
         SimdVector<T> _reg[4];
     };
 };
-#pragma pack(pop)
 
 static const mat4<F32> MAT4_BIAS_NEGATIVE_ONE_Z{ 0.5, 0.0, 0.0, 0.0,
                                                  0.0, 0.5, 0.0, 0.0,

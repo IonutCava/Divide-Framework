@@ -115,16 +115,16 @@ void Script::compile()
 
 void Script::bootstrap()
 {
-    std::vector<std::string> scriptPath{std::string{Paths::Scripts::g_scriptsLocation.string() + Paths::g_pathSeparator}.c_str(),
-                                        std::string{Paths::Scripts::g_scriptsAtomsLocation.string() + Paths::g_pathSeparator}.c_str() };
+    std::vector<std::string> scriptPath{std::string{Paths::Scripts::g_scriptsAtomsLocation.string() + Paths::g_pathSeparator}.c_str(),
+                                        std::string{Paths::Scripts::g_scriptsLocation.string() + Paths::g_pathSeparator}.c_str() };
 
     _script =  std::make_unique<chaiscript::ChaiScript>(scriptPath,
-                                                          scriptPath,
-                                                          std::vector<chaiscript::Options> 
-                                                          {
-                                                             chaiscript::Options::Load_Modules,
-                                                             chaiscript::Options::External_Scripts
-                                                          });
+                                                        scriptPath,
+                                                        std::vector<chaiscript::Options> 
+                                                        {
+                                                           chaiscript::Options::Load_Modules,
+                                                           chaiscript::Options::External_Scripts
+                                                        });
 
     _script->add(create_chaiscript_stl_extra());
 

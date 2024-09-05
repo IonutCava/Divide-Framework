@@ -59,16 +59,16 @@
 
 namespace Divide
 {
-    namespace AVX
+    namespace SSE
     {
-        bool Fneq128( __m128 const& a, __m128 const& b ) noexcept;
-        bool Fneq128( __m128 const& a, __m128 const& b, const F32 epsilon ) noexcept;
-        __m128 DotSimd( const __m128& a, const __m128& b ) noexcept;
+        bool Fneq128( __m128 a, __m128 b ) noexcept;
+        bool Fneq128( __m128 a, __m128 b, F32 epsilon ) noexcept;
+        __m128 DotSimd( __m128 a, __m128 b ) noexcept;
         __m128 SimpleDot( __m128 a, __m128 b ) noexcept;
-    }; // namespace AVX
+    }; // namespace SSE
 
     template<typename T>
-    class SimdVector
+    struct SimdVector
     {
         public:
         SimdVector()  noexcept : SimdVector( 0 )
@@ -90,7 +90,7 @@ namespace Divide
     };
 
     template<>
-    class SimdVector<F32>
+    struct alignas(16) SimdVector<F32>
     {
         public:
         SimdVector() noexcept : SimdVector( 0.f )
@@ -111,12 +111,12 @@ namespace Divide
 
         bool operator==( const SimdVector& other ) const noexcept
         {
-            return !AVX::Fneq128( _reg, other._reg, EPSILON_F32 );
+            return !SSE::Fneq128( _reg, other._reg, EPSILON_F32 );
         }
 
         bool operator!=( const SimdVector& other ) const noexcept
         {
-            return AVX::Fneq128( _reg, other._reg, EPSILON_F32 );
+            return SSE::Fneq128( _reg, other._reg, EPSILON_F32 );
         }
         __m128 _reg;
     };
@@ -932,7 +932,7 @@ namespace Divide
         vec4( U xIn, U yIn, U zIn ) noexcept : vec4( xIn, yIn, zIn, T{1} )
         {
         }
-        vec4( __m128 reg ) noexcept : _reg( reg )
+        vec4( const __m128 reg ) noexcept : _reg( reg )
         {
         }
         vec4( const SimdVector<T>& reg ) noexcept : _reg( reg )

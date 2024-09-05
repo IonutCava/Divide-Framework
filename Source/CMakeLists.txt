@@ -130,13 +130,13 @@ target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS})
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
 
-set(COMMON_LIBS mimalloc-static
+set(COMMON_LIBS $<IF:$<TARGET_EXISTS:mimalloc>,mimalloc,mimalloc-static>
                 ${APP_LIB_DIVIDE} 
                 ${APP_THIRD_PARTY_LIB}
                 ${EXTERNAL_LIBS}
 )
 
-target_link_libraries( ${APP_EXE_DIVIDE} PRIVATE ${COMMON_LIBS}
+target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE ZLIB::ZLIB
                                          PRIVATE glm::glm
                                          PRIVATE unofficial::concurrentqueue::concurrentqueue
@@ -163,7 +163,6 @@ else()
 endif()
 
 if(BUILD_TESTING_INTERNAL)
-    include(CTest)
     include(Catch)
 
     add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
@@ -173,14 +172,20 @@ if(BUILD_TESTING_INTERNAL)
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
     add_dependencies(${APP_EXE_TEST_PLATFORM} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_PLATFORM} REUSE_FROM ${APP_LIB_DIVIDE})
-    catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
 
+    
     add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
     target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
     add_dependencies(${APP_EXE_TEST_ENGINE} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_ENGINE} REUSE_FROM ${APP_LIB_DIVIDE})
-    catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+
+    if(RUN_TESTING_INTERNAL)
+        include(CTest)
+
+        catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+        catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+    endif()
 
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
         target_compile_options(${APP_EXE_TEST_PLATFORM} PRIVATE /wd4866 /wd4868)
@@ -191,5 +196,6 @@ endif()
 foreach( APP_EXE ${APP_BUILD_EXES} )
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-    target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS})
+    target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS} ${EXTRA_COMPILE_FLAGS})
+    target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
 endforeach()

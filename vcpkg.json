@@ -30,6 +30,7 @@
         "ctre",
         "catch2",
         "fribidi",
+        "assimp",
         "sdl2",
         "sdl2-image",
         {
@@ -43,14 +44,13 @@
                 "opusfile"
             ]
         },
-        "assimp",
         {
             "name": "imgui",
             "features": [ "docking-experimental", "no-obsolete-keyio", "no-obsolete-functions" ]
         },
         {
             "name": "mimalloc",
-            "features": ["override"]
+            "features": []
         }
     ]
 }
