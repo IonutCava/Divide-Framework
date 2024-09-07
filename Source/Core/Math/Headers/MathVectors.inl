@@ -34,6 +34,7 @@
 namespace Divide
 {
 
+#if defined(HAS_SSE42)
     namespace SSE
     {
         //ref: http://stackoverflow.com/questions/6042399/how-to-compare-m128-types
@@ -71,7 +72,9 @@ namespace Divide
             b = _mm_hadd_ps( a, a );
             return _mm_hadd_ps( b, b );
         }
-    }
+    } //namespace SSE
+#endif //HAS_SSE42
+
     /*
     *  useful vector functions
     */
@@ -754,6 +757,7 @@ namespace Divide
     *  vec4 inline definitions
     */
 
+#if defined(HAS_SSE42)
     template<>
     template<>
     FORCE_INLINE vec4<F32> vec4<F32>::operator-( const F32 _f ) const noexcept
@@ -874,6 +878,23 @@ namespace Divide
         return *this;
     }
 
+    template <>
+    template <>
+    FORCE_INLINE bool vec4<F32>::compare( const vec4<F32>& v ) const noexcept
+    {
+        // returns true if at least one element in a is not equal to the corresponding element in b
+        return !SSE::Fneq128( this->_reg._reg, v._reg._reg);
+    }
+
+    template <>
+    template <>
+    FORCE_INLINE bool vec4<F32>::compare( const vec4<F32>& v, const F32 epsi ) const noexcept
+    {
+        return !SSE::Fneq128( this->_reg._reg, v._reg._reg, epsi );
+    }
+
+#endif //HAS_SSE42
+
     /// compare 2 vectors
     template <typename T>
     template <typename U> requires std::is_pod_v<U>
@@ -883,14 +904,6 @@ namespace Divide
                COMPARE( this->y, v.y ) &&
                COMPARE( this->z, v.z ) &&
                COMPARE( this->w, v.w );
-    }
-
-    template <>
-    template <>
-    FORCE_INLINE bool vec4<F32>::compare( const vec4<F32>& v ) const noexcept
-    {
-        // returns true if at least one element in a is not equal to the corresponding element in b
-        return !SSE::Fneq128( this->_reg._reg, v._reg._reg);
     }
 
     /// compare this vector with the one specified and see if they match within the specified amount
@@ -903,14 +916,6 @@ namespace Divide
                COMPARE_TOLERANCE( this->z, v.z, epsi ) &&
                COMPARE_TOLERANCE( this->w, v.w, epsi );
     }
-
-    template <>
-    template <>
-    FORCE_INLINE bool vec4<F32>::compare( const vec4<F32>& v, const F32 epsi ) const noexcept
-    {
-        return !SSE::Fneq128( this->_reg._reg, v._reg._reg, epsi );
-    }
-
     /// round all four values
     template <typename T>
     FORCE_INLINE void vec4<T>::round() noexcept
@@ -949,23 +954,27 @@ namespace Divide
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
 
+
+#if defined(HAS_SSE42)
     template <>
     FORCE_INLINE F32 Dot( const vec4<F32>& a, const vec4<F32>& b ) noexcept
     {
         return _mm_cvtss_f32( SSE::DotSimd( a._reg._reg, b._reg._reg ) );
     }
 
+    template<>
+    FORCE_INLINE F32 vec4<F32>::length() const noexcept
+    {
+        return Divide::Sqrt<F32>( SSE::DotSimd( this->_reg._reg, this->_reg._reg ) );
+    }
+
+#endif //HAS_SSE42
+
     /// calculate the dot product between this vector and the specified one
     template <typename T>
     FORCE_INLINE T vec4<T>::dot( const vec4& v ) const noexcept
     {
         return Divide::Dot( *this, v );
-    }
-
-    template<>
-    FORCE_INLINE F32 vec4<F32>::length() const noexcept
-    {
-        return Divide::Sqrt<F32>( SSE::DotSimd( this->_reg._reg, this->_reg._reg ) );
     }
 
     /// return the squared distance of the vector
@@ -997,12 +1006,14 @@ namespace Divide
         return *this;
     }
 
+#if defined(HAS_SSE42)
     template <>
     FORCE_INLINE vec4<F32>& vec4<F32>::normalize() noexcept
     {
         this->_reg._reg = _mm_mul_ps( this->_reg._reg, _mm_rsqrt_ps( SSE::SimpleDot( this->_reg._reg, this->_reg._reg ) ) );
         return *this;
     }
+#endif //HAS_SSE42
 
     /// The current vector is perpendicular to the specified one within epsilon
     template <typename T>

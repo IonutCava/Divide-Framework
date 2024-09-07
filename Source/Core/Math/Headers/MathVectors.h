@@ -59,6 +59,7 @@
 
 namespace Divide
 {
+#if defined(HAS_SSE42)
     namespace SSE
     {
         bool Fneq128( __m128 a, __m128 b ) noexcept;
@@ -66,6 +67,7 @@ namespace Divide
         __m128 DotSimd( __m128 a, __m128 b ) noexcept;
         __m128 SimpleDot( __m128 a, __m128 b ) noexcept;
     }; // namespace SSE
+#endif //HAS_SSE42
 
     template<typename T>
     struct SimdVector
@@ -89,6 +91,7 @@ namespace Divide
         bool operator==( const SimdVector& ) const = default;
     };
 
+#if defined(HAS_SSE42)
     template<>
     struct alignas(16) SimdVector<F32>
     {
@@ -120,6 +123,7 @@ namespace Divide
         }
         __m128 _reg;
     };
+#endif //HAS_SSE42
 
     /***********************************************************************
      * vec2 -  A 2-tuple used to represent things like a vector in 2D space,
@@ -932,9 +936,11 @@ namespace Divide
         vec4( U xIn, U yIn, U zIn ) noexcept : vec4( xIn, yIn, zIn, T{1} )
         {
         }
+#if defined(HAS_SSE42)
         vec4( const __m128 reg ) noexcept : _reg( reg )
         {
         }
+#endif //HAS_SSE42
         vec4( const SimdVector<T>& reg ) noexcept : _reg( reg )
         {
         }

@@ -34,6 +34,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide
 {
 
+#if defined(HAS_SSE42)
 #   define MakeShuffleMask(x,y,z,w)         (x | y << 2 | z << 4 | w << 6)
 
     // vec(0, 1, 2, 3) -> (vec[x], vec[y], vec[z], vec[w])
@@ -50,8 +51,9 @@ namespace Divide
      // special shuffle
 #   define VecShuffle_0101(vec1, vec2)     _mm_movelh_ps(vec1, vec2)
 #   define VecShuffle_2323(vec1, vec2)     _mm_movehl_ps(vec2, vec1)
+#endif //HAS_SSE42
 
-#if defined(HAS_AVX2)
+#if defined(HAS_AVX)
     namespace AVX
     {
         // another linear combination, using AVX instructions on XMM regs
@@ -65,8 +67,9 @@ namespace Divide
             return result;
         }
     } //namespace AVX
-#endif //HAS_AVX2
+#endif //HAS_AVX
 
+#if defined(HAS_SSE42)
     namespace SSE
     {
         
@@ -233,6 +236,7 @@ namespace Divide
             r._reg[3]._reg = VecShuffle( Y_, W_, 2, 0, 2, 0 );
         }
     } // namespace SSE
+#endif //HAS_SSE42
 
     template<typename T>
     void GetInverse( const mat4<T>& inM, mat4<T>& r ) noexcept
@@ -240,16 +244,17 @@ namespace Divide
         inM.getInverse( r );
     }
 
-    template<>
-    inline void GetInverse( const mat4<F32>& inM, mat4<F32>& r ) noexcept
-    {
-        SSE::GetInverse( inM, r );
-    }
-
     template<typename T>
     mat4<T> GetInverse( const mat4<T>& inM ) noexcept
     {
         return inM.getInverse();
+    }
+
+#if defined(HAS_SSE42)
+    template<>
+    inline void GetInverse( const mat4<F32>& inM, mat4<F32>& r ) noexcept
+    {
+        SSE::GetInverse( inM, r );
     }
 
     template<>
@@ -259,6 +264,7 @@ namespace Divide
         SSE::GetInverse( inM, r );
         return r;
     }
+#endif //HAS_SSE42
 
     /*********************************
     * mat2
@@ -2301,6 +2307,7 @@ namespace Divide
         Inverse( mat, mat );
     }
 
+#if defined(HAS_SSE42)
     template<>
     inline void mat4<F32>::inverse() noexcept
     {
@@ -2308,6 +2315,7 @@ namespace Divide
         SSE::GetInverse( *this, ret );
         *this = ret;
     }
+#endif //HAS_SSE42
 
     template<typename T>
     FORCE_INLINE void mat4<T>::transpose() noexcept
@@ -2348,6 +2356,13 @@ namespace Divide
         return ret;
     }
 
+    template<typename T>
+    FORCE_INLINE void mat4<T>::getInverse( mat4& ret ) const noexcept
+    {
+        Inverse( mat, ret.mat );
+    }
+
+#if defined(HAS_SSE42)
     template<>
     inline mat4<F32> mat4<F32>::getInverse() const noexcept
     {
@@ -2356,17 +2371,12 @@ namespace Divide
         return ret;
     }
 
-    template<typename T>
-    FORCE_INLINE void mat4<T>::getInverse( mat4& ret ) const noexcept
-    {
-        Inverse( mat, ret.mat );
-    }
-
     template<>
     FORCE_INLINE void mat4<F32>::getInverse( mat4<F32>& ret ) const noexcept
     {
         SSE::GetInverse( *this, ret );
     }
+#endif //HAS_SSE42
 
     template<typename T>
     FORCE_INLINE mat4<T> mat4<T>::getTranspose() const noexcept
@@ -2395,6 +2405,14 @@ namespace Divide
         return ret;
     }
 
+    template<typename T>
+    FORCE_INLINE void mat4<T>::getInverseTranspose( mat4& ret ) const noexcept
+    {
+        Inverse( mat, ret.mat );
+        ret.transpose();
+    }
+
+#if defined(HAS_SSE42)
     template<>
     inline mat4<F32> mat4<F32>::getInverseTranspose() const noexcept
     {
@@ -2404,19 +2422,13 @@ namespace Divide
         return ret;
     }
 
-    template<typename T>
-    FORCE_INLINE void mat4<T>::getInverseTranspose( mat4& ret ) const noexcept
-    {
-        Inverse( mat, ret.mat );
-        ret.transpose();
-    }
-
     template<>
     FORCE_INLINE void mat4<F32>::getInverseTranspose( mat4<F32>& ret ) const noexcept
     {
         SSE::GetInverse( *this, ret );
         ret.transpose();
     }
+#endif //HAS_SSE42
 
     template<typename T>
     mat4<T> mat4<T>::getTransposeRotation() const noexcept
@@ -2749,10 +2761,11 @@ namespace Divide
         return ret;
     }
 
+#if defined(HAS_AVX) || defined(HAS_SSE42)
     template<>
     FORCE_INLINE void mat4<F32>::Multiply( const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret ) noexcept
     {
-#if defined(HAS_AVX2)
+#if defined(HAS_AVX) 
         // using AVX instructions, 4-wide
         // this can be better if A is in memory.
         _mm256_zeroupper();
@@ -2760,13 +2773,14 @@ namespace Divide
         ret._reg[1]._reg = AVX::lincomb( matrixB.m[1], matrixA );
         ret._reg[2]._reg = AVX::lincomb( matrixB.m[2], matrixA );
         ret._reg[3]._reg = AVX::lincomb( matrixB.m[3], matrixA );
-#else //HAS_AVX2
+#else  //HAS_AVIX
         ret._reg[0]._reg = SSE::lincomb( matrixB._reg[0]._reg, matrixA);
         ret._reg[1]._reg = SSE::lincomb( matrixB._reg[1]._reg, matrixA );
         ret._reg[2]._reg = SSE::lincomb( matrixB._reg[2]._reg, matrixA );
         ret._reg[3]._reg = SSE::lincomb( matrixB._reg[3]._reg, matrixA );
-#endif //HAS_AVX2
+#endif //HAS_AVX
     }
+#endif //HAS_AVX || HAS_SSE42
 
     // Copyright 2011 The Closure Library Authors. All Rights Reserved.
     template<typename T>

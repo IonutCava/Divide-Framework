@@ -260,11 +260,15 @@ namespace Divide
         return static_cast<T>(std::sqrt( input ));
     }
 
+#if defined(HAS_SSE42)
     template <>
     inline F32 Sqrt( const __m128 input ) noexcept
     {
         return _mm_cvtss_f32( _mm_sqrt_ss( input ) );
     }
+
+#endif //HAS_SSE42
+
     ///(thx sqrt[-1] and canuckle of opengl.org forums)
 
     // Helper method to emulate GLSL
