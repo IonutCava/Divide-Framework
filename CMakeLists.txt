@@ -123,16 +123,22 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(CMAKE_DEBUG_PREFIX /D)
 
   add_compile_definitions(USING_MSVC _CRT_SECURE_NO_WARNINGS)
-
-  if ( ENABLE_ASAN )
-    list(APPEND EXTRA_COMPILE_FLAGS "/fsanitize=address _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION")
-    list(APPEND EXTRA_LINK_FLAGS "/fsanitize=address")
-  endif ()
-
   add_compile_options(/Zc:__cplusplus /Zm256 /utf-8 $<$<BOOL:${ENABLE_AVX2}>:/arch:AVX2>) 
   add_link_options(/INCREMENTAL)
 
+  if ( ENABLE_ASAN )
+    add_compile_definitions(_DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
+    list(APPEND EXTRA_COMPILE_FLAGS "/fsanitize=address")
+    list(APPEND EXTRA_LINK_FLAGS "/fsanitize=address")
+    message("ASAN enabled!")
+  endif ()
+
+  if ( ENABLE_UBSAN )
+    message("UBSAN enabled but NOT SUPPORTED!")
+  endif ()
+
 else ()
+
   set(CMAKE_DEBUG_PREFIX -D)
 
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -153,6 +159,7 @@ else ()
     list(APPEND EXTRA_LINK_FLAGS "-fsanitize=undefined")
     message("UBSAN enabled!")
   endif ()
+
 endif ()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${CMAKE_DEBUG_PREFIX}_DEBUG")

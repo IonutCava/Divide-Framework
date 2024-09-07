@@ -638,8 +638,8 @@ bool Terrain::loadResources( PlatformContext& context )
 
         constexpr F32 ushortMax = 1.f + U16_MAX;
 
-        const I32 terrainWidth = to_I32( terrainDimensions.x );
-        const I32 terrainHeight = to_I32( terrainDimensions.y );
+        const U32 terrainWidth  = terrainDimensions.x;
+        const U32 terrainHeight = terrainDimensions.y;
 
         _physicsVerts.resize( to_size( terrainWidth ) * terrainHeight );
 
@@ -653,27 +653,27 @@ bool Terrain::loadResources( PlatformContext& context )
 
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = terrainHeight;
-        descriptor._partitionSize = std::min(terrainHeight, 64);
+        descriptor._partitionSize = std::min(terrainHeight, 64u);
         Parallel_For(context.taskPool(TaskPoolType::HIGH_PRIORITY), descriptor, [&](const Task*, const U32 start, const U32 end)
         {
-            for ( I32 height = start; height < end; ++height )
+            for ( U32 height = start; height < end; ++height )
             {
-                for ( I32 width = 0; width < terrainWidth; ++width )
+                for ( U32 width = 0; width < terrainWidth; ++width )
                 {
-                    const I32 idxTER = TER_COORD( width, height, terrainWidth );
+                    const U32 idxTER = TER_COORD( width, height, terrainWidth );
                     vec3<F32>& vertexData = _physicsVerts[idxTER]._position;
 
 
                     F32 yOffset = 0.0f;
                     const U16* heightData = reinterpret_cast<U16*>(data.data());
 
-                    const I32 coordX = width < terrainWidth - 1 ? width : width - 1;
-                    I32 coordY = (height < terrainHeight - 1 ? height : height - 1);
+                    const U32 coordX = width < terrainWidth - 1 ? width : width - 1;
+                    U32 coordY = (height < terrainHeight - 1 ? height : height - 1);
                     if ( flipHeight )
                     {
                         coordY = terrainHeight - 1 - coordY;
                     }
-                    const I32 idxIMG = TER_COORD( coordX, coordY, terrainWidth );
+                    const U32 idxIMG = TER_COORD( coordX, coordY, terrainWidth );
                     yOffset = altitudeRange * (heightData[idxIMG] / ushortMax) + minAltitude;
 
 
@@ -685,12 +685,12 @@ bool Terrain::loadResources( PlatformContext& context )
             }
         });
 
-        constexpr I32 offset = 2;
+        constexpr U32 offset = 2;
         Parallel_For(context.taskPool(TaskPoolType::HIGH_PRIORITY), descriptor, [&](const Task*, const U32 start, const U32 end)
         {
-            for ( I32 j = start; j > offset && j < end && j < terrainHeight - offset; ++j )
+            for ( U32 j = start; j > offset && j < end && j < terrainHeight - offset; ++j )
             {
-                for ( I32 i = offset; i < terrainWidth - offset; ++i )
+                for ( U32 i = offset; i < terrainWidth - offset; ++i )
                 {
                     vec3<F32> vU, vV, vUV;
 
@@ -714,12 +714,12 @@ bool Terrain::loadResources( PlatformContext& context )
             }
         });
 
-        for ( I32 j = 0; j < offset; ++j )
+        for ( U32 j = 0u; j < offset; ++j )
         {
-            for ( I32 i = 0; i < terrainWidth; ++i )
+            for ( U32 i = 0u; i < terrainWidth; ++i )
             {
-                I32 idx0 = TER_COORD( i, j, terrainWidth );
-                I32 idx1 = TER_COORD( i, offset, terrainWidth );
+                U32 idx0 = TER_COORD( i, j, terrainWidth );
+                U32 idx1 = TER_COORD( i, offset, terrainWidth );
 
                 _physicsVerts[idx0]._normal  = _physicsVerts[idx1]._normal;
                 _physicsVerts[idx0]._tangent = _physicsVerts[idx1]._tangent;
@@ -732,12 +732,12 @@ bool Terrain::loadResources( PlatformContext& context )
             }
         }
 
-        for ( I32 i = 0; i < offset; ++i )
+        for ( U32 i = 0u; i < offset; ++i )
         {
-            for ( I32 j = 0; j < terrainHeight; ++j )
+            for ( U32 j = 0u; j < terrainHeight; ++j )
             {
-                I32 idx0 = TER_COORD( i, j, terrainWidth );
-                I32 idx1 = TER_COORD( offset, j, terrainWidth );
+                U32 idx0 = TER_COORD( i, j, terrainWidth );
+                U32 idx1 = TER_COORD( offset, j, terrainWidth );
 
                 _physicsVerts[idx0]._normal  = _physicsVerts[idx1]._normal;
                 _physicsVerts[idx0]._tangent = _physicsVerts[idx1]._tangent;
