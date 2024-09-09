@@ -50,7 +50,7 @@ TEST_CASE( "Extension Check" "[file_management]" )
 TEST_CASE( "Lexically Normal Path Compare" "[file_management]" )
 {
     const ResourcePath path1_in{"foo/./bar/.."};
-    const ResourcePath path2_in{"foo\\/./bar/../"};
+    const ResourcePath path2_in{"foo/.///bar/../"};
 
     const ResourcePath path_out{"foo/"};
 
