@@ -1,6 +1,6 @@
 {
     "name": "divide-framework",
-    "version-string": "0.1",
+    "version-string": "latest",
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "dependencies": [
         "pkgconf",

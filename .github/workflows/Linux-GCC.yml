@@ -24,14 +24,14 @@ jobs:
         #fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
-      #with:
-      #  cmakeVersion: latest
-      #  ninjaVersion: latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
 
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
-      #with:
-      #  vcpkgJsonGlob: 'vcpkg.json'
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10

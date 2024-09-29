@@ -1,5 +1,5 @@
 # CMakeList.txt : Top-level CMake project file, do global configuration and include sub-projects here.
-cmake_minimum_required (VERSION 3.28)
+cmake_minimum_required (VERSION 3.29.2)
 
 option(BUILD_TESTING_INTERNAL "Build unit test executables" ON)
 option(RUN_TESTING_INTERNAL "Run unit test after every build" ON)
