@@ -17,11 +17,13 @@ jobs:
       matrix:
         os: [ubuntu-latest]
 
+    env:
+      VCPKG_ROOT:
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0
+        #fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
       with:

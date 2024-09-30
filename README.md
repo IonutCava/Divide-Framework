@@ -91,6 +91,8 @@ SSR
 Grass/Sky/Fog
 ![Grass/Sky/Fog](http://divide-studio.co.uk/sky_fog_2.png)
 
+Physically Based Bloom:
+![Bloom](http://divide-studio.co.uk/Bloom.png)
 # Third Party libs:
 ```
 If I accidentally breached any license, please open an issue and I will address it immediately.
