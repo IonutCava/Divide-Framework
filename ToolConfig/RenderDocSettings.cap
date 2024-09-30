@@ -5,7 +5,7 @@
         "commandLine": "--disableAssertOnRenderAPIError",
         "environment": [
         ],
-        "executable": "G:\\Divide-Framework\\Build\\windows-msvc-debug-editor\\bin\\Divide-Framework.exe",
+        "executable": "H:\\Divide-Framework\\Build\\windows-msvc-debug-editor\\bin\\Divide-Framework.exe",
         "inject": false,
         "numQueuedFrames": 0,
         "options": {
@@ -23,6 +23,6 @@
             "verifyBufferAccess": false
         },
         "queuedFrameCap": 0,
-        "workingDir": "G:/Divide-Framework/"
+        "workingDir": "H:/Divide-Framework/"
     }
 }

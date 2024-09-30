@@ -19,8 +19,8 @@ namespace {
     constexpr U8 g_ringCount = 4;
 }
 
-DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
-    : PreRenderOperator(context, parent, FilterType::FILTER_DEPTH_OF_FIELD)
+DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter)
+    : PreRenderOperator(context, parent, FilterType::FILTER_DEPTH_OF_FIELD, taskCounter)
 {
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -77,7 +77,7 @@ DoFPreRenderOperator::DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     ResourceDescriptor<ShaderProgram> dof("DepthOfField", shaderDescriptor );
     dof.waitForReady(false);
 
-    _dofShader = CreateResource(dof);
+    _dofShader = CreateResource( dof, taskCounter );
     PipelineDescriptor pipelineDescriptor = {};
     pipelineDescriptor._stateBlock = _context.get2DStateBlock();
     pipelineDescriptor._shaderProgramHandle = _dofShader;

@@ -179,10 +179,9 @@ namespace Divide
                 switch (message._type)
                 {
                     case Console::EntryType::COUNT: 
-                    {
                         DIVIDE_UNEXPECTED_CALL();
                         continue;
-                    } break;
+
                     case Console::EntryType::INFO:
                     case Console::EntryType::COMMAND:
                     {

@@ -6,7 +6,7 @@
 
 namespace Divide {
 
-PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent, const FilterType operatorType)
+PreRenderOperator::PreRenderOperator(GFXDevice& context, PreRenderBatch& parent, const FilterType operatorType, [[maybe_unused]] std::atomic_uint& taskCounter)
     : _context(context),
       _parent(parent),
       _operatorType(operatorType)

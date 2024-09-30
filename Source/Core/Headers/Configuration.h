@@ -207,7 +207,8 @@ struct Configuration final : XML::IXMLSerializable {
             struct Bloom
             {
                 bool enabled = true;
-                F32 luminanceBias = 0.8f;
+                F32 filterRadius = 0.005f;
+                F32 strength = 0.04f;
             } bloom;
             struct SSAO
             {

@@ -82,7 +82,7 @@ namespace Divide
         return true;
     }
 
-    bool glFramebuffer::toggleAttachment( const U8 attachmentIdx, const AttachmentState state, const U16 levelOffset, const DrawLayerEntry layerOffset, bool layeredRendering )
+    bool glFramebuffer::toggleAttachment( const U8 attachmentIdx, const AttachmentState state, const U16 levelOffset, DrawLayerEntry targetLayers )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -97,18 +97,17 @@ namespace Divide
 
         if ( texPtr->depth() == 1u )
         {
-            DIVIDE_ASSERT( layerOffset._layer == 0u );
-            if ( !IsCubeTexture( texPtr->descriptor()._texType ) || layerOffset._cubeFace == 0u )
+            DIVIDE_ASSERT(targetLayers._layer._offset == 0u );
+            if ( !IsCubeTexture( texPtr->descriptor()._texType ) || targetLayers._cubeFace == 0u )
             {
-                layeredRendering = true;
+                targetLayers._layer._count = U16_MAX;
             }
         }
 
         const BindingState bState
         {
-            ._layer = layerOffset,
+            ._layers = targetLayers,
             ._levelOffset = levelOffset,
-            ._layeredRendering = layeredRendering,
             ._attState = state
         };
 
@@ -127,12 +126,12 @@ namespace Divide
             }
             else
             {
-                DIVIDE_ASSERT( bState._layer._layer < texPtr->depth() && bState._levelOffset < texPtr->mipCount());
+                DIVIDE_ASSERT( bState._layers._layer._offset < texPtr->depth() && bState._levelOffset < texPtr->mipCount());
 
                 ResourcePtr<Texture> resolvedTexPtr = Get( attachment->resolvedTexture() );
 
                 const gl46core::GLuint handle = static_cast<glTexture*>(texPtr)->textureHandle();
-                if ( bState._layer._layer == 0u && bState._layer._cubeFace == 0u && layeredRendering )
+                if ( bState._layers._layer._offset == 0u && bState._layers._cubeFace == 0u && bState._layers._layer._count == U16_MAX )
                 {
                     gl46core::glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
                     if ( _attachmentsAutoResolve[attachmentIdx] )
@@ -142,19 +141,19 @@ namespace Divide
                 }
                 else if ( IsCubeTexture( texPtr->descriptor()._texType ) )
                 {
-                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layers._cubeFace + (bState._layers._layer._offset * 6u) );
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layer._cubeFace + (bState._layer._layer * 6u) );
+                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layers._cubeFace + (bState._layers._layer._offset * 6u) );
                     }
                 }
                 else
                 {
-                    assert(bState._layer._cubeFace == 0u);
-                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layer._layer );
+                    assert(bState._layers._cubeFace == 0u);
+                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layers._layer._offset );
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layer._layer );
+                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layers._layer._offset );
                     }
                 }
             }
@@ -205,6 +204,7 @@ namespace Divide
             _framebufferResolveHandle = GL_NULL_HANDLE;
         }
 
+        const SubRange latyeredSubRange{ 0u , U16_MAX};
         for ( U8 i = 0u; i < RT_MAX_ATTACHMENT_COUNT; ++i )
         {
             if ( !_attachmentsUsed[i] )
@@ -212,7 +212,7 @@ namespace Divide
                 continue;
             }
 
-            toggleAttachment( i, AttachmentState::STATE_ENABLED, 0u, { ._layer = 0u, ._cubeFace = 0u }, true );
+            toggleAttachment( i, AttachmentState::STATE_ENABLED, 0u, { ._layer = latyeredSubRange, ._cubeFace = 0u } );
         }
 
         // Setup draw buffers
@@ -258,7 +258,7 @@ namespace Divide
                     continue;
                 }
 
-                if (fbo->toggleAttachment( i, i == attIndex ? AttachmentState::STATE_ENABLED : AttachmentState::STATE_DISABLED, mip, {layer, 0u}, false ) )
+                if (fbo->toggleAttachment( i, i == attIndex ? AttachmentState::STATE_ENABLED : AttachmentState::STATE_DISABLED, mip, {{layer, 1u}, 0u} ) )
                 {
                     ret = true;
                 }
@@ -360,13 +360,13 @@ namespace Divide
             {
                 PROFILE_SCOPE( "Reset Input Attachments", Profiler::Category::Graphics );
                 DIVIDE_ASSERT( input->_attachmentsUsed[entry._input._index] );
-                input->toggleAttachment( entry._input._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = 0u, ._cubeFace = 0u }, true );
+                input->toggleAttachment( entry._input._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = {0u, U16_MAX}, ._cubeFace = 0u } );
             }
             if ( outputDirty )
             {
                 PROFILE_SCOPE( "Reset Output Attachments", Profiler::Category::Graphics );
                 DIVIDE_ASSERT( output->_attachmentsUsed[entry._output._index] );
-                output->toggleAttachment( entry._output._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = 0u, ._cubeFace = 0u }, true );
+                output->toggleAttachment( entry._output._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = {0u, U16_MAX}, ._cubeFace = 0u } );
             }
             if ( blitted )
             {
@@ -443,7 +443,7 @@ namespace Divide
         {
             if ( _attachmentsUsed[i] )
             {
-                if ( drawPolicy._writeLayers[i]._layer != INVALID_INDEX && (drawPolicy._writeLayers[i]._layer > 0u || drawPolicy._writeLayers[i]._cubeFace > 0u))
+                if ( drawPolicy._writeLayers[i]._layer._offset != INVALID_INDEX && (drawPolicy._writeLayers[i]._layer._offset > 0u || drawPolicy._writeLayers[i]._cubeFace > 0u))
                 {
                     targetDepthLayer = drawPolicy._writeLayers[i];
                     break;
@@ -454,8 +454,8 @@ namespace Divide
         {
             if ( _attachmentsUsed[i] )
             {
-                _previousDrawLayers[i] = drawPolicy._writeLayers[i]._layer == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i];
-                toggleAttachment( i, AttachmentState::STATE_ENABLED, drawPolicy._mipWriteLevel, _previousDrawLayers[i], drawPolicy._layeredRendering);
+                _previousDrawLayers[i] = drawPolicy._writeLayers[i]._layer._offset == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i];
+                toggleAttachment( i, AttachmentState::STATE_ENABLED, drawPolicy._mipWriteLevel, _previousDrawLayers[i]);
             }
         }
 
@@ -506,7 +506,7 @@ namespace Divide
 
             if ( _previousPolicy._drawMask[i] && mask[i] )
             {
-                toggleAttachment( i, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[i], _previousPolicy._layeredRendering);
+                toggleAttachment( i, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[i] );
 
                 const gl46core::GLenum rwBuffer = static_cast<gl46core::GLenum>(_attachments[i]->binding());
                 gl46core::glNamedFramebufferReadBuffer( _framebufferHandle, rwBuffer );
@@ -525,7 +525,7 @@ namespace Divide
 
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX] && mask[RT_DEPTH_ATTACHMENT_IDX] )
         {
-            toggleAttachment( RT_DEPTH_ATTACHMENT_IDX, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[RT_DEPTH_ATTACHMENT_IDX], _previousPolicy._layeredRendering );
+            toggleAttachment( RT_DEPTH_ATTACHMENT_IDX, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[RT_DEPTH_ATTACHMENT_IDX] );
 
             gl46core::glBlitNamedFramebuffer( _framebufferHandle,
                                               _framebufferResolveHandle,
@@ -650,7 +650,7 @@ namespace Divide
         if ( _attachmentsUsed[attachmentIdx] )
         {
             const BindingState& state = _attachmentState[attachmentIdx];
-            return toggleAttachment( attachmentIdx, state._attState, writeLevel, state._layer, state._layeredRendering );
+            return toggleAttachment( attachmentIdx, state._attState, writeLevel, state._layers );
         }
 
         return false;
@@ -682,7 +682,7 @@ namespace Divide
 
                 if ( state._levelOffset != writeLevel )
                 {
-                    toggleAttachment( i, AttachmentState::STATE_DISABLED, state._levelOffset, state._layer, state._layeredRendering );
+                    toggleAttachment( i, AttachmentState::STATE_DISABLED, state._levelOffset, state._layers );
                 }
             }
         }

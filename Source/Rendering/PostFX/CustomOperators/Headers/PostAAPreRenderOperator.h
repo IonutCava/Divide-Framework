@@ -43,7 +43,7 @@ namespace Divide {
 
 class PostAAPreRenderOperator final : public PreRenderOperator {
    public:
-    explicit PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    explicit PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter);
     ~PostAAPreRenderOperator();
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;

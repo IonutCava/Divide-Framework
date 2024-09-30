@@ -42,8 +42,8 @@ namespace
 }
 
 //ref: http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
-SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
-    : PreRenderOperator(context, parent, FilterType::FILTER_SS_AMBIENT_OCCLUSION)
+SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter)
+    : PreRenderOperator(context, parent, FilterType::FILTER_SS_AMBIENT_OCCLUSION, taskCounter)
 {
     const auto& config = context.context().config().rendering.postFX.ssao;
     _genHalfRes = config.UseHalfResolution;
@@ -169,7 +169,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
         ResourceDescriptor<ShaderProgram> ssaoGenerate("SSAOCalc", ssaoShaderDescriptor );
         ssaoGenerate.waitForReady(false);
-        _ssaoGenerateShader = CreateResource(ssaoGenerate);
+        _ssaoGenerateShader = CreateResource(ssaoGenerate, taskCounter);
     }
     { //Calc Half
         fragModule._variant = "SSAOCalc";
@@ -183,7 +183,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
 
         ResourceDescriptor<ShaderProgram> ssaoGenerateHalfRes( "SSAOCalcHalfRes", ssaoShaderDescriptor );
         ssaoGenerateHalfRes.waitForReady(false);
-        _ssaoGenerateHalfResShader = CreateResource(ssaoGenerateHalfRes);
+        _ssaoGenerateHalfResShader = CreateResource(ssaoGenerateHalfRes, taskCounter);
     }
 
     { //Blur
@@ -198,13 +198,13 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ssaoShaderDescriptor._modules.back()._defines.emplace_back("HORIZONTAL");
         ResourceDescriptor<ShaderProgram> ssaoBlurH( "SSAOBlur.Horizontal", ssaoShaderDescriptor );
         ssaoBlurH.waitForReady(false);
-        _ssaoBlurShaderHorizontal = CreateResource(ssaoBlurH);
+        _ssaoBlurShaderHorizontal = CreateResource(ssaoBlurH, taskCounter);
 
         ssaoShaderDescriptor._modules.back()._defines.back() = { "VERTICAL" };
 
         ResourceDescriptor<ShaderProgram> ssaoBlurV( "SSAOBlur.Vertical", ssaoShaderDescriptor );
         ssaoBlurV.waitForReady(false);
-        _ssaoBlurShaderVertical = CreateResource(ssaoBlurV);
+        _ssaoBlurShaderVertical = CreateResource(ssaoBlurV, taskCounter);
     }
     { //Pass-through
         fragModule._variant = "SSAOPassThrough";
@@ -217,7 +217,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ResourceDescriptor<ShaderProgram> ssaoPassThrough( "SSAOPassThrough", ssaoShaderDescriptor );
         ssaoPassThrough.waitForReady(false);
 
-        _ssaoPassThroughShader = CreateResource(ssaoPassThrough);
+        _ssaoPassThroughShader = CreateResource(ssaoPassThrough, taskCounter);
     }
     { //DownSample
         fragModule._variant = "SSAODownsample";
@@ -230,7 +230,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ResourceDescriptor<ShaderProgram> ssaoDownSample( "SSAODownSample", ssaoShaderDescriptor );
         ssaoDownSample.waitForReady(false);
 
-        _ssaoDownSampleShader = CreateResource(ssaoDownSample);
+        _ssaoDownSampleShader = CreateResource(ssaoDownSample, taskCounter);
     }
     { //UpSample
         fragModule._variant = "SSAOUpsample";
@@ -243,7 +243,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
         ResourceDescriptor<ShaderProgram> ssaoUpSample( "SSAOUpSample", ssaoShaderDescriptor );
         ssaoUpSample.waitForReady(false);
 
-        _ssaoUpSampleShader = CreateResource(ssaoUpSample);
+        _ssaoUpSampleShader = CreateResource(ssaoUpSample, taskCounter);
     }
 
     _ssaoGenerateConstants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));

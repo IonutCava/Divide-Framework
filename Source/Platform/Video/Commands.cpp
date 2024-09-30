@@ -237,7 +237,7 @@ static string ToString(const BeginRenderPassCommand& cmd, U16 indent)
         {
             ret.append( "    " );
         }
-        ret.append( Util::StringFormat( "Write Layer[ {} ]: [slice: {}, face: {}]\n", k++, layer._layer, layer._cubeFace ) );
+        ret.append( Util::StringFormat( "Write Layer[ {} ]: [slice: {} - {}, face: {}]\n", k++, layer._layer._offset, layer._layer._count, layer._cubeFace ) );
     }
 
     k = 0u;

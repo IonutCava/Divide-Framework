@@ -37,7 +37,7 @@ namespace Divide
 {
 
 template<typename T>
-[[nodiscard]] size_t GetHash( const PropertyDescriptor<T>& descriptor ) noexcept
+[[nodiscard]] size_t GetHash( [[maybe_unused]] const PropertyDescriptor<T>& descriptor ) noexcept
 {
     return 1337;
 }

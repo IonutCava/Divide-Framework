@@ -406,8 +406,8 @@ namespace Divide
 
         for ( I8 i = numSplits - 1; i >= 0 && i < numSplits; i-- )
         {
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = i;
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = i;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset = i;
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer._offset = i;
 
             Util::StringFormat( params._passName, "CSM_PASS_{}", i );
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
@@ -533,10 +533,9 @@ namespace Divide
         const auto& shadowAtt = rtHandle._rt->getAttachment( RTAttachmentType::COLOUR );
 
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
-        beginRenderPassCmd._descriptor._layeredRendering = true;
-
         beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
         beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+        beginRenderPassCmd._descriptor._writeLayers[to_base(RTColourAttachmentSlot::SLOT_0)]._layer._count = U16_MAX;
 
         // Blur horizontally
         beginRenderPassCmd._target = _blurBuffer._targetID;

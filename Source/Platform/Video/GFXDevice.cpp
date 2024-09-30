@@ -138,6 +138,7 @@ namespace Divide
     RenderTargetID RenderTargetNames::OIT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::OIT_REFLECT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSAO_RESULT = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::BLOOM_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::SSR_RESULT = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::HI_Z = INVALID_RENDER_TARGET_ID;
     RenderTargetID RenderTargetNames::HI_Z_REFLECT = INVALID_RENDER_TARGET_ID;
@@ -733,6 +734,36 @@ namespace Divide
             screenDesc._name = "BackBuffer";
             RenderTargetNames::BACK_BUFFER = _rtPool->allocateRT( screenDesc )._targetID;
         }
+        {
+            // Need bilinear filtering with edge clamping for down/up sampling
+            // No mip sampling as we handle this manually
+            SamplerDescriptor bloomSampler{};
+
+            bloomSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
+            bloomSampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
+            bloomSampler._wrapW = TextureWrap::CLAMP_TO_EDGE;
+            bloomSampler._minFilter = TextureFilter::LINEAR;
+            bloomSampler._magFilter = TextureFilter::LINEAR;
+            bloomSampler._mipSampling = TextureMipSampling::NONE;
+
+            // Use a floating point RGB mip-chain for down/up sampling
+            TextureDescriptor bloomDescriptor{};
+            bloomDescriptor._dataType = GFXDataFormat::FLOAT_16;
+            bloomDescriptor._packing = GFXImagePacking::RGB_111110F;
+            bloomDescriptor._baseFormat = GFXImageFormat::RGB;
+            bloomDescriptor._mipMappingState = MipMappingState::MANUAL;
+
+            RenderTargetDescriptor bloomDesc = {};
+            bloomDesc._attachments =
+            {
+                InternalRTAttachmentDescriptor{ bloomDescriptor, bloomSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0}
+            };
+
+            bloomDesc._name = "Bloom Result";
+            bloomDesc._resolution = renderResolution;
+            bloomDesc._msaaSamples = 0u;
+            RenderTargetNames::BLOOM_RESULT = _rtPool->allocateRT( bloomDesc )._targetID;
+        }  
         {
             TextureDescriptor ssaoDescriptor{};
             ssaoDescriptor._dataType = GFXDataFormat::FLOAT_16;
@@ -1617,10 +1648,10 @@ namespace Divide
         {
             const U16 layer = arrayOffset + i;
 
-            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = layer;
-            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = layer;
-            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer = layer;
-            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer = layer;
+            params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset = layer;
+            params._targetDescriptorPrePass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer._offset = layer;
+            params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset = layer;
+            params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer._offset = layer;
 
             // Point our camera to the correct face
             camera->lookAt( pos, pos + (i == 0 ? WORLD_Z_NEG_AXIS : WORLD_Z_AXIS) * zPlanes.y );
@@ -1815,6 +1846,7 @@ namespace Divide
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN_PREV )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSAO_RESULT )->resize( w, h );
+        _rtPool->getRenderTarget( RenderTargetNames::BLOOM_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSR_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::HI_Z )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::OIT )->resize( w, h );
@@ -2554,7 +2586,18 @@ namespace Divide
             SSAOPreview->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );
             SSAOPreview->_shaderData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
             SSAOPreview->_shaderData.set( _ID( "channelCount" ), PushConstantType::UINT, 1u );
-            SSAOPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
+            SSAOPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );  
+            
+            DebugView_ptr BloomPreview = std::make_shared<DebugView>();
+            BloomPreview->_shader = _renderTargetDraw;
+            BloomPreview->_texture = renderTargetPool().getRenderTarget(RenderTargetNames::BLOOM_RESULT)->getAttachment(RTAttachmentType::COLOUR)->texture();
+            BloomPreview->_sampler = renderTargetPool().getRenderTarget(RenderTargetNames::BLOOM_RESULT)->getAttachment(RTAttachmentType::COLOUR)->_descriptor._sampler;
+            BloomPreview->_name = "BLOOM Map";
+            BloomPreview->_shaderData.set(_ID("lodLevel"), PushConstantType::FLOAT, 0.0f);
+            BloomPreview->_shaderData.set(_ID("channelsArePacked"), PushConstantType::BOOL, false);
+            BloomPreview->_shaderData.set(_ID("startChannel"), PushConstantType::UINT, 0u);
+            BloomPreview->_shaderData.set(_ID("channelCount"), PushConstantType::UINT, 3u);
+            BloomPreview->_shaderData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.0f );
 
             DebugView_ptr AlphaAccumulationHigh = std::make_shared<DebugView>();
             AlphaAccumulationHigh->_shader = _renderTargetDraw;
@@ -2616,6 +2659,7 @@ namespace Divide
             addDebugView( NormalPreview );
             addDebugView( VelocityPreview );
             addDebugView( SSAOPreview );
+            addDebugView( BloomPreview );
             addDebugView( AlphaAccumulationHigh );
             addDebugView( AlphaRevealageHigh );
             addDebugView( Luminance );

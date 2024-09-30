@@ -43,28 +43,29 @@ class ShaderProgram;
 
 class BloomPreRenderOperator final : public PreRenderOperator {
    public:
-    BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter);
     ~BloomPreRenderOperator() override;
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;
     void reshape(U16 width, U16 height) override;
 
-    [[nodiscard]] F32 luminanceBias() const noexcept { return _luminanceBias; }
-    void luminanceBias(F32 val);
+    void filterRadius(F32 val);
+    void strength(F32 val);
 
     [[nodiscard]] bool ready() const noexcept override;
 
+    PROPERTY_R(F32, filterRadius, 0.005f);
+    PROPERTY_R(F32, strength, 0.04f);
+
    private:
-    RenderTargetHandle _bloomOutput;
-    RenderTargetHandle _bloomBlurBuffer[2];
+    Handle<ShaderProgram> _bloomDownscale{ INVALID_HANDLE<ShaderProgram> };
+    Handle<ShaderProgram> _bloomUpscale{ INVALID_HANDLE<ShaderProgram> };
 
-    Handle<ShaderProgram> _bloomCalc{ INVALID_HANDLE<ShaderProgram> };
-    Handle<ShaderProgram> _bloomApply{ INVALID_HANDLE<ShaderProgram> };
+    Pipeline* _bloomDownscalePipeline{ nullptr };
+    Pipeline* _bloomUpscalePipeline{ nullptr };
 
-    Pipeline* _bloomCalcPipeline{ nullptr };
-    Pipeline* _bloomApplyPipeline{ nullptr };
-
-    F32 _luminanceBias{ 0.75f };
+    PROPERTY_INTERNAL(U16, mipCount, 6u);
+    vector<vec2<U16>> _mipSizes;
 };
 
 }  // namespace Divide

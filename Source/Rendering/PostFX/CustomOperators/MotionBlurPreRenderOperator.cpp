@@ -17,8 +17,8 @@
 
 namespace Divide {
 
-MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
-    : PreRenderOperator(context, parent, FilterType::FILTER_MOTION_BLUR)
+MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter)
+    : PreRenderOperator(context, parent, FilterType::FILTER_MOTION_BLUR, taskCounter)
 {
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -38,7 +38,7 @@ MotionBlurPreRenderOperator::MotionBlurPreRenderOperator(GFXDevice& context, Pre
 
     ResourceDescriptor<ShaderProgram> motionBlur("MotionBlur", shaderDescriptor );
     motionBlur.waitForReady(false);
-    _blurApply = CreateResource(motionBlur);
+    _blurApply = CreateResource(motionBlur,taskCounter);
 
     PipelineDescriptor pipelineDescriptor = {};
     pipelineDescriptor._stateBlock = _context.get2DStateBlock();

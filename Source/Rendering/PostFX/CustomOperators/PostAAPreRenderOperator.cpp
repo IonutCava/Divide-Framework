@@ -15,8 +15,8 @@
 
 namespace Divide {
 
-PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
-    : PreRenderOperator(context, parent, FilterType::FILTER_SS_ANTIALIASING)
+PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter)
+    : PreRenderOperator(context, parent, FilterType::FILTER_SS_ANTIALIASING, taskCounter)
 {
     useSMAA(context.context().config().rendering.postFX.postAA.type == "SMAA");
     postAAQualityLevel(context.context().config().rendering.postFX.postAA.qualityLevel);
@@ -82,7 +82,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
 
         ResourceDescriptor<ShaderProgram> smaaWeights("SMAA.Weights", weightsDescriptor );
         smaaWeights.waitForReady(false);
-        _smaaWeightComputation = CreateResource(smaaWeights);
+        _smaaWeightComputation = CreateResource(smaaWeights, taskCounter);
 
         {
             PipelineDescriptor pipelineDescriptor;
@@ -99,7 +99,7 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
 
         ResourceDescriptor<ShaderProgram> smaaBlend("SMAA.Blend", blendDescriptor );
         smaaBlend.waitForReady(false);
-        _smaaBlend = CreateResource(smaaBlend);
+        _smaaBlend = CreateResource(smaaBlend, taskCounter);
 
         {
             PipelineDescriptor pipelineDescriptor;
@@ -118,13 +118,13 @@ PostAAPreRenderOperator::PostAAPreRenderOperator(GFXDevice& context, PreRenderBa
         searchDescriptor.assetName("smaa_search.png");
         searchDescriptor.assetLocation(Paths::g_imagesLocation);
         searchDescriptor.waitForReady(false);
-        _searchTexture = CreateResource(searchDescriptor);
+        _searchTexture = CreateResource(searchDescriptor, taskCounter);
 
         ResourceDescriptor<Texture> areaDescriptor("SMAA_Area", textureDescriptor );
         areaDescriptor.assetName("smaa_area.png");
         areaDescriptor.assetLocation(Paths::g_imagesLocation);
         areaDescriptor.waitForReady(false);
-        _areaTexture = CreateResource(areaDescriptor);
+        _areaTexture = CreateResource(areaDescriptor, taskCounter);
     }
 }
 

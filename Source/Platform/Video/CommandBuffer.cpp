@@ -260,7 +260,7 @@ namespace
             const auto [error, lastCmdIndex] = validate();
             if ( error != GFX::ErrorType::NONE )
             {
-                Console::errorfn( LOCALE_STR( "ERROR_GFX_INVALID_COMMAND_BUFFER" ), lastCmdIndex, toString().c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_GFX_INVALID_COMMAND_BUFFER" ), GFX::Names::errorType[to_base(error)], lastCmdIndex, toString().c_str() );
                 DIVIDE_UNEXPECTED_CALL_MSG( Util::StringFormat( "GFX::CommandBuffer::batch error [ {} ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base( error )] ).c_str() );
             }
         }
@@ -471,7 +471,7 @@ namespace
                     auto beginRenderPassCmd = cmd->As<GFX::BeginRenderPassCommand>();
                     for ( const auto& it : beginRenderPassCmd->_descriptor._writeLayers )
                     {
-                        if ( it._layer == INVALID_INDEX )
+                        if ( it._layer._offset == INVALID_INDEX )
                         {
                             return { ErrorType::INVALID_BEGIN_RENDER_PASS, cmdIndex };
                         }

@@ -53,7 +53,7 @@ struct BlitEntry
 
 struct DrawLayerEntry
 {
-    U16 _layer{0u};
+    SubRange _layer{0u, 1u};
     /// Ignored for non cube textures
     U8 _cubeFace{0u}; 
 
@@ -81,13 +81,11 @@ using RTDrawMask = bool[to_base( RTColourAttachmentSlot::COUNT )];
 
 struct RTDrawDescriptor
 {
-    DrawLayerEntry _writeLayers[RT_MAX_ATTACHMENT_COUNT];
+    std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT> _writeLayers{};
     RTDrawMask _drawMask = {false, false, false, false};
     U16 _mipWriteLevel{ 0u };
     bool _autoResolveMSAA{true};
     bool _keepMSAADataAfterResolve{ false };
-    /// Set to true to bind all image layers to the render target (e.g. for Geometry Shader layered rendering support)
-    bool _layeredRendering{false};
 };
 
 extern BlitEntry INVALID_BLIT_ENTRY;

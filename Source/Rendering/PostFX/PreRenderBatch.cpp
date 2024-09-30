@@ -180,13 +180,15 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
             switch (fType)
             {
                 case FilterType::FILTER_SS_AMBIENT_OCCLUSION:
-                    hdrBatch.emplace_back(std::make_unique<SSAOPreRenderOperator>(_context, *this));
+                    hdrBatch.emplace_back(std::make_unique<SSAOPreRenderOperator>(_context, *this, loadTasks));
                     break;
 
                 case FilterType::FILTER_SS_REFLECTIONS:
-                    hdrBatch.emplace_back(std::make_unique<SSRPreRenderOperator>(_context, *this));
+                    hdrBatch.emplace_back(std::make_unique<SSRPreRenderOperator>(_context, *this, loadTasks));
                     break;
-
+                case FilterType::FILTER_BLOOM:
+                    hdrBatch.emplace_back(std::make_unique<BloomPreRenderOperator>(_context, *this, loadTasks));
+                    break;
                 default:
                     DIVIDE_UNEXPECTED_CALL();
                     break;
@@ -204,15 +206,11 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
             switch (fType)
             {
                case FilterType::FILTER_DEPTH_OF_FIELD:
-                   hdr2Batch.emplace_back(std::make_unique<DoFPreRenderOperator>(_context, *this));
+                   hdr2Batch.emplace_back(std::make_unique<DoFPreRenderOperator>(_context, *this, loadTasks));
                    break;
 
                case FilterType::FILTER_MOTION_BLUR:
-                   hdr2Batch.emplace_back(std::make_unique<MotionBlurPreRenderOperator>(_context, *this));
-                   break;
-
-               case FilterType::FILTER_BLOOM:
-                   hdr2Batch.emplace_back(std::make_unique<BloomPreRenderOperator>(_context, *this));
+                   hdr2Batch.emplace_back(std::make_unique<MotionBlurPreRenderOperator>(_context, *this, loadTasks));
                    break;
 
                default:
@@ -231,7 +229,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         {
             if (fType == FilterType::FILTER_SS_ANTIALIASING) [[likely]]
             {
-                ldrBatch.push_back( std::make_unique<PostAAPreRenderOperator>( _context, *this ) );
+                ldrBatch.push_back( std::make_unique<PostAAPreRenderOperator>( _context, *this, loadTasks) );
             }
             else
             {
@@ -262,21 +260,9 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         toneMap._propertyDescriptor._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
         toneMap._propertyDescriptor._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
         toneMap._propertyDescriptor._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
+        toneMap._propertyDescriptor._globalDefines.emplace_back( "bloomStrength PushData0[1].x" );
         toneMap.waitForReady(false);
         _toneMap = CreateResource( toneMap, loadTasks);
-
-        fragModule._defines.emplace_back("USE_ADAPTIVE_LUMINANCE");
-
-        ResourceDescriptor<ShaderProgram> toneMapAdaptive("toneMap.Adaptive" );
-        toneMapAdaptive._propertyDescriptor._modules.push_back(vertModule);
-        toneMapAdaptive._propertyDescriptor._modules.push_back(fragModule);
-        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "manualExposureFactor PushData0[0].x" );
-        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "mappingFunction int(PushData0[0].y)" );
-        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "useAdaptiveExposure uint(PushData0[0].z)" );
-        toneMapAdaptive._propertyDescriptor._globalDefines.emplace_back( "skipToneMapping uint(PushData0[0].w)" );
-        toneMapAdaptive.waitForReady(false);
-        _toneMapAdaptive = CreateResource( toneMapAdaptive, loadTasks);
-
     }
     {
         ShaderModuleDescriptor computeModule = {};
@@ -394,9 +380,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
 
     pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-    pipelineDescriptor._shaderProgramHandle = _toneMapAdaptive;
-    _pipelineToneMapAdaptive = _context.newPipeline(pipelineDescriptor);
-
     pipelineDescriptor._shaderProgramHandle = _toneMap;
     _pipelineToneMap = _context.newPipeline(pipelineDescriptor);
 
@@ -417,9 +400,9 @@ PreRenderBatch::~PreRenderBatch()
     {
         DIVIDE_UNEXPECTED_CALL();
     }
+
     DestroyResource(_currentLuminance);
     DestroyResource(_toneMap);
-    DestroyResource(_toneMapAdaptive);
     DestroyResource(_createHistogram);
     DestroyResource(_averageHistogram);
     DestroyResource(_lineariseDepthBuffer);
@@ -567,10 +550,11 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
     {
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::FRAGMENT );
         Set( binding._data, ssaoDataAtt->texture(), ssaoDataAtt->_descriptor._sampler );
-    }
+    } 
 }
 
-void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut) {
+void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, U32 filterStack, GFX::CommandBuffer& bufferInOut)
+{
     _screenRTs._swappedHDR = _screenRTs._swappedLDR = false;
     _toneMapParams._width = screenRT()._rt->getWidth();
     _toneMapParams._height = screenRT()._rt->getHeight();
@@ -775,11 +759,21 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
     GFX::EnqueueCommand(bufferInOut, computeMipMapsCommand);
 
+    const bool bloomEnabled = _context.context().config().rendering.postFX.bloom.enabled && _parent.getFilterState(FilterType::FILTER_BLOOM);
+
     { // ToneMap and generate LDR render target (Alpha channel contains pre-toneMapped luminance value)
         const auto& screenAtt = getInput(true)._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-        const auto& screenDepthAtt = screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
+        const auto& bloomDataAtt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::BLOOM_RESULT)->getAttachment(RTAttachmentType::COLOUR);
 
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: tone map";
+
+        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+        renderPassCmd->_name = "DO_TONEMAP_PASS";
+        renderPassCmd->_target = getOutput(false)._targetID;
+        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
+        renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+
+        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipelineToneMap;
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -792,17 +786,16 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
             Set( binding._data, luminanceView, lumaSampler() );
         }
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenDepthAtt->texture(), screenDepthAtt->_descriptor._sampler );
+            DescriptorSetBinding& binding = AddBinding(cmd->_set, 2u, ShaderStageVisibility::FRAGMENT);
+            if (bloomEnabled)
+            {
+                Set(binding._data, bloomDataAtt->texture(), bloomDataAtt->_descriptor._sampler);
+            }
+            else
+            {
+                Set(binding._data, screenAtt->texture(), screenAtt->_descriptor._sampler);
+            }
         }
-
-        GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
-        renderPassCmd->_name = "DO_TONEMAP_PASS";
-        renderPassCmd->_target = getOutput(false)._targetID;
-        renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
-        renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = adaptiveExposureControl() ? _pipelineToneMapAdaptive : _pipelineToneMap;
 
         const auto mappingFunction = to_base(_context.materialDebugFlag() == MaterialDebugFlag::COUNT ? _toneMapParams._function : ToneMapParams::MapFunctions::COUNT);
 
@@ -812,6 +805,14 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                                      adaptiveExposureControl() ? 1.f : 0.f,
                                      _context.materialDebugFlag() != MaterialDebugFlag::COUNT ? 1.f : 0.f);
 
+        if (_context.context().config().rendering.postFX.bloom.enabled)
+        {
+            pushData.data[0]._vec[1].x = _context.context().config().rendering.postFX.bloom.strength;
+        }
+        else
+        {
+            pushData.data[0]._vec[1].x = 0.f;
+        }
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
@@ -820,7 +821,8 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     }
 
     // Now that we have an LDR target, proceed with edge detection. This LDR target is NOT GAMMA CORRECTED!
-    if (edgeDetectionMethod() != EdgeDetectionMethod::COUNT) {
+    if (edgeDetectionMethod() != EdgeDetectionMethod::COUNT)
+    {
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "PostFX: edge detection";
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);

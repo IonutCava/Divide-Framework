@@ -200,6 +200,7 @@ struct RenderTargetNames
     static RenderTargetID OIT;
     static RenderTargetID OIT_REFLECT;
     static RenderTargetID SSAO_RESULT;
+    static RenderTargetID BLOOM_RESULT;
     static RenderTargetID SSR_RESULT;
     static RenderTargetID HI_Z;
     static RenderTargetID HI_Z_REFLECT;

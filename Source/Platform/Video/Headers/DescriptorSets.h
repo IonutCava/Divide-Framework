@@ -39,15 +39,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide
 {
-    // SubRange instead of vec2<U16> to keep things trivial
-    struct SubRange
-    {
-        U16 _offset{0u};
-        U16 _count{U16_MAX};
-
-        bool operator==( const SubRange& ) const = default;
-    };
-
     struct ImageSubRange
     {
         SubRange _mipLevels{};

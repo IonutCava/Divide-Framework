@@ -97,5 +97,4 @@ namespace Divide {
     };
 }; //namespace Divide
 
-
 #endif //DVD_PLATFORM_DEFINES_WINDOWS_H_

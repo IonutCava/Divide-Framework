@@ -149,12 +149,13 @@ class PreRenderBatch {
 
     [[nodiscard]] inline static FilterSpace GetOperatorSpace(const FilterType type) noexcept {
         // ToDo: Always keep this up-to-date with every filter we add
-        switch(type) {
+        switch(type)
+        {
             case FilterType::FILTER_SS_ANTIALIASING :     return FilterSpace::FILTER_SPACE_LDR;
             case FilterType::FILTER_SS_AMBIENT_OCCLUSION:
+            case FilterType::FILTER_BLOOM:
             case FilterType::FILTER_SS_REFLECTIONS:       return FilterSpace::FILTER_SPACE_HDR;
             case FilterType::FILTER_DEPTH_OF_FIELD:
-            case FilterType::FILTER_BLOOM:
             case FilterType::FILTER_MOTION_BLUR:          return FilterSpace::FILTER_SPACE_HDR_POST_SS;
             case FilterType::FILTER_LUT_CORECTION:
             case FilterType::FILTER_COUNT:
@@ -182,7 +183,6 @@ class PreRenderBatch {
     ShaderBuffer_uptr _histogramBuffer{ nullptr };
     Handle<Texture> _currentLuminance{ INVALID_HANDLE<Texture> };
     Handle<ShaderProgram> _toneMap{ INVALID_HANDLE<ShaderProgram> };
-    Handle<ShaderProgram> _toneMapAdaptive{ INVALID_HANDLE<ShaderProgram> };
     Handle<ShaderProgram> _createHistogram{ INVALID_HANDLE<ShaderProgram> };
     Handle<ShaderProgram> _averageHistogram{ INVALID_HANDLE<ShaderProgram> };
     Handle<ShaderProgram> _lineariseDepthBuffer{ INVALID_HANDLE<ShaderProgram> };
@@ -190,7 +190,6 @@ class PreRenderBatch {
     Pipeline* _pipelineLumCalcHistogram{ nullptr };
     Pipeline* _pipelineLumCalcAverage{ nullptr };
     Pipeline* _pipelineToneMap{ nullptr };
-    Pipeline* _pipelineToneMapAdaptive{ nullptr };
     U64 _lastDeltaTimeUS{ 0u };
 
     RenderTargetHandle _sceneEdges{};

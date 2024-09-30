@@ -263,7 +263,7 @@ namespace Divide
         }
     }
 
-    void TaskPool::taskStarted( Task& task )
+    void TaskPool::taskStarted( [[maybe_unused]] Task& task )
     {
         _runningTaskCount.fetch_add( 1 );
     }

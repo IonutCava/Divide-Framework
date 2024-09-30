@@ -676,6 +676,7 @@ enum class GFXImagePacking : U8
     NORMALIZED_SRGB,
     UNNORMALIZED, //Don't blame me, found in Vulkan spec 16.1.1 -Ionut
     RGB_565,
+    RGB_111110F,
     RGBA_4444,
     DEPTH,
     DEPTH_STENCIL,
@@ -685,7 +686,7 @@ enum class GFXImagePacking : U8
 namespace Names
 {
     static constexpr const char* GFXImagePacking[] = {
-        "NORMALIZED", "NORMALIZED_SRGB", "UNNORMALIZED", "RGB_565", "RGBA_4444", "DEPTH", "DEPTH_STENCIL", "ERROR"
+        "NORMALIZED", "NORMALIZED_SRGB", "UNNORMALIZED", "RGB_565", "R11F_G11F_B10F", "RGBA_4444", "DEPTH", "DEPTH_STENCIL", "ERROR"
     };
 };
 

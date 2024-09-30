@@ -35,7 +35,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Platform/Video/Textures/Headers/TextureDescriptor.h"
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
-#include "Utility/Headers/Colours.h"
 
 namespace Divide {
 

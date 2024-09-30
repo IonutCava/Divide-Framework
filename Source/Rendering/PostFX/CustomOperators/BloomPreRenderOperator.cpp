@@ -17,12 +17,8 @@
 
 namespace Divide {
 
-namespace {
-    F32 resolutionDownscaleFactor = 2.0f;
-}
-
-BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
-    : PreRenderOperator(context, parent, FilterType::FILTER_BLOOM)
+BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter)
+    : PreRenderOperator(context, parent, FilterType::FILTER_BLOOM, taskCounter)
 {
     ShaderModuleDescriptor vertModule = {};
     vertModule._moduleType = ShaderType::VERTEX;
@@ -32,88 +28,82 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     ShaderModuleDescriptor fragModule = {};
     fragModule._moduleType = ShaderType::FRAGMENT;
     fragModule._sourceFile = "bloom.glsl";
-    fragModule._variant = "BloomCalc";
+    fragModule._variant = "BloomDownscale";
 
     ShaderProgramDescriptor shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._globalDefines.emplace_back( "luminanceBias PushData0[0].x" );
+    shaderDescriptor._globalDefines.emplace_back( "invSrcResolution PushData0[0].xy" );
+    shaderDescriptor._globalDefines.emplace_back( "performKarisAverage (uint(PushData0[0].z) == 1)" );
 
-    ResourceDescriptor<ShaderProgram> bloomCalc("BloomCalc", shaderDescriptor );
-    bloomCalc.waitForReady(false);
+    ResourceDescriptor<ShaderProgram> bloomDownscale("BloomDownscale", shaderDescriptor );
+    bloomDownscale.waitForReady(false);
 
-    _bloomCalc = CreateResource(bloomCalc);
+    _bloomDownscale = CreateResource(bloomDownscale, taskCounter);
     {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _bloomCalc;
+        pipelineDescriptor._shaderProgramHandle = _bloomDownscale;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        _bloomCalcPipeline = _context.newPipeline( pipelineDescriptor );
+        _bloomDownscalePipeline = _context.newPipeline( pipelineDescriptor );
     }
 
-    fragModule._variant = "BloomApply";
+    fragModule._variant = "BloomUpscale";
     shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
+    shaderDescriptor._globalDefines.emplace_back("filterRadius PushData0[0].x");
 
-    ResourceDescriptor<ShaderProgram> bloomApply("BloomApply", shaderDescriptor );
-    bloomApply.waitForReady(false);
-    _bloomApply = CreateResource(bloomApply);
+    ResourceDescriptor<ShaderProgram> bloomUpscale("BloomUpscale", shaderDescriptor );
+    bloomUpscale.waitForReady(false);
+    _bloomUpscale = CreateResource(bloomUpscale, taskCounter);
     {
         PipelineDescriptor pipelineDescriptor;
         pipelineDescriptor._stateBlock = _context.get2DStateBlock();
-        pipelineDescriptor._shaderProgramHandle = _bloomApply;
+        pipelineDescriptor._shaderProgramHandle = _bloomUpscale;
         pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
 
-        _bloomApplyPipeline = _context.newPipeline( pipelineDescriptor );
+        BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8(RTColourAttachmentSlot::SLOT_0)];
+        state0.enabled(true);
+        state0.blendSrc(BlendProperty::ONE);
+        state0.blendDest(BlendProperty::ONE);
+        state0.blendOp(BlendOperation::ADD);
+
+        _bloomUpscalePipeline = _context.newPipeline( pipelineDescriptor );
     }
 
-    const vec2<U16> res = parent.screenRT()._rt->getResolution();
-    if (res.height > 1440)
+    const vec2<U16> resolution = parent.screenRT()._rt->getResolution();
+    
+    mipCount(std::min(mipCount(), MipCount(resolution.width, resolution.height)));
+
+    U16 twidth = resolution.width;
+    U16 theight = resolution.height;
+    _mipSizes.resize(mipCount());
+    for (U16 i = 0u; i < mipCount(); ++i)
     {
-        resolutionDownscaleFactor = 4.0f;
+        twidth = twidth < 1u ? 1u : twidth;
+        theight = theight < 1u ? 1u : theight;
+
+        _mipSizes[i].set(twidth, theight);
+
+        twidth /= 2u;
+        theight /= 2u;
     }
 
-    const auto& screenAtt = parent.screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-    TextureDescriptor screenDescriptor = Get(screenAtt->texture())->descriptor();
-    screenDescriptor._mipMappingState = MipMappingState::OFF;
-
-    RenderTargetDescriptor desc = {};
-    desc._attachments =
-    {
-        InternalRTAttachmentDescriptor{ screenDescriptor, screenAtt->_descriptor._sampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
-    };
-
-    desc._resolution = res;
-    desc._name = "Bloom_Blur_0";
-    _bloomBlurBuffer[0] = _context.renderTargetPool().allocateRT(desc);
-    desc._name = "Bloom_Blur_1";
-    _bloomBlurBuffer[1] = _context.renderTargetPool().allocateRT(desc);
-
-    desc._name = "Bloom";
-    desc._resolution = vec2<U16>(res / resolutionDownscaleFactor);
-    _bloomOutput = _context.renderTargetPool().allocateRT(desc);
-
-    luminanceBias(_context.context().config().rendering.postFX.bloom.luminanceBias);
+    filterRadius(_context.context().config().rendering.postFX.bloom.filterRadius);
+    strength(_context.context().config().rendering.postFX.bloom.strength);
 }
 
 BloomPreRenderOperator::~BloomPreRenderOperator()
 {
-    if (!_context.renderTargetPool().deallocateRT(_bloomOutput) ||
-        !_context.renderTargetPool().deallocateRT(_bloomBlurBuffer[0]) ||
-        !_context.renderTargetPool().deallocateRT(_bloomBlurBuffer[1]))
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-
-    DestroyResource( _bloomCalc );
-    DestroyResource( _bloomApply );
+    DestroyResource(_bloomDownscale);
+    DestroyResource(_bloomUpscale);
 }
 
 bool BloomPreRenderOperator::ready() const noexcept
 {
-    if (_bloomCalcPipeline != nullptr && _bloomApplyPipeline != nullptr)
+    if (_bloomUpscalePipeline != nullptr && _bloomDownscalePipeline != nullptr)
     {
         return PreRenderOperator::ready();
     }
@@ -125,92 +115,122 @@ void BloomPreRenderOperator::reshape(const U16 width, const U16 height)
 {
     PreRenderOperator::reshape(width, height);
 
-    const U16 w = to_U16(width / resolutionDownscaleFactor);
-    const U16 h = to_U16(height / resolutionDownscaleFactor);
-    _bloomOutput._rt->resize(w, h);
-    _bloomBlurBuffer[0]._rt->resize(width, height);
-    _bloomBlurBuffer[1]._rt->resize(width, height);
+    mipCount(std::min(mipCount(), MipCount(width, height)));
+
+    U16 twidth = width;
+    U16 theight = height;
+    _mipSizes.resize(mipCount());
+    for (U16 i = 0u; i < mipCount(); ++i)
+    {
+        twidth = twidth < 1u ? 1u : twidth;
+        theight = theight < 1u ? 1u : theight;
+
+        _mipSizes[i].set(twidth, theight);
+
+        twidth /= 2u;
+        theight /= 2u;
+    }
 }
 
-void BloomPreRenderOperator::luminanceBias(const F32 val)
+void BloomPreRenderOperator::filterRadius(const F32 val)
 {
-    _luminanceBias = val;
-    _context.context().config().rendering.postFX.bloom.luminanceBias = val;
+    _filterRadius = val;
+    _context.context().config().rendering.postFX.bloom.filterRadius = val;
     _context.context().config().changed(true);
 }
 
-// Order: luminance calc -> bloom -> toneMap
+void BloomPreRenderOperator::strength(const F32 val)
+{
+    _strength = val;
+    _context.context().config().rendering.postFX.bloom.strength = val;
+    _context.context().config().changed(true);
+}
+
 bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
     assert(input._targetID != output._targetID);
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-    const auto& screenTex = Get(screenAtt->texture())->getView();
+    const auto& screenTex = Get(screenAtt->texture());
 
-    { // Step 1: generate bloom - render all of the "bright spots"
-        GFX::BeginRenderPassCommand beginRenderPassCmd{};
-        beginRenderPassCmd._target = _bloomOutput._targetID;
-        beginRenderPassCmd._name = "DO_BLOOM_PASS";
-        beginRenderPassCmd._descriptor = _screenOnlyDraw;
-        beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
-        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
+    const auto& bloomAtt = _context.renderTargetPool().getRenderTarget( RenderTargetNames::BLOOM_RESULT )->getAttachment( RTAttachmentType::COLOUR );
+    const auto& bloomTex = Get( bloomAtt->texture() );
 
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _bloomCalcPipeline;
-        PushConstantsStruct& params = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
-        params.data[0]._vec[0].x = luminanceBias();
-    
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+    const Rect<I32> activeViewport = _context.activeViewport();
+
+    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Construct Bloom Chain";
+    //ref: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
+    {
+        ImageView inputView = screenTex->getView();
+
+        // Progressively downsample through the mip chain
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Downsample Bloom Chain";
+
+
+        for (U16 i = 0u; i < mipCount(); i++)
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenTex, screenAtt->_descriptor._sampler );
-        }
-        {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _parent.luminanceTex(), _parent.lumaSampler());
+            GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            renderPassCmd->_name = Util::StringFormat("Downsample {}", i);
+            renderPassCmd->_descriptor = _screenOnlyDraw;
+            renderPassCmd->_target = RenderTargetNames::BLOOM_RESULT;
+            renderPassCmd->_clearDescriptor[to_base(RTColourAttachmentSlot::SLOT_0)] = DEFAULT_CLEAR_ENTRY;
+            renderPassCmd->_descriptor._mipWriteLevel = i;
+
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomDownscalePipeline;
+
+            PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
+            pushConstants.data[0]._vec[0].set( 1.f / _mipSizes[i].width, 1.f / _mipSizes[i].height, i == 0u ? 1.f : 0.f, 0.f);
+
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            {
+                DescriptorSetBinding& binding = AddBinding(cmd->_set, 0u, ShaderStageVisibility::FRAGMENT);
+                Set( binding._data, inputView, bloomAtt->_descriptor._sampler );
+            }
+
+            GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport = Rect<I32>(activeViewport.offsetX, activeViewport.offsetY, _mipSizes[i].width, _mipSizes[i].height);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+
+            inputView = bloomTex->getView({._offset = i, ._count = 1u});
         }
 
-
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
-    {// Step 2: blur bloom
-        _context.blurTarget(_bloomOutput,
-                            _bloomBlurBuffer[0],
-                            _bloomBlurBuffer[1],
-                            RTAttachmentType::COLOUR,
-                            RTColourAttachmentSlot::SLOT_0,
-                            10,
-                            true,
-                            1,
-                            bufferInOut);
-    }
-    {// Step 3: apply bloom
-        const auto& bloomAtt = _bloomBlurBuffer[1]._rt->getAttachment(RTAttachmentType::COLOUR );
-        const auto& bloomTex = Get(bloomAtt->texture())->getView();
+    {
+        GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Upsample Bloom Chain";
 
-        GFX::BeginRenderPassCommand beginRenderPassCmd{};
-        beginRenderPassCmd._target = output._targetID;
-        beginRenderPassCmd._descriptor = _screenOnlyDraw;
-        GFX::EnqueueCommand(bufferInOut, beginRenderPassCmd);
-
-        auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
-        cmd->_usage = DescriptorSetUsage::PER_DRAW;
+        for (U16 i = mipCount() - 1u; i > 0u; i--)
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, screenTex, screenAtt->_descriptor._sampler );
-        }
-        {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, bloomTex, bloomAtt->_descriptor._sampler );
-        }
+            ImageView inputView = bloomTex->getView({ ._offset = i, ._count = 1u });
 
-        GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _bloomApplyPipeline;
+            GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
+            renderPassCmd->_name = Util::StringFormat("Upsample {}", i);
+            renderPassCmd->_descriptor = _screenOnlyDraw;
+            renderPassCmd->_target = RenderTargetNames::BLOOM_RESULT;
+            renderPassCmd->_clearDescriptor[to_base(RTColourAttachmentSlot::SLOT_0)]._enabled = false;
+            renderPassCmd->_descriptor._mipWriteLevel = i - 1;
 
-        GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
-        GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomUpscalePipeline;
+            PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
+            pushConstants.data[0]._vec[0].x = to_F32(_filterRadius);
+
+            auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
+            cmd->_usage = DescriptorSetUsage::PER_DRAW;
+            {
+                DescriptorSetBinding& binding = AddBinding(cmd->_set, 0u, ShaderStageVisibility::FRAGMENT);
+                Set( binding._data, inputView, bloomAtt->_descriptor._sampler );
+            }
+
+            GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport = Rect<I32>(activeViewport.offsetX, activeViewport.offsetY, _mipSizes[i-1].width, _mipSizes[i-1].height);
+            GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
+        }
+        GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
+    GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport = activeViewport;
+    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
-    return true;
+    return false;
 }
 }

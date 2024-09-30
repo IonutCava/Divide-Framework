@@ -16,8 +16,8 @@
 
 namespace Divide {
 
-SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent)
-    : PreRenderOperator(context, parent, FilterType::FILTER_SS_REFLECTIONS)
+SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter)
+    : PreRenderOperator(context, parent, FilterType::FILTER_SS_REFLECTIONS, taskCounter)
 {
     ShaderModuleDescriptor vertModule{ ShaderType::VERTEX, "baseVertexShaders.glsl", "FullScreenQuad" };
     ShaderModuleDescriptor fragModule{ ShaderType::FRAGMENT, "ScreenSpaceReflections.glsl" };
@@ -29,7 +29,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
     ResourceDescriptor<ShaderProgram> ssr("ScreenSpaceReflections", shaderDescriptor );
     ssr.waitForReady(false);
 
-    _ssrShader = CreateResource( ssr);
+    _ssrShader = CreateResource( ssr, taskCounter );
 
     PipelineDescriptor pipelineDescriptor = {};
     pipelineDescriptor._stateBlock = _context.get2DStateBlock();

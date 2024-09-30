@@ -226,6 +226,17 @@ namespace Divide
         return n - (n >> 1);
     }
 
+    template<typename T>
+    constexpr T MipCount(const T width, const T height) noexcept
+    {
+        if ( width >= T{1} && height >= T{1} )
+        {
+            return static_cast<T>(std::floorf(std::log2f(std::fmaxf(to_F32(width), to_F32(height))))) + T{1};
+        }
+
+        return T{1};
+    }
+
     constexpr U32 minSquareMatrixSize( const U32 elementCount ) noexcept
     {
         U32 result = 1u;

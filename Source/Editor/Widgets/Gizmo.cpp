@@ -182,8 +182,11 @@ namespace Divide
             case ImGuizmo::TRANSLATE_Y: node.tComp->translateY( position.y ); break;
             case ImGuizmo::TRANSLATE_Z: node.tComp->translateZ( position.z ); break;
             case ImGuizmo::SCALE: node.tComp->scale( Max( scale, vec3<F32>( EPSILON_F32 ) ) ); break;
+            case ImGuizmo::SCALE_XU:
             case ImGuizmo::SCALE_X: node.tComp->scaleX( std::max( scale.x, EPSILON_F32 ) ); break;
+            case ImGuizmo::SCALE_YU:
             case ImGuizmo::SCALE_Y: node.tComp->scaleY( std::max( scale.y, EPSILON_F32 ) ); break;
+            case ImGuizmo::SCALE_ZU:
             case ImGuizmo::SCALE_Z: node.tComp->scaleZ( std::max( scale.z, EPSILON_F32 ) ); break;
             case ImGuizmo::ROTATE: node.tComp->rotate( -euler ); break;
             case ImGuizmo::ROTATE_X: node.tComp->rotateX( -euler.x ); break;

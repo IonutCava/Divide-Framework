@@ -77,6 +77,18 @@ TEST_CASE( "MAP Range test", "[conversion_tests]" )
     CHECK_EQUAL(result, MAP(in, in_min, in_max, out_min, out_max));
 }
 
+TEST_CASE( "Mip count test", "conversion_tests" )
+{
+    CHECK_EQUAL(1u,  MipCount(1u,    1u));
+    CHECK_EQUAL(1u,  MipCount(1024u, 0u));
+    CHECK_EQUAL(1u,  MipCount(0u,    768u));
+    CHECK_EQUAL(11u, MipCount(1600u, 1u));
+    CHECK_EQUAL(10u, MipCount(800,   600));
+    CHECK_EQUAL(11u, MipCount(1920,  1080));
+    CHECK_EQUAL(12u, MipCount(2560,  1080));
+    CHECK_EQUAL(12u, MipCount(3840,  2160));
+}
+
 TEST_CASE( "Float To Char Conversions", "[conversion_tests]" )
 {
     // We don't expect these to match properly, but we still need a decent level of precision

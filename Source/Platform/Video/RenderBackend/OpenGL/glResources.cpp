@@ -203,7 +203,7 @@ namespace Divide
         {
             const bool isDepth = IsDepthTexture(packing);
             const bool isSRGB = packing == GFXImagePacking::NORMALIZED_SRGB;
-            const bool isPacked = packing == GFXImagePacking::RGB_565 || packing == GFXImagePacking::RGBA_4444;
+            const bool isPacked = packing == GFXImagePacking::RGB_565 || packing == GFXImagePacking::RGBA_4444 || packing == GFXImagePacking::RGB_111110F;
             const bool isNormalized = packing == GFXImagePacking::NORMALIZED || isSRGB || isDepth || isPacked;
 
             if ( isDepth )
@@ -262,6 +262,7 @@ namespace Divide
             }
             else
             {
+                // safe for GFXImagePacking::RGB_111110F?
                 ret._dataType = glDataFormatTable[to_base( dataType )];
             }
 
@@ -347,6 +348,12 @@ namespace Divide
                         DIVIDE_ASSERT( isNormalized );
 
                         ret._format = gl46core::GL_RGB565;
+                    }
+                    else if ( packing == GFXImagePacking::RGB_111110F )
+                    {
+                        DIVIDE_ASSERT(isNormalized);
+
+                        ret._format = gl46core::GL_R11F_G11F_B10F;
                     }
                     else
                     {

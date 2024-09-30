@@ -41,7 +41,7 @@ namespace Divide {
 
 class DoFPreRenderOperator final : public PreRenderOperator {
    public:
-    explicit DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    explicit DoFPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter);
     ~DoFPreRenderOperator();
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;

@@ -41,7 +41,7 @@ namespace Divide {
 
 class SSRPreRenderOperator final : public PreRenderOperator {
    public:
-    explicit SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent);
+    explicit SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter);
     ~SSRPreRenderOperator();
 
     [[nodiscard]] bool execute(PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut) override;

@@ -21,8 +21,10 @@
 #include "Rendering/PostFX/CustomOperators/Headers/SSAOPreRenderOperator.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 
-namespace Divide {
-namespace {
+namespace Divide
+{
+namespace
+{
     bool PreviewTextureButton(I32 &id, const Handle<Texture> tex, const bool readOnly)
     {
         DIVIDE_ASSERT(tex != INVALID_HANDLE<Texture>);
@@ -61,18 +63,24 @@ namespace {
     {
     }
 
-    void PostFXWindow::drawInternal() {
+    void PostFXWindow::drawInternal()
+    {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         PreRenderBatch& batch = _postFX.getFilterBatch();
 
-        const auto checkBox = [this](const FilterType filter, const char* label = "Enabled", const bool overrideScene = false) {
+        const auto checkBox = [this](const FilterType filter, const char* label = "Enabled", const bool overrideScene = false)
+        {
             bool filterEnabled = _postFX.getFilterState(filter);
             ImGui::PushID(to_base(filter));
-            if (ImGui::Checkbox(label, &filterEnabled)) {
-                if (filterEnabled) {
+            if (ImGui::Checkbox(label, &filterEnabled))
+            {
+                if (filterEnabled)
+                {
                     _postFX.pushFilter(filter, overrideScene);
-                } else {
+                }
+                else
+                {
                     _postFX.popFilter(filter, overrideScene);
                 }
             }
@@ -85,25 +93,29 @@ namespace {
 
         ImGui::PushItemWidth(170);
         {
-            if (ImGui::SliderFloat("##hidelabel", &edgeThreshold, 0.01f, 1.0f)) {
+            if (ImGui::SliderFloat("##hidelabel", &edgeThreshold, 0.01f, 1.0f))
+            {
                 batch.edgeDetectionThreshold(edgeThreshold);
             }
         }
         ImGui::PopItemWidth();
 
-        if (ImGui::CollapsingHeader("Fog Settings")) {
+        if (ImGui::CollapsingHeader("Fog Settings"))
+        {
             bool sceneChanged = false;
             auto& projectManager = context().kernel().projectManager();
             auto& activeSceneState = projectManager->activeProject()->getActiveScene()->state();
             bool fogEnabled = context().config().rendering.enableFog;
-            if (ImGui::Checkbox("Enabled", &fogEnabled)) {
+            if (ImGui::Checkbox("Enabled", &fogEnabled))
+            {
                 context().config().rendering.enableFog = fogEnabled;
                 context().config().changed(true);
                 sceneChanged = true;
             }
             {
                 F32 fogDensity = activeSceneState->renderState().fogDetails()._colourAndDensity.a;
-                if (ImGui::SliderFloat("Fog Density B", &fogDensity, 0.0001f, 0.25f, "%.6f")) {
+                if (ImGui::SliderFloat("Fog Density B", &fogDensity, 0.0001f, 0.25f, "%.6f"))
+                {
                     FogDetails details = activeSceneState->renderState().fogDetails();
                     details._colourAndDensity.a = fogDensity;
                     activeSceneState->renderState().fogDetails(details);
@@ -112,7 +124,8 @@ namespace {
             }
             {
                 F32 fogScatter = activeSceneState->renderState().fogDetails()._colourSunScatter.a;
-                if (ImGui::SliderFloat("Fog Density C", &fogScatter, 0.0001f, 0.25f, "%.6f")) {
+                if (ImGui::SliderFloat("Fog Density C", &fogScatter, 0.0001f, 0.25f, "%.6f"))
+                {
                     FogDetails details = activeSceneState->renderState().fogDetails();
                     details._colourSunScatter.a = fogScatter;
                     activeSceneState->renderState().fogDetails(details);
@@ -129,7 +142,8 @@ namespace {
                 tempField._data = &fogColour;
                 tempField._format = "%.6f";
                 tempField._range = { 0.0f, 1.0f };
-                tempField._dataSetter = [&](const void* colour) noexcept {
+                tempField._dataSetter = [&](const void* colour) noexcept
+                {
                     FogDetails details = activeSceneState->renderState().fogDetails();
                     details._colourAndDensity.rgb = *static_cast<const FColour3*>(colour);
                     activeSceneState->renderState().fogDetails(details);
@@ -139,12 +153,14 @@ namespace {
                 Util::PopNarrowLabelWidth();
             }
 
-            if (sceneChanged) {
+            if (sceneChanged)
+            {
                 Attorney::EditorGeneralWidget::registerUnsavedSceneChanges(_context.editor());
             }
         }
 
-        if (ImGui::CollapsingHeader("SS Antialiasing")) {
+        if (ImGui::CollapsingHeader("SS Antialiasing"))
+        {
             PreRenderOperator* op = batch.getOperator(FilterType::FILTER_SS_ANTIALIASING);
             PostAAPreRenderOperator& aaOp = static_cast<PostAAPreRenderOperator&>(*op);
             I32 level = to_I32(aaOp.postAAQualityLevel());
@@ -154,7 +170,8 @@ namespace {
                 ImGui::AlignTextToFramePadding();
                 ImGui::Text("Quality level: "); ImGui::SameLine();
                 ImGui::PushID("quality_level_slider");
-                if (ImGui::SliderInt("##hidelabel", &level, 0, 5)) {
+                if (ImGui::SliderInt("##hidelabel", &level, 0, 5))
+                {
                     aaOp.postAAQualityLevel(to_U8(level));
                 }
                 ImGui::PopID();
@@ -166,16 +183,22 @@ namespace {
             const bool a = ImGui::RadioButton("SMAA", &selection, 0); ImGui::SameLine();
             const bool b = ImGui::RadioButton("FXAA", &selection, 1); ImGui::SameLine();
             const bool c = ImGui::RadioButton("NONE", &selection, 2);
-            if (a || b|| c) {
-                if (selection != 2) {
+            if (a || b|| c)
+            {
+                if (selection != 2)
+                {
                     _postFX.pushFilter(FilterType::FILTER_SS_ANTIALIASING);
                     aaOp.useSMAA(selection == 0);
-                } else {
+                }
+                else
+                {
                     _postFX.popFilter(FilterType::FILTER_SS_ANTIALIASING);
                 }
             }
         }
-        if (ImGui::CollapsingHeader("SS Ambient Occlusion")) {
+
+        if (ImGui::CollapsingHeader("SS Ambient Occlusion"))
+        {
             checkBox(FilterType::FILTER_SS_AMBIENT_OCCLUSION);
             PreRenderOperator* op = batch.getOperator(FilterType::FILTER_SS_AMBIENT_OCCLUSION);
             SSAOPreRenderOperator& ssaoOp = static_cast<SSAOPreRenderOperator&>(*op);
@@ -186,58 +209,75 @@ namespace {
             F32 fade = ssaoOp.fadeStart() * 100.f;
             bool halfRes = ssaoOp.genHalfRes();
 
-            if (ImGui::Checkbox("Generate Half Resolution", &halfRes)) {
+            if (ImGui::Checkbox("Generate Half Resolution", &halfRes))
+            {
                 ssaoOp.genHalfRes(halfRes);
             }
-            if (ImGui::SliderFloat("Radius", &radius, 0.01f, 50.0f)) {
+            if (ImGui::SliderFloat("Radius", &radius, 0.01f, 50.0f))
+            {
                 ssaoOp.radius(radius);
             }
-            if (ImGui::SliderFloat("Power", &power, 1.0f, 10.0f)) {
+            if (ImGui::SliderFloat("Power", &power, 1.0f, 10.0f))
+            {
                 ssaoOp.power(power);
             }
-            if (ImGui::SliderFloat("Bias", &bias, 0.001f, 0.99f)) {
+            if (ImGui::SliderFloat("Bias", &bias, 0.001f, 0.99f))
+            {
                 ssaoOp.bias(bias);
             }
-            if (ImGui::SliderFloat("Max Range (%)", &range, 0.001f, 100.f)) {
+            if (ImGui::SliderFloat("Max Range (%)", &range, 0.001f, 100.f))
+            {
                 ssaoOp.maxRange(range * 0.01f);
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("100% - Far plane");
             }
-            if (ImGui::SliderFloat("Fade Start (%)", &fade, 0.001f, 100.f)) {
+            if (ImGui::SliderFloat("Fade Start (%)", &fade, 0.001f, 100.f))
+            {
                 ssaoOp.fadeStart(fade * 0.01f);
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("Applies to the range [0 - Max Range], not to the far plane!");
             }
             bool blur = ssaoOp.blurResults();
-            if (ImGui::Checkbox("Blur results", &blur)) {
+            if (ImGui::Checkbox("Blur results", &blur))
+            {
                 ssaoOp.blurResults(blur);
             }
-            if (!blur) {
+            if (!blur)
+            {
                 PushReadOnly();
             }
             F32 blurThreshold = ssaoOp.blurThreshold();
-            if (ImGui::SliderFloat("Blur threshold", &blurThreshold, 0.001f, 0.999f)) {
+            if (ImGui::SliderFloat("Blur threshold", &blurThreshold, 0.001f, 0.999f))
+            {
                 ssaoOp.blurThreshold(blurThreshold);
             }
             F32 blurSharpness = ssaoOp.blurSharpness();
-            if (ImGui::SliderFloat("Blur sharpness", &blurSharpness, 0.001f, 128.0f)) {
+            if (ImGui::SliderFloat("Blur sharpness", &blurSharpness, 0.001f, 128.0f))
+            {
                 ssaoOp.blurSharpness(blurSharpness);
             }
             I32 kernelSize = ssaoOp.blurKernelSize();
-            if (ImGui::SliderInt("Blur kernel size", &kernelSize, 0, 16)) {
+            if (ImGui::SliderInt("Blur kernel size", &kernelSize, 0, 16))
+            {
                 ssaoOp.blurKernelSize(kernelSize);
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("0 = no blur");
             }
-            if (!blur) {
+            if (!blur)
+            {
                 PopReadOnly();
             }
             ImGui::Text("SSAO Sample Count: %d", ssaoOp.sampleCount());
         }
-        if (ImGui::CollapsingHeader("SS Reflections")) {
+
+        if (ImGui::CollapsingHeader("SS Reflections"))
+        {
             checkBox(FilterType::FILTER_SS_REFLECTIONS);
 
             auto& params = context().config().rendering.postFX.ssr;
@@ -253,144 +293,180 @@ namespace {
             U8&  binarySearchIterations = params.binarySearchIterations;
 
             bool dirty = false;
-            if (ImGui::SliderFloat("Max Distance", &maxDistance, 0.01f, 5000.0f)) {
+            if (ImGui::SliderFloat("Max Distance", &maxDistance, 0.01f, 5000.0f))
+            {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Jitter Ammount", &jitterAmount, 0.01f, 10.0f)) {
+            if (ImGui::SliderFloat("Jitter Ammount", &jitterAmount, 0.01f, 10.0f))
+            {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Stride", &stride, 1.0f, maxSteps)) {
+            if (ImGui::SliderFloat("Stride", &stride, 1.0f, maxSteps))
+            {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Z Thickness", &zThickness, 0.01f, 10.0f)) {
+            if (ImGui::SliderFloat("Z Thickness", &zThickness, 0.01f, 10.0f))
+            {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Strode Z Cutoff", &strideZCutoff, 0.01f, 1000.0f)) {
+            if (ImGui::SliderFloat("Strode Z Cutoff", &strideZCutoff, 0.01f, 1000.0f))
+            {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Screen Edge Fade Start", &screenEdgeFadeStart, 0.01f, 1.0f)) {
+            if (ImGui::SliderFloat("Screen Edge Fade Start", &screenEdgeFadeStart, 0.01f, 1.0f))
+            {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Eye fade start", &eyeFadeStart, 0.01f, 1.0f)) {
+            if (ImGui::SliderFloat("Eye fade start", &eyeFadeStart, 0.01f, 1.0f))
+            {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Eye fade end", &eyeFadeEnd, eyeFadeStart, 1.0f)) {
+            if (ImGui::SliderFloat("Eye fade end", &eyeFadeEnd, eyeFadeStart, 1.0f))
+            {
                 dirty = true;
             }
 
             constexpr U16 stepsMin = 1u; 
             constexpr U16 stepsMax = 1 << 15;
 
-            if (ImGui::SliderScalar("Max Steps", ImGuiDataType_U16, &maxSteps, &stepsMin, &stepsMax)) {
+            if (ImGui::SliderScalar("Max Steps", ImGuiDataType_U16, &maxSteps, &stepsMin, &stepsMax))
+            {
                 dirty = true;
             } 
             constexpr U8 iterMin = 1u;
             constexpr U8 iterMax = 1 << 7;
-            if (ImGui::SliderScalar("Binary Search Iterations", ImGuiDataType_U8, &binarySearchIterations, &iterMin, &iterMax)) {
+            if (ImGui::SliderScalar("Binary Search Iterations", ImGuiDataType_U8, &binarySearchIterations, &iterMin, &iterMax))
+            {
                 dirty = true;
             }
 
-            if (dirty) {
+            if (dirty)
+            {
                 PreRenderOperator* op = batch.getOperator(FilterType::FILTER_SS_REFLECTIONS);
                 static_cast<SSRPreRenderOperator&>(*op).parametersChanged();
                 context().config().changed(true);
             }
         }
-        if (ImGui::CollapsingHeader("Depth of Field")) {
+
+        if (ImGui::CollapsingHeader("Depth of Field"))
+        {
             checkBox(FilterType::FILTER_DEPTH_OF_FIELD);
 
             auto& params = context().config().rendering.postFX.dof;
            
             bool dirty = false;
             F32& focalLength = params.focalLength;
-            if (ImGui::SliderFloat("Focal Length (mm)", &focalLength, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Focal Length (mm)", &focalLength, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
 
             I32 crtStop = to_I32(TypeUtil::StringToFStops(params.fStop));
             const char* crtStopName = params.fStop.c_str();
-            if (ImGui::SliderInt("FStop", &crtStop, 0, to_base(FStops::COUNT) - 1, crtStopName)) {
+            if (ImGui::SliderInt("FStop", &crtStop, 0, to_base(FStops::COUNT) - 1, crtStopName))
+            {
                 params.fStop = TypeUtil::FStopsToString(static_cast<FStops>(crtStop));
                 dirty = true;
             }
 
             bool& autoFocus = params.autoFocus;
-            if (ImGui::Checkbox("Auto Focus", &autoFocus)) {
+            if (ImGui::Checkbox("Auto Focus", &autoFocus))
+            {
                 dirty = true;
             }
 
-            if (autoFocus) {
+            if (autoFocus)
+            {
                 PushReadOnly();
             }
             F32& focalDepth = params.focalDepth;
-            if (ImGui::SliderFloat("Focal Depth (m)", &focalDepth, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Focal Depth (m)", &focalDepth, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
             vec2<F32>& focalPosition = params.focalPoint;
-            if (ImGui::SliderFloat2("Focal Position", focalPosition._v, 0.0f, 1.0f)) {
+            if (ImGui::SliderFloat2("Focal Position", focalPosition._v, 0.0f, 1.0f))
+            {
                 dirty = true;
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("Position of focused point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)");
             }
-            if (autoFocus) {
+            if (autoFocus)
+            {
                 PopReadOnly();
             }
 
             bool& manualdof = params.manualdof;
-            if (ImGui::Checkbox("Manual dof calculation", &manualdof)) {
+            if (ImGui::Checkbox("Manual dof calculation", &manualdof))
+            {
                 dirty = true;
             }
-            if (!manualdof) {
+            if (!manualdof)
+            {
                 PushReadOnly();
             }
             F32& ndofstart = params.ndofstart;
-            if (ImGui::SliderFloat("Near dof blur start", &ndofstart, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Near dof blur start", &ndofstart, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
             F32& ndofdist = params.ndofdist;
-            if (ImGui::SliderFloat("Near dof blur falloff distance", &ndofdist, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Near dof blur falloff distance", &ndofdist, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
             F32& fdofstart = params.fdofstart;
-            if (ImGui::SliderFloat("Far dof blur start", &fdofstart, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Far dof blur start", &fdofstart, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
             F32& fdofdist = params.fdofdist;
-            if (ImGui::SliderFloat("Far dof blur falloff distance", &fdofdist, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Far dof blur falloff distance", &fdofdist, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
-            if (!manualdof) {
+            if (!manualdof)
+            {
                 PopReadOnly();
             }
             bool& vignetting = params.vignetting;
-            if (ImGui::Checkbox("Use optical lens vignetting", &vignetting)) {
+            if (ImGui::Checkbox("Use optical lens vignetting", &vignetting))
+            {
                 dirty = true;
             }
-            if (!vignetting) {
+            if (!vignetting)
+            {
                 PushReadOnly();
             }
             F32& vignout = params.vignout;
-            if (ImGui::SliderFloat("Vignetting outer border", &vignout, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Vignetting outer border", &vignout, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
             F32& vignin = params.vignin;
-            if (ImGui::SliderFloat("Vignetting inner border", &vignin, 0.0f, 100.0f)) {
+            if (ImGui::SliderFloat("Vignetting inner border", &vignin, 0.0f, 100.0f))
+            {
                 dirty = true;
             }
-            if (!vignetting) {
+            if (!vignetting)
+            {
                 PopReadOnly();
             }
           
             bool& debugFocus = params.debugFocus;
-            if (ImGui::Checkbox("Show debug focus point and focal range", &debugFocus)) {
+            if (ImGui::Checkbox("Show debug focus point and focal range", &debugFocus))
+            {
                 dirty = true;
             }
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered())
+            {
                 ImGui::SetTooltip("red = focal point, green = focal range");
             }
  
-            if (dirty) {
+            if (dirty)
+            {
                 PreRenderOperator* op = batch.getOperator(FilterType::FILTER_DEPTH_OF_FIELD);
                 DoFPreRenderOperator& dofOp = static_cast<DoFPreRenderOperator&>(*op);
                 dofOp.parametersChanged();
@@ -398,54 +474,70 @@ namespace {
             }
         }
 
-        if (ImGui::CollapsingHeader("Bloom")) {
+        if (ImGui::CollapsingHeader("Bloom"))
+        {
             checkBox(FilterType::FILTER_BLOOM);
             PreRenderOperator* op = batch.getOperator(FilterType::FILTER_BLOOM);
             BloomPreRenderOperator& bloomOp = static_cast<BloomPreRenderOperator&>(*op);
-            F32 bias = bloomOp.luminanceBias();
-            if (ImGui::SliderFloat("Luminance Bias", &bias, 0.001f, 0.999f))
+            F32 radius = bloomOp.filterRadius();
+            if (ImGui::SliderFloat("Filter Radius", &radius, 0.001f, 0.999f))
             {
-                bloomOp.luminanceBias(bias);
+                bloomOp.filterRadius(radius);
+            } 
+            F32 strength = bloomOp.strength();
+            if (ImGui::SliderFloat("Strength", &strength, 0.001f, 0.999f))
+            {
+                bloomOp.strength(strength);
             }
         }
 
-        if (ImGui::CollapsingHeader("Motion Blur")) {
+        if (ImGui::CollapsingHeader("Motion Blur"))
+        {
             checkBox(FilterType::FILTER_MOTION_BLUR);
             PreRenderOperator* op = batch.getOperator(FilterType::FILTER_MOTION_BLUR);
             MotionBlurPreRenderOperator& blurOP = static_cast<MotionBlurPreRenderOperator&>(*op);
             F32& velocity = _context.config().rendering.postFX.motionBlur.velocityScale;
-            if (ImGui::SliderFloat("Veclocity Scale", &velocity, 0.01f, 3.0f)) {
+            if (ImGui::SliderFloat("Veclocity Scale", &velocity, 0.01f, 3.0f))
+            {
                 blurOP.parametersChanged();
                 _context.config().changed(true);
             }
             U8 samples = blurOP.maxSamples(); constexpr U8 min = 1u, max = 16u;
-            if (ImGui::SliderScalar("Max Samples", ImGuiDataType_U8, &samples, &min, &max)) {
+            if (ImGui::SliderScalar("Max Samples", ImGuiDataType_U8, &samples, &min, &max))
+            {
                 blurOP.maxSamples(samples);
             }
         }
 
-        if (ImGui::CollapsingHeader("Tone Mapping")) {
+        if (ImGui::CollapsingHeader("Tone Mapping"))
+        {
             bool adaptiveExposure = batch.adaptiveExposureControl();
-            if (ImGui::Checkbox("Adaptive Exposure", &adaptiveExposure)) {
+            if (ImGui::Checkbox("Adaptive Exposure", &adaptiveExposure))
+            {
                 batch.adaptiveExposureControl(adaptiveExposure);
             }
 
             bool dirty = false;
             ToneMapParams params = batch.toneMapParams();
-            if (adaptiveExposure) {
-                if (ImGui::SliderFloat("Min Log Luminance", &params._minLogLuminance, -16.0f, 0.0f)) {
+            if (adaptiveExposure)
+            {
+                if (ImGui::SliderFloat("Min Log Luminance", &params._minLogLuminance, -16.0f, 0.0f))
+                {
                     dirty = true;
                 }
-                if (ImGui::SliderFloat("Max Log Luminance", &params._maxLogLuminance, 0.0f, 16.0f)) {
+                if (ImGui::SliderFloat("Max Log Luminance", &params._maxLogLuminance, 0.0f, 16.0f))
+                {
                     dirty = true;
                 }
-                if (ImGui::SliderFloat("Tau", &params._tau, 0.1f, 2.0f)) {
+                if (ImGui::SliderFloat("Tau", &params._tau, 0.1f, 2.0f))
+                {
                     dirty = true;
                 }
 
                 static I32 exposureRefreshFrameCount = 1;
                 static F32 exposure = 1.0f;
-                if (--exposureRefreshFrameCount == 0) {
+                if (--exposureRefreshFrameCount == 0)
+                {
                     exposure = batch.adaptiveExposureValue();
                     exposureRefreshFrameCount = g_exposureRefreshFrameCount;
                 }
@@ -458,22 +550,27 @@ namespace {
                 }
             }
 
-            if (ImGui::SliderFloat("Manual exposure", &params._manualExposureFactor, 0.01f, 100.0f)) {
+            if (ImGui::SliderFloat("Manual exposure", &params._manualExposureFactor, 0.01f, 100.0f))
+            {
                 dirty = true;
             }
 
             I32 crtFunc = to_I32(params._function);
             const char* crtFuncName = TypeUtil::ToneMapFunctionsToString(params._function);
-            if (ImGui::SliderInt("ToneMap Function", &crtFunc, 0, to_base(ToneMapParams::MapFunctions::COUNT), crtFuncName)) {
+            if (ImGui::SliderInt("ToneMap Function", &crtFunc, 0, to_base(ToneMapParams::MapFunctions::COUNT), crtFuncName))
+            {
                 params._function = static_cast<ToneMapParams::MapFunctions>(crtFunc);
                 dirty = true;
             }
 
-            if (dirty) {
+            if (dirty)
+            {
                 batch.toneMapParams(params);
             }
         }
-        if (ImGui::CollapsingHeader("Test Effects")) {
+
+        if (ImGui::CollapsingHeader("Test Effects"))
+        {
             checkBox(FilterType::FILTER_NOISE, PostFX::FilterName(FilterType::FILTER_NOISE), true);
             checkBox(FilterType::FILTER_VIGNETTE, PostFX::FilterName(FilterType::FILTER_VIGNETTE), true);
             checkBox(FilterType::FILTER_UNDERWATER, PostFX::FilterName(FilterType::FILTER_UNDERWATER), true);

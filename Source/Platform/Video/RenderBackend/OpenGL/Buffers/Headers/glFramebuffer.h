@@ -66,9 +66,8 @@ class glFramebuffer final : public RenderTarget {
 
     struct BindingState
     {
-        DrawLayerEntry _layer{};
+        DrawLayerEntry _layers{};
         U16 _levelOffset{0u};
-        bool _layeredRendering{false};
         AttachmentState _attState{ AttachmentState::COUNT };
 
         bool operator==(const BindingState&) const = default;
@@ -94,7 +93,7 @@ class glFramebuffer final : public RenderTarget {
 
     bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot) override;
 
-    bool toggleAttachment( U8 attachmentIdx, AttachmentState state, U16 levelOffset, DrawLayerEntry layerOffset, bool layeredRendering);
+    bool toggleAttachment( U8 attachmentIdx, AttachmentState state, U16 levelOffset, DrawLayerEntry targetLayers);
 
     void clear(const RTClearDescriptor& descriptor);
     void begin(const RTDrawDescriptor& drawPolicy, const RTClearDescriptor& clearPolicy);

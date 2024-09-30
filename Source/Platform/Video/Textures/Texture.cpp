@@ -585,7 +585,7 @@ namespace Divide
             //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
             if ( _descriptor._mipMappingState != MipMappingState::OFF )
             {
-                _mipCount = to_U16( std::floorf( std::log2f( std::fmaxf( to_F32( _width ), to_F32( _height ) ) ) ) ) + 1;
+                _mipCount = MipCount(_width, _height);
             }
             else
             {

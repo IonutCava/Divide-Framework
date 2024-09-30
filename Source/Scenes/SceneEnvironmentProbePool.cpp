@@ -531,7 +531,8 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
     fastData.data[0]._vec[0].xyz.set(fWidth, fWidth, to_F32(layerID));
 
     const F32 maxMipLevel = to_F32(std::log2(fWidth));
-    for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel)     {
+    for (F32 mipLevel = 0u; mipLevel <= maxMipLevel; ++mipLevel) 
+    {
         destinationImage._subRange._mipLevels = { to_U8(mipLevel), 1u };
 
         const F32 roughness = mipLevel / maxMipLevel;

@@ -94,6 +94,15 @@ using FColour4 = vec4<F32>;
 
     constexpr F32 INV_RAND_MAX = 0.0000305185094f;
 
+// SubRange instead of vec2<U16> to keep things trivial
+struct SubRange
+{
+    U16 _offset{ 0u };
+    U16 _count{ U16_MAX };
+
+    bool operator==(const SubRange&) const = default;
+};
+
 template<typename T>
 using SignedIntegerBasedOnSize = typename std::conditional<sizeof(T) == 8, I64, I32>::type;
 template<typename T>
@@ -206,6 +215,9 @@ template<typename T>
 
 [[nodiscard]] constexpr U32 nextPOW2(U32 n) noexcept;
 [[nodiscard]] constexpr U32 prevPOW2(U32 n) noexcept;
+
+template<typename T>
+[[nodiscard]] constexpr T MipCount(T width, T height) noexcept;
 
 // Calculate the smallest NxN matrix that can hold the specified
 // number of elements. Returns N
@@ -397,7 +409,8 @@ struct SimpleTime
     U8 _minutes = 0u;
 };
 
-struct SimpleLocation {
+struct SimpleLocation
+{
     F32 _latitude = 0;
     F32 _longitude = 0;
 };
@@ -461,9 +474,11 @@ template <typename T = U64, typename U>
 
 }  // namespace Time
 
-namespace Util {
+namespace Util
+{
 
-struct Circle {
+struct Circle
+{
     F32 center[2] = {0.0f, 0.0f};
     F32 radius = 1.f;
 };

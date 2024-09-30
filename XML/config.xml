@@ -167,9 +167,8 @@
 			</motionBlur>
 			<bloom>
 				<enabled>true</enabled>
-				<factor>0.800000012</factor>
-				<!-- Bias applied to the scene's average luminance. Everything above avg luminance + bias is considered a bright spot-->
-				<luminanceBias>0.800000012</luminanceBias>
+				<filterRadius>0.00499999989</filterRadius>
+				<strength>0.0399999991</strength>
 			</bloom>
 			<ssao>
 				<enable>true</enable>

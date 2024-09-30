@@ -156,8 +156,8 @@ namespace Divide
             readOnly = false;
         }
 
-        const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(RenderTargetNames::BACK_BUFFER);
-        const Handle<Texture> gameView = rt->getAttachment(RTAttachmentType::COLOUR)->texture();
+        const RenderTarget* rt = _parent.context().gfx().renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN);
+        const Handle<Texture> gameView = rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
 
         NodePreviewWindow::drawInternal(gameView);
 
@@ -202,15 +202,20 @@ namespace Divide
                     settings.previousAxisSelected[1] = 1u;
                     break;
                 case ImGuizmo::SCALE:
+                case ImGuizmo::SCALEU:
                 case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_XU:
                 case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_YU:
                 case ImGuizmo::SCALE_Z:
+                case ImGuizmo::SCALE_ZU:
                     settings.currentGizmoOperation = ImGuizmo::SCALE_X;
                     settings.previousAxisSelected[2] = 1u;
                     break;
 
                 case ImGuizmo::ROTATE_SCREEN:
                 case ImGuizmo::BOUNDS: 
+                case ImGuizmo::UNIVERSAL:
                     break;
             };
         }
@@ -238,14 +243,19 @@ namespace Divide
                     settings.previousAxisSelected[1] = 2u;
                     break;
                 case ImGuizmo::SCALE:
+                case ImGuizmo::SCALEU:
                 case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_XU:
                 case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_YU:
                 case ImGuizmo::SCALE_Z:
+                case ImGuizmo::SCALE_ZU:
                     settings.currentGizmoOperation = ImGuizmo::SCALE_Y;
                     settings.previousAxisSelected[2] = 2u;
                     break;
                 case ImGuizmo::ROTATE_SCREEN:
                 case ImGuizmo::BOUNDS:
+                case ImGuizmo::UNIVERSAL:
                     break;
             };
         }
@@ -273,14 +283,19 @@ namespace Divide
                     settings.previousAxisSelected[1] = 3u;
                     break;
                 case ImGuizmo::SCALE:
+                case ImGuizmo::SCALEU:
                 case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_XU:
                 case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_YU:
                 case ImGuizmo::SCALE_Z:
+                case ImGuizmo::SCALE_ZU:
                     settings.currentGizmoOperation = ImGuizmo::SCALE_Z;
                     settings.previousAxisSelected[2] = 3u;
                     break;
                 case ImGuizmo::ROTATE_SCREEN:
                 case ImGuizmo::BOUNDS:
+                case ImGuizmo::UNIVERSAL:
                     break;
             };
         }
@@ -310,8 +325,11 @@ namespace Divide
                     break;
                 case ImGuizmo::SCALE:
                 case ImGuizmo::SCALE_X:
+                case ImGuizmo::SCALE_XU:
                 case ImGuizmo::SCALE_Y:
+                case ImGuizmo::SCALE_YU:
                 case ImGuizmo::SCALE_Z:
+                case ImGuizmo::SCALE_ZU:
                     settings.currentGizmoOperation = ImGuizmo::SCALE;
                     settings.previousAxisSelected[2] = 0u;
                     break;
@@ -496,6 +514,7 @@ namespace Divide
                             ImGui::Dummy(ImVec2(0, 0));
                             break;
                         case ImGuizmo::SCALE_X:
+                        case ImGuizmo::SCALE_XU:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
                                 Util::FieldLabels[0],
                                 settings.snapScale[0],
@@ -510,6 +529,7 @@ namespace Divide
                                 flags);
                             break;
                         case ImGuizmo::SCALE_Y:
+                        case ImGuizmo::SCALE_YU:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
                                 Util::FieldLabels[1],
                                 settings.snapScale[1],
@@ -524,6 +544,7 @@ namespace Divide
                                 flags);
                             break;
                         case ImGuizmo::SCALE_Z:
+                        case ImGuizmo::SCALE_ZU:
                             Util::DrawVecComponent<F32, false>(ImGuiDataType_Float,
                                 Util::FieldLabels[2],
                                 settings.snapScale[2],

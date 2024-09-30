@@ -240,10 +240,9 @@ void SingleShadowMapGenerator::blurTarget( const U16 layerOffset, GFX::CommandBu
 
     // Now we can either blur our target or just skip to mipmap computation
     GFX::BeginRenderPassCommand beginRenderPassCmd{};
-    beginRenderPassCmd._descriptor._layeredRendering = true;
-
     beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
     beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+    beginRenderPassCmd._descriptor._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer._count = U16_MAX;
 
     // Blur horizontally
     beginRenderPassCmd._target = _blurBuffer._targetID;
