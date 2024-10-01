@@ -53,7 +53,8 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     shaderDescriptor = {};
     shaderDescriptor._modules.push_back(vertModule);
     shaderDescriptor._modules.push_back(fragModule);
-    shaderDescriptor._globalDefines.emplace_back("filterRadius PushData0[0].x");
+    shaderDescriptor._globalDefines.emplace_back("filterRadiusX PushData0[0].x");
+    shaderDescriptor._globalDefines.emplace_back("filterRadiusY PushData0[0].y");
 
     ResourceDescriptor<ShaderProgram> bloomUpscale("BloomUpscale", shaderDescriptor );
     bloomUpscale.waitForReady(false);
@@ -71,24 +72,6 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
         state0.blendOp(BlendOperation::ADD);
 
         _bloomUpscalePipeline = _context.newPipeline( pipelineDescriptor );
-    }
-
-    const vec2<U16> resolution = parent.screenRT()._rt->getResolution();
-    
-    mipCount(std::min(mipCount(), MipCount(resolution.width, resolution.height)));
-
-    U16 twidth = resolution.width;
-    U16 theight = resolution.height;
-    _mipSizes.resize(mipCount());
-    for (U16 i = 0u; i < mipCount(); ++i)
-    {
-        twidth = twidth < 1u ? 1u : twidth;
-        theight = theight < 1u ? 1u : theight;
-
-        _mipSizes[i].set(twidth, theight);
-
-        twidth /= 2u;
-        theight /= 2u;
     }
 
     filterRadius(_context.context().config().rendering.postFX.bloom.filterRadius);
@@ -114,22 +97,9 @@ bool BloomPreRenderOperator::ready() const noexcept
 void BloomPreRenderOperator::reshape(const U16 width, const U16 height)
 {
     PreRenderOperator::reshape(width, height);
-
-    mipCount(std::min(mipCount(), MipCount(width, height)));
-
-    U16 twidth = width;
-    U16 theight = height;
-    _mipSizes.resize(mipCount());
-    for (U16 i = 0u; i < mipCount(); ++i)
-    {
-        twidth = twidth < 1u ? 1u : twidth;
-        theight = theight < 1u ? 1u : theight;
-
-        _mipSizes[i].set(twidth, theight);
-
-        twidth /= 2u;
-        theight /= 2u;
-    }
+    _mipSizesChanged = true;
+    // For correct aspect ratio
+    _filterRadiusChanged = true;
 }
 
 void BloomPreRenderOperator::filterRadius(const F32 val)
@@ -157,10 +127,35 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     const auto& screenTex = Get(screenAtt->texture());
 
-    const auto& bloomAtt = _context.renderTargetPool().getRenderTarget( RenderTargetNames::BLOOM_RESULT )->getAttachment( RTAttachmentType::COLOUR );
+    const auto& rt = _context.renderTargetPool().getRenderTarget(RenderTargetNames::BLOOM_RESULT);
+    const auto& bloomAtt = rt->getAttachment( RTAttachmentType::COLOUR );
     const auto& bloomTex = Get( bloomAtt->texture() );
 
     const Rect<I32> activeViewport = _context.activeViewport();
+
+    if (_mipSizesChanged)
+    {
+        const vec2<U16> resolution = rt->getResolution();
+
+        mipCount(std::min(mipCount(), MipCount(resolution.width, resolution.height)));
+
+        U16 twidth = resolution.width;
+        U16 theight = resolution.height;
+        _mipSizes.resize(mipCount());
+
+        for (U16 i = 0u; i < mipCount(); ++i)
+        {
+            twidth = twidth < 1u ? 1u : twidth;
+            theight = theight < 1u ? 1u : theight;
+
+            _mipSizes[i].set(twidth, theight);
+
+            twidth /= 2u;
+            theight /= 2u;
+        }
+
+        _mipSizesChanged = false;
+    }
 
     //ref: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
     {
@@ -216,9 +211,12 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
 
             if (_filterRadiusChanged)
             {
+                const F32 aspectRatio = to_F32(_mipSizes[0].width) / _mipSizes[0].height;
+
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomUpscalePipeline;
                 PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
                 pushConstants.data[0]._vec[0].x = to_F32(_filterRadius);
+                pushConstants.data[0]._vec[0].y = to_F32(_filterRadius) * aspectRatio;
                 _filterRadiusChanged = false;
             }
 

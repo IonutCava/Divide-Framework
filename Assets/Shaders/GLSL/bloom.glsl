@@ -51,16 +51,16 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D srcTexture;
 
 layout(location = 0) out vec3 _downsample;
 
-float RGBToLuminance(vec3 col)
+float RGBToLuminance(in vec3 col)
 {
     return dot(col, vec3(0.2126f, 0.7152f, 0.0722f));
 }
 
-float KarisAverage(vec3 col)
+float KarisAverage(in vec3 col)
 {
     // Formula is 1 / (1 + luma)
-    float luma = RGBToLuminance(ToSRGB(col)) * 0.25f;
-    return 1.0f / (1.0f + luma);
+    const float luma = RGBToLuminance(ToSRGB(col));
+    return 1.f / (1.f + luma);
 }
 
 void main()
@@ -108,29 +108,29 @@ void main()
 
     if (performKarisAverage)
     {
-        vec3 groups[5];
         // We are writing to mip 0, so we need to apply Karis average to each block
         // of 4 samples to prevent fireflies (very bright subpixels, leads to pulsating artifacts).
-        groups[0] = (a + b + d + e) * (0.125f / 4.0f);
-        groups[1] = (b + c + e + f) * (0.125f / 4.0f);
-        groups[2] = (d + e + g + h) * (0.125f / 4.0f);
-        groups[3] = (e + f + h + i) * (0.125f / 4.0f);
-        groups[4] = (j + k + l + m) * (0.5f / 4.0f);
-        groups[0] *= KarisAverage(groups[0]);
-        groups[1] *= KarisAverage(groups[1]);
-        groups[2] *= KarisAverage(groups[2]);
-        groups[3] *= KarisAverage(groups[3]);
-        groups[4] *= KarisAverage(groups[4]);
-        _downsample = groups[0] + groups[1] + groups[2] + groups[3] + groups[4];
+        const vec3 groups0 = (a + b + d + e) * 0.25f;
+        const vec3 groups1 = (b + c + e + f) * 0.25f;
+        const vec3 groups2 = (d + e + g + h) * 0.25f;
+        const vec3 groups3 = (e + f + h + i) * 0.25f;
+        const vec3 groups4 = (j + k + l + m) * 0.25f;
+        const float kw0 = KarisAverage(groups0);
+        const float kw1 = KarisAverage(groups1);
+        const float kw2 = KarisAverage(groups2);
+        const float kw3 = KarisAverage(groups3);
+        const float kw4 = KarisAverage(groups4);
+        _downsample = (kw0 * groups0 + kw1 * groups1 + kw2 * groups2 + kw3 * groups3 + kw4 * groups4) / (kw0 + kw1 + kw2 + kw3 + kw4);
+        _downsample = max(_downsample, M_EPSILON);
     }
     else
     {
-        _downsample = e * 0.125;
-        _downsample += (a + c + g + i) * 0.03125;
-        _downsample += (b + d + f + h) * 0.0625;
-        _downsample += (j + k + l + m) * 0.125;
-        _downsample = max(_downsample, M_EPSILON);
+        _downsample = e * 0.125f;
+        _downsample += (a + c + g + i) * 0.03125f;
+        _downsample += (b + d + f + h) * 0.0625f;
+        _downsample += (j + k + l + m) * 0.125f;
     }
+
 }
 
 -- Fragment.BloomUpscale
@@ -150,8 +150,8 @@ void main()
 {
     // The filter kernel is applied with a radius, specified in texture
     // coordinates, so that the radius will vary across mip resolutions.
-    const float x = filterRadius;
-    const float y = filterRadius;
+    const float x = filterRadiusX;
+    const float y = filterRadiusY;
 
     // Take 9 samples around current texel:
     // a - b - c
@@ -174,8 +174,8 @@ void main()
     //  1   | 1 2 1 |
     // -- * | 2 4 2 |
     // 16   | 1 2 1 |
-    _upsample = e * 4.0;
-    _upsample += (b + d + f + h) * 2.0;
+    _upsample = e * 4.f;
+    _upsample += (b + d + f + h) * 2.f;
     _upsample += (a + c + g + i);
-    _upsample *= 1.0 / 16.0;
+    _upsample *= 0.0625f; //1 / 16
 }

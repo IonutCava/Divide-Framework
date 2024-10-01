@@ -35,7 +35,6 @@ ErrorCode Engine::run(const int argc, char** argv)
         return errorCode;
     }
 
-
     //Win32: SetProcessDpiAwareness
     EnforceDPIScaling();
 

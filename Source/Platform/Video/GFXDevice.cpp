@@ -760,7 +760,7 @@ namespace Divide
             };
 
             bloomDesc._name = "Bloom Result";
-            bloomDesc._resolution = renderResolution;
+            bloomDesc._resolution = renderResolution * 0.5f;
             bloomDesc._msaaSamples = 0u;
             RenderTargetNames::BLOOM_RESULT = _rtPool->allocateRT( bloomDesc )._targetID;
         }  
@@ -1846,10 +1846,11 @@ namespace Divide
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN_PREV )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSAO_RESULT )->resize( w, h );
-        _rtPool->getRenderTarget( RenderTargetNames::BLOOM_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSR_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::HI_Z )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::OIT )->resize( w, h );
+
+        _rtPool->getRenderTarget( RenderTargetNames::BLOOM_RESULT )->resize( w / 2, h / 2);
 
         // Update post-processing render targets and buffers
         _renderer->updateResolution( w, h );
