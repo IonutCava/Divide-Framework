@@ -22,7 +22,7 @@ void main() {
     const float luminanceBias = 0.8f;
     vec4 screenColour = texture(texScreen, VAR._texCoord);
     float avgLuminance = texture(texAvgLuminance, VAR._texCoord ).r;
-    if (dot(screenColour.rgb, vec3(0.2126f, 0.7152f, 0.0722f)) > avgLuminance + Saturate( luminanceBias ))
+    if (GET_LUMA_VEC3(screenColour.rgb) > avgLuminance + Saturate( luminanceBias ))
     {
         _bloomOut = screenColour;
     }
@@ -51,15 +51,10 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D srcTexture;
 
 layout(location = 0) out vec3 _downsample;
 
-float RGBToLuminance(in vec3 col)
-{
-    return dot(col, vec3(0.2126f, 0.7152f, 0.0722f));
-}
-
 float KarisAverage(in vec3 col)
 {
     // Formula is 1 / (1 + luma)
-    const float luma = RGBToLuminance(ToSRGB(col));
+    const float luma = GET_LUMA_VEC3(ToSRGB(col));
     return 1.f / (1.f + luma);
 }
 

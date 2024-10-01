@@ -164,7 +164,6 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
         // Progressively downsample through the mip chain
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Downsample Bloom Chain";
 
-
         for (U16 i = 0u; i < mipCount(); i++)
         {
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
@@ -200,8 +199,6 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
 
         for (U16 i = mipCount() - 1u; i > 0u; i--)
         {
-            ImageView inputView = bloomTex->getView({ ._offset = i, ._count = 1u });
-
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
             renderPassCmd->_name = Util::StringFormat("Upsample {}", i);
             renderPassCmd->_descriptor = _screenOnlyDraw;
@@ -224,7 +221,7 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
             {
                 DescriptorSetBinding& binding = AddBinding(cmd->_set, 0u, ShaderStageVisibility::FRAGMENT);
-                Set( binding._data, inputView, bloomAtt->_descriptor._sampler );
+                Set( binding._data, bloomTex->getView({ ._offset = i, ._count = 1u }), bloomAtt->_descriptor._sampler );
             }
 
             GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport = Rect<I32>(activeViewport.offsetX, activeViewport.offsetY, _mipSizes[i-1].width, _mipSizes[i-1].height);

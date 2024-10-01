@@ -601,8 +601,8 @@ namespace Divide
         AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_X_AXIS vec3({:1.1f},{:1.1f},{:1.1f})", WORLD_X_AXIS.x, WORLD_X_AXIS.y, WORLD_X_AXIS.z ) );
         AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_Y_AXIS vec3({:1.1f},{:1.1f},{:1.1f})", WORLD_Y_AXIS.x, WORLD_Y_AXIS.y, WORLD_Y_AXIS.z ) );
         AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define WORLD_Z_AXIS vec3({:1.1f},{:1.1f},{:1.1f})", WORLD_Z_AXIS.x, WORLD_Z_AXIS.y, WORLD_Z_AXIS.z ) );
-
-
+        AppendToShaderHeader( ShaderType::COUNT, "#define M_LUMA_VEC vec3(0.2126f, 0.7152f, 0.0722f)");
+        AppendToShaderHeader( ShaderType::COUNT, "#define GET_LUMA_VEC3(X) dot(X, M_LUMA_VEC)");
         AppendToShaderHeader( ShaderType::COUNT, "#define M_EPSILON 1e-5f" );
         AppendToShaderHeader( ShaderType::COUNT, "#define M_PI 3.14159265358979323846" );
         AppendToShaderHeader( ShaderType::COUNT, "#define M_PI_DIV_2 1.57079632679489661923" );

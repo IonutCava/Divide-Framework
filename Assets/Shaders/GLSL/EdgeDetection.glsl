@@ -79,11 +79,10 @@ void main() {
     vec2 threshold = vec2(dvd_edgeThreshold);
 
     // Calculate lumas:
-    vec3 weights = vec3(0.2126, 0.7152, 0.0722);
-    float L = dot(texture(texScreen, vTexCoord0).rgb, weights);
+    float L = GET_LUMA_VEC3(texture(texScreen, vTexCoord0).rgb);
 
-    float Lleft = dot(texture(texScreen, vOffset[0].xy).rgb, weights);
-    float Ltop = dot(texture(texScreen, vOffset[0].zw).rgb, weights);
+    float Lleft = GET_LUMA_VEC3(texture(texScreen, vOffset[0].xy).rgb);
+    float Ltop = GET_LUMA_VEC3(texture(texScreen, vOffset[0].zw).rgb);
 
     // We do the usual threshold:
     vec4 delta;
@@ -92,19 +91,21 @@ void main() {
 
     // Then discard if there is no edge:
     if (dot(edges, vec2(1.f, 1.f)) == 0.f)
+    {
         discard;
+    }
 
     // Calculate right and bottom deltas:
-    float Lright = dot(texture(texScreen, vOffset[1].xy).rgb, weights);
-    float Lbottom = dot(texture(texScreen, vOffset[1].zw).rgb, weights);
+    float Lright = GET_LUMA_VEC3(texture(texScreen, vOffset[1].xy).rgb);
+    float Lbottom = GET_LUMA_VEC3(texture(texScreen, vOffset[1].zw).rgb);
     delta.zw = abs(L - vec2(Lright, Lbottom));
 
     // Calculate the maximum delta in the direct neighborhood:
     vec2 maxDelta = max(delta.xy, delta.zw);
 
     // Calculate left-left and top-top deltas:
-    float Lleftleft = dot(texture(texScreen, vOffset[2].xy).rgb, weights);
-    float Ltoptop = dot(texture(texScreen, vOffset[2].zw).rgb, weights);
+    float Lleftleft = GET_LUMA_VEC3(texture(texScreen, vOffset[2].xy).rgb);
+    float Ltoptop = GET_LUMA_VEC3(texture(texScreen, vOffset[2].zw).rgb);
     delta.zw = abs(vec2(Lleft, Ltop) - vec2(Lleftleft, Ltoptop));
 
     // Calculate the final maximum delta:
