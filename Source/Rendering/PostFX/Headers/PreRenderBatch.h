@@ -151,17 +151,31 @@ class PreRenderBatch {
         // ToDo: Always keep this up-to-date with every filter we add
         switch(type)
         {
-            case FilterType::FILTER_SS_ANTIALIASING :     return FilterSpace::FILTER_SPACE_LDR;
+
             case FilterType::FILTER_SS_AMBIENT_OCCLUSION:
+            case FilterType::FILTER_SS_REFLECTIONS:
+                return FilterSpace::FILTER_SPACE_PRE_PASS;
+
             case FilterType::FILTER_BLOOM:
-            case FilterType::FILTER_SS_REFLECTIONS:       return FilterSpace::FILTER_SPACE_HDR;
             case FilterType::FILTER_DEPTH_OF_FIELD:
-            case FilterType::FILTER_MOTION_BLUR:          return FilterSpace::FILTER_SPACE_HDR_POST_SS;
+            case FilterType::FILTER_MOTION_BLUR:
+                return FilterSpace::FILTER_SPACE_HDR;
+
+            case FilterType::FILTER_SS_ANTIALIASING:
+                return FilterSpace::FILTER_SPACE_LDR;
+
             case FilterType::FILTER_LUT_CORECTION:
-            case FilterType::FILTER_COUNT:
             case FilterType::FILTER_UNDERWATER: 
             case FilterType::FILTER_NOISE: 
-            case FilterType::FILTER_VIGNETTE: break;
+            case FilterType::FILTER_VIGNETTE:
+                return FilterSpace::FILTER_SPACE_POST_FX;
+
+            case FilterType::FILTER_COUNT:
+                break;
+
+            default:
+                DIVIDE_UNEXPECTED_CALL();
+                break;
         }
 
         return FilterSpace::COUNT;

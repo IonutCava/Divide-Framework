@@ -134,9 +134,13 @@ void BloomPreRenderOperator::reshape(const U16 width, const U16 height)
 
 void BloomPreRenderOperator::filterRadius(const F32 val)
 {
-    _filterRadius = val;
-    _context.context().config().rendering.postFX.bloom.filterRadius = val;
-    _context.context().config().changed(true);
+    if (!COMPARE(_filterRadius, val))
+    {
+        _filterRadius = val;
+        _context.context().config().rendering.postFX.bloom.filterRadius = val;
+        _context.context().config().changed(true);
+        _filterRadiusChanged = true;
+    }
 }
 
 void BloomPreRenderOperator::strength(const F32 val)
@@ -158,7 +162,6 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
 
     const Rect<I32> activeViewport = _context.activeViewport();
 
-    GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Construct Bloom Chain";
     //ref: https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
     {
         ImageView inputView = screenTex->getView();
@@ -211,9 +214,13 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
             renderPassCmd->_clearDescriptor[to_base(RTColourAttachmentSlot::SLOT_0)]._enabled = false;
             renderPassCmd->_descriptor._mipWriteLevel = i - 1;
 
-            GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomUpscalePipeline;
-            PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
-            pushConstants.data[0]._vec[0].x = to_F32(_filterRadius);
+            if (_filterRadiusChanged)
+            {
+                GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomUpscalePipeline;
+                PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
+                pushConstants.data[0]._vec[0].x = to_F32(_filterRadius);
+                _filterRadiusChanged = false;
+            }
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -229,7 +236,6 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
     GFX::EnqueueCommand<GFX::SetViewportCommand>(bufferInOut)->_viewport = activeViewport;
-    GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 
     return false;
 }

@@ -39,11 +39,13 @@ enum class FilterType : U16 {
 
 enum class FilterSpace : U8 {
     // HDR Space: operators that work AND MODIFY the HDR screen target (e.g. SSAO, SSR)
-    FILTER_SPACE_HDR = 0,
+    FILTER_SPACE_PRE_PASS = 0,
     // HDR Space: operators that work on the HDR target (e.g. Bloom, DoF)
-    FILTER_SPACE_HDR_POST_SS,
+    FILTER_SPACE_HDR,
     // LDR Space: operators that work on the post-tonemap target (e.g. Post-AA)
     FILTER_SPACE_LDR,
+    // Post Effects: operators that just overlay the final image before presenting (vignette, udnerwarter effect, etc)
+    FILTER_SPACE_POST_FX,
     COUNT
 };
 
