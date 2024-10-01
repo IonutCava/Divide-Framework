@@ -507,7 +507,8 @@ namespace Divide
         // Add version as the first shader statement, followed by copyright notice
         AppendToShaderHeader( ShaderType::COUNT, renderingAPI == RenderAPI::OpenGL ? "#version 460 core" : "#version 450" );
         AppendToShaderHeader( ShaderType::COUNT, "//_PROGRAM_NAME_\\" );
-        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright 2009-2022 DIVIDE-Studio*/" );
+        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2018 DIVIDE-Studio*/" );
+        AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2009 Ionut Cava*/" );
 
         if ( renderingAPI == RenderAPI::OpenGL )
         {
