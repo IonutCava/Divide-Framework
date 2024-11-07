@@ -35,19 +35,22 @@
 
 namespace Divide {
 
+    template<typename T = size_t> requires std::unsigned_integral<T>
     struct BufferRange
     {
-        size_t _startOffset{ 0u };
-        size_t _length{ 0u };
+        T _startOffset{ 0u };
+        T _length{ 0u };
 
-        size_t endOffset() const noexcept;
+        T endOffset() const noexcept;
 
         bool operator==(const BufferRange&) const = default;
     };
 
+    template<typename T>
+    bool Overlaps(const BufferRange<T>& lhs, const BufferRange<T>& rhs) noexcept;
 
-    bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept;
-    void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept;
+    template<typename T>
+    void Merge(BufferRange<T>& lhs, const BufferRange<T>& rhs) noexcept;
 
 } //namespace Divide
 

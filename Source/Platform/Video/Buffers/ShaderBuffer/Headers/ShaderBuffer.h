@@ -55,12 +55,12 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
    public:
     explicit ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
-                  void       readData(BufferRange range, std::pair<bufferPtr, size_t> outData);
-                  void       readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData);
-    [[nodiscard]] BufferLock clearData(BufferRange range);
-    [[nodiscard]] BufferLock clearBytes(BufferRange range);
-    [[nodiscard]] BufferLock writeData(BufferRange range, const bufferPtr data);
-    [[nodiscard]] BufferLock writeBytes(BufferRange range, const bufferPtr data);
+                  void       readData(BufferRange<> range, std::pair<bufferPtr, size_t> outData);
+                  void       readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData);
+    [[nodiscard]] BufferLock clearData(BufferRange<> range);
+    [[nodiscard]] BufferLock clearBytes(BufferRange<> range);
+    [[nodiscard]] BufferLock writeData(BufferRange<> range, const bufferPtr data);
+    [[nodiscard]] BufferLock writeBytes(BufferRange<> range, const bufferPtr data);
 
     
     [[nodiscard]] FORCE_INLINE I32                   getStartIndex(const bool read)  const noexcept { return (read ? queueReadIndex() : queueWriteIndex()); }
@@ -85,8 +85,8 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     PROPERTY_R(U64, lastWrittenFrame, 0u);
     PROPERTY_R(U64, lastReadFrame, 0u);
    protected:
-     virtual void       readBytesInternal(BufferRange range, std::pair<bufferPtr, size_t> outData) = 0;
-     virtual BufferLock writeBytesInternal(BufferRange range, const bufferPtr data) = 0;
+     virtual void       readBytesInternal(BufferRange<> range, std::pair<bufferPtr, size_t> outData) = 0;
+     virtual BufferLock writeBytesInternal(BufferRange<> range, const bufferPtr data) = 0;
 
    protected:
     BufferParams _params;

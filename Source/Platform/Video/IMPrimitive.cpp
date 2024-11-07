@@ -12,12 +12,17 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
-namespace Divide {
+namespace Divide
+{
 
-namespace {
+namespace
+{
     std::array<NS_GLIM::GLIM_ENUM, to_base(PrimitiveTopology::COUNT)> glimPrimitiveType;
-    inline size_t GetSizeFactor(const NS_GLIM::GLIM_ENUM dataType) noexcept {
-        switch (dataType) {
+
+    inline size_t GetSizeFactor(const NS_GLIM::GLIM_ENUM dataType) noexcept
+    {
+        switch (dataType)
+        {
             case NS_GLIM::GLIM_ENUM::GLIM_1I:
             case NS_GLIM::GLIM_ENUM::GLIM_1F:
             case NS_GLIM::GLIM_ENUM::GLIM_4UB: return 1u;
@@ -38,8 +43,10 @@ namespace {
         return 0u;
     }
 
-    inline PrimitiveTopology GetTopology(const NS_GLIM::GLIM_BUFFER_TYPE type) {
-        switch (type) {
+    inline PrimitiveTopology GetTopology(const NS_GLIM::GLIM_BUFFER_TYPE type)
+    {
+        switch (type)
+        {
             case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    return PrimitiveTopology::POINTS;
             case NS_GLIM::GLIM_BUFFER_TYPE::LINES:     return PrimitiveTopology::LINES;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: return PrimitiveTopology::LINES;
@@ -74,12 +81,13 @@ IMPrimitive::IMPrimitive(GFXDevice& context, const Str<64>& name)
     reset();
 }
 
-void IMPrimitive::reset() {
+void IMPrimitive::reset()
+{
     clearBatch();
     _drawFlags.fill(false);
-    _indexCount.fill(0u);
-    _indexBufferId.fill(0u);
+    _indexRange.fill({});
     _pipelines.fill(nullptr);
+    _indices.resize(0u);
 
     // Create general purpose render state blocks
     _basePipelineDescriptor._primitiveTopology = PrimitiveTopology::COUNT;
@@ -94,27 +102,33 @@ void IMPrimitive::reset() {
 }
 
 
-void IMPrimitive::beginBatch(const bool reserveBuffers, const U32 vertexCount, const U32 attributeCount) {
+void IMPrimitive::beginBatch(const bool reserveBuffers, const U32 vertexCount, const U32 attributeCount)
+{
     _imInterface->BeginBatch(reserveBuffers, vertexCount, attributeCount);
 }
 
-void IMPrimitive::clearBatch() {
+void IMPrimitive::clearBatch()
+{
     _imInterface->Clear(true, 64 * 3, 1);
 }
 
-bool IMPrimitive::hasBatch() const noexcept {
+bool IMPrimitive::hasBatch() const noexcept
+{
     return !_imInterface->isCleared();
 }
 
-void IMPrimitive::begin(const PrimitiveTopology type) {
+void IMPrimitive::begin(const PrimitiveTopology type)
+{
     _imInterface->Begin(glimPrimitiveType[to_U32(type)]);
 }
 
-void IMPrimitive::vertex(const F32 x, const  F32 y, const F32 z) {
+void IMPrimitive::vertex(const F32 x, const  F32 y, const F32 z)
+{
     _imInterface->Vertex(x, y, z);
 }
 
-void IMPrimitive::attribute1f(const U32 attribLocation, const F32 value) {
+void IMPrimitive::attribute1f(const U32 attribLocation, const F32 value)
+{
     _imInterface->Attribute1f(attribLocation, value);
 
     AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
@@ -124,7 +138,8 @@ void IMPrimitive::attribute1f(const U32 attribLocation, const F32 value) {
     desc._dataType = GFXDataFormat::FLOAT_32;
 }
 
-void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value) {
+void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value)
+{
     _imInterface->Attribute2f(attribLocation, value.x, value.y);
     AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
@@ -133,7 +148,8 @@ void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value) {
     desc._dataType = GFXDataFormat::FLOAT_32;
 }
 
-void IMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value) {
+void IMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value)
+{
     _imInterface->Attribute3f(attribLocation, value.x, value.y, value.z);
     Divide::AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
@@ -142,7 +158,8 @@ void IMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value) {
     desc._dataType = GFXDataFormat::FLOAT_32;
 }
 
-void IMPrimitive::attribute4ub(const U32 attribLocation, const U8 x, const U8 y, const U8 z, const U8 w) {
+void IMPrimitive::attribute4ub(const U32 attribLocation, const U8 x, const U8 y, const U8 z, const U8 w)
+{
     _imInterface->Attribute4ub(attribLocation, x, y, z, w);
     AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
@@ -151,7 +168,8 @@ void IMPrimitive::attribute4ub(const U32 attribLocation, const U8 x, const U8 y,
     desc._dataType = GFXDataFormat::UNSIGNED_BYTE;
 }
 
-void IMPrimitive::attribute4f(const U32 attribLocation, const F32 x, const F32 y, const F32 z, const F32 w) {
+void IMPrimitive::attribute4f(const U32 attribLocation, const F32 x, const F32 y, const F32 z, const F32 w)
+{
     _imInterface->Attribute4f(attribLocation, x, y, z, w);
     AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
@@ -160,7 +178,8 @@ void IMPrimitive::attribute4f(const U32 attribLocation, const F32 x, const F32 y
     desc._dataType = GFXDataFormat::FLOAT_32;
 }
 
-void IMPrimitive::attribute1i(const U32 attribLocation, const I32 value) {
+void IMPrimitive::attribute1i(const U32 attribLocation, const I32 value)
+{
     _imInterface->Attribute1i(attribLocation, value);
     AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
     desc._normalized = false;
@@ -169,7 +188,8 @@ void IMPrimitive::attribute1i(const U32 attribLocation, const I32 value) {
     desc._dataType = Divide::GFXDataFormat::SIGNED_INT;
 }
 
-void IMPrimitive::end() {
+void IMPrimitive::end()
+{
     _imInterface->End();
 }
 
@@ -204,6 +224,8 @@ void IMPrimitive::endBatch() noexcept
         vertBinding._strideInBytes = 3 * sizeof( F32 );
     }
 
+    efficient_clear(batchData.m_PositionData);
+
     U8 bufferIdx = 1u;
     // now upload each attribute array one after another
     for (auto& [index, data] : batchData.m_Attributes)
@@ -223,10 +245,47 @@ void IMPrimitive::endBatch() noexcept
         vertBinding._strideInBytes = params._elementStride;
     }
 
-    GenericVertexData::IndexBuffer idxBuff{};
-    idxBuff.smallIndices = false;
-    idxBuff.dynamic = true;
-    idxBuff.id = 0u;
+    for (auto& [index, data] : batchData.m_Attributes)
+    {
+        efficient_clear(data.m_ArrayData);
+    }
+
+    // Gather all the required sizes and offsets to allocate needed memory upfront.
+    size_t requiredSize = 0u;
+    const auto updateRange = [&requiredSize](const vector<U32>& indices, BufferRange<U32>& rangeInOut)
+    {
+        const size_t count = indices.size();
+
+        rangeInOut._startOffset = to_U32(requiredSize);
+        rangeInOut._length = to_U32(count);
+        requiredSize += count;
+    };
+
+    for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i)
+    {
+        if (!_drawFlags[i])
+        {
+            continue;
+        }
+
+        const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
+
+        BufferRange<U32>& range = _indexRange[i];
+
+        switch (glimType)
+        { 
+            case NS_GLIM::GLIM_BUFFER_TYPE::LINES:     updateRange(batchData.m_IndexBuffer_Lines,     range); break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    updateRange(batchData.m_IndexBuffer_Points,    range); break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: updateRange(batchData.m_IndexBuffer_Triangles, range); break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: updateRange(batchData.m_IndexBuffer_Wireframe, range); break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                              break;
+        }
+    }
+
+    // Reserve the memory we need and actually construct the index buffer
+    _indices.resize(0);
+    _indices.reserve(requiredSize);
+
     for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i)
     {
         if (!_drawFlags[i])
@@ -241,67 +300,54 @@ void IMPrimitive::endBatch() noexcept
 
         switch (glimType)
         {
-            case NS_GLIM::GLIM_BUFFER_TYPE::LINES: {
-                idxBuff.count = batchData.m_IndexBuffer_Lines.size();
-                idxBuff.data = batchData.m_IndexBuffer_Lines.data();
-            } break;
-            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS: {
-                idxBuff.count = batchData.m_IndexBuffer_Points.size();
-                idxBuff.data = batchData.m_IndexBuffer_Points.data();
-            } break;
-            case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: {
-                idxBuff.count = batchData.m_IndexBuffer_Triangles.size();
-                idxBuff.data = batchData.m_IndexBuffer_Triangles.data();
-            } break;
-            case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: {
-                idxBuff.count = batchData.m_IndexBuffer_Wireframe.size();
-                idxBuff.data = batchData.m_IndexBuffer_Wireframe.data();
-            } break;
-            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT: {
-                DIVIDE_UNEXPECTED_CALL();
-            } break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::LINES:     insert(_indices, batchData.m_IndexBuffer_Lines);     break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    insert(_indices, batchData.m_IndexBuffer_Points);    break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: insert(_indices, batchData.m_IndexBuffer_Triangles); break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: insert(_indices, batchData.m_IndexBuffer_Wireframe); break;
+            case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                            break;
         }
-
-        _memCmd._bufferLocks.emplace_back(_dataBuffer->setIndexBuffer(idxBuff));
-        _indexCount[i] = idxBuff.count;
-        _indexBufferId[i] = idxBuff.id;
-        ++idxBuff.id;
     }
 
-    // free the temporary buffer in RAM
-    for (auto& [index, data] : batchData.m_Attributes) {
-        efficient_clear( data.m_ArrayData );
-    }
+    efficient_clear(batchData.m_IndexBuffer_Wireframe);
+    efficient_clear(batchData.m_IndexBuffer_Triangles);
+    efficient_clear(batchData.m_IndexBuffer_Lines);
+    efficient_clear(batchData.m_IndexBuffer_Points);
 
-    efficient_clear( batchData.m_PositionData );
-    efficient_clear( batchData.m_IndexBuffer_Wireframe );
-    efficient_clear( batchData.m_IndexBuffer_Triangles );
-    efficient_clear( batchData.m_IndexBuffer_Lines );
-    efficient_clear( batchData.m_IndexBuffer_Points );
+    GenericVertexData::IndexBuffer idxBuff{};
+    idxBuff.smallIndices = false;
+    idxBuff.dynamic = true;
+    idxBuff.data = _indices.data();
+    idxBuff.count = _indices.size();
+    _memCmd._bufferLocks.emplace_back(_dataBuffer->setIndexBuffer(idxBuff));
 }
 
-void IMPrimitive::fromLines(const IM::LineDescriptor& lines) {
+void IMPrimitive::fromLines(const IM::LineDescriptor& lines)
+{
     fromLines(lines._lines.data(), lines._lines.size());
 }
 
-void IMPrimitive::fromLines(const IM::LineDescriptor* lines, size_t count) {
-    for (size_t i = 0u; i < count; ++i) {
+void IMPrimitive::fromLines(const IM::LineDescriptor* lines, size_t count)
+{
+    for (size_t i = 0u; i < count; ++i)
+    {
         fromLines(lines[i]._lines.data(), lines[i]._lines.size());
     }
 }
-void IMPrimitive::fromFrustum(const IM::FrustumDescriptor& frustum) {
+void IMPrimitive::fromFrustum(const IM::FrustumDescriptor& frustum)
+{
     fromFrustums(&frustum, 1u);
 }
 
-void IMPrimitive::fromFrustums(const IM::FrustumDescriptor* frustums, size_t count) {
+void IMPrimitive::fromFrustums(const IM::FrustumDescriptor* frustums, size_t count)
+{
     Line temp = {};
     std::array<Line, to_base(FrustumPlane::COUNT) * 2> lines = {};
     std::array<vec3<F32>, to_base(FrustumPoints::COUNT)> corners = {};
 
     // Create the object containing all of the lines
     beginBatch(true, to_U32(lines.size() * count) * 2u, 2);
-
-        for (size_t i = 0u; i < count; ++i) {
+        for (size_t i = 0u; i < count; ++i)
+        {
             U8 lineCount = 0;
 
             frustums[i].frustum.getCornersWorldSpace(corners);
@@ -383,23 +429,28 @@ void IMPrimitive::fromFrustums(const IM::FrustumDescriptor* frustums, size_t cou
             temp._colourEnd = startColour;
             lines[lineCount++] = temp;
             fromLinesInternal(lines.data(), lineCount);
-    }
+        }
     endBatch();
 }
 
-void IMPrimitive::fromOBB(const IM::OBBDescriptor& box) {
+void IMPrimitive::fromOBB(const IM::OBBDescriptor& box)
+{
     fromOBBs(&box, 1u);
 }
 
-void IMPrimitive::fromOBBs(const IM::OBBDescriptor* boxes, const size_t count) {
-    if (count == 0u) {
+void IMPrimitive::fromOBBs(const IM::OBBDescriptor* boxes, const size_t count)
+{
+    if (count == 0u)
+    {
         return;
     }
+
     std::array<Line, 12> lines = {};
 
     // Create the object containing all of the lines
     beginBatch(true, 12 * to_U32(count) * 2 * 14, 2);
-        for (size_t i = 0u; i < count; ++i) {
+        for (size_t i = 0u; i < count; ++i)
+        {
             const IM::OBBDescriptor& descriptor = boxes[i];
             OBB::OOBBEdgeList edges = descriptor.box.edgeList();
             for (U8 j = 0u; j < 12u; ++j)
@@ -415,19 +466,23 @@ void IMPrimitive::fromOBBs(const IM::OBBDescriptor* boxes, const size_t count) {
     endBatch();
 }
 
-void IMPrimitive::fromBox(const IM::BoxDescriptor& box) {
+void IMPrimitive::fromBox(const IM::BoxDescriptor& box)
+{
     fromBoxes(&box, 1u);
 }
 
-void IMPrimitive::fromBoxes(const IM::BoxDescriptor* boxes, const size_t count) {
-    if (count == 0u) {
+void IMPrimitive::fromBoxes(const IM::BoxDescriptor* boxes, const size_t count)
+{
+    if (count == 0u)
+    {
         return;
     }
 
     // Create the object
     beginBatch(true, to_U32(count * 16u), 1);
         attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
-        for (size_t i = 0u; i < count; ++i) {
+        for (size_t i = 0u; i < count; ++i)
+        {
             const IM::BoxDescriptor& box = boxes[i];
             const UColour4& colour = box.colour;
             const vec3<F32>& min = box.min;
@@ -467,19 +522,23 @@ void IMPrimitive::fromBoxes(const IM::BoxDescriptor* boxes, const size_t count) 
     endBatch();
 }
 
-void IMPrimitive::fromSphere(const IM::SphereDescriptor& sphere) {
+void IMPrimitive::fromSphere(const IM::SphereDescriptor& sphere)
+{
     fromSpheres(&sphere, 1u);
 }
 
-void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t count) {
-    if (count == 0u) {
+void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t count)
+{
+    if (count == 0u)
+    {
         return;
     }
 
     beginBatch(true, 32u * ((32u + 1) * 2), 1);
     attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
 
-    for (size_t c = 0u; c < count; ++c) {
+    for (size_t c = 0u; c < count; ++c)
+    {
         const IM::SphereDescriptor& sphere = spheres[c];
         const F32 drho = M_PI_f / sphere.stacks;
         const F32 dtheta = 2.f * M_PI_f / sphere.slices;
@@ -488,13 +547,15 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
         attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(sphere.colour));
         begin(PrimitiveTopology::LINE_STRIP);
             vec3<F32> startVert{};
-            for (U32 i = 0u; i < sphere.stacks; i++) {
+            for (U32 i = 0u; i < sphere.stacks; i++)
+            {
                 const F32 rho = i * drho;
                 const F32 srho = std::sin(rho);
                 const F32 crho = std::cos(rho);
                 const F32 srhodrho = std::sin(rho + drho);
                 const F32 crhodrho = std::cos(rho + drho);
-                for (U32 j = 0; j <= sphere.slices; j++) {
+                for (U32 j = 0; j <= sphere.slices; j++)
+                {
                     const F32 theta = j == sphere.slices ? 0.0f : j * dtheta;
                     const F32 stheta = -std::sin(theta);
                     const F32 ctheta = std::cos(theta);
@@ -502,12 +563,14 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
                     F32 x = stheta * srho;
                     F32 y = ctheta * srho;
                     F32 z = crho;
-                    const vec3<F32> vert1{
+                    const vec3<F32> vert1
+                    {
                         x * sphere.radius + sphere.center.x,
                         y * sphere.radius + sphere.center.y,
                         z * sphere.radius + sphere.center.z
                     };
                     vertex(vert1);
+
                     x = stheta * srhodrho;
                     y = ctheta * srhodrho;
                     z = crhodrho;
@@ -515,7 +578,8 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
                             y * sphere.radius + sphere.center.y,
                             z * sphere.radius + sphere.center.z);
 
-                    if (i == 0 && j == 0) {
+                    if (i == 0 && j == 0)
+                    {
                         startVert = vert1;
                     }
                 }
@@ -527,19 +591,23 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
 }
 
 //ref: http://www.freemancw.com/2012/06/opengl-cone-function/
-void IMPrimitive::fromCone(const IM::ConeDescriptor& cone) {
+void IMPrimitive::fromCone(const IM::ConeDescriptor& cone)
+{
     fromCones(&cone, 1u);
 }
 
-void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count) {
-    if (count == 0u) {
+void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
+{
+    if (count == 0u)
+    {
         return;
     }
 
     beginBatch(true, to_U32(count * (32u + 1)), 1u);
     attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
 
-    for (size_t i = 0u; i < count; ++i) {
+    for (size_t i = 0u; i < count; ++i)
+    {
         const IM::ConeDescriptor& cone = cones[i];
 
         const U8 slices = std::min(cone.slices, to_U8(32u));
@@ -551,7 +619,8 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
 
         // calculate points around directrix
         std::array<vec3<F32>, 32u> pts = {};
-        for (size_t j = 0u; j < slices; ++j) {
+        for (size_t j = 0u; j < slices; ++j)
+        {
             const F32 rad = angInc * j;
             pts[j] = c + (e0 * std::cos(rad) + e1 * std::sin(rad)) * cone.radius;
         }
@@ -561,7 +630,8 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
         // Top
         begin(PrimitiveTopology::TRIANGLE_FAN);
             vertex(cone.root);
-            for (U8 j = 0u; j < slices; ++j) {
+            for (U8 j = 0u; j < slices; ++j)
+            {
                 vertex(pts[j]);
             }
         end();
@@ -569,7 +639,8 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
         // Bottom
         begin(PrimitiveTopology::TRIANGLE_FAN);
             vertex(c);
-            for (I8 j = slices - 1; j >= 0; --j) {
+            for (I8 j = slices - 1; j >= 0; --j)
+            {
                 vertex(pts[j]);
             }
         end();
@@ -577,8 +648,10 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
     endBatch();
 }
 
-void IMPrimitive::fromLines(const Line* lines, const size_t count) {
-    if (count == 0u) {
+void IMPrimitive::fromLines(const Line* lines, const size_t count)
+{
+    if (count == 0u)
+    {
         return;
     }
 
@@ -591,8 +664,10 @@ void IMPrimitive::fromLines(const Line* lines, const size_t count) {
     endBatch();
 }
 
-void IMPrimitive::fromLinesInternal(const Line* lines, size_t count) {
-    if (count == 0u) {
+void IMPrimitive::fromLinesInternal(const Line* lines, size_t count)
+{
+    if (count == 0u)
+    {
         return;
     }
 
@@ -601,7 +676,8 @@ void IMPrimitive::fromLinesInternal(const Line* lines, size_t count) {
     // Set the mode to line rendering
     begin(PrimitiveTopology::LINES);
     // Add every line in the list to the batch
-    for (size_t i = 0u; i < count; ++i) {
+    for (size_t i = 0u; i < count; ++i)
+    {
         const Line& line = lines[i];
         attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line._colourStart));
         attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line._widthStart, line._widthEnd));
@@ -631,7 +707,8 @@ void IMPrimitive::setUniformDataAndConstants(const UniformData& constants, const
     _fastData = fastData;
 }
 
-void IMPrimitive::setPipelineDescriptor(const PipelineDescriptor& descriptor) {
+void IMPrimitive::setPipelineDescriptor(const PipelineDescriptor& descriptor)
+{
     DIVIDE_ASSERT(descriptor._vertexFormat._vertexBindings.empty());
 
     const AttributeMap existingAttributes = _basePipelineDescriptor._vertexFormat;
@@ -652,23 +729,20 @@ void IMPrimitive::getCommandBuffer( GFX::CommandBuffer& commandBufferInOut, GFX:
 
 void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuffer& commandBufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
 {
-    if (!_imInterface->PrepareRender()) {
+    if (!_imInterface->PrepareRender())
+    {
         return;
     }
 
     const bool useTexture = TargetType( _texture ) != TextureType::COUNT;
-    if (useTexture )
-    {
-        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShader();
-    }
-    else
-    {
-        _basePipelineDescriptor._shaderProgramHandle = _context.imShaders()->imWorldShaderNoTexture();
-    }
+
+    _basePipelineDescriptor._shaderProgramHandle = useTexture ? _context.imShaders()->imWorldShader()
+                                                              : _context.imShaders()->imWorldShaderNoTexture();
+
     DIVIDE_ASSERT(_basePipelineDescriptor._shaderProgramHandle != INVALID_HANDLE<ShaderProgram>, "IMPrimitive error: Draw call received without a valid shader defined!");
 
     _additionalUniforms.set(_ID("dvd_WorldMatrix"), PushConstantType::MAT4, worldMatrix);
-    _additionalUniforms.set(_ID("useTexture"), PushConstantType::BOOL, useTexture);
+    _additionalUniforms.set(_ID("useTexture"),      PushConstantType::BOOL, useTexture);
 
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;
@@ -690,21 +764,25 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
             Set( binding._data, _texture, _sampler );
         }
 
-        for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i) {
-            if (_drawFlags[i]) {
+        for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i)
+        {
+            if (_drawFlags[i])
+            {
                 const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
                 if ((glimType == NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES && _forceWireframe) ||
                     (glimType == NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME && !_forceWireframe))
                 {
                     continue;
                 }
-                drawCmd._cmd.indexCount = to_U32(_indexCount[i]);
-                drawCmd._bufferFlag = _indexBufferId[i];
 
                 GFX::EnqueueCommand<GFX::BindPipelineCommand>(commandBufferInOut)->_pipeline = _pipelines[i];
                 auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(commandBufferInOut);
                 pushConstantsCmd->_uniformData = &_additionalUniforms;
                 pushConstantsCmd->_fastData = _fastData;
+
+                const BufferRange<U32>& idxRange = _indexRange[i];
+                drawCmd._cmd.indexCount = idxRange._length;
+                drawCmd._cmd.firstIndex = idxRange._startOffset;
                 GFX::EnqueueCommand<GFX::DrawCommand>(commandBufferInOut)->_drawCommands.emplace_back(drawCmd);
             }
         }

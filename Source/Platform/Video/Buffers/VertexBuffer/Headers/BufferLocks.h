@@ -45,13 +45,13 @@ namespace Divide {
     {
         LockManager_uptr _lockManager{};
 
-        [[nodiscard]] bool lockRange(BufferRange range, SyncObjectHandle& sync) const;
-        [[nodiscard]] bool waitForLockedRange( BufferRange range ) const;
+        [[nodiscard]] bool lockRange(BufferRange<> range, SyncObjectHandle& sync) const;
+        [[nodiscard]] bool waitForLockedRange( BufferRange<> range ) const;
     };
 
     struct BufferLock
     {
-        BufferRange _range{};
+        BufferRange<> _range{};
         BufferSyncUsage _type{ BufferSyncUsage::COUNT };
 
         LockableBuffer* _buffer{nullptr};

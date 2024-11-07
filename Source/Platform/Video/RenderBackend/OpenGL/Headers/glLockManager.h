@@ -55,7 +55,7 @@ class glLockManager final : public LockManager {
       static bool InitLockPoolEntry( BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
 
   protected:
-      bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock) override;
+      bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange<>& testRange, const BufferLockInstance& lock) override;
 
 };
 

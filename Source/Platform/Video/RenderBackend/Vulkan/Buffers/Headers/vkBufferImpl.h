@@ -68,12 +68,12 @@ namespace Divide {
                             size_t ringQueueLength,
                             std::pair<bufferPtr, size_t> initialData,
                             const char* bufferName) noexcept;
-        BufferLock writeBytes( BufferRange range,
+        BufferLock writeBytes( BufferRange<> range,
                                VkAccessFlags2 dstAccessMask,
                                VkPipelineStageFlags2 dstStageMask,
                                const bufferPtr data );
 
-        void readBytes( BufferRange range,
+        void readBytes( BufferRange<> range,
                         std::pair<bufferPtr,
                         size_t> outData );
 

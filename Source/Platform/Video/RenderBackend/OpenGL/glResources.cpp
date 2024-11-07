@@ -458,7 +458,7 @@ namespace Divide
             return true;
         }
 
-        void SubmitRenderCommand( const GenericDrawCommand& drawCommand, const gl46core::GLenum internalFormat, const U32 firstIndex)
+        void SubmitRenderCommand( const GenericDrawCommand& drawCommand, const gl46core::GLenum internalFormat)
         {
             DIVIDE_ASSERT ( GL_API::GetStateTracker()._activeTopology != PrimitiveTopology::MESHLET, "GLUtil::SubmitRenderCommand: We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.");
 

@@ -35,18 +35,21 @@
 
 namespace Divide {
 
-    [[nodiscard]] inline size_t BufferRange::endOffset() const noexcept
+    template<typename T>  requires std::unsigned_integral<T>
+    [[nodiscard]] inline T BufferRange<T>::endOffset() const noexcept
     {
         return _startOffset + _length;
     }
 
-    [[nodiscard]] inline bool Overlaps(const BufferRange& lhs, const BufferRange& rhs) noexcept
+    template<typename T>
+    [[nodiscard]] inline bool Overlaps(const BufferRange<T>& lhs, const BufferRange<T>& rhs) noexcept
     {
         return lhs._startOffset < rhs.endOffset() &&
                rhs._startOffset < lhs.endOffset();
     }
 
-    inline void Merge(BufferRange& lhs, const BufferRange& rhs) noexcept
+    template<typename T>
+    inline void Merge(BufferRange<T>& lhs, const BufferRange<T>& rhs) noexcept
     {
         const size_t endOffset = std::max(lhs.endOffset(), rhs.endOffset());
         lhs._startOffset = std::min(lhs._startOffset, rhs._startOffset);

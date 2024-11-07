@@ -210,7 +210,7 @@ namespace Divide
         }
     }
 
-    BufferLock vkBufferImpl::writeBytes( const BufferRange range,
+    BufferLock vkBufferImpl::writeBytes( const BufferRange<> range,
                                          VkAccessFlags2 dstAccessMask,
                                          VkPipelineStageFlags2 dstStageMask,
                                          const bufferPtr data)
@@ -264,7 +264,7 @@ namespace Divide
         return ret;
     }
 
-    void vkBufferImpl::readBytes( const BufferRange range, std::pair<bufferPtr, size_t> outData )
+    void vkBufferImpl::readBytes( const BufferRange<> range, std::pair<bufferPtr, size_t> outData )
     {
         if (_isMemoryMappable )
         {

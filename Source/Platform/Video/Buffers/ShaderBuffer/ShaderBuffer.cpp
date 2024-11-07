@@ -35,7 +35,7 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& des
     _maxSize = descriptor._bufferParams._usageType == BufferUsageType::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._maxSizeBytesUBO : GFXDevice::GetDeviceInformation()._maxSizeBytesSSBO;
 }
 
-BufferLock ShaderBuffer::clearData(const BufferRange range) {
+BufferLock ShaderBuffer::clearData(const BufferRange<> range) {
     return clearBytes(
                {
                    range._startOffset * _params._elementSize,
@@ -43,7 +43,7 @@ BufferLock ShaderBuffer::clearData(const BufferRange range) {
                });
 }
 
-BufferLock ShaderBuffer::writeData(const BufferRange range, const bufferPtr data) {
+BufferLock ShaderBuffer::writeData(const BufferRange<> range, const bufferPtr data) {
     return writeBytes(
                {
                    range._startOffset * _params._elementSize,
@@ -52,7 +52,7 @@ BufferLock ShaderBuffer::writeData(const BufferRange range, const bufferPtr data
                data);
 }
 
-void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, size_t> outData) {
+void ShaderBuffer::readData(const BufferRange<> range, const std::pair<bufferPtr, size_t> outData) {
     readBytes(
         {
             range._startOffset * _params._elementSize,
@@ -61,7 +61,7 @@ void ShaderBuffer::readData(const BufferRange range, const std::pair<bufferPtr, 
         outData);
 }
 
-void ShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> outData) {
+void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     DIVIDE_ASSERT(range._length > 0u &&
@@ -75,11 +75,11 @@ void ShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> out
     _lastReadFrame = GFXDevice::FrameCount();
 }
 
-BufferLock ShaderBuffer::clearBytes(const BufferRange range) {
+BufferLock ShaderBuffer::clearBytes(const BufferRange<> range) {
     return writeBytes(range, nullptr);
 }
 
-BufferLock ShaderBuffer::writeBytes(BufferRange range, const bufferPtr data) {
+BufferLock ShaderBuffer::writeBytes(BufferRange<> range, const bufferPtr data) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     DIVIDE_ASSERT(range._length > 0 &&

@@ -59,7 +59,7 @@ namespace Divide
                !Compare(lhs._buffer, rhs._buffer);
     }
 
-    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, const BufferRange range ) noexcept
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, const BufferRange<> range ) noexcept
     {
         assert( buffer != nullptr );
         dataInOut._buffer = { buffer, range, buffer->queueReadIndex() };

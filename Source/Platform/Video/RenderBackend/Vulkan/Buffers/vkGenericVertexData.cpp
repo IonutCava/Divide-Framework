@@ -21,7 +21,7 @@ namespace Divide {
         _bufferObjects.clear();
 
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
-        _idxBuffers.clear();
+        _idxBuffer = {};
     }
 
     void vkGenericVertexData::draw(const GenericDrawCommand& command, VDIUserData* userData) noexcept
@@ -36,29 +36,25 @@ namespace Divide {
         }
 
         SharedLock<SharedMutex> w_lock( _idxBufferLock );
-        if ( !_idxBuffers.empty() )
+        if ( _idxBuffer._bufferSize > 0u )
         {
-            DIVIDE_ASSERT( command._bufferFlag < _idxBuffers.size() );
-
-            const auto& idxBuffer = _idxBuffers[command._bufferFlag];
-            if (idxBuffer._buffer != nullptr)
+            if (_idxBuffer._buffer != nullptr)
             {
                 VkDeviceSize offsetInBytes = 0u;
 
-                if ( idxBuffer._ringSizeFactor > 1 )
+                if (_idxBuffer._ringSizeFactor > 1 )
                 {
-                    offsetInBytes += idxBuffer._buffer->_params._elementCount * idxBuffer._buffer->_params._elementSize * queueIndex();
+                    offsetInBytes += _idxBuffer._buffer->_params._elementCount * _idxBuffer._buffer->_params._elementSize * queueIndex();
                 }
-                VK_PROFILE(vkCmdBindIndexBuffer, *vkData->_cmdBuffer, idxBuffer._buffer->_buffer, offsetInBytes, idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                VK_PROFILE(vkCmdBindIndexBuffer, *vkData->_cmdBuffer, _idxBuffer._buffer->_buffer, offsetInBytes, _idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
             }
 
             // Submit the draw command
-            const bool indexed = idxBuffer._buffer != nullptr;
+            const bool indexed = _idxBuffer._buffer != nullptr;
             VK_PROFILE(VKUtil::SubmitRenderCommand, command, *vkData->_cmdBuffer, indexed );
         }
         else
         {
-            DIVIDE_ASSERT( command._bufferFlag == 0u );
             PROFILE_VK_EVENT( "Submit non-indexed" );
             VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer );
         }
@@ -150,36 +146,21 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        IndexBufferEntry* impl = nullptr;
-
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
-        bool found = false;
-        for (auto& idxBuffer : _idxBuffers) {
-            if (idxBuffer._data.id == indices.id)
-            {
-                impl = &idxBuffer;
-                found = true;
-                break;
-            }
-        }
 
-        if (!found)
+        if ( _idxBuffer._buffer != nullptr )
         {
-            impl = &_idxBuffers.emplace_back();
-        }
-        else if ( impl->_buffer != nullptr )
-        {
-            DIVIDE_ASSERT(impl->_buffer->_buffer != VK_NULL_HANDLE);
+            DIVIDE_ASSERT(_idxBuffer._buffer->_buffer != VK_NULL_HANDLE);
 
             if ( indices.count == 0u || // We don't need indices anymore
-                 impl->_data.dynamic != indices.dynamic || // Buffer usage mode changed
-                 impl->_data.count < indices.count ) // Buffer not big enough
+                _idxBuffer._data.dynamic != indices.dynamic || // Buffer usage mode changed
+                _idxBuffer._data.count < indices.count ) // Buffer not big enough
             {
-                if ( !impl->_buffer->waitForLockedRange( {0, U32_MAX} ) )
+                if ( !_idxBuffer._buffer->waitForLockedRange( {0, U32_MAX} ) )
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
-                impl->_buffer.reset();
+                _idxBuffer._buffer.reset();
             }
         }
 
@@ -189,40 +170,42 @@ namespace Divide {
             return {};
         }
 
-        SCOPE_EXIT {
-            impl->_data._smallIndicesTemp.clear();
+        SCOPE_EXIT
+        {
+            _idxBuffer._data._smallIndicesTemp.clear();
         };
 
         bufferPtr data = indices.data;
         if ( indices.indicesNeedCast )
         {
-            impl->_data._smallIndicesTemp.resize( indices.count );
+            _idxBuffer._data._smallIndicesTemp.resize( indices.count );
             const U32* const dataIn = reinterpret_cast<U32*>(data);
             for ( size_t i = 0u; i < indices.count; ++i )
             {
-                impl->_data._smallIndicesTemp[i] = to_U16( dataIn[i] );
+                _idxBuffer._data._smallIndicesTemp[i] = to_U16( dataIn[i] );
             }
-            data = impl->_data._smallIndicesTemp.data();
+            data = _idxBuffer._data._smallIndicesTemp.data();
         }
 
         const size_t elementSize = indices.smallIndices ? sizeof( U16 ) : sizeof( U32 );
         const size_t range = indices.count * elementSize;
 
-        if ( impl->_buffer != nullptr )
+        if ( _idxBuffer._buffer != nullptr )
         {
             size_t offsetInBytes = 0u;
-            if ( impl->_ringSizeFactor > 1u )
+            if ( _idxBuffer._ringSizeFactor > 1u )
             {
-                offsetInBytes += impl->_data.count * elementSize * queueIndex();
+                offsetInBytes += _idxBuffer._data.count * elementSize * queueIndex();
             }
 
-            DIVIDE_ASSERT( range <= impl->_bufferSize );
-            return impl->_buffer->writeBytes( { offsetInBytes, range }, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data );
+            DIVIDE_ASSERT( range <= _idxBuffer._bufferSize );
+            const BufferRange<> bufRange = { offsetInBytes , range };
+            return _idxBuffer._buffer->writeBytes( bufRange, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data );
         }
         
-        impl->_bufferSize = range;
-        impl->_data = indices;
-        impl->_ringSizeFactor = queueLength();
+        _idxBuffer._bufferSize = range;
+        _idxBuffer._data = indices;
+        _idxBuffer._ringSizeFactor = queueLength();
 
         BufferParams params{};
         params._updateFrequency = indices.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
@@ -233,16 +216,16 @@ namespace Divide {
         const std::pair<bufferPtr, size_t> initialData = { data, range };
 
         const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_{}", handle()._id ) : string(_name.c_str()) + "_IDX_BUFFER";
-        impl->_buffer = std::make_unique<vkBufferImpl>( params,
-                                                            impl->_bufferSize,
-                                                            impl->_ringSizeFactor,
+        _idxBuffer._buffer = std::make_unique<vkBufferImpl>( params,
+                                                            _idxBuffer._bufferSize,
+                                                            _idxBuffer._ringSizeFactor,
                                                             initialData,
                                                             bufferName.c_str() );
         return BufferLock
         {
             ._range = {0u, indices.count},
             ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
-            ._buffer = impl->_buffer.get()
+            ._buffer = _idxBuffer._buffer.get()
         };
     }
 
@@ -281,7 +264,7 @@ namespace Divide {
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        const BufferRange range = { offsetInBytes , dataCurrentSizeInBytes};
+        const BufferRange<> range = { offsetInBytes , dataCurrentSizeInBytes};
         return impl->_buffer->writeBytes(range, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data);
     }
 }; //namespace Divide

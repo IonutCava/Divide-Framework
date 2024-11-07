@@ -67,7 +67,7 @@ class glGenericVertexData final : public GenericVertexData {
         SetBufferParams::BufferBindConfig _bindConfig{};
     };
 
-    struct IndexBufferEntry : public NonCopyable
+    struct IndexBufferEntry
     {
         IndexBuffer _data;
 
@@ -80,7 +80,8 @@ class glGenericVertexData final : public GenericVertexData {
         gl46core::GLsync _idxBufferSync{ nullptr };
     };
 
-    eastl::fixed_vector<IndexBufferEntry,1,true> _idxBuffers;
+    IndexBufferEntry _idxBuffer;
+
     eastl::fixed_vector<GenericBufferImpl,1,true> _bufferObjects;
 
     SharedMutex _idxBufferLock;

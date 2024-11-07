@@ -540,7 +540,7 @@ private:
 
         struct PerFrameBuffers
         {
-            BufferRange _camBufferWriteRange;
+            BufferRange<> _camBufferWriteRange;
             ShaderBuffer_uptr _camDataBuffer = nullptr;
             ShaderBuffer_uptr _cullCounter = nullptr;
             size_t _camWritesThisFrame = 0u;

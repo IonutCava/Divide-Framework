@@ -25,14 +25,11 @@ namespace Divide
         _bufferObjects.clear();
 
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
-        for ( auto& idx : _idxBuffers )
+        if (_idxBuffer._handle != GL_NULL_HANDLE )
         {
-            if ( idx._handle != GL_NULL_HANDLE )
-            {
-                GLUtil::freeBuffer( idx._handle );
-            }
+            GLUtil::freeBuffer(_idxBuffer._handle );
         }
-        _idxBuffers.clear();
+        _idxBuffer = {};
     }
 
     /// Submit a draw command to the GPU using this object and the specified command
@@ -50,36 +47,30 @@ namespace Divide
             SharedLock<SharedMutex> w_lock( _idxBufferLock );
 
             gl46core::GLenum indexFormat = gl46core::GL_NONE;
-            U32 firstIndex = 0u;
 
-            if ( !_idxBuffers.empty())
+            GenericDrawCommand submitCommand = command;
+            if ( _idxBuffer._bufferSize > 0u )
             {
-                DIVIDE_ASSERT(command._bufferFlag < _idxBuffers.size());
 
-                auto& idxBuffer = _idxBuffers[command._bufferFlag];
-                if ( idxBuffer._idxBufferSync != nullptr )
+                if (_idxBuffer._idxBufferSync != nullptr )
                 {
-                    gl46core::glWaitSync( idxBuffer._idxBufferSync, gl46core::UnusedMask::GL_UNUSED_BIT, gl46core::GL_TIMEOUT_IGNORED );
-                    GL_API::DestroyFenceSync( idxBuffer._idxBufferSync );
+                    gl46core::glWaitSync(_idxBuffer._idxBufferSync, gl46core::UnusedMask::GL_UNUSED_BIT, gl46core::GL_TIMEOUT_IGNORED );
+                    GL_API::DestroyFenceSync(_idxBuffer._idxBufferSync );
                 }
-                if ( GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_ELEMENT_ARRAY_BUFFER, idxBuffer._handle ) == GLStateTracker::BindResult::FAILED ) [[unlikely]]
+                if ( GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_ELEMENT_ARRAY_BUFFER, _idxBuffer._handle ) == GLStateTracker::BindResult::FAILED ) [[unlikely]]
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
 
-                indexFormat = idxBuffer._data.count > 0u ? (idxBuffer._data.smallIndices ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT) : gl46core::GL_NONE;
-                if ( idxBuffer._buffer != nullptr ) 
+                indexFormat = _idxBuffer._data.count > 0u ? (_idxBuffer._data.smallIndices ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT) : gl46core::GL_NONE;
+                if (_idxBuffer._buffer != nullptr )
                 {
-                    firstIndex = idxBuffer._buffer->getDataOffset() / sizeof(idxBuffer._data.smallIndices ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT);
+                    submitCommand._cmd.firstIndex += _idxBuffer._buffer->getDataOffset() / (_idxBuffer._data.smallIndices ? sizeof(U16) : sizeof(U32));
                 }
-            }
-            else
-            {
-                DIVIDE_ASSERT(command._bufferFlag == 0u);
             }
 
             // Submit the draw command
-            GLUtil::SubmitRenderCommand( command, indexFormat, firstIndex);
+            GLUtil::SubmitRenderCommand(submitCommand, indexFormat );
         }
     }
 
@@ -87,32 +78,16 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        IndexBufferEntry* impl = nullptr;
-
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
-        bool found = false;
-        for ( auto& idxBuffer : _idxBuffers )
-        {
-            if ( idxBuffer._data.id == indices.id )
-            {
-                impl = &idxBuffer;
-                found = true;
-                break;
-            }
-        }
 
-        if ( !found )
-        {
-            impl = &_idxBuffers.emplace_back();
-        }
-        else if ( impl->_handle != GL_NULL_HANDLE )
+        if ( _idxBuffer._handle != GL_NULL_HANDLE )
         {
             if ( indices.count == 0u || // We don't need indices anymore
-                 impl->_data.dynamic != indices.dynamic || // Buffer usage mode changed
-                 impl->_data.count < indices.count) // Buffer not big enough
+                _idxBuffer._data.dynamic != indices.dynamic || // Buffer usage mode changed
+                _idxBuffer._data.count < indices.count) // Buffer not big enough
             {
-                GLUtil::freeBuffer( impl->_handle );
-                impl->_bufferSize = 0u;
+                GLUtil::freeBuffer(_idxBuffer._handle );
+                _idxBuffer._bufferSize = 0u;
             }
         }
 
@@ -130,47 +105,47 @@ namespace Divide
 
         if (indices.indicesNeedCast)
         {
-            impl->_data._smallIndicesTemp.resize(indices.count);
+            _idxBuffer._data._smallIndicesTemp.resize(indices.count);
             const U32* const dataIn = reinterpret_cast<U32*>(data);
             for (size_t i = 0u; i < indices.count; ++i)
             {
-                impl->_data._smallIndicesTemp[i] = to_U16(dataIn[i]);
+                _idxBuffer._data._smallIndicesTemp[i] = to_U16(dataIn[i]);
             }
-            data = impl->_data._smallIndicesTemp.data();
+            data = _idxBuffer._data._smallIndicesTemp.data();
 
         }
 
-        if ( impl->_handle == GL_NULL_HANDLE )
+        if (_idxBuffer._handle == GL_NULL_HANDLE )
         {
-            impl->_data = indices;
+            _idxBuffer._data = indices;
             // At this point, we need an actual index buffer
-            impl->_bufferSize = range;
-            GLUtil::createAndAllocateBuffer( impl->_handle,
-                                              _name.empty() ? nullptr : Util::StringFormat( "{}_index_{}", _name.c_str(), indices.id ).c_str(),
-                                              gl46core::GL_DYNAMIC_STORAGE_BIT,
-                                              impl->_bufferSize,
-                                              { data, range});
+            _idxBuffer._bufferSize = range;
+            GLUtil::createAndAllocateBuffer( _idxBuffer._handle,
+                                             _name.empty() ? nullptr : Util::StringFormat( "{}_index", _name.c_str() ).c_str(),
+                                             gl46core::GL_DYNAMIC_STORAGE_BIT,
+                                             _idxBuffer._bufferSize,
+                                             { data, range});
         }
         else
         {
-            DIVIDE_ASSERT( range <= impl->_bufferSize );
+            DIVIDE_ASSERT( range <= _idxBuffer._bufferSize );
 
-            gl46core::glInvalidateBufferSubData( impl->_handle, 0u, range );
-            gl46core::glNamedBufferSubData( impl->_handle, 0u, range, data );
+            gl46core::glInvalidateBufferSubData(_idxBuffer._handle, 0u, range );
+            gl46core::glNamedBufferSubData(_idxBuffer._handle, 0u, range, data );
         }
 
         if ( !Runtime::isMainThread() )
         {
-            if ( impl->_idxBufferSync != nullptr )
+            if (_idxBuffer._idxBufferSync != nullptr )
             {
-                GL_API::DestroyFenceSync( impl->_idxBufferSync );
+                GL_API::DestroyFenceSync(_idxBuffer._idxBufferSync );
             }
 
-            impl->_idxBufferSync = GL_API::CreateFenceSync();
+            _idxBuffer._idxBufferSync = GL_API::CreateFenceSync();
             gl46core::glFlush();
         }
 
-        impl->_data._smallIndicesTemp.clear();
+        _idxBuffer._data._smallIndicesTemp.clear();
 
         return {};
     }

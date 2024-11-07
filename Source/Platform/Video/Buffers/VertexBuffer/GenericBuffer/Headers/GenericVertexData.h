@@ -51,7 +51,6 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
      {
          bufferPtr data{ nullptr };
          size_t count{ 0u };
-         U8 id{ 0u };
          bool smallIndices{ false };
          bool indicesNeedCast{ false };
          bool dynamic{ false };

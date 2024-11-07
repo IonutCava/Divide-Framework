@@ -137,7 +137,7 @@ namespace Divide
         return !error;
     }
 
-    bool LockManager::waitForLockedRangeLocked( const SyncObject_uptr& sync, [[maybe_unused]] const BufferRange& testRange, [[maybe_unused]] const BufferLockInstance& lock )
+    bool LockManager::waitForLockedRangeLocked( const SyncObject_uptr& sync, [[maybe_unused]] const BufferRange<>& testRange, [[maybe_unused]] const BufferLockInstance& lock )
     {
         sync->reset();
         return true;

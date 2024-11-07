@@ -95,7 +95,7 @@ namespace Divide
     struct ShaderBufferEntry
     {
         ShaderBuffer* _buffer{ nullptr };
-        BufferRange _range{};
+        BufferRange<> _range{};
         I32 _queueReadIndex{0u};
     };
 
@@ -131,7 +131,7 @@ namespace Divide
         bool operator==( const DescriptorSet& ) const = default;
     };
 
-    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange range ) noexcept;
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange<> range ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, ImageUsage usage) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, SamplerDescriptor sampler ) noexcept;

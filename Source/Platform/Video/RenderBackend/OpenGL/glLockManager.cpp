@@ -104,7 +104,7 @@ namespace Divide
         return false;
     }
 
-    bool glLockManager::waitForLockedRangeLocked( const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock )
+    bool glLockManager::waitForLockedRangeLocked( const SyncObject_uptr& sync, const BufferRange<>& testRange, const BufferLockInstance& lock )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

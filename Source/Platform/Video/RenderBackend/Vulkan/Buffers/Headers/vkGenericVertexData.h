@@ -71,7 +71,7 @@ class vkGenericVertexData final : public GenericVertexData {
             size_t _bufferSize{ 0u };
         };
 
-        vector<IndexBufferEntry> _idxBuffers;
+        IndexBufferEntry _idxBuffer;
         vector<GenericBufferImpl> _bufferObjects;
         SharedMutex _idxBufferLock;
     };

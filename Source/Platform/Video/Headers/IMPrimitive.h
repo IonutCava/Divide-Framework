@@ -146,10 +146,12 @@ class IMPrimitive final {
     ImageView _texture{};
     SamplerDescriptor _sampler{};
     std::array<bool, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _drawFlags;
-    std::array<size_t, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexCount;
     std::array<Pipeline*, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _pipelines;
-    std::array<U8, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexBufferId;
     GenericVertexData_ptr _dataBuffer = nullptr;
+
+    vector<U32> _indices;
+    std::array<BufferRange<U32>, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexRange;
+
 
     GFX::MemoryBarrierCommand _memCmd{};
 };

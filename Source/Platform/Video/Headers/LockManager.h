@@ -67,7 +67,7 @@ namespace Divide {
 
     struct BufferLockInstance
     {
-        BufferRange _range{};
+        BufferRange<> _range{};
         SyncObjectHandle _syncObjHandle{};
     };
 
@@ -103,7 +103,7 @@ namespace Divide {
     protected:
         [[nodiscard]] static bool InitLockPoolEntry( RenderAPI api, BufferLockPoolEntry& entry, U8 flag, U64 frameIdx );
 
-        virtual bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange& testRange, const BufferLockInstance& lock);
+        virtual bool waitForLockedRangeLocked(const SyncObject_uptr& sync, const BufferRange<>& testRange, const BufferLockInstance& lock);
 
     protected:
         mutable Mutex _bufferLockslock; // :D

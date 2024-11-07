@@ -51,18 +51,18 @@ namespace Divide
         }
     }
 
-    BufferLock glShaderBuffer::writeBytesInternal( const BufferRange range, const bufferPtr data )
+    BufferLock glShaderBuffer::writeBytesInternal( const BufferRange<> range, const bufferPtr data )
     {
         return bufferImpl()->writeOrClearBytes( range._startOffset, range._length, data );
     }
 
-    void glShaderBuffer::readBytesInternal( BufferRange range, std::pair<bufferPtr, size_t> outData )
+    void glShaderBuffer::readBytesInternal( BufferRange<> range, std::pair<bufferPtr, size_t> outData )
     {
         range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
         bufferImpl()->readBytes( range._startOffset, range._length, outData );
     }
 
-    bool glShaderBuffer::bindByteRange( const U8 bindIndex, BufferRange range, I32 readIndex )
+    bool glShaderBuffer::bindByteRange( const U8 bindIndex, BufferRange<> range, I32 readIndex )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

@@ -59,7 +59,7 @@ struct UniformData
     struct Entry
     {
         U64 _bindingHash{0u};
-        BufferRange _range;
+        BufferRange<> _range;
         PushConstantType _type{PushConstantType::COUNT};
     };
 

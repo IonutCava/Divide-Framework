@@ -23,7 +23,7 @@ namespace Divide {
         return true;
     }
 
-    bool LockableBuffer::lockRange( const BufferRange range, SyncObjectHandle& sync ) const
+    bool LockableBuffer::lockRange( const BufferRange<> range, SyncObjectHandle& sync ) const
     {
         if ( range._length > 0u && _lockManager != nullptr ) [[likely]]
         {
@@ -33,7 +33,7 @@ namespace Divide {
         return true;
     }
 
-    bool LockableBuffer::waitForLockedRange( const BufferRange range ) const
+    bool LockableBuffer::waitForLockedRange( const BufferRange<> range ) const
     {
         if ( range._length > 0u && _lockManager != nullptr ) [[likely]]
         {

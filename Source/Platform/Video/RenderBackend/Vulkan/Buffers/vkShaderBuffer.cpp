@@ -39,7 +39,7 @@ namespace Divide
                                                         bufferName.c_str() );
     }
 
-    BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange range, const bufferPtr data ) noexcept
+    BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange<> range, const bufferPtr data ) noexcept
     {
         if ( !_bufferImpl->waitForLockedRange( range ) )
         {
@@ -54,7 +54,7 @@ namespace Divide
         return _bufferImpl->writeBytes(range, dstAccessMask, dstStageMask, data);
     }
 
-    void vkShaderBuffer::readBytesInternal( BufferRange range, std::pair<bufferPtr, size_t> outData ) noexcept
+    void vkShaderBuffer::readBytesInternal( BufferRange<> range, std::pair<bufferPtr, size_t> outData ) noexcept
     {
         if ( !_bufferImpl->waitForLockedRange( range ) )
         {
