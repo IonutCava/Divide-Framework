@@ -9,6 +9,7 @@ option(ENABLE_AVX "Build with AVX support if available. Will also enable SSE42."
 option(ENABLE_SSE42 "Build with SSE4.2 support if available" ON)
 option(ENABLE_ASAN "Enable address sanitization" OFF)
 option(ENABLE_UBSAN "Enable undefined behbaviour sanitization" OFF)
+option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug builds (/JMC)" OFF)
 
 # This is required to be before the first project() call of the CMake build.
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
@@ -132,7 +133,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
   add_compile_definitions(USING_MSVC _CRT_SECURE_NO_WARNINGS)
   add_compile_options(/Zc:__cplusplus /Zm256 /utf-8) 
+  add_compile_options("$<$<CONFIG:DEBUG>:/d2Obforceinline>")
   add_link_options(/INCREMENTAL)
+
+  set (CMAKE_VS_JUST_MY_CODE_DEBUGGING $<IF:$<AND:$<CONFIG:Debug>,$<BOOL:${ENABLE_JUST_MY_CODE}>>,ON,OFF>)
 
   if ( ENABLE_ASAN )
     add_compile_definitions(_DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
