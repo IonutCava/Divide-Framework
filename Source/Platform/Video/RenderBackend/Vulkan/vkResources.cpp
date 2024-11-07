@@ -63,42 +63,54 @@ namespace Divide
 
     namespace VKUtil
     {
-
         void SubmitRenderCommand( const GenericDrawCommand& drawCommand,
                                   const VkCommandBuffer commandBuffer,
                                   const bool indexed )
         {
-            if ( drawCommand._drawCount > 0u && drawCommand._cmd.instanceCount > 0u )
+            if (drawCommand._drawCount == 0u || drawCommand._cmd.instanceCount == 0u)
             {
-                const bool useIndirectBuffer = isEnabledOption(drawCommand, CmdRenderOptions::RENDER_INDIRECT);
+                // redundant command. Unexpected but not fatal. Should've been filtered out by now
+                DebugBreak();
+                return;
+            }
 
-                if ( !useIndirectBuffer && drawCommand._cmd.instanceCount > 1u && drawCommand._drawCount > 1u ) [[unlikely]]
+            if ( VK_API::GetStateTracker()._pipeline._topology == PrimitiveTopology::MESHLET )
+            {
+                // We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.
+                DIVIDE_UNEXPECTED_CALL();
+                return;
+            }
+
+            const bool useIndirectBuffer = isEnabledOption(drawCommand, CmdRenderOptions::RENDER_INDIRECT);
+
+            if ( !useIndirectBuffer && drawCommand._cmd.instanceCount > 1u && drawCommand._drawCount > 1u ) [[unlikely]]
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value (base instance is also used for buffer indexing). Split the call into multiple draw commands with manual uniform-updates in-between!" );
+            }
+
+            if ( indexed )
+            {
+
+                if ( useIndirectBuffer )
                 {
-                    DIVIDE_UNEXPECTED_CALL_MSG( "Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value (base instance is also used for buffer indexing). Split the call into multiple draw commands with manual uniform-updates in-between!" );
-                }
-                if ( indexed )
-                {
-                    if ( useIndirectBuffer )
-                    {
-                        const size_t offset = (drawCommand._commandOffset * sizeof( IndirectIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
-                        vkCmdDrawIndexedIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectIndexedDrawCommand ) );
-                    }
-                    else
-                    {
-                        vkCmdDrawIndexed( commandBuffer, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.firstIndex, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
-                    }
+                    const size_t offset = (drawCommand._commandOffset * sizeof( IndirectIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
+                    vkCmdDrawIndexedIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectIndexedDrawCommand ) );
                 }
                 else
                 {
-                    if ( useIndirectBuffer )
-                    {
-                        const size_t offset = (drawCommand._commandOffset * sizeof( IndirectNonIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
-                        vkCmdDrawIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectNonIndexedDrawCommand ) );
-                    }
-                    else
-                    {
-                        vkCmdDraw( commandBuffer, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
-                    }
+                    vkCmdDrawIndexed( commandBuffer, drawCommand._cmd.indexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.firstIndex, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                }
+            }
+            else
+            {
+                if ( useIndirectBuffer )
+                {
+                    const size_t offset = (drawCommand._commandOffset * sizeof( IndirectNonIndexedDrawCommand )) + VK_API::GetStateTracker()._drawIndirectBufferOffset;
+                    vkCmdDrawIndirect( commandBuffer, VK_API::GetStateTracker()._drawIndirectBuffer, offset, drawCommand._drawCount, sizeof( IndirectNonIndexedDrawCommand ) );
+               }
+                else
+                {
+                    vkCmdDraw( commandBuffer, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
                 }
             }
         }

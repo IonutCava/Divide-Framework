@@ -786,25 +786,10 @@ namespace Names
 
 static_assert(std::size( Names::bufferSyncUsage ) == to_base( BufferSyncUsage::COUNT ) + 1);
 
-enum class BufferUpdateUsage : U8 {
-    CPU_TO_GPU = 0, //DRAW
-    GPU_TO_CPU = 1, //READ
-    GPU_TO_GPU = 2, //COPY
-    COUNT
-};
-
-namespace Names {
-    static constexpr const char* bufferUpdateUsage[] = {
-        "CPU_TO_GPU", "GPU_TO_CPU", "GPU_TO_GPU", "NONE"
-    };
-};
-
-static_assert(std::size(Names::bufferUpdateUsage) == to_base(BufferUpdateUsage::COUNT) + 1);
-
 enum class BufferUpdateFrequency : U8 {
-    ONCE = 0,       //STATIC
-    OCASSIONAL = 1, //DYNAMIC
-    OFTEN = 2,      //STREAM
+    ONCE = 0,   //STATIC
+    OCASSIONAL, //DYNAMIC
+    OFTEN,      //STREAM
     COUNT
 };
 

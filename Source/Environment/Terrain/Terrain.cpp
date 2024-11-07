@@ -1059,8 +1059,7 @@ void Terrain::postBuild( PlatformContext& context )
             GenericVertexData::SetBufferParams params = {};
             params._bindConfig = { 0u, 0u };
             params._bufferParams._elementSize = sizeof(TileRing::InstanceData);
-            params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
-            params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
 
             for (size_t i = 0u; i < ringCount; ++i)
             {

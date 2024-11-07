@@ -341,9 +341,8 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
     bufferDescriptor._ringBufferLength = 0;
     bufferDescriptor._bufferParams._elementCount = 256;
     bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-    bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
-    bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
-    bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_GPU;
+    bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
 
     _histogramBuffer = _context.newSB(bufferDescriptor);
 

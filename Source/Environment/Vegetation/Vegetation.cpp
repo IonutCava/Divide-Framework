@@ -316,9 +316,8 @@ namespace Divide
 
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._bufferParams._elementSize = sizeof( VegetationData );
-        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
-        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_GPU;
+        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
 
         if ( _maxTreeInstances > 0 )
         {
@@ -680,12 +679,12 @@ namespace Divide
                     Set( binding._data, hizTexture->getView(), hizAttachment->_descriptor._sampler );
                 }
 
-                GFX::DispatchComputeCommand computeCmd = {};
+                GFX::DispatchShaderTaskCommand computeCmd = {};
 
                 auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut ); // GPU to GPU command needed BEFORE draw (so ignore postDrawMemCmd)
                 if ( instance->_instanceCountGrass > 0 )
                 {
-                    computeCmd._computeGroupSize.set( (instance->_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                    computeCmd._workGroupSize.set( (instance->_instanceCountGrass + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
 
                     //Cull grass
                     GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineGrass;
@@ -700,7 +699,7 @@ namespace Divide
                 }
                 if ( instance->_instanceCountTrees > 0 )
                 {
-                    computeCmd._computeGroupSize.set( (instance->_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
+                    computeCmd._workGroupSize.set( (instance->_instanceCountTrees + WORK_GROUP_SIZE - 1) / WORK_GROUP_SIZE, 1, 1 );
                     // Cull trees
                     GFX::EnqueueCommand<GFX::BindPipelineCommand>( bufferInOut )->_pipeline = _cullPipelineTrees;
                     GFX::EnqueueCommand( bufferInOut, cullConstantsCmd );

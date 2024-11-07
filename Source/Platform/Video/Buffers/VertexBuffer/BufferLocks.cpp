@@ -25,10 +25,8 @@ namespace Divide {
 
     bool LockableBuffer::lockRange( const BufferRange range, SyncObjectHandle& sync ) const
     {
-        if ( _isLockable && range._length > 0u ) [[likely]]
+        if ( range._length > 0u && _lockManager != nullptr ) [[likely]]
         {
-            DIVIDE_ASSERT( _lockManager != nullptr );
-
             return _lockManager->lockRange( range._startOffset, range._length, sync );
         }
 
@@ -37,10 +35,8 @@ namespace Divide {
 
     bool LockableBuffer::waitForLockedRange( const BufferRange range ) const
     {
-        if ( _isLockable && range._length > 0u ) [[likely]]
+        if ( range._length > 0u && _lockManager != nullptr ) [[likely]]
         {
-            DIVIDE_ASSERT( _lockManager != nullptr );
-
             return _lockManager->waitForLockedRange( range._startOffset, range._length );
         }
 

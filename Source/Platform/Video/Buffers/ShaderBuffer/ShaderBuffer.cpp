@@ -26,13 +26,13 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& des
       : GUIDWrapper()
       , GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str()))
       , RingBufferSeparateWrite(descriptor._ringBufferLength, descriptor._separateReadWrite)
-      , _alignmentRequirement(AlignmentRequirement(descriptor._bufferParams._flags._usageType))
+      , _alignmentRequirement(AlignmentRequirement(descriptor._bufferParams._usageType))
       , _name(descriptor._name)
       , _params(descriptor._bufferParams)
 {
-    assert(descriptor._bufferParams._flags._usageType != BufferUsageType::COUNT);
-    assert(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
-    _maxSize = descriptor._bufferParams._flags._usageType == BufferUsageType::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._maxSizeBytesUBO : GFXDevice::GetDeviceInformation()._maxSizeBytesSSBO;
+    DIVIDE_ASSERT(descriptor._bufferParams._usageType != BufferUsageType::COUNT);
+    DIVIDE_ASSERT(descriptor._bufferParams._elementSize * descriptor._bufferParams._elementCount > 0 && "ShaderBuffer::Create error: Invalid buffer size!");
+    _maxSize = descriptor._bufferParams._usageType == BufferUsageType::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._maxSizeBytesUBO : GFXDevice::GetDeviceInformation()._maxSizeBytesSSBO;
 }
 
 BufferLock ShaderBuffer::clearData(const BufferRange range) {
@@ -70,6 +70,7 @@ void ShaderBuffer::readBytes(BufferRange range, std::pair<bufferPtr, size_t> out
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
     range._startOffset += getStartOffset(true);
+
     readBytesInternal(range, outData);
     _lastReadFrame = GFXDevice::FrameCount();
 }
@@ -89,16 +90,6 @@ BufferLock ShaderBuffer::writeBytes(BufferRange range, const bufferPtr data) {
     _lastWriteFrameNumber = GFXDevice::FrameCount();
 
     return writeBytesInternal(range, data);
-}
-
-BufferUpdateUsage ShaderBuffer::getUpdateUsage() const noexcept
-{
-    return _params._flags._updateUsage;
-}
-
-BufferUpdateFrequency ShaderBuffer::getUpdateFrequency() const noexcept
-{
-    return _params._flags._updateFrequency;
 }
 
 } //namespace Divide

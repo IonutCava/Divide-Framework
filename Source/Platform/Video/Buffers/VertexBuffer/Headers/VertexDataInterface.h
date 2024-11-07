@@ -55,6 +55,7 @@ class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsReso
     virtual void draw(const GenericDrawCommand& command, VDIUserData* data) = 0;
 
     PROPERTY_R(Handle, handle);
+    PROPERTY_R(U32, firstIndex, 0u);
     PROPERTY_RW(bool, primitiveRestartRequired, false);
 
     using VDIPool = ObjectPool<VertexDataInterface, 256, true>;

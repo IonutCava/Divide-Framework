@@ -458,146 +458,152 @@ namespace Divide
             return true;
         }
 
-        void SubmitRenderCommand( const GenericDrawCommand& drawCommand, const gl46core::GLenum internalFormat)
+        void SubmitRenderCommand( const GenericDrawCommand& drawCommand, const gl46core::GLenum internalFormat, const U32 firstIndex)
         {
-            if ( drawCommand._drawCount > 0u && drawCommand._cmd.instanceCount > 0u)
+            DIVIDE_ASSERT ( GL_API::GetStateTracker()._activeTopology != PrimitiveTopology::MESHLET, "GLUtil::SubmitRenderCommand: We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.");
+
+            if ( drawCommand._drawCount == 0u || drawCommand._cmd.instanceCount == 0u)
             {
-                const bool useIndirectBuffer = isEnabledOption( drawCommand, CmdRenderOptions::RENDER_INDIRECT );
+                // redundant command. Unexpected but not fatal. Should've been filtered out by now
+                DebugBreak();
+                return;
+            }
+            const bool useIndirectBuffer = isEnabledOption( drawCommand, CmdRenderOptions::RENDER_INDIRECT );
 
-                if ( !useIndirectBuffer && drawCommand._cmd.instanceCount > 1u && drawCommand._drawCount > 1u ) [[unlikely]]
+            if ( !useIndirectBuffer && drawCommand._cmd.instanceCount > 1u && drawCommand._drawCount > 1u ) [[unlikely]]
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG( "Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value (base instance is also used for buffer indexing). Split the call into multiple draw commands with manual uniform-updates in-between!" );
+            }
+
+            const gl46core::GLenum primitiveType = glPrimitiveTypeTable[to_base(GL_API::GetStateTracker()._activeTopology)];
+
+            if ( internalFormat != gl46core::GL_NONE )
+            {
+                // We could collapse multiple of these into a generic glMultiDrawElementsBaseVertex and pass 1 or 0 to the required parameters for the exceptions
+                // but those exceptions are the common case and I don't know what kind of bookeeping the driver does for multi-draw calls so a few if-checks and we 
+                // handle all that app-side. Also, the simpler the command, the larger the chance it is very well optimised by now and extremely supported by tools -Ionut
+
+                if ( useIndirectBuffer )
                 {
-                    DIVIDE_UNEXPECTED_CALL_MSG( "Multi-draw is incompatible with instancing as gl_DrawID will have the wrong value (base instance is also used for buffer indexing). Split the call into multiple draw commands with manual uniform-updates in-between!" );
-                }
-
-                if ( internalFormat != gl46core::GL_NONE )
-                {
-                    // We could collapse multiple of these into a generic glMultiDrawElementsBaseVertex and pass 1 or 0 to the required parameters for the exceptions
-                   // but those exceptions are the common case and I don't know what kind of bookeeping the driver does for multi-draw calls so a few if-checks and we 
-                   // handle all that app-side. Also, the simpler the command, the larger the chance it is very well optimised by now and extremely supported by tools -Ionut
-
-                    const gl46core::GLenum primitiveType = glPrimitiveTypeTable[to_base( GL_API::GetStateTracker()._activeTopology )];
-                    if ( useIndirectBuffer )
+                    const size_t offset = (drawCommand._commandOffset * sizeof( IndirectIndexedDrawCommand )) + GL_API::GetStateTracker()._drawIndirectBufferOffset;
+                    if ( drawCommand._drawCount > 1u )
                     {
-                        const size_t offset = (drawCommand._commandOffset * sizeof( IndirectIndexedDrawCommand )) + GL_API::GetStateTracker()._drawIndirectBufferOffset;
-                        if ( drawCommand._drawCount > 1u )
-                        {
-                            gl46core::glMultiDrawElementsIndirect( primitiveType, internalFormat, (bufferPtr)offset, drawCommand._drawCount, sizeof( IndirectIndexedDrawCommand ) );
-                        }
-                        else
-                        {
-                            gl46core::glDrawElementsIndirect( primitiveType, internalFormat, (bufferPtr)offset );
-                        }
+                        gl46core::glMultiDrawElementsIndirect( primitiveType, internalFormat, (bufferPtr)offset, drawCommand._drawCount, sizeof( IndirectIndexedDrawCommand ) );
                     }
                     else
                     {
-                        const bufferPtr offset = (bufferPtr)(drawCommand._cmd.firstIndex * (internalFormat == gl46core::GL_UNSIGNED_SHORT ? sizeof( gl46core::GLushort ) : sizeof( gl46core::GLuint )));
-                        if ( drawCommand._drawCount > 1u )
-                        {
-                            if ( s_multiDrawIndexData._countData.size() < drawCommand._drawCount )
-                            {
-                                // Well, a memory allocation here is BAD. Really bad!
-                                s_multiDrawIndexData._countData.resize( drawCommand._drawCount * 2 );
-                                s_multiDrawIndexData._indexOffsetData.resize( drawCommand._drawCount * 2 );
-                                s_multiDrawIndexData._baseVertexData.resize( drawCommand._drawCount * 2 );
-                            }
-                            eastl::fill( begin( s_multiDrawIndexData._countData ), begin( s_multiDrawIndexData._countData ) + drawCommand._drawCount, drawCommand._cmd.indexCount );
-                            eastl::fill( begin( s_multiDrawIndexData._indexOffsetData ), begin( s_multiDrawIndexData._indexOffsetData ) + drawCommand._drawCount, drawCommand._cmd.firstIndex );
-                            if ( drawCommand._cmd.baseVertex > 0u )
-                            {
-                                eastl::fill( begin( s_multiDrawIndexData._baseVertexData ), begin( s_multiDrawIndexData._baseVertexData ) + drawCommand._drawCount, drawCommand._cmd.baseVertex );
-                                glMultiDrawElementsBaseVertex( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void* const*)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount, s_multiDrawIndexData._baseVertexData.data() );
-                            }
-                            else
-                            {
-                                glMultiDrawElements( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void* const*)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount );
-                            }
-                        }
-                        else
-                        {
-                            if ( drawCommand._cmd.instanceCount == 1u )
-                            {
-                                if ( drawCommand._cmd.baseVertex > 0u )
-                                {
-                                    glDrawElementsBaseVertex( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.baseVertex );
-                                }
-                                else// (drawCommand._cmd.baseVertex == 0)
-                                {
-                                    glDrawElements( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset );
-                                }
-                            }
-                            else// (drawCommand._cmd.instanceCount > 1u)
-                            {
-                                if ( drawCommand._cmd.baseVertex > 0u )
-                                {
-                                    if ( drawCommand._cmd.baseInstance > 0u )
-                                    {
-                                        glDrawElementsInstancedBaseVertexBaseInstance( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
-                                    }
-                                    else // (drawCommand._cmd.baseInstance == 0)
-                                    {
-                                        glDrawElementsInstancedBaseVertex( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex );
-                                    }
-                                }
-                                else // (drawCommand._cmd.baseVertex == 0)
-                                {
-                                    if ( drawCommand._cmd.baseInstance > 0u )
-                                    {
-                                        glDrawElementsInstancedBaseInstance( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
-                                    }
-                                    else // (drawCommand._cmd.baseInstance == 0)
-                                    {
-                                        glDrawElementsInstanced( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount );
-                                    }
-                                }
-                            }
-                        }
+                        gl46core::glDrawElementsIndirect( primitiveType, internalFormat, (bufferPtr)offset );
                     }
                 }
                 else
                 {
-                    const gl46core::GLenum primitiveType = glPrimitiveTypeTable[to_base( GL_API::GetStateTracker()._activeTopology )];
-                    if ( useIndirectBuffer )
+                    const bufferPtr offset = (bufferPtr)(drawCommand._cmd.firstIndex * (internalFormat == gl46core::GL_UNSIGNED_SHORT ? sizeof( gl46core::GLushort ) : sizeof( gl46core::GLuint )));
+                    if ( drawCommand._drawCount > 1u )
                     {
-                        const size_t offset = (drawCommand._commandOffset * sizeof( IndirectNonIndexedDrawCommand )) + GL_API::GetStateTracker()._drawIndirectBufferOffset;
-                        if ( drawCommand._drawCount > 1u )
+                        if ( s_multiDrawIndexData._countData.size() < drawCommand._drawCount )
                         {
-                            gl46core::glMultiDrawArraysIndirect( primitiveType, (bufferPtr)offset, drawCommand._drawCount, sizeof( IndirectNonIndexedDrawCommand ) );
+                            // Well, a memory allocation here is BAD. Really bad!
+                            s_multiDrawIndexData._countData.resize( drawCommand._drawCount * 2 );
+                            s_multiDrawIndexData._indexOffsetData.resize( drawCommand._drawCount * 2 );
+                            s_multiDrawIndexData._baseVertexData.resize( drawCommand._drawCount * 2 );
                         }
-                        else [[likely]]
-                            {
-                                gl46core::glDrawArraysIndirect( primitiveType, (bufferPtr)offset );
-                            }
+                        eastl::fill( begin( s_multiDrawIndexData._countData ), begin( s_multiDrawIndexData._countData ) + drawCommand._drawCount, drawCommand._cmd.indexCount );
+                        eastl::fill( begin( s_multiDrawIndexData._indexOffsetData ), begin( s_multiDrawIndexData._indexOffsetData ) + drawCommand._drawCount, drawCommand._cmd.firstIndex );
+                        if ( drawCommand._cmd.baseVertex > 0u )
+                        {
+                            eastl::fill( begin( s_multiDrawIndexData._baseVertexData ), begin( s_multiDrawIndexData._baseVertexData ) + drawCommand._drawCount, drawCommand._cmd.baseVertex );
+                            glMultiDrawElementsBaseVertex( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void* const*)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount, s_multiDrawIndexData._baseVertexData.data() );
+                        }
+                        else
+                        {
+                            glMultiDrawElements( primitiveType, s_multiDrawIndexData._countData.data(), internalFormat, (const void* const*)s_multiDrawIndexData._indexOffsetData.data(), drawCommand._drawCount );
+                        }
                     }
                     else
                     {
-                        if ( drawCommand._drawCount > 1u )
+                        if ( drawCommand._cmd.instanceCount == 1u )
                         {
-                            if ( s_multiDrawIndexData._countData.size() < drawCommand._drawCount )
+                            if ( drawCommand._cmd.baseVertex > 0u )
                             {
-                                // Well, a memory allocation here is BAD. Really bad!
-                                s_multiDrawIndexData._countData.resize( drawCommand._drawCount * 2 );
-                                s_multiDrawIndexData._baseVertexData.resize( drawCommand._drawCount * 2 );
+                                glDrawElementsBaseVertex( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.baseVertex );
                             }
-                            eastl::fill( begin( s_multiDrawIndexData._countData ), begin( s_multiDrawIndexData._countData ) + drawCommand._drawCount, drawCommand._cmd.indexCount );
-                            eastl::fill( begin( s_multiDrawIndexData._baseVertexData ), begin( s_multiDrawIndexData._baseVertexData ) + drawCommand._drawCount, drawCommand._cmd.baseVertex );
-                            gl46core::glMultiDrawArrays( primitiveType, s_multiDrawIndexData._baseVertexData.data(), s_multiDrawIndexData._countData.data(), drawCommand._drawCount );
+                            else// (drawCommand._cmd.baseVertex == 0)
+                            {
+                                glDrawElements( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset );
+                            }
                         }
-                        else //( drawCommand._drawCount == 1u )
+                        else// (drawCommand._cmd.instanceCount > 1u)
                         {
-                            if ( drawCommand._cmd.instanceCount == 1u )
+                            if ( drawCommand._cmd.baseVertex > 0u )
                             {
-                                gl46core::glDrawArrays( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount );
+                                if ( drawCommand._cmd.baseInstance > 0u )
+                                {
+                                    glDrawElementsInstancedBaseVertexBaseInstance( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex, drawCommand._cmd.baseInstance );
+                                }
+                                else // (drawCommand._cmd.baseInstance == 0)
+                                {
+                                    glDrawElementsInstancedBaseVertex( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount, drawCommand._cmd.baseVertex );
+                                }
                             }
-                            else //(drawCommand._cmd.instanceCount > 1u)
+                            else // (drawCommand._cmd.baseVertex == 0)
                             {
-                                if ( drawCommand._cmd.baseInstance == 0u )
+                                if ( drawCommand._cmd.baseInstance > 0u )
                                 {
-                                    gl46core::glDrawArraysInstanced( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount );
+                                    glDrawElementsInstancedBaseInstance( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
                                 }
-                                else //( drawCommand._cmd.baseInstance > 0u )
+                                else // (drawCommand._cmd.baseInstance == 0)
                                 {
-                                    gl46core::glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
+                                    glDrawElementsInstanced( primitiveType, drawCommand._cmd.indexCount, internalFormat, offset, drawCommand._cmd.instanceCount );
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if ( useIndirectBuffer )
+                {
+                    const size_t offset = (drawCommand._commandOffset * sizeof( IndirectNonIndexedDrawCommand )) + GL_API::GetStateTracker()._drawIndirectBufferOffset;
+                    if ( drawCommand._drawCount > 1u )
+                    {
+                        gl46core::glMultiDrawArraysIndirect( primitiveType, (bufferPtr)offset, drawCommand._drawCount, sizeof( IndirectNonIndexedDrawCommand ) );
+                    }
+                    else [[likely]]
+                    {
+                        gl46core::glDrawArraysIndirect( primitiveType, (bufferPtr)offset );
+                    }
+                }
+                else
+                {
+                    if ( drawCommand._drawCount > 1u )
+                    {
+                        
+                        if ( s_multiDrawIndexData._countData.size() < drawCommand._drawCount )
+                        {
+                            // Well, a memory allocation here is BAD. Really bad!
+                            s_multiDrawIndexData._countData.resize( drawCommand._drawCount * 2 );
+                            s_multiDrawIndexData._baseVertexData.resize( drawCommand._drawCount * 2 );
+                        }
+                        eastl::fill( begin( s_multiDrawIndexData._countData ), begin( s_multiDrawIndexData._countData ) + drawCommand._drawCount, drawCommand._cmd.indexCount );
+                        eastl::fill( begin( s_multiDrawIndexData._baseVertexData ), begin( s_multiDrawIndexData._baseVertexData ) + drawCommand._drawCount, drawCommand._cmd.baseVertex );
+                        gl46core::glMultiDrawArrays( primitiveType, s_multiDrawIndexData._baseVertexData.data(), s_multiDrawIndexData._countData.data(), drawCommand._drawCount );
+                    }
+                    else //( drawCommand._drawCount == 1u )
+                    {
+                        if ( drawCommand._cmd.instanceCount == 1u )
+                        {
+                            gl46core::glDrawArrays( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount );
+                        }
+                        else //(drawCommand._cmd.instanceCount > 1u)
+                        {
+                            if ( drawCommand._cmd.baseInstance == 0u )
+                            {
+                                gl46core::glDrawArraysInstanced( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount );
+                            }
+                            else //( drawCommand._cmd.baseInstance > 0u )
+                            {
+                                gl46core::glDrawArraysInstancedBaseInstance( primitiveType, drawCommand._cmd.baseVertex, drawCommand._cmd.vertexCount, drawCommand._cmd.instanceCount, drawCommand._cmd.baseInstance );
                             }
                         }
                     }

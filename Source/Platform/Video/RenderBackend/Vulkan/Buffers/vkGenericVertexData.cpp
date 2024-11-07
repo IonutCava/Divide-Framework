@@ -53,13 +53,14 @@ namespace Divide {
             }
 
             // Submit the draw command
-            VK_PROFILE(VKUtil::SubmitRenderCommand, command, *vkData->_cmdBuffer, idxBuffer._buffer != nullptr );
+            const bool indexed = idxBuffer._buffer != nullptr;
+            VK_PROFILE(VKUtil::SubmitRenderCommand, command, *vkData->_cmdBuffer, indexed );
         }
         else
         {
             DIVIDE_ASSERT( command._bufferFlag == 0u );
             PROFILE_VK_EVENT( "Submit non-indexed" );
-            VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer, false );
+            VKUtil::SubmitRenderCommand( command, *vkData->_cmdBuffer );
         }
 
     }
@@ -96,7 +97,7 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( params._bufferParams._flags._usageType != BufferUsageType::COUNT );
+        DIVIDE_ASSERT( params._bufferParams._usageType != BufferUsageType::COUNT );
 
         // Make sure we specify buffers in order.
         GenericBufferImpl* impl = nullptr;
@@ -224,9 +225,8 @@ namespace Divide {
         impl->_ringSizeFactor = queueLength();
 
         BufferParams params{};
-        params._flags._updateFrequency = indices.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
-        params._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
-        params._flags._usageType = BufferUsageType::INDEX_BUFFER;
+        params._updateFrequency = indices.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
+        params._usageType = BufferUsageType::INDEX_BUFFER;
         params._elementSize = elementSize;
         params._elementCount = to_U32(indices.count);
 
@@ -260,7 +260,7 @@ namespace Divide {
         }
 
         const BufferParams& bufferParams = impl->_buffer->_params;
-        DIVIDE_ASSERT(bufferParams._flags._updateFrequency != BufferUpdateFrequency::ONCE);
+        DIVIDE_ASSERT(bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
 
         DIVIDE_ASSERT(impl != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
 

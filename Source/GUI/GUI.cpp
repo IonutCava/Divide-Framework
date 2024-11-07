@@ -70,8 +70,7 @@ namespace Divide
 
             params._bufferParams._elementCount = FONS_VERTEX_COUNT * dvd->_bufferSizeFactor;
             params._bufferParams._elementSize = sizeof( FONSvert );
-            params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
-            params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
 
             const auto lock = dvd->_fontRenderingBuffer->setBuffer( params ); //Pos, UV and Colour
             DIVIDE_UNUSED( lock );

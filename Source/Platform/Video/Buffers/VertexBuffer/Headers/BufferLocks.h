@@ -47,9 +47,6 @@ namespace Divide {
 
         [[nodiscard]] bool lockRange(BufferRange range, SyncObjectHandle& sync) const;
         [[nodiscard]] bool waitForLockedRange( BufferRange range ) const;
-
-    protected:
-        bool _isLockable{false};
     };
 
     struct BufferLock

@@ -47,6 +47,8 @@ namespace GLMemory{
         COUNT
     };
 
+    Byte* GetZeroData(const size_t bufferSize);
+
     void OnFrameEnd(U64 frameCount);
 
     struct Block
@@ -56,35 +58,30 @@ namespace GLMemory{
         size_t _size{ 0u };
         gl46core::GLuint _bufferHandle{ GL_NULL_HANDLE };
         bool _free{ true };
-
+        bool _pooled{ false };
         bool operator==(const Block &rhs) const = default;
     };
+
 
     class Chunk final : NonCopyable, NonMovable
     {
     public:
-        explicit Chunk(bool poolAllocations,
-                       size_t size,
-                       size_t alignment,
+        explicit Chunk(std::string_view chunkName,
+                       size_t alignedSize,
                        gl46core::BufferStorageMask storageMask,
                        gl46core::BufferAccessMask accessMask,
-                       gl46core::GLenum usage);
+                       U32 flags);
         ~Chunk();
                       void deallocate(const Block& block);
-        [[nodiscard]] bool allocate(size_t size, const char* name, std::pair<bufferPtr, size_t> initialData, Block& blockOut);
+        [[nodiscard]] bool allocate(size_t alignedSize, std::pair<bufferPtr, size_t> initialData, Block& blockOut);
         [[nodiscard]] bool containsBlock(const Block &block) const;
 
-        PROPERTY_RW( gl46core::BufferStorageMask, storageMask, gl46core::BufferStorageMask::GL_NONE_BIT);
-        PROPERTY_RW( gl46core::BufferAccessMask, accessMask, gl46core::BufferAccessMask::GL_NONE_BIT);
-        PROPERTY_RW( gl46core::GLenum, usage, gl46core::GL_NONE);
-        PROPERTY_RW(size_t, alignment, 0u);
-
-        [[nodiscard]] FORCE_INLINE bool poolAllocations() const noexcept { return _poolAllocations;  }
-
+        PROPERTY_R_IW( gl46core::BufferStorageMask, storageMask, gl46core::BufferStorageMask::GL_NONE_BIT);
+        PROPERTY_R_IW( gl46core::BufferAccessMask, accessMask, gl46core::BufferAccessMask::GL_NONE_BIT);
+        PROPERTY_R_IW( U32, flags, 0u);
     protected:
         vector<Block> _blocks;
         Byte* _memory{ nullptr };
-        const bool _poolAllocations{ false };
     };
 
     class ChunkAllocator final : NonCopyable, NonMovable
@@ -93,12 +90,10 @@ namespace GLMemory{
         explicit ChunkAllocator(size_t size) noexcept;
 
         // if size > mSize, allocate to the next power of 2
-        [[nodiscard]] std::unique_ptr<Chunk> allocate(bool poolAllocations,
-                                                      size_t size,
-                                                      size_t alignment,
+        [[nodiscard]] std::unique_ptr<Chunk> allocate(size_t alignedSize,
                                                       gl46core::BufferStorageMask storageMask,
                                                       gl46core::BufferAccessMask accessMask,
-                                                      gl46core::GLenum usage) const;
+                                                      U32 flags) const;
 
     private:
         const size_t _size{ 0u };
@@ -113,42 +108,47 @@ namespace GLMemory{
 
         void init(size_t size);
         [[nodiscard]] Block allocate(bool poolAllocations,
-                                     size_t size,
-                                     size_t alignment,
+                                     size_t alignedSize,
                                      gl46core::BufferStorageMask storageMask,
                                      gl46core::BufferAccessMask accessMask,
-                                     gl46core::GLenum usage,
-                                     const char* blockName,
+                                     U32 flags,
                                      std::pair<bufferPtr, size_t> initialData);
-        void deallocate(const Block &block) const;
+        void deallocate(Block &block);
         void deallocate();
 
         [[nodiscard]] FORCE_INLINE GLMemoryType glMemoryType() const noexcept { return _memoryType; }
 
     private:
         mutable Mutex _chunkAllocatorLock;
+        mutable Mutex _blockAllocatorLock;
+
         const GLMemoryType _memoryType{ GLMemoryType::COUNT };
         ChunkAllocator_uptr _chunkAllocator{ nullptr };
         vector<std::unique_ptr<Chunk>> _chunks;
+
+        vector<Block> _blocks;
     };
 } // namespace GLMemory
 
-void createBuffer( gl46core::GLuint& bufferIdOut, const char* name = nullptr);
+void freeBuffer( gl46core::GLuint &bufferId);
 
-void createAndAllocBuffer(size_t bufferSize,
-                          gl46core::GLenum usageMask,
-                          gl46core::GLuint& bufferIdOut,
-                          std::pair<bufferPtr, size_t> initialData,
-                          const char* name = nullptr);
+void createBuffer( gl46core::GLuint& bufferIdOut,
+                   std::string_view name);
 
-Byte* createAndAllocPersistentBuffer(size_t bufferSize,
-                                     gl46core::BufferStorageMask storageMask,
-                                     gl46core::BufferAccessMask accessMask,
-                                     gl46core::GLuint& bufferIdOut,
-                                     std::pair<bufferPtr, size_t> initialData,
-                                     const char* name = nullptr);
+void createAndAllocateBuffer( gl46core::GLuint& bufferIdOut, 
+                              std::string_view name,
+                              gl46core::BufferStorageMask storageMask,
+                              size_t alignedSize,
+                              std::pair<bufferPtr, size_t> initialData );
 
-void freeBuffer( gl46core::GLuint &bufferId, bufferPtr mappedPtr = nullptr);
+void createAndAllocateMappedBuffer( gl46core::GLuint& bufferIdOut,
+                                    std::string_view name,
+                                    gl46core::BufferStorageMask storageMask,
+                                    size_t alignedSize,
+                                    std::pair<bufferPtr, size_t> initialData,
+                                    gl46core::BufferAccessMask accessMask,
+                                    Byte*& ptrOut );
+
 
 }; //namespace GLUtil
 }; //namespace Divide

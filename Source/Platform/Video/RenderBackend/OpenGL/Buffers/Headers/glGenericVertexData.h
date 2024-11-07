@@ -58,15 +58,22 @@ class glGenericVertexData final : public GenericVertexData {
     void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig);
 
    private:
-    struct GenericBufferImpl {
+    struct GenericBufferImpl
+    {
         glBufferImpl_uptr _buffer{ nullptr };
+
         size_t _ringSizeFactor{ 1u };
         size_t _elementStride{ 0u };
         SetBufferParams::BufferBindConfig _bindConfig{};
     };
 
-    struct IndexBufferEntry : public NonCopyable {
+    struct IndexBufferEntry : public NonCopyable
+    {
         IndexBuffer _data;
+
+        glBufferImpl_uptr _buffer{ nullptr };
+        size_t _ringSizeFactor{ 1u };
+        size_t _elementStride{ 0u };
 
         size_t _bufferSize{0u};
         gl46core::GLuint _handle{ GL_NULL_HANDLE };

@@ -62,14 +62,14 @@ class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
     [[nodiscard]] BufferLock writeData(BufferRange range, const bufferPtr data);
     [[nodiscard]] BufferLock writeBytes(BufferRange range, const bufferPtr data);
 
-    [[nodiscard]] BufferUpdateUsage getUpdateUsage() const noexcept;
-    [[nodiscard]] BufferUpdateFrequency getUpdateFrequency() const noexcept;
     
-    [[nodiscard]] FORCE_INLINE I32              getStartIndex(const bool read)  const noexcept { return (read ? queueReadIndex() : queueWriteIndex()); }
-    [[nodiscard]] FORCE_INLINE size_t           getStartOffset(const bool read) const noexcept { return to_size(std::max(0, getStartIndex(read))) * _alignedBufferSize; }
-    [[nodiscard]] FORCE_INLINE U32              getPrimitiveCount()             const noexcept { return _params._elementCount; }
-    [[nodiscard]] FORCE_INLINE size_t           getPrimitiveSize()              const noexcept { return _params._elementSize; }
-    [[nodiscard]] FORCE_INLINE BufferUsageType  getUsage()                      const noexcept { return _params._flags._usageType;  }
+    [[nodiscard]] FORCE_INLINE I32                   getStartIndex(const bool read)  const noexcept { return (read ? queueReadIndex() : queueWriteIndex()); }
+    [[nodiscard]] FORCE_INLINE size_t                getStartOffset(const bool read) const noexcept { return to_size(std::max(0, getStartIndex(read))) * _alignedBufferSize; }
+    [[nodiscard]] FORCE_INLINE U32                   getPrimitiveCount()             const noexcept { return _params._elementCount; }
+    [[nodiscard]] FORCE_INLINE size_t                getPrimitiveSize()              const noexcept { return _params._elementSize; }
+    [[nodiscard]] FORCE_INLINE BufferUsageType       getUsage()                      const noexcept { return _params._usageType;  }
+    [[nodiscard]] FORCE_INLINE BufferUpdateFrequency getUpdateFrequency()            const noexcept { return _params._updateFrequency; }
+
 
     FORCE_INLINE BufferLock writeData(const bufferPtr data) { return writeData({ 0u, _params._elementCount }, data); }
     FORCE_INLINE BufferLock clearData() { return clearData({ 0u, _params._elementCount }); }

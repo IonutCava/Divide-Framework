@@ -11,7 +11,8 @@ GUIMessageBox::GUIMessageBox(const string& name,
                              CEGUI::Window* parent)
     : GUIElementBase(name, parent)
 {
-    if (parent != nullptr) {
+    if (parent != nullptr)
+    {
         // Get a local pointer to the CEGUI Window Manager, Purely for convenience
         // to reduce typing
         CEGUI::WindowManager* pWindowManager = CEGUI::WindowManager::getSingletonPtr();
@@ -32,9 +33,14 @@ GUIMessageBox::GUIMessageBox(const string& name,
 
 GUIMessageBox::~GUIMessageBox()
 {
-    if (_parent != nullptr) {
-        _parent->removeChild(_msgBoxWindow);
-        CEGUI::WindowManager::getSingletonPtr()->destroyWindow(_msgBoxWindow);
+    GUIMessageBox::active(false);
+    if (_parent != nullptr)
+    {
+        CEGUI::Window* ptrCpy = _msgBoxWindow;
+        _parent->removeChild(ptrCpy);
+        _msgBoxWindow = nullptr;
+        _parent = nullptr;
+        CEGUI::WindowManager::getSingletonPtr()->destroyWindow(ptrCpy);
     }
 }
 
@@ -45,7 +51,8 @@ bool GUIMessageBox::onConfirm(const CEGUI::EventArgs& /*e*/) noexcept {
 }
 
 void GUIMessageBox::visible(const bool visible) noexcept {
-    if (_parent != nullptr) {
+    if (_parent != nullptr)
+    {
         _msgBoxWindow->setVisible(visible);
         _msgBoxWindow->setModalState(visible);
     }

@@ -114,13 +114,25 @@ struct DeviceInformation
 
     U32 _maxWorgroupCount[3] = {65535u, 65535u, 65535u};
     U32 _maxWorgroupSize[3] = {1024u, 1024u, 64u};
+    U32 _maxWorgroupInvocations = 1024u;
+
+    U32 _maxMeshWorgroupCount[3] = { 65535u, 65535u, 65535u };
+    U32 _maxMeshWorgroupSize[3] = { 1024u, 1024u, 64u };
+    U32 _maxMeshWorgroupInvocations = 1024u;
+
+    U32 _maxTaskWorgroupCount[3] = { 65535u, 65535u, 65535u };
+    U32 _maxTaskWorgroupSize[3] = { 1024u, 1024u, 64u };
+    U32 _maxTaskWorgroupInvocations = 1024u;
+
     size_t _maxSizeBytesUBO = 64 * 1024;
     size_t _maxSizeBytesSSBO = 1024 * 1024 * 1024u;
     size_t _maxComputeSharedMemoryBytes = 1024 * 1024 * 1024;
+    size_t _offsetAlignmentBytesVBO = sizeof(U32);
+    size_t _offsetAlignmentBytesIBO = sizeof(U32);
     size_t _offsetAlignmentBytesUBO = 256u;
     size_t _offsetAlignmentBytesSSBO = 16u;
-    size_t _offsetAlignmentBytesVBO = 4u;
-    U32 _maxWorgroupInvocations = 1024u;
+    U32 _maxMeshShaderOutputVertices = 256u;
+    U32 _maxMeshShaderOutputPrimitives = 512u;
     U32 _maxVertAttributeBindings = 16u;
     U32 _maxVertAttributes = 16u;
     U32 _maxVertOutputComponents = 16u;

@@ -287,9 +287,8 @@ namespace Divide
         _renderQueue = std::make_unique<RenderQueue>( parent.parent(), stage );
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
-        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::COMMAND_BUFFER;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._usageType = BufferUsageType::COMMAND_BUFFER;
         bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
         bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
@@ -349,9 +348,8 @@ namespace Divide
         _materialBuffer._data._lookupInfo.fill( { INVALID_MAT_HASH, g_invalidMaterialIndex } );
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
-        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         {// Node Transform buffer
             bufferDescriptor._bufferParams._elementCount = to_U32( _transformBuffer._data._gpuData.size() );

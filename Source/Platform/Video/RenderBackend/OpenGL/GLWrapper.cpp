@@ -728,11 +728,11 @@ namespace Divide
                     case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
                     default : return false;
                 }
-                GLUtil::SubmitRenderCommand( drawCmd, gl46core::GL_NONE);
+                GLUtil::SubmitRenderCommand( drawCmd );
             }
             else
             {
-                GLUtil::SubmitRenderCommand(cmd, gl46core::GL_NONE);
+                GLUtil::SubmitRenderCommand( cmd );
             }
         }
         else [[likely]]
@@ -1075,11 +1075,8 @@ namespace Divide
                 PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ClearTextureCommand* crtCmd = cmd->As<GFX::ClearTextureCommand>();
-                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
-                {
-                    static_cast<glTexture*>(Get(crtCmd->_texture))->clearData( crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
-                }
-            }break;
+                static_cast<glTexture*>(Get(crtCmd->_texture))->clearData( crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
+             }break;
             case GFX::CommandType::READ_TEXTURE:
             {
                 PROFILE_SCOPE( "READ_TEXTURE", Profiler::Category::Graphics );
@@ -1167,7 +1164,6 @@ namespace Divide
                 PROFILE_SCOPE( "COMPUTE_MIPMAPS", Profiler::Category::Graphics );
 
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
-                DIVIDE_ASSERT( crtCmd->_usage != ImageUsage::COUNT );
 
                 ResourcePtr<Texture> tex = Get(crtCmd->_texture);
                 const U16 texLayers = IsCubeTexture( tex->descriptor()._texType ) ? tex->depth() * 6u : tex->depth();
@@ -1291,7 +1287,7 @@ namespace Divide
                     }
 
                     glBufferImpl* buffer = static_cast<glBufferImpl*>(lock._buffer);
-                    const BufferFlags flags = buffer->params()._bufferParams._flags;
+                    const BufferParams& params = buffer->params()._bufferParams;
 
                     switch ( lock._type )
                     {
@@ -1309,8 +1305,7 @@ namespace Divide
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:
                         {
-                            if ( flags._updateUsage == BufferUpdateUsage::GPU_TO_GPU ||
-                                 flags._updateFrequency == BufferUpdateFrequency::ONCE )
+                            if ( params._updateFrequency == BufferUpdateFrequency::ONCE )
                             {
                                 mask |= gl46core::GL_BUFFER_UPDATE_BARRIER_BIT;
                             }
@@ -1322,7 +1317,7 @@ namespace Divide
                         case BufferSyncUsage::GPU_WRITE_TO_GPU_READ:
                         case BufferSyncUsage::GPU_READ_TO_GPU_WRITE:
                         {
-                            switch ( flags._usageType )
+                            switch ( params._usageType )
                             {
                                 case BufferUsageType::CONSTANT_BUFFER:
                                 {

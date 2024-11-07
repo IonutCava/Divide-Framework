@@ -45,7 +45,6 @@ struct BufferImplParams
     BufferParams _bufferParams;
     gl46core::GLenum _target{ gl46core::GL_NONE };
     size_t _dataSize{0};
-    bool _useChunkAllocation{ false };
 
     bool operator==(const BufferImplParams& other) const = default;
 };
@@ -53,23 +52,28 @@ struct BufferImplParams
 class GFXDevice;
 class glBufferImpl final : public LockableBuffer {
 public:
-    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<const bufferPtr, size_t>& initialData, const char* name);
+    explicit glBufferImpl(GFXDevice& context, const BufferImplParams& params, const std::pair<const bufferPtr, size_t>& initialData, std::string_view name);
     virtual ~glBufferImpl() override;
 
-    BufferLock writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, const bufferPtr data, bool firstWrite = false);
+    BufferLock writeOrClearBytes(size_t offsetInBytes, size_t rangeInBytes, const bufferPtr data);
     void readBytes(size_t offsetInBytes, size_t rangeInBytes, std::pair<bufferPtr, size_t> outData);
 
+    size_t getDataOffset() const;
+    size_t getDataSize() const;
+    bufferPtr getDataPtr() const;
+    gl46core::GLuint getBufferHandle() const;
 
 public:
     PROPERTY_R(BufferImplParams, params);
-    PROPERTY_R(GLUtil::GLMemory::Block, memoryBlock);
 
 protected:
     GFXDevice& _context;
+    mutable Mutex _dataLock;
 
-    gl46core::GLuint _copyBufferTarget{ GL_NULL_HANDLE };
+    GLUtil::GLMemory::Block _memoryBlock;
+    GLUtil::GLMemory::DeviceAllocator* _allocator{nullptr};
     size_t _copyBufferSize{ 0u };
-    mutable Mutex _mapLock;
+    gl46core::GLuint _copyBufferTarget{ GL_NULL_HANDLE };
 };
 
 FWD_DECLARE_MANAGED_CLASS(glBufferImpl);

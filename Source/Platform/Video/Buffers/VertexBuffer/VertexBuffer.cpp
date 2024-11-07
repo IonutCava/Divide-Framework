@@ -476,8 +476,7 @@ bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut )
             GenericVertexData::SetBufferParams setBufferParams{};
             setBufferParams._bufferParams._elementSize = effectiveEntrySize;
             setBufferParams._bufferParams._elementCount = to_U32(_data.size());
-            setBufferParams._bufferParams._flags._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
-            setBufferParams._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+            setBufferParams._bufferParams._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
             setBufferParams._initialData = { smallData.data(), smallData.size() };
             setBufferParams._elementStride = setBufferParams._bufferParams._elementSize;
             dataLockOut = _internalGVD->setBuffer(setBufferParams);

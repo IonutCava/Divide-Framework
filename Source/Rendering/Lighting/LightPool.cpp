@@ -56,9 +56,8 @@ namespace Divide
     {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
 
         {
             bufferDescriptor._name = "LIGHT_DATA";
@@ -77,7 +76,7 @@ namespace Divide
         }
         {
             bufferDescriptor._name = "LIGHT_SCENE";
-            bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
+            bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
             bufferDescriptor._bufferParams._elementCount = to_base( RenderStage::COUNT ) - 1; ///< no shadows
             bufferDescriptor._bufferParams._elementSize = sizeof( SceneData );
             // Holds general info about the currently active scene: light count, ambient colour, etc.

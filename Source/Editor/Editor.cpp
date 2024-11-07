@@ -1407,12 +1407,6 @@ namespace Divide
 
         newBuffer = _context.gfx().newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_{}", bufferGUID).c_str() );
 
-        GenericVertexData::IndexBuffer idxBuff{};
-        idxBuff.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
-        idxBuff.dynamic = true;
-        idxBuff.count = maxVertices * 3;
-
-
         GenericVertexData::SetBufferParams params = {};
         params._bindConfig = { 0u, 0u };
         params._useRingBuffer = true;
@@ -1420,11 +1414,15 @@ namespace Divide
 
         params._bufferParams._elementCount = maxVertices;
         params._bufferParams._elementSize = sizeof( ImDrawVert );
-        params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
-        params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
 
         memCmdInOut._bufferLocks.push_back( newBuffer->setBuffer( params )); //Pos, UV and Colour
-        memCmdInOut._bufferLocks.push_back( newBuffer->setIndexBuffer( idxBuff ));
+
+        /*GenericVertexData::IndexBuffer idxBuff{};
+        idxBuff.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
+        idxBuff.dynamic = true;
+        idxBuff.count = maxVertices * 3;
+        memCmdInOut._bufferLocks.push_back( newBuffer->setIndexBuffer( idxBuff ));*/
 
         return newBuffer.get();
     }

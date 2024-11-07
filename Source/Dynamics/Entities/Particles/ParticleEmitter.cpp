@@ -87,8 +87,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             params._bindConfig = { g_particleGeometryBuffer, g_particleGeometryBuffer };
             params._bufferParams._elementCount = to_U32(geometry.size());
             params._bufferParams._elementSize = sizeof(vec3<F32>);
-            params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
-            params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
             params._initialData = { (bufferPtr)geometry.data(), geometry.size() * params._bufferParams._elementSize};
             params._useRingBuffer = false;
 
@@ -125,8 +124,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
 
             params._bufferParams._elementCount = particleCount;
             params._bufferParams._elementSize = sizeof( vec4<F32> );
-            params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-            params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+            params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
             BufferLock lock = buffer.setBuffer( params );
             DIVIDE_UNUSED( lock );
 

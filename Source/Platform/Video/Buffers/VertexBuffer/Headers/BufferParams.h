@@ -34,20 +34,13 @@
 #define DVD_BUFFER_PARAMS_H_
 
 namespace Divide {
-    struct BufferFlags
-    {
-        BufferUpdateFrequency _updateFrequency{ BufferUpdateFrequency::COUNT };
-        BufferUpdateUsage _updateUsage{ BufferUpdateUsage::COUNT };
-        BufferUsageType _usageType{ BufferUsageType::COUNT };
-
-        bool operator==(const BufferFlags&) const = default;
-    };
-
     struct BufferParams
     {
-        BufferFlags _flags{};
         U32 _elementCount{ 0u };
         size_t _elementSize{ 0u };     ///< Buffer primitive size in bytes
+
+        BufferUsageType _usageType{ BufferUsageType::COUNT };
+        BufferUpdateFrequency _updateFrequency{ BufferUpdateFrequency::COUNT };
         bool _hostVisible{ false };
 
         bool operator==(const BufferParams&) const = default;

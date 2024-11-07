@@ -195,8 +195,7 @@ void DVDGeometryBuffer::recreateBuffer( Divide::Byte* initialData, const size_t 
 
     params._bufferParams._elementCount = _bufferSize;
     params._bufferParams._elementSize = sizeof( DVDVertex );
-    params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
-    params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+    params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
 
     const BufferLock lock = _gvd->setBuffer( params );
 

@@ -645,7 +645,7 @@ namespace
                     if ( crtCmd->_usage == ImageUsage::COUNT )
                     {
                         return { ErrorType::INVALID_IMAGE_USAGE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
-                        }
+                    }
                     if (crtCmd->_texture == INVALID_HANDLE<Texture>)
                     {
                         return { ErrorType::INVALID_TEXTURE_HANDLE, cmdIndex, Names::commandType[to_base(cmd->_type)] };

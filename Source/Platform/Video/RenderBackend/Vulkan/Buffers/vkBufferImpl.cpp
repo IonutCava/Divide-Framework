@@ -75,7 +75,7 @@ namespace Divide
 
         VkBufferUsageFlags usageFlags = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
-        switch ( _params._flags._usageType )
+        switch ( _params._usageType )
         {
             case BufferUsageType::STAGING_BUFFER:
             {
@@ -122,7 +122,7 @@ namespace Divide
         VmaAllocationCreateInfo vmaallocInfo{};
         vmaallocInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocInfo.flags = 0;
-        if ( _params._flags._updateFrequency != BufferUpdateFrequency::ONCE )
+        if ( _params._updateFrequency != BufferUpdateFrequency::ONCE )
         {
             // If we write to this buffer often (e.g. GPU uniform blocks), we might as well persistently map it and use
             // a lock manager to protect writes (same as GL_API's lockManager system)
@@ -154,8 +154,6 @@ namespace Divide
             Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_buffer, VK_OBJECT_TYPE_BUFFER, bufferName );
             _isMemoryMappable = memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         }
-
-        _isLockable = _isMemoryMappable;
 
         Byte* mappedRange = nullptr;
         if (!_isMemoryMappable)
@@ -201,7 +199,7 @@ namespace Divide
             }, scopeName.c_str() );
         }
 
-        if ( _params._flags._updateFrequency == BufferUpdateFrequency::ONCE || _isMemoryMappable)
+        if ( _params._updateFrequency == BufferUpdateFrequency::ONCE || _isMemoryMappable)
         {
             _stagingBuffer.reset();
         }
@@ -292,9 +290,8 @@ namespace Divide
         VMABuffer_uptr createStagingBuffer( const size_t size, const std::string_view bufferName, const bool isCopySource )
         {
             BufferParams params{};
-            params._flags._usageType = BufferUsageType::STAGING_BUFFER;
-            params._flags._updateFrequency = BufferUpdateFrequency::OFTEN;
-            params._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+            params._usageType = BufferUsageType::STAGING_BUFFER;
+            params._updateFrequency = BufferUpdateFrequency::OFTEN;
             params._elementCount = 1u;
             params._elementSize = size;
 

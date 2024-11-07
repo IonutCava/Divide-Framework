@@ -50,6 +50,8 @@ namespace Divide
             SharedLock<SharedMutex> w_lock( _idxBufferLock );
 
             gl46core::GLenum indexFormat = gl46core::GL_NONE;
+            U32 firstIndex = 0u;
+
             if ( !_idxBuffers.empty())
             {
                 DIVIDE_ASSERT(command._bufferFlag < _idxBuffers.size());
@@ -66,6 +68,10 @@ namespace Divide
                 }
 
                 indexFormat = idxBuffer._data.count > 0u ? (idxBuffer._data.smallIndices ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT) : gl46core::GL_NONE;
+                if ( idxBuffer._buffer != nullptr ) 
+                {
+                    firstIndex = idxBuffer._buffer->getDataOffset() / sizeof(idxBuffer._data.smallIndices ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT);
+                }
             }
             else
             {
@@ -73,7 +79,7 @@ namespace Divide
             }
 
             // Submit the draw command
-            GLUtil::SubmitRenderCommand( command, indexFormat );
+            GLUtil::SubmitRenderCommand( command, indexFormat, firstIndex);
         }
     }
 
@@ -117,37 +123,38 @@ namespace Divide
         }
 
         const size_t elementSize = indices.smallIndices ? sizeof( gl46core::GLushort ) : sizeof( gl46core::GLuint );
+        const size_t range = indices.count * elementSize;
+        bufferPtr data = indices.data;
+
         const gl46core::GLenum usage = indices.dynamic ? gl46core::GL_STREAM_DRAW : gl46core::GL_STATIC_DRAW;
+
+        if (indices.indicesNeedCast)
+        {
+            impl->_data._smallIndicesTemp.resize(indices.count);
+            const U32* const dataIn = reinterpret_cast<U32*>(data);
+            for (size_t i = 0u; i < indices.count; ++i)
+            {
+                impl->_data._smallIndicesTemp[i] = to_U16(dataIn[i]);
+            }
+            data = impl->_data._smallIndicesTemp.data();
+
+        }
+
         if ( impl->_handle == GL_NULL_HANDLE )
         {
             impl->_data = indices;
             // At this point, we need an actual index buffer
-            impl->_bufferSize = indices.count * elementSize;
-            GLUtil::createBuffer( impl->_handle,
-                                  _name.empty() ? nullptr : Util::StringFormat( "{}_index_{}", _name.c_str(), indices.id ).c_str() );
-        }
-
-        const size_t range = indices.count * elementSize;
-        DIVIDE_ASSERT( range <= impl->_bufferSize );
-
-        bufferPtr data = indices.data;
-        if ( indices.indicesNeedCast )
-        {
-            impl->_data._smallIndicesTemp.resize( indices.count );
-            const U32* const dataIn = reinterpret_cast<U32*>(data);
-            for ( size_t i = 0u; i < indices.count; ++i )
-            {
-                impl->_data._smallIndicesTemp[i] = to_U16( dataIn[i] );
-            }
-            data = impl->_data._smallIndicesTemp.data();
-        }
-
-        if ( range == impl->_bufferSize )
-        {
-            gl46core::glNamedBufferData( impl->_handle, range, data, usage);
+            impl->_bufferSize = range;
+            GLUtil::createAndAllocateBuffer( impl->_handle,
+                                              _name.empty() ? nullptr : Util::StringFormat( "{}_index_{}", _name.c_str(), indices.id ).c_str(),
+                                              gl46core::GL_DYNAMIC_STORAGE_BIT,
+                                              impl->_bufferSize,
+                                              { data, range});
         }
         else
         {
+            DIVIDE_ASSERT( range <= impl->_bufferSize );
+
             gl46core::glInvalidateBufferSubData( impl->_handle, 0u, range );
             gl46core::glNamedBufferSubData( impl->_handle, 0u, range, data );
         }
@@ -173,7 +180,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( params._bufferParams._flags._usageType != BufferUsageType::COUNT );
+        DIVIDE_ASSERT( params._bufferParams._usageType != BufferUsageType::COUNT );
         // Make sure we specify buffers in order.
         GenericBufferImpl* impl = nullptr;
         for ( auto& buffer : _bufferObjects )
@@ -196,7 +203,6 @@ namespace Divide
         implParams._bufferParams = params._bufferParams;
         implParams._dataSize = bufferSizeInBytes * ringSizeFactor;
         implParams._target = gl46core::GL_ARRAY_BUFFER;
-        implParams._useChunkAllocation = true;
 
         const size_t elementStride = params._elementStride == SetBufferParams::INVALID_ELEMENT_STRIDE
                                                             ? params._bufferParams._elementSize
@@ -217,8 +223,7 @@ namespace Divide
         {
             ret = impl->_buffer->writeOrClearBytes(i * bufferSizeInBytes,
                                                    params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes,
-                                                   params._initialData.first,
-                                                   true );
+                                                   params._initialData.first );
         }
 
         ret._range = {0u, implParams._dataSize};
@@ -283,26 +288,24 @@ namespace Divide
             }
         }
 
-        if ( impl == nullptr ) [[unlikely]]
+        if ( impl != nullptr ) [[likely]]
         {
-            return;
+            const BufferParams& bufferParams = impl->_buffer->params()._bufferParams;
+            size_t offsetInBytes = impl->_buffer->getDataOffset();
+
+            if ( impl->_ringSizeFactor > 1 ) [[likely]]
+            {
+                offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
+            }
+
+            if (GL_API::GetStateTracker().bindActiveBuffer( bindConfig._bindIdx,
+                                                            impl->_buffer->getBufferHandle(),
+                                                            offsetInBytes,
+                                                            impl->_elementStride ) == GLStateTracker::BindResult::FAILED )
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
-
-        const BufferParams& bufferParams = impl->_buffer->params()._bufferParams;
-        size_t offsetInBytes = impl->_buffer->memoryBlock()._offset;
-
-        if ( impl->_ringSizeFactor > 1 ) [[likely]]
-        {
-            offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
-        }
-
-        const GLStateTracker::BindResult ret =
-            GL_API::GetStateTracker().bindActiveBuffer( bindConfig._bindIdx,
-                                                        impl->_buffer->memoryBlock()._bufferHandle,
-                                                        offsetInBytes,
-                                                        impl->_elementStride );
-
-        DIVIDE_ASSERT(ret != GLStateTracker::BindResult::FAILED );
     }
 
 };

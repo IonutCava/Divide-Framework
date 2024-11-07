@@ -78,9 +78,8 @@ Renderer::Renderer(PlatformContext& context)
   
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._ringBufferLength = 1;
-    bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
-    bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
-    bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::GPU_TO_GPU;
+    bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
+    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
 
     { //Light Index Buffer
         const U32 totalLights = numClusters * to_U32(config.rendering.numLightsPerCluster);

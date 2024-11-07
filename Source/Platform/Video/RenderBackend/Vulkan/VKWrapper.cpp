@@ -1307,11 +1307,11 @@ namespace Divide
                     case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
                     default: return false;
                 }
-                VKUtil::SubmitRenderCommand(drawCmd, cmdBuffer, false);
+                VKUtil::SubmitRenderCommand(drawCmd, cmdBuffer );
             }
             else
             {
-                VKUtil::SubmitRenderCommand( cmd, cmdBuffer, false );
+                VKUtil::SubmitRenderCommand( cmd, cmdBuffer );
             }
         }
         else
@@ -2463,21 +2463,15 @@ namespace Divide
                 PROFILE_SCOPE( "CLEAR_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ClearTextureCommand* crtCmd = cmd->As<GFX::ClearTextureCommand>();
-                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
-                {
-                    static_cast<vkTexture*>(Get(crtCmd->_texture))->clearData( cmdBuffer, crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
-                }
+                static_cast<vkTexture*>(Get(crtCmd->_texture))->clearData( cmdBuffer, crtCmd->_clearColour, crtCmd->_layerRange, crtCmd->_mipLevel );
             }break;
             case GFX::CommandType::READ_TEXTURE:
             {
                 PROFILE_SCOPE( "READ_TEXTURE", Profiler::Category::Graphics );
 
                 const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
-                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
-                {
-                    const ImageReadbackData data = static_cast<vkTexture*>(Get(crtCmd->_texture))->readData( cmdBuffer, crtCmd->_mipLevel, crtCmd->_pixelPackAlignment);
-                    crtCmd->_callback( data );
-                }
+                const ImageReadbackData data = static_cast<vkTexture*>(Get(crtCmd->_texture))->readData( cmdBuffer, crtCmd->_mipLevel, crtCmd->_pixelPackAlignment);
+                crtCmd->_callback( data );
             }break;
             case GFX::CommandType::BIND_PIPELINE:
             {
@@ -2545,13 +2539,8 @@ namespace Divide
                 PROFILE_SCOPE( "COMPUTE_MIPMAPS", Profiler::Category::Graphics );
 
                 const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
-                DIVIDE_ASSERT(crtCmd->_usage != ImageUsage::COUNT);
 
-                PROFILE_SCOPE( "VK: View - based computation", Profiler::Category::Graphics );
-                if ( crtCmd->_texture != INVALID_HANDLE<Texture> )
-                {
-                    static_cast<vkTexture*>(Get( crtCmd->_texture ))->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange._offset, crtCmd->_layerRange._count, crtCmd->_usage );
-                }
+                static_cast<vkTexture*>(Get( crtCmd->_texture ))->generateMipmaps( cmdBuffer, 0u, crtCmd->_layerRange._offset, crtCmd->_layerRange._count, crtCmd->_usage );
             }break;
             case GFX::CommandType::DRAW_COMMANDS:
             {
@@ -2603,17 +2592,17 @@ namespace Divide
             {
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
                 if (stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE)
-            {
-                if ( !stateTracker._pushConstantsValid )
                 {
-                    VK_PROFILE( vkCmdPushConstants, cmdBuffer,
-                                                    stateTracker._pipeline._vkPipelineLayout,
-                                                    stateTracker._pipeline._program->stageMask(),
-                                                    0,
-                                                    to_U32( PushConstantsStruct::Size() ),
-                                                    &s_defaultPushConstants[0].mat );
-                    stateTracker._pushConstantsValid = true;
-                }
+                    if ( !stateTracker._pushConstantsValid )
+                    {
+                        VK_PROFILE( vkCmdPushConstants, cmdBuffer,
+                                                        stateTracker._pipeline._vkPipelineLayout,
+                                                        stateTracker._pipeline._program->stageMask(),
+                                                        0,
+                                                        to_U32( PushConstantsStruct::Size() ),
+                                                        &s_defaultPushConstants[0].mat );
+                        stateTracker._pushConstantsValid = true;
+                    }
 
                     const GFX::DispatchShaderTaskCommand* crtCmd = cmd->As<GFX::DispatchShaderTaskCommand>();
 
@@ -2624,7 +2613,7 @@ namespace Divide
                             VK_PROFILE( vkCmdDispatch, cmdBuffer, crtCmd->_workGroupSize.x, crtCmd->_workGroupSize.y, crtCmd->_workGroupSize.z );
                         } break;
                         case PrimitiveTopology::MESHLET:
-                {
+                        {
                             vkCmdDrawMeshTasksEXT( cmdBuffer, crtCmd->_workGroupSize.x, crtCmd->_workGroupSize.y, crtCmd->_workGroupSize.z );
                             _context.registerDrawCalls( 1u );
                         } break;
@@ -2664,7 +2653,7 @@ namespace Divide
                     memoryBarrier.size = lock._range._length == U32_MAX ? VK_WHOLE_SIZE : lock._range._length;
                     memoryBarrier.buffer = vkBuffer->_buffer;
 
-                    const bool isCommandBuffer = vkBuffer->_params._flags._usageType == BufferUsageType::COMMAND_BUFFER;
+                    const bool isCommandBuffer = vkBuffer->_params._usageType == BufferUsageType::COMMAND_BUFFER;
 
                     switch (lock._type )
                     {

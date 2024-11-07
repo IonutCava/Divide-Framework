@@ -184,13 +184,8 @@ void IMPrimitive::endBatch() noexcept
     _memCmd._bufferLocks.resize(0);
 
     GenericVertexData::SetBufferParams params{};
-    params._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-    params._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+    params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
     params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
-
-    GenericVertexData::IndexBuffer idxBuff{};
-    idxBuff.smallIndices = false;
-    idxBuff.dynamic = true;
 
     efficient_clear(_basePipelineDescriptor._vertexFormat._vertexBindings);
 
@@ -200,7 +195,7 @@ void IMPrimitive::endBatch() noexcept
         params._bufferParams._elementCount = to_U32(batchData.m_PositionData.size());
         params._initialData = { batchData.m_PositionData.data(), batchData.m_PositionData.size() * sizeof(NS_GLIM::Glim4ByteData) };
         params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * 3;
-        params._bufferParams._flags._usageType = BufferUsageType::VERTEX_BUFFER;
+        params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
 
         _memCmd._bufferLocks.emplace_back(_dataBuffer->setBuffer(params));
 
@@ -228,17 +223,24 @@ void IMPrimitive::endBatch() noexcept
         vertBinding._strideInBytes = params._elementStride;
     }
 
+    GenericVertexData::IndexBuffer idxBuff{};
+    idxBuff.smallIndices = false;
+    idxBuff.dynamic = true;
     idxBuff.id = 0u;
-    for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i) {
-        if (!_drawFlags[i]) {
+    for (U8 i = 0u; i < to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT); ++i)
+    {
+        if (!_drawFlags[i])
+        {
             continue;
         }
+
         const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
 
         _basePipelineDescriptor._primitiveTopology = GetTopology(glimType);
         _pipelines[i] = _context.newPipeline(_basePipelineDescriptor);
 
-        switch (glimType) {
+        switch (glimType)
+        {
             case NS_GLIM::GLIM_BUFFER_TYPE::LINES: {
                 idxBuff.count = batchData.m_IndexBuffer_Lines.size();
                 idxBuff.data = batchData.m_IndexBuffer_Lines.data();

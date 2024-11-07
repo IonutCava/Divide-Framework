@@ -37,7 +37,6 @@ namespace Divide
                               : gl46core::GL_UNIFORM_BUFFER;
 
         implParams._dataSize = _alignedBufferSize * queueLength();
-        implParams._useChunkAllocation = getUsage() != BufferUsageType::COMMAND_BUFFER;
 
         _bufferImpl = std::make_unique<glBufferImpl>( context, implParams, descriptor._initialData, _name.empty() ? nullptr : _name.c_str() );
 
@@ -47,7 +46,7 @@ namespace Divide
         {
             for ( U32 i = 1u; i < descriptor._ringBufferLength; ++i )
             {
-                bufferImpl()->writeOrClearBytes( _alignedBufferSize * i, descriptor._initialData.second, descriptor._initialData.first, true );
+                bufferImpl()->writeOrClearBytes( _alignedBufferSize * i, descriptor._initialData.second, descriptor._initialData.first );
             }
         }
     }
@@ -78,16 +77,16 @@ namespace Divide
 
         if ( bindIndex == ShaderProgram::k_commandBufferID )
         {
-            result = GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_DRAW_INDIRECT_BUFFER, bufferImpl()->memoryBlock()._bufferHandle );
-            GL_API::GetStateTracker()._drawIndirectBufferOffset = bufferImpl()->memoryBlock()._offset + (readIndex * _alignedBufferSize);
+            result = GL_API::GetStateTracker().setActiveBuffer( gl46core::GL_DRAW_INDIRECT_BUFFER, bufferImpl()->getBufferHandle() );
+            GL_API::GetStateTracker()._drawIndirectBufferOffset = bufferImpl()->getDataOffset() + (readIndex * _alignedBufferSize);
         }
         else if ( range._length > 0 ) [[likely]]
         {
-            const size_t offset = bufferImpl()->memoryBlock()._offset + range._startOffset + (readIndex * _alignedBufferSize);
+            const size_t offset = bufferImpl()->getDataOffset() + range._startOffset + (readIndex * _alignedBufferSize);
             // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
-            const size_t bindRange = Util::GetAlignmentCorrected( (offset == 0u && to_size( range._length ) == bufferImpl()->memoryBlock()._size) ? 0u : range._length, _alignmentRequirement );
+            const size_t bindRange = Util::GetAlignmentCorrected( (offset == 0u && to_size( range._length ) == bufferImpl()->getDataSize()) ? 0u : range._length, _alignmentRequirement );
             result = GL_API::GetStateTracker().setActiveBufferIndexRange( bufferImpl()->params()._target,
-                                                                          bufferImpl()->memoryBlock()._bufferHandle,
+                                                                          bufferImpl()->getBufferHandle(),
                                                                           bindIndex,
                                                                           offset,
                                                                           bindRange );

@@ -420,9 +420,8 @@ namespace Divide
         bufferDescriptor._name.append( "_" );
         bufferDescriptor._name.append( _parentShaderName.c_str() );
         bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::CONSTANT_BUFFER;
-        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
         _buffer = _context.newSB( bufferDescriptor );
         _uniformBlockDirty = true;

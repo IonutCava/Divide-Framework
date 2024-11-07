@@ -418,7 +418,7 @@ static string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
 
         const I64 guid = it._buffer != nullptr ? it._buffer->getGUID() : -1;
 
-        ret.append(Util::StringFormat("Buffer lock: [ {} - [{} - {}] ] - Type [ {} ]\n", guid, it._range._startOffset, it._range._length, Divide::Names::bufferUpdateUsage[to_base(it._type)]));
+        ret.append(Util::StringFormat("Buffer lock: [ {} - [{} - {}] ]\n", guid, it._range._startOffset, it._range._length));
     }
 
     for (auto it : cmd._textureLayoutChanges) {

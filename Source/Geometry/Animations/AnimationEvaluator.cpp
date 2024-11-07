@@ -81,9 +81,8 @@ bool AnimEvaluator::initBuffers(GFXDevice& context)
         Util::StringFormat( bufferDescriptor._name, "BONE_BUFFER_{}", name() );
         bufferDescriptor._bufferParams._elementCount = to_U32(animationData.size());
         bufferDescriptor._bufferParams._elementSize = sizeof(mat4<F32>);
-        bufferDescriptor._bufferParams._flags._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._bufferParams._flags._updateFrequency = BufferUpdateFrequency::ONCE;
-        bufferDescriptor._bufferParams._flags._updateUsage = BufferUpdateUsage::CPU_TO_GPU;
+        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
         bufferDescriptor._initialData = { animationData.data(), animationData.size() * sizeof(mat4<F32>) };
 
         _boneBuffer = context.newSB(bufferDescriptor);
