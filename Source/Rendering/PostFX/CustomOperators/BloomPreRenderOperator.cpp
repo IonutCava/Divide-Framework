@@ -35,6 +35,8 @@ BloomPreRenderOperator::BloomPreRenderOperator(GFXDevice& context, PreRenderBatc
     shaderDescriptor._modules.push_back(fragModule);
     shaderDescriptor._globalDefines.emplace_back( "invSrcResolution PushData0[0].xy" );
     shaderDescriptor._globalDefines.emplace_back( "performKarisAverage (uint(PushData0[0].z) == 1)" );
+    shaderDescriptor._globalDefines.emplace_back( "useThreshold (uint(PushData0[0].w) == 1)" );
+    shaderDescriptor._globalDefines.emplace_back( "thresholdParams PushData0[1].xyzw" );
 
     ResourceDescriptor<ShaderProgram> bloomDownscale("BloomDownscale", shaderDescriptor );
     bloomDownscale.waitForReady(false);
@@ -120,6 +122,27 @@ void BloomPreRenderOperator::strength(const F32 val)
     _context.context().config().changed(true);
 }
 
+void BloomPreRenderOperator::useThreshold(const bool val)
+{
+    _useThreshold = val;
+    _context.context().config().rendering.postFX.bloom.useThreshold = val;
+    _context.context().config().changed(true);
+}
+
+void BloomPreRenderOperator::threshold(const F32 val)
+{
+    _threshold = val;
+    _context.context().config().rendering.postFX.bloom.threshold = val;
+    _context.context().config().changed(true);
+}
+
+void BloomPreRenderOperator::knee(const F32 val)
+{
+    _knee = val;
+    _context.context().config().rendering.postFX.bloom.knee = val;
+    _context.context().config().changed(true);
+}
+
 bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
     assert(input._targetID != output._targetID);
@@ -176,7 +199,8 @@ bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[m
             GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _bloomDownscalePipeline;
 
             PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
-            pushConstants.data[0]._vec[0].set( 1.f / _mipSizes[i].width, 1.f / _mipSizes[i].height, i == 0u ? 1.f : 0.f, 0.f);
+            pushConstants.data[0]._vec[0].set( 1.f / _mipSizes[i].width, 1.f / _mipSizes[i].height, i == 0u ? 1.f : 0.f, _useThreshold ? 1.f : 0.f);
+            pushConstants.data[0]._vec[1].set( _threshold, _threshold - _knee, 2.f * _knee, 0.25f * _knee );
 
             auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
             cmd->_usage = DescriptorSetUsage::PER_DRAW;

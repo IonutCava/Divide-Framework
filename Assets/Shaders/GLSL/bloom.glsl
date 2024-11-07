@@ -58,8 +58,31 @@ float KarisAverage(in vec3 col)
     return 1.f / (1.f + luma);
 }
 
+//ref: https://github.com/tgalaj/RapidGL/blob/master/src/demos/26_bloom/downscale.comp
+// Curve = (threshold - knee, knee * 2.0, knee * 0.25)
+vec3 quadratic_threshold(vec3 color, float threshold, vec3 curve)
+{
+    // Pixel brightness
+    float br = max(color.r, max(color.g, color.b));
+
+    // Under-threshold part: quadratic curve
+    float rq = clamp(br - curve.x, 0.0, curve.y);
+    rq = curve.z * rq * rq;
+
+    // Combine and apply the brightness response curve.
+    color *= max(rq, br - threshold) / max(br, M_EPSILON);
+
+    return color;
+}
+
 void main()
 {
+    //vec4 thresholdParams:
+    //x = threshold
+    //y = threshold - knee
+    //z = 2.0 * knee
+    //w = 0.25 * knee
+
     const float x = invSrcResolution.x;
     const float y = invSrcResolution.y;
 
@@ -117,6 +140,10 @@ void main()
         const float kw4 = KarisAverage(groups4);
         _downsample = (kw0 * groups0 + kw1 * groups1 + kw2 * groups2 + kw3 * groups3 + kw4 * groups4) / (kw0 + kw1 + kw2 + kw3 + kw4);
         _downsample = max(_downsample, M_EPSILON);
+        if (useThreshold)
+        {
+            _downsample = quadratic_threshold(_downsample, thresholdParams.x, thresholdParams.yzw);
+        }
     }
     else
     {

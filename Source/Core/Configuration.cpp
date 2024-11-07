@@ -117,6 +117,9 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(rendering.postFX.bloom.enabled);
         GET_PARAM(rendering.postFX.bloom.filterRadius);
         GET_PARAM(rendering.postFX.bloom.strength);
+        GET_PARAM(rendering.postFX.bloom.useThreshold);
+        GET_PARAM(rendering.postFX.bloom.threshold);
+        GET_PARAM(rendering.postFX.bloom.knee);
         GET_PARAM(rendering.postFX.ssao.enable);
         GET_PARAM(rendering.postFX.ssao.UseHalfResolution);
         GET_PARAM(rendering.postFX.ssao.FullRes.Radius);
@@ -277,7 +280,10 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(rendering.postFX.motionBlur.velocityScale);
     PUT_PARAM(rendering.postFX.bloom.enabled);
     PUT_PARAM(rendering.postFX.bloom.filterRadius);
+    PUT_PARAM(rendering.postFX.bloom.useThreshold);
     PUT_PARAM(rendering.postFX.bloom.strength);
+    PUT_PARAM(rendering.postFX.bloom.threshold);
+    PUT_PARAM(rendering.postFX.bloom.knee);
     PUT_PARAM(rendering.postFX.ssao.enable);
     PUT_PARAM(rendering.postFX.ssao.UseHalfResolution);
     PUT_PARAM(rendering.postFX.ssao.FullRes.Radius);

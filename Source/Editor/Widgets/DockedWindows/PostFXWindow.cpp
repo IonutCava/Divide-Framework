@@ -489,6 +489,29 @@ namespace
             {
                 bloomOp.strength(strength);
             }
+            bool useThreshold = bloomOp.useThreshold();
+            if (ImGui::Checkbox("Use thresholding", &useThreshold))
+            {
+                bloomOp.useThreshold(useThreshold);
+            }
+            if (!useThreshold)
+            {
+                PushReadOnly();
+            }
+            F32 threshold = bloomOp.threshold();
+            if (ImGui::SliderFloat("Threshold", &threshold, 0.001f, 15.f))
+            {
+                bloomOp.threshold(threshold);
+            }
+            F32 knee = bloomOp.knee();
+            if (ImGui::SliderFloat("Knee", &knee, 0.001f, 1.f))
+            {
+                bloomOp.knee(knee);
+            }
+            if (!useThreshold)
+            {
+                PopReadOnly();
+            }
         }
 
         if (ImGui::CollapsingHeader("Motion Blur"))
@@ -519,35 +542,41 @@ namespace
 
             bool dirty = false;
             ToneMapParams params = batch.toneMapParams();
-            if (adaptiveExposure)
+            if (!adaptiveExposure)
             {
-                if (ImGui::SliderFloat("Min Log Luminance", &params._minLogLuminance, -16.0f, 0.0f))
-                {
-                    dirty = true;
-                }
-                if (ImGui::SliderFloat("Max Log Luminance", &params._maxLogLuminance, 0.0f, 16.0f))
-                {
-                    dirty = true;
-                }
-                if (ImGui::SliderFloat("Tau", &params._tau, 0.1f, 2.0f))
-                {
-                    dirty = true;
-                }
+                PushReadOnly();
+            }
 
-                static I32 exposureRefreshFrameCount = 1;
-                static F32 exposure = 1.0f;
-                if (--exposureRefreshFrameCount == 0)
-                {
-                    exposure = batch.adaptiveExposureValue();
-                    exposureRefreshFrameCount = g_exposureRefreshFrameCount;
-                }
+            if (ImGui::SliderFloat("Min Log Luminance", &params._minLogLuminance, -16.0f, 0.0f))
+            {
+                dirty = true;
+            }
+            if (ImGui::SliderFloat("Max Log Luminance", &params._maxLogLuminance, 0.0f, 16.0f))
+            {
+                dirty = true;
+            }
+            if (ImGui::SliderFloat("Tau", &params._tau, 0.1f, 2.0f))
+            {
+                dirty = true;
+            }
 
-                ImGui::Text("Current exposure value: %5.2f", exposure);
-                I32 id = 32132131;
-                if (PreviewTextureButton(id, batch.luminanceTex(), false))
-                {
-                    _previewTexture = batch.luminanceTex();
-                }
+            static I32 exposureRefreshFrameCount = 1;
+            static F32 exposure = 1.0f;
+            if (--exposureRefreshFrameCount == 0)
+            {
+                exposure = batch.adaptiveExposureValue();
+                exposureRefreshFrameCount = g_exposureRefreshFrameCount;
+            }
+
+            ImGui::Text("Current exposure value: %5.2f", exposure);
+            I32 id = 32132131;
+            if (PreviewTextureButton(id, batch.luminanceTex(), false))
+            {
+                _previewTexture = batch.luminanceTex();
+            }
+            if (!adaptiveExposure)
+            {
+                PopReadOnly();
             }
 
             if (ImGui::SliderFloat("Manual exposure", &params._manualExposureFactor, 0.01f, 100.0f))

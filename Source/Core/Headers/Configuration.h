@@ -209,6 +209,9 @@ struct Configuration final : XML::IXMLSerializable {
                 bool enabled = true;
                 F32 filterRadius = 0.005f;
                 F32 strength = 0.04f;
+                bool useThreshold = true;
+                F32 threshold = 1.1f;
+                F32 knee = 0.1f;
             } bloom;
             struct SSAO
             {

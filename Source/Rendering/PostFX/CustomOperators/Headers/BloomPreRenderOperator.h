@@ -51,11 +51,17 @@ class BloomPreRenderOperator final : public PreRenderOperator {
 
     void filterRadius(F32 val);
     void strength(F32 val);
+    void useThreshold(bool val);
+    void threshold(F32 val);
+    void knee(F32 val);
 
     [[nodiscard]] bool ready() const noexcept override;
 
     PROPERTY_R(F32, filterRadius, 0.005f);
     PROPERTY_R(F32, strength, 0.04f);
+    PROPERTY_R(bool, useThreshold, true);
+    PROPERTY_R(F32, threshold, 1.1f);
+    PROPERTY_R(F32, knee, 0.1f);
 
    private:
     Handle<ShaderProgram> _bloomDownscale{ INVALID_HANDLE<ShaderProgram> };
