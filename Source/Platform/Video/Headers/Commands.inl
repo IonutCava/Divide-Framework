@@ -182,9 +182,9 @@ DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
     U32 _msgId{ U32_MAX };
 DEFINE_COMMAND_END(AddDebugMessageCommand);
 
-DEFINE_COMMAND_BEGIN(DispatchComputeCommand, CommandType::DISPATCH_COMPUTE);
-    vec3<U32> _computeGroupSize;
-DEFINE_COMMAND_END(DispatchComputeCommand);
+DEFINE_COMMAND_BEGIN(DispatchShaderTaskCommand, CommandType::DISPATCH_SHADER_TASK);
+    vec3<U32> _workGroupSize;
+DEFINE_COMMAND_END(DispatchShaderTaskCommand);
 
 DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);
     BufferLocks _bufferLocks;

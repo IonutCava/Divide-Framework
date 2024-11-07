@@ -162,6 +162,7 @@ namespace Divide
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES_ADJACENCY )] = gl46core::GL_TRIANGLES_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY )] = gl46core::GL_TRIANGLE_STRIP_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::PATCH )] = gl46core::GL_PATCHES;
+            glPrimitiveTypeTable[to_base( PrimitiveTopology::MESHLET)] = gl46core::GL_NONE;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::COMPUTE )] = gl46core::GL_NONE;
 
             glDataFormatTable[to_base( GFXDataFormat::UNSIGNED_BYTE )] = gl46core::GL_UNSIGNED_BYTE;
@@ -185,6 +186,8 @@ namespace Divide
             glShaderStageTable[to_base( ShaderType::TESSELLATION_CTRL )] = gl46core::GL_TESS_CONTROL_SHADER;
             glShaderStageTable[to_base( ShaderType::TESSELLATION_EVAL )] = gl46core::GL_TESS_EVALUATION_SHADER;
             glShaderStageTable[to_base( ShaderType::COMPUTE )] = gl46core::GL_COMPUTE_SHADER;
+            glShaderStageTable[to_base( ShaderType::MESH_NV )] = gl::GL_MESH_SHADER_NV;
+            glShaderStageTable[to_base( ShaderType::TASK_NV )] = gl::GL_TASK_SHADER_NV;
 
             glQueryTypeTable[to_U8(log2(to_base(QueryType::VERTICES_SUBMITTED))) - 1] = gl46core::GL_VERTICES_SUBMITTED;
             glQueryTypeTable[to_U8(log2(to_base(QueryType::PRIMITIVES_GENERATED))) - 1] = gl46core::GL_PRIMITIVES_GENERATED;

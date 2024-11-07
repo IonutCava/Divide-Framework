@@ -170,7 +170,7 @@ extern Mutex s_glSecondaryContextMutex;
 
 bool ValidateSDL( const I32 errCode, bool assert = true );
 
-///Note: If internal format is not GL_NONE, an indexed draw is issued!
+///Note: If internal format is not GL_NONE, an indexed draw is issued! If the active topology is MESHLET, we use mesh shaders
 void SubmitRenderCommand(const GenericDrawCommand& drawCommand, gl46core::GLenum internalFormat);
 
 /// Populate enumeration tables with appropriate API values

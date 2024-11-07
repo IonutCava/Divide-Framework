@@ -62,7 +62,9 @@ public:
                                                                   VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
                                                                   VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
                                                                   VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-                                                                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                                                                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                                                                  VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                                                                  VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
 public:
  
     VK_API(GFXDevice& context) noexcept;

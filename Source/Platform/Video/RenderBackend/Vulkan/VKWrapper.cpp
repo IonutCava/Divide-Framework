@@ -164,6 +164,8 @@ namespace Divide
     static PFN_vkCmdSetDescriptorBufferOffsetsEXT           vkCmdSetDescriptorBufferOffsetsEXT           = VK_NULL_HANDLE;
     static PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT vkCmdBindDescriptorBufferEmbeddedSamplersEXT = VK_NULL_HANDLE;
 
+    static PFN_vkCmdDrawMeshTasksEXT vkCmdDrawMeshTasksEXT = VK_NULL_HANDLE;
+
     namespace
     {
         const ResourcePath PipelineCacheFileName{ "pipeline_cache.dvd" };
@@ -894,10 +896,18 @@ namespace Divide
              vkCmdBindDescriptorBufferEmbeddedSamplersEXT = (PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT)vkGetDeviceProcAddr( vkDevice, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT"); 
         }
 
+        vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(vkDevice, "vkCmdDrawMeshTasksEXT");
+
         VKUtil::OnStartup( vkDevice );
 
-        VkFormatProperties2 properties{};
-        properties.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2;
+        VkPhysicalDeviceProperties2	properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+        VkPhysicalDeviceMeshShaderPropertiesEXT meshProperties { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
+        properties2.pNext = &meshProperties;
+
+        VkFormatProperties2 properties{.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
+        properties.pNext = &meshProperties;
+
+        vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
 
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D24_UNORM_S8_UINT, &properties );
         s_depthFormatInformation._d24s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -1033,7 +1043,14 @@ namespace Divide
         {
             deviceInformation._maxWorgroupCount[i] = deviceProperties.limits.maxComputeWorkGroupCount[i];
             deviceInformation._maxWorgroupSize[i] = deviceProperties.limits.maxComputeWorkGroupSize[i];
+
+            deviceInformation._maxMeshWorgroupCount[i] = meshProperties.maxMeshWorkGroupCount[i];
+            deviceInformation._maxMeshWorgroupSize[i] = meshProperties.maxMeshWorkGroupSize[i];
+
+            deviceInformation._maxTaskWorgroupCount[i] = meshProperties.maxTaskWorkGroupCount[i];
+            deviceInformation._maxTaskWorgroupSize[i] = meshProperties.maxTaskWorkGroupSize[i];
         }
+
         deviceInformation._maxWorgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
         deviceInformation._maxComputeSharedMemoryBytes = deviceProperties.limits.maxComputeSharedMemorySize;
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ),
@@ -1045,6 +1062,24 @@ namespace Divide
         // Maximum number of varying components supported as outputs in the vertex shader
         deviceInformation._maxVertOutputComponents = deviceProperties.limits.maxVertexOutputComponents;
         Console::printfn( LOCALE_STR( "MAX_VERTEX_OUTPUT_COMPONENTS" ), deviceInformation._maxVertOutputComponents );
+
+        deviceInformation._maxMeshShaderOutputVertices = meshProperties.maxMeshOutputVertices;
+        deviceInformation._maxMeshShaderOutputPrimitives = meshProperties.maxMeshOutputPrimitives;
+        deviceInformation._maxMeshWorgroupInvocations = meshProperties.maxMeshWorkGroupInvocations;
+        deviceInformation._maxTaskWorgroupInvocations = meshProperties.maxTaskWorkGroupInvocations;
+
+        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
+        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
+        
+        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORGROUP_INFO"),
+                                    deviceInformation._maxMeshWorgroupCount[0], deviceInformation._maxMeshWorgroupCount[1], deviceInformation._maxMeshWorgroupCount[2],
+                                    deviceInformation._maxMeshWorgroupSize[0], deviceInformation._maxMeshWorgroupSize[1], deviceInformation._maxMeshWorgroupSize[2],
+                                    deviceInformation._maxMeshWorgroupInvocations);
+                                    
+        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORGROUP_INFO"),
+                                    deviceInformation._maxTaskWorgroupCount[0], deviceInformation._maxTaskWorgroupCount[1], deviceInformation._maxTaskWorgroupCount[2],
+                                    deviceInformation._maxTaskWorgroupSize[0], deviceInformation._maxTaskWorgroupSize[1], deviceInformation._maxTaskWorgroupSize[2],
+                                    deviceInformation._maxTaskWorgroupInvocations);
 
         deviceInformation._offsetAlignmentBytesUBO = deviceProperties.limits.minUniformBufferOffsetAlignment;
         deviceInformation._maxSizeBytesUBO = deviceProperties.limits.maxUniformBufferRange;
@@ -2564,10 +2599,11 @@ namespace Divide
                     _context.registerDrawCalls( drawCount );
                 }
             }break;
-            case GFX::CommandType::DISPATCH_COMPUTE:
+            case GFX::CommandType::DISPATCH_SHADER_TASK:
             {
-                PROFILE_SCOPE( "DISPATCH_COMPUTE", Profiler::Category::Graphics );
-
+                PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
+                if (stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE)
+            {
                 if ( !stateTracker._pushConstantsValid )
                 {
                     VK_PROFILE( vkCmdPushConstants, cmdBuffer,
@@ -2579,11 +2615,23 @@ namespace Divide
                     stateTracker._pushConstantsValid = true;
                 }
 
-                DIVIDE_ASSERT( stateTracker._pipeline._topology == PrimitiveTopology::COMPUTE );
-                if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
+                    const GFX::DispatchShaderTaskCommand* crtCmd = cmd->As<GFX::DispatchShaderTaskCommand>();
+
+                    switch ( stateTracker._pipeline._topology )
+                    {
+                        case PrimitiveTopology::COMPUTE:
+                        {
+                            VK_PROFILE( vkCmdDispatch, cmdBuffer, crtCmd->_workGroupSize.x, crtCmd->_workGroupSize.y, crtCmd->_workGroupSize.z );
+                        } break;
+                        case PrimitiveTopology::MESHLET:
                 {
-                    const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
-                    VK_PROFILE( vkCmdDispatch, cmdBuffer, crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
+                            vkCmdDrawMeshTasksEXT( cmdBuffer, crtCmd->_workGroupSize.x, crtCmd->_workGroupSize.y, crtCmd->_workGroupSize.z );
+                            _context.registerDrawCalls( 1u );
+                        } break;
+                        default:
+                            DIVIDE_UNEXPECTED_CALL();
+                            break;
+                    }
                 }
             } break;
             case GFX::CommandType::MEMORY_BARRIER:

@@ -371,7 +371,7 @@ namespace VKUtil {
     ///Note: If internal format is not GL_NONE, an indexed draw is issued!
     void SubmitRenderCommand( const GenericDrawCommand& drawCommand,
                               const VkCommandBuffer commandBuffer,
-                              bool indexed );
+                              bool indexed = false );
 
 
     void OnStartup(VkDevice device);

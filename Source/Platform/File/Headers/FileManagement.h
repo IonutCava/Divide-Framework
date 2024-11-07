@@ -132,6 +132,8 @@ struct Paths {
             static Str<8> g_tescAtomExt;
             static Str<8> g_teseAtomExt;
             static Str<8> g_compAtomExt;
+            static Str<8> g_meshAtomExt;
+            static Str<8> g_taskAtomExt;
             static Str<8> g_comnAtomExt;
 
             // Shader subfolder name that contains GLSL shader files
@@ -143,6 +145,8 @@ struct Paths {
             static ResourcePath g_tescAtomLoc;
             static ResourcePath g_teseAtomLoc;
             static ResourcePath g_compAtomLoc;
+            static ResourcePath g_meshAtomLoc;
+            static ResourcePath g_taskAtomLoc;
             static ResourcePath g_comnAtomLoc;
         }; //class GLSL
     }; //class Shaders

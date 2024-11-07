@@ -54,8 +54,12 @@ enum class ErrorType : U8
     MISSING_VALID_PIPELINE,
     MISSING_BLIT_DESCRIPTOR_SET,
     INVALID_DISPATCH_COUNT,
+    INVALID_TASK_TYPE,
     INVALID_DESCRIPTOR_SET,
+    INVALID_TEXTURE_HANDLE,
+    INVALID_IMAGE_USAGE,
     INVALID_RENDER_PASS_FOR_PIPELINE,
+    INVALID_SHADER_PROGRAM,
     COUNT
 };
 
@@ -74,8 +78,12 @@ namespace Names {
         "MISSING_VALID_PIPELINE",
         "MISSING_BLIT_DESCRIPTOR_SET",
         "INVALID_DISPATCH_COUNT",
+        "INVALID_TASK_TYPE",
         "INVALID_DESCRIPTOR_SET",
+        "INVALID_TEXTURE_HANDLE",
+        "INVALID_IMAGE_USAGE",
         "INVALID_RENDER_PASS_FOR_PIPELINE",
+        "INVALID_SHADER_PROGRAM",
         "UNKNOW"
     };
 };
@@ -134,7 +142,7 @@ class CommandBuffer : private NonCopyable
     [[nodiscard]] string toString() const;
 
     /// Verify that the commands in the buffer are valid and in the right order 
-    [[nodiscard]] std::pair<ErrorType, size_t> validate() const;
+    [[nodiscard]] std::tuple<ErrorType, size_t, std::string_view> validate() const;
 
     PROPERTY_R( CommandList, commands);
 

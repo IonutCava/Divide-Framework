@@ -167,8 +167,11 @@
 			</motionBlur>
 			<bloom>
 				<enabled>true</enabled>
-				<filterRadius>0.00499999989</filterRadius>
-				<strength>0.0399999991</strength>
+				<filterRadius>0.0450000018</filterRadius>
+				<strength>0.0689999983</strength>
+				<useThreshold>true</useThreshold>
+				<threshold>1.10000002</threshold>
+				<knee>0.100000001</knee>
 			</bloom>
 			<ssao>
 				<enable>true</enable>

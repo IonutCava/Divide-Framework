@@ -297,6 +297,7 @@ enum class PrimitiveTopology : U8 {
     TRIANGLE_STRIP_ADJACENCY,
     PATCH,
     COMPUTE,
+    MESHLET,
     COUNT
 };
 
@@ -304,7 +305,8 @@ namespace Names {
     static constexpr const char* primitiveType[] = {
         "POINTS", "LINES", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP",
         "TRIANGLE_FAN", "LINES_ADJANCENCY", "LINE_STRIP_ADJACENCY",
-        "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", "COMPUTE", "NONE"
+        "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", 
+        "COMPUTE", "MESHLET", "NONE"
     };
 };
 
@@ -424,17 +426,19 @@ static_assert(std::size(Names::cullModes) == to_base(CullMode::COUNT) + 1);
 /// Available shader stages
 enum class ShaderType : U8 {
     FRAGMENT = 0,
-    VERTEX = 1,
-    GEOMETRY = 2,
-    TESSELLATION_CTRL = 3,
-    TESSELLATION_EVAL = 4,
-    COMPUTE = 5,
+    VERTEX,
+    GEOMETRY,
+    TESSELLATION_CTRL,
+    TESSELLATION_EVAL,
+    COMPUTE,
+    MESH_NV,
+    TASK_NV,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* shaderTypes[] = {
-        "Fragment", "Vertex", "Geometry", "TessellationC", "TessellationE", "Compute", "ERROR!"
+        "Fragment", "Vertex", "Geometry", "TessellationC", "TessellationE", "Compute", "Mesh_NV", "Task_NV", "ERROR!"
     };
 };
 
@@ -448,10 +452,10 @@ enum class ShaderStageVisibility : U16 {
     TESS_EVAL = toBit(4),
     FRAGMENT = toBit(5),
     COMPUTE = toBit(6),
-    /*MESH = toBit(7),
-    TASK = toBit(8),*/
-    COUNT = 7,
-    ALL_GEOMETRY = /*MESH | TASK |*/ VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
+    MESH_NV = toBit(7),
+    TASK_NV = toBit(8),
+    COUNT = 9,
+    ALL_GEOMETRY = MESH_NV | TASK_NV | VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
     ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
     COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
     COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,

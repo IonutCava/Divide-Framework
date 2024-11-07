@@ -349,7 +349,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
         const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
         const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
-        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { groupsX, groupsY, 1 };
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { groupsX, groupsY, 1 };
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -553,7 +553,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
 
         // Dispatch enough groups to cover the entire _mipped_ face
         const U16 mipWidth = width / to_U16(std::pow(2.f, mipLevel));
-        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 };
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { std::max(1u, mipWidth / 8u), std::max(1u, mipWidth / 8u), 1 };
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
@@ -609,7 +609,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
 
     const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
     const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
-    GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { groupsX, groupsY, 1 };
+    GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { groupsX, groupsY, 1 };
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back( TextureLayoutChange
     {

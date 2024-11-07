@@ -47,8 +47,11 @@ struct IndirectIndexedDrawCommand
 
     U32 instanceCount {1u};
     U32 firstIndex    {0u};
-    U32 baseVertex    {0u};
-
+    union
+    {
+        U32 baseVertex    {0u};
+        U32 baseTask;
+    };
     union
     {
       U32 baseInstance{0u};
@@ -56,7 +59,7 @@ struct IndirectIndexedDrawCommand
     };
 };
 
-static_assert(sizeof( IndirectIndexedDrawCommand ) == 20, "Wrong indexed indirect command size!");
+static_assert(sizeof( IndirectIndexedDrawCommand ) == 20u, "Wrong indexed indirect command size!");
 
 struct IndirectNonIndexedDrawCommand
 {
@@ -70,7 +73,7 @@ struct IndirectNonIndexedDrawCommand
     };
 };
 
-static_assert(sizeof( IndirectNonIndexedDrawCommand ) == 16, "Wrong non-indexed indirect command size!");
+static_assert(sizeof( IndirectNonIndexedDrawCommand ) == 16u, "Wrong non-indexed indirect command size!");
 
 enum class CmdRenderOptions : U8
 {

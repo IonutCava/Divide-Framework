@@ -347,10 +347,17 @@ namespace Divide
         Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
         // How many workgroups can we have per compute dispatch
-        for ( U8 i = 0u; i < 3; ++i )
+        for ( U8 i = 0u; i < 3u; ++i )
         {
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorgroupCount[i], i );
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorgroupSize[i], i );
+
+            GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorgroupSize[i], i);
+            GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorgroupSize[i], i);
+
+            // ToDo: This is wrong so needs fixing once mesh shaders in GL reach EXT status! -Ionut
+            deviceInformation._maxMeshWorgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
+            deviceInformation._maxTaskWorgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
         }
 
         deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
@@ -361,6 +368,24 @@ namespace Divide
                           deviceInformation._maxWorgroupSize[0], deviceInformation._maxWorgroupSize[1], deviceInformation._maxWorgroupSize[2],
                           deviceInformation._maxWorgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
+
+        deviceInformation._maxMeshShaderOutputVertices = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_VERTICES_NV);
+        deviceInformation._maxMeshShaderOutputPrimitives = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_PRIMITIVES_NV);
+        deviceInformation._maxMeshWorgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_INVOCATIONS_NV);
+        deviceInformation._maxTaskWorgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
+
+        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
+        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
+
+        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORGROUP_INFO"),
+                                    deviceInformation._maxMeshWorgroupCount[0], deviceInformation._maxMeshWorgroupCount[1], deviceInformation._maxMeshWorgroupCount[2],
+                                    deviceInformation._maxMeshWorgroupSize[0], deviceInformation._maxMeshWorgroupSize[1], deviceInformation._maxMeshWorgroupSize[2],
+                                    deviceInformation._maxMeshWorgroupInvocations);
+                                    
+        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORGROUP_INFO"),
+                                    deviceInformation._maxTaskWorgroupCount[0], deviceInformation._maxTaskWorgroupCount[1], deviceInformation._maxTaskWorgroupCount[2],
+                                    deviceInformation._maxTaskWorgroupSize[0], deviceInformation._maxTaskWorgroupSize[1], deviceInformation._maxTaskWorgroupSize[2],
+                                    deviceInformation._maxTaskWorgroupInvocations);
 
         // Maximum number of texture units we can address in shaders
         Console::printfn( LOCALE_STR( "GL_MAX_TEX_UNITS" ),
@@ -386,11 +411,8 @@ namespace Divide
                           deviceInformation._offsetAlignmentBytesUBO );
 
         // In order: Maximum number of shader storage buffer binding points,
-        //           maximum size in basic machine units of a shader storage block,
-        //           maximum total number of active shader storage blocks that may
-        //           be accessed by all active shaders and
-        //           minimum required alignment for shader storage buffer sizes and
-        //           offset.
+        //           maximum size in basic machine units of a shader storage block, maximum total number of active shader storage blocks that may
+        //           be accessed by all active shaders and minimum required alignment for shader storage buffer sizes and offset.
         GLUtil::getGLValue( gl46core::GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, deviceInformation._offsetAlignmentBytesSSBO );
         GLUtil::getGLValue( gl46core::GL_MAX_SHADER_STORAGE_BLOCK_SIZE, deviceInformation._maxSizeBytesSSBO );
         deviceInformation._maxSSBOBufferBindings = GLUtil::getGLValue( gl46core::GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS );
@@ -1159,7 +1181,7 @@ namespace Divide
                 else
                 {
                     PROFILE_SCOPE( "GL: View-based computation", Profiler::Category::Graphics );
-                    assert( crtCmd->_mipRange._count != 0u );
+                    DIVIDE_ASSERT( crtCmd->_mipRange._count != 0u );
 
                     ImageView view = tex->getView();
                     view._subRange._layerRange = crtCmd->_layerRange;
@@ -1226,16 +1248,30 @@ namespace Divide
                     _context.registerDrawCalls( drawCount );
                 }
             }break;
-            case GFX::CommandType::DISPATCH_COMPUTE:
+            case GFX::CommandType::DISPATCH_SHADER_TASK:
             {
-                PROFILE_SCOPE( "DISPATCH_COMPUTE", Profiler::Category::Graphics );
+                PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
 
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
-                    assert( s_stateTracker._activeTopology == PrimitiveTopology::COMPUTE );
+                    const GFX::DispatchShaderTaskCommand* crtCmd = cmd->As<GFX::DispatchShaderTaskCommand>();
 
-                    const GFX::DispatchComputeCommand* crtCmd = cmd->As<GFX::DispatchComputeCommand>();
-                    gl46core::glDispatchCompute( crtCmd->_computeGroupSize.x, crtCmd->_computeGroupSize.y, crtCmd->_computeGroupSize.z );
+                    switch (s_stateTracker._activeTopology)
+                    {
+                        case PrimitiveTopology::COMPUTE:
+                        {
+                            gl46core::glDispatchCompute( crtCmd->_workGroupSize.x, crtCmd->_workGroupSize.y, crtCmd->_workGroupSize.z );
+                        } break;
+
+                        case PrimitiveTopology::MESHLET:
+                        {
+                            gl::glDrawMeshTasksNV( 0u, crtCmd->_workGroupSize.x );
+                            _context.registerDrawCalls( 1u );
+                        } break;
+                        default:
+                            DIVIDE_UNEXPECTED_CALL();
+                            break;
+                    };
                 }
             }break;
             case GFX::CommandType::MEMORY_BARRIER:

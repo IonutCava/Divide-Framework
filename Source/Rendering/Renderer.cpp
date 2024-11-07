@@ -209,7 +209,7 @@ void Renderer::prepareLighting(const RenderStage stage,
                 ._buffer = data._globalIndexCountBuffer->getBufferImpl()
             });
             GFX::EnqueueCommand( bufferInOut, _lightResetCounterPipelineCmd );
-            GFX::EnqueueCommand<GFX::DispatchComputeCommand>( bufferInOut )->_computeGroupSize = { 1u, 1u, 1u };
+            GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize = { 1u, 1u, 1u };
             GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back( BufferLock
             {
                 ._range = { 0u, U32_MAX },
@@ -253,7 +253,7 @@ void Renderer::prepareLighting(const RenderStage stage,
             pushConstants.data[0] = data._gridData._invProjectionMatrix;
             pushConstants.data[1]._vec[0] = data._gridData._viewport;
             pushConstants.data[1]._vec[1].xy = data._gridData._zPlanes;
-            GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize =
+            GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize =
             { 
                 Config::Lighting::ClusteredForward::CLUSTERS_X,
                 Config::Lighting::ClusteredForward::CLUSTERS_Y,
@@ -279,7 +279,7 @@ void Renderer::prepareLighting(const RenderStage stage,
         });
 
         GFX::EnqueueCommand(bufferInOut, _lightCullPipelineCmd);
-        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = 
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize =
         {
             Config::Lighting::ClusteredForward::CLUSTERS_X / Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS,
             Config::Lighting::ClusteredForward::CLUSTERS_Y / Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS,

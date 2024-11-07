@@ -606,7 +606,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
 
         const U32 groupsX = to_U32(std::ceil(_toneMapParams._width / to_F32(GROUP_X_THREADS)));
         const U32 groupsY = to_U32(std::ceil(_toneMapParams._height / to_F32(GROUP_Y_THREADS)));
-        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = {groupsX, groupsY, 1};
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = {groupsX, groupsY, 1};
 
         auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut );
         memCmd->_bufferLocks.emplace_back(BufferLock
@@ -661,7 +661,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
                                     to_F32( _toneMapParams._width ) * _toneMapParams._height );
 
 
-        GFX::EnqueueCommand<GFX::DispatchComputeCommand>(bufferInOut)->_computeGroupSize = { 1, 1, 1, };
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { 1, 1, 1, };
         {
             auto memCmd = GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut);
             memCmd->_bufferLocks.emplace_back( BufferLock

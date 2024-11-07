@@ -220,7 +220,6 @@ namespace Divide
 
         VK_API::PushDebugMessage(cmdBuffer, "vkTexture::generateMipmaps");
 
-
         VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
         dependencyInfo.imageMemoryBarrierCount = 1u;
@@ -1018,6 +1017,8 @@ namespace Divide
 
         constexpr auto SHADER_READ_WRITE_BIT = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
         constexpr auto SHADER_SAMPLE_STAGE_MASK = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                                                  VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                                                  VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
                                                   VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
                                                   VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
                                                   VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |

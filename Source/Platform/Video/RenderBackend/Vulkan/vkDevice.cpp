@@ -8,11 +8,20 @@ namespace Divide
 {
     VKDevice::VKDevice( vkb::Instance& instance, VkSurfaceKHR targetSurface )
     {
+        VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
+        meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+        meshShaderFeatures.meshShader = true;
+        meshShaderFeatures.taskShader = true;
+        meshShaderFeatures.multiviewMeshShader = false;
+        meshShaderFeatures.primitiveFragmentShadingRateMeshShader = false;
+        meshShaderFeatures.meshShaderQueries = true;
+
         VkPhysicalDeviceExtendedDynamicState3FeaturesEXT vk13EXTfeatures{};
         vk13EXTfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
         vk13EXTfeatures.extendedDynamicState3ColorBlendEnable = true;
         vk13EXTfeatures.extendedDynamicState3ColorBlendEquation = true;
         vk13EXTfeatures.extendedDynamicState3ColorWriteMask = true;
+        vk13EXTfeatures.pNext = &meshShaderFeatures;
 
         VkPhysicalDeviceVulkan13Features vk13features{};
         vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -21,6 +30,7 @@ namespace Divide
         vk13features.synchronization2 = true;
         vk13features.dynamicRendering = true;
         vk13features.maintenance4 = true;
+
         VkPhysicalDeviceVulkan12Features vk12features{};
         vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
         vk12features.samplerMirrorClampToEdge = true;
@@ -34,9 +44,11 @@ namespace Divide
         vk12features.shaderSampledImageArrayNonUniformIndexing = true;
         vk12features.runtimeDescriptorArray = true;
         vk12features.descriptorBindingVariableDescriptorCount = true;
+
         VkPhysicalDeviceVulkan11Features vk11features{};
         vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
         vk11features.shaderDrawParameters = true;
+
         VkPhysicalDeviceFeatures vk10features{};
         vk10features.independentBlend = true;
         vk10features.imageCubeArray = true;
@@ -60,6 +72,7 @@ namespace Divide
             //.set_desired_version(1, Config::DESIRED_VULKAN_MINOR_VERSION)
             .set_surface( targetSurface )
             .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
+            .add_required_extension(VK_EXT_MESH_SHADER_EXTENSION_NAME)
             .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
             .set_required_features( vk10features )
             .set_required_features_11( vk11features )

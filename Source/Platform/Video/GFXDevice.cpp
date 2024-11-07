@@ -2355,7 +2355,7 @@ namespace Divide
             pushConstants.data[0]._vec[0].set( owidth, oheight, twidth, theight );
             pushConstants.data[0]._vec[1].x = wasEven ? 1.f : 0.f;
 
-            GFX::EnqueueCommand<GFX::DispatchComputeCommand>( cmdBufferInOut )->_computeGroupSize =
+            GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( cmdBufferInOut )->_workGroupSize =
             {
                 getGroupCount( twidth, DEPTH_REDUCE_LOCAL_SIZE ),
                 getGroupCount( theight, DEPTH_REDUCE_LOCAL_SIZE ),
@@ -2432,7 +2432,7 @@ namespace Divide
         mat4<F32>::Multiply( cameraSnapshot._projectionMatrix, cameraSnapshot._viewMatrix, fastConstants.data[0] );
         fastConstants.data[1] = cameraSnapshot._viewMatrix;
 
-        GFX::EnqueueCommand<GFX::DispatchComputeCommand>( bufferInOut )->_computeGroupSize = { threadCount, 1, 1 };
+        GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>( bufferInOut )->_workGroupSize = { threadCount, 1, 1 };
 
         // Occlusion culling barrier
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_bufferLocks.emplace_back(BufferLock

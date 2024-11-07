@@ -4,6 +4,7 @@
 #include "Headers/CommandBufferPool.h"
 
 #include "Core/Headers/StringHelper.h"
+#include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
@@ -214,7 +215,7 @@ namespace
                 case CommandType::READ_BUFFER_DATA:
                 case CommandType::COMPUTE_MIPMAPS:
                 case CommandType::CLEAR_BUFFER_DATA:
-                case CommandType::DISPATCH_COMPUTE:
+                case CommandType::DISPATCH_SHADER_TASK:
                 case CommandType::MEMORY_BARRIER:
                 case CommandType::DRAW_COMMANDS:
                 case CommandType::BIND_SHADER_RESOURCES:
@@ -257,10 +258,10 @@ namespace
 
         if ( hasWork )
         {
-            const auto [error, lastCmdIndex] = validate();
+            const auto [error, lastCmdIndex, lastCmdType] = validate();
             if ( error != GFX::ErrorType::NONE )
             {
-                Console::errorfn( LOCALE_STR( "ERROR_GFX_INVALID_COMMAND_BUFFER" ), GFX::Names::errorType[to_base(error)], lastCmdIndex, toString().c_str() );
+                Console::errorfn( LOCALE_STR( "ERROR_GFX_INVALID_COMMAND_BUFFER" ), GFX::Names::errorType[to_base(error)], lastCmdIndex, lastCmdType, toString().c_str() );
                 DIVIDE_UNEXPECTED_CALL_MSG( Util::StringFormat( "GFX::CommandBuffer::batch error [ {} ]: Invalid command buffer. Check error log!", GFX::Names::errorType[to_base( error )] ).c_str() );
             }
         }
@@ -441,14 +442,17 @@ namespace
     }
 
     // New use cases that emerge from production work should be checked here.
-    std::pair<ErrorType, size_t> CommandBuffer::validate() const
+    std::tuple<ErrorType, size_t, std::string_view> CommandBuffer::validate() const
     {
         if constexpr( !Config::ENABLE_GPU_VALIDATION )
         {
-            return { ErrorType::NONE, 0u };
+            return { ErrorType::NONE, 0u, "" };
         }
 
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        PrimitiveTopology activeTopology = PrimitiveTopology::COUNT;
+        const Pipeline* activePipeline = nullptr;
 
         size_t cmdIndex = 0u;
         bool pushedPass = false, pushedQuery = false, hasPipeline = false;
@@ -458,13 +462,14 @@ namespace
         for ( CommandBase* cmd : _commands )
         {
             cmdIndex++;
+
             switch ( cmd->type() )
             {
                 case CommandType::BEGIN_RENDER_PASS:
                 {
                     if ( pushedPass )
                     {
-                        return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex };
+                        return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                     pushedPass = true;
 
@@ -473,7 +478,7 @@ namespace
                     {
                         if ( it._layer._offset == INVALID_INDEX )
                         {
-                            return { ErrorType::INVALID_BEGIN_RENDER_PASS, cmdIndex };
+                            return { ErrorType::INVALID_BEGIN_RENDER_PASS, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                         }
                     }
                 } break;
@@ -481,7 +486,7 @@ namespace
                 {
                     if ( !pushedPass )
                     {
-                        return { ErrorType::MISSING_BEGIN_RENDER_PASS, cmdIndex };
+                        return { ErrorType::MISSING_BEGIN_RENDER_PASS, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                     pushedPass = false;
                 } break;
@@ -489,7 +494,7 @@ namespace
                 {
                     if ( pushedQuery )
                     {
-                        return { ErrorType::MISSING_END_GPU_QUERY, cmdIndex };
+                        return { ErrorType::MISSING_END_GPU_QUERY, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                     pushedQuery = true;
                 } break;
@@ -497,7 +502,7 @@ namespace
                 {
                     if ( !pushedQuery )
                     {
-                        return { ErrorType::MISSING_BEGIN_GPU_QUERY, cmdIndex };
+                        return { ErrorType::MISSING_BEGIN_GPU_QUERY, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                     pushedQuery = false;
                 } break;
@@ -509,7 +514,7 @@ namespace
                 {
                     if ( pushedDebugScope == 0 )
                     {
-                        return { ErrorType::MISSING_PUSH_DEBUG_SCOPE, cmdIndex };
+                        return { ErrorType::MISSING_PUSH_DEBUG_SCOPE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                     --pushedDebugScope;
                 } break;
@@ -531,36 +536,75 @@ namespace
                 }break;
                 case CommandType::BIND_PIPELINE:
                 {
+                    activePipeline = cmd->As<GFX::BindPipelineCommand>()->_pipeline;
+                    activeTopology = activePipeline->descriptor()._primitiveTopology;
                     if ( !pushedPass )
                     {
-                        if ( cmd->As<GFX::BindPipelineCommand>()->_pipeline->descriptor()._primitiveTopology != PrimitiveTopology::COMPUTE)
+                        if ( activeTopology != PrimitiveTopology::COMPUTE)
                         {
-                            return { ErrorType::INVALID_RENDER_PASS_FOR_PIPELINE, cmdIndex };
+                            return { ErrorType::INVALID_RENDER_PASS_FOR_PIPELINE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                         }
                     }
                     hasPipeline = true;
-                } break;
-                case CommandType::DISPATCH_COMPUTE:
+                }break;
+                case CommandType::DISPATCH_SHADER_TASK:
                 {
                     if ( !hasPipeline )
                     {
-                        return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex };
+                        return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
-                    const vec3<U32>& workGroupCount = cmd->As<GFX::DispatchComputeCommand>()->_computeGroupSize;
-                    if ( !(workGroupCount.x > 0 &&
-                            workGroupCount.x < GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] &&
-                            workGroupCount.y < GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] &&
-                            workGroupCount.z < GFXDevice::GetDeviceInformation()._maxWorgroupCount[2]) )
+                    if (activeTopology != PrimitiveTopology::COMPUTE && activeTopology != PrimitiveTopology::MESHLET)
                     {
-                        return { ErrorType::INVALID_DISPATCH_COUNT, cmdIndex };
+                        return { ErrorType::INVALID_TASK_TYPE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
 
-                } break;
+                    const vec3<U32>& workGroupCount = cmd->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize;
+                    if ( workGroupCount.x == 0  )
+                    {
+                        return { ErrorType::INVALID_DISPATCH_COUNT, cmdIndex, Names::commandType[to_base(cmd->_type)] };
+                    }
+
+                    if (activeTopology == PrimitiveTopology::COMPUTE )
+                    {
+                        if (workGroupCount.x > GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] ||
+                            workGroupCount.y > GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] ||
+                            workGroupCount.z > GFXDevice::GetDeviceInformation()._maxWorgroupCount[2])
+                        {
+                            return { ErrorType::INVALID_DISPATCH_COUNT, cmdIndex, Names::commandType[to_base(cmd->_type)] };
+                        }
+                    }
+                    else 
+                    {
+                        const ShaderProgram* shader = Get(activePipeline->descriptor()._shaderProgramHandle);
+                        if ( shader == nullptr )
+                        {
+                            return { ErrorType::INVALID_SHADER_PROGRAM, cmdIndex, Names::commandType[to_base(cmd->_type)] };
+                        }
+                        const auto shaderDescriptor = shader->descriptor();
+
+                        bool hasMeshTaskShader = false;
+                        for ( const auto& shaderModule : shaderDescriptor._modules)
+                        {
+                            if (shaderModule._moduleType == ShaderType::TASK_NV)
+                            {
+                                hasMeshTaskShader = true;
+                                break;
+                            }
+                        }
+
+                        const U32* const limits = hasMeshTaskShader ? GFXDevice::GetDeviceInformation()._maxTaskWorgroupCount : GFXDevice::GetDeviceInformation()._maxMeshWorgroupCount;
+
+                        if (workGroupCount.x > limits[0] || workGroupCount.y > limits[1] || workGroupCount.z > limits[2])
+                        {
+                            return { ErrorType::INVALID_DISPATCH_COUNT, cmdIndex, Names::commandType[to_base(cmd->_type)] };
+                        }
+                    }
+                }break;
                 case CommandType::DRAW_COMMANDS:
                 {
-                    if ( !hasPipeline )
+                    if ( !hasPipeline || activeTopology == PrimitiveTopology::COUNT || activeTopology == PrimitiveTopology::COMPUTE || activeTopology == PrimitiveTopology::MESHLET)
                     {
-                        return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex };
+                        return { ErrorType::MISSING_VALID_PIPELINE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                 }break;
                 case CommandType::BIND_SHADER_RESOURCES:
@@ -568,15 +612,43 @@ namespace
                     const GFX::BindShaderResourcesCommand* resCmd = cmd->As<GFX::BindShaderResourcesCommand>();
                     if ( resCmd->_usage == DescriptorSetUsage::COUNT )
                     {
-                        return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex };
+                        return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                     for ( U8 i = 0u; i < resCmd->_set._bindingCount; ++i )
                     {
                         const DescriptorSetBinding& binding = resCmd->_set._bindings[i];
                         if ( binding._shaderStageVisibility == to_base( ShaderStageVisibility::COUNT ) )
                         {
-                            return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex };
+                            return { ErrorType::INVALID_DESCRIPTOR_SET, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                         }
+                    }
+                }break;
+                case CommandType::READ_TEXTURE:
+                {
+                    const GFX::ReadTextureCommand* crtCmd = cmd->As<GFX::ReadTextureCommand>();
+                    if  (crtCmd->_texture == INVALID_HANDLE<Texture>)
+                    {
+                        return { ErrorType::INVALID_TEXTURE_HANDLE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
+                    }
+                }break;
+                case CommandType::CLEAR_TEXTURE:
+                {
+                    const GFX::ClearTextureCommand* crtCmd = cmd->As<GFX::ClearTextureCommand>();
+                    if (crtCmd->_texture == INVALID_HANDLE<Texture>)
+                    {
+                        return { ErrorType::INVALID_TEXTURE_HANDLE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
+                    }
+                }break;
+                case CommandType::COMPUTE_MIPMAPS:
+                {
+                    const GFX::ComputeMipMapsCommand* crtCmd = cmd->As<GFX::ComputeMipMapsCommand>();
+                    if ( crtCmd->_usage == ImageUsage::COUNT )
+                    {
+                        return { ErrorType::INVALID_IMAGE_USAGE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
+                        }
+                    if (crtCmd->_texture == INVALID_HANDLE<Texture>)
+                    {
+                        return { ErrorType::INVALID_TEXTURE_HANDLE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
                 }break;
                 default:
@@ -588,22 +660,22 @@ namespace
 
         if ( pushedPass )
         {
-            return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex };
+            return { ErrorType::MISSING_END_RENDER_PASS, cmdIndex, Names::commandType[to_base(CommandType::BEGIN_RENDER_PASS)] };
         }
         if ( pushedDebugScope != 0 )
         {
-            return { ErrorType::MISSING_POP_DEBUG_SCOPE, cmdIndex };
+            return { ErrorType::MISSING_POP_DEBUG_SCOPE, cmdIndex, Names::commandType[to_base(CommandType::BEGIN_DEBUG_SCOPE)] };
         }
         if ( pushedCamera != 0 )
         {
-            return { ErrorType::MISSING_POP_CAMERA, cmdIndex };
+            return { ErrorType::MISSING_POP_CAMERA, cmdIndex, Names::commandType[to_base(CommandType::PUSH_CAMERA)] };
         }
         if ( pushedViewport != 0 )
         {
-            return { ErrorType::MISSING_POP_VIEWPORT, cmdIndex };
+            return { ErrorType::MISSING_POP_VIEWPORT, cmdIndex, Names::commandType[to_base(CommandType::PUSH_VIEWPORT)] };
         }
 
-        return { ErrorType::NONE, cmdIndex };
+        return { ErrorType::NONE, cmdIndex, "" };
     }
 
     void ToString( const CommandBase& cmd, const CommandType type, I32& crtIndent, string& out )

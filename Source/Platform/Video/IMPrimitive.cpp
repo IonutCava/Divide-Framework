@@ -40,8 +40,8 @@ namespace {
 
     inline PrimitiveTopology GetTopology(const NS_GLIM::GLIM_BUFFER_TYPE type) {
         switch (type) {
-            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS: return PrimitiveTopology::POINTS;
-            case NS_GLIM::GLIM_BUFFER_TYPE::LINES: return PrimitiveTopology::LINES;
+            case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    return PrimitiveTopology::POINTS;
+            case NS_GLIM::GLIM_BUFFER_TYPE::LINES:     return PrimitiveTopology::LINES;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: return PrimitiveTopology::LINES;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: return PrimitiveTopology::TRIANGLES;
 
@@ -60,6 +60,7 @@ void IMPrimitive::InitStaticData()
     glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLES)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLES;
     glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_STRIP)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_STRIP;
     glimPrimitiveType[to_base(PrimitiveTopology::TRIANGLE_FAN)] = NS_GLIM::GLIM_ENUM::GLIM_TRIANGLE_FAN;
+    glimPrimitiveType[to_base(PrimitiveTopology::MESHLET)] = NS_GLIM::GLIM_ENUM::GLIM_POLYGON;
 }
 
 IMPrimitive::IMPrimitive(GFXDevice& context, const Str<64>& name)
@@ -172,7 +173,8 @@ void IMPrimitive::end() {
     _imInterface->End();
 }
 
-void IMPrimitive::endBatch() noexcept {
+void IMPrimitive::endBatch() noexcept
+{
     auto& batchData = _imInterface->EndBatch();
 
     _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES)] = !batchData.m_IndexBuffer_Triangles.empty();
@@ -209,7 +211,8 @@ void IMPrimitive::endBatch() noexcept {
 
     U8 bufferIdx = 1u;
     // now upload each attribute array one after another
-    for (auto& [index, data] : batchData.m_Attributes) {
+    for (auto& [index, data] : batchData.m_Attributes)
+    {
         assert(index != 0u);
         params._bindConfig = { ._bufferIdx = bufferIdx++, ._bindIdx = to_U16(index) };
         params._bufferParams._elementCount = to_U32(data.m_ArrayData.size());

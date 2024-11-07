@@ -531,6 +531,9 @@ namespace Divide
             AppendToShaderHeader( ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawIDARB" );
         }
 
+        AppendToShaderHeader( ShaderType::MESH_NV, "#extension GL_NV_mesh_shader : require");
+        AppendToShaderHeader( ShaderType::TASK_NV, "#extension GL_NV_mesh_shader : require");
+
         AppendToShaderHeader( ShaderType::COUNT, crossTypeGLSLHLSL );
 
         // Add current build environment information to the shaders
@@ -1086,6 +1089,8 @@ namespace Divide
         shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_CTRL )] = Paths::Shaders::GLSL::g_tescAtomLoc;
         shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_EVAL )] = Paths::Shaders::GLSL::g_teseAtomLoc;
         shaderAtomLocationPrefix[to_base( ShaderType::COMPUTE )]           = Paths::Shaders::GLSL::g_compAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::MESH_NV )]           = Paths::Shaders::GLSL::g_meshAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::TASK_NV )]           = Paths::Shaders::GLSL::g_taskAtomLoc;
         shaderAtomLocationPrefix[to_base( ShaderType::COUNT )]             = Paths::Shaders::GLSL::g_comnAtomLoc;
 
         shaderAtomExtensionName[to_base( ShaderType::FRAGMENT )]          = Paths::Shaders::GLSL::g_fragAtomExt;
@@ -1094,7 +1099,9 @@ namespace Divide
         shaderAtomExtensionName[to_base( ShaderType::TESSELLATION_CTRL )] = Paths::Shaders::GLSL::g_tescAtomExt;
         shaderAtomExtensionName[to_base( ShaderType::TESSELLATION_EVAL )] = Paths::Shaders::GLSL::g_teseAtomExt;
         shaderAtomExtensionName[to_base( ShaderType::COMPUTE )]           = Paths::Shaders::GLSL::g_compAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::COUNT )]             = "." + Paths::Shaders::GLSL::g_comnAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::MESH_NV )]           = Paths::Shaders::GLSL::g_meshAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::TASK_NV )]           = Paths::Shaders::GLSL::g_taskAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::COUNT )]       = "." + Paths::Shaders::GLSL::g_comnAtomExt;
 
         for ( U8 i = 0u; i < to_base( ShaderType::COUNT ) + 1; ++i )
         {

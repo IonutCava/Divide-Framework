@@ -167,7 +167,7 @@ inline void GFXDevice::OverrideDeviceInformation(const DeviceInformation& info) 
 
 inline bool GFXDevice::IsSubmitCommand(const GFX::CommandType type) noexcept
 {
-    return type == GFX::CommandType::DISPATCH_COMPUTE ||
+    return type == GFX::CommandType::DISPATCH_SHADER_TASK ||
            type == GFX::CommandType::DRAW_COMMANDS;
 }
 

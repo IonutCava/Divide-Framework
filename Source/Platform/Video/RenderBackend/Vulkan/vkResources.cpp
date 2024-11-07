@@ -177,7 +177,8 @@ namespace Divide
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES_ADJACENCY )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::PATCH )] = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
-            vkPrimitiveTypeTable[to_base( PrimitiveTopology::COMPUTE )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            vkPrimitiveTypeTable[to_base( PrimitiveTopology::COMPUTE )] = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+            vkPrimitiveTypeTable[to_base( PrimitiveTopology::MESHLET )] = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 
             vkWrapTable[to_base( TextureWrap::MIRROR_REPEAT )] = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
             vkWrapTable[to_base( TextureWrap::REPEAT )] = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -191,6 +192,9 @@ namespace Divide
             vkShaderStageTable[to_base( ShaderType::TESSELLATION_CTRL )] = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
             vkShaderStageTable[to_base( ShaderType::TESSELLATION_EVAL )] = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
             vkShaderStageTable[to_base( ShaderType::COMPUTE )] = VK_SHADER_STAGE_COMPUTE_BIT;
+            vkShaderStageTable[to_base( ShaderType::MESH_NV )] = VK_SHADER_STAGE_MESH_BIT_NV;
+            vkShaderStageTable[to_base( ShaderType::TASK_NV )] = VK_SHADER_STAGE_TASK_BIT_NV;
+
 
             vkQueryTypeTable[to_U8(log2( to_base( QueryType::VERTICES_SUBMITTED ) ) ) - 1]._statistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT;
             vkQueryTypeTable[to_U8(log2( to_base( QueryType::PRIMITIVES_GENERATED ) ) ) - 1]._queryType = VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT;

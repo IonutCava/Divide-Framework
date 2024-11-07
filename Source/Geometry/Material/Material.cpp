@@ -696,16 +696,17 @@ namespace Divide
         switch ( _topology )
         {
             case PrimitiveTopology::POINTS:                   shaderDescriptor._globalDefines.emplace_back( "GEOMETRY_POINTS", true );    break;
-            case PrimitiveTopology::LINES:                                                                                              break;
-            case PrimitiveTopology::LINE_STRIP:                                                                                         break;
-            case PrimitiveTopology::LINES_ADJANCENCY:                                                                                   break;
+            case PrimitiveTopology::LINES:                                                                                                break;
+            case PrimitiveTopology::LINE_STRIP:                                                                                           break;
+            case PrimitiveTopology::LINES_ADJANCENCY:                                                                                     break;
             case PrimitiveTopology::LINE_STRIP_ADJACENCY:     shaderDescriptor._globalDefines.emplace_back( "GEOMETRY_LINES", true );     break;
-            case PrimitiveTopology::TRIANGLES:                                                                                          break;
-            case PrimitiveTopology::TRIANGLE_STRIP:                                                                                     break;
-            case PrimitiveTopology::TRIANGLE_FAN:                                                                                       break;
-            case PrimitiveTopology::TRIANGLES_ADJACENCY:                                                                                break;
+            case PrimitiveTopology::TRIANGLES:                                                                                            break;
+            case PrimitiveTopology::TRIANGLE_STRIP:                                                                                       break;
+            case PrimitiveTopology::TRIANGLE_FAN:                                                                                         break;
+            case PrimitiveTopology::TRIANGLES_ADJACENCY:                                                                                  break;
             case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: shaderDescriptor._globalDefines.emplace_back( "GEOMETRY_TRIANGLES", true ); break;
             case PrimitiveTopology::PATCH:                    shaderDescriptor._globalDefines.emplace_back( "GEOMETRY_PATCH", true );     break;
+            case PrimitiveTopology::MESHLET:                  shaderDescriptor._globalDefines.emplace_back( "GEOMETRY_MESHLET", true );   break;
             default: DIVIDE_UNEXPECTED_CALL();
         }
 

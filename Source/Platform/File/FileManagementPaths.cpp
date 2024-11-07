@@ -63,6 +63,8 @@ Str<8> Paths::Shaders::GLSL::g_geomAtomExt;
 Str<8> Paths::Shaders::GLSL::g_tescAtomExt;
 Str<8> Paths::Shaders::GLSL::g_teseAtomExt;
 Str<8> Paths::Shaders::GLSL::g_compAtomExt;
+Str<8> Paths::Shaders::GLSL::g_meshAtomExt;
+Str<8> Paths::Shaders::GLSL::g_taskAtomExt;
 Str<8> Paths::Shaders::GLSL::g_comnAtomExt;
 
 ResourcePath Paths::Shaders::GLSL::g_GLSLShaderLoc;
@@ -73,6 +75,8 @@ ResourcePath Paths::Shaders::GLSL::g_geomAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_tescAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_teseAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_compAtomLoc;
+ResourcePath Paths::Shaders::GLSL::g_meshAtomLoc;
+ResourcePath Paths::Shaders::GLSL::g_taskAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_comnAtomLoc;
 
 void Paths::initPaths() 
@@ -155,6 +159,8 @@ void Paths::initPaths()
     Shaders::GLSL::g_tescAtomExt = "tesc";
     Shaders::GLSL::g_teseAtomExt = "tese";
     Shaders::GLSL::g_compAtomExt = "comp";
+    Shaders::GLSL::g_meshAtomExt = "mesh";
+    Shaders::GLSL::g_taskAtomExt = "task";
     Shaders::GLSL::g_comnAtomExt = "cmn";
 
     Shaders::GLSL::g_GLSLShaderLoc = g_shadersLocation / "GLSL";
@@ -165,6 +171,8 @@ void Paths::initPaths()
     Shaders::GLSL::g_tescAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "TessellationCAtoms";
     Shaders::GLSL::g_teseAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "TessellationEAtoms";
     Shaders::GLSL::g_compAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "ComputeAtoms";
+    Shaders::GLSL::g_meshAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "MeshAtoms";
+    Shaders::GLSL::g_taskAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "TaskAtoms";
     Shaders::GLSL::g_comnAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "Common";
 }
 

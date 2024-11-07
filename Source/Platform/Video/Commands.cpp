@@ -400,9 +400,9 @@ static string ToString(const AddDebugMessageCommand& cmd, const U16 indent)
     return ret;
 }
 
-static string ToString(const DispatchComputeCommand& cmd, [[maybe_unused]] U16 indent)
+static string ToString(const DispatchShaderTaskCommand& cmd, [[maybe_unused]] U16 indent)
 {
-    return Util::StringFormat(" [ Group sizes: {} {} {}]", cmd._computeGroupSize.x, cmd._computeGroupSize.y, cmd._computeGroupSize.z);
+    return Util::StringFormat(" [ Group sizes: {} {} {}]", cmd._workGroupSize.x, cmd._workGroupSize.y, cmd._workGroupSize.z);
 }
 
 static string ToString(const MemoryBarrierCommand& cmd, U16 indent) {
@@ -575,9 +575,9 @@ string ToString(const CommandBase& cmd, const CommandType type, U16 indent) {
         {
             ret.append(ToString(static_cast<const DrawCommand&>(cmd), indent));
         }break;
-        case CommandType::DISPATCH_COMPUTE:
+        case CommandType::DISPATCH_SHADER_TASK:
         {
-            ret.append(ToString(static_cast<const DispatchComputeCommand&>(cmd), indent));
+            ret.append(ToString(static_cast<const DispatchShaderTaskCommand&>(cmd), indent));
         }break;
         case CommandType::MEMORY_BARRIER:
         {
