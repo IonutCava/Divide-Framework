@@ -186,10 +186,6 @@ void Kernel::onLoop()
         Time::ScopedTimer timer(_appLoopTimerMain);
 
         ResourceCache::OnFrameStart();
-        SCOPE_EXIT
-        {
-            ResourceCache::OnFrameEnd();
-        };
 
         if (!keepAlive())
         {
@@ -321,6 +317,8 @@ void Kernel::onLoop()
             Time::ScopedTimer timer2(_appIdleTimer);
             idle(false, evt._time._game._deltaTimeUS, evt._time._app._deltaTimeUS );
         }
+
+        ResourceCache::OnFrameEnd();
     }
 
     // Cap FPS

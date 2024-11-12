@@ -21,6 +21,13 @@ ResourcePath& ResourcePath::append(const std::string_view str)
     return *this;
 }
 
+ResourcePath ResourcePath::operator+(std::string_view str) const
+{
+    ResourcePath ret = *this;
+    ret.append(str);
+    return ret;
+}
+
 ResourcePath& ResourcePath::makeRelative( const ResourcePath& base )
 {
     _fileSystemPath = std::filesystem::relative( _fileSystemPath, base._fileSystemPath );

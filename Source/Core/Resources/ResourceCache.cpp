@@ -50,13 +50,7 @@ bool ResourceLoadLock::SetLoading(const size_t hash)
     }
 
     LockGuard<SharedMutex> w_lock(s_hashLock);
-    if (s_loadingHashes.find(hash) != std::cend(s_loadingHashes))
-    {
-        return false;
-    }
-
-    s_loadingHashes.insert(hash);
-    return true;
+    return s_loadingHashes.insert(hash).second;
 }
 
 bool ResourceLoadLock::SetLoadingFinished(const size_t hash)

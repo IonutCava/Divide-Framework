@@ -37,33 +37,37 @@ namespace Divide
 {
     [[nodiscard]] inline size_t DefinesHash( const ModuleDefines& defines ) noexcept
     {
-        if ( defines.empty() )
-        {
-            return 0u;
-        }
+        size_t hash = 9999991u;
 
-        size_t hash = 7919;
         for ( const auto& [defineString, appendPrefix] : defines )
         {
-            Util::Hash_combine( hash, _ID( defineString.c_str() ) );
+            Util::Hash_combine( hash, defineString );
             Util::Hash_combine( hash, appendPrefix );
         }
+
+        return hash;
+    }
+
+    inline size_t GetHash(const ShaderModuleDescriptor& moduleDescriptor) noexcept
+    {
+        size_t hash = DefinesHash(moduleDescriptor._defines);
+
+        Util::Hash_combine( hash,
+                            moduleDescriptor._variant,
+                            moduleDescriptor._sourceFile,
+                            moduleDescriptor._moduleType
+                          );
         return hash;
     }
 
     template<>
     inline size_t GetHash( const PropertyDescriptor<ShaderProgram>& descriptor ) noexcept
     {
-        size_t hash = DefinesHash( descriptor._globalDefines );
+        size_t hash = DefinesHash(descriptor._globalDefines);
 
         for ( const ShaderModuleDescriptor& desc : descriptor._modules )
         {
-            Util::Hash_combine( hash,
-                                DefinesHash( desc._defines ),
-                                desc._variant,
-                                desc._sourceFile,
-                                desc._moduleType
-                              );
+            Util::Hash_combine( hash, GetHash( desc) );
         }
 
         return hash;

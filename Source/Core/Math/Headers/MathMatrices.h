@@ -480,9 +480,9 @@ class mat4 {
     template<typename U>
     explicit mat4(const U *values) noexcept;
     template<typename U>
-    explicit mat4(const mat2<U> &B, bool zeroFill) noexcept;
+    explicit mat4(const mat2<U> &B, bool zeroFill = false) noexcept;
     template<typename U>
-    explicit mat4(const mat3<U> &B, bool zeroFill) noexcept;
+    explicit mat4(const mat3<U> &B, bool zeroFill = false) noexcept;
     mat4(const mat4 &B) noexcept;
     template<typename U>
     explicit mat4(const mat4<U> &B) noexcept;

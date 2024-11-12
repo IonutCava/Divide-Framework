@@ -49,12 +49,8 @@ namespace Divide {
 
     struct ModuleDefine
     {
-        ModuleDefine() = default;
-        ModuleDefine(const char* define, const bool addPrefix = true);
-        ModuleDefine(const string& define, const bool addPrefix = true);
-
         string _define;
-        bool _addPrefix = true;
+        bool _addPrefix{true};
     };
 
     using ModuleDefines = vector<ModuleDefine>;
@@ -80,6 +76,8 @@ namespace Divide {
     };
 
     using ShaderProgramDescriptor = PropertyDescriptor<ShaderProgram>;
+
+    inline size_t GetHash(const ShaderModuleDescriptor& moduleDescriptor) noexcept;
 
     template<>
     inline size_t GetHash( const PropertyDescriptor<ShaderProgram>& descriptor ) noexcept;

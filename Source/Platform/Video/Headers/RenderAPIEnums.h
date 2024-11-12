@@ -630,7 +630,7 @@ enum class GFXImageFormat : U8 {
     BC6s,
     BC6u,
     BC7,
-    //BC3_RGBM,
+    BC3_RGBM, //<Not Suppoted yet!
     //ETC1,
     //ETC2_R,
     //ETC2_RG,

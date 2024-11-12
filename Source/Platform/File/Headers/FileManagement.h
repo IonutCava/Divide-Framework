@@ -46,6 +46,7 @@ enum class FileError : U8 {
     FILE_DELETE_ERROR,
     FILE_OVERWRITE_ERROR,
     FILE_COPY_ERROR,
+    FILE_MOVE_ERROR,
     FILE_TARGET_BUFFER_ERROR,
     COUNT
 };
@@ -53,7 +54,7 @@ enum class FileError : U8 {
 namespace Names
 {
     static const char* fileError[] = {
-            "NONE", "FILE_NOT_FOUND", "FILE_EMPTY", "FILE_CREATE_ERROR","FILE_READ_ERROR", "FILE_OPEN_ERROR", "FILE_WRITE_ERROR", "FILE_DELETE_ERROR", "FILE_OVERWRITE_ERROR", "FILE_COPY_ERROR", "FILE_TARGET_BUFFER_ERROR", "UNKNOWN"
+            "NONE", "FILE_NOT_FOUND", "FILE_EMPTY", "FILE_CREATE_ERROR","FILE_READ_ERROR", "FILE_OPEN_ERROR", "FILE_WRITE_ERROR", "FILE_DELETE_ERROR", "FILE_OVERWRITE_ERROR", "FILE_COPY_ERROR", "FILE_MOVE_ERROR", "FILE_TARGET_BUFFER_ERROR", "UNKNOWN"
     };
 }
 
@@ -211,6 +212,8 @@ using FileList = vector<FileEntry>;
 [[nodiscard]] FileError deleteFile(const ResourcePath& filePath, std::string_view fileName);
 
 [[nodiscard]] FileError copyFile(const ResourcePath& sourcePath, std::string_view sourceName, const ResourcePath& targetPath, std::string_view targetName, bool overwrite);
+
+[[nodiscard]] FileError moveFile(const ResourcePath& sourcePath, std::string_view sourceName, const ResourcePath& targetPath, std::string_view targetName);
 
 [[nodiscard]] FileError copyDirectory(const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite);
 

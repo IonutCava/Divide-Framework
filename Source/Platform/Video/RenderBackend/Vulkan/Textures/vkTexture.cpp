@@ -6,7 +6,7 @@
 #include "Utility/Headers/Localization.h"
 
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
-#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h"
+#include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h" //For staging buffers
 
 namespace Divide
 {

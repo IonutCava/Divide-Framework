@@ -1442,6 +1442,9 @@ namespace Divide
     static const vec2<F32> VECTOR2_UNIT{ 1.0f };
     static const vec3<F32> VECTOR3_UNIT{ 1.0f };
     static const vec4<F32> VECTOR4_UNIT{ 1.0f };
+    static const vec2<F32> VECTOR2_EPSILON{ EPSILON_F32 };
+    static const vec3<F32> VECTOR3_EPSILON{ EPSILON_F32 };
+    static const vec4<F32> VECTOR4_EPSILON{ EPSILON_F32 };
     static const vec3<F32> WORLD_X_AXIS{ 1.0f, 0.0f, 0.0f };
     static const vec3<F32> WORLD_Y_AXIS{ 0.0f, 1.0f, 0.0f };
     static const vec3<F32> WORLD_Z_AXIS{ 0.0f, 0.0f, 1.0f };

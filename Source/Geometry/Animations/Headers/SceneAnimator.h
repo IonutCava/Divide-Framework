@@ -267,15 +267,16 @@ class SceneAnimator {
 namespace Attorney {
     class SceneAnimatorMeshImporter {
         /// PASS OWNERSHIP OF ANIMATIONS TO THE ANIMATOR!!!
-        static void registerAnimations(SceneAnimator& animator, const vector<AnimEvaluator*>& animations)
+        static void registerAnimations(SceneAnimator& animator, vector<std::unique_ptr<AnimEvaluator>>& animations)
         {
             const size_t animationCount = animations.size();
             animator._animations.reserve(animationCount);
             for (size_t i = 0; i < animationCount; ++i)
             {
-                animator._animations.emplace_back(animations[i]);
+                animator._animations.emplace_back(std::move(animations[i]));
                 insert(animator._animationNameToID, _ID(animator._animations[i]->name().c_str()), to_U32(i));
             }
+            animations.clear();
         }
 
         static void buildBuffers(SceneAnimator& animator, GFXDevice& gfxDevice) {

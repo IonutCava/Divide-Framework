@@ -33,22 +33,26 @@
 #ifndef DVD_UTILITY_IMAGETOOLS_FWD_H
 #define DVD_UTILITY_IMAGETOOLS_FWD_H
 
-namespace Divide {
-    namespace ImageTools {
+namespace Divide
+{
+    namespace ImageTools
+    {
 
         void OnStartup(bool upperLeftOrigin);
         void OnShutdown();
 
         [[nodiscard]] bool UseUpperLeftOrigin() noexcept;
 
-        enum class MipMapFilter : U8 {
+        enum class MipMapFilter : U8
+        {
             BOX,
             TRIANGLE,
             KAISER,
             COUNT
         };
 
-        enum class ImageOutputFormat : U8 {
+        enum class ImageOutputFormat : U8 
+        {
             BC1, //Will be BC1n for normal maps
             BC1a,
             BC2,
@@ -57,31 +61,32 @@ namespace Divide {
             BC5,
             BC6,
             BC7,
-            //BC3_RGBM, //Not supported
+            BC3_RGBM, //Not supported
             AUTO,  // BC7 for textures, BC5 for normal maps, BC4 single channel images
             COUNT
         };
 
-        struct ImportOptions {
-            bool _useDDSCache = true;
-            bool _waitForDDSConversion = false; ///<If false, we will load the src image and convert to DDS in the background. If true, we will wait for the conversion first and load that instead
-            bool _skipMipMaps = false;
-            bool _isNormalMap = false;
-            bool _fastCompression = false;
-            bool _outputSRGB = false;
-            bool _alphaChannelTransparency = true; ///< If false, the alpha channel represents arbitrary data (e.g. in splatmaps)
-            MipMapFilter _mipFilter = MipMapFilter::KAISER;
-            ImageOutputFormat _outputFormat = ImageOutputFormat::AUTO;
+        struct ImportOptions
+        {
+            bool _useDDSCache{true};
+            bool _waitForDDSConversion{false}; ///<If false, we will load the src image and convert to DDS in the background. If true, we will wait for the conversion first and load that instead
+            bool _skipMipMaps{false};
+            bool _isNormalMap{false};
+            bool _fastCompression{false};
+            bool _outputSRGB{false};
+            bool _alphaChannelTransparency{true}; ///< If false, the alpha channel represents arbitrary data (e.g. in splatmaps)
+            MipMapFilter _mipFilter{MipMapFilter::KAISER};
+            ImageOutputFormat _outputFormat{ImageOutputFormat::AUTO};
         };
 
         FWD_DECLARE_MANAGED_STRUCT(LayerData);
 
-
-        enum class SaveImageFormat : U8 {
+        enum class SaveImageFormat : U8
+        {
             PNG,
             BMP,
             TGA,
-            //HDR, /// Use special function for this!
+            //HDR, //< Use special function for this!
             JPG,
             COUNT
         };

@@ -34,6 +34,9 @@
 #define DVD_RENDER_PASS_NODE_BUFFERED_DATA_H_
 
 namespace Divide {
+    static constexpr U8 TRANSFORM_IDX = 0u;
+    static constexpr U8 MATERIAL_IDX = 1u;
+    static constexpr U8 TEXTURES_IDX = 2u;
 
 #pragma pack(push, 1)
     struct NodeTransformData
@@ -70,6 +73,15 @@ namespace Divide {
         vec4<U32> _textureOperations;
     };
 
+    struct NodeIndirectionData
+    {
+        static constexpr U32 INVALID_IDX = U32_MAX;
+
+        U32 _transformIDX = INVALID_IDX;
+        U32 _materialIDX = INVALID_IDX;
+        U32 _padding__0 = 0u;
+        U32 _padding__1 = 0u;
+    };
     [[nodiscard]] size_t HashMaterialData(const NodeMaterialData& dataIn);
 #pragma pack(pop)
 

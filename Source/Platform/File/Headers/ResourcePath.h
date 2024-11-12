@@ -53,6 +53,7 @@ struct ResourcePath
     [[nodiscard]] bool empty() const noexcept;
 
     ResourcePath& append(std::string_view str);
+    ResourcePath operator+(std::string_view str) const;
 
     ResourcePath& makeRelative(const ResourcePath& base);
     ResourcePath getRelative(const ResourcePath& base) const;

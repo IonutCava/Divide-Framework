@@ -8,6 +8,11 @@
 
 namespace Divide {
 
+namespace 
+{
+    constexpr U8 s_maxIORetries = 3u;
+}
+
 ResourcePath getWorkingDirectory()
 {
     return ResourcePath { std::filesystem::current_path().lexically_normal().string() };
@@ -148,9 +153,10 @@ bool pathExists(const ResourcePath& filePath)
     return ec ? false : ret;
 }
 
-FileError createDirectory(const ResourcePath& path)
+FileError createDirectoryInternal(const ResourcePath& path)
 {
     NO_DESTROY static Mutex s_DirectoryLock;
+
     LockGuard<Mutex> w_lock( s_DirectoryLock );
 
     if (!pathExists(path))
@@ -171,7 +177,20 @@ FileError createDirectory(const ResourcePath& path)
     return FileError::NONE;
 }
 
-FileError removeDirectory( const ResourcePath& path )
+FileError createDirectory(const ResourcePath& path)
+{
+    U8 retryCount = 0u;
+    FileError ret = FileError::NONE;
+    do 
+    {
+        ret = createDirectoryInternal(path);
+    }
+    while(ret == FileError::FILE_CREATE_ERROR && ++retryCount < s_maxIORetries);
+
+    return ret;
+}
+
+FileError removeDirectoryInternal( const ResourcePath& path )
 {
     if ( pathExists(path) )
     {
@@ -188,6 +207,18 @@ FileError removeDirectory( const ResourcePath& path )
     }
 
     return FileError::NONE;
+}
+
+FileError removeDirectory(const ResourcePath& path)
+{
+    U8 retryCount = 0u;
+    FileError ret = FileError::NONE;
+    do
+    {
+        ret = removeDirectoryInternal(path);
+    } while (ret == FileError::FILE_DELETE_ERROR && ++retryCount < s_maxIORetries);
+
+    return ret;
 }
 
 bool fileExists(const ResourcePath& filePathAndName)
@@ -230,7 +261,7 @@ size_t numberOfFilesInDirectory( const ResourcePath& path )
                           [](const std::filesystem::path& p){ return std::filesystem::is_regular_file( p ); });
 }
 
-bool createFile(const ResourcePath& filePathAndName, const bool overwriteExisting)
+bool createFileInternal(const ResourcePath& filePathAndName, const bool overwriteExisting)
 {
     if (overwriteExisting && fileExists(filePathAndName))
     {
@@ -243,6 +274,19 @@ bool createFile(const ResourcePath& filePathAndName, const bool overwriteExistin
     }
 
     return std::ifstream(filePathAndName.string().c_str(), std::fstream::in).good();
+}
+
+bool createFile(const ResourcePath& filePathAndName, const bool overwriteExisting)
+{
+    U8 retryCount = 0u;
+    bool state = true;
+
+    do
+    {
+        state = createFileInternal(filePathAndName, overwriteExisting);
+    } while (!state && ++retryCount < s_maxIORetries);
+
+    return state;
 }
 
 FileError openFile(const std::string_view cmd, const ResourcePath& filePath, const std::string_view fileName)
@@ -267,7 +311,7 @@ FileError openFile(const std::string_view cmd, const ResourcePath& filePath, con
     return ret ? FileError::NONE : FileError::FILE_OPEN_ERROR;
 }
 
-FileError deleteFile(const ResourcePath& filePath, const std::string_view fileName)
+FileError deleteFileInternal(const ResourcePath& filePath, const std::string_view fileName)
 {
     if ( fileName.empty() )
     {
@@ -289,7 +333,57 @@ FileError deleteFile(const ResourcePath& filePath, const std::string_view fileNa
     return FileError::FILE_DELETE_ERROR;
 }
 
-FileError copyFile(const ResourcePath& sourcePath, const std::string_view sourceName, const ResourcePath&  targetPath, const std::string_view targetName, const bool overwrite)
+FileError deleteFile(const ResourcePath& filePath, const std::string_view fileName)
+{
+    U8 retryCount = 0u;
+    FileError ret = FileError::NONE;
+    do
+    {
+        ret = deleteFileInternal(filePath, fileName);
+    } while (ret == FileError::FILE_DELETE_ERROR && ++retryCount < s_maxIORetries);
+
+    return ret;
+}
+
+FileError moveFileInternal(const ResourcePath& sourcePath, const std::string_view sourceName, const ResourcePath& targetPath, const std::string_view targetName)
+{
+    if (sourceName.empty() || targetName.empty())
+    {
+        return FileError::FILE_NOT_FOUND;
+    }
+
+    const ResourcePath source{ sourcePath / sourceName };
+
+    if (!fileExists(source))
+    {
+        return FileError::FILE_NOT_FOUND;
+    }
+
+    const ResourcePath target{ targetPath / targetName };
+
+    std::error_code ec;
+    rename(source.fileSystemPath(), target.fileSystemPath(), ec);
+    if (!ec)
+    {
+        return FileError::NONE;
+    }
+
+    return FileError::FILE_MOVE_ERROR;
+}
+
+FileError moveFile(const ResourcePath& sourcePath, const std::string_view sourceName, const ResourcePath& targetPath, const std::string_view targetName)
+{
+    U8 retryCount = 0u;
+    FileError ret = FileError::NONE;
+    do
+    {
+        ret = moveFileInternal(sourcePath, sourceName, targetPath, targetName);
+    } while (ret == FileError::FILE_MOVE_ERROR && ++retryCount < s_maxIORetries);
+
+    return ret;
+}
+
+FileError copyFileInternal(const ResourcePath& sourcePath, const std::string_view sourceName, const ResourcePath&  targetPath, const std::string_view targetName, const bool overwrite)
 {
     if (sourceName.empty() || targetName.empty())
     {
@@ -322,7 +416,19 @@ FileError copyFile(const ResourcePath& sourcePath, const std::string_view source
     return FileError::FILE_COPY_ERROR;
 }
 
-FileError copyDirectory( const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite )
+FileError copyFile(const ResourcePath& sourcePath, const std::string_view sourceName, const ResourcePath& targetPath, const std::string_view targetName, const bool overwrite)
+{
+    U8 retryCount = 0u;
+    FileError ret = FileError::NONE;
+    do
+    {
+        ret = copyFileInternal(sourcePath, sourceName, targetPath, targetName, overwrite);
+    } while (ret == FileError::FILE_COPY_ERROR && ++retryCount < s_maxIORetries);
+
+    return ret;
+}
+
+FileError copyDirectoryInternal( const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite )
 {
     if (!pathExists(sourcePath))
     {
@@ -350,6 +456,18 @@ FileError copyDirectory( const ResourcePath& sourcePath, const ResourcePath& tar
     }
 
     return ec ? FileError::FILE_COPY_ERROR: FileError::NONE;
+}
+
+FileError copyDirectory(const ResourcePath& sourcePath, const ResourcePath& targetPath, bool recursively, bool overwrite)
+{
+    U8 retryCount = 0u;
+    FileError ret = FileError::NONE;
+    do
+    {
+        ret = copyDirectoryInternal(sourcePath, targetPath, recursively, overwrite);
+    } while (ret == FileError::FILE_COPY_ERROR && ++retryCount < s_maxIORetries);
+
+    return ret;
 }
 
 FileError findFile(const ResourcePath& filePath, const std::string_view fileName, string& foundPath)

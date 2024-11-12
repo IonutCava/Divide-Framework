@@ -55,12 +55,14 @@ namespace Divide
 
     enum class ResourceState : U8
     {
-        RES_UNKNOWN = 0,      ///< The resource exists, but it's state is undefined
-        RES_CREATED = 1,      ///< The pointer has been created and instantiated, but no data has been loaded
-        RES_LOADING = 2,      ///< The resource is loading, creating data, parsing scripts, etc
-        RES_THREAD_LOADED = 3,///< The resource is loaded but not yet available
-        RES_LOADED = 4,       ///< The resource is available for usage
-        RES_UNLOADING = 5,    ///< The resource is unloading, deleting data, etc
+        RES_UNKNOWN = 0,            ///< The resource exists, but it's state is undefined
+        RES_CREATED = 1,            ///< The pointer has been created and instantiated, but no data has been loaded
+        RES_LOADING = 2,            ///< The resource is loading, creating data, parsing scripts, etc
+        RES_THREAD_LOADED = 3,      ///< The resource is loaded but not yet available
+        RES_THREAD_LOAD_FAILED = 4, ///< The resource was created but failed to load internally
+        RES_LOADED = 5,             ///< The resource is available for usage
+        RES_LOAD_FAILED = 6,        ///< The resource loaded fine, but failed to execute post load operations
+        RES_UNLOADING = 7,          ///< The resource is unloading, deleting data, etc
         COUNT
     };
 
@@ -141,6 +143,8 @@ namespace Divide
         PROPERTY_RW( bool, flag, false );
         PROPERTY_RW( bool, waitForReady, true );
     };
+
+    [[nodiscard]] size_t GetHash(const ResourceDescriptorBase& descriptor) noexcept;
 
     template <typename T>
     struct ResourceDescriptor final : public ResourceDescriptorBase

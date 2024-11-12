@@ -53,6 +53,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <EASTL/queue.h>
 #include <EASTL/string.h>
 #include <EASTL/shared_ptr.h>
+#include <EASTL/fixed_set.h>
 #include <EASTL/fixed_vector.h>
 #include <EASTL/fixed_string.h>
 #include <EASTL/unordered_set.h>

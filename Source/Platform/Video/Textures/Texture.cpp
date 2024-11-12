@@ -313,7 +313,7 @@ namespace Divide
                 DIVIDE_UNEXPECTED_CALL();
             }
         }
-        else
+        else if ( !fileData.hasDummyAlphaChannel() )
         {
             return checkTransparency( path, name, fileData );
         }

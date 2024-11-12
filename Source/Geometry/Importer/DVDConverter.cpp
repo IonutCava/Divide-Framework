@@ -56,9 +56,8 @@ namespace {
         Bone* internalNode = new Bone(pNode->mName.data);
         // set the parent; in case this is the root node, it will be null
         internalNode->_parent = parent;
-        mat4<F32> out;
+        mat4<F32>& out = internalNode->localTransform();
         AnimUtils::TransformMatrix(pNode->mTransformation, out);
-        internalNode->localTransform(out);
         internalNode->originalLocalTransform(internalNode->localTransform());
         CalculateBoneToWorldTransform(internalNode);
 
@@ -261,9 +260,11 @@ bool Load(PlatformContext& context, Import::ImportData& target)
                 const aiBone* bone = mesh->mBones[n];
 
                 Bone* found = target._skeleton->find( bone->mName.data );
-                DIVIDE_ASSERT( found != nullptr, "DVDConverter::Load: Invalid skeleton detected while extracting bone data!" );
-
-                if ( found->boneID() == -1 )
+                if( found == nullptr )
+                {
+                    Console::warnfn(LOCALE_STR("MISSING_BONE_IN_SKELETON"), bone->mName.C_Str());
+                }
+                else if ( found->boneID() == -1 )
                 {
                     AnimUtils::TransformMatrix( bone->mOffsetMatrix, out );
                     found->offsetMatrix( out );
@@ -282,7 +283,7 @@ bool Load(PlatformContext& context, Import::ImportData& target)
             }
             else
             {
-                target._animations.emplace_back(new AnimEvaluator(animation, i));
+                target._animations.emplace_back(std::make_unique<AnimEvaluator>(animation, i));
             }
         }
     }
@@ -352,11 +353,12 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target)
         }
     }
 
-    VertexBuffer::Descriptor descriptor{};
-    descriptor._allowDynamicUpdates = false;
-    descriptor._keepCPUData = true;
-    descriptor._largeIndices = vertexCount >= U16_MAX;
-    descriptor._name = target.modelName();
+    VertexBuffer::Descriptor descriptor
+    {
+        ._name = target.modelName(),
+        ._largeIndices = vertexCount >= U16_MAX,
+        ._keepCPUData = true
+    };
 
     target._vertexBuffer = context.gfx().newVB( descriptor );
     VertexBuffer* vb = target._vertexBuffer.get();
@@ -367,9 +369,10 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target)
     U32 previousOffset = 0u;
     for ( Import::SubMeshData& data : target._subMeshData )
     {
-        const bool hasBones = data._useAttribute[to_base(AttribLocation::BONE_INDICE)] && data._useAttribute[to_base( AttribLocation::BONE_WEIGHT )];
         const bool hasTexCoord = data._useAttribute[to_base( AttribLocation::TEXCOORD )];
-        const bool hasTangent = data._useAttribute[to_base( AttribLocation::TANGENT )];
+        const bool hasTangent  = data._useAttribute[to_base( AttribLocation::TANGENT )];
+        const bool hasBones    = data._useAttribute[to_base( AttribLocation::BONE_INDICE )] && 
+                                 data._useAttribute[to_base( AttribLocation::BONE_WEIGHT )];
 
         U8 subMeshBoneOffset = 0u;
         for ( U8 lod = 0u; lod < data.lodCount(); ++lod )
@@ -517,7 +520,13 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
         {
 
             Bone* bone = target._skeleton->find(source->mBones[boneIndex]->mName.data);
-            assert( bone->boneID() != -1);
+            if ( bone == nullptr )
+            {
+                // We may have bad data that should've been caught (or warned about) at load time
+                continue;
+            }
+
+            DIVIDE_ASSERT( bone->boneID() != -1);
 
             aiVertexWeight* weights = source->mBones[boneIndex]->mWeights;
             U32 numWeights = source->mBones[boneIndex]->mNumWeights;
@@ -525,7 +534,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
             {
                 U32 vertexId = weights[weightIndex].mVertexId;
                 F32 weight = weights[weightIndex].mWeight;
-                assert( vertexId <= vertices.size() );
+                DIVIDE_ASSERT( vertexId <= vertices.size() );
 
                 Import::SubMeshData::Vertex& vertex = vertices[vertexId];
                 for ( U8 i = 0; i < 4u; ++i )

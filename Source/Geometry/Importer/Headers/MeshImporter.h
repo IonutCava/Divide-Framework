@@ -167,7 +167,7 @@ namespace Divide {
             vector<SubMeshData> _subMeshData;
 
             size_t _animationCount{0u};
-            vector<AnimEvaluator*> _animations;
+            vector<std::unique_ptr<AnimEvaluator>> _animations;
         };
     };
 

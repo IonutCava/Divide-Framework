@@ -2608,7 +2608,7 @@ namespace Divide
     FORCE_INLINE vec3<U> mat4<T>::transform( const vec3<U>& v, bool homogeneous ) const
     {
         return  homogeneous ? transformHomogeneous( v )
-            : transformNonHomogeneous( v );
+                            : transformNonHomogeneous( v );
     }
 
     template<typename T>

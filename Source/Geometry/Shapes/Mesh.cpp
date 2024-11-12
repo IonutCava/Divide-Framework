@@ -106,23 +106,24 @@ void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node)
 
     if (!node._children.empty())
     {
-        ResourceDescriptor<TransformNode> nodeDescriptor{ node._name + "_transform" };
+        const Handle<TransformNode> transformHandle = CreateResource(ResourceDescriptor<TransformNode>{ node._name + "_transform" });
 
-        SceneGraphNodeDescriptor tempNodeDescriptor;
-        tempNodeDescriptor._usageContext = parentNode->usageContext();
-        tempNodeDescriptor._instanceCount = parentNode->instanceCount();
-        tempNodeDescriptor._name = node._name.c_str();
-        tempNodeDescriptor._nodeHandle = FromHandle(CreateResource( nodeDescriptor ));
-        tempNodeDescriptor._componentMask = to_base(ComponentType::TRANSFORM) |
-                                            to_base(ComponentType::NETWORKING);
+        SceneGraphNodeDescriptor tempNodeDescriptor
+        {
+            ._name = node._name.c_str(),
+            ._instanceCount = parentNode->instanceCount(),
+            ._nodeHandle = FromHandle(transformHandle),
+            ._componentMask = to_base(ComponentType::TRANSFORM) |
+                              to_base(ComponentType::NETWORKING),
+            ._usageContext = parentNode->usageContext()
+        };
+
         for (const MeshNodeData& it : node._children)
         {
             SceneGraphNode* targetSGN = parentNode;
-            if (!it._transform.isIdentity())
-            {
-                targetSGN = parentNode->addChildNode(tempNodeDescriptor);
-                targetSGN->get<TransformComponent>()->setTransforms(it._transform);
-            }
+            targetSGN = parentNode->addChildNode(tempNodeDescriptor);
+            targetSGN->get<TransformComponent>()->setTransforms(it._transform);
+
             processNode(targetSGN, it);
         }
     }

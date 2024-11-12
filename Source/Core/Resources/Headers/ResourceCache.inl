@@ -306,18 +306,17 @@ namespace Divide
             if ( ptr->getState() == ResourceState::RES_LOADED)
             {
                 ptr->setState(ResourceState::RES_UNLOADING);
-                if (!ptr->unload())
-                {
-                    Console::errorfn( LOCALE_STR( "ERROR_RESOURCE_REM" ), ptr->resourceName().c_str(), ptr->getGUID() );
-                    ptr->setState(ResourceState::RES_UNKNOWN);
-                }
-                else
+                if (ptr->unload())
                 {
                     ptr->setState(ResourceState::RES_CREATED);
                 }
+                else
+                {
+                    ptr->setState(ResourceState::RES_UNKNOWN);
+                    Console::errorfn( LOCALE_STR( "ERROR_RESOURCE_REM" ), ptr->resourceName().c_str(), ptr->getGUID() );
+                }
             }
 
-            DIVIDE_ASSERT( SafeToDelete( ptr ));
             deallocateInternal( ptr );
         }
     }
@@ -502,7 +501,7 @@ namespace Divide
             }
             else
             {
-                ptr->setState( ResourceState::RES_UNKNOWN );
+                ptr->setState( ResourceState::RES_THREAD_LOAD_FAILED);
             }
         }
         loadTimer.stop();
@@ -592,11 +591,19 @@ namespace Divide
                     {
                         DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);
 
-                        if ( ptr->getState() == ResourceState::RES_THREAD_LOADED && ptr->postLoad()) [[likely]]
+                        if ( ptr->getState() == ResourceState::RES_THREAD_LOADED) [[likely]]
                         {
-                            ptr->setState( ResourceState::RES_LOADED );
+                            if (ptr->postLoad())
+                            {
+                                ptr->setState( ResourceState::RES_LOADED );
+                            }
+                            else
+                            {
+                                ptr->setState(ResourceState::RES_LOAD_FAILED);
+                            }
                         }
-                        else
+
+                        if ( ptr->getState() != ResourceState::RES_LOADED)
                         {
                             Console::printfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ), resName.c_str() );
                             Handle<T> retCpy = ret;

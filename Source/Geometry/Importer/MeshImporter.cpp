@@ -140,13 +140,8 @@ namespace Import
                 tempBuffer >> _modelPath;
                 tempBuffer >> _animationCount;
 
-                VertexBuffer::Descriptor vbDescriptor{};
-                vbDescriptor._name = _modelName;
-                vbDescriptor._allowDynamicUpdates = false;
-                vbDescriptor._keepCPUData = true;
-                vbDescriptor._largeIndices = true;
-
-                _vertexBuffer = context.gfx().newVB( vbDescriptor );
+                // The descriptor is updated from the input file but the name isn't, so that's all that we have to set here
+                _vertexBuffer = context.gfx().newVB(VertexBuffer::Descriptor{ ._name = _modelName });
                 if (_vertexBuffer->deserialize(tempBuffer))
                 {
                     U32 subMeshCount = 0;
@@ -353,6 +348,7 @@ namespace Import
         {
             return false;
         }
+
         mesh->renderState().drawState(true);
         mesh->geometryBuffer( tempMeshData._vertexBuffer );
         mesh->setAnimationCount(tempMeshData._animationCount);
@@ -393,7 +389,7 @@ namespace Import
 
                 Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData.minPos(), subMeshData.maxPos(), subMeshData.worldOffset());
 
-                if (tempSubMesh->getMaterialTpl() != INVALID_HANDLE<Material>)
+                if (tempSubMesh->getMaterialTpl() == INVALID_HANDLE<Material>)
                 {
                     tempSubMesh->setMaterialTpl(loadSubMeshMaterial(subMeshData._material, tempMeshData.fromFile(), boneCount > 0, taskCounter));
                 }
@@ -421,6 +417,7 @@ namespace Import
                 {
                     // We lose ownership of animations here ...
                     Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, tempMeshData._animations);
+                    DIVIDE_ASSERT(tempMeshData._animations.empty());
 
                     animator->init(context, tempMeshData._skeleton, tempMeshData._bones);
                     animator->save(context, tempBuffer);
@@ -445,7 +442,7 @@ namespace Import
                            tempMeshData.modelName(),
                            Time::MicrosecondsToMilliseconds<F32>(importTimer.get()));
 
-        return mesh->load( context );
+        return true;
     }
 
     /// Load the material for the current SubMesh

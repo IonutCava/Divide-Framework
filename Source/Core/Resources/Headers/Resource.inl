@@ -70,9 +70,14 @@ ResourceDescriptor<T>::ResourceDescriptor( const std::string_view resourceName, 
 template <typename T>
 size_t ResourceDescriptor<T>::getHash() const
 {
-    _hash = GetHash( _propertyDescriptor );
-    Util::Hash_combine( _hash, ResourceDescriptorBase::getHash() );
+    _hash = ResourceDescriptorBase::getHash();
+    Util::Hash_combine( _hash, GetHash(_propertyDescriptor));
     return _hash;
+}
+
+FORCE_INLINE size_t GetHash(const ResourceDescriptorBase& descriptor) noexcept
+{
+    return descriptor.getHash();
 }
 
 template<typename T>

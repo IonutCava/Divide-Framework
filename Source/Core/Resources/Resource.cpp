@@ -76,12 +76,11 @@ ResourceDescriptorBase::ResourceDescriptorBase( const std::string_view resourceN
     : Hashable()
     , _resourceName( resourceName.data(), resourceName.size() )
 {
-
 }
 
 size_t ResourceDescriptorBase::getHash() const
 {
-    _hash = 1337;
+    _hash = Hashable::getHash();
 
     Util::Hash_combine( _hash,
                         _resourceName,

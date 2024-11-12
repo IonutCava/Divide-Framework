@@ -178,7 +178,7 @@ struct ImageData final : NonCopyable
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
     /// If true, then the source image was probably RGB and we loaded it as RGBA
-    PROPERTY_RW(bool, hasDummyAlphaChannel, false);
+    PROPERTY_R(bool, hasDummyAlphaChannel, false);
 
   protected:
     friend class ImageDataInterface;
