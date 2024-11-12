@@ -260,6 +260,7 @@ class Scene : public Resource, public PlatformContextComponent {
         /// Returns the first available action ID
         [[nodiscard]] virtual U16 registerInputActions();
 
+        void       onNodeSpatialChange(const SceneGraphNode& node);
         void       onNodeDestroy(SceneGraphNode* node);
         void       loadAsset(const Task* parentTask, const XML::SceneNode& sceneNode, SceneGraphNode* parent);
 
@@ -488,20 +489,30 @@ class SceneLoadSave {
     friend class Divide::LoadSave;
 };
 
-class SceneGraph {
-    static void onNodeDestroy(Scene* scene, SceneGraphNode* node) {
+class SceneGraph
+{
+    static void onNodeDestroy(Scene* scene, SceneGraphNode* node)
+    {
         scene->onNodeDestroy(node);
     }
 
-    static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept {
+    static void onNodeSpatialChange(Scene* scene, const SceneGraphNode& node)
+    {
+        scene->onNodeSpatialChange(node);
+    }
+
+    static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept
+    {
         return scene->_envProbePool.get();
     } 
     
-    static LightPool* getLightPool(Scene* scene) noexcept {
+    static LightPool* getLightPool(Scene* scene) noexcept
+    {
         return scene->lightPool().get();
     }
 
-    static void addSceneGraphToLoad(Scene* scene, const XML::SceneNode&& rootNode) { 
+    static void addSceneGraphToLoad(Scene* scene, const XML::SceneNode&& rootNode)
+    { 
         scene->_xmlSceneGraphRootNode = rootNode; 
     }
 

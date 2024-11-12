@@ -108,11 +108,13 @@ namespace Divide {
         void render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
         void renderSingleSelection(const Camera* camera);
         void renderMultipleSelections(const Camera* camera);
+        void updateSelections();
         void updateSelections(const vector<SceneGraphNode*>& nodes);
         void setTransformSettings(const TransformSettings& settings) noexcept;
         [[nodiscard]] const TransformSettings& getTransformSettings() const noexcept;
         void onSceneFocus(bool state) noexcept;
 
+        void updateSelectionsInternal();
     private:
         struct SelectedNode {
             TransformComponent* tComp = nullptr;
@@ -136,31 +138,43 @@ namespace Divide {
 
     FWD_DECLARE_MANAGED_CLASS(Gizmo);
 
-    namespace Attorney {
-        class GizmoEditor {
-            static void render(Gizmo* gizmo, const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
+    namespace Attorney
+    {
+        class GizmoEditor
+        {
+            static void render(Gizmo* gizmo, const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut)
+            {
                 gizmo->render(camera, targetViewport, bufferInOut, memCmdInOut);
             }
 
-            static void updateSelection(Gizmo* gizmo, const vector<SceneGraphNode*>& nodes) {
+            static void updateSelections(Gizmo* gizmo, const vector<SceneGraphNode*>& nodes)
+            {
                 gizmo->updateSelections(nodes);
             }
-
-            static void update(Gizmo* gizmo, const U64 deltaTimeUS) {
+            static void updateSelections(Gizmo* gizmo)
+            {
+                gizmo->updateSelections();
+            }
+            static void update(Gizmo* gizmo, const U64 deltaTimeUS)
+            {
                 gizmo->update(deltaTimeUS);
             }
 
-            static void setTransformSettings(Gizmo* gizmo, const TransformSettings& settings) noexcept {
+            static void setTransformSettings(Gizmo* gizmo, const TransformSettings& settings) noexcept
+            {
                 gizmo->setTransformSettings(settings);
             }
 
-            static const TransformSettings& getTransformSettings(const Gizmo* gizmo) noexcept {
+            static const TransformSettings& getTransformSettings(const Gizmo* gizmo) noexcept
+            {
                 return gizmo->getTransformSettings();
             }
 
-            static void onSceneFocus(Gizmo* gizmo, const bool state) noexcept  {
+            static void onSceneFocus(Gizmo* gizmo, const bool state) noexcept
+            {
                 gizmo->onSceneFocus(state);
             }
+
             friend class Divide::Editor;
         };
     }

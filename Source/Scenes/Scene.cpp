@@ -2028,6 +2028,17 @@ namespace Divide
         _currentHoverTarget[idx] = -1;
     }
 
+    void Scene::onNodeSpatialChange(const SceneGraphNode& node)
+    {
+        if constexpr (Config::Build::ENABLE_EDITOR)
+        {
+            if (_context.editor().running() )
+            {
+                _context.editor().onNodeSpatialChange(node);
+            }
+        }
+    }
+
     void Scene::onNodeDestroy( SceneGraphNode* node )
     {
         const I64 guid = node->getGUID();

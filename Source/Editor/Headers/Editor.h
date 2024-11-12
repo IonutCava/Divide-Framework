@@ -152,6 +152,8 @@ namespace Divide
         friend class Attorney::EditorRenderPassExecutor;
         friend class Attorney::EditorEditorComponent;
 
+        struct QueueModelSpawn;
+
         public:
         static std::array<Input::MouseButton, 5> g_oisButtons;
         static std::array<const char*, 3> g_supportedExportPlatforms;
@@ -201,6 +203,7 @@ namespace Divide
         void onResolutionChange( const SizeChangeParams& params );
         void selectionChangeCallback( PlayerIndex idx, const vector<SceneGraphNode*>& nodes ) const;
         void onChangeScene( Scene* newScene );
+        void onNodeSpatialChange( const SceneGraphNode& node);
 
         [[nodiscard]] bool Undo() const;
         [[nodiscard]] inline size_t UndoStackSize() const noexcept;
@@ -307,9 +310,9 @@ namespace Divide
         /// Returns true if the window was closed
         [[nodiscard]] bool modalTextureView( std::string_view modalName, Handle<Texture> tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
         /// Returns true if the model was queued
-        [[nodiscard]] bool modalModelSpawn( Handle<Mesh> mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO );
+        [[nodiscard]] bool modalModelSpawn( Handle<Mesh> mesh, bool showSpawnModalFirst, const vec3<F32>& scale, const vec3<F32>& position);
         /// Return true if the model was spawned as a scene node
-        [[nodiscard]] bool spawnGeometry( Handle<Mesh> mesh, const vec3<F32>& scale, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& rotation, std::string_view name ) const;
+        [[nodiscard]] bool spawnGeometry( SceneGraphNode& root, const QueueModelSpawn& model ) const;
         /// Return true if the specified node passed frustum culling during the main render pass
         [[nodiscard]] bool isNodeInView( const SceneGraphNode& node ) const noexcept;
 
@@ -331,7 +334,7 @@ namespace Divide
         [[nodiscard]] bool removeComponent( SceneGraphNode* selection, ComponentType newComponentType ) const;
         [[nodiscard]] bool removeComponent( const Selections& selections, ComponentType newComponentType ) const;
 
-        GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut );
+        GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, U32 maxIndices, GFX::MemoryBarrierCommand& memCmdInOut );
 
     protected:
         SceneGraphNode* _previewNode{ nullptr };
@@ -380,12 +383,24 @@ namespace Divide
         CircularBuffer<SceneEntry, 10> _recentSceneList;
         CameraSnapshot _render2DSnapshot;
         RenderTargetHandle _nodePreviewRTHandle{};
+
         struct QueueModelSpawn
         {
             Handle<Mesh> _mesh{ INVALID_HANDLE<Mesh> };
-            vec3<F32> _scale{ VECTOR3_UNIT };
-            vec3<F32> _position{ VECTOR3_ZERO };
-        } _queuedModelSpawn;
+            TransformValues transform{};
+            bool _showModal{true};
+        };
+
+        eastl::queue<QueueModelSpawn> _queuedModelSpawns;
+
+        struct QueuedDisplaySizeChange
+        {
+            bool _resolutionChanged{false};
+            bool _displaySizeChanged{false};
+            vec2<U16> _targetResolution{1u,1u};
+            vec2<U16> _targetDisplaySize{1u,1u};
+        } _queuedDisplaySizeChange;
+
     }; //Editor
 
     namespace Attorney
@@ -678,9 +693,9 @@ namespace Divide
                 return editor.modalTextureView( modalName, tex, dimensions, preserveAspect, useModal );
             }
 
-            [[nodiscard]] static bool modalModelSpawn( Editor& editor, Handle<Mesh> mesh, bool quick, const vec3<F32>& scale = VECTOR3_UNIT, const vec3<F32>& position = VECTOR3_ZERO )
+            [[nodiscard]] static bool modalModelSpawn( Editor& editor, Handle<Mesh> mesh, bool showSpawnModalFirst, const vec3<F32>& scale, const vec3<F32>& position )
             {
-                return editor.modalModelSpawn( mesh, quick, scale, position );
+                return editor.modalModelSpawn( mesh, showSpawnModalFirst, scale, position );
             }
 
             [[nodiscard]] static ImGuiContext& getImGuiContext( Editor& editor, const Editor::ImGuiContextType type ) noexcept

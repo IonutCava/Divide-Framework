@@ -418,6 +418,7 @@ namespace Divide {
                 perfMetrics._scratchBufferQueueUsage[1] = perfMetricsSource._scratchBufferQueueUsage[1];
                 perfMetrics._uniformBufferVRAMUsage = perfMetricsSource._uniformBufferVRAMUsage;
                 perfMetrics._bufferVRAMUsage = perfMetricsSource._bufferVRAMUsage;
+                perfMetrics._gpuBufferCount = perfMetricsSource._gpuBufferCount;
             }
             const vec4<U32>& cullCount = context().gfx().lastCullCount();
             static U32 cachedSyncCount[3]{};
@@ -524,6 +525,8 @@ namespace Divide {
             ImGui::Text("Per Frame shader uniforms VRAM usage: %.2f Kb", (perfMetrics._uniformBufferVRAMUsage / 1024.f));
             ImGui::NewLine();
             ImGui::Text("Total buffers VRAM usage: %.2f Mb", (perfMetrics._bufferVRAMUsage / 1024.f / 1024.f));
+            ImGui::NewLine();
+            ImGui::Text("Buffer objects in flight: %d", perfMetrics._gpuBufferCount);
             ImGui::NewLine();
             ImGui::Text("Sync objects in flight : %d / %d / %d   Max: %d", cachedSyncCount[0], cachedSyncCount[1], cachedSyncCount[2], s_maxLocksInFlight);
 

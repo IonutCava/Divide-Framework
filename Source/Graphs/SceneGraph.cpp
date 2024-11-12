@@ -68,7 +68,7 @@ namespace Divide
     }
 
     SceneGraphNode* SceneGraph::createSceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph, const SceneGraphNodeDescriptor& descriptor )
-    {
+    {   
         LockGuard<Mutex> u_lock( _nodeCreateMutex );
         const ECS::EntityId nodeID = GetEntityManager()->CreateEntity<SceneGraphNode>( context, sceneGraph, descriptor );
         return static_cast<SceneGraphNode*>(GetEntityManager()->GetEntity( nodeID ));
@@ -140,6 +140,8 @@ namespace Divide
                 Attorney::SceneGraphNodeSceneGraph::updateCollisions( node, *getRoot(), _intersectionsCache, _intersectionsLock );
             }
         }
+
+        Attorney::SceneGraph::onNodeSpatialChange(&parentScene(), node);
     }
 
     void SceneGraph::onNodeMoved( const SceneGraphNode& node )

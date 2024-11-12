@@ -209,7 +209,24 @@ namespace Divide
 
     void Editor::idle() noexcept
     {
-        NOP();
+        if ( _queuedDisplaySizeChange._displaySizeChanged )
+        {
+            SizeChangeParams params{};
+            params.width = _queuedDisplaySizeChange._targetDisplaySize.width;
+            params.height = _queuedDisplaySizeChange._targetDisplaySize.height;
+            params.isMainWindow = true;
+
+            onWindowSizeChange(params);
+        }
+        else if ( _queuedDisplaySizeChange._resolutionChanged )
+        {
+            SizeChangeParams params{};
+            params.width = _queuedDisplaySizeChange._targetResolution.width;
+            params.height = _queuedDisplaySizeChange._targetResolution.height;
+            params.isMainWindow = true;
+
+            onResolutionChange(params);
+        }
     }
 
     void Editor::createFontTexture( const F32 DPIScaleFactor )
@@ -1371,6 +1388,25 @@ namespace Divide
 
     bool Editor::frameEnded( [[maybe_unused]] const FrameEvent& evt ) noexcept
     {
+        if (!_queuedModelSpawns.empty())
+        {
+            bool spawn = false;
+            Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
+            SceneGraphNode& rootNode = *activeScene->sceneGraph()->getRoot();
+
+            do
+            {
+                const QueueModelSpawn model = _queuedModelSpawns.front();
+                if ( !model._showModal)
+                {
+                    _queuedModelSpawns.pop();
+                    spawn = spawnGeometry(rootNode, model);
+                }
+
+
+            } while(spawn && !_queuedModelSpawns.empty());
+        }
+
         if ( running() && _stepQueue > 0 )
         {
             --_stepQueue;
@@ -1640,7 +1676,7 @@ namespace Divide
             return;
         }
 
-        Attorney::GizmoEditor::updateSelection( _gizmo.get(), nodes );
+        Attorney::GizmoEditor::updateSelections( _gizmo.get(), nodes );
     }
 
     void Editor::copyPlayerCamToEditorCam() noexcept
@@ -2145,16 +2181,18 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        if ( !isInit() )
-        {
-            return;
-        }
-
         const U16 w = params.width;
         const U16 h = params.height;
 
         if ( w < 1 || h < 1 || !params.isMainWindow )
         {
+            return;
+        }
+
+        if ( !isInit() )
+        {
+            _queuedDisplaySizeChange._displaySizeChanged = true;
+            _queuedDisplaySizeChange._targetDisplaySize.set(w,h);
             return;
         }
 
@@ -2164,30 +2202,46 @@ namespace Divide
         {
             ctx->IO.DisplaySize.x = to_F32( params.width );
             ctx->IO.DisplaySize.y = to_F32( params.height );
-            ctx->IO.DisplayFramebufferScale = ImVec2(
-                params.width > 0u ? to_F32( displaySize.width ) / params.width : 0.f,
-                params.height > 0u ? to_F32( displaySize.height ) / params.height : 0.f );
+
+            ctx->IO.DisplayFramebufferScale = 
+            {
+                ctx->IO.DisplaySize.x > 1u ? to_F32( displaySize.width )  / ctx->IO.DisplaySize.x : 1.f,
+                ctx->IO.DisplaySize.y > 1u ? to_F32( displaySize.height ) / ctx->IO.DisplaySize.y : 1.f
+            };
         }
+
+        _queuedDisplaySizeChange._displaySizeChanged = false;
+        _queuedDisplaySizeChange._targetDisplaySize.set(1u, 1u);
     }
 
     void Editor::onResolutionChange( const SizeChangeParams& params )
     {
-        if ( !isInit() )
-        {
-            return;
-        }
-
         const U16 w = params.width;
         const U16 h = params.height;
 
         // Avoid resolution change on minimize so we don't thrash render targets
-        if ( w < 1 || h < 1 || _nodePreviewRTHandle._rt->getResolution() == vec2<U16>( w, h ) )
+        if (w < 1 || h < 1)
         {
             return;
         }
 
-        _nodePreviewRTHandle._rt->resize( w, h );
+        if ( !isInit() )
+        {
+            _queuedDisplaySizeChange._resolutionChanged = true;
+            _queuedDisplaySizeChange._targetResolution.set(w, h);
+            return;
+        }
+        _queuedDisplaySizeChange._resolutionChanged = false;
+        _queuedDisplaySizeChange._targetResolution.set(1u,1u);
+
+        // Avoid resolution change on minimize so we don't thrash render targets
+        if (_nodePreviewRTHandle._rt->getResolution() != vec2<U16>( w, h ) )
+        {
+            _nodePreviewRTHandle._rt->resize( w, h );
+        }
+
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
+
     }
 
     bool Editor::saveSceneChanges( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) const
@@ -2256,6 +2310,11 @@ namespace Divide
         }
 
         return true;
+    }
+
+    void Editor::onNodeSpatialChange([[maybe_unused]] const SceneGraphNode& node)
+    {
+        Attorney::GizmoEditor::updateSelections(_gizmo.get());
     }
 
     void Editor::onChangeScene( Scene* newScene )
@@ -2528,7 +2587,7 @@ namespace Divide
     }
 
     bool Editor::modalModelSpawn( const Handle<Mesh> mesh,
-                                  const bool quick,
+                                  const bool showSpawnModalFirst,
                                   const vec3<F32>& scale,
                                   const vec3<F32>& position )
     {
@@ -2539,73 +2598,88 @@ namespace Divide
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        if ( quick )
+        _queuedModelSpawns.push(QueueModelSpawn
         {
-            const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera( _context.kernel().projectManager().get() );
-            if ( !spawnGeometry( mesh,
-                                 scale,
-                                 playerCam->snapshot()._eye,
-                                 position,
-                                 Get(mesh)->resourceName().c_str() ) )
+            ._mesh = mesh,
+            .transform 
             {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-            return true;
-        }
+                ._translation = position,
+                ._scale = scale,
+            },
+            ._showModal = showSpawnModalFirst
+        });
 
-        if ( _queuedModelSpawn._mesh == INVALID_HANDLE<Mesh> )
+        if (!showSpawnModalFirst)
         {
-            _queuedModelSpawn._mesh = mesh;
-            _queuedModelSpawn._position = position;
-            _queuedModelSpawn._scale = scale;
-            return true;
+            const Camera * playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera(_context.kernel().projectManager().get());
+            _queuedModelSpawns.back().transform._orientation = playerCam->snapshot()._orientation;
         }
 
-        return false;
+        return true;
     }
 
     void Editor::renderModelSpawnModal()
     {
-        if ( _queuedModelSpawn._mesh == INVALID_HANDLE<Mesh> )
-        {
-            return;
-        }
-
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        static bool wasClosed = false;
-        static vec3<F32> rotation( 0.0f );
-
+        static bool showModal = false;
+        static QueueModelSpawn modelSpawn;
+        static bool uniformScaling = true;
         using ReturnTypeOfName = std::remove_cvref_t<std::invoke_result_t<decltype(&Resource::resourceName), Resource>>;
         static char inputBuf[ReturnTypeOfName::kMaxSize + 2] = {};
+
+        if ( !showModal )
+        {
+            if ( _queuedModelSpawns.empty() || !_queuedModelSpawns.front()._showModal )
+            {
+                return;
+            }
+            modelSpawn = _queuedModelSpawns.front();
+            _queuedModelSpawns.pop();
+            showModal = true;
+            modelSpawn._showModal = false;
+        }
 
         Util::OpenCenteredPopup( "Spawn Entity" );
         if ( ImGui::BeginPopupModal( "Spawn Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize ) )
         {
-            if ( wasClosed )
-            {
-                wasClosed = false;
-            }
-
-            DIVIDE_ASSERT( _queuedModelSpawn._mesh != INVALID_HANDLE<Mesh> );
+            DIVIDE_ASSERT(modelSpawn._mesh != INVALID_HANDLE<Mesh> );
             if ( Util::IsEmptyOrNull( inputBuf ) )
             {
-                strcpy( &inputBuf[0], Get(_queuedModelSpawn._mesh)->resourceName().c_str() );
+                strcpy( &inputBuf[0], Get(modelSpawn._mesh)->resourceName().c_str() );
             }
             ImGui::Text( "Spawn [ %s ]?", inputBuf );
             ImGui::Separator();
 
             ImGui::Text( "Scale:" ); ImGui::SameLine();
-            if ( ImGui::InputFloat3( "##Scale:", _queuedModelSpawn._scale._v ) )
+            if ( uniformScaling )
+            {
+                if ( ImGui::InputFloat("##Scale:", &modelSpawn.transform._scale.x, 0.f, 0.f, "%.5f") )
+                {
+                    modelSpawn.transform._scale.set(std::max(modelSpawn.transform._scale.x, EPSILON_F32));
+                }
+            }
+            else
+            {
+                if ( ImGui::InputFloat3( "##Scale:", modelSpawn.transform._scale._v, "%.5f" ) )
+                {
+                    modelSpawn.transform._scale = Max(modelSpawn.transform._scale, VECTOR3_EPSILON);
+                }
+            }
+            if (ImGui::Checkbox("Uniform scaling", &uniformScaling))
             {
             }
+
             ImGui::Text( "Position:" ); ImGui::SameLine();
-            if ( ImGui::InputFloat3( "##Position:", _queuedModelSpawn._position._v ) )
+            if ( ImGui::InputFloat3( "##Position:", modelSpawn.transform._translation._v ) )
             {
             }
+
+            vec3<F32> rotation = modelSpawn.transform._orientation.getEuler();
             ImGui::Text( "Rotation (euler):" ); ImGui::SameLine();
             if ( ImGui::InputFloat3( "##Rotation (euler):", rotation._v ) )
             {
+                modelSpawn.transform._orientation.fromEuler(rotation);
             }
             ImGui::Text( "Name:" ); ImGui::SameLine();
             if ( ImGui::InputText( "##Name:",
@@ -2619,8 +2693,7 @@ namespace Divide
             if ( ImGui::Button( "Cancel", ImVec2( 120, 0 ) ) )
             {
                 ImGui::CloseCurrentPopup();
-                wasClosed = true;
-                rotation.set( 0.f );
+                showModal = false;
                 inputBuf[0] = '\0';
             }
 
@@ -2629,22 +2702,12 @@ namespace Divide
             if ( ImGui::Button( "Yes", ImVec2( 120, 0 ) ) )
             {
                 ImGui::CloseCurrentPopup();
-                wasClosed = true;
-                if ( !spawnGeometry( _queuedModelSpawn._mesh,
-                                     _queuedModelSpawn._scale,
-                                     _queuedModelSpawn._position,
-                                     rotation,
-                                     inputBuf ) )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-                rotation.set( 0.f );
+                showModal = false;
                 inputBuf[0] = '\0';
+
+                _queuedModelSpawns.push(modelSpawn);
             }
-            if ( wasClosed )
-            {
-                _queuedModelSpawn._mesh = INVALID_HANDLE<Mesh>;
-            }
+
             ImGui::EndPopup();
         }
     }
@@ -2656,29 +2719,28 @@ namespace Divide
         _statusBar->showMessage( message, durationMS, error );
     }
 
-    bool Editor::spawnGeometry( const Handle<Mesh> mesh,
-                                const vec3<F32>& scale,
-                                const vec3<F32>& position,
-                                const vec3<Angle::DEGREES<F32>>& rotation,
-                                const std::string_view name) const
+    bool Editor::spawnGeometry( SceneGraphNode& root, const QueueModelSpawn& model ) const
     {
-        constexpr U32 normalMask = to_base( ComponentType::TRANSFORM ) | to_base( ComponentType::BOUNDS ) | to_base( ComponentType::NETWORKING ) | to_base( ComponentType::RENDERING );
+        PROFILE_SCOPE_AUTO(Profiler::Category::Scene);
 
-        SceneGraphNodeDescriptor nodeDescriptor = {};
-        nodeDescriptor._name = name;
-        nodeDescriptor._componentMask = normalMask;
-        nodeDescriptor._nodeHandle = FromHandle(mesh);
+        constexpr U32 normalMask = to_base( ComponentType::TRANSFORM ) |
+                                   to_base( ComponentType::BOUNDS ) |
+                                   to_base( ComponentType::NETWORKING ) |
+                                   to_base( ComponentType::RENDERING );
 
-        Scene* activeScene = _context.kernel().projectManager()->activeProject()->getActiveScene();
-        const SceneGraphNode* node = activeScene->sceneGraph()->getRoot()->addChildNode( nodeDescriptor );
-        if ( node != nullptr )
+        if (model._mesh != INVALID_HANDLE<Mesh>)
         {
-            TransformComponent* tComp = node->get<TransformComponent>();
-            tComp->setPosition( position );
-            tComp->rotate( rotation );
-            tComp->setScale( scale );
+            SceneGraphNodeDescriptor nodeDescriptor = {};
+            nodeDescriptor._name = Get(model._mesh)->resourceName().c_str();
+            nodeDescriptor._componentMask = normalMask;
+            nodeDescriptor._nodeHandle = FromHandle(model._mesh);
 
-            return true;
+            const SceneGraphNode* node = root.addChildNode( nodeDescriptor );
+            if ( node != nullptr )
+            {
+                node->get<TransformComponent>()->setTransform(model.transform);
+                return true;
+            }
         }
 
         return false;

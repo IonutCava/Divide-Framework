@@ -581,6 +581,7 @@ void SceneGraphNode::sceneUpdate(const U64 deltaTimeUS, SceneState& sceneState)
 
     if (hasFlag(Flags::ACTIVE))
     {
+        PROFILE_SCOPE_AUTO(Profiler::Category::GameLogic);
         Attorney::SceneNodeSceneGraph::sceneUpdate(_node, deltaTimeUS, this, sceneState);
     }
     else if (hasFlag(Flags::LOADING))

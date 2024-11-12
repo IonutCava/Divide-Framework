@@ -1320,7 +1320,7 @@ namespace Divide
                 Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), "ERROR: Couldn't load Sponza model!", Time::SecondsToMilliseconds<F32>( 3 ), true );
             }
 
-            if ( Attorney::EditorGeneralWidget::modalModelSpawn( _context.editor(), spawnMesh, modifierPressed, vec3<F32>{0.1f} ) )
+            if ( Attorney::EditorGeneralWidget::modalModelSpawn( _context.editor(), spawnMesh, !modifierPressed, vec3<F32>{0.1f}, VECTOR3_ZERO ) )
             {
             }
         }

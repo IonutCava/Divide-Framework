@@ -286,12 +286,14 @@ namespace Divide
         };
     }
 
+    void Gizmo::updateSelections()
+    {
+        updateSelectionsInternal();
+    }
+
     void Gizmo::updateSelections( const vector<SceneGraphNode*>& nodes )
     {
         _selectedNodes.resize( 0 );
-        _workMatrix.identity();
-        _localToWorldMatrix.identity();
-        _deltaMatrix.identity();
 
         U32 selectionCounter = 0u;
         for ( const SceneGraphNode* node : nodes )
@@ -306,8 +308,16 @@ namespace Divide
                 }
             }
         }
+        updateSelectionsInternal();
+    }
 
-        if ( selectionCounter == 1u )
+    void Gizmo::updateSelectionsInternal()
+    {
+        _workMatrix.identity();
+        _localToWorldMatrix.identity();
+        _deltaMatrix.identity();
+
+        if (_selectedNodes.size() == 1u )
         {
             const TransformComponent* tComp = _selectedNodes.front().tComp;
             _workMatrix = tComp->getWorldMatrix();

@@ -83,13 +83,13 @@ namespace Divide {
         Handle<Texture> _shaderIcon = INVALID_HANDLE<Texture>;
         Handle<Texture> _soundIcon = INVALID_HANDLE<Texture>;
         std::array<Handle<Texture>, to_base(GeometryFormat::COUNT) + 1> _geometryIcons = {};
+        std::array<string, to_base(GeometryFormat::COUNT) + 1> _geometryIconNames = {};
         mutable const Directory* _selectedDir = nullptr;
         vector<Directory> _currentDirectories;
 
         hashMap<size_t, Handle<Texture>> _loadedTextures;
 
         Handle<Texture> _previewTexture = INVALID_HANDLE<Texture>;
-        Handle<Mesh>    _spawnMesh = INVALID_HANDLE<Mesh>;
 
         bool _textureLoadQueueLocked = false;
         eastl::stack<EditorFileEntry> _textureLoadQueue;

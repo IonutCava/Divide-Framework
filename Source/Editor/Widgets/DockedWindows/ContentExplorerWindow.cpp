@@ -95,7 +95,6 @@ namespace Divide {
             DestroyResource( icon.second );
         }
         DestroyResource(_previewTexture);
-        DestroyResource(_spawnMesh);
     }
 
     void ContentExplorerWindow::init()
@@ -112,18 +111,23 @@ namespace Divide {
         _soundIcon  = getTextureForPath( Paths::g_iconsPath, "sound_icon.png");
         _shaderIcon = getTextureForPath( Paths::g_iconsPath, "shader_icon.png");
 
-        _geometryIcons[to_base(GeometryFormat::_3DS)]     = getTextureForPath(Paths::g_iconsPath, "3ds_icon.png");
-        _geometryIcons[to_base(GeometryFormat::ASE)]      = getTextureForPath(Paths::g_iconsPath, "ase_icon.png");
-        _geometryIcons[to_base(GeometryFormat::FBX)]      = getTextureForPath(Paths::g_iconsPath, "fbx_icon.png");
-        _geometryIcons[to_base(GeometryFormat::MD2)]      = getTextureForPath(Paths::g_iconsPath, "md2_icon.png");
-        _geometryIcons[to_base(GeometryFormat::MD5)]      = getTextureForPath(Paths::g_iconsPath, "md5_icon.png");
-        _geometryIcons[to_base(GeometryFormat::OBJ)]      = getTextureForPath(Paths::g_iconsPath, "obj_icon.png");
-        _geometryIcons[to_base(GeometryFormat::DAE)]      = getTextureForPath(Paths::g_iconsPath, "collada.png");
-        _geometryIcons[to_base(GeometryFormat::GLTF)]     = getTextureForPath(Paths::g_iconsPath, "gltf.png");
-        _geometryIcons[to_base(GeometryFormat::X)]        = getTextureForPath(Paths::g_iconsPath, "x_icon.png");
-        _geometryIcons[to_base(GeometryFormat::DVD_ANIM)] = getTextureForPath(Paths::g_iconsPath, "divide.png");
-        _geometryIcons[to_base(GeometryFormat::DVD_GEOM)] = getTextureForPath(Paths::g_iconsPath, "divide.png");
-        _geometryIcons[to_base(GeometryFormat::COUNT)]    = getTextureForPath(Paths::g_iconsPath, "file_icon.png");
+        _geometryIconNames[to_base(GeometryFormat::_3DS)]     = "3ds_icon.png";
+        _geometryIconNames[to_base(GeometryFormat::ASE)]      = "ase_icon.png";
+        _geometryIconNames[to_base(GeometryFormat::FBX)]      = "fbx_icon.png";
+        _geometryIconNames[to_base(GeometryFormat::MD2)]      = "md2_icon.png";
+        _geometryIconNames[to_base(GeometryFormat::MD5)]      = "md5_icon.png";
+        _geometryIconNames[to_base(GeometryFormat::OBJ)]      = "obj_icon.png";
+        _geometryIconNames[to_base(GeometryFormat::DAE)]      = "collada.png";
+        _geometryIconNames[to_base(GeometryFormat::GLTF)]     = "gltf.png";
+        _geometryIconNames[to_base(GeometryFormat::X)]        = "x_icon.png";
+        _geometryIconNames[to_base(GeometryFormat::DVD_ANIM)] = "divide.png";
+        _geometryIconNames[to_base(GeometryFormat::DVD_GEOM)] = "divide.png";
+        _geometryIconNames[to_base(GeometryFormat::COUNT)]    = "file_icon.png";
+
+        for (U8 i = 0u; i < to_U8(GeometryFormat::COUNT) + 1u; ++i)
+        {
+            _geometryIcons[i] = getTextureForPath(Paths::g_iconsPath, _geometryIconNames[i]);
+        }
     }
 
     void ContentExplorerWindow::update([[maybe_unused]] const U64 deltaTimeUS) {
@@ -195,7 +199,6 @@ namespace Divide {
         PROFILE_SCOPE_AUTO(Profiler::Category::GUI);
 
         static bool previewTexture = false;
-        static bool spawnMesh = false;
 
         const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext(_parent, Editor::ImGuiContextType::Editor);
 
@@ -275,6 +278,7 @@ namespace Divide {
                 ImGui::Columns(CLAMPED(to_I32(_selectedDir->_files.size()), 1, 4));
                 bool lockTextureQueue = false;
 
+                size_t imageButtonIndex = 0u;
                 for (const auto& file : _selectedDir->_files)
                 {
                     Handle<Texture> tex = INVALID_HANDLE<Texture>;
@@ -322,7 +326,7 @@ namespace Divide {
                         const U16 h = Get(tex)->height();
                         const F32 aspect = w / to_F32(h);
                     
-                        if (ImGui::ImageButton(Get(tex)->resourceName().c_str(), to_TexID(tex), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Util::StringFormat("{}_{}", Get(tex)->resourceName(), imageButtonIndex++).c_str(), to_TexID(tex), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
                             DestroyResource( _previewTexture );
                             _previewTexture = tex;
@@ -338,13 +342,19 @@ namespace Divide {
 
                         const bool modifierPressed = imguiContext.IO.KeyShift;
                         const ImVec4 bgColour(modifierPressed ? 1.f : 0.f, 0.f, 0.f, modifierPressed ? 1.f : 0.f);
-                        if (ImGui::ImageButton(Get(icon)->resourceName().c_str(), to_TexID(icon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1)))
+                        if (ImGui::ImageButton(Util::StringFormat("{}_{}", _geometryIconNames[to_base(format)], imageButtonIndex++).c_str(), to_TexID(icon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1, bgColour, ImVec4(1, 1, 1, 1)))
                         {
-                            DestroyResource( _spawnMesh );
-                            _spawnMesh = getModelForPath(_selectedDir->_path, file._path.string());
-                            if ( _spawnMesh == INVALID_HANDLE<Mesh>)
+                            const Handle<Mesh> spawnMesh = getModelForPath(_selectedDir->_path, file._path.string());
+                            if ( spawnMesh == INVALID_HANDLE<Mesh>)
                             {
                                 Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't load specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
+                            }
+                            else
+                            {
+                                if (!Attorney::EditorGeneralWidget::modalModelSpawn(_parent, spawnMesh, !imguiContext.IO.KeyShift, VECTOR3_UNIT, VECTOR3_ZERO))
+                                {
+                                    Attorney::EditorGeneralWidget::showStatusMessage(_parent, "ERROR: Couldn't spoawn specified mesh!", Time::SecondsToMilliseconds<F32>(3), true);
+                                }
                             }
                         }
                         hasTooltip = true;
@@ -359,7 +369,7 @@ namespace Divide {
                         const U16 h = Get(_soundIcon)->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(Get(_soundIcon)->resourceName().c_str(), to_TexID(_soundIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Util::StringFormat("{}_{}", Get(_soundIcon)->resourceName(), imageButtonIndex++).c_str(), to_TexID(_soundIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
                             //ToDo: Play sound file -Ionut
                         }
@@ -368,7 +378,7 @@ namespace Divide {
                         const U16 h = Get(_shaderIcon)->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(Get(_shaderIcon)->resourceName().c_str(), to_TexID(_shaderIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Util::StringFormat("{}_{}", Get(_shaderIcon)->resourceName(), imageButtonIndex++).c_str(), to_TexID(_shaderIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
                             openFileInEditor(_selectedDir->_path, file);
                         }
@@ -379,7 +389,7 @@ namespace Divide {
                         const U16 h = Get(_fileIcon)->height();
                         const F32 aspect = w / to_F32(h);
 
-                        if (ImGui::ImageButton(Get(_fileIcon)->resourceName().c_str(), to_TexID(_fileIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
+                        if (ImGui::ImageButton(Util::StringFormat("{}_{}", Get(_fileIcon)->resourceName(), imageButtonIndex++).c_str(), to_TexID(_fileIcon), ImVec2(buttonSize, buttonSize / aspect), uv0, uv1))
                         {
                             openFileInEditor( _selectedDir->_path, file);
                         }
@@ -406,13 +416,9 @@ namespace Divide {
             ImGui::EndChild();
         }
 
-        if ( previewTexture && Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", _previewTexture, vec2<F32>(512, 512), true, true)) {
+        if ( previewTexture && Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", _previewTexture, vec2<F32>(512, 512), true, true))
+        {
             previewTexture = false;
-        }
-
-        const Camera* playerCam = Attorney::ProjectManagerCameraAccessor::playerCamera(_parent.context().kernel().projectManager().get());
-        if ( spawnMesh && Attorney::EditorGeneralWidget::modalModelSpawn(_parent, _spawnMesh, imguiContext.IO.KeyShift, VECTOR3_UNIT, playerCam->snapshot()._eye)) {
-            spawnMesh = false;
         }
 
         ImGui::PopStyleVar();
