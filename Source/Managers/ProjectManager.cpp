@@ -1368,12 +1368,9 @@ namespace Divide
             isLoadFromBackup = true;
 
             // Save file might be deleted if it was corrupted
-            if ( fileExists( path / g_bakSaveFile ) )
+            if ( copyFile( path, g_bakSaveFile, path, g_saveFile, false ) != FileError::NONE )
             {
-                if ( copyFile( path, g_bakSaveFile, path, g_saveFile, false ) != FileError::NONE )
-                {
-                    NOP();
-                }
+                NOP();
             }
         }
 
@@ -1429,12 +1426,9 @@ namespace Divide
             const Str<256>& sceneName = activeScene->resourceName();
             const ResourcePath path = Paths::g_saveLocation / sceneName;
 
-            if ( fileExists( path / g_saveFile) )
+            if ( copyFile( path, g_saveFile, path, g_bakSaveFile, true ) != FileError::NONE )
             {
-                if ( copyFile( path, g_saveFile, path, g_bakSaveFile, true ) != FileError::NONE )
-                {
-                    return false;
-                }
+                return false;
             }
 
             ByteBuffer save;

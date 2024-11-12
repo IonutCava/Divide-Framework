@@ -37,6 +37,13 @@ namespace Divide
                                                         queueLength(),
                                                         descriptor._initialData,
                                                         bufferName.c_str() );
+
+        _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
+    }
+
+    vkShaderBuffer::~vkShaderBuffer()
+    {
+        _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
     }
 
     BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange<> range, const bufferPtr data ) noexcept

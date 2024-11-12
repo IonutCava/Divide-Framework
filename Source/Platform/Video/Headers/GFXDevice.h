@@ -191,24 +191,40 @@ struct ImShaders
 
 FWD_DECLARE_MANAGED_STRUCT( ImShaders );
 
+struct PerPassUtils
+{
+    RenderTargetID HI_Z { INVALID_RENDER_TARGET_ID };
+    RenderTargetID BLUR { INVALID_RENDER_TARGET_ID };
+};
+
 struct RenderTargetNames
 {
+    static PerPassUtils   UTILS;
     static RenderTargetID BACK_BUFFER;
     static RenderTargetID SCREEN;
     static RenderTargetID SCREEN_PREV;
     static RenderTargetID NORMALS_RESOLVED;
-    static RenderTargetID OIT;
-    static RenderTargetID OIT_REFLECT;
     static RenderTargetID SSAO_RESULT;
     static RenderTargetID BLOOM_RESULT;
     static RenderTargetID SSR_RESULT;
-    static RenderTargetID HI_Z;
-    static RenderTargetID HI_Z_REFLECT;
-    static RenderTargetID REFLECTION_PLANAR_BLUR;
-    static RenderTargetID REFLECTION_CUBE;
+    static RenderTargetID OIT;
 
-    static std::array<RenderTargetID, Config::MAX_REFLECTIVE_NODES_IN_VIEW> REFLECTION_PLANAR;
-    static std::array<RenderTargetID, Config::MAX_REFRACTIVE_NODES_IN_VIEW> REFRACTION_PLANAR;
+    // No CUBE OIT for cube reflections and refractions (yet) -Ionut
+    struct REFLECT
+    {
+        static std::array<RenderTargetID, Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW> PLANAR;
+        static std::array<RenderTargetID, Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW> PLANAR_OIT;
+        static std::array<RenderTargetID, Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW>   CUBE;
+        static PerPassUtils UTILS;
+    };
+
+    struct REFRACT
+    {
+        static std::array<RenderTargetID, Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW> PLANAR;
+        static std::array<RenderTargetID, Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW> PLANAR_OIT;
+        static std::array<RenderTargetID, Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW>   CUBE;
+        static PerPassUtils UTILS;
+    };
 };
 
 /// Rough around the edges Adapter pattern abstracting the actual rendering API and access to the GPU

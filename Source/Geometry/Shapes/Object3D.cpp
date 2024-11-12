@@ -53,6 +53,22 @@ void Object3D::setMaterialTpl(const Handle<Material> material)
     }
 }
 
+void Object3D::prepareRender(SceneGraphNode* sgn,
+                             RenderingComponent& rComp,
+                             RenderPackage& pkg,
+                             GFX::MemoryBarrierCommand& postDrawMemCmd,
+                             RenderStagePass renderStagePass,
+                             const CameraSnapshot& cameraSnapshot,
+                             bool refreshData)
+{
+    if (geometryBuffer() != nullptr)
+    {
+        rComp.setIndexBufferElementOffset(geometryBuffer()->firstIndexOffsetCount());
+    }
+
+    SceneNode::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
+}
+
 void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
@@ -75,12 +91,15 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
         RenderingComponent* rComp = sgn->get<RenderingComponent>();
         assert(rComp != nullptr);
 
-        for (U8 i = 0; i < to_U8(_geometryPartitionIDs.size()); ++i) {
+        for (U8 i = 0; i < to_U8(_geometryPartitionIDs.size()); ++i)
+        {
             U16 id = _geometryPartitionIDs[i];
-            if (id == U16_MAX) {
+            if (id == U16_MAX)
+            {
                 assert(i > 0);
                 id = prevID;
             }
+
             rComp->setLoDIndexOffset(i, geometryBuffer()->getPartitionOffset(id), geometryBuffer()->getPartitionIndexCount(id));
             prevID = id;
         }

@@ -106,7 +106,7 @@ namespace Divide
         waterMat->properties().shadingMode( ShadingMode::BLINN_PHONG );
         waterMat->properties().bumpMethod( BumpMethod::NORMAL );
         waterMat->properties().isStatic( true );
-        waterMat->addShaderDefine( ShaderType::COUNT, "ENABLE_TBN" );
+        waterMat->addShaderDefine( "ENABLE_TBN" );
 
         WAIT_FOR_CONDITION( loadTasks.load() == 0u );
 
@@ -181,6 +181,15 @@ namespace Divide
         blurReflectionField._basicType = PushConstantType::BOOL;
 
         _editorComponent->registerField( MOV( blurReflectionField ) );
+
+        EditorComponentField blurRefractionField = {};
+        blurRefractionField._name = "Blur refractions";
+        blurRefractionField._data = &_blurRefractions;
+        blurRefractionField._type = EditorComponentFieldType::PUSH_TYPE;
+        blurRefractionField._readOnly = false;
+        blurRefractionField._basicType = PushConstantType::BOOL;
+
+        _editorComponent->registerField(MOV(blurRefractionField));
 
         EditorComponentField blurKernelSizeField = {};
         blurKernelSizeField._name = "Blur kernel size";
@@ -306,15 +315,15 @@ namespace Divide
             renderable->lockLoD( 0u );
         }
 
-        renderable->setReflectionCallback( [this]( RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+        renderable->setReflectionCallback( [this]( RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut )
                                            {
-                                               updateReflection( passManager, params, commandsInOut, memCmdInOut );
-                                           }, ReflectorType::PLANAR );
+                                               return updateReflection( params, commandsInOut, memCmdInOut );
+                                           } );
 
-        renderable->setRefractionCallback( [this]( RenderPassManager* passManager, RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut )
+        renderable->setRefractionCallback( [this]( RenderCbkParams& params, GFX::CommandBuffer& commandsInOut, GFX::MemoryBarrierCommand& memCmdInOut )
                                            {
-                                               updateRefraction( passManager, params, commandsInOut, memCmdInOut );
-                                           }, RefractorType::PLANAR );
+                                               return updateRefraction( params, commandsInOut, memCmdInOut );
+                                           } );
 
         renderable->toggleRenderOption( RenderingComponent::RenderOptions::CAST_SHADOWS, false );
 
@@ -360,6 +369,8 @@ namespace Divide
         fastData.data[0]._vec[2].set( noiseTile(), noiseFactor() );
         fastData.data[0]._vec[3].xy = fogStartEnd();
 
+        rComp.setIndexBufferElementOffset(Get(_plane)->geometryBuffer()->firstIndexOffsetCount());
+
         SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
     }
 
@@ -380,8 +391,14 @@ namespace Divide
     }
 
     /// update water refraction
-    void WaterPlane::updateRefraction( RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
+    bool WaterPlane::updateRefraction( RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
     {
+        DIVIDE_ASSERT(renderParams._refractType != RefractorType::COUNT);
+        if (renderParams._refractType == RefractorType::CUBE)
+        {
+            return false;
+        }
+
         // If we are above water, process the plane's refraction.
         // If we are below, we render the scene normally
         const bool underwater = PointUnderwater( renderParams._sgn, renderParams._camera->snapshot()._eye );
@@ -393,10 +410,15 @@ namespace Divide
         SetDefaultDrawDescriptor( params );
 
         params._sourceNode = renderParams._sgn;
-        // We don't need to HiZ cull refractions
-        // We don't need to draw refracted transparents using woit 
+        params._targetHIZ = renderParams._hizTarget;
+        params._targetOIT = renderParams._oitTarget;
         params._minExtents.set( 1.0f );
-        params._stagePass = { RenderStage::REFRACTION, RenderPassType::COUNT, renderParams._passIndex, RenderStagePass::VariantType::VARIANT_0 };
+        params._stagePass = {
+            ._stage = RenderStage::REFRACTION,
+            ._passType = RenderPassType::COUNT,
+            ._index = renderParams._passIndex,
+            ._variant = static_cast<RenderStagePass::VariantType>(renderParams._refractType)
+        };
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, refractionPlane );
         params._passName = "Refraction";
@@ -408,7 +430,33 @@ namespace Divide
             params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
         }
 
+        auto& passManager = renderParams._context.context().kernel().renderPassManager();
         passManager->doCustomPass( renderParams._camera, params, bufferInOut, memCmdInOut );
+
+        if (_blurRefractions)
+        {
+            RenderTarget* refractTarget = renderParams._context.renderTargetPool().getRenderTarget(renderParams._renderTarget);
+            RenderTargetHandle refractionTargetHandle{
+                refractTarget,
+                renderParams._renderTarget
+            };
+
+            RenderTarget* refractBlurTarget = renderParams._context.renderTargetPool().getRenderTarget(RenderTargetNames::REFRACT::UTILS.BLUR);
+            RenderTargetHandle refractionBlurBuffer{
+                refractBlurTarget,
+                RenderTargetNames::REFRACT::UTILS.BLUR
+            };
+
+            renderParams._context.blurTarget(refractionTargetHandle,
+                                             refractionBlurBuffer,
+                                             refractionTargetHandle,
+                                             RTAttachmentType::COLOUR,
+                                             RTColourAttachmentSlot::SLOT_0,
+                                             _blurKernelSize,
+                                             true,
+                                             1,
+                                             bufferInOut);
+        }
 
         const PlatformContext& context = passManager->parent().platformContext();
         const RenderTarget* rt = context.gfx().renderTargetPool().getRenderTarget( params._target );
@@ -417,17 +465,26 @@ namespace Divide
         computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture();
         computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+
+        return true;
     }
 
     /// Update water reflections
-    void WaterPlane::updateReflection( RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
+    bool WaterPlane::updateReflection( RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut ) const
     {
+        DIVIDE_ASSERT(renderParams._reflectType != ReflectorType::COUNT);
+        if (renderParams._reflectType == ReflectorType::CUBE)
+        {
+            return false;
+        }
+
         // If we are above water, process the plane's refraction.
         // If we are below, we render the scene normally
         const bool underwater = PointUnderwater( renderParams._sgn, renderParams._camera->snapshot()._eye );
         if ( underwater )
         {
-            return;
+            //ToDo: Validate that this is correct -Ionut.
+            return false;
         }
 
         Plane<F32> reflectionPlane;
@@ -446,10 +503,16 @@ namespace Divide
         SetDefaultDrawDescriptor( params );
 
         params._sourceNode = renderParams._sgn;
-        params._targetHIZ = RenderTargetNames::HI_Z_REFLECT;
-        params._targetOIT = RenderTargetNames::OIT_REFLECT;
+        params._targetHIZ = renderParams._hizTarget;
+        params._targetOIT = renderParams._oitTarget;
         params._minExtents.set( 1.5f );
-        params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, renderParams._passIndex, static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR) };
+        params._stagePass = 
+        {
+            ._stage = RenderStage::REFLECTION,
+            ._passType = RenderPassType::COUNT,
+            ._index = renderParams._passIndex,
+            ._variant = static_cast<RenderStagePass::VariantType>(renderParams._reflectType)
+        };
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, reflectionPlane );
         params._passName = "Reflection";
@@ -458,6 +521,7 @@ namespace Divide
 
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
 
+        auto& passManager = renderParams._context.context().kernel().renderPassManager();
         passManager->doCustomPass( _reflectionCam, params, bufferInOut, memCmdInOut );
 
         if ( _blurReflections )
@@ -468,10 +532,10 @@ namespace Divide
                 renderParams._renderTarget
             };
 
-            RenderTarget* reflectBlurTarget = renderParams._context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_PLANAR_BLUR );
+            RenderTarget* reflectBlurTarget = renderParams._context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECT::UTILS.BLUR );
             RenderTargetHandle reflectionBlurBuffer{
                 reflectBlurTarget,
-                RenderTargetNames::REFLECTION_PLANAR_BLUR
+                RenderTargetNames::REFLECT::UTILS.BLUR
             };
 
             renderParams._context.blurTarget( reflectionTargetHandle,
@@ -492,6 +556,8 @@ namespace Divide
         computeMipMapsCommand._texture = rt->getAttachment( RTAttachmentType::COLOUR )->texture();
         computeMipMapsCommand._usage = ImageUsage::SHADER_READ;
         GFX::EnqueueCommand( bufferInOut, computeMipMapsCommand );
+
+        return true;
     }
 
     void WaterPlane::updatePlaneEquation( const SceneGraphNode* sgn, Plane<F32>& plane, const bool reflection, const F32 offset ) const

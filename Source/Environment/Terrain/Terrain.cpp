@@ -382,22 +382,22 @@ bool Terrain::load( PlatformContext& context )
     WAIT_FOR_CONDITION(albedoTile->getState() == ResourceState::RES_LOADED);
     const U16 tileMapSize = albedoTile->width();
 
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "ENABLE_TBN");
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "TEXTURE_TILE_SIZE " + Util::to_string(tileMapSize));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "TERRAIN_HEIGHT_OFFSET " + Util::to_string(altitudeRange.x));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_X " + Util::to_string(WorldScale.width));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Y " + Util::to_string(altitudeRange.y - altitudeRange.x));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "WORLD_SCALE_Z " + Util::to_string(WorldScale.height));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, "INV_CONTROL_VTX_PER_TILE_EDGE " + Util::to_string(1.f / TessellationParams::VTX_PER_TILE_EDGE));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("CONTROL_VTX_PER_TILE_EDGE {}", TessellationParams::VTX_PER_TILE_EDGE));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("PATCHES_PER_TILE_EDGE {}", TessellationParams::PATCHES_PER_TILE_EDGE));
-    terrainMaterial->addShaderDefine(ShaderType::COUNT, Util::StringFormat("MAX_TEXTURE_LAYERS {}", layerCount));
+    terrainMaterial->addShaderDefine("ENABLE_TBN");
+    terrainMaterial->addShaderDefine("TEXTURE_TILE_SIZE " + Util::to_string(tileMapSize));
+    terrainMaterial->addShaderDefine("TERRAIN_HEIGHT_OFFSET " + Util::to_string(altitudeRange.x));
+    terrainMaterial->addShaderDefine("WORLD_SCALE_X " + Util::to_string(WorldScale.width));
+    terrainMaterial->addShaderDefine("WORLD_SCALE_Y " + Util::to_string(altitudeRange.y - altitudeRange.x));
+    terrainMaterial->addShaderDefine("WORLD_SCALE_Z " + Util::to_string(WorldScale.height));
+    terrainMaterial->addShaderDefine("INV_CONTROL_VTX_PER_TILE_EDGE " + Util::to_string(1.f / TessellationParams::VTX_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(Util::StringFormat("CONTROL_VTX_PER_TILE_EDGE {}", TessellationParams::VTX_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(Util::StringFormat("PATCHES_PER_TILE_EDGE {}", TessellationParams::PATCHES_PER_TILE_EDGE));
+    terrainMaterial->addShaderDefine(Util::StringFormat("MAX_TEXTURE_LAYERS {}", layerCount));
     if (terrainConfig.detailLevel > 1)
     {
-        terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT");
+        terrainMaterial->addShaderDefine("REDUCE_TEXTURE_TILE_ARTIFACT");
         if (terrainConfig.detailLevel > 2)
         {
-            terrainMaterial->addShaderDefine(ShaderType::COUNT, "REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS");
+            terrainMaterial->addShaderDefine("REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS");
         }
     }
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("UNDERWATER_TILE_SCALE {}", to_I32(underwaterTileScale)));
@@ -1091,9 +1091,12 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
                             const CameraSnapshot& cameraSnapshot,
                             const bool refreshData)
 {
-    if (renderStagePass._stage == RenderStage::DISPLAY && renderStagePass._passType == RenderPassType::MAIN_PASS) {
+    if (renderStagePass._stage == RenderStage::DISPLAY && renderStagePass._passType == RenderPassType::MAIN_PASS)
+    {
         _terrainQuadtree.drawBBox(sgn->context().gfx());
     }
+
+    rComp.setIndexBufferElementOffset(_terrainBuffer->firstIndexOffsetCount());
 
     const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
     if (renderStagePass._stage == RenderStage::REFLECTION ||

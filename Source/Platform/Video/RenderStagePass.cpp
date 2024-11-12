@@ -10,27 +10,59 @@ namespace Divide
         switch ( renderStagePass._stage )
         {
             case RenderStage::DISPLAY:
+            case RenderStage::NODE_PREVIEW:
             {
                 assert( renderStagePass._variant == RenderStagePass::VariantType::VARIANT_0 );
                 assert( renderStagePass._pass == RenderStagePass::PassIndex::PASS_0 );
                 assert( renderStagePass._index == 0u );
-                return 0u;
+                return renderStagePass._index + to_U16(renderStagePass._pass);
             }
             case RenderStage::REFLECTION:
             {
-                // All reflectors could be cubemaps.
-                // For a simple planar reflection, pass should be 0
-                assert( to_base( renderStagePass._variant ) != to_base( ReflectorType::PLANAR ) || renderStagePass._pass == RenderStagePass::PassIndex::PASS_0 );
-                return (renderStagePass._index * 6) + to_base( renderStagePass._pass );
+                switch (renderStagePass._variant)
+                {
+                    case static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE):
+                    {
+                        return (renderStagePass._index * 6u) + to_U16(renderStagePass._pass);
+                    }
+                    case static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR):
+                    {
+                        assert(renderStagePass._pass == RenderStagePass::PassIndex::PASS_0);
+                        return GetNodeReflectionIndexOffset() +
+                               (Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW * 6u) + 
+                               renderStagePass._index;
+                    }
+
+                    default:
+                    case static_cast<RenderStagePass::VariantType>(ReflectorType::COUNT):
+                        break;
+                }
+
+                DIVIDE_UNEXPECTED_CALL();
+                return 0u;
             }
             case RenderStage::REFRACTION:
             {
-                // Refraction targets are only planar for now
-                return renderStagePass._index;
-            }
-            case RenderStage::NODE_PREVIEW:
-            {
-                return renderStagePass._index;
+                switch (renderStagePass._variant)
+                {
+                    case static_cast<RenderStagePass::VariantType>(RefractorType::CUBE):
+                    {
+                        return (renderStagePass._index * 6u) + to_U16(renderStagePass._pass);
+                    }
+                    case static_cast<RenderStagePass::VariantType>(RefractorType::PLANAR):
+                    {
+                        assert(renderStagePass._pass == RenderStagePass::PassIndex::PASS_0);
+                        return GetNodeRefractionIndexOffset() +
+                               (Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW * 6u) + 
+                               renderStagePass._index;
+                    }
+                    default:
+                    case static_cast<RenderStagePass::VariantType>(RefractorType::COUNT):
+                        break;
+                }
+
+                DIVIDE_UNEXPECTED_CALL();
+                return 0u;
             }
             case RenderStage::SHADOW:
             {

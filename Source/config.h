@@ -132,10 +132,12 @@ constexpr U8 MAX_CULL_DISTANCES = 1u;
 
 /// How many reflective objects with custom draw pass are we allowed to display on screen at the same time (e.g. Water, mirrors, etc)
 /// SSR and Environment mapping do not count towards this limit. Should probably be removed in the future.
-constexpr U8 MAX_REFLECTIVE_NODES_IN_VIEW = Build::IS_DEBUG_BUILD ? 3u : 5u;
+constexpr U8 MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW = Build::IS_DEBUG_BUILD ? 3u : 5u;
+constexpr U8 MAX_REFLECTIVE_CUBE_NODES_IN_VIEW = Build::IS_DEBUG_BUILD ? 3u : 5u;
 
-/// Similar to MAX_REFLECTIVE_NODES_IN_VIEW but for custom refraction passes (e.g. Water, special glass, etc). Also a candidate for removal
-constexpr U8 MAX_REFRACTIVE_NODES_IN_VIEW = Build::IS_DEBUG_BUILD ? 2u : 4u;
+/// Similar to MAX_REFLECTIVE_*_NODES_IN_VIEW but for custom refraction passes (e.g. Water, special glass, etc). Also a candidate for removal
+constexpr U8 MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW = Build::IS_DEBUG_BUILD ? 2u : 4u;
+constexpr U8 MAX_REFRACTIVE_CUBE_NODES_IN_VIEW = Build::IS_DEBUG_BUILD ? 2u : 4u;
 
 /// Maximum number of environment probes we are allowed to update per frame
 constexpr U8 MAX_REFLECTIVE_PROBES_PER_PASS = 6u;

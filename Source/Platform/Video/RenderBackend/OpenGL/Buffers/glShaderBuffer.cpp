@@ -92,12 +92,7 @@ namespace Divide
                                                                           bindRange );
         }
 
-            if ( result == GLStateTracker::BindResult::FAILED )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
-
-        return result == GLStateTracker::BindResult::JUST_BOUND;
+        return result != GLStateTracker::BindResult::FAILED;
     }
 
     LockableBuffer* glShaderBuffer::getBufferImpl()

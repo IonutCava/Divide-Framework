@@ -59,6 +59,8 @@ namespace Divide {
         VmaAllocationInfo _allocInfo{};
     };
 
+    U32  TotalBufferCount();
+
     FWD_DECLARE_MANAGED_STRUCT( VMABuffer );
 
     struct vkBufferImpl final : public VMABuffer, public LockableBuffer, private NonCopyable

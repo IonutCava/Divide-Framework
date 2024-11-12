@@ -164,9 +164,11 @@ class VertexBuffer final : public VertexDataInterface
     void computeNormals();
     void computeTangents();
 
+    PROPERTY_R_IW(size_t, firstIndexOffsetCount, 0u);
+
    protected:
     /// Returns true if data was updated
-    bool refresh(BufferLock& dataLockOut, BufferLock& indexLockOut);
+    bool refresh(size_t& indexOffsetCountOut, BufferLock& dataLockOut, BufferLock& indexLockOut);
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
     /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer

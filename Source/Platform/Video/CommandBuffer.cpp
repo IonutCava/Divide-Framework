@@ -461,8 +461,6 @@ namespace
 
         for ( CommandBase* cmd : _commands )
         {
-            cmdIndex++;
-
             switch ( cmd->type() )
             {
                 case CommandType::BEGIN_RENDER_PASS:
@@ -656,6 +654,8 @@ namespace
                     // no requirements yet
                 }break;
             };
+
+            ++cmdIndex;
         }
 
         if ( pushedPass )

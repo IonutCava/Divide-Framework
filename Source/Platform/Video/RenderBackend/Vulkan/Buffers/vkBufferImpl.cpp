@@ -8,6 +8,11 @@
 
 namespace Divide
 {
+    namespace
+    {
+        std::atomic_uint g_bufferCount{ 0u };
+    }
+
     VertexInputDescription getVertexDescription( const AttributeMap& vertexFormat )
     {
         VertexInputDescription description;
@@ -42,6 +47,11 @@ namespace Divide
         return description;
     }
 
+    U32 TotalBufferCount()
+    {
+        return g_bufferCount.load();
+    }
+
     VMABuffer::VMABuffer( const BufferParams params )
         : _params(params)
     {
@@ -55,6 +65,7 @@ namespace Divide
                                              {
                                                  LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
                                                  vmaDestroyBuffer( *VK_API::GetStateTracker()._allocatorInstance._allocator, buf, alloc );
+                                                 g_bufferCount.fetch_sub(1u);
                                              }, true );
         }
     }
@@ -153,6 +164,8 @@ namespace Divide
 
             Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)_buffer, VK_OBJECT_TYPE_BUFFER, bufferName );
             _isMemoryMappable = memPropFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+            g_bufferCount.fetch_add(1u);
         }
 
         Byte* mappedRange = nullptr;
@@ -314,7 +327,7 @@ namespace Divide
                                        &ret->_allocInfo ) );
 
             Debug::SetObjectName( VK_API::GetStateTracker()._device->getVKDevice(), (uint64_t)ret->_buffer, VK_OBJECT_TYPE_BUFFER, Util::StringFormat( "{}_staging_buffer", bufferName.data() ).c_str() );
-
+            g_bufferCount.fetch_add(1u);
             return ret;
         }
     } //namespace VKUtil

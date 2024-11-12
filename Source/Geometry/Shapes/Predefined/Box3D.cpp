@@ -95,11 +95,13 @@ bool Box3D::load( PlatformContext& context )
     _halfExtent.set( targetSize / 2);
 
     const size_t vertexCount = std::size( vertices );
-    VertexBuffer::Descriptor vbDescriptor{};
-    vbDescriptor._name = resourceName();
-    vbDescriptor._allowDynamicUpdates = true;
-    vbDescriptor._keepCPUData = true;
-    vbDescriptor._largeIndices = vertexCount + 1 > U16_MAX;
+    VertexBuffer::Descriptor vbDescriptor
+    {
+        ._name = resourceName(),
+        ._largeIndices = vertexCount + 1 > U16_MAX,
+        ._keepCPUData = true,
+        ._allowDynamicUpdates = true
+    };
 
     auto vb = context.gfx().newVB( vbDescriptor );
     vb->setVertexCount( vertexCount );

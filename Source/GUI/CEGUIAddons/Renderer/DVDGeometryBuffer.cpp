@@ -134,7 +134,7 @@ void DVDGeometryBuffer::draw() const
             drawCmd._cmd.baseVertex = pos;
             drawCmd._cmd.vertexCount = currentBatch.vertexCount;
 
-            GFX::EnqueueCommand<GFX::DrawCommand>( *cmdBuffer )->_drawCommands.emplace_back(drawCmd);
+            GFX::EnqueueCommand( *cmdBuffer, GFX::DrawCommand{ drawCmd });
 
             pos += currentBatch.vertexCount;
         }

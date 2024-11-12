@@ -601,7 +601,8 @@ namespace Divide
                 Set( binding._data, s_lightIconsTexture, iconSampler );
             }
 
-            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.back()._drawCount = to_U16( totalLightCount );
+            GenericDrawCommand& drawCmd = GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands.emplace_back();
+            drawCmd._drawCount = to_U16( totalLightCount );
         }
     }
 

@@ -74,6 +74,7 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
     PROPERTY_RW(vec2<F32>, fogStartEnd);
     PROPERTY_RW(U16, blurKernelSize, 9u);
     PROPERTY_RW(bool, blurReflections, true);
+    PROPERTY_RW(bool, blurRefractions, true);
 
    protected:
     friend class ResourceCache;
@@ -103,8 +104,8 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
     void onEditorChange(std::string_view field) noexcept;
 
    private:
-    void updateReflection(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
-    void updateRefraction(RenderPassManager* passManager, RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
+    bool updateReflection(RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
+    bool updateRefraction(RenderCbkParams& renderParams, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) const;
 
    private:
     vec3<U16> _dimensions{1u};

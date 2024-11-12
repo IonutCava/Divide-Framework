@@ -153,8 +153,6 @@ private:
     Handle<ShaderProgram> _postProcessingShader = INVALID_HANDLE<ShaderProgram>;
     vec2<U16> _resolutionCache;
 
-    RTDrawDescriptor _postFXTarget;
-
     //fade settings
     D64 _currentFadeTimeMS = 0.0;
     D64 _targetFadeTimeMS = 0.0;

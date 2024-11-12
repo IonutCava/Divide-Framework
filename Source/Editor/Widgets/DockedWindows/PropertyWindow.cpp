@@ -104,7 +104,7 @@ namespace Divide
             }
             if ( ImGui::SmallButton( "A" ) )
             {
-                ApplyToMaterials( material, material.baseMaterial(), MOV( predicate ) );
+                ApplyToMaterials( material, Get(material.baseMaterial()), MOV( predicate ) );
             }
             if ( ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
             {
@@ -2364,7 +2364,8 @@ namespace Divide
             }
             bool ignoreTexAlpha = material->properties().overrides().ignoreTexDiffuseAlpha();
             bool doubleSided = material->properties().doubleSided();
-            bool refractive = material->properties().isRefractive();
+            RefractorType refractorType = material->properties().refractorType();
+            ReflectorType reflectorType = material->properties().reflectorType();
 
             ImGui::Text( "[Double Sided]" ); ImGui::SameLine();
             if ( ImGui::ToggleButton( "[Double Sided]", &doubleSided ) && !readOnly )
@@ -2394,20 +2395,86 @@ namespace Divide
                             {
                                 matInstance->properties().ignoreTexDiffuseAlpha( baseMaterial.properties().overrides().ignoreTexDiffuseAlpha() );
                             } );
-            ImGui::Text( "[Refractive]" ); ImGui::SameLine();
-            if ( ImGui::ToggleButton( "[Refractive]", &refractive ) && !readOnly )
+
             {
-                RegisterUndo<bool, false>( _parent, PushConstantType::BOOL, !refractive, refractive, "Refractive", [material]( const bool& oldVal )
-                                           {
-                                               material->properties().isRefractive( oldVal );
-                                           } );
-                material->properties().isRefractive( refractive );
-                ret = true;
-            }
-            ApplyAllButton( id, fromTexture || readOnly, *material, []( const Material& baseMaterial, Material* matInstance )
+                static UndoEntry<I32> reflectUndo = {};
+                const char* crtMode = TypeUtil::ReflectorTypeToString(reflectorType);
+                if (ImGui::BeginCombo("Reflection Mode", crtMode, ImGuiComboFlags_PopupAlignLeft))
+                {
+                    for (U8 n = 0; n < to_U8(ReflectorType::COUNT); ++n)
+                    {
+                        const ReflectorType mode = static_cast<ReflectorType>(n);
+                        const bool isSelected = reflectorType == mode;
+
+                        if (ImGui::Selectable(TypeUtil::ReflectorTypeToString(mode), isSelected))
+                        {
+                            reflectUndo._type = PushConstantType::INT;
+                            reflectUndo._name = "Reflect Type";
+                            reflectUndo._oldVal = to_I32(reflectorType);
+                            reflectUndo._newVal = to_I32(mode);
+                            const RenderStagePass tempPass = currentStagePass;
+                            reflectUndo._dataSetter = [material](const I32& data)
                             {
-                                matInstance->properties().isRefractive( baseMaterial.properties().isRefractive() );
-                            } );
+                                material->properties().reflectorType(static_cast<ReflectorType>(data));
+                            };
+                            _context.editor().registerUndoEntry(reflectUndo);
+
+                            reflectorType = mode;
+                            material->properties().reflectorType(mode);
+                            ret = true;
+                        }
+                        if (isSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                ApplyAllButton(id, fromTexture || readOnly, *material, [](const Material& baseMaterial, Material* matInstance)
+                {
+                    matInstance->properties().reflectorType(baseMaterial.properties().reflectorType());
+                });
+            }
+            {
+                static UndoEntry<I32> refractUndo = {};
+                const char* crtMode = TypeUtil::RefractorTypeToString(refractorType);
+                if (ImGui::BeginCombo("Refraction Mode", crtMode, ImGuiComboFlags_PopupAlignLeft))
+                {
+                    for (U8 n = 0; n < to_U8(RefractorType::COUNT); ++n)
+                    {
+                        const RefractorType mode = static_cast<RefractorType>(n);
+                        const bool isSelected = refractorType == mode;
+
+                        if (ImGui::Selectable(TypeUtil::RefractorTypeToString(mode), isSelected))
+                        {
+                            refractUndo._type = PushConstantType::INT;
+                            refractUndo._name = "Refract Type";
+                            refractUndo._oldVal = to_I32(refractorType);
+                            refractUndo._newVal = to_I32(mode);
+                            const RenderStagePass tempPass = currentStagePass;
+                            refractUndo._dataSetter = [material](const I32& data)
+                            {
+                                material->properties().refractorType(static_cast<RefractorType>(data));
+                            };
+                            _context.editor().registerUndoEntry(refractUndo);
+
+                            refractorType = mode;
+                            material->properties().refractorType(mode);
+                            ret = true;
+                        }
+                        if (isSelected)
+                        {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ApplyAllButton( id, fromTexture || readOnly, *material, []( const Material& baseMaterial, Material* matInstance )
+                {
+                    matInstance->properties().refractorType( baseMaterial.properties().refractorType() );
+                });
+            }
         }
         ImGui::Separator();
 

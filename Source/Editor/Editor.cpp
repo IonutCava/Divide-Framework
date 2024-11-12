@@ -923,7 +923,7 @@ namespace Divide
         }
         if ( !_axisGizmo )
         {
-            _axisGizmo = _context.gfx().newIMP( "Editor Device Axis Gizmo" );
+            _axisGizmo = _context.gfx().newIMP( "Editor Scene Axis Gizmo" );
             _axisGizmo->setPipelineDescriptor( _axisGizmoPipelineDesc );
 
             const auto addValAnd10Percent = []( const F32 val )
@@ -1391,7 +1391,7 @@ namespace Divide
         return viewWindow->sceneRect( globalCoords );
     }
 
-    GenericVertexData* Editor::getOrCreateIMGUIBuffer( const I64 bufferGUID, const U32 maxVertices, GFX::MemoryBarrierCommand& memCmdInOut )
+    GenericVertexData* Editor::getOrCreateIMGUIBuffer( const I64 bufferGUID, const U32 maxVertices, const U32 maxIndices, GFX::MemoryBarrierCommand& memCmdInOut )
     {
         for (const auto&[id, ptr] : _imguiBuffers)
         {
@@ -1418,11 +1418,12 @@ namespace Divide
 
         memCmdInOut._bufferLocks.push_back( newBuffer->setBuffer( params )); //Pos, UV and Colour
 
-        /*GenericVertexData::IndexBuffer idxBuff{};
+        GenericVertexData::IndexBuffer idxBuff{};
         idxBuff.smallIndices = sizeof(ImDrawIdx) == sizeof(U16);
         idxBuff.dynamic = true;
-        idxBuff.count = maxVertices * 3;
-        memCmdInOut._bufferLocks.push_back( newBuffer->setIndexBuffer( idxBuff ));*/
+        idxBuff.count = maxIndices;
+        idxBuff.useRingBuffer = true;
+        memCmdInOut._bufferLocks.push_back( newBuffer->setIndexBuffer( idxBuff ));
 
         return newBuffer.get();
     }
@@ -1453,9 +1454,6 @@ namespace Divide
             return;
         }
 
-        GenericVertexData* buffer = getOrCreateIMGUIBuffer( bufferGUID, MaxVertices, memCmdInOut);
-        assert( buffer != nullptr );
-
         // ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
         U32 numVertices = 0, numIndices = 0;
         for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
@@ -1476,14 +1474,11 @@ namespace Divide
             numIndices += clNumIndices;
         }
 
-        memCmdInOut._bufferLocks.emplace_back(buffer->updateBuffer( 0u, 0u, numVertices, vertices ));
+        GenericVertexData* buffer = getOrCreateIMGUIBuffer( bufferGUID, MaxVertices, MaxIndices, memCmdInOut);
+        DIVIDE_ASSERT( buffer != nullptr );
 
-        GenericVertexData::IndexBuffer idxBuffer{};
-        idxBuffer.smallIndices = sizeof( ImDrawIdx ) == sizeof( U16 );
-        idxBuffer.dynamic = true;
-        idxBuffer.count = numIndices;
-        idxBuffer.data = indices;
-        memCmdInOut._bufferLocks.emplace_back(buffer->setIndexBuffer( idxBuffer ));
+        memCmdInOut._bufferLocks.emplace_back(buffer->updateBuffer( 0u, 0u, numVertices, vertices ));
+        memCmdInOut._bufferLocks.emplace_back(buffer->updateIndexBuffer( 0u, numIndices, indices ));
 
         if ( editorPass )
         {

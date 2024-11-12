@@ -47,6 +47,8 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                                        public RingBuffer
 {
    public:
+     static constexpr size_t INVALID_INDEX_OFFSET = SIZE_MAX;
+
      struct IndexBuffer
      {
          bufferPtr data{ nullptr };
@@ -54,8 +56,8 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
          bool smallIndices{ false };
          bool indicesNeedCast{ false };
          bool dynamic{ false };
-
-         vector<U16> _smallIndicesTemp;
+         bool useRingBuffer{ false };
+         vector<U16> smallIndicesTemp;
      };
 
      struct SetBufferParams
@@ -91,6 +93,11 @@ class NOINITVTABLE GenericVertexData : public VertexDataInterface,
                                                   U32 elementCountRange,
                                                   bufferPtr data) = 0;
 
+    [[nodiscard]] virtual BufferLock updateIndexBuffer(U32 elementCountOffset,
+                                                       U32 elementCountRange,
+                                                       bufferPtr data) = 0;
+
+     PROPERTY_R_IW(size_t, firstIndexOffsetCount, 0u);
    protected:
     Str<256> _name;
 };

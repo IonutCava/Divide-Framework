@@ -114,6 +114,42 @@ namespace Divide
 
             return TextureOperation::COUNT;
         }
+
+        const char* ReflectorTypeToString(const ReflectorType reflectorType) noexcept
+        {
+            return Names::reflectorType[to_base( reflectorType )];
+        }
+
+        ReflectorType StringToReflectorType(std::string_view name)
+        {
+            for (U8 i = 0; i < to_U8(ReflectorType::COUNT); ++i)
+            {
+                if (name == Names::reflectorType[i])
+                {
+                    return static_cast<ReflectorType>(i);
+                }
+            }
+
+            return ReflectorType::COUNT;
+        }
+
+        const char* RefractorTypeToString(const RefractorType refractorType) noexcept
+        {
+            return Names::refractorType[to_base(refractorType)];
+        }
+
+        RefractorType StringToRefractorType(std::string_view name)
+        {
+            for (U8 i = 0; i < to_U8(RefractorType::COUNT); ++i)
+            {
+                if (name == Names::refractorType[i])
+                {
+                    return static_cast<RefractorType>(i);
+                }
+            }
+
+            return RefractorType::COUNT;
+        }
     }; //namespace TypeUtil
 
     bool Material::s_shadersDirty = false;
@@ -219,29 +255,36 @@ namespace Divide
         return CachedResource::load( context );
     }
 
-    Handle<Material> Material::clone( const std::string_view nameSuffix )
+    bool Material::Clone(Handle<Material> src, Handle<Material>& dst, const std::string_view nameSuffix)
     {
         DIVIDE_ASSERT( !nameSuffix.empty(), "Material error: clone called without a valid name suffix!" );
+        DIVIDE_ASSERT(src != INVALID_HANDLE<Material>, "Material error: clone called on an invalid source material!");
 
-        Handle<Material> cloneMatHandle = CreateResource( ResourceDescriptor<Material>( resourceName() + nameSuffix ) );
-        ResourcePtr<Material> cloneMat = Get(cloneMatHandle);
+        Material* srcMat = Get(src);
+        DIVIDE_ASSERT(srcMat != nullptr);
 
-        cloneMat->_baseMaterial = this;
-        cloneMat->_properties = this->_properties;
-        cloneMat->_extraShaderDefines = this->_extraShaderDefines;
-        cloneMat->_computeShaderCBK = this->_computeShaderCBK;
-        cloneMat->_computeRenderStateCBK = this->_computeRenderStateCBK;
-        cloneMat->_defaultRenderStates = this->_defaultRenderStates;
-        cloneMat->_topology = this->_topology;
-        cloneMat->_shaderAttributes = this->_shaderAttributes;
-        cloneMat->_shaderAttributesHash = this->_shaderAttributesHash;
+        dst = CreateResource( ResourceDescriptor<Material>(srcMat->resourceName() + nameSuffix ) );
+        DIVIDE_ASSERT(dst != INVALID_HANDLE<Material>);
 
-        cloneMat->ignoreXMLData( this->ignoreXMLData() );
-        cloneMat->updatePriorirty( this->updatePriorirty() );
+        ResourcePtr<Material> cloneMat = Get(dst);
 
-        for ( U8 i = 0u; i < to_U8( this->_textures.size() ); ++i )
+        cloneMat->_baseMaterial = src;
+
+        cloneMat->_properties = srcMat->_properties;
+        cloneMat->_extraShaderDefines = srcMat->_extraShaderDefines;
+        cloneMat->_computeShaderCBK = srcMat->_computeShaderCBK;
+        cloneMat->_computeRenderStateCBK = srcMat->_computeRenderStateCBK;
+        cloneMat->_defaultRenderStates = srcMat->_defaultRenderStates;
+        cloneMat->_topology = srcMat->_topology;
+        cloneMat->_shaderAttributes = srcMat->_shaderAttributes;
+        cloneMat->_shaderAttributesHash = srcMat->_shaderAttributesHash;
+
+        cloneMat->ignoreXMLData(srcMat->ignoreXMLData() );
+        cloneMat->updatePriorirty(srcMat->updatePriorirty() );
+
+        for ( U8 i = 0u; i < to_U8(srcMat->_textures.size() ); ++i )
         {
-            const TextureInfo& texInfo = this->_textures[i];
+            const TextureInfo& texInfo = srcMat->_textures[i];
             if ( texInfo._ptr != INVALID_HANDLE<Texture> )
             {
                 const Handle<Texture> cloneTex = GetResourceRef( texInfo._ptr );
@@ -258,7 +301,7 @@ namespace Divide
         {
             for ( U8 p = 0u; p < to_U8( RenderPassType::COUNT ); ++p )
             {
-                const auto& variantMapSrc = _shaderInfo[s][p];
+                const auto& variantMapSrc = srcMat->_shaderInfo[s][p];
                       auto& variantMapDst = cloneMat->_shaderInfo[s][p];
                 for ( U8 v = 0u; v < to_U8( RenderStagePass::VariantType::COUNT ); ++v )
                 {
@@ -267,10 +310,10 @@ namespace Divide
             }
         }
 
-        LockGuard<SharedMutex> w_lock( _instanceLock );
-        _instances.emplace_back( cloneMatHandle );
+        LockGuard<SharedMutex> w_lock(srcMat->_instanceLock );
+        srcMat->_instances.emplace_back(dst);
 
-        return cloneMatHandle;
+        return true;
     }
 
     U32 Material::update( [[maybe_unused]] const U64 deltaTimeUS )
@@ -604,6 +647,33 @@ namespace Divide
         return true;
     }
 
+    void Material::addShaderDefineInternal(const ShaderType type, const string& define, const bool addPrefix)
+    {
+        ModuleDefines& defines = _extraShaderDefines[to_base(type)];
+
+        for (const ModuleDefine& it : defines)
+        {
+            if (it._addPrefix == addPrefix && it._define == define)
+            {
+                return;
+            }
+        }
+
+        defines.emplace_back(define, addPrefix);
+    }
+
+    void Material::addShaderDefine(const ShaderType type, const string& define, const bool addPrefix)
+    {
+        if (type != ShaderType::COUNT)
+        {
+            addShaderDefineInternal(type, define, addPrefix);
+        }
+        else
+        {
+            addShaderDefine(define, addPrefix);
+        }
+    }
+
     void Material::computeAndAppendShaderDefines( ShaderProgramDescriptor& shaderDescriptor, const RenderStagePass renderStagePass ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
@@ -662,27 +732,12 @@ namespace Divide
         }
         switch ( properties().shadingMode() )
         {
-            case ShadingMode::FLAT:
-            {
-                shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_FLAT", true );
-            } break;
-            case ShadingMode::TOON:
-            {
-                shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_TOON", true );
-            } break;
-            case ShadingMode::BLINN_PHONG:
-            {
-                shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_BLINN_PHONG", true );
-            } break;
-            case ShadingMode::PBR_MR:
-            {
-                shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_MR", true );
-            } break;
-            case ShadingMode::PBR_SG:
-            {
-                shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_SG", true );
-            } break;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            case ShadingMode::FLAT:        shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_FLAT", true );        break;
+            case ShadingMode::TOON:        shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_TOON", true );        break;
+            case ShadingMode::BLINN_PHONG: shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_BLINN_PHONG", true ); break;
+            case ShadingMode::PBR_MR:      shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_MR", true );      break;
+            case ShadingMode::PBR_SG:      shaderDescriptor._globalDefines.emplace_back( "SHADING_MODE_PBR_SG", true );      break;
+            default:                       DIVIDE_UNEXPECTED_CALL();                                                         break;
         }
         // Display pre-pass caches normal maps in a GBuffer, so it's the only exception
         if ( (!isDepthPass || renderStagePass._stage == RenderStage::DISPLAY) &&
@@ -691,6 +746,22 @@ namespace Divide
         {
             // Bump mapping?
             shaderDescriptor._globalDefines.emplace_back( "COMPUTE_TBN", true );
+        }
+
+        switch (properties().reflectorType())
+        {
+            default:
+            case ReflectorType::COUNT  : break;
+            case ReflectorType::PLANAR : shaderDescriptor._globalDefines.emplace_back("USE_PLANAR_REFLECTOR", true); break;
+            case ReflectorType::CUBE   : shaderDescriptor._globalDefines.emplace_back("USE_CUBE_REFLECTOR", true); break;
+        }
+
+        switch (properties().refractorType())
+        {
+            default:
+            case RefractorType::COUNT  : break;
+            case RefractorType::PLANAR : shaderDescriptor._globalDefines.emplace_back("USE_PLANAR_REFRACTOR", true); break;
+            case RefractorType::CUBE   : shaderDescriptor._globalDefines.emplace_back("USE_CUBE_REFRACTOR", true); break;
         }
 
         switch ( _topology )
@@ -807,7 +878,7 @@ namespace Divide
                 else if ( slot == TextureSlot::OPACITY )
                 {
                     add = properties().translucencySource() == TranslucencySource::OPACITY_MAP_A ||
-                        properties().translucencySource() == TranslucencySource::OPACITY_MAP_R;
+                          properties().translucencySource() == TranslucencySource::OPACITY_MAP_R;
                 }
             }
 
@@ -862,20 +933,39 @@ namespace Divide
             }
         }
 
-        if ( _baseMaterial != nullptr )
+        if ( _baseMaterial != INVALID_HANDLE<Material> )
         {
             LockGuard<SharedMutex> w_lock( _instanceLock );
-            erase_if( _baseMaterial->_instances,
+            Material* baseMat = Get(_baseMaterial);
+            DIVIDE_ASSERT(baseMat != nullptr);
+
+            erase_if( baseMat->_instances,
                       [guid = getGUID()]( Handle<Material> instance ) noexcept
                       {
-                          return Get(instance)->getGUID() == guid;
+                          if (instance != INVALID_HANDLE<Material>)
+                          {
+                              return true;
+                          }
+
+                          Material* mat = Get(instance);
+                          return mat == nullptr || mat->getGUID() == guid;
                       } );
         }
 
-        SharedLock<SharedMutex> r_lock( _instanceLock );
+        LockGuard<SharedMutex> r_lock( _instanceLock );
+        erase_if(_instances,
+                 [](Handle<Material> instance) noexcept
+                 {
+                    return instance == INVALID_HANDLE<Material>;
+                 });
+
         for ( Handle<Material> instance : _instances )
         {
-            Get(instance)->_baseMaterial = nullptr;
+            Material* mat = Get(instance);
+            if ( mat != nullptr )
+            {
+                mat->_baseMaterial = INVALID_HANDLE<Material>;
+            }
         }
 
         return true;

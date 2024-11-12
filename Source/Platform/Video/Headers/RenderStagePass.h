@@ -100,28 +100,43 @@ namespace Divide
         return BaseIndex(stagePass._stage, stagePass._passType);
     }
 
+    static constexpr U8 GetNodeReflectionIndexOffset()
+    {
+        return (Config::MAX_REFLECTIVE_PROBES_PER_PASS + U8_ONE/*SkyLight*/) * 6u;
+    }
+
+    static constexpr U8 GetNodeRefractionIndexOffset()
+    {
+        return U8_ZERO;
+    }
+
     [[nodiscard]] static constexpr U8 TotalPassCountForStage(const RenderStage renderStage)
     {
         switch (renderStage)
         {
             case RenderStage::DISPLAY:
             case RenderStage::NODE_PREVIEW:
-                return 1u;
+                return U8_ONE;
             case RenderStage::REFRACTION:
-                return Config::MAX_REFRACTIVE_NODES_IN_VIEW;
+                return GetNodeRefractionIndexOffset() +
+                       (Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW * 6u) +
+                       Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW;
             case RenderStage::REFLECTION:
-                return (Config::MAX_REFLECTIVE_NODES_IN_VIEW + Config::MAX_REFLECTIVE_PROBES_PER_PASS + 1u/*SkyLight*/) * 6u;
+                return GetNodeReflectionIndexOffset() +
+                       (Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW * 6u) +
+                       Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW;
             case RenderStage::SHADOW:
                 return Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT +
-                       Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS * 6 +
+                       (Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS * 6u) +
                        Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS +
-                       1u /*WORLD AO*/;
+                       U8_ONE /*WORLD AO*/;
             case RenderStage::COUNT: break;
         }
 
         DIVIDE_UNEXPECTED_CALL();
         return U8_ONE;
     }
+
 }; //namespace Divide
 
 #endif //DVD_RENDER_STAGE_PASS_H_

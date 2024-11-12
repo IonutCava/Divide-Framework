@@ -131,28 +131,32 @@ namespace Divide
         static RenderThread s_renderThread;
     };
 
-    RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::SCREEN = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::SCREEN_PREV = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::NORMALS_RESOLVED = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::OIT = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::OIT_REFLECT = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::SSAO_RESULT = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::BLOOM_RESULT = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::SSR_RESULT = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::HI_Z = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::HI_Z_REFLECT = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::REFLECTION_PLANAR_BLUR = INVALID_RENDER_TARGET_ID;
-    RenderTargetID RenderTargetNames::REFLECTION_CUBE = INVALID_RENDER_TARGET_ID;
-    std::array<RenderTargetID, Config::MAX_REFLECTIVE_NODES_IN_VIEW> RenderTargetNames::REFLECTION_PLANAR = create_array<Config::MAX_REFLECTIVE_NODES_IN_VIEW, RenderTargetID>( INVALID_RENDER_TARGET_ID );
-    std::array<RenderTargetID, Config::MAX_REFRACTIVE_NODES_IN_VIEW> RenderTargetNames::REFRACTION_PLANAR = create_array<Config::MAX_REFRACTIVE_NODES_IN_VIEW, RenderTargetID>( INVALID_RENDER_TARGET_ID );
-
     D64 GFXDevice::s_interpolationFactor = 1.0;
     U64 GFXDevice::s_frameCount = 0u;
 
     DeviceInformation GFXDevice::s_deviceInformation{};
     GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 
+    PerPassUtils RenderTargetNames::UTILS = {};
+    PerPassUtils RenderTargetNames::REFLECT::UTILS = {};
+    PerPassUtils RenderTargetNames::REFRACT::UTILS = {};
+
+    RenderTargetID RenderTargetNames::BACK_BUFFER = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::SCREEN = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::SCREEN_PREV = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::NORMALS_RESOLVED = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::SSAO_RESULT = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::BLOOM_RESULT = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::SSR_RESULT = INVALID_RENDER_TARGET_ID;
+    RenderTargetID RenderTargetNames::OIT = INVALID_RENDER_TARGET_ID;
+
+    std::array<RenderTargetID, Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW>  RenderTargetNames::REFLECT::PLANAR     = create_array<Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
+    std::array<RenderTargetID, Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW>  RenderTargetNames::REFLECT::PLANAR_OIT = create_array<Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
+    std::array<RenderTargetID, Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW>    RenderTargetNames::REFLECT::CUBE       = create_array<Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
+
+    std::array<RenderTargetID, Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW> RenderTargetNames::REFRACT::PLANAR     = create_array<Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
+    std::array<RenderTargetID, Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW> RenderTargetNames::REFRACT::PLANAR_OIT = create_array<Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
+    std::array<RenderTargetID, Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW>   RenderTargetNames::REFRACT::CUBE       = create_array<Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW, RenderTargetID>(INVALID_RENDER_TARGET_ID);
 
     ImShaders::ImShaders()
     {
@@ -264,7 +268,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // ENV Prefiltered
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // ENV Irradiance
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 2,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // BRDF Lut
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 3,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // Cube Reflection;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 3,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // UNUSED;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 4,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // Shadow Array
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // Shadow Cube
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // Shadow Single
@@ -683,7 +687,7 @@ namespace Divide
             screenDesc._attachments = attachments;
             screenDesc._msaaSamples = config.rendering.MSAASamples;
             screenDesc._name = "Screen";
-            RenderTargetNames::SCREEN = _rtPool->allocateRT( screenDesc )._targetID;
+            RenderTargetNames::SCREEN = _rtPool->allocateRT(screenDesc)._targetID;
 
             auto& screenAttachment = attachments[to_base( ScreenTargets::ALBEDO )];
             screenAttachment._texDescriptor._mipMappingState = MipMappingState::MANUAL;
@@ -692,7 +696,11 @@ namespace Divide
             screenDesc._msaaSamples = 0u;
             screenDesc._name = "Screen Prev";
             screenDesc._attachments = { screenAttachment };
+
             RenderTargetNames::SCREEN_PREV = _rtPool->allocateRT( screenDesc )._targetID;
+
+            screenDesc._name = "Screen Blur";
+            RenderTargetNames::UTILS.BLUR  = _rtPool->allocateRT( screenDesc )._targetID;
 
             auto& normalAttachment = attachments[to_base( ScreenTargets::NORMALS )];
             normalAttachment._slot = RTColourAttachmentSlot::SLOT_0;
@@ -799,6 +807,7 @@ namespace Divide
 
         }
         const U32 reflectRes = nextPOW2( CLAMPED( to_U32( config.rendering.reflectionPlaneResolution ), 16u, 4096u ) - 1u );
+        const U32 refractRes = nextPOW2( CLAMPED( to_U32( config.rendering.reflectionPlaneResolution ), 16u, 4096u ) - 1u );
 
         TextureDescriptor hiZDescriptor{};
         hiZDescriptor._dataType = GFXDataFormat::FLOAT_32;
@@ -821,15 +830,18 @@ namespace Divide
         {
             InternalRTAttachmentDescriptor{ hiZDescriptor, hiZSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
         };
-
         {
             hizRTDesc._name = "HiZ";
             hizRTDesc._resolution = renderResolution;
-            RenderTargetNames::HI_Z = _rtPool->allocateRT( hizRTDesc )._targetID;
+            RenderTargetNames::UTILS.HI_Z = _rtPool->allocateRT( hizRTDesc )._targetID;
 
             hizRTDesc._resolution.set( reflectRes, reflectRes );
             hizRTDesc._name = "HiZ_Reflect";
-            RenderTargetNames::HI_Z_REFLECT = _rtPool->allocateRT( hizRTDesc )._targetID;
+            RenderTargetNames::REFLECT::UTILS.HI_Z = _rtPool->allocateRT( hizRTDesc )._targetID;
+
+            hizRTDesc._resolution.set(refractRes, refractRes);
+            hizRTDesc._name = "HiZ_Refract";
+            RenderTargetNames::REFRACT::UTILS.HI_Z = _rtPool->allocateRT(hizRTDesc)._targetID;
         }
 
         // Reflection Targets
@@ -840,7 +852,6 @@ namespace Divide
         reflectionSampler._minFilter = TextureFilter::LINEAR;
         reflectionSampler._magFilter = TextureFilter::LINEAR;
         reflectionSampler._mipSampling = TextureMipSampling::NONE;
-
         {
             TextureDescriptor environmentDescriptorPlanar{};
             environmentDescriptorPlanar._mipMappingState = MipMappingState::MANUAL;
@@ -860,27 +871,66 @@ namespace Divide
                 };
 
                 refDesc._resolution = vec2<U16>( reflectRes );
-
-                for ( U32 i = 0; i < Config::MAX_REFLECTIVE_NODES_IN_VIEW; ++i )
+                for ( U32 i = 0; i < Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW; ++i )
                 {
                     Util::StringFormat( refDesc._name, "Reflection_Planar_{}", i );
-                    RenderTargetNames::REFLECTION_PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
+                    RenderTargetNames::REFLECT::PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
-                for ( U32 i = 0; i < Config::MAX_REFRACTIVE_NODES_IN_VIEW; ++i )
+                refDesc._resolution = vec2<U16>(refractRes);
+                for ( U32 i = 0; i < Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW; ++i )
                 {
                     Util::StringFormat( refDesc._name, "Refraction_Planar_{}", i );
-                    RenderTargetNames::REFRACTION_PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
+                    RenderTargetNames::REFRACT::PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
                 environmentDescriptorPlanar._mipMappingState = MipMappingState::OFF;
-                refDesc._attachments = 
+                refDesc._attachments =
                 {//skip depth
                     InternalRTAttachmentDescriptor{ environmentDescriptorPlanar, reflectionSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 }
                 };
 
                 refDesc._name = "Reflection_blur";
-                RenderTargetNames::REFLECTION_PLANAR_BLUR = _rtPool->allocateRT( refDesc )._targetID;
+                refDesc._resolution = vec2<U16>(reflectRes);
+                RenderTargetNames::REFLECT::UTILS.BLUR = _rtPool->allocateRT(refDesc)._targetID;
+
+                refDesc._resolution = vec2<U16>(refractRes);
+                refDesc._name = "Refraction_blur";
+                RenderTargetNames::REFRACT::UTILS.BLUR = _rtPool->allocateRT(refDesc)._targetID;
+            }
+        }
+        {
+            TextureDescriptor environmentDescriptorCube{};
+            environmentDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
+            environmentDescriptorCube._mipMappingState = MipMappingState::OFF;
+
+            TextureDescriptor depthDescriptorCube{};
+            depthDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
+            depthDescriptorCube._dataType = GFXDataFormat::UNSIGNED_INT;
+            depthDescriptorCube._baseFormat = GFXImageFormat::RED;
+            depthDescriptorCube._packing = GFXImagePacking::DEPTH;
+
+            depthDescriptorCube._mipMappingState = MipMappingState::OFF;
+
+            RenderTargetDescriptor refDesc = {};
+            refDesc._attachments =
+            {
+                InternalRTAttachmentDescriptor{ environmentDescriptorCube, reflectionSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
+                InternalRTAttachmentDescriptor{ depthDescriptorCube,       reflectionSampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
+            };
+
+            refDesc._resolution = vec2<U16>(reflectRes);
+            for (U32 i = 0; i < Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW; ++i)
+            {
+                Util::StringFormat(refDesc._name, "Reflection_Cube_{}", i);
+                RenderTargetNames::REFLECT::CUBE[i] = _rtPool->allocateRT(refDesc)._targetID;
+            }
+
+            refDesc._resolution = vec2<U16>(refractRes);
+            for (U32 i = 0; i < Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW; ++i)
+            {
+                Util::StringFormat(refDesc._name, "Refraction_Cube_{}", i);
+                RenderTargetNames::REFRACT::CUBE[i] = _rtPool->allocateRT(refDesc)._targetID;
             }
         }
         {
@@ -910,9 +960,13 @@ namespace Divide
                 InternalRTAttachmentDescriptor{ revealageDescriptor,    accumulationSampler, RTAttachmentType::COLOUR, ScreenTargets::REVEALAGE, false },
                 InternalRTAttachmentDescriptor{ normalsDescriptor,      accumulationSampler, RTAttachmentType::COLOUR, ScreenTargets::NORMALS, false },
             };
+
+            RenderTargetDescriptor oitDesc = {};
+            oitDesc._attachments = oitAttachments;
+
             {
-                const RenderTarget* screenTarget = _rtPool->getRenderTarget( RenderTargetNames::SCREEN );
-                RTAttachment* screenAttachment = screenTarget->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO );
+                const RenderTarget* screenTarget    = _rtPool->getRenderTarget( RenderTargetNames::SCREEN );
+                RTAttachment* screenAttachment      = screenTarget->getAttachment( RTAttachmentType::COLOUR, ScreenTargets::ALBEDO );
                 RTAttachment* screenDepthAttachment = screenTarget->getAttachment( RTAttachmentType::DEPTH );
 
                 ExternalRTAttachmentDescriptors externalAttachments
@@ -921,61 +975,51 @@ namespace Divide
                     ExternalRTAttachmentDescriptor{ screenDepthAttachment, screenDepthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0, false }
                 };
 
-                RenderTargetDescriptor oitDesc = {};
                 oitDesc._name = "OIT";
                 oitDesc._resolution = renderResolution;
-                oitDesc._attachments = oitAttachments;
                 oitDesc._externalAttachments = externalAttachments;
                 oitDesc._msaaSamples = config.rendering.MSAASamples;
                 RenderTargetNames::OIT = _rtPool->allocateRT( oitDesc )._targetID;
             }
             {
-                for ( U16 i = 0u; i < Config::MAX_REFLECTIVE_NODES_IN_VIEW; ++i )
+
+                oitDesc._msaaSamples = 0;
+                oitDesc._resolution = vec2<U16>(reflectRes);
+                for ( U16 i = 0u; i < Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW; ++i )
                 {
-                    const RenderTarget* reflectTarget = _rtPool->getRenderTarget( RenderTargetNames::REFLECTION_PLANAR[i] );
+                    const RenderTarget* reflectTarget = _rtPool->getRenderTarget( RenderTargetNames::REFLECT::PLANAR[i] );
                     RTAttachment* screenAttachment = reflectTarget->getAttachment( RTAttachmentType::COLOUR );
                     RTAttachment* depthAttachment = reflectTarget->getAttachment( RTAttachmentType::DEPTH );
 
-                    RenderTargetDescriptor oitDesc = {};
-                    oitDesc._attachments = oitAttachments;
-
-                    ExternalRTAttachmentDescriptors externalAttachments{
+                    ExternalRTAttachmentDescriptors externalAttachments
+                    {
                         ExternalRTAttachmentDescriptor{ screenAttachment, screenAttachment->_descriptor._sampler, RTAttachmentType::COLOUR, ScreenTargets::MODULATE },
-                        ExternalRTAttachmentDescriptor{ depthAttachment, depthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
+                        ExternalRTAttachmentDescriptor{ depthAttachment,  depthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
 
-                    Util::StringFormat( oitDesc._name, "OIT_REFLECT_RES_{}", i );
-                    oitDesc._resolution = vec2<U16>( reflectRes );
+                    Util::StringFormat( oitDesc._name, "OIT_REFLECT_PLANAR_{}", i );
                     oitDesc._externalAttachments = externalAttachments;
-                    oitDesc._msaaSamples = 0;
-                    RenderTargetNames::OIT_REFLECT = _rtPool->allocateRT( oitDesc )._targetID;
+                    RenderTargetNames::REFLECT::PLANAR_OIT[i] = _rtPool->allocateRT( oitDesc )._targetID;
+                }
+
+                oitDesc._resolution = vec2<U16>(refractRes);
+                for (U16 i = 0u; i < Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW; ++i)
+                {
+                    const RenderTarget* refractTarget = _rtPool->getRenderTarget(RenderTargetNames::REFRACT::PLANAR[i]);
+                    RTAttachment* screenAttachment = refractTarget->getAttachment(RTAttachmentType::COLOUR);
+                    RTAttachment* depthAttachment  = refractTarget->getAttachment(RTAttachmentType::DEPTH);
+
+                    ExternalRTAttachmentDescriptors externalAttachments
+                    {
+                        ExternalRTAttachmentDescriptor{ screenAttachment, screenAttachment->_descriptor._sampler, RTAttachmentType::COLOUR, ScreenTargets::MODULATE },
+                        ExternalRTAttachmentDescriptor{ depthAttachment,  depthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
+                    };
+
+                    Util::StringFormat(oitDesc._name, "OIT_REFRACT_PLANAR_{}", i);
+                    oitDesc._externalAttachments = externalAttachments;
+                    RenderTargetNames::REFRACT::PLANAR_OIT[i] = _rtPool->allocateRT(oitDesc)._targetID;
                 }
             }
-        }
-        {
-            TextureDescriptor environmentDescriptorCube{};
-            environmentDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
-            environmentDescriptorCube._mipMappingState = MipMappingState::OFF;
-
-            TextureDescriptor depthDescriptorCube{};
-            depthDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
-            depthDescriptorCube._dataType = GFXDataFormat::UNSIGNED_INT;
-            depthDescriptorCube._baseFormat = GFXImageFormat::RED;
-            depthDescriptorCube._packing = GFXImagePacking::DEPTH;
-
-            depthDescriptorCube._mipMappingState = MipMappingState::OFF;
-
-            RenderTargetDescriptor refDesc = {};
-            refDesc._attachments = 
-            {
-                InternalRTAttachmentDescriptor{ environmentDescriptorCube, reflectionSampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0 },
-                InternalRTAttachmentDescriptor{ depthDescriptorCube,       reflectionSampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 },
-            };
-
-            refDesc._resolution = vec2<U16>( reflectRes );
-
-            refDesc._name = "Reflection_Cube_Array";
-            RenderTargetNames::REFLECTION_CUBE = _rtPool->allocateRT( refDesc )._targetID;
         }
         {
             ShaderModuleDescriptor compModule = {};
@@ -1577,7 +1621,14 @@ namespace Divide
             params._passName = PassNames[i];
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
 
-            const DrawLayerEntry layer = { arrayOffset, i};
+            const DrawLayerEntry layer
+            {
+                ._layer = {
+                    ._offset = arrayOffset,
+                    ._count = 1
+                },
+                ._cubeFace = i
+            };
 
             // Draw to the current cubemap face
             params._targetDescriptorPrePass._writeLayers[RT_DEPTH_ATTACHMENT_IDX] = layer;
@@ -1845,7 +1896,8 @@ namespace Divide
         _rtPool->getRenderTarget( RenderTargetNames::SCREEN_PREV )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSAO_RESULT )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::SSR_RESULT )->resize( w, h );
-        _rtPool->getRenderTarget( RenderTargetNames::HI_Z )->resize( w, h );
+        _rtPool->getRenderTarget( RenderTargetNames::UTILS.HI_Z )->resize( w, h );
+        _rtPool->getRenderTarget( RenderTargetNames::UTILS.BLUR )->resize( w, h );
         _rtPool->getRenderTarget( RenderTargetNames::OIT )->resize( w, h );
 
         _rtPool->getRenderTarget( RenderTargetNames::BLOOM_RESULT )->resize( w / 2, h / 2);
@@ -2535,8 +2587,8 @@ namespace Divide
 
             DebugView_ptr HiZ = std::make_shared<DebugView>();
             HiZ->_shader = _renderTargetDraw;
-            HiZ->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::HI_Z )->getAttachment( RTAttachmentType::COLOUR )->texture();
-            HiZ->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::HI_Z )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
+            HiZ->_texture = renderTargetPool().getRenderTarget( RenderTargetNames::UTILS.HI_Z )->getAttachment( RTAttachmentType::COLOUR )->texture();
+            HiZ->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::UTILS.HI_Z )->getAttachment( RTAttachmentType::COLOUR )->_descriptor._sampler;
             HiZ->_name = "Hierarchical-Z";
             HiZ->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.f );
             HiZ->_shaderData.set( _ID( "channelsArePacked" ), PushConstantType::BOOL, false );

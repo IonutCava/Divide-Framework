@@ -101,6 +101,8 @@ struct PerformanceMetrics
     size_t _uniformBufferVRAMUsage{0u};
     /// Total VRAM usage for all shader buffers
     size_t _bufferVRAMUsage{ 0u };
+    /// Total buffers created
+    size_t _gpuBufferCount{ 0u };
 };
 
 struct DeviceInformation

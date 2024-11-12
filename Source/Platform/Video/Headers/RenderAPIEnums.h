@@ -101,12 +101,13 @@ static_assert(std::size(Names::reflectorType) == to_base(ReflectorType::COUNT) +
 enum class RefractorType : U8
 {
     PLANAR = 0,
+    CUBE,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* refractorType[] = {
-        "PLANAR", "NONE"
+        "PLANAR", "CUBE", "NONE"
     };
 };
 
@@ -647,7 +648,7 @@ enum class GFXImageFormat : U8 {
 namespace Names {
     static constexpr const char* GFXImageFormat[] = {
         "RED", "RG", "BGR", "RGB", "BGRA", "RGBA", "BC1/DXT1_RGB", "BC1a/DXT1_RGBA", "BC2/DXT3_RGBA",
-        "BC3/DXT5_RGBA", "BC3n", "BC4s", "BC4u", "BC5s", "BC5u", "BC6s", "BC6u", "BC7", "NONE",
+        "BC3/DXT5_RGBA", "BC3n", "BC4s", "BC4u", "BC5s", "BC5u", "BC6s", "BC6u", "BC7", "BC3_RGBM", "NONE",
     };
 };
 

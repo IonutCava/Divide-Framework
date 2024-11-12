@@ -63,6 +63,9 @@ namespace Divide {
                                               [[maybe_unused]] U32 elementCountOffset,
                                               [[maybe_unused]] U32 elementCountRange,
                                               [[maybe_unused]] bufferPtr data) noexcept override{ return {}; }
+        [[nodiscard]] BufferLock updateIndexBuffer([[maybe_unused]]U32 elementCountOffset,
+                                                   [[maybe_unused]]U32 elementCountRange,
+                                                   [[maybe_unused]]bufferPtr data) noexcept override { return {}; }
     };
 
     class noTexture final : public Texture {

@@ -52,7 +52,7 @@ enum class ShaderResult : U8;
 
 struct vkUserData : VDIUserData
 {
-VkCommandBuffer* _cmdBuffer = nullptr;
+    VkCommandBuffer* _cmdBuffer = nullptr;
 };
 
 class VK_API final : public RenderAPIWrapper {

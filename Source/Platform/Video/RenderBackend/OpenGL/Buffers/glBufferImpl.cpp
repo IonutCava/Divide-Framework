@@ -19,15 +19,27 @@ namespace Divide
     {
         DIVIDE_ASSERT(_params._bufferParams._updateFrequency != BufferUpdateFrequency::COUNT );
 
-        const size_t alignment = _params._target == gl46core::GL_UNIFORM_BUFFER
-                                            ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO
-                                            : _params._target == gl46core::GL_SHADER_STORAGE_BUFFER
-                                                            ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO
-                                                            : _params._target == gl46core::GL_ELEMENT_ARRAY_BUFFER
-                                                                ? GFXDevice::GetDeviceInformation()._offsetAlignmentBytesIBO
-                                                                : GFXDevice::GetDeviceInformation()._offsetAlignmentBytesVBO;
+        size_t alignment = GFXDevice::GetDeviceInformation()._offsetAlignmentBytesVBO;
+        U32 flags = 0u;
 
-        const U32 flags = _params._target == gl46core::GL_ELEMENT_ARRAY_BUFFER ? to_U32(params._bufferParams._elementSize) : 0u;
+        switch (_params._target)
+        {
+            case gl46core::GL_UNIFORM_BUFFER:
+            {
+                alignment = GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO;
+            } break;
+            case gl46core::GL_SHADER_STORAGE_BUFFER:
+            {
+                alignment = GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO;
+            } break;
+            case gl46core::GL_ELEMENT_ARRAY_BUFFER:
+            {
+                alignment = GFXDevice::GetDeviceInformation()._offsetAlignmentBytesIBO;
+                flags = to_U32(params._bufferParams._elementSize);
+            } break;
+            default:
+            break;
+        };
 
         _allocator = &GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
 
@@ -45,7 +57,6 @@ namespace Divide
             case BufferUpdateFrequency::OFTEN:
             case BufferUpdateFrequency::OCASSIONAL:
             {
-
                 // We will also need to be careful to not step on our own toes here
                 _lockManager = std::make_unique<glLockManager>();
             } break;
@@ -58,9 +69,8 @@ namespace Divide
         }
 
         // We can't offset bind a command buffer easily in OpenGL, so just use individual allocations for these
-        const bool poolAllocations = _params._bufferParams._usageType != BufferUsageType::COMMAND_BUFFER;
         const size_t alignedSize = Util::GetAlignmentCorrected(_params._dataSize, alignment);// Code for the worst case?
-        _memoryBlock = _allocator->allocate( poolAllocations,
+        _memoryBlock = _allocator->allocate( true,
                                              alignedSize,
                                              storageMask,
                                              accessMask,
@@ -78,6 +88,7 @@ namespace Divide
         }
 
         context.getPerformanceMetrics()._bufferVRAMUsage += _memoryBlock._size;
+        context.getPerformanceMetrics()._gpuBufferCount = GLUtil::GLMemory::TotalBufferCount();
     }
 
     glBufferImpl::~glBufferImpl()
@@ -92,6 +103,8 @@ namespace Divide
 
         _context.getPerformanceMetrics()._bufferVRAMUsage -= _copyBufferSize;
         GLUtil::freeBuffer( _copyBufferTarget );
+
+        _context.getPerformanceMetrics()._gpuBufferCount = GLUtil::GLMemory::TotalBufferCount();
     }
 
     BufferLock glBufferImpl::writeOrClearBytes( const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data )
@@ -176,6 +189,8 @@ namespace Divide
             assert( bufferData != nullptr );
             memcpy( outData.first, bufferData, rangeInBytes );
             gl46core::glUnmapNamedBuffer( _copyBufferTarget );
+
+            _context.getPerformanceMetrics()._gpuBufferCount = GLUtil::GLMemory::TotalBufferCount();
         }
     }
 

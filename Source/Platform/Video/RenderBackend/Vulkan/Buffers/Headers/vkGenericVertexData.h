@@ -33,6 +33,7 @@
 #ifndef VK_GENERIC_VERTEX_DATA_H
 #define VK_GENERIC_VERTEX_DATA_H
 
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 namespace Divide {
@@ -40,39 +41,61 @@ namespace Divide {
 FWD_DECLARE_MANAGED_STRUCT(vkBufferImpl);
 
 class vkGenericVertexData final : public GenericVertexData {
+    struct GenericBufferImpl;
+
     public:
         vkGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const std::string_view name);
+        ~vkGenericVertexData();
 
         void reset() override;
 
         void draw(const GenericDrawCommand& command, VDIUserData* data) noexcept override;
 
         [[nodiscard]] BufferLock setIndexBuffer( const IndexBuffer& indices ) override;
+
         [[nodiscard]] BufferLock setBuffer(const SetBufferParams& params) noexcept override;
-        [[nodiscard]] BufferLock updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) noexcept override;
+
+        [[nodiscard]] BufferLock updateBuffer(U32 buffer,
+                                              U32 elementCountOffset,
+                                              U32 elementCountRange,
+                                              bufferPtr data) noexcept override;
+
+        [[nodiscard]] BufferLock updateIndexBuffer(U32 elementCountOffset,
+                                                   U32 elementCountRange,
+                                                   bufferPtr data) noexcept override;
 
     private:
-        void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig, VkCommandBuffer& cmdBuffer);
+        void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig,
+                                VkCommandBuffer& cmdBuffer);
+
+        [[nodiscard]] BufferLock updateBuffer(GenericBufferImpl& buffer,
+                                              U32 elementCountOffset,
+                                              U32 elementCountRange,
+                                              VkAccessFlags2 dstAccessMask,
+                                              VkPipelineStageFlags2 dstStageMask,
+                                              bufferPtr data);
 
     private:
         struct GenericBufferImpl
         {
             vkBufferImpl_uptr _buffer{ nullptr };
-            SetBufferParams::BufferBindConfig _bindConfig{};
             size_t _ringSizeFactor{ 1u };
             size_t _elementStride{ 0u };
         };
 
-        struct IndexBufferEntry
+        struct GenericBindableBufferImpl : GenericBufferImpl
         {
-            vkBufferImpl_uptr _buffer{ nullptr };
+            SetBufferParams::BufferBindConfig _bindConfig{};
+        };
+
+        struct GenericIndexBufferImpl : GenericBufferImpl
+        {
             IndexBuffer _data{};
-            size_t _ringSizeFactor{ 1u };
             size_t _bufferSize{ 0u };
         };
 
-        IndexBufferEntry _idxBuffer;
-        vector<GenericBufferImpl> _bufferObjects;
+        GenericIndexBufferImpl _indexBuffer;
+        eastl::fixed_vector<GenericBindableBufferImpl,1,true> _bufferObjects;
         SharedMutex _idxBufferLock;
     };
 

@@ -29,50 +29,33 @@ namespace Divide
 
     namespace
     {
-        // We need a proper, time-based system, to check reflection budget
-        namespace ReflectionUtil
+        template<U8 Budget>
+        struct RefBudget
         {
-            U16 g_reflectionBudget = 0;
+            U8 g_crtBudget = 0u;
 
-            [[nodiscard]] bool isInBudget() noexcept
-            {
-                return g_reflectionBudget < Config::MAX_REFLECTIVE_NODES_IN_VIEW;
-            }
-            void resetBudget() noexcept
-            {
-                g_reflectionBudget = 0;
-            }
-            void updateBudget() noexcept
-            {
-                ++g_reflectionBudget;
-            }
-            [[nodiscard]] U16  currentEntry() noexcept
-            {
-                return g_reflectionBudget;
-            }
-        }
+            bool isInBudget()   noexcept { return g_crtBudget < Budget; }
+            void resetBudget()  noexcept { g_crtBudget = 0u; }
+            void updateBudget() noexcept { ++g_crtBudget; }
+            U8   currentEntry() noexcept { return g_crtBudget; }
+        };
 
-        namespace RefractionUtil
+        template<ReflectorType RT>
+        struct ReflectionUtil : std::conditional_t<RT == ReflectorType::PLANAR, RefBudget<Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW>, RefBudget<Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW>>
         {
-            U16 g_refractionBudget = 0;
+            static_assert(RT != ReflectorType::COUNT);
+        };
 
-            [[nodiscard]] bool isInBudget() noexcept
-            {
-                return g_refractionBudget < Config::MAX_REFRACTIVE_NODES_IN_VIEW;
-            }
-            void resetBudget() noexcept
-            {
-                g_refractionBudget = 0;
-            }
-            void updateBudget() noexcept
-            {
-                ++g_refractionBudget;
-            }
-            [[nodiscard]] U16  currentEntry() noexcept
-            {
-                return g_refractionBudget;
-            }
-        }
+        template<RefractorType RT>
+        struct RefractionUtil : std::conditional_t<RT == RefractorType::PLANAR, RefBudget<Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW>, RefBudget<Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW>>
+        {
+            static_assert(RT != RefractorType::COUNT);
+        };
+
+        static ReflectionUtil<ReflectorType::PLANAR> g_planarReflectBudget{};
+        static ReflectionUtil<ReflectorType::CUBE>   g_cubeReflectBudget{};
+        static RefractionUtil<RefractorType::PLANAR> g_planarRefractBudget{};
+        static RefractionUtil<RefractorType::CUBE>   g_cubeRefractBudget{};
     }
 
     RenderPass::RenderPass( RenderPassManager& parent, GFXDevice& context, const RenderStage renderStage, const vector<RenderStage>& dependencies )
@@ -123,7 +106,7 @@ namespace Divide
                 params._targetDescriptorMainPass._autoResolveMSAA = false; ///< We use a custom GBuffer resolve for this
                 params._targetDescriptorMainPass._keepMSAADataAfterResolve = true;
 
-                params._targetHIZ = RenderTargetNames::HI_Z;
+                params._targetHIZ = RenderTargetNames::UTILS.HI_Z;
                 params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX]._enabled = false;
 
                 if constexpr (true)
@@ -257,20 +240,34 @@ namespace Divide
                     mgr->getSortedReflectiveNodes( camera, RenderStage::REFLECTION, true, s_Nodes );
 
                     // While in budget, update reflections
-                    ReflectionUtil::resetBudget();
-                    for ( size_t i = 0; i < s_Nodes.size(); ++i )
+                    g_planarReflectBudget.resetBudget();
+                    g_cubeReflectBudget.resetBudget();
+
+                    for ( size_t i = 0u; i < s_Nodes.size(); ++i )
                     {
                         const VisibleNode& node = s_Nodes.node( i );
                         RenderingComponent* const rComp = node._node->get<RenderingComponent>();
+
                         if ( Attorney::RenderingCompRenderPass::updateReflection( *rComp,
-                                                                                  ReflectionUtil::currentEntry(),
-                                                                                  ReflectionUtil::isInBudget(),
+                                                                                  ReflectorType::PLANAR,
+                                                                                  g_planarReflectBudget.currentEntry(),
+                                                                                  g_planarReflectBudget.isInBudget(),
                                                                                   camera,
-                                                                                  renderState,
                                                                                   bufferInOut,
                                                                                   memCmdInOut ) )
                         {
-                            ReflectionUtil::updateBudget();
+                            g_planarReflectBudget.updateBudget();
+                            continue;
+                        }
+                        if ( Attorney::RenderingCompRenderPass::updateReflection( *rComp,
+                                                                                  ReflectorType::CUBE,
+                                                                                  g_cubeReflectBudget.currentEntry(),
+                                                                                  g_cubeReflectBudget.isInBudget(),
+                                                                                  camera,
+                                                                                  bufferInOut,
+                                                                                  memCmdInOut ) )
+                        {
+                            g_cubeReflectBudget.updateBudget();
                         }
                     }
                 }
@@ -291,20 +288,33 @@ namespace Divide
                 {
                     mgr->getSortedRefractiveNodes( camera, RenderStage::REFRACTION, true, s_Nodes );
                     // While in budget, update refractions
-                    RefractionUtil::resetBudget();
+                    g_planarRefractBudget.resetBudget();
+                    g_cubeRefractBudget.resetBudget();
+
                     for ( size_t i = 0; i < s_Nodes.size(); ++i )
                     {
                         const VisibleNode& node = s_Nodes.node( i );
                         RenderingComponent* const rComp = node._node->get<RenderingComponent>();
                         if ( Attorney::RenderingCompRenderPass::updateRefraction( *rComp,
-                                                                                  RefractionUtil::currentEntry(),
-                                                                                  RefractionUtil::isInBudget(),
+                                                                                  RefractorType::PLANAR,
+                                                                                  g_planarRefractBudget.currentEntry(),
+                                                                                  g_planarRefractBudget.isInBudget(),
                                                                                   camera,
-                                                                                  renderState,
                                                                                   bufferInOut,
                                                                                   memCmdInOut ) )
                         {
-                            RefractionUtil::updateBudget();
+                            g_planarRefractBudget.resetBudget();
+                            continue;
+                        }
+                        if ( Attorney::RenderingCompRenderPass::updateRefraction( *rComp,
+                                                                                  RefractorType::CUBE,
+                                                                                  g_cubeRefractBudget.currentEntry(),
+                                                                                  g_cubeRefractBudget.isInBudget(),
+                                                                                  camera,
+                                                                                  bufferInOut,
+                                                                                  memCmdInOut ) )
+                        {
+                            g_cubeRefractBudget.resetBudget();
                         }
                     }
                 }

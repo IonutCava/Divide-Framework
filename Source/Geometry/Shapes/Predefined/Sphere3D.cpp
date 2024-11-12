@@ -27,12 +27,12 @@ bool Sphere3D::load( PlatformContext& context )
 {
     const U32 vertexCount = SQUARED( _resolution );
 
-    VertexBuffer::Descriptor vbDescriptor{};
-    vbDescriptor._name = resourceName();
-    vbDescriptor._allowDynamicUpdates = false;
-    vbDescriptor._keepCPUData = true;
-    vbDescriptor._largeIndices = vertexCount + 1 > U16_MAX;
-
+    VertexBuffer::Descriptor vbDescriptor
+    {
+        ._name = resourceName(),
+        ._largeIndices = vertexCount + 1 > U16_MAX,
+        ._keepCPUData = true
+    };
     auto vb = context.gfx().newVB( vbDescriptor );
     vb->setVertexCount( vertexCount );
     vb->reserveIndexCount( vertexCount );

@@ -375,7 +375,13 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         RenderPassParams params = {};
 
         params._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID;
-        params._stagePass = { RenderStage::REFLECTION, RenderPassType::COUNT, to_U16(Config::MAX_REFLECTIVE_NODES_IN_VIEW + SkyProbeLayerIndex()), static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE) };
+        params._stagePass = 
+        {
+            ._stage = RenderStage::REFLECTION,
+            ._passType = RenderPassType::COUNT,
+            ._index = SkyProbeLayerIndex(),
+            ._variant = static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE)
+        };
 
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_STATIC_NODES));
@@ -440,11 +446,6 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 2u, ShaderStageVisibility::COMPUTE );
             Set( binding._data, brdfLut->texture(), brdfLut->_descriptor._sampler );
-        }
-        {
-            RTAttachment* targetAtt = context.renderTargetPool().getRenderTarget( RenderTargetNames::REFLECTION_CUBE )->getAttachment( RTAttachmentType::COLOUR );
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, targetAtt->texture(), targetAtt->_descriptor._sampler );
         }
     }
 }
@@ -677,21 +678,28 @@ namespace
     constexpr I16 g_debugViewBase = 10;
 }
 
-void SceneEnvironmentProbePool::prepareDebugData() {
+void SceneEnvironmentProbePool::prepareDebugData()
+{
     const bool enableSkyLightDebug = DebuggingSkyLight();
     const bool enableProbeDebugging = _debugProbe != nullptr;
     const I16 skyLightGroupID = g_debugViewBase + SkyProbeLayerIndex();
     const I16 probeID = enableProbeDebugging ? g_debugViewBase + _debugProbe->rtLayerIndex() : -1;
 
     bool addSkyLightViews = true, addProbeViews = true;
-    for (const DebugView_ptr& view : s_debugViews) {
-        if (view->_groupID == skyLightGroupID) {
+    for (const DebugView_ptr& view : s_debugViews)
+    {
+        if (view->_groupID == skyLightGroupID)
+        {
             addSkyLightViews = false;
             view->_enabled = enableSkyLightDebug;
-        } else if (enableProbeDebugging && view->_groupID == probeID) {
+        }
+        else if (enableProbeDebugging && view->_groupID == probeID)
+        {
             addProbeViews = false;
             view->_enabled = true;
-        } else {
+        }
+        else
+        {
             view->_enabled = false;
         }
     }

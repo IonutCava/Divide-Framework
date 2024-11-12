@@ -1559,7 +1559,8 @@ namespace Divide
                     case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
                     {
                         const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
-                        if ( bufferEntry._buffer == nullptr || bufferEntry._range._length == 0u ) [[unlikely]]
+                        if ( bufferEntry._buffer == nullptr || 
+                             bufferEntry._range._length == 0u ) [[unlikely]]
                         {
                             continue;
                         }
@@ -1570,12 +1571,13 @@ namespace Divide
                             glBindingSlot,
                             {
                                 bufferEntry._range._startOffset * glBuffer->getPrimitiveSize(),
-                                bufferEntry._range._length * glBuffer->getPrimitiveSize(),
+                                bufferEntry._range._length      * glBuffer->getPrimitiveSize(),
                             },
                             bufferEntry._queueReadIndex
                             ) )
                         {
-                            NOP();
+                            //ToDo: maybe warn and skip the next draw instead? -Ionut
+                            DIVIDE_UNEXPECTED_CALL();
                         }
                     } break;
                     case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
@@ -1772,6 +1774,7 @@ namespace Divide
         {
             const auto handle = pipelineDescriptor._shaderProgramHandle;
             Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_HANDLE" ), handle._index, handle._generation );
+            s_stateTracker._activePipeline = nullptr;
         }
 
         return ret;

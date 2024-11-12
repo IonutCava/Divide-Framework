@@ -48,8 +48,8 @@ namespace GLMemory{
     };
 
     Byte* GetZeroData(const size_t bufferSize);
-
     void OnFrameEnd(U64 frameCount);
+    U32  TotalBufferCount();
 
     struct Block
     {
@@ -80,7 +80,7 @@ namespace GLMemory{
         PROPERTY_R_IW( gl46core::BufferAccessMask, accessMask, gl46core::BufferAccessMask::GL_NONE_BIT);
         PROPERTY_R_IW( U32, flags, 0u);
     protected:
-        vector<Block> _blocks;
+        eastl::list<Block> _blocks;
         Byte* _memory{ nullptr };
     };
 

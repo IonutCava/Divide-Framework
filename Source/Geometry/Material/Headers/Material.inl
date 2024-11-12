@@ -80,13 +80,14 @@ inline bool Material::hasTransparency() const noexcept
 inline bool Material::isReflective() const noexcept
 {
     return properties().metallic() > 0.05f &&
-           properties().roughness() < 0.99f;
+           properties().roughness() < 0.99f &&
+           properties().reflectorType() != ReflectorType::COUNT;
 }
 
 inline bool Material::isRefractive() const noexcept
 {
     return hasTransparency() &&
-           properties().isRefractive();
+           properties().refractorType() != RefractorType::COUNT;
 }
 
 inline ShaderProgramInfo& Material::shaderInfo(const RenderStagePass renderStagePass)
@@ -99,46 +100,23 @@ inline const ShaderProgramInfo& Material::shaderInfo(const RenderStagePass rende
     return _shaderInfo[to_base(renderStagePass._stage)][to_base(renderStagePass._passType)][to_base(renderStagePass._variant)];
 }
 
-inline void Material::addShaderDefine(const ShaderType type, const string& define, const bool addPrefix = true)
-{
-    if (type != ShaderType::COUNT)
-    {
-        addShaderDefineInternal(type, define, addPrefix);
-    }
-    else
-    {
-        for (U8 i = 0u; i < to_U8(ShaderType::COUNT); ++i)
-        {
-            addShaderDefine(static_cast<ShaderType>(i), define, addPrefix);
-        }
-    }
-}
-
 inline const Material::TextureInfo& Material::getTextureInfo(const TextureSlot usage) const
 {
     return _textures[to_base(usage)];
-}
-
-inline void Material::addShaderDefineInternal(const ShaderType type, const string& define, bool addPrefix)
-{
-    ModuleDefines& defines = _extraShaderDefines[to_base(type)];
-
-    if (!eastl::any_of(eastl::cbegin(defines),
-                       eastl::cend(defines),
-                       [&define, addPrefix](const ModuleDefine& it)
-                       {
-                            return it._addPrefix == addPrefix &&
-                                   it._define.compare(define.c_str()) == 0;
-                        }))
-    {
-        defines.emplace_back(define, addPrefix);
-    }
 }
 
 inline const ModuleDefines& Material::shaderDefines(const ShaderType type) const
 {
     assert(type != ShaderType::COUNT);
     return _extraShaderDefines[to_base(type)];
+}
+
+inline void Material::addShaderDefine(const string& define, bool addPrefix)
+{
+    for (U8 i = 0u; i < to_U8(ShaderType::COUNT); ++i)
+    {
+        addShaderDefineInternal(static_cast<ShaderType>(i), define, addPrefix);
+    }
 }
 
 }; //namespace Divide

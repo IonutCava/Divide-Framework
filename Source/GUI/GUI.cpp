@@ -459,6 +459,11 @@ namespace Divide
         };
         params.renderDraw = []( void* userPtr, const FONSvert* verts, int nverts )
         {
+            if (nverts <= 0)
+            {
+                return;
+            }
+
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
             if ( dvd->_fontRenderingTexture == INVALID_HANDLE<Texture> || !dvd->_fontRenderingBuffer || !dvd->_commandBuffer )
             {
@@ -478,10 +483,16 @@ namespace Divide
             const BufferLock lock = dvd->_fontRenderingBuffer->updateBuffer( 0u, elementOffset, nverts, (Divide::bufferPtr)verts );
             dvd->_memCmd->_bufferLocks.emplace_back( lock );
 
-            GenericDrawCommand& drawCmd = GFX::EnqueueCommand<GFX::DrawCommand>( *dvd->_commandBuffer )->_drawCommands.emplace_back();
-            drawCmd._sourceBuffer = dvd->_fontRenderingBuffer->handle();
-            drawCmd._cmd.vertexCount = nverts;
-            drawCmd._cmd.baseVertex = elementOffset;
+            GenericDrawCommand drawCmd
+            {
+                ._cmd = 
+                {
+                    .vertexCount = to_U32(nverts),
+                    .baseVertex = elementOffset
+                },
+                ._sourceBuffer = dvd->_fontRenderingBuffer->handle()
+            };
+            GFX::EnqueueCommand(*dvd->_commandBuffer, GFX::DrawCommand{MOV(drawCmd)});
             
         };
         params.renderDelete = [](void* userPtr)

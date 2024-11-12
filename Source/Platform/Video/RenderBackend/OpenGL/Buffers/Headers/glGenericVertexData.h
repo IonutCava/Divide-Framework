@@ -39,7 +39,10 @@
 
 namespace Divide {
 
-class glGenericVertexData final : public GenericVertexData {
+class glGenericVertexData final : public GenericVertexData
+{
+    struct GenericBufferImpl;
+
    public:
     glGenericVertexData(GFXDevice& context, U16 ringBufferLength, const std::string_view name);
 
@@ -48,6 +51,7 @@ class glGenericVertexData final : public GenericVertexData {
     [[nodiscard]] BufferLock setIndexBuffer(const IndexBuffer& indices) override;
     [[nodiscard]] BufferLock setBuffer(const SetBufferParams& params) override;
     [[nodiscard]] BufferLock updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) override;
+    [[nodiscard]] BufferLock updateIndexBuffer(U32 elementCountOffset, U32 elementCountRange, bufferPtr data) override;
 
    protected:
     friend class GFXDevice;
@@ -57,6 +61,8 @@ class glGenericVertexData final : public GenericVertexData {
    protected:
     void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig);
 
+    [[nodiscard]] BufferLock updateBuffer(GenericBufferImpl& buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data);
+
    private:
     struct GenericBufferImpl
     {
@@ -64,25 +70,20 @@ class glGenericVertexData final : public GenericVertexData {
 
         size_t _ringSizeFactor{ 1u };
         size_t _elementStride{ 0u };
+    };
+
+    struct GenericBindableBufferImpl : GenericBufferImpl
+    {
         SetBufferParams::BufferBindConfig _bindConfig{};
     };
 
-    struct IndexBufferEntry
+    struct GenericIndexBufferImpl : GenericBufferImpl
     {
         IndexBuffer _data;
-
-        glBufferImpl_uptr _buffer{ nullptr };
-        size_t _ringSizeFactor{ 1u };
-        size_t _elementStride{ 0u };
-
-        size_t _bufferSize{0u};
-        gl46core::GLuint _handle{ GL_NULL_HANDLE };
-        gl46core::GLsync _idxBufferSync{ nullptr };
     };
 
-    IndexBufferEntry _idxBuffer;
-
-    eastl::fixed_vector<GenericBufferImpl,1,true> _bufferObjects;
+    eastl::fixed_vector<GenericBindableBufferImpl,1,true> _bufferObjects;
+    GenericIndexBufferImpl _indexBuffer;
 
     SharedMutex _idxBufferLock;
 };

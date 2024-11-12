@@ -452,7 +452,7 @@ bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, c
     return false;
 }
 
-bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut )
+bool VertexBuffer::refresh( size_t& indexOffsetCountOut, BufferLock& dataLockOut, BufferLock& indexLockOut )
 {
     if (!_refreshQueued)
     {
@@ -508,6 +508,8 @@ bool VertexBuffer::refresh( BufferLock& dataLockOut, BufferLock& indexLockOut )
         idxBuffer.data = _indices.data();
         idxBuffer.dynamic = _descriptor._allowDynamicUpdates;
         indexLockOut = _internalGVD->setIndexBuffer(idxBuffer);
+        indexOffsetCountOut = _internalGVD->firstIndexOffsetCount();
+
         _indicesChanged = false;
     }
 
@@ -518,7 +520,7 @@ void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data)
 {
     // Check if we have a refresh request queued up
     BufferLock dataLock, indexLock{};
-    const bool refreshed = refresh(dataLock, indexLock);
+    const bool refreshed = refresh(_firstIndexOffsetCount, dataLock, indexLock);
 
     _internalGVD->primitiveRestartRequired(primitiveRestartRequired());
     _internalGVD->draw(command, data);
@@ -743,11 +745,16 @@ void VertexBuffer::fromBuffer(const VertexBuffer& other)
     _partitions = other._partitions;
     _useAttribute = other._useAttribute;
     _refreshQueued = true;
-    _dataLayoutChanged = true;
 
     primitiveRestartRequired(other.primitiveRestartRequired());
-    unchecked_copy(_indices, other._indices);
-    unchecked_copy(_data, other._data);
+    {
+        unchecked_copy(_indices, other._indices);
+        _indicesChanged = true;
+    }
+    {
+        unchecked_copy(_data, other._data);
+        _dataLayoutChanged = true;
+    }
 }
 
 bool VertexBuffer::deserialize(ByteBuffer& dataIn)
@@ -772,7 +779,8 @@ bool VertexBuffer::deserialize(ByteBuffer& dataIn)
             dataIn >> _data;
             dataIn >> _useAttribute;
             dataIn >> _primitiveRestartRequired;
-
+            _refreshQueued = _indicesChanged = _dataLayoutChanged = true;
+            
             return true;
         }
     }

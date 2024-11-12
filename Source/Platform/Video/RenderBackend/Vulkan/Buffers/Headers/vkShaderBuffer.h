@@ -42,6 +42,7 @@ namespace Divide {
     class vkShaderBuffer final : public ShaderBuffer {
     public:
         vkShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
+        ~vkShaderBuffer();
 
         [[nodiscard]] LockableBuffer* getBufferImpl() override final;
 

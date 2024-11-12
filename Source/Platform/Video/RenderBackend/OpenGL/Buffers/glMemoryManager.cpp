@@ -19,7 +19,7 @@ namespace
     };
 
     eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, Byte_ZERO );
-
+    std::atomic_uint g_bufferCount{0u};
 }
 
 Byte* GetZeroData( const size_t bufferSize )
@@ -50,6 +50,11 @@ void OnFrameEnd(const U64 frameCount )
     }
 }
 
+U32 TotalBufferCount()
+{
+    return g_bufferCount.load();
+}
+
 Chunk::Chunk(const std::string_view chunkName,
              const size_t alignedSize,
              const gl46core::BufferStorageMask storageMask,
@@ -59,22 +64,30 @@ Chunk::Chunk(const std::string_view chunkName,
       _accessMask(accessMask),
       _flags(flags)
 {
-    Block& block = _blocks.emplace_back();
-    block._size = alignedSize;
-    block._pooled = true;
+    gl::GLuint bufferHandle = GL_NULL_HANDLE;
+    createAndAllocateMappedBuffer(bufferHandle, chunkName, storageMask, alignedSize, { nullptr, 0u }, accessMask, _memory);
 
-    createAndAllocateMappedBuffer(block._bufferHandle, chunkName, storageMask, block._size, { nullptr, 0u }, accessMask, _memory);
+    const Block firstBlock = 
+    {
+        ._ptr = _memory,
+        ._offset = 0u,
+        ._size = alignedSize,
+        ._bufferHandle = bufferHandle,
+        ._free = true,
+        ._pooled = true,
+    };
 
-    block._ptr = _memory;
+    _blocks.push_back(firstBlock);
 }
 
 Chunk::~Chunk()
 {
-    DIVIDE_ASSERT( _blocks[0]._bufferHandle > 0u && _blocks[0]._ptr != nullptr );
+    DIVIDE_ASSERT( _blocks.front()._bufferHandle > 0u && _blocks.front()._ptr != nullptr );
     
-    const gl46core::GLboolean result = gl46core::glUnmapNamedBuffer(_blocks[0]._bufferHandle);
+    const gl46core::GLboolean result = gl46core::glUnmapNamedBuffer(_blocks.front()._bufferHandle);
+
     DIVIDE_ASSERT(result != gl46core::GL_FALSE && "GLUtil::freeBuffer error: buffer unmapping failed");
-    gl46core::glDeleteBuffers(1, &_blocks[0]._bufferHandle);
+    freeBuffer(_blocks.front()._bufferHandle);
 }
 
 void Chunk::deallocate(const Block &block)
@@ -83,14 +96,15 @@ void Chunk::deallocate(const Block &block)
 
     auto it = eastl::find(begin(_blocks), end(_blocks), block);
     DIVIDE_ASSERT(it != cend(_blocks));
-    Block* crt = it;
 
-    crt->_free = true;
-
-    ++it;
-    while ( it != cend(_blocks) && it->_free)
+    Block& crt = *it;
+    crt._free = true;
+    
+    it = it.next();
+    while (it->_free && it != cend(_blocks))
     {
-        crt->_size += it->_size;
+        crt._size += it->_size;
+
         it = _blocks.erase(it);
     }
 }
@@ -99,41 +113,37 @@ bool Chunk::allocate(const size_t alignedSize, const std::pair<bufferPtr, size_t
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    if (alignedSize > _blocks.back()._size)
+    for (auto it = _blocks.begin(); it != _blocks.end(); ++it)
     {
-        return false;
-    }
+        Block& block = *it;
 
-    const size_t count = _blocks.size();
-    for (size_t i = 0u; i < count; ++i)
-    {
-        Block& block = _blocks[i];
-        const size_t remainingSize = block._size;
-
-        if (!block._free || remainingSize < alignedSize)
+        const size_t blockSize = block._size;
+        if (!block._free || blockSize < alignedSize)
         {
             continue;
         }
 
         memcpy(block._ptr, initialData.first, initialData.second);
 
-        block._free = false;
         block._size = alignedSize;
+        block._free = false;
         block._pooled = true;
 
         blockOut = block;
 
-        if (remainingSize > alignedSize)
+        if (blockSize > alignedSize)
         {
-            Block nextBlock;
-            nextBlock._bufferHandle = block._bufferHandle;
+            const Block nextBlock
+            {
+                ._ptr = &_memory[block._offset + block._size],
+                ._offset = block._offset + block._size,
+                ._size = blockSize - block._size,
+                ._bufferHandle = block._bufferHandle,
+                ._free = true,
+                ._pooled = true
+            };
 
-            nextBlock._offset = block._offset + alignedSize;
-            nextBlock._size = remainingSize - alignedSize;
-            nextBlock._ptr = &_memory[nextBlock._offset];
-            nextBlock._pooled = true;
-
-            _blocks.emplace_back(nextBlock);
+            _blocks.insert(++it, nextBlock);
         }
         return true;
     }
@@ -197,12 +207,11 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
         {
             if (chunk->storageMask() == storageMask && 
                 chunk->accessMask() == accessMask &&
-                chunk->flags() == flags)
+                chunk->flags() == flags &&
+                chunk->allocate(alignedSize, initialData, block))
             {
-                if (chunk->allocate(alignedSize, initialData, block))
-                {
-                    failed = false;
-                }
+                failed = false;
+                break;
             }
         }
 
@@ -297,6 +306,7 @@ void freeBuffer(gl46core::GLuint& bufferId)
         }
 
         bufferId = GL_NULL_HANDLE;
+        GLMemory::g_bufferCount.fetch_sub(1u);
     }
 }
 
@@ -312,8 +322,9 @@ void createBuffer( gl46core::GLuint& bufferIdOut,
     {
         gl46core::glObjectLabel( gl46core::GL_BUFFER, bufferIdOut, -1, name.empty() ? Util::StringFormat("DVD_GENERIC_BUFFER_{}", bufferIdOut).c_str() : name.data() );
     }
-}
 
+    GLMemory::g_bufferCount.fetch_add(1u);
+}
 
 void createAndAllocateBuffer( gl46core::GLuint& bufferIdOut,
                               const std::string_view name,

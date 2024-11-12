@@ -969,6 +969,9 @@ void Sky::prepareRender( SceneGraphNode* sgn,
 {
 
     setSkyShaderData( renderStagePass, pkg.pushConstantsCmd()._fastData );
+
+    const VertexBuffer_ptr& skyBuffer = Get(_sky)->geometryBuffer();
+    rComp.setIndexBufferElementOffset(skyBuffer->firstIndexOffsetCount());
     SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
 }
 

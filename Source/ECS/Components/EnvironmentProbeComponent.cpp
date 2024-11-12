@@ -196,12 +196,11 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     {
         ._sourceNode = findNodeToIgnore(),
         ._target = SceneEnvironmentProbePool::ReflectionTarget()._targetID,
-        // Probes come after reflective nodes in buffer positions and array layers for management reasons (rate of update and so on)
         ._stagePass =
         { 
             ._stage = RenderStage::REFLECTION,
             ._passType = RenderPassType::COUNT,
-            ._index = to_U16(rtLayerIndex() + Config::MAX_REFLECTIVE_NODES_IN_VIEW),
+            ._index = rtLayerIndex(),
             ._variant = static_cast<RenderStagePass::VariantType>(ReflectorType::CUBE)
         },
     };

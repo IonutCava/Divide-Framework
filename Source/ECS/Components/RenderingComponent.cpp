@@ -41,22 +41,6 @@ namespace Divide
     {
         constexpr I16 g_renderRangeLimit = I16_MAX;
     }
-    RenderCbkParams::RenderCbkParams( GFXDevice& context,
-                                      const SceneGraphNode* sgn,
-                                      const SceneRenderState& sceneRenderState,
-                                      const RenderTargetID& renderTarget,
-                                      const U16 passIndex,
-                                      const U8 passVariant,
-                                      Camera* camera ) noexcept
-        : _context( context )
-        , _sgn( sgn )
-        , _sceneRenderState( sceneRenderState )
-        , _renderTarget( renderTarget )
-        , _camera( camera )
-        , _passIndex( passIndex )
-        , _passVariant( passVariant )
-    {
-    }
 
     RenderingComponent::RenderingComponent( SceneGraphNode* parentSGN, PlatformContext& context )
         : BaseComponentType<RenderingComponent, ComponentType::RENDERING>( parentSGN, context ),
@@ -157,9 +141,8 @@ namespace Divide
             return;
         }
 
-        _materialInstance = Get(material)->clone( (_parentSGN->name() + "_instance").c_str() );
-
-        if ( _materialInstance != INVALID_HANDLE<Material> )
+        if ( Material::Clone(material, _materialInstance, (_parentSGN->name() + "_instance").c_str()) &&
+             _materialInstance != INVALID_HANDLE<Material> )
         {
             ResourcePtr<Material> mat = Get(_materialInstance);
 
@@ -312,6 +295,11 @@ namespace Divide
         }
     }
 
+    void RenderingComponent::setIndexBufferElementOffset(const size_t indexOffset) noexcept
+    {
+        _indexBufferOffsetCount = indexOffset;
+    }
+
     void RenderingComponent::setLoDIndexOffset( const U8 lodIndex, size_t indexOffset, size_t indexCount ) noexcept
     {
         if ( lodIndex < _lodIndexOffsets.size() )
@@ -424,36 +412,32 @@ namespace Divide
 
         if ( refreshData )
         {
-            U8 drawCmdOptions = 0u;
-            if ( renderOptionEnabled( RenderOptions::RENDER_GEOMETRY ) && sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_GEOMETRY ) )
-            {
-                drawCmdOptions |= to_base( CmdRenderOptions::RENDER_GEOMETRY );
-            }
-            else
-            {
-                drawCmdOptions &= ~to_base( CmdRenderOptions::RENDER_GEOMETRY );
-            }
-
-            if ( renderOptionEnabled( RenderOptions::RENDER_WIREFRAME ) && sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_WIREFRAME ) )
-            {
-                drawCmdOptions |= to_base( CmdRenderOptions::RENDER_WIREFRAME );
-            }
-            else
-            {
-                drawCmdOptions &= ~to_base( CmdRenderOptions::RENDER_WIREFRAME );
-            }
-
             if ( !hasCommands )
             {
+                U8 drawCmdOptions = 0u;
+                if (renderOptionEnabled(RenderOptions::RENDER_GEOMETRY) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY))
+                {
+                    drawCmdOptions |= to_base(CmdRenderOptions::RENDER_GEOMETRY);
+                }
+
+                if (renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME))
+                {
+                    drawCmdOptions |= to_base(CmdRenderOptions::RENDER_WIREFRAME);
+                }
+
                 LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
                 _parentSGN->getNode().buildDrawCommands( _parentSGN, _drawCommands._data );
-                for ( GenericDrawCommand& cmd : _drawCommands._data )
+                hasCommands = !_drawCommands._data.empty();
+
+                if (hasCommands)
                 {
-                    hasCommands = true;
-                    cmd._renderOptions = drawCmdOptions;
-                    if ( cmd._cmd.instanceCount > 1 )
+                    for ( GenericDrawCommand& cmd : _drawCommands._data )
                     {
-                        isInstanced( true );
+                        enableOptions(cmd, drawCmdOptions);
+                        if ( cmd._cmd.instanceCount > 1 )
+                        {
+                            isInstanced( true );
+                        }
                     }
                 }
             }
@@ -462,7 +446,8 @@ namespace Divide
                 LockGuard<SharedMutex> w_lock( _drawCommands._dataLock );
                 for ( GenericDrawCommand& cmd : _drawCommands._data )
                 {
-                    cmd._renderOptions = drawCmdOptions;
+                    setOption(cmd, CmdRenderOptions::RENDER_GEOMETRY,  renderOptionEnabled(RenderOptions::RENDER_GEOMETRY)  && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_GEOMETRY ));
+                    setOption(cmd, CmdRenderOptions::RENDER_WIREFRAME, renderOptionEnabled(RenderOptions::RENDER_WIREFRAME) && sceneRenderState.isEnabledOption(SceneRenderState::RenderOptions::RENDER_WIREFRAME));
                 }
             }
 
@@ -578,11 +563,14 @@ namespace Divide
                         //ToDo: Find a way to render reflected items that also have reflections -Ionut
                         Set( data, _reflectionPlanar.first, _reflectionPlanar.second);
                     }
+                    else if ( _reflectionCube.first != INVALID_HANDLE<Texture> && renderStagePass._stage != RenderStage::REFLECTION)
+                    {
+                        Set(data, _reflectionCube.first, _reflectionCube.second);
+                    }
                     else
                     {
                         Set(data, Texture::DefaultTexture2D(), Texture::DefaultSampler());
                     }
-
                     updateBinding( pkg.descriptorSetCmd()._set, 10, data);
                 }
                 if ( _updateRefraction )
@@ -592,6 +580,10 @@ namespace Divide
                     {
                         //ToDo: Find a way to render refracted items that also have refractions -Ionut
                         Set( data, _refractionPlanar.first, _refractionPlanar.second );
+                    }
+                    else if ( _refractionCube.first != INVALID_HANDLE<Texture> && renderStagePass._stage != RenderStage::REFRACTION)
+                    {
+                        Set(data, _refractionCube.first, _refractionCube.second);
                     }
                     else
                     {
@@ -610,35 +602,32 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        const U32 iBufferEntry = _indirectionBufferEntry;
-
+        RenderPackage& pkg = getDrawPackage( stagePass );
+        if ( isInstanced() )
         {
-            RenderPackage& pkg = getDrawPackage( stagePass );
-            if ( isInstanced() )
-            {
-                pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, iBufferEntry );
-            }
-            pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
-
-            pkg.drawCmdOffset( cmdOffset + to_U32( cmdsInOut.size() ) );
-
+            pkg.pushConstantsCmd()._uniformData->set( _ID( "INDIRECT_DATA_IDX" ), PushConstantType::UINT, _indirectionBufferEntry);
         }
+        pkg.stagePassBaseIndex( BaseIndex( stagePass ) );
+
+        pkg.drawCmdOffset( cmdOffset + to_U32( cmdsInOut.size() ) );
 
         const auto& [offset, count] = _lodIndexOffsets[std::min( _lodLevels[to_U8( stagePass._stage )], to_U8( _lodIndexOffsets.size() - 1 ) )];
         const bool autoIndex = offset != 0u || count != 0u;
+
+        SharedLock<SharedMutex> r_lock2( _drawCommands._dataLock );
+        for ( const GenericDrawCommand& gCmd : _drawCommands._data )
         {
-            SharedLock<SharedMutex> r_lock2( _drawCommands._dataLock );
-            for ( const GenericDrawCommand& gCmd : _drawCommands._data )
+            IndirectIndexedDrawCommand& iCmd = cmdsInOut.emplace_back(gCmd._cmd);
+
+            iCmd.baseInstance = isInstanced() ? 0u : (_indirectionBufferEntry + 1u); //Make sure to substract 1 in the shader!
+
+            if ( autoIndex )
             {
-                cmdsInOut.push_back( gCmd._cmd );
-                IndirectIndexedDrawCommand& iCmd = cmdsInOut.back();
-                iCmd.baseInstance = isInstanced() ? 0u : (iBufferEntry + 1u); //Make sure to substract 1 in the shader!
-                if ( autoIndex )
-                {
-                    iCmd.firstIndex = to_U32( offset );
-                    iCmd.indexCount = to_U32( count );
-                }
+                iCmd.firstIndex = to_U32( offset );
+                iCmd.indexCount = to_U32( count );
             }
+
+            iCmd.firstIndex += to_U32(_indexBufferOffsetCount);
         }
     }
 
@@ -648,16 +637,18 @@ namespace Divide
         bufferInOut.add( pkg->pipelineCmd() );
         bufferInOut.add( pkg->descriptorSetCmd() );
         bufferInOut.add( pkg->pushConstantsCmd() );
+
+        GFX::DrawCommand* drawCmd = nullptr;
+
         {
-            U32 startOffset = pkg->drawCmdOffset();
-
             SharedLock<SharedMutex> r_lock( _drawCommands._dataLock );
-            for ( GenericDrawCommand& gCmd : _drawCommands._data )
-            {
-                gCmd._commandOffset = startOffset++;
-            }
+            drawCmd = GFX::EnqueueCommand(bufferInOut, GFX::DrawCommand{ _drawCommands._data });
+        }
 
-            GFX::EnqueueCommand<GFX::DrawCommand>( bufferInOut )->_drawCommands = _drawCommands._data;
+        U32 startOffset = pkg->drawCmdOffset();
+        for ( GenericDrawCommand& gCmd : drawCmd->_drawCommands)
+        {
+            gCmd._commandOffset = startOffset++;
         }
     }
 
@@ -694,84 +685,128 @@ namespace Divide
         return entry._package;
     }
 
-    bool RenderingComponent::updateReflection( const U16 reflectionIndex,
+    bool RenderingComponent::updateReflection( const ReflectorType reflectorType,
+                                               const U16 reflectionIndex,
                                                const bool inBudget,
                                                Camera* camera,
-                                               const SceneRenderState& renderState,
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        std::pair<Handle<Texture>, SamplerDescriptor> temp = { INVALID_HANDLE<Texture>, {} };
 
-        bool ret = false;
-        //Target texture: the opposite of what we bind during the regular passes
-        if ( _materialInstance != INVALID_HANDLE<Material> && _reflectorType != ReflectorType::COUNT && _reflectionCallback )
+        if ( inBudget && _materialInstance != INVALID_HANDLE<Material> && _reflectionCallback )
         {
-            const RenderTargetID reflectRTID( _reflectorType == ReflectorType::PLANAR
-                                                ? RenderTargetNames::REFLECTION_PLANAR[reflectionIndex]
-                                                : RenderTargetNames::REFLECTION_CUBE );
+            const RenderTargetID reflectRTID( reflectorType == ReflectorType::PLANAR
+                                                             ? RenderTargetNames::REFLECT::PLANAR[reflectionIndex]
+                                                             : RenderTargetNames::REFLECT::CUBE[reflectionIndex] );
 
-            if ( inBudget )
-            {
-                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager().get();
-                RenderCbkParams params{ _gfxContext, _parentSGN, renderState, reflectRTID, reflectionIndex, to_U8( _reflectorType ), camera };
-                _reflectionCallback( passManager, params, bufferInOut, memCmdInOut );
-                ret = true;
-            }
+            const RenderTargetID oitRTID( reflectorType == ReflectorType::PLANAR
+                                                             ? RenderTargetNames::REFLECT::PLANAR_OIT[reflectionIndex]
+                                                             : INVALID_RENDER_TARGET_ID );
 
-            if ( _reflectorType == ReflectorType::PLANAR )
+            const U16 reflectionIndexWithOffset = GetNodeReflectionIndexOffset() + // Offset by environment probe count
+                                                  (reflectorType == ReflectorType::PLANAR ? Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW : 0u) + // Ofset by cube reflectors if target is PLANAR
+                                                  reflectionIndex; //Offset by our budget ID
+            RenderCbkParams params
             {
-                RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( reflectRTID )->getAttachment( RTAttachmentType::COLOUR );
-                temp = { targetAtt->texture(), targetAtt->_descriptor._sampler };
+                _gfxContext,
+                _parentSGN,
+                reflectRTID,
+                oitRTID,
+                RenderTargetNames::REFLECT::UTILS.HI_Z,
+                reflectorType,
+                RefractorType::COUNT,
+                reflectionIndexWithOffset,
+                camera
+            };
+
+            if ( _reflectionCallback( params, bufferInOut, memCmdInOut ) )
+            {
+                // Grab the updated reflection texture
+                RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget(reflectRTID)->getAttachment(RTAttachmentType::COLOUR);
+
+                // Grab our internal texture handle and swap our internal texture to the updated one
+                if (reflectorType == ReflectorType::PLANAR)
+                {
+                    _reflectionPlanar = { targetAtt->texture(), targetAtt->_descriptor._sampler };
+                    _reflectionCube = { INVALID_HANDLE<Texture>, {} };
+                }
+                else
+                {
+                    _refractionCube = { targetAtt->texture(), targetAtt->_descriptor._sampler };
+                    _reflectionPlanar = { INVALID_HANDLE<Texture>, {} };
+                }
+
+                // Inform the shader of our update
+                _materialUpdateMask |= to_base(MaterialUpdateResult::NEW_REFLECTION);
+
+                // Return true so we can keep track of our budget
+                return true;
             }
         }
 
-        if ( _reflectionPlanar != temp )
-        {
-            _reflectionPlanar = temp;
-            _materialUpdateMask |= to_base( MaterialUpdateResult::NEW_REFLECTION );
-        }
-
-        return ret;
+        return false;
     }
 
-    bool RenderingComponent::updateRefraction( const U16 refractionIndex,
+    bool RenderingComponent::updateRefraction( const RefractorType refractorType, 
+                                               const U16 refractionIndex,
                                                const bool inBudget,
                                                Camera* camera,
-                                               const SceneRenderState& renderState,
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut )
     {
-        std::pair<Handle<Texture>, SamplerDescriptor> temp = { INVALID_HANDLE<Texture>, {} };
-
-        bool ret = false;
         // no default refraction system!
-        if ( _materialInstance != INVALID_HANDLE<Material> && _refractorType != RefractorType::COUNT && _refractionCallback )
+        if ( inBudget && _materialInstance != INVALID_HANDLE<Material> && _refractionCallback )
         {
-            const RenderTargetID refractRTID( RenderTargetNames::REFRACTION_PLANAR[refractionIndex] );
+            const RenderTargetID refractRTID(refractorType == RefractorType::PLANAR
+                                                             ? RenderTargetNames::REFRACT::PLANAR[refractionIndex]
+                                                             : RenderTargetNames::REFRACT::CUBE[refractionIndex] );
 
-            // Only planar for now
-            assert( _refractorType == RefractorType::PLANAR );
+            const RenderTargetID oitRTID(refractorType == RefractorType::PLANAR
+                                                             ? RenderTargetNames::REFRACT::PLANAR_OIT[refractionIndex]
+                                                             : INVALID_RENDER_TARGET_ID);
 
-            if ( inBudget )
+            const U16 refractionIndexWithOffset = GetNodeRefractionIndexOffset() + // Offset by environment probe count
+                                                  (refractorType == RefractorType::PLANAR ? Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW : 0u) + // Ofset by cube refractors if target is PLANAR
+                                                  refractionIndex; //Offset by our budget ID
+            RenderCbkParams params
             {
-                RenderPassManager* passManager = _gfxContext.context().kernel().renderPassManager().get();
-                RenderCbkParams params{ _gfxContext, _parentSGN, renderState, refractRTID, refractionIndex, 0u, camera };
-                _refractionCallback( passManager, params, bufferInOut, memCmdInOut );
-                ret = true;
+                _gfxContext,
+                _parentSGN,
+                refractRTID,
+                oitRTID,
+                RenderTargetNames::REFRACT::UTILS.HI_Z,
+                ReflectorType::COUNT,
+                refractorType,
+                refractionIndexWithOffset,
+                camera 
+            };
+
+            if ( _refractionCallback( params, bufferInOut, memCmdInOut ) )
+            {
+                // Grab the updated refraction texture
+                RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( refractRTID )->getAttachment( RTAttachmentType::COLOUR );
+
+                // Grab our internal texture handle and swap our internal texture to the updated one
+                if (refractorType == RefractorType::PLANAR)
+                {
+                    _refractionPlanar = { targetAtt->texture(), targetAtt->_descriptor._sampler };
+                    _refractionCube = { INVALID_HANDLE<Texture>, {} };
+                }
+                else
+                {
+                    _refractionCube = { targetAtt->texture(), targetAtt->_descriptor._sampler };
+                    _refractionPlanar = { INVALID_HANDLE<Texture>, {} };
+                }
+
+                // Inform the shader of our update
+                _materialUpdateMask |= to_base( MaterialUpdateResult::NEW_REFRACTION );
+
+                // Return true so we can keep track of our budget
+                return true;
             }
-
-            RTAttachment* targetAtt = _gfxContext.renderTargetPool().getRenderTarget( refractRTID )->getAttachment( RTAttachmentType::COLOUR );
-            temp = { targetAtt->texture(), targetAtt->_descriptor._sampler };
         }
 
-        if ( _refractionPlanar != temp )
-        {
-            _refractionPlanar = temp;
-            _materialUpdateMask |= to_base( MaterialUpdateResult::NEW_REFRACTION );
-        }
-
-        return ret;
+        return false;
     }
 
     void RenderingComponent::updateNearestProbes( const vec3<F32>& position )
@@ -872,12 +907,10 @@ namespace Divide
             temp._colourStart = UColour4( 0, 0, 255, 255 );
             temp._colourEnd = UColour4( 0, 0, 255, 255 );
             _axisGizmoLinesDescriptor._lines.push_back( temp );
-
-            mat4<F32> worldOffsetMatrixCache( GetMatrix( _parentSGN->get<TransformComponent>()->getWorldOrientation() ), false );
-            worldOffsetMatrixCache.setTranslation( _parentSGN->get<TransformComponent>()->getWorldPosition() );
-            _axisGizmoLinesDescriptor.worldMatrix = worldOffsetMatrixCache;
         }
 
+        _axisGizmoLinesDescriptor.worldMatrix = mat4<F32>(GetMatrix(_parentSGN->get<TransformComponent>()->getWorldOrientation()));
+        _axisGizmoLinesDescriptor.worldMatrix.scale(VECTOR3_UNIT * 10.f);
         _gfxContext.debugDrawLines( _parentSGN->getGUID() + 321, _axisGizmoLinesDescriptor );
     }
 
@@ -955,7 +988,7 @@ namespace Divide
                 assert( tComp != nullptr );
                 updateNearestProbes( tComp->getWorldPosition() );
 
-                _axisGizmoLinesDescriptor.worldMatrix.set( mat4<F32>( GetMatrix( tComp->getWorldOrientation() ), false ) );
+                _axisGizmoLinesDescriptor.worldMatrix = mat4<F32>( GetMatrix( tComp->getWorldOrientation() ) );
                 _axisGizmoLinesDescriptor.worldMatrix.setTranslation( tComp->getWorldPosition() );
             } break;
             case ECS::CustomEvent::Type::DrawBoundsChanged:

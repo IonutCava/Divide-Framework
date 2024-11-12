@@ -462,37 +462,37 @@ static string ToString( const BlitRenderTargetCommand& cmd, const U16 indent )
 
 static string ToString( [[maybe_unused]] const CopyTextureCommand& cmd, [[maybe_unused]] const U16 indent )
 {
-    return "ToDo";
+    return " ToDo";
 }
 
 static string ToString( [[maybe_unused]] const ReadTextureCommand& cmd, [[maybe_unused]] const U16 indent )
 {
-    return "ToDo";
+    return " ToDo";
 }
 
 static string ToString( [[maybe_unused]] const ClearTextureCommand& cmd, [[maybe_unused]] const U16 indent )
 {
-    return "ToDo";
+    return " ToDo";
 }
 
 static string ToString( [[maybe_unused]] const ComputeMipMapsCommand& cmd, [[maybe_unused]] const U16 indent )
 {
-    return "ToDo";
+    return " ToDo";
 }
 
 static string ToString( [[maybe_unused]] const PushCameraCommand& cmd, [[maybe_unused]] const U16 indent )
 {
-    return "ToDo";
+    return " ToDo";
 }
 
 static string ToString( [[maybe_unused]] const ReadBufferDataCommand& cmd, [[maybe_unused]] const U16 indent )
 {
-    return "ToDo";
+    return " ToDo";
 }
 
 static string ToString( [[maybe_unused]] const ClearBufferDataCommand& cmd, [[maybe_unused]] const U16 indent )
 {
-    return "ToDo";
+    return " ToDo";
 }
 
 string ToString(const CommandBase& cmd, const CommandType type, U16 indent) {

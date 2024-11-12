@@ -3,6 +3,7 @@
 #include "Headers/vkGenericVertexData.h"
 #include "Headers/vkBufferImpl.h"
 
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/Headers/LockManager.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
@@ -16,12 +17,19 @@ namespace Divide {
     {
     }
 
+    vkGenericVertexData::~vkGenericVertexData()
+    {
+        _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
+    }
+
     void vkGenericVertexData::reset()
     {
         _bufferObjects.clear();
 
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
-        _idxBuffer = {};
+        _indexBuffer = {};
+
+        _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
     }
 
     void vkGenericVertexData::draw(const GenericDrawCommand& command, VDIUserData* userData) noexcept
@@ -36,21 +44,21 @@ namespace Divide {
         }
 
         SharedLock<SharedMutex> w_lock( _idxBufferLock );
-        if ( _idxBuffer._bufferSize > 0u )
+        if (_indexBuffer._bufferSize > 0u )
         {
-            if (_idxBuffer._buffer != nullptr)
+            if (_indexBuffer._buffer != nullptr)
             {
                 VkDeviceSize offsetInBytes = 0u;
 
-                if (_idxBuffer._ringSizeFactor > 1 )
+                if (_indexBuffer._ringSizeFactor > 1 )
                 {
-                    offsetInBytes += _idxBuffer._buffer->_params._elementCount * _idxBuffer._buffer->_params._elementSize * queueIndex();
+                    offsetInBytes += _indexBuffer._buffer->_params._elementCount * _indexBuffer._buffer->_params._elementSize * queueIndex();
                 }
-                VK_PROFILE(vkCmdBindIndexBuffer, *vkData->_cmdBuffer, _idxBuffer._buffer->_buffer, offsetInBytes, _idxBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                VK_PROFILE(vkCmdBindIndexBuffer, *vkData->_cmdBuffer, _indexBuffer._buffer->_buffer, offsetInBytes, _indexBuffer._data.smallIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
             }
 
             // Submit the draw command
-            const bool indexed = _idxBuffer._buffer != nullptr;
+            const bool indexed = _indexBuffer._buffer != nullptr;
             VK_PROFILE(VKUtil::SubmitRenderCommand, command, *vkData->_cmdBuffer, indexed );
         }
         else
@@ -96,7 +104,7 @@ namespace Divide {
         DIVIDE_ASSERT( params._bufferParams._usageType != BufferUsageType::COUNT );
 
         // Make sure we specify buffers in order.
-        GenericBufferImpl* impl = nullptr;
+        GenericBindableBufferImpl* impl = nullptr;
         for (auto& buffer : _bufferObjects)
         {
             if (buffer._bindConfig._bufferIdx == params._bindConfig._bufferIdx)
@@ -112,31 +120,45 @@ namespace Divide {
         }
 
         const size_t ringSizeFactor = params._useRingBuffer ? queueLength() : 1;
-        const size_t bufferSizeInBytes = params._bufferParams._elementCount * params._bufferParams._elementSize;
-        const size_t dataSize = bufferSizeInBytes * ringSizeFactor;
 
-        const size_t elementStride = params._elementStride == SetBufferParams::INVALID_ELEMENT_STRIDE
-                                                            ? params._bufferParams._elementSize
-                                                            : params._elementStride;
         impl->_ringSizeFactor = ringSizeFactor;
         impl->_bindConfig = params._bindConfig;
-        impl->_elementStride = elementStride;
+        impl->_elementStride = params._elementStride == SetBufferParams::INVALID_ELEMENT_STRIDE
+                                                            ? params._bufferParams._elementSize
+                                                            : params._elementStride;;
 
-        if ( impl->_buffer != nullptr && impl->_buffer->_params == params._bufferParams )
-
+        if (_indexBuffer._buffer != nullptr &&
+            _indexBuffer._buffer->_params._elementSize == params._bufferParams._elementSize &&
+            _indexBuffer._buffer->_params._hostVisible == params._bufferParams._hostVisible &&
+            _indexBuffer._buffer->_params._updateFrequency == params._bufferParams._updateFrequency &&
+            _indexBuffer._buffer->_params._elementCount >= params._bufferParams._elementCount)
         {
             return updateBuffer( params._bindConfig._bufferIdx, 0, params._bufferParams._elementCount, params._initialData.first);
         }
 
         const string bufferName = _name.empty() ? Util::StringFormat("DVD_GENERAL_VTX_BUFFER_{}", handle()._id) : string(_name.c_str()) + "_VTX_BUFFER";
+        const size_t bufferSizeInBytes = params._bufferParams._elementCount * params._bufferParams._elementSize;
+
         impl->_buffer = std::make_unique<vkBufferImpl>(params._bufferParams,
                                                          bufferSizeInBytes,
                                                          ringSizeFactor,
                                                          params._initialData,
                                                          bufferName.c_str());
+
+        for (U32 i = 1u; i < ringSizeFactor; ++i)
+        {
+            const BufferRange<> range = { i * bufferSizeInBytes , params._initialData.second > 0 ? params._initialData.second : bufferSizeInBytes };
+            impl->_buffer->writeBytes(range,
+                                      VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                      VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                                      params._initialData.first);
+        }
+
+        _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
+
         return BufferLock
         {
-            ._range = {0u, dataSize},
+            ._range = {0u, bufferSizeInBytes * ringSizeFactor},
             ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
             ._buffer = impl->_buffer.get()
         };
@@ -148,23 +170,25 @@ namespace Divide {
 
         LockGuard<SharedMutex> w_lock( _idxBufferLock );
 
-        if ( _idxBuffer._buffer != nullptr )
+        if (_indexBuffer._buffer != nullptr )
         {
-            DIVIDE_ASSERT(_idxBuffer._buffer->_buffer != VK_NULL_HANDLE);
+            DIVIDE_ASSERT(_indexBuffer._buffer->_buffer != VK_NULL_HANDLE);
 
             if ( indices.count == 0u || // We don't need indices anymore
-                _idxBuffer._data.dynamic != indices.dynamic || // Buffer usage mode changed
-                _idxBuffer._data.count < indices.count ) // Buffer not big enough
+                _indexBuffer._data.dynamic != indices.dynamic || // Buffer usage mode changed
+                _indexBuffer._data.count < indices.count ) // Buffer not big enough
             {
-                if ( !_idxBuffer._buffer->waitForLockedRange( {0, U32_MAX} ) )
+                if ( !_indexBuffer._buffer->waitForLockedRange( {0, U32_MAX} ) )
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
-                _idxBuffer._buffer.reset();
+                _indexBuffer = {};
             }
         }
 
-        if ( indices.count == 0u )
+        _indexBuffer._data = indices;
+
+        if (_indexBuffer._data.count == 0u )
         {
             // That's it. We have a buffer entry but no VK buffer associated with it, so it won't be used
             return {};
@@ -172,80 +196,83 @@ namespace Divide {
 
         SCOPE_EXIT
         {
-            _idxBuffer._data._smallIndicesTemp.clear();
+            _indexBuffer._data.smallIndicesTemp.clear();
         };
 
-        bufferPtr data = indices.data;
-        if ( indices.indicesNeedCast )
+        bufferPtr data = _indexBuffer._data.data;
+        if (data != nullptr && _indexBuffer._data.indicesNeedCast )
         {
-            _idxBuffer._data._smallIndicesTemp.resize( indices.count );
+            _indexBuffer._data.smallIndicesTemp.resize(_indexBuffer._data.count );
             const U32* const dataIn = reinterpret_cast<U32*>(data);
-            for ( size_t i = 0u; i < indices.count; ++i )
+            for ( size_t i = 0u; i < _indexBuffer._data.count; ++i )
             {
-                _idxBuffer._data._smallIndicesTemp[i] = to_U16( dataIn[i] );
+                _indexBuffer._data.smallIndicesTemp[i] = to_U16( dataIn[i] );
             }
-            data = _idxBuffer._data._smallIndicesTemp.data();
+            data = _indexBuffer._data.smallIndicesTemp.data();
         }
 
-        const size_t elementSize = indices.smallIndices ? sizeof( U16 ) : sizeof( U32 );
-        const size_t range = indices.count * elementSize;
+        const size_t elementSize = _indexBuffer._data.smallIndices ? sizeof(U16) : sizeof(U32);
+        const BufferUpdateFrequency udpateFrequency = _indexBuffer._data.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
 
-        if ( _idxBuffer._buffer != nullptr )
+        if (_indexBuffer._buffer != nullptr &&
+            _indexBuffer._buffer->_params._elementSize == elementSize &&
+            _indexBuffer._buffer->_params._updateFrequency == udpateFrequency &&
+            _indexBuffer._buffer->_params._elementCount >= _indexBuffer._data.count)
         {
-            size_t offsetInBytes = 0u;
-            if ( _idxBuffer._ringSizeFactor > 1u )
-            {
-                offsetInBytes += _idxBuffer._data.count * elementSize * queueIndex();
-            }
-
-            DIVIDE_ASSERT( range <= _idxBuffer._bufferSize );
-            const BufferRange<> bufRange = { offsetInBytes , range };
-            return _idxBuffer._buffer->writeBytes( bufRange, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data );
+            return updateIndexBuffer(0u, to_U32(_indexBuffer._data.count), data);
         }
-        
-        _idxBuffer._bufferSize = range;
-        _idxBuffer._data = indices;
-        _idxBuffer._ringSizeFactor = queueLength();
+
+        const size_t ringSizeFactor = _indexBuffer._data.useRingBuffer ? queueLength() : 1;
+        const size_t bufferSizeInBytes = _indexBuffer._data.count * elementSize;
+
+        _indexBuffer._bufferSize = bufferSizeInBytes;
+        _indexBuffer._data = _indexBuffer._data;
+        _indexBuffer._ringSizeFactor = ringSizeFactor;
 
         BufferParams params{};
-        params._updateFrequency = indices.dynamic ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::OCASSIONAL;
+        params._hostVisible = false;
+        params._updateFrequency = udpateFrequency;
         params._usageType = BufferUsageType::INDEX_BUFFER;
+        params._elementCount = to_U32(_indexBuffer._data.count);
         params._elementSize = elementSize;
-        params._elementCount = to_U32(indices.count);
-
-        const std::pair<bufferPtr, size_t> initialData = { data, range };
+        
+        const std::pair<bufferPtr, size_t> initialData = { data, data == nullptr ? 0u : bufferSizeInBytes };
 
         const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_IDX_BUFFER_{}", handle()._id ) : string(_name.c_str()) + "_IDX_BUFFER";
-        _idxBuffer._buffer = std::make_unique<vkBufferImpl>( params,
-                                                            _idxBuffer._bufferSize,
-                                                            _idxBuffer._ringSizeFactor,
-                                                            initialData,
-                                                            bufferName.c_str() );
+        _indexBuffer._buffer = std::make_unique<vkBufferImpl>( params,
+                                                               bufferSizeInBytes,
+                                                               ringSizeFactor,
+                                                               initialData,
+                                                               bufferName.c_str() );
+
+        for (U32 i = 1u; i < ringSizeFactor; ++i)
+        {
+            const BufferRange<> range = { i * bufferSizeInBytes , bufferSizeInBytes };
+            _indexBuffer._buffer->writeBytes(range,
+                                             VK_ACCESS_INDEX_READ_BIT,
+                                             VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                                             data);
+        }
+
+        _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
+
         return BufferLock
         {
-            ._range = {0u, indices.count},
+            ._range = {0u, bufferSizeInBytes * ringSizeFactor},
             ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
-            ._buffer = _idxBuffer._buffer.get()
+            ._buffer = _indexBuffer._buffer.get()
         };
     }
 
-    BufferLock vkGenericVertexData::updateBuffer(U32 buffer,
-                                                 U32 elementCountOffset,
-                                                 U32 elementCountRange,
-                                                 bufferPtr data) noexcept
+    BufferLock vkGenericVertexData::updateBuffer(GenericBufferImpl& buffer,
+                                                 const U32 elementCountOffset,
+                                                 const U32 elementCountRange,
+                                                 const VkAccessFlags2 dstAccessMask,
+                                                 const VkPipelineStageFlags2 dstStageMask,
+                                                 bufferPtr data)
     {
-        GenericBufferImpl* impl = nullptr;
-        for (auto& bufferImpl : _bufferObjects) {
-            if (bufferImpl._bindConfig._bufferIdx == buffer) {
-                impl = &bufferImpl;
-                break;
-            }
-        }
-
-        const BufferParams& bufferParams = impl->_buffer->_params;
-        DIVIDE_ASSERT(bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
-
-        DIVIDE_ASSERT(impl != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
+        const BufferParams& bufferParams = buffer._buffer->_params;
+        //DIVIDE_ASSERT(bufferParams._updateFrequency != BufferUpdateFrequency::ONCE);
 
         // Calculate the size of the data that needs updating
         const size_t dataCurrentSizeInBytes = elementCountRange * bufferParams._elementSize;
@@ -254,17 +281,45 @@ namespace Divide {
         const size_t bufferSizeInBytes = bufferParams._elementCount * bufferParams._elementSize;
         DIVIDE_ASSERT(offsetInBytes + dataCurrentSizeInBytes <= bufferSizeInBytes);
 
-        if (impl->_ringSizeFactor > 1u)
+        if (buffer._ringSizeFactor > 1u)
         {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
 
-        if (!impl->_buffer->waitForLockedRange({offsetInBytes, dataCurrentSizeInBytes}))
+        if (!buffer._buffer->waitForLockedRange({ offsetInBytes, dataCurrentSizeInBytes }))
         {
             DIVIDE_UNEXPECTED_CALL();
         }
 
-        const BufferRange<> range = { offsetInBytes , dataCurrentSizeInBytes};
-        return impl->_buffer->writeBytes(range, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data);
+        const BufferRange<> range = { offsetInBytes , dataCurrentSizeInBytes };
+        return buffer._buffer->writeBytes(range, dstAccessMask, dstStageMask, data);
     }
+
+    BufferLock vkGenericVertexData::updateBuffer(const U32 buffer,
+                                                 const U32 elementCountOffset,
+                                                 const U32 elementCountRange,
+                                                 bufferPtr data) noexcept
+    {
+        GenericBufferImpl* impl = nullptr;
+        for (auto& bufferImpl : _bufferObjects)
+        {
+            if (bufferImpl._bindConfig._bufferIdx == buffer)
+            {
+                impl = &bufferImpl;
+                break;
+            }
+        }
+
+        DIVIDE_ASSERT(impl != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
+
+        return updateBuffer(*impl, elementCountOffset, elementCountRange, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data);
+    }
+
+    BufferLock vkGenericVertexData::updateIndexBuffer(const U32 elementCountOffset,
+                                                      const U32 elementCountRange,
+                                                      bufferPtr data) noexcept
+    {
+        return updateBuffer(_indexBuffer, elementCountOffset, elementCountRange, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, data);
+    }
+
 }; //namespace Divide

@@ -59,7 +59,6 @@ namespace Divide
 
     namespace
     {
-
         using CameraPool = eastl::list<CameraEntry>;
 
         std::array<Camera*, to_base( Camera::UtilityCamera::COUNT )> _utilityCameras;

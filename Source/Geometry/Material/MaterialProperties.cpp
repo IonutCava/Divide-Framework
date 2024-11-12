@@ -3,96 +3,131 @@
 
 namespace Divide {
 
-void Material::Properties::doubleSided(const bool state) noexcept {
-    if (_doubleSided != state) {
+void Material::Properties::doubleSided(const bool state) noexcept
+{
+    if (_doubleSided != state)
+    {
         _doubleSided = state;
         _cullUpdated = true;
     }
 }
 
-void Material::Properties::isRefractive(const bool state) noexcept {
-    if (_isRefractive != state) {
-        _isRefractive = state;
+void Material::Properties::reflectorType(const ReflectorType state) noexcept
+{
+    if ( _reflectorType != state)
+    {
+        _reflectorType = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::receivesShadows(const bool state) noexcept {
-    if (_receivesShadows != state) {
+void Material::Properties::refractorType(const RefractorType state) noexcept
+{
+    if (_refractorType != state)
+    {
+        _refractorType = state;
+        _needsNewShader = true;
+    }
+}
+
+void Material::Properties::receivesShadows(const bool state) noexcept
+{
+    if (_receivesShadows != state)
+    {
         _receivesShadows = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::isStatic(const bool state) noexcept {
-    if (_isStatic != state) {
+void Material::Properties::isStatic(const bool state) noexcept
+{
+    if (_isStatic != state)
+    {
         _isStatic = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::isInstanced(const bool state) noexcept {
-    if (_isInstanced != state) {
+void Material::Properties::isInstanced(const bool state) noexcept
+{
+    if (_isInstanced != state)
+    {
         _isInstanced = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::ignoreTexDiffuseAlpha(const bool state) noexcept {
-    if (overrides()._ignoreTexDiffuseAlpha != state) {
+void Material::Properties::ignoreTexDiffuseAlpha(const bool state) noexcept
+{
+    if (overrides()._ignoreTexDiffuseAlpha != state)
+    {
         overrides()._ignoreTexDiffuseAlpha = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::hardwareSkinning(const bool state) noexcept {
-    if (_hardwareSkinning != state) {
+void Material::Properties::hardwareSkinning(const bool state) noexcept
+{
+    if (_hardwareSkinning != state)
+    {
         _hardwareSkinning = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::texturesInFragmentStageOnly(const bool state) noexcept {
-    if (_texturesInFragmentStageOnly != state) {
+void Material::Properties::texturesInFragmentStageOnly(const bool state) noexcept
+{
+    if (_texturesInFragmentStageOnly != state)
+    {
         _texturesInFragmentStageOnly = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::toggleTransparency(const bool state) noexcept {
-    if (overrides()._transparencyEnabled != state) {
+void Material::Properties::toggleTransparency(const bool state) noexcept
+{
+    if (overrides()._transparencyEnabled != state)
+    {
         overrides()._transparencyEnabled = state;
         _transparencyUpdated = true;
     }
 }
 
-void Material::Properties::useAlphaDiscard(const bool state) noexcept {
-    if (overrides()._useAlphaDiscard != state) {
+void Material::Properties::useAlphaDiscard(const bool state) noexcept
+{
+    if (overrides()._useAlphaDiscard != state)
+    {
         overrides()._useAlphaDiscard = state;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::baseColour(const FColour4& colour) noexcept {
+void Material::Properties::baseColour(const FColour4& colour) noexcept
+{
     _baseColour = colour;
     _transparencyUpdated = true;
 }
 
-void Material::Properties::bumpMethod(const BumpMethod newBumpMethod) noexcept {
-    if (_bumpMethod != newBumpMethod) {
+void Material::Properties::bumpMethod(const BumpMethod newBumpMethod) noexcept
+{
+    if (_bumpMethod != newBumpMethod)
+    {
         _bumpMethod = newBumpMethod;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::shadingMode(const ShadingMode mode) noexcept {
-    if (_shadingMode != mode) {
+void Material::Properties::shadingMode(const ShadingMode mode) noexcept
+{
+    if (_shadingMode != mode)
+    {
         _shadingMode = mode;
         _needsNewShader = true;
     }
 }
 
-void Material::Properties::saveToXML(const std::string& entryName, boost::property_tree::ptree& pt) const {
+void Material::Properties::saveToXML(const std::string& entryName, boost::property_tree::ptree& pt) const
+{
     pt.put(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()));
 
     pt.put(entryName + ".colour.<xmlattr>.r", baseColour().r);
@@ -134,19 +169,14 @@ void Material::Properties::saveToXML(const std::string& entryName, boost::proper
 
     pt.put(entryName + ".useAlphaDiscard", overrides().useAlphaDiscard());
 
-    pt.put(entryName + ".isRefractive", isRefractive());
+    pt.put(entryName + ".reflectiveType", TypeUtil::ReflectorTypeToString(reflectorType()));
+
+    pt.put(entryName + ".refractiveType", TypeUtil::RefractorTypeToString(refractorType()));
 }
 
 void Material::Properties::loadFromXML(const std::string& entryName, const boost::property_tree::ptree& pt)
 {
-    const ShadingMode shadingModeCrt = shadingMode();
-    ShadingMode shadingModeFile = TypeUtil::StringToShadingMode(pt.get<std::string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingModeCrt)));
-    if (shadingModeFile == ShadingMode::COUNT)
-    {
-        shadingModeFile = shadingModeCrt;
-    }
-
-    shadingMode(shadingModeFile);
+    shadingMode(TypeUtil::StringToShadingMode(pt.get<std::string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()))));
 
     baseColour(FColour4(pt.get<F32>(entryName + ".colour.<xmlattr>.r", baseColour().r),
                         pt.get<F32>(entryName + ".colour.<xmlattr>.g", baseColour().g),
@@ -174,7 +204,7 @@ void Material::Properties::loadFromXML(const std::string& entryName, const boost
 
     roughness(pt.get<F32>(entryName + ".roughness", roughness()));
 
-    parallaxFactor(pt.get<F32>(entryName + ".parallaxFactor", parallaxFactor()));
+    doubleSided(pt.get<bool>(entryName + ".doubleSided", doubleSided()));
 
     receivesShadows(pt.get<bool>(entryName + ".receivesShadows", receivesShadows()));
 
@@ -182,18 +212,20 @@ void Material::Properties::loadFromXML(const std::string& entryName, const boost
 
     bumpMethod(TypeUtil::StringToBumpMethod(pt.get<std::string>(entryName + ".bumpMethod", TypeUtil::BumpMethodToString(bumpMethod()))));
 
+    parallaxFactor(pt.get<F32>(entryName + ".parallaxFactor", parallaxFactor()));
+
     toggleTransparency(pt.get<bool>(entryName + ".transparencyEnabled", overrides().transparencyEnabled()));
     
     useAlphaDiscard(pt.get<bool>(entryName + ".useAlphaDiscard", overrides().useAlphaDiscard()));
 
-    isRefractive(pt.get<bool>(entryName + ".isRefractive", isRefractive()));
+    reflectorType(TypeUtil::StringToReflectorType(pt.get<std::string>(entryName + ".reflectiveType", TypeUtil::ReflectorTypeToString(reflectorType()))));
 
-    doubleSided(pt.get<bool>(entryName + ".doubleSided", doubleSided()));
-    {
-        //Clear this flag when loading from XML as it will conflict with our custom RenderStateBlock when loading it from XML!!
-        //doubleSided calls set this flag to true thus invalidating our recently loaded render state.
-        cullUpdated(false);
-    }
+    refractorType(TypeUtil::StringToRefractorType(pt.get<std::string>(entryName + ".refractiveType", TypeUtil::RefractorTypeToString(refractorType()))));
+
+    //Clear this flag when loading from XML as it will conflict with our custom RenderStateBlock when loading it from XML!!
+    //doubleSided calls set this flag to true thus invalidating our recently loaded render state.
+    cullUpdated(false);
+
 }
 
 } //namespace Divide

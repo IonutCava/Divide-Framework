@@ -280,9 +280,13 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
     if ( _enabled &&  getAliveParticleCount() > 0)
     {
         Wait(*_bufferUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
+
+        GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
+
+        rComp.setIndexBufferElementOffset(buffer.firstIndexOffsetCount());
+
         if (refreshData && _buffersDirty[to_U32(renderStagePass._stage)])
         {
-            GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
             postDrawMemCmd._bufferLocks.emplace_back(buffer.updateBuffer(g_particlePositionBuffer, 0u, to_U32(_particles->_renderingPositions.size()), _particles->_renderingPositions.data()));
             postDrawMemCmd._bufferLocks.emplace_back(buffer.updateBuffer(g_particleColourBuffer, 0u, to_U32(_particles->_renderingColours.size()), _particles->_renderingColours.data()));
 
@@ -295,7 +299,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
             LockGuard<SharedMutex> w_lock(cmds._dataLock);
             GenericDrawCommand& cmd = cmds._data.front();
             cmd._cmd.instanceCount = to_U32(_particles->_renderingPositions.size());
-            cmd._sourceBuffer = getDataBuffer(renderStagePass._stage, 0).handle();
+            cmd._sourceBuffer = buffer.handle();
         }
 
         if (renderStagePass._passType == RenderPassType::PRE_PASS)

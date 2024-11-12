@@ -783,7 +783,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
                 const BufferRange<U32>& idxRange = _indexRange[i];
                 drawCmd._cmd.indexCount = idxRange._length;
                 drawCmd._cmd.firstIndex = idxRange._startOffset;
-                GFX::EnqueueCommand<GFX::DrawCommand>(commandBufferInOut)->_drawCommands.emplace_back(drawCmd);
+                GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ drawCmd });
             }
         }
     }

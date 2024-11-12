@@ -64,6 +64,7 @@ struct RenderStateBlock;
 
 enum class BlendProperty : U8;
 enum class ReflectorType : U8;
+enum class RefractorType : U8;
 
 constexpr F32 Specular_Glass = 0.5f;
 constexpr F32 Specular_Plastic = 0.5f;
@@ -120,6 +121,12 @@ namespace TypeUtil {
 
     [[nodiscard]] const char* BumpMethodToString(BumpMethod bumpMethod) noexcept;
     [[nodiscard]] BumpMethod StringToBumpMethod(std::string_view name);
+
+    [[nodiscard]] const char* ReflectorTypeToString(ReflectorType reflectorType) noexcept;
+    [[nodiscard]] ReflectorType StringToReflectorType(std::string_view name);
+
+    [[nodiscard]] const char* RefractorTypeToString(RefractorType refractorType) noexcept;
+    [[nodiscard]] RefractorType StringToRefractorType(std::string_view name);
 };
 
 class Material final : public CachedResource {
@@ -180,7 +187,8 @@ class Material final : public CachedResource {
         PROPERTY_R(bool, isInstanced, false);
         PROPERTY_R(bool, hardwareSkinning, false);
         PROPERTY_R(bool, texturesInFragmentStageOnly, true);
-        PROPERTY_R(bool, isRefractive, false);
+        PROPERTY_R(ReflectorType, reflectorType, ReflectorType::COUNT);
+        PROPERTY_R(RefractorType, refractorType, RefractorType::COUNT);
         PROPERTY_R(bool, doubleSided, false);
         PROPERTY_R(ShadingMode, shadingMode, ShadingMode::COUNT);
         PROPERTY_R(TranslucencySource, translucencySource, TranslucencySource::COUNT);
@@ -207,7 +215,8 @@ class Material final : public CachedResource {
         void shadingMode(ShadingMode mode) noexcept;
         void doubleSided(bool state) noexcept;
         void receivesShadows(bool state) noexcept;
-        void isRefractive(bool state) noexcept;
+        void reflectorType(ReflectorType state) noexcept;
+        void refractorType(RefractorType state) noexcept;
         void isStatic(bool state) noexcept;
         void isInstanced(bool state) noexcept;
         void ignoreTexDiffuseAlpha(bool state) noexcept;
@@ -237,9 +246,9 @@ class Material final : public CachedResource {
     static void OnShutdown();
     static void RecomputeShaders();
     static void Update(U64 deltaTimeUS);
+    static bool Clone(Handle<Material> src, Handle<Material>& dst, const std::string_view nameSuffix);
 
     /// Return a new instance of this material with the name composed of the base material's name and the give name suffix (clone calls CreateResource internally!).
-    [[nodiscard]] Handle<Material> clone(const std::string_view nameSuffix);
     [[nodiscard]] bool load(PlatformContext& context) override;
     [[nodiscard]] bool unload() override;
     /// Returns a bit mask composed of UpdateResult flags
@@ -302,8 +311,8 @@ class Material final : public CachedResource {
     [[nodiscard]] const ModuleDefines& shaderDefines(ShaderType type) const;
 
     // type == ShaderType::Count = add to all stages
-    void addShaderDefine(ShaderType type, const string& define, bool addPrefix);
-
+    void addShaderDefine(ShaderType type, const string& define, bool addPrefix = true);
+    void addShaderDefine(const string& define, bool addPrefix = true);
     void saveToXML( const std::string& entryName, boost::property_tree::ptree& pt) const;
     void loadFromXML( const std::string& entryName, const boost::property_tree::ptree& pt);
 
@@ -312,7 +321,7 @@ class Material final : public CachedResource {
     PROPERTY_RW(ComputeShaderCBK, computeShaderCBK);
     PROPERTY_RW(ComputeRenderStateCBK, computeRenderStateCBK);
     PROPERTY_RW(RecomputeShadersCBK, recomputeShadersCBK);
-    POINTER_R_IW(Material, baseMaterial, nullptr);
+    PROPERTY_R_IW(Handle<Material>, baseMaterial, INVALID_HANDLE<Material>);
     PROPERTY_RW(UpdatePriority, updatePriorirty, UpdatePriority::Default);
     PROPERTY_R_IW(DescriptorSet, descriptorSetSecondaryPass);
     PROPERTY_R_IW(DescriptorSet, descriptorSetMainPass);

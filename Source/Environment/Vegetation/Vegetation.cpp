@@ -217,13 +217,7 @@ namespace Divide
             vec2<F32>( 1.f, 0.f )
         };
 
-        VertexBuffer::Descriptor descriptor{};
-        descriptor._name = "Vegetation";
-        descriptor._allowDynamicUpdates = false;
-        descriptor._keepCPUData = false;
-        descriptor._largeIndices = false;
-
-        _buffer = context.gfx().newVB( descriptor );
+        _buffer = context.gfx().newVB(VertexBuffer::Descriptor{ ._name = "Vegetation" });
         _buffer->setVertexCount( vertices.size() );
         for ( U8 i = 0u; i < to_U8( vertices.size() ); ++i )
         {
@@ -347,7 +341,7 @@ namespace Divide
             matPtr->baseShaderData( treeShaderData );
             matPtr->properties().shadingMode( ShadingMode::BLINN_PHONG );
             matPtr->properties().isInstanced( true );
-            matPtr->addShaderDefine( ShaderType::COUNT, Util::StringFormat( "MAX_TREE_INSTANCES {}", _maxTreeInstances ).c_str() );
+            matPtr->addShaderDefine( Util::StringFormat( "MAX_TREE_INSTANCES {}", _maxTreeInstances ).c_str() );
         }
 
 
@@ -611,6 +605,8 @@ namespace Divide
             return;
         }
         
+        rComp.setIndexBufferElementOffset(_buffer->firstIndexOffsetCount());
+
         pkg.pushConstantsCmd()._uniformData->set( _ID( "dvd_terrainChunkOffset" ), PushConstantType::UINT, sgn->dataFlag() );
 
         Handle<GFX::CommandBuffer> cmdBuffer = GetCommandBuffer( pkg );
@@ -636,13 +632,14 @@ namespace Divide
         }
 
         // Culling lags one full frame
+        STUBBED("Vegetation::prepareRender: This is NOT CORRECT for multiple reflectors!- Ionut");
         if ( renderState().drawState( renderStagePass ) &&
              refreshData &&
              (instance->_instanceCountGrass > 0 || instance->_instanceCountTrees > 0) )
         {
             const RenderTargetID hiZSourceTarget = renderStagePass._stage == RenderStage::REFLECTION
-                                                                           ? RenderTargetNames::HI_Z_REFLECT
-                                                                           : RenderTargetNames::HI_Z;
+                                                                           ? RenderTargetNames::REFLECT::UTILS.HI_Z
+                                                                           : RenderTargetNames::UTILS.HI_Z;
 
             const RenderTarget* hizTarget = sgn->context().gfx().renderTargetPool().getRenderTarget( hiZSourceTarget );
             const RTAttachment* hizAttachment = hizTarget->getAttachment( RTAttachmentType::COLOUR );

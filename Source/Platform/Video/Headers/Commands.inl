@@ -78,6 +78,12 @@ DEFINE_COMMAND_BEGIN(SendPushConstantsCommand, CommandType::SEND_PUSH_CONSTANTS)
 DEFINE_COMMAND_END(SendPushConstantsCommand);
 
 DEFINE_COMMAND_BEGIN(DrawCommand, CommandType::DRAW_COMMANDS);
+    DrawCommand() {}
+    DrawCommand(GenericDrawCommand& cmd) { _drawCommands.push_back(cmd); }
+    DrawCommand(GenericDrawCommand&& cmd) { _drawCommands.emplace_back(MOV(cmd)); }
+    DrawCommand(GenericDrawCommandContainer& cmds) : _drawCommands(cmds) {}
+    DrawCommand(GenericDrawCommandContainer&& cmds) : _drawCommands(MOV(cmds)) {}
+
     GenericDrawCommandContainer _drawCommands;
 DEFINE_COMMAND_END(DrawCommand);
 

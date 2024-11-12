@@ -131,6 +131,14 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 
     virtual void rebuildInternal();
 
+    void prepareRender(SceneGraphNode* sgn,
+                    RenderingComponent& rComp,
+                    RenderPackage& pkg,
+                    GFX::MemoryBarrierCommand& postDrawMemCmd,
+                    RenderStagePass renderStagePass,
+                    const CameraSnapshot& cameraSnapshot,
+                    bool refreshData) override;
+
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
    protected:

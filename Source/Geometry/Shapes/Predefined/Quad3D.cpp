@@ -49,11 +49,13 @@ namespace Divide
 
         const bool doubleSided = _descriptor.mask().b[0] == 0;
 
-        VertexBuffer::Descriptor vbDescriptor{};
-        vbDescriptor._name = resourceName();
-        vbDescriptor._allowDynamicUpdates = true;
-        vbDescriptor._keepCPUData = true;
-        vbDescriptor._largeIndices = false;
+        VertexBuffer::Descriptor vbDescriptor
+        {
+            ._name = resourceName(),
+            ._largeIndices = false,
+            ._keepCPUData = true,
+            ._allowDynamicUpdates = true
+        };
 
         auto vb = context.gfx().newVB( vbDescriptor );
 
