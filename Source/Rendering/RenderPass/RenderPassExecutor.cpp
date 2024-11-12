@@ -40,142 +40,28 @@ namespace Divide
 {
     namespace
     {
-        struct BufferCandidate
-        {
-            U16 _index{ U16_MAX };
-            U16 _framesSinceLastUsed{ U16_MAX };
-        };
-
-        // Remove materials that haven't been indexed in this amount of frames to make space for new ones
-        constexpr U16 g_maxMaterialFrameLifetime = 6u;
         // Use to partition parallel jobs
         constexpr U32 g_nodesPerPrepareDrawPartition = 16u;
 
         template<typename DataContainer>
         using ExecutorBuffer = RenderPassExecutor::ExecutorBuffer<DataContainer>;
-        using BufferUpdateRange = RenderPassExecutor::BufferUpdateRange;
 
-
-        inline bool Contains( const BufferUpdateRange& lhs, const BufferUpdateRange& rhs ) noexcept
+        void UpdateBufferRange( RenderPassExecutor::BufferUpdateRange& range, SharedMutex& mutex, const U32 minIdx, const U32 maxIdx )
         {
-            return lhs._firstIDX <= rhs._firstIDX && lhs._lastIDX >= rhs._lastIDX;
+            LockGuard<SharedMutex> w_lock(mutex);
+            if (range._firstIDX > minIdx)
+            {
+                range._firstIDX = minIdx;
+            }
+            if (range._lastIDX < maxIdx)
+            {
+                range._lastIDX = maxIdx;
+            }
         }
 
-        inline BufferUpdateRange GetPrevRangeDiff( const BufferUpdateRange& crtRange, const BufferUpdateRange& prevRange ) noexcept
+        void UpdateBufferRange(RenderPassExecutor::BufferUpdateRange& range, SharedMutex& mutex, const U32 idx )
         {
-            if ( crtRange.range() == 0u )
-            {
-                return prevRange;
-            }
-
-            BufferUpdateRange ret;
-            // We only care about the case where the previous range is not fully contained by the current one
-            if ( prevRange.range() > 0u && prevRange != crtRange && !Contains( crtRange, prevRange ) )
-            {
-                if ( prevRange._firstIDX < crtRange._firstIDX && prevRange._lastIDX > crtRange._lastIDX )
-                {
-                    ret = prevRange;
-                }
-                else if ( prevRange._firstIDX < crtRange._firstIDX )
-                {
-                    ret._firstIDX = prevRange._firstIDX;
-                    ret._lastIDX = crtRange._firstIDX;
-                }
-                else if ( prevRange._lastIDX > crtRange._lastIDX )
-                {
-                    ret._firstIDX = crtRange._lastIDX;
-                    ret._lastIDX = prevRange._lastIDX;
-                }
-                else
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-            }
-
-            return ret;
-        }
-
-        FORCE_INLINE bool MergeBufferUpdateRanges( BufferUpdateRange& target, const BufferUpdateRange& source ) noexcept
-        {
-            bool ret = false;
-            if ( target._firstIDX > source._firstIDX )
-            {
-                target._firstIDX = source._firstIDX;
-                ret = true;
-            }
-            if ( target._lastIDX < source._lastIDX )
-            {
-                target._lastIDX = source._lastIDX;
-                ret = true;
-            }
-
-            return ret;
-        };
-
-        FORCE_INLINE void UpdateBufferRangeLocked( RenderPassExecutor::ExecutorBufferRange& range, const U32 idx ) noexcept
-        {
-            if ( range._bufferUpdateRange._firstIDX > idx )
-            {
-                range._bufferUpdateRange._firstIDX = idx;
-            }
-            if ( range._bufferUpdateRange._lastIDX < idx )
-            {
-                range._bufferUpdateRange._lastIDX = idx;
-            }
-
-            range._highWaterMark = std::max( range._highWaterMark, idx + 1u );
-        }
-
-        void UpdateBufferRange( RenderPassExecutor::ExecutorBufferRange& range, const U32 idx )
-        {
-            LockGuard<SharedMutex> w_lock( range._lock );
-            UpdateBufferRangeLocked( range, idx );
-        }
-
-        void UpdateBufferRange( RenderPassExecutor::ExecutorBufferRange& range, const U32 minIdx, const U32 maxIdx )
-        {
-            LockGuard<SharedMutex> w_lock( range._lock );
-            UpdateBufferRangeLocked( range, minIdx );
-            UpdateBufferRangeLocked( range, maxIdx );
-        }
-
-        template<typename DataContainer>
-        void WriteToGPUBufferInternal( ExecutorBuffer<DataContainer>& executorBuffer, BufferUpdateRange target, GFX::MemoryBarrierCommand& memCmdInOut )
-        {
-            if ( target.range() == 0u )
-            {
-                return;
-            }
-
-            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-            const size_t bufferAlignmentRequirement = ShaderBuffer::AlignmentRequirement( executorBuffer._gpuBuffer->getUsage() );
-            const size_t bufferPrimitiveSize = executorBuffer._gpuBuffer->getPrimitiveSize();
-            if ( bufferPrimitiveSize < bufferAlignmentRequirement )
-            {
-                // We need this due to alignment concerns
-                if ( target._firstIDX % 2u != 0 )
-                {
-                    target._firstIDX -= 1u;
-                }
-                if ( target._lastIDX % 2u == 0 )
-                {
-                    target._lastIDX += 1u;
-                }
-            }
-
-            bufferPtr data = nullptr;
-            if constexpr ( std::is_same<DataContainer, RenderPassExecutor::BufferIndirectionData>::value )
-            {
-                data = &executorBuffer._data[target._firstIDX];
-
-            }
-            else
-            {
-                data = &executorBuffer._data._gpuData[target._firstIDX];
-            }
-
-            memCmdInOut._bufferLocks.push_back( executorBuffer._gpuBuffer->writeData( { target._firstIDX, target.range() }, data));
+            UpdateBufferRange(range, mutex, idx, idx);
         }
 
         template<typename DataContainer>
@@ -183,97 +69,98 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-            BufferUpdateRange writeRange, prevWriteRange;
+            RenderPassExecutor::BufferUpdateRange crtRange, prevRange;
             {
-                LockGuard<SharedMutex> r_lock( executorBuffer._range._lock );
-
-                if ( !MergeBufferUpdateRanges( executorBuffer._range._bufferUpdateRangeHistory.back(), executorBuffer._range._bufferUpdateRange ) )
-                {
-                    NOP();
-                }
-                std::swap(writeRange, executorBuffer._range._bufferUpdateRange);
-
-                // We don't need to write everything again as big chunks have been written as part of the normal frame update process
-                // Try and find only the items unoutched this frame
-                prevWriteRange = GetPrevRangeDiff( executorBuffer._range._bufferUpdateRangeHistory.back(), executorBuffer._range._bufferUpdateRangePrev );
-                executorBuffer._range._bufferUpdateRangePrev.reset();
+                SharedLock<SharedMutex> w_lock( executorBuffer._rangeLock );
+                crtRange = executorBuffer._updateRange;
+                prevRange = executorBuffer._prevUpdateRange;
             }
 
-            WriteToGPUBufferInternal( executorBuffer, writeRange, memCmdInOut );
-            WriteToGPUBufferInternal( executorBuffer, prevWriteRange, memCmdInOut );
+            if (crtRange.range() > 0u)
+            {
+                const size_t bufferAlignmentRequirement = ShaderBuffer::AlignmentRequirement(executorBuffer._gpuBuffer->getUsage());
+                const size_t bufferPrimitiveSize = executorBuffer._gpuBuffer->getPrimitiveSize();
+                if (bufferPrimitiveSize < bufferAlignmentRequirement)
+                {
+                    // We need this due to alignment concerns
+                    if (crtRange._firstIDX % 2u != 0)
+                    {
+                        crtRange._firstIDX -= 1u;
+                    }
+                    if (crtRange._lastIDX % 2u == 0)
+                    {
+                        crtRange._lastIDX += 1u;
+                    }
+                }
+
+                executorBuffer._gpuBuffer->incQueue();
+                if (prevRange.range() > 0)
+                {
+                    crtRange._firstIDX = std::min(crtRange._firstIDX, prevRange._firstIDX);
+                    crtRange._lastIDX = std::max(crtRange._lastIDX, prevRange._lastIDX);
+                }
+
+                bufferPtr data = &executorBuffer._data._gpuData[crtRange._firstIDX];
+                memCmdInOut._bufferLocks.push_back(executorBuffer._gpuBuffer->writeData({ crtRange._firstIDX, crtRange.range() }, data));
+            }
+
+            {
+                LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
+                executorBuffer._updateRange.reset();
+                executorBuffer._prevUpdateRange = crtRange;
+            }
+
+            LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
+            executorBuffer._nodeProcessedThisFrame.clear();
         }
 
         template<typename DataContainer>
         bool NodeNeedsUpdate( ExecutorBuffer<DataContainer>& executorBuffer, const U32 indirectionIDX )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
-
-            {
-                SharedLock<SharedMutex> w_lock( executorBuffer._nodeProcessedLock );
-                if ( contains( executorBuffer._nodeProcessedThisFrame, indirectionIDX ) )
-                {
-                    return false;
-                }
-            }
-
-            LockGuard<SharedMutex> w_lock( executorBuffer._nodeProcessedLock );
-            // Check again
-            if ( !contains( executorBuffer._nodeProcessedThisFrame, indirectionIDX ) )
-            {
-                executorBuffer._nodeProcessedThisFrame.push_back( indirectionIDX );
-            }
-            return true;
+            LockGuard<Mutex> w_lock( executorBuffer._nodeProcessedLock );
+            // Returns true if and only if the insertion took place! Since this is a set, we can only have unique instances of the ID
+            return executorBuffer._nodeProcessedThisFrame.insert(indirectionIDX).second;
         }
 
         template<typename DataContainer>
-        void ExecutorBufferPostRender( ExecutorBuffer<DataContainer>& executorBuffer )
+        void Reset(ExecutorBuffer<DataContainer>& executorBuffer)
         {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
+            executorBuffer._gpuBuffer.reset();
             {
-                LockGuard<SharedMutex> w_lock( executorBuffer._range._lock );
-                const BufferUpdateRange rangeWrittenThisFrame = executorBuffer._range._bufferUpdateRangeHistory.back();
-
-                // At the end of the frame, bump our history queue by one position and prepare the tail for a new write
-                PROFILE_SCOPE( "History Update", Profiler::Category::Scene );
-                for ( U8 i = 0u; i < executorBuffer._queueLength - 1u; ++i )
-                {
-                    executorBuffer._range._bufferUpdateRangeHistory[i] = executorBuffer._range._bufferUpdateRangeHistory[i + 1];
-                }
-                executorBuffer._range._bufferUpdateRangeHistory[executorBuffer._queueLength - 1u].reset();
-
-                // We can gather all of our history (once we evicted the oldest entry) into our "previous frame written range" entry
-                executorBuffer._range._bufferUpdateRangePrev.reset();
-                for ( U32 i = 0u; i < executorBuffer._gpuBuffer->queueLength() - 1u; ++i )
-                {
-                    MergeBufferUpdateRanges( executorBuffer._range._bufferUpdateRangePrev, executorBuffer._range._bufferUpdateRangeHistory[i] );
-                }
-        
-                executorBuffer._range._highWaterMark = 0u;
-                executorBuffer._gpuBuffer->incQueue();
+                LockGuard<SharedMutex> w_lock(executorBuffer._data._freeListLock);
+                executorBuffer._data._freeList.clear();
+                executorBuffer._data._gpuData.clear();
             }
-
-            // We need to increment our buffer queue to get the new write range into focus
-            LockGuard<SharedMutex> w_lock( executorBuffer._nodeProcessedLock );
-            efficient_clear( executorBuffer._nodeProcessedThisFrame );
+            {
+                LockGuard<SharedMutex> w_lock(executorBuffer._rangeLock);
+                executorBuffer._updateRange.reset();
+            }
+            {
+                LockGuard<Mutex> w_lock(executorBuffer._nodeProcessedLock);
+                executorBuffer._nodeProcessedThisFrame.clear();
+            }
         }
     }
 
     bool RenderPassExecutor::s_globalDataInit = false;
-    Mutex RenderPassExecutor::s_indirectionGlobalLock;
-    std::array<bool, RenderPassExecutor::MAX_INDIRECTION_ENTRIES> RenderPassExecutor::s_indirectionFreeList{};
+    bool RenderPassExecutor::s_resizeBufferQueued = false;
 
+    ExecutorBuffer<RenderPassExecutor::BufferMaterialData>    RenderPassExecutor::s_materialBuffer;
+    ExecutorBuffer<RenderPassExecutor::BufferTransformData>   RenderPassExecutor::s_transformBuffer;
+    ExecutorBuffer<RenderPassExecutor::BufferIndirectionData> RenderPassExecutor::s_indirectionBuffer;
+    
     Pipeline* RenderPassExecutor::s_OITCompositionPipeline = nullptr;
     Pipeline* RenderPassExecutor::s_OITCompositionMSPipeline = nullptr;
     Pipeline* RenderPassExecutor::s_ResolveGBufferPipeline = nullptr;
 
 
-    [[nodiscard]] U32 BufferUpdateRange::range() const noexcept
+    [[nodiscard]] U32 RenderPassExecutor::BufferUpdateRange::range() const noexcept
     {
         return _lastIDX >= _firstIDX ? _lastIDX - _firstIDX + 1u : 0u;
     }
 
-    void BufferUpdateRange::reset() noexcept
+    void RenderPassExecutor::BufferUpdateRange::reset() noexcept
     {
         _firstIDX = U32_MAX;
         _lastIDX = 0u;
@@ -296,24 +183,118 @@ namespace Divide
         _cmdBuffer = _context.newSB( bufferDescriptor );
     }
 
-    void RenderPassExecutor::OnStartup( [[maybe_unused]] const GFXDevice& gfx )
+    void RenderPassExecutor::OnStartup( GFXDevice& gfx )
     {
-        s_indirectionFreeList.fill( true );
-
         Material::OnStartup();
+
+        s_indirectionBuffer._data._gpuData.resize(Config::MAX_VISIBLE_NODES);
+        s_indirectionBuffer._data._freeList.resize(Config::MAX_VISIBLE_NODES, true);
+        s_transformBuffer._data._gpuData.resize(Config::MAX_VISIBLE_NODES);
+        s_transformBuffer._data._freeList.resize(Config::MAX_VISIBLE_NODES, true);
+        s_materialBuffer._data._gpuData.resize(Config::MAX_CONCURRENT_MATERIALS);
+        s_materialBuffer._data._freeList.resize(Config::MAX_CONCURRENT_MATERIALS);
+        ResizeGPUBuffers(gfx, Config::MAX_VISIBLE_NODES, Config::MAX_VISIBLE_NODES, Config::MAX_CONCURRENT_MATERIALS);
     }
 
-    void RenderPassExecutor::OnShutdown( [[maybe_unused]] const GFXDevice& gfx )
+    void RenderPassExecutor::OnShutdown( [[maybe_unused]] GFXDevice& gfx )
     {
         s_globalDataInit = false;
         s_OITCompositionPipeline = nullptr;
         s_OITCompositionMSPipeline = nullptr;
         s_ResolveGBufferPipeline = nullptr;
+        Reset(s_materialBuffer);
+        Reset(s_transformBuffer);
+        Reset(s_indirectionBuffer);
 
         Material::OnShutdown();
     }
 
-    void RenderPassExecutor::postInit( const Handle<ShaderProgram> OITCompositionShader,
+    void RenderPassExecutor::PrepareGPUBuffers(GFXDevice& context)
+    {
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
+
+        if (s_resizeBufferQueued)
+        {
+            const size_t indirectionCount = s_indirectionBuffer._data._gpuData.size();
+            const size_t transformCount = s_transformBuffer._data._gpuData.size();
+            const size_t materialCount = s_materialBuffer._data._gpuData.size();
+
+            ResizeGPUBuffers(context, indirectionCount, transformCount, materialCount);
+            s_resizeBufferQueued = false;
+        }
+    }
+
+    void RenderPassExecutor::FlushBuffersToGPU(GFX::MemoryBarrierCommand& memCmdInOut)
+    {
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
+
+        {
+            PROFILE_SCOPE("buildDrawCommands - update material buffer", Profiler::Category::Graphics);
+            WriteToGPUBuffer(s_materialBuffer, memCmdInOut);
+        }
+        {
+            PROFILE_SCOPE("buildDrawCommands - update transform buffer", Profiler::Category::Graphics);
+            WriteToGPUBuffer(s_transformBuffer, memCmdInOut);
+        }
+        {
+            PROFILE_SCOPE("buildDrawCommands - update indirection buffer", Profiler::Category::Graphics);
+            WriteToGPUBuffer(s_indirectionBuffer, memCmdInOut);
+        }
+        {
+            PROFILE_SCOPE("Increment Lifetime", Profiler::Category::Scene);
+            for (auto& it : s_materialBuffer._data._freeList)
+            {
+                it._framesSinceLastUsed += (it._hash != INVALID_MAT_HASH) ? 1u : 0u;
+            }
+        }
+    }
+
+    void RenderPassExecutor::ResizeGPUBuffers(GFXDevice& context, const size_t indirectionCount, const size_t transformCount, const size_t materialCount)
+    {
+        ShaderBufferDescriptor bufferDescriptor = {};
+        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
+
+        if (s_materialBuffer._gpuBuffer == nullptr || s_materialBuffer._gpuBuffer->getPrimitiveCount() != to_U32(materialCount))
+        {
+            bufferDescriptor._bufferParams._elementCount = to_U32(materialCount);
+            bufferDescriptor._bufferParams._elementSize = sizeof(NodeMaterialData);
+            bufferDescriptor._name = "NODE_MATERIAL_DATA";
+            if (!s_materialBuffer._data._gpuData.empty())
+            {
+                bufferDescriptor._initialData = { s_materialBuffer._data._gpuData.data(), s_materialBuffer._data._gpuData.size() };
+            }
+
+            s_materialBuffer._gpuBuffer = context.newSB(bufferDescriptor);
+        }
+        if (s_transformBuffer._gpuBuffer == nullptr || s_transformBuffer._gpuBuffer->getPrimitiveCount() != to_U32(transformCount))
+        {
+            bufferDescriptor._bufferParams._elementCount = to_U32(transformCount);
+            bufferDescriptor._bufferParams._elementSize = sizeof(NodeTransformData);
+            bufferDescriptor._name = "NODE_TRANSFORM_DATA";
+            if (!s_transformBuffer._data._gpuData.empty())
+            {
+                bufferDescriptor._initialData = { s_transformBuffer._data._gpuData.data(), s_transformBuffer._data._gpuData.size() };
+            }
+
+            s_transformBuffer._gpuBuffer = context.newSB(bufferDescriptor);
+        }
+        if (s_indirectionBuffer._gpuBuffer == nullptr || s_indirectionBuffer._gpuBuffer->getPrimitiveCount() != to_U32(indirectionCount))
+        {
+            bufferDescriptor._bufferParams._elementCount = to_U32(indirectionCount);
+            bufferDescriptor._bufferParams._elementSize = sizeof(NodeIndirectionData);
+            bufferDescriptor._name = "NODE_INDIRECTION_DATA";
+            if (!s_indirectionBuffer._data._gpuData.empty())
+            {
+                bufferDescriptor._initialData = { s_indirectionBuffer._data._gpuData.data(), s_indirectionBuffer._data._gpuData.size() };
+            }
+            s_indirectionBuffer._gpuBuffer = context.newSB(bufferDescriptor);
+        }
+    }
+
+    void RenderPassExecutor::PostInit( GFXDevice& context,
+                                       const Handle<ShaderProgram> OITCompositionShader,
                                        const Handle<ShaderProgram> OITCompositionShaderMS,
                                        const Handle<ShaderProgram> ResolveGBufferShaderMS )
     {
@@ -321,14 +302,13 @@ namespace Divide
         {
             s_globalDataInit = true;
 
-
             PipelineDescriptor pipelineDescriptor;
             pipelineDescriptor._stateBlock._cullMode = CullMode::NONE;
             pipelineDescriptor._stateBlock._depthTestEnabled = false;
             pipelineDescriptor._stateBlock._depthWriteEnabled = false;
             pipelineDescriptor._primitiveTopology = PrimitiveTopology::TRIANGLES;
             pipelineDescriptor._shaderProgramHandle = ResolveGBufferShaderMS;
-            s_ResolveGBufferPipeline = _context.newPipeline( pipelineDescriptor );
+            s_ResolveGBufferPipeline = context.newPipeline( pipelineDescriptor );
 
             BlendingSettings& state0 = pipelineDescriptor._blendStates._settings[to_U8( GFXDevice::ScreenTargets::ALBEDO )];
             state0.enabled( true );
@@ -337,92 +317,58 @@ namespace Divide
             state0.blendDest( BlendProperty::ONE );
 
             pipelineDescriptor._shaderProgramHandle = OITCompositionShader;
-            s_OITCompositionPipeline = _context.newPipeline( pipelineDescriptor );
+            s_OITCompositionPipeline = context.newPipeline( pipelineDescriptor );
 
             pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS;
-            s_OITCompositionMSPipeline = _context.newPipeline( pipelineDescriptor );
+            s_OITCompositionMSPipeline = context.newPipeline( pipelineDescriptor );
 
-        }
-
-        _transformBuffer._data._freeList.fill( true );
-        _materialBuffer._data._lookupInfo.fill( { INVALID_MAT_HASH, g_invalidMaterialIndex } );
-
-        ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        {// Node Transform buffer
-            bufferDescriptor._bufferParams._elementCount = to_U32( _transformBuffer._data._gpuData.size() );
-            bufferDescriptor._bufferParams._elementSize = sizeof( NodeTransformData );
-            Util::StringFormat( bufferDescriptor._name, "NODE_TRANSFORM_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
-            _transformBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
-            _transformBuffer._range._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
-            _transformBuffer._queueLength = bufferDescriptor._ringBufferLength;
-        }
-        {// Node Material buffer
-            bufferDescriptor._bufferParams._elementCount = to_U32( _materialBuffer._data._gpuData.size() );
-            bufferDescriptor._bufferParams._elementSize = sizeof( NodeMaterialData );
-            Util::StringFormat( bufferDescriptor._name, "NODE_MATERIAL_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
-            _materialBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
-            _materialBuffer._range._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
-            _materialBuffer._queueLength = bufferDescriptor._ringBufferLength;
-        }
-        {// Indirection Buffer
-            bufferDescriptor._bufferParams._elementCount = to_U32( _indirectionBuffer._data.size() );
-            bufferDescriptor._bufferParams._elementSize = sizeof( NodeIndirectionData );
-            Util::StringFormat( bufferDescriptor._name, "NODE_INDIRECTION_DATA_{}", TypeUtil::RenderStageToString( _stage ) );
-            _indirectionBuffer._gpuBuffer = _context.newSB( bufferDescriptor );
-            _indirectionBuffer._range._bufferUpdateRangeHistory.resize( bufferDescriptor._ringBufferLength );
-            _indirectionBuffer._queueLength = bufferDescriptor._ringBufferLength;
         }
     }
 
-    void RenderPassExecutor::processVisibleNodeTransform( const PlayerIndex playerIdx, RenderingComponent* rComp )
+    RenderPassExecutor::ParseResult RenderPassExecutor::processVisibleNodeTransform(const mat4<F32>& previousViewProjectionMatrix, RenderingComponent* rComp, U32& transformIDXOut)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        U8 boneCount = 0u;
-        U8 selectionFlag = 0u;
-        AnimEvaluator::FrameIndex frameIndex{};
+        ParseResult ret{};
 
         const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
-
-        if ( !NodeNeedsUpdate( _transformBuffer, indirectionIDX ) )
+        if ( !NodeNeedsUpdate( s_transformBuffer, indirectionIDX ) )
         {
-            return;
+            return ret;
         }
+
+        transformIDXOut = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp)._transformIDX;
 
         PROFILE_SCOPE( "Buffer idx update", Profiler::Category::Scene );
-        U32 transformIdx = U32_MAX;
-        {
-            LockGuard<Mutex> w_lock( _transformBuffer._data._freeListlock );
-            for ( U32 idx = 0u; idx < Config::MAX_VISIBLE_NODES; ++idx )
-            {
-                if ( _transformBuffer._data._freeList[idx] )
-                {
-                    _transformBuffer._data._freeList[idx] = false;
-                    transformIdx = idx;
-                    break;
-                }
-            }
-            DIVIDE_ASSERT( transformIdx != U32_MAX );
-        }
+        DIVIDE_ASSERT(transformIDXOut != NodeIndirectionData::INVALID_IDX);
 
-        NodeTransformData& transformOut = _transformBuffer._data._gpuData[transformIdx];
+        // Should be thread safe at this point
+        NodeTransformData& transformOut = s_transformBuffer._data._gpuData[transformIDXOut];
+
         // Out last used transform matrix is now our previous transform
-        mat4<F32>::Multiply( _context.previousFrameData( playerIdx )._previousViewProjectionMatrix, transformOut._worldMatrix, transformOut._prevWVPMatrix);
+        mat4<F32>::Multiply(previousViewProjectionMatrix, transformOut._worldMatrix, transformOut._prevWVPMatrix);
 
         const SceneGraphNode* node = rComp->parentSGN();
 
         if ( node->HasComponents( ComponentType::ANIMATION ) )
         {
+            AnimEvaluator::FrameIndex frameIndex{};
             const AnimationComponent* animComp = node->get<AnimationComponent>();
-            boneCount = animComp->boneCount();
+            const U8 boneCount = animComp->boneCount();
             if ( animComp->playAnimations() )
             {
                 frameIndex = animComp->frameIndex();
             }
+            transformOut._normalMatrixW.element(1, 3) = to_F32(std::max(frameIndex._curr, 0));
+            transformOut._normalMatrixW.element( 2, 3 ) = to_F32( boneCount );
         }
+        else
+        {
+            transformOut._normalMatrixW.element(1, 3) = 0.f;
+            transformOut._normalMatrixW.element(2, 3) = 0.f;
+        }
+
+        U8 selectionFlag = 0u;
         if ( node->HasComponents( ComponentType::SELECTION ) )
         {
             selectionFlag = to_U8( node->get<SelectionComponent>()->selectionType() );
@@ -435,32 +381,28 @@ namespace Divide
 
         transformOut._normalMatrixW.element( 0, 3 ) = to_F32( Util::PACK_UNORM4x8(
             0u,
-            0u,
+            selectionFlag,
             rComp->getLoDLevel( _stage ),
             rComp->occlusionCull() ? 1u : 0u
-        ) );
+        ));
 
-        transformOut._normalMatrixW.element( 1, 3 ) = to_F32( std::max( frameIndex._curr, 0) );
-        transformOut._normalMatrixW.element( 2, 3 ) = to_F32( boneCount );
-
-
-        UpdateBufferRangeLocked( _transformBuffer._range, transformIdx );
-
-        if ( 0u == transformIdx ||
-             _indirectionBuffer._data[indirectionIDX][TRANSFORM_IDX] != transformIdx ||
-             _indirectionBuffer._data[indirectionIDX][SELECTION_FLAG] != selectionFlag)
-        {
-            _indirectionBuffer._data[indirectionIDX][TRANSFORM_IDX] = transformIdx;
-            _indirectionBuffer._data[indirectionIDX][SELECTION_FLAG] = selectionFlag;
-            UpdateBufferRange( _indirectionBuffer._range, indirectionIDX );
-        }
+        ret._updateBuffer = true;
+        return ret;
     }
 
-    U16 RenderPassExecutor::processVisibleNodeMaterial( RenderingComponent* rComp, bool& cacheHit )
+    RenderPassExecutor::ParseResult RenderPassExecutor::processVisibleNodeMaterial( RenderingComponent* rComp, U32& materialIDXOut, U32& indirectionIDXOut)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        cacheHit = false;
+        ParseResult ret{};
+        indirectionIDXOut = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(rComp);
+        U32 materialIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp)._materialIDX;
+
+        if (!NodeNeedsUpdate(s_materialBuffer, indirectionIDXOut))
+        {
+            materialIDXOut = materialIDX;
+            return ret;
+        }
 
         NodeMaterialData tempData{};
         // Get the colour matrix (base colour, metallic, etc)
@@ -469,21 +411,32 @@ namespace Divide
         // Match materials
         const size_t materialHash = HashMaterialData( tempData );
 
-        BufferMaterialData::LookupInfoContainer& infoContainer = _materialBuffer._data._lookupInfo;
         {// Try and match an existing material
-            SharedLock<SharedMutex> r_lock( _materialBuffer._range._lock );
+            SharedLock<SharedMutex> r_lock( s_materialBuffer._data._freeListLock);
             PROFILE_SCOPE( "processVisibleNode - try match material", Profiler::Category::Scene );
+
+            // Usually, the material doesn't change, so check that first
+            if (materialIDX != NodeIndirectionData::INVALID_IDX &&
+                s_materialBuffer._data._freeList[materialIDX]._hash == materialHash)
             {
-                const size_t count = infoContainer.size();
-                for ( size_t idx = 0u; idx < count; ++idx )
+                materialIDXOut = materialIDX;
+                return ret;
+            }
+
+            auto& infoContainer = s_materialBuffer._data._freeList;
+            // Otherwise, we have an updated material, so try to match against a different one first
+            for ( size_t idx = 0u; idx < infoContainer.size(); ++idx )
+            {
+                auto& [hash, framesSinceLastUsed ] = infoContainer[idx];
+                if ( hash == materialHash )
                 {
-                    const auto [hash, _] = infoContainer[idx];
-                    if ( hash == materialHash )
-                    {
-                        cacheHit = true;
-                        infoContainer[idx]._framesSinceLastUsed = 0u;
-                        return to_U16(idx);
-                    }
+                    framesSinceLastUsed = 0u;
+                    Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, to_U32(idx));
+                    materialIDXOut = materialIDX;
+
+                    ret._updateIndirection = true;
+                    s_indirectionBuffer._data._gpuData[indirectionIDXOut]._materialIDX = materialIDX;
+                    return ret;
                 }
             }
         }
@@ -491,52 +444,94 @@ namespace Divide
         // If we fail, try and find an empty slot and update it
         PROFILE_SCOPE( "processVisibleNode - process unmatched material", Profiler::Category::Scene );
 
-        LockGuard<SharedMutex> w_lock(_materialBuffer._range._lock);
+        LockGuard<SharedMutex> w_lock(s_materialBuffer._data._freeListLock);
+        materialIDX = NodeIndirectionData::INVALID_IDX;
+
+        auto& infoContainer = s_materialBuffer._data._freeList;
         // No match found (cache miss) so try again and add a new entry if we still fail
-        const size_t count = infoContainer.size();
-        for ( size_t idx = 0u; idx < count; ++idx )
+        for ( size_t idx = 0u; idx < infoContainer.size(); ++idx )
         {
-            const auto [hash, _] = infoContainer[idx];
-            if ( hash == materialHash )
+            auto& entry = infoContainer[idx];
+            if (entry._hash == materialHash)
             {
-                cacheHit = true;
-                infoContainer[idx]._framesSinceLastUsed = 0u;
-                return to_U16(idx);
-            }
-        }
-
-        BufferCandidate bestCandidate{ g_invalidMaterialIndex, 0u };
-
-        for ( U16 idx = 0u; idx < count; ++idx )
-        {
-            const auto [hash, framesSinceLastUsed] = infoContainer[idx];
-            // Two cases here. We either have empty slots (e.g. startup, cache clear, etc) ...
-            if ( hash == INVALID_MAT_HASH )
-            {
-                // ... in which case our current idx is what we are looking for ...
-                bestCandidate._index = idx;
-                bestCandidate._framesSinceLastUsed = g_maxMaterialFrameLifetime;
+                entry._framesSinceLastUsed = 0u;
+                materialIDX = to_U32(idx);
                 break;
             }
-            // ... else we need to find a slot with a stale entry (but not one that is still in flight!)
-            if ( framesSinceLastUsed >= std::max( g_maxMaterialFrameLifetime, bestCandidate._framesSinceLastUsed ) )
+        }
+
+        // Cache miss
+        if (materialIDX == NodeIndirectionData::INVALID_IDX)
+        {
+            for (size_t idx = 0u; idx < infoContainer.size(); ++idx )
             {
-                bestCandidate._index = idx;
-                bestCandidate._framesSinceLastUsed = framesSinceLastUsed;
-                // Keep going and see if we can find an even older entry
+                auto& entry = infoContainer[idx];
+                if (entry._hash == INVALID_MAT_HASH ||
+                    entry._framesSinceLastUsed >= MaterialLookupInfo::MAX_FRAME_LIFETIME)
+                {
+                    // ... in which case our current idx is what we are looking for ...
+                    entry._hash = materialHash;
+                    entry._framesSinceLastUsed = 0u;
+                    materialIDX = to_U32(idx);
+                    break;
+                }
+            }
+
+            // Cache miss + resize required
+            if (materialIDX == NodeIndirectionData::INVALID_IDX)
+            {
+                materialIDX = to_U32(s_materialBuffer._data._freeList.size());
+                s_materialBuffer._data._freeList.emplace_back(MaterialLookupInfo
+                {
+                    ._hash = materialHash,
+                    ._framesSinceLastUsed = 0u
+                });
+                s_resizeBufferQueued = true;
+            }
+
+            DIVIDE_ASSERT( materialIDX != NodeIndirectionData::INVALID_IDX );
+
+            ret._updateBuffer = true;
+            s_materialBuffer._data._gpuData[materialIDX] = tempData;
+        }
+
+        Attorney::RenderingCompRenderPassExecutor::setMaterialIDX(rComp, materialIDX);
+
+        ret._updateIndirection = true;
+        s_indirectionBuffer._data._gpuData[indirectionIDXOut]._materialIDX = materialIDX;
+
+        materialIDXOut = materialIDX;
+
+        return ret;
+    }
+
+    void RenderPassExecutor::parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index)
+    {
+        U32 minTransform = U32_MAX, maxTransform = 0u;
+
+        const mat4<F32>& previousViewProjectionMatrix = _context.previousFrameData(index)._previousViewProjectionMatrix;
+
+        for (U32 i = start; i < end; ++i)
+        {
+            U32 transformIDXOut = 0u;
+            ParseResult ret = processVisibleNodeTransform(previousViewProjectionMatrix, queue[i], transformIDXOut);
+            DIVIDE_ASSERT(!ret._updateIndirection);
+
+            if (transformIDXOut < minTransform)
+            {
+                minTransform = transformIDXOut;
+            }
+            if (transformIDXOut > maxTransform)
+            {
+                maxTransform = transformIDXOut;
             }
         }
 
-        DIVIDE_ASSERT( bestCandidate._index != g_invalidMaterialIndex, "RenderPassExecutor::processVisibleNode error: too many concurrent materials! Increase Config::MAX_CONCURRENT_MATERIALS" );
-
-        infoContainer[bestCandidate._index] = { materialHash, 0u };
-        assert( bestCandidate._index < _materialBuffer._data._gpuData.size() );
-
-        _materialBuffer._data._gpuData[bestCandidate._index] = tempData;
-
-        return bestCandidate._index;
+        if ( minTransform <= maxTransform)
+        {
+            UpdateBufferRange(s_transformBuffer._updateRange, s_transformBuffer._rangeLock, minTransform, maxTransform);
+        }
     }
-
 
     void RenderPassExecutor::parseMaterialRange( RenderBin::SortedQueue& queue, const U32 start, const U32 end )
     {
@@ -547,42 +542,41 @@ namespace Divide
 
         for ( U32 i = start; i < end; ++i )
         {
-            const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( queue[i] );
-            if ( !NodeNeedsUpdate( _materialBuffer, indirectionIDX ) )
+            U32 materialIDXOut = 0u, indirectionIDXOut = 0u;
+            const ParseResult ret = processVisibleNodeMaterial( queue[i], materialIDXOut, indirectionIDXOut);
+            if (ret._updateBuffer)
             {
-                continue;
-            }
-
-            [[maybe_unused]] bool cacheHit = false;
-            const U16 idx = processVisibleNodeMaterial( queue[i], cacheHit );
-            DIVIDE_ASSERT( idx != g_invalidMaterialIndex && idx != U16_MAX );
-
-            if ( idx < minMaterial)
-            {
-                minMaterial = idx;
-            }
-            if ( idx > maxMaterial)
-            {
-                maxMaterial = idx;
-            }
-
-            if ( 0u == idx || _indirectionBuffer._data[indirectionIDX][MATERIAL_IDX] != idx )
-            {
-                _indirectionBuffer._data[indirectionIDX][MATERIAL_IDX] = idx;
-
-                if ( indirectionIDX < minIndirection )
+                if (materialIDXOut < minMaterial)
                 {
-                    minIndirection = indirectionIDX;
+                    minMaterial = materialIDXOut;
                 }
-                if ( indirectionIDX > maxIndirection )
+                if (materialIDXOut > maxMaterial)
                 {
-                    maxIndirection = indirectionIDX;
+                    maxMaterial = materialIDXOut;
+                }
+            }
+            if (ret._updateIndirection)
+            {
+                if (indirectionIDXOut < minIndirection )
+                {
+                    minIndirection = indirectionIDXOut;
+                }
+                if (indirectionIDXOut > maxIndirection )
+                {
+                    maxIndirection = indirectionIDXOut;
                 }
             }
         }
 
-        UpdateBufferRange( _indirectionBuffer._range, minIndirection, maxIndirection );
-        UpdateBufferRange( _materialBuffer._range, minMaterial, maxMaterial );
+        if (minMaterial <= maxMaterial)
+        {
+            UpdateBufferRange( s_materialBuffer._updateRange, s_materialBuffer._rangeLock, minMaterial, maxMaterial );
+        }
+
+        if (minIndirection <= maxIndirection)
+        {
+            UpdateBufferRange( s_indirectionBuffer._updateRange, s_indirectionBuffer._rangeLock, minIndirection, maxIndirection );
+        }
     }
 
     [[nodiscard]] constexpr size_t MIN_NODE_COUNT( const size_t N, const size_t L) noexcept
@@ -611,7 +605,8 @@ namespace Divide
         //Erase nodes with no draw commands
         for ( RenderBin::SortedQueue& queue : _sortedQueues )
         {
-            erase_if( queue, []( RenderingComponent* item ) noexcept
+            erase_if( queue,
+                      []( RenderingComponent* item ) noexcept
                       {
                           return !Attorney::RenderingCompRenderPass::hasDrawCommands( *item );
                       } );
@@ -631,28 +626,20 @@ namespace Divide
                 const U32 queueSize = to_U32( queue.size() );
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
-                    Start( *CreateTask( updateTask, [this, index, &queue, queueSize]( const Task& )
+                    const U32 midPoint = queueSize / 2;
+                    Start( *CreateTask( updateTask, [this, index, &queue, midPoint]( const Task& )
                                         {
-                                            for ( U32 i = 0u; i < queueSize / 2; ++i )
-                                            {
-                                                processVisibleNodeTransform( index, queue[i] );
-                                            }
+                                            parseTransformRange( queue, 0u, midPoint, index);
                                         } ), pool );
-                    Start( *CreateTask( updateTask, [this, index, &queue, queueSize]( const Task& )
+                    Start( *CreateTask( updateTask, [this, index, &queue, midPoint, queueSize]( const Task& )
                                         {
-                                            for ( U32 i = queueSize / 2; i < queueSize; ++i )
-                                            {
-                                                processVisibleNodeTransform( index, queue[i] );
-                                            }
+                                            parseTransformRange(queue, midPoint, queueSize, index);
                                         } ), pool );
                     updateTaskDirty = true;
                 }
                 else
                 {
-                    for ( U32 i = 0u; i < queueSize; ++i )
-                    {
-                        processVisibleNodeTransform( index, queue[i] );
-                    }
+                    parseTransformRange(queue, 0u, queueSize, index);
                 }
                 nodeCount += queueSize;
             }
@@ -697,7 +684,7 @@ namespace Divide
             {
                 for ( RenderingComponent* rComp : queue )
                 {
-                    Attorney::RenderingCompRenderPass::retrieveDrawCommands( *rComp, stagePass, to_U32( startOffset ), _drawCommands );
+                    Attorney::RenderingCompRenderPass::retrieveDrawCommands( *rComp, stagePass, startOffset, _drawCommands );
                 }
             }
         };
@@ -738,19 +725,8 @@ namespace Divide
         if ( cmdCount > 0u )
         {
             PROFILE_SCOPE( "buildDrawCommands - update command buffer", Profiler::Category::Graphics );
+            _cmdBuffer->incQueue();
             memCmdInOut._bufferLocks.push_back( _cmdBuffer->writeData( { startOffset, cmdCount }, _drawCommands.data() ) );
-        }
-        {
-            PROFILE_SCOPE( "buildDrawCommands - update material buffer", Profiler::Category::Graphics );
-            WriteToGPUBuffer( _materialBuffer, memCmdInOut );
-        }
-        {
-            PROFILE_SCOPE( "buildDrawCommands - update transform buffer", Profiler::Category::Graphics );
-            WriteToGPUBuffer( _transformBuffer, memCmdInOut );
-        }
-        {
-            PROFILE_SCOPE( "buildDrawCommands - update indirection buffer", Profiler::Category::Graphics );
-            WriteToGPUBuffer( _indirectionBuffer, memCmdInOut );
         }
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( bufferInOut );
@@ -765,15 +741,15 @@ namespace Divide
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 3u, ShaderStageVisibility::ALL );
-            Set(binding._data, _transformBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_transformBuffer._range._highWaterMark, Config::MAX_VISIBLE_NODES )});
+            Set(binding._data, s_transformBuffer._gpuBuffer.get(), { 0u, s_transformBuffer._data._gpuData.size() });
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 4u, ShaderStageVisibility::ALL );
-            Set( binding._data, _indirectionBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_indirectionBuffer._range._highWaterMark, Config::MAX_VISIBLE_NODES )});
+            Set( binding._data, s_indirectionBuffer._gpuBuffer.get(), { 0u, s_indirectionBuffer._data._gpuData.size() });
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 5u, ShaderStageVisibility::FRAGMENT );
-            Set( binding._data, _materialBuffer._gpuBuffer.get(), { 0u, MIN_NODE_COUNT(_materialBuffer._range._highWaterMark, Config::MAX_CONCURRENT_MATERIALS )});
+            Set( binding._data, s_materialBuffer._gpuBuffer.get(), { 0u, s_materialBuffer._data._gpuData.size() });
         }
 
         return queueTotalSize;
@@ -1392,29 +1368,6 @@ namespace Divide
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>( bufferInOut );
     }
 
-    void RenderPassExecutor::postRender()
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        ExecutorBufferPostRender( _indirectionBuffer );
-        ExecutorBufferPostRender( _materialBuffer );
-        ExecutorBufferPostRender( _transformBuffer );
-        {
-            PROFILE_SCOPE( "Increment Lifetime", Profiler::Category::Scene );
-            for ( BufferMaterialData::LookupInfo& it : _materialBuffer._data._lookupInfo )
-            {
-                it._framesSinceLastUsed += ( it._hash != INVALID_MAT_HASH ) ? 1u : 0u;
-            }
-        }
-        {
-            PROFILE_SCOPE( "Clear Freelists", Profiler::Category::Scene );
-            LockGuard<Mutex> w_lock( _transformBuffer._data._freeListlock );
-            _transformBuffer._data._freeList.fill( true );
-        }
-
-        _cmdBuffer->incQueue();
-    }
-
     U32 RenderPassExecutor::renderQueueSize() const
     {
         return to_U32( _renderQueuePackages.size() );
@@ -1424,35 +1377,95 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-        LockGuard<Mutex> w_lock( s_indirectionGlobalLock );
-        assert( Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp ) == U32_MAX );
-        U32 entry = U32_MAX;
-        for ( U32 i = 0u; i < MAX_INDIRECTION_ENTRIES; ++i )
+        bool resizeBuffers = false;
+        U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry(rComp);
+        DIVIDE_ASSERT(indirectionIDX == NodeIndirectionData::INVALID_IDX);
+
         {
-            if ( s_indirectionFreeList[i] )
+            LockGuard<SharedMutex> w_lock(s_indirectionBuffer._data._freeListLock);
+            for ( size_t i = 0u; i < s_indirectionBuffer._data._freeList.size(); ++i )
             {
-                s_indirectionFreeList[i] = false;
-                entry = i;
-                break;
+                if (s_indirectionBuffer._data._freeList[i] )
+                {
+                    s_indirectionBuffer._data._freeList[i] = false;
+                    indirectionIDX = to_U32(i);
+                    break;
+                }
+            }
+            // Cache miss
+            if (indirectionIDX == NodeIndirectionData::INVALID_IDX)
+            {
+                indirectionIDX = to_U32(s_indirectionBuffer._data._freeList.size());
+                s_indirectionBuffer._data._freeList.emplace_back(false);
+                s_indirectionBuffer._data._gpuData.emplace_back();
+                resizeBuffers = true;
             }
         }
-        DIVIDE_ASSERT( entry != U32_MAX, "Insufficient space left in indirection buffer. Consider increasing available storage!" );
-        Attorney::RenderingCompRenderPassExecutor::setIndirectionBufferEntry( rComp, entry );
+
+       Attorney::RenderingCompRenderPassExecutor::setIndirectionBufferEntry( rComp, indirectionIDX);
+
+       U32 transformIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp)._transformIDX;
+
+        DIVIDE_ASSERT(transformIDX == NodeIndirectionData::INVALID_IDX);
+        {
+            LockGuard<SharedMutex> w_lock(s_transformBuffer._data._freeListLock);
+            for (size_t i = 0u; i < s_transformBuffer._data._freeList.size(); ++i)
+            {
+                if (s_transformBuffer._data._freeList[i])
+                {
+                    s_transformBuffer._data._freeList[i] = false;
+                    transformIDX = to_U32(i);
+                    break;
+                }
+            }
+            // Cache miss
+            if (transformIDX == NodeIndirectionData::INVALID_IDX)
+            {
+                transformIDX = to_U32(s_transformBuffer._data._freeList.size());
+                s_transformBuffer._data._freeList.emplace_back(false);
+                s_transformBuffer._data._gpuData.emplace_back();
+                resizeBuffers = true;
+            }
+        }
+
+        s_indirectionBuffer._data._gpuData[indirectionIDX]._transformIDX = transformIDX;
+        UpdateBufferRange(s_indirectionBuffer._updateRange, s_indirectionBuffer._rangeLock, indirectionIDX);
+
+        Attorney::RenderingCompRenderPassExecutor::setTransformIDX(rComp, transformIDX);
+        UpdateBufferRange(s_transformBuffer._updateRange, s_transformBuffer._rangeLock, transformIDX);
+
+        if ( resizeBuffers )
+        {
+            s_resizeBufferQueued = true;
+        }
     }
 
     void RenderPassExecutor::OnRenderingComponentDestruction( RenderingComponent* rComp )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Streaming );
 
-        const U32 entry = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
-        if ( entry == U32_MAX )
+        const U32 indirectionIDX = Attorney::RenderingCompRenderPassExecutor::getIndirectionBufferEntry( rComp );
+        DIVIDE_ASSERT (indirectionIDX != NodeIndirectionData::INVALID_IDX);
         {
-            DIVIDE_UNEXPECTED_CALL();
-            return;
+            UpdateBufferRange(s_indirectionBuffer._updateRange, s_indirectionBuffer._rangeLock, indirectionIDX);
+
+            LockGuard<SharedMutex> w_lock(s_indirectionBuffer._data._freeListLock);
+            DIVIDE_ASSERT( !s_indirectionBuffer._data._freeList[indirectionIDX] );
+            s_indirectionBuffer._data._freeList[indirectionIDX] = true;
+            s_indirectionBuffer._data._gpuData[indirectionIDX] = {};
         }
-        LockGuard<Mutex> w_lock( s_indirectionGlobalLock );
-        assert( !s_indirectionFreeList[entry] );
-        s_indirectionFreeList[entry] = true;
+        Attorney::RenderingCompRenderPassExecutor::setIndirectionBufferEntry(rComp, NodeIndirectionData::INVALID_IDX);
+
+        const NodeIndirectionData& data = Attorney::RenderingCompRenderPassExecutor::getIndirectionNodeData(rComp);
+        DIVIDE_ASSERT( data._transformIDX != NodeIndirectionData::INVALID_IDX );
+        {
+            UpdateBufferRange(s_transformBuffer._updateRange, s_transformBuffer._rangeLock, data._transformIDX);
+
+            LockGuard<SharedMutex> w_lock(s_transformBuffer._data._freeListLock);
+            s_transformBuffer._data._freeList[data._transformIDX] = true;
+            s_transformBuffer._data._gpuData[data._transformIDX] = {};
+            Attorney::RenderingCompRenderPassExecutor::setTransformIDX(rComp, NodeIndirectionData::INVALID_IDX);
+        }
     }
 
 } //namespace Divide

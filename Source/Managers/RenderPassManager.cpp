@@ -40,7 +40,8 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
     , _context(context)
     , _renderPassTimer(&Time::ADD_TIMER("Render Passes"))
     , _buildCommandBufferTimer(&Time::ADD_TIMER("Build Command Buffers"))
-    , _processGUITimer(&Time::ADD_TIMER("Process GUI"))
+    , _processGUIDisplayTimer(&Time::ADD_TIMER("Process GUI [Flush Display]"))
+    , _processGUISceneTimer(&Time::ADD_TIMER("Process GUI [Scene]"))
     , _flushCommandBufferTimer(&Time::ADD_TIMER("Flush Command Buffers"))
     , _postFxRenderTimer(&Time::ADD_TIMER("PostFX Timer"))
     , _blitToDisplayTimer(&Time::ADD_TIMER("Flush To Display Timer"))
@@ -53,7 +54,8 @@ RenderPassManager::RenderPassManager(Kernel& parent, GFXDevice& context)
         _flushCommandBufferTimer->addChildTimer(*_processCommandBufferTimer[i]);
     }
 
-    _flushCommandBufferTimer->addChildTimer(*_processGUITimer);
+    _flushCommandBufferTimer->addChildTimer(*_processGUIDisplayTimer);
+    _flushCommandBufferTimer->addChildTimer(*_processGUISceneTimer);
     _flushCommandBufferTimer->addChildTimer(*_blitToDisplayTimer);
 }
 
@@ -99,13 +101,7 @@ void RenderPassManager::postInit()
         _gbufferResolveShader = CreateResource(shaderResolveDesc);
     }
 
-    for (auto& executor : _executors)
-    {
-        if (executor != nullptr)
-        {
-            executor->postInit( _oitCompositionShader, _oitCompositionShaderMS, _gbufferResolveShader );
-        }
-    }
+    RenderPassExecutor::PostInit( _context, _oitCompositionShader, _oitCompositionShaderMS, _gbufferResolveShader );
 }
 
 void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& pool, Task* parentTask)
@@ -114,8 +110,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
 
     Time::ScopedTimer timeAll( *_renderPassTimer );
 
-    GFXDevice& gfx = _context;
-    for ( auto& state : _renderPassCompleted )
+    for ( std::atomic_bool& state : _renderPassCompleted )
     {
         state.store(false);
     }
@@ -155,7 +150,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                                });
                                             }
 
-                                            gfx.flushCommandBuffer( MOV(cmdBufferHandle) );
+                                            _context.flushCommandBuffer( MOV(cmdBufferHandle) );
                                             _renderPassCompleted[i].store(true);
 
                                            LockGuard<Mutex> w_lock( _waitForDependenciesLock );
@@ -200,48 +195,77 @@ void RenderPassManager::render(const RenderParams& params)
     GFX::CommandBuffer* postRenderBuffer = GFX::Get( postRenderBufferHandle );
 
     {
-       Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
-       GFX::MemoryBarrierCommand memCmd{};
-       {
+        PROFILE_SCOPE("RenderPassManager::build post-render buffers", Profiler::Category::Scene);
+
+        Time::ScopedTimer timeCommandsBuild(*_buildCommandBufferTimer);
+        GFX::MemoryBarrierCommand memCmd{};
+        {
             PROFILE_SCOPE("RenderPassManager::update sky light", Profiler::Category::Scene );
             gfx.updateSceneDescriptorSet(*skyLightRenderBuffer, memCmd );
             SceneEnvironmentProbePool::UpdateSkyLight(gfx, *skyLightRenderBuffer, memCmd );
-       }
+            projectManager->getEnvProbes()->prepareDebugData();
+        }
 
-       const Rect<I32>& targetViewport = params._targetViewport;
-       context.gui().preDraw( gfx, targetViewport, *postFXCmdBuffer, memCmd );
-       {
-           GFX::BeginRenderPassCommand beginRenderPassCmd{};
-           beginRenderPassCmd._name = "Flush Display";
-           beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
-           beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-           beginRenderPassCmd._target = RenderTargetNames::BACK_BUFFER;
-           GFX::EnqueueCommand(*postFXCmdBuffer, beginRenderPassCmd);
+        const Rect<I32>& targetViewport = params._targetViewport;
+        context.gui().preDraw( gfx, targetViewport, *postFXCmdBuffer, memCmd );
+        {
 
-           const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
-           const auto& texData = Get(screenAtt->texture())->getView();
-     
-           gfx.drawTextureInViewport(texData, screenAtt->_descriptor._sampler, targetViewport, false, false, false, *postFXCmdBuffer );
+            PROFILE_SCOPE("PostFX: CommandBuffer build", Profiler::Category::Scene);
+            Time::ScopedTimer time(*_postFxRenderTimer);
+            _context.getRenderer().postFX().apply(params._playerPass, cam->snapshot(), *postFXCmdBuffer);
+        }
+        {
+            PROFILE_SCOPE("In-game GUI overlays", Profiler::Category::Scene);
+            Time::ScopedTimer timeGUIBuffer(*_processGUISceneTimer);
 
-           {
-               Time::ScopedTimer timeGUIBuffer(*_processGUITimer);
-               Attorney::ProjectManagerRenderPass::drawCustomUI(projectManager, targetViewport, *postFXCmdBuffer, memCmd);
-               if constexpr(Config::Build::ENABLE_EDITOR)
-               {
-                   context.editor().drawScreenOverlay(cam, targetViewport, *postFXCmdBuffer, memCmd);
-               }
-               context.gui().draw(gfx, targetViewport, *postFXCmdBuffer, memCmd);
-               projectManager->getEnvProbes()->prepareDebugData();
-               gfx.renderDebugUI(targetViewport, *postFXCmdBuffer, memCmd);
-           }
+            GFX::BeginRenderPassCommand beginRenderPassCmd{};
+            beginRenderPassCmd._target = RenderTargetNames::SCREEN;
+            std::ranges::fill(beginRenderPassCmd._descriptor._drawMask, false);
+            beginRenderPassCmd._descriptor._drawMask[to_base(GFXDevice::ScreenTargets::ALBEDO)] = true;
+            beginRenderPassCmd._name = "DO_IN_SCENE_UI_PASS";
+            beginRenderPassCmd._clearDescriptor[to_base(RTColourAttachmentSlot::SLOT_0)]._enabled = false;
+            GFX::EnqueueCommand(*postFXCmdBuffer, beginRenderPassCmd);
 
-           GFX::EnqueueCommand<GFX::EndRenderPassCommand>( *postFXCmdBuffer );
-       }
+            Attorney::ProjectManagerRenderPass::drawCustomUI(projectManager, targetViewport, *postFXCmdBuffer, memCmd);
+            if constexpr(Config::Build::ENABLE_EDITOR)
+            {
+                context.editor().drawScreenOverlay(cam, targetViewport, *postFXCmdBuffer, memCmd);
+            }
+
+            GFX::EnqueueCommand(*postFXCmdBuffer, GFX::EndRenderPassCommand{});
+        }
 
         Attorney::ProjectManagerRenderPass::postRender( projectManager, *postFXCmdBuffer, memCmd );
+
+        {
+            PROFILE_SCOPE("Flush to backbuffer", Profiler::Category::Scene);
+
+            GFX::BeginRenderPassCommand beginRenderPassCmd{};
+            beginRenderPassCmd._name = "Flush Display";
+            beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLACK, true };
+            beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
+            beginRenderPassCmd._target = RenderTargetNames::BACK_BUFFER;
+            GFX::EnqueueCommand(*postFXCmdBuffer, beginRenderPassCmd);
+
+            const auto& screenAtt = gfx.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN)->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
+            const auto& texData = Get(screenAtt->texture())->getView();
+            {
+                PROFILE_SCOPE("Backbuffer GUI overlays", Profiler::Category::Scene);
+                Time::ScopedTimer timeGUIBuffer(*_processGUIDisplayTimer);
+                gfx.drawTextureInViewport(texData, screenAtt->_descriptor._sampler, targetViewport, false, false, false, *postFXCmdBuffer );
+                context.gui().draw(gfx, targetViewport, *postFXCmdBuffer, memCmd);
+                gfx.renderDebugUI(targetViewport, *postFXCmdBuffer, memCmd);
+            }
+
+            GFX::EnqueueCommand<GFX::EndRenderPassCommand>( *postFXCmdBuffer );
+        }
+
         GFX::EnqueueCommand( *postFXCmdBuffer, memCmd );
+
+        postFXCmdBuffer->batch();
     }
 
+    RenderPassExecutor::PrepareGPUBuffers(gfx);
     TaskPool& pool = context.taskPool(TaskPoolType::RENDERER);
     Task* renderTask = CreateTask( TASK_NOP );
     startRenderTasks(params, pool, renderTask);
@@ -254,17 +278,9 @@ void RenderPassManager::render(const RenderParams& params)
 
         gfx.flushCommandBuffer(MOV(skyLightRenderBufferHandle));
 
-        { //PostFX should be pretty fast
-            PROFILE_SCOPE( "PostFX: CommandBuffer build", Profiler::Category::Scene );
-
-            Time::ScopedTimer time( *_postFxRenderTimer );
-            _context.getRenderer().postFX().apply( params._playerPass, cam->snapshot(), *postFXCmdBuffer );
-
-            postFXCmdBuffer->batch();
-        }
-        
         WAIT_FOR_CONDITION( Finished( *renderTask ) );
-        
+        RenderPassExecutor::FlushBuffersToGPU(flushMemCmd);
+
         if constexpr ( Config::Build::ENABLE_EDITOR )
         {
             Attorney::EditorRenderPassExecutor::getCommandBuffer(context.editor(), *postRenderBuffer, flushMemCmd);
@@ -290,24 +306,6 @@ void RenderPassManager::render(const RenderParams& params)
     }
 
     _context.setCameraSnapshot(params._playerPass, cam->snapshot());
-
-    {
-        PROFILE_SCOPE("Executor post-render", Profiler::Category::Scene );
-        Task* sortTask = CreateTask( TASK_NOP );
-        for (auto& executor : _executors)
-        {
-            if ( executor != nullptr )
-            {
-                Start( *CreateTask( sortTask,
-                [&executor](const Task&)
-                {
-                    executor->postRender();
-                }), pool);
-            }
-        }
-        Start( *sortTask, pool );
-        Wait( *sortTask, pool );
-    }
 }
 
 RenderPass& RenderPassManager::setRenderPass(const RenderStage renderStage, const vector<RenderStage>& dependencies)

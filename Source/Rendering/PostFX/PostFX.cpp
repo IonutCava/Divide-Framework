@@ -52,9 +52,6 @@ namespace Divide
 
         context.paramHandler().setParam<bool>( _ID( "postProcessing.enableVignette" ), false );
 
-        std::ranges::fill(_postFXTarget._drawMask, false);
-        _postFXTarget._drawMask[to_base( GFXDevice::ScreenTargets::ALBEDO )] = true;
-
         Console::printfn( LOCALE_STR( "START_POST_FX" ) );
 
         _uniformData.set( _ID( "_noiseTile" ), PushConstantType::FLOAT, 0.1f );
@@ -160,7 +157,8 @@ namespace Divide
 
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._target = RenderTargetNames::SCREEN;
-        beginRenderPassCmd._descriptor = _postFXTarget;
+        std::ranges::fill(beginRenderPassCmd._descriptor._drawMask, false);
+        beginRenderPassCmd._descriptor._drawMask[to_base(GFXDevice::ScreenTargets::ALBEDO)] = true;
         beginRenderPassCmd._name = "DO_POSTFX_PASS";
         beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { VECTOR4_ZERO, true };
         GFX::EnqueueCommand( bufferInOut, beginRenderPassCmd );

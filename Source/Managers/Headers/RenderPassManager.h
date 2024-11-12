@@ -165,7 +165,8 @@ namespace Divide
 
         Time::ProfileTimer* _renderPassTimer = nullptr;
         Time::ProfileTimer* _buildCommandBufferTimer = nullptr;
-        Time::ProfileTimer* _processGUITimer = nullptr;
+        Time::ProfileTimer* _processGUIDisplayTimer = nullptr;
+        Time::ProfileTimer* _processGUISceneTimer = nullptr;
         Time::ProfileTimer* _flushCommandBufferTimer = nullptr;
         Time::ProfileTimer* _postFxRenderTimer = nullptr;
         Time::ProfileTimer* _blitToDisplayTimer = nullptr;
