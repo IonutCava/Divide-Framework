@@ -73,8 +73,10 @@ NodeTransformData fetchInputData() {
     return nodeData;
 }
 
-vec4 computeData(in NodeTransformData data) {
+vec4 computeData(in NodeTransformData data)
+{
     VAR._LoDLevel  = dvd_LoDLevel(data);
+    VAR._SelectionFlag = dvd_SelectionFlag(data);
     VAR._vertexW   = data._worldMatrix * dvd_Vertex;
     VAR._vertexWV  = dvd_ViewMatrix * VAR._vertexW;
 

@@ -29,8 +29,6 @@ void ComputeIndirectionData()
     const NodeIndirectionData indirectionData = dvd_IndirectionData[INDIRECT_DATA_IDX];
     TRANSFORM_IDX = indirectionData._transformIdx;
     MATERIAL_IDX = indirectionData._materialIdx;
-    TEXTURE_IDX = indirectionData._texturesIdx * MATERIAL_TEXTURE_COUNT;
-    SELECTION_FLAG = indirectionData._selectionIdx;
 }
 
 #endif //VERT_SHADER
@@ -77,8 +75,19 @@ DESCRIPTOR_SET_RESOURCE(PER_DRAW, 9)  uniform sampler2DArray texDiffuse1;
 #endif //USE_UNIT1_TEXTURE
 
 #if !defined(SKIP_REFLECT_REFRACT)
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 10) uniform sampler2D      texReflectPlanar;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 11) uniform sampler2D      texRefractPlanar;
+
+#if defined(USE_PLANAR_REFLECTOR)
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 10) uniform sampler2D   texReflect;
+#elif defined(USE_CUBE_REFLECTOR)
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 10) uniform samplerCube texReflect;
+#endif //USE_PLANAR_REFLECTOR || USE_CUBE_REFLECTOR
+
+#if defined(USE_PLANAR_REFRACTOR)
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 11) uniform sampler2D   texRefract;
+#elif defined(USE_CUBE_REFRACTOR)
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 11) uniform samplerCube texRefract;
+#endif //USE_PLANAR_REFRACTOR || USE_CUBE_REFRACTOR
+
 #endif //!SKIP_REFLECT_REFRACT
 
 #endif //FRAG_SHADE || NEED_TEXTURE_DATA_ALL_STAGES

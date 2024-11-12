@@ -537,10 +537,11 @@ struct Handle
 
 template<typename T>
 inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
-
-#define SCOPE_FAIL    auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
-#define SCOPE_SUCCESS auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnSuccess() + [&]()
-#define SCOPE_EXIT    auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept
+                          
+#define SCOPE_FAIL          auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
+#define SCOPE_SUCCESS       auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnSuccess() + [&]()
+#define SCOPE_EXIT          auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept
+#define SCOPE_EXIT_PARAM(X) auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&, X]() noexcept
 
 constexpr F32 EPSILON_F32 = std::numeric_limits<F32>::epsilon();
 constexpr D64 EPSILON_D64 = std::numeric_limits<D64>::epsilon();

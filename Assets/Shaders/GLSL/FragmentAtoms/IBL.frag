@@ -31,7 +31,6 @@
 DESCRIPTOR_SET_RESOURCE(PER_FRAME, 0) uniform samplerCubeArray texEnvPrefiltered;
 DESCRIPTOR_SET_RESOURCE(PER_FRAME, 1) uniform samplerCubeArray texEnvIrradiance;
 DESCRIPTOR_SET_RESOURCE(PER_FRAME, 2) uniform sampler2D texBRDFLut;
-DESCRIPTOR_SET_RESOURCE(PER_FRAME, 3) uniform samplerCube texReflectCube;
 
 DESCRIPTOR_SET_RESOURCE(PER_PASS, 3) uniform sampler2D texSSR;
 

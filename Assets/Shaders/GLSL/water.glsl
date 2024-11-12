@@ -70,7 +70,7 @@ void main()
 #if defined(SKIP_REFLECT_REFRACT)
     const vec3 refractColour = vec3(0.f);
 #else //SKIP_REFLECT_REFRACT
-    const vec3 refractColour = texture(texRefractPlanar, waterUV).rgb;
+    const vec3 refractColour = texture(texRefract, waterUV).rgb;
 #endif //SKIP_REFLECT_REFRACT
     const vec3 refractionColour = overlayVec( refractColour, _refractionTint);
 
@@ -83,7 +83,7 @@ void main()
 #if defined(SKIP_REFLECT_REFRACT)
             writeScreenColour(vec4(0.f, 0.f, 0.f ,1.f), vec3( 0.f ), vec3( 0.f ), );
 #else //SKIP_REFLECT_REFRACT
-            writeScreenColour(texture(texReflectPlanar, waterUV), vec3( 0.f ), normalWV );
+            writeScreenColour(texture(texReflect, waterUV), vec3( 0.f ), normalWV );
 #endif //SKIP_REFLECT_REFRACT
             return;
     }
@@ -95,7 +95,7 @@ void main()
 #if defined(SKIP_REFLECT_REFRACT)
                                                                       vec4(0.f, 0.f, 0.f, 1.f)
 #else
-                                                                      texture(texReflectPlanar, waterUV).rgb,
+                                                                      texture(texReflect, waterUV).rgb,
 #endif
                                                                       Fresnel(incident, normalW)));
     

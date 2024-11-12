@@ -433,6 +433,7 @@ namespace Divide
             { "vec2"       , "_texCoord"},       
             { "flat uvec4" , "_indirectionIDs"}, 
             { "flat uint"  , "_LoDLevel"},       
+            { "flat uint"  , "_SelectionFlag"},       
         };
 
         constexpr const char* crossTypeGLSLHLSL = "#define float2 vec2\n"
@@ -662,7 +663,7 @@ namespace Divide
         AppendToShaderHeader( ShaderType::VERTEX, "#define ATTRIB_BONE_INDICE " + Util::to_string( to_base( AttribLocation::BONE_INDICE ) ) );
         AppendToShaderHeader( ShaderType::VERTEX, "#define ATTRIB_WIDTH " + Util::to_string( to_base( AttribLocation::WIDTH ) ) );
         AppendToShaderHeader( ShaderType::VERTEX, "#define ATTRIB_GENERIC " + Util::to_string( to_base( AttribLocation::GENERIC ) ) );
-        AppendToShaderHeader( ShaderType::COUNT, "#define ATTRIB_FREE_START 12" );
+        AppendToShaderHeader( ShaderType::COUNT,  "#define ATTRIB_FREE_START 12" );
         AppendToShaderHeader( ShaderType::FRAGMENT, "#define MAX_SHININESS " + Util::to_string( Material::MAX_SHININESS ) );
 
         const string interfaceLocationString = "layout(location = 0) ";
@@ -754,17 +755,6 @@ namespace Divide
 
         // Check initialization status for GLSL and glsl-optimizer
         return glswState == 1;
-    }
-
-    ModuleDefine::ModuleDefine( const char* define, const bool addPrefix )
-        : ModuleDefine( string{ define }, addPrefix )
-    {
-    }
-
-    ModuleDefine::ModuleDefine( const string& define, const bool addPrefix )
-        : _define( define )
-        , _addPrefix( addPrefix )
-    {
     }
 
     ShaderModuleDescriptor::ShaderModuleDescriptor( ShaderType type, const Str<64>& file, const Str<64>& variant )
