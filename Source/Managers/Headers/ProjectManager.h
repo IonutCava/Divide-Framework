@@ -275,35 +275,34 @@ namespace Divide
 
         public:  /// Input
         /// Key pressed: return true if input was consumed
-        [[nodiscard]] bool onKeyDown( const Input::KeyEvent& key ) override;
+        [[nodiscard]] bool onKeyDownInternal( Input::KeyEvent& argInOut) override;
         /// Key released: return true if input was consumed
-        [[nodiscard]] bool onKeyUp( const Input::KeyEvent& key ) override;
+        [[nodiscard]] bool onKeyUpInternal( Input::KeyEvent& argInOut) override;
         /// Joystick axis change: return true if input was consumed
-        [[nodiscard]] bool joystickAxisMoved( const Input::JoystickEvent& arg ) override;
+        [[nodiscard]] bool joystickAxisMovedInternal( Input::JoystickEvent& argInOut) override;
         /// Joystick direction change: return true if input was consumed
-        [[nodiscard]] bool joystickPovMoved( const Input::JoystickEvent& arg ) override;
+        [[nodiscard]] bool joystickPovMovedInternal( Input::JoystickEvent& argInOut) override;
         /// Joystick button pressed: return true if input was consumed
-        [[nodiscard]] bool joystickButtonPressed( const Input::JoystickEvent& arg ) override;
+        [[nodiscard]] bool joystickButtonPressedInternal( Input::JoystickEvent& argInOut) override;
         /// Joystick button released: return true if input was consumed
-        [[nodiscard]] bool joystickButtonReleased( const Input::JoystickEvent& arg ) override;
-        [[nodiscard]] bool joystickBallMoved( const Input::JoystickEvent& arg ) override;
+        [[nodiscard]] bool joystickButtonReleasedInternal( Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool joystickBallMovedInternal(Input::JoystickEvent& argInOut) override;
         // return true if input was consumed
-        [[nodiscard]] bool joystickAddRemove( const Input::JoystickEvent& arg ) override;
-        [[nodiscard]] bool joystickRemap( const Input::JoystickEvent& arg ) override;
+        [[nodiscard]] bool joystickAddRemoveInternal( Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool joystickRemapInternal( Input::JoystickEvent& argInOut) override;
         /// Mouse moved: return true if input was consumed
-        [[nodiscard]] bool mouseMoved( const Input::MouseMoveEvent& arg ) override;
+        [[nodiscard]] bool mouseMovedInternal( Input::MouseMoveEvent& argInOut) override;
         /// Mouse button pressed: return true if input was consumed
-        [[nodiscard]] bool mouseButtonPressed( const Input::MouseButtonEvent& arg ) override;
+        [[nodiscard]] bool mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut) override;
         /// Mouse button released: return true if input was consumed
-        [[nodiscard]] bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
+        [[nodiscard]] bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
 
-        [[nodiscard]] bool onTextEvent( const Input::TextEvent& arg ) override;
+        [[nodiscard]] bool onTextEventInternal( Input::TextEvent& argInOut) override;
 
         /// Called if a mouse move event was captured by a different system (editor, gui, etc).
         /// Used to cancel scene specific mouse move tracking
         void mouseMovedExternally( const Input::MouseMoveEvent& arg );
 
-        PROPERTY_RW( bool, wantsMouse, false );
         PROPERTY_R_IW(ProjectIDs, availableProjects);
         PROPERTY_R(Project_uptr, activeProject, nullptr);
 
@@ -354,7 +353,6 @@ namespace Divide
 
     private:
         bool _init = false;
-        bool _processInput = false;
 
         Task* _saveTask = nullptr;
         PlayerIndex _currentPlayerPass = 0u;

@@ -176,22 +176,14 @@ static void HelpMarker( const char* desc )
 
 static void PushReadOnly( const bool fade )
 {
-    ImGui::PushItemFlag( ImGuiItemFlags_Disabled, true );
-    if ( fade )
-    {
-        ImGui::PushStyleVar( ImGuiStyleVar_Alpha, std::max( 0.5f, ImGui::GetStyle().Alpha - 0.35f ) );
-    }
-    g_readOnlyFaded.push( fade );
+    ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, fade ? 0.5f : 1.f);
+    ImGui::BeginDisabled();
 }
 
 static void PopReadOnly()
 {
-    ImGui::PopItemFlag();
-    if ( g_readOnlyFaded.top() )
-    {
-        ImGui::PopStyleVar();
-    }
-    g_readOnlyFaded.pop();
+    ImGui::EndDisabled();
+    ImGui::PopStyleVar();
 }
 
 static void SetTooltip( const char* text )
@@ -458,7 +450,7 @@ int main( int, char** )
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 

@@ -59,7 +59,7 @@ class DockedWindow : NonCopyable, NonMovable {
         virtual ~DockedWindow() = default;
 
         // Called when the editor is visible
-        void draw();
+        void draw(bool readOnly);
         // Always called, even if the editor is not visible
         void backgroundUpdate();
 

@@ -103,21 +103,21 @@ namespace Divide
         explicit SceneInput( Scene& parentScene );
 
         //Keyboard: return true if input was consumed
-        bool onKeyDown( const Input::KeyEvent& arg ) override;
-        bool onKeyUp( const Input::KeyEvent& arg ) override;
+        bool onKeyDownInternal( Input::KeyEvent& argInOut) override;
+        bool onKeyUpInternal( Input::KeyEvent& argInOut) override;
         /// Joystick or Gamepad: return true if input was consumed
-        bool joystickButtonPressed( const Input::JoystickEvent& arg ) override;
-        bool joystickButtonReleased( const Input::JoystickEvent& arg ) override;
-        bool joystickAxisMoved( const Input::JoystickEvent& arg ) override;
-        bool joystickPovMoved( const Input::JoystickEvent& arg ) override;
-        bool joystickBallMoved( const Input::JoystickEvent& arg ) override;
-        bool joystickAddRemove( const Input::JoystickEvent& arg ) override;
-        bool joystickRemap( const Input::JoystickEvent& arg ) override;
+        bool joystickButtonPressedInternal( Input::JoystickEvent& argInOut) override;
+        bool joystickButtonReleasedInternal( Input::JoystickEvent& argInOut) override;
+        bool joystickAxisMovedInternal( Input::JoystickEvent& argInOut) override;
+        bool joystickPovMovedInternal( Input::JoystickEvent& argInOut) override;
+        bool joystickBallMovedInternal( Input::JoystickEvent& argInOut) override;
+        bool joystickAddRemoveInternal( Input::JoystickEvent& argInOut) override;
+        bool joystickRemapInternal( Input::JoystickEvent& argInOut) override;
         /// Mouse: return true if input was consumed
-        bool mouseMoved( const Input::MouseMoveEvent& arg ) override;
-        bool mouseButtonPressed( const Input::MouseButtonEvent& arg ) override;
-        bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
-        bool onTextEvent( const Input::TextEvent& arg ) override;
+        bool mouseMovedInternal( Input::MouseMoveEvent& argInOut) override;
+        bool mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut) override;
+        bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
+        bool onTextEventInternal( Input::TextEvent& argInOut) override;
         /// Returns false if the key is already assigned and couldn't be merged
         /// Call removeKeyMapping for the specified key first
         bool addKeyMapping( Input::KeyCode key, const PressReleaseActions::Entry& keyCbks );

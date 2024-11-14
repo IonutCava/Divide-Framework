@@ -491,6 +491,8 @@ class mat4 {
     template<typename U>
     explicit mat4(const vec3<U> &translation, const vec3<U> &scale, const mat3<U>& rotation) noexcept;
     template<typename U>
+    explicit mat4(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::DEGREES<U>>& euler) noexcept;
+    template<typename U>
     explicit mat4(const vec3<U> &translation) noexcept;
     template<typename U>
     explicit mat4(U translationX, U translationY, U translationZ) noexcept;
@@ -575,7 +577,9 @@ class mat4 {
     template<typename U>
     void set(const mat4<U> &matrix) noexcept;
     template<typename U>
-    void set(const vec3<U> &translation, const vec3<U> &scale, const mat4<U>& rotation) noexcept;
+    void set(const vec3<U> &translation, const vec3<U> &scale, const mat3<U>& rotation) noexcept;
+    template<typename U>
+    void set(const vec3<U> &translation, const vec3<U> &scale, const vec3<Angle::DEGREES<U>>& euler) noexcept;
 
     template<typename U>
     void setRow(I32 index, U value) noexcept;

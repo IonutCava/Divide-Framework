@@ -36,7 +36,8 @@
 namespace Divide {
 namespace Input {
     /// Points to the position of said joystick in the vector
-    enum class Joystick : U8 {
+    enum class Joystick : U8
+    {
         JOYSTICK_1 = 0,
         JOYSTICK_2 = 1,
         JOYSTICK_3 = 2,
@@ -50,7 +51,8 @@ namespace Input {
         COUNT
     };
 
-    enum class JoystickElementType : U8 {
+    enum class JoystickElementType : U8
+    {
         POV_MOVE = 0,
         AXIS_MOVE,
         BALL_MOVE,
@@ -60,7 +62,8 @@ namespace Input {
         COUNT
     };
 
-    enum class JoystickPovDirection : U8 {
+    enum class JoystickPovDirection : U8
+    {
         UP = toBit(1),
         DOWN = toBit(2),
         LEFT = toBit(3),
@@ -68,7 +71,8 @@ namespace Input {
         CENTERED = toBit(5)
     };
 
-    struct JoystickData {
+    struct JoystickData
+    {
         bool _gamePad = false;
         I32 _deadZone = 8000;
         I32 _max = 0;
@@ -81,24 +85,28 @@ namespace Input {
         };
     };
 
-    struct JoystickElement {
+    struct JoystickElement
+    {
         JoystickElementType _type = JoystickElementType::COUNT;
         JoystickData _data; //values
         U8 _elementIndex = 0u; //item index on device
     };
 
-    struct MouseAxis {
+    struct MouseAxis
+    {
         I32 abs = 0;
         I32 rel = 0;
     };
 
-    struct MouseState {
+    struct MouseState
+    {
         MouseAxis X, Y;
         I32 VWheel = -1;
         I32 HWheel = -1;
     };
 
-    enum class MouseButton : U8 {
+    enum class MouseButton : U8
+    {
         MB_Left = 0,
         MB_Right,
         MB_Middle,
@@ -110,7 +118,8 @@ namespace Input {
         COUNT
     };
 
-    enum class KeyModifier : U16 {
+    enum class KeyModifier : U16
+    {
         LSHIFT = toBit(1),
         RSHIFT = toBit(2),
         LCTRL = toBit(3),
@@ -275,7 +284,8 @@ namespace Input {
         KC_PRINTSCREEN = 0xEE, // Print Screen
     };
 
-    enum class InputState : U8 {
+    enum class InputState : U8
+    {
         PRESSED = 0,
         RELEASED,
         COUNT

@@ -5,7 +5,7 @@
 
 namespace Divide
 {
-    void SceneStatePerPlayer::resetMoveDirections( ) noexcept
+    void SceneStatePerPlayer::resetMoveDirections() noexcept
     {
         _moveFB.reset();
         _moveLR.reset();

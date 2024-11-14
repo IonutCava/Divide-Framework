@@ -9,8 +9,9 @@ namespace Divide {
 namespace Input {
 
 InputHandler::InputHandler(InputAggregatorInterface& eventListener, Application& app) noexcept
-    : _app(app),
-      _eventListener(eventListener)
+    : SDLEventListener("InputHandler")
+    , _app(app)
+    , _eventListener(eventListener)
 {
     //Note: We only pass input events to a single listeners. Listeners should forward events where needed instead of doing a loop
     //over all, because where and how we pass input events is very context sensitive: does the ProjectManager consume the input or does it pass
@@ -46,23 +47,28 @@ namespace {
     }
 };
 
-bool InputHandler::onSDLEvent(SDL_Event event) {
+bool InputHandler::onSDLEvent(SDL_Event event)
+{
     // Find the window that sent the event
     DisplayWindow* eventWindow = _app.windowManager().getWindowByID(GetEventWindowID(event));
-    if (eventWindow == nullptr) {
+    if (eventWindow == nullptr)
+    {
         return false;
     }
 
-     switch (event.type) {
+     switch (event.type)
+     {
         case SDL_TEXTEDITING:
-        case SDL_TEXTINPUT: {
-            const TextEvent arg{eventWindow, 0, event.text.text};
+        case SDL_TEXTINPUT:
+        {
+            TextEvent arg{eventWindow, 0, event.text.text};
             _eventListener.onTextEvent(arg);
             return true;
         }
 
         case SDL_KEYUP:
-        case SDL_KEYDOWN: {
+        case SDL_KEYDOWN:
+        {
             KeyEvent arg(eventWindow, 0);
             arg._key = KeyCodeFromSDLKey(event.key.keysym.sym);
             arg._pressed = event.type == SDL_KEYDOWN;
@@ -70,42 +76,56 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
             arg.scancode = event.key.keysym.scancode;
             arg.sym = event.key.keysym.sym;
 
-            if ((event.key.keysym.mod & KMOD_LSHIFT) != 0) {
+            if ((event.key.keysym.mod & KMOD_LSHIFT) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::LSHIFT);
             }
-            if ((event.key.keysym.mod & KMOD_RSHIFT) != 0) {
+            if ((event.key.keysym.mod & KMOD_RSHIFT) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::RSHIFT);
             }
-            if ((event.key.keysym.mod & KMOD_LCTRL) != 0) {
+            if ((event.key.keysym.mod & KMOD_LCTRL) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::LCTRL);
             }
-            if ((event.key.keysym.mod & KMOD_RCTRL) != 0) {
+            if ((event.key.keysym.mod & KMOD_RCTRL) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::RCTRL);
             }
-            if ((event.key.keysym.mod & KMOD_LALT) != 0) {
+            if ((event.key.keysym.mod & KMOD_LALT) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::LALT);
             }
-            if ((event.key.keysym.mod & KMOD_RALT) != 0) {
+            if ((event.key.keysym.mod & KMOD_RALT) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::RALT);
             }
-            if ((event.key.keysym.mod & KMOD_LGUI) != 0) {
+            if ((event.key.keysym.mod & KMOD_LGUI) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::LGUI);
             }
-            if ((event.key.keysym.mod & KMOD_RGUI) != 0) {
+            if ((event.key.keysym.mod & KMOD_RGUI) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::RGUI);
             }
-            if ((event.key.keysym.mod & KMOD_NUM) != 0) {
+            if ((event.key.keysym.mod & KMOD_NUM) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::NUM);
             }
-            if ((event.key.keysym.mod & KMOD_CAPS) != 0) {
+            if ((event.key.keysym.mod & KMOD_CAPS) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::CAPS);
             }
-            if ((event.key.keysym.mod & KMOD_MODE) != 0) {
+            if ((event.key.keysym.mod & KMOD_MODE) != 0)
+            {
                 arg._modMask |= to_base(KeyModifier::MODE);
             }
-            if (arg._pressed) {
+            if (arg._pressed)
+            {
                 _eventListener.onKeyDown(arg);
-            } else {
+            }
+            else
+            {
                 _eventListener.onKeyUp(arg);
             }
             return true;
@@ -115,7 +135,8 @@ bool InputHandler::onSDLEvent(SDL_Event event) {
         {
             MouseButtonEvent arg(eventWindow, to_U8(event.button.which));
             arg.pressed(event.type == SDL_MOUSEBUTTONDOWN);
-            switch (event.button.button) {
+            switch (event.button.button)
+            {
                 case SDL_BUTTON_LEFT:
                     arg.button(MouseButton::MB_Left);
                     break;

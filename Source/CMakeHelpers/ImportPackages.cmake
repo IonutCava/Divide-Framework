@@ -28,7 +28,6 @@ find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 find_package(expat CONFIG REQUIRED)
 find_package(recastnavigation CONFIG REQUIRED)
 find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
-find_package(imguizmo CONFIG REQUIRED)
 find_package(Vulkan)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
@@ -44,6 +43,7 @@ find_package(ZLIB REQUIRED)
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
+find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 
 find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
@@ -113,6 +113,7 @@ include_directories(
     ${Boost_INCLUDE_DIR}
     ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS}
     ${expat_INCLUDE_DIR}
+    ${CHAISCRIPT_INCLUDE_DIRS}
     "${Vulkan_INCLUDE_DIR}/vma"
     "ThirdParty/EntityComponentSystem/include/ECS"
     "ThirdParty/EntityComponentSystem/include"
@@ -137,7 +138,6 @@ set(EXTERNAL_LIBS
     imgui::imgui
     assimp::assimp
     ctre::ctre
-    imguizmo::imguizmo
     spirv-reflect-static
     meshoptimizer::meshoptimizer
     glbinding::glbinding glbinding::glbinding-aux

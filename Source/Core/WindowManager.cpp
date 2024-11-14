@@ -161,20 +161,33 @@ ErrorCode WindowManager::init(PlatformContext& context,
 
         Application& app = _context->app();
 
-        window->addEventListener(WindowEvent::MINIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+        window->addEventListener(WindowEvent::MINIMIZED,
         {
-            app.mainLoopPaused(true);
-            return true;
+            ._cbk = [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+                    {
+                        app.mainLoopPaused(true);
+                        return true;
+                    },
+            ._name = "Application::MINIMIZED"
         });
-        window->addEventListener(WindowEvent::MAXIMIZED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+
+        window->addEventListener(WindowEvent::MAXIMIZED,
         {
-            app.mainLoopPaused(false);
-            return true;
+            ._cbk = [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+            {
+                app.mainLoopPaused(false);
+                return true;
+            },
+            ._name = "Application::MAXIMIZED"
         });
-        window->addEventListener(WindowEvent::RESTORED, [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+        window->addEventListener(WindowEvent::RESTORED,
         {
-            app.mainLoopPaused(false);
-            return true;
+            ._cbk = [&app]([[maybe_unused]] const DisplayWindow::WindowEventArgs& args) noexcept
+            {
+                app.mainLoopPaused(false);
+                return true;
+            },
+            ._name = "Application::RESTORED"
         });
 
         // Query available display modes (resolution, bit depth per channel and refresh rates)
@@ -335,46 +348,47 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         return nullptr;
     }
  
-    window->addEventListener(WindowEvent::SIZE_CHANGED, [&](const DisplayWindow::WindowEventArgs& args)
+    window->addEventListener(WindowEvent::SIZE_CHANGED,
     {
-        SizeChangeParams params{};
-        params.width = to_U16(args.x);
-        params.height = to_U16(args.y);
-        params.isFullScreen = args._flag;
-        params.winGUID = args._windowGUID;
-        params.isMainWindow = isMainWindow;
-        // Only if rendering window
-        return _context->app().onWindowSizeChange(params);
+        ._cbk = [&](const DisplayWindow::WindowEventArgs& args)
+        {
+            return onWindowSizeChanged(args);
+        },
+        ._name = "WindowManager::SIZE_CHANGED"
     });
 
     if (!descriptor.externalClose)
     {
-        window->addEventListener(WindowEvent::CLOSE_REQUESTED, [this](const DisplayWindow::WindowEventArgs& args)
+        window->addEventListener(WindowEvent::CLOSE_REQUESTED,
         {
-            Console::d_printfn(LOCALE_STR("WINDOW_CLOSE_EVENT"), args._windowGUID);
+            ._cbk = [this](const DisplayWindow::WindowEventArgs& args)
+            {
+                Console::d_printfn(LOCALE_STR("WINDOW_CLOSE_EVENT"), args._windowGUID);
 
-            if (_mainWindowGUID == args._windowGUID)
-            {
-                _context->app().RequestShutdown(false);
-            }
-            else
-            {
-                for ( auto& win : _windows)
+                if (_mainWindowGUID == args._windowGUID)
                 {
-                    if (win->getGUID() == args._windowGUID)
-                    {
-                        auto tempWindow = win.get();
-                        if (!destroyWindow(tempWindow))
-                        {
-                            Console::errorfn(LOCALE_STR("WINDOW_CLOSE_EVENT_ERROR"), args._windowGUID);
-                            win->hidden(true);
-                        }
-                        break;
-                    }
+                    _context->app().RequestShutdown(false);
                 }
-                return false;
-            }
-            return true;
+                else
+                {
+                    for ( auto& win : _windows)
+                    {
+                        if (win->getGUID() == args._windowGUID)
+                        {
+                            auto tempWindow = win.get();
+                            if (!destroyWindow(tempWindow))
+                            {
+                                Console::errorfn(LOCALE_STR("WINDOW_CLOSE_EVENT_ERROR"), args._windowGUID);
+                                win->hidden(true);
+                            }
+                            break;
+                        }
+                    }
+                    return false;
+                }
+                return true;
+            },
+            ._name = "WindowManager::CLOSE_REQUESTED"
         });
     }
     
@@ -550,17 +564,14 @@ void WindowManager::drawToWindow( DisplayWindow& window )
 
     if ( window.parentWindow() == nullptr && _resolutionChangeQueued.second )
     {
-        SizeChangeParams params{};
-        params.isFullScreen = window.fullscreen();
-        params.width = _resolutionChangeQueued.first.width;
-        params.height = _resolutionChangeQueued.first.height;
-        params.winGUID = mainWindow()->getGUID();
-        params.isMainWindow = window.getGUID() == mainWindow()->getGUID();
-
-        if ( _context->app().onResolutionChange( params ) )
+        onResolutionChanged(SizeChangeParams
         {
-            NOP();
-        }
+            .winGUID = mainWindow()->getGUID(),
+            .width = _resolutionChangeQueued.first.width,
+            .height = _resolutionChangeQueued.first.height,
+            .isFullScreen = window.fullscreen(),
+            .isMainWindow = window.getGUID() == mainWindow()->getGUID(),
+        });
 
         _resolutionChangeQueued.second = false;
     }
@@ -663,6 +674,25 @@ void WindowManager::stepResolution( const bool increment )
         _resolutionChangeQueued.first.set( foundRes );
         _resolutionChangeQueued.second = true;
     }
+}
+
+bool WindowManager::onResolutionChanged(const SizeChangeParams& params)
+{
+    return _context->app().onResolutionChange(params);
+}
+
+bool WindowManager::onWindowSizeChanged(const DisplayWindow::WindowEventArgs& args)
+{
+    const bool isMainWindow = args._windowGUID == _mainWindow->getGUID();
+
+    return _context->app().onWindowSizeChange(SizeChangeParams
+    {
+        .winGUID = args._windowGUID,
+        .width = to_U16(args.x),
+        .height = to_U16(args.y),
+        .isFullScreen = args._flag,
+        .isMainWindow = isMainWindow
+    });
 }
 
 void WindowManager::CaptureMouse(const bool state) noexcept

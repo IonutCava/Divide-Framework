@@ -314,6 +314,7 @@ namespace Divide
         , InputAggregatorInterface()
         , KernelComponent( parentKernel )
     {
+        processInput(false);
     }
 
     ProjectManager::~ProjectManager()
@@ -469,7 +470,8 @@ namespace Divide
 
     void ProjectManager::initPostLoadState() noexcept
     {
-        _processInput = true;
+        processInput(true);
+
         if constexpr( Config::Build::IS_EDITOR_BUILD )
         {
             static_assert(Config::Build::ENABLE_EDITOR);
@@ -1203,135 +1205,69 @@ namespace Divide
 
     ///--------------------------Input Management-------------------------------------///
 
-    bool ProjectManager::onKeyDown( const Input::KeyEvent& key )
+    bool ProjectManager::onKeyDownInternal( Input::KeyEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->onKeyDown( key );
+        return activeProject()->getActiveScene()->input()->onKeyDown(argInOut);
     }
 
-    bool ProjectManager::onKeyUp( const Input::KeyEvent& key )
+    bool ProjectManager::onKeyUpInternal( Input::KeyEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->onKeyUp( key );
+        return activeProject()->getActiveScene()->input()->onKeyUp(argInOut);
     }
 
-    bool ProjectManager::mouseMoved( const Input::MouseMoveEvent& arg )
+    bool ProjectManager::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-
-        }
-
-        return activeProject()->getActiveScene()->input()->mouseMoved( arg );
+        return activeProject()->getActiveScene()->input()->mouseMoved(argInOut);
     }
 
-    bool ProjectManager::mouseButtonPressed( const Input::MouseButtonEvent& arg )
+    bool ProjectManager::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->mouseButtonPressed( arg );
+        return activeProject()->getActiveScene()->input()->mouseButtonPressed(argInOut);
     }
 
-    bool ProjectManager::mouseButtonReleased( const Input::MouseButtonEvent& arg )
+    bool ProjectManager::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->mouseButtonReleased( arg );
+        return activeProject()->getActiveScene()->input()->mouseButtonReleased(argInOut);
     }
 
-    bool ProjectManager::joystickAxisMoved( const Input::JoystickEvent& arg )
+    bool ProjectManager::joystickAxisMovedInternal( Input::JoystickEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->joystickAxisMoved( arg );
+        return activeProject()->getActiveScene()->input()->joystickAxisMoved(argInOut);
     }
 
-    bool ProjectManager::joystickPovMoved( const Input::JoystickEvent& arg )
+    bool ProjectManager::joystickPovMovedInternal( Input::JoystickEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->joystickPovMoved( arg );
+        return activeProject()->getActiveScene()->input()->joystickPovMoved(argInOut);
     }
 
-    bool ProjectManager::joystickButtonPressed( const Input::JoystickEvent& arg )
+    bool ProjectManager::joystickButtonPressedInternal( Input::JoystickEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->joystickButtonPressed( arg );
+        return activeProject()->getActiveScene()->input()->joystickButtonPressed(argInOut);
     }
 
-    bool ProjectManager::joystickButtonReleased( const Input::JoystickEvent& arg )
+    bool ProjectManager::joystickButtonReleasedInternal( Input::JoystickEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->joystickButtonReleased( arg );
+        return activeProject()->getActiveScene()->input()->joystickButtonReleased(argInOut);
     }
 
-    bool ProjectManager::joystickBallMoved( const Input::JoystickEvent& arg )
+    bool ProjectManager::joystickBallMovedInternal( Input::JoystickEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->joystickBallMoved( arg );
+        return activeProject()->getActiveScene()->input()->joystickBallMoved(argInOut);
     }
 
-    bool ProjectManager::joystickAddRemove( const Input::JoystickEvent& arg )
+    bool ProjectManager::joystickAddRemoveInternal( Input::JoystickEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->joystickAddRemove( arg );
+        return activeProject()->getActiveScene()->input()->joystickAddRemove(argInOut);
     }
 
-    bool ProjectManager::joystickRemap( const Input::JoystickEvent& arg )
+    bool ProjectManager::joystickRemapInternal( Input::JoystickEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->joystickRemap( arg );
+        return activeProject()->getActiveScene()->input()->joystickRemap(argInOut);
     }
 
-    bool ProjectManager::onTextEvent( const Input::TextEvent& arg )
+    bool ProjectManager::onTextEventInternal( Input::TextEvent& argInOut)
     {
-        if ( !_processInput )
-        {
-            return false;
-        }
-
-        return activeProject()->getActiveScene()->input()->onTextEvent( arg );
+        return activeProject()->getActiveScene()->input()->onTextEvent(argInOut);
     }
 
     PlatformContext& ProjectManager::platformContext() noexcept

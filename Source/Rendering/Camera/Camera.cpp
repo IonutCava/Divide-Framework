@@ -715,8 +715,6 @@ namespace Divide
             }) || updated;
         }
 
-        
-
         updated = rotateRelative( 
         {
             playerState._angleUD.topValue(),
@@ -728,9 +726,13 @@ namespace Divide
         {
             updated = zoom( playerState._zoom.topValue() ) || updated;
         }
+        else if (playerState._zoom.top()._direction != MoveDirection::NONE)
+        {
+            move(0.f, 0.f, playerState._zoom.topValue());
+            updated = true;
+        }
 
         return updated;
-
     }
 
     bool Camera::moveRelative( const vec3<F32>& relMovement )

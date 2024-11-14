@@ -81,6 +81,30 @@ enum class WindowEvent : U8 {
     COUNT
 };
 
+
+namespace Names
+{
+    static const char* windowEvent[] = {
+      "HIDDEN",
+      "SHOWN",
+      "MINIMIZED",
+      "MAXIMIZED",
+      "RESTORED",
+      "LOST_FOCUS",
+      "GAINED_FOCUS",
+      "MOUSE_HOVER_ENTER",
+      "MOUSE_HOVER_LEAVE",
+      "RESIZED",
+      "SIZE_CHANGED",
+      "MOVED",
+      "APP_LOOP",
+      "CLOSE_REQUESTED",
+      "UNKNOWN"
+    };
+} // namespace Names
+
+static_assert(std::size(Names::windowEvent) == to_base(WindowEvent::COUNT) + 1u, "WindowEvent name array out of sync!");
+
 enum class WindowFlags : U16 {
     VSYNC = toBit(1),
     HAS_FOCUS = toBit(2),
@@ -121,7 +145,11 @@ public:
         I32 id = -1;
     };
 
-    using EventListener = DELEGATE<bool, const WindowEventArgs&>;
+    struct EventListener 
+    {
+        DELEGATE<bool, const WindowEventArgs&> _cbk;
+        string _name;
+    };
 
     virtual ~DisplayWindow() override;
     DisplayWindow(WindowManager& parent, PlatformContext& context);
@@ -222,7 +250,7 @@ private:
     void updateDrawableSize() noexcept;
 
 private:
-    using EventListeners = vector<DELEGATE<bool, WindowEventArgs>>;
+    using EventListeners = vector<EventListener>;
     std::array<EventListeners, to_base(WindowEvent::COUNT)> _eventListeners;
     DELEGATE<void> _destroyCbk;
     FColour4  _clearColour;

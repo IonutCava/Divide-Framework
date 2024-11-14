@@ -14,11 +14,17 @@ StatusBar::StatusBar(PlatformContext& context) noexcept
 {
 }
 
-void StatusBar::draw() const {
+void StatusBar::draw(const bool readOnly) const
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
     ImGuiViewportP* viewport = (ImGuiViewportP*)(void*)ImGui::GetMainViewport();
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+
+    if (readOnly)
+    {
+        PushReadOnly(false);
+    }
 
     if (ImGui::BeginViewportSideBar("##MainStatusBar", viewport, ImGuiDir_Down, ImGui::GetFrameHeight(), window_flags))
     {
@@ -41,6 +47,10 @@ void StatusBar::draw() const {
             ImGui::EndMenuBar();
         }
         ImGui::End();
+    }
+    if (readOnly)
+    {
+        PopReadOnly();
     }
 }
 

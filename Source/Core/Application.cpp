@@ -16,7 +16,8 @@ U8 DisplayManager::s_maxMSAASAmples{0u};
 NO_DESTROY std::array<DisplayManager::OutputDisplayPropertiesContainer, DisplayManager::g_maxDisplayOutputs> DisplayManager::s_supportedDisplayModes;
 
 Application::Application() noexcept
-    : _mainLoopPaused{false}
+    : SDLEventListener("Application")
+    , _mainLoopPaused{false}
     , _mainLoopActive{false}
     , _freezeRendering{false}
 {
@@ -225,14 +226,12 @@ bool Application::onSDLEvent(const SDL_Event event) noexcept
 
 bool Application::onWindowSizeChange(const SizeChangeParams& params) const
 {
-    Attorney::KernelApplication::onWindowSizeChange(_kernel.get(), params);
-    return true;
+    return Attorney::KernelApplication::onWindowSizeChange(_kernel.get(), params);
 }
 
 bool Application::onResolutionChange(const SizeChangeParams& params) const
 {
-    Attorney::KernelApplication::onResolutionChange(_kernel.get(), params);
-    return true;
+    return Attorney::KernelApplication::onResolutionChange(_kernel.get(), params);
 }
 
 void DisplayManager::SetActiveDisplayCount( const U8 displayCount )

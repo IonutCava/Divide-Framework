@@ -88,12 +88,17 @@ namespace Divide
     {
     }
 
-    void MenuBar::draw( )
+    void MenuBar::draw( const bool readOnly )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
         const ImGuiContext& imguiContext = Attorney::EditorGeneralWidget::getImGuiContext( _context.editor(), Editor::ImGuiContextType::Editor );
         const bool modifierPressed = imguiContext.IO.KeyShift;
+
+        if ( readOnly )
+        {
+            PushReadOnly(false);
+        }
 
         if ( ImGui::BeginMainMenuBar() )
         {
@@ -496,6 +501,11 @@ namespace Divide
                 spawnDebugObject( _debugObject, modifierPressed );
                 _debugObject = DebugObject::COUNT;
             }
+        }
+
+        if (readOnly)
+        {
+            PopReadOnly();
         }
     }
 

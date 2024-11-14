@@ -223,7 +223,7 @@ bool DebugBreak(bool condition = true) noexcept;
 
 void EnforceDPIScaling() noexcept;
 
-[[nodiscard]] const char* GetClipboardText() noexcept;
+[[nodiscard]] string GetClipboardText() noexcept;
 void SetClipboardText(const char* text) noexcept;
 
 void ToggleCursor(bool state) noexcept;

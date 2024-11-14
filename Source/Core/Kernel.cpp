@@ -170,7 +170,8 @@ void Kernel::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTim
         g_printTimer = g_printTimerBase;
     }
 
-    if constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR) 
+    {
         const bool freezeLoopTime = _platformContext.editor().simulationPaused() && _platformContext.editor().stepQueue() == 0u;
         _timingData.freezeGameTime(freezeLoopTime);
         _platformContext.app().mainLoopPaused(freezeLoopTime);
@@ -779,15 +780,15 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     SceneEnvironmentProbePool::OnStartup(_platformContext.gfx());
-    _inputConsumers.fill(nullptr);
 
+    _inputConsumers.resize(0);
     if constexpr(Config::Build::ENABLE_EDITOR)
     {
-        _inputConsumers[to_base(InputConsumerType::Editor)] = &_platformContext.editor();
+        _inputConsumers.emplace_back(&_platformContext.editor(), InputConsumerType::Editor);
     }
 
-    _inputConsumers[to_base(InputConsumerType::GUI)] = &_platformContext.gui();
-    _inputConsumers[to_base(InputConsumerType::Scene)] = _projectManager.get();
+    _inputConsumers.emplace_back(&_platformContext.gui(), InputConsumerType::GUI);
+    _inputConsumers.emplace_back(_projectManager.get(), InputConsumerType::Scene);
 
     // Add our needed app-wide render passes. RenderPassManager is responsible for deleting these!
     _renderPassManager->setRenderPass(RenderStage::SHADOW,       {   });
@@ -799,15 +800,24 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     Console::printfn(LOCALE_STR("SCENE_ADD_DEFAULT_CAMERA"));
 
     WindowManager& winManager = _platformContext.app().windowManager();
-    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS, [mgr = _projectManager.get()](const DisplayWindow::WindowEventArgs& )
+    winManager.mainWindow()->addEventListener(WindowEvent::LOST_FOCUS,
     {
-        mgr->onChangeFocus(false);
-        return true;
+        ._cbk = [mgr = _projectManager.get()](const DisplayWindow::WindowEventArgs& )
+        {
+            mgr->onChangeFocus(false);
+            return true;
+        },
+        ._name = "Kernel::LOST_FOCUS"
     });
-    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS, [mgr = _projectManager.get()](const DisplayWindow::WindowEventArgs& )
+
+    winManager.mainWindow()->addEventListener(WindowEvent::GAINED_FOCUS,
     {
-        mgr->onChangeFocus(true);
-        return true;
+        ._cbk = [mgr = _projectManager.get()](const DisplayWindow::WindowEventArgs& )
+        {
+            mgr->onChangeFocus(true);
+            return true;
+        },
+        ._name = "Kernel::GAINED_FOCUS"
     });
 
     Script::OnStartup();
@@ -964,71 +974,57 @@ void Kernel::shutdown()
     Console::printfn(LOCALE_STR("STOP_ENGINE_OK"));
 }
 
-void Kernel::onWindowSizeChange(const SizeChangeParams & params) {
+bool Kernel::onWindowSizeChange(const SizeChangeParams & params)
+{
     Attorney::GFXDeviceKernel::onWindowSizeChange(_platformContext.gfx(), params);
 
-    if constexpr (Config::Build::ENABLE_EDITOR) {
+    if constexpr (Config::Build::ENABLE_EDITOR)
+    {
         _platformContext.editor().onWindowSizeChange(params);
     }
+
+    return true;
 }
 
-void Kernel::onResolutionChange(const SizeChangeParams& params) {
+bool Kernel::onResolutionChange(const SizeChangeParams& params)
+{
     _projectManager->onResolutionChange(params);
 
     Attorney::GFXDeviceKernel::onResolutionChange(_platformContext.gfx(), params);
 
-    if (!_splashScreenUpdating) {
+    if (!_splashScreenUpdating)
+    {
         _platformContext.gui().onResolutionChange(params);
     }
 
-    if constexpr(Config::Build::ENABLE_EDITOR) {
+    if constexpr(Config::Build::ENABLE_EDITOR)
+    {
         _platformContext.editor().onResolutionChange(params);
     }
+
+    return true;
 }
 
 #pragma region Input Management
-void Kernel::remapAbsolutePosition( Input::MouseEvent& eventInOut ) const noexcept
+
+bool Kernel::mouseMovedInternal( Input::MouseMoveEvent& argInOut )
 {
-    vec2<I32> absPositionIn = { eventInOut.state().X.abs, eventInOut.state().Y.abs };
-
-    const Rect<I32> renderingViewport = _platformContext.mainWindow().renderingViewport();
-    CLAMP_IN_RECT(absPositionIn.x, absPositionIn.y, renderingViewport);
-
-    if (Config::Build::ENABLE_EDITOR &&
-        _platformContext.editor().running() &&
-        !_platformContext.editor().hasFocus())
+    for (auto& inputConsumer : _inputConsumers)
     {
-        const Rect<I32> previewRect = _platformContext.editor().scenePreviewRect( false );
-        absPositionIn = COORD_REMAP( absPositionIn, previewRect, renderingViewport );
-        if ( !previewRect.contains(absPositionIn) )
+        if (inputConsumer._ptr->mouseMoved(argInOut))
         {
-            CLAMP_IN_RECT( absPositionIn.x, absPositionIn.y, renderingViewport );
-            eventInOut.inScenePreviewRect(true);
+            return true;
         }
     }
 
-    const vec2<U16> resolution = _platformContext.gfx().renderingResolution();
-    absPositionIn = COORD_REMAP( absPositionIn, renderingViewport, { 0, 0, to_I32( resolution.width ), to_I32( resolution.height ) } );
-    Input::MouseState& state = Input::Attorney::MouseEventKernel::state(eventInOut);
-    state.X.abs = absPositionIn.x;
-    state.Y.abs = absPositionIn.y;
+    return false;
 }
 
-bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg)
+bool Kernel::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut )
 {
-    if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
-        !_projectManager->wantsMouse() &&
-        _inputConsumers[to_base(InputConsumerType::Editor)]->mouseMoved(arg))
+    for (auto& inputConsumer : _inputConsumers)
     {
-        return true;
-    }
-
-    Input::MouseMoveEvent remapArg = arg;
-    remapAbsolutePosition( remapArg );
-
-    for (U8 i = 1u; i < to_base(InputConsumerType::COUNT); ++i) 
-    {
-        if (_inputConsumers[i] && _inputConsumers[i]->mouseMoved(remapArg))
+        if (inputConsumer._ptr->mouseButtonPressed(argInOut))
         {
             return true;
         }
@@ -1037,20 +1033,11 @@ bool Kernel::mouseMoved(const Input::MouseMoveEvent& arg)
     return false;
 }
 
-bool Kernel::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
-    if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
-        !_projectManager->wantsMouse() &&
-        _inputConsumers[to_base(InputConsumerType::Editor)]->mouseButtonPressed(arg))
+bool Kernel::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut )
+{
+    for (auto& inputConsumer : _inputConsumers)
     {
-        return true;
-    }
-
-    Input::MouseButtonEvent remapArg = arg;
-    remapAbsolutePosition( remapArg );
-
-    for (U8 i = 1u; i < to_base(InputConsumerType::COUNT); ++i)
-    {
-        if (_inputConsumers[i] && _inputConsumers[i]->mouseButtonPressed(remapArg))
+        if (inputConsumer._ptr->mouseButtonReleased(argInOut))
         {
             return true;
         }
@@ -1059,20 +1046,11 @@ bool Kernel::mouseButtonPressed(const Input::MouseButtonEvent& arg) {
     return false;
 }
 
-bool Kernel::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
-    if (_inputConsumers[to_base(InputConsumerType::Editor)] &&
-        !_projectManager->wantsMouse() &&
-        _inputConsumers[to_base(InputConsumerType::Editor)]->mouseButtonReleased(arg))
+bool Kernel::onKeyDownInternal(Input::KeyEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
     {
-        return true;
-    }
-
-    Input::MouseButtonEvent remapArg = arg;
-    remapAbsolutePosition( remapArg );
-
-    for (U8 i = 1u; i < to_base(InputConsumerType::COUNT); ++i)
-    {
-        if (_inputConsumers[i] && _inputConsumers[i]->mouseButtonReleased(remapArg))
+        if (inputConsumer._ptr->onKeyDown(argInOut))
         {
             return true;
         }
@@ -1081,9 +1059,12 @@ bool Kernel::mouseButtonReleased(const Input::MouseButtonEvent& arg) {
     return false;
 }
 
-bool Kernel::onKeyDown(const Input::KeyEvent& key) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->onKeyDown(key)) {
+bool Kernel::onKeyUpInternal(Input::KeyEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->onKeyUp(argInOut))
+        {
             return true;
         }
     }
@@ -1091,9 +1072,12 @@ bool Kernel::onKeyDown(const Input::KeyEvent& key) {
     return false;
 }
 
-bool Kernel::onKeyUp(const Input::KeyEvent& key) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->onKeyUp(key)) {
+bool Kernel::joystickAxisMovedInternal(Input::JoystickEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->joystickAxisMoved(argInOut))
+        {
             return true;
         }
     }
@@ -1101,9 +1085,12 @@ bool Kernel::onKeyUp(const Input::KeyEvent& key) {
     return false;
 }
 
-bool Kernel::joystickAxisMoved(const Input::JoystickEvent& arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->joystickAxisMoved(arg)) {
+bool Kernel::joystickPovMovedInternal(Input::JoystickEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->joystickPovMoved(argInOut))
+        {
             return true;
         }
     }
@@ -1111,9 +1098,12 @@ bool Kernel::joystickAxisMoved(const Input::JoystickEvent& arg) {
     return false;
 }
 
-bool Kernel::joystickPovMoved(const Input::JoystickEvent& arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->joystickPovMoved(arg)) {
+bool Kernel::joystickButtonPressedInternal(Input::JoystickEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->joystickButtonPressed(argInOut))
+        {
             return true;
         }
     }
@@ -1121,9 +1111,12 @@ bool Kernel::joystickPovMoved(const Input::JoystickEvent& arg) {
     return false;
 }
 
-bool Kernel::joystickButtonPressed(const Input::JoystickEvent& arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->joystickButtonPressed(arg)) {
+bool Kernel::joystickButtonReleasedInternal(Input::JoystickEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->joystickButtonReleased(argInOut))
+        {
             return true;
         }
     }
@@ -1131,9 +1124,12 @@ bool Kernel::joystickButtonPressed(const Input::JoystickEvent& arg) {
     return false;
 }
 
-bool Kernel::joystickButtonReleased(const Input::JoystickEvent& arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->joystickButtonReleased(arg)) {
+bool Kernel::joystickBallMovedInternal(Input::JoystickEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->joystickBallMoved(argInOut))
+        {
             return true;
         }
     }
@@ -1141,9 +1137,12 @@ bool Kernel::joystickButtonReleased(const Input::JoystickEvent& arg) {
     return false;
 }
 
-bool Kernel::joystickBallMoved(const Input::JoystickEvent& arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->joystickBallMoved(arg)) {
+bool Kernel::joystickAddRemoveInternal(Input::JoystickEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->joystickAddRemove(argInOut))
+        {
             return true;
         }
     }
@@ -1151,9 +1150,12 @@ bool Kernel::joystickBallMoved(const Input::JoystickEvent& arg) {
     return false;
 }
 
-bool Kernel::joystickAddRemove(const Input::JoystickEvent& arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->joystickAddRemove(arg)) {
+bool Kernel::joystickRemapInternal(Input::JoystickEvent & argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->joystickRemap(argInOut))
+        {
             return true;
         }
     }
@@ -1161,9 +1163,12 @@ bool Kernel::joystickAddRemove(const Input::JoystickEvent& arg) {
     return false;
 }
 
-bool Kernel::joystickRemap(const Input::JoystickEvent &arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->joystickRemap(arg)) {
+bool Kernel::onTextEventInternal(Input::TextEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->onTextEvent(argInOut))
+        {
             return true;
         }
     }
@@ -1171,15 +1176,28 @@ bool Kernel::joystickRemap(const Input::JoystickEvent &arg) {
     return false;
 }
 
-bool Kernel::onTextEvent(const Input::TextEvent& arg) {
-    for (auto inputConsumer : _inputConsumers) {
-        if (inputConsumer && inputConsumer->onTextEvent(arg)) {
-            return true;
+void Kernel::lockInputToConsumer(const InputConsumerType type)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if ( type == InputConsumerType::COUNT || inputConsumer._type != type )
+        {
+            inputConsumer._ptr->processInput(false);
         }
     }
-
-    return false;
 }
+
+void Kernel::unlockInputFromConsumer(const InputConsumerType type)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (type == InputConsumerType::COUNT || inputConsumer._type != type)
+        {
+            inputConsumer._ptr->processInput(true);
+        }
+    }
+}
+
 #pragma endregion
 };
 

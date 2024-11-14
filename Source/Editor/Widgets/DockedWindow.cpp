@@ -1,5 +1,6 @@
 #include "Headers/DockedWindow.h"
 
+#include "Editor/Headers/Editor.h"
 #include "Dynamics/Entities/Units/Headers/Character.h"
 #include "Dynamics/Entities/Units/Headers/Unit.h"
 #include "ECS/Components/Headers/UnitComponent.h"
@@ -25,7 +26,7 @@ namespace Divide {
         backgroundUpdateInternal();
     }
 
-    void DockedWindow::draw()
+    void DockedWindow::draw(const bool readOnly)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
@@ -35,7 +36,11 @@ namespace Divide {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, _descriptor.minSize);
         ImGui::GetStyle().WindowMenuButtonPosition = _descriptor.showCornerButton ? ImGuiDir_Left : ImGuiDir_None;
 
-  
+        if ( readOnly )
+        {
+            PushReadOnly(true);
+        }
+
         if (ImGui::Begin(_descriptor.name.c_str(), nullptr, windowFlags() | _descriptor.flags)) [[likely]]
         {
             _visible = true;
@@ -54,6 +59,11 @@ namespace Divide {
         }
         ImGui::PopStyleVar();
         ImGui::End();
+
+        if (readOnly)
+        {
+            PopReadOnly();
+        }
     }
 
     

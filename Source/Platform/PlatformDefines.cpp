@@ -105,9 +105,12 @@ namespace Divide
         info._workingDirectory = getWorkingDirectory();
     }
 
-    const char* GetClipboardText() noexcept
+    string GetClipboardText() noexcept
     {
-        return SDL_GetClipboardText();
+        char* str = SDL_GetClipboardText();
+        string ret(str);
+        SDL_free(str);
+        return ret;
     }
 
     void SetClipboardText( const char* text ) noexcept

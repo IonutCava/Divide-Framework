@@ -34,48 +34,59 @@
 
 namespace Divide {
 
-inline bool Editor::isInit() const noexcept {
+inline bool Editor::isInit() const noexcept
+{
     return _mainWindow != nullptr;
 }
 
-inline bool Editor::inEditMode() const noexcept {
+inline bool Editor::inEditMode() const noexcept
+{
     return running() && simulationPaused();
 }
 
-inline void Editor::setTransformSettings(const TransformSettings& settings) const noexcept {
+inline void Editor::setTransformSettings(const TransformSettings& settings) const noexcept
+{
     Attorney::GizmoEditor::setTransformSettings(_gizmo.get(), settings);
 }
 
-inline const TransformSettings& Editor::getTransformSettings() const noexcept {
+inline const TransformSettings& Editor::getTransformSettings() const noexcept
+{
     return Attorney::GizmoEditor::getTransformSettings(_gizmo.get());
 }
 
- U32 Editor::stepQueue() const noexcept {
+ U32 Editor::stepQueue() const noexcept
+ {
      return _stepQueue;
 }
 
-inline bool Editor::simulationPaused() const noexcept {
+inline bool Editor::simulationPaused() const noexcept
+{
     return _simulationPaused;
 }
 
 template<typename T>
-void Editor::registerUndoEntry(const UndoEntry<T>& entry) {
+void Editor::registerUndoEntry(const UndoEntry<T>& entry)
+{
     _undoManager->registerUndoEntry(entry);
 }
 
-inline size_t Editor::UndoStackSize() const noexcept {
+inline size_t Editor::UndoStackSize() const noexcept
+{
     return _undoManager->UndoStackSize();
 }
 
-inline size_t Editor::RedoStackSize() const noexcept {
+inline size_t Editor::RedoStackSize() const noexcept
+{
     return _undoManager->RedoStackSize();
 }
 
-inline void Editor::toggleMemoryEditor(const bool state) noexcept {
+inline void Editor::toggleMemoryEditor(const bool state) noexcept
+{
     _showMemoryEditor = state;
 }
 
-inline const RenderTargetHandle& Editor::getNodePreviewTarget() const noexcept {
+inline const RenderTargetHandle& Editor::getNodePreviewTarget() const noexcept
+{
     return _nodePreviewRTHandle;
 }
 

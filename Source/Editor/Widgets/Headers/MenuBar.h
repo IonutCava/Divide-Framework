@@ -52,7 +52,7 @@ namespace Divide
 
     public:
         explicit MenuBar(PlatformContext& context, bool mainMenu);
-        void draw();
+        void draw(bool readOnly);
 
     protected:
         void drawFileMenu(bool modifierPressed);

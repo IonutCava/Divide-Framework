@@ -114,8 +114,6 @@ namespace Divide
     template<typename T>
     struct UndoEntry;
     
-    void InitBasicImGUIState( ImGuiIO& io ) noexcept;
-
     struct IMGUICallbackData
     {
         GFX::CommandBuffer* _cmdBuffer = nullptr;
@@ -187,7 +185,7 @@ namespace Divide
             ImVec2 _scaledMousePos{ 0.f, 0.f };
         };
 
-        public:
+    public:
         explicit Editor( PlatformContext& context, ImGuiStyleEnum theme = ImGuiStyle_DarkCodz01 );
         ~Editor() override;
 
@@ -212,9 +210,6 @@ namespace Divide
         [[nodiscard]] inline size_t RedoStackSize() const noexcept;
 
         [[nodiscard]] Rect<I32> scenePreviewRect( bool globalCoords ) const noexcept;
-        [[nodiscard]] bool wantsMouse() const;
-        [[nodiscard]] bool wantsKeyboard() const noexcept;
-        [[nodiscard]] bool wantsJoystick() const noexcept;
         [[nodiscard]] bool hasFocus() const;
         [[nodiscard]] bool isHovered() const;
         template<typename T>
@@ -233,37 +228,52 @@ namespace Divide
 
         [[nodiscard]] inline const RenderTargetHandle& getNodePreviewTarget() const noexcept;
 
+        void remapAbsolutePosition(Input::MouseEvent& eventInOut) const noexcept;
+
     protected: //frame listener
         [[nodiscard]] bool framePostRender( const FrameEvent& evt ) override;
         [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
 
-        public: // input
+    public: // input
             /// Key pressed: return true if input was consumed
-        [[nodiscard]] bool onKeyDown( const Input::KeyEvent& key ) override;
+        [[nodiscard]] bool onKeyDownInternal( Input::KeyEvent& argInOut) override;
         /// Key released: return true if input was consumed
-        [[nodiscard]] bool onKeyUp( const Input::KeyEvent& key ) override;
+        [[nodiscard]] bool onKeyUpInternal( Input::KeyEvent& argInOut) override;
         /// Mouse moved: return true if input was consumed
-        [[nodiscard]] bool mouseMoved( const Input::MouseMoveEvent& arg ) override;
+        [[nodiscard]] bool mouseMoved( Input::MouseMoveEvent& argInOut) override;
         /// Mouse button pressed: return true if input was consumed
-        [[nodiscard]] bool mouseButtonPressed( const Input::MouseButtonEvent& arg ) override;
+        [[nodiscard]] bool mouseButtonPressed( Input::MouseButtonEvent& argInOut) override;
         /// Mouse button released: return true if input was consumed
-        [[nodiscard]] bool mouseButtonReleased( const Input::MouseButtonEvent& arg ) override;
+        [[nodiscard]] bool mouseButtonReleased( Input::MouseButtonEvent& argInOut) override;
+        /// Mouse moved: return true if input was consumed
+        [[nodiscard]] bool mouseMovedInternal( Input::MouseMoveEvent& argInOut) override;
+        /// Mouse button pressed: return true if input was consumed
+        [[nodiscard]] bool mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut) override;
+        /// Mouse button released: return true if input was consumed
+        [[nodiscard]] bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
 
-        [[nodiscard]] bool joystickButtonPressed( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool joystickButtonReleased( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool joystickAxisMoved( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool joystickPovMoved( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool joystickBallMoved( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool joystickAddRemove( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool joystickRemap( const Input::JoystickEvent& arg ) noexcept override;
-        [[nodiscard]] bool onTextEvent( const Input::TextEvent& arg ) override;
+        [[nodiscard]] bool joystickButtonPressedInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool joystickButtonReleasedInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool joystickAxisMovedInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool joystickPovMovedInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool joystickBallMovedInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool joystickAddRemoveInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool joystickRemapInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool onTextEventInternal( Input::TextEvent& argInOut) override;
 
+        [[nodiscard]] bool wantsMouse() const;
+        [[nodiscard]] bool wantsKeyboard() const noexcept;
+        [[nodiscard]] bool wantsJoystick() const noexcept;
+
+    public:
         [[nodiscard]] bool saveToXML() const;
         [[nodiscard]] bool loadFromXML();
 
     protected:
         [[nodiscard]] inline bool isInit() const noexcept;
         [[nodiscard]] bool render( );
+
+        void toggleInternal(bool state);
 
         BoundingSphere teleportToNode( Camera* camera, const SceneGraphNode* sgn ) const;
         void saveNode( const SceneGraphNode* sgn ) const;
@@ -272,7 +282,7 @@ namespace Divide
         void updateEditorFocus();
         void updateFocusState( ImVec2 mousePos );
         /// Destroys the old font, if any, before loading the new one
-        void createFontTexture( F32 DPIScaleFactor );
+        void createFontTexture( ImGuiIO& io, F32 DPIScaleFactor );
         [[nodiscard]] static ImGuiViewport* FindViewportByPlatformHandle( ImGuiContext* context, const DisplayWindow* window );
 
         [[nodiscard]] U32 saveItemCount() const noexcept;
@@ -335,6 +345,7 @@ namespace Divide
         [[nodiscard]] bool removeComponent( const Selections& selections, ComponentType newComponentType ) const;
 
         GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, U32 maxIndices, GFX::MemoryBarrierCommand& memCmdInOut );
+        void initBasicImGUIState(ImGuiIO& io, bool enableViewportSupport, string& clipboardStringBuffer) noexcept;
 
     protected:
         SceneGraphNode* _previewNode{ nullptr };
@@ -364,6 +375,7 @@ namespace Divide
 
         std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};
+        std::array<string, to_base( ImGuiContextType::COUNT )> _imguiStringBuffers = {};
         std::array<std::unique_ptr<DockedWindow>, to_base( WindowType::COUNT )> _dockedWindows = {};
 
         ResourcePath _externalTextEditorPath;
@@ -380,6 +392,8 @@ namespace Divide
         bool           _showMemoryEditor = false;
         bool           _isScenePaused = false;
         bool           _gridSettingsDirty = true;
+        bool           _mouseCaptured = false;
+        std::optional<bool> _queueToggle;
         CircularBuffer<SceneEntry, 10> _recentSceneList;
         CameraSnapshot _render2DSnapshot;
         RenderTargetHandle _nodePreviewRTHandle{};
@@ -392,14 +406,6 @@ namespace Divide
         };
 
         eastl::queue<QueueModelSpawn> _queuedModelSpawns;
-
-        struct QueuedDisplaySizeChange
-        {
-            bool _resolutionChanged{false};
-            bool _displaySizeChanged{false};
-            vec2<U16> _targetResolution{1u,1u};
-            vec2<U16> _targetDisplaySize{1u,1u};
-        } _queuedDisplaySizeChange;
 
     }; //Editor
 
@@ -419,7 +425,7 @@ namespace Divide
         {
             [[nodiscard]] static bool editorEnabledGizmo( const Editor& editor ) noexcept
             {
-                return editor._gizmo->enabled();
+                return editor._gizmo->isEnabled();
             }
 
             static void editorEnableGizmo( const Editor& editor, const bool state ) noexcept
@@ -471,11 +477,6 @@ namespace Divide
             [[nodiscard]] static const Camera* getSelectedCamera( const Editor& editor )  noexcept
             {
                 return editor.selectedCamera();
-            }
-
-            [[nodiscard]] static bool editorEnableGizmo( const Editor& editor ) noexcept
-            {
-                return editor._gizmo->enabled();
             }
 
             static void editorEnableGizmo( const Editor& editor, const bool state ) noexcept
@@ -638,11 +639,6 @@ namespace Divide
                 return editor._gizmo->enable( state );
             }
 
-            [[nodiscard]] static bool enableGizmo( const Editor& editor ) noexcept
-            {
-                return editor._gizmo->enabled();
-            }
-
             static void setSceneGizmoEnabled( Editor& editor, const bool state ) noexcept
             {
                 return editor.sceneGizmoEnabled( state );
@@ -777,18 +773,33 @@ namespace Divide
         };
     } //namespace Attorney
 
-    void PushReadOnly( bool fade = true );
+    void PushReadOnly( bool fade = true, F32 fadedAlpha = 0.4f );
     void PopReadOnly();
 
     struct ScopedReadOnly final : NonCopyable
     {
-        ScopedReadOnly( bool fade = false )
+        ScopedReadOnly( const bool fade = false, const F32 fadedAlpha = 0.4f)
         {
-            PushReadOnly( fade );
+            PushReadOnly( fade, fadedAlpha);
         }
         ~ScopedReadOnly()
         {
             PopReadOnly();
+        }
+    };
+
+    void PushImGuiContext(ImGuiContext* ctx);
+    void PopImGuiContext();
+
+    struct ScopedImGuiContext final : NonCopyable
+    {
+        ScopedImGuiContext(ImGuiContext* ctx)
+        {
+            PushImGuiContext(ctx);
+        }
+        ~ScopedImGuiContext()
+        {
+            PopImGuiContext();
         }
     };
 } //namespace Divide

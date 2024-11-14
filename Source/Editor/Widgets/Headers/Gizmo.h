@@ -88,26 +88,30 @@ namespace Divide {
         friend class Attorney::GizmoEditor;
 
     public:
-        explicit Gizmo(Editor& parent, ImGuiContext* targetContext);
+        explicit Gizmo(Editor& parent, ImGuiContext* targetContext, F32 clipSpaceSize);
         ~Gizmo();
 
         [[nodiscard]] ImGuiContext& getContext() noexcept;
         [[nodiscard]] const ImGuiContext& getContext() const noexcept;
 
-        [[nodiscard]] bool needsMouse() const;
-        [[nodiscard]] bool hovered() const noexcept;
         void enable(bool state) noexcept;
-        [[nodiscard]] bool enabled() const noexcept;
-        [[nodiscard]] bool active() const noexcept;
 
-        void onMouseButton(bool pressed) noexcept;
-        [[nodiscard]] bool onKey(bool pressed, const Input::KeyEvent& key);
+        [[nodiscard]] bool needsMouse() const;
+        [[nodiscard]] bool isHovered() const noexcept;
+        [[nodiscard]] bool isUsing() const noexcept;
+        [[nodiscard]] bool isEnabled() const noexcept;
+        [[nodiscard]] bool isActive() const noexcept;
+
+        [[nodiscard]] bool onMouseButtonPressed(Input::MouseButtonEvent& argInOut) noexcept;
+        [[nodiscard]] bool onMouseButtonReleased(Input::MouseButtonEvent& argInOut) noexcept;
+        [[nodiscard]] bool onKeyUp(Input::KeyEvent& argInOut);
+        [[nodiscard]] bool onKeyDown(Input::KeyEvent& argInOut);
 
     protected:
         void update(U64 deltaTimeUS);
         void render(const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut);
-        void renderSingleSelection(const Camera* camera);
-        void renderMultipleSelections(const Camera* camera);
+        void renderSingleSelection();
+        void renderMultipleSelections();
         void updateSelections();
         void updateSelections(const vector<SceneGraphNode*>& nodes);
         void setTransformSettings(const TransformSettings& settings) noexcept;
@@ -115,6 +119,12 @@ namespace Divide {
         void onSceneFocus(bool state) noexcept;
 
         void updateSelectionsInternal();
+
+        void onResolutionChange(const SizeChangeParams& params) noexcept;
+        void onWindowSizeChange(const SizeChangeParams& params) noexcept;
+
+        void onKeyInternal(const Input::KeyEvent& arg, bool pressed);
+
     private:
         struct SelectedNode {
             TransformComponent* tComp = nullptr;
@@ -132,8 +142,10 @@ namespace Divide {
         TransformSettings _transformSettings;
 
         mat4<F32> _workMatrix;
+        mat4<F32> _gridMatrix;
         mat4<F32> _localToWorldMatrix;
         mat4<F32> _deltaMatrix;
+        F32 _clipSpaceSize{1.f};
     };
 
     FWD_DECLARE_MANAGED_CLASS(Gizmo);
@@ -151,10 +163,12 @@ namespace Divide {
             {
                 gizmo->updateSelections(nodes);
             }
+
             static void updateSelections(Gizmo* gizmo)
             {
                 gizmo->updateSelections();
             }
+
             static void update(Gizmo* gizmo, const U64 deltaTimeUS)
             {
                 gizmo->update(deltaTimeUS);
@@ -173,6 +187,16 @@ namespace Divide {
             static void onSceneFocus(Gizmo* gizmo, const bool state) noexcept
             {
                 gizmo->onSceneFocus(state);
+            }
+
+            static void onResolutionChange(Gizmo* gizmo, const SizeChangeParams& params ) noexcept
+            {
+                gizmo->onResolutionChange(params);
+            }
+
+            static void onWindowSizeChange(Gizmo* gizmo, const SizeChangeParams& params) noexcept
+            {
+                gizmo->onWindowSizeChange(params);
             }
 
             friend class Divide::Editor;

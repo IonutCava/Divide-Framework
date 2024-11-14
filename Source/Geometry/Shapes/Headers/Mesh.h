@@ -101,8 +101,8 @@ DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
 
    protected:
     void addSubMesh(Handle<SubMesh> subMesh, U32 index);
-    void processNode(SceneGraphNode* parentNode, const MeshNodeData& node);
-    SceneGraphNode* addSubMeshNode(SceneGraphNode* parentNode, const U32 meshIndex);
+    void processNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode, const MeshNodeData& node);
+    SceneGraphNode* addSubMeshNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode, const U32 meshIndex);
     void setNodeData(const MeshNodeData& nodeStructure);
 
    protected:

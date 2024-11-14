@@ -757,77 +757,77 @@ namespace Divide
     }
 
     // Return true if input was consumed
-    bool GUI::onKeyDown( const Input::KeyEvent& key )
+    bool GUI::onKeyDownInternal( Input::KeyEvent& argInOut)
     {
-        return _ceguiInput.onKeyDown( key );
+        return _ceguiInput.onKeyDown(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::onKeyUp( const Input::KeyEvent& key )
+    bool GUI::onKeyUpInternal( Input::KeyEvent& argInOut)
     {
-        return _ceguiInput.onKeyUp( key );
+        return _ceguiInput.onKeyUp(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::mouseMoved( const Input::MouseMoveEvent& arg )
+    bool GUI::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
     {
-        return _ceguiInput.mouseMoved( arg );
+        return _ceguiInput.mouseMoved(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::mouseButtonPressed( const Input::MouseButtonEvent& arg )
+    bool GUI::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
     {
-        return _ceguiInput.mouseButtonPressed( arg );
+        return _ceguiInput.mouseButtonPressed(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::mouseButtonReleased( const Input::MouseButtonEvent& arg )
+    bool GUI::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
     {
-        return _ceguiInput.mouseButtonReleased( arg );
+        return _ceguiInput.mouseButtonReleased(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::joystickAxisMoved( const Input::JoystickEvent& arg )
+    bool GUI::joystickAxisMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickAxisMoved( arg );
+        return _ceguiInput.joystickAxisMoved(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::joystickPovMoved( const Input::JoystickEvent& arg )
+    bool GUI::joystickPovMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickPovMoved( arg );
+        return _ceguiInput.joystickPovMoved(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::joystickButtonPressed( const Input::JoystickEvent& arg )
+    bool GUI::joystickButtonPressedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickButtonPressed( arg );
+        return _ceguiInput.joystickButtonPressed(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::joystickButtonReleased( const Input::JoystickEvent& arg )
+    bool GUI::joystickButtonReleasedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickButtonReleased( arg );
+        return _ceguiInput.joystickButtonReleased(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::joystickBallMoved( const Input::JoystickEvent& arg )
+    bool GUI::joystickBallMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickBallMoved( arg );
+        return _ceguiInput.joystickBallMoved(argInOut);
     }
 
     // Return true if input was consumed
-    bool GUI::joystickAddRemove( const Input::JoystickEvent& arg )
+    bool GUI::joystickAddRemoveInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickAddRemove( arg );
+        return _ceguiInput.joystickAddRemove(argInOut);
     }
 
-    bool GUI::joystickRemap( const Input::JoystickEvent& arg )
+    bool GUI::joystickRemapInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickRemap( arg );
+        return _ceguiInput.joystickRemap(argInOut);
     }
 
-    bool GUI::onTextEvent( [[maybe_unused]] const Input::TextEvent& arg ) noexcept
+    bool GUI::onTextEventInternal( [[maybe_unused]] Input::TextEvent& argInOut) noexcept
     {
         return false;
     }

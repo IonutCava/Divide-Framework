@@ -35,23 +35,27 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Core/Headers/PlatformContextComponent.h"
 
-namespace Divide {
-    class StatusBar final : public PlatformContextComponent {
-        struct Message {
+namespace Divide
+{
+    class StatusBar final : public PlatformContextComponent
+    {
+        struct Message
+        {
             string _text;
             F32 _durationMS = 0.f;
             bool _error = false;
         };
-    public:
-        explicit StatusBar(PlatformContext& context) noexcept;
 
-        void draw() const;
-        void update(U64 deltaTimeUS) noexcept;
+        public:
+            explicit StatusBar(PlatformContext& context) noexcept;
 
-        void showMessage(const string& message, F32 durationMS, bool error);
+            void draw(bool readOnly) const;
+            void update(U64 deltaTimeUS) noexcept;
 
-    private:
-        eastl::queue<Message> _messages;
+            void showMessage(const string& message, F32 durationMS, bool error);
+
+        private:
+            eastl::queue<Message> _messages;
     };
 
     FWD_DECLARE_MANAGED_CLASS(StatusBar);

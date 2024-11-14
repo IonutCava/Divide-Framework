@@ -125,33 +125,7 @@ namespace Divide
         return Handle<Texture>{ ._data = to_U32(texData) };
     }
 
-    void InitBasicImGUIState( ImGuiIO& io ) noexcept
-    {
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
-        io.SetClipboardTextFn = [](void* user_data, const char* text)
-        { 
-            if ( user_data != nullptr )
-            {
-                SetClipboardText( text );
-            }
-        };
-
-        io.GetClipboardTextFn = [](void* user_data )
-        {
-            if ( user_data != nullptr)
-            {
-                return GetClipboardText();
-            }
-
-            return "";
-        };
-
-        static bool enable_clipboard = true;
-        io.ClipboardUserData = &enable_clipboard;
-    }
-
-    std::array<Input::MouseButton, 5> Editor::g_oisButtons = {
+     std::array<Input::MouseButton, 5> Editor::g_oisButtons = {
         Input::MouseButton::MB_Left,
         Input::MouseButton::MB_Right,
         Input::MouseButton::MB_Middle,
@@ -165,7 +139,6 @@ namespace Divide
 
     PushConstantsStruct IMGUICallbackToPushConstants( const IMGUICallbackData& data, const bool isArrayTexture )
     {
-
         PushConstantsStruct pushConstants{};
         pushConstants.data[0]._vec[0]    = data._colourData;
         pushConstants.data[0]._vec[1].xy = data._depthRange;
@@ -199,6 +172,8 @@ namespace Divide
         g_windowManager = &context.app().windowManager();
         _memoryEditorData = std::make_pair( nullptr, 0 );
         _nodePreviewBGColour = { 0.35f, 0.32f, 0.45f };
+
+        processInput(false);
     }
 
     Editor::~Editor()
@@ -209,27 +184,14 @@ namespace Divide
 
     void Editor::idle() noexcept
     {
-        if ( _queuedDisplaySizeChange._displaySizeChanged )
+        if (_queueToggle.has_value())
         {
-            SizeChangeParams params{};
-            params.width = _queuedDisplaySizeChange._targetDisplaySize.width;
-            params.height = _queuedDisplaySizeChange._targetDisplaySize.height;
-            params.isMainWindow = true;
-
-            onWindowSizeChange(params);
-        }
-        else if ( _queuedDisplaySizeChange._resolutionChanged )
-        {
-            SizeChangeParams params{};
-            params.width = _queuedDisplaySizeChange._targetResolution.width;
-            params.height = _queuedDisplaySizeChange._targetResolution.height;
-            params.isMainWindow = true;
-
-            onResolutionChange(params);
+            toggleInternal(_queueToggle.value());
+            _queueToggle = {};
         }
     }
 
-    void Editor::createFontTexture( const F32 DPIScaleFactor )
+    void Editor::createFontTexture(ImGuiIO& io, const F32 DPIScaleFactor )
     {
         constexpr F32 fontSize = 13.f;
         constexpr F32 fontSizeBold = 16.f;
@@ -246,7 +208,6 @@ namespace Divide
         }
         DIVIDE_ASSERT( _fontTexture != INVALID_HANDLE<Texture> );
 
-        ImGuiIO& io = _imguiContexts[to_base( ImGuiContextType::Editor )]->IO;
         U8* pPixels = nullptr;
         I32 iWidth = 0;
         I32 iHeight = 0;
@@ -319,14 +280,6 @@ namespace Divide
         assert( _imguiContexts[to_base( ImGuiContextType::Editor )] == nullptr );
 
         ImGuiCustom::g_ImAllocatorUserData._context = &context();
-
-        _imguiContexts[to_base( ImGuiContextType::Editor )] = ImGui::CreateContext();
-        ImGuiIO& io = _imguiContexts[to_base( ImGuiContextType::Editor )]->IO;
-
-        const vector<WindowManager::MonitorData>& monitors = g_windowManager->monitorData();
-        const WindowManager::MonitorData& mainMonitor = monitors[_mainWindow->initialDisplay()];
-
-        createFontTexture( mainMonitor.dpi / PlatformDefaultDPI() );
 
         {
             ShaderModuleDescriptor vertModule = {};
@@ -431,39 +384,17 @@ namespace Divide
         blend.blendOp( BlendOperation::ADD );
         _editorPipeline = _context.gfx().newPipeline( pipelineDesc );
 
-        ImGui::ResetStyle( _currentTheme );
+        const vector<WindowManager::MonitorData>& monitors = g_windowManager->monitorData();
+        const WindowManager::MonitorData& mainMonitor = monitors[_mainWindow->initialDisplay()];
 
-        io.ConfigViewportsNoDecoration = true;
-        io.ConfigViewportsNoTaskBarIcon = true;
-        io.ConfigDockingTransparentPayload = true;
-        io.ConfigViewportsNoAutoMerge = false;
+        ImGuiContext*& editorContext = _imguiContexts[to_base(ImGuiContextType::Editor)];
+        editorContext = ImGui::CreateContext();
+        ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
+        createFontTexture(io, mainMonitor.dpi / PlatformDefaultDPI());
+        initBasicImGUIState( io, true, _imguiStringBuffers[to_base(ImGuiContextType::Editor)] );
+        editorContext->Viewports[0]->PlatformHandle = _mainWindow;
 
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport / Platform Windows
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
-
-        io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;
-        io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
-        io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
-        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos; // We can honor io.WantSetMousePos requests (optional, rarely used)
-        io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports; // We can create multi-viewports on the Platform side (optional)
-
-        io.BackendPlatformName = Config::ENGINE_NAME;
-        io.BackendRendererName = _context.gfx().renderAPI() == RenderAPI::Vulkan ? "Vulkan" : "OpenGL";
-        io.ConfigWindowsMoveFromTitleBarOnly = true;
-
-        InitBasicImGUIState( io );
-
-        io.DisplaySize.x = to_F32( _mainWindow->getDimensions().width );
-        io.DisplaySize.y = to_F32( _mainWindow->getDimensions().height );
-
-        const vec2<U16> display_size = _mainWindow->getDrawableSize();
-        io.DisplayFramebufferScale.x = io.DisplaySize.x > 0 ? (F32)display_size.width / io.DisplaySize.x : 0.f;
-        io.DisplayFramebufferScale.y = io.DisplaySize.y > 0 ? (F32)display_size.height / io.DisplaySize.y : 0.f;
-
-        ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-        main_viewport->PlatformHandle = _mainWindow;
-
-        ImGuiPlatformIO& platform_io = _imguiContexts[to_base( ImGuiContextType::Editor )]->PlatformIO;
+        ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         platform_io.Platform_CreateWindow = []( ImGuiViewport* viewport )
         {
             if ( g_windowManager != nullptr )
@@ -502,32 +433,36 @@ namespace Divide
                     newWindow->hidden( false );
                     newWindow->bringToFront();
 
-                    newWindow->addEventListener(
-                        WindowEvent::CLOSE_REQUESTED,
-                        [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
-                                    args ) noexcept
+                    newWindow->addEventListener(WindowEvent::CLOSE_REQUESTED,
+                    {
+                        ._cbk = [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs& args ) noexcept
                         {
                             viewport->PlatformRequestClose = true;
                             return true;
-                        } );
+                        },
+                        ._name = "Editor::CLOSE_REQUESTED"
+                    });
 
-                    newWindow->addEventListener(
-                        WindowEvent::MOVED,
-                        [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
-                                    args ) noexcept
+                    newWindow->addEventListener(WindowEvent::MOVED,
+                    {
+                        ._cbk = [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs& args ) noexcept
                         {
                             viewport->PlatformRequestMove = true;
                             return true;
-                        } );
+                        },
+                        ._name = "Editor::MOVED"
+                    });
 
-                    newWindow->addEventListener(
-                        WindowEvent::RESIZED,
-                        [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
+                    newWindow->addEventListener(WindowEvent::RESIZED,
+                    {
+                        ._cbk = [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
                                     args ) noexcept
                         {
                             viewport->PlatformRequestResize = true;
                             return true;
-                        } );
+                        },
+                        ._name = "Editor::RESIZED"
+                    });
 
                     viewport->PlatformHandle = (void*)newWindow;
                     viewport->PlatformUserData = IM_NEW( ImGuiViewportData )
@@ -669,10 +604,12 @@ namespace Divide
 
                 Editor* editor = &context->editor();
 
-                ImGui::SetCurrentContext(editor->_imguiContexts[to_base( ImGuiContextType::Editor )] );
+                ImGuiContext* ctx = editor->_imguiContexts[to_base(ImGuiContextType::Editor)];
+                ScopedImGuiContext ctxChange(ctx);
+
                 ImDrawData* pDrawData = viewport->DrawData;
-                const I32 fb_width = to_I32( pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x );
-                const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y );
+                const I32 fb_width = to_I32( pDrawData->DisplaySize.x * ctx->IO.DisplayFramebufferScale.x );
+                const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ctx->IO.DisplayFramebufferScale.y );
                 const Rect<I32> targetViewport{0, 0, fb_width, fb_height};
 
                 Handle<GFX::CommandBuffer> buffer = GFX::AllocateCommandBuffer("IMGUI Render Window");
@@ -714,7 +651,6 @@ namespace Divide
                 if ( viewport->DpiScale != previousDPIScale )
                 {
                     previousDPIScale = viewport->DpiScale;
-                    ImGui::GetStyle().ScaleAllSizes( previousDPIScale );
                     data->_window->context().editor()._queuedDPIValue = previousDPIScale;
                 }
             }
@@ -739,16 +675,18 @@ namespace Divide
             imguiMonitor.WorkSize = ImVec2( to_F32( monitor.drawableArea.z ), to_F32( monitor.drawableArea.w ) );
             imguiMonitor.DpiScale = monitor.dpi / PlatformDefaultDPI();
         }
+
         ImGuiViewportData* data = IM_NEW( ImGuiViewportData )();
         data->_window = _mainWindow;
         data->_windowOwned = false;
-        main_viewport->PlatformUserData = data;
+        editorContext->Viewports[0]->PlatformUserData = data;
 
         ImGuiContext*& gizmoContext = _imguiContexts[to_base( ImGuiContextType::Gizmo )];
         gizmoContext = ImGui::CreateContext( io.Fonts );
-        InitBasicImGUIState( gizmoContext->IO );
+        initBasicImGUIState( gizmoContext->IO, false, _imguiStringBuffers[to_base(ImGuiContextType::Gizmo)]);
         gizmoContext->Viewports[0]->PlatformHandle = _mainWindow;
-        _gizmo = std::make_unique<Gizmo>( *this, gizmoContext );
+
+        _gizmo = std::make_unique<Gizmo>( *this, gizmoContext, 0.3f );
 
         SDL_SetHint( SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1" );
 
@@ -787,7 +725,7 @@ namespace Divide
         descriptor.size = ImVec2( 640, 480 );
         descriptor.name = ICON_FK_EYE " Node Preview";
         descriptor.minSize = ImVec2( 100, 100 );
-        descriptor.flags = 0;
+        descriptor.flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
         _dockedWindows[to_base( WindowType::NodePreview )] = std::make_unique<NodePreviewWindow>( *this, descriptor );
 
         descriptor.name = "Scene View ###AnimatedTitlePlayState";
@@ -802,7 +740,6 @@ namespace Divide
         {
             ._mipMappingState = MipMappingState::OFF
         };
-
 
         RenderTargetDescriptor editorDesc = {};
         editorDesc._attachments =
@@ -827,6 +764,9 @@ namespace Divide
         });
 
         _nodePreviewRTHandle = _context.gfx().renderTargetPool().allocateRT( editorDesc );
+
+        PushImGuiContext(editorContext);
+        ImGui::ResetStyle(_currentTheme);
 
         return loadFromXML();
     }
@@ -883,14 +823,13 @@ namespace Divide
     {
         const bool editorHasFocus = hasFocus();
 
-        ImGuiIO& io = ImGui::GetIO();
         if ( editorHasFocus )
         {
-            io.ConfigFlags &= ~ImGuiConfigFlags_NavNoCaptureKeyboard;
+            _imguiContexts[to_base(ImGuiContextType::Editor)]->IO.ConfigFlags &= ~ImGuiConfigFlags_NavNoCaptureKeyboard;
         }
         else
         {
-            io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
+            _imguiContexts[to_base(ImGuiContextType::Editor)]->IO.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
         }
 
         _context.kernel().projectManager()->onChangeFocus( !editorHasFocus );
@@ -903,11 +842,23 @@ namespace Divide
         {
             return;
         }
+        if ( isInit() )
+        {
+            toggleInternal(state);
+        }
+        else
+        {
+            _queueToggle = state;
+        }
+    }
+
+    void Editor::toggleInternal( const bool state )
+    {
+        DIVIDE_ASSERT(state != running());
 
         auto& sMgr = _context.kernel().projectManager();
         Scene* activeScene = sMgr->activeProject()->getActiveScene();
 
-        running( state );
         Reset( _windowFocusState );
         updateEditorFocus();
 
@@ -937,72 +888,76 @@ namespace Divide
                 SceneGraphNode* root = activeScene->sceneGraph().getRoot();
                 _context.kernel().projectManager()->setSelected(0, { &root });
             }*/
-        }
-        if ( !_axisGizmo )
-        {
-            _axisGizmo = _context.gfx().newIMP( "Editor Scene Axis Gizmo" );
-            _axisGizmo->setPipelineDescriptor( _axisGizmoPipelineDesc );
+      
+            if ( !_axisGizmo )
+            {
+                _axisGizmo = _context.gfx().newIMP( "Editor Scene Axis Gizmo" );
+                _axisGizmo->setPipelineDescriptor( _axisGizmoPipelineDesc );
 
-            const auto addValAnd10Percent = []( const F32 val )
-            {
-                return val + ((val * 10) / 100.f);
-            };
-            const auto addValMinus20Percent = []( const F32 val )
-            {
-                return val - ((val * 20) / 100.f);
-            };
+                const auto addValAnd10Percent = []( const F32 val )
+                {
+                    return val + ((val * 10) / 100.f);
+                };
+                const auto addValMinus20Percent = []( const F32 val )
+                {
+                    return val - ((val * 20) / 100.f);
+                };
 
-            std::array<IM::ConeDescriptor, 6> descriptors;
-            for ( IM::ConeDescriptor& descriptor : descriptors )
-            {
-                descriptor.slices = 4u;
-                descriptor.noCull = true;
+                std::array<IM::ConeDescriptor, 6> descriptors;
+                for ( IM::ConeDescriptor& descriptor : descriptors )
+                {
+                    descriptor.slices = 4u;
+                    descriptor.noCull = true;
+                }
+
+                // Shafts
+                descriptors[0].direction = WORLD_X_NEG_AXIS;
+                descriptors[1].direction = WORLD_Y_NEG_AXIS;
+                descriptors[2].direction = WORLD_Z_NEG_AXIS;
+
+                descriptors[0].length = 2.0f;
+                descriptors[1].length = 1.5f;
+                descriptors[2].length = 2.0f;
+
+                descriptors[0].root = VECTOR3_ZERO + vec3<F32>( addValAnd10Percent( descriptors[0].length ), 0.f, 0.f );
+                descriptors[1].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValAnd10Percent( descriptors[1].length ), 0.f );
+                descriptors[2].root = VECTOR3_ZERO + vec3<F32>( 0.f, 0.f, addValAnd10Percent( descriptors[2].length ) );
+
+                descriptors[0].radius = 0.05f;
+                descriptors[1].radius = 0.05f;
+                descriptors[2].radius = 0.05f;
+
+                descriptors[0].colour = UColour4( 255, 0, 0, 255 );
+                descriptors[1].colour = UColour4( 0, 255, 0, 255 );
+                descriptors[2].colour = UColour4( 0, 0, 255, 255 );
+
+                // Arrow heads
+                descriptors[3].direction = WORLD_X_NEG_AXIS;
+                descriptors[4].direction = WORLD_Y_NEG_AXIS;
+                descriptors[5].direction = WORLD_Z_NEG_AXIS;
+
+                descriptors[3].length = 0.5f;
+                descriptors[4].length = 0.5f;
+                descriptors[5].length = 0.5f;
+
+                descriptors[3].root = VECTOR3_ZERO + vec3<F32>( addValMinus20Percent( descriptors[0].length ) + 0.50f, 0.f, 0.f );
+                descriptors[4].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValMinus20Percent( descriptors[1].length ) + 0.50f, 0.f );
+                descriptors[5].root = VECTOR3_ZERO + vec3<F32>( 0.f, 0.f, addValMinus20Percent( descriptors[2].length ) + 0.50f );
+
+                descriptors[3].radius = 0.15f;
+                descriptors[4].radius = 0.15f;
+                descriptors[5].radius = 0.15f;
+
+                descriptors[3].colour = UColour4( 255, 0, 0, 255 );
+                descriptors[4].colour = UColour4( 0, 255, 0, 255 );
+                descriptors[5].colour = UColour4( 0, 0, 255, 255 );
+
+                _axisGizmo->fromCones( descriptors );
             }
-
-            // Shafts
-            descriptors[0].direction = WORLD_X_NEG_AXIS;
-            descriptors[1].direction = WORLD_Y_NEG_AXIS;
-            descriptors[2].direction = WORLD_Z_NEG_AXIS;
-
-            descriptors[0].length = 2.0f;
-            descriptors[1].length = 1.5f;
-            descriptors[2].length = 2.0f;
-
-            descriptors[0].root = VECTOR3_ZERO + vec3<F32>( addValAnd10Percent( descriptors[0].length ), 0.f, 0.f );
-            descriptors[1].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValAnd10Percent( descriptors[1].length ), 0.f );
-            descriptors[2].root = VECTOR3_ZERO + vec3<F32>( 0.f, 0.f, addValAnd10Percent( descriptors[2].length ) );
-
-            descriptors[0].radius = 0.05f;
-            descriptors[1].radius = 0.05f;
-            descriptors[2].radius = 0.05f;
-
-            descriptors[0].colour = UColour4( 255, 0, 0, 255 );
-            descriptors[1].colour = UColour4( 0, 255, 0, 255 );
-            descriptors[2].colour = UColour4( 0, 0, 255, 255 );
-
-            // Arrow heads
-            descriptors[3].direction = WORLD_X_NEG_AXIS;
-            descriptors[4].direction = WORLD_Y_NEG_AXIS;
-            descriptors[5].direction = WORLD_Z_NEG_AXIS;
-
-            descriptors[3].length = 0.5f;
-            descriptors[4].length = 0.5f;
-            descriptors[5].length = 0.5f;
-
-            descriptors[3].root = VECTOR3_ZERO + vec3<F32>( addValMinus20Percent( descriptors[0].length ) + 0.50f, 0.f, 0.f );
-            descriptors[4].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValMinus20Percent( descriptors[1].length ) + 0.50f, 0.f );
-            descriptors[5].root = VECTOR3_ZERO + vec3<F32>( 0.f, 0.f, addValMinus20Percent( descriptors[2].length ) + 0.50f );
-
-            descriptors[3].radius = 0.15f;
-            descriptors[4].radius = 0.15f;
-            descriptors[5].radius = 0.15f;
-
-            descriptors[3].colour = UColour4( 255, 0, 0, 255 );
-            descriptors[4].colour = UColour4( 0, 255, 0, 255 );
-            descriptors[5].colour = UColour4( 0, 0, 255, 255 );
-
-            _axisGizmo->fromCones( descriptors );
         }
+
+        running(state);
+        processInput(state);
     }
 
     void Editor::update( const U64 deltaTimeUS )
@@ -1015,19 +970,16 @@ namespace Divide
 
         for ( ImGuiContext* context : _imguiContexts )
         {
-            ImGui::SetCurrentContext( context );
+            context->IO.DeltaTime = Time::MicrosecondsToSeconds<F32>( deltaTimeUS );
 
-            ImGuiIO& io = context->IO;
-            io.DeltaTime = Time::MicrosecondsToSeconds<F32>( deltaTimeUS );
-
-            ToggleCursor( !io.MouseDrawCursor );
-            if ( io.MouseDrawCursor || ImGui::GetMouseCursor() == ImGuiMouseCursor_None )
+            ToggleCursor( !context->IO.MouseDrawCursor );
+            if (context->IO.MouseDrawCursor || context->MouseCursor == ImGuiMouseCursor_None )
             {
                 WindowManager::SetCursorStyle( CursorStyle::NONE );
             }
-            else if ( !COMPARE( io.MousePos.x, -1.f ) && !COMPARE( io.MousePos.y, -1.f ) )
+            else if ( !COMPARE(context->IO.MousePos.x, -1.f ) && !COMPARE(context->IO.MousePos.y, -1.f ) )
             {
-                switch ( ImGui::GetCurrentContext()->MouseCursor )
+                switch (context->MouseCursor )
                 {
                     default:
                     case ImGuiMouseCursor_Arrow:
@@ -1062,6 +1014,7 @@ namespace Divide
         nodePreviewWindowVisible(false);
 
         Attorney::GizmoEditor::update( _gizmo.get(), deltaTimeUS );
+
         if ( running() )
         {
             nodePreviewWindowVisible( _dockedWindows[to_base( WindowType::NodePreview )]->visible() );
@@ -1177,34 +1130,32 @@ namespace Divide
 
         const bool readOnly = Focused( _windowFocusState ) || _showOptionsWindow;
 
-        if ( readOnly ) { PushReadOnly( false ); }
-        _menuBar->draw();
-
-        if ( readOnly ) { PushReadOnly(true); }
+        _menuBar->draw( readOnly );
         for ( auto& window : _dockedWindows )
         {
-            window->draw();
+            window->draw( readOnly );
         }
-        if ( readOnly ) { PopReadOnly( ); }
+        _statusBar->draw( readOnly );
 
-        _statusBar->draw( );
-        if ( readOnly ) { PopReadOnly( ); }
+        if (readOnly)
+        {
+            PushReadOnly(true);
+        }
 
-
-        if ( readOnly ) { PushReadOnly( true ); }
         if ( _showMemoryEditor && !_showOptionsWindow )
         {
             if ( _memoryEditorData.first != nullptr && _memoryEditorData.second > 0 )
             {
+
                 static MemoryEditor memEditor;
                 memEditor.DrawWindow( "Memory Editor", _memoryEditorData.first, _memoryEditorData.second );
+
                 if ( !memEditor.Open )
                 {
                     _memoryEditorData = { nullptr, 0 };
                 }
             }
         }
-        if ( readOnly ) { PopReadOnly(); }
 
         if ( _showSampleWindow && !_showOptionsWindow )
         {
@@ -1214,6 +1165,11 @@ namespace Divide
 
         _optionsWindow->draw( _showOptionsWindow );
         renderModelSpawnModal();
+
+        if (readOnly)
+        {
+            PopReadOnly();
+        }
 
         ImGui::End();
 
@@ -1329,35 +1285,36 @@ namespace Divide
         }
 
         Time::ScopedTimer timer( _editorRenderTimer );
-        ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
+        ImGuiContext* ctx = _imguiContexts[to_base( ImGuiContextType::Editor )];
 
-        const ImGuiIO& io = ImGui::GetIO();
-        if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
+        if (ctx->IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
         {
             bool found = false;
-            ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
-            for ( I32 n = 0; n < platform_io.Viewports.Size; n++ )
+            for ( I32 n = 0; n < ctx->PlatformIO.Viewports.Size; n++ )
             {
-                const ImGuiViewport* viewport = platform_io.Viewports[n];
+                const ImGuiViewport* viewport = ctx->PlatformIO.Viewports[n];
                 const DisplayWindow* window = static_cast<DisplayWindow*>(viewport->PlatformHandle);
                 if ( window != nullptr && window->isHovered() && !(viewport->Flags & ImGuiViewportFlags_NoInputs) )
                 {
-                    ImGui::GetIO().AddMouseViewportEvent( viewport->ID );
+                    ctx->IO.AddMouseViewportEvent( viewport->ID );
                     found = true;
                 }
             }
             if ( !found )
             {
-                ImGui::GetIO().AddMouseViewportEvent( 0 );
+                ctx->IO.AddMouseViewportEvent( 0 );
             }
         }
 
         if ( _queuedDPIValue >= 0.f )
         {
-            createFontTexture( _queuedDPIValue );
+            createFontTexture(ctx->IO, _queuedDPIValue );
+            ctx->Style.ScaleAllSizes(_queuedDPIValue);
             _queuedDPIValue = -1.f;
+
         }
 
+        ScopedImGuiContext ctxSwitch(ctx);
         ImGui::NewFrame();
 
         if ( render() ) [[likely]]
@@ -1365,11 +1322,11 @@ namespace Divide
             ImGui::Render();
 
             ImDrawData* pDrawData = ImGui::GetDrawData();
-            const I32 fb_width = to_I32( pDrawData->DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x );
-            const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y );
+            const I32 fb_width = to_I32( pDrawData->DisplaySize.x * ctx->IO.DisplayFramebufferScale.x );
+            const I32 fb_height = to_I32( pDrawData->DisplaySize.y * ctx->IO.DisplayFramebufferScale.y );
             const Rect<I32> targetViewport{0, 0, fb_width, fb_height};
 
-            pDrawData->ScaleClipRects( ImGui::GetIO().DisplayFramebufferScale );
+            pDrawData->ScaleClipRects( ctx->IO.DisplayFramebufferScale );
 
             renderDrawList( pDrawData,
                             0,
@@ -1378,7 +1335,7 @@ namespace Divide
                             bufferInOut,
                             memCmdInOut );
             
-            if ( io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
+            if (ctx->IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable ) [[likely]]
             {
                 ImGui::UpdatePlatformWindows();
                 ImGui::RenderPlatformWindowsDefault( &context(), &context() );
@@ -1727,52 +1684,52 @@ namespace Divide
     }
 
     /// Key pressed: return true if input was consumed
-    bool Editor::onKeyDown( const Input::KeyEvent& key )
+    bool Editor::onKeyDownInternal( Input::KeyEvent& argInOut )
     {
         if ( !hasFocus() || !simulationPaused() )
         {
             return false;
         }
 
-        if ( _gizmo->onKey( true, key ) )
+        if ( _gizmo->onKeyDown(argInOut) )
         {
             return true;
         }
 
         ImGuiIO& io = _imguiContexts[to_base( ImGuiContextType::Editor )]->IO;
 
-        if ( key._key == Input::KeyCode::KC_LCONTROL || key._key == Input::KeyCode::KC_RCONTROL )
+        if ( argInOut._key == Input::KeyCode::KC_LCONTROL || argInOut._key == Input::KeyCode::KC_RCONTROL )
         {
             io.AddKeyEvent( ImGuiMod_Ctrl, true );
         }
-        if ( key._key == Input::KeyCode::KC_LSHIFT || key._key == Input::KeyCode::KC_RSHIFT )
+        if ( argInOut._key == Input::KeyCode::KC_LSHIFT || argInOut._key == Input::KeyCode::KC_RSHIFT )
         {
             io.AddKeyEvent( ImGuiMod_Shift, true );
         }
-        if ( key._key == Input::KeyCode::KC_LMENU || key._key == Input::KeyCode::KC_RMENU )
+        if ( argInOut._key == Input::KeyCode::KC_LMENU || argInOut._key == Input::KeyCode::KC_RMENU )
         {
             io.AddKeyEvent( ImGuiMod_Alt, true );
         }
-        if ( key._key == Input::KeyCode::KC_LWIN || key._key == Input::KeyCode::KC_RWIN )
+        if ( argInOut._key == Input::KeyCode::KC_LWIN || argInOut._key == Input::KeyCode::KC_RWIN )
         {
             io.AddKeyEvent( ImGuiMod_Super, true );
         }
-        const ImGuiKey imguiKey = DivideKeyToImGuiKey( key._key );
+        const ImGuiKey imguiKey = DivideKeyToImGuiKey( argInOut._key );
         io.AddKeyEvent( imguiKey, true );
-        io.SetKeyEventNativeData( imguiKey, key.sym, key.scancode, key.scancode );
+        io.SetKeyEventNativeData( imguiKey, argInOut.sym, argInOut.scancode, argInOut.scancode );
 
         return wantsKeyboard();
     }
 
     // Key released: return true if input was consumed
-    bool Editor::onKeyUp( const Input::KeyEvent& key )
+    bool Editor::onKeyUpInternal( Input::KeyEvent& argInOut )
     {
         if ( !hasFocus() || !simulationPaused() )
         {
             return false;
         }
 
-        if ( _gizmo->onKey( false, key ) )
+        if ( _gizmo->onKeyUp(argInOut ) )
         {
             return true;
         }
@@ -1782,14 +1739,14 @@ namespace Divide
         bool ret = false;
         if ( io.KeyCtrl )
         {
-            if ( key._key == Input::KeyCode::KC_Z )
+            if ( argInOut._key == Input::KeyCode::KC_Z )
             {
                 if ( Undo() )
                 {
                     ret = true;
                 }
             }
-            else if ( key._key == Input::KeyCode::KC_Y )
+            else if ( argInOut._key == Input::KeyCode::KC_Y )
             {
                 if ( Redo() )
                 {
@@ -1798,25 +1755,25 @@ namespace Divide
             }
         }
 
-        if ( key._key == Input::KeyCode::KC_LCONTROL || key._key == Input::KeyCode::KC_RCONTROL )
+        if ( argInOut._key == Input::KeyCode::KC_LCONTROL || argInOut._key == Input::KeyCode::KC_RCONTROL )
         {
             io.AddKeyEvent( ImGuiMod_Ctrl, false );
         }
-        if ( key._key == Input::KeyCode::KC_LSHIFT || key._key == Input::KeyCode::KC_RSHIFT )
+        if ( argInOut._key == Input::KeyCode::KC_LSHIFT || argInOut._key == Input::KeyCode::KC_RSHIFT )
         {
             io.AddKeyEvent( ImGuiMod_Shift, false );
         }
-        if ( key._key == Input::KeyCode::KC_LMENU || key._key == Input::KeyCode::KC_RMENU )
+        if ( argInOut._key == Input::KeyCode::KC_LMENU || argInOut._key == Input::KeyCode::KC_RMENU )
         {
             io.AddKeyEvent( ImGuiMod_Alt, false );
         }
-        if ( key._key == Input::KeyCode::KC_LWIN || key._key == Input::KeyCode::KC_RWIN )
+        if ( argInOut._key == Input::KeyCode::KC_LWIN || argInOut._key == Input::KeyCode::KC_RWIN )
         {
             io.AddKeyEvent( ImGuiMod_Super, false );
         }
-        const ImGuiKey imguiKey = DivideKeyToImGuiKey( key._key );
+        const ImGuiKey imguiKey = DivideKeyToImGuiKey( argInOut._key );
         io.AddKeyEvent( imguiKey, false );
-        io.SetKeyEventNativeData( imguiKey, key.sym, key.scancode, key.scancode );
+        io.SetKeyEventNativeData( imguiKey, argInOut.sym, argInOut.scancode, argInOut.scancode );
 
         return wantsKeyboard() || ret;
     }
@@ -1886,16 +1843,78 @@ namespace Divide
         _windowFocusState._scaledMousePos = ImVec2( tempMousePos.x, tempMousePos.y );
     }
 
-    /// Mouse moved: return true if input was consumed
-    bool Editor::mouseMoved( const Input::MouseMoveEvent& arg )
+    void Editor::remapAbsolutePosition(Input::MouseEvent& eventInOut) const noexcept
     {
-        if ( !isInit() || !running() )
+        vec2<I32> absPositionIn = { eventInOut.state().X.abs, eventInOut.state().Y.abs };
+
+        const Rect<I32> renderingViewport = _mainWindow->renderingViewport();
+        CLAMP_IN_RECT(absPositionIn.x, absPositionIn.y, renderingViewport);
+
+        if (!hasFocus())
         {
-            WindowManager::SetCaptureMouse( false );
+            const Rect<I32> previewRect = scenePreviewRect(false);
+            absPositionIn = COORD_REMAP(absPositionIn, previewRect, renderingViewport);
+            if (!previewRect.contains(absPositionIn))
+            {
+                CLAMP_IN_RECT(absPositionIn.x, absPositionIn.y, renderingViewport);
+            }
+        }
+
+        const vec2<U16> resolution = _context.gfx().renderingResolution();
+        absPositionIn = COORD_REMAP(absPositionIn, renderingViewport, { 0, 0, to_I32(resolution.width), to_I32(resolution.height) });
+
+        Input::Attorney::MouseEventConsumer::setAbsolutePosition(eventInOut, absPositionIn);
+        eventInOut._simulationPaused = simulationPaused();
+    }
+
+    bool Editor::mouseMoved(Input::MouseMoveEvent& argInOut)
+    {
+        if (!InputAggregatorInterface::mouseMoved(argInOut))
+        {
+            if (_mouseCaptured)
+            {
+                WindowManager::SetCaptureMouse(false);
+                _mouseCaptured = false;
+            }
+
+            remapAbsolutePosition(argInOut);
             return false;
         }
 
-        if ( !arg._wheelEvent )
+        if (!argInOut._wheelEvent && _mouseCaptured)
+        {
+            WindowManager::SetCaptureMouse(ImGui::IsAnyMouseDown());
+        }
+
+        return true;
+    }
+
+    bool Editor::mouseButtonPressed(Input::MouseButtonEvent& argInOut)
+    {
+        if (!InputAggregatorInterface::mouseButtonPressed(argInOut))
+        {
+            remapAbsolutePosition(argInOut);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool Editor::mouseButtonReleased(Input::MouseButtonEvent& argInOut)
+    {
+        if (!InputAggregatorInterface::mouseButtonReleased(argInOut))
+        {
+            remapAbsolutePosition(argInOut);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// Mouse moved: return true if input was consumed
+    bool Editor::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
+    {
+        if ( !argInOut._wheelEvent )
         {
             if ( WindowManager::IsRelativeMouseMode() )
             {
@@ -1904,47 +1923,42 @@ namespace Divide
 
             ImVec2 tempCoords{};
 
-            bool positionOverride = false;
+            _mouseCaptured = false;
             for ( const ImGuiContext* ctx : _imguiContexts )
             {
                 if ( ctx->IO.WantSetMousePos )
                 {
                     // Only one override at a time per context
-                    assert( !positionOverride );
+                    assert( !_mouseCaptured);
 
-                    positionOverride = true;
+                    _mouseCaptured = true;
                     tempCoords = ctx->IO.MousePos;
                     WindowManager::SetGlobalCursorPosition( to_I32( tempCoords.x ),
                                                             to_I32( tempCoords.y ) );
                     break;
                 }
             }
-            if ( !positionOverride )
+            if ( !_mouseCaptured)
             {
                 vec2<I32> posGlobal{};
                 WindowManager::GetMouseState( posGlobal, true );
                 tempCoords = { to_F32( posGlobal.x ), to_F32( posGlobal.y ) };
             }
 
-            WindowManager::SetCaptureMouse( positionOverride ? ImGui::IsAnyMouseDown() : false );
-
             updateFocusState( tempCoords );
 
-            ImGuiContext* ctx = nullptr;
             { // Update Editor State
-                ctx = _imguiContexts[to_base( ImGuiContextType::Editor )];
+                ImGuiContext* ctx = _imguiContexts[to_base( ImGuiContextType::Editor )];
                 if ( !ctx->IO.WantSetMousePos )
                 {
-                    ImGui::SetCurrentContext( ctx );
                     ctx->IO.AddMousePosEvent( _windowFocusState._globalMousePos.x,
                                               _windowFocusState._globalMousePos.y );
                 }
             }
             { // Update Gizmo State
-                ctx = _imguiContexts[to_base( ImGuiContextType::Gizmo )];
+                ImGuiContext* ctx = _imguiContexts[to_base( ImGuiContextType::Gizmo )];
                 if ( !ctx->IO.WantSetMousePos )
                 {
-                    ImGui::SetCurrentContext( ctx );
                     ctx->IO.AddMousePosEvent( _windowFocusState._scaledMousePos.x,
                                               _windowFocusState._scaledMousePos.y );
                 }
@@ -1954,55 +1968,46 @@ namespace Divide
         {
             for ( ImGuiContext* ctx : _imguiContexts )
             {
-                ImGui::SetCurrentContext( ctx );
-                if ( arg.state().HWheel > 0 )
+                if ( argInOut.state().HWheel > 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH + 1, ctx->IO.MouseWheel );
                 }
-                if ( arg.state().HWheel < 0 )
+                if ( argInOut.state().HWheel < 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH - 1, ctx->IO.MouseWheel );
                 }
-                if ( arg.state().VWheel > 0 )
+                if ( argInOut.state().VWheel > 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH, ctx->IO.MouseWheel + 1 );
                 }
-                if ( arg.state().VWheel < 0 )
+                if ( argInOut.state().VWheel < 0 )
                 {
                     ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH, ctx->IO.MouseWheel - 1 );
                 }
             }
         }
 
-        ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
-
-        if ( _windowFocusState._focusedNodePreview )
+        if (_gizmo->needsMouse())
         {
-            return false;
+            return true;
         }
 
-        return wantsMouse() || _gizmo->hovered();
+        return wantsMouse();
     }
 
     /// Mouse button pressed: return true if input was consumed
-    bool Editor::mouseButtonPressed( const Input::MouseButtonEvent& arg )
+    bool Editor::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
     {
-        if ( !isInit() || !running() || WindowManager::IsRelativeMouseMode() )
+        if ( WindowManager::IsRelativeMouseMode() )
         {
             return false;
         }
 
-        SCOPE_EXIT
-        {
-            ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
-        };
-
         for ( ImGuiContext* ctx : _imguiContexts )
         {
-            ImGui::SetCurrentContext( ctx );
             for ( size_t i = 0; i < g_oisButtons.size(); ++i )
             {
-                if ( arg.button() == g_oisButtons[i] )
+                if (argInOut.button() == g_oisButtons[i] )
                 {
                     ctx->IO.AddMouseButtonEvent( to_I32( i ), true );
                     break;
@@ -2010,13 +2015,8 @@ namespace Divide
             }
         }
 
-        if ( !hasFocus() )
-        {
-            _gizmo->onMouseButton( true );
-        }
-
-        // ToDo: Need a more generic way of handling this!
-        if ( arg.button() == Input::MouseButton::MB_Left && _windowFocusState._focusedNodePreview )
+        if ( !hasFocus() && 
+             _gizmo->onMouseButtonPressed(argInOut))
         {
             return true;
         }
@@ -2025,17 +2025,12 @@ namespace Divide
     }
 
     /// Mouse button released: return true if input was consumed
-    bool Editor::mouseButtonReleased( const Input::MouseButtonEvent& arg )
+    bool Editor::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
     {
-        if ( !isInit() || !running() || WindowManager::IsRelativeMouseMode() )
+        if ( WindowManager::IsRelativeMouseMode() )
         {
             return false;
         }
-
-        SCOPE_EXIT
-        {
-            ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
-        };
 
         if ( SetFocus( _windowFocusState ) )
         {
@@ -2044,10 +2039,9 @@ namespace Divide
 
         for ( ImGuiContext* ctx : _imguiContexts )
         {
-            ImGui::SetCurrentContext( ctx );
             for ( size_t i = 0; i < g_oisButtons.size(); ++i )
             {
-                if ( arg.button() == g_oisButtons[i] )
+                if (argInOut.button() == g_oisButtons[i] )
                 {
                     ctx->IO.AddMouseButtonEvent( to_I32( i ), false );
                     break;
@@ -2055,10 +2049,7 @@ namespace Divide
             }
         }
 
-        _gizmo->onMouseButton( false );
-
-        // ToDo: Need a more generic way of handling this!
-        if ( arg.button() == Input::MouseButton::MB_Left && _windowFocusState._focusedNodePreview )
+        if (_gizmo->onMouseButtonReleased(argInOut))
         {
             return true;
         }
@@ -2066,54 +2057,50 @@ namespace Divide
         return wantsMouse();
     }
 
-    bool Editor::joystickButtonPressed( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickButtonPressedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickButtonReleased( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickButtonReleasedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickAxisMoved( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickAxisMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickPovMoved( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickPovMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickBallMoved( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickBallMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickAddRemove( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickAddRemoveInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickRemap( [[maybe_unused]] const Input::JoystickEvent& arg ) noexcept
+    bool Editor::joystickRemapInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
     {
         return wantsJoystick();
     }
 
     bool Editor::wantsJoystick() const noexcept
     {
-        if ( !isInit() || !running() )
-        {
-            return false;
-        }
-
-        return hasFocus();
+        return !_windowFocusState._focusedNodePreview && hasFocus();
     }
 
     bool Editor::wantsMouse() const
     {
-        if ( hasFocus() )
+        // We don't need editor controls in the node preview window. We want direct camera controls
+        if ( !_windowFocusState._focusedNodePreview && hasFocus() )
         {
             for ( const ImGuiContext* ctx : _imguiContexts )
             {
@@ -2124,17 +2111,12 @@ namespace Divide
             }
         }
 
-        if ( simulationPaused() )
-        {
-            return _gizmo->needsMouse();
-        }
-
         return false;
     }
 
     bool Editor::wantsKeyboard() const noexcept
     {
-        if ( hasFocus() )
+        if ( !_windowFocusState._focusedNodePreview && hasFocus() )
         {
             for ( const ImGuiContext* ctx : _imguiContexts )
             {
@@ -2145,20 +2127,20 @@ namespace Divide
             }
         }
 
-        return _windowFocusState._focusedNodePreview;
+        return false;
     }
 
     bool Editor::hasFocus() const
     {
-        return isInit() && running() && !Focused( _windowFocusState );
+        return running() && !Focused( _windowFocusState );
     }
 
     bool Editor::isHovered() const
     {
-        return isInit() && running() && !Hovered( _windowFocusState );
+        return running() && !Hovered( _windowFocusState );
     }
 
-    bool Editor::onTextEvent( const Input::TextEvent& arg )
+    bool Editor::onTextEventInternal( Input::TextEvent& argInOut)
     {
         if ( !hasFocus() )
         {
@@ -2168,11 +2150,9 @@ namespace Divide
         bool wantsCapture = false;
         for ( ImGuiContext* ctx : _imguiContexts )
         {
-            ImGui::SetCurrentContext( ctx );
-            ctx->IO.AddInputCharactersUTF8( arg._text.c_str() );
+            ctx->IO.AddInputCharactersUTF8( argInOut._text.c_str() );
             wantsCapture = ctx->IO.WantCaptureKeyboard || wantsCapture;
         }
-        ImGui::SetCurrentContext( _imguiContexts[to_base( ImGuiContextType::Editor )] );
 
         return wantsCapture;
     }
@@ -2184,15 +2164,11 @@ namespace Divide
         const U16 w = params.width;
         const U16 h = params.height;
 
-        if ( w < 1 || h < 1 || !params.isMainWindow )
+        if ( w < 1 || h < 1 ||
+            !params.isMainWindow ||
+            !isInit())
         {
-            return;
-        }
-
-        if ( !isInit() )
-        {
-            _queuedDisplaySizeChange._displaySizeChanged = true;
-            _queuedDisplaySizeChange._targetDisplaySize.set(w,h);
+            Console::errorfn("OnWindowSizeChanged FAIL (isInit: {}) {}-{}", isInit() ? "true" : "false", w, h);
             return;
         }
 
@@ -2200,8 +2176,8 @@ namespace Divide
 
         for ( ImGuiContext* ctx : _imguiContexts )
         {
-            ctx->IO.DisplaySize.x = to_F32( params.width );
-            ctx->IO.DisplaySize.y = to_F32( params.height );
+            ctx->IO.DisplaySize.x = to_F32( w );
+            ctx->IO.DisplaySize.y = to_F32( h );
 
             ctx->IO.DisplayFramebufferScale = 
             {
@@ -2210,8 +2186,9 @@ namespace Divide
             };
         }
 
-        _queuedDisplaySizeChange._displaySizeChanged = false;
-        _queuedDisplaySizeChange._targetDisplaySize.set(1u, 1u);
+        Console::errorfn("OnWindowSizeChanged SUCESS {}-{} | {} - {}", w, h, displaySize.width, displaySize.height);
+
+        Attorney::GizmoEditor::onWindowSizeChange(_gizmo.get(), params);
     }
 
     void Editor::onResolutionChange( const SizeChangeParams& params )
@@ -2220,19 +2197,12 @@ namespace Divide
         const U16 h = params.height;
 
         // Avoid resolution change on minimize so we don't thrash render targets
-        if (w < 1 || h < 1)
+        if (w < 1 || h < 1 ||
+            !isInit())
         {
+            //Console::errorfn("onResolutionChange FAIL (isInit: {}) {}-{}", isInit() ? "true" : "false", w, h);
             return;
         }
-
-        if ( !isInit() )
-        {
-            _queuedDisplaySizeChange._resolutionChanged = true;
-            _queuedDisplaySizeChange._targetResolution.set(w, h);
-            return;
-        }
-        _queuedDisplaySizeChange._resolutionChanged = false;
-        _queuedDisplaySizeChange._targetResolution.set(1u,1u);
 
         // Avoid resolution change on minimize so we don't thrash render targets
         if (_nodePreviewRTHandle._rt->getResolution() != vec2<U16>( w, h ) )
@@ -2241,7 +2211,9 @@ namespace Divide
         }
 
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
+        //Console::errorfn("OnWindowSizeChanged SUCESS {}-{}");
 
+        Attorney::GizmoEditor::onResolutionChange(_gizmo.get(), params);
     }
 
     bool Editor::saveSceneChanges( const DELEGATE<void, std::string_view>& msgCallback, const DELEGATE<void, bool>& finishCallback ) const
@@ -2314,7 +2286,11 @@ namespace Divide
 
     void Editor::onNodeSpatialChange([[maybe_unused]] const SceneGraphNode& node)
     {
-        Attorney::GizmoEditor::updateSelections(_gizmo.get());
+        // Don't update the gizmo if it the source of the spatial change
+        if (!_gizmo->isUsing())
+        {
+            Attorney::GizmoEditor::updateSelections(_gizmo.get());
+        }
     }
 
     void Editor::onChangeScene( Scene* newScene )
@@ -2675,7 +2651,7 @@ namespace Divide
             {
             }
 
-            vec3<F32> rotation = modelSpawn.transform._orientation.getEuler();
+            vec3<Angle::DEGREES<F32>> rotation = Angle::to_DEGREES(modelSpawn.transform._orientation.getEuler());
             ImGui::Text( "Rotation (euler):" ); ImGui::SameLine();
             if ( ImGui::InputFloat3( "##Rotation (euler):", rotation._v ) )
             {
@@ -2726,7 +2702,8 @@ namespace Divide
         constexpr U32 normalMask = to_base( ComponentType::TRANSFORM ) |
                                    to_base( ComponentType::BOUNDS ) |
                                    to_base( ComponentType::NETWORKING ) |
-                                   to_base( ComponentType::RENDERING );
+                                   to_base( ComponentType::RENDERING ) |
+                                   to_base( ComponentType::SELECTION);
 
         if (model._mesh != INVALID_HANDLE<Mesh>)
         {
@@ -3008,28 +2985,81 @@ namespace Divide
         return false;
     }
 
+    void Editor::initBasicImGUIState(ImGuiIO& io, const bool enableViewportSupport, string& clipboardStringBuffer) noexcept
+    {
+        if (enableViewportSupport)
+        {
+            io.ConfigViewportsNoDecoration = true;
+            io.ConfigViewportsNoTaskBarIcon = true;
+            io.ConfigDockingTransparentPayload = true;
+            io.ConfigViewportsNoAutoMerge = false;
+
+            io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport / Platform Windows
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
+
+            io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport;
+            io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
+            io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports; // We can create multi-viewports on the Platform side (optional)
+        }
+
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+
+        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos; // We can honor io.WantSetMousePos requests (optional, rarely used)
+
+        io.BackendPlatformName = Config::ENGINE_NAME;
+        io.BackendRendererName = _context.gfx().renderAPI() == RenderAPI::Vulkan ? "Vulkan" : "OpenGL";
+        io.ConfigWindowsMoveFromTitleBarOnly = true;
+        io.DisplaySize.x = to_F32(_mainWindow->getDimensions().width);
+        io.DisplaySize.y = to_F32(_mainWindow->getDimensions().height);
+
+        const vec2<U16> display_size = _mainWindow->getDrawableSize();
+        io.DisplayFramebufferScale.x = io.DisplaySize.x > 0 ? (F32)display_size.width  / io.DisplaySize.x : 1.f;
+        io.DisplayFramebufferScale.y = io.DisplaySize.y > 0 ? (F32)display_size.height / io.DisplaySize.y : 1.f;
+
+        io.SetClipboardTextFn = []([[maybe_unused]] void* user_data, const char* text)
+        {
+            SetClipboardText(text);
+        };
+
+        io.GetClipboardTextFn = []( void* user_data)
+        {
+            string* clipboardStringBuffer = (string*)user_data;
+            clipboardStringBuffer->assign(GetClipboardText());
+            return clipboardStringBuffer->c_str();
+        };
+
+        io.ClipboardUserData = &clipboardStringBuffer;
+    }
+
     namespace Util::detail
     {
-        static std::stack<bool> g_readOnlyFaded;
+        static std::stack<ImGuiContext*> g_imguiContexts;
     }; // namespace Util::detail
 
-    void PushReadOnly( const bool fade )
+    void PushReadOnly( const bool fade, const F32 fadedAlpha)
     {
-        ImGui::PushItemFlag( ImGuiItemFlags_Disabled, true );
-        if ( fade )
-        {
-            ImGui::PushStyleVar( ImGuiStyleVar_Alpha, std::max(0.5f, ImGui::GetStyle().Alpha - 0.35f) );
-        }
-        Util::detail::g_readOnlyFaded.push(fade);
+        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, fade ? CLAMPED_01(fadedAlpha) : 1.f);
+        ImGui::BeginDisabled();
     }
 
     void PopReadOnly()
     {
-        if ( Util::detail::g_readOnlyFaded.top() )
-        {
-            ImGui::PopStyleVar();
-        }
-        ImGui::PopItemFlag();
-        Util::detail::g_readOnlyFaded.pop();
+        ImGui::EndDisabled();
+        ImGui::PopStyleVar();
+    }
+
+    void PushImGuiContext(ImGuiContext* ctx)
+    {
+        Util::detail::g_imguiContexts.push(ImGui::GetCurrentContext());
+        ImGui::SetCurrentContext(ctx);
+    }
+
+    void PopImGuiContext()
+    {
+        DIVIDE_ASSERT(!Util::detail::g_imguiContexts.empty());
+        ImGui::SetCurrentContext(Util::detail::g_imguiContexts.top());
+        Util::detail::g_imguiContexts.pop();
     }
 } // namespace Divide

@@ -12,7 +12,7 @@
 
 #include "stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "stb_image_resize.h"
+#include "stb_image_resize2.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -836,48 +836,6 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
     ImageLayer& layer = _layers.emplace_back();
 
-    if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height))
-    {
-        if ( data16Bit != nullptr)
-        {
-            U16* resizedData16 = (U16*)STBI_MALLOC(to_size(refWidth)* refHeight * (_bpp / 8));
-            const I32 ret = stbir_resize_uint16_generic(data16Bit, width, height, 0,
-                                                        resizedData16, refWidth, refHeight, 0,
-                                                        comp, -1, 0,
-                                                        STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR,
-                                                        nullptr);
-            if (ret == 1) {
-                width = refWidth;
-                height = refHeight;
-                stbi_image_free(data16Bit);
-                data16Bit = resizedData16;
-            }
-        }
-        else if ( dataHDR != nullptr )
-        {
-            F32* resizedDataHDR = (F32*)STBI_MALLOC(to_size(refWidth) * refHeight * (_bpp / 8));
-            const I32 ret = stbir_resize_float(dataHDR, width, height, 0, resizedDataHDR, refWidth, refHeight, 0, comp);
-            if (ret == 1) {
-                width = refWidth;
-                height = refHeight;
-                stbi_image_free(dataHDR);
-                dataHDR = resizedDataHDR;
-            }
-        }
-        else
-        {
-            U8* resizedDataLDR = (U8*)STBI_MALLOC(to_size(refWidth) * refHeight * (_bpp / 8));
-            const I32 ret = srgb ? stbir_resize_uint8_srgb(dataLDR, width, height, 0, resizedDataLDR, refWidth, refHeight, 0, comp, -1, 0)
-                                 : stbir_resize_uint8(dataLDR, width, height, 0, resizedDataLDR, refWidth, refHeight, 0, comp);
-            if (ret == 1) {
-                width = refWidth;
-                height = refHeight;
-                stbi_image_free(dataLDR);
-                dataLDR = resizedDataLDR;
-            }
-        }
-    }
-
     if (_requestedDataFormat != GFXDataFormat::COUNT && _requestedDataFormat != _dataType)
     {
         stbi_ldr_to_hdr_scale( 1.f );
@@ -1012,6 +970,56 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         default:
             DIVIDE_UNEXPECTED_CALL();
             break;
+    }
+
+    if (refWidth != 0 && refHeight != 0 && (refWidth != width || refHeight != height))
+    {
+        stbir_pixel_layout pixelLayout = STBIR_4CHANNEL;
+        switch (comp)
+        {
+            default:
+            case STBI_default    : pixelLayout = STBIR_BGR;      break;
+            case STBI_grey       : pixelLayout = STBIR_1CHANNEL; break;
+            case STBI_grey_alpha : pixelLayout = STBIR_2CHANNEL; break;
+            case STBI_rgb        : pixelLayout = STBIR_RGB;      break;
+            case STBI_rgb_alpha  : pixelLayout = STBIR_RGBA;     break;
+        };
+
+        if ( data16Bit != nullptr)
+        {
+            U16* resizedData16 = reinterpret_cast<U16*>(stbir_resize( data16Bit, width, height, 0, nullptr,  refWidth, refHeight, 0, pixelLayout,
+                                                                      STBIR_TYPE_UINT16, STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT ));
+            if (resizedData16 != nullptr)
+            {
+                width = refWidth;
+                height = refHeight;
+                stbi_image_free(data16Bit);
+                data16Bit = resizedData16;
+            }
+        }
+        else if ( dataHDR != nullptr )
+        {
+            F32* resizedDataHDR = stbir_resize_float_linear( dataHDR, width, height, 0, nullptr, refWidth, refHeight, 0, pixelLayout );
+            if (resizedDataHDR != nullptr)
+            {
+                width = refWidth;
+                height = refHeight;
+                stbi_image_free(dataHDR);
+                dataHDR = resizedDataHDR;
+            }
+        }
+        else
+        {
+            U8* resizedDataLDR = srgb ? stbir_resize_uint8_srgb(   dataLDR, width, height, 0, nullptr, refWidth, refHeight, 0, pixelLayout )
+                                      : stbir_resize_uint8_linear( dataLDR, width, height, 0, nullptr, refWidth, refHeight, 0, pixelLayout );
+            if (resizedDataLDR != nullptr)
+            {
+                width = refWidth;
+                height = refHeight;
+                stbi_image_free(dataLDR);
+                dataLDR = resizedDataLDR;
+            }
+        }
     }
 
     _bpp = to_U8( ((dataUINT != nullptr || dataHDR != nullptr) ? 32u : (data16Bit != nullptr || dataHalf != nullptr) ? 16u : 8u) * comp );

@@ -133,6 +133,9 @@ protected:
 
     void close();
 
+    bool onWindowSizeChanged(const DisplayWindow::WindowEventArgs& args);
+    bool onResolutionChanged(const SizeChangeParams& params);
+
 protected:
     friend class DisplayWindow;
     [[nodiscard]] static ErrorCode ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor );

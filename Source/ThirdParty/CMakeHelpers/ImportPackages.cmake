@@ -99,24 +99,21 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
 )
 
+#imguizmo
+FetchContent_Declare(
+    imguizmo
+    GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
+    GIT_TAG        e552f632bbb17a0ebf5a91a22900f6f68bac6545
+    #GIT_PROGRESS   TRUE
+)
+
+
 #IconFontCppHeaders
 FetchContent_Declare(
     icon_font_cpp_headers
     GIT_REPOSITORY https://github.com/juliettef/IconFontCppHeaders.git
     GIT_TAG        8886c5657bac22b8fee34354871e3ade2a596433
     #GIT_PROGRESS   TRUE
-)
-
-#chaiscript
-set(UNIT_TEST_LIGHT TRUE)
-set(BUILD_SAMPLES FALSE)
-
-FetchContent_Declare(
-    chaiscript
-    GIT_REPOSITORY https://github.com/ChaiScript/ChaiScript.git
-    GIT_TAG        406a7ba1ef144d67021a68b1ba09224244a761ca
-    #GIT_PROGRESS   TRUE
-    SYSTEM
 )
 
 FetchContent_MakeAvailableExcludeFromAll(
@@ -129,8 +126,8 @@ FetchContent_MakeAvailableExcludeFromAll(
     simple_file_watcher
     fcpp
     imgui_club
+    imguizmo
     icon_font_cpp_headers
-    chaiscript
 )
 
 if (BUILD_TESTING_INTERNAL)
@@ -148,8 +145,8 @@ include_directories(
     ${simple_file_watcher_SOURCE_DIR}/include
     ${fcpp_SOURCE_DIR}
     ${imgui_club_SOURCE_DIR}
+    ${imguizmo_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
-    ${chaiscript_SOURCE_DIR}/include
 )
 
 set( TILEABLE_VOLUME_NOISE_SRC_FILES ${tileable_volume_noise_SOURCE_DIR}/TileableVolumeNoise.cpp )
@@ -173,8 +170,17 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
                     #${fcpp_SOURCE_DIR}/usecpp.c
 )
 
+set( IMGUIZMO_SRC_FILES ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp
+                        ${imguizmo_SOURCE_DIR}/GraphEditor.cpp
+                        ${imguizmo_SOURCE_DIR}/ImCurveEdit.cpp
+                        ${imguizmo_SOURCE_DIR}/ImGradient.cpp
+                        ${imguizmo_SOURCE_DIR}/ImSequencer.cpp
+)
+
+
 set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}
                                  ${CURL_NOISE_SRC_FILES}
                                  ${SIMPLE_FILE_WATCHER_SRC_FILES}
                                  ${FCPP_SRC_FILES}
+                                 ${IMGUIZMO_SRC_FILES}
 )

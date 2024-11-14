@@ -59,7 +59,7 @@ SceneAnimator* Mesh::getAnimator() const noexcept
     return _animator.get();
 }
 
-SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshIndex)
+SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode, const U32 meshIndex)
 {
     constexpr U32 normalMask = to_base(ComponentType::NAVIGATION) |
                                to_base(ComponentType::TRANSFORM) |
@@ -79,10 +79,15 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
     SubMesh* subMesh = Get( meshData._mesh );
     
     SceneGraphNodeDescriptor subMeshDescriptor;
-    subMeshDescriptor._usageContext = parentNode->usageContext();
-    subMeshDescriptor._instanceCount = parentNode->instanceCount();
+    subMeshDescriptor._usageContext = rootMeshNode->usageContext();
+    subMeshDescriptor._instanceCount = rootMeshNode->instanceCount();
     subMeshDescriptor._nodeHandle = FromHandle(meshData._mesh);
     subMeshDescriptor._componentMask = normalMask;
+
+    if (rootMeshNode->HasComponents(ComponentType::SELECTION))
+    {
+        subMeshDescriptor._componentMask |= to_base(ComponentType::SELECTION);
+    }
 
     if ( subMesh->boneCount() > 0u )
     {
@@ -97,11 +102,11 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* parentNode, const U32 meshI
     return sgn;
 }
 
-void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node)
+void Mesh::processNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode, const MeshNodeData& node)
 {
     for (const U32 idx : node._meshIndices)
     {
-        addSubMeshNode(parentNode, idx);
+        addSubMeshNode(rootMeshNode, parentNode, idx);
     }
 
     if (!node._children.empty())
@@ -124,7 +129,7 @@ void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node)
             targetSGN = parentNode->addChildNode(tempNodeDescriptor);
             targetSGN->get<TransformComponent>()->setTransforms(it._transform);
 
-            processNode(targetSGN, it);
+            processNode(rootMeshNode, targetSGN, it);
         }
     }
 }
@@ -133,7 +138,8 @@ void Mesh::processNode(SceneGraphNode* parentNode, const MeshNodeData& node)
 void Mesh::postLoad(SceneGraphNode* sgn)
 {
     sgn->get<TransformComponent>()->setTransforms(_nodeStructure._transform);
-    processNode(sgn, _nodeStructure);
+    processNode(sgn, sgn, _nodeStructure);
+
     if (_animator)
     {
         PlatformContext& pContext = sgn->context();

@@ -41,7 +41,6 @@
 #define DVD_CORE_MATH_MATH_HELPER_H_
 
 #include <numbers>
-
 namespace Divide {
 
 #define TO_MEGABYTES(X) ((X) * 1024u * 1024u)
@@ -280,10 +279,10 @@ constexpr auto BitMaskCheck(T1& arg, const T2 mask) { return arg & mask; }
 
 namespace Angle {
 
-template<typename T>
+template<typename T> requires std::is_fundamental_v<T>
 using RADIANS = T;
 
-template<typename T>
+template<typename T> requires std::is_fundamental_v<T>
 using DEGREES = T;
 
 template <typename T>

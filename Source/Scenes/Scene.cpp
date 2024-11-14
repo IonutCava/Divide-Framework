@@ -1548,7 +1548,7 @@ namespace Divide
 
                 if ( sceneFocused && sceneHovered && !state()->playerState( idx ).cameraLockedToMouse() )
                 {
-                    findHoverTarget( idx, vec2<U16>( arg.state().X.abs, arg.state().Y.abs ) );
+                    findHoverTarget( idx, vec2<U16>( arg.state().X.abs, arg.state().Y.abs ), data._simulationPaused );
                 }
                 else if ( !sceneHovered )
                 {
@@ -1577,6 +1577,7 @@ namespace Divide
         if ( updated )
         {
             playerState.cameraUnderwater( checkCameraUnderwater( *cam ) );
+            playerState._zoom.reset();
         }
 
         return updated;
@@ -1612,7 +1613,6 @@ namespace Divide
                     endDragSelection( player->index(), false );
                 }
             }
-            _parent.parent().wantsMouse( false );
             //_context.kernel().timingData().freezeGameTime(true);
         }
         else
@@ -1905,7 +1905,7 @@ namespace Divide
         return false;
     }
 
-    void Scene::findHoverTarget( PlayerIndex idx, const vec2<I32> aimPos )
+    void Scene::findHoverTarget( PlayerIndex idx, const vec2<I32> aimPos, const bool recursive )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -2002,7 +2002,7 @@ namespace Divide
                 _currentHoverTarget[idx] = target->getGUID();
                 if ( !target->hasFlag( SceneGraphNode::Flags::SELECTED ) )
                 {
-                    target->setFlag( SceneGraphNode::Flags::HOVERED, true );
+                    target->setFlag( SceneGraphNode::Flags::HOVERED, recursive);
                 }
             }
         }
@@ -2021,7 +2021,7 @@ namespace Divide
             SceneGraphNode* oldTarget = _sceneGraph->findNode( _currentHoverTarget[idx] );
             if ( oldTarget != nullptr )
             {
-                oldTarget->clearFlag( SceneGraphNode::Flags::HOVERED );
+                oldTarget->clearFlag( SceneGraphNode::Flags::HOVERED, true );
             }
         }
 
@@ -2113,7 +2113,7 @@ namespace Divide
         return _currentSelection[index];
     }
 
-    bool Scene::findSelection( const PlayerIndex idx, const bool clearOld )
+    bool Scene::findSelection( const PlayerIndex idx, const bool clearOld, const bool recursive)
     {
         // Clear old selection
         if ( clearOld )
@@ -2144,7 +2144,7 @@ namespace Divide
         SceneGraphNode* selectedNode = _sceneGraph->findNode( hoverGUID );
         if ( selectedNode != nullptr )
         {
-            _parent.parent().setSelected( idx, { selectedNode }, false );
+            _parent.parent().setSelected( idx, { selectedNode }, recursive);
             return true;
         }
         if ( !_parent.parent().resetSelection( idx, false ) )
@@ -2156,11 +2156,17 @@ namespace Divide
 
     void Scene::beginDragSelection( const PlayerIndex idx, const vec2<I32> mousePos )
     {
+        bool simulationPaused = false;
         if constexpr( Config::Build::ENABLE_EDITOR )
         {
-            if ( _context.editor().running() && _context.editor().isHovered() )
+            if (_context.editor().running() )
             {
-                return;
+                if (_context.editor().isHovered())
+                {
+                    return;
+                }
+
+                simulationPaused  = _context.editor().simulationPaused();
             }
         }
 
@@ -2168,6 +2174,7 @@ namespace Divide
         data._startDragPos =  mousePos;
         data._endDragPos = data._startDragPos;
         data._isDragging = true;
+        data._simulationPaused = simulationPaused;
     }
 
     void Scene::updateSelectionData( PlayerIndex idx, DragSelectData& data )
@@ -2189,7 +2196,7 @@ namespace Divide
             }
         }
 
-        _parent.parent().wantsMouse( true );
+        _context.kernel().lockInputToConsumer(Kernel::InputConsumerType::Scene);
 
         const vec2<U16> resolution = _context.gfx().renderingResolution();
 
@@ -2247,11 +2254,12 @@ namespace Divide
         DragSelectData& data = _dragSelectData[idx];
 
         _linesPrimitive->clearBatch();
-        _parent.parent().wantsMouse( false );
+        _context.kernel().unlockInputFromConsumer(Kernel::InputConsumerType::Scene);
+
         data._isDragging = false;
         if ( data._startDragPos.distanceSquared( data._endDragPos ) < DRAG_SELECTION_THRESHOLD_PX_SQ )
         {
-            if ( !findSelection( idx, clearSelection ) )
+            if ( !findSelection( idx, clearSelection, data._simulationPaused ) )
             {
                 NOP();
             }

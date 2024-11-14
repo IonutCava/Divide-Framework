@@ -7,8 +7,9 @@ namespace Divide {
 
     std::atomic<U64> SDLEventListener::s_listenerIDCounter;
 
-    SDLEventListener::SDLEventListener() noexcept
+    SDLEventListener::SDLEventListener(const std::string_view name) noexcept
         : _listenerID(s_listenerIDCounter.fetch_add(1))
+        , _name(name)
     {
         SDLEventManager::registerListener(*this);
     }

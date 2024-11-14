@@ -106,6 +106,7 @@ struct DragSelectData
     vec2<I32> _startDragPos;
     vec2<I32> _endDragPos;
     bool _isDragging = false;
+    bool _simulationPaused = false;
 };
 
 struct SceneEntry
@@ -185,7 +186,7 @@ class Scene : public Resource, public PlatformContextComponent {
 
 #pragma region Object Picking
         [[nodiscard]] const Selections& getCurrentSelection(const PlayerIndex index = 0) const;
-        [[nodiscard]] bool              findSelection(PlayerIndex idx, bool clearOld);
+        [[nodiscard]] bool              findSelection(PlayerIndex idx, bool clearOld, bool recursive);
 
         [[nodiscard]] bool resetSelection(PlayerIndex idx, const bool resetIfLocked);
         void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
@@ -290,7 +291,7 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
 #pragma region Player Management
-        void findHoverTarget(PlayerIndex idx, vec2<I32> aimPos);
+        void findHoverTarget(PlayerIndex idx, vec2<I32> aimPos, bool recursive);
         void clearHoverTarget(PlayerIndex idx);
         void toggleFlashlight(PlayerIndex idx);
 

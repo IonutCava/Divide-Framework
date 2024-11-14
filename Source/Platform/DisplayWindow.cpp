@@ -15,6 +15,7 @@ namespace Divide {
 
 DisplayWindow::DisplayWindow(WindowManager& parent, PlatformContext& context)
     : PlatformContextComponent(context)
+    , SDLEventListener("DisplayWindow")
     , _windowID(U32_MAX)
     , _clearColour(DefaultColours::BLACK)
     , _parent(parent)
@@ -37,7 +38,8 @@ ErrorCode DisplayWindow::destroyWindow()
 {
     if (_type != WindowType::COUNT && _sdlWindow != nullptr) 
     {
-        if (_destroyCbk) {
+        if (_destroyCbk)
+        {
             _destroyCbk();
         }
 
@@ -87,12 +89,13 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
                                   descriptor.dimensions.width,
                                   descriptor.dimensions.height,
                                   windowFlags);
+
     // Check if we have a valid window
     if (_sdlWindow == nullptr)
     {
-        Console::errorfn(LOCALE_STR("ERROR_GFX_DEVICE"),
-                         Util::StringFormat(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError()).c_str());
+        Console::errorfn(LOCALE_STR("ERROR_GFX_DEVICE"), Util::StringFormat(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError()).c_str());
         Console::printfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
+
         return ErrorCode::SDL_WINDOW_INIT_ERROR;
     }
 
@@ -102,41 +105,33 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
     return ErrorCode::NO_ERR;
 }
 
-WindowHandle DisplayWindow::handle() const noexcept {
+WindowHandle DisplayWindow::handle() const noexcept
+{
     // Varies from OS to OS
-    WindowHandle handle = {};
-    GetWindowHandle(_sdlWindow, handle);
-    return handle;
+    WindowHandle ret{};
+    GetWindowHandle(_sdlWindow, ret);
+    return ret;
 }
 
-void DisplayWindow::notifyListeners(const WindowEvent event, const WindowEventArgs& args) {
-    switch (event) {
-        case WindowEvent::HIDDEN:
-        case WindowEvent::MAXIMIZED:
-        case WindowEvent::MINIMIZED:
-        case WindowEvent::MOVED:
-        case WindowEvent::RESIZED:
-        case WindowEvent::RESTORED:
-        case WindowEvent::SHOWN:
-        case WindowEvent::SIZE_CHANGED:
-        default:
-            break;
-    }
-
-    for (const auto& listener : _eventListeners[to_base(event)]) {
-        if (!listener(args)) {
-            return;
+void DisplayWindow::notifyListeners(const WindowEvent event, const WindowEventArgs& args)
+{
+    for (const auto& listener : _eventListeners[to_base(event)])
+    {
+        if (!listener._cbk(args))
+        {
+            Console::errorfn(LOCALE_STR("ERROR_SDL_LISTENER_NOTIFY"), listener._name, Names::windowEvent[to_base(event)]);
         }
     }
 }
 
-bool DisplayWindow::onSDLEvent(const SDL_Event event) {
-    if (event.type != SDL_WINDOWEVENT) {
-        return false;
-    }
+bool DisplayWindow::onSDLEvent(const SDL_Event event)
+{
+    bool ret = false;
 
-    if (_windowID != event.window.windowID) {
-        return false;
+    if (event.type != SDL_WINDOWEVENT ||
+        _windowID != event.window.windowID)
+    {
+        return ret;
     }
 
     WindowEventArgs args = {};
@@ -144,101 +139,110 @@ bool DisplayWindow::onSDLEvent(const SDL_Event event) {
 
     updateDrawableSize();
 
-    if (fullscreen()) {
+    if (fullscreen())
+    {
         args.x = to_I32(WindowManager::GetFullscreenResolution().width);
         args.y = to_I32(WindowManager::GetFullscreenResolution().height);
-    } else {
+    }
+    else
+    {
         args.x = event.window.data1;
         args.y = event.window.data2;
     }
 
-    switch (event.window.event) {
-        case SDL_WINDOWEVENT_CLOSE: {
+    ret = true;
+    switch (event.window.event)
+    {
+        case SDL_WINDOWEVENT_CLOSE:
+        {
             args.x = event.quit.type;
             args.y = event.quit.timestamp;
             notifyListeners(WindowEvent::CLOSE_REQUESTED, args);
-            return true;
-        };
-        case SDL_WINDOWEVENT_ENTER: {
+        } break;
+        case SDL_WINDOWEVENT_ENTER:
+        {
             _flags |= to_base( WindowFlags::IS_HOVERED );
             notifyListeners(WindowEvent::MOUSE_HOVER_ENTER, args);
-            return true;
-        };
-        case SDL_WINDOWEVENT_LEAVE: {
+        } break;
+        case SDL_WINDOWEVENT_LEAVE:
+        {
             _flags &= to_base( WindowFlags::IS_HOVERED );
             notifyListeners(WindowEvent::MOUSE_HOVER_LEAVE, args);
-            return true;
-        };
-        case SDL_WINDOWEVENT_FOCUS_GAINED: {
+        } break;
+        case SDL_WINDOWEVENT_FOCUS_GAINED:
+        {
             _flags |= to_base( WindowFlags::HAS_FOCUS );
             notifyListeners(WindowEvent::GAINED_FOCUS, args);
-            return true;
-        };
-        case SDL_WINDOWEVENT_FOCUS_LOST: {
+        } break;
+        case SDL_WINDOWEVENT_FOCUS_LOST:
+        {
             _flags &= to_base( WindowFlags::HAS_FOCUS );
             notifyListeners(WindowEvent::LOST_FOCUS, args);
-            return true;
-        };
-        case SDL_WINDOWEVENT_RESIZED: {
-            if (!_internalResizeEvent) {
+        } break;
+        case SDL_WINDOWEVENT_RESIZED:
+        {
+            if (!_internalResizeEvent)
+            {
                 const U16 width = to_U16(event.window.data1);
                 const U16 height = to_U16(event.window.data2);
-                if (!setDimensions(width, height)) {
+                if (!setDimensions(width, height))
+                {
                     NOP();
                 }
             }
+
             args._flag = fullscreen();
             notifyListeners(WindowEvent::RESIZED, args);
             _internalResizeEvent = false;
-
-            return true;
-        };
-        case SDL_WINDOWEVENT_SIZE_CHANGED: {
+        } break;
+        case SDL_WINDOWEVENT_SIZE_CHANGED:
+        {
             args._flag = fullscreen();
             notifyListeners(WindowEvent::SIZE_CHANGED, args);
-
-            return true;
-        };
-        case SDL_WINDOWEVENT_MOVED: {
+        } break;
+        case SDL_WINDOWEVENT_MOVED:
+        {
             notifyListeners(WindowEvent::MOVED, args);
-            if (!_internalMoveEvent) {
-                setPosition(event.window.data1,
+            if (!_internalMoveEvent)
+            {
+                setPosition(event.window.data1, 
                             event.window.data2);
                 _internalMoveEvent = false;
             }
-            return true;
-        };
-        case SDL_WINDOWEVENT_SHOWN: {
+        } break;
+        case SDL_WINDOWEVENT_SHOWN:
+        {
             _flags &= to_base( WindowFlags::HIDDEN );
             notifyListeners(WindowEvent::SHOWN, args);
-
-            return true;
-        };
-        case SDL_WINDOWEVENT_HIDDEN: {
+        } break;
+        case SDL_WINDOWEVENT_HIDDEN:
+        {
             _flags |= to_base( WindowFlags::HIDDEN);
             notifyListeners(WindowEvent::HIDDEN, args);
-
-            return true;
-        };
-        case SDL_WINDOWEVENT_MINIMIZED: {
+        } break;
+        case SDL_WINDOWEVENT_MINIMIZED:
+        {
             notifyListeners(WindowEvent::MINIMIZED, args);
             minimized(true);
-            return true;
-        };
-        case SDL_WINDOWEVENT_MAXIMIZED: {
+        } break;
+        case SDL_WINDOWEVENT_MAXIMIZED:
+        {
             notifyListeners(WindowEvent::MAXIMIZED, args);
             minimized(false);
-            return true;
-        };
-        case SDL_WINDOWEVENT_RESTORED: {
+        } break;
+        case SDL_WINDOWEVENT_RESTORED:
+        {
             notifyListeners(WindowEvent::RESTORED, args);
             minimized(false);
-            return true;
-        };
-		default: break;
+        } break;
+
+        default:
+        {
+            ret = false;
+        } break;
     };
 
-    return false;
+    return ret;
 }
 
 I32 DisplayWindow::currentDisplayIndex() const noexcept {
@@ -269,31 +273,17 @@ void DisplayWindow::updateDrawableSize() noexcept
     }
     else
     {
+        int w = 1, h = 1;
         switch ( _context.gfx().renderAPI() )
         {
-            default: DIVIDE_UNEXPECTED_CALL(); break;
-            case RenderAPI::None:
-            {
-                _drawableSize = { 1u, 1u };
-            } break;
-            case RenderAPI::Vulkan:
-            {
-                int w = 1, h = 1;
-                SDL_Vulkan_GetDrawableSize( _sdlWindow, &w, &h );
-                if ( w > 0 && h > 0 )
-                {
-                    _drawableSize.set( w, h );
-                }
-            } break;
-            case RenderAPI::OpenGL:
-            {
-                int w = 1, h = 1;
-                SDL_GL_GetDrawableSize( _sdlWindow, &w, &h );
-                if ( w > 0 && h > 0 )
-                {
-                    _drawableSize.set( w, h );
-                }
-            } break;
+            case RenderAPI::None:   NOP();                                            break;
+            case RenderAPI::Vulkan: SDL_Vulkan_GetDrawableSize( _sdlWindow, &w, &h ); break;
+            case RenderAPI::OpenGL: SDL_GL_GetDrawableSize( _sdlWindow, &w, &h );     break;
+            default:                DIVIDE_UNEXPECTED_CALL();                         break;
+        }
+        if (w > 0 && h > 0)
+        {
+            _drawableSize.set(w, h);
         }
     }
     

@@ -9,44 +9,14 @@
 
 #include <imgui_internal.h>
 
-#define USE_VCPKG_GIZMO 1
-
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4505) //Unreferenced local function has been removed
 #endif
 #include <ImGuizmo.h>
-#if !defined(USE_VCPKG_GIZMO)
-#include <ImGuizmo.cpp>
-#endif //USE_VCPKG_GIZMO
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-
-
-namespace ImGuizmo
-{
-    struct GizmoBounds
-    {
-        float  mRadiusSquareCenter = 0.0f;
-        ImVec2 mScreenSquareCenter = { 0.0f, 0.0f };
-        ImVec2 mScreenSquareMin = { 0.0f, 0.0f };
-        ImVec2 mScreenSquareMax = { 0.0f, 0.0f };
-    };
-
-    static GizmoBounds gBounds = {};
-
-#if !defined(USE_VCPKG_GIZMO)
-    const GizmoBounds& GetBounds() noexcept
-    {
-        gBounds.mRadiusSquareCenter = gContext.mRadiusSquareCenter;
-        gBounds.mScreenSquareCenter = gContext.mScreenSquareCenter;
-        gBounds.mScreenSquareMin = gContext.mScreenSquareMin;
-        gBounds.mScreenSquareMax = gContext.mScreenSquareMax;
-        return gBounds;
-    }
-#endif //USE_VCPKG_GIZMO
-};
 
 namespace Divide
 {
@@ -61,12 +31,16 @@ namespace Divide
         UndoEntry<std::pair<TransformCache, NodeCache>> g_undoEntry;
     }
 
-    Gizmo::Gizmo( Editor& parent, ImGuiContext* targetContext )
-        : _parent( parent ),
-        _imguiContext( targetContext )
+    Gizmo::Gizmo( Editor& parent, ImGuiContext* targetContext, const F32 clipSpaceSize )
+        : _parent( parent )
+        , _imguiContext( targetContext )
+        , _clipSpaceSize(clipSpaceSize)
     {
         g_undoEntry._name = "Gizmo Manipulation";
         _selectedNodes.reserve( g_maxSelectedNodes );
+
+        ScopedImGuiContext ctx(_imguiContext);
+        ImGuizmo::SetGizmoSizeClipSpace(_clipSpaceSize);
     }
 
     Gizmo::~Gizmo()
@@ -91,24 +65,27 @@ namespace Divide
         _enabled = state;
     }
 
-    bool Gizmo::enabled() const noexcept
-    {
-        return _enabled;
-    }
-
-    bool Gizmo::active() const noexcept
-    {
-        return enabled() && !_selectedNodes.empty();
-    }
-
     void Gizmo::update( [[maybe_unused]] const U64 deltaTimeUS )
     {
-
         if ( _shouldRegisterUndo )
         {
             _parent.registerUndoEntry( g_undoEntry );
             _shouldRegisterUndo = false;
         }
+    }
+
+    void Gizmo::onResolutionChange(const SizeChangeParams& params) noexcept
+    {
+        onWindowSizeChange(params);
+    }
+
+    void Gizmo::onWindowSizeChange([[maybe_unused]] const SizeChangeParams& params) noexcept
+    {
+        const DisplayWindow* mainWindow = static_cast<DisplayWindow*>(ImGui::GetMainViewport()->PlatformHandle);
+        const vec2<U16> size = mainWindow->getDrawableSize();
+
+        ScopedImGuiContext ctx(_imguiContext);
+        ImGuizmo::SetRect(0.f, 0.f, to_F32(size.width), to_F32(size.height));
     }
 
     void Gizmo::render( const Camera* camera, const Rect<I32>& targetViewport, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut )
@@ -134,22 +111,20 @@ namespace Divide
             return nullptr;
         };
 
-        if ( !active() || _selectedNodes.empty() )
+        if ( !isActive() || _selectedNodes.empty() )
         {
             return;
         }
 
-        ImGui::SetCurrentContext( _imguiContext );
+        ScopedImGuiContext ctx(_imguiContext);
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
-        ImGuizmo::SetGizmoSizeClipSpace( 0.2f );
 
-        const DisplayWindow* mainWindow = static_cast<DisplayWindow*>(ImGui::GetMainViewport()->PlatformHandle);
-        const vec2<U16> size = mainWindow->getDrawableSize();
-        ImGuizmo::SetRect( 0.f, 0.f, to_F32( size.width ), to_F32( size.height ) );
+        const F32* viewMatrix = camera->viewMatrix();
+        const F32* projectionMatrix = camera->projectionMatrix();
 
-        const bool dirty = Manipulate( camera->viewMatrix(),
-                                       camera->projectionMatrix(),
+        const bool dirty = Manipulate( viewMatrix,
+                                       projectionMatrix,
                                        _transformSettings.currentGizmoOperation,
                                        _transformSettings.currentGizmoMode,
                                        _workMatrix,
@@ -158,16 +133,18 @@ namespace Divide
 
         if ( dirty && ImGuizmo::IsUsing() )
         {
+            ImGuizmo::DrawGrid(viewMatrix, projectionMatrix, _gridMatrix, 100.f);
+
             if ( _selectedNodes.size() == 1 )
             {
-                renderSingleSelection( camera );
+                renderSingleSelection();
             }
             else
             {
-                renderMultipleSelections( camera );
+                renderMultipleSelections();
             }
-        }
 
+        }
 
         ImGui::Render();
         Attorney::EditorGizmo::renderDrawList( _parent, ImGui::GetDrawData(), 1, targetViewport, bufferInOut, memCmdInOut);
@@ -175,30 +152,38 @@ namespace Divide
 
     void Gizmo::applyTransforms( const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& euler, const vec3<F32>& scale )
     {
+        bool updateGridMatrix = false;
+
         switch ( _transformSettings.currentGizmoOperation )
         {
-            case ImGuizmo::TRANSLATE: node.tComp->translate( position ); break;
-            case ImGuizmo::TRANSLATE_X: node.tComp->translateX( position.x ); break;
-            case ImGuizmo::TRANSLATE_Y: node.tComp->translateY( position.y ); break;
-            case ImGuizmo::TRANSLATE_Z: node.tComp->translateZ( position.z ); break;
-            case ImGuizmo::SCALE: node.tComp->scale( Max( scale, vec3<F32>( EPSILON_F32 ) ) ); break;
+            case ImGuizmo::TRANSLATE:   node.tComp->translate( position );    updateGridMatrix = true; break;
+            case ImGuizmo::TRANSLATE_X: node.tComp->translateX( position.x ); updateGridMatrix = true; break;
+            case ImGuizmo::TRANSLATE_Y: node.tComp->translateY( position.y ); updateGridMatrix = true; break;
+            case ImGuizmo::TRANSLATE_Z: node.tComp->translateZ( position.z ); updateGridMatrix = true; break;
+            case ImGuizmo::SCALE:   node.tComp->scale( Max( scale, vec3<F32>( EPSILON_F32 ) ) ); break;
             case ImGuizmo::SCALE_XU:
             case ImGuizmo::SCALE_X: node.tComp->scaleX( std::max( scale.x, EPSILON_F32 ) ); break;
             case ImGuizmo::SCALE_YU:
             case ImGuizmo::SCALE_Y: node.tComp->scaleY( std::max( scale.y, EPSILON_F32 ) ); break;
             case ImGuizmo::SCALE_ZU:
-            case ImGuizmo::SCALE_Z: node.tComp->scaleZ( std::max( scale.z, EPSILON_F32 ) ); break;
-            case ImGuizmo::ROTATE: node.tComp->rotate( -euler ); break;
-            case ImGuizmo::ROTATE_X: node.tComp->rotateX( -euler.x ); break;
-            case ImGuizmo::ROTATE_Y: node.tComp->rotateY( -euler.y ); break;
-            case ImGuizmo::ROTATE_Z: node.tComp->rotateZ( -euler.z ); break;
+            case ImGuizmo::SCALE_Z:  node.tComp->scaleZ( std::max( scale.z, EPSILON_F32 ) ); break;
+            case ImGuizmo::ROTATE:   node.tComp->rotate( -euler );    updateGridMatrix = true; break;
+            case ImGuizmo::ROTATE_X: node.tComp->rotateX( -euler.x ); updateGridMatrix = true; break;
+            case ImGuizmo::ROTATE_Y: node.tComp->rotateY( -euler.y ); updateGridMatrix = true; break;
+            case ImGuizmo::ROTATE_Z: node.tComp->rotateZ( -euler.z ); updateGridMatrix = true; break;
 
             case ImGuizmo::BOUNDS: break;
             case ImGuizmo::ROTATE_SCREEN: break;
         }
+
+        if (updateGridMatrix)
+        {
+            //const vec3<Angle::DEGREES<F32>>& orientation = node.tComp->getWorldOrientation().getEulerDegrees();
+            _gridMatrix.setTranslation(node.tComp->getWorldPosition());
+        }
     }
 
-    void Gizmo::renderSingleSelection( [[maybe_unused]] const Camera* camera )
+    void Gizmo::renderSingleSelection()
     {
         const SelectedNode& node = _selectedNodes.front();
         if ( !_wasUsed )
@@ -228,10 +213,9 @@ namespace Divide
         };
     }
 
-    void Gizmo::renderMultipleSelections( [[maybe_unused]] const Camera* camera )
+    void Gizmo::renderMultipleSelections()
     {
         //ToDo: This is still very buggy! -Ionut
-
         assert( _selectedNodes.front().tComp != nullptr );
 
         if ( !_wasUsed )
@@ -313,6 +297,7 @@ namespace Divide
 
     void Gizmo::updateSelectionsInternal()
     {
+        _gridMatrix.identity();
         _workMatrix.identity();
         _localToWorldMatrix.identity();
         _deltaMatrix.identity();
@@ -329,7 +314,8 @@ namespace Divide
             const BoundsComponent* bComp = tComp->parentSGN()->get<BoundsComponent>();
             if ( bComp != nullptr )
             {
-                _workMatrix.setTranslation( bComp->getBoundingSphere().getCenter() );
+                const vec3<F32>& boundsCenter = bComp->getBoundingSphere().getCenter();
+                _workMatrix.setTranslation(boundsCenter);
             }
         }
         else
@@ -366,127 +352,156 @@ namespace Divide
 
     void Gizmo::onSceneFocus( [[maybe_unused]] const bool state ) noexcept
     {
-
         ImGuiIO& io = _imguiContext->IO;
         _wasUsed = false;
         io.KeyCtrl = io.KeyShift = io.KeyAlt = io.KeySuper = false;
     }
 
-    bool Gizmo::onKey( const bool pressed, const Input::KeyEvent& key )
+    void Gizmo::onKeyInternal(const Input::KeyEvent& arg, bool pressed)
     {
-        if ( pressed )
+        ImGuiIO& io = _imguiContext->IO;
+
+        if (arg._key == Input::KeyCode::KC_LCONTROL || arg._key == Input::KeyCode::KC_RCONTROL)
         {
-            _wasUsed = false;
+            io.AddKeyEvent(ImGuiMod_Ctrl, pressed);
         }
-        else if ( _wasUsed )
+        if (arg._key == Input::KeyCode::KC_LSHIFT || arg._key == Input::KeyCode::KC_RSHIFT)
+        {
+            io.AddKeyEvent(ImGuiMod_Shift, pressed);
+        }
+        if (arg._key == Input::KeyCode::KC_LMENU || arg._key == Input::KeyCode::KC_RMENU)
+        {
+            io.AddKeyEvent(ImGuiMod_Alt, pressed);
+        }
+        if (arg._key == Input::KeyCode::KC_LWIN || arg._key == Input::KeyCode::KC_RWIN)
+        {
+            io.AddKeyEvent(ImGuiMod_Super, pressed);
+        }
+        const ImGuiKey imguiKey = DivideKeyToImGuiKey(arg._key);
+        io.AddKeyEvent(imguiKey, pressed);
+        io.SetKeyEventNativeData(imguiKey, arg.sym, arg.scancode, arg.scancode);
+    }
+
+    bool Gizmo::onKeyDown(Input::KeyEvent& argInOut)
+    {
+        _wasUsed = false;
+        if (!isActive())
+        {
+            return false;
+        }
+
+        onKeyInternal(argInOut, true);
+        return false;
+    }
+
+    bool Gizmo::onKeyUp(Input::KeyEvent& argInOut)
+    {
+        if (_wasUsed)
         {
             _shouldRegisterUndo = true;
             _wasUsed = false;
         }
 
-        ImGuiIO& io = _imguiContext->IO;
+        if (!isActive())
+        {
+            return false;
+        }
 
-        ImGuiContext* crtContext = ImGui::GetCurrentContext();
-        ImGui::SetCurrentContext( _imguiContext );
-
-        if ( key._key == Input::KeyCode::KC_LCONTROL || key._key == Input::KeyCode::KC_RCONTROL )
-        {
-            io.AddKeyEvent( ImGuiMod_Ctrl, pressed );
-        }
-        if ( key._key == Input::KeyCode::KC_LSHIFT || key._key == Input::KeyCode::KC_RSHIFT )
-        {
-            io.AddKeyEvent( ImGuiMod_Shift, pressed );
-        }
-        if ( key._key == Input::KeyCode::KC_LMENU || key._key == Input::KeyCode::KC_RMENU )
-        {
-            io.AddKeyEvent( ImGuiMod_Alt, pressed );
-        }
-        if ( key._key == Input::KeyCode::KC_LWIN || key._key == Input::KeyCode::KC_RWIN )
-        {
-            io.AddKeyEvent( ImGuiMod_Super, pressed );
-        }
-        const ImGuiKey imguiKey = DivideKeyToImGuiKey( key._key );
-        io.AddKeyEvent( imguiKey, pressed );
-        io.SetKeyEventNativeData( imguiKey, key.sym, key.scancode, key.scancode );
+        onKeyInternal(argInOut, false);
 
         bool ret = false;
-        if ( active() && io.KeyCtrl )
+        if ( _imguiContext->IO.KeyCtrl )
         {
             TransformSettings settings = _parent.getTransformSettings();
-            if ( key._key == Input::KeyCode::KC_T )
+            if (argInOut._key == Input::KeyCode::KC_T )
             {
                 settings.currentGizmoOperation = ImGuizmo::TRANSLATE;
                 ret = true;
             }
-            else if ( key._key == Input::KeyCode::KC_R )
+            else if (argInOut._key == Input::KeyCode::KC_R )
             {
                 settings.currentGizmoOperation = ImGuizmo::ROTATE;
                 ret = true;
             }
-            else if ( key._key == Input::KeyCode::KC_S )
+            else if (argInOut._key == Input::KeyCode::KC_S )
             {
                 settings.currentGizmoOperation = ImGuizmo::SCALE;
                 ret = true;
             }
-            if ( ret && !pressed )
+            if ( ret )
             {
                 _parent.setTransformSettings( settings );
             }
         }
-        ImGui::SetCurrentContext( crtContext );
+
         return ret;
     }
 
-    void Gizmo::onMouseButton( const bool pressed ) noexcept
+    bool Gizmo::onMouseButtonPressed(Input::MouseButtonEvent& argInOut) noexcept
     {
-        if ( pressed )
+        _wasUsed = false;
+        if ( isActive() )
         {
-            _wasUsed = false;
+            ScopedImGuiContext ctx(_imguiContext);
+            return ImGuizmo::IsOver();
         }
-        else if ( _wasUsed )
+
+        return false;
+    }
+
+    bool Gizmo::onMouseButtonReleased(Input::MouseButtonEvent& argInOut) noexcept
+    {
+        if (_wasUsed)
         {
             _shouldRegisterUndo = true;
             _wasUsed = false;
+            return true;
         }
+
+        return false;
     }
 
     bool Gizmo::needsMouse() const
     {
-        if ( active() )
+        if ( isActive() )
         {
-            ImGuiContext* crtContext = ImGui::GetCurrentContext();
-            ImGui::SetCurrentContext( _imguiContext );
-            const bool imguizmoState = ImGuizmo::IsUsing();
-            ImGui::SetCurrentContext( crtContext );
-            return imguizmoState;
+            ScopedImGuiContext ctx(_imguiContext);
+            return ImGuizmo::IsUsingAny() || ImGuizmo::IsOver();
         }
 
         return false;
     }
 
-    bool Gizmo::hovered() const noexcept
+    bool Gizmo::isHovered() const noexcept
     {
-        if ( active() )
+        if ( isActive() )
         {
-        #if !defined(USE_VCPKG_GIZMO)
-            const ImGuizmo::GizmoBounds& bounds = ImGuizmo::GetBounds();
-            const ImGuiIO& io = _imguiContext->IO;
-            const vec2<F32> deltaScreen = {
-                io.MousePos.x - bounds.mScreenSquareCenter.x,
-                io.MousePos.y - bounds.mScreenSquareCenter.y
-            };
-            const F32 dist = deltaScreen.length();
-            return dist < bounds.mRadiusSquareCenter + 5.0f;
-        #else //USE_VCPKG_GIZMO
-            ImGuiContext* crtContext = ImGui::GetCurrentContext();
-            ImGui::SetCurrentContext( _imguiContext );
-            const bool imguizmoState = ImGuizmo::IsOver();
-            ImGui::SetCurrentContext( crtContext );
-            return imguizmoState;
-        #endif//USE_VCPKG_GIZMO
+            ScopedImGuiContext ctx(_imguiContext);
+            return ImGuizmo::IsOver();
         }
 
         return false;
+    }
+
+    bool Gizmo::isUsing() const noexcept
+    {
+        if (isActive())
+        {
+            ScopedImGuiContext ctx(_imguiContext);
+            return ImGuizmo::IsUsingAny();
+        }
+
+        return false;
+    }
+
+    bool Gizmo::isEnabled() const noexcept
+    {
+        return _enabled;
+    }
+
+    bool Gizmo::isActive() const noexcept
+    {
+        return isEnabled() && !_selectedNodes.empty();
     }
 
 } //namespace Divide

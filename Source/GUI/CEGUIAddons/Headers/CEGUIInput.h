@@ -49,28 +49,28 @@ class CEGUIInput final : public Input::InputAggregatorInterface,
     void init(const Configuration& config) noexcept;
 
     /// Key pressed: return true if input was consumed
-    bool onKeyDown(const Input::KeyEvent& key) override;
+    bool onKeyDownInternal(Input::KeyEvent& argInOut) override;
     /// Key released: return true if input was consumed
-    bool onKeyUp(const Input::KeyEvent& key) override;
+    bool onKeyUpInternal(Input::KeyEvent& argInOut) override;
     /// Joystick axis change: return true if input was consumed
-    bool joystickAxisMoved(const Input::JoystickEvent& arg) override;
+    bool joystickAxisMovedInternal(Input::JoystickEvent& argInOut) override;
     /// Joystick direction change: return true if input was consumed
-    bool joystickPovMoved(const Input::JoystickEvent& arg) override;
+    bool joystickPovMovedInternal(Input::JoystickEvent& argInOut) override;
     /// Joystick button pressed: return true if input was consumed
-    bool joystickButtonPressed(const Input::JoystickEvent& arg) override;
+    bool joystickButtonPressedInternal(Input::JoystickEvent& argInOut) override;
     /// Joystick button released: return true if input was consumed
-    bool joystickButtonReleased(const Input::JoystickEvent& arg) override;
-    bool joystickBallMoved(const Input::JoystickEvent& arg) override;
-    bool joystickAddRemove(const Input::JoystickEvent& arg) override;
-    bool joystickRemap(const Input::JoystickEvent &arg) override;
+    bool joystickButtonReleasedInternal(Input::JoystickEvent& argInOut) override;
+    bool joystickBallMovedInternal(Input::JoystickEvent& argInOut) override;
+    bool joystickAddRemoveInternal(Input::JoystickEvent& argInOut) override;
+    bool joystickRemapInternal(Input::JoystickEvent & argInOut) override;
     /// Mouse moved: return true if input was consumed
-    bool mouseMoved(const Input::MouseMoveEvent& arg) override;
+    bool mouseMovedInternal(Input::MouseMoveEvent& argInOut) override;
     /// Mouse button pressed: return true if input was consumed
-    bool mouseButtonPressed(const Input::MouseButtonEvent& arg) override;
+    bool mouseButtonPressedInternal(Input::MouseButtonEvent& argInOut) override;
     /// Mouse button released: return true if input was consumed
-    bool mouseButtonReleased(const Input::MouseButtonEvent& arg) override;
+    bool mouseButtonReleasedInternal(Input::MouseButtonEvent& argInOut) override;
 
-    bool onTextEvent(const Input::TextEvent& arg) override;
+    bool onTextEventInternal(Input::TextEvent& argInOut) override;
 
    protected:
     GUI& _parent;

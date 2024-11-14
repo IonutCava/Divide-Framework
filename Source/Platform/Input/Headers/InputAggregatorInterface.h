@@ -37,17 +37,23 @@
 
 #include <SDL2/SDL_keycode.h>
 
-namespace Divide {
+namespace Divide
+{
 
+class GUI;
+class Editor;
 class Kernel;
 class DisplayWindow;
+class ProjectManager;
+
 namespace Input 
 {
 
 class InputHandler;
 
-namespace Attorney {
-    class MouseEventKernel;
+namespace Attorney
+{
+    class MouseEventConsumer;
     class MouseEventInputHandler;
 };
 
@@ -55,13 +61,14 @@ struct InputEvent
 {
     explicit InputEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
-    U8 _deviceIndex = 0;
     DisplayWindow* _sourceWindow = nullptr;
+    U8 _deviceIndex = 0;
+    bool _simulationPaused = false;
 };
 
 struct MouseEvent : public InputEvent
 {
-    friend class Attorney::MouseEventKernel;
+    friend class Attorney::MouseEventConsumer;
     friend class Attorney::MouseEventInputHandler;
 
 
@@ -69,15 +76,13 @@ struct MouseEvent : public InputEvent
 
     [[nodiscard]] inline const MouseState& state() const noexcept { return _state; }
 
-    PROPERTY_RW(bool, inScenePreviewRect, false);
-
 protected:
     MouseState _state;
 };
 
 struct MouseButtonEvent final : MouseEvent
 {
-    friend class Attorney::MouseEventKernel;
+    friend class Attorney::MouseEventConsumer;
 
     explicit MouseButtonEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
@@ -88,48 +93,56 @@ struct MouseButtonEvent final : MouseEvent
 
 struct MouseMoveEvent final : MouseEvent
 {
-    friend class Attorney::MouseEventKernel;
+    friend class Attorney::MouseEventConsumer;
 
     explicit MouseMoveEvent(DisplayWindow* sourceWindow, U8 deviceIndex, bool wheelEvent) noexcept;
 
     const bool _wheelEvent { false };
 };
-namespace Attorney {
-    class MouseEventKernel {
-        private:
-            static MouseState& state(MouseEvent& evt) noexcept 
-            {
-                return evt._state;
-            }
 
-            friend class Divide::Kernel;
+namespace Attorney
+{
+    class MouseEventConsumer
+    {
+        static void setAbsolutePosition(MouseEvent& evt, const vec2<I32>& absPosition) noexcept
+        {
+            evt._state.X.abs = absPosition.x;
+            evt._state.Y.abs = absPosition.y;
+        }
+
+        friend class Divide::GUI;
+        friend class Divide::Editor;
+        friend class Divide::Kernel;
+        friend class Divide::ProjectManager;
     };
     
-    class MouseEventInputHandler {
-        private:
-            static MouseState& state(MouseEvent& evt) noexcept 
-            {
-                return evt._state;
-            }
+    class MouseEventInputHandler
+    {
+        static MouseState& state(MouseEvent& evt) noexcept 
+        {
+            return evt._state;
+        }
 
-            friend class Input::InputHandler;
+        friend class Input::InputHandler;
     };
 } //Attorney
 
-struct JoystickEvent final : InputEvent {
+struct JoystickEvent final : InputEvent
+{
     explicit JoystickEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
     JoystickElement _element;
 };
 
-struct TextEvent final : InputEvent {
+struct TextEvent final : InputEvent
+{
     explicit TextEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* text) noexcept;
 
     Str<256> _text{};
 };
 
-struct KeyEvent final : InputEvent {
-
+struct KeyEvent final : InputEvent
+{
     explicit KeyEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
 
     KeyCode _key{ KeyCode::KC_UNASSIGNED };
@@ -141,27 +154,53 @@ struct KeyEvent final : InputEvent {
     SDL_Keycode sym{};          /**< SDL virtual key code - see ::SDL_Keycode for details */
 };
 
-class InputAggregatorInterface {
-   public:
+struct InputAggregatorInterface
+{
     virtual ~InputAggregatorInterface() = default;
+    /// The input event may get modified once it is processed.
+    /// E.g.: The editor may remap mouse position to match the scene preview window
+    ///       or add a key modifier if one is enforced by some setting
+    
     /// Keyboard: return true if input was consumed
-    virtual bool onKeyDown(const KeyEvent &arg) = 0;
-    virtual bool onKeyUp(const KeyEvent &arg) = 0;
-    /// Mouse: return true if input was consumed
-    virtual bool mouseMoved(const MouseMoveEvent &arg) = 0;
-    virtual bool mouseButtonPressed(const MouseButtonEvent& arg) = 0;
-    virtual bool mouseButtonReleased(const MouseButtonEvent& arg) = 0;
+    virtual bool onKeyDown(KeyEvent& argInOut);
+    virtual bool onKeyUp(KeyEvent& argInOut);
+
+    /// Mouse: return true if input was consumed. 
+    virtual bool mouseMoved(MouseMoveEvent& argInOut);
+    virtual bool mouseButtonPressed(MouseButtonEvent& argInOut);
+    virtual bool mouseButtonReleased(MouseButtonEvent& argInOut);
 
     /// Joystick or Gamepad: return true if input was consumed
-    virtual bool joystickButtonPressed(const JoystickEvent &arg) = 0;
-    virtual bool joystickButtonReleased(const JoystickEvent &arg) = 0;
-    virtual bool joystickAxisMoved(const JoystickEvent &arg) = 0;
-    virtual bool joystickPovMoved(const JoystickEvent &arg) = 0;
-    virtual bool joystickBallMoved(const JoystickEvent &arg) = 0;
-    virtual bool joystickAddRemove(const JoystickEvent &arg) = 0;
-    virtual bool joystickRemap(const JoystickEvent &arg) = 0;
+    virtual bool joystickButtonPressed(JoystickEvent& argInOut);
+    virtual bool joystickButtonReleased(JoystickEvent& argInOut);
+    virtual bool joystickAxisMoved(JoystickEvent& argInOut);
+    virtual bool joystickPovMoved(JoystickEvent& argInOut);
+    virtual bool joystickBallMoved(JoystickEvent& argInOut);
+    virtual bool joystickAddRemove(JoystickEvent& argInOut);
+    virtual bool joystickRemap(JoystickEvent& argInOut);
+    virtual bool onTextEvent(TextEvent& argInOut);
 
-    virtual bool onTextEvent(const TextEvent& arg) = 0;
+protected:
+    /// Keyboard: return true if input was consumed
+    virtual bool onKeyDownInternal(KeyEvent &argInOut) = 0;
+    virtual bool onKeyUpInternal(KeyEvent &argInOut) = 0;
+
+    /// Mouse: return true if input was consumed. 
+    virtual bool mouseMovedInternal(MouseMoveEvent &argInOut) = 0;
+    virtual bool mouseButtonPressedInternal(MouseButtonEvent& argInOut) = 0;
+    virtual bool mouseButtonReleasedInternal(MouseButtonEvent& argInOut) = 0;
+
+    /// Joystick or Gamepad: return true if input was consumed
+    virtual bool joystickButtonPressedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool joystickButtonReleasedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool joystickAxisMovedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool joystickPovMovedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool joystickBallMovedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool joystickAddRemoveInternal(JoystickEvent &argInOut) = 0;
+    virtual bool joystickRemapInternal(JoystickEvent &argInOut) = 0;
+    virtual bool onTextEventInternal(TextEvent& argInOut) = 0;
+
+    PROPERTY_RW(bool, processInput, true);
 };
 
 };  // namespace Input

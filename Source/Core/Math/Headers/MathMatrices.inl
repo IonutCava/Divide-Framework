@@ -1752,6 +1752,13 @@ namespace Divide
 
     template<typename T>
     template<typename U>
+    mat4<T>::mat4(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::DEGREES<U>>& euler) noexcept
+        : mat4(translation, scale, GetMatrix(Quaternion(euler.pitch, euler.yaw, euler.roll)))
+    {
+    }
+
+    template<typename T>
+    template<typename U>
     mat4<T>::mat4( const vec3<U>& translation ) noexcept
         : mat4( translation.x, translation.y, translation.z )
     {
@@ -2152,16 +2159,23 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    void mat4<T>::set( const vec3<U>& translation, const vec3<U>& scale, const mat4<U>& rotation ) noexcept
+    void mat4<T>::set( const vec3<U>& translation, const vec3<U>& scale, const mat3<U>& rotation ) noexcept
     {
-        set( scale.x,           static_cast<U>(0), static_cast<U>(0), static_cast<U>(0),
-             static_cast<U>(0), scale.y,           static_cast<U>(0), static_cast<U>(0),
-             static_cast<U>(0), static_cast<U>(0), scale.z,           static_cast<U>(0),
-             static_cast<U>(0), static_cast<U>(0), static_cast<U>(0), static_cast<U>(1) );
+        set( mat3<U>
+            { scale.x,           static_cast<U>(0), static_cast<U>(0),
+              static_cast<U>(0), scale.y,           static_cast<U>(0),
+              static_cast<U>(0), static_cast<U>(0), scale.z         });
 
-        set( *this * rotation );
+        set( *this * mat4<F32>(rotation) );
 
         setTranslation( translation );
+    }
+
+    template<typename T>
+    template<typename U>
+    void mat4<T>::set(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::DEGREES<U>>& euler) noexcept
+    {
+        set(translation, scale, GetMatrix(Quaternion<U>(euler.pitch, euler.yaw, euler.roll)));
     }
 
     template<typename T>
