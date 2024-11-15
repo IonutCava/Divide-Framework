@@ -150,7 +150,7 @@ namespace Divide
         Attorney::EditorGizmo::renderDrawList( _parent, ImGui::GetDrawData(), 1, targetViewport, bufferInOut, memCmdInOut);
     }
 
-    void Gizmo::applyTransforms( const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& euler, const vec3<F32>& scale )
+    void Gizmo::applyTransforms( const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES_F>& euler, const vec3<F32>& scale )
     {
         bool updateGridMatrix = false;
 
@@ -178,7 +178,7 @@ namespace Divide
 
         if (updateGridMatrix)
         {
-            //const vec3<Angle::DEGREES<F32>>& orientation = node.tComp->getWorldOrientation().getEulerDegrees();
+            _gridMatrix.fromEuler(node.tComp->getWorldOrientation().getEuler());
             _gridMatrix.setTranslation(node.tComp->getWorldPosition());
         }
     }
