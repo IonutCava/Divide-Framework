@@ -62,19 +62,19 @@ class Transform final : public TransformValues, public ITransform, public GUIDWr
     void scaleY(F32 amount) noexcept override;
     void scaleZ(F32 amount) noexcept override;
 
-    void setRotation(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) noexcept override;
-    void setRotation(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) noexcept override;
+    void setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) noexcept override;
+    void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) noexcept override;
     void setRotation(const Quaternion<F32>& quat) noexcept override;
-    void setRotationX(Angle::DEGREES<F32> angle) noexcept override;
-    void setRotationY(Angle::DEGREES<F32> angle) noexcept override;
-    void setRotationZ(Angle::DEGREES<F32> angle) noexcept override;
-    void rotate(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) noexcept override;
-    void rotate(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) noexcept override;
+    void setRotationX(Angle::DEGREES_F angle) noexcept override;
+    void setRotationY(Angle::DEGREES_F angle) noexcept override;
+    void setRotationZ(Angle::DEGREES_F angle) noexcept override;
+    void rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) noexcept override;
+    void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) noexcept override;
     void rotate(const Quaternion<F32>& quat) noexcept override;
     void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
-    void rotateX(Angle::DEGREES<F32> angle) noexcept override;
-    void rotateY(Angle::DEGREES<F32> angle) noexcept override;
-    void rotateZ(Angle::DEGREES<F32> angle) noexcept override;
+    void rotateX(Angle::DEGREES_F angle) noexcept override;
+    void rotateY(Angle::DEGREES_F angle) noexcept override;
+    void rotateZ(Angle::DEGREES_F angle) noexcept override;
 
     void getScale(vec3<F32>& scaleOut) const noexcept override;
     void getPosition(vec3<F32>& posOut) const noexcept override;

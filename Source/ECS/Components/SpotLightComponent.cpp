@@ -55,8 +55,10 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     registerFields(editorComponent());
 
-    editorComponent().onChangedCbk([this](std::string_view) noexcept  {
-        if (coneCutoffAngle() > outerConeCutoffAngle()) {
+    editorComponent().onChangedCbk([this](std::string_view) noexcept
+    {
+        if (coneCutoffAngle() > outerConeCutoffAngle())
+        {
             coneCutoffAngle(outerConeCutoffAngle());
         }
     });
@@ -67,37 +69,44 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
     Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), bb);
 }
 
-F32 SpotLightComponent::outerConeRadius() const noexcept {
-    return range() * std::tan(Angle::DegreesToRadians(outerConeCutoffAngle()));
+F32 SpotLightComponent::outerConeRadius() const noexcept
+{
+    return range() * std::tan(Angle::to_RADIANS(outerConeCutoffAngle()));
 }
 
-F32 SpotLightComponent::innerConeRadius() const noexcept {
-    return range() * std::tan(Angle::DegreesToRadians(coneCutoffAngle()));
+F32 SpotLightComponent::innerConeRadius() const noexcept
+{
+    return range() * std::tan(Angle::to_RADIANS(coneCutoffAngle()));
 }
 
-F32 SpotLightComponent::coneSlantHeight() const noexcept {
-    const F32 coneRadius = outerConeRadius();
-    const F32 coneHeight = range();
-
-    return Sqrt(SQUARED(coneRadius) + SQUARED(coneHeight));
+F32 SpotLightComponent::coneSlantHeight() const noexcept
+{
+    return Sqrt(SQUARED(outerConeRadius()) + SQUARED(range()));
 }
 
-void SpotLightComponent::OnData(const ECS::CustomEvent& data) {
+void SpotLightComponent::OnData(const ECS::CustomEvent& data)
+{
     SGNComponent::OnData(data);
 
-    if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
+    if (data._type == ECS::CustomEvent::Type::TransformUpdated)
+    {
         updateCache(data);
-    } else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged) {
+    }
+    else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged)
+    {
         const SceneGraphNode::Flags flag = static_cast<SceneGraphNode::Flags>(data._flag);
-        if (flag == SceneGraphNode::Flags::SELECTED) {
+        if (flag == SceneGraphNode::Flags::SELECTED)
+        {
             _drawImpostor = data._dataPair._first == 1u;
         }
     }
 }
 
-void SpotLightComponent::setDirection(const vec3<F32>& direction) const {
+void SpotLightComponent::setDirection(const vec3<F32>& direction) const
+{
     TransformComponent* tComp = _parentSGN->get<TransformComponent>();
-    if (tComp != nullptr) {
+    if (tComp != nullptr)
+    {
         tComp->setDirection(direction);
     }
 }

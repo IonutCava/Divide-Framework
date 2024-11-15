@@ -130,9 +130,8 @@ namespace Divide {
                     const vec3<F32> scale = transform->getLocalScale();
                     const vec3<F32> position = transform->getLocalPosition();
 
-                    vec3<Angle::DEGREES<F32>> orientationEuler;
                     const Quaternion<F32> orientation = transform->getLocalOrientation();
-                    orientationEuler = Angle::to_DEGREES(orientation.getEuler());
+                    const vec3<Angle::DEGREES_F> orientationEuler = Angle::to_DEGREES(orientation.getEuler());
 
                     pt.put(entryName + ".position.<xmlattr>.x", position.x);
                     pt.put(entryName + ".position.<xmlattr>.y", position.y);
@@ -210,7 +209,7 @@ namespace Divide {
 
                         vec3<F32> scale;
                         vec3<F32> position;
-                        vec3<Angle::DEGREES<F32>> orientationEuler;
+                        vec3<Angle::DEGREES_F> orientationEuler;
 
                         position.set(pt.get<F32>(entryName + ".position.<xmlattr>.x", 0.0f),
                                      pt.get<F32>(entryName + ".position.<xmlattr>.y", 0.0f),
@@ -225,7 +224,7 @@ namespace Divide {
                                   pt.get<F32>(entryName + ".scale.<xmlattr>.z", 1.0f));
 
                         Quaternion<F32> rotation;
-                        rotation.fromEuler(orientationEuler);
+                        rotation.fromEuler(Angle::to_RADIANS(orientationEuler));
                         transform->setScale(scale);
                         transform->setRotation(rotation);
                         transform->setPosition(position);

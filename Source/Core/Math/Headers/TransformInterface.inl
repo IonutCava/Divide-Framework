@@ -79,7 +79,7 @@ namespace Divide
         setScale( vec3<F32>( x, y, z ) );
     }
 
-    inline void ITransform::setRotationEuler( const vec3<F32>& euler )
+    inline void ITransform::setRotationEuler( const vec3<Angle::DEGREES_F>& euler )
     {
         setRotation( euler.pitch, euler.yaw, euler.roll );
     }
@@ -114,12 +114,12 @@ namespace Divide
         scale( vec3<F32>( x, y, z ) );
     }
 
-    inline void ITransform::rotate( const F32 xAxis, const F32 yAxis, const F32 zAxis, const Angle::DEGREES<F32> degrees )
+    inline void ITransform::rotate( const F32 xAxis, const F32 yAxis, const F32 zAxis, const Angle::DEGREES_F degrees )
     {
         rotate( vec3<F32>( xAxis, yAxis, zAxis ), degrees );
     }
 
-    inline void ITransform::rotate( const vec3<F32>& euler )
+    inline void ITransform::rotate( const vec3<Angle::DEGREES_F>& euler )
     {
         rotate( euler.pitch, euler.yaw, euler.roll );
     }

@@ -130,7 +130,7 @@ namespace Divide {
             TransformComponent* tComp = nullptr;
             TransformValues _initialValues;
         };
-        void applyTransforms(const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES<F32>>& euler, const vec3<F32>& scale);
+        void applyTransforms(const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES_F>& euler, const vec3<F32>& scale);
 
     private:
         Editor& _parent;

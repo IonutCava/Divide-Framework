@@ -150,47 +150,47 @@ namespace Divide
             {
                 vec3<F32>( -offsetBottom0, 0.f, -offsetBottom0 ),
                 VECTOR3_UNIT,
-                GetMatrix( Quaternion<F32>( Angle::DEGREES<F32>( 25.f ), Angle::DEGREES<F32>( 0.f ), Angle::DEGREES<F32>( 0.f ) ) )
+                GetMatrix( Quaternion<F32>( Angle::to_RADIANS(vec3<Angle::DEGREES_F>(25.f, 0.f, 0.f))))
             },
 
             mat4<F32>
             {
                 vec3<F32>( -offsetBottom1, 0.f, offsetBottom1 ),
                 vec3<F32>( 0.85f ),
-                GetMatrix( Quaternion<F32>( Angle::DEGREES<F32>( -12.5f ), Angle::DEGREES<F32>( 0.f ),  Angle::DEGREES<F32>( 0.f ) )* //Pitch
-                            Quaternion<F32>( Angle::DEGREES<F32>( 0.f ),    Angle::DEGREES<F32>( 35.f ), Angle::DEGREES<F32>( 0.f ) ) )  //Yaw
+                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-12.5f,  0.f, 0.f))) * //Pitch
+                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(   0.f, 35.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
                 vec3<F32>( offsetBottom0, 0.f, -offsetBottom1 ),
                 vec3<F32>( 1.1f ),
-                GetMatrix( Quaternion<F32>( Angle::DEGREES<F32>( 30.f ), Angle::DEGREES<F32>( 0.f ),   Angle::DEGREES<F32>( 0.f ) )* //Pitch
-                            Quaternion<F32>( Angle::DEGREES<F32>( 0.f ),  Angle::DEGREES<F32>( -75.f ), Angle::DEGREES<F32>( 0.f ) ) )  //Yaw
+                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(30.f,   0.f, 0.f))) * //Pitch
+                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>( 0.f, -75.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
                 vec3<F32>( offsetBottom1 * 2, 0.f, offsetBottom1 ),
                 vec3<F32>( 0.9f ),
-                GetMatrix( Quaternion<F32>( Angle::DEGREES<F32>( -25.f ), Angle::DEGREES<F32>( 0.f ),    Angle::DEGREES<F32>( 0.f ) )* //Pitch
-                            Quaternion<F32>( Angle::DEGREES<F32>( 0.f ),   Angle::DEGREES<F32>( -125.f ), Angle::DEGREES<F32>( 0.f ) ) )  //Yaw
+                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-25.f,    0.f, 0.f))) * //Pitch
+                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, -125.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
                 vec3<F32>( -offsetBottom1 * 2, 0.f, -offsetBottom1 * 2 ),
                 vec3<F32>( 1.2f ),
-                GetMatrix( Quaternion<F32>( Angle::DEGREES<F32>( 5.f ), Angle::DEGREES<F32>( 0.f ),    Angle::DEGREES<F32>( 0.f ) )* //Pitch
-                            Quaternion<F32>( Angle::DEGREES<F32>( 0.f ), Angle::DEGREES<F32>( -225.f ), Angle::DEGREES<F32>( 0.f ) ) )  //Yaw
+                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(5.f,    0.f, 0.f))) * //Pitch
+                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(0.f, -225.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
                 vec3<F32>( offsetBottom0, 0.f, offsetBottom1 * 2 ),
                 vec3<F32>( 0.75f ),
-                GetMatrix( Quaternion<F32>( Angle::DEGREES<F32>( -15.f ), Angle::DEGREES<F32>( 0.f ),   Angle::DEGREES<F32>( 0.f ) )* //Pitch
-                            Quaternion<F32>( Angle::DEGREES<F32>( 0.f ),   Angle::DEGREES<F32>( 305.f ), Angle::DEGREES<F32>( 0.f ) ) )  //Yaw
+                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-15.f,   0.f, 0.f))) * //Pitch
+                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, 305.f, 0.f))))  //Yaw
             }
         };
 
@@ -986,12 +986,12 @@ namespace Divide
                 //const F32 lengthSq2 = WORLD_Y_AXIS.lengthSquared(); = 1.0f (normalised)
                 //const F32 length = Divide::Sqrt(lengthSq1 * lengthSq2); = 1.0f
                 constexpr F32 length = 1.0f;
-                const Angle::DEGREES<F32> angle = Angle::to_DEGREES( std::acos( dot / length ) );
+                const Angle::DEGREES_F angle = Angle::to_DEGREES( Angle::RADIANS_F(std::acos( dot / length ) ));
                 if ( angle > slopeLimit )
                 {
                     continue;
                 }
-                const F32 slopeScaleFactor = 1.f - MAP( angle, 0.f, slopeLimit, 0.f, 0.9f );
+                const F32 slopeScaleFactor = 1.f - MAP( angle.value, 0.f, slopeLimit, 0.f, 0.9f);
 
                 assert( vert._position != VECTOR3_ZERO );
 
@@ -1028,7 +1028,7 @@ namespace Divide
                     modelRotation = RotationFromVToU( WORLD_Y_AXIS, vert._normal, WORLD_Z_NEG_AXIS );
                 }
 
-                entry._orientationQuat = (Quaternion<F32>( vert._normal, Random( 360.0f ) ) * modelRotation).asVec4();
+                entry._orientationQuat = (Quaternion<F32>( vert._normal, Angle::to_RADIANS(Angle::DEGREES_F(Random( 360.0f )))) * modelRotation).asVec4();
                 entry._data = {
                     to_F32( arrayLayer ),
                     to_F32( ID ),

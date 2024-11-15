@@ -175,7 +175,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::setRotation(const vec3<F32>& axis, const Angle::DEGREES<F32> degrees)
+    void TransformComponent::setRotation(const vec3<F32>& axis, const Angle::DEGREES_F degrees)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -185,7 +185,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::setRotation(const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> roll)
+    void TransformComponent::setRotation(const Angle::DEGREES_F pitch, const Angle::DEGREES_F yaw, const Angle::DEGREES_F roll)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -217,7 +217,7 @@ namespace Divide
         setTransformDirty(TransformType::SCALE);
     }
 
-    void TransformComponent::rotate(const vec3<F32>& axis, const Angle::DEGREES<F32> degrees)
+    void TransformComponent::rotate(const vec3<F32>& axis, const Angle::DEGREES_F degrees)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -227,7 +227,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::rotate(const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> roll)
+    void TransformComponent::rotate(const Angle::DEGREES_F pitch, const Angle::DEGREES_F yaw, const Angle::DEGREES_F roll)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -347,7 +347,7 @@ namespace Divide
         setTransformDirty(TransformType::SCALE);
     }
 
-    void TransformComponent::rotateX(const Angle::DEGREES<F32> angle)
+    void TransformComponent::rotateX(const Angle::DEGREES_F angle)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -357,7 +357,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::rotateY(const Angle::DEGREES<F32> angle)
+    void TransformComponent::rotateY(const Angle::DEGREES_F angle)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -367,7 +367,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::rotateZ(const Angle::DEGREES<F32> angle)
+    void TransformComponent::rotateZ(const Angle::DEGREES_F angle)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -377,7 +377,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::setRotationX(const Angle::DEGREES<F32> angle)
+    void TransformComponent::setRotationX(const Angle::DEGREES_F angle)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -387,7 +387,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::setRotationY(const Angle::DEGREES<F32> angle)
+    void TransformComponent::setRotationY(const Angle::DEGREES_F angle)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -397,7 +397,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::setRotationZ(const Angle::DEGREES<F32> angle)
+    void TransformComponent::setRotationZ(const Angle::DEGREES_F angle)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);

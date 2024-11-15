@@ -817,16 +817,6 @@ namespace Divide
             (Hash_combine( seed, rest ), ...);
         }
 
-        template <typename TargetType, typename SourceType>
-        TargetType ConvertData( const SourceType& data )
-        {
-            TargetType targetValue;
-            std::istringstream iss( data );
-            iss >> targetValue;
-            DIVIDE_ASSERT( !iss.fail(), "Util::convertData error : invalid conversion!" );
-            return targetValue;
-        }
-
         template<class FwdIt, class Compare>
         void InsertionSort( FwdIt first, FwdIt last, Compare cmp )
         {

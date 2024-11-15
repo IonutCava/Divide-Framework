@@ -41,8 +41,8 @@ BEGIN_COMPONENT_EXT1(SpotLight, ComponentType::SPOT_LIGHT, Light)
    public:
     explicit SpotLightComponent(SceneGraphNode* sgn, PlatformContext& context);
 
-    PROPERTY_RW(Angle::DEGREES<F32>, coneCutoffAngle, 35.0f);
-    PROPERTY_RW(Angle::DEGREES<F32>, outerConeCutoffAngle, 15.0f);
+    PROPERTY_RW(Angle::DEGREES_F, coneCutoffAngle, 35.0f);
+    PROPERTY_RW(Angle::DEGREES_F, outerConeCutoffAngle, 15.0f);
     /// If this is true, we render a cone narrow cone to approximate the light's direction
     PROPERTY_RW(bool, showDirectionCone, false);
 

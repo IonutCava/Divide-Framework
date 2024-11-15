@@ -199,7 +199,7 @@ void GUIConsoleCommandParser::handleFOVCommand(const string& args) {
 
     const I32 FoV = CLAMPED<I32>(atoi(args.c_str()), 40, 140);
 
-    Attorney::ProjectManagerCameraAccessor::playerCamera(_context.kernel().projectManager().get())->setHorizontalFoV(Angle::DEGREES<F32>(FoV));
+    Attorney::ProjectManagerCameraAccessor::playerCamera(_context.kernel().projectManager().get())->setHorizontalFoV(Angle::DEGREES_F(FoV));
 }
 
 void GUIConsoleCommandParser::handleInvalidCommand(const string& args) {

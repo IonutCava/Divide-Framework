@@ -196,7 +196,7 @@ namespace Divide
                 break;
             case LightType::SPOT:
             {
-                const Angle::RADIANS<F32> angle = Angle::DegreesToRadians( static_cast<SpotLightComponent*>(this)->outerConeCutoffAngle() );
+                const Angle::RADIANS_F angle = Angle::to_RADIANS( static_cast<SpotLightComponent*>(this)->outerConeCutoffAngle() );
                 const F32 radius = angle > M_PI_4 ? range() * tan( angle ) : range() * 0.5f / pow( cos( angle ), 2.0f );
                 const vec3<F32> position = positionCache() + directionCache() * radius;
 

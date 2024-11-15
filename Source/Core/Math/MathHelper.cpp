@@ -14,7 +14,7 @@ namespace Divide::Util {
 bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<F32>& translationOut,
                      vec3<F32>& scaleOut,
-                     vec3<Angle::RADIANS<F32>>& rotationOut,
+                     vec3<Angle::RADIANS_F>& rotationOut,
                      bool& isUniformScaleOut)
 {
     using T = F32;
@@ -73,14 +73,16 @@ bool decomposeMatrix(const mat4<F32>& transform,
 bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<F32>& translationOut,
                      vec3<F32>& scaleOut,
-                     vec3<Angle::RADIANS<F32>>& rotationOut) {
+                     vec3<Angle::RADIANS_F>& rotationOut)
+{
     bool uniformScaleTemp = false;
     return decomposeMatrix(transform, translationOut, scaleOut, rotationOut, uniformScaleTemp);
 }
 
 bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<F32>& translationOut,
-                     vec3<F32>& scaleOut) {
+                     vec3<F32>& scaleOut)
+{
     using T = F32;
 
     glm::mat4 LocalMatrix = glm::make_mat4(transform.mat);

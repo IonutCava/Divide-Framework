@@ -405,10 +405,10 @@ namespace Divide
 
                 LightProperties& temp = crtData[ret - 1];
                 light->getDiffuseColour( tempColour );
-                temp._diffuse.set( tempColour * light->intensity(), isSpot ? std::cos( Angle::DegreesToRadians( spot->outerConeCutoffAngle() ) ) : 0.f );
+                temp._diffuse.set( tempColour * light->intensity(), isSpot ? std::cos( Angle::to_RADIANS( spot->outerConeCutoffAngle() ) ) : 0.f );
                 // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
                 temp._position.set( isDir ? VECTOR3_ZERO : (viewMatrix * vec4<F32>( light->positionCache(), 1.0f )).xyz, light->range() );
-                temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * vec4<F32>( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::DegreesToRadians( spot->coneCutoffAngle() ) ) : 0.f );
+                temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * vec4<F32>( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::to_RADIANS( spot->coneCutoffAngle() ) ) : 0.f );
                 temp._options.xyz = { typeIndex, light->shadowPropertyIndex(), isSpot ? to_I32( spot->coneSlantHeight() ) : 0 };
 
                 ++lightCount[typeIndex];

@@ -101,21 +101,21 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void scaleZ(F32 amount) override;
      using ITransform::setScale;
 
-     void setRotation(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) override;
-     void setRotation(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) override;
+     void setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) override;
+     void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
      void setRotation(const Quaternion<F32>& quat) override;
-     void setRotationX(Angle::DEGREES<F32> angle) override;
-     void setRotationY(Angle::DEGREES<F32> angle) override;
-     void setRotationZ(Angle::DEGREES<F32> angle) override;
+     void setRotationX(Angle::DEGREES_F angle) override;
+     void setRotationY(Angle::DEGREES_F angle) override;
+     void setRotationZ(Angle::DEGREES_F angle) override;
      using ITransform::setRotation;
 
-     void rotate(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) override;
-     void rotate(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) override;
+     void rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) override;
+     void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
      void rotate(const Quaternion<F32>& quat) override;
      void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
-     void rotateX(Angle::DEGREES<F32> angle) override;
-     void rotateY(Angle::DEGREES<F32> angle) override;
-     void rotateZ(Angle::DEGREES<F32> angle) override;
+     void rotateX(Angle::DEGREES_F angle) override;
+     void rotateY(Angle::DEGREES_F angle) override;
+     void rotateZ(Angle::DEGREES_F angle) override;
      using ITransform::rotate;
 
      [[nodiscard]] const vec3<F32> getLocalDirection(const vec3<F32>& worldForward = WORLD_Z_NEG_AXIS) const;

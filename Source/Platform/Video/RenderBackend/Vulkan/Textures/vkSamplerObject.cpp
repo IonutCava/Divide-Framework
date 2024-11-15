@@ -66,7 +66,7 @@ namespace Divide {
             case TextureBorderColour::OPAQUE_WHITE_F32     : samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;      break;
         }
 
-        if (descriptor._customBorderColour == TextureBorderColour::CUSTOM_INT)
+        if (descriptor._borderColour == TextureBorderColour::CUSTOM_INT)
         {
             customBorderColour.customBorderColor.uint32[0] = to_U32(descriptor._customBorderColour.r);
             customBorderColour.customBorderColor.uint32[1] = to_U32(descriptor._customBorderColour.g);
@@ -75,7 +75,7 @@ namespace Divide {
             customBorderColour.format = VK_FORMAT_R8_UINT;
             samplerInfo.pNext = &customBorderColour;
         }
-        else if ( descriptor._customBorderColour == TextureBorderColour::CUSTOM_F32 )
+        else if ( descriptor._borderColour == TextureBorderColour::CUSTOM_F32 )
         {
             const FColour4 fColour = Util::ToFloatColour(descriptor._customBorderColour);
             customBorderColour.customBorderColor.float32[0] = fColour.r;

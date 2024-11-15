@@ -62,14 +62,14 @@ namespace Util {
 
     /// Set the local orientation using the Axis-Angle system.
     /// The angle can be in either degrees(default) or radians
-    void PhysXActor::setRotation(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) {
+    void PhysXActor::setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) {
         DIVIDE_UNUSED(axis);
         DIVIDE_UNUSED(degrees);
     }
 
     /// Set the local orientation using the Euler system.
     /// The angles can be in either degrees(default) or radians
-    void PhysXActor::setRotation(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) {
+    void PhysXActor::setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) {
         DIVIDE_UNUSED(pitch);
         DIVIDE_UNUSED(yaw);
         DIVIDE_UNUSED(roll);
@@ -93,7 +93,7 @@ namespace Util {
     /// Apply the specified Axis-Angle rotation starting from the current
     /// orientation.
     /// The angles can be in either degrees(default) or radians
-    void PhysXActor::rotate(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) {
+    void PhysXActor::rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) {
         DIVIDE_UNUSED(axis);
         DIVIDE_UNUSED(degrees);
     }
@@ -101,7 +101,7 @@ namespace Util {
     /// Apply the specified Euler rotation starting from the current
     /// orientation.
     /// The angles can be in either degrees(default) or radians
-    void PhysXActor::rotate(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) {
+    void PhysXActor::rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) {
         DIVIDE_UNUSED(pitch);
         DIVIDE_UNUSED(yaw);
         DIVIDE_UNUSED(roll);
@@ -150,37 +150,37 @@ namespace Util {
 
     /// Rotate on the X axis (Axis-Angle used) by the specified angle (either
     /// degrees or radians)
-    void PhysXActor::rotateX(const Angle::DEGREES<F32> angle) {
+    void PhysXActor::rotateX(const Angle::DEGREES_F angle) {
         DIVIDE_UNUSED( angle );
     }
 
     /// Rotate on the Y axis (Axis-Angle used) by the specified angle (either
     /// degrees or radians)
-    void PhysXActor::rotateY(const Angle::DEGREES<F32> angle) {
+    void PhysXActor::rotateY(const Angle::DEGREES_F angle) {
         DIVIDE_UNUSED( angle );
     }
 
     /// Rotate on the Z axis (Axis-Angle used) by the specified angle (either
     /// degrees or radians)
-    void PhysXActor::rotateZ(const Angle::DEGREES<F32> angle) {
+    void PhysXActor::rotateZ(const Angle::DEGREES_F angle) {
         DIVIDE_UNUSED( angle );
     }
 
     /// Set the rotation on the X axis (Axis-Angle used) by the specified angle
     /// (either degrees or radians)
-    void PhysXActor::setRotationX(const Angle::DEGREES<F32> angle) {
+    void PhysXActor::setRotationX(const Angle::DEGREES_F angle) {
         DIVIDE_UNUSED( angle );
     }
 
     /// Set the rotation on the Y axis (Axis-Angle used) by the specified angle
     /// (either degrees or radians)
-    void PhysXActor::setRotationY(const Angle::DEGREES<F32> angle) {
+    void PhysXActor::setRotationY(const Angle::DEGREES_F angle) {
         DIVIDE_UNUSED( angle );
     }
 
     /// Set the rotation on the Z axis (Axis-Angle used) by the specified angle
     /// (either degrees or radians)
-    void PhysXActor::setRotationZ(const Angle::DEGREES<F32> angle) {
+    void PhysXActor::setRotationZ(const Angle::DEGREES_F angle) {
         DIVIDE_UNUSED( angle );
     }
     

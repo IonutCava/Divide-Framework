@@ -89,43 +89,43 @@ public:
 
     /// Set the local orientation using the Axis-Angle system.
     /// The angle can be in either degrees(default) or radians
-    virtual void setRotation(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) = 0;
+    virtual void setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) = 0;
     /// Set the local orientation using the Euler system.
     /// The angles can be in either degrees(default) or radians
-    virtual void setRotation(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) = 0;
+    virtual void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) = 0;
     /// Set the local orientation so that it matches the specified quaternion.
     virtual void setRotation(const Quaternion<F32>& quat) = 0;
     /// Set the rotation on the X axis (Axis-Angle used) by the specified angle
     /// (either degrees or radians)
-    virtual void setRotationX(Angle::DEGREES<F32> angle) = 0;
+    virtual void setRotationX(Angle::DEGREES_F angle) = 0;
     /// Set the rotation on the Y axis (Axis-Angle used) by the specified angle
     /// (either degrees or radians)
-    virtual void setRotationY(Angle::DEGREES<F32> angle) = 0;
+    virtual void setRotationY(Angle::DEGREES_F angle) = 0;
     /// Set the rotation on the Z axis (Axis-Angle used) by the specified angle
     /// (either degrees or radians)
-    virtual void setRotationZ(Angle::DEGREES<F32> angle) = 0;
+    virtual void setRotationZ(Angle::DEGREES_F angle) = 0;
     /// Apply the specified Axis-Angle rotation starting from the current orientation.
     /// The angles can be in either degrees(default) or radians
-    virtual void rotate(const vec3<F32>& axis, Angle::DEGREES<F32> degrees) = 0;
+    virtual void rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) = 0;
     /// Apply the specified Euler rotation starting from the current orientation.
     /// The angles can be in either degrees(default) or radians
-    virtual void rotate(Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> roll) = 0;
+    virtual void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) = 0;
     /// Apply the specified Quaternion rotation starting from the current orientation.
     virtual void rotate(const Quaternion<F32>& quat) = 0;
     /// Perform a SLERP rotation towards the specified quaternion
     virtual void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) = 0;
     /// Rotate on the X axis (Axis-Angle used) by the specified angle (either degrees or radians)
-    virtual void rotateX(Angle::DEGREES<F32> angle) = 0;
+    virtual void rotateX(Angle::DEGREES_F angle) = 0;
     /// Rotate on the Y axis (Axis-Angle used) by the specified angle (either degrees or radians)
-    virtual void rotateY(Angle::DEGREES<F32> angle) = 0;
+    virtual void rotateY(Angle::DEGREES_F angle) = 0;
     /// Rotate on the Z axis (Axis-Angle used) by the specified angle (either degrees or radians)
-    virtual void rotateZ(Angle::DEGREES<F32> angle) = 0;
+    virtual void rotateZ(Angle::DEGREES_F angle) = 0;
     /// Set an uniform scale on all three axis
     void setScale( F32 amount );
     /// Set a scaling factor for each axis
     void setScale( F32 x, F32 y, F32 z );
     /// Set the euler rotation in degrees
-    void setRotationEuler( const vec3<F32>& euler );
+    void setRotationEuler( const vec3<Angle::DEGREES_F>& euler );
     /// Translate the object on each axis by the specified amount 
     void translate( F32 x, F32 y, F32 z );
     /// Translate the object on the X axis by the specified amount
@@ -139,9 +139,9 @@ public:
     /// Increase the scaling factor on all three axis by the specified amounts
     void scale( F32 x, F32 y, F32 z);
     /// Apply an axis-angle rotation
-    void rotate( F32 xAxis, F32 yAxis, F32 zAxis, Angle::DEGREES<F32> degrees);
+    void rotate( F32 xAxis, F32 yAxis, F32 zAxis, Angle::DEGREES_F degrees);
     /// Apply an euler rotation
-    void rotate( const vec3<F32>& euler);
+    void rotate( const vec3<Angle::DEGREES_F>& euler);
     
     /// Return the scale factor
     virtual void getScale(vec3<F32>& scaleOut) const = 0;

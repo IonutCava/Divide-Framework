@@ -490,7 +490,7 @@ namespace Divide
         if ( _init )
         {
             const F32 aspectRatio = to_F32( params.width ) / params.height;
-            const F32 vFoV = Angle::to_VerticalFoV( platformContext().config().runtime.horizontalFOV, to_D64( aspectRatio ) );
+            const Angle::DEGREES_F vFoV = Angle::to_VerticalFoV( Angle::DEGREES_F(platformContext().config().runtime.horizontalFOV), to_D64( aspectRatio ) );
             const vec2<F32> zPlanes( Camera::s_minNearZ, platformContext().config().runtime.cameraViewDistance );
 
             auto& players = Attorney::SceneProjectManager::getPlayers( activeProject()->getActiveScene() );
@@ -819,9 +819,9 @@ namespace Divide
         const GFXDevice& gfx = parent().platformContext().gfx();
         SceneShaderData* sceneData = gfx.sceneData().get();
 
-        const Angle::DEGREES<F32> sunAltitude = Angle::RadiansToDegrees( activeScene->getCurrentSunDetails().altitude);
-        const Angle::DEGREES<F32> sunAltitudeMax = Angle::RadiansToDegrees( activeScene->getCurrentSunDetails().altitudeMax);
-        const Angle::DEGREES<F32> sunAzimuth = Angle::RadiansToDegrees( activeScene->getCurrentSunDetails().azimuth);
+        const Angle::DEGREES_F sunAltitudeMax = Angle::to_DEGREES( activeScene->getCurrentSunDetails().altitudeMax );
+        const Angle::DEGREES_F sunAltitude    = Angle::to_DEGREES( activeScene->getCurrentSunDetails().altitude );
+        const Angle::DEGREES_F sunAzimuth     = Angle::to_DEGREES( activeScene->getCurrentSunDetails().azimuth );
 
         sceneData->sunDetails( activeScene->getSunDirection(), sunColour, (sunAltitude / sunAltitudeMax), sunAzimuth);
         sceneData->appData( _elapsedGameTimeMS, _elapsedAppTimeMS, gfx.materialDebugFlag() );

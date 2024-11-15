@@ -1637,7 +1637,7 @@ namespace Divide
             params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )] = layer;
 
             // Set a 90 degree horizontal FoV perspective projection
-            camera->setProjection( 1.f, Angle::to_VerticalFoV( Angle::DEGREES<F32>( 90.f ), 1.f ), zPlanes );
+            camera->setProjection( 1.f, Angle::to_VerticalFoV( Angle::DEGREES_F( 90.f ), 1.f ), zPlanes );
             // Point our camera to the correct face
             camera->lookAt( pos, pos + (CameraDirections[i] * zPlanes.max), CameraUpVectors[i] );
             // Pass our render function to the renderer
@@ -1705,7 +1705,7 @@ namespace Divide
             // Point our camera to the correct face
             camera->lookAt( pos, pos + (i == 0 ? WORLD_Z_NEG_AXIS : WORLD_Z_AXIS) * zPlanes.y );
             // Set a 180 degree vertical FoV perspective projection
-            camera->setProjection( to_F32( aspect ), Angle::to_VerticalFoV( Angle::DEGREES<F32>( 180.0f ), aspect ), zPlanes );
+            camera->setProjection( to_F32( aspect ), Angle::to_VerticalFoV( Angle::DEGREES_F( 180.0f ), aspect ), zPlanes );
             // And generated required matrices
             // Pass our render function to the renderer
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
@@ -1873,7 +1873,7 @@ namespace Divide
         Configuration& config = context().config();
 
         const F32 aspectRatio = to_F32( w ) / h;
-        const F32 vFoV = Angle::to_VerticalFoV( config.runtime.horizontalFOV, to_D64( aspectRatio ) );
+        const Angle::DEGREES_F vFoV = Angle::to_VerticalFoV( Angle::DEGREES_F(config.runtime.horizontalFOV), to_D64( aspectRatio ) );
         const vec2<F32> zPlanes( Camera::s_minNearZ, config.runtime.cameraViewDistance );
 
         // Update the 2D camera so it matches our new rendering viewport

@@ -365,7 +365,7 @@ bool WarScene::addUnits() {
             {
                 zFactor *= 25;
                 zFactor += 200;
-                tComp->rotateY(Angle::DEGREES<F32>(180.0f));
+                tComp->rotateY(Angle::DEGREES_F(180.0f));
                 tComp->translateX(Metric::Base(100.0f));
                 tComp->translateX(Metric::Base(25.0f));
             }

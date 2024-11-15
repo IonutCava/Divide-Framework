@@ -1226,8 +1226,8 @@ namespace Divide
         setState( ResourceState::RES_LOADING );
 
         Camera* baseCamera = Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT );
-        const F32 hFoV = _context.config().runtime.horizontalFOV;
-        const F32 vFoV = Angle::to_VerticalFoV( hFoV, to_D64( baseCamera->snapshot()._aspectRatio ) );
+        const Angle::DEGREES_F hFoV = _context.config().runtime.horizontalFOV;
+        const Angle::DEGREES_F vFoV = Angle::to_VerticalFoV( hFoV, to_D64( baseCamera->snapshot()._aspectRatio ) );
         baseCamera->setProjection( vFoV, { Camera::s_minNearZ, _context.config().runtime.cameraViewDistance } );
         baseCamera->speedFactor().move = Camera::DEFAULT_CAMERA_MOVE_SPEED;
         baseCamera->speedFactor().turn = Camera::DEFAULT_CAMERA_TURN_SPEED;
@@ -1798,15 +1798,15 @@ namespace Divide
                 const time_t now = mktime( &timeOfDay ); // normalize it
                 const SunInfo details = _dayNightData._skyInstance->setDateTimeAndLocation( localtime( &now ), _dayNightData._location );
 
-                const Angle::DEGREES<F32> sunAltitude = Angle::RadiansToDegrees( details.altitude );
-                const Angle::DEGREES<F32> sunAzimuth  = Angle::RadiansToDegrees( details.azimuth );
+                const Angle::DEGREES_F sunAltitude = Angle::to_DEGREES( details.altitude );
+                const Angle::DEGREES_F sunAzimuth  = Angle::to_DEGREES( details.azimuth );
 
-                constexpr Angle::DEGREES<F32> twilightDegrees{ -18.f };
-                constexpr Angle::DEGREES<F32> sunriseAzimuth{ 70.f };
-                constexpr Angle::DEGREES<F32> sunsetAzimuth{ 280.f };
+                const Angle::DEGREES_F twilightDegrees{ -18.f };
+                const Angle::DEGREES_F sunriseAzimuth{ 70.f };
+                const Angle::DEGREES_F sunsetAzimuth{ 280.f };
 
                 const bool isNight = sunAltitude < twilightDegrees;
-                const bool isTwilight = IS_IN_RANGE_INCLUSIVE( sunAltitude, twilightDegrees, 0.f );
+                const bool isTwilight = IS_IN_RANGE_INCLUSIVE( sunAltitude, twilightDegrees, Angle::DEGREES_F(0.f) );
                 const bool isDawn  = isTwilight && sunAzimuth < sunriseAzimuth;
                 const bool isDusk  = isTwilight && sunAzimuth > sunsetAzimuth;
 

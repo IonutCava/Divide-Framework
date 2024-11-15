@@ -285,6 +285,12 @@ using RADIANS = T;
 template<typename T> requires std::is_fundamental_v<T>
 using DEGREES = T;
 
+    using DEGREES_F = DEGREES<F32>;
+    using RADIANS_F = RADIANS<F32>;
+
+    using RADIANS_D = RADIANS<D64>;
+    using DEGREES_D = DEGREES<D64>;
+
 template <typename T>
 [[nodiscard]] constexpr DEGREES<T> to_VerticalFoV(DEGREES<T> horizontalFoV, D64 aspectRatio) noexcept;
 template <typename T>
@@ -305,7 +311,7 @@ template <typename T>
 [[nodiscard]] constexpr vec4<RADIANS<T>> to_RADIANS(const vec4<DEGREES<T>>& angle) noexcept;
 template <typename T>
 [[nodiscard]] constexpr vec4<DEGREES<T>> to_DEGREES(const vec4<RADIANS<T>>& angle) noexcept;
-
+} //namespace Angle
 /// Return the radian equivalent of the given degree value
 template <typename T>
 [[nodiscard]] constexpr T DegreesToRadians(T angleDegrees) noexcept;
@@ -320,7 +326,8 @@ template <typename T>
 [[nodiscard]] constexpr T Radians(T radians) noexcept;
 };
 
-namespace Metric {
+namespace Metric
+{
 /// Base value * 1000000000000
 template <typename T>
 [[nodiscard]] constexpr T Tera(T a);
@@ -400,7 +407,7 @@ template <typename T, typename U>
 /// Base value * 0.000000000001
 template <typename T, typename U>
 [[nodiscard]] constexpr T Pico(U a);
-}
+} //namespace Metric
 
 struct SimpleTime
 {
@@ -414,7 +421,8 @@ struct SimpleLocation
     F32 _longitude = 0;
 };
 
-namespace Time {
+namespace Time
+{
 /// Return the passed param without any modification
 /// Used only for emphasis
 template <typename T>
@@ -470,8 +478,13 @@ template <typename T = U64, typename U>
 [[nodiscard]] constexpr T SecondsToMicroseconds(U a) noexcept;
 template <typename T = U64, typename U>
 [[nodiscard]] constexpr T SecondsToNanoseconds(U a) noexcept;
-
 }  // namespace Time
+
+template<typename T>
+using base_type = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+template<typename T>
+concept ValidMathType = is_base_of_template<primitiveWrapper, base_type<T>>::value || (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>);
 
 namespace Util
 {
@@ -484,15 +497,11 @@ struct Circle
 
 [[nodiscard]] bool IntersectCircles(const Circle& cA, const Circle& cB, vec2<F32>* pointsOut) noexcept;
 
-[[nodiscard]] ptrdiff_t size_tGetAlignmentCorrected(const size_t value, const size_t alignment) noexcept;
+[[nodiscard]] size_t GetAlignmentCorrected(const size_t value, const size_t alignment) noexcept;
 
 /// a la Boost
 template <typename T, typename... Rest>
 void Hash_combine(size_t& seed, const T& v, const Rest&... rest) noexcept;
-
-// U = to data type, T = from data type
-template <typename U, typename T>
-[[nodiscard]] U ConvertData(const T& data);
 
 template<class FwdIt, class Compare = std::less<typename std::iterator_traits<FwdIt>::value_type>>
 void InsertionSort(FwdIt first, FwdIt last, Compare cmp = Compare());
@@ -529,13 +538,13 @@ void ToFloatColour( const vec3<U32>& uintColour, FColour3& colourOut ) noexcept;
 bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<F32>& translationOut,
                      vec3<F32>& scaleOut,
-                     vec3<Angle::RADIANS<F32>>& rotationOut,
+                     vec3<Angle::RADIANS_F>& rotationOut,
                      bool& isUniformScaleOut);
 
 bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<F32>& translationOut,
                      vec3<F32>& scaleOut,
-                     vec3<Angle::RADIANS<F32>>& rotationOut);
+                     vec3<Angle::RADIANS_F>& rotationOut);
 
 bool decomposeMatrix(const mat4<F32>& transform,
                      vec3<F32>& translationOut,
