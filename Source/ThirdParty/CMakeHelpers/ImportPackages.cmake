@@ -116,6 +116,17 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
 )
 
+#chaiscript
+set(UNIT_TEST_LIGHT TRUE)
+set(BUILD_SAMPLES FALSE)
+FetchContent_Declare(
+    chaiscript
+    GIT_REPOSITORY https://github.com/ChaiScript/ChaiScript.git
+    GIT_TAG        406a7ba1ef144d67021a68b1ba09224244a761ca
+    #GIT_PROGRESS   TRUE
+    SYSTEM
+)
+
 FetchContent_MakeAvailableExcludeFromAll(
     spirv_reflect
     optick
@@ -128,6 +139,7 @@ FetchContent_MakeAvailableExcludeFromAll(
     imgui_club
     imguizmo
     icon_font_cpp_headers
+    chaiscript
 )
 
 if (BUILD_TESTING_INTERNAL)
@@ -147,6 +159,7 @@ include_directories(
     ${imgui_club_SOURCE_DIR}
     ${imguizmo_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
+    ${chaiscript_SOURCE_DIR}/include
 )
 
 set( TILEABLE_VOLUME_NOISE_SRC_FILES ${tileable_volume_noise_SOURCE_DIR}/TileableVolumeNoise.cpp )

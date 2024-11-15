@@ -103,6 +103,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <ctre.hpp>
 
+#include <chaiscript/chaiscript.hpp>
+#include <chaiscript/utility/utility.hpp>
+
 #include "Platform/Threading/Headers/SharedMutex.h"
 
 #include "Core/Headers/Console.h"

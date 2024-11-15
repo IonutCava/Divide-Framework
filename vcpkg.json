@@ -6,7 +6,6 @@
         "pkgconf",
         "boost-property-tree",
         "boost-asio",
-        "chaiscript",
         "stb",
         "freetype",
         "fmt",
