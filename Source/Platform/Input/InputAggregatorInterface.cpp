@@ -27,6 +27,25 @@ MouseButton mouseButtonByName(const string& buttonName) {
     return MouseButton::MB_Button7;
 }
 
+namespace
+{
+    I32 charToInt(const char* val, const I32 defaultValue)
+    {
+        try
+        {
+            return std::stoi(val);
+        }
+        catch (const std::invalid_argument&)
+        {
+        }
+        catch (const std::out_of_range&)
+        {
+        }
+
+        return defaultValue;
+    }
+}
+
 JoystickElement joystickElementByName(const string& elementName) {
     JoystickElement ret = {};
 
@@ -48,7 +67,7 @@ JoystickElement joystickElementByName(const string& elementName) {
     vector<string> buttonElements = Util::Split<vector<string>, string>(elementName.c_str(), '_');
     assert(buttonElements.size() == 2 && "Invalid joystick element name!");
     assert(Util::CompareIgnoreCase(buttonElements[0], "BUTTON"));
-    ret._elementIndex = Util::ConvertData<U8, string>(buttonElements[1]);
+    ret._elementIndex = to_U8(charToInt(buttonElements[1].c_str(), 0));
 
     return ret;
 }

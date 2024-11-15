@@ -104,19 +104,41 @@ namespace Divide::AI::Navigation
 
     namespace
     {
-        I32 charToInt( const char* val )
+        I32 charToInt( const char* val, const I32 defaultValue)
         {
-            return Util::ConvertData<I32, const char*>( val );
+            try
+            {
+                return std::stoi(val);
+            }
+            catch(const std::invalid_argument&)
+            {
+            }
+            catch(const std::out_of_range&)
+            {
+            }
+
+            return defaultValue;
         }
 
-        F32 charToFloat( const char* val )
+        F32 charToFloat( const char* val, const F32 defaultValue)
         {
-            return Util::ConvertData<F32, const char*>( val );
+            try
+            {
+                return std::stof(val);
+            }
+            catch (const std::invalid_argument&)
+            {
+            }
+            catch (const std::out_of_range&)
+            {
+            }
+
+            return defaultValue;
         }
 
         bool charToBool( const char* val ) noexcept
         {
-            return _stricmp( val, "true" ) == 0;
+            return string(val).compare("true") == 0;
         }
     }
 
@@ -133,40 +155,25 @@ namespace Divide::AI::Navigation
             return false;
 
         // Load all key-value pairs for the "Rasterization" section
-        _configParams.setCellSize(
-            charToFloat( ini.GetValue( "Rasterization", "fCellSize", "0.3" ) ) );
-        _configParams.setCellHeight(
-            charToFloat( ini.GetValue( "Rasterization", "fCellHeight", "0.2" ) ) );
-        _configParams.setTileSize(
-            charToInt( ini.GetValue( "Rasterization", "iTileSize", "48" ) ) );
+        _configParams.setCellSize(charToFloat( ini.GetValue( "Rasterization", "fCellSize", "0.3" ), 0.3f ) );
+        _configParams.setCellHeight(charToFloat( ini.GetValue( "Rasterization", "fCellHeight", "0.2" ), 0.2f ) );
+        _configParams.setTileSize(charToInt( ini.GetValue( "Rasterization", "iTileSize", "48" ), 48 ) );
         // Load all key-value pairs for the "Agent" section
-        _configParams.setAgentHeight(
-            charToFloat( ini.GetValue( "Agent", "fAgentHeight", "2.5" ) ) );
-        _configParams.setAgentRadius(
-            charToFloat( ini.GetValue( "Agent", "fAgentRadius", "0.5" ) ) );
-        _configParams.setAgentMaxClimb(
-            charToFloat( ini.GetValue( "Agent", "fAgentMaxClimb", "1" ) ) );
-        _configParams.setAgentMaxSlope(
-            charToFloat( ini.GetValue( "Agent", "fAgentMaxSlope", "20" ) ) );
+        _configParams.setAgentHeight(charToFloat( ini.GetValue( "Agent", "fAgentHeight", "2.5" ), 2.5f ) );
+        _configParams.setAgentRadius(charToFloat( ini.GetValue( "Agent", "fAgentRadius", "0.5" ), 0.5f ) );
+        _configParams.setAgentMaxClimb(charToFloat( ini.GetValue( "Agent", "fAgentMaxClimb", "1" ), 1 ) );
+        _configParams.setAgentMaxSlope(charToFloat( ini.GetValue( "Agent", "fAgentMaxSlope", "20" ), 20 ) );
         // Load all key-value pairs for the "Region" section
-        _configParams.setRegionMergeSize(
-            charToInt( ini.GetValue( "Region", "fMergeSize", "20" ) ) );
-        _configParams.setRegionMinSize(
-            charToInt( ini.GetValue( "Region", "fMinSize", "50" ) ) );
+        _configParams.setRegionMergeSize(charToInt( ini.GetValue( "Region", "fMergeSize", "20" ), 20 ) );
+        _configParams.setRegionMinSize(charToInt( ini.GetValue( "Region", "fMinSize", "50" ), 50 ) );
         // Load all key-value pairs for the "Polygonization" section
-        _configParams.setEdgeMaxLen(
-            charToInt( ini.GetValue( "Polygonization", "fEdgeMaxLength", "12" ) ) );
-        _configParams.setEdgeMaxError(
-            charToFloat( ini.GetValue( "Polygonization", "fEdgeMaxError", "1.3" ) ) );
-        _configParams.setVertsPerPoly(
-            charToInt( ini.GetValue( "Polygonization", "iVertsPerPoly", "6" ) ) );
+        _configParams.setEdgeMaxLen(charToInt( ini.GetValue( "Polygonization", "fEdgeMaxLength", "12" ),12 ) );
+        _configParams.setEdgeMaxError(charToFloat( ini.GetValue( "Polygonization", "fEdgeMaxError", "1.3" ), 1.3f ) );
+        _configParams.setVertsPerPoly(charToInt( ini.GetValue( "Polygonization", "iVertsPerPoly", "6" ), 6 ) );
         // Load all key-value pairs for the "DetailMesh" section
-        _configParams.setDetailSampleDist(
-            charToFloat( ini.GetValue( "DetailMesh", "fDetailSampleDist", "6" ) ) );
-        _configParams.setDetailSampleMaxError(
-            charToFloat( ini.GetValue( "DetailMesh", "fDetailSampleMaxError", "1" ) ) );
-        _configParams.setKeepInterResults(
-            charToBool( ini.GetValue( "DetailMesh", "bKeepInterResults", "false" ) ) );
+        _configParams.setDetailSampleDist(charToFloat( ini.GetValue( "DetailMesh", "fDetailSampleDist", "6" ), 6 ) );
+        _configParams.setDetailSampleMaxError(charToFloat( ini.GetValue( "DetailMesh", "fDetailSampleMaxError", "1" ), 1 ) );
+        _configParams.setKeepInterResults(charToBool( ini.GetValue( "DetailMesh", "bKeepInterResults", "false" ) ) );
 
         return true;
     }
