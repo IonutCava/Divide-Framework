@@ -13,7 +13,7 @@
 
 namespace Divide
 {
-    glBufferImpl::glBufferImpl( GFXDevice& context, const BufferImplParams& params, const std::pair<const bufferPtr, size_t>& initialData, const std::string_view name )
+    glBufferImpl::glBufferImpl( GFXDevice& context, const BufferImplParams& params, const std::pair<const bufferPtr, size_t>& initialData, [[maybe_unused]] const std::string_view name )
         : _params( params )
         , _context( context )
     {

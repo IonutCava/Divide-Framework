@@ -214,6 +214,7 @@ namespace Divide
             case Input::KeyCode::KC_WEBBACK:
             case Input::KeyCode::KC_MYCOMPUTER:
             case Input::KeyCode::KC_MAIL:
+            default:
             case Input::KeyCode::KC_MEDIASELECT: break;
         }
 

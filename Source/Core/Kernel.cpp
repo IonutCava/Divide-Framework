@@ -63,7 +63,12 @@ size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
         case TaskPoolType::RENDERER:      return g_renderThreadPoolSize;
         case TaskPoolType::LOW_PRIORITY:  return g_backupThreadPoolSize;
         case TaskPoolType::HIGH_PRIORITY: return std::max(g_totalWorkerCount - g_backupThreadPoolSize - g_assetLoadingPoolSize - g_renderThreadPoolSize - g_renderThreadCount, 4u);
-        case TaskPoolType::COUNT: break;
+
+        default: 
+            DIVIDE_UNEXPECTED_CALL();
+            //fallthrough
+        case TaskPoolType::COUNT: 
+            break;
     }
 
     return g_totalWorkerCount;

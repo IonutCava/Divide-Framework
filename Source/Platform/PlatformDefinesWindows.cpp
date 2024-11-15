@@ -139,6 +139,8 @@ namespace Divide {
             case ThreadPriority::ABOVE_NORMAL:  ::SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);  break;
             case ThreadPriority::HIGHEST:       ::SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);       break;
             case ThreadPriority::TIME_CRITICAL: ::SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL); break;
+
+            default:
             case ThreadPriority::COUNT:          DIVIDE_UNEXPECTED_CALL();                                  break;
         }
     }

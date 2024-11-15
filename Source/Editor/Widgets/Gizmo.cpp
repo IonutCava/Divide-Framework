@@ -172,7 +172,10 @@ namespace Divide
             case ImGuizmo::ROTATE_Y: node.tComp->rotateY( -euler.y ); updateGridMatrix = true; break;
             case ImGuizmo::ROTATE_Z: node.tComp->rotateZ( -euler.z ); updateGridMatrix = true; break;
 
-            case ImGuizmo::BOUNDS: break;
+            default:
+            case ImGuizmo::SCALEU:
+            case ImGuizmo::BOUNDS:
+            case ImGuizmo::UNIVERSAL:
             case ImGuizmo::ROTATE_SCREEN: break;
         }
 
@@ -437,7 +440,7 @@ namespace Divide
         return ret;
     }
 
-    bool Gizmo::onMouseButtonPressed(Input::MouseButtonEvent& argInOut) noexcept
+    bool Gizmo::onMouseButtonPressed([[maybe_unused]] Input::MouseButtonEvent& argInOut) noexcept
     {
         _wasUsed = false;
         if ( isActive() )
@@ -449,7 +452,7 @@ namespace Divide
         return false;
     }
 
-    bool Gizmo::onMouseButtonReleased(Input::MouseButtonEvent& argInOut) noexcept
+    bool Gizmo::onMouseButtonReleased([[maybe_unused]] Input::MouseButtonEvent& argInOut) noexcept
     {
         if (_wasUsed)
         {

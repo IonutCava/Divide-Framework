@@ -32,9 +32,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SCRIPTING_SCRIPT_INL_
 #define DVD_SCRIPTING_SCRIPT_INL_
 
-#include <chaiscript/utility/utility.hpp>
-#include <chaiscript/chaiscript.hpp>
-
 namespace Divide {
 
 template<typename T>

@@ -33,9 +33,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SCRIPTING_SCRIPT_BINDINGS_H_
 #define DVD_SCRIPTING_SCRIPT_BINDINGS_H_
 
-#include <chaiscript/chaiscript_stdlib.hpp>
-
-namespace chaiscript {
+namespace chaiscript
+{
     class Module;
 }
 

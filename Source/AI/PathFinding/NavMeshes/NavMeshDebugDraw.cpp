@@ -74,7 +74,9 @@ void NavMeshDebugDraw::begin(const duDebugDrawPrimitives prim, F32 size) {
         return;
     }
 
-    switch (prim) {
+    switch (prim)
+    {
+        default:
         case DU_DRAW_QUADS:
             DIVIDE_UNEXPECTED_CALL();
             break;

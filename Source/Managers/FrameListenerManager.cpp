@@ -46,7 +46,8 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
 /// If any Listener returns false, the whole manager returns false for this specific step
 /// If the manager returns false at any step, the application exists
 bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
-    switch (evt._type) {
+    switch (evt._type)
+    {
         case FrameEventType::FRAME_EVENT_STARTED     : return frameStarted(evt);
         case FrameEventType::FRAME_PRERENDER         : return framePreRender(evt);
         case FrameEventType::FRAME_SCENERENDER_START : return frameSceneRenderStarted(evt);
@@ -55,6 +56,7 @@ bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
         case FrameEventType::FRAME_EVENT_PROCESS     : return frameRenderingQueued(evt);
         case FrameEventType::FRAME_EVENT_ENDED       : return frameEnded(evt);
         case FrameEventType::FRAME_EVENT_ANY         : return true;
+        default: break;
     };
 
     return false;

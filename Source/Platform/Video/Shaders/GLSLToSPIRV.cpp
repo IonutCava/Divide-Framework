@@ -263,6 +263,8 @@ namespace
             case ShaderType::COMPUTE: return ShaderStageVisibility::COMPUTE;
             case ShaderType::MESH_NV: return ShaderStageVisibility::MESH_NV;
             case ShaderType::TASK_NV: return ShaderStageVisibility::TASK_NV;
+
+            default:
             case ShaderType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         };
 

@@ -120,6 +120,7 @@ namespace Divide
                     case physx::PxErrorCode::eABORT:              Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Abort", message, file, line ); return;
                     case physx::PxErrorCode::ePERF_WARNING:       Console::warnfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "Perf", message, file, line ); return;
                     case physx::PxErrorCode::eMASK_ALL:           Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "ALL", message, file, line ); return;
+                    default: break;
                 }
                 Console::errorfn( LOCALE_STR( "ERROR_PHYSX_GENERIC" ), "UNKNOWN", message, file, line );
             }

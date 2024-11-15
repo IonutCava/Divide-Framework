@@ -99,6 +99,7 @@ namespace Divide
                 case 1u: settings.currentGizmoOperation = ImGuizmo::SCALE_X; break;
                 case 2u: settings.currentGizmoOperation = ImGuizmo::SCALE_Y; break;
                 case 3u: settings.currentGizmoOperation = ImGuizmo::SCALE_Z; break;
+                default: break;
             }
             settings.currentAxisSelected = settings.previousAxisSelected[2];
             Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
@@ -116,6 +117,7 @@ namespace Divide
                 case 1u: settings.currentGizmoOperation = ImGuizmo::ROTATE_X; break;
                 case 2u: settings.currentGizmoOperation = ImGuizmo::ROTATE_Y; break;
                 case 3u: settings.currentGizmoOperation = ImGuizmo::ROTATE_Z; break;
+                default: break;
             }
             settings.currentAxisSelected = settings.previousAxisSelected[1];
             Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
@@ -133,6 +135,7 @@ namespace Divide
                 case 1u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_X; break;
                 case 2u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Y; break;
                 case 3u: settings.currentGizmoOperation = ImGuizmo::TRANSLATE_Z; break;
+                default: DIVIDE_UNEXPECTED_CALL(); break;
             }
             settings.currentAxisSelected = settings.previousAxisSelected[0];
             Attorney::EditorSceneViewWindow::editorEnableGizmo(_parent, true);
@@ -212,7 +215,7 @@ namespace Divide
                     settings.currentGizmoOperation = ImGuizmo::SCALE_X;
                     settings.previousAxisSelected[2] = 1u;
                     break;
-
+                default: break;
                 case ImGuizmo::ROTATE_SCREEN:
                 case ImGuizmo::BOUNDS: 
                 case ImGuizmo::UNIVERSAL:
@@ -253,6 +256,7 @@ namespace Divide
                     settings.currentGizmoOperation = ImGuizmo::SCALE_Y;
                     settings.previousAxisSelected[2] = 2u;
                     break;
+                default: break;
                 case ImGuizmo::ROTATE_SCREEN:
                 case ImGuizmo::BOUNDS:
                 case ImGuizmo::UNIVERSAL:
@@ -293,6 +297,7 @@ namespace Divide
                     settings.currentGizmoOperation = ImGuizmo::SCALE_Z;
                     settings.previousAxisSelected[2] = 3u;
                     break;
+                default: break;
                 case ImGuizmo::ROTATE_SCREEN:
                 case ImGuizmo::BOUNDS:
                 case ImGuizmo::UNIVERSAL:
@@ -333,6 +338,7 @@ namespace Divide
                     settings.currentGizmoOperation = ImGuizmo::SCALE;
                     settings.previousAxisSelected[2] = 0u;
                     break;
+                default: break;
                 case ImGuizmo::ROTATE_SCREEN:
                 case ImGuizmo::BOUNDS:
                     break;

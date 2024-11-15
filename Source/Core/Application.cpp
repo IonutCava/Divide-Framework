@@ -96,6 +96,7 @@ bool Application::onProfilerStateChanged( const Profiler::State state )
             context.config().debug.renderer.enableRenderAPIDebugging = apiDebugging;
         } break;
 
+        default:
         case Profiler::State::COUNT: break;
     }
 

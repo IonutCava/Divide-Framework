@@ -36,7 +36,8 @@ namespace Divide {
                 }
             }
 
-            switch (comp->_updateType) {
+            switch (comp->_updateType)
+            {
                 case EnvironmentProbeComponent::UpdateType::ALWAYS:
                     if (comp->_queueRefresh) {
                         comp->dirty(true);
@@ -50,6 +51,8 @@ namespace Divide {
                 case EnvironmentProbeComponent::UpdateType::ONCE:
                 case EnvironmentProbeComponent::UpdateType::ON_DIRTY:
                     break;//Nothing needed
+
+                default:
                 case EnvironmentProbeComponent::UpdateType::COUNT:
                     DIVIDE_UNEXPECTED_CALL();
                     break;

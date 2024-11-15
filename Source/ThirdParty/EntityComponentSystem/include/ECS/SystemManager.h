@@ -358,7 +358,7 @@ namespace ECS
             eastl::list<ISystem*> AS = { activeSystems... };
 			for (auto s : AS)
 			{
-				for (int i = 0; i < this->m_SystemWorkOrder.size(); ++i)
+				for (size_t i = 0; i < this->m_SystemWorkOrder.size(); ++i)
 				{
 					if (this->m_SystemWorkOrder[i]->GetStaticSystemTypeID() == s->GetStaticSystemTypeID())
 					{

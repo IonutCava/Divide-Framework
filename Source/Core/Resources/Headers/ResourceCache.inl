@@ -246,6 +246,8 @@ namespace Divide
             case RenderAPI::None:   GetMemPool<noTexture>().deleteElement( static_cast<ResourcePtr<noTexture>>( ptr ) ); break;
             case RenderAPI::OpenGL: GetMemPool<glTexture>().deleteElement( static_cast<ResourcePtr<glTexture>>( ptr ) ); break;
             case RenderAPI::Vulkan: GetMemPool<vkTexture>().deleteElement( static_cast<ResourcePtr<vkTexture>>( ptr ) ); break;
+
+            default:
             case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
         }
     }
@@ -258,6 +260,8 @@ namespace Divide
             case RenderAPI::None:   GetMemPool<noShaderProgram>().deleteElement( static_cast<ResourcePtr<noShaderProgram>>( ptr) ); break;
             case RenderAPI::OpenGL: GetMemPool<glShaderProgram>().deleteElement( static_cast<ResourcePtr<glShaderProgram>>( ptr) ); break;
             case RenderAPI::Vulkan: GetMemPool<vkShaderProgram>().deleteElement( static_cast<ResourcePtr<vkShaderProgram>>( ptr) ); break;
+
+            default:
             case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
         }
     }
@@ -450,6 +454,7 @@ namespace Divide
             case RenderAPI::OpenGL: return GetMemPool<glShaderProgram>().newElement( *s_context, descriptor );
             case RenderAPI::Vulkan: return GetMemPool<vkShaderProgram>().newElement( *s_context, descriptor );
 
+            default:
             case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
 
@@ -464,6 +469,8 @@ namespace Divide
             case RenderAPI::None:   return GetMemPool<noTexture>().newElement( *s_context, descriptor );
             case RenderAPI::OpenGL: return GetMemPool<glTexture>().newElement( *s_context, descriptor );
             case RenderAPI::Vulkan: return GetMemPool<vkTexture>().newElement( *s_context, descriptor );
+
+            default:
             case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
 

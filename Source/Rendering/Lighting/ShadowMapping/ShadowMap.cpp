@@ -51,6 +51,8 @@ namespace Divide
             case LightType::DIRECTIONAL: return ShadowType::CSM;
             case LightType::POINT: return ShadowType::CUBEMAP;
             case LightType::SPOT: return ShadowType::SINGLE;
+
+            default:
             case LightType::COUNT: break;
         }
 
@@ -64,6 +66,8 @@ namespace Divide
             case ShadowType::CSM: return LightType::DIRECTIONAL;
             case ShadowType::CUBEMAP: return LightType::POINT;
             case ShadowType::SINGLE: return LightType::SPOT;
+
+            default:
             case ShadowType::COUNT: break;
         }
 
@@ -231,6 +235,7 @@ namespace Divide
                     s_shadowMapGenerators.emplace_back(std::make_unique<CubeShadowMapGenerator>( context ));
                     s_shadowMapLifetime[i].resize( colourMapDescriptor._layerCount );
                 } break;
+                default:
                 case ShadowType::COUNT: break;
             }
         }
@@ -446,6 +451,8 @@ namespace Divide
             case LightType::DIRECTIONAL: return to_U32( static_cast<const DirectionalLightComponent&>(light).csmSplitCount() );
             case LightType::SPOT:
             case LightType::POINT: return 1u;
+
+            default:
             case LightType::COUNT: break;
         }
 
@@ -630,6 +637,8 @@ namespace Divide
                         s_debugViews.push_back( shadow );
                     }
                 } break;
+
+                default:
                 case LightType::COUNT: break;
             }
 

@@ -178,6 +178,8 @@ namespace Input {
         case MouseButton::MB_Button5:
         case MouseButton::MB_Button6:
         case MouseButton::MB_Button7:
+
+        default:
         case MouseButton::COUNT:
             return InputState::RELEASED;
         }

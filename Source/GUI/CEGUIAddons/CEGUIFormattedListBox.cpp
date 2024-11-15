@@ -101,7 +101,9 @@ void FormattedListboxTextItem::setupStringFormatter() const {
     d_formattedRenderedString = nullptr;
 
     // create new formatter of whichever type...
-    switch (d_formatting) {
+    switch (d_formatting)
+    {
+        default:
         case HTF_LEFT_ALIGNED:
             d_formattedRenderedString =
                 CEGUI_NEW_AO LeftAlignedRenderedString(d_renderedString);

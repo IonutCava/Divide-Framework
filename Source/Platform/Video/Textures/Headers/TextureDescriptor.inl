@@ -106,8 +106,10 @@ inline U8 NumChannels(const GFXImageFormat format) noexcept
         case GFXImageFormat::BC2:
         case GFXImageFormat::BC3:
         case GFXImageFormat::BC3n:
+        case GFXImageFormat::BC3_RGBM:
         case GFXImageFormat::BC7: return 4u;
 
+        default:
         case GFXImageFormat::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
     }
 

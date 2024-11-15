@@ -40,6 +40,8 @@ namespace Divide
             {
                 _api = std::make_unique<PhysX>( _context );
             } break;
+
+            default:
             case PhysicsAPI::ODE:
             case PhysicsAPI::Bullet:
             case PhysicsAPI::COUNT:

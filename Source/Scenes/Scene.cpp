@@ -1810,10 +1810,9 @@ namespace Divide
                 const bool isDawn  = isTwilight && sunAzimuth < sunriseAzimuth;
                 const bool isDusk  = isTwilight && sunAzimuth > sunsetAzimuth;
 
-                //Update sky direction (inverse direction for night)
+                //Update sky direction
                 const vec3<F32> sunPosition = _dayNightData._skyInstance->getSunPosition( _dayNightData._sunLight->range() );
                 vec3<F32> sunDirection = Normalized( VECTOR3_ZERO - sunPosition );
-                
 
                 //Update sun/moon colour
                 const FColour3 sunsetOrange{ 99.2f / 100.f, 36.9f / 100.f, 32.5f / 100.f };

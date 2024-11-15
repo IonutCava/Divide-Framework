@@ -687,6 +687,9 @@ namespace Divide::AI::Navigation
                         duDebugDrawNavMeshPortals( _debugDrawInterface.get(), *_navMesh );
                     }
                     break;
+
+                default:
+                    break;
             }
 
             if ( !_building )

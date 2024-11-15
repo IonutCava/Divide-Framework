@@ -87,18 +87,25 @@ void GUIMessageBox::setOffset(const vec2<I32> offsetFromCentre) {
     }
 }
 
-void GUIMessageBox::setMessageType(const MessageType type) {
-    if (_parent != nullptr) {
-        switch (type) {
-        case MessageType::MESSAGE_INFO: {
-            _msgBoxWindow->setProperty("CaptionColour", "FFFFFFFF");
-        } break;
-        case MessageType::MESSAGE_WARNING: {
-            _msgBoxWindow->setProperty("CaptionColour", "00FFFFFF");
-        } break;
-        case MessageType::MESSAGE_ERROR: {
-            _msgBoxWindow->setProperty("CaptionColour", "FF0000FF");
-        } break;
+void GUIMessageBox::setMessageType(const MessageType type)
+{
+    if (_parent != nullptr)
+    {
+        switch (type)
+        {
+            default:
+            case MessageType::MESSAGE_INFO:
+            {
+                _msgBoxWindow->setProperty("CaptionColour", "FFFFFFFF");
+            } break;
+            case MessageType::MESSAGE_WARNING:
+            {
+                _msgBoxWindow->setProperty("CaptionColour", "00FFFFFF");
+            } break;
+            case MessageType::MESSAGE_ERROR:
+            {
+                _msgBoxWindow->setProperty("CaptionColour", "FF0000FF");
+            } break;
         }
     }
 }

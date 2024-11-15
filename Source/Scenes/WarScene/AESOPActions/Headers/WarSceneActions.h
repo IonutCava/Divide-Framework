@@ -74,6 +74,7 @@ inline string WarSceneFactName(GOAPFact fact) {
             return "IDLING";
         case Fact::ENEMY_DEAD:
             return "ENEMY DEAD";
+        default:
         case Fact::COUNT: break;
     }
 

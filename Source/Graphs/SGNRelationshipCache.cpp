@@ -133,7 +133,9 @@ namespace Divide
                         return true;
                     }
                 }
-            }break;
+            } break;
+
+            default:
             case RelationshipType::COUNT: break;
         }
 

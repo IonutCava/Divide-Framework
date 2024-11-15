@@ -145,6 +145,7 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
             _isCompressed = false;
             break;
 
+        default:
         case PF_PVRTC2:
         case PF_PVRTC4:
         {
@@ -276,6 +277,8 @@ void DVDTexture::generateDVDTexture()
         {
             targetFormat = GFXImageFormat::DXT5_RGBA;
         }break;
+
+        default:
         case Texture::PixelFormat::PF_PVRTC2:
         case Texture::PixelFormat::PF_PVRTC4:
         {
@@ -327,6 +330,7 @@ bool DVDTexture::isPixelFormatSupported(const PixelFormat fmt) const
         case PF_RGBA_DXT5:
             return true;
 
+        default:
         case PF_PVRTC2:
         case PF_PVRTC4:
             break;

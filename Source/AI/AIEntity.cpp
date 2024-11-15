@@ -128,7 +128,9 @@ bool AIEntity::addSensor(const SensorType type)
         {
             sensor = std::make_unique<VisualSensor>(this);
         } break;
-        case SensorType::NONE:{
+        default:
+        case SensorType::NONE:
+        {
                 
         } break;
     }

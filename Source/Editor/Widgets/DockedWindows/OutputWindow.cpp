@@ -178,6 +178,7 @@ namespace Divide
                 }
                 switch (message._type)
                 {
+                    default:
                     case Console::EntryType::COUNT: 
                         DIVIDE_UNEXPECTED_CALL();
                         continue;

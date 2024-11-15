@@ -27,6 +27,7 @@ namespace
             case CursorStyle::RESIZE_NESW: return SDL_SYSTEM_CURSOR_SIZENESW;
             case CursorStyle::RESIZE_NWSE: return SDL_SYSTEM_CURSOR_SIZENWSE;
             case CursorStyle::TEXT_INPUT:  return SDL_SYSTEM_CURSOR_IBEAM;
+            default:
             case CursorStyle::COUNT:       break;
         }
 

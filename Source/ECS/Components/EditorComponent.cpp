@@ -824,7 +824,7 @@ namespace Divide {
                     case PushConstantSize::QWORD: field.set<I64>(GetClamped<I64>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::DWORD: field.set<I32>(GetClamped<I32>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::WORD:  field.set<I16>(GetClamped<I16>(field, pt, entryName.c_str())); break;
-                    case PushConstantSize::BYTE:  field.set<I8>(GetClamped<I8>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::BYTE:  field.set<I8> (GetClamped<I8>(field, pt, entryName.c_str())); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -835,7 +835,7 @@ namespace Divide {
                     case PushConstantSize::QWORD: field.set<U64>(GetClamped<U64>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::DWORD: field.set<U32>(GetClamped<U32>(field, pt, entryName.c_str())); break;
                     case PushConstantSize::WORD:  field.set<U16>(GetClamped<U16>(field, pt, entryName.c_str())); break;
-                    case PushConstantSize::BYTE:  field.set<U8>(GetClamped<U8>(field, pt, entryName.c_str())); break;
+                    case PushConstantSize::BYTE:  field.set<U8> (GetClamped<U8>(field, pt, entryName.c_str())); break;
                     default: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -854,8 +854,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadVector<vec2<I64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec2<I32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec2<I16>, 2>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadVector<vec2<I8>, 2>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadVector<vec2<I8>,  2>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -866,8 +867,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadVector<vec3<I64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec3<I32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec3<I16>, 3>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadVector<vec3<I8>, 3>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadVector<vec3<I8>,  3>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -878,8 +880,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadVector<vec4<I64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec4<I32>, 5>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec4<I16>, 4>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadVector<vec4<I8>, 4>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadVector<vec4<I8>,  4>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -890,8 +893,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadVector<vec2<U64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec2<U32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec2<U16>, 2>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadVector<vec2<U8>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec2<U8>,  2>(entryName, field, pt); break;
 
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -902,8 +906,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadVector<vec3<U64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec3<U32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec3<U16>, 3>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadVector<vec3<U8>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::BYTE:  loadVector<vec3<U8>,  3>(entryName, field, pt); break;
                     
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -914,8 +919,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadVector<vec4<U64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadVector<vec4<U32>, 4>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec4<U16>, 4>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadVector<vec4<U8>, 4>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadVector<vec4<U8>,  4>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -950,8 +956,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadMatrix<mat2<I64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat2<I32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat2<I16>, 2>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadMatrix<mat2<I8>, 2>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadMatrix<mat2<I8>,  2>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -962,8 +969,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadMatrix<mat3<I64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat3<I32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat3<I16>, 3>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadMatrix<mat3<I8>, 3>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadMatrix<mat3<I8>,  3>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -974,8 +982,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadMatrix<mat4<I64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat4<I32>, 4>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat4<I16>, 4>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadMatrix<mat4<I8>, 4>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadMatrix<mat4<I8>,  4>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -986,8 +995,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadMatrix<mat2<U64>, 2>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat2<U32>, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat2<U16>, 2>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadMatrix<mat2<U8>, 2>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadMatrix<mat2<U8>,  2>(entryName, field, pt);  break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -998,8 +1008,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadMatrix<mat3<U64>, 3>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat3<U32>, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat3<U16>, 3>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadMatrix<mat3<U8>, 3>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadMatrix<mat3<U8>,  3>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;
@@ -1010,8 +1021,9 @@ namespace Divide {
                     case PushConstantSize::QWORD: loadMatrix<mat4<U64>, 4>(entryName, field, pt); break;
                     case PushConstantSize::DWORD: loadMatrix<mat4<U32>, 4>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadMatrix<mat4<U16>, 4>(entryName, field, pt); break;
-                    case PushConstantSize::BYTE:  loadMatrix<mat4<U8>, 4>(entryName, field, pt); break;
-                    
+                    case PushConstantSize::BYTE:  loadMatrix<mat4<U8>,  4>(entryName, field, pt); break;
+
+                    default:
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
                 }
             } break;

@@ -114,6 +114,7 @@ namespace Divide
     {
         switch (renderStage)
         {
+            default:
             case RenderStage::DISPLAY:
             case RenderStage::NODE_PREVIEW:
                 return U8_ONE;

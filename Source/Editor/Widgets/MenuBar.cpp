@@ -74,6 +74,7 @@ namespace Divide
                 case PreRenderBatch::EdgeDetectionMethod::Luma: return "Luma";
                 case PreRenderBatch::EdgeDetectionMethod::Colour: return "Colour";
                 case PreRenderBatch::EdgeDetectionMethod::COUNT: break;
+                default: break;
             }
             return "Unknown";
         }

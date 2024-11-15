@@ -278,6 +278,7 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    updateRange(batchData.m_IndexBuffer_Points,    range); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: updateRange(batchData.m_IndexBuffer_Triangles, range); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: updateRange(batchData.m_IndexBuffer_Wireframe, range); break;
+            default:
             case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                              break;
         }
     }
@@ -304,6 +305,7 @@ void IMPrimitive::endBatch() noexcept
             case NS_GLIM::GLIM_BUFFER_TYPE::POINTS:    insert(_indices, batchData.m_IndexBuffer_Points);    break;
             case NS_GLIM::GLIM_BUFFER_TYPE::TRIANGLES: insert(_indices, batchData.m_IndexBuffer_Triangles); break;
             case NS_GLIM::GLIM_BUFFER_TYPE::WIREFRAME: insert(_indices, batchData.m_IndexBuffer_Wireframe); break;
+            default:
             case NS_GLIM::GLIM_BUFFER_TYPE::COUNT:     DIVIDE_UNEXPECTED_CALL();                            break;
         }
     }
@@ -611,7 +613,7 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
         const IM::ConeDescriptor& cone = cones[i];
 
         const U8 slices = std::min(cone.slices, to_U8(32u));
-        const F32 angInc = 360.0f / slices * M_PIDIV180_f;
+        const F32 angInc = 360.0f / slices * M_PI_DIV_180_f;
         const vec3<F32> invDirection = -cone.direction;
         const vec3<F32> c = cone.root + -invDirection * cone.length;
         const vec3<F32> e0 = Perpendicular(invDirection);

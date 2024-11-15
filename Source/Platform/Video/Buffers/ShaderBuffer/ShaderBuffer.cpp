@@ -14,6 +14,7 @@ size_t ShaderBuffer::AlignmentRequirement(const BufferUsageType usage) noexcept 
         case BufferUsageType::COMMAND_BUFFER : return GFXDevice::GetDeviceInformation()._offsetAlignmentBytesSSBO;
         case BufferUsageType::CONSTANT_BUFFER: return GFXDevice::GetDeviceInformation()._offsetAlignmentBytesUBO;
 
+        default:
         case BufferUsageType::VERTEX_BUFFER:
         case BufferUsageType::INDEX_BUFFER:
         case BufferUsageType::STAGING_BUFFER: break;

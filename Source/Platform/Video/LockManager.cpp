@@ -93,6 +93,7 @@ namespace Divide
                 return false;
             }
 
+            default:
             case RenderAPI::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
                 break;

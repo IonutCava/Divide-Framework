@@ -28,6 +28,8 @@ namespace Divide::Profiler
             case Optick::State::START_CAPTURE:  return OnProfilerStateChanged( Profiler::State::STARTED );
             case Optick::State::STOP_CAPTURE:
             case Optick::State::CANCEL_CAPTURE: return OnProfilerStateChanged( Profiler::State::STOPPED );
+
+            default:
             case Optick::State::DUMP_CAPTURE: break;
         }
 

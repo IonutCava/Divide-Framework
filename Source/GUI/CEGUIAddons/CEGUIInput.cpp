@@ -283,6 +283,7 @@ bool CEGUIInput::mouseButtonPressedInternal(Input::MouseButtonEvent& argInOut)
             consumed = _parent.getCEGUIContext()->injectMouseButtonDown(CEGUI::X2Button);
         } break;
 
+        default:
         case Input::MouseButton::MB_Button5:
         case Input::MouseButton::MB_Button6:
         case Input::MouseButton::MB_Button7:

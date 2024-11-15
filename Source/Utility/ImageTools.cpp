@@ -1371,12 +1371,14 @@ namespace
     [[nodiscard]] FORCE_INLINE U8 U8ToU8Colour(const U8 val) noexcept { return val; }
 };
 
-void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel) const {
+void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& c, const U32 layer, const U8 mipLevel) const
+{
     assert(comp >= 0 && comp < 4);
     assert(!IsCompressed(_format) || mipLevel == 0);
     assert(_layers.size() > layer);
 
-    if (!HasAlphaChannel(_format) && comp == 3) {
+    if (!HasAlphaChannel(_format) && comp == 3)
+    {
         c = U8_MAX;
         return;
     }
@@ -1386,10 +1388,13 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
     // Decompressed data is always UByte-RGBA
     const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
     const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride) + comp;
-    if (IsCompressed(_format)) {
+    if (IsCompressed(_format))
+    {
         // Decompressed data is always UByte-RGBA
         c = _decompressedData[idx];
-    } else {
+    }
+    else
+    {
         switch(_sourceDataType )
         {
             case SourceDataType::BYTE : 
@@ -1412,11 +1417,13 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
             {
                 c = U32ToU8Colour( static_cast<const U32*>(mip->data())[idx] );
             } break;
+            default: DIVIDE_UNEXPECTED_CALL(); break;
         }
     }
 }
 
-void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, const U32 layer, const U8 mipLevel) const {
+void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, const U32 layer, const U8 mipLevel) const
+{
     assert(!IsCompressed(_format) || mipLevel == 0);
     assert(_layers.size() > layer);
 
@@ -1425,14 +1432,17 @@ void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, 
     const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
     const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride);
 
-    if (IsCompressed(_format)) {
+    if (IsCompressed(_format))
+    {
         // Decompressed data is always UByte-RGBA
         const U8* src = _decompressedData.data();
         r = src[idx + 0];
         g = src[idx + 1];
         b = src[idx + 2]; 
         a = HasAlphaChannel(_format) ? src[idx + 3] : 255;
-    } else {
+    }
+    else
+    {
         switch ( _sourceDataType )
         {
             case SourceDataType::BYTE:
@@ -1475,6 +1485,7 @@ void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, 
                 b = U32ToU8Colour( src[idx + 2] );
                 a = HasAlphaChannel( _format ) ? U32ToU8Colour( src[idx + 3] ) : 255;
             } break;
+            default: DIVIDE_UNEXPECTED_CALL(); break;
         }
     }
 }

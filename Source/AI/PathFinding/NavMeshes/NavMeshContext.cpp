@@ -11,7 +11,9 @@ void rcContextDivide::doLog(const rcLogCategory category,
                             const char* msg,
                              [[maybe_unused]] const I32 len)
 {
-    switch (category) {
+    switch (category) 
+    {
+        default:
         case RC_LOG_PROGRESS:
             Console::printfn(LOCALE_STR("RECAST_CTX_LOG_PROGRESS"), msg);
             break;

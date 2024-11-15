@@ -43,6 +43,7 @@ namespace Divide
                 case ImageUsage::SHADER_READ:
                 case ImageUsage::CPU_READ:  break;
 
+                default:
                 case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
             }
 
