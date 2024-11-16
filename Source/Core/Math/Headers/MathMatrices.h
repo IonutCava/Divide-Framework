@@ -292,6 +292,8 @@ class mat3 {
     explicit mat3(const vec3<U>& scale) noexcept; 
     template<typename U>
     explicit mat3(const vec3<U>& rotStart, const vec3<U>& rotEnd) noexcept;
+    template<typename U>
+    explicit mat3(const vec3<Angle::RADIANS<U>>& euler) noexcept;
 
     template<typename U>
     [[nodiscard]] vec2<U> operator*(const vec2<U>  v) const noexcept;
@@ -409,6 +411,8 @@ class mat3 {
     void getInverseTranspose(mat3 &ret) const noexcept;
 
     template<typename U>
+    void fromEuler(const vec3<Angle::RADIANS<U>>& euler) noexcept;
+    template<typename U>
     void fromRotation(const vec3<U> &v, Angle::RADIANS<U> angle);
     template<typename U>
     void fromRotation(U x, U y, U z, Angle::RADIANS<U> angle);
@@ -491,7 +495,7 @@ class mat4 {
     template<typename U>
     explicit mat4(const vec3<U> &translation, const vec3<U> &scale, const mat3<U>& rotation) noexcept;
     template<typename U>
-    explicit mat4(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::DEGREES<U>>& euler) noexcept;
+    explicit mat4(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::RADIANS<U>>& euler) noexcept;
     template<typename U>
     explicit mat4(const vec3<U> &translation) noexcept;
     template<typename U>
@@ -579,7 +583,7 @@ class mat4 {
     template<typename U>
     void set(const vec3<U> &translation, const vec3<U> &scale, const mat3<U>& rotation) noexcept;
     template<typename U>
-    void set(const vec3<U> &translation, const vec3<U> &scale, const vec3<Angle::DEGREES<U>>& euler) noexcept;
+    void set(const vec3<U> &translation, const vec3<U> &scale, const vec3<Angle::RADIANS<U>>& euler) noexcept;
 
     template<typename U>
     void setRow(I32 index, U value) noexcept;
@@ -626,6 +630,8 @@ class mat4 {
     [[nodiscard]] mat4 getTransposeRotation() const noexcept;
     void getTransposeRotation(mat4 &ret) const noexcept;
 
+    template<typename U>
+    void fromEuler(const vec3<Angle::RADIANS<U>>& euler) noexcept;
     template<typename U>
     void fromRotation(U x, U y, U z, Angle::RADIANS<U> angle) noexcept;
     template<typename U>

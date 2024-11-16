@@ -202,7 +202,7 @@ namespace Divide
                     "P", "Y", "R"
                 };
 
-                vec3<F32> euler = cam->euler();
+                vec3<Angle::DEGREES_F> euler = cam->euler();
                 EditorComponentField camField = {};
                 camField._name = "Euler";
                 camField._labels = CamRotateLabels;
@@ -213,7 +213,7 @@ namespace Divide
                 camField._data = euler._v;
                 camField._dataSetter = [cam]( const void* e ) noexcept
                 {
-                    cam->setEuler( *static_cast<const vec3<F32>*>(e) );
+                    cam->setEuler( *static_cast<const vec3<Angle::DEGREES_F>*>(e) );
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
             }
@@ -1183,10 +1183,10 @@ namespace Divide
 
         const TransformValues transformValues = transform->getLocalValues();
         vec3<F32> pos = transformValues._translation;
-        vec3<F32> rot = Angle::to_DEGREES( transformValues._orientation.getEuler() );
+        vec3<Angle::DEGREES_F> rot = Angle::to_DEGREES( transformValues._orientation.getEuler() );
         vec3<F32> scale = transformValues._scale;
 
-        const vec3<F32> oldRot = rot;
+        const vec3<Angle::DEGREES_F> oldRot = rot;
         if ( Util::DrawVec<F32, 3, true>( ImGuiDataType_Float, "Position", pos._v, transformReadOnly ).wasChanged )
         {
             ret = true;
@@ -1201,18 +1201,18 @@ namespace Divide
                                             } );
             transform->setPosition( pos );
         }
-        if ( Util::DrawVec<F32, 3, true>( ImGuiDataType_Float, "Rotation", rot._v, rotationReadOnly ).wasChanged )
+        if ( Util::DrawVec<F32, 3, true>( ImGuiDataType_Float, "Rotation", &rot.x.value, rotationReadOnly ).wasChanged )
         {
             ret = true;
-            RegisterUndo<vec3<F32>, false>( _parent,
-                                            PushConstantType::VEC3,
-                                            oldRot,
-                                            rot,
-                                            "Transform rotation",
-                                            [transform]( const vec3<F32>& val )
-                                            {
-                                                transform->setRotationEuler( val );
-                                            } );
+            RegisterUndo<vec3<Angle::DEGREES_F>, false>( _parent,
+                                                         PushConstantType::VEC3,
+                                                         oldRot,
+                                                         rot,
+                                                         "Transform rotation",
+                                                         [transform]( const vec3<Angle::DEGREES_F>& val )
+                                                         {
+                                                             transform->setRotationEuler( val );
+                                                         } );
             transform->setRotationEuler( rot );
         }
         TransformComponent::ScalingMode scalingMode = transform->scalingMode();

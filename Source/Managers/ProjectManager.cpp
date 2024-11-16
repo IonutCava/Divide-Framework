@@ -819,7 +819,7 @@ namespace Divide
         const GFXDevice& gfx = parent().platformContext().gfx();
         SceneShaderData* sceneData = gfx.sceneData().get();
 
-        const Angle::DEGREES_F sunAltitudeMax = Angle::to_DEGREES( activeScene->getCurrentSunDetails().altitudeMax );
+        const Angle::DEGREES_F sunAltitudeMax =                  ( activeScene->getCurrentSunDetails().altitudeMax );
         const Angle::DEGREES_F sunAltitude    = Angle::to_DEGREES( activeScene->getCurrentSunDetails().altitude );
         const Angle::DEGREES_F sunAzimuth     = Angle::to_DEGREES( activeScene->getCurrentSunDetails().azimuth );
 

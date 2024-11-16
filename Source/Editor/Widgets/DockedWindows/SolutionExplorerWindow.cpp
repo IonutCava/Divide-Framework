@@ -596,13 +596,13 @@ namespace Divide {
                 const vec3<F32> sunPosition = activeScene->getSunPosition();
                 const vec3<F32> sunDirection = activeScene->getSunDirection();
 
-                const Angle::DEGREES<F32> sunAltitude = Angle::RadiansToDegrees( sun.altitude );
-                const Angle::DEGREES<F32> sunAzimuth = Angle::RadiansToDegrees( sun.azimuth );
-                constexpr Angle::DEGREES<F32> twilightDegrees{ -18.f };
-                constexpr Angle::DEGREES<F32> sunriseAzimuth{ 70.f };
-                constexpr Angle::DEGREES<F32> sunsetAzimuth{ 280.f };
+                const Angle::DEGREES_F sunAltitude = Angle::to_DEGREES( sun.altitude );
+                const Angle::DEGREES_F sunAzimuth  = Angle::to_DEGREES( sun.azimuth );
+                const Angle::DEGREES_F twilightDegrees{ -18.f };
+                const Angle::DEGREES_F sunriseAzimuth{ 70.f };
+                const Angle::DEGREES_F sunsetAzimuth{ 280.f };
                 const bool isNight = sunAltitude < twilightDegrees;
-                const bool isTwilight = IS_IN_RANGE_INCLUSIVE( sunAltitude, twilightDegrees, 0.f );
+                const bool isTwilight = IS_IN_RANGE_INCLUSIVE( sunAltitude, twilightDegrees, Angle::DEGREES_F{0.f} );
                 const bool isDawn = isTwilight && sunAzimuth < sunriseAzimuth;
                 const bool isDusk = isTwilight && sunAzimuth > sunsetAzimuth;
 
@@ -616,15 +616,15 @@ namespace Divide {
                 }
                 {
                     ImGui::Text( ICON_FK_SUN_O ); ImGui::SameLine();
-                    ImGui::Text("Sun Pos|Dir: (%1.2f, %1.2f, %1.2f) | (%1.2f, %1.2f, %1.2f)", sunPosition.x, sunPosition.y, sunPosition.z, sunDirection.x, sunDirection.y, sunDirection.z);
+                    ImGui::Text("Sun Pos|Dir: (%1.2f, %1.2f, %1.2f) | (%1.2f, %1.2f, %1.2f)", sunPosition.x, sunPosition.y,sunPosition.z, sunDirection.x, sunDirection.y, sunDirection.z);
                 }
                 {
                     ImGui::Text( ICON_FK_SUN_O ); ImGui::SameLine();
-                    ImGui::Text( "Sun altitude | Max altitude : (%3.2f | %3.2f) degrees", sunAltitude, sun.altitudeMax );
+                    ImGui::Text( "Sun altitude | Max altitude : (%3.2f | %3.2f) degrees", sunAltitude.value, sun.altitudeMax.value );
                 }
                 {
                     ImGui::Text( ICON_FK_SUN_O ); ImGui::SameLine();
-                    ImGui::Text( "Sun azimuth  | Declination  : (%3.2f | %3.2f) degrees", sun.azimuth, sun.declination );
+                    ImGui::Text( "Sun azimuth  | Declination  : (%3.2f | %3.2f) degrees", sunAzimuth.value, sun.declination.value );
                 }
                 {
                     ImGui::Text( ICON_FK_MOON_O ); ImGui::SameLine();
@@ -1011,6 +1011,7 @@ namespace Divide {
             case SceneNodeType::TYPE_SKY:
             case SceneNodeType::TYPE_VEGETATION: break;
 
+            default:
             case SceneNodeType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
         }
 

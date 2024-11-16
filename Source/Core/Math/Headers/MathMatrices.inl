@@ -57,7 +57,7 @@ namespace Divide
     namespace AVX
     {
         // another linear combination, using AVX instructions on XMM regs
-        static FORCE_INLINE __m128 lincomb( const F32* a, const mat4<F32>& B ) noexcept
+        static inline __m128 lincomb( const F32* a, const mat4<F32>& B ) noexcept
         {
             const auto& bReg = B._reg;
             __m128 result = _mm_mul_ps( _mm_broadcast_ss( &a[0] ), bReg[0]._reg );
@@ -76,7 +76,7 @@ namespace Divide
         // ref: https://gist.github.com/rygorous/4172889
         // linear combination:
         // a[0] * B.row[0] + a[1] * B.row[1] + a[2] * B.row[2] + a[3] * B.row[3]
-        static FORCE_INLINE __m128 lincomb( const __m128 a, const mat4<F32>& B )
+        static inline __m128 lincomb( const __m128 a, const mat4<F32>& B )
         {
             const auto& bReg = B._reg;
             __m128 result = _mm_mul_ps( _mm_shuffle_ps( a, a, 0x00 ), bReg[0]._reg );
@@ -88,7 +88,7 @@ namespace Divide
         }
 
         //ref: https://lxjk.github.io/2017/09/03/Fast-4x4-Matrix-Inverse-with-SSE-SIMD-Explained.html
-        FORCE_INLINE void GetTransformInverseNoScale( const mat4<F32>& inM, mat4<F32>& r ) noexcept
+        inline void GetTransformInverseNoScale( const mat4<F32>& inM, mat4<F32>& r ) noexcept
         {
             // transpose 3x3, we know m03 = m13 = m23 = 0
             const __m128 t0 = VecShuffle_0101( inM._reg[0]._reg, inM._reg[1]._reg ); // 00, 01, 10, 11
@@ -108,27 +108,27 @@ namespace Divide
         // we use __m128 to represent 2x2 matrix as A = | A0  A2 |
         //                                              | A1  A3 |
         // 2x2 column major Matrix multiply A*B
-        FORCE_INLINE __m128 Mat2Mul( const __m128 vec1, const __m128 vec2 ) noexcept
+        inline __m128 Mat2Mul( const __m128 vec1, const __m128 vec2 ) noexcept
         {
             return  _mm_add_ps( _mm_mul_ps( vec1,                           VecSwizzle( vec2, 0, 0, 3, 3 ) ),
                                 _mm_mul_ps( VecSwizzle( vec1, 2, 3, 0, 1 ), VecSwizzle( vec2, 1, 1, 2, 2 ) ) );
         }
         // 2x2 column major Matrix adjugate multiply (A#)*B
-        FORCE_INLINE __m128 Mat2AdjMul( const __m128 vec1, const __m128 vec2 ) noexcept
+        inline __m128 Mat2AdjMul( const __m128 vec1, const __m128 vec2 ) noexcept
         {
             return  _mm_sub_ps( _mm_mul_ps( VecSwizzle( vec1, 3, 0, 3, 0 ), vec2 ),
                                 _mm_mul_ps( VecSwizzle( vec1, 2, 1, 2, 1 ), VecSwizzle( vec2, 1, 0, 3, 2 ) ) );
 
         }
         // 2x2 column major Matrix multiply adjugate A*(B#)
-        FORCE_INLINE __m128 Mat2MulAdj( const __m128 vec1, const __m128 vec2 ) noexcept
+        inline __m128 Mat2MulAdj( const __m128 vec1, const __m128 vec2 ) noexcept
         {
             return  _mm_sub_ps( _mm_mul_ps( vec1,                           VecSwizzle( vec2, 3, 3, 0, 0 ) ),
                                 _mm_mul_ps( VecSwizzle( vec1, 2, 3, 0, 1 ), VecSwizzle( vec2, 1, 1, 2, 2 ) ) );
         }
 
         // Requires this matrix to be transform matrix
-        FORCE_INLINE void GetTransformInverse( const mat4<F32>& inM, mat4<F32>& r ) noexcept
+        inline void GetTransformInverse( const mat4<F32>& inM, mat4<F32>& r ) noexcept
         {
             // transpose 3x3, we know m03 = m13 = m23 = 0
             const __m128 t0 = VecShuffle_0101( inM._reg[0]._reg, inM._reg[1]._reg ); // 00, 01, 10, 11
@@ -922,6 +922,13 @@ namespace Divide
     {
         setScale( scale );
     }
+     
+    template<typename T>
+    template<typename U>
+    mat3<T>::mat3( const vec3<Angle::RADIANS<U>>& euler ) noexcept
+        : mat3(GetMatrix(Quaternion<U>(euler)))
+    {
+    }
 
     template<typename T>
     template<typename U>
@@ -1482,6 +1489,13 @@ namespace Divide
 
     template<typename T>
     template<typename U>
+    void mat3<T>::fromEuler(const vec3<Angle::RADIANS<U>>& euler) noexcept
+    {
+        set(GetMatrix(Quaternion<U>(euler)));
+    }
+
+    template<typename T>
+    template<typename U>
     void mat3<T>::fromRotation( const vec3<U>& v, Angle::RADIANS<U> angle )
     {
         fromRotation( v.x, v.y, v.z, angle );
@@ -1752,8 +1766,8 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    mat4<T>::mat4(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::DEGREES<U>>& euler) noexcept
-        : mat4(translation, scale, GetMatrix(Quaternion(euler.pitch, euler.yaw, euler.roll)))
+    mat4<T>::mat4(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::RADIANS<U>>& euler) noexcept
+        : mat4(translation, scale, GetMatrix(Quaternion<U>(euler)))
     {
     }
 
@@ -2173,7 +2187,7 @@ namespace Divide
 
     template<typename T>
     template<typename U>
-    void mat4<T>::set(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::DEGREES<U>>& euler) noexcept
+    void mat4<T>::set(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::RADIANS<U>>& euler) noexcept
     {
         set(translation, scale, GetMatrix(Quaternion<U>(euler.pitch, euler.yaw, euler.roll)));
     }
@@ -2460,6 +2474,13 @@ namespace Divide
                  mat[1], mat[5], mat[9], mat[7],
                  mat[2], mat[6], mat[10], mat[11],
                  mat[12], mat[13], mat[14], mat[15] );
+    }
+
+    template<typename T>
+    template<typename U>
+    void mat4<T>::fromEuler(const vec3<Angle::RADIANS<U>>& euler) noexcept
+    {
+        set(GetMatrix(Quaternion<U>(euler)));
     }
 
     template<typename T>
@@ -2777,7 +2798,7 @@ namespace Divide
 
 #if defined(HAS_AVX) || defined(HAS_SSE42)
     template<>
-    FORCE_INLINE void mat4<F32>::Multiply( const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret ) noexcept
+    inline void mat4<F32>::Multiply( const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret ) noexcept
     {
 #if defined(HAS_AVX) 
         // using AVX instructions, 4-wide

@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DEBUG: General purpose settings needed while the application is loading -->
+<config>
+	<debug>
+		<renderer>
+			<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
+			<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
+			<assertOnRenderAPIError>false</assertOnRenderAPIError>
+			<useExtensions>true</useExtensions>
+		</renderer>
+		<cache>
+			<enabled>true</enabled>
+			<geometry>true</geometry>
+			<vegetation>true</vegetation>
+			<shaders>true</shaders>
+			<textureDDS>true</textureDDS>
+		</cache>
+		<renderFilter>
+			<primitives>true</primitives>
+			<meshes>true</meshes>
+			<terrain>true</terrain>
+			<vegetation>true</vegetation>
+			<water>true</water>
+			<sky>true</sky>
+			<particles>true</particles>
+			<decals>true</decals>
+			<treeInstances>false</treeInstances>
+			<grassInstances>true</grassInstances>
+		</renderFilter>
+	</debug>
+	<language>enGB</language>
+	<serverAddress>127.0.0.1</serverAddress>
+	<startupProject>Default</startupProject>
+	<!-- RUNTIME: Values use by the application after loading is complete -->
+	<runtime>
+		<title>DIVIDE Framework</title>
+		<!-- 0 = primary display, 1 = secondary display, etc. Value is clamped between [1, LAST_DISPLAY] -->
+		<targetDisplay>1</targetDisplay>
+		<!-- 0 = NULL, 1 - OpenGL4, 2 - Vulkan-->
+		<targetRenderingAPI>1</targetRenderingAPI>
+		<!-- The maximum number of worker threads that we want to spawn. -1 = (CPU thread count - 1). We will always spawn a minimum of 5 threads-->
+		<maxWorkerThreads>-1</maxWorkerThreads>
+		<!-- 0 = windowed, 1 = borderless window, 2 = fullscreen (has some issues)-->
+		<windowedMode>0</windowedMode>
+		<!-- do we allow window resizing if running in windowed mode? -->
+		<windowResizable>true</windowResizable>
+		<!-- start maximized or use the provided window dimensions? -->
+		<maximizeOnStart>true</maximizeOnStart>
+		<!-- cap framerate. Set to 0 or less to disable -->
+		<frameRateLimit>0</frameRateLimit>
+		<!-- toggle Vsync on or off. This can be overridden by the display driver! -->
+		<enableVSync>false</enableVSync>
+		<!-- try to enable late v-swap. Only works with VSync. May fallback to regular vsync-->
+		<adaptiveSync>false</adaptiveSync>
+		<!-- use a pipeline cache if available to avoid shader compilation stutters on subsequent runs of the program -->
+		<usePipelineCache>true</usePipelineCache>
+		<!-- splash screen dimensions -->
+		<splashScreenSize width="400" height="300"/>
+		<!-- window size. Only for windowed mode! -->
+		<windowSize width="1280" height="720"/>
+		<!-- rendering resolution -->
+		<resolution width="1920" height="1080"/>
+		<!-- Physics simulation speed multiplier. Tweak this for faster or slower simulations (ex: slow motion explosions)-->
+		<simSpeed>1</simSpeed>
+		<cameraViewDistance>1000</cameraViewDistance>
+		<horizontalFOV>90</horizontalFOV>
+	</runtime>
+	<GUI>
+		<CEGUI>
+			<Enabled>true</Enabled>
+		</CEGUI>
+		<consoleLayoutFile>console.layout</consoleLayoutFile>
+	</GUI>
+	<terrain>
+		<!-- 0 - low, 1 - med, 2 - high -->
+		<textureQuality>1</textureQuality>
+		<!-- higher => better (less tilling, more parallax effects, etc) -->
+		<detailLevel>2</detailLevel>
+		<!-- higher => better -->
+		<parallaxMode>0</parallaxMode>
+		<!-- The following debug settings work in cascade mode. The topmost enabled option is the only one considered-->
+		<wireframe>false</wireframe>
+		<showNormals>false</showNormals>
+		<showLoDs>false</showLoDs>
+		<showTessLevels>false</showTessLevels>
+		<showBlendMap>false</showBlendMap>
+	</terrain>
+	<rendering>
+		<MSAASamples>4</MSAASamples>
+		<maxAnisotropicFilteringLevel>16</maxAnisotropicFilteringLevel>
+		<!-- Environment probe resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
+		<reflectionProbeResolution>128</reflectionProbeResolution>
+		<!-- Planar reflector resolution. Clamped between 16 and 4096 and rounded to a power of 2 -->
+		<reflectionPlaneResolution>256</reflectionPlaneResolution>
+		<numLightsPerCluster>100</numLightsPerCluster>
+		<enableFog>true</enableFog>
+		<fogDensity>0.0700000003</fogDensity>
+		<fogScatter>0.00700000022</fogScatter>
+		<fogColour r="0.5" g="0.5" b="0.550000012"/>
+		<lodThresholds x="25" y="45" z="85" w="165"/>
+		<postFX>
+			<postAA>
+				<!-- Select the type of post processing AA: FXAA or SMAA (Defaults to FXAA) -->
+				<type>FXAA</type>
+				<!-- Quality level for FXAA or SMAA: 0 - off, 1 - lowest, 5 - highest-->
+				<qualityLevel>2</qualityLevel>
+			</postAA>
+			<toneMap>
+				<adaptive>true</adaptive>
+				<manualExposureFactor>3.273</manualExposureFactor>
+				<minLogLuminance>-4</minLogLuminance>
+				<maxLogLuminance>3</maxLogLuminance>
+				<tau>1.10000002</tau>
+				<!-- REINHARD, REINHARD_MODIFIED, GT, ACES, UNREAL_ACES, AMD_ACES, GT_DIFF_PARAMETERS, UNCHARTED_2, NONE -->
+				<mappingFunction>REINHARD_MODIFIED</mappingFunction>
+			</toneMap>
+			<dof>
+				<enabled>false</enabled>
+				<!-- Autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right) -->
+				<focalPoint x="0.5" y="0.5"/>
+				<!-- Focal distance value in meters -->
+				<focalDepth>10</focalDepth>
+				<!-- Focal length in mm -->
+				<focalLength>12</focalLength>
+				<!-- f/1.4, f/1.8, f/2, f/2.8, f/3.5, f/4, f/5.6, f/8, f/11, f/16, f/22, f/32, NONE -->
+				<fStop>f/1.4</fStop>
+				<!-- Near dof blur start -->
+				<ndofStart>1</ndofStart>
+				<!-- Near dof blur falloff distance -->
+				<ndofDist>2</ndofDist>
+				<!-- Far dof blur start -->
+				<fdofStart>1</fdofStart>
+				<!-- Far dof blur falloff distance -->
+				<fdofDist>3</fdofDist>
+				<!-- Vignetting outer border -->
+				<vignOut>1.29999995</vignOut>
+				<!-- Vignetting inner border -->
+				<vignIn>0</vignIn>
+				<!-- Use autofocus in shader? disable if you use external focalDepth value -->
+				<autoFocus>true</autoFocus>
+				<!-- Use optical lens vignetting -->
+				<vignetting>false</vignetting>
+				<!-- Show debug focus point and focal range (red = focal point, green = focal range) -->
+				<debugFocus>false</debugFocus>
+				<!-- Manual dof calculation -->
+				<manualDoF>false</manualDoF>
+			</dof>
+			<ssr>
+				<enabled>true</enabled>
+				<!-- Maximum camera-space distance to trace before returning a miss -->
+				<maxDistance>200</maxDistance>
+				<jitterAmount>1</jitterAmount>
+				<stride>8</stride>
+				<!-- Camera space thickness to ascribe to each pixel in the depth buffer -->
+				<zThickness>1.5</zThickness>
+				<strideZCutoff>100</strideZCutoff>
+				<screenEdgeFadeStart>0.75</screenEdgeFadeStart>
+				<eyeFadeStart>0.5</eyeFadeStart>
+				<eyeFadeEnd>1</eyeFadeEnd>
+				<!-- Maximum number of iterations. Higher gives better images but may be slow -->
+				<maxSteps>256</maxSteps>
+				<binarySearchIterations>4</binarySearchIterations>
+			</ssr>
+			<motionBlur>
+				<enablePerObject>true</enablePerObject>
+				<velocityScale>1</velocityScale>
+			</motionBlur>
+			<bloom>
+				<enabled>true</enabled>
+				<filterRadius>0.0450000018</filterRadius>
+				<strength>0.0689999983</strength>
+				<useThreshold>true</useThreshold>
+				<threshold>1.10000002</threshold>
+				<knee>0.100000001</knee>
+			</bloom>
+			<ssao>
+				<enable>true</enable>
+				<UseHalfResolution>false</UseHalfResolution>
+				<FullRes>
+					<Radius>0.75</Radius>
+					<Bias>0.0500000007</Bias>
+					<Power>3</Power>
+					<!-- between 8 and 64 -->
+					<KernelSampleCount>32</KernelSampleCount>
+					<Blur>true</Blur>
+					<BlurThreshold>0.00100000005</BlurThreshold>
+					<BlurSharpness>1</BlurSharpness>
+					<BlurKernelSize>3</BlurKernelSize>
+					<!-- percentage of camera range. 1.0 = to camera far plane -->
+					<MaxRange>0.755210042</MaxRange>
+					<!-- when to start dimming the SSAO effect as a percentage. Always clamped to [0,MaxRange]-->
+					<FadeDistance>0.5</FadeDistance>
+				</FullRes>
+				<HalfRes>
+					<Radius>0.5</Radius>
+					<Bias>0.0500000007</Bias>
+					<Power>3</Power>
+					<KernelSampleCount>24</KernelSampleCount>
+					<Blur>true</Blur>
+					<BlurThreshold>0.00100000005</BlurThreshold>
+					<BlurSharpness>0.00100000005</BlurSharpness>
+					<BlurKernelSize>4</BlurKernelSize>
+					<MaxRange>0.755210042</MaxRange>
+					<FadeDistance>0.99000001</FadeDistance>
+				</HalfRes>
+			</ssao>
+		</postFX>
+		<shadowMapping>
+			<enabled>true</enabled>
+			<!-- Resolution will be rounded up to the next POW_2. -->
+			<csm>
+				<enabled>true</enabled>
+				<shadowMapResolution>2048</shadowMapResolution>
+				<MSAASamples>2</MSAASamples>
+				<enableBlurring>true</enableBlurring>
+				<maxAnisotropicFilteringLevel>2</maxAnisotropicFilteringLevel>
+				<splitLambda>0.899999976</splitLambda>
+				<splitCount>3</splitCount>
+			</csm>
+			<spot>
+				<enabled>true</enabled>
+				<shadowMapResolution>512</shadowMapResolution>
+				<MSAASamples>0</MSAASamples>
+				<enableBlurring>false</enableBlurring>
+				<maxAnisotropicFilteringLevel>8</maxAnisotropicFilteringLevel>
+			</spot>
+			<point>
+				<enabled>true</enabled>
+				<shadowMapResolution>512</shadowMapResolution>
+				<enableBlurring>false</enableBlurring>
+				<maxAnisotropicFilteringLevel>4</maxAnisotropicFilteringLevel>
+			</point>
+		</shadowMapping>
+	</rendering>
+	<defaultAssetLocation>
+		<textures>textures/</textures>
+		<shaders>shaders/</shaders>
+	</defaultAssetLocation>
+</config>

@@ -1978,6 +1978,7 @@ namespace Divide
                 //Because we are now overwriting existing data, we need to make sure that any fences that could possibly protect us have been flushed
                 DIVIDE_ASSERT( frameBuffers._camBufferWriteRange._length == 0u );
             }
+
             const BufferRange writtenRange = frameBuffers._camDataBuffer->writeData( &_gpuBlock._camData )._range;
 
             if ( frameBuffers._camBufferWriteRange._length == 0u )

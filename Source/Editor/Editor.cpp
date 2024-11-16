@@ -2653,9 +2653,9 @@ namespace Divide
 
             vec3<Angle::DEGREES_F> rotation = Angle::to_DEGREES(modelSpawn.transform._orientation.getEuler());
             ImGui::Text( "Rotation (euler):" ); ImGui::SameLine();
-            if ( ImGui::InputFloat3( "##Rotation (euler):", rotation._v ) )
+            if ( ImGui::InputFloat3( "##Rotation (euler):", &rotation.x.value ) )
             {
-                modelSpawn.transform._orientation.fromEuler(rotation);
+                modelSpawn.transform._orientation.fromEuler(Angle::to_RADIANS(rotation));
             }
             ImGui::Text( "Name:" ); ImGui::SameLine();
             if ( ImGui::InputText( "##Name:",

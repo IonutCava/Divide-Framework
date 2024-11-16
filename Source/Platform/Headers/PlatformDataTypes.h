@@ -522,6 +522,106 @@ constexpr D64 D64_ZERO = 0.0;
         static_assert(ExpectedSize == RealSize, "Wrong data size!");
     }
 
+    template < template <typename...> class base, typename derived>
+    struct is_base_of_template_impl
+    {
+        template<typename... Ts>
+        static constexpr std::true_type  test(const base<Ts...>*);
+        static constexpr std::false_type test(...);
+        using type = decltype(test(std::declval<derived*>()));
+    };
+
+    template < template <typename...> class base, typename derived>
+    using is_base_of_template = typename is_base_of_template_impl<base, derived>::type;
+
+    //ref: https://stackoverflow.com/questions/17793298/c-class-wrapper-around-fundamental-types
+    template<typename T, typename tagType>
+    struct primitiveWrapper
+    {
+        using value_type = T;
+
+        value_type value{};
+
+        primitiveWrapper() :value() {}
+
+        template<typename U, typename allowed = typename std::enable_if<std::is_constructible<T, U>::value>::type>
+        primitiveWrapper(const U v) :value(v) {}
+
+        template<typename U>
+        explicit primitiveWrapper(const primitiveWrapper<U, tagType>& rhs) : value(static_cast<U>(rhs)) {}
+
+
+        //modifiers
+        template<typename U> FORCE_INLINE primitiveWrapper& operator= ( const U v) { value   = v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator+=( const U v) { value  += v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator-=( const U v) { value  -= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator*=( const U v) { value  *= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator/=( const U v) { value  /= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator%=( const U v) { value  %= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator&=( const U v) { value  &= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator|=( const U v) { value  |= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator^=( const U v) { value  ^= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator<<=(const U v) { value <<= v; return *this; }
+        template<typename U> FORCE_INLINE primitiveWrapper& operator>>=(const U v) { value >>= v; return *this; }
+
+        FORCE_INLINE primitiveWrapper& operator++()    { ++value; return *this; }
+        FORCE_INLINE primitiveWrapper& operator--()    { --value; return *this; }
+        FORCE_INLINE primitiveWrapper  operator++(int) { return primitiveWrapper(value++); }
+        FORCE_INLINE primitiveWrapper  operator--(int) { return primitiveWrapper(value--); }
+
+
+        //accessors
+        FORCE_INLINE T*               operator&  ()       { return &value;}
+        FORCE_INLINE                  operator T&()       { return value; }
+        FORCE_INLINE                  operator T () const { return value; }
+        FORCE_INLINE primitiveWrapper operator+  () const { return primitiveWrapper(+value); }
+        FORCE_INLINE primitiveWrapper operator-  () const { return primitiveWrapper(-value); }
+        FORCE_INLINE primitiveWrapper operator!  () const { return primitiveWrapper(!value); }
+        FORCE_INLINE primitiveWrapper operator~  () const { return primitiveWrapper(~value); }
+
+        //friends
+        friend primitiveWrapper operator+ (primitiveWrapper pw, primitiveWrapper v ) { return pw  += v; }
+        friend primitiveWrapper operator+ (primitiveWrapper pw, T                v ) { return pw  += v; }
+        friend primitiveWrapper operator+ (T                v,  primitiveWrapper pw) { return primitiveWrapper(v) += pw; }
+        friend primitiveWrapper operator- (primitiveWrapper pw, primitiveWrapper v ) { return pw  -= v; }
+        friend primitiveWrapper operator- (primitiveWrapper pw,                T v ) { return pw  -= v; }
+        friend primitiveWrapper operator- (T v,                 primitiveWrapper pw) { return primitiveWrapper(v) -= pw; }
+        friend primitiveWrapper operator* (primitiveWrapper pw, primitiveWrapper v ) { return pw  *= v; }
+        friend primitiveWrapper operator* (primitiveWrapper pw,                T v ) { return pw  *= v; }
+        friend primitiveWrapper operator* (T v,                 primitiveWrapper pw) { return primitiveWrapper(v) *= pw; }
+        friend primitiveWrapper operator/ (primitiveWrapper pw, primitiveWrapper v ) { return pw  /= v; }
+        friend primitiveWrapper operator/ (primitiveWrapper pw,                T v ) { return pw  /= v; }
+        friend primitiveWrapper operator/ (T v,                 primitiveWrapper pw) { return primitiveWrapper(v) /= pw; }
+        friend primitiveWrapper operator% (primitiveWrapper pw, primitiveWrapper v ) { return pw  %= v; }
+        friend primitiveWrapper operator% (primitiveWrapper pw,                T v ) { return pw  %= v; }
+        friend primitiveWrapper operator% (T v,                 primitiveWrapper pw) { return primitiveWrapper(v) %= pw; }
+        friend primitiveWrapper operator& (primitiveWrapper pw, primitiveWrapper v ) { return pw  &= v; }
+        friend primitiveWrapper operator& (primitiveWrapper pw,                T v ) { return pw  &= v; }
+        friend primitiveWrapper operator& (T v,                 primitiveWrapper pw) { return primitiveWrapper(v) &= pw; }
+        friend primitiveWrapper operator| (primitiveWrapper pw, primitiveWrapper v ) { return pw  |= v; }
+        friend primitiveWrapper operator| (primitiveWrapper pw,                T v ) { return pw  |= v; }
+        friend primitiveWrapper operator| (T v,                 primitiveWrapper pw) { return primitiveWrapper(v) |= pw; }
+        friend primitiveWrapper operator^ (primitiveWrapper pw, primitiveWrapper v ) { return pw  ^= v; }
+        friend primitiveWrapper operator^ (primitiveWrapper pw,                T v ) { return pw  ^= v; }
+        friend primitiveWrapper operator^ (T v,                 primitiveWrapper pw) { return primitiveWrapper(v) ^= pw; }
+        friend primitiveWrapper operator<<(primitiveWrapper pw, primitiveWrapper v ) { return pw <<= v; }
+        friend primitiveWrapper operator<<(primitiveWrapper pw,                T v ) { return pw <<= v; }
+        friend primitiveWrapper operator<<(T v,                 primitiveWrapper pw) { return primitiveWrapper(v) <<= pw; }
+        friend primitiveWrapper operator>>(primitiveWrapper pw, primitiveWrapper v ) { return pw >>= v; }
+        friend primitiveWrapper operator>>(primitiveWrapper pw,                T v ) { return pw >>= v; }
+        friend primitiveWrapper operator>>(T v,                 primitiveWrapper pw) { return primitiveWrapper(v) >>= pw; }
+
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator+ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  += v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator- (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  -= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator* (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  *= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator/ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  /= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator% (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  %= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator& (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  &= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator| (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  |= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator^ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  ^= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator<<(const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw) <<= v; }
+        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator>>(const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw) >>= v; }
+    };
 #define DIVIDE_UNUSED(X) ((void)X)
 
 #pragma region PROPERTY_SETTERS_GETTERS

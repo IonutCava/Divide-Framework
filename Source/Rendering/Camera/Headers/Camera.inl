@@ -45,7 +45,7 @@ namespace Divide
         return _data;
     }
 
-    inline void Camera::setGlobalRotation( const vec3<Angle::DEGREES<F32>>& euler ) noexcept
+    inline void Camera::setGlobalRotation( const vec3<Angle::DEGREES_F>& euler ) noexcept
     {
         setGlobalRotation( euler.yaw, euler.pitch, euler.roll );
     }
@@ -61,38 +61,38 @@ namespace Divide
         return lookAt( eye, target, viewMatrix().getUpVec() );
     }
 
-    inline void Camera::setYaw( const Angle::DEGREES<F32> angle ) noexcept
+    inline void Camera::setYaw( const Angle::DEGREES_F angle ) noexcept
     {
         setRotation( angle, _euler.pitch, _euler.roll );
     }
 
     /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-    inline void Camera::setPitch( const Angle::DEGREES<F32> angle ) noexcept
+    inline void Camera::setPitch( const Angle::DEGREES_F angle ) noexcept
     {
         setRotation( _euler.yaw, angle, _euler.roll );
     }
 
     /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-    inline void Camera::setRoll( const Angle::DEGREES<F32> angle ) noexcept
+    inline void Camera::setRoll( const Angle::DEGREES_F angle ) noexcept
     {
         setRotation( _euler.yaw, _euler.pitch, angle );
     }
 
     /// Sets the camera's Yaw angle.
     /// This creates a new orientation quaternion for the camera and extracts the Euler angles
-    inline void Camera::setGlobalYaw( const Angle::DEGREES<F32> angle ) noexcept
+    inline void Camera::setGlobalYaw( const Angle::DEGREES_F angle ) noexcept
     {
         setGlobalRotation( angle, _euler.pitch, _euler.roll );
     }
 
     /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-    inline void Camera::setGlobalPitch( const Angle::DEGREES<F32> angle ) noexcept
+    inline void Camera::setGlobalPitch( const Angle::DEGREES_F angle ) noexcept
     {
         setGlobalRotation( _euler.yaw, angle, _euler.roll );
     }
 
     /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-    inline void Camera::setGlobalRoll( const Angle::DEGREES<F32> angle ) noexcept
+    inline void Camera::setGlobalRoll( const Angle::DEGREES_F angle ) noexcept
     {
         setGlobalRotation( _euler.yaw, _euler.pitch, angle );
     }
@@ -115,9 +115,9 @@ namespace Divide
     }
 
     /// Creates a quaternion based on the specified axis-angle and calls "rotate" to change the orientation
-    inline void Camera::rotate( const vec3<F32>& axis, const Angle::DEGREES<F32> angle )
+    inline void Camera::rotate( const vec3<F32>& axis, const Angle::DEGREES_F angle )
     {
-        rotate( Quaternion<F32>( axis, angle * speedFactor().turn * s_lastFrameTimeSec ) );
+        rotate( Quaternion<F32>( axis, Angle::to_RADIANS(angle * speedFactor().turn * s_lastFrameTimeSec )) );
     }
 
     inline void Camera::moveForward( const F32 factor ) noexcept
@@ -144,12 +144,12 @@ namespace Divide
         _fixedYawAxis = fixedAxis;
     }
 
-    inline void Camera::setEuler( const vec3<Angle::DEGREES<F32>>& euler ) noexcept
+    inline void Camera::setEuler( const vec3<Angle::DEGREES_F>& euler ) noexcept
     {
         setRotation( euler.yaw, euler.pitch, euler.roll );
     }
 
-    inline void Camera::setEuler( const Angle::DEGREES<F32>& pitch, const Angle::DEGREES<F32>& yaw, const Angle::DEGREES<F32>& roll ) noexcept
+    inline void Camera::setEuler( const Angle::DEGREES_F& pitch, const Angle::DEGREES_F& yaw, const Angle::DEGREES_F& roll ) noexcept
     {
         setRotation( yaw, pitch, roll );
     }
@@ -242,14 +242,14 @@ namespace Divide
     }
 
     template<bool zeroToOneDepth>
-    mat4<F32> Camera::Perspective( const Angle::DEGREES<F32> fovyRad, const F32 aspect, const F32 zNear, const F32 zFar) noexcept
+    mat4<F32> Camera::Perspective( const Angle::DEGREES_F fovy, const F32 aspect, const F32 zNear, const F32 zFar) noexcept
     {
         mat4<F32> ret{ MAT4_ZERO };
 
         assert( !IS_ZERO( aspect ) );
         assert( zFar > zNear );
 
-        Angle::RADIANS<F32> tanHalfFovy = std::tan( Angle::to_RADIANS( fovyRad ) * 0.5f );
+        Angle::RADIANS_F tanHalfFovy = std::tan( Angle::to_RADIANS( fovy ) * 0.5f );
 
         ret.m[0][0] = 1.f / (aspect * tanHalfFovy);
         ret.m[1][1] = 1.f / tanHalfFovy;

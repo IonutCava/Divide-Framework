@@ -129,9 +129,9 @@ namespace Divide
         /// Clears the reflection plane specified (if any)
         void clearReflection() noexcept;
         /// Global rotations are applied relative to the world axis, not the camera's
-        void setGlobalRotation( F32 yaw, F32 pitch, F32 roll = 0.0f ) noexcept;
+        void setGlobalRotation( Angle::DEGREES_F yaw, Angle::DEGREES_F pitch, Angle::DEGREES_F roll = 0.0f ) noexcept;
         /// Global rotations are applied relative to the world axis, not the camera's
-        void setGlobalRotation( const vec3<Angle::DEGREES<F32>>& euler ) noexcept;
+        void setGlobalRotation( const vec3<Angle::DEGREES_F>& euler ) noexcept;
         /// Sets the camera's view matrix to specify the specified value by extracting the eye position, orientation and other data from it 
         const mat4<F32>& lookAt( const mat4<F32>& viewMatrix );
         /// Sets the camera's position, target and up directions
@@ -142,18 +142,18 @@ namespace Divide
         const mat4<F32>& lookAt( const vec3<F32>& eye, const vec3<F32>& target );
         /// Sets the camera's Yaw angle.
         /// This creates a new orientation quaternion for the camera and extracts the Euler angles
-        void setYaw( const Angle::DEGREES<F32> angle ) noexcept;
+        void setYaw( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-        void setPitch( const Angle::DEGREES<F32> angle ) noexcept;
+        void setPitch( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-        void setRoll( const Angle::DEGREES<F32> angle ) noexcept;
+        void setRoll( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's Yaw angle.
         /// This creates a new orientation quaternion for the camera and extracts the Euler angles
-        void setGlobalYaw( const Angle::DEGREES<F32> angle ) noexcept;
+        void setGlobalYaw( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-        void setGlobalPitch( const Angle::DEGREES<F32> angle ) noexcept;
+        void setGlobalPitch( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-        void setGlobalRoll( const Angle::DEGREES<F32> angle ) noexcept;
+        void setGlobalRoll( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's eye position
         void setEye( const F32 x, const F32 y, const F32 z ) noexcept;
         /// Sets the camera's eye position
@@ -161,22 +161,29 @@ namespace Divide
         /// Sets the camera's orientation
         void setRotation( const Quaternion<F32>& q ) noexcept;
         /// Sets the camera's orientation
-        void setRotation( const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll = 0.0f ) noexcept;
+        void setRotation( const Angle::DEGREES_F yaw, const Angle::DEGREES_F pitch, const Angle::DEGREES_F roll = 0.0f ) noexcept;
         /// Rotates the camera (changes its orientation) by the specified quaternion (_orientation *= q)
         void rotate( const Quaternion<F32>& q );
         /// Sets the camera's orientation to match the specified yaw, pitch and roll values;
         /// Creates a quaternion based on the specified Euler angles and calls "rotate" to change the orientation
-        void rotate( Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> roll ) noexcept;
+        void rotate( Angle::DEGREES_F yaw, Angle::DEGREES_F pitch, Angle::DEGREES_F roll ) noexcept;
         /// Creates a quaternion based on the specified axis-angle and calls "rotate" to change the orientation
-        void rotate( const vec3<F32>& axis, const Angle::DEGREES<F32> angle );
+        void rotate( const vec3<F32>& axis, const Angle::DEGREES_F angle );
         /// Yaw, Pitch and Roll call "rotate" with a appropriate quaternion for  each rotation.
         /// Because the camera is facing the -Z axis, a positive angle will create a positive Yaw
         /// behind the camera and a negative one in front of the camera (so we invert the angle - left will turn left when facing -Z)
-        void rotateYaw( Angle::DEGREES<F32> angle );
+        void rotateYaw( Angle::DEGREES_F angle );
         /// Change camera's roll.
-        void rotateRoll( Angle::DEGREES<F32> angle );
+        void rotateRoll( Angle::DEGREES_F angle );
         /// Change camera's pitch
-        void rotatePitch( Angle::DEGREES<F32> angle );
+        void rotatePitch( Angle::DEGREES_F angle );
+        /// Returns a quaternion representing a yaw rotation of the specified angle with the current camera settings applied
+        Quaternion<F32> rotationYaw( Angle::DEGREES_F angle ) const;
+        /// Returns a quaternion representing a roll rotation of the specified angle with the current camera settings applied
+        Quaternion<F32> rotationRoll( Angle::DEGREES_F angle ) const;
+        /// Returns a quaternion representing a pitch rotation of the specified angle with the current camera settings applied
+        Quaternion<F32> rotationPitch( Angle::DEGREES_F angle ) const;
+
         /// Moves the camera by the specified offsets in each direction
         void move( F32 dx, F32 dy, F32 dz ) noexcept;
         /// Moves the camera forward or backwards
@@ -188,19 +195,19 @@ namespace Divide
         /// Exactly as in Ogre3D: locks the yaw movement to the specified axis
         void setFixedYawAxis( const bool useFixed, const vec3<F32>& fixedAxis = WORLD_Y_AXIS ) noexcept;
         bool moveRelative( const vec3<F32>& relMovement );
-        bool rotateRelative( const vec3<F32>& relRotation );
+        bool rotateRelative( const vec3<Angle::DEGREES_F>& relRotation );
         bool zoom( F32 zoomFactor ) noexcept;
         /// Set the camera's rotation to match the specified euler angles
-        void setEuler( const vec3<Angle::DEGREES<F32>>& euler ) noexcept;
+        void setEuler( const vec3<Angle::DEGREES_F>& euler ) noexcept;
         /// Set the camera's rotation to match the specified euler angles
-        void setEuler( const Angle::DEGREES<F32>& pitch, const Angle::DEGREES<F32>& yaw, const Angle::DEGREES<F32>& roll ) noexcept;
+        void setEuler( const Angle::DEGREES_F& pitch, const Angle::DEGREES_F& yaw, const Angle::DEGREES_F& roll ) noexcept;
         void setAspectRatio( F32 ratio ) noexcept;
-        void setVerticalFoV( Angle::DEGREES<F32> verticalFoV ) noexcept;
-        void setHorizontalFoV( Angle::DEGREES<F32> horizontalFoV ) noexcept;
+        void setVerticalFoV( Angle::DEGREES_F verticalFoV ) noexcept;
+        void setHorizontalFoV( Angle::DEGREES_F horizontalFoV ) noexcept;
 
         const mat4<F32>& setProjection( vec2<F32> zPlanes );
-        const mat4<F32>& setProjection( F32 verticalFoV, vec2<F32> zPlanes );
-        const mat4<F32>& setProjection( F32 aspectRatio, F32 verticalFoV, vec2<F32> zPlanes );
+        const mat4<F32>& setProjection( Angle::DEGREES_F verticalFoV, vec2<F32> zPlanes );
+        const mat4<F32>& setProjection( F32 aspectRatio, Angle::DEGREES_F verticalFoV, vec2<F32> zPlanes );
         const mat4<F32>& setProjection( const vec4<F32>& rect, vec2<F32> zPlanes );
         const mat4<F32>& setProjection( const mat4<F32>& projection, vec2<F32> zPlanes, bool isOrtho ) noexcept;
 
@@ -223,7 +230,7 @@ namespace Divide
         /// Returns the internal camera snapshot data (eye, orientation, etc)
         [[nodiscard]] const CameraSnapshot&     snapshot()             const noexcept;
         /// Returns the horizontal field of view, calculated from the vertical FoV and aspect ratio
-        [[nodiscard]]       Angle::DEGREES<F32> getHorizontalFoV()     const noexcept;
+        [[nodiscard]] Angle::DEGREES_F          getHorizontalFoV()     const noexcept;
         /// Returns the most recent/up-to-date view matrix
         [[nodiscard]] const mat4<F32>&          viewMatrix()           const noexcept;
         /// Updates the view matrix and returns the result
@@ -246,7 +253,7 @@ namespace Divide
         [[nodiscard]]       Frustum&            getFrustum()                 noexcept;
 
         PROPERTY_R_IW( vec4<F32>, orthoRect, VECTOR4_UNIT );
-        PROPERTY_R_IW( vec3<Angle::DEGREES<F32>>, euler, VECTOR3_ZERO );
+        PROPERTY_R_IW( vec3<Angle::DEGREES_F>, euler, VECTOR3_ZERO );
         PROPERTY_RW( vec3<F32>, speedFactor, { 5.f } );
         PROPERTY_RW( F32, maxRadius, 10.f );
         PROPERTY_RW( F32, minRadius, 0.1f );
@@ -262,7 +269,7 @@ namespace Divide
         template<bool zeroToOneDepth = true>
         [[nodiscard]] static mat4<F32> Ortho( F32 left, F32 right, F32 bottom, F32 top, F32 zNear, F32 zFar ) noexcept;
         template<bool zeroToOneDepth = true>
-        [[nodiscard]] static mat4<F32> Perspective( Angle::DEGREES<F32> fovyRad, F32 aspect, F32 zNear, F32 zFar ) noexcept;
+        [[nodiscard]] static mat4<F32> Perspective( Angle::DEGREES_F fovy, F32 aspect, F32 zNear, F32 zFar ) noexcept;
         template<bool zeroToOneDepth = true>
         [[nodiscard]] static mat4<F32> FrustumMatrix( F32 left, F32 right, F32 bottom, F32 top, F32 nearVal, F32 farVal ) noexcept;
 
@@ -280,10 +287,10 @@ namespace Divide
         TransformComponent* _targetTransform{ nullptr };
         mat4<F32> _viewProjectionMatrix;
         Plane<F32> _reflectionPlane;
-        vec3<Angle::RADIANS<F32>> _cameraRotation{ VECTOR3_ZERO };
+        vec3<Angle::RADIANS_F> _cameraRotation{ VECTOR3_ZERO };
         vec3<F32> _fixedYawAxis{ WORLD_Y_AXIS };
         vec3<F32> _offsetDir{ WORLD_Z_AXIS };
-        Angle::DEGREES<F32> _accumPitchDegrees{ 0.0f };
+        Angle::DEGREES_F _accumPitch{ 0.0f };
         F32 _currentRotationX{ 0.0f };
         F32 _currentRotationY{ 0.0f };
         U32 _updateCameraId{ 0u };

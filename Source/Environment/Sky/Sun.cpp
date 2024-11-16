@@ -7,65 +7,71 @@ namespace Divide {
 namespace {
     constexpr D64 g_numSecondsUpdateInterval = 30;
 
-    constexpr D64 SunDia = 0.53;         // Sun radius degrees
-    constexpr D64 AirRefr = 34.0 / 60.0; // Atmospheric refraction degrees
-    constexpr D64 TwoPi = 2 * M_PI;
     // Sun computation coefficients
-    constexpr D64 Longitude_A = 282.9404;
-    constexpr D64 Longitude_B = 4.70935E-5;
-    constexpr D64 Mean_A = 356.047;
-    constexpr D64 Mean_B = 0.9856002585;
-    constexpr D64 Eccentricity_A = 0.016709;
-    constexpr D64 Eccentricity_B = 1.151E-9;
-    constexpr D64 Oblique_A = Angle::DegreesToRadians(23.4393);
-    constexpr D64 Oblique_B = Angle::DegreesToRadians(3.563E-7);
-    constexpr D64 Ecliptic_A = Angle::DegreesToRadians(1.915);
-    constexpr D64 Ecliptic_B = Angle::DegreesToRadians(.02);
+    const Angle::RADIANS_D Eccentricity_A = 0.016709;
+    const Angle::RADIANS_D Eccentricity_B = 1.151E-9;
+    const Angle::DEGREES_D Mean_A = 356.047;
+    const Angle::DEGREES_D Mean_B = 0.9856002585;
+    const Angle::DEGREES_D Longitude_A = 282.9404;
+    const Angle::DEGREES_D Longitude_B = 4.70935E-5;
+    const Angle::DEGREES_D SunDia = 0.53;         // Sun radius degrees
+    const Angle::DEGREES_D AirRefr = 34.0 / 60.0; // Atmospheric refraction degrees
+    const Angle::RADIANS_D Oblique_A  = Angle::to_RADIANS(Angle::DEGREES_D(23.4393));
+    const Angle::RADIANS_D Oblique_B  = Angle::to_RADIANS(Angle::DEGREES_D(3.563E-7));
+    const Angle::RADIANS_D Ecliptic_A = Angle::to_RADIANS(Angle::DEGREES_D(1.915));
+    const Angle::RADIANS_D Ecliptic_B = Angle::to_RADIANS(Angle::DEGREES_D(.02));
 
-    constexpr D64 FNrange(const D64 x) noexcept {
-        const D64 b = x / TwoPi;
-        const D64 a = TwoPi * (b - to_I32(b));
-        return a < 0 ? TwoPi + a : a;
+    D64 FNrange(const Angle::RADIANS_D x) noexcept
+    {
+        const D64 b = x.value / M_PI_MUL_2;
+        const D64 a = M_PI_MUL_2 * (b - to_I32(b));
+        return a < 0 ? M_PI_MUL_2 + a : a;
     }
 
     // Calculating the hourangle
-    D64 f0(const D64 lat, const D64 declin) noexcept {
-        D64 dfo = Angle::DegreesToRadians(0.5 * SunDia + AirRefr);
-        if (lat < 0.0) {
+    Angle::RADIANS_D f0(const Angle::DEGREES_D lat, const D64 declin) noexcept
+    {
+        Angle::RADIANS_D dfo = Angle::to_RADIANS(Angle::DEGREES_D(0.5 * SunDia + AirRefr));
+        if (lat < 0.0)
+        {
             dfo = -dfo;	// Southern hemisphere
         }
-        D64 fo = std::tan(declin + dfo) * std::tan(Angle::DegreesToRadians(lat));
-        if (fo > 0.99999) {
-            fo = 1.0; // to avoid overflow //
-        }
-        return std::asin(fo) + M_PI_2;
+
+        const Angle::RADIANS_D fo = std::min(std::tan(declin + dfo) * std::tan(Angle::to_RADIANS(lat)), 1.0);// to avoid overflow //
+        return std::asin(fo) + M_PI_DIV_2;
     }
 
-    D64 FNsun(const D64 d, D64& RA, D64& delta, D64& L) noexcept {
+    Angle::RADIANS_D FNsun(const D64 d, Angle::DEGREES_D& RA, Angle::RADIANS_D& delta, Angle::RADIANS_D& L) noexcept
+    {
         //   mean longitude of the Sun
-        const D64 W_DEG = Longitude_A + Longitude_B * d;
-        const D64 W_RAD = Angle::DegreesToRadians(W_DEG);
-        const D64 M_DEG = Mean_A + Mean_B * d;
-        const D64 M_RAD = Angle::DegreesToRadians(M_DEG);
+        const Angle::DEGREES_D W_DEG = Longitude_A + Longitude_B * d;
+        const Angle::DEGREES_D M_DEG = Mean_A + Mean_B * d;
+
+        const Angle::RADIANS_D W_RAD = Angle::to_RADIANS(W_DEG);
+        const Angle::RADIANS_D M_RAD = Angle::to_RADIANS(M_DEG);
+
         //   mean anomaly of the Sun
         const D64 g = FNrange(M_RAD);
-        // eccentricity
-        const D64 ECC_RAD = Eccentricity_A - Eccentricity_B * d;
-        const D64 ECC_DEG = Angle::RadiansToDegrees(ECC_RAD);
-        //   Obliquity of the ecliptic
-        const D64 obliq = Oblique_A - Oblique_B * d;
 
-        const D64 E_DEG = M_DEG + ECC_DEG * std::sin(g) * (1.0 + ECC_RAD * std::cos(g));
-        const D64 E_RAD = FNrange(Angle::DegreesToRadians(E_DEG));
+        // eccentricity
+        const Angle::RADIANS_D ECC_RAD = Eccentricity_A - Eccentricity_B * d;
+        const Angle::DEGREES_D ECC_DEG = Angle::to_DEGREES(ECC_RAD);
+
+        //   Obliquity of the ecliptic
+        const Angle::RADIANS_D obliq = Oblique_A - Oblique_B * d;
+
+        const Angle::DEGREES_D E_DEG = (M_DEG.value + ECC_DEG.value * std::sin(g) * (1.0 + ECC_RAD.value * std::cos(g)));
+        const Angle::RADIANS_D E_RAD = FNrange(Angle::to_RADIANS(E_DEG));
+
         D64 x = std::cos(E_RAD) - ECC_RAD;
-        D64 y = std::sin(E_RAD) * Sqrt(1.0 - SQUARED(ECC_RAD));
+        D64 y = std::sin(E_RAD) * Sqrt(1.0 - SQUARED(ECC_RAD.value));
 
         const D64 r = Sqrt(SQUARED(x) + SQUARED(y));
-        const D64 v = Angle::RadiansToDegrees(std::atan2(y, x));
+        const Angle::DEGREES_D v = Angle::to_DEGREES(Angle::RADIANS_D(std::atan2(y, x)));
 
         // longitude of sun
-        const D64 lonsun = v + W_DEG;
-        const D64 lonsun_rad = Angle::DegreesToRadians(lonsun - 360.0 * (lonsun > 360.0 ? 1 : 0));
+        const Angle::DEGREES_D lonsun = v + W_DEG;
+        const Angle::RADIANS_D lonsun_rad = Angle::to_RADIANS(lonsun - 360.0 * (lonsun > 360.0 ? 1 : 0));
 
         // sun's ecliptic rectangular coordinates
         x = r * std::cos(lonsun_rad);
@@ -76,18 +82,18 @@ namespace {
         // Sun's mean longitude
         L = FNrange(W_RAD + M_RAD);
         delta = std::atan2(zequat, Sqrt(SQUARED(x) + SQUARED(yequat)));
-        RA = Angle::RadiansToDegrees(std::atan2(yequat, x));
+        RA = Angle::to_DEGREES(Angle::RADIANS_D(std::atan2(yequat, x)));
 
         //   Ecliptic longitude of the Sun
         return FNrange(L + Ecliptic_A * std::sin(g) + Ecliptic_B * std::sin(2 * g));
     }
 }
 
-SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 latitude, const F32 longitude) {
-
-    const D64 longit = to_D64(longitude);
-    const D64 latit = to_D64(latitude);
-    const D64 latit_rad = Angle::DegreesToRadians(latit);
+SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const Angle::DEGREES_F latitude, const Angle::DEGREES_F longitude)
+{
+    const Angle::DEGREES_D longit = to_D64(longitude);
+    const Angle::DEGREES_D latit = to_D64(latitude);
+    const Angle::RADIANS_D latit_rad = Angle::to_RADIANS(latit);
 
     // this is Y2K compliant method
     const I32 year = dateTime.tm_year + 1900;
@@ -103,27 +109,30 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     //   Get the days to J2000
     //   h is UT in decimal hours
     //   FNday only works between 1901 to 2099 - see Meeus chapter 7
-    const D64 jd = [year, h, m, day]() noexcept {
-        const I32 luku = -7 * (year + (m + 9) / 12) / 4 + 275 * m / 9 + day;
-        // type casting necessary on PC DOS and TClite to avoid overflow
-        return to_D64(luku + year * 367) - 730530.0 + h / 24.0;
-    }();
+    const D64 jd = [year, h, m, day]() noexcept
+                   {
+                       const I32 luku = -7 * (year + (m + 9) / 12) / 4 + 275 * m / 9 + day;
+                       // type casting necessary on PC DOS and TClite to avoid overflow
+                       return to_D64(luku + year * 367) - 730530.0 + h / 24.0;
+                   }();
 
     //   Use FNsun to find the ecliptic longitude of the Sun
-    D64 RA = 0.0, delta = 0.0, L = 0.0;
+    Angle::RADIANS_D delta = 0.0, L = 0.0;
+    Angle::DEGREES_D RA = 0.0;
+
     const D64 lambda = FNsun(jd, RA, delta, L);
     const D64 cos_delta = std::cos(delta);
-    const D64 delta_deg = Angle::RadiansToDegrees(delta);
+    const Angle::DEGREES_D delta_deg = Angle::to_DEGREES(delta);
 
     //   Obliquity of the ecliptic
-    const D64 obliq = Oblique_A - Oblique_B * jd;
+    const Angle::RADIANS_D obliq = Oblique_A - Oblique_B * jd;
 
     // Sidereal time at Greenwich meridian
-    const D64 GMST0 = Angle::RadiansToDegrees(L) / 15.0 + 12.0;	// hours
-    const D64 SIDTIME = GMST0 + UT + longit / 15.0;
+    const Angle::DEGREES_D GMST0 = Angle::to_DEGREES(L) / 15.0 + 12.0;	// hours
+    const Angle::DEGREES_D SIDTIME = GMST0 + UT + longit / 15.0;
 
     // Hour Angle
-    D64 ha = FNrange(Angle::DegreesToRadians(15.0 * SIDTIME - RA));// degrees
+    D64 ha = FNrange(Angle::to_RADIANS(15.0 * SIDTIME - RA));// degrees
 
     const D64 x = std::cos(ha) * cos_delta;
     const D64 y = std::sin(ha) * cos_delta;
@@ -138,23 +147,23 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     const D64 alpha = std::atan2(std::cos(obliq) * std::sin(lambda), std::cos(lambda));
 
     //   Find the Equation of Time in minutes
-    const D64 equation = 1440 - Angle::RadiansToDegrees(L - alpha) * 4;
+    const D64 equation = 1440. - Angle::to_DEGREES(L - alpha).value * 4.;
 
     ha = f0(latit, delta);
 
     // arctic winter     //
-
-    D64 riset = 12.0 - 12.0 * ha / M_PI + tzone - longit / 15.0 + equation / 60.0;
-    D64 settm = 12.0 + 12.0 * ha / M_PI + tzone - longit / 15.0 + equation / 60.0;
+    D64 riset = 12.0  - 12.0 * ha / M_PI + tzone - longit / 15.0 + equation / 60.0;
+    D64 settm = 12.0  + 12.0 * ha / M_PI + tzone - longit / 15.0 + equation / 60.0;
     D64 noont = riset + 12.0 * ha / M_PI;
-    D64 altmax = 90.0 + delta_deg - latit;
-    if (altmax > 90.0) {
+    Angle::DEGREES_D altmax = 90.0 + delta_deg - latit;
+    if (altmax > 90.0)
+    {
         altmax = 180.0 - altmax; //to express as degrees from the N horizon
     }
 
-    noont -= 24 * (noont > 24 ? 1 : 0);
-    riset -= 24 * (riset > 24 ? 1 : 0);
-    settm -= 24 * (settm > 24 ? 1 : 0);
+    noont -= 24. * (noont > 24. ? 1. : 0.);
+    riset -= 24. * (riset > 24. ? 1. : 0.);
+    settm -= 24. * (settm > 24. ? 1. : 0.);
 
     const auto calcTime = [](const D64 dhr) noexcept
     {
@@ -176,54 +185,55 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const F32 l
     };
 }
 
-D64 SunPosition::CorrectAngle(const D64 angleInRadians) noexcept {
-    if (angleInRadians < 0) {
-        return TwoPi - std::fmod(std::abs(angleInRadians), TwoPi);
-    }
-    if (angleInRadians > TwoPi) {
-        return std::fmod(angleInRadians, TwoPi);
-    }
-
-    return angleInRadians;
-}
-
-void Sun::SetLocation(const F32 longitude, const F32 latitude) noexcept {
-    if (!COMPARE(_longitude, longitude)) {
+void Sun::SetLocation(const Angle::DEGREES_F longitude, const Angle::DEGREES_F latitude) noexcept
+{
+    if (!COMPARE(_longitude, longitude))
+    {
         _longitude = longitude;
         _dirty = true;
     }
-    if (!COMPARE(_latitude, latitude)) {
+    if (!COMPARE(_latitude, latitude))
+    {
         _latitude = latitude;
         _dirty = true;
     }
 }
 
-void Sun::SetDate(struct tm &dateTime) noexcept {
+void Sun::SetDate(struct tm &dateTime) noexcept
+{
     const time_t t1 = mktime(&_dateTime);
     const time_t t2 = mktime(&dateTime);
     const D64 diffSecs = std::abs(difftime(t1, t2));
-    if (t1 == -1 || diffSecs > g_numSecondsUpdateInterval) {
+
+    if (t1 == -1 || diffSecs > g_numSecondsUpdateInterval)
+    {
         _dateTime = dateTime;
         _dirty = true;
     }
 }
 
-SimpleTime Sun::GetTimeOfDay() const noexcept {
-    return SimpleTime{
+SimpleTime Sun::GetTimeOfDay() const noexcept
+{
+    return SimpleTime
+    {
         to_U8(_dateTime.tm_hour),
         to_U8(_dateTime.tm_min)
     };
 }
 
-SimpleLocation Sun::GetGeographicLocation() const noexcept {
-    return SimpleLocation{
+SimpleLocation Sun::GetGeographicLocation() const noexcept
+{
+    return SimpleLocation
+    {
         _latitude,
         _longitude
     };
 }
 
-const SunInfo& Sun::GetDetails() const {
-    if (_dirty) {
+const SunInfo& Sun::GetDetails() const
+{
+    if (_dirty)
+    {
         _cachedDetails = SunPosition::CalculateSunPosition(_dateTime, _latitude, _longitude);
         _dirty = false;
     }
@@ -231,14 +241,16 @@ const SunInfo& Sun::GetDetails() const {
     return _cachedDetails;
 }
 
-[[nodiscard]] vec3<F32> Sun::GetSunPosition(const F32 radius) const {
+[[nodiscard]] vec3<F32> Sun::GetSunPosition(const F32 radius) const
+{
     const SunInfo& info = GetDetails();
 
-    const F32 phi = Angle::DegreesToRadians(90 - Angle::RadiansToDegrees(info.altitude));
-    const F32 theta = info.azimuth;
+    const Angle::RADIANS_F phi = M_PI_DIV_2 - info.altitude.value;
+    const Angle::RADIANS_F theta = info.azimuth;
     const F32 sinPhiRadius = std::sin(phi) * radius;
 
-    return vec3<F32> {
+    return vec3<F32>
+    {
         sinPhiRadius * std::sin(theta),
         std::cos(phi) * radius,
         sinPhiRadius * std::cos(theta)

@@ -42,7 +42,8 @@ represent rotation "
 namespace Divide {
 
 template <typename T>
-class Quaternion {
+class Quaternion
+{
     static_assert(ValidMathType<T>, "Invalid base type!");
 
    public:
@@ -57,9 +58,10 @@ class Quaternion {
 #endif //HAS_SSE42
 
     explicit Quaternion(const mat3<T>& rotationMatrix) noexcept;
-    Quaternion(const vec3<T>& axis, Angle::DEGREES<T> angle) noexcept;
+    Quaternion(const vec3<T>& axis, Angle::RADIANS<T> angle) noexcept;
     Quaternion(const vec3<T>& forward, const vec3<T>& up = WORLD_Y_AXIS) noexcept;
-    Quaternion(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept;
+    Quaternion(const vec3<Angle::RADIANS<T>>& euler) noexcept;
+    Quaternion(Angle::RADIANS<T> pitch, Angle::RADIANS<T> yaw, Angle::RADIANS<T> roll) noexcept;
     Quaternion(const Quaternion& q) noexcept;
 
     Quaternion& operator=(const Quaternion& q) noexcept;
@@ -68,7 +70,7 @@ class Quaternion {
     [[nodiscard]] T magnitude() const;
     [[nodiscard]] T magnituteSQ() const;
 
-    [[nodiscard]] bool compare(const Quaternion& rq, Angle::DEGREES<T> tolerance = 1e-3f) const;
+    [[nodiscard]] bool compare(const Quaternion& rq, Angle::RADIANS_F tolerance = 1e-3f) const;
 
     void set(const vec4<T>& values) noexcept;
     void set(T x, T y, T z, T w) noexcept;
@@ -124,12 +126,12 @@ class Quaternion {
     void slerp(const Quaternion& q0, const Quaternion& q1, F32 t) noexcept;
 
     //! Convert from Axis Angle
-    void fromAxisAngle(const vec3<T>& v, Angle::DEGREES<T> angle) noexcept;
+    void fromAxisAngle(const vec3<T>& v, Angle::RADIANS<T> angle) noexcept;
 
-    void fromEuler(const vec3<Angle::DEGREES<T>>& v) noexcept;
+    void fromEuler(const vec3<Angle::RADIANS<T>>& v) noexcept;
 
     //! Convert from Euler Angles
-    void fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept;
+    void fromEuler(Angle::RADIANS<T> pitch, Angle::RADIANS<T> yaw, Angle::RADIANS<T> roll) noexcept;
 
     void lookRotation(vec3<T> forward, vec3<T> up);
 
@@ -142,10 +144,9 @@ class Quaternion {
     void getMatrix(mat3<T>& outMatrix) const noexcept;
 
     //! Convert to Axis/Angles
-    void getAxisAngle(vec3<T>& axis, Angle::DEGREES<T>& angle) const;
+    void getAxisAngle(vec3<T>& axis, Angle::RADIANS<T>& angle) const;
 
     vec3<Angle::RADIANS<T>> getEuler() const noexcept;
-
 
     /// X/Y/Z Axis get/set a la Ogre: OgreQuaternion.cpp
     void fromAxes(const vec3<T>* axis);
@@ -204,7 +205,8 @@ template <typename T>
 vec3<T> DirectionFromAxis(const Quaternion<T>& q, const vec3<T>& AXIS) noexcept;
 
 template <typename T>
-vec3<T> DirectionFromEuler(vec3<Angle::DEGREES<T>> const & euler, const vec3<T>& FORWARD_DIRECTION);
+vec3<T> DirectionFromEuler(vec3<Angle::RADIANS<T>> const & euler, const vec3<T>& FORWARD_DIRECTION);
+
 }  // namespace Divide
 
 #endif //DVD_QUATERNION_H_

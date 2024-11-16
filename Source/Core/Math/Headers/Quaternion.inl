@@ -35,9 +35,11 @@
 namespace Divide {
 
 #if defined(HAS_SSE42)
-namespace SSE {
+namespace SSE
+{
     //ref: http://stackoverflow.com/questions/18542894/how-to-multiply-two-quaternions-with-minimal-instructions?lq=1
-    static __m128 multiply(const __m128 xyzw, const __m128 abcd) noexcept {
+    inline __m128 multiply(const __m128 xyzw, const __m128 abcd) noexcept
+    {
         /* The product of two quaternions is:                                 */
         /* (X,Y,Z,W) = (xd+yc-zb+wa, -xc+yd+za+wb, xb-ya+zd+wc, -xa-yb-zc+wd) */
         const __m128 wzyx = _mm_shuffle_ps(xyzw, xyzw, _MM_SHUFFLE(0, 1, 2, 3));
@@ -95,7 +97,7 @@ Quaternion<T>::Quaternion(const mat3<T>& rotationMatrix) noexcept
 }
 
 template <typename T>
-Quaternion<T>::Quaternion(const vec3<T>& axis, Angle::DEGREES<T> angle) noexcept
+Quaternion<T>::Quaternion(const vec3<T>& axis, Angle::RADIANS<T> angle) noexcept
 {
     fromAxisAngle(axis, angle);
 }
@@ -107,9 +109,15 @@ Quaternion<T>::Quaternion(const vec3<T>& forward, const vec3<T>& up) noexcept
 }
 
 template <typename T>
-Quaternion<T>::Quaternion(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept
+Quaternion<T>::Quaternion(Angle::RADIANS<T> pitch, Angle::RADIANS<T> yaw, Angle::RADIANS<T> roll) noexcept
 {
     fromEuler(pitch, yaw, roll);
+}
+
+template <typename T>
+Quaternion<T>::Quaternion(const vec3<Angle::RADIANS<T>>& euler) noexcept
+    : Quaternion(euler.pitch, euler.yaw, euler.roll)
+{
 }
 
 template <typename T>
@@ -119,66 +127,77 @@ Quaternion<T>::Quaternion(const Quaternion& q) noexcept
 }
 
 template <typename T>
-Quaternion<T>& Quaternion<T>::operator=(const Quaternion& q) noexcept {
+Quaternion<T>& Quaternion<T>::operator=(const Quaternion& q) noexcept
+{
     set(q);
     return *this;
 }
 
 template <typename T>
-T Quaternion<T>::dot(const Quaternion<T>& rq) const noexcept {
+T Quaternion<T>::dot(const Quaternion<T>& rq) const noexcept
+{
     return _elements.dot(rq._elements);
 }
 
 template <typename T>
-T Quaternion<T>::magnitude() const {
+T Quaternion<T>::magnitude() const
+{
     return _elements.length();
 }
 
 template <typename T>
-T Quaternion<T>::magnituteSQ() const {
+T Quaternion<T>::magnituteSQ() const
+{
     return _elements.lengthSquared();
 }
 
 template <typename T>
-bool Quaternion<T>::compare(const Quaternion<T>& rq, Angle::DEGREES<T> tolerance) const {
-    T angleRad = Angle::to_RADIANS(static_cast<T>(std::acosf(to_F32(dot(rq)))));
-    const F32 toleranceRad = Angle::to_RADIANS(tolerance);
+bool Quaternion<T>::compare(const Quaternion<T>& rq, Angle::RADIANS_F tolerance) const
+{
+    const Angle::RADIANS_F angleRad = std::acosf(to_F32(dot(rq)));
 
-    return IS_TOLERANCE(angleRad, toleranceRad) || COMPARE_TOLERANCE(angleRad, M_PI_f, toleranceRad);
+    return IS_TOLERANCE(angleRad, tolerance) || COMPARE_TOLERANCE(angleRad, Angle::RADIANS_F(M_PI_f), tolerance);
 }
 
 template <typename T>
-void Quaternion<T>::set(const vec4<T>& values) noexcept {
+void Quaternion<T>::set(const vec4<T>& values) noexcept
+{
     _elements.set(values);
 }
 
 template <typename T>
-void Quaternion<T>::set(T x, T y, T z, T w) noexcept {
+void Quaternion<T>::set(T x, T y, T z, T w) noexcept
+{
     _elements.set(x, y, z, w);
 }
 
 template <typename T>
-void Quaternion<T>::set(const Quaternion<T>& q) noexcept {
+void Quaternion<T>::set(const Quaternion<T>& q) noexcept
+{
     set(q._elements);
 }
 
 template <typename T>
-void Quaternion<T>::normalize() noexcept {
+void Quaternion<T>::normalize() noexcept
+{
     _elements.normalize();
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::inverse() const {
+Quaternion<T> Quaternion<T>::inverse() const
+{
     return getConjugate() * (1.0f / magnitude());
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::getConjugate() const {
+Quaternion<T> Quaternion<T>::getConjugate() const
+{
     return Quaternion<T>(-X(), -Y(), -Z(), W());
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const noexcept {
+Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const noexcept
+{
     return Quaternion<T>(W() * rq.X() + X() * rq.W() + Y() * rq.Z() - Z() * rq.Y(),
                          W() * rq.Y() + Y() * rq.W() + Z() * rq.X() - X() * rq.Z(),
                          W() * rq.Z() + Z() * rq.W() + X() * rq.Y() - Y() * rq.X(),
@@ -187,30 +206,35 @@ Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const noexcept {
 
 #if defined(HAS_SSE42)
 template <>
-inline Quaternion<F32> Quaternion<F32>::operator*(const Quaternion<F32>& rq) const noexcept {
+inline Quaternion<F32> Quaternion<F32>::operator*(const Quaternion<F32>& rq) const noexcept
+{
     return Quaternion<F32>(SSE::multiply(_elements._reg._reg, rq._elements._reg._reg));
 }
 #endif //HAS_SSE42
 
 template <typename T>
-Quaternion<T>& Quaternion<T>::operator*=(const Quaternion<T>& rq) noexcept {
+Quaternion<T>& Quaternion<T>::operator*=(const Quaternion<T>& rq) noexcept
+{
     *this = *this * rq;
     return *this;
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::operator/(const Quaternion& rq) const {
+Quaternion<T> Quaternion<T>::operator/(const Quaternion& rq) const
+{
     return *this * rq.inverse();
 }
 
 template <typename T>
-Quaternion<T>& Quaternion<T>::operator/=(const Quaternion& rq) {
+Quaternion<T>& Quaternion<T>::operator/=(const Quaternion& rq)
+{
     *this = rq / *this;
     return *this;
 }
 
 template <typename T>
-vec3<T> Quaternion<T>::operator*(const vec3<T>& vec) const noexcept {
+vec3<T> Quaternion<T>::operator*(const vec3<T>& vec) const noexcept
+{
     // nVidia SDK implementation
     vec3<T> uv = Cross(_elements.xyz, vec);
     const vec3<T> uuv = Cross(_elements.xyz, uv);
@@ -220,90 +244,109 @@ vec3<T> Quaternion<T>::operator*(const vec3<T>& vec) const noexcept {
 }
 
 template <typename T>
-bool Quaternion<T>::operator==(const Quaternion<T>& rq) const {
+bool Quaternion<T>::operator==(const Quaternion<T>& rq) const
+{
     return compare(rq);
 }
 
 template <typename T>
-bool Quaternion<T>::operator!=(const Quaternion<T>& rq) const {
+bool Quaternion<T>::operator!=(const Quaternion<T>& rq) const
+{
     return !compare(rq);
 }
 
 template <typename T>
-Quaternion<T>& Quaternion<T>::operator+=(const Quaternion<T>& rq) {
+Quaternion<T>& Quaternion<T>::operator+=(const Quaternion<T>& rq)
+{
     _elements += rq._elements;
     return *this;
 }
 
 template <typename T>
-Quaternion<T>& Quaternion<T>::operator-=(const Quaternion<T>& rq) {
+Quaternion<T>& Quaternion<T>::operator-=(const Quaternion<T>& rq)
+{
     _elements -= rq._elements;
     return *this;
 }
 
 template <typename T>
-Quaternion<T>& Quaternion<T>::operator*=(T scalar) {
+Quaternion<T>& Quaternion<T>::operator*=(T scalar)
+{
     _elements *= scalar;
     return *this;
 }
 
 template <typename T>
-Quaternion<T>& Quaternion<T>::operator/=(T scalar) {
+Quaternion<T>& Quaternion<T>::operator/=(T scalar)
+{
     _elements /= scalar;
     return *this;
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::operator+(const Quaternion<T>& rq) const {
+Quaternion<T> Quaternion<T>::operator+(const Quaternion<T>& rq) const
+{
     Quaternion<T> tmp(*this);
     tmp += rq;
     return tmp;
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::operator-(const Quaternion<T>& rq) const {
+Quaternion<T> Quaternion<T>::operator-(const Quaternion<T>& rq) const
+{
     Quaternion<T> tmp(*this);
     tmp -= rq;
     return tmp;
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::operator*(T scalar) const {
+Quaternion<T> Quaternion<T>::operator*(T scalar) const
+{
     Quaternion<T> tmp(*this);
     tmp *= scalar;
     return tmp;
 }
 
 template <typename T>
-Quaternion<T> Quaternion<T>::operator/(T scalar) const {
+Quaternion<T> Quaternion<T>::operator/(T scalar) const
+{
     Quaternion<T> tmp(*this);
     tmp /= scalar;
     return tmp;
 }
 
 template <typename T>
-void Quaternion<T>::slerp(const Quaternion<T>& q, const F32 t) noexcept {
+void Quaternion<T>::slerp(const Quaternion<T>& q, const F32 t) noexcept
+{
     slerp(*this, q, t);
 }
 
 template <typename T>
-void Quaternion<T>::slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, const F32 t) noexcept {
+void Quaternion<T>::slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, const F32 t) noexcept
+{
     F32 k0 = 0.f, k1 = 0.f;
     T cosomega = q0.dot(q1);
+
     Quaternion<T> q;
-    if (cosomega < 0.f) {
+    if (cosomega < 0.f)
+    {
         cosomega = -cosomega;
         q._elements.set(-q1._elements);
-    } else {
+    }
+    else
+    {
         q._elements.set(q1._elements);
     }
 
-    if (1. - cosomega > 1e-6) {
+    if (1. - cosomega > 1e-6)
+    {
         const F32 omega = to_F32(std::acos(cosomega));
         const F32 sinomega = to_F32(std::sin(omega));
         k0 = to_F32(std::sin((1.f - t) * omega) / sinomega);
         k1 = to_F32(std::sin(t * omega) / sinomega);
-    } else {
+    }
+    else
+    {
         k0 = 1.f - t;
         k1 = t;
     }
@@ -311,21 +354,24 @@ void Quaternion<T>::slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, cons
 }
 
 template <typename T>
-void Quaternion<T>::fromAxisAngle(const vec3<T>& v, Angle::DEGREES<T> angle) noexcept {
-    const Angle::RADIANS<T> angleHalfRad = Angle::to_RADIANS(angle) * 0.5f;
+void Quaternion<T>::fromAxisAngle(const vec3<T>& v, Angle::RADIANS<T> angle) noexcept
+{
+    const Angle::RADIANS<T> angleHalfRad = angle * 0.5f;
     _elements.set(Normalized(v) * std::sin(angleHalfRad), std::cos(angleHalfRad));
 }
 
 template <typename T>
-void Quaternion<T>::fromEuler(const vec3<Angle::DEGREES<T>>& v) noexcept {
+void Quaternion<T>::fromEuler(const vec3<Angle::RADIANS<T>>& v) noexcept
+{
     fromEuler(v.pitch, v.yaw, v.roll);
 }
 
 template <typename T>
-void Quaternion<T>::fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, Angle::DEGREES<T> roll) noexcept {
-    const vec3<F32> eulerAngles(Angle::to_RADIANS(pitch) * 0.5f, 
-                                Angle::to_RADIANS(yaw)   * 0.5f,
-                                Angle::to_RADIANS(roll)  * 0.5f);
+void Quaternion<T>::fromEuler(const Angle::RADIANS<T> pitch, const Angle::RADIANS<T> yaw, const Angle::RADIANS<T> roll) noexcept
+{
+
+    const vec3<Angle::RADIANS_F> eulerAngles(pitch * 0.5f,  yaw   * 0.5f, roll  * 0.5f);
+
     const vec3<F32> c(std::cos(eulerAngles.x),
                       std::cos(eulerAngles.y),
                       std::cos(eulerAngles.z));
@@ -342,7 +388,8 @@ void Quaternion<T>::fromEuler(Angle::DEGREES<T> pitch, Angle::DEGREES<T> yaw, An
 
 //ref: http://answers.unity3d.com/questions/467614/what-is-the-source-code-of-quaternionlookrotation.html
 template <typename T>
-void Quaternion<T>::lookRotation(vec3<T> forward, vec3<T> up) {
+void Quaternion<T>::lookRotation( vec3<T> forward, vec3<T> up)
+{
     Normalize(forward);
     const vec3<T> right = Normalized(Cross(up, forward));
     up = Cross(forward, right);
@@ -358,7 +405,8 @@ void Quaternion<T>::lookRotation(vec3<T> forward, vec3<T> up) {
 
     const T num8 = (m00 + m11) + m22;
     
-    if (num8 > 0) {
+    if (num8 > 0)
+    {
         T num = Divide::Sqrt(num8 + 1);
         W(num * 0.5); num = T{ 0.5f / num };
         X((m12 - m21) * num);
@@ -367,7 +415,8 @@ void Quaternion<T>::lookRotation(vec3<T> forward, vec3<T> up) {
         return;
     }
 
-    if ((m00 >= m11) && (m00 >= m22)) {
+    if ((m00 >= m11) && (m00 >= m22))
+    {
         const T num7 = Divide::Sqrt(((1 + m00) - m11) - m22);
         const T num4 = T{ 0.5f / num7 };
         X(0.5 * num7);
@@ -377,7 +426,8 @@ void Quaternion<T>::lookRotation(vec3<T> forward, vec3<T> up) {
         return;
     }
 
-    if (m11 > m22) {
+    if (m11 > m22)
+    {
         const T num6 = Divide::Sqrt(((1 + m11) - m00) - m22);
         const T num3 = T{ 0.5f / num6 };
         X((m10 + m01) * num3);
@@ -396,22 +446,26 @@ void Quaternion<T>::lookRotation(vec3<T> forward, vec3<T> up) {
 }
 
 template <typename T>
-void Quaternion<T>::fromMatrix(const mat4<T>& viewMatrix) noexcept {
+void Quaternion<T>::fromMatrix(const mat4<T>& viewMatrix) noexcept
+{
     mat3<T> rotMatrix;
     viewMatrix.extractMat3(rotMatrix);
     fromMatrix(rotMatrix);
 }
 
 template <typename T>
-void Quaternion<T>::fromMatrix(const mat3<T>& rotationMatrix) noexcept {
+void Quaternion<T>::fromMatrix(const mat3<T>& rotationMatrix) noexcept
+{
     // Algorithm in Ken Shoemake's article in 1987 SIGGRAPH course notes
     // article "Quaternion Calculus and Fast Animation".
 
-    T fTrace = rotationMatrix.m[0][0] + rotationMatrix.m[1][1] +
+    T fTrace = rotationMatrix.m[0][0] +
+               rotationMatrix.m[1][1] +
                rotationMatrix.m[2][2];
     T fRoot = 0;
 
-    if (fTrace > 0) {
+    if (fTrace > 0)
+    {
         // |w| > 1/2, may as well choose w > 1/2
         fRoot = Divide::Sqrt<T, F32>(fTrace + 1.0f);  // 2w
         W(T(0.5f * fRoot));
@@ -419,14 +473,18 @@ void Quaternion<T>::fromMatrix(const mat3<T>& rotationMatrix) noexcept {
         X((rotationMatrix.m[2][1] - rotationMatrix.m[1][2]) * fRoot);
         Y((rotationMatrix.m[0][2] - rotationMatrix.m[2][0]) * fRoot);
         Z((rotationMatrix.m[1][0] - rotationMatrix.m[0][1]) * fRoot);
-    } else {
+    }
+    else
+    {
         // |w| <= 1/2
         static size_t s_iNext[3] = {1, 2, 0};
         size_t i = 0;
-        if (rotationMatrix.m[1][1] > rotationMatrix.m[0][0]) {
+        if (rotationMatrix.m[1][1] > rotationMatrix.m[0][0])
+        {
             i = 1;
         }
-        if (rotationMatrix.m[2][2] > rotationMatrix.m[i][i]) {
+        if (rotationMatrix.m[2][2] > rotationMatrix.m[i][i])
+        {
             i = 2;
         }
         size_t j = s_iNext[i];
@@ -443,7 +501,8 @@ void Quaternion<T>::fromMatrix(const mat3<T>& rotationMatrix) noexcept {
 }
 
 template <typename T>
-void Quaternion<T>::getMatrix(mat3<T>& outMatrix) const noexcept {
+void Quaternion<T>::getMatrix(mat3<T>& outMatrix) const noexcept
+{
     const T& x = X();
     const T& y = Y();
     const T& z = Z();
@@ -473,13 +532,15 @@ void Quaternion<T>::getMatrix(mat3<T>& outMatrix) const noexcept {
 }
 
 template <typename T>
-void Quaternion<T>::getAxisAngle(vec3<T>& axis, Angle::DEGREES<T>& angle) const {
+void Quaternion<T>::getAxisAngle(vec3<T>& axis, Angle::RADIANS<T>& angle) const
+{
     axis.set(_elements / _elements.xyz().length());
-    angle = Angle::to_DEGREES(std::acos(W()) * 2.0f);
+    angle = std::acos(W()) * 2.f;
 }
 
 template <typename T>
-vec3<Angle::RADIANS<T>> Quaternion<T>::getEuler() const noexcept {
+vec3<Angle::RADIANS<T>> Quaternion<T>::getEuler() const noexcept
+{
     vec3<Angle::RADIANS<T>> euler;
 
     const T& x = X();
@@ -494,15 +555,20 @@ vec3<Angle::RADIANS<T>> Quaternion<T>::getEuler() const noexcept {
     // if normalized is one, otherwise is correction factor
     const T unit = sqx + sqy + sqz + sqw;  
 
-    if (test > (0.5f - EPSILON_F32) * unit) {  // singularity at north pole
+    if (test > (0.5f - EPSILON_F32) * unit)
+    {  // singularity at north pole
         euler.roll  = 0;
         euler.pitch = 2 * std::atan2(x, w);
-        euler.yaw   = -static_cast<T>(M_PI2);
-    } else if (test < -(0.5f - EPSILON_F32) * unit) {  // singularity at south pole
+        euler.yaw   = -static_cast<T>(M_PI_DIV_2);
+    }
+    else if (test < -(0.5f - EPSILON_F32) * unit)
+    {  // singularity at south pole
         euler.roll  = 0;
         euler.pitch = -2 * std::atan2(x, w);
-        euler.yaw   = static_cast<T>(M_PI2);
-    } else {
+        euler.yaw   = static_cast<T>(M_PI_DIV_2);
+    } 
+    else
+    {
         euler.roll  = std::atan2(2 * x * y + 2 * w * z, sqw + sqx - sqy - sqz);
         euler.pitch = std::atan2(2 * y * z + 2 * w * x, sqw - sqx - sqy + sqz);
         euler.yaw   = std::asin(-2 * (x * z - w * y));
@@ -512,10 +578,12 @@ vec3<Angle::RADIANS<T>> Quaternion<T>::getEuler() const noexcept {
 }
 
 template <typename T>
-void Quaternion<T>::fromAxes(const vec3<T>* axis) {
+void Quaternion<T>::fromAxes(const vec3<T>* axis) 
+{
 
     mat3<T> rot;
-    for (U8 col = 0u; col < 3u; col++) {
+    for (U8 col = 0u; col < 3u; col++)
+    {
         rot.setCol(col, axis[col]);
     }
 
@@ -523,8 +591,8 @@ void Quaternion<T>::fromAxes(const vec3<T>* axis) {
 }
 
 template <typename T>
-void Quaternion<T>::fromAxes(const vec3<T>& xAxis, const vec3<T>& yAxis, const vec3<T>& zAxis) {
-
+void Quaternion<T>::fromAxes(const vec3<T>& xAxis, const vec3<T>& yAxis, const vec3<T>& zAxis)
+{
     mat3<T> rot;
     
     rot.setCol(0, xAxis);
@@ -535,12 +603,14 @@ void Quaternion<T>::fromAxes(const vec3<T>& xAxis, const vec3<T>& yAxis, const v
 }
 
 template <typename T>
-void Quaternion<T>::toAxes(vec3<T>* axis) const {
+void Quaternion<T>::toAxes(vec3<T>* axis) const
+{
     toAxes(axis[0], axis[1], axis[2]);
 }
 
 template <typename T>
-void Quaternion<T>::toAxes(vec3<T>& xAxis, vec3<T>& yAxis, vec3<T>& zAxis) const {
+void Quaternion<T>::toAxes(vec3<T>& xAxis, vec3<T>& yAxis, vec3<T>& zAxis) const
+{
     mat3<T> rot;
     getMatrix(rot);
     xAxis.set(rot.getCol(0));
@@ -549,7 +619,8 @@ void Quaternion<T>::toAxes(vec3<T>& xAxis, vec3<T>& yAxis, vec3<T>& zAxis) const
 }
 
 template <typename T>
-vec3<T> Quaternion<T>::xAxis() const noexcept {
+vec3<T> Quaternion<T>::xAxis() const noexcept
+{
     const T& x = X();
     const T& y = Y();
     const T& z = Z();
@@ -569,7 +640,8 @@ vec3<T> Quaternion<T>::xAxis() const noexcept {
 }
 
 template <typename T>
-vec3<T> Quaternion<T>::yAxis() const noexcept {
+vec3<T> Quaternion<T>::yAxis() const noexcept
+{
     const T& x = X();
     const T& y = Y();
     const T& z = Z();
@@ -589,7 +661,8 @@ vec3<T> Quaternion<T>::yAxis() const noexcept {
 }
 
 template <typename T>
-vec3<T> Quaternion<T>::zAxis() const noexcept {
+vec3<T> Quaternion<T>::zAxis() const noexcept
+{
     const T& x = X();
     const T& y = Y();
     const T& z = Z();
@@ -609,68 +682,80 @@ vec3<T> Quaternion<T>::zAxis() const noexcept {
 }
 
 template <typename T>
-T Quaternion<T>::X() const noexcept {
+T Quaternion<T>::X() const noexcept
+{
     return _elements.x;
 }
 
 template <typename T>
-T Quaternion<T>::Y() const noexcept {
+T Quaternion<T>::Y() const noexcept
+{
     return _elements.y;
 }
 
 template <typename T>
-T Quaternion<T>::Z() const noexcept {
+T Quaternion<T>::Z() const noexcept
+{
     return _elements.z;
 }
 
 template <typename T>
-T Quaternion<T>::W() const noexcept {
+T Quaternion<T>::W() const noexcept
+{
     return _elements.w;
 }
 
 template <typename T>
-vec3<T> Quaternion<T>::XYZ() const noexcept {
+vec3<T> Quaternion<T>::XYZ() const noexcept
+{
     return _elements.xyz;
 }
 
 template <typename T>
 template <typename U>
-void Quaternion<T>::X(U x) noexcept {
+void Quaternion<T>::X(U x) noexcept 
+{
     _elements.x = static_cast<T>(x);
 }
 
 template <typename T>
 template <typename U>
-void Quaternion<T>::Y(U y) noexcept {
+void Quaternion<T>::Y(U y) noexcept
+{
     _elements.y = static_cast<T>(y);
 }
 
 template <typename T>
 template <typename U>
-void Quaternion<T>::Z(U z) noexcept {
+void Quaternion<T>::Z(U z) noexcept
+{
     _elements.z = static_cast<T>(z);
 }
 
 template <typename T>
 template <typename U>
-void Quaternion<T>::W(U w) noexcept {
+void Quaternion<T>::W(U w) noexcept
+{
     _elements.w = static_cast<T>(w);
 }
 
 template <typename T>
-void Quaternion<T>::identity() noexcept {
+void Quaternion<T>::identity() noexcept
+{
     _elements.set(0, 0, 0, 1);
 }
 
 template <typename T>
-const vec4<T>& Quaternion<T>::asVec4() const noexcept {
+const vec4<T>& Quaternion<T>::asVec4() const noexcept
+{
     return _elements;
 }
 
 
 /// get the shortest arc quaternion to rotate vector 'v' to the target vector 'u'(from Ogre3D!)
 template <typename T>
-Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>& fallbackAxis) noexcept {
+Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>& fallbackAxis) noexcept
+{
     // Based on Stan Melax's article in Game Programming Gems
     Quaternion<T> q;
     // Copy, since cannot modify local
@@ -681,15 +766,20 @@ Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>
 
     T d = v0.dot(v1);
     // If dot == 1, vectors are the same
-    if (d >= 1.0f) {
+    if (d >= 1.0f)
+    {
         return q;
     }
 
-    if (d < 1e-6f - 1.0f) {
-        if (!fallbackAxis.compare(VECTOR3_ZERO)) {
+    if (d < 1e-6f - 1.0f) 
+    {
+        if (!fallbackAxis.compare(VECTOR3_ZERO))
+        {
             // rotate 180 degrees about the fallback axis
             q.fromAxisAngle(fallbackAxis, M_PI_f);
-        } else {
+        }
+        else
+        {
             // Generate an axis
             vec3<T> axis;
             axis.cross(WORLD_X_AXIS, v);
@@ -700,7 +790,9 @@ Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>
             axis.normalize();
             q.fromAxisAngle(axis, M_PI_f);
         }
-    } else {
+    }
+    else
+    {
         const F32 s = Divide::Sqrt((1 + d) * 2.0f);
         const F32 invs = 1.f / s;
 
@@ -713,43 +805,50 @@ Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>
 }
 
 template <typename T>
-Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t) noexcept {
+Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t) noexcept
+{
     Quaternion<T> temp;
     temp.slerp(q0, q1, t);
     return temp;
 }
 
 template <typename T>
-mat3<T> GetMatrix(const Quaternion<T>& q) noexcept {
+mat3<T> GetMatrix(const Quaternion<T>& q) noexcept
+{
     mat3<T> temp;
     q.getMatrix(temp);
     return temp;
 }
 
 template <typename T>
-vec3<Angle::RADIANS<T>> GetEuler(const Quaternion<T>& q) {
+vec3<Angle::RADIANS<T>> GetEuler(const Quaternion<T>& q)
+{
     return q.getEuler();
 }
 
 template <typename T>
-vec3<T> operator*(vec3<T> const & v, Quaternion<T> const & q) {
+vec3<T> operator*(vec3<T> const & v, Quaternion<T> const & q)
+{
     return q.inverse() * v;
 }
 
 template <typename T>
-vec3<T> Rotate(vec3<T> const & v, Quaternion<T> const & q) noexcept {
+vec3<T> Rotate(vec3<T> const & v, Quaternion<T> const & q) noexcept
+{
     const vec3<T> xyz = q.XYZ();
     const vec3<T> t = Cross(xyz, v) * 2;
     return v + q.W() * t + Cross(xyz, t);
 }
 
 template <typename T>
-vec3<T> DirectionFromAxis(const Quaternion<T>& q, const vec3<T>& AXIS) noexcept {
+vec3<T> DirectionFromAxis(const Quaternion<T>& q, const vec3<T>& AXIS) noexcept
+{
     return Normalized(Rotate(AXIS, q));
 }
 
 template <typename T>
-vec3<T> DirectionFromEuler(vec3<Angle::DEGREES<T>> const & euler, const vec3<T>& FORWARD_DIRECTION) {
+vec3<T> DirectionFromEuler(vec3<Angle::RADIANS<T>> const& euler, const vec3<T>& FORWARD_DIRECTION)
+{
     Quaternion<F32> q = {};
     q.fromEuler(euler);
     return DirectionFromAxis(q, FORWARD_DIRECTION);

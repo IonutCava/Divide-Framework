@@ -274,7 +274,7 @@ namespace Divide
 
         _reflectionPlane = camera._reflectionPlane;
         _reflectionActive = camera._reflectionActive;
-        _accumPitchDegrees = camera._accumPitchDegrees;
+        _accumPitch = camera._accumPitch;
         _maxRadius = camera._maxRadius;
         _minRadius = camera._minRadius;
         _curRadius = camera._curRadius;
@@ -319,17 +319,13 @@ namespace Divide
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-            vec3<Angle::RADIANS<F32>> newTargetOrientation;
-            if (/*trans->changedLastFrame() || */ _rotationDirty || true )
+            if (/*trans->changedLastFrame() || */ _rotationDirty/* || true*/ )
             {
-                newTargetOrientation = _targetTransform->getWorldOrientation().getEuler();
+                vec3<Angle::RADIANS_F> newTargetOrientation = _targetTransform->getWorldOrientation().getEuler();
                 newTargetOrientation.yaw = M_PI_f - newTargetOrientation.yaw;
-                newTargetOrientation += _cameraRotation;
-                Util::Normalize( newTargetOrientation, false );
+                _data._orientation = Quaternion<F32>(_cameraRotation) * Quaternion<F32>(newTargetOrientation);
                 _rotationDirty = false;
             }
-
-            _data._orientation.fromEuler( Angle::to_DEGREES( newTargetOrientation ) );
 
             _minRadius = std::max( _minRadius, 0.01f );
             if ( _minRadius > _maxRadius )
@@ -401,7 +397,7 @@ namespace Divide
         return cameraUpdated;
     }
 
-    void Camera::setGlobalRotation( const F32 yaw, const F32 pitch, const F32 roll ) noexcept
+    void Camera::setGlobalRotation( const Angle::DEGREES_F yaw, const Angle::DEGREES_F pitch, const Angle::DEGREES_F roll ) noexcept
     {
         if ( _rotationLocked )
         {
@@ -410,12 +406,12 @@ namespace Divide
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        const Quaternion<F32> pitchRot( WORLD_X_AXIS, -pitch );
-        const Quaternion<F32> yawRot( WORLD_Y_AXIS, -yaw );
+        const Quaternion<F32> pitchRot( WORLD_X_AXIS, Angle::to_RADIANS(-pitch) );
+        const Quaternion<F32> yawRot( WORLD_Y_AXIS, Angle::to_RADIANS(-yaw ) );
 
         if ( !IS_ZERO( roll ) )
         {
-            setRotation( yawRot * pitchRot * Quaternion<F32>( WORLD_Z_AXIS, -roll ) );
+            setRotation( yawRot * pitchRot * Quaternion<F32>( WORLD_Z_AXIS, Angle::to_RADIANS(-roll) ) );
         }
         else
         {
@@ -434,7 +430,7 @@ namespace Divide
 
         if ( mode() == Mode::FIRST_PERSON )
         {
-            const vec3<Angle::DEGREES<F32>> euler = Angle::to_DEGREES( q.getEuler() );
+            const vec3<Angle::DEGREES_F> euler = Angle::to_DEGREES( q.getEuler() );
             rotate( euler.yaw, euler.pitch, euler.roll );
         }
         else
@@ -517,12 +513,12 @@ namespace Divide
         return setProjection( _data._fov, zPlanes );
     }
 
-    const mat4<F32>& Camera::setProjection( const F32 verticalFoV, const vec2<F32> zPlanes )
+    const mat4<F32>& Camera::setProjection( const Angle::DEGREES_F verticalFoV, const vec2<F32> zPlanes )
     {
         return setProjection( _data._aspectRatio, verticalFoV, zPlanes );
     }
 
-    const mat4<F32>& Camera::setProjection( const F32 aspectRatio, const F32 verticalFoV, const vec2<F32> zPlanes )
+    const mat4<F32>& Camera::setProjection( const F32 aspectRatio, const Angle::DEGREES_F verticalFoV, const vec2<F32> zPlanes )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -570,30 +566,30 @@ namespace Divide
         _projectionDirty = true;
     }
 
-    void Camera::setVerticalFoV( const Angle::DEGREES<F32> verticalFoV ) noexcept
+    void Camera::setVerticalFoV( const Angle::DEGREES_F verticalFoV ) noexcept
     {
         _data._fov = verticalFoV;
         _projectionDirty = true;
     }
 
-    void Camera::setHorizontalFoV( const Angle::DEGREES<F32> horizontalFoV ) noexcept
+    void Camera::setHorizontalFoV( const Angle::DEGREES_F horizontalFoV ) noexcept
     {
         _data._fov = Angle::to_VerticalFoV( horizontalFoV, to_D64( _data._aspectRatio ) );
         _projectionDirty = true;
     }
 
-    Angle::DEGREES<F32> Camera::getHorizontalFoV() const noexcept
+    Angle::DEGREES_F Camera::getHorizontalFoV() const noexcept
     {
-        const Angle::RADIANS<F32> halfFoV = Angle::to_RADIANS( _data._fov ) * 0.5f;
-        return Angle::to_DEGREES( 2.0f * std::atan( tan( halfFoV ) * _data._aspectRatio ) );
+        const Angle::RADIANS_F halfFoV = Angle::to_RADIANS( _data._fov ) * 0.5f;
+        return Angle::to_DEGREES(Angle::RADIANS_F(2.0f * std::atan( tan( halfFoV ) * _data._aspectRatio )));
     }
 
-    void Camera::setRotation( const Angle::DEGREES<F32> yaw, const Angle::DEGREES<F32> pitch, const Angle::DEGREES<F32> roll ) noexcept
+    void Camera::setRotation( const Angle::DEGREES_F yaw, const Angle::DEGREES_F pitch, const Angle::DEGREES_F roll ) noexcept
     {
-        setRotation( Quaternion<F32>( pitch, yaw, roll ) );
+        setRotation( Quaternion<F32>(Angle::to_RADIANS(pitch), Angle::to_RADIANS(yaw), Angle::to_RADIANS(roll)) );
     }
 
-    void Camera::rotate( Angle::DEGREES<F32> yaw, Angle::DEGREES<F32> pitch, Angle::DEGREES<F32> roll ) noexcept
+    void Camera::rotate( Angle::DEGREES_F yaw, Angle::DEGREES_F pitch, Angle::DEGREES_F roll ) noexcept
     {
         if ( _rotationLocked )
         {
@@ -610,25 +606,25 @@ namespace Divide
         Quaternion<F32> tempOrientation;
         if ( mode() == Mode::FIRST_PERSON )
         {
-            _accumPitchDegrees += pitch;
+            _accumPitch += pitch;
 
-            if ( _accumPitchDegrees > 90.0f )
+            if ( _accumPitch > 90.0f )
             {
-                pitch = 90.0f - (_accumPitchDegrees - pitch);
-                _accumPitchDegrees = 90.0f;
+                pitch = 90.0f - (_accumPitch - pitch);
+                _accumPitch = 90.0f;
             }
 
-            if ( _accumPitchDegrees < -90.0f )
+            if ( _accumPitch < -90.0f )
             {
-                pitch = -90.0f - (_accumPitchDegrees - pitch);
-                _accumPitchDegrees = -90.0f;
+                pitch = -90.0f - (_accumPitch - pitch);
+                _accumPitch = -90.0f;
             }
 
             // Rotate camera about the world y axis.
             // Note the order the quaternions are multiplied. That is important!
             if ( !IS_ZERO( yaw ) )
             {
-                tempOrientation.fromAxisAngle( WORLD_Y_AXIS, yaw );
+                tempOrientation.fromAxisAngle( WORLD_Y_AXIS, Angle::to_RADIANS(yaw) );
                 _data._orientation = tempOrientation * _data._orientation;
             }
 
@@ -636,32 +632,47 @@ namespace Divide
             // Note the order the quaternions are multiplied. That is important!
             if ( !IS_ZERO( pitch ) )
             {
-                tempOrientation.fromAxisAngle( WORLD_X_AXIS, pitch );
+                tempOrientation.fromAxisAngle( WORLD_X_AXIS, Angle::to_RADIANS(pitch) );
                 _data._orientation = _data._orientation * tempOrientation;
             }
         }
         else
         {
-            tempOrientation.fromEuler( pitch, yaw, roll );
+            tempOrientation.fromEuler( Angle::to_RADIANS(pitch), Angle::to_RADIANS(yaw), Angle::to_RADIANS(roll) );
             _data._orientation *= tempOrientation;
         }
 
         _viewMatrixDirty = true;
     }
 
-    void Camera::rotateYaw( const Angle::DEGREES<F32> angle )
+    Quaternion<F32> Camera::rotationYaw( const Angle::DEGREES_F angle ) const
     {
-        rotate( Quaternion<F32>( _yawFixed ? _fixedYawAxis : _data._orientation * WORLD_Y_AXIS, -angle * speedFactor().turn * s_lastFrameTimeSec ) );
+        return Quaternion<F32>(_yawFixed ? _fixedYawAxis : _data._orientation * WORLD_Y_AXIS, -Angle::to_RADIANS(angle * speedFactor().turn * s_lastFrameTimeSec));
     }
 
-    void Camera::rotateRoll( const Angle::DEGREES<F32> angle )
+    Quaternion<F32> Camera::rotationRoll( const Angle::DEGREES_F angle ) const
     {
-        rotate( Quaternion<F32>( _data._orientation * WORLD_Z_AXIS, -angle * speedFactor().turn * s_lastFrameTimeSec ) );
+        return Quaternion<F32>(_data._orientation * WORLD_Z_AXIS, -Angle::to_RADIANS(angle * speedFactor().turn * s_lastFrameTimeSec));
     }
 
-    void Camera::rotatePitch( const Angle::DEGREES<F32> angle )
+    Quaternion<F32> Camera::rotationPitch( const Angle::DEGREES_F angle ) const
     {
-        rotate( Quaternion<F32>( _data._orientation * WORLD_X_AXIS, -angle * speedFactor().turn * s_lastFrameTimeSec ) );
+        return Quaternion<F32>(_data._orientation * WORLD_X_AXIS, -Angle::to_RADIANS(angle * speedFactor().turn * s_lastFrameTimeSec));
+    }
+
+    void Camera::rotateYaw( const Angle::DEGREES_F angle )
+    {
+        rotate(rotationYaw(angle));
+    }
+
+    void Camera::rotateRoll( const Angle::DEGREES_F angle )
+    {
+        rotate(rotationRoll(angle));
+    }
+
+    void Camera::rotatePitch( const Angle::DEGREES_F angle )
+    {
+        rotate(rotationPitch(angle));
     }
 
     void Camera::move( F32 dx, F32 dy, F32 dz ) noexcept
@@ -746,26 +757,28 @@ namespace Divide
         return false;
     }
 
-    bool Camera::rotateRelative( const vec3<F32>& relRotation )
+    bool Camera::rotateRelative( const vec3<Angle::DEGREES_F>& relRotation )
     {
-        if ( relRotation.lengthSquared() <= 0.f )
+        if (_rotationLocked || relRotation.lengthSquared() <= 0.f )
         {
             return false;
         }
 
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        vec3<Angle::DEGREES<F32>> rotation( relRotation * speedFactor().turn * s_lastFrameTimeSec );
-
         if ( mode() == Mode::THIRD_PERSON || mode() == Mode::ORBIT )
         {
-            constexpr F32 rotationLimitRollLower = M_PI_f * 0.30f - Angle::to_RADIANS( 1 );
-            constexpr F32 rotationLimitRollUpper = M_PI_f * 0.175f - Angle::to_RADIANS( 1 );
-            constexpr F32 rotationLimitPitch = M_PI_f - Angle::to_RADIANS( 1 );
+            const vec3<Angle::DEGREES_F> rotation( relRotation * speedFactor().turn * s_lastFrameTimeSec );
+
+            const Angle::RADIANS_F oneDegreeInRad = Angle::to_RADIANS(Angle::DEGREES_F(1.f));
+
+            const Angle::RADIANS_F rotationLimitRollLower = M_PI_f * 0.30f  - oneDegreeInRad;
+            const Angle::RADIANS_F rotationLimitRollUpper = M_PI_f * 0.175f - oneDegreeInRad;
+            const Angle::RADIANS_F rotationLimitPitch     = M_PI_f          - oneDegreeInRad;
 
             if ( !IS_ZERO( rotation.yaw ) )
             {
-                const Angle::RADIANS<F32> yawRad = Angle::DegreesToRadians( rotation.yaw );
+                const Angle::RADIANS_F yawRad = Angle::to_RADIANS( rotation.yaw );
 
                 const F32 targetYaw = _cameraRotation.yaw - yawRad;
                 if ( mode() == Mode::ORBIT || (targetYaw > -rotationLimitRollLower && targetYaw < rotationLimitRollUpper) )
@@ -777,7 +790,7 @@ namespace Divide
 
             if ( !IS_ZERO( rotation.pitch ) )
             {
-                const Angle::RADIANS<F32> pitchRad = Angle::DegreesToRadians( rotation.pitch );
+                const Angle::RADIANS_F pitchRad = Angle::to_RADIANS( rotation.pitch );
 
                 const F32 targetPitch = _cameraRotation.yaw - pitchRad;
                 if ( mode() == Mode::ORBIT || (targetPitch > -rotationLimitPitch && targetPitch < rotationLimitPitch) )
@@ -789,19 +802,16 @@ namespace Divide
 
             if ( _rotationDirty )
             {
-                Util::Normalize( _cameraRotation, false, true, false, true );
-                return true;
+                Util::Normalize( _cameraRotation, true, false, true );
             }
         }
         else
         {
-            rotate( Quaternion<F32>( _yawFixed ? _fixedYawAxis : _data._orientation * WORLD_Y_AXIS, -rotation.yaw ) *
-                    Quaternion<F32>( _data._orientation * WORLD_X_AXIS, -rotation.pitch ) *
-                    Quaternion<F32>( _data._orientation * WORLD_Z_AXIS, -rotation.roll ) );
-            return true;
+            rotate( rotationYaw(relRotation.yaw) * rotationPitch(relRotation.pitch) * rotationRoll(relRotation.roll) );
+            _rotationDirty = true;
         }
 
-        return false;
+        return _rotationDirty;
     }
 
     bool Camera::zoom( const F32 zoomFactor ) noexcept
@@ -840,7 +850,7 @@ namespace Divide
         _euler = Angle::to_DEGREES( _data._orientation.getEuler() );
 
         // Extract the pitch angle from the view matrix.
-        _accumPitchDegrees = Angle::to_DEGREES( std::asinf( _data._viewMatrix.getForwardDirection().y ) );
+        _accumPitch = Angle::to_DEGREES( Angle::RADIANS_F(std::asinf( _data._viewMatrix.getForwardDirection().y ) ));
 
         if ( _reflectionActive )
         {
@@ -979,7 +989,7 @@ namespace Divide
         pt.put( savePath + ".reflectionPlane.normal.<xmlattr>.z", _reflectionPlane._normal.z );
         pt.put( savePath + ".reflectionPlane.distance", _reflectionPlane._distance );
         pt.put( savePath + ".reflectionPlane.active", _reflectionActive );
-        pt.put( savePath + ".accumPitchDegrees", _accumPitchDegrees );
+        pt.put( savePath + ".accumPitchDegrees", _accumPitch );
         pt.put( savePath + ".frustumLocked", _frustumLocked );
         pt.put( savePath + ".euler.<xmlattr>.x", _euler.x );
         pt.put( savePath + ".euler.<xmlattr>.y", _euler.y );
@@ -1030,7 +1040,7 @@ namespace Divide
         );
         _reflectionActive = pt.get( savePath + ".reflectionPlane.active", _reflectionActive );
 
-        _accumPitchDegrees = pt.get( savePath + ".accumPitchDegrees", _accumPitchDegrees );
+        _accumPitch = pt.get( savePath + ".accumPitchDegrees", _accumPitch );
         _frustumLocked = pt.get( savePath + ".frustumLocked", _frustumLocked );
         _euler.set(
             pt.get( savePath + ".euler.<xmlattr>.x", _euler.x ),

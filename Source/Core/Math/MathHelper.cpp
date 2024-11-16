@@ -55,7 +55,7 @@ bool decomposeMatrix(const mat4<F32>& transform,
     scaleOut.z = length(Row[2]);
     Row[2] = glm::detail::scale(Row[2], static_cast<T>(1));
     isUniformScaleOut = scaleOut.isUniform();
-      
+
     rotationOut.y = asin(-Row[0][2]);
     if (!IS_ZERO(cos(rotationOut.y)))
     {
@@ -448,58 +448,76 @@ void UNPACK_11_11_10(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z) {
     z = ret.z;
 }
 
-void Normalize(vec3<F32>& inputRotation, const bool degrees, const bool normYaw, const bool normPitch, const bool normRoll) noexcept {
-    if (normYaw) {
-        F32 yaw = degrees ? Angle::to_RADIANS(inputRotation.yaw)
-                          : inputRotation.yaw;
-        if (yaw < -M_PI_f) {
+void Normalize(vec3<Angle::RADIANS_F>& inputRotation, const bool normYaw, const bool normPitch, const bool normRoll) noexcept
+{
+    if (normYaw)
+    {
+        Angle::RADIANS_F yaw = inputRotation.yaw;
+
+        if (yaw < -M_PI_f)
+        {
             yaw = fmod(yaw, M_PI_f * 2.0f);
-            if (yaw < -M_PI_f) {
+            if (yaw < -M_PI_f)
+            {
                 yaw += M_PI_f * 2.0f;
             }
-            inputRotation.yaw = Angle::to_DEGREES(yaw);
-        } else if (yaw > M_PI_f) {
+        }
+        else if (yaw > M_PI_f)
+        {
             yaw = fmod(yaw, M_PI_f * 2.0f);
-            if (yaw > M_PI_f) {
+            if (yaw > M_PI_f) 
+            {
                 yaw -= M_PI_f * 2.0f;
             }
-            inputRotation.yaw = degrees ? Angle::to_DEGREES(yaw) : yaw;
         }
+
+        inputRotation.yaw = yaw;
     }
-    if (normPitch) {
-        F32 pitch = degrees ? Angle::to_RADIANS(inputRotation.pitch)
-                            : inputRotation.pitch;
-        if (pitch < -M_PI_f) {
+    if (normPitch)
+    {
+        Angle::RADIANS_F pitch = inputRotation.pitch;
+
+        if (pitch < -M_PI_f)
+        {
             pitch = fmod(pitch, M_PI_f * 2.0f);
-            if (pitch < -M_PI_f) {
+            if (pitch < -M_PI_f)
+            {
                 pitch += M_PI_f * 2.0f;
             }
-            inputRotation.pitch = Angle::to_DEGREES(pitch);
-        } else if (pitch > M_PI_f) {
+            inputRotation.pitch = pitch;
+        }
+        else if (pitch > M_PI_f)
+        {
             pitch = fmod(pitch, M_PI_f * 2.0f);
-            if (pitch > M_PI_f) {
+            if (pitch > M_PI_f)
+            {
                 pitch -= M_PI_f * 2.0f;
             }
-            inputRotation.pitch =
-                degrees ? Angle::to_DEGREES(pitch) : pitch;
         }
+
+        inputRotation.pitch = pitch;
     }
-    if (normRoll) {
-        F32 roll = degrees ? Angle::to_RADIANS(inputRotation.roll)
-                           : inputRotation.roll;
-        if (roll < -M_PI_f) {
+    if (normRoll)
+    {
+        Angle::RADIANS_F roll = inputRotation.roll;
+        if (roll < -M_PI_f)
+        {
             roll = fmod(roll, M_PI_f * 2.0f);
-            if (roll < -M_PI_f) {
+            if (roll < -M_PI_f)
+            {
                 roll += M_PI_f * 2.0f;
             }
-            inputRotation.roll = Angle::to_DEGREES(roll);
-        } else if (roll > M_PI_f) {
+        }
+        else if (roll > M_PI_f)
+        {
             roll = fmod(roll, M_PI_f * 2.0f);
-            if (roll > M_PI_f) {
+            if (roll > M_PI_f) 
+            {
                 roll -= M_PI_f * 2.0f;
             }
-            inputRotation.roll = degrees ? Angle::to_DEGREES(roll) : roll;
         }
+
+        inputRotation.roll = roll;
     }
 }
 

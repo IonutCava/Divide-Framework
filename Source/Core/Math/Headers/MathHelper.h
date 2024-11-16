@@ -45,9 +45,6 @@ namespace Divide {
 
 #define TO_MEGABYTES(X) ((X) * 1024u * 1024u)
 
-template<typename T>
-concept ValidMathType = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
-
 template <typename T>
 class mat2;
 template <typename T>
@@ -73,23 +70,24 @@ using FColour4 = vec4<F32>;
 
 #if !defined(M_PI)
     constexpr D64 M_PI = std::numbers::pi;
-    constexpr D64 M_PI_2 = M_PI / 2;
 #endif
 
-    constexpr D64 M_2PI = M_PI * 2;
-    constexpr D64 M_PIDIV180 = 0.01745329251994329576;
-    constexpr D64 M_180DIVPI = 57.29577951308232087679;
-    constexpr D64 M_PIDIV360 = 0.00872664625997164788;
-    constexpr D64 M_PI2 = M_2PI;
+    constexpr D64 M_PI_DIV_2 = M_PI / 2;
+    constexpr D64 M_PI_DIV_4 = M_PI / 4;
+    constexpr D64 M_PI_MUL_2 = M_PI * 2;
+    constexpr D64 M_PI_MUL_4 = M_PI * 4;
+    constexpr D64 M_PI_DIV_180 = 0.01745329251994329576;
+    constexpr D64 M_180_DIV_PI = 57.29577951308232087679;
+    constexpr D64 M_PI_DIV_360 = 0.00872664625997164788;
 
-    constexpr F32 M_PI_f = to_F32(M_PI);
-    constexpr F32 M_PI_2_f = to_F32(M_PI_2);
-    constexpr F32 M_PI_4_f = M_PI_f / 4;
-    constexpr F32 M_2PI_f = to_F32(M_2PI);
-    constexpr F32 M_PIDIV180_f = to_F32(M_PIDIV180);
-    constexpr F32 M_180DIVPI_f = to_F32(M_180DIVPI);
-    constexpr F32 M_PIDIV360_f = to_F32(M_PIDIV360);
-    constexpr F32 M_PI2_f = M_2PI_f;
+    constexpr F32 M_PI_f         = to_F32(M_PI);
+    constexpr F32 M_PI_DIV_2_f   = to_F32(M_PI_DIV_2);
+    constexpr F32 M_PI_DIV_4_f   = to_F32(M_PI_DIV_4);
+    constexpr F32 M_PI_MUL_2_f   = to_F32(M_PI_MUL_2);
+    constexpr F32 M_PI_MUL_4_f   = to_F32(M_PI_MUL_4);
+    constexpr F32 M_PI_DIV_180_f = to_F32(M_PI_DIV_180);
+    constexpr F32 M_180_DIV_PI_f = to_F32(M_180_DIV_PI);
+    constexpr F32 M_PI_DIV_360_f = to_F32(M_PI_DIV_360);
 
     constexpr F32 INV_RAND_MAX = 0.0000305185094f;
 
@@ -279,134 +277,131 @@ constexpr auto BitMaskCheck(T1& arg, const T2 mask) { return arg & mask; }
 
 namespace Angle {
 
-template<typename T> requires std::is_fundamental_v<T>
-using RADIANS = T;
+    struct Radians_t{};
+    struct Degrees_t{};
 
-template<typename T> requires std::is_fundamental_v<T>
-using DEGREES = T;
+#if 1
+    template<typename T> requires std::is_fundamental_v<T>
+    using RADIANS = primitiveWrapper<T, Radians_t>;
 
+    template<typename T> requires std::is_fundamental_v<T>
+    using DEGREES = primitiveWrapper<T, Degrees_t>;
+#else
+    template<typename T> requires std::is_fundamental_v<T>
+    using RADIANS = T;
+
+    template<typename T> requires std::is_fundamental_v<T>
+    using DEGREES = T;
+#endif
     using DEGREES_F = DEGREES<F32>;
     using RADIANS_F = RADIANS<F32>;
 
     using RADIANS_D = RADIANS<D64>;
     using DEGREES_D = DEGREES<D64>;
 
-template <typename T>
-[[nodiscard]] constexpr DEGREES<T> to_VerticalFoV(DEGREES<T> horizontalFoV, D64 aspectRatio) noexcept;
-template <typename T>
-[[nodiscard]] constexpr DEGREES<T> to_HorizontalFoV(DEGREES<T> verticalFoV, D64 aspectRatio) noexcept;
-template <typename T>
-[[nodiscard]] constexpr RADIANS<T> to_RADIANS(DEGREES<T> angle) noexcept;
-template <typename T>
-[[nodiscard]] constexpr DEGREES<T> to_DEGREES(RADIANS<T> angle) noexcept;
-template <typename T>
-[[nodiscard]] constexpr vec2<RADIANS<T>> to_RADIANS(vec2<DEGREES<T>> angle) noexcept;
-template <typename T>
-[[nodiscard]] constexpr vec2<DEGREES<T>> to_DEGREES(vec2<RADIANS<T>> angle) noexcept;
-template <typename T>
-[[nodiscard]] constexpr vec3<RADIANS<T>> to_RADIANS(const vec3<DEGREES<T>>& angle) noexcept;
-template <typename T>
-[[nodiscard]] constexpr vec3<DEGREES<T>> to_DEGREES(const vec3<RADIANS<T>>& angle) noexcept;
-template <typename T>
-[[nodiscard]] constexpr vec4<RADIANS<T>> to_RADIANS(const vec4<DEGREES<T>>& angle) noexcept;
-template <typename T>
-[[nodiscard]] constexpr vec4<DEGREES<T>> to_DEGREES(const vec4<RADIANS<T>>& angle) noexcept;
+    template <typename T>
+    [[nodiscard]] constexpr DEGREES<T> to_VerticalFoV(DEGREES<T> horizontalFoV, D64 aspectRatio) noexcept;
+    template <typename T>
+    [[nodiscard]] constexpr DEGREES<T> to_HorizontalFoV(DEGREES<T> verticalFoV, D64 aspectRatio) noexcept;
+    template <typename T>
+    [[nodiscard]] RADIANS<T> to_RADIANS(DEGREES<T> angle) noexcept;
+    template <typename T>
+    [[nodiscard]] DEGREES<T> to_DEGREES(RADIANS<T> angle) noexcept;
+    template <typename T>
+    [[nodiscard]] vec2<RADIANS<T>> to_RADIANS(vec2<DEGREES<T>> angle) noexcept;
+    template <typename T>
+    [[nodiscard]] vec2<DEGREES<T>> to_DEGREES(vec2<RADIANS<T>> angle) noexcept;
+    template <typename T>
+    [[nodiscard]] vec3<RADIANS<T>> to_RADIANS(const vec3<DEGREES<T>>& angle) noexcept;
+    template <typename T>
+    [[nodiscard]] vec3<DEGREES<T>> to_DEGREES(const vec3<RADIANS<T>>& angle) noexcept;
+    template <typename T>
+    [[nodiscard]] vec4<RADIANS<T>> to_RADIANS(const vec4<DEGREES<T>>& angle) noexcept;
+    template <typename T>
+    [[nodiscard]] vec4<DEGREES<T>> to_DEGREES(const vec4<RADIANS<T>>& angle) noexcept;
 } //namespace Angle
-/// Return the radian equivalent of the given degree value
-template <typename T>
-[[nodiscard]] constexpr T DegreesToRadians(T angleDegrees) noexcept;
-/// Return the degree equivalent of the given radian value
-template <typename T>
-[[nodiscard]] constexpr T RadiansToDegrees(T angleRadians) noexcept;
-/// Returns the specified value. Used only for emphasis
-template <typename T>
-[[nodiscard]] constexpr T Degrees(T degrees) noexcept;
-/// Returns the specified value. Used only for emphasis
-template <typename T>
-[[nodiscard]] constexpr T Radians(T radians) noexcept;
-};
 
 namespace Metric
 {
-/// Base value * 1000000000000
-template <typename T>
-[[nodiscard]] constexpr T Tera(T a);
-/// Base value * 1000000000
-template <typename T>
-[[nodiscard]] constexpr T Giga(T a);
-/// Base value * 1000000
-template <typename T>
-[[nodiscard]] constexpr T Mega(T a);
-/// Base value * 1000
-template <typename T>
-[[nodiscard]] constexpr T Kilo(T a);
-/// Base value * 100
-template <typename T>
-[[nodiscard]] constexpr T Hecto(T a);
-/// Base value * 10
-template <typename T>
-[[nodiscard]] constexpr T Deca(T a);
-/// Base value
-template <typename T>
-[[nodiscard]] constexpr T Base(T a);
-/// Base value * 0.1
-template <typename T>
-[[nodiscard]] constexpr T Deci(T a);
-/// Base value * 0.01
-template <typename T>
-[[nodiscard]] constexpr T Centi(T a);
-/// Base value * 0.001
-template <typename T>
-[[nodiscard]] constexpr T Milli(T a);
-/// Base value * 0.000001
-template <typename T>
-[[nodiscard]] constexpr T Micro(T a);
-/// Base value * 0.000000001
-template <typename T>
-[[nodiscard]] constexpr T Nano(T a);
-/// Base value * 0.000000000001
-template <typename T>
-[[nodiscard]] constexpr T Pico(T a);
+    /// Base value * 1000000000000
+    template <typename T>
+    [[nodiscard]] constexpr T Tera(T a);
+    /// Base value * 1000000000
+    template <typename T>
+    [[nodiscard]] constexpr T Giga(T a);
+    /// Base value * 1000000
+    template <typename T>
+    [[nodiscard]] constexpr T Mega(T a);
+    /// Base value * 1000
+    template <typename T>
+    [[nodiscard]] constexpr T Kilo(T a);
+    /// Base value * 100
+    template <typename T>
+    [[nodiscard]] constexpr T Hecto(T a);
+    /// Base value * 10
+    template <typename T>
+    [[nodiscard]] constexpr T Deca(T a);
+    /// Base value
+    template <typename T>
+    [[nodiscard]] constexpr T Base(T a);
+    /// Base value * 0.1
+    template <typename T>
+    [[nodiscard]] constexpr T Deci(T a);
+    /// Base value * 0.01
+    template <typename T>
+    [[nodiscard]] constexpr T Centi(T a);
+    /// Base value * 0.001
+    template <typename T>
+    [[nodiscard]] constexpr T Milli(T a);
+    /// Base value * 0.000001
+    template <typename T>
+    [[nodiscard]] constexpr T Micro(T a);
+    /// Base value * 0.000000001
+    template <typename T>
+    [[nodiscard]] constexpr T Nano(T a);
+    /// Base value * 0.000000000001
+    template <typename T>
+    [[nodiscard]] constexpr T Pico(T a);
 
-/// Base value * 1000000000000
-template <typename T, typename U>
-[[nodiscard]] constexpr T Tera(U a);
-/// Base value * 1000000000
-template <typename T, typename U>
-[[nodiscard]] constexpr T Giga(U a);
-/// Base value * 1000000
-template <typename T, typename U>
-[[nodiscard]] constexpr T Mega(U a);
-/// Base value * 1000
-template <typename T, typename U>
-[[nodiscard]] constexpr T Kilo(U a);
-/// Base value * 100
-template <typename T, typename U>
-[[nodiscard]] constexpr T Hecto(U a);
-/// Base value * 10
-template <typename T, typename U>
-[[nodiscard]] constexpr T Deca(U a);
-/// Base value
-template <typename T, typename U>
-[[nodiscard]] constexpr T Base(U a);
-/// Base value * 0.1
-template <typename T, typename U>
-[[nodiscard]] constexpr T Deci(U a);
-/// Base value * 0.01
-template <typename T, typename U>
-[[nodiscard]] constexpr T Centi(U a);
-/// Base value * 0.001
-template <typename T, typename U>
-[[nodiscard]] constexpr T Milli(U a);
-/// Base value * 0.000001
-template <typename T, typename U>
-[[nodiscard]] constexpr T Micro(U a);
-/// Base value * 0.000000001
-template <typename T, typename U>
-[[nodiscard]] constexpr T Nano(U a);
-/// Base value * 0.000000000001
-template <typename T, typename U>
-[[nodiscard]] constexpr T Pico(U a);
+    /// Base value * 1000000000000
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Tera(U a);
+    /// Base value * 1000000000
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Giga(U a);
+    /// Base value * 1000000
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Mega(U a);
+    /// Base value * 1000
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Kilo(U a);
+    /// Base value * 100
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Hecto(U a);
+    /// Base value * 10
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Deca(U a);
+    /// Base value
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Base(U a);
+    /// Base value * 0.1
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Deci(U a);
+    /// Base value * 0.01
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Centi(U a);
+    /// Base value * 0.001
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Milli(U a);
+    /// Base value * 0.000001
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Micro(U a);
+    /// Base value * 0.000000001
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Nano(U a);
+    /// Base value * 0.000000000001
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Pico(U a);
 } //namespace Metric
 
 struct SimpleTime
@@ -423,61 +418,61 @@ struct SimpleLocation
 
 namespace Time
 {
-/// Return the passed param without any modification
-/// Used only for emphasis
-template <typename T>
-[[nodiscard]] constexpr T Hours(T a);
-template <typename T>
-[[nodiscard]] constexpr T Minutes( T a );
-template <typename T>
-[[nodiscard]] constexpr T Seconds( T a );
-template <typename T>
-[[nodiscard]] constexpr T Milliseconds(T a);
-template <typename T>
-[[nodiscard]] constexpr T Microseconds(T a);
-template <typename T>
-[[nodiscard]] constexpr T Nanoseconds(T a);
+    /// Return the passed param without any modification
+    /// Used only for emphasis
+    template <typename T>
+    [[nodiscard]] constexpr T Hours(T a);
+    template <typename T>
+    [[nodiscard]] constexpr T Minutes( T a );
+    template <typename T>
+    [[nodiscard]] constexpr T Seconds( T a );
+    template <typename T>
+    [[nodiscard]] constexpr T Milliseconds(T a);
+    template <typename T>
+    [[nodiscard]] constexpr T Microseconds(T a);
+    template <typename T>
+    [[nodiscard]] constexpr T Nanoseconds(T a);
 
-template <typename T, typename U>
-[[nodiscard]] constexpr T Hours( U a );
-template <typename T, typename U>
-[[nodiscard]] constexpr T Minutes( U a );
-template <typename T, typename U>
-[[nodiscard]] constexpr T Seconds(U a);
-template <typename T, typename U>
-[[nodiscard]] constexpr T Milliseconds(U a);
-template <typename T, typename U>
-[[nodiscard]] constexpr T Microseconds(U a);
-template <typename T, typename U>
-[[nodiscard]] constexpr T Nanoseconds(U a);
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Hours( U a );
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Minutes( U a );
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Seconds(U a);
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Milliseconds(U a);
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Microseconds(U a);
+    template <typename T, typename U>
+    [[nodiscard]] constexpr T Nanoseconds(U a);
 
-template <typename T = D64, typename U>
-[[nodiscard]] constexpr T NanosecondsToSeconds(U a) noexcept;
-template <typename T = D64, typename U>
-[[nodiscard]] constexpr T NanosecondsToMilliseconds(U a) noexcept;
-template <typename T = U64, typename U>
-[[nodiscard]] constexpr T NanosecondsToMicroseconds(U a) noexcept;
+    template <typename T = D64, typename U>
+    [[nodiscard]] constexpr T NanosecondsToSeconds(U a) noexcept;
+    template <typename T = D64, typename U>
+    [[nodiscard]] constexpr T NanosecondsToMilliseconds(U a) noexcept;
+    template <typename T = U64, typename U>
+    [[nodiscard]] constexpr T NanosecondsToMicroseconds(U a) noexcept;
 
-template <typename T = D64, typename U>
-[[nodiscard]] constexpr T MicrosecondsToSeconds(U a) noexcept;
-template <typename T = U64, typename U>
-[[nodiscard]] constexpr T MicrosecondsToMilliseconds(U a) noexcept;
-template <typename T = U64, typename U>
-[[nodiscard]] constexpr T MicrosecondsToNanoseconds(U a) noexcept;
+    template <typename T = D64, typename U>
+    [[nodiscard]] constexpr T MicrosecondsToSeconds(U a) noexcept;
+    template <typename T = U64, typename U>
+    [[nodiscard]] constexpr T MicrosecondsToMilliseconds(U a) noexcept;
+    template <typename T = U64, typename U>
+    [[nodiscard]] constexpr T MicrosecondsToNanoseconds(U a) noexcept;
 
-template <typename T = D64, typename U>
-[[nodiscard]] constexpr T MillisecondsToSeconds(U a) noexcept;
-template <typename T = U64, typename U>
-[[nodiscard]] constexpr T MillisecondsToMicroseconds(U a) noexcept;
-template <typename T = U64, typename U>
-[[nodiscard]] constexpr T MillisecondsToNanoseconds(U a) noexcept;
+    template <typename T = D64, typename U>
+    [[nodiscard]] constexpr T MillisecondsToSeconds(U a) noexcept;
+    template <typename T = U64, typename U>
+    [[nodiscard]] constexpr T MillisecondsToMicroseconds(U a) noexcept;
+    template <typename T = U64, typename U>
+    [[nodiscard]] constexpr T MillisecondsToNanoseconds(U a) noexcept;
 
-template <typename T = D64, typename U>
-[[nodiscard]] constexpr T SecondsToMilliseconds(U a) noexcept;
-template <typename T = U64, typename U>
-[[nodiscard]] constexpr T SecondsToMicroseconds(U a) noexcept;
-template <typename T = U64, typename U>
-[[nodiscard]] constexpr T SecondsToNanoseconds(U a) noexcept;
+    template <typename T = D64, typename U>
+    [[nodiscard]] constexpr T SecondsToMilliseconds(U a) noexcept;
+    template <typename T = U64, typename U>
+    [[nodiscard]] constexpr T SecondsToMicroseconds(U a) noexcept;
+    template <typename T = U64, typename U>
+    [[nodiscard]] constexpr T SecondsToNanoseconds(U a) noexcept;
 }  // namespace Time
 
 template<typename T>
@@ -485,6 +480,9 @@ using base_type = typename std::remove_cv<typename std::remove_reference<T>::typ
 
 template<typename T>
 concept ValidMathType = is_base_of_template<primitiveWrapper, base_type<T>>::value || (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>);
+
+template<typename T>
+inline constexpr bool Is_Float_Angle = std::is_same_v<T, Angle::RADIANS<F32>> || std::is_same_v<T, Angle::DEGREES<F32>>;
 
 namespace Util
 {
@@ -512,13 +510,13 @@ void InsertionSort(FwdIt first, FwdIt last, Compare cmp = Compare());
 @details so for example a yaw of 360 degrees becomes 0 degrees, and -190 degrees
 becomes 170.
 @param inputRotation rotation to normalize
-@param degrees if true, values are in degrees, otherwise we use radians
 @param normYaw If false, the yaw isn't normalized.
 @param normPitch If false, the pitch isn't normalized.
 @param normRoll If false, the roll isn't normalized.
 */
-void Normalize(vec3<F32>& inputRotation, bool degrees = false,
-               bool normYaw = true, bool normPitch = true,
+void Normalize(vec3<Angle::RADIANS_F>& inputRotation,
+               bool normYaw = true,
+               bool normPitch = true,
                bool normRoll = true) noexcept;
 
 [[nodiscard]] UColour4  ToByteColour(const FColour4& floatColour) noexcept;

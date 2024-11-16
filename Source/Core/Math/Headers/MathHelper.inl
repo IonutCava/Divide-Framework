@@ -366,104 +366,103 @@ namespace Divide
         template <typename T>
         constexpr DEGREES<T> to_VerticalFoV( const DEGREES<T> horizontalFoV, D64 aspectRatio ) noexcept
         {
-            return static_cast<DEGREES<T>>(
-                to_DEGREES( 2 * std::atan( std::tan( Angle::to_RADIANS( horizontalFoV ) * 0.5f ) / aspectRatio ) )
-                );
+            return  to_DEGREES<T>(RADIANS<T>(2 * std::atan( std::tan( to_RADIANS<T>( horizontalFoV ) * 0.5f ) / aspectRatio)));
         }
 
         template <typename T>
         constexpr DEGREES<T> to_HorizontalFoV( const DEGREES<T> verticalFoV, D64 aspectRatio ) noexcept
         {
-            return static_cast<DEGREES<T>>(
-                to_DEGREES( 2 * std::atan( std::tan( Angle::to_RADIANS( verticalFoV ) * 0.5f ) ) * aspectRatio )
-                );
+            return to_DEGREES<T>(RADIANS<T>(2 * std::atan( std::tan( to_RADIANS<T>( verticalFoV ) * 0.5f ) ) * aspectRatio));
         }
 
         template <typename T>
-        constexpr RADIANS<T> to_RADIANS( const DEGREES<T> angle ) noexcept
+        FORCE_INLINE RADIANS<T> to_RADIANS( const DEGREES<T> angle ) noexcept
         {
-            return static_cast<RADIANS<T>>(angle * M_PIDIV180);
+            return RADIANS<T>{angle.value * M_PI_DIV_180};
         }
 
         template <>
-        constexpr RADIANS<F32> to_RADIANS( const DEGREES<F32> angle ) noexcept
+        FORCE_INLINE RADIANS_F to_RADIANS( const DEGREES_F angle ) noexcept
         {
-            return static_cast<RADIANS<F32>>(angle * M_PIDIV180_f);
+            return RADIANS_F{angle.value * M_PI_DIV_180_f};
         }
 
         template <typename T>
-        constexpr DEGREES<T> to_DEGREES( const RADIANS<T> angle ) noexcept
+        FORCE_INLINE DEGREES<T> to_DEGREES( const RADIANS<T> angle ) noexcept
         {
-            return static_cast<DEGREES<T>>(angle * M_180DIVPI);
+            return DEGREES<T>(angle.value * M_180_DIV_PI);
         }
 
         template <>
-        constexpr DEGREES<F32> to_DEGREES( const RADIANS<F32> angle ) noexcept
+        FORCE_INLINE DEGREES_F to_DEGREES( const RADIANS_F angle ) noexcept
         {
-            return static_cast<DEGREES<F32>>(angle * M_180DIVPI_f);
+            return DEGREES_F(angle.value * M_180_DIV_PI_f);
         }
 
         template <typename T>
-        constexpr vec2<RADIANS<T>> to_RADIANS( const vec2<DEGREES<T>> angle ) noexcept
+        FORCE_INLINE vec2<RADIANS<T>> to_RADIANS( const vec2<DEGREES<T>> angle ) noexcept
         {
-            return vec2<RADIANS<T>>( angle * M_PIDIV180 );
+            return vec2<RADIANS<T>>
+            {
+                to_RADIANS(angle.x),
+                to_RADIANS(angle.y)
+            };
         }
 
         template <typename T>
-        constexpr vec2<DEGREES<T>> to_DEGREES( const vec2<RADIANS<T>> angle ) noexcept
+        FORCE_INLINE vec2<DEGREES<T>> to_DEGREES( const vec2<RADIANS<T>> angle ) noexcept
         {
-            return vec2<RADIANS<T>>( angle * M_180DIVPI );
+            return vec2<DEGREES<T>>
+            {
+                to_DEGREES(angle.x),
+                to_DEGREES(angle.y)
+            };
         }
 
         template <typename T>
-        constexpr vec3<RADIANS<T>> to_RADIANS( const vec3<DEGREES<T>>& angle ) noexcept
+        FORCE_INLINE vec3<RADIANS<T>> to_RADIANS( const vec3<DEGREES<T>>& angle ) noexcept
         {
-            return vec3<RADIANS<T>>( angle * M_PIDIV180 );
+            return vec3<RADIANS<T>>
+            {
+                to_RADIANS(angle.x),
+                to_RADIANS(angle.y),
+                to_RADIANS(angle.z)
+            };
         }
 
         template <typename T>
-        constexpr vec3<DEGREES<T>> to_DEGREES( const vec3<RADIANS<T>>& angle ) noexcept
+        FORCE_INLINE vec3<DEGREES<T>> to_DEGREES( const vec3<RADIANS<T>>& angle ) noexcept
         {
-            return vec3<DEGREES<T>>( angle * M_180DIVPI );
+            return vec3<DEGREES<T>>
+            {
+                to_DEGREES(angle.x),
+                to_DEGREES(angle.y),
+                to_DEGREES(angle.z)
+            };
         }
 
         template <typename T>
-        constexpr vec4<RADIANS<T>> to_RADIANS( const vec4<DEGREES<T>>& angle ) noexcept
+        FORCE_INLINE vec4<RADIANS<T>> to_RADIANS( const vec4<DEGREES<T>>& angle ) noexcept
         {
-            return vec4<RADIANS<T>>( angle * M_PIDIV180 );
+            return vec4<RADIANS<T>>
+            {
+                to_RADIANS(angle.x),
+                to_RADIANS(angle.y),
+                to_RADIANS(angle.z),
+                to_RADIANS(angle.w)
+            };
         }
 
         template <typename T>
-        constexpr vec4<DEGREES<T>> to_DEGREES( const vec4<RADIANS<T>>& angle ) noexcept
+        FORCE_INLINE vec4<DEGREES<T>> to_DEGREES( const vec4<RADIANS<T>>& angle ) noexcept
         {
-            return vec4<DEGREES<T>>( angle * M_180DIVPI );
-        }
-
-        /// Return the radian equivalent of the given degree value
-        template <typename T>
-        constexpr T DegreesToRadians( const T angleDegrees ) noexcept
-        {
-            return to_RADIANS( angleDegrees );
-        }
-
-        /// Return the degree equivalent of the given radian value
-        template <typename T>
-        constexpr T RadiansToDegrees( const T angleRadians ) noexcept
-        {
-            return to_DEGREES( angleRadians );
-        }
-        /// Returns the specified value. Used only for emphasis
-        template <typename T>
-        constexpr T Degrees( const T degrees ) noexcept
-        {
-            return degrees;
-        }
-
-        /// Returns the specified value. Used only for emphasis
-        template <typename T>
-        constexpr T Radians( const T radians ) noexcept
-        {
-            return radians;
+            return vec4<DEGREES<T>>
+            {
+                to_DEGREES(angle.x),
+                to_DEGREES(angle.y),
+                to_DEGREES(angle.z),
+                to_DEGREES(angle.w)
+            };
         }
 
     }  // namespace Angle

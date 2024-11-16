@@ -38,14 +38,14 @@ namespace Divide
     namespace SSE
     {
         //ref: http://stackoverflow.com/questions/6042399/how-to-compare-m128-types
-        FORCE_INLINE bool Fneq128( const __m128 a, const __m128 b ) noexcept
+        inline bool Fneq128( const __m128 a, const __m128 b ) noexcept
         {
             // returns true if at least one element in a is not equal to 
             // the corresponding element in b
             return _mm_movemask_ps( _mm_cmpeq_ps( a, b ) ) != 0xF;
         }
 
-        FORCE_INLINE bool Fneq128( const __m128 a, const __m128 b, const F32 epsilon ) noexcept
+        inline bool Fneq128( const __m128 a, const __m128 b, const F32 epsilon ) noexcept
         {
             // epsilon vector
             const auto eps = _mm_set1_ps( epsilon );
@@ -57,7 +57,7 @@ namespace Divide
         }
 
         //ref: https://www.opengl.org/discussion_boards/showthread.php/159586-my-SSE-code-is-slower-than-normal-why
-        FORCE_INLINE __m128 DotSimd( const __m128 a, const __m128 b ) noexcept
+        inline __m128 DotSimd( const __m128 a, const __m128 b ) noexcept
         {
             __m128 r = _mm_mul_ps( a, b );
             r = _mm_add_ps( _mm_movehl_ps( r, r ), r );
@@ -66,7 +66,7 @@ namespace Divide
             return r;
         }
 
-        FORCE_INLINE __m128 SimpleDot( __m128 a, __m128 b ) noexcept
+        inline __m128 SimpleDot( __m128 a, __m128 b ) noexcept
         {
             a = _mm_mul_ps( a, b );
             b = _mm_hadd_ps( a, a );
@@ -88,11 +88,15 @@ namespace Divide
     template <typename T>
     FORCE_INLINE vec2<T> Inverse( const vec2<T> v ) noexcept
     {
-        return vec2<T>( v.y, v.x );
+        return
+        {
+            v.y,
+            v.x
+        };
     }
 
     template <typename T>
-    FORCE_INLINE vec2<T> Normalize( vec2<T> vector ) noexcept
+    FORCE_INLINE vec2<T> Normalize( vec2<T>& vector ) noexcept
     {
         return vector.normalize();
     }
@@ -103,14 +107,12 @@ namespace Divide
         return vec2<T>( vector ).normalize();
     }
 
-    /// multiply a vector by a value
     template <typename T>
     FORCE_INLINE vec2<T> operator*( T fl, const vec2<T> v ) noexcept
     {
         return v * fl;
     }
 
-    /// general vec2 dot product
     template <typename T>
     FORCE_INLINE T Dot( const vec2<T> a, const vec2<T> b ) noexcept
     {
@@ -128,9 +130,10 @@ namespace Divide
     [[nodiscard]]
     FORCE_INLINE vec2<T> Clamped( const vec2<T> v, const vec2<T> min, const vec2<T> max ) noexcept
     {
-        return vec2<T>{
+        return
+        {
             CLAMPED( v.x, min.x, max.x ),
-                CLAMPED( v.y, min.y, max.y )
+            CLAMPED( v.y, min.y, max.y )
         };
     }
 
@@ -164,22 +167,30 @@ namespace Divide
     template <typename T>
     FORCE_INLINE vec3<T> Cross( const vec3<T>& v1, const vec3<T>& v2 ) noexcept
     {
-        return vec3<T>( v1.y * v2.z - v1.z * v2.y,
-                        v1.z * v2.x - v1.x * v2.z,
-                        v1.x * v2.y - v1.y * v2.x );
+        return
+        {
+            v1.y * v2.z - v1.z * v2.y,
+            v1.z * v2.x - v1.x * v2.z,
+            v1.x * v2.y - v1.y * v2.x
+        };
     }
 
     template <typename T>
     FORCE_INLINE vec3<T> AreOrthogonal( const vec3<T>& v1, const vec3<T>& v2 ) noexcept
     {
         constexpr F32 tolerance = 1e-6f;
-        return SQUARED( Dot( v1, v2 ) ) < Dot( v1, v1 ) * Dot( v2, v2 ) * tolerance;
+        return SQUARED( Dot( v1, v2 ) ) < (Dot( v1, v1 ) * Dot( v2, v2 ) * tolerance);
     }
 
     template <typename T>
     FORCE_INLINE vec3<T> Inverse( const vec3<T>& v ) noexcept
     {
-        return vec3<T>( v.z, v.y, v.x );
+        return
+        {
+            v.z,
+            v.y,
+            v.x
+        };
     }
 
     template <typename T>
@@ -230,7 +241,8 @@ namespace Divide
     [[nodiscard]]
     FORCE_INLINE vec3<T> Clamped( const vec3<T>& v, const vec3<T>& min, const vec3<T>& max ) noexcept
     {
-        return vec3<T>{
+        return
+        {
             CLAMPED( v.x, min.x, max.x ),
             CLAMPED( v.y, min.y, max.y ),
             CLAMPED( v.z, min.z, max.z )
@@ -240,7 +252,13 @@ namespace Divide
     template <typename T>
     FORCE_INLINE vec4<T> Abs( const vec4<T>& vector ) noexcept
     {
-        return { std::abs( vector.x ), std::abs( vector.y ), std::abs( vector.z ), std::abs( vector.z ) };
+        return
+        {
+            std::abs( vector.x ),
+            std::abs( vector.y ),
+            std::abs( vector.z ),
+            std::abs( vector.z )
+        };
     }
 
     /// min/max functions
@@ -373,7 +391,7 @@ namespace Divide
 
     /// compare 2 vectors
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec2<T>::compare( const vec2<U> v ) const noexcept
     {
         return COMPARE( this->x, v.x ) &&
@@ -382,7 +400,7 @@ namespace Divide
 
     /// compare 2 vectors using the given tolerance
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec2<T>::compare( const vec2<U> v, U epsi ) const noexcept
     {
         return COMPARE_TOLERANCE( this->x, v.x, epsi ) &&
@@ -457,7 +475,7 @@ namespace Divide
     }
 
     /// linear interpolation between 2 vectors
-    template <typename T, typename U> requires std::is_pod_v<U>
+    template <typename T, typename U> requires ValidMathType<U>
     FORCE_INLINE vec2<T> Lerp( const vec2<T> u, const vec2<T> v, U factor ) noexcept
     {
         return { Lerp( u.x, v.x, factor ), Lerp( u.y, v.y, factor ) };
@@ -476,7 +494,7 @@ namespace Divide
 
     /// compare 2 vectors
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec3<T>::compare( const vec3<U>& v ) const noexcept
     {
         return COMPARE( this->x, v.x ) &&
@@ -486,7 +504,7 @@ namespace Divide
 
     /// compare 2 vectors within the specified tolerance
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec3<T>::compare( const vec3<U>& v, U epsi ) const noexcept
     {
         return COMPARE_TOLERANCE( this->x, v.x, epsi ) &&
@@ -502,7 +520,7 @@ namespace Divide
     }
 
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec3<T>::isPerpendicular( const vec3<U>& other, const F32 epsilon ) const noexcept
     {
         return SQUARED( dot( other ) ) <= SQUARED( epsilon ) * lengthSquared() * other.lengthSquared();
@@ -723,7 +741,7 @@ namespace Divide
     }
 
     /// lerp between the 2 specified vectors by the specified amount
-    template <typename T, typename U> requires std::is_pod_v<U>
+    template <typename T, typename U> requires ValidMathType<U>
     FORCE_INLINE vec3<T> Lerp( const vec3<T>& u, const vec3<T>& v, U factor ) noexcept
     {
         return { Lerp( u.x, v.x, factor ), Lerp( u.y, v.y, factor ), Lerp( u.z, v.z, factor ) };
@@ -897,7 +915,7 @@ namespace Divide
 
     /// compare 2 vectors
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec4<T>::compare( const vec4<U>& v ) const noexcept
     {
         return COMPARE( this->x, v.x ) &&
@@ -908,7 +926,7 @@ namespace Divide
 
     /// compare this vector with the one specified and see if they match within the specified amount
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec4<T>::compare( const vec4<U>& v, const U epsi ) const noexcept
     {
         return COMPARE_TOLERANCE( this->x, v.x, epsi ) &&
@@ -956,16 +974,50 @@ namespace Divide
 
 
 #if defined(HAS_SSE42)
+    FORCE_INLINE F32 Dot(const __m128 a, const __m128 b)
+    {
+        return _mm_cvtss_f32(SSE::DotSimd(a, b));
+    }
+
     template <>
     FORCE_INLINE F32 Dot( const vec4<F32>& a, const vec4<F32>& b ) noexcept
     {
-        return _mm_cvtss_f32( SSE::DotSimd( a._reg._reg, b._reg._reg ) );
+        return Dot( a._reg._reg, b._reg._reg );
+    }
+
+    template <>
+    FORCE_INLINE Angle::DEGREES_F Dot(const vec4<Angle::DEGREES_F>& a, const vec4<Angle::DEGREES_F>& b) noexcept
+    {
+        return Angle::DEGREES_F{Dot(a._reg._reg, b._reg._reg)};
+    }
+
+    template <>
+    FORCE_INLINE Angle::RADIANS_F Dot(const vec4<Angle::RADIANS_F>& a, const vec4<Angle::RADIANS_F>& b) noexcept
+    {
+        return Angle::RADIANS_F{Dot(a._reg._reg, b._reg._reg)};
+    }
+
+    FORCE_INLINE F32 Length(const __m128 reg)
+    {
+        return Divide::Sqrt<F32>(SSE::DotSimd(reg, reg));
     }
 
     template<>
     FORCE_INLINE F32 vec4<F32>::length() const noexcept
     {
-        return Divide::Sqrt<F32>( SSE::DotSimd( this->_reg._reg, this->_reg._reg ) );
+        return Length( this->_reg._reg );
+    }
+
+    template<>
+    FORCE_INLINE Angle::DEGREES_F vec4<Angle::DEGREES_F>::length() const noexcept
+    {
+        return Angle::DEGREES_F{ Length(this->_reg._reg) };
+    }
+
+    template<>
+    FORCE_INLINE Angle::RADIANS_F vec4<Angle::RADIANS_F>::length() const noexcept
+    {
+        return Angle::RADIANS_F{ Length(this->_reg._reg) };
     }
 
 #endif //HAS_SSE42
@@ -1007,17 +1059,36 @@ namespace Divide
     }
 
 #if defined(HAS_SSE42)
+    FORCE_INLINE __m128 normalizeSIMD(__m128 reg)
+    {
+        return _mm_mul_ps(reg, _mm_rsqrt_ps(SSE::SimpleDot(reg, reg)));
+    }
+
     template <>
     FORCE_INLINE vec4<F32>& vec4<F32>::normalize() noexcept
     {
-        this->_reg._reg = _mm_mul_ps( this->_reg._reg, _mm_rsqrt_ps( SSE::SimpleDot( this->_reg._reg, this->_reg._reg ) ) );
+        this->_reg._reg = normalizeSIMD( this->_reg._reg );
+        return *this;
+    }
+
+    template <>
+    FORCE_INLINE vec4<Angle::DEGREES_F>& vec4<Angle::DEGREES_F>::normalize() noexcept
+    {
+        this->_reg._reg = normalizeSIMD(this->_reg._reg);
+        return *this;
+    }
+
+    template <>
+    FORCE_INLINE vec4<Angle::RADIANS_F>& vec4<Angle::RADIANS_F>::normalize() noexcept
+    {
+        this->_reg._reg = normalizeSIMD(this->_reg._reg);
         return *this;
     }
 #endif //HAS_SSE42
 
     /// The current vector is perpendicular to the specified one within epsilon
     template <typename T>
-    template <typename U> requires std::is_pod_v<U>
+    template <typename U> requires ValidMathType<U>
     FORCE_INLINE bool vec4<T>::isPerpendicular( const vec4<U>& other, const F32 epsilon ) const noexcept
     {
         return SQUARED( dot( other ) ) <= SQUARED( epsilon ) * lengthSquared() * other.lengthSquared();

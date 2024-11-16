@@ -41,21 +41,20 @@ namespace Divide {
         SimpleTime sunriseTime = {};
         SimpleTime sunsetTime = {};
         SimpleTime noonTime = {};
-        Angle::RADIANS<F32> altitude = 0.f;
-        Angle::RADIANS<F32> azimuth = 0.f;
-        Angle::DEGREES<F32> altitudeMax = 0.f;
-        Angle::DEGREES<F32> declination = 0.f;
+        Angle::RADIANS_F altitude = 0.f;
+        Angle::RADIANS_F azimuth = 0.f;
+        Angle::DEGREES_F altitudeMax = 0.f;
+        Angle::DEGREES_F declination = 0.f;
     };
 
     struct SunPosition
     {
-        [[nodiscard]] static SunInfo CalculateSunPosition(const struct tm &dateTime, F32 latitude, F32 longitude);
-        [[nodiscard]] static D64 CorrectAngle(D64 angleInRadians) noexcept;
+        [[nodiscard]] static SunInfo CalculateSunPosition(const struct tm &dateTime, Angle::DEGREES_F latitude, Angle::DEGREES_F longitude);
     };
 
     struct Sun
     {
-        void SetLocation(F32 longitude, F32 latitude) noexcept;
+        void SetLocation(Angle::DEGREES_F longitude, Angle::DEGREES_F latitude) noexcept;
         void SetDate(struct tm &dateTime) noexcept;
         SimpleTime GetTimeOfDay() const noexcept;
         SimpleLocation GetGeographicLocation() const noexcept;
@@ -65,8 +64,8 @@ namespace Divide {
         [[nodiscard]] vec3<F32> GetSunPosition(F32 radius = 1.f) const;
     private:
         mutable SunInfo _cachedDetails;
-        F32 _longitude = 0.f;
-        F32 _latitude = 0.f;
+        Angle::DEGREES_F _longitude = 0.f;
+        Angle::DEGREES_F _latitude = 0.f;
         struct tm _dateTime {};
         mutable bool _dirty = true;
     };
