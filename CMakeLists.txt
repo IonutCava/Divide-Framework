@@ -123,11 +123,6 @@ if ( NOT AVX2_OPT AND NOT AVX_OPT AND NOT SSE42_OPT)
   endif()
 endif ()
 
-add_compile_definitions(NO_SIMD)
-if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-  add_compile_options(-mno-avx2 -mno-avx -mno-sse4.2)
-endif()
-
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(CMAKE_DEBUG_PREFIX /D)
 
