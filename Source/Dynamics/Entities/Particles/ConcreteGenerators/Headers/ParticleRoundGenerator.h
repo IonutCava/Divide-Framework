@@ -37,7 +37,7 @@
 
 namespace Divide {
 struct ParticleRoundGenerator final : ParticleGenerator {
-    vec3<F32> _center = VECTOR3_ZERO;
+    float3 _center = VECTOR3_ZERO;
     F32 _radX = 0.f;
     F32 _radY = 0.f;
 

@@ -74,7 +74,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     // assert if double init!
     DIVIDE_ASSERT(particleData != nullptr, "ParticleEmitter::updateData error: Invalid particle data!");
     _particles = particleData;
-    const vector<vec3<F32>>& geometry = particleData->particleGeometryVertices();
+    const vector<float3>& geometry = particleData->particleGeometryVertices();
     const vector<U32>& indices = particleData->particleGeometryIndices();
 
     for (U8 i = 0u; i < s_MaxPlayerBuffers; ++i)
@@ -86,7 +86,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             GenericVertexData::SetBufferParams params = {};
             params._bindConfig = { g_particleGeometryBuffer, g_particleGeometryBuffer };
             params._bufferParams._elementCount = to_U32(geometry.size());
-            params._bufferParams._elementSize = sizeof(vec3<F32>);
+            params._bufferParams._elementSize = sizeof(float3);
             params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
             params._initialData = { (bufferPtr)geometry.data(), geometry.size() * params._bufferParams._elementSize};
             params._useRingBuffer = false;
@@ -123,7 +123,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             params._useRingBuffer = true;
 
             params._bufferParams._elementCount = particleCount;
-            params._bufferParams._elementSize = sizeof( vec4<F32> );
+            params._bufferParams._elementSize = sizeof( float4 );
             params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
             BufferLock lock = buffer.setBuffer( params );
             DIVIDE_UNUSED( lock );
@@ -304,11 +304,11 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
 
         if (renderStagePass._passType == RenderPassType::PRE_PASS)
         {
-            const vec3<F32>& eyePos = cameraSnapshot._eye;
+            const float3& eyePos = cameraSnapshot._eye;
             const U32 aliveCount = getAliveParticleCount();
 
-            vector<vec4<F32>>& misc = _particles->_misc;
-            vector<vec4<F32>>& pos = _particles->_position;
+            vector<float4>& misc = _particles->_misc;
+            vector<float4>& pos = _particles->_position;
 
 
             ParallelForDescriptor descriptor = {};
@@ -352,7 +352,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
 
         const TransformComponent* transform = sgn->get<TransformComponent>();
 
-        const vec3<F32>& pos = transform->getWorldPosition();
+        const float3& pos = transform->getWorldPosition();
         const Quaternion<F32>& rot = transform->getWorldOrientation();
 
         F32 averageEmitRate = 0;

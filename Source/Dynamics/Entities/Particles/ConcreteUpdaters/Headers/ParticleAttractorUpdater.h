@@ -40,7 +40,7 @@ namespace Divide {
 class ParticleAttractorUpdater final : public ParticleUpdater {
    public:
     /// w = force
-    vector<vec4<F32>> _attractors;
+    vector<float4> _attractors;
 
    public:
     ParticleAttractorUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)
@@ -50,8 +50,8 @@ class ParticleAttractorUpdater final : public ParticleUpdater {
     void update(U64 deltaTimeUS, ParticleData& p) override;
 
     [[nodiscard]] size_t collectionSize() const noexcept { return _attractors.size(); }
-    void add(const vec4<F32>& attractor) { _attractors.push_back(attractor); }
-    [[nodiscard]] vec4<F32>& get(const U32 id) { return _attractors[id]; }
+    void add(const float4& attractor) { _attractors.push_back(attractor); }
+    [[nodiscard]] float4& get(const U32 id) { return _attractors[id]; }
 };
 }
 

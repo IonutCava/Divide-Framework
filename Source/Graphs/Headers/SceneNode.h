@@ -118,7 +118,7 @@ class SceneNode : public CachedResource
     [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
 
     [[nodiscard]] inline const BoundingBox& getBounds() const noexcept { return _boundingBox; }
-    [[nodiscard]] inline const vec3<F32>& getWorldOffset() const noexcept { return _worldOffset; }
+    [[nodiscard]] inline const float3& getWorldOffset() const noexcept { return _worldOffset; }
 
     [[nodiscard]] inline U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
 
@@ -137,7 +137,7 @@ class SceneNode : public CachedResource
     // Post insertion calls (Use this to setup child objects during creation)
     virtual void postLoad(SceneGraphNode* sgn);
 
-    void setBounds(const BoundingBox& aabb, const vec3<F32>& worldOffset = {});
+    void setBounds(const BoundingBox& aabb, const float3& worldOffset = {});
 
     void registerEditorComponent( PlatformContext& context );
 
@@ -157,7 +157,7 @@ class SceneNode : public CachedResource
 
     /// The initial bounding box as it was at object's creation (i.e. no transforms applied)
     BoundingBox _boundingBox{};
-    vec3<F32> _worldOffset{};
+    float3 _worldOffset{};
     bool _boundsChanged = false;
 
 private:
@@ -202,7 +202,7 @@ class SceneNodeNetworkComponent {
 };
 
 class SceneNodeBoundsSystem {
-    static void setBounds(SceneNode& node, const BoundingBox& aabb, const vec3<F32>& worldOffset = {}) {
+    static void setBounds(SceneNode& node, const BoundingBox& aabb, const float3& worldOffset = {}) {
         node.setBounds(aabb, worldOffset);
     }
 
@@ -227,7 +227,7 @@ class SceneNodeBoundsSystem {
 };
 
 class SceneNodeLightComponent {
-    static void setBounds(SceneNode& node, const BoundingBox& aabb, const vec3<F32>& worldOffset = {}) {
+    static void setBounds(SceneNode& node, const BoundingBox& aabb, const float3& worldOffset = {}) {
         node.setBounds(aabb, worldOffset);
     }
 
@@ -238,7 +238,7 @@ class SceneNodeLightComponent {
 };
 
 class SceneNodePlayer {
-    static void setBounds(SceneNode& node, const BoundingBox& aabb, const vec3<F32>& worldOffset = {}) {
+    static void setBounds(SceneNode& node, const BoundingBox& aabb, const float3& worldOffset = {}) {
         node.setBounds(aabb, worldOffset);
     }
 

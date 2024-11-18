@@ -68,7 +68,7 @@ public:
     [[nodiscard]] PhysicsAPIWrapper& getImpl() { assert(_api != nullptr); return *_api; }
     [[nodiscard]] const PhysicsAPIWrapper& getImpl() const { assert(_api != nullptr); return *_api; }
 
-    bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const override;
+    bool intersect(const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersectionsOut) const override;
 
     [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
     [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;

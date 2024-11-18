@@ -86,7 +86,7 @@ public:
     [[nodiscard]] bool initPhysicsScene(Scene& scene) override;
     [[nodiscard]] bool destroyPhysicsScene(const Scene& scene) override;
 
-    [[nodiscard]] bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const override;
+    [[nodiscard]] bool intersect(const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersectionsOut) const override;
 
     [[nodiscard]] physx::PxPhysics* getSDK() const noexcept { return _gPhysicsSDK; }
 

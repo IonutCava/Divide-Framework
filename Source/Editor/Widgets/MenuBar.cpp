@@ -117,7 +117,7 @@ namespace Divide
 
             for ( vector<Handle<Texture>>::iterator it = std::begin( _previewTextures ); it != std::end( _previewTextures ); )
             {
-                if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", Get(*it)->resourceName().c_str() ).c_str(), *it, vec2<F32>( 512, 512 ), true, false ) )
+                if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", Get(*it)->resourceName().c_str() ).c_str(), *it, float2( 512, 512 ), true, false ) )
                 {
                     it = _previewTextures.erase( it );
                 }
@@ -345,7 +345,7 @@ namespace Divide
 
             static F32 sphereRadius = 1.f;
             static U32 resolution = 16u;
-            static vec3<F32> sides{ 1.f, 1.f, 1.f };
+            static float3 sides{ 1.f, 1.f, 1.f };
             static bool doubleSided = true;
 
             const auto createPrimitive = [&]()
@@ -403,16 +403,16 @@ namespace Divide
                         quadMask.i = 0;
                         quadMask.b[0] = doubleSided ? 0 : 1;
                         nodeDescriptor.mask( quadMask );
-                        const vec3<F32> halfSides = sides * 0.5f;
+                        const float3 halfSides = sides * 0.5f;
                         const Handle<Quad3D> handleTmp = CreateResource( nodeDescriptor );
                         materialHandle = Get( handleTmp )->getMaterialTpl();
                         handle = FromHandle( handleTmp );
 
                         ResourcePtr<Quad3D> node = Get( handleTmp );
-                        node->setCorner( Quad3D::CornerLocation::TOP_LEFT, vec3<F32>( -halfSides.x, halfSides.y, 0 ) );
-                        node->setCorner( Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>( halfSides.x, halfSides.y, 0 ) );
-                        node->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>( -halfSides.x, -halfSides.y, 0 ) );
-                        node->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( halfSides.x, -halfSides.y, 0 ) );
+                        node->setCorner( Quad3D::CornerLocation::TOP_LEFT, float3( -halfSides.x, halfSides.y, 0 ) );
+                        node->setCorner( Quad3D::CornerLocation::TOP_RIGHT, float3( halfSides.x, halfSides.y, 0 ) );
+                        node->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, float3( -halfSides.x, -halfSides.y, 0 ) );
+                        node->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, float3( halfSides.x, -halfSides.y, 0 ) );
                     } break;
 
                     default:
@@ -1331,7 +1331,7 @@ namespace Divide
                 Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), "ERROR: Couldn't load Sponza model!", Time::SecondsToMilliseconds<F32>( 3 ), true );
             }
 
-            if ( Attorney::EditorGeneralWidget::modalModelSpawn( _context.editor(), spawnMesh, !modifierPressed, vec3<F32>{0.1f}, VECTOR3_ZERO ) )
+            if ( Attorney::EditorGeneralWidget::modalModelSpawn( _context.editor(), spawnMesh, !modifierPressed, float3{0.1f}, VECTOR3_ZERO ) )
             {
             }
         }

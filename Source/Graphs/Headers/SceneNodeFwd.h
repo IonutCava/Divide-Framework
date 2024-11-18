@@ -76,7 +76,7 @@ namespace Divide {
     struct SGNIntersectionParams
     {
         Ray _ray;
-        vec2<F32> _range = { 0.f, 1.f };
+        float2 _range = { 0.f, 1.f };
         const SceneNodeType* _ignoredTypes = nullptr;
         size_t _ignoredTypesCount = 0;
         bool _includeTransformNodes = true;

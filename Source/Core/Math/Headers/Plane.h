@@ -110,7 +110,7 @@ class Plane {
         return *this;
     }
 
-    [[nodiscard]] Side classifyPoint(const vec3<F32>& point) const noexcept {
+    [[nodiscard]] Side classifyPoint(const float3& point) const noexcept {
         const F32 result = signedDistanceToPoint(point);
         return result > 0 ? Side::POSITIVE_SIDE
                    : result < 0 ? Side::NEGATIVE_SIDE : Side::NO_SIDE;

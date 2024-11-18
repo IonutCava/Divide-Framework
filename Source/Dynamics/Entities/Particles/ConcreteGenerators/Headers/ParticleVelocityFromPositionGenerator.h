@@ -37,7 +37,7 @@
 
 namespace Divide {
 struct ParticleVelocityFromPositionGenerator final : ParticleGenerator {
-    vec3<F32> _offset = VECTOR3_ZERO;
+    float3 _offset = VECTOR3_ZERO;
     F32 _minScale = 0.f;
     F32 _maxScale = 0.f;
 

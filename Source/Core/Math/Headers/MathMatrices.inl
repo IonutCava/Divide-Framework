@@ -1361,9 +1361,9 @@ namespace Divide
     template<typename T>
     FORCE_INLINE bool mat3<T>::isColOrthogonal() const noexcept
     {
-        const vec3<F32> col0 = getCol( 0 );
-        const vec3<F32> col1 = getCol( 1 );
-        const vec3<F32> col2 = getCol( 2 );
+        const float3 col0 = getCol( 0 );
+        const float3 col1 = getCol( 1 );
+        const float3 col2 = getCol( 2 );
 
         return AreOrthogonal( col0, col1 ) &&
                AreOrthogonal( col0, col2 ) &&
@@ -2129,7 +2129,7 @@ namespace Divide
     template<typename U>
     FORCE_INLINE void mat4<T>::set( U const* matrix ) noexcept
     {
-        if constexpr ( std::is_same<T, U>::value )
+        if constexpr ( std::is_same_v<T, U> )
         {
             std::memcpy( mat, matrix, sizeof( T ) * 16 );
         }
@@ -2286,9 +2286,9 @@ namespace Divide
     template<typename T>
     bool mat4<T>::isColOrthogonal() const noexcept
     {
-        const vec3<F32> col0 = getCol( 0 ).xyz;
-        const vec3<F32> col1 = getCol( 1 ).xyz;
-        const vec3<F32> col2 = getCol( 2 ).xyz;
+        const float3 col0 = getCol( 0 ).xyz;
+        const float3 col1 = getCol( 1 ).xyz;
+        const float3 col2 = getCol( 2 ).xyz;
 
         return AreOrthogonal( col0, col1 ) &&
                AreOrthogonal( col0, col2 ) &&

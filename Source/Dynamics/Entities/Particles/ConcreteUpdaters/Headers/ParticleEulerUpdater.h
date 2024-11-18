@@ -39,7 +39,7 @@ namespace Divide {
 
 class ParticleEulerUpdater final : public ParticleUpdater {
    public:
-    vec3<F32> _globalAcceleration = VECTOR3_ZERO;
+    float3 _globalAcceleration = VECTOR3_ZERO;
 
    public:
     ParticleEulerUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)

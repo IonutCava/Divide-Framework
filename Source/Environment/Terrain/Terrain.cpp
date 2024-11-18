@@ -302,7 +302,7 @@ bool Terrain::load( PlatformContext& context )
     terrainMaterial->updatePriorirty(Material::UpdatePriority::Medium);
 
     const vec2<U16> terrainDimensions = _descriptor._dimensions;
-    const vec2<F32> altitudeRange = _descriptor._altitudeRange;
+    const float2 altitudeRange = _descriptor._altitudeRange;
 
     Console::d_printfn(LOCALE_STR("TERRAIN_INFO"), terrainDimensions.width, terrainDimensions.height);
 
@@ -329,7 +329,7 @@ bool Terrain::load( PlatformContext& context )
     for (U8 i = 0u; i < layerCount; ++i) {
         const TerrainDescriptor::LayerDataEntry& entry = layerTileData[i];
         for (U8 j = 0u; j < 4u; ++j) {
-            const vec2<F32> factors = entry[j];
+            const float2 factors = entry[j];
             tileFactorStr.append("        ");
             tileFactorStr.append(Util::StringFormat("vec2({:3.2f}, {:3.2f}),\n", factors.s, factors.t));
         }
@@ -375,7 +375,7 @@ bool Terrain::load( PlatformContext& context )
     terrainMaterial->setTexture(TextureSlot::EMISSIVE, Texture::DefaultTexture2D(), albedoSampler, TextureOperation::NONE);
 
     const Configuration::Terrain terrainConfig = context.config().terrain;
-    const vec2<F32> WorldScale = tessParams().WorldScale();
+    const float2 WorldScale = tessParams().WorldScale();
     Handle<Texture> albedoTileHandle = terrainMaterial->getTexture(TextureSlot::UNIT0);
     ResourcePtr<Texture> albedoTile = Get(albedoTileHandle);
 
@@ -606,11 +606,11 @@ bool Terrain::loadResources( PlatformContext& context )
     const F32 maxAltitude = _descriptor._altitudeRange.y;
     BoundingBox& terrainBB = _boundingBox;
 
-    terrainBB.set( vec3<F32>( -terrainDimensions.x * 0.5f, minAltitude, -terrainDimensions.y * 0.5f ),
-                   vec3<F32>( terrainDimensions.x * 0.5f, maxAltitude, terrainDimensions.y * 0.5f ) );
+    terrainBB.set( float3( -terrainDimensions.x * 0.5f, minAltitude, -terrainDimensions.y * 0.5f ),
+                   float3( terrainDimensions.x * 0.5f, maxAltitude, terrainDimensions.y * 0.5f ) );
 
-    const vec3<F32>& bMin = terrainBB.getMin();
-    const vec3<F32>& bMax = terrainBB.getMax();
+    const float3& bMin = terrainBB.getMin();
+    const float3& bMax = terrainBB.getMax();
 
     ByteBuffer terrainCache;
     if ( terrainCache.loadFromFile( Paths::g_terrainCacheLocation, (terrainRawFile.string() + ".cache") ) )
@@ -661,7 +661,7 @@ bool Terrain::loadResources( PlatformContext& context )
                 for ( U32 width = 0; width < terrainWidth; ++width )
                 {
                     const U32 idxTER = TER_COORD( width, height, terrainWidth );
-                    vec3<F32>& vertexData = _physicsVerts[idxTER]._position;
+                    float3& vertexData = _physicsVerts[idxTER]._position;
 
 
                     F32 yOffset = 0.0f;
@@ -692,7 +692,7 @@ bool Terrain::loadResources( PlatformContext& context )
             {
                 for ( U32 i = offset; i < terrainWidth - offset; ++i )
                 {
-                    vec3<F32> vU, vV, vUV;
+                    float3 vU, vV, vUV;
 
                     vU.set( _physicsVerts[TER_COORD( i + offset, j + 0, terrainWidth )]._position -
                             _physicsVerts[TER_COORD( i - offset, j + 0, terrainWidth )]._position );
@@ -991,7 +991,7 @@ void Terrain::postBuild( PlatformContext& context )
     const U16 terrainWidth = _descriptor._dimensions.width;
     const U16 terrainHeight = _descriptor._dimensions.height;
     {
-        vector<vec3<U32>> triangles;
+        vector<uint3> triangles;
         // Generate index buffer
         triangles.reserve((terrainWidth - 1) * (terrainHeight - 1) * 2);
 
@@ -1108,30 +1108,30 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
         //triangleWidth *= 2.0f;
     }
 
-    const vec2<F32> SNAP_GRID_SIZE = tessParams().SnapGridSize();
-    vec3<F32> cullingEye = cameraSnapshot._eye;
-    const vec2<F32> eyeXZ = cullingEye.xz();
+    const float2 SNAP_GRID_SIZE = tessParams().SnapGridSize();
+    float3 cullingEye = cameraSnapshot._eye;
+    const float2 eyeXZ = cullingEye.xz();
 
-    vec2<F32> snappedXZ = eyeXZ;
+    float2 snappedXZ = eyeXZ;
     for (U8 i = 0; i < 2; ++i) {
         if (SNAP_GRID_SIZE[i] > 0.f) {
             snappedXZ[i] = std::floorf(snappedXZ[i] / SNAP_GRID_SIZE[i]) * SNAP_GRID_SIZE[i];
         }
     }
 
-    vec2<F32> uvEye = snappedXZ;
+    float2 uvEye = snappedXZ;
     uvEye /= tessParams().WorldScale();
     uvEye *= -1;
     uvEye /= (TessellationParams::PATCHES_PER_TILE_EDGE * 2);
 
-    const vec2<F32> dXZ = eyeXZ - snappedXZ;
+    const float2 dXZ = eyeXZ - snappedXZ;
     snappedXZ = eyeXZ - dXZ;
         
     cullingEye.x += snappedXZ[0];
     cullingEye.z += snappedXZ[1];
 
-    const mat4<F32> terrainWorldMat(vec3<F32>(snappedXZ[0], 0.f, snappedXZ[1]),
-                                    vec3<F32>(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
+    const mat4<F32> terrainWorldMat(float3(snappedXZ[0], 0.f, snappedXZ[1]),
+                                    float3(tessParams().WorldScale()[0], 1.f, tessParams().WorldScale()[1]),
                                     mat3<F32>());
 
     STUBBED("ToDo: Convert terrain uniforms from UBO to push constants! -Ionut");
@@ -1186,12 +1186,12 @@ Terrain::Vert Terrain::getSmoothVert(const F32 x_clampf, const F32 z_clampf) con
              x_clampf > 1.0f || z_clampf > 1.0f));
 
     const vec2<U16>& dim   = _descriptor._dimensions;
-    const vec3<F32>& bbMin = _boundingBox.getMin();
-    const vec3<F32>& bbMax = _boundingBox.getMax();
+    const float3& bbMin = _boundingBox.getMin();
+    const float3& bbMax = _boundingBox.getMax();
 
-    const vec2<F32> posF(x_clampf * dim.width,    z_clampf * dim.height);
-          vec2<I32> posI(to_I32(posF.width),      to_I32(posF.height));
-    const vec2<F32> posD(posF.width - posI.width, posF.height - posI.height);
+    const float2 posF(x_clampf * dim.width,    z_clampf * dim.height);
+          int2 posI(to_I32(posF.width),      to_I32(posF.height));
+    const float2 posD(posF.width - posI.width, posF.height - posI.height);
 
     if (posI.width >= to_I32(dim.width) - 1) {
         posI.width = dim.width - 2;
@@ -1209,14 +1209,14 @@ Terrain::Vert Terrain::getSmoothVert(const F32 x_clampf, const F32 z_clampf) con
     const VertexBuffer::Vertex& tempVert3 = _physicsVerts[TER_COORD(posI.width,     posI.height + 1, to_I32(dim.width))];
     const VertexBuffer::Vertex& tempVert4 = _physicsVerts[TER_COORD(posI.width + 1, posI.height + 1, to_I32(dim.width))];
 
-    const vec3<F32> normals[4]{
+    const float3 normals[4]{
         Util::UNPACK_VEC3(tempVert1._normal),
         Util::UNPACK_VEC3(tempVert2._normal),
         Util::UNPACK_VEC3(tempVert3._normal),
         Util::UNPACK_VEC3(tempVert4._normal)
     };
 
-    const vec3<F32> tangents[4]{
+    const float3 tangents[4]{
         Util::UNPACK_VEC3(tempVert1._tangent),
         Util::UNPACK_VEC3(tempVert2._tangent),
         Util::UNPACK_VEC3(tempVert3._tangent),
@@ -1260,7 +1260,7 @@ Terrain::Vert Terrain::getVert(const F32 x_clampf, const F32 z_clampf) const
 
     const vec2<U16>& dim = _descriptor._dimensions;
     
-    vec2<I32> posI(to_I32(x_clampf * dim.width), 
+    int2 posI(to_I32(x_clampf * dim.width), 
                    to_I32(z_clampf * dim.height));
 
     if (posI.width >= to_I32(dim.width) - 1) {
@@ -1289,7 +1289,7 @@ vec2<U16> Terrain::getDimensions() const noexcept
     return _descriptor._dimensions;
 }
 
-vec2<F32> Terrain::getAltitudeRange() const noexcept
+float2 Terrain::getAltitudeRange() const noexcept
 {
     return _descriptor._altitudeRange;
 }

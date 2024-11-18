@@ -71,12 +71,12 @@ namespace Divide
 
     inline void ITransform::setScale( const F32 ammout )
     {
-        setScale( vec3<F32>( ammout ) );
+        setScale( float3( ammout ) );
     }
 
     inline void ITransform::setScale( const F32 x, const F32 y, const F32 z )
     {
-        setScale( vec3<F32>( x, y, z ) );
+        setScale( float3( x, y, z ) );
     }
 
     inline void ITransform::setRotationEuler( const vec3<Angle::DEGREES_F>& euler )
@@ -86,37 +86,37 @@ namespace Divide
 
     inline void ITransform::translate( const F32 x, const F32 y, const F32 z )
     {
-        translate( vec3<F32>( x, y, z ) );
+        translate( float3( x, y, z ) );
     }
 
     inline void ITransform::translateX( const F32 positionX )
     {
-        translate( vec3<F32>( positionX, 0.0f, 0.0f ) );
+        translate( float3( positionX, 0.0f, 0.0f ) );
     }
 
     inline void ITransform::translateY( const F32 positionY )
     {
-        translate( vec3<F32>( 0.0f, positionY, 0.0f ) );
+        translate( float3( 0.0f, positionY, 0.0f ) );
     }
 
     inline void ITransform::translateZ( const F32 positionZ )
     {
-        translate( vec3<F32>( 0.0f, 0.0f, positionZ ) );
+        translate( float3( 0.0f, 0.0f, positionZ ) );
     }
 
     inline void ITransform::scale( const F32 amount )
     {
-        scale( vec3<F32>( amount ) );
+        scale( float3( amount ) );
     }
 
     inline void ITransform::scale( const F32 x, const F32 y, const F32 z )
     {
-        scale( vec3<F32>( x, y, z ) );
+        scale( float3( x, y, z ) );
     }
 
     inline void ITransform::rotate( const F32 xAxis, const F32 yAxis, const F32 zAxis, const Angle::DEGREES_F degrees )
     {
-        rotate( vec3<F32>( xAxis, yAxis, zAxis ), degrees );
+        rotate( float3( xAxis, yAxis, zAxis ), degrees );
     }
 
     inline void ITransform::rotate( const vec3<Angle::DEGREES_F>& euler )

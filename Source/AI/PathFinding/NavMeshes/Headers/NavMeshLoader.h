@@ -122,9 +122,9 @@ enum class MeshDetailLevel : U8 {
 /// Parsing method that calls itself recursively until all geometry has been parsed
 [[nodiscard]] bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn);
 
-void AddVertex(NavModelData* modelData, const vec3<F32>& vertex);
+void AddVertex(NavModelData* modelData, const float3& vertex);
 
-void AddTriangle(NavModelData* modelData, const vec3<U32>& triangleIndices,
+void AddTriangle(NavModelData* modelData, const uint3& triangleIndices,
                  U32 triangleIndexOffset = 0,
                  const SamplePolyAreas& areaType = SamplePolyAreas::SAMPLE_POLYAREA_GROUND);
 

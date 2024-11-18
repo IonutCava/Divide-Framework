@@ -1573,8 +1573,8 @@ namespace Divide
     /// Generate a cube texture and store it in the provided RenderTarget
     void GFXDevice::generateCubeMap( RenderPassParams& params,
                                      const U16 arrayOffset,
-                                     const vec3<F32>& pos,
-                                     const vec2<F32> zPlanes,
+                                     const float3& pos,
+                                     const float2 zPlanes,
                                      GFX::CommandBuffer& commandsInOut,
                                      GFX::MemoryBarrierCommand& memCmdInOut,
                                      mat4<F32>* viewProjectionOut)
@@ -1605,8 +1605,8 @@ namespace Divide
             return;
         }
 
-        static const vec3<F32> CameraDirections[] = { WORLD_X_AXIS,  WORLD_X_NEG_AXIS, WORLD_Y_AXIS,  WORLD_Y_NEG_AXIS,  WORLD_Z_AXIS,  WORLD_Z_NEG_AXIS };
-        static const vec3<F32> CameraUpVectors[] =  { WORLD_Y_AXIS,  WORLD_Y_AXIS,     WORLD_Z_AXIS,  WORLD_Z_NEG_AXIS,  WORLD_Y_AXIS,  WORLD_Y_AXIS     };
+        static const float3 CameraDirections[] = { WORLD_X_AXIS,  WORLD_X_NEG_AXIS, WORLD_Y_AXIS,  WORLD_Y_NEG_AXIS,  WORLD_Z_AXIS,  WORLD_Z_NEG_AXIS };
+        static const float3 CameraUpVectors[] =  { WORLD_Y_AXIS,  WORLD_Y_AXIS,     WORLD_Z_AXIS,  WORLD_Z_NEG_AXIS,  WORLD_Y_AXIS,  WORLD_Y_AXIS     };
         constexpr const char* PassNames[] =         { "CUBEMAP_X+",  "CUBEMAP_X-",     "CUBEMAP_Y+",  "CUBEMAP_Y-",      "CUBEMAP_Z+",  "CUBEMAP_Z-"     };
 
         DIVIDE_ASSERT( cubeMapTarget->getWidth() == cubeMapTarget->getHeight());
@@ -1652,8 +1652,8 @@ namespace Divide
 
     void GFXDevice::generateDualParaboloidMap( RenderPassParams& params,
                                                const U16 arrayOffset,
-                                               const vec3<F32>& pos,
-                                               const vec2<F32> zPlanes,
+                                               const float3& pos,
+                                               const float2 zPlanes,
                                                GFX::CommandBuffer& bufferInOut,
                                                GFX::MemoryBarrierCommand& memCmdInOut,
                                                mat4<F32>* viewProjectionOut )
@@ -1743,7 +1743,7 @@ namespace Divide
         {// Blur horizontally
             pushData.data[0]._vec[0].x = 0.f;
             pushData.data[0]._vec[1].x = 0.f;
-            pushData.data[0]._vec[0].yz = vec2<F32>( blurBuffer._rt->getResolution() );
+            pushData.data[0]._vec[0].yz = float2( blurBuffer._rt->getResolution() );
             pushData.data[0]._vec[2].xy.set( 1.f / blurBuffer._rt->getResolution().width, 1.f / blurBuffer._rt->getResolution().height );
 
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
@@ -1782,7 +1782,7 @@ namespace Divide
         {// Blur vertically
             pushData.data[0]._vec[0].x = 0.f;
             pushData.data[0]._vec[1].x = 1.f;
-            pushData.data[0]._vec[0].yz = vec2<F32>( blurTarget._rt->getResolution() );
+            pushData.data[0]._vec[0].yz = float2( blurTarget._rt->getResolution() );
             pushData.data[0]._vec[2].xy.set( 1.0f / blurTarget._rt->getResolution().width, 1.0f / blurTarget._rt->getResolution().height );
 
             GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
@@ -1874,14 +1874,14 @@ namespace Divide
 
         const F32 aspectRatio = to_F32( w ) / h;
         const Angle::DEGREES_F vFoV = Angle::to_VerticalFoV( Angle::DEGREES_F(config.runtime.horizontalFOV), to_D64( aspectRatio ) );
-        const vec2<F32> zPlanes( Camera::s_minNearZ, config.runtime.cameraViewDistance );
+        const float2 zPlanes( Camera::s_minNearZ, config.runtime.cameraViewDistance );
 
         // Update the 2D camera so it matches our new rendering viewport
-        if ( Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->setProjection( vec4<F32>( 0, to_F32( w ), 0, to_F32( h ) ), vec2<F32>( -1, 1 ) ) )
+        if ( Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->setProjection( float4( 0, to_F32( w ), 0, to_F32( h ) ), float2( -1, 1 ) ) )
         {
             Camera::GetUtilityCamera( Camera::UtilityCamera::_2D )->updateLookAt();
         }
-        if ( Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->setProjection( vec4<F32>( 0, to_F32( w ), to_F32( h ), 0 ), vec2<F32>( -1, 1 ) ) )
+        if ( Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->setProjection( float4( 0, to_F32( w ), to_F32( h ), 0 ), float2( -1, 1 ) ) )
         {
             Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->updateLookAt();
         }
@@ -1951,7 +1951,7 @@ namespace Divide
         // Put the viewport update here as it is the most common source of gpu data invalidation and not always
         // needed for rendering (e.g. changed by RenderTarget::End())
 
-        const vec4<F32> tempViewport{ activeViewport() };
+        const float4 tempViewport{ activeViewport() };
         if ( _gpuBlock._camData._viewPort != tempViewport )
         {
             _gpuBlock._camData._viewPort.set( tempViewport );
@@ -2030,7 +2030,7 @@ namespace Divide
         }
     }
 
-    void GFXDevice::setDepthRange( const vec2<F32> depthRange )
+    void GFXDevice::setDepthRange( const float2 depthRange )
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
         if ( data._renderTargetInfo.xy != depthRange )
@@ -2472,7 +2472,7 @@ namespace Divide
 
         passData._uniforms->set( _ID( "dvd_countCulledItems" ), PushConstantType::UINT, countCulledNodes ? 1u : 0u );
         passData._uniforms->set( _ID( "dvd_numEntities" ), PushConstantType::UINT, cmdCount );
-        passData._uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTex->width(), hizTex->height() ) );
+        passData._uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, float2( hizTex->width(), hizTex->height() ) );
         passData._uniforms->set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
 
         auto pushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
@@ -2603,7 +2603,7 @@ namespace Divide
             DepthPreview->_sampler = renderTargetPool().getRenderTarget( RenderTargetNames::SCREEN )->getAttachment( RTAttachmentType::DEPTH )->_descriptor._sampler;
             DepthPreview->_name = "Depth Buffer";
             DepthPreview->_shaderData.set( _ID( "lodLevel" ), PushConstantType::FLOAT, 0.0f );
-            DepthPreview->_shaderData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, vec2<F32>( Camera::s_minNearZ, _context.config().runtime.cameraViewDistance ) );
+            DepthPreview->_shaderData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, float2( Camera::s_minNearZ, _context.config().runtime.cameraViewDistance ) );
 
             DebugView_ptr NormalPreview = std::make_shared<DebugView>();
             NormalPreview->_shader = _renderTargetDraw;

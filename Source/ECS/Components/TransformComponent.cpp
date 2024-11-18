@@ -134,7 +134,7 @@ namespace Divide
         _cacheDirty = (typeMask != to_base(TransformType::NONE)) || _cacheDirty;
     }
 
-    void TransformComponent::setPosition(const vec3<F32>& position)
+    void TransformComponent::setPosition(const float3& position)
     {
         setPosition(position.x, position.y, position.z);
     }
@@ -149,7 +149,7 @@ namespace Divide
         setTransformDirty(TransformType::TRANSLATION);
     }
 
-    void TransformComponent::setScale(const vec3<F32>& amount)
+    void TransformComponent::setScale(const float3& amount)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -157,7 +157,7 @@ namespace Divide
                 _transformInterface.setScale(amount);
                 _uniformScaled = amount.isUniform();
             } else {
-                _transformInterface.setScale(vec3<F32>(amount.x, amount.x, amount.x));
+                _transformInterface.setScale(float3(amount.x, amount.x, amount.x));
                 _uniformScaled = true;
             }
         }
@@ -175,7 +175,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::setRotation(const vec3<F32>& axis, const Angle::DEGREES_F degrees)
+    void TransformComponent::setRotation(const float3& axis, const Angle::DEGREES_F degrees)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -195,7 +195,7 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    void TransformComponent::translate(const vec3<F32>& axisFactors)
+    void TransformComponent::translate(const float3& axisFactors)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -205,19 +205,19 @@ namespace Divide
         setTransformDirty(TransformType::TRANSLATION);
     }
 
-    void TransformComponent::scale(const vec3<F32>& axisFactors)
+    void TransformComponent::scale(const float3& axisFactors)
     {
         LockGuard<SharedMutex> w_lock(_lock);
         if (scalingMode() != ScalingMode::UNIFORM) {
             _transformInterface.scale(axisFactors);
         } else {
-            _transformInterface.scale(vec3<F32>(axisFactors.x, axisFactors.x, axisFactors.x));
+            _transformInterface.scale(float3(axisFactors.x, axisFactors.x, axisFactors.x));
         }
 
         setTransformDirty(TransformType::SCALE);
     }
 
-    void TransformComponent::rotate(const vec3<F32>& axis, const Angle::DEGREES_F degrees)
+    void TransformComponent::rotate(const float3& axis, const Angle::DEGREES_F degrees)
     {
         {
             LockGuard<SharedMutex> w_lock(_lock);
@@ -407,17 +407,17 @@ namespace Divide
         setTransformDirty(TransformType::ROTATION);
     }
 
-    const vec3<F32> TransformComponent::getLocalDirection(const vec3<F32>& worldForward) const
+    const float3 TransformComponent::getLocalDirection(const float3& worldForward) const
     {
         return DirectionFromAxis(getLocalOrientation(), worldForward);
     } 
     
-    const vec3<F32> TransformComponent::getWorldDirection(const vec3<F32>& worldForward) const
+    const float3 TransformComponent::getWorldDirection(const float3& worldForward) const
     {
         return DirectionFromAxis(getWorldOrientation(), worldForward);
     }
 
-    void TransformComponent::setDirection(const vec3<F32>& fwdDirection, const vec3<F32>& upDirection)
+    void TransformComponent::setDirection(const float3& fwdDirection, const float3& upDirection)
     {
         setRotation(RotationFromVToU(WORLD_Z_NEG_AXIS, fwdDirection, upDirection));
     }
@@ -659,21 +659,21 @@ namespace Divide
         return ret;
     }
 
-    void TransformComponent::getWorldTransforms( vec3<F32>& positionOut, vec3<F32>& scaleOut, Quaternion<F32>& rotationOut )
+    void TransformComponent::getWorldTransforms( float3& positionOut, float3& scaleOut, Quaternion<F32>& rotationOut )
     {
         positionOut = getWorldPosition();
         scaleOut = getWorldScale();
         rotationOut = getWorldOrientation();
     }
 
-    void TransformComponent::getWorldTransformsInterpolated( vec3<F32>& positionOut, vec3<F32>& scaleOut, Quaternion<F32>& rotationOut )
+    void TransformComponent::getWorldTransformsInterpolated( float3& positionOut, float3& scaleOut, Quaternion<F32>& rotationOut )
     {
         positionOut = _transformValuesInterpolated._translation;
         scaleOut = _transformValuesInterpolated._scale;
         rotationOut = _transformValuesInterpolated._orientation;
     }
 
-    vec3<F32> TransformComponent::getWorldPosition() const 
+    float3 TransformComponent::getWorldPosition() const 
     {
         if (!_cacheDirty)
         {
@@ -683,7 +683,7 @@ namespace Divide
         return getDerivedPosition();
     }
 
-    vec3<F32> TransformComponent::getDerivedPosition() const
+    float3 TransformComponent::getDerivedPosition() const
     {
         if (_parentSGN->parent() != nullptr)
         {
@@ -693,7 +693,7 @@ namespace Divide
         return getLocalPosition();
     }
 
-    vec3<F32> TransformComponent::getWorldPositionInterpolated() const
+    float3 TransformComponent::getWorldPositionInterpolated() const
     {
         if (_parentSGN->parent() != nullptr)
         {
@@ -703,7 +703,7 @@ namespace Divide
         return getLocalPositionInterpolated();
     }
 
-    vec3<F32> TransformComponent::getWorldScale() const
+    float3 TransformComponent::getWorldScale() const
     {
         if (!_cacheDirty)
         {
@@ -713,7 +713,7 @@ namespace Divide
         return getDerivedScale();
     }
 
-    vec3<F32> TransformComponent::getDerivedScale() const
+    float3 TransformComponent::getDerivedScale() const
     {
         if (_parentSGN->parent() != nullptr)
         {
@@ -723,7 +723,7 @@ namespace Divide
         return getLocalScale();
     }
 
-    vec3<F32> TransformComponent::getWorldScaleInterpolated() const
+    float3 TransformComponent::getWorldScaleInterpolated() const
     {
         if (_parentSGN->parent() != nullptr)
         {
@@ -763,13 +763,13 @@ namespace Divide
         return getLocalOrientationInterpolated();
     }
 
-    vec3<F32> TransformComponent::getLocalPosition() const
+    float3 TransformComponent::getLocalPosition() const
     {
         SharedLock<SharedMutex> r_lock(_lock);
         return _transformInterface._translation;
     }
 
-    vec3<F32> TransformComponent::getLocalScale() const
+    float3 TransformComponent::getLocalScale() const
     {
         SharedLock<SharedMutex> r_lock(_lock);
         return _transformInterface._scale;
@@ -781,27 +781,27 @@ namespace Divide
         return _transformInterface._orientation;
     }
 
-    vec3<F32> TransformComponent::getLocalPositionInterpolated() const
+    float3 TransformComponent::getLocalPositionInterpolated() const
     {
         return _transformValuesInterpolated._translation;
     }
 
-    vec3<F32> TransformComponent::getLocalScaleInterpolated() const
+    float3 TransformComponent::getLocalScaleInterpolated() const
     {
         return _transformValuesInterpolated._scale;
     }
 
-    vec3<F32> TransformComponent::getFwdVector() const
+    float3 TransformComponent::getFwdVector() const
     {
         return Rotate(WORLD_Z_NEG_AXIS, getWorldOrientation());
     }
 
-    vec3<F32> TransformComponent::getUpVector() const
+    float3 TransformComponent::getUpVector() const
     {
         return Rotate(WORLD_Y_AXIS, getWorldOrientation());
     }
 
-    vec3<F32> TransformComponent::getRightVector() const
+    float3 TransformComponent::getRightVector() const
     {
         return Rotate(WORLD_X_AXIS, getWorldOrientation());
     }
@@ -812,13 +812,13 @@ namespace Divide
     }
 
     // Transform interface access
-    void TransformComponent::getScale(vec3<F32>& scaleOut) const
+    void TransformComponent::getScale(float3& scaleOut) const
     {
         SharedLock<SharedMutex> r_lock(_lock);
         _transformInterface.getScale(scaleOut);
     }
 
-    void TransformComponent::getPosition(vec3<F32>& posOut) const
+    void TransformComponent::getPosition(float3& posOut) const
     {
         SharedLock<SharedMutex> r_lock(_lock);
         _transformInterface.getPosition(posOut);

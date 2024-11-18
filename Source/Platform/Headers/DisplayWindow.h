@@ -202,10 +202,10 @@ public:
 
     [[nodiscard]] Rect<I32> getBorderSizes() const noexcept;
     [[nodiscard]] vec2<U16> getDrawableSize() const noexcept;
-    [[nodiscard]] vec2<I32> getPosition(bool global = false, bool offset = false) const;
+    [[nodiscard]] int2 getPosition(bool global = false, bool offset = false) const;
 
            void setPosition(I32 x, I32 y, bool global = false, bool offset = false);
-    inline void setPosition(vec2<I32> position, bool global = false);
+    inline void setPosition(int2 position, bool global = false);
 
     [[nodiscard]] inline const char* title() const noexcept;
     template<typename... Args>

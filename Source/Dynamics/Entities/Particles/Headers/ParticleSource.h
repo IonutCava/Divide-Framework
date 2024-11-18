@@ -53,7 +53,7 @@ class ParticleSource {
 
     [[nodiscard]] F32 emitRate() const noexcept { return _emitRate; }
 
-    void updateTransform(const vec3<F32>& position, const Quaternion<F32>& orientation) noexcept {
+    void updateTransform(const float3& position, const Quaternion<F32>& orientation) noexcept {
         for (const auto& generator : _particleGenerators) {
             generator->updateTransform(position, orientation);
         }

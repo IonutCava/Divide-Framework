@@ -49,7 +49,7 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
     explicit WaterPlane( const ResourceDescriptor<WaterPlane>& descriptor );
     ~WaterPlane() override;
 
-    static bool PointUnderwater(const SceneGraphNode* sgn, const vec3<F32>& point) noexcept;
+    static bool PointUnderwater(const SceneGraphNode* sgn, const float3& point) noexcept;
 
     Handle<Quad3D> getQuad() const noexcept { return _plane; }
 
@@ -69,9 +69,9 @@ DEFINE_NODE_TYPE(WaterPlane, SceneNodeType::TYPE_WATER)
     PROPERTY_R(F32, reflPlaneOffset, 0.0f);
     PROPERTY_R(F32, refrPlaneOffset, 0.0f);
     PROPERTY_RW(F32, specularShininess, 200.f);
-    PROPERTY_RW(vec2<F32>, noiseTile);
-    PROPERTY_RW(vec2<F32>, noiseFactor);
-    PROPERTY_RW(vec2<F32>, fogStartEnd);
+    PROPERTY_RW(float2, noiseTile);
+    PROPERTY_RW(float2, noiseFactor);
+    PROPERTY_RW(float2, fogStartEnd);
     PROPERTY_RW(U16, blurKernelSize, 9u);
     PROPERTY_RW(bool, blurReflections, true);
     PROPERTY_RW(bool, blurRefractions, true);

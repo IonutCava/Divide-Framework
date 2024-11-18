@@ -102,7 +102,7 @@ void WarScene::checkGameCompletion() {
                 TransformComponent* flagtComp = _flag[i]->get<TransformComponent>();
                 flagtComp->popTransforms();
                 _flag[i]->setParent(_sceneGraph->getRoot());
-                flagtComp->setPosition(vec3<F32>(25.0f, 0.1f, i == 0 ? -206.0f : 206.0f));
+                flagtComp->setPosition(float3(25.0f, 0.1f, i == 0 ? -206.0f : 206.0f));
             }
             AI::WarSceneAIProcessor::reset();
             AI::WarSceneAIProcessor::registerFlags(_flag[0], _flag[1]);
@@ -121,7 +121,7 @@ void WarScene::registerPoint(const U16 teamID, const string& unitName) {
                 TransformComponent* flagtComp = _flag[i]->get<TransformComponent>();
                 WAIT_FOR_CONDITION(!flagtComp->popTransforms());
                 _flag[i]->setParent(_sceneGraph->getRoot());
-                flagtComp->setPosition(vec3<F32>(25.0f, 0.1f, i == 0 ? -206.0f : 206.0f));
+                flagtComp->setPosition(float3(25.0f, 0.1f, i == 0 ? -206.0f : 206.0f));
             }
         }
         AI::WarSceneAIProcessor::reset();
@@ -286,7 +286,7 @@ bool WarScene::addUnits() {
 
     AIEntity* aiSoldier = nullptr;
 
-    vec3<F32> currentScale;
+    float3 currentScale;
     string currentName;
 
     constexpr U32 normalMask = to_base(ComponentType::NAVIGATION) |
@@ -370,7 +370,7 @@ bool WarScene::addUnits() {
                 tComp->translateX(Metric::Base(25.0f));
             }
 
-            tComp->setPosition(vec3<F32>(Metric::Base(-125.0f + 25 * (i % 5)),
+            tComp->setPosition(float3(Metric::Base(-125.0f + 25 * (i % 5)),
                                          Metric::Base(-0.01f),
                                          Metric::Base(zFactor)));
 

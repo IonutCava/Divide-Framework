@@ -70,7 +70,7 @@ ErrorCode DisplayWindow::init(const U32 windowFlags,
 
     _previousType = _type = initialType;
 
-    vec2<I32> position(descriptor.position);
+    int2 position(descriptor.position);
 
     _initialDisplay = descriptor.targetDisplay;
 
@@ -314,12 +314,12 @@ void DisplayWindow::setPosition(I32 x, I32 y, const bool global, const bool offs
     SDL_SetWindowPosition(_sdlWindow, x, y);
 }
 
-vec2<I32> DisplayWindow::getPosition(const bool global, const bool offset) const {
-    vec2<I32> ret;
+int2 DisplayWindow::getPosition(const bool global, const bool offset) const {
+    int2 ret;
     SDL_GetWindowPosition(_sdlWindow, &ret.x, &ret.y);
 
     if (!global && offset) {
-        const vec2<I32> pOffset = _parent.monitorData()[currentDisplayIndex()].viewport.xy;
+        const int2 pOffset = _parent.monitorData()[currentDisplayIndex()].viewport.xy;
         ret -= pOffset;
     }
 

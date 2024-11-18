@@ -62,16 +62,16 @@ class ParticleData {
 
     /// helper array used for sorting
     vector<std::pair<U32, F32>> _indices;
-    vector<vec4<F32>> _renderingPositions;
+    vector<float4> _renderingPositions;
     vector<UColour4>  _renderingColours;
     /// x,y,z = position; w = size
-    vector<vec4<F32>> _position;
+    vector<float4> _position;
     /// x,y,z = _velocity; w = angle;
-    vector<vec4<F32>> _velocity;
+    vector<float4> _velocity;
     /// x,y,z = _acceleration; w = weight;
-    vector<vec4<F32>> _acceleration;
+    vector<float4> _acceleration;
     /// x = time; y = interpolation; z = 1 / time;  w = distance to camera sq;
-    vector<vec4<F32>> _misc;
+    vector<float4> _misc;
     /// r,g,b,a = colour and transparency
     vector<FColour4> _colour;
     /// r,g,b,a = colour and transparency
@@ -82,7 +82,7 @@ class ParticleData {
     string _textureFileName;
 
 
-    void setParticleGeometry(const vector<vec3<F32>>& particleGeometryVertices,
+    void setParticleGeometry(const vector<float3>& particleGeometryVertices,
                              const vector<U32>& particleGeometryIndices,
                              PrimitiveTopology particleGeometryType);
 
@@ -92,7 +92,7 @@ class ParticleData {
         return _particleGeometryType;
     }
 
-    [[nodiscard]] const vector<vec3<F32>>& particleGeometryVertices() const noexcept {
+    [[nodiscard]] const vector<float3>& particleGeometryVertices() const noexcept {
         return _particleGeometryVertices;
     }
 
@@ -125,7 +125,7 @@ class ParticleData {
     U32 _aliveCount = 0u;
 
     bool _isBillboarded = true;
-    vector<vec3<F32>> _particleGeometryVertices;
+    vector<float3> _particleGeometryVertices;
     vector<U32> _particleGeometryIndices;
     PrimitiveTopology _particleGeometryType = PrimitiveTopology::COUNT;
 

@@ -148,8 +148,8 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
         aiQuaternion pRotation;
         (axisCorrectionBasis * node->mTransformation).Decompose(pScaling, pRotation, pPosition);
         target._transform = mat4<F32>{
-            vec3<F32>(pPosition.x, pPosition.y, pPosition.y),
-            vec3<F32>(pScaling.x, pScaling.y, pScaling.y),
+            float3(pPosition.x, pPosition.y, pPosition.y),
+            float3(pScaling.x, pScaling.y, pScaling.y),
             GetMatrix(Quaternion<F32>{ pRotation.x, pRotation.y, pRotation.z, pRotation.w })
         };
     }
@@ -479,7 +479,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
         const aiVector3D position = source->mVertices[j];
         const aiVector3D normal = source->mNormals[j];
 
-        vertices[j].position.set(vec3<F32>{ position.x, position.y, position.z } - subMeshData.worldOffset());
+        vertices[j].position.set(float3{ position.x, position.y, position.z } - subMeshData.worldOffset());
         vertices[j].normal.set( normal.x, normal.y, normal.z );
     }
     subMeshData._useAttribute[to_base( AttribLocation::POSITION )] = true;

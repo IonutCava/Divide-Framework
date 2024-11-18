@@ -104,8 +104,8 @@ class DivideRecast {
      *  PATH_ERROR_NO_STRAIGHT_PATH_CREATE Couldn't create a straight path
      *  PATH_ERROR_NO_STRAIGHT_PATH_FIND   Couldn't find a straight path
     **/
-    PathErrorCode FindPath(const NavigationMesh& navMesh, const vec3<F32>& startPos,
-                           const vec3<F32>& endPos, U32 pathSlot, I32 target);
+    PathErrorCode FindPath(const NavigationMesh& navMesh, const float3& startPos,
+                           const float3& endPos, U32 pathSlot, I32 target);
     /**
     * Retrieve the path at specified slot defined as a line along an ordered set of
     *3D positions.
@@ -113,7 +113,7 @@ class DivideRecast {
     *path is
     * defined or an invalid pathSlot index is given.
     **/
-    vector<vec3<F32> > getPath(I32 pathSlot);
+    vector<float3 > getPath(I32 pathSlot);
     /**
     * The ID number identifying the target for the path at specified slot. Targets
     *have
@@ -125,13 +125,13 @@ class DivideRecast {
     /**
     * Returns a random point on the navmesh.
     **/
-    bool getRandomNavMeshPoint(const NavigationMesh& navMesh, vec3<F32>& resultPt) const;
+    bool getRandomNavMeshPoint(const NavigationMesh& navMesh, float3& resultPt) const;
     /**
     * Returns a random point on the navmesh contained withing the specified circle
     **/
     bool getRandomPointAroundCircle(const NavigationMesh& navMesh,
-                                    const vec3<F32>& centerPosition, F32 radius,
-                                    const vec3<F32>& extents, vec3<F32>& resultPt,
+                                    const float3& centerPosition, F32 radius,
+                                    const float3& extents, float3& resultPt,
                                     U8 maxIters) const;
     /**
     * Find a point on the navmesh closest to the specified point position, within
@@ -141,13 +141,13 @@ class DivideRecast {
     * if no point is found. When false is returned, resultPt is not altered.
     **/
     bool findNearestPointOnNavmesh(const NavigationMesh& navMesh,
-                                   const vec3<F32>& position,
-                                   const vec3<F32>& extents, F32 delta,
-                                   vec3<F32>& resultPt, dtPolyRef& resultPoly) const;
+                                   const float3& position,
+                                   const float3& extents, F32 delta,
+                                   float3& resultPt, dtPolyRef& resultPoly) const;
 
     bool findNearestPolyOnNavmesh(const NavigationMesh& navMesh,
-                                  const vec3<F32>& position,
-                                  const vec3<F32>& extents, vec3<F32>& resultPt,
+                                  const float3& position,
+                                  const float3& extents, float3& resultPt,
                                   dtPolyRef& resultPoly) const;
 
   protected:

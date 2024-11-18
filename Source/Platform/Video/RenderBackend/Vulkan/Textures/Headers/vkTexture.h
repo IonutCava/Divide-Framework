@@ -178,7 +178,7 @@ namespace Divide
         void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
         void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
         void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation ) override;
-        void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const vec4<I32>& rectToClear, vec2<I32> depthRange ) const;
+        void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const int4& rectToClear, int2 depthRange ) const;
         void clearImageViewCache();
 
         void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment, bool emptyAllocation );

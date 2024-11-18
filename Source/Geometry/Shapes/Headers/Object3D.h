@@ -94,7 +94,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
         }
     }
 
-    [[nodiscard]] const vector<vec3<U32>>& getTriangles(const U16 partitionID)
+    [[nodiscard]] const vector<uint3>& getTriangles(const U16 partitionID)
     {
          if (!computeTriangleList(partitionID))
          {
@@ -104,7 +104,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
          return _geometryTriangles[partitionID];
     }
 
-    void addTriangles(const U16 partitionID, const vector<vec3<U32>>& triangles)
+    void addTriangles(const U16 partitionID, const vector<uint3>& triangles)
     {
         if (partitionID >= _geometryTriangles.size())
         {
@@ -146,7 +146,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     /// 3 indices, pointing to position values, that form a triangle in the mesh.
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition
-    vector<vector<vec3<U32>>> _geometryTriangles;
+    vector<vector<uint3>> _geometryTriangles;
     VertexBuffer_ptr _geometryBuffer = nullptr;
 };
 

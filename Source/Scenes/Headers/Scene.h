@@ -103,8 +103,8 @@ struct Selections
 
 struct DragSelectData
 {
-    vec2<I32> _startDragPos;
-    vec2<I32> _endDragPos;
+    int2 _startDragPos;
+    int2 _endDragPos;
     bool _isDragging = false;
     bool _simulationPaused = false;
 };
@@ -191,7 +191,7 @@ class Scene : public Resource, public PlatformContextComponent {
         [[nodiscard]] bool resetSelection(PlayerIndex idx, const bool resetIfLocked);
         void setSelected(PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive);
 
-        void beginDragSelection(PlayerIndex idx, vec2<I32> mousePos);
+        void beginDragSelection(PlayerIndex idx, int2 mousePos);
         void endDragSelection(PlayerIndex idx, bool clearSelection);
 #pragma endregion
 
@@ -217,8 +217,8 @@ class Scene : public Resource, public PlatformContextComponent {
                       void                  setGeographicLocation(const SimpleLocation& location) noexcept;
         [[nodiscard]] const SimpleLocation& getGeographicLocation() const noexcept;
 
-        [[nodiscard]] vec3<F32>  getSunPosition() const;
-        [[nodiscard]] vec3<F32>  getSunDirection() const;
+        [[nodiscard]] float3  getSunPosition() const;
+        [[nodiscard]] float3  getSunDirection() const;
         [[nodiscard]] SunInfo    getCurrentSunDetails() const noexcept;
         [[nodiscard]] Atmosphere getCurrentAtmosphere() const noexcept;
                       void       setCurrentAtmosphere(const Atmosphere& atmosphere) const noexcept;
@@ -291,7 +291,7 @@ class Scene : public Resource, public PlatformContextComponent {
 #pragma endregion
 
 #pragma region Player Management
-        void findHoverTarget(PlayerIndex idx, vec2<I32> aimPos, bool recursive);
+        void findHoverTarget(PlayerIndex idx, int2 aimPos, bool recursive);
         void clearHoverTarget(PlayerIndex idx);
         void toggleFlashlight(PlayerIndex idx);
 

@@ -44,19 +44,19 @@ DEFINE_3D_OBJECT_TYPE(Box3D, SceneNodeType::TYPE_BOX_3D)
 
    bool load( PlatformContext& context ) override;
 
-   void setHalfExtent(const vec3<F32>& halfExtent);
+   void setHalfExtent(const float3& halfExtent);
 
-   const vec3<F32>& getHalfExtent() const noexcept;
+   const float3& getHalfExtent() const noexcept;
 
-   void fromPoints(const std::initializer_list<vec3<F32>>& points,
-                   const vec3<F32>& halfExtent);
+   void fromPoints(const std::initializer_list<float3>& points,
+                   const float3& halfExtent);
 
    void saveToXML(boost::property_tree::ptree& pt) const override;
    void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
    private:
       const ResourceDescriptor<Box3D>& _descriptor;
-      vec3<F32> _halfExtent;
+      float3 _halfExtent;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Box3D);

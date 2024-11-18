@@ -52,7 +52,7 @@ BEGIN_COMPONENT_EXT1(SpotLight, ComponentType::SPOT_LIGHT, Light)
 
    protected:
     void OnData(const ECS::CustomEvent& data) override;
-    void setDirection(const vec3<F32>& direction) const;
+    void setDirection(const float3& direction) const;
 
 END_COMPONENT(SpotLight);
 

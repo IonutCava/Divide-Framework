@@ -46,7 +46,7 @@ BEGIN_COMPONENT_EXT1(DirectionalLight, ComponentType::DIRECTIONAL_LIGHT, Light)
 
     explicit DirectionalLightComponent(SceneGraphNode* sgn, PlatformContext& context);
 
-    void setDirection(const vec3<F32>& direction);
+    void setDirection(const float3& direction);
 
     // Quick hack to store previous frame's culling results
     [[nodiscard]] vector<FeedBackContainer>& feedBackContainers() noexcept { return _feedbackContainers; }

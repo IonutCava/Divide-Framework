@@ -516,7 +516,7 @@ namespace Divide
         {
             if ( const ImGuiViewportData* data = (ImGuiViewportData*)viewport->PlatformUserData )
             {
-                const vec2<I32> pos = data->_window->getPosition();
+                const int2 pos = data->_window->getPosition();
                 return ImVec2( (F32)pos.x, (F32)pos.y );
             }
             DIVIDE_UNEXPECTED_CALL_MSG( "Editor::Platform_GetWindowPos failed!" );
@@ -919,9 +919,9 @@ namespace Divide
                 descriptors[1].length = 1.5f;
                 descriptors[2].length = 2.0f;
 
-                descriptors[0].root = VECTOR3_ZERO + vec3<F32>( addValAnd10Percent( descriptors[0].length ), 0.f, 0.f );
-                descriptors[1].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValAnd10Percent( descriptors[1].length ), 0.f );
-                descriptors[2].root = VECTOR3_ZERO + vec3<F32>( 0.f, 0.f, addValAnd10Percent( descriptors[2].length ) );
+                descriptors[0].root = VECTOR3_ZERO + float3( addValAnd10Percent( descriptors[0].length ), 0.f, 0.f );
+                descriptors[1].root = VECTOR3_ZERO + float3( 0.f, addValAnd10Percent( descriptors[1].length ), 0.f );
+                descriptors[2].root = VECTOR3_ZERO + float3( 0.f, 0.f, addValAnd10Percent( descriptors[2].length ) );
 
                 descriptors[0].radius = 0.05f;
                 descriptors[1].radius = 0.05f;
@@ -940,9 +940,9 @@ namespace Divide
                 descriptors[4].length = 0.5f;
                 descriptors[5].length = 0.5f;
 
-                descriptors[3].root = VECTOR3_ZERO + vec3<F32>( addValMinus20Percent( descriptors[0].length ) + 0.50f, 0.f, 0.f );
-                descriptors[4].root = VECTOR3_ZERO + vec3<F32>( 0.f, addValMinus20Percent( descriptors[1].length ) + 0.50f, 0.f );
-                descriptors[5].root = VECTOR3_ZERO + vec3<F32>( 0.f, 0.f, addValMinus20Percent( descriptors[2].length ) + 0.50f );
+                descriptors[3].root = VECTOR3_ZERO + float3( addValMinus20Percent( descriptors[0].length ) + 0.50f, 0.f, 0.f );
+                descriptors[4].root = VECTOR3_ZERO + float3( 0.f, addValMinus20Percent( descriptors[1].length ) + 0.50f, 0.f );
+                descriptors[5].root = VECTOR3_ZERO + float3( 0.f, 0.f, addValMinus20Percent( descriptors[2].length ) + 0.50f );
 
                 descriptors[3].radius = 0.15f;
                 descriptors[4].radius = 0.15f;
@@ -973,6 +973,7 @@ namespace Divide
             context->IO.DeltaTime = Time::MicrosecondsToSeconds<F32>( deltaTimeUS );
 
             ToggleCursor( !context->IO.MouseDrawCursor );
+
             if (context->IO.MouseDrawCursor || context->MouseCursor == ImGuiMouseCursor_None )
             {
                 WindowManager::SetCursorStyle( CursorStyle::NONE );
@@ -1641,14 +1642,14 @@ namespace Divide
         _editorCamera->fromCamera( *Attorney::ProjectManagerEditor::playerCamera( _context.kernel().projectManager().get(), 0, true ) );
     }
 
-    void Editor::setEditorCamLookAt( const vec3<F32>& eye,
-                                     const vec3<F32>& fwd,
-                                     const vec3<F32>& up )
+    void Editor::setEditorCamLookAt( const float3& eye,
+                                     const float3& fwd,
+                                     const float3& up )
     {
         _editorCamera->lookAt( eye, fwd, up );
     }
 
-    void Editor::setEditorCameraSpeed( const vec3<F32>& speed ) noexcept
+    void Editor::setEditorCameraSpeed( const float3& speed ) noexcept
     {
         _editorCamera->speedFactor( speed );
     }
@@ -1837,7 +1838,7 @@ namespace Divide
 
         _windowFocusState._globalMousePos = mousePos;
 
-        const vec2<F32> tempMousePos = COORD_REMAP( vec2<I32>( mousePos.x, mousePos.y ),
+        const float2 tempMousePos = COORD_REMAP( int2( mousePos.x, mousePos.y ),
                                                     scenePreviewRect( true ),
                                                     Rect<I32>( 0, 0, viewportSize.z, viewportSize.w ) );
         _windowFocusState._scaledMousePos = ImVec2( tempMousePos.x, tempMousePos.y );
@@ -1845,7 +1846,7 @@ namespace Divide
 
     void Editor::remapAbsolutePosition(Input::MouseEvent& eventInOut) const noexcept
     {
-        vec2<I32> absPositionIn = { eventInOut.state().X.abs, eventInOut.state().Y.abs };
+        int2 absPositionIn = { eventInOut.state().X.abs, eventInOut.state().Y.abs };
 
         const Rect<I32> renderingViewport = _mainWindow->renderingViewport();
         CLAMP_IN_RECT(absPositionIn.x, absPositionIn.y, renderingViewport);
@@ -1940,7 +1941,7 @@ namespace Divide
             }
             if ( !_mouseCaptured)
             {
-                vec2<I32> posGlobal{};
+                int2 posGlobal{};
                 WindowManager::GetMouseState( posGlobal, true );
                 tempCoords = { to_F32( posGlobal.x ), to_F32( posGlobal.y ) };
             }
@@ -2168,7 +2169,6 @@ namespace Divide
             !params.isMainWindow ||
             !isInit())
         {
-            Console::errorfn("OnWindowSizeChanged FAIL (isInit: {}) {}-{}", isInit() ? "true" : "false", w, h);
             return;
         }
 
@@ -2185,8 +2185,6 @@ namespace Divide
                 ctx->IO.DisplaySize.y > 1u ? to_F32( displaySize.height ) / ctx->IO.DisplaySize.y : 1.f
             };
         }
-
-        Console::errorfn("OnWindowSizeChanged SUCESS {}-{} | {} - {}", w, h, displaySize.width, displaySize.height);
 
         Attorney::GizmoEditor::onWindowSizeChange(_gizmo.get(), params);
     }
@@ -2211,7 +2209,6 @@ namespace Divide
         }
 
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
-        //Console::errorfn("OnWindowSizeChanged SUCESS {}-{}");
 
         Attorney::GizmoEditor::onResolutionChange(_gizmo.get(), params);
     }
@@ -2316,7 +2313,7 @@ namespace Divide
 
     bool Editor::modalTextureView( const std::string_view modalName,
                                    const Handle<Texture> tex,
-                                   const vec2<F32> dimensions,
+                                   const float2 dimensions,
                                    const bool preserveAspect,
                                    const bool useModal ) const
     {
@@ -2564,8 +2561,8 @@ namespace Divide
 
     bool Editor::modalModelSpawn( const Handle<Mesh> mesh,
                                   const bool showSpawnModalFirst,
-                                  const vec3<F32>& scale,
-                                  const vec3<F32>& position )
+                                  const float3& scale,
+                                  const float3& position )
     {
         if ( mesh == INVALID_HANDLE<Mesh> )
         {

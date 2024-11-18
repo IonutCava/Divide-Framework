@@ -136,7 +136,7 @@ namespace Divide
         PROPERTY_RW( ResourcePath, assetLocation ); ///< Can't be fixed size due to the need to handle array textures, cube maps, etc
         PROPERTY_RW( Str<256>, assetName );     ///< Resource instance name (for lookup)
         PROPERTY_RW( Str<256>, resourceName );
-        PROPERTY_RW( vec3<U32>, data, VECTOR3_ZERO ); ///< general data
+        PROPERTY_RW( uint3, data, VECTOR3_ZERO ); ///< general data
         PROPERTY_RW( U32, enumValue, 0u );
         PROPERTY_RW( U32, ID, 0u );
         PROPERTY_RW( P32, mask ); ///< 4 bool values representing  ... anything ...

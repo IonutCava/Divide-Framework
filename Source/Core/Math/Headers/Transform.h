@@ -43,32 +43,32 @@ class Transform final : public TransformValues, public ITransform, public GUIDWr
 
     Transform() noexcept = default;
     explicit Transform(const Quaternion<F32>& orientation,
-                       const vec3<F32>& translation,
-                       const vec3<F32>& scale) noexcept;
+                       const float3& translation,
+                       const float3& scale) noexcept;
 
-    void setPosition(const vec3<F32>& position) noexcept override;
+    void setPosition(const float3& position) noexcept override;
     void setPosition(F32 x, F32 y, F32 z) noexcept override;
     void setPositionX(F32 positionX) noexcept override;
     void setPositionY(F32 positionY) noexcept override;
     void setPositionZ(F32 positionZ) noexcept override;
-    void translate(const vec3<F32>& axisFactors) noexcept override;
+    void translate(const float3& axisFactors) noexcept override;
 
-    void setScale(const vec3<F32>& amount) noexcept override;
+    void setScale(const float3& amount) noexcept override;
     void setScaleX(F32 amount) noexcept override;
     void setScaleY(F32 amount) noexcept override;
     void setScaleZ(F32 amount) noexcept override;
-    void scale(const vec3<F32>& axisFactors) noexcept override;
+    void scale(const float3& axisFactors) noexcept override;
     void scaleX(F32 amount) noexcept override;
     void scaleY(F32 amount) noexcept override;
     void scaleZ(F32 amount) noexcept override;
 
-    void setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) noexcept override;
+    void setRotation(const float3& axis, Angle::DEGREES_F degrees) noexcept override;
     void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) noexcept override;
     void setRotation(const Quaternion<F32>& quat) noexcept override;
     void setRotationX(Angle::DEGREES_F angle) noexcept override;
     void setRotationY(Angle::DEGREES_F angle) noexcept override;
     void setRotationZ(Angle::DEGREES_F angle) noexcept override;
-    void rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) noexcept override;
+    void rotate(const float3& axis, Angle::DEGREES_F degrees) noexcept override;
     void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) noexcept override;
     void rotate(const Quaternion<F32>& quat) noexcept override;
     void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
@@ -76,8 +76,8 @@ class Transform final : public TransformValues, public ITransform, public GUIDWr
     void rotateY(Angle::DEGREES_F angle) noexcept override;
     void rotateZ(Angle::DEGREES_F angle) noexcept override;
 
-    void getScale(vec3<F32>& scaleOut) const noexcept override;
-    void getPosition(vec3<F32>& posOut) const noexcept override;
+    void getScale(float3& scaleOut) const noexcept override;
+    void getPosition(float3& posOut) const noexcept override;
     void getOrientation(Quaternion<F32>& quatOut) const noexcept override;
 
     [[nodiscard]] bool isUniformScale(const F32 tolerance = EPSILON_F32) const noexcept;

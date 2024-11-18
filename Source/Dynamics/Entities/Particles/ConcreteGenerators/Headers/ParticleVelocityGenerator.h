@@ -37,8 +37,8 @@
 
 namespace Divide {
 struct ParticleVelocityGenerator final : ParticleGenerator {
-    vec3<F32> _minStartVel = VECTOR3_ZERO;
-    vec3<F32> _maxStartVel = VECTOR3_ZERO;
+    float3 _minStartVel = VECTOR3_ZERO;
+    float3 _maxStartVel = VECTOR3_ZERO;
 
     void generate(Task& packagedTasksParent,
                   TaskPool& parentPool,

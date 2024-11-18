@@ -52,7 +52,7 @@ namespace Divide {
         std::shared_ptr<ParticleData> g_particleEmitterData = nullptr;
         std::shared_ptr<ParticleSource> g_particleSource = nullptr;
         F32 g_particleBounceFactor = 0.65f;
-        vec3<F32> g_particleAcceleration = {0.f, -20.f, 0.f};
+        float3 g_particleAcceleration = {0.f, -20.f, 0.f};
         FColour4 g_particleStartColour = DefaultColours::BLACK;
         FColour4 g_particleEndColour = DefaultColours::WHITE;
     }
@@ -420,7 +420,7 @@ namespace Divide {
                 perfMetrics._bufferVRAMUsage = perfMetricsSource._bufferVRAMUsage;
                 perfMetrics._gpuBufferCount = perfMetricsSource._gpuBufferCount;
             }
-            const vec4<U32>& cullCount = context().gfx().lastCullCount();
+            const uint4& cullCount = context().gfx().lastCullCount();
             static U32 cachedSyncCount[3]{};
             static U32 cachedCamWrites[2]{};
             if (ms_per_frame_idx % 2 == 0)
@@ -593,8 +593,8 @@ namespace Divide {
             if ( ImGui::CollapsingHeader( "Day/Night details", ImGuiTreeNodeFlags_SpanAvailWidth ) )
             {
                 const SunInfo sun = activeScene->getCurrentSunDetails();
-                const vec3<F32> sunPosition = activeScene->getSunPosition();
-                const vec3<F32> sunDirection = activeScene->getSunDirection();
+                const float3 sunPosition = activeScene->getSunPosition();
+                const float3 sunDirection = activeScene->getSunDirection();
 
                 const Angle::DEGREES_F sunAltitude = Angle::to_DEGREES( sun.altitude );
                 const Angle::DEGREES_F sunAzimuth  = Angle::to_DEGREES( sun.azimuth );

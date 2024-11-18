@@ -556,7 +556,7 @@ namespace
                         return { ErrorType::INVALID_TASK_TYPE, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                     }
 
-                    const vec3<U32>& workGroupCount = cmd->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize;
+                    const uint3& workGroupCount = cmd->As<GFX::DispatchShaderTaskCommand>()->_workGroupSize;
                     if ( workGroupCount.x == 0  )
                     {
                         return { ErrorType::INVALID_DISPATCH_COUNT, cmdIndex, Names::commandType[to_base(cmd->_type)] };

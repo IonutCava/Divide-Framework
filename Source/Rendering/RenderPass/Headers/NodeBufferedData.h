@@ -54,23 +54,23 @@ namespace Divide {
     struct NodeMaterialData
     {
         //base colour
-        vec4<F32> _albedo;
+        float4 _albedo;
         //rgb - emissive
         //a   - parallax factor
-        vec4<F32> _emissiveAndParallax;
+        float4 _emissiveAndParallax;
         //rgb - ambientColour (Don't really need this. To remove eventually, but since we have the space, might as well)
         //a - specular strength [0...Material::MAX_SHININESS]. Used mainly by Phong shading
-        vec4<F32> _colourData;
+        float4 _colourData;
         //x = 4x8U: occlusion, metallic, roughness, isDoubleSided
         //y = 4x8U: specular.r, specular.g, specular.b, use packed OMR
         //z = 4x8U: bump method, shadingMode, reserved, reserved
         //w = Probe lookup index + 1 (0 = sky cubemap)
-        vec4<U32> _data;
+        uint4 _data;
         //x = 4x8U: tex op Unit0, tex op Unit1, tex op Specular, Emissive
         //y = 4x8U: tex op Occlusion, tex op Metalness, tex op Roughness, tex op Opcaity
         //z = 4x8U: use albedo texture alpha channel, use opacity map alpha channel, specular Factor, gloss Factor
         //w = 4x8u: receives shadows, reserved, reserved, reserved
-        vec4<U32> _textureOperations;
+        uint4 _textureOperations;
     };
 
     struct NodeIndirectionData

@@ -61,7 +61,7 @@ namespace Divide {
 
         [[nodiscard]] const SunInfo& GetDetails() const;
 
-        [[nodiscard]] vec3<F32> GetSunPosition(F32 radius = 1.f) const;
+        [[nodiscard]] float3 GetSunPosition(F32 radius = 1.f) const;
     private:
         mutable SunInfo _cachedDetails;
         Angle::DEGREES_F _longitude = 0.f;
@@ -74,7 +74,7 @@ namespace Divide {
     {
         FColour3 _rayleighColour = { 0.26f, 0.41f, 0.58f };
         FColour3 _mieColour = { 0.63f, 0.77f, 0.92f };
-        vec2<F32> _cloudLayerMinMaxHeight = { 1500.f, 4000.f };
+        float2 _cloudLayerMinMaxHeight = { 1500.f, 4000.f };
         F32 _rayleigh = 2.f;
         F32 _mie = 0.005f;
         F32 _mieEccentricity = 0.8f;

@@ -53,12 +53,12 @@ struct RayResult
 
 struct Ray {
     struct CollisionHelpers {
-        vec3<F32> _invDirection;
-        vec3<I32> _sign;
+        float3 _invDirection;
+        int3 _sign;
     };
 
-    vec3<F32> _origin;
-    vec3<F32> _direction;
+    float3 _origin;
+    float3 _direction;
 
     void identity() noexcept {
         _origin = VECTOR3_ZERO;

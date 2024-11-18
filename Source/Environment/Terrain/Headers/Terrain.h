@@ -71,8 +71,8 @@ namespace Attorney
 
 struct TessellationParams
 {
-    PROPERTY_RW(vec2<F32>, WorldScale);
-    PROPERTY_RW(vec2<F32>, SnapGridSize);
+    PROPERTY_RW(float2, WorldScale);
+    PROPERTY_RW(float2, SnapGridSize);
     PROPERTY_RW(U32, tessellatedTriangleWidth, 32u);
 
     static constexpr U8 VTX_PER_TILE_EDGE = 9; // overlap => -2
@@ -114,9 +114,9 @@ DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
        };
 
        struct Vert {
-           vec3<F32> _position;
-           vec3<F32> _normal;
-           vec3<F32> _tangent;
+           float3 _position;
+           float3 _normal;
+           float3 _tangent;
        };
 
    public:
@@ -129,7 +129,7 @@ DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
     [[nodiscard]] Vert      getVert(F32 x_clampf, F32 z_clampf, bool smooth) const;
     [[nodiscard]] Vert      getVertFromGlobal(F32 x, F32 z, bool smooth) const;
     [[nodiscard]] vec2<U16> getDimensions() const noexcept;
-    [[nodiscard]] vec2<F32> getAltitudeRange() const noexcept;
+    [[nodiscard]] float2 getAltitudeRange() const noexcept;
 
     [[nodiscard]] const Quadtree& getQuadtree() const noexcept { return _terrainQuadtree; }
 

@@ -55,9 +55,9 @@ enum class MusicType : U8 {
 
 struct WaterBodyData
 {
-    vec4<F32> _positionW = VECTOR4_ZERO;
+    float4 _positionW = VECTOR4_ZERO;
     ///length, depth, width
-    vec4<F32> _extents = VECTOR4_ZERO;
+    float4 _extents = VECTOR4_ZERO;
 
     bool operator==(const WaterBodyData& other) const = default;
 };
@@ -65,14 +65,14 @@ struct WaterBodyData
 struct ProbeData
 {
     // (w == 1) - enabled
-    vec4<F32> _positionW = VECTOR4_ZERO;
-    vec4<F32> _halfExtents = VECTOR4_ZERO;
+    float4 _positionW = VECTOR4_ZERO;
+    float4 _halfExtents = VECTOR4_ZERO;
 };
 
 struct FogDetails
 {
-    vec4<F32> _colourAndDensity = VECTOR4_ZERO;
-    vec4<F32> _colourSunScatter = VECTOR4_ZERO;
+    float4 _colourAndDensity = VECTOR4_ZERO;
+    float4 _colourSunScatter = VECTOR4_ZERO;
 
     bool operator==(const FogDetails& other) const = default;
 };

@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 /// Set the local X,Y and Z position
-inline void Transform::setPosition(const vec3<F32>& position) noexcept
+inline void Transform::setPosition(const float3& position) noexcept
 {
     setPosition(position.x, position.y, position.z);
 }
@@ -64,14 +64,14 @@ inline void Transform::setPositionZ(const F32 positionZ) noexcept
 }
 
 /// Set the local X,Y and Z amount factors
-inline void Transform::setScale(const vec3<F32>& amount) noexcept
+inline void Transform::setScale(const float3& amount) noexcept
 {
     _scale.set(amount);
 }
 
 /// Set the local orientation using the Axis-Angle system.
 /// The angle can be in either degrees(default) or radians
-inline void Transform::setRotation(const vec3<F32>& axis, const Angle::DEGREES_F degrees) noexcept
+inline void Transform::setRotation(const float3& axis, const Angle::DEGREES_F degrees) noexcept
 {
     _orientation.fromAxisAngle(axis, Angle::to_RADIANS(degrees));
     _orientation.normalize();
@@ -92,13 +92,13 @@ inline void Transform::setRotation(const Quaternion<F32>& quat) noexcept
 }
 
 /// Add the specified translation factors to the current local position
-inline void Transform::translate(const vec3<F32>& axisFactors) noexcept
+inline void Transform::translate(const float3& axisFactors) noexcept
 {
     _translation += axisFactors;
 }
 
 /// Add the specified scale factors to the current local position
-inline void Transform::scale(const vec3<F32>& axisFactors) noexcept
+inline void Transform::scale(const float3& axisFactors) noexcept
 {
     _scale *= axisFactors;
 }
@@ -106,7 +106,7 @@ inline void Transform::scale(const vec3<F32>& axisFactors) noexcept
 /// Apply the specified Axis-Angle rotation starting from the current
 /// orientation.
 /// The angles can be in either degrees(default) or radians
-inline void Transform::rotate(const vec3<F32>& axis, const Angle::DEGREES_F degrees) noexcept
+inline void Transform::rotate(const float3& axis, const Angle::DEGREES_F degrees) noexcept
 {
     rotate(Quaternion<F32>(axis, Angle::to_RADIANS(degrees)));
 }
@@ -135,78 +135,78 @@ inline void Transform::rotateSlerp(const Quaternion<F32>& quat, const D64 deltaT
 /// Set the scaling factor on the X axis
 inline void Transform::setScaleX(const F32 amount) noexcept
 {
-    setScale(vec3<F32>(amount, _scale.y, _scale.z));
+    setScale(float3(amount, _scale.y, _scale.z));
 }
 /// Set the scaling factor on the Y axis
 inline void Transform::setScaleY(const F32 amount) noexcept {
-    setScale(vec3<F32>(_scale.x, amount, _scale.z));
+    setScale(float3(_scale.x, amount, _scale.z));
 }
 /// Set the scaling factor on the Z axis
 inline void Transform::setScaleZ(const F32 amount) noexcept
 {
-    setScale(vec3<F32>(_scale.x, _scale.y, amount));
+    setScale(float3(_scale.x, _scale.y, amount));
 }
 
 /// Increase the scaling factor on the X axis by the specified factor
 inline void Transform::scaleX(const F32 amount) noexcept
 {
-    scale(vec3<F32>(amount,  _scale.y, _scale.z));
+    scale(float3(amount,  _scale.y, _scale.z));
 }
 /// Increase the scaling factor on the Y axis by the specified factor
 inline void Transform::scaleY(const F32 amount) noexcept
 {
-    scale(vec3<F32>(_scale.x, amount, _scale.z));
+    scale(float3(_scale.x, amount, _scale.z));
 }
 /// Increase the scaling factor on the Z axis by the specified factor
 inline void Transform::scaleZ(const F32 amount) noexcept
 {
-    scale(vec3<F32>(_scale.x, _scale.y, amount));
+    scale(float3(_scale.x, _scale.y, amount));
 }
 /// Rotate on the X axis (Axis-Angle used) by the specified angle (either
 /// degrees or radians)
 inline void Transform::rotateX(const Angle::DEGREES_F angle) noexcept
 {
-    rotate(vec3<F32>(1, 0, 0), angle);
+    rotate(float3(1, 0, 0), angle);
 }
 /// Rotate on the Y axis (Axis-Angle used) by the specified angle (either
 /// degrees or radians)
 inline void Transform::rotateY(const Angle::DEGREES_F angle) noexcept
 {
-    rotate(vec3<F32>(0, 1, 0), angle);
+    rotate(float3(0, 1, 0), angle);
 }
 /// Rotate on the Z axis (Axis-Angle used) by the specified angle (either
 /// degrees or radians)
 inline void Transform::rotateZ(const Angle::DEGREES_F angle) noexcept
 {
-    rotate(vec3<F32>(0, 0, 1), angle);
+    rotate(float3(0, 0, 1), angle);
 }
 /// Set the rotation on the X axis (Axis-Angle used) by the specified angle
 /// (either degrees or radians)
 inline void Transform::setRotationX(const Angle::DEGREES_F angle) noexcept
 {
-    setRotation(vec3<F32>(1, 0, 0), angle);
+    setRotation(float3(1, 0, 0), angle);
 }
 /// Set the rotation on the Y axis (Axis-Angle used) by the specified angle
 /// (either degrees or radians)
 inline void Transform::setRotationY(const Angle::DEGREES_F angle) noexcept
 {
-    setRotation(vec3<F32>(0, 1, 0), angle);
+    setRotation(float3(0, 1, 0), angle);
 }
 /// Set the rotation on the Z axis (Axis-Angle used) by the specified angle
 /// (either degrees or radians)
 inline void Transform::setRotationZ(const Angle::DEGREES_F angle) noexcept
 {
-    setRotation(vec3<F32>(0, 0, 1), angle);
+    setRotation(float3(0, 0, 1), angle);
 }
 
 /// Return the scale factor
-inline void Transform::getScale(vec3<F32>& scaleOut) const noexcept
+inline void Transform::getScale(float3& scaleOut) const noexcept
 {
     scaleOut.set(_scale);
 }
 
 /// Return the position
-inline void Transform::getPosition(vec3<F32>& posOut) const noexcept
+inline void Transform::getPosition(float3& posOut) const noexcept
 {
     posOut.set(_translation);
 }

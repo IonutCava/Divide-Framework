@@ -42,8 +42,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 namespace Util {
-    vec3<F32> toVec3(const physx::PxVec3& vec) noexcept;
-    physx::PxVec3 toVec3(const vec3<F32>& vec) noexcept;
+    float3 toVec3(const physx::PxVec3& vec) noexcept;
+    physx::PxVec3 toVec3(const float3& vec) noexcept;
 } //namespace Util
 
 class PhysXActor final : public PhysicsAsset {
@@ -51,25 +51,25 @@ public:
     explicit PhysXActor(RigidBodyComponent& parent) noexcept;
     ~PhysXActor() override;
 
-    void setPosition(const vec3<F32>& position) override;
+    void setPosition(const float3& position) override;
     void setPosition(F32 x, F32 y, F32 z) override;
     void setPositionX(F32 positionX) override;
     void setPositionY(F32 positionY) override;
     void setPositionZ(F32 positionZ) override;
-    void translate(const vec3<F32>& axisFactors) override;
+    void translate(const float3& axisFactors) override;
     using ITransform::setPosition;
 
-    void setScale(const vec3<F32>& scale) override;
+    void setScale(const float3& scale) override;
     void setScaleX(F32 amount) override;
     void setScaleY(F32 amount) override;
     void setScaleZ(F32 amount) override;
-    void scale(const vec3<F32>& axisFactors) override;
+    void scale(const float3& axisFactors) override;
     void scaleX(F32 amount) override;
     void scaleY(F32 amount) override;
     void scaleZ(F32 amount) override;
     using ITransform::setScale;
 
-    void setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) override;
+    void setRotation(const float3& axis, Angle::DEGREES_F degrees) override;
     void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
     void setRotation(const Quaternion<F32>& quat) override;
     void setRotationX(Angle::DEGREES_F angle) override;
@@ -77,7 +77,7 @@ public:
     void setRotationZ(Angle::DEGREES_F angle) override;
     using ITransform::setRotation;
 
-    void rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) override;
+    void rotate(const float3& axis, Angle::DEGREES_F degrees) override;
     void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
     void rotate(const Quaternion<F32>& quat) override;
     void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
@@ -86,8 +86,8 @@ public:
     void rotateZ(Angle::DEGREES_F angle) override;
     using ITransform::rotate;
 
-    void getScale(vec3<F32>& scaleOut) const override;
-    void getPosition(vec3<F32>& posOut) const override;
+    void getScale(float3& scaleOut) const override;
+    void getPosition(float3& posOut) const override;
     void getOrientation(Quaternion<F32>& quatOut) const override;
 
     void physicsCollisionGroup(PhysicsGroup group) override;

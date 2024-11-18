@@ -45,7 +45,7 @@ namespace Divide
 
     inline const LightType& Light::getLightType() const noexcept { return _type; }
 
-    inline F32 Light::distanceSquared( const vec3<F32>& pos ) const noexcept { return positionCache().distanceSquared( pos ); }
+    inline F32 Light::distanceSquared( const float3& pos ) const noexcept { return positionCache().distanceSquared( pos ); }
 
     inline const Light::ShadowProperties& Light::getShadowProperties() const noexcept { return _shadowProperties; }
 
@@ -53,13 +53,13 @@ namespace Divide
 
     inline F32 Light::getShadowFloatValues( const U8 index ) const noexcept { assert( index < 6 ); return _shadowProperties._lightPosition[index].w; }
 
-    inline const vec4<F32>& Light::getShadowLightPos( const U8 index ) const noexcept { assert( index < 6 ); return _shadowProperties._lightPosition[index]; }
+    inline const float4& Light::getShadowLightPos( const U8 index ) const noexcept { assert( index < 6 ); return _shadowProperties._lightPosition[index]; }
 
     inline void Light::setShadowVPMatrix( const U8 index, const mat4<F32>& newValue ) noexcept { assert( index < 6 ); _shadowProperties._lightVP[index].set( newValue ); _shadowProperties._dirty = true; }
 
     inline void Light::setShadowFloatValue( const U8 index, const F32 newValue ) noexcept { assert( index < 6 ); _shadowProperties._lightPosition[index].w = newValue; _shadowProperties._dirty = true; }
 
-    inline void Light::setShadowLightPos( const U8 index, const vec3<F32>& newValue ) noexcept { _shadowProperties._lightPosition[index].xyz = newValue; _shadowProperties._dirty = true; }
+    inline void Light::setShadowLightPos( const U8 index, const float3& newValue ) noexcept { _shadowProperties._lightPosition[index].xyz = newValue; _shadowProperties._dirty = true; }
 
     inline void Light::setShadowArrayOffset( const U16 offset ) noexcept {
         if ( getShadowArrayOffset() != offset )

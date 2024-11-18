@@ -39,8 +39,8 @@ namespace Divide {
 
 class ParticleVelocityColourUpdater final : public ParticleUpdater {
    public:
-    vec4<F32> _minVel = VECTOR4_ZERO;
-    vec4<F32> _maxVel = VECTOR4_UNIT;
+    float4 _minVel = VECTOR4_ZERO;
+    float4 _maxVel = VECTOR4_UNIT;
 
    public:
     ParticleVelocityColourUpdater(PlatformContext& context) noexcept : ParticleUpdater(context)

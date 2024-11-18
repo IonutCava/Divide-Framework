@@ -44,7 +44,7 @@ AnimationComponent::AnimationComponent(SceneGraphNode* parentSGN, PlatformContex
     EditorComponentField animationFrameIndexInfoField = {};
     animationFrameIndexInfoField._name = "Animation Frame Index";
     animationFrameIndexInfoField._tooltip = " [Curr - Prev - Next]";
-    animationFrameIndexInfoField._dataGetter = [this](void* dataOut) noexcept { *static_cast<vec3<I32>*>(dataOut) = vec3<I32>{ _frameIndex._curr, _frameIndex._prev, _frameIndex._next }; };
+    animationFrameIndexInfoField._dataGetter = [this](void* dataOut) noexcept { *static_cast<int3*>(dataOut) = int3{ _frameIndex._curr, _frameIndex._prev, _frameIndex._next }; };
     animationFrameIndexInfoField._type = EditorComponentFieldType::PUSH_TYPE;
     animationFrameIndexInfoField._basicType = PushConstantType::IVEC3;
     animationFrameIndexInfoField._readOnly = true;

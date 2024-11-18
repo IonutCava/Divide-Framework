@@ -65,7 +65,7 @@ class PhysXSceneInterface final : public PhysicsSceneInterface {
     void updateRigidActor(physx::PxRigidActor* oldActor, physx::PxRigidActor* newActor) const;
     physx::PxScene* getPhysXScene() const noexcept { return _gScene; }
 
-    bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const;
+    bool intersect(const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersectionsOut) const;
    protected:
     static void UpdateActor(physx::PxActor* actor);
 

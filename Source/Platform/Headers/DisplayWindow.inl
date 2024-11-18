@@ -48,7 +48,7 @@ namespace Divide {
                type() == WindowType::FULLSCREEN_WINDOWED;
     }
 
-    inline void DisplayWindow::setPosition(const vec2<I32> position, const bool global)
+    inline void DisplayWindow::setPosition(const int2 position, const bool global)
     {
         setPosition(position.x, position.y, global);
     }

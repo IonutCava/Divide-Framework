@@ -148,7 +148,7 @@ GUIButton* GUIInterface::addButton(const char* name,
 GUIMessageBox* GUIInterface::addMsgBox(const char* name,
                                        const string& title,
                                        const string& message,
-                                       const vec2<I32> offsetFromCentre) {
+                                       const int2 offsetFromCentre) {
     const U64 guiID = _ID(name);
 
     assert(getGUIElement<GUIMessageBox>(guiID) == nullptr);

@@ -104,8 +104,8 @@ namespace Divide
 
         setMaterialTpl( planeMaterial );
 
-        _boundingBox.set( vec3<F32>( -(_dimensions.x * 1.5f), -0.5f, -(_dimensions.y * 1.5f) ),
-                         vec3<F32>( _dimensions.x * 1.5f, 0.5f, _dimensions.y * 1.5f ) );
+        _boundingBox.set( float3( -(_dimensions.x * 1.5f), -0.5f, -(_dimensions.y * 1.5f) ),
+                         float3( _dimensions.x * 1.5f, 0.5f, _dimensions.y * 1.5f ) );
 
         return SceneNode::load( context );
     }
@@ -140,7 +140,7 @@ namespace Divide
 
         TransformComponent* tComp = sgn->get<TransformComponent>();
 
-        const vec3<F32>& newEye = sceneState.parentScene().playerCamera()->snapshot()._eye;
+        const float3& newEye = sceneState.parentScene().playerCamera()->snapshot()._eye;
         if ( newEye.xz().distanceSquared( tComp->getWorldPosition().xz() ) > SQUARED( 2 ) )
         {
             tComp->setPosition( newEye.x, tComp->getWorldPosition().y, newEye.z );

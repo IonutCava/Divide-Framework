@@ -92,7 +92,7 @@ namespace Divide
 
         struct MouseLogState
         {
-            vec2<I32> _position{ VECTOR2_ZERO };
+            int2 _position{ VECTOR2_ZERO };
             Input::MouseButton _button{ Input::MouseButton::COUNT };
             Input::InputState _state{ Input::InputState::COUNT };
         };

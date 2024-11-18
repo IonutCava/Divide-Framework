@@ -366,7 +366,7 @@ class DivideTileCache {
       * Gets grid coordinates of the tile that contains the specified world
       *position.
       **/
-    vec2<F32> getTileAtPos(const vec3<F32> pos);
+    float2 getTileAtPos(const float3 pos);
 
     /**
       * Determines whether there is a tile loaded at the specified grid
@@ -386,7 +386,7 @@ class DivideTileCache {
       * ie the coordinates are contained within a tile that is within the cache
       *bounds.
       **/
-    bool isWithinBounds(vec3<F32> pos);
+    bool isWithinBounds(float3 pos);
 
     BoundingBox getWorldSpaceBounds(void);
 
@@ -427,7 +427,7 @@ class DivideTileCache {
       *
       * If successful returns a reference to the added obstacle.
       **/
-    dtObstacleRef addTempObstacle(vec3<F32> pos);
+    dtObstacleRef addTempObstacle(float3 pos);
 
     /**
       * Remove temporary (cylindrical) obstacle with specified reference. The
@@ -448,7 +448,7 @@ class DivideTileCache {
       * At one time only MAX_REQUESTS obstacles can be removed, or nothing will
       *happen.
       **/
-    dtObstacleRef removeTempObstacle(vec3<F32> raySource, vec3<F32> rayHit);
+    dtObstacleRef removeTempObstacle(float3 raySource, float3 rayHit);
 
     /**
       * Execute a ray intersection query to find the first temporary
@@ -463,15 +463,15 @@ class DivideTileCache {
       *specified bounding
       * box area.
       **/
-    vector<dtCompressedTileRef> getTilesContainingBox(vec3<F32> boxMin,
-                                                          vec3<F32> boxMax);
+    vector<dtCompressedTileRef> getTilesContainingBox(float3 boxMin,
+                                                          float3 boxMax);
 
     /**
       * Returns a list of tile references to compressed tiles that cover the
       *area of a circle with
       * specified radius around the specified position.
       **/
-    vector<dtCompressedTileRef> getTilesAroundPoint(vec3<F32> point,
+    vector<dtCompressedTileRef> getTilesAroundPoint(float3 point,
                                                         F32 radius);
 
     /**
@@ -522,7 +522,7 @@ class DivideTileCache {
       * If removedObstacle is a valid pointer it will contain a reference to the
       *removed obstacle.
       **/
-    I32 removeConvexShapeObstacle(vec3<F32> raySource, vec3<F32> rayHit,
+    I32 removeConvexShapeObstacle(float3 raySource, float3 rayHit,
                                   ConvexVolume** removedObstacle = nullptr);
 
     /**
@@ -543,7 +543,7 @@ class DivideTileCache {
       *the id of the hit
       * obstacle, -1 if none hit.
       **/
-    I32 hitTestConvexShapeObstacle(vec3<F32> raySource, vec3<F32> rayHit);
+    I32 hitTestConvexShapeObstacle(float3 raySource, float3 rayHit);
 
     /**
       * Remove the tile with specified reference from the tilecache. The

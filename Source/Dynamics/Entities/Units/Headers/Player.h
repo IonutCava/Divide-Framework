@@ -50,7 +50,7 @@ namespace Divide
         /// Do not allow or allow the user again to control this player
         PROPERTY_R( bool, lockedControls, false );
         PROPERTY_R( U8, index, 0u );
-        PROPERTY_R( vec3<F32>, extents, VECTOR3_UNIT );
+        PROPERTY_R( float3, extents, VECTOR3_UNIT );
         POINTER_R( Camera, camera, nullptr );
 
        protected:

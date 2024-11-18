@@ -83,25 +83,25 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void getWorldRotationMatrixInterpolated( mat4<F32>& matOut ) const;
 
      /// Component <-> Transform interface
-     void setPosition(const vec3<F32>& position) override;
+     void setPosition(const float3& position) override;
      void setPosition(F32 x, F32 y, F32 z) override;
      void setPositionX(F32 positionX) override;
      void setPositionY(F32 positionY) override;
      void setPositionZ(F32 positionZ) override;
-     void translate(const vec3<F32>& axisFactors) override;
+     void translate(const float3& axisFactors) override;
      using ITransform::setPosition;
 
-     void setScale(const vec3<F32>& amount) override;
+     void setScale(const float3& amount) override;
      void setScaleX(F32 amount) override;
      void setScaleY(F32 amount) override;
      void setScaleZ(F32 amount) override;
-     void scale(const vec3<F32>& axisFactors) override;
+     void scale(const float3& axisFactors) override;
      void scaleX(F32 amount) override;
      void scaleY(F32 amount) override;
      void scaleZ(F32 amount) override;
      using ITransform::setScale;
 
-     void setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) override;
+     void setRotation(const float3& axis, Angle::DEGREES_F degrees) override;
      void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
      void setRotation(const Quaternion<F32>& quat) override;
      void setRotationX(Angle::DEGREES_F angle) override;
@@ -109,7 +109,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void setRotationZ(Angle::DEGREES_F angle) override;
      using ITransform::setRotation;
 
-     void rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) override;
+     void rotate(const float3& axis, Angle::DEGREES_F degrees) override;
      void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
      void rotate(const Quaternion<F32>& quat) override;
      void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
@@ -118,39 +118,39 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void rotateZ(Angle::DEGREES_F angle) override;
      using ITransform::rotate;
 
-     [[nodiscard]] const vec3<F32> getLocalDirection(const vec3<F32>& worldForward = WORLD_Z_NEG_AXIS) const;
-     [[nodiscard]] const vec3<F32> getWorldDirection(const vec3<F32>& worldForward = WORLD_Z_NEG_AXIS) const;
+     [[nodiscard]] const float3 getLocalDirection(const float3& worldForward = WORLD_Z_NEG_AXIS) const;
+     [[nodiscard]] const float3 getWorldDirection(const float3& worldForward = WORLD_Z_NEG_AXIS) const;
 
      /// Sets a new, local only, direction for the current component based on the specified world forward direction
-     void setDirection(const vec3<F32>& fwdDirection, const vec3<F32>& upDirection = WORLD_Y_AXIS);
+     void setDirection(const float3& fwdDirection, const float3& upDirection = WORLD_Y_AXIS);
      void setTransform(const TransformValues& values);
 
      [[nodiscard]] bool isUniformScaled() const noexcept;
 
      /// Return the position
-     [[nodiscard]] vec3<F32> getWorldPosition() const;
+     [[nodiscard]] float3 getWorldPosition() const;
      /// Return the local position
-     [[nodiscard]] vec3<F32> getLocalPosition() const;
+     [[nodiscard]] float3 getLocalPosition() const;
      /// Return the position
-     [[nodiscard]] vec3<F32> getWorldPositionInterpolated() const;
+     [[nodiscard]] float3 getWorldPositionInterpolated() const;
      /// Return the local position
-     [[nodiscard]] vec3<F32> getLocalPositionInterpolated() const;
+     [[nodiscard]] float3 getLocalPositionInterpolated() const;
 
      /// Return the derived forward direction
-     [[nodiscard]] vec3<F32> getFwdVector() const;
+     [[nodiscard]] float3 getFwdVector() const;
      /// Return the derived up direction
-     [[nodiscard]] vec3<F32> getUpVector() const;
+     [[nodiscard]] float3 getUpVector() const;
      /// Return the derived right direction
-     [[nodiscard]] vec3<F32> getRightVector() const;
+     [[nodiscard]] float3 getRightVector() const;
 
      /// Return the scale factor
-     [[nodiscard]] vec3<F32> getWorldScale() const;
+     [[nodiscard]] float3 getWorldScale() const;
      /// Return the local scale factor
-     [[nodiscard]] vec3<F32> getLocalScale() const;
+     [[nodiscard]] float3 getLocalScale() const;
      /// Return the scale factor
-     [[nodiscard]] vec3<F32> getWorldScaleInterpolated() const;
+     [[nodiscard]] float3 getWorldScaleInterpolated() const;
      /// Return the local scale factor
-     [[nodiscard]] vec3<F32> getLocalScaleInterpolated() const;
+     [[nodiscard]] float3 getLocalScaleInterpolated() const;
 
      /// Return the orientation quaternion
      [[nodiscard]] Quaternion<F32> getWorldOrientation() const;
@@ -161,8 +161,8 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      /// Return the local orientation quaternion
      [[nodiscard]] Quaternion<F32> getLocalOrientationInterpolated() const;
 
-     void getWorldTransforms(vec3<F32>& positionOut, vec3<F32>& scaleOut, Quaternion<F32>& rotationOut);
-     void getWorldTransformsInterpolated(vec3<F32>& positionOut, vec3<F32>& scaleOut, Quaternion<F32>& rotationOut);
+     void getWorldTransforms(float3& positionOut, float3& scaleOut, Quaternion<F32>& rotationOut);
+     void getWorldTransformsInterpolated(float3& positionOut, float3& scaleOut, Quaternion<F32>& rotationOut);
 
      void setTransforms(const mat4<F32>& transform);
 
@@ -204,14 +204,14 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void onParentChanged(const SceneGraphNode* oldParent, const SceneGraphNode* newParent);
 
      // Local transform interface access (all are in local space)
-     void getScale(vec3<F32>& scaleOut) const override;
-     void getPosition(vec3<F32>& posOut) const override;
+     void getScale(float3& scaleOut) const override;
+     void getPosition(float3& posOut) const override;
      void getOrientation(Quaternion<F32>& quatOut) const override;
 
      //Derived = World
      [[nodiscard]] Quaternion<F32> getDerivedOrientation() const;
-     [[nodiscard]] vec3<F32>       getDerivedPosition()    const;
-     [[nodiscard]] vec3<F32>       getDerivedScale()       const;
+     [[nodiscard]] float3       getDerivedPosition()    const;
+     [[nodiscard]] float3       getDerivedScale()       const;
 
      //Called only when then transform changed in the main update loop!
      void updateLocalMatrix( D64 interpolationFactor );

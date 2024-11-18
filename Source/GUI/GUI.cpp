@@ -663,7 +663,7 @@ namespace Divide
             _defaultMsgBox = std::make_unique<GUIMessageBox>( "AssertMsgBox",
                                                               "Assertion failure",
                                                               "Assertion failed with message: ",
-                                                              vec2<I32>( 0 ),
+                                                              int2( 0 ),
                                                               _context->rootSheet() );
         }
         g_assertMsgBox = _defaultMsgBox.get();

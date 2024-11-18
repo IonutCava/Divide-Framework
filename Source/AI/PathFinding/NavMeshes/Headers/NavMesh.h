@@ -146,18 +146,18 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     void setRenderMode(const RenderMode& mode) noexcept { _renderMode = mode; }
     void setRenderConnections(const bool state) noexcept { _renderConnections = state; }
 
-    const vec3<F32>& getExtents() const noexcept { return _extents; }
+    const float3& getExtents() const noexcept { return _extents; }
 
     const dtNavMeshQuery& getNavQuery() const noexcept { return *_navQuery; }
 
-    bool getRandomPosition(vec3<F32>& result) const;
+    bool getRandomPosition(float3& result) const;
 
-    bool getClosestPosition(const vec3<F32>& destination,
-                            const vec3<F32>& extents, F32 delta,
-                            vec3<F32>& result) const;
+    bool getClosestPosition(const float3& destination,
+                            const float3& extents, F32 delta,
+                            float3& result) const;
 
-    bool getRandomPositionInCircle(const vec3<F32>& center, F32 radius,
-                                   const vec3<F32>& extents, vec3<F32>& result,
+    bool getRandomPositionInCircle(const float3& center, F32 radius,
+                                   const float3& extents, float3& result,
                                    U8 maxIters = 15) const;
 
     NavigationMesh(PlatformContext& context, DivideRecast& recastInterface, Scene& parentScene);
@@ -222,7 +222,7 @@ class NavigationMesh : public GUIDWrapper, public PlatformContextComponent /*,pu
     /// Configuration file
     string _configFile;
     /// NavMesh extents
-    vec3<F32> _extents;
+    float3 _extents;
     ///  Query object used for this mesh
     dtNavMeshQuery* _navQuery;
     /// SceneGraphNode from which to build

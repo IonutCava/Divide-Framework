@@ -118,8 +118,8 @@ namespace Divide
     {
         GFX::CommandBuffer* _cmdBuffer = nullptr;
         Handle<Texture> _texture = INVALID_HANDLE<Texture>;
-        vec4<I32> _colourData = { 1, 1, 1, 1 };
-        vec2<F32> _depthRange = { 0.002f, 1.f };
+        int4 _colourData = { 1, 1, 1, 1 };
+        float2 _depthRange = { 0.002f, 1.f };
         U32 _arrayLayer = 0u;
         U32 _mip = 0u;
         bool _isDepthTexture = false;
@@ -318,9 +318,9 @@ namespace Divide
         [[nodiscard]] bool switchScene( const SceneEntry& scene, bool createIfNotExists = false );
         [[nodiscard]] bool openProject( const ProjectID& projectID );
         /// Returns true if the window was closed
-        [[nodiscard]] bool modalTextureView( std::string_view modalName, Handle<Texture> tex, vec2<F32> dimensions, bool preserveAspect, bool useModal ) const;
+        [[nodiscard]] bool modalTextureView( std::string_view modalName, Handle<Texture> tex, float2 dimensions, bool preserveAspect, bool useModal ) const;
         /// Returns true if the model was queued
-        [[nodiscard]] bool modalModelSpawn( Handle<Mesh> mesh, bool showSpawnModalFirst, const vec3<F32>& scale, const vec3<F32>& position);
+        [[nodiscard]] bool modalModelSpawn( Handle<Mesh> mesh, bool showSpawnModalFirst, const float3& scale, const float3& position);
         /// Return true if the model was spawned as a scene node
         [[nodiscard]] bool spawnGeometry( SceneGraphNode& root, const QueueModelSpawn& model ) const;
         /// Return true if the specified node passed frustum culling during the main render pass
@@ -336,8 +336,8 @@ namespace Divide
         inline void toggleMemoryEditor( bool state ) noexcept;
 
         void copyPlayerCamToEditorCam() noexcept;
-        void setEditorCamLookAt( const vec3<F32>& eye, const vec3<F32>& fwd, const vec3<F32>& up );
-        void setEditorCameraSpeed( const vec3<F32>& speed ) noexcept;
+        void setEditorCamLookAt( const float3& eye, const float3& fwd, const float3& up );
+        void setEditorCameraSpeed( const float3& speed ) noexcept;
 
         [[nodiscard]] bool addComponent( SceneGraphNode* selection, ComponentType newComponentType ) const;
         [[nodiscard]] bool addComponent( const Selections& selections, ComponentType newComponentType ) const;
@@ -438,12 +438,12 @@ namespace Divide
                 editor.copyPlayerCamToEditorCam();
             }
 
-            static void setEditorCamLookAt( Editor& editor, const vec3<F32>& eye, const vec3<F32>& fwd, const vec3<F32>& up ) noexcept
+            static void setEditorCamLookAt( Editor& editor, const float3& eye, const float3& fwd, const float3& up ) noexcept
             {
                 editor.setEditorCamLookAt( eye, fwd, up );
             }
 
-            static void setEditorCameraSpeed( Editor& editor, const vec3<F32>& speed ) noexcept
+            static void setEditorCameraSpeed( Editor& editor, const float3& speed ) noexcept
             {
                 editor.setEditorCameraSpeed( speed );
             }
@@ -684,12 +684,12 @@ namespace Divide
                 editor._memoryEditorData = data;
             }
 
-            [[nodiscard]] static bool modalTextureView( const Editor& editor, const std::string_view modalName, Handle<Texture> tex, const vec2<F32> dimensions, const bool preserveAspect, const bool useModal )
+            [[nodiscard]] static bool modalTextureView( const Editor& editor, const std::string_view modalName, Handle<Texture> tex, const float2 dimensions, const bool preserveAspect, const bool useModal )
             {
                 return editor.modalTextureView( modalName, tex, dimensions, preserveAspect, useModal );
             }
 
-            [[nodiscard]] static bool modalModelSpawn( Editor& editor, Handle<Mesh> mesh, bool showSpawnModalFirst, const vec3<F32>& scale, const vec3<F32>& position )
+            [[nodiscard]] static bool modalModelSpawn( Editor& editor, Handle<Mesh> mesh, bool showSpawnModalFirst, const float3& scale, const float3& position )
             {
                 return editor.modalModelSpawn( mesh, showSpawnModalFirst, scale, position );
             }

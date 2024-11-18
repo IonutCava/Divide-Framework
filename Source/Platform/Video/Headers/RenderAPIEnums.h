@@ -839,9 +839,9 @@ enum class PushConstantType : U8
     UINT,
     FLOAT,
     DOUBLE,
-    //BVEC2, use vec2<I32>(1/0, 1/0)
-    //BVEC3, use vec3<I32>(1/0, 1/0, 1/0)
-    //BVEC4, use vec4<I32>(1/0, 1/0, 1/0, 1/0)
+    //BVEC2, use int2(1/0, 1/0)
+    //BVEC3, use int3(1/0, 1/0, 1/0)
+    //BVEC4, use int4(1/0, 1/0, 1/0, 1/0)
     IVEC2,
     IVEC3,
     IVEC4,

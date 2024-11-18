@@ -49,7 +49,7 @@ class NOINITVTABLE Sensor {
 
     [[nodiscard]] SensorType sensorType() const noexcept { return _type; }
     virtual void update(U64 deltaTimeUS) = 0;
-    void updateRange(const vec2<F32> range) noexcept { _range.set(range); }
+    void updateRange(const float2 range) noexcept { _range.set(range); }
 
    protected:
     Sensor(AIEntity* const parentEntity, const SensorType type) noexcept {
@@ -58,7 +58,7 @@ class NOINITVTABLE Sensor {
     }
 
    protected:
-    vec2<F32> _range;  ///< min/max
+    float2 _range;  ///< min/max
     SensorType _type;
     AIEntity* _parentEntity;
 };

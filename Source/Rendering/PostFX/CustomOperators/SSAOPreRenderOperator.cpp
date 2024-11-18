@@ -23,18 +23,24 @@ namespace
     constexpr U8 SSAO_BLUR_SIZE = SSAO_NOISE_SIZE / 2;
     constexpr U8 MAX_KERNEL_SIZE = 64;
     constexpr U8 MIN_KERNEL_SIZE = 8;
-    vector<vec4<F32>> g_kernels;
+    vector<float4> g_kernels;
 
-    [[nodiscard]] const vector<vec4<F32>>& ComputeKernel(const U8 sampleCount)
+    [[nodiscard]] const vector<float4>& ComputeKernel(const U8 sampleCount)
     {
         g_kernels.resize(sampleCount);
-        for (U16 i = 0; i < sampleCount; ++i) {
-            vec3<F32>& k = g_kernels[i].xyz;
-            k.set(Random(-1.f, 1.f),
-                  Random(-1.f, 1.f),
-                  Random( 0.f, 1.f)); // Kernel hemisphere points to positive Z-Axis.
-            k.normalize();             // Normalize, so included in the hemisphere.
-            k *= FastLerp(0.1f, 1.0f, SQUARED(to_F32(i) / to_F32(sampleCount))); // Create a scale value between [0;1].
+        for (U16 i = 0; i < sampleCount; ++i)
+        {
+            float3& k = g_kernels[i].xyz;
+            // Kernel hemisphere points to positive Z-Axis.
+            k.set(
+                Random(-1.f, 1.f),
+                Random(-1.f, 1.f),
+                Random( 0.f, 1.f)
+            );
+            // Normalize, so included in the hemisphere.
+            k.normalize();
+            // Create a scale value between [0;1].
+            k *= LerpFast(0.1f, 1.0f, SQUARED(to_F32(i) / to_F32(sampleCount))); 
         }
 
         return g_kernels;
@@ -66,9 +72,9 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _fadeStart[0] = config.FullRes.FadeDistance;
     _fadeStart[1] = config.HalfRes.FadeDistance;
 
-    std::array<vec4<F32>, SQUARED(SSAO_NOISE_SIZE)> noiseData;
+    std::array<float4, SQUARED(SSAO_NOISE_SIZE)> noiseData;
 
-    for (vec4<F32>& noise : noiseData)
+    for (float4& noise : noiseData)
     {
         noise.set(Random(-1.f, 1.f), Random(-1.f, 1.f), 0.f, 1.f);
         noise.normalize();
@@ -106,7 +112,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     noiseDescriptor._mipMappingState = MipMappingState::OFF;
 
     _noiseTexture = CreateResource( textureAttachment);
-    Get(_noiseTexture)->createWithData((Byte*)noiseData.data(), noiseData.size() * sizeof(vec4<F32>), vec2<U16>(SSAO_NOISE_SIZE, SSAO_NOISE_SIZE), {});
+    Get(_noiseTexture)->createWithData((Byte*)noiseData.data(), noiseData.size() * sizeof(float4), vec2<U16>(SSAO_NOISE_SIZE, SSAO_NOISE_SIZE), {});
     {
         TextureDescriptor outputDescriptor{};
         outputDescriptor._dataType = GFXDataFormat::FLOAT_16;
@@ -250,7 +256,7 @@ SSAOPreRenderOperator::SSAOPreRenderOperator(GFXDevice& context, PreRenderBatch&
     _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
     _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
     _ssaoGenerateConstants.set(_ID("SSAO_BIAS"), PushConstantType::FLOAT, bias());
-    _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, vec2<F32>((parent.screenRT()._rt->getResolution() * (_genHalfRes ? 0.5f : 1.f)) / SSAO_NOISE_SIZE));
+    _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, float2((parent.screenRT()._rt->getResolution() * (_genHalfRes ? 0.5f : 1.f)) / SSAO_NOISE_SIZE));
     _ssaoGenerateConstants.set(_ID("maxRange"), PushConstantType::FLOAT, maxRange());
     _ssaoGenerateConstants.set(_ID("fadeStart"), PushConstantType::FLOAT, fadeStart());
 
@@ -334,7 +340,7 @@ void SSAOPreRenderOperator::reshape(const U16 width, const U16 height)
     _ssaoOutput._rt->resize(width, height);
     _halfDepthAndNormals._rt->resize(width / 2, height / 2);
 
-    const vec2<F32> targetDim = vec2<F32>(width, height) * (_genHalfRes ? 0.5f : 1.f);
+    const float2 targetDim = float2(width, height) * (_genHalfRes ? 0.5f : 1.f);
 
     _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, targetDim  / SSAO_NOISE_SIZE);
 }
@@ -350,7 +356,7 @@ void SSAOPreRenderOperator::genHalfRes(const bool state)
         const U16 width = state ? _halfDepthAndNormals._rt->getWidth() : _ssaoOutput._rt->getWidth();
         const U16 height = state ? _halfDepthAndNormals._rt->getHeight() : _ssaoOutput._rt->getHeight();
 
-        _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, vec2<F32>(width, height) / SSAO_NOISE_SIZE);
+        _ssaoGenerateConstants.set(_ID("SSAO_NOISE_SCALE"), PushConstantType::VEC2, float2(width, height) / SSAO_NOISE_SIZE);
         _ssaoGenerateConstants.set(_ID("sampleKernel"), PushConstantType::VEC4, ComputeKernel(sampleCount()));
         _ssaoGenerateConstants.set(_ID("SSAO_RADIUS"), PushConstantType::FLOAT, radius());
         _ssaoGenerateConstants.set(_ID("SSAO_INTENSITY"), PushConstantType::FLOAT, power());
@@ -698,7 +704,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
         if (blurResults() && blurKernelSize() > 0)
         {
             _ssaoBlurConstants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
-            _ssaoBlurConstants.set(_ID("texelSize"), PushConstantType::VEC2, vec2<F32>{ 1.f / Get(ssaoAtt->texture())->width(), 1.f / Get(ssaoAtt->texture())->height() });
+            _ssaoBlurConstants.set(_ID("texelSize"), PushConstantType::VEC2, float2{ 1.f / Get(ssaoAtt->texture())->width(), 1.f / Get(ssaoAtt->texture())->height() });
 
             // Blur AO
             { //Horizontal

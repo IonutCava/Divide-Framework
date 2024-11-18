@@ -23,7 +23,7 @@ void ParticleFloorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, Parti
     {
         for (U32 i = start; i < end; ++i) {
             if (p._position[i].y - p._position[i].w / 2 < floorY) {
-                vec3<F32> force(p._acceleration[i]);
+                float3 force(p._acceleration[i]);
 
                 const F32 normalFactor = force.dot(WORLD_Y_AXIS);
                 if (normalFactor < 0.0f) {
@@ -31,7 +31,7 @@ void ParticleFloorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, Parti
                 }
                 const F32 velFactor = p._velocity[i].xyz.dot(WORLD_Y_AXIS);
                 // if (velFactor < 0.0)
-                p._velocity[i] -= vec4<F32>(WORLD_Y_AXIS * (1.0f + bounce) * velFactor, 0.0f);
+                p._velocity[i] -= float4(WORLD_Y_AXIS * (1.0f + bounce) * velFactor, 0.0f);
                 p._acceleration[i].xyz = force;
             }
         }

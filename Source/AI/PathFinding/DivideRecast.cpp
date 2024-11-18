@@ -25,8 +25,8 @@ DivideRecast::DivideRecast()
 }
 
 PathErrorCode DivideRecast::FindPath(const NavigationMesh& navMesh,
-                                     const vec3<F32>& startPos,
-                                     const vec3<F32>& endPos,
+                                     const float3& startPos,
+                                     const float3& endPos,
                                      const U32 pathSlot,
                                      const I32 target) {
 
@@ -120,8 +120,8 @@ PathErrorCode DivideRecast::FindPath(const NavigationMesh& navMesh,
     return PathErrorCode::PATH_ERROR_NONE;
 }
 
-vector<vec3<F32> > DivideRecast::getPath(const I32 pathSlot) {
-    vector<vec3<F32> > result;
+vector<float3 > DivideRecast::getPath(const I32 pathSlot) {
+    vector<float3 > result;
     if (!IS_IN_RANGE_INCLUSIVE(pathSlot, 0, MAX_PATHSLOT - 1) ||
         _pathStore[pathSlot].MaxVertex <= 0) {
 
@@ -146,7 +146,7 @@ I32 DivideRecast::getTarget (const I32 pathSlot) noexcept {
     return _pathStore[pathSlot].Target;
 }
 
-bool DivideRecast::getRandomNavMeshPoint(const NavigationMesh& navMesh, vec3<F32>& resultPt) const
+bool DivideRecast::getRandomNavMeshPoint(const NavigationMesh& navMesh, float3& resultPt) const
 {
     if (navMesh.getNavQuery().getAttachedNavMesh() != nullptr) {
         dtPolyRef resultPoly;
@@ -162,10 +162,10 @@ bool DivideRecast::getRandomNavMeshPoint(const NavigationMesh& navMesh, vec3<F32
 }
 
 bool DivideRecast::getRandomPointAroundCircle(const NavigationMesh& navMesh,
-                                              const vec3<F32>& centerPosition,
+                                              const float3& centerPosition,
                                               const F32 radius,
-                                              const vec3<F32>& extents,
-                                              vec3<F32>& resultPt,
+                                              const float3& extents,
+                                              float3& resultPt,
                                               const U8 maxIters) const {
 
     const dtNavMeshQuery& query = navMesh.getNavQuery();
@@ -199,10 +199,10 @@ bool DivideRecast::getRandomPointAroundCircle(const NavigationMesh& navMesh,
 }
 
 bool DivideRecast::findNearestPointOnNavmesh(const NavigationMesh& navMesh,
-                                             const vec3<F32>& position,
-                                             const vec3<F32>& extents,
+                                             const float3& position,
+                                             const float3& extents,
                                              const F32 delta,
-                                             vec3<F32>& resultPt,
+                                             float3& resultPt,
                                              dtPolyRef& resultPoly) const {
     const F32 distanceSq = delta * delta;
 
@@ -213,7 +213,7 @@ bool DivideRecast::findNearestPointOnNavmesh(const NavigationMesh& navMesh,
                                                     resultPoly);
 
     if (pointOnPolyMesh) {
-        const F32 distSQ = vec3<F32>(position.x, 0.0f, position.z).distanceSquared(vec3<F32>(resultPt.x, 0.0f, resultPt.z));
+        const F32 distSQ = float3(position.x, 0.0f, position.z).distanceSquared(float3(resultPt.x, 0.0f, resultPt.z));
         bool pointIsInRange = distSQ <= distanceSq && abs(position.y - resultPt.y) < extents.y; 
 
         if (!pointIsInRange) {
@@ -234,9 +234,9 @@ bool DivideRecast::findNearestPointOnNavmesh(const NavigationMesh& navMesh,
 }
 
 bool DivideRecast::findNearestPolyOnNavmesh(const NavigationMesh& navMesh,
-                                            const vec3<F32>& position,
-                                            const vec3<F32>& extents,
-                                            vec3<F32>& resultPt,
+                                            const float3& position,
+                                            const float3& extents,
+                                            float3& resultPt,
                                             dtPolyRef& resultPoly) const
 {
     resultPt.reset();

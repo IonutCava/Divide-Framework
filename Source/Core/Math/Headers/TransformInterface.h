@@ -42,10 +42,10 @@ struct TransformValues
     /// (because they are awesome and also have an internal mat4 if needed)
     Quaternion<F32> _orientation{};
     /// The object's position in the world as a 3 component vector
-    vec3<F32> _translation{ VECTOR3_ZERO };
+    float3 _translation{ VECTOR3_ZERO };
     /// Scaling is stored as a 3 component vector.
     /// This helps us check more easily if it's an uniform scale or not
-    vec3<F32> _scale{ VECTOR3_UNIT };
+    float3 _scale{ VECTOR3_UNIT };
 };
 
 [[nodiscard]] TransformValues Lerp(const TransformValues& a, const TransformValues& b, F32 t);
@@ -58,7 +58,7 @@ class ITransform {
 public:
 	virtual ~ITransform() = default;
 	/// Set the local X,Y and Z position
-    virtual void setPosition(const vec3<F32>& position) = 0;
+    virtual void setPosition(const float3& position) = 0;
     /// Set the local X,Y and Z position
     virtual void setPosition(F32 x, F32 y, F32 z) = 0;
     /// Set the object's position on the X axis
@@ -68,10 +68,10 @@ public:
     /// Set the object's position on the Z axis
     virtual void setPositionZ(F32 positionZ) = 0;
     /// Add the specified translation factors to the current local position
-    virtual void translate(const vec3<F32>& axisFactors) = 0;
+    virtual void translate(const float3& axisFactors) = 0;
 
     /// Set the local X,Y and Z scale factors
-    virtual void setScale(const vec3<F32>& amount) = 0;
+    virtual void setScale(const float3& amount) = 0;
     /// Set the scaling factor on the X axis
     virtual void setScaleX(F32 amount) = 0;
     /// Set the scaling factor on the Y axis
@@ -79,7 +79,7 @@ public:
     /// Set the scaling factor on the Z axis
     virtual void setScaleZ(F32 amount) = 0;
     /// Add the specified scale factors to the current local position
-    virtual void scale(const vec3<F32>& axisFactors) = 0;
+    virtual void scale(const float3& axisFactors) = 0;
     /// Increase the scaling factor on the X axis by the specified factor
     virtual void scaleX(F32 amount) = 0;
     /// Increase the scaling factor on the Y axis by the specified factor
@@ -89,7 +89,7 @@ public:
 
     /// Set the local orientation using the Axis-Angle system.
     /// The angle can be in either degrees(default) or radians
-    virtual void setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) = 0;
+    virtual void setRotation(const float3& axis, Angle::DEGREES_F degrees) = 0;
     /// Set the local orientation using the Euler system.
     /// The angles can be in either degrees(default) or radians
     virtual void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) = 0;
@@ -106,7 +106,7 @@ public:
     virtual void setRotationZ(Angle::DEGREES_F angle) = 0;
     /// Apply the specified Axis-Angle rotation starting from the current orientation.
     /// The angles can be in either degrees(default) or radians
-    virtual void rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) = 0;
+    virtual void rotate(const float3& axis, Angle::DEGREES_F degrees) = 0;
     /// Apply the specified Euler rotation starting from the current orientation.
     /// The angles can be in either degrees(default) or radians
     virtual void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) = 0;
@@ -144,9 +144,9 @@ public:
     void rotate( const vec3<Angle::DEGREES_F>& euler);
     
     /// Return the scale factor
-    virtual void getScale(vec3<F32>& scaleOut) const = 0;
+    virtual void getScale(float3& scaleOut) const = 0;
     /// Return the position
-    virtual void getPosition(vec3<F32>& posOut) const = 0;
+    virtual void getPosition(float3& posOut) const = 0;
     /// Return the orientation quaternion
     virtual void getOrientation(Quaternion<F32>& quatOut) const = 0;
 };

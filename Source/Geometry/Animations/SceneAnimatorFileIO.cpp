@@ -84,7 +84,7 @@ void AnimEvaluator::load(AnimEvaluator& evaluator, ByteBuffer& dataIn) {
         uint32_t nsize = 0;
         dataIn >> nsize;
         evaluator._channels.resize(nsize);
-        evaluator._lastPositions.resize(nsize, vec3<U32>());
+        evaluator._lastPositions.resize(nsize, uint3());
         // for each channel
         for (AnimationChannel& channel : evaluator._channels) {
             //the channel name
@@ -133,7 +133,7 @@ void AnimEvaluator::load(AnimEvaluator& evaluator, ByteBuffer& dataIn) {
                 dataIn >> scale.mValue.z;
             }
         }
-        evaluator._lastPositions.resize(evaluator._channels.size(), vec3<U32>());
+        evaluator._lastPositions.resize(evaluator._channels.size(), uint3());
     } else {
         DIVIDE_UNEXPECTED_CALL();
     }

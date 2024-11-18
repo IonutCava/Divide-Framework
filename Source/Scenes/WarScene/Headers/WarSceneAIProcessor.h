@@ -99,7 +99,7 @@ class WorkingMemoryFact {
 
 using AINodeFact = WorkingMemoryFact<AIEntity*, FactType::AI_NODE>;
 using SGNNodeFact = WorkingMemoryFact<SceneGraphNode*, FactType::SGN_NODE>;
-using PositionFact = WorkingMemoryFact<vec3<F32>, FactType::POSITION>;
+using PositionFact = WorkingMemoryFact<float3, FactType::POSITION>;
 using SmallCounterFact = WorkingMemoryFact<U8, FactType::COUNTER_SMALL>;
 using MediumCounterFact = WorkingMemoryFact<U16, FactType::COUNTER_MEDIUM>;
 using LargeCounterFact = WorkingMemoryFact<U32, FactType::COUNTER_LARGE>;
@@ -264,7 +264,7 @@ class WarSceneAIProcessor final : public AIProcessor {
     static DELEGATE<void, U8, const string&> _scoreCallback;
     static DELEGATE<void, U8, const string&> _messageCallback;
     static GlobalWorkingMemory _globalWorkingMemory;
-    static vec3<F32> _initialFlagPositions[2];
+    static float3 _initialFlagPositions[2];
 
 #if defined(PRINT_AI_TO_FILE)
     mutable std::ofstream _WarAIOutputStream;

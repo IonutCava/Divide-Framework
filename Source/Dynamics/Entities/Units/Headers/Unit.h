@@ -76,20 +76,20 @@ class Unit : public GUIDWrapper {
 
     /// moveTo makes the unit follow a path from it's current position to the
     /// targets position
-    [[nodiscard]] virtual bool moveTo(const vec3<F32>& targetPosition, const U64 deltaTimeUS );
+    [[nodiscard]] virtual bool moveTo(const float3& targetPosition, const U64 deltaTimeUS );
     [[nodiscard]] virtual bool moveToX(F32 targetPosition, const U64 deltaTimeUS );
     [[nodiscard]] virtual bool moveToY(F32 targetPosition, const U64 deltaTimeUS );
     [[nodiscard]] virtual bool moveToZ(F32 targetPosition, const U64 deltaTimeUS );
     /// teleportTo instantly places the unit at the desired position
-    [[nodiscard]] virtual bool teleportTo(const vec3<F32>& targetPosition);
+    [[nodiscard]] virtual bool teleportTo(const float3& targetPosition);
 
     /// Accesors
     /// Get the unit's position in the world
-    [[nodiscard]] const vec3<F32>& getCurrentPosition() const {
+    [[nodiscard]] const float3& getCurrentPosition() const {
         return _currentPosition;
     }
     /// Get the unit's target coordinates in the world
-    [[nodiscard]] const vec3<F32>& getTargetPosition() const {
+    [[nodiscard]] const float3& getTargetPosition() const {
         return _currentTargetPosition;
     }
     /// Set the unit's movement speed in metres per second (minimum is 0 = the
@@ -132,9 +132,9 @@ class Unit : public GUIDWrapper {
     /// acceptable distance from target
     F32 _moveTolerance;
     /// Unit position in world
-    vec3<F32> _currentPosition;
+    float3 _currentPosition;
     /// Current destination point cached
-    vec3<F32> _currentTargetPosition;
+    float3 _currentTargetPosition;
     SceneGraphNode* _node;
     AttributeMap _attributes;
     mutable SharedMutex _unitUpdateMutex;

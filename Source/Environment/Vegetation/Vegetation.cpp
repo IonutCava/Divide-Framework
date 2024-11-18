@@ -148,73 +148,73 @@ namespace Divide
         {
             mat4<F32>
             {
-                vec3<F32>( -offsetBottom0, 0.f, -offsetBottom0 ),
+                float3( -offsetBottom0, 0.f, -offsetBottom0 ),
                 VECTOR3_UNIT,
                 GetMatrix( Quaternion<F32>( Angle::to_RADIANS(vec3<Angle::DEGREES_F>(25.f, 0.f, 0.f))))
             },
 
             mat4<F32>
             {
-                vec3<F32>( -offsetBottom1, 0.f, offsetBottom1 ),
-                vec3<F32>( 0.85f ),
+                float3( -offsetBottom1, 0.f, offsetBottom1 ),
+                float3( 0.85f ),
                 GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-12.5f,  0.f, 0.f))) * //Pitch
                            Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(   0.f, 35.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
-                vec3<F32>( offsetBottom0, 0.f, -offsetBottom1 ),
-                vec3<F32>( 1.1f ),
+                float3( offsetBottom0, 0.f, -offsetBottom1 ),
+                float3( 1.1f ),
                 GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(30.f,   0.f, 0.f))) * //Pitch
                            Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>( 0.f, -75.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
-                vec3<F32>( offsetBottom1 * 2, 0.f, offsetBottom1 ),
-                vec3<F32>( 0.9f ),
+                float3( offsetBottom1 * 2, 0.f, offsetBottom1 ),
+                float3( 0.9f ),
                 GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-25.f,    0.f, 0.f))) * //Pitch
                            Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, -125.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
-                vec3<F32>( -offsetBottom1 * 2, 0.f, -offsetBottom1 * 2 ),
-                vec3<F32>( 1.2f ),
+                float3( -offsetBottom1 * 2, 0.f, -offsetBottom1 * 2 ),
+                float3( 1.2f ),
                 GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(5.f,    0.f, 0.f))) * //Pitch
                            Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(0.f, -225.f, 0.f))))  //Yaw
             },
 
             mat4<F32>
             {
-                vec3<F32>( offsetBottom0, 0.f, offsetBottom1 * 2 ),
-                vec3<F32>( 0.75f ),
+                float3( offsetBottom0, 0.f, offsetBottom1 * 2 ),
+                float3( 0.75f ),
                 GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-15.f,   0.f, 0.f))) * //Pitch
                            Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, 305.f, 0.f))))  //Yaw
             }
         };
 
-        vector<vec3<F32>> vertices{};
+        vector<float3> vertices{};
         constexpr U8 billboardsPlaneCount = to_U8( sizeof( transform ) / sizeof( transform[0] ) );
         vertices.reserve( billboardsPlaneCount * 4 );
 
         for ( U8 i = 0u; i < billboardsPlaneCount; ++i )
         {
-            vertices.push_back( transform[i] * vec4<F32>( -1.f, 0.f, 0.f, 1.f ) ); //BL
-            vertices.push_back( transform[i] * vec4<F32>( -1.f, 1.f, 0.f, 1.f ) ); //TL
-            vertices.push_back( transform[i] * vec4<F32>( 1.f, 1.f, 0.f, 1.f ) ); //TR
-            vertices.push_back( transform[i] * vec4<F32>( 1.f, 0.f, 0.f, 1.f ) ); //BR
+            vertices.push_back( transform[i] * float4( -1.f, 0.f, 0.f, 1.f ) ); //BL
+            vertices.push_back( transform[i] * float4( -1.f, 1.f, 0.f, 1.f ) ); //TL
+            vertices.push_back( transform[i] * float4( 1.f, 1.f, 0.f, 1.f ) ); //TR
+            vertices.push_back( transform[i] * float4( 1.f, 0.f, 0.f, 1.f ) ); //BR
         }
 
         const U16 indices[] = { 0, 1, 2,
                                 0, 2, 3 };
 
-        const vec2<F32> texCoords[] =
+        const float2 texCoords[] =
         {
-            vec2<F32>( 0.f, 0.f ),
-            vec2<F32>( 0.f, 1.f ),
-            vec2<F32>( 1.f, 1.f ),
-            vec2<F32>( 1.f, 0.f )
+            float2( 0.f, 0.f ),
+            float2( 0.f, 1.f ),
+            float2( 1.f, 1.f ),
+            float2( 1.f, 0.f )
         };
 
         _buffer = context.gfx().newVB(VertexBuffer::Descriptor{ ._name = "Vegetation" });
@@ -254,7 +254,7 @@ namespace Divide
 
         const F32 posOffset = to_F32( _descriptor.chunkSize * 2 );
 
-        vec2<F32> intersections[2]{};
+        float2 intersections[2]{};
         Util::Circle circleA{}, circleB{};
         circleA.center[0] = circleB.center[0] = -posOffset;
         circleA.center[1] = -posOffset;
@@ -282,7 +282,7 @@ namespace Divide
                     if ( IntersectCircles( circleA, circleB, intersections ) )
                     {
                         // Add the resulting points if they are within the pattern bounds
-                        for ( const vec2<F32> record : intersections )
+                        for ( const float2 record : intersections )
                         {
                             if ( IS_IN_RANGE_EXCLUSIVE( record.x, -to_F32( _descriptor.chunkSize ), to_F32( _descriptor.chunkSize ) ) &&
                                  IS_IN_RANGE_EXCLUSIVE( record.y, -to_F32( _descriptor.chunkSize ), to_F32( _descriptor.chunkSize ) ) )
@@ -552,7 +552,7 @@ namespace Divide
             _treeParentNode = sgn->addChildNode( nodeDescriptor );
 
             TransformComponent* tComp = _treeParentNode->get<TransformComponent>();
-            const vec4<F32>& offset = instance->_chunk->getOffsetAndSize();
+            const float4& offset = instance->_chunk->getOffsetAndSize();
             tComp->setPositionX( offset.x + offset.z * 0.5f );
             tComp->setPositionZ( offset.y + offset.w * 0.5f );
             tComp->setScale( _descriptor.treeScales[meshID] );
@@ -570,7 +570,7 @@ namespace Divide
             BoundingSphere bs;
             bs.fromBoundingBox( aabb );
 
-            const vec3<F32>& extents = aabb.getExtent();
+            const float3& extents = aabb.getExtent();
             _treeExtents.set( extents, bs.getRadius() );
             _grassExtents.w = _grassExtents.xyz.length();
         }
@@ -654,7 +654,7 @@ namespace Divide
 
                 GFX::SendPushConstantsCommand cullConstantsCmd{};
                 UniformData* uniforms = cullConstantsCmd._uniformData;
-                uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, vec2<F32>( hizTexture->width(), hizTexture->height() ) );
+                uniforms->set( _ID( "dvd_viewSize" ), PushConstantType::VEC2, float2( hizTexture->width(), hizTexture->height() ) );
                 uniforms->set( _ID( "dvd_cameraPosition" ), PushConstantType::VEC3, cameraSnapshot._eye );
                 uniforms->set( _ID( "dvd_frustumPlanes" ), PushConstantType::VEC4, cameraSnapshot._frustumPlanes );
                 uniforms->set( _ID( "dvd_grassVisibilityDistance" ), PushConstantType::FLOAT, _grassDistance );
@@ -834,7 +834,7 @@ namespace Divide
             return bestIndex;
         }
 
-        FORCE_INLINE bool ScaleAndCheckBounds( const vec2<F32> chunkPos, const vec2<F32> chunkSize, vec2<F32>& point ) noexcept
+        FORCE_INLINE bool ScaleAndCheckBounds( const float2 chunkPos, const float2 chunkSize, float2& point ) noexcept
         {
             if ( point.x > -chunkSize.x && point.x < chunkSize.x &&
                  point.y > -chunkSize.y && point.y < chunkSize.y )
@@ -954,8 +954,8 @@ namespace Divide
 
             const U32 meshID = to_U32( ID % parent->_treeMeshNames.size() );
 
-            const vec2<F32> chunkSize = _chunk->getOffsetAndSize().zw;
-            const vec2<F32> chunkPos = _chunk->getOffsetAndSize().xy;
+            const float2 chunkSize = _chunk->getOffsetAndSize().zw;
+            const float2 chunkPos = _chunk->getOffsetAndSize().xy;
             //const F32 waterLevel = 0.0f;// ToDo: make this dynamic! (cull underwater points later on?)
             const auto& map = treeData ? descriptor.treeMap : descriptor.grassMap;
             const U16 mapWidth = map->dimensions( 0u, 0u ).width;
@@ -966,14 +966,14 @@ namespace Divide
 
             const Terrain& terrain = _chunk->parent();
 
-            for ( vec2<F32> pos : positions )
+            for ( float2 pos : positions )
             {
                 if ( !ScaleAndCheckBounds( chunkPos, chunkSize, pos ) )
                 {
                     continue;
                 }
 
-                const vec2<F32> mapCoord( pos.x + mapWidth * 0.5f, pos.y + mapHeight * 0.5f );
+                const float2 mapCoord( pos.x + mapWidth * 0.5f, pos.y + mapHeight * 0.5f );
 
                 const F32 x_fac = mapCoord.x / mapWidth;
                 const F32 y_fac = mapCoord.y / mapHeight;

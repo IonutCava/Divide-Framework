@@ -384,7 +384,7 @@ namespace
             {
                 dirty = true;
             }
-            vec2<F32>& focalPosition = params.focalPoint;
+            float2& focalPosition = params.focalPoint;
             if (ImGui::SliderFloat2("Focal Position", focalPosition._v, 0.0f, 1.0f))
             {
                 dirty = true;
@@ -609,7 +609,7 @@ namespace
         if (_previewTexture != INVALID_HANDLE<Texture>)
         {
             const string modalName = Util::StringFormat( "Image Preview: {}", Get( _previewTexture )->resourceName() );
-            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), modalName, _previewTexture, vec2<F32>(512, 512), true, false))
+            if (Attorney::EditorGeneralWidget::modalTextureView(_context.editor(), modalName, _previewTexture, float2(512, 512), true, false))
             {
                 _previewTexture = INVALID_HANDLE<Texture>;
             }

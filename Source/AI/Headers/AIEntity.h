@@ -68,10 +68,10 @@ class AIEntity final : public GUIDWrapper {
         COUNT
     };
 
-    AIEntity( NPC* parent, const vec3<F32>& currentPosition, std::string_view name);
+    AIEntity( NPC* parent, const float3& currentPosition, std::string_view name);
     ~AIEntity() override;
 
-    void load( const vec3<F32>& currentPosition );
+    void load( const float3& currentPosition );
     void unload();
 
     [[nodiscard]] bool addSensor(SensorType type);
@@ -109,16 +109,16 @@ class AIEntity final : public GUIDWrapper {
       * of calculating a completely new path, but this can only be used if the new
       * destination is close to the previous (eg. when chasing a moving entity).
      **/
-    [[nodiscard]] bool updateDestination(const vec3<F32>& destination, bool updatePreviousPath = false);
+    [[nodiscard]] bool updateDestination(const float3& destination, bool updatePreviousPath = false);
     /// The destination set for this agent.
-    [[nodiscard]] const vec3<F32>& getDestination() const noexcept;
+    [[nodiscard]] const float3& getDestination() const noexcept;
     /// Returns true when this agent has reached its set destination.
     [[nodiscard]] bool destinationReached() const;
     /// Place agent at new position.
-    [[nodiscard]] bool setPosition(const vec3<F32>& position);
+    [[nodiscard]] bool setPosition(const float3& position);
     /// The current position of the agent.
     /// Is only up to date once update() has been called in a frame.
-    [[nodiscard]] const vec3<F32>& getPosition() const noexcept;
+    [[nodiscard]] const float3& getPosition() const noexcept;
     /// The maximum speed this character can attain.
     /// This parameter is configured for the agent controlling this character.
     [[nodiscard]] F32 getMaxSpeed() const noexcept;
@@ -136,7 +136,7 @@ class AIEntity final : public GUIDWrapper {
      * You will notice small corrections to steering when walking into objects
      * or the border of the navmesh (which is usually a wall or object).
     **/
-    void setVelocity(const vec3<F32>& velocity);
+    void setVelocity(const float3& velocity);
     /// Manually control the character moving it forward.
     void moveForward();
     /// Manually control the character moving it backwards.
@@ -146,7 +146,7 @@ class AIEntity final : public GUIDWrapper {
     void stop();
     /// The current velocity (speed and direction) this character is traveling
     /// at.
-    [[nodiscard]] vec3<F32> getVelocity() const noexcept;
+    [[nodiscard]] float3 getVelocity() const noexcept;
     /// The current speed this character is traveling at.
     [[nodiscard]] F32 getSpeed() const noexcept { return getVelocity().length(); }
     /// Returns true if this character is moving.
@@ -165,7 +165,7 @@ class AIEntity final : public GUIDWrapper {
      * the agents directly and need to update the corresponding character class to reflect
      * the change in state (see OgreRecastApplication friendship).
     **/
-    void setDestination(const vec3<F32>& destination) noexcept;
+    void setDestination(const float3& destination) noexcept;
 
     void setTeamPtr(AITeam* teamPtr);
     [[nodiscard]] bool processInput(U64 deltaTimeUS);
@@ -198,9 +198,9 @@ class AIEntity final : public GUIDWrapper {
      * using Character::updateDestination() to set an individual destination for this character.
      * After updating the destination of all agents this variable should be set externally using  setDestination().
     **/
-    vec3<F32> _destination;
-    vec3<F32> _currentPosition;
-    vec3<F32> _currentVelocity;
+    float3 _destination;
+    float3 _currentPosition;
+    float3 _currentVelocity;
     F32 _distanceToTarget;
     F32 _previousDistanceToTarget;
     U64 _moveWaitTimer;

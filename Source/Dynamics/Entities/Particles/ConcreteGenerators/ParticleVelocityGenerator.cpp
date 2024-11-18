@@ -10,8 +10,8 @@ void ParticleVelocityGenerator::generate(Task& packagedTasksParent,
                                          ParticleData& p,
                                          U32 startIndex,
                                          U32 endIndex) {
-    vec3<F32> min = _sourceOrientation * _minStartVel;
-    vec3<F32> max = _sourceOrientation * _maxStartVel;
+    float3 min = _sourceOrientation * _minStartVel;
+    float3 max = _sourceOrientation * _maxStartVel;
     
     //ToDo: Use parallel-for for this
     using iter_t = decltype(std::begin(p._velocity));
@@ -24,7 +24,7 @@ void ParticleVelocityGenerator::generate(Task& packagedTasksParent,
             &packagedTasksParent,
             [from, to, min, max](const Task&) mutable
             {
-                std::for_each(from, to, [&](vec4<F32>& velocity)
+                std::for_each(from, to, [&](float4& velocity)
                 {
                     velocity.set(Random(min, max));
                 });

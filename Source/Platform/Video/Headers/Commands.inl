@@ -189,7 +189,7 @@ DEFINE_COMMAND_BEGIN(AddDebugMessageCommand, CommandType::ADD_DEBUG_MESSAGE);
 DEFINE_COMMAND_END(AddDebugMessageCommand);
 
 DEFINE_COMMAND_BEGIN(DispatchShaderTaskCommand, CommandType::DISPATCH_SHADER_TASK);
-    vec3<U32> _workGroupSize;
+    uint3 _workGroupSize;
 DEFINE_COMMAND_END(DispatchShaderTaskCommand);
 
 DEFINE_COMMAND_BEGIN(MemoryBarrierCommand, CommandType::MEMORY_BARRIER);

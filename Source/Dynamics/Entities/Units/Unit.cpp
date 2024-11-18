@@ -39,7 +39,7 @@ void Unit::setParentNode(SceneGraphNode* node) {
 
 /// Pathfinding, collision detection, animation playback should all be
 /// controlled from here
-bool Unit::moveTo(const vec3<F32>& targetPosition, const U64 deltaTimeUS)
+bool Unit::moveTo(const float3& targetPosition, const U64 deltaTimeUS)
 {
     // We should always have a node
     if (!_node) {
@@ -58,18 +58,18 @@ bool Unit::moveTo(const vec3<F32>& targetPosition, const U64 deltaTimeUS)
     // distance = timeDif * 0.001 * moveSpeed
     F32 moveDistance = std::min(to_F32(_moveSpeed * timeDif), 0.f);
 
-    bool returnValue = IS_TOLERANCE(moveDistance, Metric::Centi(1.0f));
+    bool returnValue = COMPARE_TOLERANCE(moveDistance, Metric::Centi(1.0f));
 
     if (!returnValue) {
         F32 xDelta = _currentTargetPosition.x - _currentPosition.x;
         F32 yDelta = _currentTargetPosition.y - _currentPosition.y;
         F32 zDelta = _currentTargetPosition.z - _currentPosition.z;
-        bool xTolerance = IS_TOLERANCE(xDelta, _moveTolerance);
-        bool yTolerance = IS_TOLERANCE(yDelta, _moveTolerance);
-        bool zTolerance = IS_TOLERANCE(zDelta, _moveTolerance);
+        bool xTolerance = COMPARE_TOLERANCE(xDelta, _moveTolerance);
+        bool yTolerance = COMPARE_TOLERANCE(yDelta, _moveTolerance);
+        bool zTolerance = COMPARE_TOLERANCE(zDelta, _moveTolerance);
 
         // Compute the destination point for current frame step
-        vec3<F32> interpPosition;
+        float3 interpPosition;
         if (!yTolerance && !IS_ZERO(yDelta)) {
             interpPosition.y =
                 _currentPosition.y > _currentTargetPosition.y ? -moveDistance
@@ -125,7 +125,7 @@ bool Unit::moveToX(const F32 targetPosition, const U64 deltaTimeUS )
         LockGuard<SharedMutex> w_lock(_unitUpdateMutex);
         _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     }
-    return moveTo(vec3<F32>(targetPosition,
+    return moveTo(float3(targetPosition,
                             _currentPosition.y,
                             _currentPosition.z),
                             deltaTimeUS);
@@ -142,7 +142,7 @@ bool Unit::moveToY(const F32 targetPosition, const U64 deltaTimeUS )
         LockGuard<SharedMutex> w_lock(_unitUpdateMutex);
         _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     }
-    return moveTo(vec3<F32>(_currentPosition.x,
+    return moveTo(float3(_currentPosition.x,
                             targetPosition,
                             _currentPosition.z),
                             deltaTimeUS);
@@ -159,7 +159,7 @@ bool Unit::moveToZ(const F32 targetPosition, const U64 deltaTimeUS )
         LockGuard<SharedMutex> w_lock(_unitUpdateMutex);
         _currentPosition = _node->get<TransformComponent>()->getWorldPosition();
     }
-    return moveTo(vec3<F32>(_currentPosition.x,
+    return moveTo(float3(_currentPosition.x,
                             _currentPosition.y,
                             targetPosition),
                             deltaTimeUS);
@@ -167,7 +167,7 @@ bool Unit::moveToZ(const F32 targetPosition, const U64 deltaTimeUS )
 
 /// Further improvements may imply a cooldown and collision detection at
 /// destination (thus the if-check at the end)
-bool Unit::teleportTo(const vec3<F32>& targetPosition) {
+bool Unit::teleportTo(const float3& targetPosition) {
     if (!_node) {
         return false;
     }

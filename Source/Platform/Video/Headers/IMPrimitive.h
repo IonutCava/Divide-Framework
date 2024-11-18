@@ -85,13 +85,13 @@ class IMPrimitive final {
     void vertex(F32 x, F32 y, F32 z);
     void attribute1i(U32 attribLocation, I32 value);
     void attribute1f(U32 attribLocation, F32 value);
-    void attribute2f(U32 attribLocation, vec2<F32> value);
-    void attribute3f(U32 attribLocation, vec3<F32> value);
+    void attribute2f(U32 attribLocation, float2 value);
+    void attribute3f(U32 attribLocation, float3 value);
     void attribute4ub(U32 attribLocation, U8 x, U8 y, U8 z,  U8 w);
     void attribute4f(U32 attribLocation, F32 x, F32 y, F32 z, F32 w);
-    inline void vertex(const vec3<F32>& vert) { vertex(vert.x, vert.y, vert.z); }
+    inline void vertex(const float3& vert) { vertex(vert.x, vert.y, vert.z); }
     inline void attribute4ub(const U32 attribLocation, const vec4<U8> value)  { attribute4ub(attribLocation, value.x, value.y, value.z, value.w); }
-    inline void attribute4f(const U32 attribLocation, const vec4<F32>& value) { attribute4f(attribLocation, value.x, value.y, value.z, value.w); }
+    inline void attribute4f(const U32 attribLocation, const float4& value) { attribute4f(attribLocation, value.x, value.y, value.z, value.w); }
 
     void fromLines(const IM::LineDescriptor& lines);
     void fromLines(const IM::LineDescriptor* lines, size_t count);

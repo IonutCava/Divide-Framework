@@ -778,14 +778,14 @@ namespace Divide
 #if defined(HAS_SSE42)
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator-( const F32 _f ) const noexcept
+    FORCE_INLINE float4 float4::operator-( const F32 _f ) const noexcept
     {
-        return vec4<F32>( _mm_sub_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
+        return float4( _mm_sub_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator-=( const F32 _f ) noexcept
+    FORCE_INLINE float4& float4::operator-=( const F32 _f ) noexcept
     {
         this->_reg._reg = _mm_sub_ps( this->_reg._reg, _mm_set1_ps( _f ) );
         return *this;
@@ -793,14 +793,14 @@ namespace Divide
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator+( const F32 _f ) const noexcept
+    FORCE_INLINE float4 float4::operator+( const F32 _f ) const noexcept
     {
-        return vec4<F32>( _mm_add_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
+        return float4( _mm_add_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator+=( const F32 _f ) noexcept
+    FORCE_INLINE float4& float4::operator+=( const F32 _f ) noexcept
     {
         this->_reg._reg = _mm_add_ps( this->_reg._reg, _mm_set1_ps( _f ) );
         return *this;
@@ -808,14 +808,14 @@ namespace Divide
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator*( const F32 _f ) const noexcept
+    FORCE_INLINE float4 float4::operator*( const F32 _f ) const noexcept
     {
-        return vec4<F32>( _mm_mul_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
+        return float4( _mm_mul_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator*=( const F32 _f ) noexcept
+    FORCE_INLINE float4& float4::operator*=( const F32 _f ) noexcept
     {
         this->_reg._reg = _mm_mul_ps( this->_reg._reg, _mm_set1_ps( _f ) );
         return *this;
@@ -823,14 +823,14 @@ namespace Divide
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator/( const F32 _f ) const noexcept
+    FORCE_INLINE float4 float4::operator/( const F32 _f ) const noexcept
     {
-        return vec4<F32>( _mm_div_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
+        return float4( _mm_div_ps( this->_reg._reg, _mm_set1_ps( _f ) ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator/=( const F32 _f ) noexcept
+    FORCE_INLINE float4& float4::operator/=( const F32 _f ) noexcept
     {
         this->_reg._reg = _mm_div_ps( this->_reg._reg, _mm_set1_ps( _f ) );
         return *this;
@@ -838,14 +838,14 @@ namespace Divide
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator+( const vec4<F32>& v ) const noexcept
+    FORCE_INLINE float4 float4::operator+( const float4& v ) const noexcept
     {
-        return vec4<F32>( _mm_add_ps( this->_reg._reg, v._reg._reg ) );
+        return float4( _mm_add_ps( this->_reg._reg, v._reg._reg ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator+=( const vec4<F32>& v ) noexcept
+    FORCE_INLINE float4& float4::operator+=( const float4& v ) noexcept
     {
         this->_reg._reg = _mm_add_ps( this->_reg._reg, v._reg._reg );
         return *this;
@@ -853,14 +853,14 @@ namespace Divide
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator-( const vec4<F32>& v ) const noexcept
+    FORCE_INLINE float4 float4::operator-( const float4& v ) const noexcept
     {
-        return vec4<F32>( _mm_sub_ps( this->_reg._reg, v._reg._reg ) );
+        return float4( _mm_sub_ps( this->_reg._reg, v._reg._reg ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator-=( const vec4<F32>& v ) noexcept
+    FORCE_INLINE float4& float4::operator-=( const float4& v ) noexcept
     {
         this->_reg._reg = _mm_sub_ps( this->_reg._reg, v._reg._reg );
         return *this;
@@ -868,14 +868,14 @@ namespace Divide
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator/( const vec4<F32>& v ) const noexcept
+    FORCE_INLINE float4 float4::operator/( const float4& v ) const noexcept
     {
-        return vec4<F32>( _mm_div_ps( this->_reg._reg, v._reg._reg ) );
+        return float4( _mm_div_ps( this->_reg._reg, v._reg._reg ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator/=( const vec4<F32>& v ) noexcept
+    FORCE_INLINE float4& float4::operator/=( const float4& v ) noexcept
     {
         this->_reg._reg = _mm_div_ps( this->_reg._reg, v._reg._reg );
         return *this;
@@ -883,14 +883,14 @@ namespace Divide
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32> vec4<F32>::operator*( const vec4<F32>& v ) const noexcept
+    FORCE_INLINE float4 float4::operator*( const float4& v ) const noexcept
     {
-        return vec4<F32>( _mm_mul_ps( this->_reg._reg, v._reg._reg ) );
+        return float4( _mm_mul_ps( this->_reg._reg, v._reg._reg ) );
     }
 
     template<>
     template<>
-    FORCE_INLINE vec4<F32>& vec4<F32>::operator*=( const vec4<F32>& v ) noexcept
+    FORCE_INLINE float4& float4::operator*=( const float4& v ) noexcept
     {
         this->_reg._reg = _mm_mul_ps( this->_reg._reg, v._reg._reg );
         return *this;
@@ -898,7 +898,7 @@ namespace Divide
 
     template <>
     template <>
-    FORCE_INLINE bool vec4<F32>::compare( const vec4<F32>& v ) const noexcept
+    FORCE_INLINE bool float4::compare( const float4& v ) const noexcept
     {
         // returns true if at least one element in a is not equal to the corresponding element in b
         return !SSE::Fneq128( this->_reg._reg, v._reg._reg);
@@ -906,7 +906,7 @@ namespace Divide
 
     template <>
     template <>
-    FORCE_INLINE bool vec4<F32>::compare( const vec4<F32>& v, const F32 epsi ) const noexcept
+    FORCE_INLINE bool float4::compare( const float4& v, const F32 epsi ) const noexcept
     {
         return !SSE::Fneq128( this->_reg._reg, v._reg._reg, epsi );
     }
@@ -953,7 +953,7 @@ namespace Divide
     }
 
     template <>
-    FORCE_INLINE void vec4<F32>::swap( vec4<F32>* iv ) noexcept
+    FORCE_INLINE void float4::swap( float4* iv ) noexcept
     {
         std::swap( this->_reg._reg, iv->_reg._reg );
     }
@@ -980,7 +980,7 @@ namespace Divide
     }
 
     template <>
-    FORCE_INLINE F32 Dot( const vec4<F32>& a, const vec4<F32>& b ) noexcept
+    FORCE_INLINE F32 Dot( const float4& a, const float4& b ) noexcept
     {
         return Dot( a._reg._reg, b._reg._reg );
     }
@@ -1003,7 +1003,7 @@ namespace Divide
     }
 
     template<>
-    FORCE_INLINE F32 vec4<F32>::length() const noexcept
+    FORCE_INLINE F32 float4::length() const noexcept
     {
         return Length( this->_reg._reg );
     }
@@ -1065,7 +1065,7 @@ namespace Divide
     }
 
     template <>
-    FORCE_INLINE vec4<F32>& vec4<F32>::normalize() noexcept
+    FORCE_INLINE float4& float4::normalize() noexcept
     {
         this->_reg._reg = normalizeSIMD( this->_reg._reg );
         return *this;

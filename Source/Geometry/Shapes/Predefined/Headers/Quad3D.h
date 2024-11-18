@@ -52,15 +52,15 @@ DEFINE_3D_OBJECT_TYPE(Quad3D, SceneNodeType::TYPE_QUAD_3D)
 
     bool load( PlatformContext& context ) override;
 
-    vec3<F32> getCorner(CornerLocation corner);
+    float3 getCorner(CornerLocation corner);
 
-    void setNormal(CornerLocation corner, const vec3<F32>& normal);
+    void setNormal(CornerLocation corner, const float3& normal);
 
-    void setCorner(CornerLocation corner, const vec3<F32>& value);
+    void setCorner(CornerLocation corner, const float3& value);
 
     // rect.xy = Top Left; rect.zw = Bottom right
     // Remember to invert for 2D mode
-    void setDimensions(const vec4<F32>& rect);
+    void setDimensions(const float4& rect);
 
    protected:
      void recomputeBounds();

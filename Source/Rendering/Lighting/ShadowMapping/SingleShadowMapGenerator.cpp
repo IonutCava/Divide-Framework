@@ -76,7 +76,7 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
     _shaderConstants.data[0]._vec[1].z = 0.f;
     _shaderConstants.data[0]._vec[1].w = 0.f;
 
-    std::array<vec2<F32>*, 12> blurSizeConstants = {
+    std::array<float2*, 12> blurSizeConstants = {
             &_shaderConstants.data[0]._vec[2].xy,
             &_shaderConstants.data[0]._vec[2].zw,
             &_shaderConstants.data[0]._vec[3].xy,
@@ -176,12 +176,12 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    const vec3<F32> lightPos = light.positionCache();
+    const float3 lightPos = light.positionCache();
     const F32 farPlane = light.range() * 1.2f;
 
     auto& shadowCameras = ShadowMap::shadowCameras(ShadowType::SINGLE);
     const mat4<F32> viewMatrix = shadowCameras[0]->lookAt(lightPos, lightPos + light.directionCache() * farPlane);
-    const mat4<F32> projectionMatrix = shadowCameras[0]->setProjection(1.0f, 90.0f, vec2<F32>(0.01f, farPlane));
+    const mat4<F32> projectionMatrix = shadowCameras[0]->setProjection(1.0f, 90.0f, float2(0.01f, farPlane));
     shadowCameras[0]->updateLookAt();
 
     mat4<F32> lightVP = light.getShadowVPMatrix(0);

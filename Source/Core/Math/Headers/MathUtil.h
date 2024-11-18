@@ -64,7 +64,7 @@ struct GraphPlot2D final : GraphPlot {
     {
     }
 
-    vector<vec2<F32>> _coords;
+    vector<float2> _coords;
      
     [[nodiscard]] bool empty() const noexcept override {
         return _coords.empty();
@@ -80,7 +80,7 @@ struct GraphPlot3D final : GraphPlot {
     {
     }
 
-    vector<vec3<F32>> _coords;
+    vector<float3> _coords;
 
     [[nodiscard]] bool empty() const noexcept override {
         return _coords.empty();

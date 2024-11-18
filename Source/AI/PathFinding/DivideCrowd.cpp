@@ -102,7 +102,7 @@ void DivideDtCrowd::update(const U64 deltaTimeUS) {
     // 1000.0f);
 }
 
-I32 DivideDtCrowd::addAgent(const vec3<F32>& position, const F32 maxSpeed, const F32 acceleration) {
+I32 DivideDtCrowd::addAgent(const float3& position, const F32 maxSpeed, const F32 acceleration) {
     // Define parameters for agent in crowd
     dtCrowdAgentParams ap;
     memset(&ap, 0, sizeof ap);
@@ -169,10 +169,10 @@ void DivideDtCrowd::removeAgent(const I32 idx) {
     _activeAgents--;
 }
 
-vec3<F32> DivideDtCrowd::calcVel(const vec3<F32>& position,
-                                 const vec3<F32>& target,
+float3 DivideDtCrowd::calcVel(const float3& position,
+                                 const float3& target,
                                  const D64 speed) {
-    vec3<F32> res;
+    float3 res;
     calcVel(res._v, &position.x, &target.x, to_F32(speed));
     return res;
 }
@@ -184,7 +184,7 @@ void DivideDtCrowd::calcVel(F32* velocity, const F32* position, const F32* targe
     dtVscale(velocity, velocity, speed);
 }
 
-void DivideDtCrowd::setMoveTarget(const vec3<F32>& position, const bool adjust) {
+void DivideDtCrowd::setMoveTarget(const float3& position, const bool adjust) {
     // Find nearest point on navmesh and set move request to that location.
     const dtNavMeshQuery& navquery = _recast->getNavQuery();
 
@@ -212,7 +212,7 @@ void DivideDtCrowd::setMoveTarget(const vec3<F32>& position, const bool adjust) 
     }
 }
 
-void DivideDtCrowd::setMoveTarget(const I32 agentID, const vec3<F32>& position, const bool adjust) {
+void DivideDtCrowd::setMoveTarget(const I32 agentID, const float3& position, const bool adjust) {
     // TODO extract common method
     // Find nearest point on navmesh and set move request to that location.
     const dtNavMeshQuery& navquery = _recast->getNavQuery();
@@ -232,7 +232,7 @@ void DivideDtCrowd::setMoveTarget(const I32 agentID, const vec3<F32>& position, 
     }
 }
 
-bool DivideDtCrowd::requestVelocity(const I32 agentID, const vec3<F32>& velocity) const {
+bool DivideDtCrowd::requestVelocity(const I32 agentID, const float3& velocity) const {
     if (!getAgent(agentID)->active) {
         return false;
     }

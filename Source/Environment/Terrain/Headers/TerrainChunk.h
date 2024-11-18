@@ -61,11 +61,11 @@ class TerrainChunk {
    public:
     TerrainChunk(Terrain* parentTerrain, QuadtreeNode& parentNode) noexcept;
 
-    void load(U8 depth, const vec2<U32> pos, U32 targetChunkDimension, vec2<U32> HMSize, BoundingBox& bbInOut);
+    void load(U8 depth, const uint2 pos, U32 targetChunkDimension, uint2 HMSize, BoundingBox& bbInOut);
     
 
-    [[nodiscard]] vec4<F32> getOffsetAndSize() const noexcept {
-        return vec4<F32>(_xOffset, _yOffset, _sizeX, _sizeY);
+    [[nodiscard]] float4 getOffsetAndSize() const noexcept {
+        return float4(_xOffset, _yOffset, _sizeX, _sizeY);
     }
 
     [[nodiscard]] const Terrain& parent() const noexcept { return *_parentTerrain; }

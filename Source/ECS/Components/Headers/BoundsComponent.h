@@ -79,7 +79,7 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         std::atomic_uint _transformUpdatedMask;
         BoundingBox _boundingBox{};
         BoundingBox _refBoundingBox{};
-        vec3<F32> _worldOffset{};
+        float3 _worldOffset{};
         BoundingSphere _boundingSphere{};
         OBB _obb{};
         std::atomic_bool _obbDirty = false;

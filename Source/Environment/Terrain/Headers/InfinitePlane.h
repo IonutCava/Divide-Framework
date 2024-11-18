@@ -62,7 +62,7 @@ protected:
 
 
 private:
-    vec2<U32> _dimensions;
+    uint2 _dimensions;
     Handle<Quad3D> _plane = INVALID_HANDLE<Quad3D>;
     size_t _planeRenderStateHash = 0u;
     size_t _planeRenderStateHashPrePass = 0u;

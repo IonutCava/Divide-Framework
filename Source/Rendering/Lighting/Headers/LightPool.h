@@ -64,33 +64,33 @@ class LightPool final : public FrameListener,
           FColour4 _diffuse = { DefaultColours::WHITE.rgb, 0.0f };
           /// light position ((0,0,0) for directional lights)
           /// w = range
-          vec4<F32> _position = { 0.0f, 0.0f, 0.0f, 0.0f };
+          float4 _position = { 0.0f, 0.0f, 0.0f, 0.0f };
           /// xyz = light direction (spot and directional lights only. (0,0,0) for point)
           /// w = spot angle
-          vec4<F32> _direction = { 0.0f, 0.0f, 0.0f, 45.0f };
+          float4 _direction = { 0.0f, 0.0f, 0.0f, 45.0f };
           /// x = light type: 0 - directional, 1 - point, 2 - spot, 3 - none
           /// y = shadow index (-1 = no shadows)
           /// z = reserved
           /// w = reserved
-          vec4<I32> _options = { 3, -1, 0, 0 };
+          int4 _options = { 3, -1, 0, 0 };
       };
 
 #pragma pack(push, 1)
       struct PointShadowProperties
       {
-          vec4<F32> _details;
-          vec4<F32> _position;
+          float4 _details;
+          float4 _position;
       };
       struct SpotShadowProperties
       {
-          vec4<F32> _details;
-          vec4<F32> _position;
+          float4 _details;
+          float4 _position;
           mat4<F32> _vpMatrix;
       };
       struct CSMShadowProperties
       {
-          vec4<F32> _details;
-          std::array<vec4<F32>, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> _position{};
+          float4 _details;
+          std::array<float4, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> _position{};
           std::array<mat4<F32>, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT> _vpMatrix{};
       };
       struct ShadowProperties {
@@ -183,7 +183,7 @@ class LightPool final : public FrameListener,
                               });
     }
 
-    [[nodiscard]] bool isShadowCacheInvalidated(const vec3<F32>& cameraPosition, Light* light);
+    [[nodiscard]] bool isShadowCacheInvalidated(const float3& cameraPosition, Light* light);
 
 
     [[nodiscard]] static bool IsLightInViewFrustum(const Frustum& frustum, const Light* light) noexcept;
@@ -206,10 +206,10 @@ class LightPool final : public FrameListener,
   private:
      struct SceneData {
          // x = directional light count, y = point light count, z = spot light count, w = reserved
-         vec4<U32> _globalData = { 0, 0, 0, 0 };
+         uint4 _globalData = { 0, 0, 0, 0 };
          // a = reserved
-         vec4<F32> _ambientColour = DefaultColours::BLACK;
-         mat4<F32> _padding0[3]; vec4<F32> _padding1[2];
+         float4 _ambientColour = DefaultColours::BLACK;
+         mat4<F32> _padding0[3]; float4 _padding1[2];
      };
 
     using LightData = std::array<LightProperties, Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME>;

@@ -36,8 +36,8 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     EditorComponentField directionField = {};
     directionField._name = "Direction";
-    directionField._dataGetter = [this](void* dataOut) noexcept { static_cast<vec3<F32>*>(dataOut)->set(directionCache()); };
-    directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const vec3<F32>*>(data)); };
+    directionField._dataGetter = [this](void* dataOut) noexcept { static_cast<float3*>(dataOut)->set(directionCache()); };
+    directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const float3*>(data)); };
     directionField._type = EditorComponentFieldType::PUSH_TYPE;
     directionField._readOnly = true;
     directionField._basicType = PushConstantType::VEC3;
@@ -81,7 +81,7 @@ F32 SpotLightComponent::innerConeRadius() const noexcept
 
 F32 SpotLightComponent::coneSlantHeight() const noexcept
 {
-    return Sqrt(SQUARED(outerConeRadius()) + SQUARED(range()));
+    return Sqrt<F32>(SQUARED(outerConeRadius()) + SQUARED(range()));
 }
 
 void SpotLightComponent::OnData(const ECS::CustomEvent& data)
@@ -102,7 +102,7 @@ void SpotLightComponent::OnData(const ECS::CustomEvent& data)
     }
 }
 
-void SpotLightComponent::setDirection(const vec3<F32>& direction) const
+void SpotLightComponent::setDirection(const float3& direction) const
 {
     TransformComponent* tComp = _parentSGN->get<TransformComponent>();
     if (tComp != nullptr)

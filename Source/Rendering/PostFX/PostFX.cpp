@@ -57,7 +57,7 @@ namespace Divide
         _uniformData.set( _ID( "_noiseTile" ), PushConstantType::FLOAT, 0.1f );
         _uniformData.set( _ID( "_noiseFactor" ), PushConstantType::FLOAT, 0.02f );
         _uniformData.set( _ID( "_fadeActive" ), PushConstantType::BOOL, false );
-        _uniformData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, vec2<F32>( 0.01f, 500.0f ) );
+        _uniformData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, float2( 0.01f, 500.0f ) );
 
         TextureDescriptor texDescriptor{};
         texDescriptor._textureOptions._isNormalMap = true;

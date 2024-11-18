@@ -47,10 +47,10 @@ class NOINITVTABLE ParticleGenerator {
                           ParticleData& p,
                           U32 startIndex,
                           U32 endIndex) = 0;
-        void updateTransform(const vec3<F32>& position, const Quaternion<F32>& orientation) noexcept;
+        void updateTransform(const float3& position, const Quaternion<F32>& orientation) noexcept;
 
     protected:
-     vec3<F32> _sourcePosition;
+     float3 _sourcePosition;
      Quaternion<F32> _sourceOrientation;
 };
 }

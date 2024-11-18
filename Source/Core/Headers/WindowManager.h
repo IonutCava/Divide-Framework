@@ -79,9 +79,9 @@ public:
     void snapCursorToCenter();
 
     static bool SetGlobalCursorPosition(I32 x, I32 y) noexcept;
-    static vec2<I32> GetCursorPosition() noexcept;
-    static vec2<I32> GetGlobalCursorPosition() noexcept;
-    static U32 GetMouseState(vec2<I32>& pos, bool global) noexcept;
+    static int2 GetCursorPosition() noexcept;
+    static int2 GetGlobalCursorPosition() noexcept;
+    static U32 GetMouseState(int2& pos, bool global) noexcept;
     static void SetCaptureMouse(bool state) noexcept;
 
     //Returns null if no window is currently focused

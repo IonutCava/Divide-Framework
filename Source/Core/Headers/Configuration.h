@@ -149,7 +149,7 @@ struct Configuration final : XML::IXMLSerializable {
         bool enableFog = true;
         F32 fogDensity = 0.01f;
         F32 fogScatter = 0.01f;
-        vec3<F32> fogColour = { 0.2f, 0.2f, 0.2f };
+        float3 fogColour = { 0.2f, 0.2f, 0.2f };
         vec4<U16> lodThresholds = { 25u, 45u, 85u, 165u };
         struct PostFX
         {
@@ -170,7 +170,7 @@ struct Configuration final : XML::IXMLSerializable {
             struct DOF
             {
                 bool enabled = false;
-                vec2<F32> focalPoint = { 0.5f };
+                float2 focalPoint = { 0.5f };
                 F32 focalDepth = 10.0f;
                 F32 focalLength = 12.0f;
                 string fStop = "f/1.4";

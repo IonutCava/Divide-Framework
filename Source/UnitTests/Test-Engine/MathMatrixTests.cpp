@@ -75,7 +75,7 @@ TEST_CASE( "Mat Size Tests", "[math_matrix_test]" )
     CHECK_EQUAL(sizeof(c5), (32 * 4 * 4) / 8);
 
     CHECK_EQUAL(sizeof(c7), sizeof(vec4<I64>) * 4);
-    CHECK_EQUAL(sizeof(c9), sizeof(vec4<F32>) * 4);
+    CHECK_EQUAL(sizeof(c9), sizeof(float4) * 4);
     CHECK_EQUAL(sizeof(c3), sizeof(a3) * 4);
 
     CHECK_EQUAL(sizeof(c1),  sizeof(I8)  * 4 * 4);
@@ -154,17 +154,17 @@ TEST_CASE( "Mat getCol Tests", "[math_matrix_test]" )
                             9.0f, 10.0f, 11.0f, 12.0f,
                             13.0f, 14.0f, 15.0f, 16.0f});
 
-    const vec2<I32> result1A(4, 10);
-    const vec2<I32> result1B(4, 8);
+    const int2 result1A(4, 10);
+    const int2 result1B(4, 8);
 
-    const vec3<I32> result2A(1, 4, 7);
-    const vec3<I32> result2B(2, 5, 8);
-    const vec3<I32> result2C(3, 6, 9);
+    const int3 result2A(1, 4, 7);
+    const int3 result2B(2, 5, 8);
+    const int3 result2C(3, 6, 9);
     
-    const vec4<F32> result3A(1.0f, 5.0f, 9.0f, 13.0f);
-    const vec4<F32> result3B(2.0f, 6.0f, 10.0f, 14.0f);
-    const vec4<F32> result3C(3.0f, 7.0f, 11.0f, 15.0f);
-    const vec4<F32> result3D(4.0f, 8.0f, 12.0f, 16.0f);
+    const float4 result3A(1.0f, 5.0f, 9.0f, 13.0f);
+    const float4 result3B(2.0f, 6.0f, 10.0f, 14.0f);
+    const float4 result3C(3.0f, 7.0f, 11.0f, 15.0f);
+    const float4 result3D(4.0f, 8.0f, 12.0f, 16.0f);
 
     CHECK_EQUAL(input1.getCol(0), result1A);
     CHECK_EQUAL(input1.getCol(1), result1B);
@@ -193,17 +193,17 @@ TEST_CASE( "Mat getRow Tests", "[math_matrix_test]" )
                             13.0f, 14.0f, 15.0f, 16.0f});
 
 
-    const vec2<I32> result1A(4, 4);
-    const vec2<I32> result1B(10, 8);
+    const int2 result1A(4, 4);
+    const int2 result1B(10, 8);
 
-    const vec3<I32> result2A(1, 2, 3);
-    const vec3<I32> result2B(4, 5, 6);
-    const vec3<I32> result2C(7, 8, 9);
+    const int3 result2A(1, 2, 3);
+    const int3 result2B(4, 5, 6);
+    const int3 result2C(7, 8, 9);
 
-    const vec4<F32> result3A(1.0f, 2.0f, 3.0f,  4.0f);
-    const vec4<F32> result3B(5.0f, 6.0f, 7.0f, 8.0f);
-    const vec4<F32> result3C(9.0f, 10.0f, 11.0f, 12.0f);
-    const vec4<F32> result3D(13.0f, 14.0f, 15.0f, 16.0f);
+    const float4 result3A(1.0f, 2.0f, 3.0f,  4.0f);
+    const float4 result3B(5.0f, 6.0f, 7.0f, 8.0f);
+    const float4 result3C(9.0f, 10.0f, 11.0f, 12.0f);
+    const float4 result3D(13.0f, 14.0f, 15.0f, 16.0f);
 
     CHECK_EQUAL(input1.getRow(0), result1A);
     CHECK_EQUAL(input1.getRow(1), result1B);
@@ -452,11 +452,11 @@ TEST_CASE( "Mat-Scalar Division Tests", "[math_matrix_test]" )
 
 TEST_CASE( "Mat-Plane Reflect Tests", "[math_matrix_test]" )
 {
-    const vec3<F32> input(2, 2, 2);
-    const vec3<F32> result(2, -2, 2);
+    const float3 input(2, 2, 2);
+    const float3 result(2, -2, 2);
 
-    const Plane<F32> reflectPlane1(vec3<F32>(0.0f, 1.0f, 0.0f), 0.0f);
-    const Plane<F32> reflectPlane2(vec3<F32>(0.0f, -1.0f, 0.0f), 0.0f);
+    const Plane<F32> reflectPlane1(float3(0.0f, 1.0f, 0.0f), 0.0f);
+    const Plane<F32> reflectPlane2(float3(0.0f, -1.0f, 0.0f), 0.0f);
 
     mat4<F32> reflectMat;
     reflectMat.reflect(reflectPlane1);

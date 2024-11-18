@@ -60,7 +60,7 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
     bool onConfirm(const CEGUI::EventArgs& /*e*/) noexcept;
     void setTitle(const string& titleText);
     void setMessage(const string& message);
-    void setOffset(vec2<I32> offsetFromCentre);
+    void setOffset(int2 offsetFromCentre);
     void setMessageType(MessageType type);
 
     void show() noexcept {
@@ -71,7 +71,7 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
     GUIMessageBox(const string& name,
                   const string& title,
                   const string& message,
-                  vec2<I32> offsetFromCentre = vec2<I32>(0),
+                  int2 offsetFromCentre = int2(0),
                   CEGUI::Window* parent = nullptr);
 
    protected:
@@ -79,7 +79,7 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
     void active(bool active) noexcept override;
 
    protected:
-    vec2<I32> _offsetFromCentre;
+    int2 _offsetFromCentre;
     CEGUI::Window* _msgBoxWindow;
     CEGUI::Event::Connection _confirmEvent;
 };

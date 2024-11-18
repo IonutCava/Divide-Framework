@@ -138,7 +138,7 @@ void IMPrimitive::attribute1f(const U32 attribLocation, const F32 value)
     desc._dataType = GFXDataFormat::FLOAT_32;
 }
 
-void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value)
+void IMPrimitive::attribute2f(const U32 attribLocation, const float2 value)
 {
     _imInterface->Attribute2f(attribLocation, value.x, value.y);
     AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
@@ -148,7 +148,7 @@ void IMPrimitive::attribute2f(const U32 attribLocation, const vec2<F32> value)
     desc._dataType = GFXDataFormat::FLOAT_32;
 }
 
-void IMPrimitive::attribute3f(const U32 attribLocation, const vec3<F32> value)
+void IMPrimitive::attribute3f(const U32 attribLocation, const float3 value)
 {
     _imInterface->Attribute3f(attribLocation, value.x, value.y, value.z);
     Divide::AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[attribLocation];
@@ -344,7 +344,7 @@ void IMPrimitive::fromFrustums(const IM::FrustumDescriptor* frustums, size_t cou
 {
     Line temp = {};
     std::array<Line, to_base(FrustumPlane::COUNT) * 2> lines = {};
-    std::array<vec3<F32>, to_base(FrustumPoints::COUNT)> corners = {};
+    std::array<float3, to_base(FrustumPoints::COUNT)> corners = {};
 
     // Create the object containing all of the lines
     beginBatch(true, to_U32(lines.size() * count) * 2u, 2);
@@ -482,13 +482,13 @@ void IMPrimitive::fromBoxes(const IM::BoxDescriptor* boxes, const size_t count)
 
     // Create the object
     beginBatch(true, to_U32(count * 16u), 1);
-        attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
+        attribute2f( to_base( AttribLocation::GENERIC ), float2( 1.f, 1.f ) );
         for (size_t i = 0u; i < count; ++i)
         {
             const IM::BoxDescriptor& box = boxes[i];
             const UColour4& colour = box.colour;
-            const vec3<F32>& min = box.min;
-            const vec3<F32>& max = box.max;
+            const float3& min = box.min;
+            const float3& max = box.max;
 
             // Set it's colour
             attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(colour));
@@ -537,7 +537,7 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
     }
 
     beginBatch(true, 32u * ((32u + 1) * 2), 1);
-    attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
+    attribute2f( to_base( AttribLocation::GENERIC ), float2( 1.f, 1.f ) );
 
     for (size_t c = 0u; c < count; ++c)
     {
@@ -548,7 +548,7 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
         // Create the object
         attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(sphere.colour));
         begin(PrimitiveTopology::LINE_STRIP);
-            vec3<F32> startVert{};
+            float3 startVert{};
             for (U32 i = 0u; i < sphere.stacks; i++)
             {
                 const F32 rho = i * drho;
@@ -565,7 +565,7 @@ void IMPrimitive::fromSpheres(const IM::SphereDescriptor* spheres, const size_t 
                     F32 x = stheta * srho;
                     F32 y = ctheta * srho;
                     F32 z = crho;
-                    const vec3<F32> vert1
+                    const float3 vert1
                     {
                         x * sphere.radius + sphere.center.x,
                         y * sphere.radius + sphere.center.y,
@@ -606,7 +606,7 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
     }
 
     beginBatch(true, to_U32(count * (32u + 1)), 1u);
-    attribute2f( to_base( AttribLocation::GENERIC ), vec2<F32>( 1.f, 1.f ) );
+    attribute2f( to_base( AttribLocation::GENERIC ), float2( 1.f, 1.f ) );
 
     for (size_t i = 0u; i < count; ++i)
     {
@@ -614,13 +614,13 @@ void IMPrimitive::fromCones(const IM::ConeDescriptor* cones, const size_t count)
 
         const U8 slices = std::min(cone.slices, to_U8(32u));
         const F32 angInc = 360.0f / slices * M_PI_DIV_180_f;
-        const vec3<F32> invDirection = -cone.direction;
-        const vec3<F32> c = cone.root + -invDirection * cone.length;
-        const vec3<F32> e0 = Perpendicular(invDirection);
-        const vec3<F32> e1 = Cross(e0, invDirection);
+        const float3 invDirection = -cone.direction;
+        const float3 c = cone.root + -invDirection * cone.length;
+        const float3 e0 = Perpendicular(invDirection);
+        const float3 e1 = Cross(e0, invDirection);
 
         // calculate points around directrix
-        std::array<vec3<F32>, 32u> pts = {};
+        std::array<float3, 32u> pts = {};
         for (size_t j = 0u; j < slices; ++j)
         {
             const F32 rad = angInc * j;
@@ -674,7 +674,7 @@ void IMPrimitive::fromLinesInternal(const Line* lines, size_t count)
     }
 
     attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(lines[0]._colourStart));
-    attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(1.f, 1.f));
+    attribute2f(to_base(AttribLocation::GENERIC), float2(1.f, 1.f));
     // Set the mode to line rendering
     begin(PrimitiveTopology::LINES);
     // Add every line in the list to the batch
@@ -682,11 +682,11 @@ void IMPrimitive::fromLinesInternal(const Line* lines, size_t count)
     {
         const Line& line = lines[i];
         attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line._colourStart));
-        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line._widthStart, line._widthEnd));
+        attribute2f(to_base(AttribLocation::GENERIC), float2(line._widthStart, line._widthEnd));
         vertex(line._positionStart);
 
         attribute4f(to_base(AttribLocation::COLOR), Util::ToFloatColour(line._colourEnd));
-        attribute2f(to_base(AttribLocation::GENERIC), vec2<F32>(line._widthStart, line._widthEnd));
+        attribute2f(to_base(AttribLocation::GENERIC), float2(line._widthStart, line._widthEnd));
         vertex(line._positionEnd);
 
     }

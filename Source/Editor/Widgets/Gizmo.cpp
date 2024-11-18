@@ -150,7 +150,7 @@ namespace Divide
         Attorney::EditorGizmo::renderDrawList( _parent, ImGui::GetDrawData(), 1, targetViewport, bufferInOut, memCmdInOut);
     }
 
-    void Gizmo::applyTransforms( const SelectedNode& node, const vec3<F32>& position, const vec3<Angle::DEGREES_F>& euler, const vec3<F32>& scale )
+    void Gizmo::applyTransforms( const SelectedNode& node, const float3& position, const vec3<Angle::DEGREES_F>& euler, const float3& scale )
     {
         bool updateGridMatrix = false;
 
@@ -160,7 +160,7 @@ namespace Divide
             case ImGuizmo::TRANSLATE_X: node.tComp->translateX( position.x ); updateGridMatrix = true; break;
             case ImGuizmo::TRANSLATE_Y: node.tComp->translateY( position.y ); updateGridMatrix = true; break;
             case ImGuizmo::TRANSLATE_Z: node.tComp->translateZ( position.z ); updateGridMatrix = true; break;
-            case ImGuizmo::SCALE:   node.tComp->scale( Max( scale, vec3<F32>( EPSILON_F32 ) ) ); break;
+            case ImGuizmo::SCALE:   node.tComp->scale( Max( scale, float3( EPSILON_F32 ) ) ); break;
             case ImGuizmo::SCALE_XU:
             case ImGuizmo::SCALE_X: node.tComp->scaleX( std::max( scale.x, EPSILON_F32 ) ); break;
             case ImGuizmo::SCALE_YU:
@@ -196,10 +196,10 @@ namespace Divide
             g_undoEntry._oldVal = { g_transformCache, g_selectedNodesCache };
         }
 
-        static vec3<F32> position, euler, scale;
+        static float3 position, euler, scale;
         ImGuizmo::DecomposeMatrixToComponents( _deltaMatrix, position._v, euler._v, scale._v );
 
-        position = (_localToWorldMatrix * vec4<F32>( position, 1.f )).xyz;
+        position = (_localToWorldMatrix * float4( position, 1.f )).xyz;
 
         applyTransforms( node, position, euler, scale );
 
@@ -237,9 +237,9 @@ namespace Divide
             g_undoEntry._oldVal = { g_transformCache, g_selectedNodesCache };
         }
 
-        static vec3<F32> position, euler, scale;
+        static float3 position, euler, scale;
         ImGuizmo::DecomposeMatrixToComponents( _deltaMatrix, position._v, euler._v, scale._v );
-        position = (_localToWorldMatrix * vec4<F32>( position, 1.f )).xyz;
+        position = (_localToWorldMatrix * float4( position, 1.f )).xyz;
 
         U32 selectionCounter = 0u;
         for ( const SelectedNode& node : _selectedNodes )
@@ -317,7 +317,7 @@ namespace Divide
             const BoundsComponent* bComp = tComp->parentSGN()->get<BoundsComponent>();
             if ( bComp != nullptr )
             {
-                const vec3<F32>& boundsCenter = bComp->getBoundingSphere().getCenter();
+                const float3& boundsCenter = bComp->getBoundingSphere().getCenter();
                 _workMatrix.setTranslation(boundsCenter);
             }
         }

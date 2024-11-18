@@ -271,7 +271,7 @@ static string ToString(const SetClipPlanesCommand& cmd, const U16 indent) {
                 ret.append("    ");
             }
 
-            const vec4<F32>& eq = planes[i]._equation;
+            const float4& eq = planes[i]._equation;
 
             ret.append(Util::StringFormat("Plane [{}] [ {:5.2f} {:5.2f} {:5.2f} - {:5.2f} ]\n", i, eq.x, eq.y, eq.z, eq.w));
         }

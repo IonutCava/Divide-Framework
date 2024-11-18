@@ -9,11 +9,12 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/transform.hpp>
 
-namespace Divide::Util {
+namespace Divide::Util
+{
 
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut,
-                     vec3<F32>& scaleOut,
+                     float3& translationOut,
+                     float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut,
                      bool& isUniformScaleOut)
 {
@@ -23,7 +24,9 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
     // Normalize the matrix.
     if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+    {
         return false;
+    }
 
     // First, isolate perspective.  This is the messiest.
     if (glm::epsilonNotEqual(LocalMatrix[0][3], static_cast<T>(0), glm::epsilon<T>()) ||
@@ -43,8 +46,12 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
     // Now get scale and shear.
     for (glm::length_t i = 0; i < 3; ++i)
+    {
         for (glm::length_t j = 0; j < 3; ++j)
+        {
             Row[i][j] = LocalMatrix[i][j];
+        }
+    }
 
     // Compute X scale factor and normalize first row.
     scaleOut.x = length(Row[0]);// v3Length(Row[0]);
@@ -71,8 +78,8 @@ bool decomposeMatrix(const mat4<F32>& transform,
     return true;
 }
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut,
-                     vec3<F32>& scaleOut,
+                     float3& translationOut,
+                     float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut)
 {
     bool uniformScaleTemp = false;
@@ -80,8 +87,8 @@ bool decomposeMatrix(const mat4<F32>& transform,
 }
 
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut,
-                     vec3<F32>& scaleOut)
+                     float3& translationOut,
+                     float3& scaleOut)
 {
     using T = F32;
 
@@ -89,7 +96,9 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
     // Normalize the matrix.
     if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+    {
         return false;
+    }
 
     // First, isolate perspective.  This is the messiest.
     if (glm::epsilonNotEqual(LocalMatrix[0][3], static_cast<T>(0), glm::epsilon<T>()) ||
@@ -109,8 +118,12 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
     // Now get scale and shear.
     for (glm::length_t i = 0; i < 3; ++i)
+    {
         for (glm::length_t j = 0; j < 3; ++j)
+        {
             Row[i][j] = LocalMatrix[i][j];
+        }
+    }
 
     // Compute X scale factor and normalize first row.
     scaleOut.x = length(Row[0]);// v3Length(Row[0]);
@@ -125,14 +138,17 @@ bool decomposeMatrix(const mat4<F32>& transform,
 }
 
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut) {
+                     float3& translationOut)
+{
     using T = F32;
 
     glm::mat4 LocalMatrix = glm::make_mat4(transform.mat);
 
     // Normalize the matrix.
     if (glm::epsilonEqual(LocalMatrix[3][3], static_cast<T>(0), glm::epsilon<T>()))
+    {
         return false;
+    }
 
     // First, isolate perspective.  This is the messiest.
     if (glm::epsilonNotEqual(LocalMatrix[0][3], static_cast<T>(0), glm::epsilon<T>()) ||
@@ -149,7 +165,8 @@ bool decomposeMatrix(const mat4<F32>& transform,
     return true;
 }
 
-bool IntersectCircles(const Circle& cA, const Circle& cB, vec2<F32>* pointsOut) noexcept {
+bool IntersectCircles(const Circle& cA, const Circle& cB, float2* pointsOut) noexcept
+{
     assert(pointsOut != nullptr);
 
     const F32 x0 = cA.center[0];
@@ -216,178 +233,210 @@ bool IntersectCircles(const Circle& cA, const Circle& cB, vec2<F32>* pointsOut) 
     return true;
 }
 
-void ToByteColour(const FColour4& floatColour, UColour4& colourOut) noexcept {
+void ToByteColour(const FColour4& floatColour, UColour4& colourOut) noexcept
+{
     colourOut.set(FLOAT_TO_CHAR_UNORM(floatColour.r),
                   FLOAT_TO_CHAR_UNORM(floatColour.g),
                   FLOAT_TO_CHAR_UNORM(floatColour.b),
                   FLOAT_TO_CHAR_UNORM(floatColour.a));
 }
 
-void ToByteColour(const FColour3& floatColour, UColour3& colourOut) noexcept {
+void ToByteColour(const FColour3& floatColour, UColour3& colourOut) noexcept
+{
     colourOut.set(FLOAT_TO_CHAR_UNORM(floatColour.r),
                   FLOAT_TO_CHAR_UNORM(floatColour.g),
                   FLOAT_TO_CHAR_UNORM(floatColour.b));
 }
 
-void ToFloatColour(const UColour4& byteColour, FColour4& colourOut) noexcept {
+void ToFloatColour(const UColour4& byteColour, FColour4& colourOut) noexcept
+{
     colourOut.set(UNORM_CHAR_TO_FLOAT(byteColour.r),
                   UNORM_CHAR_TO_FLOAT(byteColour.g),
                   UNORM_CHAR_TO_FLOAT(byteColour.b),
                   UNORM_CHAR_TO_FLOAT(byteColour.a));
 }
 
-void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept {
+void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept
+{
     colourOut.set(UNORM_CHAR_TO_FLOAT(byteColour.r),
                   UNORM_CHAR_TO_FLOAT(byteColour.g),
                   UNORM_CHAR_TO_FLOAT(byteColour.b));
 }
 
-void ToFloatColour(const vec4<U32>& uintColour, FColour4& colourOut) noexcept {
+void ToFloatColour(const uint4& uintColour, FColour4& colourOut) noexcept
+{
     colourOut.set(uintColour.r / 255.0f,
                   uintColour.g / 255.0f,
                   uintColour.b / 255.0f,
                   uintColour.a / 255.0f);
 }
 
-void ToFloatColour(const vec3<U32>& uintColour, FColour3& colourOut) noexcept {
+void ToFloatColour(const vec3<U32>& uintColour, FColour3& colourOut) noexcept 
+{
     colourOut.set(uintColour.r / 255.0f,
                   uintColour.g / 255.0f,
                   uintColour.b / 255.0f);
 }
 
-UColour4 ToByteColour(const FColour4& floatColour) noexcept {
+UColour4 ToByteColour(const FColour4& floatColour) noexcept
+{
     UColour4 tempColour;
     ToByteColour(floatColour, tempColour);
     return tempColour;
 }
 
-UColour3 ToByteColour(const FColour3& floatColour) noexcept {
+UColour3 ToByteColour(const FColour3& floatColour) noexcept
+{
     UColour3 tempColour;
     ToByteColour(floatColour, tempColour);
     return tempColour;
 }
 
-FColour4 ToFloatColour(const UColour4& byteColour) noexcept {
+FColour4 ToFloatColour(const UColour4& byteColour) noexcept
+{
     FColour4 tempColour;
     ToFloatColour(byteColour, tempColour);
     return tempColour;
 }
 
-FColour3 ToFloatColour(const UColour3& byteColour) noexcept {
+FColour3 ToFloatColour(const UColour3& byteColour) noexcept
+{
     FColour3 tempColour;
     ToFloatColour(byteColour, tempColour);
     return tempColour;
 }
 
-FColour4 ToFloatColour(const vec4<U32>& uintColour) noexcept {
+FColour4 ToFloatColour(const uint4& uintColour) noexcept
+{
     FColour4 tempColour;
     ToFloatColour(uintColour, tempColour);
     return tempColour;
 }
 
-FColour3 ToFloatColour(const vec3<U32>& uintColour) noexcept {
+FColour3 ToFloatColour(const vec3<U32>& uintColour) noexcept
+{
     FColour3 tempColour;
     ToFloatColour(uintColour, tempColour);
     return tempColour;
 }
 
-F32 PACK_VEC3(const vec3<F32_SNORM>& value) noexcept {
+F32 PACK_VEC3(const vec3<F32_SNORM>& value) noexcept
+{
     return PACK_VEC3(value.x, value.y, value.z);
 }
 
-void UNPACK_VEC3(const F32 src, vec3<F32_SNORM>& res)noexcept {
+void UNPACK_VEC3(const F32 src, vec3<F32_SNORM>& res)noexcept
+{
     UNPACK_VEC3(src, res.x, res.y, res.z);
 }
 
-vec3<F32_SNORM> UNPACK_VEC3(const F32 src) noexcept {
+vec3<F32_SNORM> UNPACK_VEC3(const F32 src) noexcept
+{
     vec3<F32_SNORM> res;
     UNPACK_VEC3(src, res);
     return res;
 }
 
-[[nodiscard]] vec3<F32_NORM> UNPACK_11_11_10(const U32 src) {
+[[nodiscard]] vec3<F32_NORM> UNPACK_11_11_10(const U32 src)
+{
     vec3<F32_NORM> res;
     UNPACK_11_11_10(src, res);
     return res;
 }
 
-U32 PACK_HALF2x16(const vec2<F32> value) {
+U32 PACK_HALF2x16(const float2 value)
+{
     return to_U32(glm::packHalf2x16(glm::mediump_vec2(value.x, value.y)));
 }
 
-void UNPACK_HALF2x16(const U32 src, vec2<F32>& value) {
+void UNPACK_HALF2x16(const U32 src, float2& value)
+{
     const glm::vec2 ret = glm::unpackHalf2x16(src);
     value.set(ret.x, ret.y);
 }
 
-vec2<F32> UNPACK_HALF2x16(const U32 src) {
-    vec2<F32> ret;
+float2 UNPACK_HALF2x16(const U32 src)
+{
+    float2 ret;
     UNPACK_HALF2x16(src, ret);
     return ret;
 }
 
-U16 PACK_HALF1x16(const F32 value) {
+U16 PACK_HALF1x16(const F32 value)
+{
     return to_U16(glm::packHalf1x16(value));
 }
 
-void UNPACK_HALF1x16(const U16 src, F32& value) {
+void UNPACK_HALF1x16(const U16 src, F32& value)
+{
     value = glm::unpackHalf1x16(src);
 }
 
-F32 UNPACK_HALF1x16(const U16 src) {
+F32 UNPACK_HALF1x16(const U16 src)
+{
     F32 ret = 0.f;
     UNPACK_HALF1x16(src, ret);
     return ret;
 }
 
-F32 UINT_TO_FLOAT(const U32 src) {
+F32 UINT_TO_FLOAT(const U32 src)
+{
     return glm::uintBitsToFloat(src);
 }
 
-U32 FLOAT_TO_UINT(const F32 src) {
+U32 FLOAT_TO_UINT(const F32 src)
+{
     return glm::floatBitsToUint(src);
 }
 
-F32 INT_TO_FLOAT(const I32 src) {
+F32 INT_TO_FLOAT(const I32 src)
+{
     return glm::intBitsToFloat(src);
 }
 
-I32 FLOAT_TO_INT(const F32 src) {
+I32 FLOAT_TO_INT(const F32 src)
+{
     return glm::floatBitsToInt(src);
 }
 
-U32 PACK_HALF2x16(const F32 x, const F32 y) {
+U32 PACK_HALF2x16(const F32 x, const F32 y)
+{
     return to_U32(glm::packHalf2x16(glm::mediump_vec2(x, y)));
 }
 
-void UNPACK_HALF2x16(const U32 src, F32& x, F32& y) {
-
+void UNPACK_HALF2x16(const U32 src, F32& x, F32& y)
+{
     const glm::vec2 ret = glm::unpackHalf2x16(src);
     x = ret.x;
     y = ret.y;
 }
 
 // Converts each component of the normalized floating  point value "value" into 8 bit integer values.
-U32 PACK_UNORM4x8(const vec4<F32_NORM>& value) {
+U32 PACK_UNORM4x8(const vec4<F32_NORM>& value)
+{
     return PACK_UNORM4x8(value.x, value.y, value.z, value.w);
 }
 
-U32 PACK_UNORM4x8(const vec4<U8> value) {
+U32 PACK_UNORM4x8(const vec4<U8> value)
+{
     return PACK_UNORM4x8(value.x, value.y, value.z, value.w);
 }
 
-void UNPACK_UNORM4x8(const U32 src, vec4<F32_NORM>& value) {
+void UNPACK_UNORM4x8(const U32 src, vec4<F32_NORM>& value)
+{
     UNPACK_UNORM4x8(src, value.x, value.y, value.z, value.w);
 }
 
-U32 PACK_UNORM4x8(const U8 x, const U8 y, const U8 z, const U8 w) {
+U32 PACK_UNORM4x8(const U8 x, const U8 y, const U8 z, const U8 w)
+{
     return to_U32(glm::packUnorm4x8({ UNORM_CHAR_TO_FLOAT(x),
                                       UNORM_CHAR_TO_FLOAT(y),
                                       UNORM_CHAR_TO_FLOAT(z),
                                       UNORM_CHAR_TO_FLOAT(w)}));
 }
 
-U32 PACK_UNORM4x8(const F32_NORM x, const F32_NORM y, const F32_NORM z, const F32_NORM w) {
+U32 PACK_UNORM4x8(const F32_NORM x, const F32_NORM y, const F32_NORM z, const F32_NORM w)
+{
     assert(IS_IN_RANGE_INCLUSIVE(x, 0.f, 1.f));
     assert(IS_IN_RANGE_INCLUSIVE(y, 0.f, 1.f));
     assert(IS_IN_RANGE_INCLUSIVE(z, 0.f, 1.f));
@@ -396,7 +445,8 @@ U32 PACK_UNORM4x8(const F32_NORM x, const F32_NORM y, const F32_NORM z, const F3
     return to_U32(glm::packUnorm4x8({ x, y, z, w }));
 }
 
-void UNPACK_UNORM4x8(const U32 src, U8& x, U8& y, U8& z, U8& w) {
+void UNPACK_UNORM4x8(const U32 src, U8& x, U8& y, U8& z, U8& w)
+{
     const glm::vec4 ret = glm::unpackUnorm4x8(src);
     x = FLOAT_TO_CHAR_UNORM(ret.x);
     y = FLOAT_TO_CHAR_UNORM(ret.y);
@@ -404,7 +454,8 @@ void UNPACK_UNORM4x8(const U32 src, U8& x, U8& y, U8& z, U8& w) {
     w = FLOAT_TO_CHAR_UNORM(ret.w);
 }
 
-void UNPACK_UNORM4x8(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_NORM& w) {
+void UNPACK_UNORM4x8(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_NORM& w)
+{
     const glm::vec4 ret = glm::unpackUnorm4x8(src);
     x = ret.x; y = ret.y; z = ret.z; w = ret.w;
     assert(IS_IN_RANGE_INCLUSIVE(x, 0.f, 1.f));
@@ -413,27 +464,32 @@ void UNPACK_UNORM4x8(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_N
     assert(IS_IN_RANGE_INCLUSIVE(w, 0.f, 1.f));
 }
 
-vec4<U8> UNPACK_UNORM4x8_U8(const U32 src) {
+vec4<U8> UNPACK_UNORM4x8_U8(const U32 src)
+{
     vec4<U8> ret;
     UNPACK_UNORM4x8(src, ret.x, ret.y, ret.z, ret.w);
     return ret;
 }
 
-vec4<F32_NORM> UNPACK_UNORM4x8_F32(const U32 src) {
+vec4<F32_NORM> UNPACK_UNORM4x8_F32(const U32 src)
+{
     vec4<F32_NORM> ret;
     UNPACK_UNORM4x8(src, ret.x, ret.y, ret.z, ret.w);
     return ret;
 }
 
-U32 PACK_11_11_10(const vec3<F32_NORM>& value) {
+U32 PACK_11_11_10(const vec3<F32_NORM>& value)
+{
     return PACK_11_11_10(value.x, value.y, value.z);
 }
 
-void UNPACK_11_11_10(const U32 src, vec3<F32_NORM>& res) {
+void UNPACK_11_11_10(const U32 src, vec3<F32_NORM>& res)
+{
     UNPACK_11_11_10(src, res.x, res.y, res.z);
 }
 
-U32 PACK_11_11_10(const F32_NORM x, const F32_NORM y, const F32_NORM z) {
+U32 PACK_11_11_10(const F32_NORM x, const F32_NORM y, const F32_NORM z)
+{
     assert(x >= 0.f && x <= 1.0f);
     assert(y >= 0.f && y <= 1.0f);
     assert(z >= 0.f && z <= 1.0f);
@@ -441,7 +497,8 @@ U32 PACK_11_11_10(const F32_NORM x, const F32_NORM y, const F32_NORM z) {
     return glm::packF2x11_1x10(glm::vec3(x, y, z));
 }
 
-void UNPACK_11_11_10(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z) {
+void UNPACK_11_11_10(const U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z)
+{
     const glm::vec3 ret = glm::unpackF2x11_1x10(src);
     x = ret.x;
     y = ret.y;

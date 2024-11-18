@@ -210,7 +210,7 @@ namespace Divide
 
         nodesOut.reset();
 
-        const vec3<F32>& cameraEye = camera->snapshot()._eye;
+        const float3& cameraEye = camera->snapshot()._eye;
         for ( SceneGraphNode* node : nodes )
         {
             BoundsComponent* bComp = node->get<BoundsComponent>();

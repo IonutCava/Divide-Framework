@@ -135,7 +135,7 @@ class Material final : public CachedResource {
   public:
     static constexpr F32 MAX_SHININESS = 255.f;
 
-    using SpecularGlossiness = vec2<F32>;
+    using SpecularGlossiness = float2;
     using ComputeShaderCBK = DELEGATE_STD<ShaderProgramDescriptor, Material*, RenderStagePass>;
     using ComputeRenderStateCBK = DELEGATE_STD<void, Material*, RenderStagePass, RenderStateBlock&>;
     using RecomputeShadersCBK = DELEGATE_STD<void>;

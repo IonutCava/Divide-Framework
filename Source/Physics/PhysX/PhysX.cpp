@@ -410,8 +410,8 @@ namespace Divide
         const TransformComponent* tComp = node->get<TransformComponent>();
         assert( tComp != nullptr );
 
-        const vec3<F32>& position = tComp->getWorldPosition();
-        const vec4<F32>& orientation = tComp->getWorldOrientation().asVec4();
+        const float3& position = tComp->getWorldPosition();
+        const float4& orientation = tComp->getWorldOrientation().asVec4();
         const physx::PxTransform posePxTransform( Util::toVec3( position ), physx::PxQuat( orientation.x, orientation.y, orientation.z, orientation.w ).getConjugate() );
 
         newActor->_actor = createActorForGroup( parentComp.physicsCollisionGroup(), posePxTransform );
@@ -461,7 +461,7 @@ namespace Divide
                     Object3D& obj = node->getNode<Object3D>();
                     const U8 lodCount = obj.getGeometryPartitionCount();
                     const U16 partitionID = obj.getGeometryPartitionID( lodCount - 1 );
-                    const vector<vec3<U32>>& triangles = obj.getTriangles( partitionID );
+                    const vector<uint3>& triangles = obj.getTriangles( partitionID );
 
                     if ( triangles.empty() )
                     {
@@ -552,7 +552,7 @@ namespace Divide
             }
             if ( nodeGeometry != nullptr )
             {
-                const vec3<F32>& scale = tComp->getWorldScale();
+                const float3& scale = tComp->getWorldScale();
                 const physx::PxTriangleMeshGeometry geometry = {
                     nodeGeometry,
                     physx::PxMeshScale( physx::PxVec3( scale.x, scale.y, scale.z ),
@@ -571,7 +571,7 @@ namespace Divide
             // Use AABB
             const BoundsComponent* bComp = node->get<BoundsComponent>();
             assert( bComp != nullptr );
-            const vec3<F32> hExtent = bComp->getBoundingBox().getHalfExtent();
+            const float3 hExtent = bComp->getBoundingBox().getHalfExtent();
 
             newActor->_type = physx::PxGeometryType::eBOX;
 
@@ -624,7 +624,7 @@ namespace Divide
         return false;
     }
 
-    bool PhysX::intersect( const Ray& intersectionRay, const vec2<F32> range, vector<SGNRayResult>& intersectionsOut ) const
+    bool PhysX::intersect( const Ray& intersectionRay, const float2 range, vector<SGNRayResult>& intersectionsOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
         return _targetScene->intersect( intersectionRay, range, intersectionsOut );

@@ -68,7 +68,7 @@ class Renderer final : public PlatformContextComponent {
           {
               mat4<F32> _invProjectionMatrix;
               Rect<I32> _viewport;
-              vec2<F32> _zPlanes;
+              float2 _zPlanes;
               [[nodiscard]] bool operator!=( const GridBuildData& other ) const noexcept;
           } _gridData;
 

@@ -85,12 +85,12 @@ public:
 
     void updateType(UpdateType type);
 
-    void setBounds(const vec3<F32>& min, const vec3<F32>& max) noexcept;
-    void setBounds(const vec3<F32>& center, F32 radius) noexcept;
+    void setBounds(const float3& min, const float3& max) noexcept;
+    void setBounds(const float3& center, F32 radius) noexcept;
 
     void loadFromXML(const boost::property_tree::ptree& pt) override;
 
-    [[nodiscard]] F32 distanceSqTo(const vec3<F32>& pos) const noexcept;
+    [[nodiscard]] F32 distanceSqTo(const float3& pos) const noexcept;
 
     //Only "dirty" probes gets refreshed. A probe might get dirty if, for example, a reflective node
     //gets rendered that has this probe as the nearest one
@@ -118,8 +118,8 @@ protected:
 
     void updateProbeData() const noexcept;
 protected:
-    BoundingBox _aabb{ vec3<F32>(-1), vec3<F32>(1) };
-    BoundingBox _refaabb{ vec3<F32>(-1), vec3<F32>(1) };
+    BoundingBox _aabb{ float3(-1), float3(1) };
+    BoundingBox _refaabb{ float3(-1), float3(1) };
 
     U8 _currentUpdateCall = 0u;
     ProbeType _probeType = ProbeType::TYPE_LOCAL;

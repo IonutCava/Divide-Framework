@@ -162,7 +162,7 @@ namespace Divide
         const F32 halfWidth = _dimensions.width * 0.5f;
         const F32 halfLength = _dimensions.height * 0.5f;
 
-        setBounds( BoundingBox( vec3<F32>( -halfWidth, -_dimensions.depth, -halfLength ), vec3<F32>( halfWidth, 0, halfLength ) ) );
+        setBounds( BoundingBox( float3( -halfWidth, -_dimensions.depth, -halfLength ), float3( halfWidth, 0, halfLength ) ) );
 
         return SceneNode::load( context );
     }
@@ -300,12 +300,12 @@ namespace Divide
         const F32 halfWidth = _dimensions.width * 0.5f;
         const F32 halfLength = _dimensions.height * 0.5f;
 
-        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_LEFT, vec3<F32>( -halfWidth, 0, -halfLength ) );
-        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>( halfWidth, 0, -halfLength ) );
-        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>( -halfWidth, 0, halfLength ) );
-        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( halfWidth, 0, halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_LEFT, float3( -halfWidth, 0, -halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::TOP_RIGHT, float3( halfWidth, 0, -halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, float3( -halfWidth, 0, halfLength ) );
+        Get(_plane)->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, float3( halfWidth, 0, halfLength ) );
         Get(_plane)->setNormal( Quad3D::CornerLocation::CORNER_ALL, WORLD_Y_AXIS );
-        _boundingBox.set( vec3<F32>( -halfWidth, -_dimensions.depth, -halfLength ), vec3<F32>( halfWidth, 0, halfLength ) );
+        _boundingBox.set( float3( -halfWidth, -_dimensions.depth, -halfLength ), float3( halfWidth, 0, halfLength ) );
 
         RenderingComponent* renderable = sgn->get<RenderingComponent>();
 
@@ -374,7 +374,7 @@ namespace Divide
         SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
     }
 
-    bool WaterPlane::PointUnderwater( const SceneGraphNode* sgn, const vec3<F32>& point ) noexcept
+    bool WaterPlane::PointUnderwater( const SceneGraphNode* sgn, const float3& point ) noexcept
     {
         return sgn->get<BoundsComponent>()->getBoundingBox().containsPoint( point );
     }
@@ -565,7 +565,7 @@ namespace Divide
         const F32 waterLevel = sgn->get<TransformComponent>()->getWorldPosition().y * (reflection ? -1.f : 1.f);
         const Quaternion<F32>& orientation = sgn->get<TransformComponent>()->getWorldOrientation();
 
-        plane.set( Normalized( vec3<F32>( orientation * (reflection ? WORLD_Y_AXIS : WORLD_Y_NEG_AXIS) ) ), offset + waterLevel );
+        plane.set( Normalized( float3( orientation * (reflection ? WORLD_Y_AXIS : WORLD_Y_NEG_AXIS) ) ), offset + waterLevel );
     }
 
     const vec3<U16>& WaterPlane::getDimensions() const noexcept

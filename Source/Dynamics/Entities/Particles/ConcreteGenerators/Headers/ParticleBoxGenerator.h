@@ -44,23 +44,23 @@ struct ParticleBoxGenerator final : ParticleGenerator {
                   U32 startIndex,
                   U32 endIndex) override;
 
-    void pos(const vec3<F32>& pos) noexcept {
+    void pos(const float3& pos) noexcept {
         _pos.set(pos);
         _posMin.set(_pos - _halfExtent);
         _posMax.set(_pos + _halfExtent);
     }
 
-    void halfExtent(const vec3<F32>& dist) noexcept {
+    void halfExtent(const float3& dist) noexcept {
         _halfExtent.set(dist);
         _posMin.set(_pos - _halfExtent);
         _posMax.set(_pos + _halfExtent);
     }
 
 private:
-    vec3<F32> _pos;
-    vec3<F32> _halfExtent;
-    vec3<F32> _posMin;
-    vec3<F32> _posMax;
+    float3 _pos;
+    float3 _halfExtent;
+    float3 _posMin;
+    float3 _posMax;
 };
 }
 

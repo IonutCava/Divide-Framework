@@ -27,7 +27,7 @@ namespace {
  const U32 g_flagContainer = 2;
  }
 
-vec3<F32> WarSceneAIProcessor::_initialFlagPositions[2];
+float3 WarSceneAIProcessor::_initialFlagPositions[2];
 GlobalWorkingMemory WarSceneAIProcessor::_globalWorkingMemory;
 NO_DESTROY DELEGATE<void, U8, const string&> WarSceneAIProcessor::_scoreCallback;
 NO_DESTROY DELEGATE<void, U8, const string&> WarSceneAIProcessor::_messageCallback;
@@ -479,11 +479,11 @@ bool WarSceneAIProcessor::postAction(ActionType type,
                 TransformComponent* tComp = flag->get<TransformComponent>();
                 TransformComponent* parentComp = targetNode->get<TransformComponent>();
                 flag->setParent(targetNode);
-                vec3<F32> prevScale(tComp->getLocalScale());
-                vec3<F32> parentScale(parentComp->getLocalScale());
+                float3 prevScale(tComp->getLocalScale());
+                float3 parentScale(parentComp->getLocalScale());
 
                 tComp->pushTransforms();
-                tComp->setPosition(vec3<F32>(-2.5f, 2.75f, 1.0f));
+                tComp->setPosition(float3(-2.5f, 2.75f, 1.0f));
                 tComp->setScale(prevScale / parentScale);
                 tComp->rotate(0, -90, 0);
             }

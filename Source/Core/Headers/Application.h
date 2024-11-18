@@ -57,7 +57,7 @@ namespace Attorney
     class DisplayManagerWindowManager;
 };
 
-enum class AppStepResult : U32
+enum class AppStepResult : U8
 {
     OK = 0,
     RESTART,

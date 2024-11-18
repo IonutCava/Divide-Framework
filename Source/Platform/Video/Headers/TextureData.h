@@ -38,8 +38,8 @@ namespace Divide {
 struct CopyTexParams 
 {
     vec2<U16> _layerRange{0u, 1u};
-    vec2<U32> _sourceCoords;
-    vec2<U32> _targetCoords;
+    uint2 _sourceCoords;
+    uint2 _targetCoords;
     vec2<U16> _dimensions; //width, height
     U8 _sourceMipLevel{ 0u };
     U8 _targetMipLevel{ 0u };

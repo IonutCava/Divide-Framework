@@ -102,7 +102,7 @@ class DivideDtCrowd final : public NonCopyable {
     ~DivideDtCrowd();
     /// Add an agent to the crowd: Returns ID of created agent
     /// (-1 if maximum agents is already created)
-    [[nodiscard]] I32 addAgent(const vec3<F32>& position, F32 maxSpeed, F32 acceleration);
+    [[nodiscard]] I32 addAgent(const float3& position, F32 maxSpeed, F32 acceleration);
     /// Retrieve agent with specified ID from the crowd.
     [[nodiscard]] const dtCrowdAgent* getAgent(const I32 id) const { return _crowd->getAgent(id); }
     /// Remove agent with specified ID from the crowd.
@@ -114,7 +114,7 @@ class DivideDtCrowd final : public NonCopyable {
       * to calculate a completely new path. This only works if the destination is
       * close to the previously set one, for example when chasing a moving entity.
       **/
-    void setMoveTarget(const vec3<F32>& position, bool adjust);
+    void setMoveTarget(const float3& position, bool adjust);
     /**
       * Set target or destination for an individual agent.
       * Setting adjust to true will try to adjust the current calculated path
@@ -122,13 +122,13 @@ class DivideDtCrowd final : public NonCopyable {
       * to calculate a completely new path. This only works if the destination is
       * close to the previously set one, for example when chasing a moving entity.
       **/
-    void setMoveTarget(I32 agentID, const vec3<F32>& position, bool adjust);
+    void setMoveTarget(I32 agentID, const float3& position, bool adjust);
     /**
       * Request a specified velocity for the agent with specified index.
       * Requesting a velocity means manually controlling an agent.
       * Returns true if the request was successful.
       **/
-    [[nodiscard]] bool requestVelocity(I32 agentID, const vec3<F32>& velocity) const;
+    [[nodiscard]] bool requestVelocity(I32 agentID, const float3& velocity) const;
     /// Cancels any request for the specified agent, making it stop.
     /// Returns true if the request was successul.
     [[nodiscard]] bool stopAgent(I32 agentID) const;
@@ -143,7 +143,7 @@ class DivideDtCrowd final : public NonCopyable {
       * This function can be used together with requestMoveVelocity to achieve the functionality
       * of adjustMoveTarget function.
       **/
-    [[nodiscard]] static vec3<F32> calcVel(const vec3<F32>& position, const vec3<F32>& target, D64 speed);
+    [[nodiscard]] static float3 calcVel(const float3& position, const float3& target, D64 speed);
     [[nodiscard]] static F32 getDistanceToGoal(const dtCrowdAgent* agent, F32 maxRange);
     [[nodiscard]] static bool destinationReached(const dtCrowdAgent* agent, F32 maxDistanceFromTarget);
     /**
@@ -185,7 +185,7 @@ class DivideDtCrowd final : public NonCopyable {
     [[nodiscard]] vector<I32> getActiveAgentIDs() const;
     /// The last set destination for the crowd.
     /// This is the destination that will be assigned to newly added agents.
-    [[nodiscard]] vec3<F32> getLastDestination() const noexcept { return vec3<F32>(_targetPos); }
+    [[nodiscard]] float3 getLastDestination() const noexcept { return float3(_targetPos); }
     /// Reference to the DetourCrowd object that is wrapped.
     dtCrowd* _crowd = nullptr;
     /// Reference to the Recast/Detour wrapper object for Divide.

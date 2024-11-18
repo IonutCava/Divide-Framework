@@ -73,7 +73,7 @@ namespace Divide
                 {
                     CurlNoise::SetCurlSettings( false, frequency[pass], 3, 2.f, 0.5f );
                     const auto res = CurlNoise::ComputeCurlNoBoundaries( pos );
-                    const vec3<F32> curl = Normalized( vec3<F32>{res.val[0], res.val[1], res.val[2]} );
+                    const float3 curl = Normalized( float3{res.val[0], res.val[1], res.val[2]} );
                     const F32 cellFBM0 = curl.r * 0.5f + curl.g * 0.35f + curl.b * 0.15f;
 
                     data[i + pass] = to_byte( cellFBM0 * 128.f + 127.f );
@@ -503,7 +503,7 @@ bool Sky::load( PlatformContext& context )
 
     setMaterialTpl( skyMat );
 
-    setBounds( BoundingBox( vec3<F32>( -radius ), vec3<F32>( radius ) ) );
+    setBounds( BoundingBox( float3( -radius ), float3( radius ) ) );
 
     Console::printfn( LOCALE_STR( "CREATE_SKY_RES_OK" ) );
 
@@ -856,12 +856,12 @@ const SunInfo& Sky::getCurrentDetails() const
     return _sun.GetDetails();
 }
 
-[[nodiscard]] vec3<F32> Sky::getSunPosition( const F32 radius ) const
+[[nodiscard]] float3 Sky::getSunPosition( const F32 radius ) const
 {
     return _sun.GetSunPosition( radius );
 }
 
-[[nodiscard]] vec3<F32> Sky::getSunDirection( const F32 radius) const
+[[nodiscard]] float3 Sky::getSunDirection( const F32 radius) const
 {
     return Normalized(getSunPosition(radius));
 }

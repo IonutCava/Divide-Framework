@@ -162,15 +162,8 @@ namespace Util {
 } //namespace Util
 } //namespace Divide
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4127) // conditional expression is constant
-#endif
-
+DISABLE_MSVC_WARNING_PUSH(4127) // conditional expression is constant
 #include "Utils.inl"
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+DISABLE_MSVC_WARNING_POP()
 
 #endif // DVD_EDITOR_UTILS_H_

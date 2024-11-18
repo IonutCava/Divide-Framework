@@ -8,7 +8,7 @@ void ParticleAttractorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, P
     const U32 endID = p.aliveCount();
     const size_t countAttractors = _attractors.size();
 
-    vec4<F32> offset;
+    float4 offset;
     F32 dist = 0.0f;
     size_t a = 0;
     for (U32 i = 0; i < endID; ++i) {

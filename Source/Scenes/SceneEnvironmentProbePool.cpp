@@ -283,7 +283,7 @@ RenderTargetHandle SceneEnvironmentProbePool::BRDFLUTTarget() noexcept {
     return s_brdfLUT;
 }
 
-const EnvironmentProbeList& SceneEnvironmentProbePool::sortAndGetLocked(const vec3<F32>& position) {
+const EnvironmentProbeList& SceneEnvironmentProbePool::sortAndGetLocked(const float3& position) {
     eastl::sort(begin(_envProbes),
                 end(_envProbes),
                 [&position](const auto& a, const auto& b) noexcept -> bool {
@@ -396,7 +396,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         context.generateCubeMap(params,
                                 SkyProbeLayerIndex(),
                                 VECTOR3_ZERO,
-                                vec2<F32>(0.1f, 100.f),
+                                float2(0.1f, 100.f),
                                 bufferInOut,
                                 memCmdInOut);
 

@@ -67,7 +67,7 @@ namespace Divide
         CameraPool s_cameraPool;
         SharedMutex s_cameraPoolLock;
 
-        vec3<F32> ExtractCameraPos2( const mat4<F32>& a_modelView ) noexcept
+        float3 ExtractCameraPos2( const mat4<F32>& a_modelView ) noexcept
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -85,9 +85,9 @@ namespace Divide
             const mat4<F32> modelViewT( a_modelView.getTranspose() );
 
             // Get plane normals 
-            const vec4<F32>& n1( modelViewT.getRow( 0 ) );
-            const vec4<F32>& n2( modelViewT.getRow( 1 ) );
-            const vec4<F32>& n3( modelViewT.getRow( 2 ) );
+            const float4& n1( modelViewT.getRow( 0 ) );
+            const float4& n2( modelViewT.getRow( 1 ) );
+            const float4& n3( modelViewT.getRow( 2 ) );
 
             // Get plane distances
             const F32 d1( n1.w );
@@ -96,9 +96,9 @@ namespace Divide
 
             // Get the intersection of these 3 planes 
             // (using math from RealTime Collision Detection by Christer Ericson)
-            const vec3<F32> n2n3 = Cross( n2.xyz, n3.xyz );
+            const float3 n2n3 = Cross( n2.xyz, n3.xyz );
             const F32 denom = Dot( n1.xyz, n2n3 );
-            const vec3<F32> top = n2n3 * d1 + Cross( n1.xyz, d3 * n2.xyz - d2 * n3.xyz );
+            const float3 top = n2n3 * d1 + Cross( n1.xyz, d3 * n2.xyz - d2 * n3.xyz );
             return top / -denom;
         }
     }
@@ -253,7 +253,7 @@ namespace Divide
         return s_changeCameraId;
     }
 
-    Camera::Camera( const std::string_view name, const Mode mode, const vec3<F32>& eye )
+    Camera::Camera( const std::string_view name, const Mode mode, const float3& eye )
         : Resource( name, "Camera" )
         , _mode( mode )
     {
@@ -334,13 +334,13 @@ namespace Divide
             }
             CLAMP<F32>( _curRadius, _minRadius, _maxRadius );
 
-            const vec3<F32> targetPos = _targetTransform->getWorldPosition() + _offsetDir;
+            const float3 targetPos = _targetTransform->getWorldPosition() + _offsetDir;
             setEye( _data._orientation.zAxis() * _curRadius + targetPos );
             _viewMatrixDirty = true;
         }
     }
 
-    void Camera::setTarget( TransformComponent* tComp, const vec3<F32>& offsetDirection ) noexcept
+    void Camera::setTarget( TransformComponent* tComp, const float3& offsetDirection ) noexcept
     {
         _targetTransform = tComp;
         _offsetDir = Normalized( offsetDirection );
@@ -359,9 +359,9 @@ namespace Divide
         return _data._viewMatrix;
     }
 
-    const mat4<F32>& Camera::lookAt( const vec3<F32>& eye,
-                                     const vec3<F32>& target,
-                                     const vec3<F32>& up )
+    const mat4<F32>& Camera::lookAt( const float3& eye,
+                                     const float3& target,
+                                     const float3& up )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -508,17 +508,17 @@ namespace Divide
         return false;
     }
 
-    const mat4<F32>& Camera::setProjection( const vec2<F32> zPlanes )
+    const mat4<F32>& Camera::setProjection( const float2 zPlanes )
     {
         return setProjection( _data._fov, zPlanes );
     }
 
-    const mat4<F32>& Camera::setProjection( const Angle::DEGREES_F verticalFoV, const vec2<F32> zPlanes )
+    const mat4<F32>& Camera::setProjection( const Angle::DEGREES_F verticalFoV, const float2 zPlanes )
     {
         return setProjection( _data._aspectRatio, verticalFoV, zPlanes );
     }
 
-    const mat4<F32>& Camera::setProjection( const F32 aspectRatio, const Angle::DEGREES_F verticalFoV, const vec2<F32> zPlanes )
+    const mat4<F32>& Camera::setProjection( const F32 aspectRatio, const Angle::DEGREES_F verticalFoV, const float2 zPlanes )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -533,7 +533,7 @@ namespace Divide
         return projectionMatrix();
     }
 
-    const mat4<F32>& Camera::setProjection( const vec4<F32>& rect, const vec2<F32> zPlanes )
+    const mat4<F32>& Camera::setProjection( const float4& rect, const float2 zPlanes )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -546,7 +546,7 @@ namespace Divide
         return projectionMatrix();
     }
 
-    const mat4<F32>& Camera::setProjection( const mat4<F32>& projection, const vec2<F32> zPlanes, const bool isOrtho ) noexcept
+    const mat4<F32>& Camera::setProjection( const mat4<F32>& projection, const float2 zPlanes, const bool isOrtho ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -690,7 +690,7 @@ namespace Divide
         dz *= moveSpeed;
 
         const mat4<F32>& viewMat = viewMatrix();
-        const vec3<F32> rightDir = viewMat.getRightDirection();
+        const float3 rightDir = viewMat.getRightDirection();
 
         _data._eye += rightDir * dx;
         _data._eye += WORLD_Y_AXIS * dy;
@@ -700,7 +700,7 @@ namespace Divide
             // Calculate the forward direction. Can't just use the camera's local
             // z axis as doing so will cause the camera to move more slowly as the
             // camera's view approaches 90 degrees straight up and down.
-            const vec3<F32> forward = Normalized( Cross( WORLD_Y_AXIS, rightDir ) );
+            const float3 forward = Normalized( Cross( WORLD_Y_AXIS, rightDir ) );
             _data._eye += forward * dz;
         }
         else
@@ -746,7 +746,7 @@ namespace Divide
         return updated;
     }
 
-    bool Camera::moveRelative( const vec3<F32>& relMovement )
+    bool Camera::moveRelative( const float3& relMovement )
     {
         if ( relMovement.lengthSquared() > 0 )
         {
@@ -887,7 +887,7 @@ namespace Divide
         return true;
     }
 
-    vec3<F32> Camera::unProject( const F32 winCoordsX, const F32 winCoordsY, const Rect<I32>& viewport ) const noexcept
+    float3 Camera::unProject( const F32 winCoordsX, const F32 winCoordsY, const Rect<I32>& viewport ) const noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
@@ -896,13 +896,13 @@ namespace Divide
         const I32 winWidth = viewport.z;
         const I32 winHeight = viewport.w;
 
-        const vec2<F32> ndcSpace = 
+        const float2 ndcSpace = 
         {
             offsetWinCoordsX / (winWidth  * 0.5f) - 1.0f,
             offsetWinCoordsY / (winHeight * 0.5f) - 1.0f
         };
 
-        const vec4<F32> clipSpace = {
+        const float4 clipSpace = {
             ndcSpace.x,
             ndcSpace.y,
             0.0f, //z
@@ -911,46 +911,46 @@ namespace Divide
 
         const mat4<F32> invProjMatrix = GetInverse( projectionMatrix() );
 
-        const vec2<F32> tempEyeSpace = (invProjMatrix * clipSpace).xy;
+        const float2 tempEyeSpace = (invProjMatrix * clipSpace).xy;
 
-        const vec4<F32> eyeSpace = {
+        const float4 eyeSpace = {
             tempEyeSpace.x,
             tempEyeSpace.y,
             -1.0f, // z
              0.0f  // w
         };
 
-        const vec3<F32> worldSpace = (worldMatrix() * eyeSpace).xyz;
+        const float3 worldSpace = (worldMatrix() * eyeSpace).xyz;
 
         return Normalized( worldSpace );
     }
 
-    vec2<F32> Camera::project( const vec3<F32>& worldCoords, const Rect<I32>& viewport ) const noexcept
+    float2 Camera::project( const float3& worldCoords, const Rect<I32>& viewport ) const noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        const vec2<F32> winOffset = viewport.xy;
+        const float2 winOffset = viewport.xy;
 
-        const vec2<F32> winSize = viewport.zw;
+        const float2 winSize = viewport.zw;
 
-        const vec4<F32> viewSpace = viewMatrix() * vec4<F32>( worldCoords, 1.0f );
+        const float4 viewSpace = viewMatrix() * float4( worldCoords, 1.0f );
 
-        const vec4<F32> clipSpace = projectionMatrix() * viewSpace;
+        const float4 clipSpace = projectionMatrix() * viewSpace;
 
         const F32 clampedClipW = std::max( clipSpace.w, EPSILON_F32 );
 
-        const vec2<F32> ndcSpace = clipSpace.xy / clampedClipW;
+        const float2 ndcSpace = clipSpace.xy / clampedClipW;
 
-        const vec2<F32> winSpace = (ndcSpace + 1.0f) * 0.5f * winSize;
+        const float2 winSpace = (ndcSpace + 1.0f) * 0.5f * winSize;
 
         return winOffset + winSpace;
     }
 
-    mat4<F32> Camera::LookAt( const vec3<F32>& eye, const vec3<F32>& target, const vec3<F32>& up ) noexcept
+    mat4<F32> Camera::LookAt( const float3& eye, const float3& target, const float3& up ) noexcept
     {
-        const vec3<F32> zAxis( Normalized( eye - target ) );
-        const vec3<F32> xAxis( Normalized( Cross( up, zAxis ) ) );
-        const vec3<F32> yAxis( Normalized( Cross( zAxis, xAxis ) ) );
+        const float3 zAxis( Normalized( eye - target ) );
+        const float3 xAxis( Normalized( Cross( up, zAxis ) ) );
+        const float3 yAxis( Normalized( Cross( zAxis, xAxis ) ) );
 
         mat4<F32> ret;
 
@@ -979,7 +979,7 @@ namespace Divide
 
     void Camera::saveToXML( boost::property_tree::ptree& pt, const std::string prefix ) const
     {
-        const vec4<F32> orientation = _data._orientation.asVec4();
+        const float4 orientation = _data._orientation.asVec4();
 
         std::string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
         savePath.append(Util::MakeXMLSafe(resourceName()));
@@ -1027,7 +1027,7 @@ namespace Divide
 
     void Camera::loadFromXML( const boost::property_tree::ptree& pt, const std::string prefix )
     {
-        const vec4<F32> orientation = _data._orientation.asVec4();
+        const float4 orientation = _data._orientation.asVec4();
 
         std::string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
         savePath.append(Util::MakeXMLSafe(resourceName()));

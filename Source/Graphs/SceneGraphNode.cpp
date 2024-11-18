@@ -507,7 +507,7 @@ SceneGraphNode* SceneGraphNode::findChild(const I64 GUID, const bool sceneNodeGu
                          : findChildInternal<false>(GUID, recursive);
 }
 
-bool SceneGraphNode::intersect(const Ray& intersectionRay, const vec2<F32> range, vector<SGNRayResult>& intersections) const
+bool SceneGraphNode::intersect(const Ray& intersectionRay, const float2 range, vector<SGNRayResult>& intersections) const
 {
     vector<SGNRayResult> ret{};
 
@@ -890,7 +890,7 @@ FrustumCollision SceneGraphNode::stateCullNode(const NodeCullParams& params,
         PROFILE_SCOPE("cullNode - LoD check", Profiler::Category::Scene );
 
         RenderingComponent* rComp = get<RenderingComponent>();
-        const vec2<F32> renderRange = rComp->renderRange();
+        const float2 renderRange = rComp->renderRange();
         const F32 minDistanceSQ = SQUARED(renderRange.min) * (renderRange.min < 0.f ? -1.f : 1.f); //Keep the sign. Might need it for rays or shadows.
         const F32 maxDistanceSQ = SQUARED(renderRange.max);
 

@@ -35,7 +35,7 @@ void Quadtree::drawBBox(GFXDevice& context) const {
     context.debugDrawBox(-1, descriptor);
 }
 
-QuadtreeNode* Quadtree::findLeaf(const vec2<F32> pos) const noexcept
+QuadtreeNode* Quadtree::findLeaf(const float2 pos) const noexcept
 {
     assert(_root);
 
@@ -45,7 +45,7 @@ QuadtreeNode* Quadtree::findLeaf(const vec2<F32> pos) const noexcept
         for (i = 0; i < 4; i++) {
             QuadtreeNode* child = &node->getChild(i);
             const BoundingBox& bb = child->getBoundingBox();
-            if (bb.containsPoint(vec3<F32>(pos.x, bb.getCenter().y, pos.y))) {
+            if (bb.containsPoint(float3(pos.x, bb.getCenter().y, pos.y))) {
                 node = child;
                 break;
             }

@@ -138,7 +138,7 @@ class AnimEvaluator {
    protected:
     /// Array to return transformations results inside.
     vector<BoneTransform> _transforms;
-    vector<vec3<U32>> _lastPositions;
+    vector<uint3> _lastPositions;
     /// vector that holds all bone channels
     vector<AnimationChannel> _channels;
     /// GPU buffer to hold bone transforms

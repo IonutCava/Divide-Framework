@@ -129,7 +129,7 @@ bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const cha
             // Vertex pos
             const I32 result = sscanf(row + 1, "%f %f %f", &x, &y, &z);
             if (result != 0)
-                AddVertex(&outData, vec3<F32>(x, y, z));
+                AddVertex(&outData, float3(x, y, z));
         }
         if (row[0] == 'f') {
             // Faces
@@ -144,7 +144,7 @@ bool LoadMeshFile(NavModelData& outData, const ResourcePath& filePath, const cha
                     continue;
                 }
 
-                AddTriangle(&outData, vec3<U32>(a, b, c));
+                AddTriangle(&outData, uint3(a, b, c));
             }
         }
     }
@@ -268,7 +268,7 @@ NavModelData MergeModels(NavModelData& a,
     return mergedData;
 }
 
-void AddVertex(NavModelData* modelData, const vec3<F32>& vertex) {
+void AddVertex(NavModelData* modelData, const float3& vertex) {
     assert(modelData != nullptr);
 
     if (modelData->getVertCount() + 1 > modelData->_vertexCapacity)
@@ -287,7 +287,7 @@ void AddVertex(NavModelData* modelData, const vec3<F32>& vertex) {
 }
 
 void AddTriangle(NavModelData* modelData,
-                 const vec3<U32>& triangleIndices,
+                 const uint3& triangleIndices,
                  const U32 triangleIndexOffset,
                  const SamplePolyAreas& areaType) {
     if (modelData->getTriCount() + 1 > modelData->_triangleCapacity)
@@ -307,7 +307,7 @@ void AddTriangle(NavModelData* modelData,
     modelData->_triangleCount++;
 }
 
-const vec3<F32> g_borderOffset(BORDER_PADDING);
+const float3 g_borderOffset(BORDER_PADDING);
 bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
     assert(sgn != nullptr);
 
@@ -396,11 +396,11 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
                 AddVertex(&outData, nodeTransform * vert._position);
             }
 
-            for (const vec3<U32>& triangle : triangles) {
+            for (const uint3& triangle : triangles) {
                 AddTriangle(&outData, triangle, currentTriangleIndexOffset, areaType);
             }
         } else if (level == MeshDetailLevel::BOUNDINGBOX) {
-            std::array<vec3<F32>, 8> vertices = box.getPoints();
+            std::array<float3, 8> vertices = box.getPoints();
 
             for (U32 i = 0; i < 8; i++) {
                 AddVertex(&outData, vertices[i]);
@@ -410,7 +410,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
                 for (U32 v = 2; v < 4; v++) {
                     // Note: We reverse the normal on the polygons to prevent things from going inside out
                     AddTriangle(&outData,
-                                vec3<U32>(g_cubeFaces[f][0], g_cubeFaces[f][v - 1],
+                                uint3(g_cubeFaces[f][0], g_cubeFaces[f][v - 1],
                                           g_cubeFaces[f][v]),
                                 currentTriangleIndexOffset, areaType);
                 }

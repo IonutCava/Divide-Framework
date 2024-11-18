@@ -13,7 +13,7 @@ void ParticleBasicTimeUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
     }
 
     for (U32 i = 0; i < endID; ++i) {
-        vec4<F32>& misc = p._misc[i];
+        float4& misc = p._misc[i];
 
         misc.x -= localDT;
         // interpolation: from 0 (start of life) till 1 (end of life)

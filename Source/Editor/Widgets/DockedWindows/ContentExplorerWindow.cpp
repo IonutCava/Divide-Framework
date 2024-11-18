@@ -416,7 +416,7 @@ namespace Divide {
             ImGui::EndChild();
         }
 
-        if ( previewTexture && Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", _previewTexture, vec2<F32>(512, 512), true, true))
+        if ( previewTexture && Attorney::EditorGeneralWidget::modalTextureView(_parent, "Image Preview", _previewTexture, float2(512, 512), true, true))
         {
             previewTexture = false;
         }

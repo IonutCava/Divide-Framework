@@ -496,10 +496,10 @@ namespace Divide
                         ret = Get(handle);
 
                         Quad3D* quad = static_cast<Quad3D*>(ret);
-                        quad->setCorner( Quad3D::CornerLocation::TOP_LEFT, vec3<F32>( 0, 1, 0 ) );
-                        quad->setCorner( Quad3D::CornerLocation::TOP_RIGHT, vec3<F32>( 1, 1, 0 ) );
-                        quad->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, vec3<F32>( 0, 0, 0 ) );
-                        quad->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, vec3<F32>( 1, 0, 0 ) );
+                        quad->setCorner( Quad3D::CornerLocation::TOP_LEFT, float3( 0, 1, 0 ) );
+                        quad->setCorner( Quad3D::CornerLocation::TOP_RIGHT, float3( 1, 1, 0 ) );
+                        quad->setCorner( Quad3D::CornerLocation::BOTTOM_LEFT, float3( 0, 0, 0 ) );
+                        quad->setCorner( Quad3D::CornerLocation::BOTTOM_RIGHT, float3( 1, 0, 0 ) );
 
                         crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
@@ -1126,7 +1126,7 @@ namespace Divide
 
         const auto dragSelectBegin = [this]( const InputParams params )
         {
-            beginDragSelection( getPlayerIndexForDevice( params._deviceIndex ), vec2<I32>( params._var[0], params._var[1] ) );
+            beginDragSelection( getPlayerIndexForDevice( params._deviceIndex ), int2( params._var[0], params._var[1] ) );
         };
         const auto dragSelectEnd = [this]( const InputParams params )
         {
@@ -1183,7 +1183,7 @@ namespace Divide
     bool Scene::lockCameraToPlayerMouse( const PlayerIndex index, const bool lockState ) const noexcept
     {
         static bool hadWindowGrab = false;
-        static vec2<I32> lastMousePosition;
+        static int2 lastMousePosition;
 
         state()->playerState( index ).cameraLockedToMouse( lockState );
 
@@ -1811,8 +1811,8 @@ namespace Divide
                 const bool isDusk  = isTwilight && sunAzimuth > sunsetAzimuth;
 
                 //Update sky direction
-                const vec3<F32> sunPosition = _dayNightData._skyInstance->getSunPosition( _dayNightData._sunLight->range() );
-                vec3<F32> sunDirection = Normalized( VECTOR3_ZERO - sunPosition );
+                const float3 sunPosition = _dayNightData._skyInstance->getSunPosition( _dayNightData._sunLight->range() );
+                float3 sunDirection = Normalized( VECTOR3_ZERO - sunPosition );
 
                 //Update sun/moon colour
                 const FColour3 sunsetOrange{ 99.2f / 100.f, 36.9f / 100.f, 32.5f / 100.f };
@@ -1883,13 +1883,13 @@ namespace Divide
 
     bool Scene::checkCameraUnderwater( const Camera& camera ) const noexcept
     {
-        const vec3<F32>& eyePos = camera.snapshot()._eye;
+        const float3& eyePos = camera.snapshot()._eye;
         {
             const auto& waterBodies = state()->waterBodies();
             for ( const WaterBodyData& water : waterBodies )
             {
-                const vec3<F32>& extents = water._extents;
-                const vec3<F32>& position = water._positionW;
+                const float3& extents = water._extents;
+                const float3& position = water._positionW;
                 const F32 halfWidth = (extents.x + position.x) * 0.5f;
                 const F32 halfLength = (extents.z + position.z) * 0.5f;
                 if ( eyePos.x >= -halfWidth && eyePos.x <= halfWidth &&
@@ -1904,7 +1904,7 @@ namespace Divide
         return false;
     }
 
-    void Scene::findHoverTarget( PlayerIndex idx, const vec2<I32> aimPos, const bool recursive )
+    void Scene::findHoverTarget( PlayerIndex idx, const int2 aimPos, const bool recursive )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -1920,7 +1920,7 @@ namespace Divide
 
         const Camera* crtCamera = playerCamera( idx );
         const vec2<U16> renderingResolution = _context.gfx().renderingResolution();
-        const vec3<F32> direction = crtCamera->unProject( to_F32( aimPos.x ),
+        const float3 direction = crtCamera->unProject( to_F32( aimPos.x ),
                                                          renderingResolution.height - to_F32( aimPos.y ),
                                                          {
                                                               0,
@@ -2153,7 +2153,7 @@ namespace Divide
         return false;
     }
 
-    void Scene::beginDragSelection( const PlayerIndex idx, const vec2<I32> mousePos )
+    void Scene::beginDragSelection( const PlayerIndex idx, const int2 mousePos )
     {
         bool simulationPaused = false;
         if constexpr( Config::Build::ENABLE_EDITOR )
@@ -2199,9 +2199,9 @@ namespace Divide
 
         const vec2<U16> resolution = _context.gfx().renderingResolution();
 
-        const vec2<I32> startPos = { data._startDragPos.x, resolution.height - data._startDragPos.y };
+        const int2 startPos = { data._startDragPos.x, resolution.height - data._startDragPos.y };
 
-        const vec2<I32> endPos  = { data._endDragPos.x, resolution.height - data._endDragPos.y };
+        const int2 endPos  = { data._endDragPos.x, resolution.height - data._endDragPos.y };
 
         const I32 startX = std::min( startPos.x, endPos.x );
         const I32 startY = std::min( startPos.y, endPos.y );
@@ -2279,7 +2279,7 @@ namespace Divide
         _dayNightData._timeAccumulatorHour = 0.f;
         sunLight.lockDirection( true );
 
-        const vec3<F32> sunPosition = _dayNightData._skyInstance->getSunPosition( sunLight.range() );
+        const float3 sunPosition = _dayNightData._skyInstance->getSunPosition( sunLight.range() );
         sunLight.sgn()->get<TransformComponent>()->setDirection( Normalized( VECTOR3_ZERO - sunPosition ) );
     }
 
@@ -2315,23 +2315,23 @@ namespace Divide
         return _dayNightData._location;
     }
 
-    [[nodiscard]] vec3<F32> Scene::getSunPosition() const
+    [[nodiscard]] float3 Scene::getSunPosition() const
     {
         if ( _dayNightData._sunLight != nullptr )
         {
             return _dayNightData._sunLight->sgn()->get<TransformComponent>()->getWorldPosition();
         }
-        return vec3<F32>(500, 500, 500);
+        return float3(500, 500, 500);
     }
 
-    [[nodiscard]] vec3<F32> Scene::getSunDirection() const
+    [[nodiscard]] float3 Scene::getSunDirection() const
     {
         if ( _dayNightData._sunLight != nullptr )
         {
             return _dayNightData._sunLight->sgn()->get<TransformComponent>()->getLocalDirection();
         }
 
-        return vec3<F32>(WORLD_Y_NEG_AXIS);
+        return float3(WORLD_Y_NEG_AXIS);
     }
 
     SunInfo Scene::getCurrentSunDetails() const noexcept
@@ -2390,7 +2390,7 @@ namespace Divide
             {
                 const U8 currentPlayerCount = playerCount();
 
-                vec3<F32> camPos;
+                float3 camPos;
                 Quaternion<F32> camOrientation;
 
                 U8 currentPlayerIndex = 0u;

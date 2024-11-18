@@ -59,7 +59,7 @@ class WaypointGraph {
 
     U32 _id = 0xFFFFFFFF;
     bool _loop = true;
-    vector<vec3<F32> > _positions;
+    vector<float3 > _positions;
     vector<Quaternion<F32> > _rotations;
     vector<U32> _times;
 };

@@ -454,7 +454,7 @@ namespace Divide
             if ( hasCommands )
             {
                 const BoundsComponent* bComp = _parentSGN->get<BoundsComponent>();
-                const vec3<F32>& cameraEye = cameraSnapshot._eye;
+                const float3& cameraEye = cameraSnapshot._eye;
                 const SceneNodeRenderState& renderState = _parentSGN->getNode<>().renderState();
                 if ( renderState.lod0OnCollision() && bComp->getBoundingBox().containsPoint( cameraEye ) )
                 {
@@ -463,7 +463,7 @@ namespace Divide
                 else
                 {
                     const BoundingBox& aabb = bComp->getBoundingBox();
-                    const vec3<F32> LoDtarget = renderState.useBoundsCenterForLoD() ? aabb.getCenter() : aabb.nearestPoint( cameraEye );
+                    const float3 LoDtarget = renderState.useBoundsCenterForLoD() ? aabb.getCenter() : aabb.nearestPoint( cameraEye );
                     const F32 distanceSQToCenter = LoDtarget.distanceSquared( cameraEye );
                     _lodLevels[to_base( renderStagePass._stage )] = getLoDLevelInternal( distanceSQToCenter, renderStagePass._stage, sceneRenderState.lodThresholds( renderStagePass._stage ) );
                 }
@@ -809,7 +809,7 @@ namespace Divide
         return false;
     }
 
-    void RenderingComponent::updateNearestProbes( const vec3<F32>& position )
+    void RenderingComponent::updateNearestProbes( const float3& position )
     {
         _envProbes.resize( 0 );
         _reflectionProbeIndex = SceneEnvironmentProbePool::SkyProbeLayerIndex();

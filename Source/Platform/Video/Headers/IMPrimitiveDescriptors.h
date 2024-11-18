@@ -56,8 +56,8 @@ namespace IM {
     };
 
     struct BoxDescriptor final : public BaseDescriptor {
-        vec3<F32> min{ VECTOR3_UNIT * -0.5f };
-        vec3<F32> max{ VECTOR3_UNIT * 0.5f };
+        float3 min{ VECTOR3_UNIT * -0.5f };
+        float3 max{ VECTOR3_UNIT * 0.5f };
     };
 
     struct LineDescriptor final : public BaseDescriptor {
@@ -65,15 +65,15 @@ namespace IM {
     };
 
     struct SphereDescriptor final : public BaseDescriptor {
-        vec3<F32> center{ VECTOR3_ZERO };
+        float3 center{ VECTOR3_ZERO };
         F32 radius{ 1.f };
         U8 slices{ 8u };
         U8 stacks{ 8u };
     };
 
     struct ConeDescriptor final : public BaseDescriptor {
-        vec3<F32> root{ VECTOR3_ZERO };
-        vec3<F32> direction{ WORLD_Y_AXIS };
+        float3 root{ VECTOR3_ZERO };
+        float3 direction{ WORLD_Y_AXIS };
         F32 length{ 1.f };
         F32 radius{ 2.f };
         U8 slices{ 16u }; //max 32u

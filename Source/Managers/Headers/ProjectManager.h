@@ -238,7 +238,7 @@ namespace Divide
         /// cull the SceneGraph against the current view frustum. 
         void cullSceneGraph( const NodeCullParams& cullParams, const U16 cullFlags, VisibleNodeList<>& nodesOut );
         /// Searches the scenegraph for the specified nodeGUID and, if found, adds it to nodesOut
-        void findNode( const vec3<F32>& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut );
+        void findNode( const float3& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut );
         /// init default culling values like max cull distance and other scene related states
         void initDefaultCullValues( RenderStage stage, NodeCullParams& cullParamsInOut ) noexcept;
         /// get the full list of reflective nodes
@@ -548,7 +548,7 @@ namespace Divide
                 mgr->cullSceneGraph( cullParams, cullFlags, nodesOut );
             }
 
-            static void findNode( Divide::ProjectManager* mgr, const vec3<F32>& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
+            static void findNode( Divide::ProjectManager* mgr, const float3& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
             {
                 mgr->findNode( cameraEye, nodeGUID, nodesOut );
             }

@@ -79,10 +79,10 @@ FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 struct VegetationData
 {
-    vec4<F32> _positionAndScale;
-    vec4<F32> _orientationQuat;
+    float4 _positionAndScale;
+    float4 _orientationQuat;
     //x - array index, y - chunk ID, z - render flag, w - height scale
-    vec4<F32> _data = { 1.0f, 1.0f, 1.0f, 0.0f };
+    float4 _data = { 1.0f, 1.0f, 1.0f, 0.0f };
 };
 //RenderDoc: mat4 transform; vec4 posAndIndex; vec4 extentAndRender;
 
@@ -134,8 +134,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     F32 _windX = 0.0f, _windZ = 0.0f, _windS = 0.0f;
     U64 _stateRefreshIntervalUS = Time::SecondsToMicroseconds(1);
     U64 _stateRefreshIntervalBufferUS = 0ULL;
-    vec4<F32> _grassExtents = VECTOR4_UNIT;
-    vec4<F32> _treeExtents = VECTOR4_UNIT;
+    float4 _grassExtents = VECTOR4_UNIT;
+    float4 _treeExtents = VECTOR4_UNIT;
 
     SceneGraphNode* _treeParentNode = nullptr;
 
@@ -154,8 +154,8 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     ShaderBuffer_uptr _grassData;
     vector<Handle<Mesh>> _treeMeshes;
 
-    eastl::unordered_set<vec2<F32>> _grassPositions;
-    eastl::unordered_set<vec2<F32>> _treePositions;
+    eastl::unordered_set<float2> _grassPositions;
+    eastl::unordered_set<float2> _treePositions;
 
     Handle<ShaderProgram> _cullShaderGrass = INVALID_HANDLE<ShaderProgram>;
     Handle<ShaderProgram> _cullShaderTrees = INVALID_HANDLE<ShaderProgram>;

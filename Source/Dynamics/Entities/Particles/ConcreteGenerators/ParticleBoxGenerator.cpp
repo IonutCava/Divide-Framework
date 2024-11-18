@@ -10,8 +10,8 @@ void ParticleBoxGenerator::generate(Task& packagedTasksParent,
                                     ParticleData& p,
                                     U32 startIndex,
                                     U32 endIndex) {
-    vec3<F32> min(_posMin + _sourcePosition);
-    vec3<F32> max(_posMax + _sourcePosition);
+    float3 min(_posMin + _sourcePosition);
+    float3 max(_posMax + _sourcePosition);
     
     using iter_t = decltype(std::begin(p._position));
     for_each_interval<iter_t>(std::begin(p._position) + startIndex,
@@ -23,7 +23,7 @@ void ParticleBoxGenerator::generate(Task& packagedTasksParent,
             &packagedTasksParent,
             [from, to, min, max](const Task&) mutable
             {
-                std::for_each(from, to, [min, max](vec4<F32>& position)
+                std::for_each(from, to, [min, max](float4& position)
                 {
                     position.xyz = Random(min, max);
                 });

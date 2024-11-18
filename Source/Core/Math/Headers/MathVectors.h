@@ -1438,32 +1438,32 @@ namespace Divide
     [[nodiscard]] vec4<T> Clamped( const vec4<T>& v, const vec4<T>& min, const vec4<T>& max ) noexcept;
 
     /// Quaternion multiplications require these to be floats
-    static const vec2<F32> VECTOR2_ZERO{ 0.0f };
-    static const vec3<F32> VECTOR3_ZERO{ 0.0f };
-    static const vec4<F32> VECTOR4_ZERO{ 0.0f };
-    static const vec2<F32> VECTOR2_UNIT{ 1.0f };
-    static const vec3<F32> VECTOR3_UNIT{ 1.0f };
-    static const vec4<F32> VECTOR4_UNIT{ 1.0f };
-    static const vec2<F32> VECTOR2_EPSILON{ EPSILON_F32 };
-    static const vec3<F32> VECTOR3_EPSILON{ EPSILON_F32 };
-    static const vec4<F32> VECTOR4_EPSILON{ EPSILON_F32 };
-    static const vec3<F32> WORLD_X_AXIS{ 1.0f, 0.0f, 0.0f };
-    static const vec3<F32> WORLD_Y_AXIS{ 0.0f, 1.0f, 0.0f };
-    static const vec3<F32> WORLD_Z_AXIS{ 0.0f, 0.0f, 1.0f };
-    static const vec3<F32> WORLD_X_NEG_AXIS{ -1.0f,  0.0f,  0.0f };
-    static const vec3<F32> WORLD_Y_NEG_AXIS{ 0.0f, -1.0f,  0.0f };
-    static const vec3<F32> WORLD_Z_NEG_AXIS{ 0.0f,  0.0f, -1.0f };
-    static const vec3<F32> DEFAULT_GRAVITY{ 0.0f, -9.81f, 0.0f };
+    static const float2 VECTOR2_ZERO{ 0.0f };
+    static const float3 VECTOR3_ZERO{ 0.0f };
+    static const float4 VECTOR4_ZERO{ 0.0f };
+    static const float2 VECTOR2_UNIT{ 1.0f };
+    static const float3 VECTOR3_UNIT{ 1.0f };
+    static const float4 VECTOR4_UNIT{ 1.0f };
+    static const float2 VECTOR2_EPSILON{ EPSILON_F32 };
+    static const float3 VECTOR3_EPSILON{ EPSILON_F32 };
+    static const float4 VECTOR4_EPSILON{ EPSILON_F32 };
+    static const float3 WORLD_X_AXIS{ 1.0f, 0.0f, 0.0f };
+    static const float3 WORLD_Y_AXIS{ 0.0f, 1.0f, 0.0f };
+    static const float3 WORLD_Z_AXIS{ 0.0f, 0.0f, 1.0f };
+    static const float3 WORLD_X_NEG_AXIS{ -1.0f,  0.0f,  0.0f };
+    static const float3 WORLD_Y_NEG_AXIS{ 0.0f, -1.0f,  0.0f };
+    static const float3 WORLD_Z_NEG_AXIS{ 0.0f,  0.0f, -1.0f };
+    static const float3 DEFAULT_GRAVITY{ 0.0f, -9.81f, 0.0f };
 
-    static const vec2<I32> iVECTOR2_ZERO{ 0 };
-    static const vec3<I32> iVECTOR3_ZERO{ 0 };
-    static const vec4<I32> iVECTOR4_ZERO{ 0 };
-    static const vec3<I32> iWORLD_X_AXIS{ 1, 0, 0 };
-    static const vec3<I32> iWORLD_Y_AXIS{ 0, 1, 0 };
-    static const vec3<I32> iWORLD_Z_AXIS{ 0, 0, 1 };
-    static const vec3<I32> iWORLD_X_NEG_AXIS{ -1,  0,  0 };
-    static const vec3<I32> iWORLD_Y_NEG_AXIS{ 0, -1,  0 };
-    static const vec3<I32> iWORLD_Z_NEG_AXIS{ 0,  0, -1 };
+    static const int2 iVECTOR2_ZERO{ 0 };
+    static const int3 iVECTOR3_ZERO{ 0 };
+    static const int4 iVECTOR4_ZERO{ 0 };
+    static const int3 iWORLD_X_AXIS{ 1, 0, 0 };
+    static const int3 iWORLD_Y_AXIS{ 0, 1, 0 };
+    static const int3 iWORLD_Z_AXIS{ 0, 0, 1 };
+    static const int3 iWORLD_X_NEG_AXIS{ -1,  0,  0 };
+    static const int3 iWORLD_Y_NEG_AXIS{ 0, -1,  0 };
+    static const int3 iWORLD_Z_NEG_AXIS{ 0,  0, -1 };
 
     //ToDo: Move this to its own file
     template<typename T>

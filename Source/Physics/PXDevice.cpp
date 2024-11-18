@@ -129,7 +129,7 @@ namespace Divide
         return _api->convertActor( actor, newGroup );
     }
 
-    bool PXDevice::intersect( const Ray& intersectionRay, const vec2<F32> range, vector<SGNRayResult>& intersectionsOut ) const
+    bool PXDevice::intersect( const Ray& intersectionRay, const float2 range, vector<SGNRayResult>& intersectionsOut ) const
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
         return _api->intersect( intersectionRay, range, intersectionsOut );

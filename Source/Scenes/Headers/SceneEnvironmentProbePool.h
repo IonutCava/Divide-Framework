@@ -75,7 +75,7 @@ public:
     static RenderTargetHandle IrradianceTarget() noexcept;
     static RenderTargetHandle BRDFLUTTarget() noexcept;
 
-    const EnvironmentProbeList& sortAndGetLocked(const vec3<F32>& position);
+    const EnvironmentProbeList& sortAndGetLocked(const float3& position);
     const EnvironmentProbeList& getLocked() const noexcept;
 
     void registerProbe(EnvironmentProbeComponent* probe);

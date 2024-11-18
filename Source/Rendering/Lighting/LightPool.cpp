@@ -382,7 +382,7 @@ namespace Divide
         SpotLightComponent* spot = nullptr;
 
         lightCount.fill( 0 );
-        vec3<F32> tempColour;
+        float3 tempColour;
         for ( Light* light : lights )
         {
             const LightType type = light->getLightType();
@@ -407,8 +407,8 @@ namespace Divide
                 light->getDiffuseColour( tempColour );
                 temp._diffuse.set( tempColour * light->intensity(), isSpot ? std::cos( Angle::to_RADIANS( spot->outerConeCutoffAngle() ) ) : 0.f );
                 // Omni and spot lights have a position. Directional lights have this set to (0,0,0)
-                temp._position.set( isDir ? VECTOR3_ZERO : (viewMatrix * vec4<F32>( light->positionCache(), 1.0f )).xyz, light->range() );
-                temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * vec4<F32>( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::to_RADIANS( spot->coneCutoffAngle() ) ) : 0.f );
+                temp._position.set( isDir ? VECTOR3_ZERO : (viewMatrix * float4( light->positionCache(), 1.0f )).xyz, light->range() );
+                temp._direction.set( isOmni ? VECTOR3_ZERO : (viewMatrix * float4( light->directionCache(), 0.0f )).xyz, isSpot ? std::cos( Angle::to_RADIANS( spot->coneCutoffAngle() ) ) : 0.f );
                 temp._options.xyz = { typeIndex, light->shadowPropertyIndex(), isSpot ? to_I32( spot->coneSlantHeight() ) : 0 };
 
                 ++lightCount[typeIndex];
@@ -436,7 +436,7 @@ namespace Divide
             }
         }
 
-        const vec3<F32>& eyePos = cameraSnapshot._eye;
+        const float3& eyePos = cameraSnapshot._eye;
         const auto lightSortCbk = [&eyePos]( Light* a, Light* b ) noexcept
         {
             return  a->getLightType() < b->getLightType() ||
@@ -498,7 +498,7 @@ namespace Divide
         }
     }
 
-    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( [[maybe_unused]] const vec3<F32>& cameraPosition, Light* const light )
+    [[nodiscard]] bool LightPool::isShadowCacheInvalidated( [[maybe_unused]] const float3& cameraPosition, Light* const light )
     {
         {
             SharedLock<SharedMutex> r_lock( _movedSceneVolumesLock );

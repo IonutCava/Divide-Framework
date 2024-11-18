@@ -90,7 +90,7 @@ namespace Divide {
             bool serialize(ByteBuffer& dataOut) const;
             bool deserialize(ByteBuffer& dataIn);
 
-            using SpecularGlossiness = vec2<F32>;
+            using SpecularGlossiness = float2;
 
             PROPERTY_RW(bool, ignoreTexDiffuseAlpha, false);
             PROPERTY_RW(bool, doubleSided, true);
@@ -111,11 +111,11 @@ namespace Divide {
 
         struct SubMeshData {
             struct Vertex {
-                vec3<F32> position = {0.f, 0.f, 0.f };
-                vec3<F32> normal = {0.f, 0.f, 0.f };
-                vec4<F32> tangent = { 0.f, 0.f, 0.f, 0.f };
-                vec3<F32> texcoord = { 0.f, 0.f, 0.f };
-                vec4<F32> weights = {0.f, 0.f, 0.f, 0.f};
+                float3 position = {0.f, 0.f, 0.f };
+                float3 normal = {0.f, 0.f, 0.f };
+                float4 tangent = { 0.f, 0.f, 0.f, 0.f };
+                float3 texcoord = { 0.f, 0.f, 0.f };
+                float4 weights = {0.f, 0.f, 0.f, 0.f};
                 vec4<U8>  indices = {0u, 0u, 0u, 0u};
             };
 
@@ -126,12 +126,12 @@ namespace Divide {
             PROPERTY_RW(U32, index, 0u);
             PROPERTY_RW(U8, lodCount, 0u);
             PROPERTY_RW(U8, boneCount, 0u);
-            PROPERTY_RW(vec3<F32>, minPos);
-            PROPERTY_RW(vec3<F32>, maxPos);
-            PROPERTY_RW(vec3<F32>, worldOffset);
+            PROPERTY_RW(float3, minPos);
+            PROPERTY_RW(float3, maxPos);
+            PROPERTY_RW(float3, worldOffset);
 
             std::array<U16, MAX_LOD_LEVELS> _partitionIDs{};
-            vector<vec3<U32>> _triangles[MAX_LOD_LEVELS];
+            vector<uint3> _triangles[MAX_LOD_LEVELS];
             vector<U32> _indices[MAX_LOD_LEVELS];
             vector<Vertex> _vertices[MAX_LOD_LEVELS];
 

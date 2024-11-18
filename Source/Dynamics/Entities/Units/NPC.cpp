@@ -5,7 +5,7 @@
 
 namespace Divide {
 
-NPC::NPC( const vec3<F32>& currentPosition, const std::string_view name )
+NPC::NPC( const float3& currentPosition, const std::string_view name )
     : Character(CharacterType::CHARACTER_TYPE_NPC)
     , _aiUnit(std::make_unique<AI::AIEntity>( this, currentPosition, name))
 {

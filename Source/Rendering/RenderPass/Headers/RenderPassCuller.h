@@ -69,9 +69,9 @@ struct GUIDList {
 struct NodeCullParams {
     FrustumClipPlanes _clippingPlanes;
     vec4<U16> _lodThresholds = {1000u};
-    vec3<F32> _minExtents = { 0.0f };
+    float3 _minExtents = { 0.0f };
     GUIDList _ignoredGUIDS = {};
-    vec3<F32> _cameraEyePos;
+    float3 _cameraEyePos;
     const Frustum* _frustum = nullptr;
     F32 _cullMaxDistance = F32_MAX;
     I32 _maxLoD = -1;

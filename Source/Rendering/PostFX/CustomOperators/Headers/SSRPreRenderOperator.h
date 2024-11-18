@@ -60,7 +60,7 @@ class SSRPreRenderOperator final : public PreRenderOperator {
      GFX::BindPipelineCommand _pipelineCmd;
      UniformData _uniforms;
      mat4<F32> _projToPixelBasis;
-     vec2<F32> _cachedZPlanes = VECTOR2_UNIT;
+     float2 _cachedZPlanes = VECTOR2_UNIT;
      bool _constantsDirty = true;
      bool _stateChanged = false;
 };

@@ -281,7 +281,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
 {
     FColour4 floatData;
     vec4<U16> shortData;
-    vec4<U32> intData;
+    uint4 intData;
 
     const auto GetClearData = [clearColour, &floatData, &shortData, &intData](const GFXDataFormat format)
     {

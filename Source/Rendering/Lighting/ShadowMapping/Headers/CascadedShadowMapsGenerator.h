@@ -63,7 +63,7 @@ class CascadedShadowMapsGenerator final : public ShadowMapGenerator {
    protected:
     using SplitDepths = std::array<F32, Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT>;
 
-    SplitDepths calculateSplitDepths( DirectionalLightComponent& light, const vec2<F32> nearFarPlanes) const noexcept;
+    SplitDepths calculateSplitDepths( DirectionalLightComponent& light, const float2 nearFarPlanes) const noexcept;
 
     void applyFrustumSplits(DirectionalLightComponent& light, const Camera& shadowCamera, U8 numSplits) const;
 

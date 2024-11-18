@@ -62,9 +62,9 @@ public:
     struct ShadowProperties
     {
         // x = light type, y = arrayOffset, z - bias, w - strength
-        vec4<F32> _lightDetails{0.f, -1.f, 0.f, 1.f};
+        float4 _lightDetails{0.f, -1.f, 0.f, 1.f};
         /// light's position in world space. w - csm split distances (or whatever else might be needed)
-        std::array<vec4<F32>, 6> _lightPosition{};
+        std::array<float4, 6> _lightPosition{};
         /// light viewProjection matrices
         std::array<mat4<F32>, 6> _lightVP{};
         bool _dirty = false;
@@ -87,7 +87,7 @@ public:
     [[nodiscard]] const LightType& getLightType() const noexcept;
 
     /// Get the distance squared from this light to the specified position
-    [[nodiscard]] F32 distanceSquared(const vec3<F32>& pos) const noexcept;
+    [[nodiscard]] F32 distanceSquared(const float3& pos) const noexcept;
 
     [[nodiscard]] const ShadowProperties& getShadowProperties() const noexcept;
 
@@ -97,8 +97,8 @@ public:
     [[nodiscard]] F32 getShadowFloatValues(const U8 index) const noexcept;
     void setShadowFloatValue(const U8 index, const F32 newValue) noexcept;
 
-    [[nodiscard]] const vec4<F32>& getShadowLightPos(const U8 index) const noexcept;
-                  void             setShadowLightPos(const U8 index, const vec3<F32>& newValue) noexcept;
+    [[nodiscard]] const float4& getShadowLightPos(const U8 index) const noexcept;
+                  void             setShadowLightPos(const U8 index, const float3& newValue) noexcept;
 
     U16  getShadowArrayOffset() const noexcept;
     void setShadowArrayOffset(const U16 offset) noexcept;
@@ -108,8 +108,8 @@ public:
 
 public:
     PROPERTY_R_IW(BoundingSphere, boundingVolume);
-    PROPERTY_R(vec3<F32>, positionCache);
-    PROPERTY_R(vec3<F32>, directionCache);
+    PROPERTY_R(float3, positionCache);
+    PROPERTY_R(float3, directionCache);
     /// Does this light cast shadows?
     PROPERTY_RW(bool, castsShadows);
     /// Turn the light on/off

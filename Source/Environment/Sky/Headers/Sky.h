@@ -73,8 +73,8 @@ DEFINE_NODE_TYPE( Sky, SceneNodeType::TYPE_SKY )
     [[nodiscard]] SimpleLocation GetGeographicLocation() const noexcept;
 
     [[nodiscard]] const SunInfo& getCurrentDetails() const;
-    [[nodiscard]] vec3<F32> getSunPosition(F32 radius = 1.f) const;
-    [[nodiscard]] vec3<F32> getSunDirection(F32 radius = 1.f) const;
+    [[nodiscard]] float3 getSunPosition(F32 radius = 1.f) const;
+    [[nodiscard]] float3 getSunDirection(F32 radius = 1.f) const;
     [[nodiscard]] bool isDay() const;
 
     PROPERTY_R(Atmosphere, atmosphere);

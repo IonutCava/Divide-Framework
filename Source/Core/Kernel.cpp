@@ -145,7 +145,7 @@ void Kernel::stopSplashScreen()
     window.changeToPreviousType();
     window.decorated(true);
     WAIT_FOR_CONDITION(window.setDimensions(previousDimensions));
-    window.setPosition(vec2<I32>(-1));
+    window.setPosition(int2(-1));
 
     if (window.type() == WindowType::WINDOW && _platformContext.config().runtime.maximizeOnStart)
     {

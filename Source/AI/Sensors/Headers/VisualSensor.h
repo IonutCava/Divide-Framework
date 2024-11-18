@@ -46,7 +46,7 @@ using NodeContainer = hashMap<I64, SceneGraphNode*>;
 /// Container ID, NodeContainer
 using NodeContainerMap = hashMap<U32, NodeContainer>;
 /// SGN GUID, Last position
-using NodePositions = hashMap<I64, vec3<F32> >;
+using NodePositions = hashMap<I64, float3 >;
 /// Container ID, NodePositions
 using NodePositionsMap = hashMap<U32, NodePositions>;
 
@@ -61,17 +61,20 @@ class VisualSensor final : public Sensor
     void followSceneGraphNode(U32 containerID, SceneGraphNode* node);
     void unfollowSceneGraphNode(U32 containerID, I64 nodeGUID);
 
-    F32 getDistanceToNodeSq(U32 containerID, I64 nodeGUID);
+    bool getDistanceToNodeSq(U32 containerID, I64 nodeGUID, F32& distanceOut);
 
-    F32 getDistanceToNode(const U32 containerID, const I64 nodeGUID) {
-        const F32 distanceSq = getDistanceToNodeSq(containerID, nodeGUID);
-        if (distanceSq < F32_MAX - 1.f) {
-            return Sqrt(distanceSq);
+    F32 getDistanceToNode(const U32 containerID, const I64 nodeGUID)
+    {
+        F32 distanceSq = F32_MAX;
+        if (getDistanceToNodeSq(containerID, nodeGUID, distanceSq))
+        {
+            return Sqrt<F32>(distanceSq);
         }
+
         return distanceSq;
     }
 
-    vec3<F32> getNodePosition(U32 containerID, I64 nodeGUID);
+    float3 getNodePosition(U32 containerID, I64 nodeGUID);
     SceneGraphNode* findClosestNode(U32 containerID);
 
 

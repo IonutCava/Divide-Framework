@@ -58,16 +58,16 @@ class SceneShaderData
     struct SceneShaderBufferData
     {
         // w - altitude
-        vec4<F32> _sunDirection = {-0.3f, -0.8f, 0.5f, 1.f};
+        float4 _sunDirection = {-0.3f, -0.8f, 0.5f, 1.f};
         // w - azimuth
         FColour4 _sunColour = DefaultColours::WHITE;
         // x,y,z - direction, w - speed
-        vec4<F32> _windDetails = VECTOR4_ZERO;
+        float4 _windDetails = VECTOR4_ZERO;
         // x - elapsed game time (ms), x - elapsed app time, z - material debug flag, w - unused
-        vec4<F32> _appData = {0.f, 0.f, to_F32(MaterialDebugFlag::COUNT), 0.f};
+        float4 _appData = {0.f, 0.f, to_F32(MaterialDebugFlag::COUNT), 0.f};
         FogDetails _fogDetails{};
         WaterBodyData _waterEntities[GLOBAL_WATER_BODIES_COUNT] = {};
-        vec4<F32> _padding[6];
+        float4 _padding[6];
     };
 
   public:
@@ -92,7 +92,7 @@ class SceneShaderData
         }
     }
 
-    void sunDetails(const vec3<F32>& sunDirection, const FColour3& colour, const F32 altitude, const F32 azimuth) noexcept
+    void sunDetails(const float3& sunDirection, const FColour3& colour, const F32 altitude, const F32 azimuth) noexcept
     {
         if (_sceneBufferData._sunDirection.xyz != sunDirection ||
             _sceneBufferData._sunColour.xyz != colour ||
@@ -168,7 +168,7 @@ class SceneShaderData
         return false;
     }
 
-    bool probeData(const U16 index, const vec3<F32>& center, const vec3<F32>& halfExtents) noexcept
+    bool probeData(const U16 index, const float3& center, const float3& halfExtents) noexcept
     {
         if (index < GLOBAL_PROBE_COUNT)
         {

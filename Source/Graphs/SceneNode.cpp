@@ -63,7 +63,7 @@ void SceneNode::postLoad(SceneGraphNode* sgn)
     sgn->postLoad();
 }
 
-void SceneNode::setBounds(const BoundingBox& aabb, const vec3<F32>& worldOffset)
+void SceneNode::setBounds(const BoundingBox& aabb, const float3& worldOffset)
 {
     _boundsChanged = true;
     _boundingBox.set(aabb);

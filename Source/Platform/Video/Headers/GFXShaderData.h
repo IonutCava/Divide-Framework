@@ -46,15 +46,15 @@ struct GFXShaderData {
           mat4<F32> _viewMatrix = MAT4_IDENTITY;
           mat4<F32> _invViewMatrix = MAT4_IDENTITY;
           mat4<F32> _worldAOVPMatrix = MAT4_IDENTITY;
-          vec4<F32> _viewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
+          float4 _viewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           // x - scale, y - bias, z - light bleed bias, w - min shadow variance
-          vec4<F32> _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
+          float4 _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
           //x - nearPlane, y - farPlane, z - FoV, w - clip plane count
-          vec4<F32> _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
+          float4 _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
           //xy - depth range, zw - light cluster size X / Y
-          vec4<F32> _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
-          vec4<F32> _clipPlanes[Config::MAX_CLIP_DISTANCES];
-          vec4<F32> _padding__[9];
+          float4 _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
+          float4 _clipPlanes[Config::MAX_CLIP_DISTANCES];
+          float4 _padding__[9];
       } _camData;
 #pragma pack(pop)
 
@@ -69,7 +69,7 @@ struct GFXShaderData {
 };
 
 [[nodiscard]] F32 AspectRatio(const GFXShaderData::CamData& dataIn) noexcept;
-[[nodiscard]] vec2<F32> CameraZPlanes(const GFXShaderData::CamData& dataIn) noexcept;
+[[nodiscard]] float2 CameraZPlanes(const GFXShaderData::CamData& dataIn) noexcept;
 [[nodiscard]] F32 FoV(const GFXShaderData::CamData& dataIn) noexcept;
 
 [[nodiscard]] bool ValidateGPUDataStructure() noexcept;

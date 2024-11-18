@@ -38,7 +38,7 @@ inline F32 AspectRatio(const GFXShaderData::CamData& dataIn) noexcept {
     return dataIn._viewPort.z / dataIn._viewPort.w;
 }
 
-inline vec2<F32> CameraZPlanes(const GFXShaderData::CamData& dataIn) noexcept {
+inline float2 CameraZPlanes(const GFXShaderData::CamData& dataIn) noexcept {
     return dataIn._cameraProperties.xy;
 }
 

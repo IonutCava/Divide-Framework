@@ -104,7 +104,7 @@ namespace Attorney
 {
     class MouseEventConsumer
     {
-        static void setAbsolutePosition(MouseEvent& evt, const vec2<I32>& absPosition) noexcept
+        static void setAbsolutePosition(MouseEvent& evt, const int2& absPosition) noexcept
         {
             evt._state.X.abs = absPosition.x;
             evt._state.Y.abs = absPosition.y;

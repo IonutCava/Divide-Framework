@@ -34,7 +34,7 @@
 
 namespace Divide {
 
-inline bool BoundingBox::containsPoint(const vec3<F32>& point) const noexcept {
+inline bool BoundingBox::containsPoint(const float3& point) const noexcept {
     return IS_GEQUAL(point.x, _min.x) && IS_GEQUAL(point.y, _min.y) && IS_GEQUAL(point.z, _min.z) &&
         IS_LEQUAL(point.x, _max.x) && IS_LEQUAL(point.y, _max.y) && IS_LEQUAL(point.z, _max.z);
 }
@@ -52,24 +52,24 @@ inline bool BoundingBox::operator!=(const BoundingBox& B) const noexcept {
     return !compare(B);
 }
 
-inline void BoundingBox::createFromPoints(const vector<vec3<F32>>& points) noexcept {
-    for (const vec3<F32>& p : points) {
+inline void BoundingBox::createFromPoints(const vector<float3>& points) noexcept {
+    for (const float3& p : points) {
         add(p);
     }
 }
 
-inline void BoundingBox::createFromPoints(const std::array<vec3<F32>, 8>& points) noexcept {
-    for (const vec3<F32>& p : points) {
+inline void BoundingBox::createFromPoints(const std::array<float3, 8>& points) noexcept {
+    for (const float3& p : points) {
         add(p);
     }
 }
 
-inline void BoundingBox::createFromSphere(const vec3<F32>& center, const F32 radius) noexcept {
+inline void BoundingBox::createFromSphere(const float3& center, const F32 radius) noexcept {
     _max.set(center + radius);
     _min.set(center - radius);
 }
 
-inline void BoundingBox::add(const vec3<F32>& v) noexcept {
+inline void BoundingBox::add(const float3& v) noexcept {
     //Max
     if (v.x > _max.x) {
         _max.x = v.x;
@@ -103,7 +103,7 @@ inline void BoundingBox::add(const BoundingBox& bb) noexcept {
              std::min(bb._min.z, _min.z));
 }
 
-inline void BoundingBox::translate(const vec3<F32>& v) noexcept {
+inline void BoundingBox::translate(const float3& v) noexcept {
     _min += v;
     _max += v;
 }
@@ -113,7 +113,7 @@ inline void BoundingBox::multiply(const F32 factor) noexcept {
     _max *= factor;
 }
 
-inline void BoundingBox::multiply(const vec3<F32>& v) noexcept {
+inline void BoundingBox::multiply(const float3& v) noexcept {
     _min.x *= v.x;
     _min.y *= v.y;
     _min.z *= v.z;
@@ -122,27 +122,27 @@ inline void BoundingBox::multiply(const vec3<F32>& v) noexcept {
     _max.z *= v.z;
 }
 
-inline void BoundingBox::multiplyMax(const vec3<F32>& v) noexcept {
+inline void BoundingBox::multiplyMax(const float3& v) noexcept {
     _max.x *= v.x;
     _max.y *= v.y;
     _max.z *= v.z;
 }
 
-inline void BoundingBox::multiplyMin(const vec3<F32>& v) noexcept {
+inline void BoundingBox::multiplyMin(const float3& v) noexcept {
     _min.x *= v.x;
     _min.y *= v.y;
     _min.z *= v.z;
 }
 
-inline const vec3<F32>& BoundingBox::getMin() const noexcept {
+inline const float3& BoundingBox::getMin() const noexcept {
     return _min;
 }
 
-inline const vec3<F32>& BoundingBox::getMax() const noexcept {
+inline const float3& BoundingBox::getMax() const noexcept {
     return _max;
 }
 
-inline vec3<F32> BoundingBox::getCenter() const noexcept {
+inline float3 BoundingBox::getCenter() const noexcept {
     // Doesn't seem to inline all that great in Debug builds
     return {
         (_max.x + _min.x) * 0.5f,
@@ -151,11 +151,11 @@ inline vec3<F32> BoundingBox::getCenter() const noexcept {
     };
 }
 
-inline vec3<F32> BoundingBox::getExtent() const noexcept {
+inline float3 BoundingBox::getExtent() const noexcept {
     return _max - _min;
 }
 
-inline vec3<F32> BoundingBox::getHalfExtent() const noexcept {
+inline float3 BoundingBox::getHalfExtent() const noexcept {
     // Doesn't seem to inline all that great in Debug builds
     return {
         (_max.x - _min.x) * 0.5f,
@@ -176,11 +176,11 @@ inline F32 BoundingBox::getDepth() const noexcept {
     return _max.z - _min.z;
 }
 
-inline void BoundingBox::setMin(const vec3<F32>& min) noexcept {
+inline void BoundingBox::setMin(const float3& min) noexcept {
     setMin(min.x, min.y, min.z);
 }
 
-inline void BoundingBox::setMax(const vec3<F32>& max) noexcept {
+inline void BoundingBox::setMax(const float3& max) noexcept {
     setMax(max.x, max.y, max.z);
 }
 
@@ -214,7 +214,7 @@ inline void BoundingBox::setMax(const F32 maxX, const F32 maxY, const F32 maxZ) 
     _max.set(maxX, maxY, maxZ);
 }
 
-inline void BoundingBox::set(const vec3<F32>& min, const vec3<F32>& max) noexcept {
+inline void BoundingBox::set(const float3& min, const float3& max) noexcept {
     _min = min;
     _max = max;
 }
@@ -224,46 +224,46 @@ inline void BoundingBox::reset() noexcept {
     _max.set(-F32_MAX);
 }
 
-inline vec3<F32> BoundingBox::cornerPoint(const U8 cornerIndex) const noexcept {
+inline float3 BoundingBox::cornerPoint(const U8 cornerIndex) const noexcept {
     assert(0 <= cornerIndex && cornerIndex <= 7);
     switch (cornerIndex) {
         default:
-        case 0: return vec3<F32>{ _min.x, _min.y, _min.z};
-        case 1: return vec3<F32>{ _min.x, _min.y, _max.z };
-        case 2: return vec3<F32>{ _min.x, _max.y, _min.z };
-        case 3: return vec3<F32>{ _min.x, _max.y, _max.z };
-        case 4: return vec3<F32>{ _max.x, _min.y, _min.z };
-        case 5: return vec3<F32>{ _max.x, _min.y, _max.z };
-        case 6: return vec3<F32>{ _max.x, _max.y, _min.z };
-        case 7: return vec3<F32>{ _max.x, _max.y, _max.z };
+        case 0: return float3{ _min.x, _min.y, _min.z};
+        case 1: return float3{ _min.x, _min.y, _max.z };
+        case 2: return float3{ _min.x, _max.y, _min.z };
+        case 3: return float3{ _min.x, _max.y, _max.z };
+        case 4: return float3{ _max.x, _min.y, _min.z };
+        case 5: return float3{ _max.x, _min.y, _max.z };
+        case 6: return float3{ _max.x, _max.y, _min.z };
+        case 7: return float3{ _max.x, _max.y, _max.z };
     }
 }
-inline std::array<vec3<F32>, 8> BoundingBox::getPoints() const noexcept {
-    return std::array<vec3<F32>, 8>
+inline std::array<float3, 8> BoundingBox::getPoints() const noexcept {
+    return std::array<float3, 8>
     {
-        vec3<F32>{_min.x, _min.y, _min.z},
-        vec3<F32>{_min.x, _min.y, _max.z},
-        vec3<F32>{_min.x, _max.y, _min.z},
-        vec3<F32>{_min.x, _max.y, _max.z},
-        vec3<F32>{_max.x, _min.y, _min.z},
-        vec3<F32>{_max.x, _min.y, _max.z},
-        vec3<F32>{_max.x, _max.y, _min.z},
-        vec3<F32>{_max.x, _max.y, _max.z}
+        float3{_min.x, _min.y, _min.z},
+        float3{_min.x, _min.y, _max.z},
+        float3{_min.x, _max.y, _min.z},
+        float3{_min.x, _max.y, _max.z},
+        float3{_max.x, _min.y, _min.z},
+        float3{_max.x, _min.y, _max.z},
+        float3{_max.x, _max.y, _min.z},
+        float3{_max.x, _max.y, _max.z}
     };
 }
 
-inline vec3<F32> BoundingBox::nearestPoint(const vec3<F32>& pos) const noexcept {
+inline float3 BoundingBox::nearestPoint(const float3& pos) const noexcept {
     return Clamped(pos, getMin(), getMax());
 }
 
-inline vec3<F32> BoundingBox::getPVertex(const vec3<F32>& normal) const noexcept {
-    return vec3<F32>(normal.x >= 0.0f ? _max.x : _min.x,
+inline float3 BoundingBox::getPVertex(const float3& normal) const noexcept {
+    return float3(normal.x >= 0.0f ? _max.x : _min.x,
                      normal.y >= 0.0f ? _max.y : _min.y,
                      normal.z >= 0.0f ? _max.z : _min.z);
 }
 
-inline vec3<F32> BoundingBox::getNVertex(const vec3<F32>& normal) const noexcept {
-    return vec3<F32>(normal.x >= 0.0f ? _min.x : _max.x,
+inline float3 BoundingBox::getNVertex(const float3& normal) const noexcept {
+    return float3(normal.x >= 0.0f ? _min.x : _max.x,
                      normal.y >= 0.0f ? _min.y : _max.y,
                      normal.z >= 0.0f ? _min.z : _max.z);
 }

@@ -7,11 +7,11 @@
 
 namespace Divide {
 namespace Util {
-    vec3<F32> toVec3(const physx::PxVec3& vec) noexcept {
+    float3 toVec3(const physx::PxVec3& vec) noexcept {
         return { vec.x, vec.y, vec.z };
     }
 
-    physx::PxVec3 toVec3(const vec3<F32>& vec) noexcept {
+    physx::PxVec3 toVec3(const float3& vec) noexcept {
         return { vec.x, vec.y, vec.z };
     }
 } //namespace Util
@@ -29,7 +29,7 @@ namespace Util {
     }
 
     /// Set the local X,Y and Z position
-    void PhysXActor::setPosition(const vec3<F32>& position) {
+    void PhysXActor::setPosition(const float3& position) {
         setPosition(position.x, position.y, position.z);
     }
 
@@ -56,13 +56,13 @@ namespace Util {
     }
 
     /// Set the local X,Y and Z scale factors
-    void PhysXActor::setScale(const vec3<F32>& scale) {
+    void PhysXActor::setScale(const float3& scale) {
         DIVIDE_UNUSED(scale);
     }
 
     /// Set the local orientation using the Axis-Angle system.
     /// The angle can be in either degrees(default) or radians
-    void PhysXActor::setRotation(const vec3<F32>& axis, Angle::DEGREES_F degrees) {
+    void PhysXActor::setRotation(const float3& axis, Angle::DEGREES_F degrees) {
         DIVIDE_UNUSED(axis);
         DIVIDE_UNUSED(degrees);
     }
@@ -81,19 +81,19 @@ namespace Util {
     }
 
     /// Add the specified translation factors to the current local position
-    void PhysXActor::translate(const vec3<F32>& axisFactors) {
+    void PhysXActor::translate(const float3& axisFactors) {
         DIVIDE_UNUSED(axisFactors);
     }
 
     /// Add the specified scale factors to the current local position
-    void PhysXActor::scale(const vec3<F32>& axisFactors) {
+    void PhysXActor::scale(const float3& axisFactors) {
         DIVIDE_UNUSED(axisFactors);
     }
 
     /// Apply the specified Axis-Angle rotation starting from the current
     /// orientation.
     /// The angles can be in either degrees(default) or radians
-    void PhysXActor::rotate(const vec3<F32>& axis, Angle::DEGREES_F degrees) {
+    void PhysXActor::rotate(const float3& axis, Angle::DEGREES_F degrees) {
         DIVIDE_UNUSED(axis);
         DIVIDE_UNUSED(degrees);
     }
@@ -185,12 +185,12 @@ namespace Util {
     }
     
     /// Return the scale factor
-    void PhysXActor::getScale(vec3<F32>& scaleOut) const {
+    void PhysXActor::getScale(float3& scaleOut) const {
         scaleOut.set(1.0f);
     }
 
     /// Return the position
-    void PhysXActor::getPosition(vec3<F32>& posOut) const {
+    void PhysXActor::getPosition(float3& posOut) const {
         posOut.set(0.0f);
     }
 

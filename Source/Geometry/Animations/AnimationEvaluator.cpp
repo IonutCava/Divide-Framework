@@ -49,7 +49,7 @@ AnimEvaluator::AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept
         dstChannel._numScalingKeys = srcChannel->mNumScalingKeys;
     }
 
-    _lastPositions.resize(pAnim->mNumChannels, vec3<U32>());
+    _lastPositions.resize(pAnim->mNumChannels, uint3());
 
     Console::d_printfn(LOCALE_STR("CREATE_ANIMATION_END"), _name.c_str());
 }

@@ -74,8 +74,8 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
         {
             const U32 idx = parentVB->getIndex(j + partitionOffset);
             const vec4<U8> ind = parentVB->getBoneIndices(idx);
-            const vec4<F32>& wgh = parentVB->getBoneWeights(idx);
-            const vec3<F32>& curentVert = parentVB->getPosition(idx);
+            const float4& wgh = parentVB->getBoneWeights(idx);
+            const float3& curentVert = parentVB->getPosition(idx);
 
             currentBB.add((wgh.x * (matrices[ind.x] * curentVert)) +
                           (wgh.y * (matrices[ind.y] * curentVert)) +

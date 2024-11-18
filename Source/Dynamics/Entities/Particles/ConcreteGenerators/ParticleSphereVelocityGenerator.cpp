@@ -15,7 +15,7 @@ void ParticleSphereVelocityGenerator::generate([[maybe_unused]] Task& packagedTa
         const F32 theta = Random(-M_PI_f, M_PI_f);
         const F32 v = Random(_minVel, _maxVel);
         const F32 r = v * std::sin(phi);
-        vec4<F32>& vel = p._velocity[i];
+        float4& vel = p._velocity[i];
         vel.set(r * std::cos(theta), r * std::sin(theta), v * std::cos(phi), vel.w);
     }
 }

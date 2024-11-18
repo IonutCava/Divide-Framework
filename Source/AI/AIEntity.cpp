@@ -18,7 +18,7 @@ constexpr F32 DESTINATION_RADIUS_SQ = DESTINATION_RADIUS *
                                       DESTINATION_RADIUS;
 constexpr F32 DESTINATION_RADIUS_F = to_F32(DESTINATION_RADIUS);
 
-AIEntity::AIEntity( NPC* parent, const vec3<F32>& currentPosition, std::string_view name)
+AIEntity::AIEntity( NPC* parent, const float3& currentPosition, std::string_view name)
     : GUIDWrapper(),
       _name(MOV(name)),
       _teamPtr(nullptr),
@@ -48,7 +48,7 @@ AIEntity::~AIEntity()
     }
 }
 
-void AIEntity::load( const vec3<F32>& currentPosition )
+void AIEntity::load( const float3& currentPosition )
 {
     if (!setPosition( currentPosition ))
     {
@@ -223,11 +223,11 @@ void AIEntity::resetCrowd()
 
     if (_detourCrowd) {
         _destination = _detourCrowd->getLastDestination();
-        load(_unitRef ? _unitRef->getPosition() : vec3<F32>());
+        load(_unitRef ? _unitRef->getPosition() : float3());
     }
 }
 
-bool AIEntity::setPosition(const vec3<F32>& position) {
+bool AIEntity::setPosition(const float3& position) {
     if (!isAgentLoaded()) {
         if (_unitRef) {
             _unitRef->setPosition(position);
@@ -240,9 +240,9 @@ bool AIEntity::setPosition(const vec3<F32>& position) {
     }
 
     // Find position on NavMesh
-    vec3<F32> result;
+    float3 result;
     const bool isPointOnNavMesh = _detourCrowd->getNavMesh().getClosestPosition(position,
-                                                                                vec3<F32>(5),
+                                                                                float3(5),
                                                                                 DESTINATION_RADIUS_F,
                                                                                 result);
     DIVIDE_ASSERT(isPointOnNavMesh, "AIEntity::setPosition error: Invalid NavMesh position returned!");
@@ -288,8 +288,8 @@ void AIEntity::updatePosition(const U64 deltaTimeUS)
                     stop();
                     if (_detourCrowd)
                     {
-                        vec3<F32> result;
-                        const bool isPointOnNavMesh = _detourCrowd->getNavMesh().getClosestPosition(_currentPosition, vec3<F32>(5), DESTINATION_RADIUS_F, result);
+                        float3 result;
+                        const bool isPointOnNavMesh = _detourCrowd->getNavMesh().getClosestPosition(_currentPosition, float3(5), DESTINATION_RADIUS_F, result);
 
                         DIVIDE_ASSERT(isPointOnNavMesh, "AIEntity::updatePosition error: Invalid NavMesh position returned!");
                         if (!_unitRef->moveTo(result, deltaTimeUS))
@@ -313,7 +313,7 @@ void AIEntity::updatePosition(const U64 deltaTimeUS)
     }
 }
 
-bool AIEntity::updateDestination(const vec3<F32>& destination, const bool updatePreviousPath) {
+bool AIEntity::updateDestination(const float3& destination, const bool updatePreviousPath) {
     if (!isAgentLoaded()) {
         return false;
     }
@@ -324,17 +324,17 @@ bool AIEntity::updateDestination(const vec3<F32>& destination, const bool update
     }
 
     // Find position on navmesh
-    vec3<F32> result;
+    float3 result;
     bool isPointOnNavMesh =
         _detourCrowd->getNavMesh().getRandomPositionInCircle(destination,
                                                              DESTINATION_RADIUS_F,
-                                                             vec3<F32>(5),
+                                                             float3(5),
                                                              result,
                                                              10);
     if (!isPointOnNavMesh) {
         isPointOnNavMesh =
             _detourCrowd->getNavMesh().getClosestPosition(destination,
-                                                          vec3<F32>(5),
+                                                          float3(5),
                                                           DESTINATION_RADIUS_F,
                                                           result);
     }
@@ -348,11 +348,11 @@ bool AIEntity::updateDestination(const vec3<F32>& destination, const bool update
     return isPointOnNavMesh;
 }
 
-const vec3<F32>& AIEntity::getPosition() const noexcept {
+const float3& AIEntity::getPosition() const noexcept {
     return _currentPosition;
 }
 
-const vec3<F32>& AIEntity::getDestination() const noexcept {
+const float3& AIEntity::getDestination() const noexcept {
     if (isAgentLoaded()) {
         return _destination;
     }
@@ -370,7 +370,7 @@ bool AIEntity::destinationReached() const {
            Navigation::DivideDtCrowd::destinationReached(getAgent(), DESTINATION_RADIUS_F);
 }
 
-void AIEntity::setDestination(const vec3<F32>& destination) noexcept {
+void AIEntity::setDestination(const float3& destination) noexcept {
     if (!isAgentLoaded()) {
         return;
     }
@@ -380,7 +380,7 @@ void AIEntity::setDestination(const vec3<F32>& destination) noexcept {
 }
 
 void AIEntity::moveForward() {
-    const vec3<F32> lookDirection(_unitRef != nullptr
+    const float3 lookDirection(_unitRef != nullptr
                                       ? Normalized(_unitRef->getLookingDirection())
                                       : WORLD_Z_NEG_AXIS);
 
@@ -388,14 +388,14 @@ void AIEntity::moveForward() {
 }
 
 void AIEntity::moveBackwards() {
-    const vec3<F32> lookDirection(_unitRef != nullptr
+    const float3 lookDirection(_unitRef != nullptr
                                       ? Normalized(_unitRef->getLookingDirection())
                                       : WORLD_Z_NEG_AXIS);
 
     setVelocity(lookDirection * to_F32(getMaxSpeed()) * -1.0f);
 }
 
-void AIEntity::setVelocity(const vec3<F32>& velocity) {
+void AIEntity::setVelocity(const float3& velocity) {
     _stopped = false;
     _destination.reset();
 
@@ -416,8 +416,8 @@ void AIEntity::stop() {
     }
 }
 
-vec3<F32> AIEntity::getVelocity() const noexcept {
-    return isAgentLoaded() ? vec3<F32>(getAgent()->nvel) : vec3<F32>();
+float3 AIEntity::getVelocity() const noexcept {
+    return isAgentLoaded() ? float3(getAgent()->nvel) : float3();
 }
 
 F32 AIEntity::getMaxSpeed() const noexcept

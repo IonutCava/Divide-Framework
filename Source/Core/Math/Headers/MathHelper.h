@@ -43,30 +43,30 @@
 #include <numbers>
 namespace Divide {
 
-#define TO_MEGABYTES(X) ((X) * 1024u * 1024u)
+template <typename T> class mat2;
+template <typename T> class mat3;
+template <typename T> class mat4;
+template <typename T> class vec2;
+template <typename T> class vec3;
+template <typename T> class vec4;
+template <typename T> class Rect;
+template <typename T> class Quaternion;
 
-template <typename T>
-class mat2;
-template <typename T>
-class mat3;
-template <typename T>
-class mat4;
-template <typename T>
-class vec2;
-template <typename T>
-class vec3;
-template <typename T>
-class vec4;
-template <typename T>
-class Rect;
-template <typename T>
-class Quaternion;
+using float2 = vec2<F32>;
+using float3 = vec3<F32>;
+using float4 = vec4<F32>;
+using int2   = vec2<I32>;
+using int3   = vec3<I32>;
+using int4   = vec4<I32>;
+using uint2  = vec2<U32>;
+using uint3  = vec3<U32>;
+using uint4  = vec4<U32>;
 
 using UColour3 = vec3<U8>;
-using FColour3 = vec3<F32>;
+using FColour3 = float3;
 
 using UColour4 = vec4<U8>;
-using FColour4 = vec4<F32>;
+using FColour4 = float4;
 
 #if !defined(M_PI)
     constexpr D64 M_PI = std::numbers::pi;
@@ -493,7 +493,7 @@ struct Circle
     F32 radius = 1.f;
 };
 
-[[nodiscard]] bool IntersectCircles(const Circle& cA, const Circle& cB, vec2<F32>* pointsOut) noexcept;
+[[nodiscard]] bool IntersectCircles(const Circle& cA, const Circle& cB, float2* pointsOut) noexcept;
 
 [[nodiscard]] size_t GetAlignmentCorrected(const size_t value, const size_t alignment) noexcept;
 
@@ -523,33 +523,33 @@ void Normalize(vec3<Angle::RADIANS_F>& inputRotation,
 [[nodiscard]] UColour3  ToByteColour(const FColour3& floatColour) noexcept;
 [[nodiscard]] FColour4 ToFloatColour(const UColour4& byteColour) noexcept;
 [[nodiscard]] FColour3 ToFloatColour(const UColour3& byteColour) noexcept;
-[[nodiscard]] FColour4 ToFloatColour( const vec4<U32>& colour ) noexcept;
-[[nodiscard]] FColour3 ToFloatColour( const vec3<U32>& colour ) noexcept;
+[[nodiscard]] FColour4 ToFloatColour( const uint4& colour ) noexcept;
+[[nodiscard]] FColour3 ToFloatColour( const uint3& colour ) noexcept;
 
 void ToByteColour(const FColour4& floatColour, UColour4& colourOut) noexcept;
 void ToByteColour(const FColour3& floatColour, UColour3& colourOut) noexcept;
 void ToFloatColour(const UColour4& byteColour, FColour4& colourOut) noexcept;
 void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept;
-void ToFloatColour( const vec4<U32>& uintColour, FColour4& colourOut ) noexcept;
-void ToFloatColour( const vec3<U32>& uintColour, FColour3& colourOut ) noexcept;
+void ToFloatColour( const uint4& uintColour, FColour4& colourOut ) noexcept;
+void ToFloatColour( const uint3& uintColour, FColour3& colourOut ) noexcept;
 
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut,
-                     vec3<F32>& scaleOut,
+                     float3& translationOut,
+                     float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut,
                      bool& isUniformScaleOut);
 
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut,
-                     vec3<F32>& scaleOut,
+                     float3& translationOut,
+                     float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut);
 
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut,
-                     vec3<F32>& scaleOut);
+                     float3& translationOut,
+                     float3& scaleOut);
 
 bool decomposeMatrix(const mat4<F32>& transform,
-                     vec3<F32>& translationOut);
+                     float3& translationOut);
 
 //ref: https://community.khronos.org/t/glsl-packing-a-normal-in-a-single-float/52039/3
 // Pack 3 values into 1 float
@@ -558,9 +558,9 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
 [[nodiscard]] F32 PACK_VEC3(const vec3<F32_SNORM>& value) noexcept;
 
-[[nodiscard]] U32 PACK_HALF2x16(vec2<F32> value);
-void UNPACK_HALF2x16(U32 src, vec2<F32>& value);
-[[nodiscard]] vec2<F32> UNPACK_HALF2x16(U32 src);
+[[nodiscard]] U32 PACK_HALF2x16(float2 value);
+void UNPACK_HALF2x16(U32 src, float2& value);
+[[nodiscard]] float2 UNPACK_HALF2x16(U32 src);
 
 [[nodiscard]] U32 PACK_HALF2x16(F32 x, F32 y);
 void UNPACK_HALF2x16(U32 src, F32& x, F32& y);

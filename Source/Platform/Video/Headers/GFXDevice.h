@@ -287,16 +287,16 @@ public:  // GPU interface
     /// use the callback param to override the draw function
     void generateCubeMap(RenderPassParams& params,
                          U16 arrayOffset,
-                         const vec3<F32>& pos,
-                         vec2<F32> zPlanes,
+                         const float3& pos,
+                         float2 zPlanes,
                          GFX::CommandBuffer& commandsInOut,
                          GFX::MemoryBarrierCommand& memCmdInOut,
                          mat4<F32>* viewProjectionOut = nullptr);
 
     void generateDualParaboloidMap(RenderPassParams& params,
                                    U16 arrayOffset,
-                                   const vec3<F32>& pos,
-                                   vec2<F32> zPlanes,
+                                   const float3& pos,
+                                   float2 zPlanes,
                                    GFX::CommandBuffer& bufferInOut,
                                    GFX::MemoryBarrierCommand& memCmdInOut,
                                    mat4<F32>* viewProjectionOut = nullptr);
@@ -309,7 +309,7 @@ public:  // GPU interface
     bool setViewport( I32 x, I32 y, I32 width, I32 height );
     bool setScissor(const Rect<I32>& scissor);
     bool setScissor( I32 x, I32 y, I32 width, I32 height );
-    void setDepthRange(vec2<F32> depthRange);
+    void setDepthRange(float2 depthRange);
     void setPreviousViewProjectionMatrix( PlayerIndex player, const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix );
 
     void setCameraSnapshot(PlayerIndex index, const CameraSnapshot& snapshot) noexcept;
@@ -405,7 +405,7 @@ public:
     PROPERTY_RW(bool, enableOcclusionCulling, true);
     PROPERTY_R_IW(U32, frameDrawCalls, 0u);
     PROPERTY_R_IW(U32, frameDrawCallsPrev, 0u);
-    PROPERTY_R_IW(vec4<U32>, lastCullCount, VECTOR4_ZERO);     ///< X = culled items HiZ, Y = culled items overflow, Z = baseInstance == 0 count, W = skipped cull count
+    PROPERTY_R_IW(uint4, lastCullCount, VECTOR4_ZERO);     ///< X = culled items HiZ, Y = culled items overflow, Z = baseInstance == 0 count, W = skipped cull count
     PROPERTY_R_IW(Rect<I32>, activeViewport, UNIT_VIEWPORT);
     PROPERTY_R_IW(Rect<I32>, activeScissor, UNIT_VIEWPORT);
     PROPERTY_R(std::unique_ptr<SceneShaderData>, sceneData);

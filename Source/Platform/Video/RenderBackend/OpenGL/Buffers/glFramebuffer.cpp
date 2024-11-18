@@ -598,7 +598,7 @@ namespace Divide
                             case GFXDataFormat::SIGNED_SHORT:
                             case GFXDataFormat::SIGNED_INT:
                             {
-                                thread_local vec4<I32> clearColour {
+                                thread_local int4 clearColour {
                                     FLOAT_TO_CHAR_SNORM( colour.r ),
                                     FLOAT_TO_CHAR_SNORM( colour.g ),
                                     FLOAT_TO_CHAR_SNORM( colour.b ),
@@ -610,7 +610,7 @@ namespace Divide
 
                             default:
                             {
-                                thread_local vec4<U32> clearColour {
+                                thread_local uint4 clearColour {
                                      FLOAT_TO_CHAR_UNORM( colour.r ),
                                      FLOAT_TO_CHAR_UNORM( colour.g ),
                                      FLOAT_TO_CHAR_UNORM( colour.b ),

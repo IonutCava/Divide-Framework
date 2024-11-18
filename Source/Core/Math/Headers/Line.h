@@ -39,8 +39,8 @@ namespace Divide {
 
 struct Line
 {
-    vec3<F32> _positionStart = VECTOR3_ZERO;
-    vec3<F32> _positionEnd = VECTOR3_UNIT;
+    float3 _positionStart = VECTOR3_ZERO;
+    float3 _positionEnd = VECTOR3_UNIT;
     UColour4  _colourStart = DefaultColours::BLACK_U8;
     UColour4  _colourEnd = DefaultColours::DIVIDE_BLUE_U8;
     F32       _widthStart = 1.0f;

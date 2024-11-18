@@ -83,7 +83,7 @@ class NOINITVTABLE PhysicsAPIWrapper : public PlatformContextComponent
 
     virtual PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) = 0;
 
-    virtual bool intersect(const Ray& intersectionRay, vec2<F32> range, vector<SGNRayResult>& intersectionsOut) const = 0;
+    virtual bool intersect(const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersectionsOut) const = 0;
 };
 
 FWD_DECLARE_MANAGED_CLASS(PhysicsAPIWrapper);

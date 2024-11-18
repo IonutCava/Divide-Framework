@@ -12,7 +12,7 @@ namespace {
 
 void ParticleEulerUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
     F32 const dt = Time::MicrosecondsToSeconds<F32>(deltaTimeUS);
-    const vec4<F32> globalA(dt * _globalAcceleration, 0.0f);
+    const float4 globalA(dt * _globalAcceleration, 0.0f);
 
     const U32 endID = p.aliveCount();
 
@@ -22,20 +22,20 @@ void ParticleEulerUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
     descriptor._partitionSize = g_partitionSize;
     Parallel_For( context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&p, dt, globalA](const Task*, const U32 start, const U32 end)
     {
-        vector<vec4<F32>>& acceleration = p._acceleration;
+        vector<float4>& acceleration = p._acceleration;
         for (U32 i = start; i < end; ++i) {
-            vec4<F32>& acc = acceleration[i];
+            float4& acc = acceleration[i];
             acc.xyz = (acc + globalA).xyz;
         }
-        vector<vec4<F32>>& velocity = p._velocity;
+        vector<float4>& velocity = p._velocity;
         for (U32 i = start; i < end; ++i) {
-            vec4<F32>& vel = velocity[i];
+            float4& vel = velocity[i];
             vel.xyz = (vel + dt * acceleration[i]).xyz;
         }
 
-        vector<vec4<F32>>& position = p._position;
+        vector<float4>& position = p._position;
         for (U32 i = start; i < end; ++i) {
-            vec4<F32>& pos = position[i];
+            float4& pos = position[i];
             pos.xyz = (pos + dt * velocity[i]).xyz;
         }
     });

@@ -22,7 +22,7 @@ namespace
         20, 21, 23, 20, 23, 22,
     };
 
-    static const vec3<F32> vertices[4 * 6] =
+    static const float3 vertices[4 * 6] =
     {
         {-1.0f, -1.0f,  1.0f},
         { 1.0f, -1.0f,  1.0f},
@@ -66,14 +66,14 @@ bool Box3D::load( PlatformContext& context )
 {
     constexpr F32 s_minSideLength = 0.0001f;
 
-    const vec3<F32> targetSize
+    const float3 targetSize
     {
         std::max( Util::UINT_TO_FLOAT( _descriptor.data().x ), s_minSideLength ),
         std::max( Util::UINT_TO_FLOAT( _descriptor.data().y ), s_minSideLength ),
         std::max( Util::UINT_TO_FLOAT( _descriptor.data().z ), s_minSideLength )
     };
 
-    static const vec2<F32> texCoords[4] =
+    static const float2 texCoords[4] =
     {
         {0.0f, 0.0f},
         {1.0f, 0.0f},
@@ -81,7 +81,7 @@ bool Box3D::load( PlatformContext& context )
         {1.0f, 1.0f}
     };
 
-    static const vec3<F32> normals[] =
+    static const float3 normals[] =
     {
         { 0.f,  0.f,  1.f},
         { 1.f,  0.f,  0.f},
@@ -134,7 +134,7 @@ bool Box3D::load( PlatformContext& context )
     return Object3D::load( context );
 }
 
-void Box3D::setHalfExtent(const vec3<F32>& halfExtent)
+void Box3D::setHalfExtent(const float3& halfExtent)
 {
     _halfExtent = halfExtent;
 
@@ -145,15 +145,15 @@ void Box3D::setHalfExtent(const vec3<F32>& halfExtent)
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 }
 
-void Box3D::fromPoints(const std::initializer_list<vec3<F32>>& points,
-                        const vec3<F32>& halfExtent) {
+void Box3D::fromPoints(const std::initializer_list<float3>& points,
+                        const float3& halfExtent) {
 
     geometryBuffer()->modifyPositionValues(0, points);
     _halfExtent = halfExtent;
     setBounds(BoundingBox(-_halfExtent * 0.5f, _halfExtent * 0.5f));
 }
 
-const vec3<F32>& Box3D::getHalfExtent() const noexcept {
+const float3& Box3D::getHalfExtent() const noexcept {
     return _halfExtent;
 }
 
@@ -166,7 +166,7 @@ void Box3D::saveToXML(boost::property_tree::ptree& pt) const {
 }
 
 void Box3D::loadFromXML(const boost::property_tree::ptree& pt) {
-    setHalfExtent(vec3<F32>(pt.get("halfExtent.<xmlattr>.x", 1.0f),
+    setHalfExtent(float3(pt.get("halfExtent.<xmlattr>.x", 1.0f),
                             pt.get("halfExtent.<xmlattr>.y", 1.0f),
                             pt.get("halfExtent.<xmlattr>.z", 1.0f)));
 

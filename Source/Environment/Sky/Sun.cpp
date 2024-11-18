@@ -241,7 +241,7 @@ const SunInfo& Sun::GetDetails() const
     return _cachedDetails;
 }
 
-[[nodiscard]] vec3<F32> Sun::GetSunPosition(const F32 radius) const
+[[nodiscard]] float3 Sun::GetSunPosition(const F32 radius) const
 {
     const SunInfo& info = GetDetails();
 
@@ -249,7 +249,7 @@ const SunInfo& Sun::GetDetails() const
     const Angle::RADIANS_F theta = info.azimuth;
     const F32 sinPhiRadius = std::sin(phi) * radius;
 
-    return vec3<F32>
+    return float3
     {
         sinPhiRadius * std::sin(theta),
         std::cos(phi) * radius,

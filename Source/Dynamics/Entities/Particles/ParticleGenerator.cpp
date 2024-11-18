@@ -4,7 +4,7 @@
 
 namespace Divide {
 
-void ParticleGenerator::updateTransform(const vec3<F32>& position, const Quaternion<F32>& orientation) noexcept {
+void ParticleGenerator::updateTransform(const float3& position, const Quaternion<F32>& orientation) noexcept {
     _sourcePosition.set(position);
     _sourceOrientation.set(orientation);
 }

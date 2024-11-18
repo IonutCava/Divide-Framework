@@ -376,7 +376,7 @@ namespace Divide::AI::Navigation
         Console::printfn( LOCALE_STR( "NAV_MESH_BOUNDS" ), cfg.bmax[0], cfg.bmax[1],
                           cfg.bmax[2], cfg.bmin[0], cfg.bmin[1], cfg.bmin[2] );
 
-        _extents = vec3<F32>( cfg.bmax[0] - cfg.bmin[0], cfg.bmax[1] - cfg.bmin[1],
+        _extents = float3( cfg.bmax[0] - cfg.bmin[0], cfg.bmax[1] - cfg.bmin[1],
                               cfg.bmax[2] - cfg.bmin[2] );
 
         if ( !createPolyMesh( cfg, data, &ctx ) )
@@ -865,24 +865,24 @@ namespace Divide::AI::Navigation
                               : Str<256>( "_root_node" );
     }
 
-    bool NavigationMesh::getClosestPosition( const vec3<F32>& destination,
-                                             const vec3<F32>& extents,
+    bool NavigationMesh::getClosestPosition( const float3& destination,
+                                             const float3& extents,
                                              const F32 delta,
-                                             vec3<F32>& result ) const
+                                             float3& result ) const
     {
         dtPolyRef resultPoly;
         return _recastInterface.findNearestPointOnNavmesh( *this, destination, extents, delta, result, resultPoly );
     }
 
-    bool NavigationMesh::getRandomPosition( vec3<F32>& result ) const
+    bool NavigationMesh::getRandomPosition( float3& result ) const
     {
         return _recastInterface.getRandomNavMeshPoint( *this, result );
     }
 
-    bool NavigationMesh::getRandomPositionInCircle( const vec3<F32>& center,
+    bool NavigationMesh::getRandomPositionInCircle( const float3& center,
                                                     const F32 radius,
-                                                    const vec3<F32>& extents,
-                                                    vec3<F32>& result,
+                                                    const float3& extents,
+                                                    float3& result,
                                                     const U8 maxIters ) const
     {
         return _recastInterface.getRandomPointAroundCircle( *this, center, radius, extents, result, maxIters );

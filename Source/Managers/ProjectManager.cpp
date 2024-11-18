@@ -491,7 +491,7 @@ namespace Divide
         {
             const F32 aspectRatio = to_F32( params.width ) / params.height;
             const Angle::DEGREES_F vFoV = Angle::to_VerticalFoV( Angle::DEGREES_F(platformContext().config().runtime.horizontalFOV), to_D64( aspectRatio ) );
-            const vec2<F32> zPlanes( Camera::s_minNearZ, platformContext().config().runtime.cameraViewDistance );
+            const float2 zPlanes( Camera::s_minNearZ, platformContext().config().runtime.cameraViewDistance );
 
             auto& players = Attorney::SceneProjectManager::getPlayers( activeProject()->getActiveScene() );
             for ( const auto& crtPlayer : players )
@@ -617,8 +617,8 @@ namespace Divide
         rayResults.clear();
 
         const auto& sceneGraph = activeProject()->getActiveScene()->sceneGraph();
-        const vec3<F32>& eye = camera.snapshot()._eye;
-        const vec2<F32>  zPlanes = camera.snapshot()._zPlanes;
+        const float3& eye = camera.snapshot()._eye;
+        const float2  zPlanes = camera.snapshot()._zPlanes;
 
         SGNIntersectionParams intersectionParams = {};
         intersectionParams._includeTransformNodes = false;
@@ -627,7 +627,7 @@ namespace Divide
 
         const GFXDevice& gfx = parent().platformContext().gfx();
 
-        const auto CheckPointLoS = [&]( const vec3<F32>& point, const I64 nodeGUID, const I64 parentNodeGUID ) -> bool
+        const auto CheckPointLoS = [&]( const float3& point, const I64 nodeGUID, const I64 parentNodeGUID ) -> bool
         {
             intersectionParams._ray = { point, point.direction( eye ) };
             intersectionParams._range = { 0.f, zPlanes.y };
@@ -652,7 +652,7 @@ namespace Divide
             return true;
         };
 
-        const auto HasLoSToCamera = [&]( SceneGraphNode* node, const vec3<F32>& point )
+        const auto HasLoSToCamera = [&]( SceneGraphNode* node, const float3& point )
         {
             I64 parentNodeGUID = -1;
             const I64 nodeGUID = node->getGUID();
@@ -688,7 +688,7 @@ namespace Divide
                     const BoundsComponent* bComp = node->get<BoundsComponent>();
                     if ( bComp != nullptr )
                     {
-                        const vec3<F32>& center = bComp->getBoundingSphere().getCenter();
+                        const float3& center = bComp->getBoundingSphere().getCenter();
                         const vec2<U16> resolution = gfx.renderingResolution();
                         const Rect<I32> targetViewport( 0, 0, to_I32( resolution.width ), to_I32( resolution.height ) );
                         return screenRect.contains( camera.project( center, targetViewport ) );
@@ -946,8 +946,8 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         BoundingSphere bSphere;
-        vec3<F32> targetPos = WORLD_Z_NEG_AXIS;
-        vec3<F32> eyePos = VECTOR3_ZERO;
+        float3 targetPos = WORLD_Z_NEG_AXIS;
+        float3 eyePos = VECTOR3_ZERO;
 
         if ( camera == nullptr )
         {
@@ -1079,7 +1079,7 @@ namespace Divide
         }
     }
 
-    void ProjectManager::findNode( const vec3<F32>& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
+    void ProjectManager::findNode( const float3& cameraEye, const I64 nodeGUID, VisibleNodeList<>& nodesOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 

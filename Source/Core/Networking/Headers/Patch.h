@@ -38,9 +38,9 @@ namespace Divide {
 struct FileData {
     Str<32> ItemName = "";
     Str<32> ModelName = "";
-    vec3<F32> Orientation;
-    vec3<F32> Position;
-    vec3<F32> Scale;
+    float3 Orientation;
+    float3 Position;
+    float3 Scale;
 };
 
 struct PatchData {

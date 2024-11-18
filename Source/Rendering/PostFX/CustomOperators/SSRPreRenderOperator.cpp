@@ -41,7 +41,7 @@ SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& p
 
     _uniforms.set(_ID("size"), PushConstantType::VEC2, res);
 
-    const vec2<F32> s = res * 0.5f;
+    const float2 s = res * 0.5f;
     _projToPixelBasis = mat4<F32>
     {
        s.x, 0.f, 0.f, 0.f,
@@ -87,7 +87,7 @@ void SSRPreRenderOperator::parametersChanged()
 void SSRPreRenderOperator::reshape(const U16 width, const U16 height)
 {
     PreRenderOperator::reshape(width, height);
-    const vec2<F32> s{ width * 0.5f, height * 0.5f };
+    const float2 s{ width * 0.5f, height * 0.5f };
     _projToPixelBasis = mat4<F32>
     {
        s.x, 0.f, 0.f, 0.f,
@@ -162,7 +162,7 @@ bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot&
     _uniforms.set( _ID( "previousViewMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewMatrix );
     _uniforms.set( _ID( "previousProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousProjectionMatrix );
     _uniforms.set( _ID( "previousViewProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewProjectionMatrix );
-    _uniforms.set( _ID( "screenDimensions" ), PushConstantType::VEC2, vec2<F32>( Get( screenTex )->width(), Get( screenTex )->height() ) );
+    _uniforms.set( _ID( "screenDimensions" ), PushConstantType::VEC2, float2( Get( screenTex )->width(), Get( screenTex )->height() ) );
     _uniforms.set( _ID( "maxScreenMips" ), PushConstantType::UINT, screenMipCount );
     _uniforms.set( _ID( "_zPlanes" ), PushConstantType::VEC2, cameraSnapshot._zPlanes );
 

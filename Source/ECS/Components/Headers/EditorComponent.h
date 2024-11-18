@@ -124,7 +124,7 @@ namespace Divide
 
         Str<128> _tooltip = "";
         void* _data = nullptr;
-        vec2<F32> _range = { 0.0f, 0.0f }; ///< Used by slider_type as a min / max range or dropdown as selected_index / count
+        float2 _range = { 0.0f, 0.0f }; ///< Used by slider_type as a min / max range or dropdown as selected_index / count
         Str<32>  _name = "";
         F32 _step = 0.0f; ///< 0.0f == no +- buttons
         F32 _resetValue = 0.f;

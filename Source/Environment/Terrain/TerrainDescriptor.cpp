@@ -94,7 +94,7 @@ bool LoadFromXML( TerrainDescriptor& descriptor, const boost::property_tree::ptr
                 const U8 layerIndex = itLayerData->second.get<U8>( "<xmlattr>.channel", 0u );
                 if ( layerIndex < 4 )
                 {
-                    vec2<F32>& tileFactors = entry[layerIndex];
+                    float2& tileFactors = entry[layerIndex];
                     tileFactors.s = CLAMPED( itLayerData->second.get( "<xmlattr>.s", 1.f ), 1.f, 255.f );
                     tileFactors.t = CLAMPED( itLayerData->second.get( "<xmlattr>.t", 1.f ), 1.f, 255.f );
                 }

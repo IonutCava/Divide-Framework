@@ -43,8 +43,8 @@ namespace Divide
         mat4<F32> _invProjectionMatrix;
         Quaternion<F32> _orientation;
         std::array<Plane<F32>, 6> _frustumPlanes;
-        vec3<F32> _eye;
-        vec2<F32> _zPlanes;
+        float3 _eye;
+        float2 _zPlanes;
         Angle::DEGREES_F _fov{ 0.f};
         F32 _aspectRatio{ 0.f };
         bool _isOrthoCamera{false};

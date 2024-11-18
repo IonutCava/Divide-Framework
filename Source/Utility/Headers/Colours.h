@@ -53,7 +53,7 @@ extern FColour4 DIVIDE_BLUE;
 extern UColour4 DIVIDE_BLUE_U8;
 
 vec4<U8> RANDOM();
-vec4<F32> RANDOM_NORMALIZED();
+float4 RANDOM_NORMALIZED();
 
 }  // namespace DefaultColours
 }  // namespace Divide

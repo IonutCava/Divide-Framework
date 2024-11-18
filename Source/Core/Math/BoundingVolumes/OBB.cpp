@@ -6,7 +6,7 @@
 #include "Headers/BoundingSphere.h"
 
 namespace Divide {
-    OBB::OBB(vec3<F32> pos, vec3<F32> hExtents, OBBAxis axis)  noexcept
+    OBB::OBB(float3 pos, float3 hExtents, OBBAxis axis)  noexcept
         : _position(MOV(pos)),
           _halfExtents(MOV(hExtents)),
           _axis(MOV(axis))
@@ -23,7 +23,7 @@ namespace Divide {
         fromBoundingSphere(bSphere);
     }
 
-    vec3<F32> OBB::cornerPoint(const U8 cornerIndex) const noexcept {
+    float3 OBB::cornerPoint(const U8 cornerIndex) const noexcept {
         assert(0 <= cornerIndex && cornerIndex <= 7);
         switch (cornerIndex) {
             default:
@@ -53,7 +53,7 @@ namespace Divide {
         _axis[1]  = Normalized(worldMatrix.transformNonHomogeneous(_axis[1]));
         _axis[2]  = Normalized(worldMatrix.transformNonHomogeneous(_axis[2]));
 
-        vec3<F32> position = VECTOR3_ZERO, scale = VECTOR3_UNIT;
+        float3 position = VECTOR3_ZERO, scale = VECTOR3_UNIT;
         Util::decomposeMatrix(worldMatrix, position, scale);
         _halfExtents *= scale;
         OrthoNormalize(_axis[0], _axis[1], _axis[2]);
@@ -63,7 +63,7 @@ namespace Divide {
         fromBoundingBox(aabb, mat4<F32>(GetMatrix(orientation), false));
     }
 
-    void OBB::fromBoundingBox(const BoundingBox& aabb, const vec3<F32>& position, const Quaternion<F32>& rotation, const vec3<F32>& scale) {
+    void OBB::fromBoundingBox(const BoundingBox& aabb, const float3& position, const Quaternion<F32>& rotation, const float3& scale) {
         fromBoundingBox(aabb, mat4<F32>(position, scale, GetMatrix(rotation)));
     }
 
@@ -73,15 +73,15 @@ namespace Divide {
         _axis = { WORLD_X_AXIS, WORLD_Y_AXIS, WORLD_Z_AXIS };
     }
 
-    void OBB::translate(const vec3<F32>& offset) {
+    void OBB::translate(const float3& offset) {
         _position += offset;
     }
 
-    void OBB::scale(const vec3<F32>& centerPoint, const F32 scaleFactor) {
-        scale(centerPoint, vec3<F32>(scaleFactor));
+    void OBB::scale(const float3& centerPoint, const F32 scaleFactor) {
+        scale(centerPoint, float3(scaleFactor));
     }
 
-    void OBB::scale(const vec3<F32>& centerPoint, const vec3<F32>& scaleFactor) {
+    void OBB::scale(const float3& centerPoint, const float3& scaleFactor) {
         transform(mat4<F32>(centerPoint, scaleFactor, mat3<F32>()));
     }
 
@@ -116,15 +116,15 @@ namespace Divide {
         return BoundingSphere{ position(), halfExtents().minComponent() };
     }
 
-    vec3<F32> OBB::size() const noexcept {
+    float3 OBB::size() const noexcept {
         return _halfExtents * 2;
     }
 
-    vec3<F32> OBB::diagonal() const noexcept {
+    float3 OBB::diagonal() const noexcept {
         return halfDiagonal() * 2;
     }
 
-    vec3<F32> OBB::halfDiagonal() const noexcept {
+    float3 OBB::halfDiagonal() const noexcept {
         return _axis[0] * _halfExtents[0] + 
                _axis[1] * _halfExtents[1] +
                _axis[2] * _halfExtents[2];
@@ -158,9 +158,9 @@ namespace Divide {
         };
     }
 
-    vec3<F32> OBB::closestPoint(const vec3<F32>& point) const noexcept {
-        const vec3<F32> d = point - _position;
-        vec3<F32> closestPoint = _position;
+    float3 OBB::closestPoint(const float3& point) const noexcept {
+        const float3 d = point - _position;
+        float3 closestPoint = _position;
         for (U8 i = 0; i < 3; ++i) {
             closestPoint += CLAMPED(Dot(d, _axis[i]), -_halfExtents[i], _halfExtents[i]) * _axis[i];
         }
@@ -168,12 +168,12 @@ namespace Divide {
         return closestPoint;
     }
 
-    F32 OBB::distance(const vec3<F32>& point) const noexcept {
+    F32 OBB::distance(const float3& point) const noexcept {
         return closestPoint(point).distance(point);
     }
 
-    bool OBB::containsPoint(const vec3<F32>& point) const noexcept {
-        const vec3<F32> pt = point - position();
+    bool OBB::containsPoint(const float3& point) const noexcept {
+        const float3 pt = point - position();
         return std::abs(Dot(pt, _axis[0])) <= _halfExtents[0] &&
                std::abs(Dot(pt, _axis[1])) <= _halfExtents[1] &&
                std::abs(Dot(pt, _axis[2])) <= _halfExtents[2];

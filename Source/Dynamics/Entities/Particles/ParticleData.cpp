@@ -44,15 +44,15 @@ void ParticleData::generateParticles(const U32 particleCount, const U32 optionsM
     if (_totalCount > 0) {
         if (_optionsMask & to_U32(ParticleDataProperties::PROPERTIES_POS))
         {
-            _position.resize(_totalCount, vec4<F32>(0.0f));
+            _position.resize(_totalCount, float4(0.0f));
         }
         if (_optionsMask & to_U32(ParticleDataProperties::PROPERTIES_VEL))
         {
-            _velocity.resize(_totalCount, vec4<F32>(0.0f));
+            _velocity.resize(_totalCount, float4(0.0f));
         }
         if (_optionsMask & to_U32(ParticleDataProperties::PROPERTIES_ACC))
         {
-            _acceleration.resize(_totalCount, vec4<F32>(0.0f));
+            _acceleration.resize(_totalCount, float4(0.0f));
         }
         if (_optionsMask & to_U32(ParticleDataProperties::PROPERTIES_COLOR))
         {
@@ -63,7 +63,7 @@ void ParticleData::generateParticles(const U32 particleCount, const U32 optionsM
             _startColour.resize(_totalCount, FColour4(0.0f));
             _endColour.resize(_totalCount, FColour4(0.0f));
         }
-        _misc.resize(_totalCount, vec4<F32>(0.0f));
+        _misc.resize(_totalCount, float4(0.0f));
     }
 }
 
@@ -143,7 +143,7 @@ void ParticleData::swapData(const U32 indexA, const U32 indexB) {
     _misc[indexA].set(_misc[indexB]);
 }
 
-void ParticleData::setParticleGeometry(const vector<vec3<F32>>& particleGeometryVertices,
+void ParticleData::setParticleGeometry(const vector<float3>& particleGeometryVertices,
                                        const vector<U32>& particleGeometryIndices,
                                        const PrimitiveTopology particleGeometryType) {
     _particleGeometryVertices = particleGeometryVertices;

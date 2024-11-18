@@ -27,7 +27,7 @@ namespace Divide {
                             to_U8(255));
         }
 
-        vec4<F32> RANDOM_NORMALIZED() {
+        float4 RANDOM_NORMALIZED() {
             return Util::ToFloatColour(RANDOM());
         }
 

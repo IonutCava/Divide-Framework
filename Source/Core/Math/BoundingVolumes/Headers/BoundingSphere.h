@@ -47,37 +47,37 @@ class BoundingSphere {
 
    public:
     BoundingSphere() noexcept;
-    explicit BoundingSphere(vec3<F32> center, F32 radius) noexcept;
-    explicit BoundingSphere(const vector<vec3<F32>>& points) noexcept;
-    explicit BoundingSphere(const std::array<vec3<F32>, 8>& points) noexcept;
+    explicit BoundingSphere(float3 center, F32 radius) noexcept;
+    explicit BoundingSphere(const vector<float3>& points) noexcept;
+    explicit BoundingSphere(const std::array<float3, 8>& points) noexcept;
 
     void fromBoundingBox(const BoundingBox& bBox) noexcept;
     void fromOBB(const OBB& box) noexcept;
     void fromBoundingSphere(const BoundingSphere& bSphere) noexcept;
-    [[nodiscard]] bool containsPoint(const vec3<F32>& point) const noexcept;
+    [[nodiscard]] bool containsPoint(const float3& point) const noexcept;
     [[nodiscard]] bool containsBoundingBox(const BoundingBox& AABB) const noexcept;
 
     // https://code.google.com/p/qe3e/source/browse/trunk/src/BoundingSphere.h?r=28
     void add(const BoundingSphere& bSphere) noexcept;
-    void add(const vec3<F32>& point) noexcept;
+    void add(const float3& point) noexcept;
     void addRadius(const BoundingSphere& bSphere) noexcept;
-    void addRadius(const vec3<F32>& point) noexcept;
+    void addRadius(const float3& point) noexcept;
 
-    void createFromPoints(const vector<vec3<F32>>& points) noexcept;
-    void createFromPoints(const std::array<vec3<F32>, 8>& points) noexcept;
+    void createFromPoints(const vector<float3>& points) noexcept;
+    void createFromPoints(const std::array<float3, 8>& points) noexcept;
 
     void setRadius(F32 radius) noexcept;
-    void setCenter(const vec3<F32>& center) noexcept;
+    void setCenter(const float3& center) noexcept;
 
-    [[nodiscard]] const vec3<F32>& getCenter() const noexcept;
+    [[nodiscard]] const float3& getCenter() const noexcept;
     [[nodiscard]] F32 getRadius() const noexcept;
     [[nodiscard]] F32 getDiameter() const noexcept;
 
-    [[nodiscard]] F32 getDistanceFromPoint(const vec3<F32>& point) const noexcept;
-    [[nodiscard]] F32 getDistanceSQFromPoint(const vec3<F32>& point) const noexcept;
+    [[nodiscard]] F32 getDistanceFromPoint(const float3& point) const noexcept;
+    [[nodiscard]] F32 getDistanceSQFromPoint(const float3& point) const noexcept;
 
     void reset() noexcept;
-    [[nodiscard]] vec4<F32> asVec4() const noexcept;
+    [[nodiscard]] float4 asVec4() const noexcept;
 
     [[nodiscard]] bool collision(const BoundingSphere& sphere2) const noexcept;
 
@@ -85,7 +85,7 @@ class BoundingSphere {
 
 
    private:
-    vec3<F32> _center;
+    float3 _center;
     F32 _radius;
 };
 

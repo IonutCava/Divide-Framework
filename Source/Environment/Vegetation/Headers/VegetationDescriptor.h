@@ -48,9 +48,9 @@ struct PropertyDescriptor<Vegetation>
     vector<Str<256>> treeMeshes;
     Str<256> name = "";
     string billboardTextureArray = "";
-    std::array<vec3<F32>, 4> treeRotations;
-    vec4<F32> grassScales = VECTOR4_UNIT;
-    vec4<F32> treeScales = VECTOR4_UNIT;
+    std::array<float3, 4> treeRotations;
+    float4 grassScales = VECTOR4_UNIT;
+    float4 treeScales = VECTOR4_UNIT;
     Terrain* parentTerrain = nullptr;
     U32 chunkSize = 0u;
 };

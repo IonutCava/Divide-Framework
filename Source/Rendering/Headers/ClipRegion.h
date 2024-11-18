@@ -108,14 +108,14 @@ void updateClipRegion(F32 lc,  // Light x/y coordinate (view space)
 
 // Returns bounding box [min.xy, max.xy] in clip [-1, 1] space.
 inline
-vec4<F32> computeClipRegion(const vec3<F32> &lightPosView, F32 lightRadius,
+float4 computeClipRegion(const float3 &lightPosView, F32 lightRadius,
                             F32 cameraNear, const mat4<F32> &projection) {
     // Early out with empty rectangle if the light is too far behind the view
     // frustum
-    vec4<F32> clipRegion(1.0f, 1.0f, -1.0f, -1.0f);
+    float4 clipRegion(1.0f, 1.0f, -1.0f, -1.0f);
     if (lightPosView.z - lightRadius <= -cameraNear) {
-        vec2<F32> clipMin(-1.0f, -1.0f);
-        vec2<F32> clipMax(1.0f, 1.0f);
+        float2 clipMin(-1.0f, -1.0f);
+        float2 clipMax(1.0f, 1.0f);
 
         updateClipRegion(lightPosView.x, lightPosView.z, lightRadius,
                          projection.element(1, 1), clipMin.x, clipMax.x);

@@ -46,7 +46,7 @@ class NPC final : public Character
 {
    public:
     /// NPCs don't need AI by default
-    explicit NPC( const vec3<F32>& currentPosition, std::string_view name );
+    explicit NPC( const float3& currentPosition, std::string_view name );
     ~NPC() override = default;
     void update(U64 deltaTimeUS) override;
     

@@ -127,8 +127,8 @@ namespace Divide {
                 {
                     const TransformComponent* transform = field.getPtr<TransformComponent>();
 
-                    const vec3<F32> scale = transform->getLocalScale();
-                    const vec3<F32> position = transform->getLocalPosition();
+                    const float3 scale = transform->getLocalScale();
+                    const float3 position = transform->getLocalPosition();
 
                     const Quaternion<F32> orientation = transform->getLocalOrientation();
                     const vec3<Angle::DEGREES_F> orientationEuler = Angle::to_DEGREES(orientation.getEuler());
@@ -207,8 +207,8 @@ namespace Divide {
                     {
                         TransformComponent* transform = field.getPtr<TransformComponent>();
 
-                        vec3<F32> scale;
-                        vec3<F32> position;
+                        float3 scale;
+                        float3 position;
                         vec3<Angle::DEGREES_F> orientationEuler;
 
                         position.set(pt.get<F32>(entryName + ".position.<xmlattr>.x", 0.0f),
@@ -411,7 +411,7 @@ namespace Divide {
 
             if (field._range.max - field._range.min > 1.f)
             {
-                using U = typename std::remove_reference<decltype(T::mat[0])>::type;
+                using U = std::remove_reference_t<decltype(T::mat[0])>;
                 for (U8 i = 0u; i < num_rows * num_rows; ++i)
                 {
                     CLAMP(data.mat[i], static_cast<U>(field._range.min), static_cast<U>(field._range.max));
@@ -472,7 +472,7 @@ namespace Divide {
                     } break;
                     case PushConstantSize::DWORD:
                     {
-                        saveVector<vec2<I32>, 2>(entryName, field, pt);
+                        saveVector<int2, 2>(entryName, field, pt);
                     } break;
                     case PushConstantSize::WORD:
                     {
@@ -518,7 +518,7 @@ namespace Divide {
                     } break;
                     case PushConstantSize::DWORD:
                     {
-                        saveVector<vec4<I32>, 4>(entryName, field, pt);
+                        saveVector<int4, 4>(entryName, field, pt);
                     } break;
                     case PushConstantSize::WORD:
                     {
@@ -541,7 +541,7 @@ namespace Divide {
                     } break;
                     case PushConstantSize::DWORD:
                     {
-                        saveVector<vec2<U32>, 2>(entryName, field, pt);
+                        saveVector<uint2, 2>(entryName, field, pt);
                     } break;
                     case PushConstantSize::WORD:
                     {
@@ -564,7 +564,7 @@ namespace Divide {
                     } break;
                     case PushConstantSize::DWORD:
                     {
-                        saveVector<vec3<U32>, 3>(entryName, field, pt);
+                        saveVector<uint3, 3>(entryName, field, pt);
                     } break;
                     case PushConstantSize::WORD:
                     {
@@ -587,7 +587,7 @@ namespace Divide {
                     } break;
                     case PushConstantSize::DWORD:
                     {
-                        saveVector<vec4<U32>, 4>(entryName, field, pt);
+                        saveVector<uint4, 4>(entryName, field, pt);
                     } break;
                     case PushConstantSize::WORD:
                     {
@@ -602,15 +602,15 @@ namespace Divide {
             } break;
             case PushConstantType::VEC2:
             {
-                saveVector<vec2<F32>, 2>(entryName, field, pt);
+                saveVector<float2, 2>(entryName, field, pt);
             } break;
             case PushConstantType::VEC3:
             {
-                saveVector<vec3<F32>, 3>(entryName, field, pt);
+                saveVector<float3, 3>(entryName, field, pt);
             } break;
             case PushConstantType::VEC4:
             {
-                saveVector<vec4<F32>, 4>(entryName, field, pt);
+                saveVector<float4, 4>(entryName, field, pt);
             } break;
             case PushConstantType::DVEC2:
             {
@@ -852,7 +852,7 @@ namespace Divide {
                 switch (field._basicTypeSize)
                 {
                     case PushConstantSize::QWORD: loadVector<vec2<I64>, 2>(entryName, field, pt); break;
-                    case PushConstantSize::DWORD: loadVector<vec2<I32>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<int2, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec2<I16>, 2>(entryName, field, pt); break;
                     case PushConstantSize::BYTE:  loadVector<vec2<I8>,  2>(entryName, field, pt); break;
 
@@ -878,7 +878,7 @@ namespace Divide {
                 switch (field._basicTypeSize)
                 {
                     case PushConstantSize::QWORD: loadVector<vec4<I64>, 4>(entryName, field, pt); break;
-                    case PushConstantSize::DWORD: loadVector<vec4<I32>, 5>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<int4, 5>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec4<I16>, 4>(entryName, field, pt); break;
                     case PushConstantSize::BYTE:  loadVector<vec4<I8>,  4>(entryName, field, pt); break;
 
@@ -891,7 +891,7 @@ namespace Divide {
                 switch (field._basicTypeSize)
                 {
                     case PushConstantSize::QWORD: loadVector<vec2<U64>, 2>(entryName, field, pt); break;
-                    case PushConstantSize::DWORD: loadVector<vec2<U32>, 2>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<uint2, 2>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec2<U16>, 2>(entryName, field, pt); break;
                     case PushConstantSize::BYTE:  loadVector<vec2<U8>,  2>(entryName, field, pt); break;
 
@@ -904,7 +904,7 @@ namespace Divide {
                 switch (field._basicTypeSize)
                 {
                     case PushConstantSize::QWORD: loadVector<vec3<U64>, 3>(entryName, field, pt); break;
-                    case PushConstantSize::DWORD: loadVector<vec3<U32>, 3>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<uint3, 3>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec3<U16>, 3>(entryName, field, pt); break;
                     case PushConstantSize::BYTE:  loadVector<vec3<U8>,  3>(entryName, field, pt); break;
                     
@@ -917,7 +917,7 @@ namespace Divide {
                 switch (field._basicTypeSize)
                 {
                     case PushConstantSize::QWORD: loadVector<vec4<U64>, 4>(entryName, field, pt); break;
-                    case PushConstantSize::DWORD: loadVector<vec4<U32>, 4>(entryName, field, pt); break;
+                    case PushConstantSize::DWORD: loadVector<uint4, 4>(entryName, field, pt); break;
                     case PushConstantSize::WORD:  loadVector<vec4<U16>, 4>(entryName, field, pt); break;
                     case PushConstantSize::BYTE:  loadVector<vec4<U8>,  4>(entryName, field, pt); break;
 
@@ -927,15 +927,15 @@ namespace Divide {
             } break;
             case PushConstantType::VEC2:
             {
-                loadVector<vec2<F32>, 2>(entryName, field, pt);
+                loadVector<float2, 2>(entryName, field, pt);
             } break;
             case PushConstantType::VEC3:
             {
-                loadVector<vec3<F32>, 3>(entryName, field, pt);
+                loadVector<float3, 3>(entryName, field, pt);
             } break;
             case PushConstantType::VEC4:
             {
-                loadVector<vec4<F32>, 4>(entryName, field, pt);
+                loadVector<float4, 4>(entryName, field, pt);
             } break;
             case PushConstantType::DVEC2:
             {

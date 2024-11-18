@@ -14,8 +14,8 @@ IntersectionRecord::IntersectionRecord() noexcept
 {
 }
 
-IntersectionRecord::IntersectionRecord(vec3<F32> hitPos,
-                                       vec3<F32> hitNormal,
+IntersectionRecord::IntersectionRecord(float3 hitPos,
+                                       float3 hitNormal,
                                        Ray ray,
                                        const D64 distance) noexcept
     : _position(MOV(hitPos)),

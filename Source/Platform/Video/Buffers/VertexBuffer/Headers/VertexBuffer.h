@@ -54,8 +54,8 @@ class VertexBuffer final : public VertexDataInterface
     struct Vertex
     {
         UColour4  _colour{0u, 0u, 0u, 1u};
-        vec3<F32> _position{};
-        vec2<F32> _texcoord{};
+        float3 _position{};
+        float2 _texcoord{};
         vec4<U8>  _weights{0u};
         vec4<U8>  _indices{0u};
         F32       _normal{0.f};
@@ -83,23 +83,23 @@ class VertexBuffer final : public VertexDataInterface
 
     [[nodiscard]] const vector<Vertex>& getVertices() const noexcept;
 
-    [[nodiscard]] const vec3<F32>& getPosition(const U32 index) const;
+    [[nodiscard]] const float3& getPosition(const U32 index) const;
 
-    [[nodiscard]]  vec2<F32>       getTexCoord(const U32 index) const;
+    [[nodiscard]]  float2       getTexCoord(const U32 index) const;
 
     [[nodiscard]]  F32 getNormal(const U32 index) const;
 
-                   F32 getNormal(const U32 index, vec3<F32>& normalOut) const;
+                   F32 getNormal(const U32 index, float3& normalOut) const;
 
     [[nodiscard]] F32 getTangent(const U32 index) const;
 
-    [[nodiscard]] F32 getTangent(const U32 index, vec3<F32>& tangentOut) const;
+    [[nodiscard]] F32 getTangent(const U32 index, float3& tangentOut) const;
 
     [[nodiscard]] vec4<U8> getBoneIndices(const U32 index) const;
 
     [[nodiscard]] vec4<U8> getBoneWeightsPacked(const U32 index) const;
 
-    [[nodiscard]] vec4<F32> getBoneWeights(const U32 index) const;
+    [[nodiscard]] float4 getBoneWeights(const U32 index) const;
 
     [[nodiscard]] size_t getIndexCount() const noexcept;
 
@@ -115,9 +115,9 @@ class VertexBuffer final : public VertexDataInterface
 
     void addRestartIndex();
 
-    void modifyPositionValues(const U32 indexOffset, const vector<vec3<F32>>& newValues);
+    void modifyPositionValues(const U32 indexOffset, const vector<float3>& newValues);
 
-    void modifyPositionValue(const U32 index, const vec3<F32>& newValue);
+    void modifyPositionValue(const U32 index, const float3& newValue);
 
     void modifyPositionValue(const U32 index, const F32 x, const F32 y, const F32 z);
 
@@ -125,15 +125,15 @@ class VertexBuffer final : public VertexDataInterface
 
     void modifyColourValue(const U32 index, const U8 r, const U8 g, const U8 b, const U8 a);
 
-    void modifyNormalValue(const U32 index, const vec3<F32>& newValue);
+    void modifyNormalValue(const U32 index, const float3& newValue);
 
     void modifyNormalValue(const U32 index, const F32 x, const F32 y, const F32 z);
 
-    void modifyTangentValue(const U32 index, const vec3<F32>& newValue);
+    void modifyTangentValue(const U32 index, const float3& newValue);
 
     void modifyTangentValue(const U32 index, const F32 x, const F32 y, const F32 z);
 
-    void modifyTexCoordValue(const U32 index, vec2<F32> newValue);
+    void modifyTexCoordValue(const U32 index, float2 newValue);
 
     void modifyTexCoordValue(const U32 index, const F32 s, const F32 t);
 

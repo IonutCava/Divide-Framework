@@ -9,11 +9,11 @@ TEST_CASE( "Vec Size Tests", "[math_vectors_test]" )
     const vec2<U8>  a2;
     const vec2<I16> a3;
     const vec2<U16> a4;
-    const vec2<I32> a5;
-    const vec2<U32> a6;
+    const int2 a5;
+    const uint2 a6;
     const vec2<I64> a7;
     const vec2<U64> a8;
-    const vec2<F32> a9;
+    const float2 a9;
     const vec2<D64> a10;
 
     CHECK_EQUAL(sizeof(a5), (32 * 2) / 8);
@@ -34,11 +34,11 @@ TEST_CASE( "Vec Size Tests", "[math_vectors_test]" )
     const vec3<U8>  b2;
     const vec3<I16> b3;
     const vec3<U16> b4;
-    const vec3<I32> b5;
-    const vec3<U32> b6;
+    const int3 b5;
+    const uint3 b6;
     const vec3<I64> b7;
     const vec3<U64> b8;
-    const vec3<F32> b9;
+    const float3 b9;
     const vec3<D64> b10;
 
     CHECK_EQUAL(sizeof(b5), (32 * 3) / 8);
@@ -59,11 +59,11 @@ TEST_CASE( "Vec Size Tests", "[math_vectors_test]" )
     const vec4<U8>  c2;
     const vec4<I16> c3;
     const vec4<U16> c4;
-    const vec4<I32> c5;
-    const vec4<U32> c6;
+    const int4 c5;
+    const uint4 c6;
     const vec4<I64> c7;
     const vec4<U64> c8;
-    const vec4<F32> c9;
+    const float4 c9;
     const vec4<D64> c10;
 
     CHECK_EQUAL(sizeof(c5), (32 * 4) / 8);
@@ -83,20 +83,20 @@ TEST_CASE( "Vec Size Tests", "[math_vectors_test]" )
 
 TEST_CASE( "Vec Constructor Conversions", "[math_vectors_test]" )
 {
-    const vec2<F32> input1(1.0f, 2.0f);
-    const vec2<I32> input2(1, 2);
+    const float2 input1(1.0f, 2.0f);
+    const int2 input2(1, 2);
 
-    CHECK_EQUAL(input2, vec2<I32>(input1));
+    CHECK_EQUAL(input2, int2(input1));
 
-    CHECK_EQUAL(vec2<F32>(vec3<I32>(vec4<U32>(5.0f))), vec2<F32>(vec3<U32>(vec4<I32>(5u))));
+    CHECK_EQUAL(float2(int3(uint4(5.0f))), float2(uint3(int4(5u))));
 }
 
 TEST_CASE( "Vec Length Tests", "[math_vectors_test]" )
 {
-    vec2<F32> input1;
-    vec3<F32> input2;
-    vec4<F32> input3;
-    vec4<F32> input4{0.f, 0.f, 0.f, 1.f};
+    float2 input1;
+    float3 input2;
+    float4 input3;
+    float4 input4{0.f, 0.f, 0.f, 1.f};
 
     CHECK_ZERO(input1.length());
     CHECK_ZERO(input2.length());
@@ -116,13 +116,13 @@ TEST_CASE( "Vec Length Tests", "[math_vectors_test]" )
 
 TEST_CASE( "Vec-Scalar Multiply Tests", "[math_vectors_test]" )
 {
-    const vec2<I32> input1(-2);
-    const vec3<F32> input2(5.0f, 0.0f, -5.0f);
-    const vec4<U32> input3(10);
+    const int2 input1(-2);
+    const float3 input2(5.0f, 0.0f, -5.0f);
+    const uint4 input3(10);
 
-    const vec2<I32> result1(-22);
-    const vec3<F32> result2(2.5f, 0.0f, -2.5f);
-    const vec4<U32> result3(30);
+    const int2 result1(-22);
+    const float3 result2(2.5f, 0.0f, -2.5f);
+    const uint4 result3(30);
 
     CHECK_EQUAL(input1 * 11, result1);
     CHECK_EQUAL(input2 * 0.5f, result2);
@@ -131,17 +131,17 @@ TEST_CASE( "Vec-Scalar Multiply Tests", "[math_vectors_test]" )
 
 TEST_CASE( "Vec-Vec Multiply Tests", "[math_vectors_test]" )
 {
-    const vec2<U32> input1(2);
-    const vec3<I32> input2(5, 0, -5);
-    const vec4<F32> input3(10.0f);
+    const uint2 input1(2);
+    const int3 input2(5, 0, -5);
+    const float4 input3(10.0f);
 
-    const vec2<U32> input4(4);
-    const vec3<I32> input5(2, 3, -1);
-    const vec4<F32> input6(1.0f);
+    const uint2 input4(4);
+    const int3 input5(2, 3, -1);
+    const float4 input6(1.0f);
 
-    const vec2<U32> result1((2u * 4u), (2u * 4u));
-    const vec3<I32> result2((5 * 2), (0 * 3), (-5 * -1));
-    const vec4<F32> result3((10.0f * 1.0f), (10.0f * 1.0f), (10.0f * 1.0f), (10.0f * 1.0f));
+    const uint2 result1((2u * 4u), (2u * 4u));
+    const int3 result2((5 * 2), (0 * 3), (-5 * -1));
+    const float4 result3((10.0f * 1.0f), (10.0f * 1.0f), (10.0f * 1.0f), (10.0f * 1.0f));
 
     CHECK_EQUAL(input1 * input4, result1);
     CHECK_EQUAL(input2 * input5, result2);
@@ -150,13 +150,13 @@ TEST_CASE( "Vec-Vec Multiply Tests", "[math_vectors_test]" )
 
 TEST_CASE( "Vec Dot Tests", "[math_vectors_test]" )
 {
-    const vec2<U32> input1(2);
-    const vec3<I32> input2(5, 0, -5);
-    const vec4<F32> input3(10.0f);
+    const uint2 input1(2);
+    const int3 input2(5, 0, -5);
+    const float4 input3(10.0f);
 
-    const vec2<U32> input4(4);
-    const vec3<I32> input5(2, 3, -1);
-    const vec4<F32> input6(1.0f);
+    const uint2 input4(4);
+    const int3 input5(2, 3, -1);
+    const float4 input6(1.0f);
 
     CHECK_EQUAL(input1.dot(input4), (2u * 4u) + (2u * 4u));
     CHECK_EQUAL(input2.dot(input5), (5 * 2) +( 0 * 3) + (-5 * -1));

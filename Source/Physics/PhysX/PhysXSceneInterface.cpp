@@ -283,7 +283,7 @@ namespace Divide
         }
     }
 
-    bool PhysXSceneInterface::intersect( const Ray& intersectionRay, const vec2<F32> range, vector<SGNRayResult>& intersectionsOut ) const
+    bool PhysXSceneInterface::intersect( const Ray& intersectionRay, const float2 range, vector<SGNRayResult>& intersectionsOut ) const
     {
         physx::PxRaycastBuffer hit;
 

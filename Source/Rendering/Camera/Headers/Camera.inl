@@ -51,12 +51,12 @@ namespace Divide
     }
 
     /// Sets the camera to point at the specified target point
-    inline const mat4<F32>& Camera::lookAt( const vec3<F32>& target )
+    inline const mat4<F32>& Camera::lookAt( const float3& target )
     {
         return lookAt( _data._eye, target );
     }
 
-    inline const mat4<F32>& Camera::lookAt( const vec3<F32>& eye, const vec3<F32>& target )
+    inline const mat4<F32>& Camera::lookAt( const float3& eye, const float3& target )
     {
         return lookAt( eye, target, viewMatrix().getUpVec() );
     }
@@ -103,7 +103,7 @@ namespace Divide
         _viewMatrixDirty = true;
     }
 
-    inline void Camera::setEye( const vec3<F32>& position ) noexcept
+    inline void Camera::setEye( const float3& position ) noexcept
     {
         setEye( position.x, position.y, position.z );
     }
@@ -115,7 +115,7 @@ namespace Divide
     }
 
     /// Creates a quaternion based on the specified axis-angle and calls "rotate" to change the orientation
-    inline void Camera::rotate( const vec3<F32>& axis, const Angle::DEGREES_F angle )
+    inline void Camera::rotate( const float3& axis, const Angle::DEGREES_F angle )
     {
         rotate( Quaternion<F32>( axis, Angle::to_RADIANS(angle * speedFactor().turn * s_lastFrameTimeSec )) );
     }
@@ -138,7 +138,7 @@ namespace Divide
     }
 
     /// Exactly as in Ogre3D: locks the yaw movement to the specified axis
-    inline void Camera::setFixedYawAxis( const bool useFixed, const vec3<F32>& fixedAxis ) noexcept
+    inline void Camera::setFixedYawAxis( const bool useFixed, const float3& fixedAxis ) noexcept
     {
         _yawFixed = useFixed;
         _fixedYawAxis = fixedAxis;
@@ -210,7 +210,7 @@ namespace Divide
         return _frustum;
     }
 
-    inline  vec3<F32> Camera::unProject( const vec3<F32>& winCoords, const Rect<I32>& viewport ) const noexcept
+    inline  float3 Camera::unProject( const float3& winCoords, const Rect<I32>& viewport ) const noexcept
     {
         return unProject( winCoords.x, winCoords.y, viewport );
     }

@@ -20,9 +20,9 @@ namespace Divide
     {
         constexpr F32 s_minSideLength = 0.0001f;
 
-        const vec3<U32> sizeIn = _descriptor.data();
+        const uint3 sizeIn = _descriptor.data();
 
-        vec3<F32> targetSize{
+        float3 targetSize{
             Util::UINT_TO_FLOAT( sizeIn.x ),
             Util::UINT_TO_FLOAT( sizeIn.y ),
             Util::UINT_TO_FLOAT( sizeIn.z )
@@ -103,7 +103,7 @@ namespace Divide
         return Object3D::load(context);
     }
 
-    vec3<F32> Quad3D::getCorner( const CornerLocation corner )
+    float3 Quad3D::getCorner( const CornerLocation corner )
     {
         switch ( corner )
         {
@@ -118,7 +118,7 @@ namespace Divide
         return geometryBuffer()->getPosition( 0 );
     }
 
-    void Quad3D::setNormal( const CornerLocation corner, const vec3<F32>& normal )
+    void Quad3D::setNormal( const CornerLocation corner, const float3& normal )
     {
         switch ( corner )
         {
@@ -146,7 +146,7 @@ namespace Divide
         }
     }
 
-    void Quad3D::setCorner( const CornerLocation corner, const vec3<F32>& value )
+    void Quad3D::setCorner( const CornerLocation corner, const float3& value )
     {
         switch ( corner )
         {
@@ -171,7 +171,7 @@ namespace Divide
 
     // rect.xy = Top Left; rect.zw = Bottom right
     // Remember to invert for 2D mode
-    void Quad3D::setDimensions( const vec4<F32>& rect )
+    void Quad3D::setDimensions( const float4& rect )
     {
         geometryBuffer()->modifyPositionValue( 0, rect.x, rect.w, 0 );
         geometryBuffer()->modifyPositionValue( 1, rect.z, rect.w, 0 );
@@ -187,7 +187,7 @@ namespace Divide
             BoundingBox
             {
                 geometryBuffer()->getPosition( 1 ),
-                geometryBuffer()->getPosition( 2 ) + vec3<F32>{ 0.0f, 0.0f, 0.0025f }
+                geometryBuffer()->getPosition( 2 ) + float3{ 0.0f, 0.0f, 0.0025f }
             }
         );
     }

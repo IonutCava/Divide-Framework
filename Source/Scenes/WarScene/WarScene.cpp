@@ -102,7 +102,7 @@ void WarScene::debugDraw(GFX::CommandBuffer& bufferInOut,
 namespace {
     constexpr bool g_enableOldGameLogic = false;
     F32 phi = 0.0f;
-    vec3<F32> initPos;
+    float3 initPos;
     bool initPosSet = false;
 }
 
@@ -125,13 +125,13 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
                 g_terrain = objects.front();
             }
         } else {
-            vec3<F32> camPos = playerCamera()->snapshot()._eye;
+            float3 camPos = playerCamera()->snapshot()._eye;
             if (g_terrain->get<BoundsComponent>()->getBoundingBox().containsPoint(camPos)) {
                 const Terrain& ter = g_terrain->getNode<Terrain>();
 
                 F32 headHeight = state()->playerState(state()->playerPass())._headHeight;
                 camPos -= g_terrain->get<TransformComponent>()->getWorldPosition();
-                playerCamera()->setEye(ter.getVertFromGlobal(camPos.x, camPos.z, true)._position + vec3<F32>(0.0f, headHeight, 0.0f));
+                playerCamera()->setEye(ter.getVertFromGlobal(camPos.x, camPos.z, true)._position + float3(0.0f, headHeight, 0.0f));
             }
         }
     }
@@ -168,7 +168,7 @@ void WarScene::updateSceneStateInternal(const U64 deltaTimeUS) {
         }
 
         // renderState().drawDebugLines(true);
-        vec3<F32> tempDestination;
+        float3 tempDestination;
         UColour4 redLine(255, 0, 0, 128);
         UColour4 blueLine(0, 0, 255, 128);
         vector<Line> paths;
@@ -206,7 +206,7 @@ bool WarScene::load() {
     setDayNightCycleTimeFactor(24);
 
     // Position camera
-    Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setEye(vec3<F32>(43.13f, 147.09f, -4.41f));
+    Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setEye(float3(43.13f, 147.09f, -4.41f));
     Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setGlobalRotation(-90.0f /*yaw*/, 59.21f /*pitch*/);
 
     // Add some obstacles
@@ -253,7 +253,7 @@ bool WarScene::load() {
     sceneryNodeDescriptor._componentMask = normalMask;
 
     U8 locationFlag = 0;
-    vec2<I32> currentPos;
+    int2 currentPos;
     for (U8 i = 0; i < 40; ++i) {
         if (i < 10) {
             baseNode = cylinder[1];
@@ -298,7 +298,7 @@ bool WarScene::load() {
         nComp->navigationContext(baseNode->get<NavigationComponent>()->navigationContext());
         nComp->navigationDetailOverride(baseNode->get<NavigationComponent>()->navMeshDetailOverride());
 
-        vec3<F32> position(to_F32(currentPos.x), -0.01f, to_F32(currentPos.y));
+        float3 position(to_F32(currentPos.x), -0.01f, to_F32(currentPos.y));
         tComp->setScale(baseNode->get<TransformComponent>()->getScale());
         tComp->setPosition(position);
         {
@@ -312,7 +312,7 @@ bool WarScene::load() {
             light->setCastShadows(false);
             light->setDiffuseColour(DefaultColours::RANDOM());
             SceneGraphNode* lightSGN = _sceneGraph->getRoot().addNode(light, lightMask);
-            lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
+            lightSGN->get<TransformComponent>()->setPosition(position + float3(0.0f, 8.0f, 0.0f));
         }
         {
             ResourceDescriptor<Light> tempLight(Util::StringFormat("Light_point_{}_2", currentName.c_str()));
@@ -324,7 +324,7 @@ bool WarScene::load() {
             light->setCastShadows(false);
             light->setDiffuseColour(DefaultColours::RANDOM());
             SceneGraphNode* lightSGN = _sceneGraph->getRoot().addNode(light, lightMask);
-            lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 8.0f, 0.0f));
+            lightSGN->get<TransformComponent>()->setPosition(position + float3(0.0f, 8.0f, 0.0f));
         }
         {
             ResourceDescriptor<Light> tempLight(Util::StringFormat("Light_spot_{}", currentName.c_str()));
@@ -337,7 +337,7 @@ bool WarScene::load() {
             light->setCastShadows(false);
             light->setDiffuseColour(DefaultColours::RANDOM());
             SceneGraphNode* lightSGN = _sceneGraph->getRoot().addNode(light, lightMask);
-            lightSGN->get<TransformComponent>()->setPosition(position + vec3<F32>(0.0f, 10.0f, 0.0f));
+            lightSGN->get<TransformComponent>()->setPosition(position + float3(0.0f, 10.0f, 0.0f));
             lightSGN->get<TransformComponent>()->rotateX(-20);
         }
     }
@@ -365,7 +365,7 @@ bool WarScene::load() {
     RenderingComponent* flagRComp = flag0->getChild(0).get<RenderingComponent>();
 
     flagtComp->setScale(flag->get<TransformComponent>()->getScale());
-    flagtComp->setPosition(vec3<F32>(25.0f, 0.1f, -206.0f));
+    flagtComp->setPosition(float3(25.0f, 0.1f, -206.0f));
 
     flagNComp->navigationContext(NavigationComponent::NavigationContext::NODE_IGNORE);
 
@@ -380,7 +380,7 @@ bool WarScene::load() {
     flagNComp = flag1->get<NavigationComponent>();
     flagRComp = flag1->getChild(0).get<RenderingComponent>();
 
-    flagtComp->setPosition(vec3<F32>(25.0f, 0.1f, 206.0f));
+    flagtComp->setPosition(float3(25.0f, 0.1f, 206.0f));
     flagtComp->setScale(flag->get<TransformComponent>()->getScale());
 
     flagNComp->navigationContext(NavigationComponent::NavigationContext::NODE_IGNORE);
@@ -459,7 +459,7 @@ bool WarScene::load() {
             pointLight->setDiffuseColour(DefaultColours::RANDOM().rgb);
 
             TransformComponent* tComp = lightSGN->get<TransformComponent>();
-            tComp->setPosition(vec3<F32>(-21.0f + 115 * row, 20.0f, -21.0f + 115 * col));
+            tComp->setPosition(float3(-21.0f + 115 * row, 20.0f, -21.0f + 115 * col));
 
             lightSGN->get<BoundsComponent>()->collisionsEnabled(false);
 
@@ -561,7 +561,7 @@ void WarScene::toggleCamera(const InputParams param) {
         if (node != nullptr) {
             if (flyCameraActive) {
                 state()->playerState(idx).overrideCamera(tpsCamera);
-                tpsCamera->setTarget(node->get<TransformComponent>(), vec3<F32>(0.f, 0.75f, 1.f));
+                tpsCamera->setTarget(node->get<TransformComponent>(), float3(0.f, 0.75f, 1.f));
                 flyCameraActive = false;
                 tpsCameraActive = true;
                 return;
@@ -669,7 +669,7 @@ void WarScene::postLoadMainThread() {
                   {
                       thread_local F32 phiLight = 0.0f;
                       thread_local bool initPosSetLight = false;
-                      NO_DESTROY thread_local vector<vec3<F32>> initPosLight;
+                      NO_DESTROY thread_local vector<float3> initPosLight;
 
                       if ( !initPosSetLight )
                       {
@@ -715,8 +715,8 @@ void WarScene::postLoadMainThread() {
                  [this]( [[maybe_unused]] const U64 elapsedTimeUS )
                  {
                      const Camera& cam = *_scenePlayers.front()->camera();
-                     vec3<F32> eyePos = cam.snapshot()._eye;
-                     const vec3<F32>& euler = cam.euler();
+                     float3 eyePos = cam.snapshot()._eye;
+                     const float3& euler = cam.euler();
      
                      _GUI->modifyText("RenderBinCount",
                                          Util::StringFormat("Number of items in Render Bin: {}.",
@@ -748,9 +748,9 @@ void WarScene::postLoadMainThread() {
                          mat4<F32> mat = MAT4_IDENTITY;
                          terrain->get<TransformComponent>()->getWorldMatrix(mat);
                          Terrain::Vert terVert = ter.getVertFromGlobal(eyePos.x, eyePos.z, true);
-                         const vec3<F32> terPos = mat * terVert._position;
-                         const vec3<F32>& terNorm = terVert._normal;
-                         const vec3<F32>& terTan = terVert._tangent;
+                         const float3 terPos = mat * terVert._position;
+                         const float3& terNorm = terVert._normal;
+                         const float3& terTan = terVert._tangent;
                          _GUI->modifyText("terrainInfoDisplay",
                                              Util::StringFormat("Position [ X: {:5.2f} | Y: {:5.2f} | Z: {:5.2f} ]\nNormal [ X: {:5.2f} | Y: {:5.2f} | Z: {:5.2f} ]\nTangent [ X: {:5.2f} | Y: {:5.2f} | Z: {:5.2f} ]",
                                                  terPos.x, terPos.y, terPos.z, 

@@ -11,7 +11,7 @@ void ParticleFountainUpdater::update( [[maybe_unused]] const U64 deltaTime, [[ma
     newParticles = static_cast<I32>(newParticles * delta) / (p->lodLevel() + 1);
 
     F32 velVariance = random(-_velocityVariance, _velocityVariance);
-    vec3<F32> mainDir = orientation * (WORLD_Y_AXIS * (_velocity + velVariance));
+    float3 mainDir = orientation * (WORLD_Y_AXIS * (_velocity + velVariance));
 
         for (I32 i = 0; i < newParticles; ++i) {
             ParticleDescriptor& currentParticle = _particles[findUnusedParticle()];
@@ -33,7 +33,7 @@ void ParticleFountainUpdater::update( [[maybe_unused]] const U64 deltaTime, [[ma
 
         // Simulate all particles
         I32 particlesCount = 0;
-        vec3<F32> half_gravity = DEFAULT_GRAVITY * delta * 0.5f;
+        float3 half_gravity = DEFAULT_GRAVITY * delta * 0.5f;
         for (ParticleDescriptor& p : _particles) {
             if (p.life > 0.0f) {
                 // Decrease life
@@ -44,7 +44,7 @@ void ParticleFountainUpdater::update( [[maybe_unused]] const U64 deltaTime, [[ma
                         p.speed[i] += half_gravity[i];
                         p.pos[i] += p.speed[i] * delta;
                     }
-                    p.distanceToCameraSq = vec3<F32>(p.pos).distanceSquared(eyePos);
+                    p.distanceToCameraSq = float3(p.pos).distanceSquared(eyePos);
 
                     
                     _particlePositionData[4 * particlesCount + 0] = p.pos[0];

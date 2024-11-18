@@ -106,18 +106,18 @@ class Character : public Unit {
       **/
     virtual void update(U64 deltaTimeUS);
     /// Set the current position of this charater
-    virtual void setPosition(const vec3<F32>& newPosition);
+    virtual void setPosition(const float3& newPosition);
     /// Update character velocity
-    virtual void setVelocity(const vec3<F32>& newVelocity);
+    virtual void setVelocity(const float3& newVelocity);
     /// The current position of this character
-    [[nodiscard]] virtual vec3<F32> getPosition() const;
+    [[nodiscard]] virtual float3 getPosition() const;
     /// The direction in which the character is currently looking.
-    [[nodiscard]] virtual vec3<F32> getLookingDirection();
+    [[nodiscard]] virtual float3 getLookingDirection();
     /// Rotate the character to look at another character
-    virtual void lookAt(const vec3<F32>& targetPos);
+    virtual void lookAt(const float3& targetPos);
 
-    [[nodiscard]] const vec3<F32>& getRelativeLookingDirection() const noexcept { return _lookingDirection; }
-    void setRelativeLookingDirection(const vec3<F32>& direction) noexcept { _lookingDirection = direction; }
+    [[nodiscard]] const float3& getRelativeLookingDirection() const noexcept { return _lookingDirection; }
+    void setRelativeLookingDirection(const float3& direction) noexcept { _lookingDirection = direction; }
 
     void playAnimation(U32 index) const;
     void playNextAnimation() const;
@@ -130,9 +130,9 @@ class Character : public Unit {
     void setParentNode(SceneGraphNode* node) override;
 
    private:
-    vec3<F32> _lookingDirection;
-    vec3<F32> _newPosition, _oldPosition, _curPosition;
-    vec3<F32> _newVelocity, _curVelocity;
+    float3 _lookingDirection;
+    float3 _newPosition, _oldPosition, _curPosition;
+    float3 _newVelocity, _curVelocity;
     std::atomic_bool _positionDirty;
     std::atomic_bool _velocityDirty;
 };

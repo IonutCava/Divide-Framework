@@ -29,7 +29,7 @@ CubeShadowMapGenerator::CubeShadowMapGenerator(GFXDevice& context)
 void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera, Light& light, U16 lightIndex, GFX::CommandBuffer& bufferInOut, GFX::MemoryBarrierCommand& memCmdInOut) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-    const vec3<F32> lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
+    const float3 lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
 
     auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
     Util::StringFormat( cmd->_scopeName, "Cube Shadow Pass Light: [ {} ]", lightIndex );
@@ -48,7 +48,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     _context.generateCubeMap(params,
                              light.getShadowArrayOffset(),
                              light.sgn()->get<TransformComponent>()->getWorldPosition(),
-                             vec2<F32>(0.01f, light.range() * 1.1f),
+                             float2(0.01f, light.range() * 1.1f),
                              bufferInOut,
                              memCmdInOut,
                              viewProjMatrix);

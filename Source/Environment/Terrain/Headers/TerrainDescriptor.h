@@ -43,7 +43,7 @@ class Terrain;
 template<>
 struct PropertyDescriptor<Terrain>
 {
-    using LayerDataEntry = std::array<vec2<F32>, 4>;
+    using LayerDataEntry = std::array<float2, 4>;
     using LayerData = std::array<LayerDataEntry, 8>;
 
     hashMap<U64, string> _variables{};
@@ -51,7 +51,7 @@ struct PropertyDescriptor<Terrain>
     LayerData            _layerDataEntries{};
     std::array<U8, 16>   _ringTileCount = {};
     string               _name;
-    vec2<F32>            _altitudeRange{0.f, 1.f};
+    float2            _altitudeRange{0.f, 1.f};
     vec2<U16>            _dimensions{ U16_ONE, U16_ONE };
     F32                  _startWidth{0.25f};
     U8                   _ringCount{4u};

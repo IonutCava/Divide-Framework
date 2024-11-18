@@ -99,7 +99,7 @@ namespace Divide
         _shaderConstants.data[0]._vec[1].z = 0.f;
         _shaderConstants.data[0]._vec[1].w = 0.f;
 
-        std::array<vec2<F32>*, 12> blurSizeConstants = {
+        std::array<float2*, 12> blurSizeConstants = {
                 &_shaderConstants.data[0]._vec[2].xy,
                 &_shaderConstants.data[0]._vec[2].zw,
                 &_shaderConstants.data[0]._vec[3].xy,
@@ -197,7 +197,7 @@ namespace Divide
         DestroyResource( _blurAOMapShader );
     }
 
-    CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths( DirectionalLightComponent& light, const vec2<F32> nearFarPlanes ) const noexcept
+    CascadedShadowMapsGenerator::SplitDepths CascadedShadowMapsGenerator::calculateSplitDepths( DirectionalLightComponent& light, const float2 nearFarPlanes ) const noexcept
     {
         //Between 0 and 1, change these to check the results
         constexpr F32 minDistance = 0.0f;
@@ -254,7 +254,7 @@ namespace Divide
             const F32 prevSplitDistance = cascadeIterator == 0 ? 0.0f : splitDepths[cascadeIterator - 1];
             const F32 splitDistance = splitDepths[cascadeIterator];
 
-            vec3<F32> frustumCornersWS[8]
+            float3 frustumCornersWS[8]
             {
                 {-1.0f,  1.0f, -1.0f},
                 { 1.0f,  1.0f, -1.0f},
@@ -266,43 +266,43 @@ namespace Divide
                 {-1.0f, -1.0f,  1.0f},
             };
 
-            for ( vec3<F32>& corner : frustumCornersWS )
+            for ( float3& corner : frustumCornersWS )
             {
-                const vec4<F32> inversePoint = invViewProj * vec4<F32>( corner, 1.0f );
+                const float4 inversePoint = invViewProj * float4( corner, 1.0f );
                 corner.set( inversePoint / inversePoint.w );
             }
 
             for ( U8 i = 0; i < 4; ++i )
             {
-                const vec3<F32> cornerRay = frustumCornersWS[i + 4] - frustumCornersWS[i];
-                const vec3<F32> nearCornerRay = cornerRay * prevSplitDistance;
-                const vec3<F32> farCornerRay = cornerRay * splitDistance;
+                const float3 cornerRay = frustumCornersWS[i + 4] - frustumCornersWS[i];
+                const float3 nearCornerRay = cornerRay * prevSplitDistance;
+                const float3 farCornerRay = cornerRay * splitDistance;
 
                 frustumCornersWS[i + 4] = frustumCornersWS[i] + farCornerRay;
                 frustumCornersWS[i] = frustumCornersWS[i] + nearCornerRay;
             }
 
-            vec3<F32> frustumCenter = VECTOR3_ZERO;
-            for ( const vec3<F32>& corner : frustumCornersWS )
+            float3 frustumCenter = VECTOR3_ZERO;
+            for ( const float3& corner : frustumCornersWS )
             {
                 frustumCenter += corner;
             }
             frustumCenter /= 8.0f;
 
             F32 radius = 0.0f;
-            for ( const vec3<F32>& corner : frustumCornersWS )
+            for ( const float3& corner : frustumCornersWS )
             {
                 const F32 distance = (corner - frustumCenter).lengthSquared();
                 radius = std::max( radius, distance );
             }
-            radius = std::ceil( Sqrt( radius ) * 16.0f ) / 16.0f;
+            radius = CEIL( Sqrt<F32>( radius ) * 16.0f ) / 16.0f;
             radius += appliedDiff;
 
-            vec3<F32> maxExtents( radius, radius, radius );
-            vec3<F32> minExtents = -maxExtents;
+            float3 maxExtents( radius, radius, radius );
+            float3 minExtents = -maxExtents;
 
             //Position the view matrix looking down the center of the frustum with an arbitrary light direction
-            vec3<F32> lightPosition = frustumCenter - light.directionCache() * (light.csmNearClipOffset() - minExtents.z);
+            float3 lightPosition = frustumCenter - light.directionCache() * (light.csmNearClipOffset() - minExtents.z);
             mat4<F32> lightViewMatrix = lightCam->lookAt( lightPosition, frustumCenter, WORLD_Y_AXIS );
 
             if ( cascadeIterator > 0 && light.csmUseSceneAABBFit()[cascadeIterator] )
@@ -342,7 +342,7 @@ namespace Divide
                 }
             }
 
-            const vec2<F32> clip
+            const float2 clip
             {
                 0.0001f,
                 maxExtents.z - minExtents.z
@@ -354,12 +354,12 @@ namespace Divide
             // http://www.gamedev.net/topic/591684-xna-40---shimmering-shadow-maps/
             {
                 const mat4<F32> shadowMatrix = mat4<F32>::Multiply( lightOrthoMatrix, lightViewMatrix );
-                const vec4<F32> shadowOrigin = shadowMatrix * vec4<F32>{VECTOR3_ZERO, 1.f } * (g_shadowSettings.csm.shadowMapResolution * 0.5f);
+                const float4 shadowOrigin = shadowMatrix * float4{VECTOR3_ZERO, 1.f } * (g_shadowSettings.csm.shadowMapResolution * 0.5f);
 
-                vec4<F32> roundedOrigin = shadowOrigin;
+                float4 roundedOrigin = shadowOrigin;
                 roundedOrigin.round();
 
-                lightOrthoMatrix.translate( vec3<F32>
+                lightOrthoMatrix.translate( float3
                 {
                     (roundedOrigin.xy - shadowOrigin.xy) * 2.0f / g_shadowSettings.csm.shadowMapResolution, 0.0f
                 } );
@@ -460,17 +460,17 @@ namespace Divide
         constexpr F32 offset = 500.f;
 
         // Use a top down camera encompasing most of the scene
-        const vec3<F32> playerCamPos = playerCamera.snapshot()._eye;
+        const float3 playerCamPos = playerCamera.snapshot()._eye;
 
-        const vec2<F32> maxExtents( offset, offset );
-        const vec2<F32> minExtents = -maxExtents;
+        const float2 maxExtents( offset, offset );
+        const float2 minExtents = -maxExtents;
 
         const Rect<I32> orthoRect = { minExtents.x, maxExtents.x, minExtents.y, maxExtents.y };
-        const vec2<F32> zPlanes = { 1.f, offset * 1.5f };
+        const float2 zPlanes = { 1.f, offset * 1.5f };
 
         auto& shadowCameras = ShadowMap::shadowCameras( ShadowType::SINGLE );
         Camera* shadowCamera = shadowCameras[0];
-        const mat4<F32> viewMatrix = shadowCamera->lookAt( playerCamPos + vec3<F32>( 0.f, offset, 0.f ), playerCamPos, WORLD_Z_NEG_AXIS );
+        const mat4<F32> viewMatrix = shadowCamera->lookAt( playerCamPos + float3( 0.f, offset, 0.f ), playerCamPos, WORLD_Z_NEG_AXIS );
         const mat4<F32> projMatrix = shadowCamera->setProjection( orthoRect, zPlanes );
         shadowCamera->updateLookAt();
 

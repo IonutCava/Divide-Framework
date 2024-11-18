@@ -759,21 +759,21 @@ bool WindowManager::IsRelativeMouseMode() noexcept
     return SDL_GetRelativeMouseMode() == SDL_TRUE;
 }
 
-vec2<I32> WindowManager::GetGlobalCursorPosition() noexcept
+int2 WindowManager::GetGlobalCursorPosition() noexcept
 {
-    vec2<I32> ret(-1);
+    int2 ret(-1);
     SDL_GetGlobalMouseState(&ret.x, &ret.y);
     return ret;
 }
 
-vec2<I32> WindowManager::GetCursorPosition() noexcept
+int2 WindowManager::GetCursorPosition() noexcept
 {
-    vec2<I32> ret(-1);
+    int2 ret(-1);
     SDL_GetMouseState(&ret.x, &ret.y);
     return ret;
 }
 
-U32 WindowManager::GetMouseState(vec2<I32>& pos, const bool global) noexcept
+U32 WindowManager::GetMouseState(int2& pos, const bool global) noexcept
 {
     if (global)
     {

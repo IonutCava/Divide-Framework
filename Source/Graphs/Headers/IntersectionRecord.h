@@ -43,8 +43,8 @@ class IntersectionRecord
 {
   public:
     IntersectionRecord() noexcept;
-    IntersectionRecord(vec3<F32> hitPos,
-                       vec3<F32> hitNormal,
+    IntersectionRecord(float3 hitPos,
+                       float3 hitNormal,
                        Ray ray,
                        D64 distance) noexcept;
     /// Creates a new intersection record indicating whether there was a hit or not and the object which was hit.
@@ -54,9 +54,9 @@ class IntersectionRecord
     void reset() noexcept;
 
     /// This is the exact point in 3D space which has an intersection.
-    vec3<F32> _position;
+    float3 _position;
     /// This is the normal of the surface at the point of intersection
-    vec3<F32> _normal;
+    float3 _normal;
     /// This is the ray which caused the intersection
     Ray _ray;
     /// This is the object which is being intersected

@@ -184,7 +184,7 @@ namespace Divide
             ImGui::Separator();
             Util::PushNarrowLabelWidth();
             {
-                vec3<F32> eye = cam->snapshot()._eye;
+                float3 eye = cam->snapshot()._eye;
                 EditorComponentField camField = {};
                 camField._name = "Eye";
                 camField._basicType = PushConstantType::VEC3;
@@ -193,7 +193,7 @@ namespace Divide
                 camField._data = eye._v;
                 camField._dataSetter = [cam]( const void* val ) noexcept
                 {
-                    cam->setEye( *static_cast<const vec3<F32>*>(val) );
+                    cam->setEye( *static_cast<const float3*>(val) );
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
             }
@@ -222,7 +222,7 @@ namespace Divide
                     "T", "M", "Z"
                 };
 
-                vec3<F32> speed = cam->speedFactor();
+                float3 speed = cam->speedFactor();
 
                 EditorComponentField camField = {};
                 camField._name = "Speed";
@@ -236,13 +236,13 @@ namespace Divide
                 camField._resetValue = 5.f;
                 camField._dataSetter = [cam]( const void* e ) noexcept
                 {
-                    const vec3<F32> speed = *static_cast<const vec3<F32>*>(e);
+                    const float3 speed = *static_cast<const float3*>(e);
                     cam->speedFactor( speed );
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
             }
             {
-                vec3<F32> fwd = cam->viewMatrix().getForwardDirection();
+                float3 fwd = cam->viewMatrix().getForwardDirection();
                 EditorComponentField camField = {};
                 camField._name = "Forward";
                 camField._basicType = PushConstantType::VEC3;
@@ -280,7 +280,7 @@ namespace Divide
                 sceneChanged = processField( camField ) || sceneChanged;
             }
             {
-                vec2<F32> zPlanes = cam->snapshot()._zPlanes;
+                float2 zPlanes = cam->snapshot()._zPlanes;
                 EditorComponentField camField = {};
                 camField._name = "zPlanes";
                 camField._basicType = PushConstantType::VEC2;
@@ -291,18 +291,18 @@ namespace Divide
                 {
                     if ( cam->snapshot()._isOrthoCamera )
                     {
-                        cam->setProjection( cam->orthoRect(), *static_cast<const vec2<F32>*>(planes) );
+                        cam->setProjection( cam->orthoRect(), *static_cast<const float2*>(planes) );
                     }
                     else
                     {
-                        cam->setProjection( cam->snapshot()._aspectRatio, cam->snapshot()._fov, *static_cast<const vec2<F32>*>(planes) );
+                        cam->setProjection( cam->snapshot()._aspectRatio, cam->snapshot()._fov, *static_cast<const float2*>(planes) );
                     }
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
             }
             if ( cam->snapshot()._isOrthoCamera )
             {
-                vec4<F32> orthoRect = cam->orthoRect();
+                float4 orthoRect = cam->orthoRect();
                 EditorComponentField camField = {};
                 camField._name = "Ortho";
                 camField._basicType = PushConstantType::VEC4;
@@ -311,7 +311,7 @@ namespace Divide
                 camField._data = orthoRect._v;
                 camField._dataSetter = [cam]( const void* rect )
                 {
-                    cam->setProjection( *static_cast<const vec4<F32>*>(rect), cam->snapshot()._zPlanes );
+                    cam->setProjection( *static_cast<const float4*>(rect), cam->snapshot()._zPlanes );
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
             }
@@ -872,7 +872,7 @@ namespace Divide
 
         if ( _previewTexture != INVALID_HANDLE<Texture> )
         {
-            if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", Get(_previewTexture)->resourceName().c_str() ).c_str(), _previewTexture, vec2<F32>( 512, 512 ), true, false ) )
+            if ( Attorney::EditorGeneralWidget::modalTextureView( _context.editor(), Util::StringFormat( "Image Preview: {}", Get(_previewTexture)->resourceName().c_str() ).c_str(), _previewTexture, float2( 512, 512 ), true, false ) )
             {
                 _previewTexture = INVALID_HANDLE<Texture>;
             }
@@ -1004,8 +1004,8 @@ namespace Divide
 
                 F32* bbMin = Attorney::BoundingBoxEditor::min( bb );
                 F32* bbMax = Attorney::BoundingBoxEditor::max( bb );
-                vec3<F32> halfExtent = bb.getHalfExtent();
-                vec3<F32> bbCenter = bb.getCenter();
+                float3 halfExtent = bb.getHalfExtent();
+                float3 bbCenter = bb.getCenter();
                 {
                     EditorComponentField bbField = {};
                     bbField._name = "Min ";
@@ -1018,7 +1018,7 @@ namespace Divide
                     {
                         BoundingBox aabb = {};
                         field.get<BoundingBox>( aabb );
-                        aabb.setMin( *static_cast<const vec3<F32>*>(val) );
+                        aabb.setMin( *static_cast<const float3*>(val) );
                         field.set<BoundingBox>( aabb );
                     };
                     ret = processField( bbField ) || ret;
@@ -1035,7 +1035,7 @@ namespace Divide
                     {
                         BoundingBox aabb = {};
                         field.get<BoundingBox>( aabb );
-                        aabb.setMax( *static_cast<const vec3<F32>*>(val) );
+                        aabb.setMax( *static_cast<const float3*>(val) );
                         field.set<BoundingBox>( aabb );
                     };
                     ret = processField( bbField ) || ret;
@@ -1066,8 +1066,8 @@ namespace Divide
                 printFieldName();
                 OBB obb = {};
                 field.get<OBB>( obb );
-                vec3<F32> position = obb.position();
-                vec3<F32> hExtents = obb.halfExtents();
+                float3 position = obb.position();
+                float3 hExtents = obb.halfExtents();
                 OBB::OBBAxis axis = obb.axis();
                 {
                     EditorComponentField bbField = {};
@@ -1121,7 +1121,7 @@ namespace Divide
                     {
                         BoundingSphere bSphere = {};
                         field.get<BoundingSphere>( bSphere );
-                        bSphere.setCenter( *static_cast<const vec3<F32>*>(c) );
+                        bSphere.setCenter( *static_cast<const float3*>(c) );
                         field.set<BoundingSphere>( bSphere );
                     };
                     ret = processField( bbField ) || ret;
@@ -1182,20 +1182,20 @@ namespace Divide
         const bool scaleReadOnly = readOnly || transform->editorLockScale();
 
         const TransformValues transformValues = transform->getLocalValues();
-        vec3<F32> pos = transformValues._translation;
+        float3 pos = transformValues._translation;
         vec3<Angle::DEGREES_F> rot = Angle::to_DEGREES( transformValues._orientation.getEuler() );
-        vec3<F32> scale = transformValues._scale;
+        float3 scale = transformValues._scale;
 
         const vec3<Angle::DEGREES_F> oldRot = rot;
         if ( Util::DrawVec<F32, 3, true>( ImGuiDataType_Float, "Position", pos._v, transformReadOnly ).wasChanged )
         {
             ret = true;
-            RegisterUndo<vec3<F32>, false>( _parent,
+            RegisterUndo<float3, false>( _parent,
                                             PushConstantType::VEC3,
                                             transformValues._translation,
                                             pos,
                                             "Transform position",
-                                            [transform]( const vec3<F32>& val )
+                                            [transform]( const float3& val )
                                             {
                                                 transform->setPosition( val );
                                             } );
@@ -1240,12 +1240,12 @@ namespace Divide
             {
                 scale[i] = std::max( EPSILON_F32, scale[i] );
             }
-            RegisterUndo<vec3<F32>, false>( _parent,
+            RegisterUndo<float3, false>( _parent,
                                             PushConstantType::VEC3,
                                             transformValues._scale,
                                             scale,
                                             "Transform scale",
-                                            [transform]( const vec3<F32>& val )
+                                            [transform]( const float3& val )
                                             {
                                                 transform->setScale( val );
                                             } );
@@ -2587,7 +2587,7 @@ namespace Divide
                 switch ( field._basicTypeSize )
                 {
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<I64>, I64, 2>( _parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
-                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<I32>, I32, 2>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
+                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<int2,      I32, 2>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<I16>, I16, 2>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<I8>,  I8,  2>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
@@ -2609,7 +2609,7 @@ namespace Divide
                 switch ( field._basicTypeSize )
                 {
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<I64>, I64, 4>( _parent, isSlider, name, step, ImGuiDataType_S64, field, flags, field._format ); break;
-                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<I32>, I32, 4>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
+                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<int4,      I32, 4>( _parent, isSlider, name, step, ImGuiDataType_S32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<I16>, I16, 4>( _parent, isSlider, name, step, ImGuiDataType_S16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<I8>,  I8,  4>( _parent, isSlider, name, step, ImGuiDataType_S8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
@@ -2620,7 +2620,7 @@ namespace Divide
                 switch ( field._basicTypeSize )
                 {
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec2<U64>, U64, 2>( _parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
-                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec2<U32>, U32, 2>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
+                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<uint2,     U32, 2>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec2<U16>, U16, 2>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec2<U8>,  U8,  2>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
@@ -2631,7 +2631,7 @@ namespace Divide
                 switch ( field._basicTypeSize )
                 {
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec3<U64>, U64, 3>( _parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
-                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec3<U32>, U32, 3>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
+                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<uint3,     U32, 3>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec3<U16>, U16, 3>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec3<U8>,  U8,  3>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
@@ -2642,7 +2642,7 @@ namespace Divide
                 switch ( field._basicTypeSize )
                 {
                     case PushConstantSize::QWORD: ret = Util::inputOrSlider<vec4<U64>, U64, 4>( _parent, isSlider, name, step, ImGuiDataType_U64, field, flags, field._format ); break;
-                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<vec4<U32>, U32, 4>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
+                    case PushConstantSize::DWORD: ret = Util::inputOrSlider<uint4,     U32, 4>( _parent, isSlider, name, step, ImGuiDataType_U32, field, flags, field._format ); break;
                     case PushConstantSize::WORD:  ret = Util::inputOrSlider<vec4<U16>, U16, 4>( _parent, isSlider, name, step, ImGuiDataType_U16, field, flags, field._format ); break;
                     case PushConstantSize::BYTE:  ret = Util::inputOrSlider<vec4<U8>,  U8,  4>( _parent, isSlider, name, step, ImGuiDataType_U8,  field, flags, field._format ); break;
                     case PushConstantSize::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
@@ -2650,15 +2650,15 @@ namespace Divide
             }break;
             case PushConstantType::VEC2:
             {
-                ret = Util::inputOrSlider<vec2<F32>, F32, 2>( _parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format );
+                ret = Util::inputOrSlider<float2, F32, 2>( _parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format );
             }break;
             case PushConstantType::VEC3:
             {
-                ret = Util::inputOrSlider<vec3<F32>, F32, 3>( _parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format );
+                ret = Util::inputOrSlider<float3, F32, 3>( _parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format );
             }break;
             case PushConstantType::VEC4:
             {
-                ret = Util::inputOrSlider<vec4<F32>, F32, 4>( _parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format );
+                ret = Util::inputOrSlider<float4, F32, 4>( _parent, isSlider, name, step, ImGuiDataType_Float, field, flags, field._format );
             }break;
             case PushConstantType::DVEC2:
             {

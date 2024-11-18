@@ -40,33 +40,33 @@ namespace Divide {
 
 struct LineSegment
 {
-    vec3<F32> _start;
-    vec3<F32> _end;
+    float3 _start;
+    float3 _end;
 };
 
 class BoundingSphere;
 class BoundingBox;
 class OBB {
 public:
-    using OBBAxis = std::array<vec3<F32>, 3>;
+    using OBBAxis = std::array<float3, 3>;
     using OOBBEdgeList = std::array<LineSegment, 12>;
 
     OBB() = default;
-    explicit OBB(vec3<F32> pos, vec3<F32> hExtents, OBBAxis axis)  noexcept;
+    explicit OBB(float3 pos, float3 hExtents, OBBAxis axis)  noexcept;
     explicit OBB(const BoundingBox &aabb)  noexcept;
     explicit OBB(const BoundingSphere &bSphere)  noexcept;
 
     void fromBoundingBox(const BoundingBox& aabb) noexcept;
     void fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix);
     void fromBoundingBox(const BoundingBox& aabb, const Quaternion<F32>& orientation);
-    void fromBoundingBox(const BoundingBox& aabb, const vec3<F32>& position, const Quaternion<F32>& rotation, const vec3<F32>& scale);
+    void fromBoundingBox(const BoundingBox& aabb, const float3& position, const Quaternion<F32>& rotation, const float3& scale);
     void fromBoundingSphere(const BoundingSphere &sphere)  noexcept;
 
-    void translate(const vec3<F32>& offset);
+    void translate(const float3& offset);
     /// Uniform scaling
-    void scale(const vec3<F32>& centerPoint, F32 scaleFactor);
+    void scale(const float3& centerPoint, F32 scaleFactor);
     /// Non-uniform scaling
-    void scale(const vec3<F32>& centerPoint, const vec3<F32>& scaleFactor);
+    void scale(const float3& centerPoint, const float3& scaleFactor);
     void transform(const mat3<F32>& transform);
     void transform(const mat4<F32>& transform);
     void transform(const Quaternion<F32>& rotation);
@@ -76,24 +76,24 @@ public:
     [[nodiscard]] BoundingSphere toEnclosingSphere() const noexcept;
     [[nodiscard]] BoundingSphere toEnclosedSphere() const noexcept;
 
-    [[nodiscard]] F32 distance(const vec3<F32>& point) const noexcept;
-    [[nodiscard]] vec3<F32> closestPoint(const vec3<F32>& point) const noexcept;
-    [[nodiscard]] vec3<F32> cornerPoint(U8 cornerIndex) const noexcept;
-    [[nodiscard]] vec3<F32> size() const noexcept;
-    [[nodiscard]] vec3<F32> diagonal() const noexcept;
-    [[nodiscard]] vec3<F32> halfDiagonal() const noexcept;
+    [[nodiscard]] F32 distance(const float3& point) const noexcept;
+    [[nodiscard]] float3 closestPoint(const float3& point) const noexcept;
+    [[nodiscard]] float3 cornerPoint(U8 cornerIndex) const noexcept;
+    [[nodiscard]] float3 size() const noexcept;
+    [[nodiscard]] float3 diagonal() const noexcept;
+    [[nodiscard]] float3 halfDiagonal() const noexcept;
     [[nodiscard]] LineSegment edge(U8 edgeIndex) const noexcept;
     [[nodiscard]] OOBBEdgeList edgeList() const noexcept;
 
-    [[nodiscard]] bool containsPoint(const vec3<F32>& point) const noexcept;
+    [[nodiscard]] bool containsPoint(const float3& point) const noexcept;
     [[nodiscard]] bool containsBox(const OBB& OBB) const noexcept;
     [[nodiscard]] bool containsBox(const BoundingBox& AABB) const noexcept;
     [[nodiscard]] bool containsSphere(const BoundingSphere& bSphere) const noexcept;
 
     [[nodiscard]] RayResult intersect(const Ray& ray, F32 t0In, F32 t1In) const noexcept;
 
-    PROPERTY_RW(vec3<F32>, position, VECTOR3_ZERO);
-    PROPERTY_RW(vec3<F32>, halfExtents, VECTOR3_UNIT);
+    PROPERTY_RW(float3, position, VECTOR3_ZERO);
+    PROPERTY_RW(float3, halfExtents, VECTOR3_UNIT);
     PROPERTY_RW(OBBAxis, axis);
 };
 

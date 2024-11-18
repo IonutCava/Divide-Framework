@@ -160,12 +160,12 @@ void VertexBuffer::resizeVertexCount(const size_t size, const Vertex& defaultVal
     _refreshQueued = true;
 }
 
-const vec3<F32>& VertexBuffer::getPosition(const U32 index) const
+const float3& VertexBuffer::getPosition(const U32 index) const
 {
     return _data[index]._position;
 }
 
-vec2<F32> VertexBuffer::getTexCoord(const U32 index) const
+float2 VertexBuffer::getTexCoord(const U32 index) const
 {
     return _data[index]._texcoord;
 }
@@ -175,7 +175,7 @@ F32 VertexBuffer::getNormal(const U32 index) const
     return _data[index]._normal;
 }
 
-F32 VertexBuffer::getNormal(const U32 index, vec3<F32>& normalOut) const
+F32 VertexBuffer::getNormal(const U32 index, float3& normalOut) const
 {
     const F32 normal = getNormal(index);
     Util::UNPACK_VEC3(normal, normalOut.x, normalOut.y, normalOut.z);
@@ -187,7 +187,7 @@ F32 VertexBuffer::getTangent(const U32 index) const
     return _data[index]._tangent;
 }
 
-F32 VertexBuffer::getTangent(const U32 index, vec3<F32>& tangentOut) const
+F32 VertexBuffer::getTangent(const U32 index, float3& tangentOut) const
 {
     const F32 tangent = getTangent(index);
     Util::UNPACK_VEC3(tangent, tangentOut.x, tangentOut.y, tangentOut.z);
@@ -204,10 +204,10 @@ vec4<U8> VertexBuffer::getBoneWeightsPacked(const U32 index) const
     return _data[index]._weights;
 }
 
-vec4<F32> VertexBuffer::getBoneWeights(const U32 index) const
+float4 VertexBuffer::getBoneWeights(const U32 index) const
 {
     const vec4<U8>& weight = _data[index]._weights;
-    return vec4<F32>(UNORM_CHAR_TO_FLOAT(weight.x),
+    return float4(UNORM_CHAR_TO_FLOAT(weight.x),
                      UNORM_CHAR_TO_FLOAT(weight.y),
                      UNORM_CHAR_TO_FLOAT(weight.z),
                      UNORM_CHAR_TO_FLOAT(weight.w));
@@ -258,13 +258,13 @@ void VertexBuffer::addRestartIndex()
     addIndex( _descriptor._largeIndices ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S );
 }
 
-void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<vec3<F32>>& newValues)
+void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<float3>& newValues)
 {
     DIVIDE_ASSERT(indexOffset + newValues.size() - 1 < _data.size());
     DIVIDE_ASSERT( _refreshQueued || _descriptor._allowDynamicUpdates || _data.empty(), "VertexBuffer error: Modifying static buffers after creation is not allowed!");
 
     vector<Vertex>::iterator it = _data.begin() + indexOffset;
-    for (const vec3<F32>& value : newValues)
+    for (const float3& value : newValues)
     {
         it++->_position.set(value);
     }
@@ -274,7 +274,7 @@ void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<vec3
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyPositionValue(const U32 index, const vec3<F32>& newValue)
+void VertexBuffer::modifyPositionValue(const U32 index, const float3& newValue)
 {
     modifyPositionValue(index, newValue.x, newValue.y, newValue.z);
 }
@@ -306,7 +306,7 @@ void VertexBuffer::modifyColourValue(const U32 index, const U8 r, const U8 g, co
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyNormalValue(const U32 index, const vec3<F32>& newValue)
+void VertexBuffer::modifyNormalValue(const U32 index, const float3& newValue)
 {
     modifyNormalValue(index, newValue.x, newValue.y, newValue.z);
 }
@@ -322,7 +322,7 @@ void VertexBuffer::modifyNormalValue(const U32 index, const F32 x, const F32 y, 
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyTangentValue(const U32 index, const vec3<F32>& newValue)
+void VertexBuffer::modifyTangentValue(const U32 index, const float3& newValue)
 {
     modifyTangentValue(index, newValue.x, newValue.y, newValue.z);
 }
@@ -338,7 +338,7 @@ void VertexBuffer::modifyTangentValue(const U32 index, const F32 x, const F32 y,
     _refreshQueued = true;
 }
 
-void VertexBuffer::modifyTexCoordValue(const U32 index, const vec2<F32> newValue)
+void VertexBuffer::modifyTexCoordValue(const U32 index, const float2 newValue)
 {
     modifyTexCoordValue(index, newValue.s, newValue.t);
 }
@@ -640,7 +640,7 @@ void VertexBuffer::computeNormals()
     const size_t vertCount = getVertexCount();
     const size_t indexCount = getIndexCount();
 
-    vector<vec3<F32>> normalBuffer(vertCount, 0.0f);
+    vector<float3> normalBuffer(vertCount, 0.0f);
     for (size_t i = 0u; i < indexCount; i += 3u)
     {
 
@@ -657,11 +657,11 @@ void VertexBuffer::computeNormals()
         const U32 idx2 = getIndex(i + 2);
 
         // get the three vertices that make the faces
-        const vec3<F32>& ia = getPosition(idx0);
-        const vec3<F32>& ib = getPosition(idx1);
-        const vec3<F32>& ic = getPosition(idx2);
+        const float3& ia = getPosition(idx0);
+        const float3& ib = getPosition(idx1);
+        const float3& ic = getPosition(idx2);
 
-        const vec3<F32> no = Cross(ia - ib, ic - ib);
+        const float3 no = Cross(ia - ib, ic - ib);
 
         // Store the face's normal for each of the vertices that make up the face.
         normalBuffer[idx0] += no;
@@ -682,9 +682,9 @@ void VertexBuffer::computeTangents()
     // Code from:
     // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-13-normal-mapping/#header-1
 
-    vec3<F32> deltaPos1, deltaPos2;
-    vec2<F32> deltaUV1, deltaUV2;
-    vec3<F32> tangent;
+    float3 deltaPos1, deltaPos2;
+    float2 deltaUV1, deltaUV2;
+    float3 tangent;
 
     for (U32 i = 0u; i < indexCount; i += 3)
     {
@@ -700,14 +700,14 @@ void VertexBuffer::computeTangents()
         const U32 idx1 = getIndex(to_size(i) + 1);
         const U32 idx2 = getIndex(to_size(i) + 2);
 
-        const vec3<F32>& v0 = getPosition(idx0);
-        const vec3<F32>& v1 = getPosition(idx1);
-        const vec3<F32>& v2 = getPosition(idx2);
+        const float3& v0 = getPosition(idx0);
+        const float3& v1 = getPosition(idx1);
+        const float3& v2 = getPosition(idx2);
 
         // Shortcuts for UVs
-        const vec2<F32> uv0 = getTexCoord(idx0);
-        const vec2<F32> uv1 = getTexCoord(idx1);
-        const vec2<F32> uv2 = getTexCoord(idx2);
+        const float2 uv0 = getTexCoord(idx0);
+        const float2 uv1 = getTexCoord(idx1);
+        const float2 uv2 = getTexCoord(idx2);
 
         // Edges of the triangle : position delta
         deltaPos1.set(v1 - v0);
@@ -811,9 +811,9 @@ bool VertexBuffer::serialize(ByteBuffer& dataOut) const
 
 size_t VertexBuffer::GetTotalDataSize( const AttributeFlags& usedAttributes )
 {
-    size_t ret = sizeof( vec3<F32> );
+    size_t ret = sizeof( float3 );
 
-    ret += usedAttributes[to_base( AttribLocation::TEXCOORD )]    ? sizeof( vec2<F32> )    : 0u;
+    ret += usedAttributes[to_base( AttribLocation::TEXCOORD )]    ? sizeof( float2 )    : 0u;
     ret += usedAttributes[to_base( AttribLocation::NORMAL )]      ? sizeof( F32 )          : 0u;
     ret += usedAttributes[to_base( AttribLocation::TANGENT )]     ? sizeof( F32 )          : 0u;
     ret += usedAttributes[to_base( AttribLocation::COLOR )]       ? sizeof( UColour4 )     : 0u;
@@ -826,12 +826,12 @@ AttributeOffsets VertexBuffer::GetAttributeOffsets(const AttributeFlags& usedAtt
 {
     AttributeOffsets offsets{};
 
-    totalDataSizeOut = sizeof(vec3<F32>);
+    totalDataSizeOut = sizeof(float3);
 
     if (usedAttributes[to_base(AttribLocation::TEXCOORD)])
     {
         offsets[to_base(AttribLocation::TEXCOORD)] = to_U32(totalDataSizeOut);
-        totalDataSizeOut += sizeof(vec2<F32>);
+        totalDataSizeOut += sizeof(float2);
     }
 
     if (usedAttributes[to_base(AttribLocation::NORMAL)])

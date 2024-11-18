@@ -128,7 +128,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
         _geometryTriangles.resize(partitionID + 1);
     }
 
-    vector<vec3<U32>>& triangles = _geometryTriangles[partitionID];
+    vector<uint3>& triangles = _geometryTriangles[partitionID];
     if (!force && !triangles.empty())
     {
         return true;
@@ -145,7 +145,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
     {
         const size_t indiceStart = 2 + partitionOffset;
         const size_t indiceEnd = indiceCount + partitionOffset;
-        vec3<U32> curTriangle;
+        uint3 curTriangle;
         triangles.reserve(indiceCount / 2);
         const vector<U32>& indices = _geometryBuffer->getIndices();
         for (size_t i = indiceStart; i < indiceEnd; i++)
@@ -166,7 +166,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
         const vector<U32>& indices = _geometryBuffer->getIndices();
         for (size_t i = 0; i < indiceCount; i += 3)
         {
-            triangles.push_back(vec3<U32>(indices[i + 0],
+            triangles.push_back(uint3(indices[i + 0],
                                           indices[i + 1],
                                           indices[i + 2]));
         }
@@ -176,7 +176,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
     triangles.erase(
         eastl::partition(
             begin(triangles), end(triangles),
-            [](const vec3<U32>& triangle) -> bool
+            [](const uint3& triangle) -> bool
             {
                 return triangle.x != triangle.y && triangle.x != triangle.z &&
                     triangle.y != triangle.z;

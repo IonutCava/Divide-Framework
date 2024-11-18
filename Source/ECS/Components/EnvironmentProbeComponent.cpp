@@ -121,7 +121,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
             dirty(true);
             queueRefresh();
         } else {
-            const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
+            const float3 pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
             setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
         }
     });
@@ -215,7 +215,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     _context.gfx().generateCubeMap(params,
                                    rtLayerIndex(),
                                    _aabb.getCenter(),
-                                   vec2<F32>(0.01f, _aabb.getHalfExtent().length()),
+                                   float2(0.01f, _aabb.getHalfExtent().length()),
                                    bufferInOut,
                                    memCmdInOut);
  
@@ -253,12 +253,12 @@ void EnvironmentProbeComponent::poolIndex(const U16 index) noexcept {
     updateProbeData();
 }
 
-void EnvironmentProbeComponent::setBounds(const vec3<F32>& min, const vec3<F32>& max) noexcept {
+void EnvironmentProbeComponent::setBounds(const float3& min, const float3& max) noexcept {
     _aabb.set(min, max);
     updateProbeData();
 }
 
-void EnvironmentProbeComponent::setBounds(const vec3<F32>& center, const F32 radius) noexcept {
+void EnvironmentProbeComponent::setBounds(const float3& center, const F32 radius) noexcept {
     _aabb.createFromSphere(center, radius);
     updateProbeData();
 }
@@ -295,7 +295,7 @@ void EnvironmentProbeComponent::updateType(const UpdateType type) {
     }
 }
 
-F32 EnvironmentProbeComponent::distanceSqTo(const vec3<F32>& pos) const noexcept {
+F32 EnvironmentProbeComponent::distanceSqTo(const float3& pos) const noexcept {
     return _aabb.getCenter().distanceSquared(pos);
 }
 
@@ -303,7 +303,7 @@ void EnvironmentProbeComponent::OnData(const ECS::CustomEvent& data) {
     SGNComponent::OnData(data);
 
     if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
-        const vec3<F32> pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
+        const float3 pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
         setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
     } else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged) {
         const SceneGraphNode::Flags flag = static_cast<SceneGraphNode::Flags>(data._flag);
