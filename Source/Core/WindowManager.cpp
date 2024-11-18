@@ -353,7 +353,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
     {
         ._cbk = [&](const DisplayWindow::WindowEventArgs& args)
         {
-            return onWindowSizeChanged(args);
+            return onWindowSizeChange(args);
         },
         ._name = "WindowManager::SIZE_CHANGED"
     });
@@ -565,7 +565,7 @@ void WindowManager::drawToWindow( DisplayWindow& window )
 
     if ( window.parentWindow() == nullptr && _resolutionChangeQueued.second )
     {
-        onResolutionChanged(SizeChangeParams
+        onResolutionChange(SizeChangeParams
         {
             .winGUID = mainWindow()->getGUID(),
             .width = _resolutionChangeQueued.first.width,
@@ -677,12 +677,12 @@ void WindowManager::stepResolution( const bool increment )
     }
 }
 
-bool WindowManager::onResolutionChanged(const SizeChangeParams& params)
+bool WindowManager::onResolutionChange(const SizeChangeParams& params)
 {
     return _context->app().onResolutionChange(params);
 }
 
-bool WindowManager::onWindowSizeChanged(const DisplayWindow::WindowEventArgs& args)
+bool WindowManager::onWindowSizeChange(const DisplayWindow::WindowEventArgs& args)
 {
     const bool isMainWindow = args._windowGUID == _mainWindow->getGUID();
 

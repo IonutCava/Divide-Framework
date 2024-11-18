@@ -133,8 +133,8 @@ protected:
 
     void close();
 
-    bool onWindowSizeChanged(const DisplayWindow::WindowEventArgs& args);
-    bool onResolutionChanged(const SizeChangeParams& params);
+    bool onWindowSizeChange(const DisplayWindow::WindowEventArgs& args);
+    bool onResolutionChange(const SizeChangeParams& params);
 
 protected:
     friend class DisplayWindow;
