@@ -856,7 +856,7 @@ namespace Divide
         }
         _saveTimer += deltaGameTimeUS;
 
-        if ( _saveTimer >= Time::SecondsToMicroseconds( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
+        if ( _saveTimer >= Time::SecondsToMicroseconds<U64>( Config::Build::IS_DEBUG_BUILD ? 5 : 10 ) )
         {
             if ( !saveActiveScene( true, true ) )
             {

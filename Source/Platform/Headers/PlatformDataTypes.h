@@ -196,10 +196,6 @@ constexpr D64 D64_ZERO = 0.0;
         return lhs.i != rhs.i;
     }
 
-    //Ref: https://stackoverflow.com/questions/7416699/how-to-define-24bit-data-type-in-c
-    constexpr I32 INT24_MAX = 8388607;
-    constexpr U32 UINT24_MAX = static_cast<U32>(INT24_MAX * 2);
-
     namespace detail
     {
         void internal_assert(const bool condition);
@@ -230,6 +226,12 @@ constexpr D64 D64_ZERO = 0.0;
         return value;
     }
 
+    template<typename T> requires std::is_floating_point_v<T>
+    constexpr bool isNonNegative(const T value)
+    {
+        return !std::signbit(value);
+    }
+
     template <typename Type> requires std::is_enum_v<Type>
     constexpr auto to_base( const Type value ) -> BaseType<Type>
     {
@@ -239,9 +241,9 @@ constexpr D64 D64_ZERO = 0.0;
     template <typename T>
     constexpr size_t to_size( const T value )
     {
-        if constexpr ( std::is_floating_point<T>::value )
+        if constexpr ( std::is_floating_point_v<T> )
         {
-            detail::internal_assert( value >= 0 );
+            detail::internal_assert(isNonNegative(value));
         }
 
         return static_cast<size_t>(value);
@@ -250,9 +252,9 @@ constexpr D64 D64_ZERO = 0.0;
     template <typename T>
     constexpr U64 to_U64( const T value )
     {
-        if constexpr ( std::is_floating_point<T>::value )
+        if constexpr ( std::is_floating_point_v<T> )
         {
-            detail::internal_assert( value >= 0 );
+            detail::internal_assert(isNonNegative(value));
         }
 
         return static_cast<U64>(value);
@@ -261,9 +263,9 @@ constexpr D64 D64_ZERO = 0.0;
     template <typename T>
     constexpr U32 to_U32( const T value )
     {
-        if constexpr ( std::is_floating_point<T>::value )
+        if constexpr ( std::is_floating_point_v<T> )
         {
-            detail::internal_assert( value >= 0 );
+            detail::internal_assert(isNonNegative(value));
         }
 
         return static_cast<U32>(value);
@@ -272,9 +274,9 @@ constexpr D64 D64_ZERO = 0.0;
     template <typename T>
     constexpr U16 to_U16( const T value )
     {
-        if constexpr ( std::is_floating_point<T>::value )
+        if constexpr ( std::is_floating_point_v<T> )
         {
-            detail::internal_assert( value >= 0 );
+            detail::internal_assert(isNonNegative(value));
         }
 
         return static_cast<U16>(value);
@@ -283,9 +285,9 @@ constexpr D64 D64_ZERO = 0.0;
     template<typename T>
     constexpr U8 to_U8( const T value )
     {
-        if constexpr ( std::is_floating_point<T>::value )
+        if constexpr ( std::is_floating_point_v<T> )
         {
-            detail::internal_assert( value >= 0 );
+            detail::internal_assert(isNonNegative(value));
         }
 
         return static_cast<U8>(value);
@@ -335,13 +337,17 @@ constexpr D64 D64_ZERO = 0.0;
     template<typename T>
     constexpr Byte to_byte( const T value )
     {
-        if constexpr ( std::is_floating_point<T>::value )
+        if constexpr ( std::is_floating_point_v<T> )
         {
-            detail::internal_assert( value >= 0 );
+            detail::internal_assert(isNonNegative(value));
         }
 
         return static_cast<Byte>(value);
     }
+
+    //Ref: https://stackoverflow.com/questions/7416699/how-to-define-24bit-data-type-in-c
+    constexpr I32 INT24_MAX = 8388607;
+    constexpr U32 UINT24_MAX = to_U32(INT24_MAX * 2);
 
     //ref: http://codereview.stackexchange.com/questions/51235/udp-network-server-client-for-gaming-using-boost-asio
     struct counter
@@ -360,161 +366,70 @@ constexpr D64 D64_ZERO = 0.0;
 
     // Type promotion
     // ref: https://janmr.com/blog/2010/08/cpp-templates-usual-arithmetic-conversions/
+    template <bool C, typename T, typename F> struct choose_type             { using type = F; };
+    template <typename T, typename F>         struct choose_type<true, T, F> { using type = T; };
 
-    template <typename T>
-    struct promote
+    template <bool C, typename T, typename F> using choose_type_t  = choose_type<C,T,F>::type;
+
+    template <typename T> struct promote       { using type = T;   };
+    template <>           struct promote<bool> { using type = I32; };
+    template <>           struct promote<I16>  { using type = I32; };
+    template <>           struct promote<U16>  { using type = choose_type_t<sizeof( I16 )  <  sizeof( I32 ), I32, U32>; };
+    template <>           struct promote<I8>   { using type = choose_type_t<sizeof( char ) <= sizeof( I32 ), I32, U32>; };
+    template <>           struct promote<U8>   { using type = choose_type_t<sizeof( char ) <  sizeof( I32 ), I32, U32>; };
+
+    template <>           struct promote<char> : public promote<choose_type_t<std::numeric_limits<char>::is_signed, signed char, unsigned char>> {};
+    template <>           struct promote<wchar_t>
     {
-        typedef T type;
+        using type = choose_type_t<std::numeric_limits<wchar_t>::is_signed,
+                                   choose_type_t<sizeof( wchar_t ) <= sizeof( I32 ), I32, long>,
+                                   choose_type_t<sizeof( wchar_t ) <= sizeof( I32 ), U32, unsigned long>>;
     };
 
-    template <>
-    struct promote<signed short>
-    {
-        typedef I32 type;
-    };
-
-    template <>
-    struct promote<bool>
-    {
-        typedef I32 type;
-    };
-
-    template <bool C, typename T, typename F>
-    struct choose_type
-    {
-        typedef F type;
-    };
-
-    template <typename T, typename F>
-    struct choose_type<true, T, F>
-    {
-        typedef T type;
-    };
-
-    template <>
-    struct promote<unsigned short>
-    {
-        typedef choose_type < sizeof( short ) < sizeof( I32 ), I32, U32 > ::type type;
-    };
-
-    template <>
-    struct promote<signed char>
-    {
-        typedef choose_type<sizeof( char ) <= sizeof( I32 ), I32, U32>::type type;
-    };
-
-    template <>
-    struct promote<unsigned char>
-    {
-        typedef choose_type < sizeof( char ) < sizeof( I32 ), I32, U32 > ::type type;
-    };
-
-    template <>
-    struct promote<char>
-        : public promote<choose_type<std::numeric_limits<char>::is_signed, signed char, unsigned char>::type>
-    {
-    };
-
-    template <>
-    struct promote<wchar_t>
-    {
-        typedef choose_type<
-            std::numeric_limits<wchar_t>::is_signed,
-            choose_type<sizeof( wchar_t ) <= sizeof( I32 ), I32, long>::type,
-            choose_type<sizeof( wchar_t ) <= sizeof( I32 ), U32, unsigned long>::type
-        >::type type;
-    };
+    template <typename T> using promote_t = promote<T>::type;
 
     template <typename T, bool override = false> struct type_rank;
-    template <> struct type_rank<I32>
-    {
-        static const I32 rank = 1;
-    };
-    template <> struct type_rank<U32>
-    {
-        static const I32 rank = 2;
-    };
-    template <> struct type_rank<long>
-    {
-        static const I32 rank = 3;
-    };
-    template <> struct type_rank<unsigned long>
-    {
-        static const I32 rank = 4;
-    };
-    template <> struct type_rank<I64, std::is_same<I64, long>::value>
-    {
-        static const I32 rank = 5;
-    };
-    template <> struct type_rank<U64, std::is_same<U64, unsigned long>::value>
-    {
-        static const I32 rank = 6;
-    };
-    template <> struct type_rank<F32>
-    {
-        static const I32 rank = 7;
-    };
-    template <> struct type_rank<D64>
-    {
-        static const I32 rank = 8;
-    };
-    template <> struct type_rank<D128>
-    {
-        static const int rank = 9;
-    };
+
+    template <> struct type_rank<U8>                                      { static constexpr I32 rank =  1; };
+    template <> struct type_rank<I8>                                      { static constexpr I32 rank =  2; };
+    template <> struct type_rank<I16>                                     { static constexpr I32 rank =  3; };
+    template <> struct type_rank<U16>                                     { static constexpr I32 rank =  4; };
+    template <> struct type_rank<I32>                                     { static constexpr I32 rank =  5; };
+    template <> struct type_rank<U32>                                     { static constexpr I32 rank =  6; };
+    template <> struct type_rank<long>                                    { static constexpr I32 rank =  7; };
+    template <> struct type_rank<unsigned long>                           { static constexpr I32 rank =  8; };
+    template <> struct type_rank<I64, std::is_same_v<I64, long>>          { static constexpr I32 rank =  9; };
+    template <> struct type_rank<U64, std::is_same_v<U64, unsigned long>> { static constexpr I32 rank = 10; };
+    template <> struct type_rank<F32>                                     { static constexpr I32 rank = 11; };
+    template <> struct type_rank<D64>                                     { static constexpr I32 rank = 12; };
+    template <> struct type_rank<D128>                                    { static constexpr I32 rank = 13; };
 
     template <typename A, typename B>
     struct resolve_uac2
     {
-        typedef typename choose_type<
-            type_rank<A>::rank >= type_rank<B>::rank, A, B
-        >::type return_type;
+        using return_type = choose_type_t<type_rank<A>::rank >= type_rank<B>::rank, A, B>;
     };
 
-    template <>
+    template<typename A, typename B>
+    struct resolve_uac : public resolve_uac2<promote_t<A>, promote_t<B>>
+    {
+    };
+
+    template<>
     struct resolve_uac2<long, U32>
     {
-        typedef choose_type<sizeof( long ) == sizeof( U32 ),
-            unsigned long, long>::type return_type;
+        using return_type = choose_type_t<sizeof( long ) == sizeof( U32 ), unsigned long, long>;
     };
 
-    template <>
+    template<>
     struct resolve_uac2<U32, long> : public resolve_uac2<long, U32>
     {
     };
 
-    template <typename A, typename B>
-    struct resolve_uac : public resolve_uac2<typename promote<A>::type,
-        typename promote<B>::type>
-    {
-    };
-
-    template <typename A, typename B>
-    constexpr typename resolve_uac<A, B>::return_type add( const A& a, const B& b ) noexcept
-    {
-        return a + b;
-    }
-
-
-    template <typename A, typename B>
-    constexpr typename resolve_uac<A, B>::return_type subtract( const A& a, const B& b ) noexcept
-    {
-        return a - b;
-    }
-
-
-    template <typename A, typename B>
-    constexpr typename resolve_uac<A, B>::return_type divide( const A& a, const B& b ) noexcept
-    {
-        return a / b;
-    }
-
-
-    template <typename A, typename B>
-    constexpr typename resolve_uac<A, B>::return_type multiply( const A& a, const B& b ) noexcept
-    {
-        return a * b;
-    }
+    template<typename A, typename B> constexpr typename resolve_uac<A, B>::return_type add(      const A& a, const B& b ) noexcept { return a + b; }
+    template<typename A, typename B> constexpr typename resolve_uac<A, B>::return_type subtract( const A& a, const B& b ) noexcept { return a - b; }
+    template<typename A, typename B> constexpr typename resolve_uac<A, B>::return_type divide(   const A& a, const B& b ) noexcept { return a / b; }
+    template<typename A, typename B> constexpr typename resolve_uac<A, B>::return_type multiply( const A& a, const B& b ) noexcept { return a * b; }
 
     template <typename ToCheck, std::size_t ExpectedSize, std::size_t RealSize = sizeof( ToCheck )>
     constexpr void check_size()
@@ -544,12 +459,11 @@ constexpr D64 D64_ZERO = 0.0;
 
         primitiveWrapper() :value() {}
 
-        template<typename U, typename allowed = typename std::enable_if<std::is_constructible<T, U>::value>::type>
+        template<typename U, typename allowed = std::enable_if_t<std::is_constructible_v<T, U>>>
         primitiveWrapper(const U v) :value(v) {}
 
         template<typename U>
         explicit primitiveWrapper(const primitiveWrapper<U, tagType>& rhs) : value(static_cast<U>(rhs)) {}
-
 
         //modifiers
         template<typename U> FORCE_INLINE primitiveWrapper& operator= ( const U v) { value   = v; return *this; }
@@ -568,7 +482,6 @@ constexpr D64 D64_ZERO = 0.0;
         FORCE_INLINE primitiveWrapper& operator--()    { --value; return *this; }
         FORCE_INLINE primitiveWrapper  operator++(int) { return primitiveWrapper(value++); }
         FORCE_INLINE primitiveWrapper  operator--(int) { return primitiveWrapper(value--); }
-
 
         //accessors
         FORCE_INLINE T*               operator&  ()       { return &value;}
@@ -611,16 +524,16 @@ constexpr D64 D64_ZERO = 0.0;
         friend primitiveWrapper operator>>(primitiveWrapper pw,                T v ) { return pw >>= v; }
         friend primitiveWrapper operator>>(T v,                 primitiveWrapper pw) { return primitiveWrapper(v) >>= pw; }
 
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator+ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  += v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator- (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  -= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator* (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  *= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator/ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  /= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator% (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  %= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator& (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  &= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator| (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  |= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator^ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw)  ^= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator<<(const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw) <<= v; }
-        template<typename U, typename R = typename std::common_type<T, U>::type> friend primitiveWrapper<R, tagType> operator>>(const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R>(pw) >>= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator+ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  += v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator- (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  -= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator* (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  *= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator/ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  /= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator% (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  %= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator& (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  &= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator| (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  |= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator^ (const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw)  ^= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator<<(const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw) <<= v; }
+        template<typename U, typename R = std::common_type_t<T, U>> friend primitiveWrapper<R, tagType> operator>>(const primitiveWrapper pw, const primitiveWrapper<U, tagType> v) { return primitiveWrapper<R, tagType>(pw) >>= v; }
     };
 #define DIVIDE_UNUSED(X) ((void)X)
 
@@ -650,7 +563,7 @@ constexpr D64 D64_ZERO = 0.0;
     template<typename T>
     constexpr bool can_be_returned_by_value()
     {
-        return std::is_trivially_copyable<T>::value || std::is_copy_assignable<T>::value;
+        return std::is_trivially_copyable_v<T> || std::is_copy_assignable_v<T>;
     }
 
     template<typename T>
@@ -660,10 +573,10 @@ constexpr D64 D64_ZERO = 0.0;
     }
 
 template<typename Type>
-using GET_RET_TYPE = typename std::conditional<pass_by_value<Type>(), Type, Type const&>::type;
+using GET_RET_TYPE = std::conditional_t<pass_by_value<Type>(), Type, Type const&>;
 
 template<typename Type>
-using GET_PASS_TYPE = typename std::conditional<pass_by_value<Type>(), typename std::conditional<std::is_move_assignable_v<Type>, Type, const Type>::type, Type const&>::type;
+using GET_PASS_TYPE = std::conditional_t<pass_by_value<Type>(), std::conditional_t<std::is_move_assignable_v<Type>, Type, const Type>, Type const&>;
 
 #define PROPERTY_GET_SET(Type, Name)                                                         \
 public:                                                                                      \

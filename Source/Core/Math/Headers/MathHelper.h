@@ -100,19 +100,10 @@ struct SubRange
     bool operator==(const SubRange&) const = default;
 };
 
-template<typename T>
-using SignedIntegerBasedOnSize = typename std::conditional<sizeof(T) == 8, I64, I32>::type;
-template<typename T>
-using UnsignedIntegerBasedOnSize = typename std::conditional<sizeof(T) == 8, U64, U32>::type;
-template<typename T>
-using IntegerTypeBasedOnSign = typename std::conditional<std::is_unsigned<T>::value,
-                                                         UnsignedIntegerBasedOnSize<T>,
-                                                         SignedIntegerBasedOnSize<T>>::type;
-
-template<typename T>
-using DefaultDistribution = typename std::conditional<std::is_integral<T>::value, 
-                                     std::uniform_int_distribution<IntegerTypeBasedOnSign<T>>,
-                                     std::uniform_real_distribution<T>>::type;
+template<typename T> using SignedIntegerBasedOnSize   = std::conditional_t<sizeof(T) == 8, I64, I32>;
+template<typename T> using UnsignedIntegerBasedOnSize = std::conditional_t<sizeof(T) == 8, U64, U32>;
+template<typename T> using IntegerTypeBasedOnSign     = std::conditional_t<std::is_unsigned_v<T>, UnsignedIntegerBasedOnSize<T>, SignedIntegerBasedOnSize<T>>;
+template<typename T> using DefaultDistribution        = std::conditional_t<std::is_integral_v<T>,  std::uniform_int_distribution<IntegerTypeBasedOnSign<T>>, std::uniform_real_distribution<T>>;
 
 template <typename T, 
           typename Engine = std::mt19937_64,
@@ -141,19 +132,19 @@ constexpr I32 SIGN(const T val) {
 }
 
 /// Clamps value n between min and max
-template <typename T> requires std::is_arithmetic<T>::value
+template <typename T> requires std::is_arithmetic_v<T>
 constexpr void CLAMP(T& n, T min, T max) noexcept;
 
-template <typename T> requires std::is_arithmetic<T>::value
+template <typename T> requires std::is_arithmetic_v<T>
 constexpr void CLAMP_01(T& n) noexcept;
 
-template <typename T> requires std::is_arithmetic<T>::value
+template <typename T> requires std::is_arithmetic_v<T>
 [[nodiscard]] constexpr T CLAMPED(T n, T min, T max) noexcept;
 
-template <typename T> requires std::is_arithmetic<T>::value
+template <typename T> requires std::is_arithmetic_v<T>
 [[nodiscard]] constexpr T CLAMPED_01(T n) noexcept;
 
-template <typename T> requires std::is_arithmetic<T>::value
+template <typename T> requires std::is_arithmetic_v<T>
 [[nodiscard]] constexpr T MAP(T input, T in_min, T in_max, T out_min, T out_max, D64& slopeOut) noexcept;
 
 template <typename T>
@@ -220,17 +211,11 @@ template<typename T>
 // number of elements. Returns N
 [[nodiscard]] constexpr U32 minSquareMatrixSize(U32 elementCount) noexcept;
 
-template <typename T, typename U>
-[[nodiscard]] T Lerp(T v1, T v2, U t) noexcept;
-
-template <typename T, typename U>
-[[nodiscard]] T FastLerp(T v1, T v2, U t) noexcept;
-
-template <typename T>
-[[nodiscard]] T Sqrt(T input) noexcept;
-
-template <typename T, typename U>
-[[nodiscard]] T Sqrt(U input) noexcept;
+template <typename T, typename U = T> [[nodiscard]] T Lerp(T v1, T v2, U t) noexcept;
+template <typename T, typename U = T> [[nodiscard]] T LerpFast(T v1, T v2, U t) noexcept;
+template <typename T, typename U = T> [[nodiscard]] T Sqrt(U input) noexcept;
+template <typename T, typename U = T> [[nodiscard]] T InvSqrt(U input) noexcept;
+template <typename T, typename U = T> [[nodiscard]] T InvSqrtFast(U input) noexcept;
 
 ///Helper methods to go from an snorm float (-1...1) to packed unorm char (value => (value + 1) * 0.5 => U8)
 [[nodiscard]] constexpr U8 PACKED_FLOAT_TO_CHAR_UNORM(F32_SNORM value) noexcept;
@@ -250,30 +235,18 @@ template <typename T, typename U>
 [[nodiscard]] F32 FRACT(F32 floatValue) noexcept;
 
 // bit manipulation
-template<typename T1, typename T2>
-constexpr auto BitSet(T1& arg, const T2 pos) { return arg |= 1 << pos; }
+template<typename T1, typename T2> constexpr auto BitSet(T1& arg, const T2 pos) { return arg |= 1 << pos; }
+template<typename T1, typename T2> constexpr auto BitClr(T1& arg, const T2 pos) { return arg &= ~(1 << pos); }
+template<typename T1, typename T2> constexpr bool BitTst(const T1 arg, const T2 pos) { return (arg & 1 << pos) != 0; }
+template<typename T1, typename T2> constexpr bool BitDiff(const T1 arg1, const T2 arg2) { return arg1 ^ arg2; }
 
-template<typename T1, typename T2>
-constexpr auto BitClr(T1& arg, const T2 pos) { return arg &= ~(1 << pos); }
-
-template<typename T1, typename T2>
-constexpr bool BitTst(const T1 arg, const T2 pos) { return (arg & 1 << pos) != 0; }
-
-template<typename T1, typename T2>
-constexpr bool BitDiff(const T1 arg1, const T2 arg2) { return arg1 ^ arg2; }
-
-template<typename T1, typename T2, typename T3>
-constexpr bool BitCmp(const T1 arg1, const T2 arg2, const T3 pos) { return arg1 << pos == arg2 << pos; }
+template<typename T1, typename T2, typename T3> constexpr bool BitCmp(const T1 arg1, const T2 arg2, const T3 pos) { return arg1 << pos == arg2 << pos; }
 
 // bitmask manipulation
-template<typename T1, typename T2>
-constexpr auto BitMaskSet(T1& arg, const T2 mask) { return arg |= mask; }
-template<typename T1, typename T2>
-constexpr auto BitMaskClear(T1& arg, const T2 mask) { return arg &= ~mask; }
-template<typename T1, typename T2>
-constexpr auto BitMaskFlip(T1& arg, const T2 mask) { return arg ^= mask; }
-template<typename T1, typename T2>
-constexpr auto BitMaskCheck(T1& arg, const T2 mask) { return arg & mask; }
+template<typename T1, typename T2> constexpr auto BitMaskSet(T1& arg, const T2 mask) { return arg |= mask; }
+template<typename T1, typename T2> constexpr auto BitMaskClear(T1& arg, const T2 mask) { return arg &= ~mask; }
+template<typename T1, typename T2> constexpr auto BitMaskFlip(T1& arg, const T2 mask) { return arg ^= mask; }
+template<typename T1, typename T2> constexpr auto BitMaskCheck(T1& arg, const T2 mask) { return arg & mask; }
 
 namespace Angle {
 
@@ -299,110 +272,70 @@ namespace Angle {
     using RADIANS_D = RADIANS<D64>;
     using DEGREES_D = DEGREES<D64>;
 
-    template <typename T>
-    [[nodiscard]] constexpr DEGREES<T> to_VerticalFoV(DEGREES<T> horizontalFoV, D64 aspectRatio) noexcept;
-    template <typename T>
-    [[nodiscard]] constexpr DEGREES<T> to_HorizontalFoV(DEGREES<T> verticalFoV, D64 aspectRatio) noexcept;
-    template <typename T>
-    [[nodiscard]] RADIANS<T> to_RADIANS(DEGREES<T> angle) noexcept;
-    template <typename T>
-    [[nodiscard]] DEGREES<T> to_DEGREES(RADIANS<T> angle) noexcept;
-    template <typename T>
-    [[nodiscard]] vec2<RADIANS<T>> to_RADIANS(vec2<DEGREES<T>> angle) noexcept;
-    template <typename T>
-    [[nodiscard]] vec2<DEGREES<T>> to_DEGREES(vec2<RADIANS<T>> angle) noexcept;
-    template <typename T>
-    [[nodiscard]] vec3<RADIANS<T>> to_RADIANS(const vec3<DEGREES<T>>& angle) noexcept;
-    template <typename T>
-    [[nodiscard]] vec3<DEGREES<T>> to_DEGREES(const vec3<RADIANS<T>>& angle) noexcept;
-    template <typename T>
-    [[nodiscard]] vec4<RADIANS<T>> to_RADIANS(const vec4<DEGREES<T>>& angle) noexcept;
-    template <typename T>
-    [[nodiscard]] vec4<DEGREES<T>> to_DEGREES(const vec4<RADIANS<T>>& angle) noexcept;
+    template <typename T> [[nodiscard]] constexpr DEGREES<T> to_VerticalFoV(DEGREES<T> horizontalFoV, D64 aspectRatio) noexcept;
+    template <typename T> [[nodiscard]] constexpr DEGREES<T> to_HorizontalFoV(DEGREES<T> verticalFoV, D64 aspectRatio) noexcept;
+
+    template <typename T> [[nodiscard]] RADIANS<T>       to_RADIANS(DEGREES<T> angle)              noexcept;
+    template <typename T> [[nodiscard]] DEGREES<T>       to_DEGREES(RADIANS<T> angle)              noexcept;
+    template <typename T> [[nodiscard]] vec2<RADIANS<T>> to_RADIANS(const vec2<DEGREES<T>>& angle) noexcept;
+    template <typename T> [[nodiscard]] vec2<DEGREES<T>> to_DEGREES(const vec2<RADIANS<T>>& angle) noexcept;
+    template <typename T> [[nodiscard]] vec3<RADIANS<T>> to_RADIANS(const vec3<DEGREES<T>>& angle) noexcept;
+    template <typename T> [[nodiscard]] vec3<DEGREES<T>> to_DEGREES(const vec3<RADIANS<T>>& angle) noexcept;
+    template <typename T> [[nodiscard]] vec4<RADIANS<T>> to_RADIANS(const vec4<DEGREES<T>>& angle) noexcept;
+    template <typename T> [[nodiscard]] vec4<DEGREES<T>> to_DEGREES(const vec4<RADIANS<T>>& angle) noexcept;
 } //namespace Angle
 
 namespace Metric
 {
-    /// Base value * 1000000000000
-    template <typename T>
-    [[nodiscard]] constexpr T Tera(T a);
-    /// Base value * 1000000000
-    template <typename T>
-    [[nodiscard]] constexpr T Giga(T a);
-    /// Base value * 1000000
-    template <typename T>
-    [[nodiscard]] constexpr T Mega(T a);
-    /// Base value * 1000
-    template <typename T>
-    [[nodiscard]] constexpr T Kilo(T a);
-    /// Base value * 100
-    template <typename T>
-    [[nodiscard]] constexpr T Hecto(T a);
-    /// Base value * 10
-    template <typename T>
-    [[nodiscard]] constexpr T Deca(T a);
-    /// Base value
-    template <typename T>
-    [[nodiscard]] constexpr T Base(T a);
-    /// Base value * 0.1
-    template <typename T>
-    [[nodiscard]] constexpr T Deci(T a);
-    /// Base value * 0.01
-    template <typename T>
-    [[nodiscard]] constexpr T Centi(T a);
-    /// Base value * 0.001
-    template <typename T>
-    [[nodiscard]] constexpr T Milli(T a);
-    /// Base value * 0.000001
-    template <typename T>
-    [[nodiscard]] constexpr T Micro(T a);
-    /// Base value * 0.000000001
-    template <typename T>
-    [[nodiscard]] constexpr T Nano(T a);
-    /// Base value * 0.000000000001
-    template <typename T>
-    [[nodiscard]] constexpr T Pico(T a);
-
-    /// Base value * 1000000000000
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Tera(U a);
-    /// Base value * 1000000000
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Giga(U a);
-    /// Base value * 1000000
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Mega(U a);
-    /// Base value * 1000
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Kilo(U a);
-    /// Base value * 100
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Hecto(U a);
-    /// Base value * 10
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Deca(U a);
-    /// Base value
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Base(U a);
-    /// Base value * 0.1
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Deci(U a);
-    /// Base value * 0.01
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Centi(U a);
-    /// Base value * 0.001
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Milli(U a);
-    /// Base value * 0.000001
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Micro(U a);
-    /// Base value * 0.000000001
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Nano(U a);
-    /// Base value * 0.000000000001
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Pico(U a);
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Tera(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Giga(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Mega(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Kilo(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Hecto( InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Deca(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Base(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Deci(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Centi( InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Milli( InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Micro( InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Nano(  InType a );
+    template <typename OutType = F32, typename InType = OutType> [[nodiscard]] constexpr OutType Pico(  InType a );
 } //namespace Metric
+
+namespace Bytes
+{
+    template <typename OutType = size_t, typename InType = OutType> [[nodiscard]] constexpr OutType Peta( InType a );
+    template <typename OutType = size_t, typename InType = OutType> [[nodiscard]] constexpr OutType Tera( InType a );
+    template <typename OutType = size_t, typename InType = OutType> [[nodiscard]] constexpr OutType Giga( InType a );
+    template <typename OutType = size_t, typename InType = OutType> [[nodiscard]] constexpr OutType Mega( InType a );
+    template <typename OutType = size_t, typename InType = OutType> [[nodiscard]] constexpr OutType Kilo( InType a );
+    template <typename OutType = size_t, typename InType = OutType> [[nodiscard]] constexpr OutType Base( InType a );
+} //namespace Bytes
+
+namespace Time
+{
+    /// Return the passed param without any modification (Used only for emphasis).
+    template <typename OutType = U64, typename InType = OutType> [[nodiscard]] constexpr OutType Hours(        InType a );
+    template <typename OutType = U64, typename InType = OutType> [[nodiscard]] constexpr OutType Minutes(      InType a );
+    template <typename OutType = U64, typename InType = OutType> [[nodiscard]] constexpr OutType Seconds(      InType a );
+    template <typename OutType = U64, typename InType = OutType> [[nodiscard]] constexpr OutType Milliseconds( InType a );
+    template <typename OutType = U64, typename InType = OutType> [[nodiscard]] constexpr OutType Microseconds( InType a );
+    template <typename OutType = U64, typename InType = OutType> [[nodiscard]] constexpr OutType Nanoseconds(  InType a );
+
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType NanosecondsToSeconds(       InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType NanosecondsToMilliseconds(  InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType NanosecondsToMicroseconds(  InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType MicrosecondsToSeconds(      InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType MicrosecondsToMilliseconds( InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType MicrosecondsToNanoseconds(  InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType MillisecondsToSeconds(      InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType MillisecondsToMicroseconds( InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType MillisecondsToNanoseconds(  InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType SecondsToMilliseconds(      InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType SecondsToMicroseconds(      InType a ) noexcept;
+    template <typename OutType = D64, typename InType = OutType> [[nodiscard]] constexpr OutType SecondsToNanoseconds(       InType a ) noexcept;
+
+} // namespace Time
 
 struct SimpleTime
 {
@@ -415,68 +348,8 @@ struct SimpleLocation
     F32 _latitude = 0;
     F32 _longitude = 0;
 };
-
-namespace Time
-{
-    /// Return the passed param without any modification
-    /// Used only for emphasis
-    template <typename T>
-    [[nodiscard]] constexpr T Hours(T a);
-    template <typename T>
-    [[nodiscard]] constexpr T Minutes( T a );
-    template <typename T>
-    [[nodiscard]] constexpr T Seconds( T a );
-    template <typename T>
-    [[nodiscard]] constexpr T Milliseconds(T a);
-    template <typename T>
-    [[nodiscard]] constexpr T Microseconds(T a);
-    template <typename T>
-    [[nodiscard]] constexpr T Nanoseconds(T a);
-
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Hours( U a );
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Minutes( U a );
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Seconds(U a);
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Milliseconds(U a);
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Microseconds(U a);
-    template <typename T, typename U>
-    [[nodiscard]] constexpr T Nanoseconds(U a);
-
-    template <typename T = D64, typename U>
-    [[nodiscard]] constexpr T NanosecondsToSeconds(U a) noexcept;
-    template <typename T = D64, typename U>
-    [[nodiscard]] constexpr T NanosecondsToMilliseconds(U a) noexcept;
-    template <typename T = U64, typename U>
-    [[nodiscard]] constexpr T NanosecondsToMicroseconds(U a) noexcept;
-
-    template <typename T = D64, typename U>
-    [[nodiscard]] constexpr T MicrosecondsToSeconds(U a) noexcept;
-    template <typename T = U64, typename U>
-    [[nodiscard]] constexpr T MicrosecondsToMilliseconds(U a) noexcept;
-    template <typename T = U64, typename U>
-    [[nodiscard]] constexpr T MicrosecondsToNanoseconds(U a) noexcept;
-
-    template <typename T = D64, typename U>
-    [[nodiscard]] constexpr T MillisecondsToSeconds(U a) noexcept;
-    template <typename T = U64, typename U>
-    [[nodiscard]] constexpr T MillisecondsToMicroseconds(U a) noexcept;
-    template <typename T = U64, typename U>
-    [[nodiscard]] constexpr T MillisecondsToNanoseconds(U a) noexcept;
-
-    template <typename T = D64, typename U>
-    [[nodiscard]] constexpr T SecondsToMilliseconds(U a) noexcept;
-    template <typename T = U64, typename U>
-    [[nodiscard]] constexpr T SecondsToMicroseconds(U a) noexcept;
-    template <typename T = U64, typename U>
-    [[nodiscard]] constexpr T SecondsToNanoseconds(U a) noexcept;
-}  // namespace Time
-
 template<typename T>
-using base_type = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+using base_type = typename std::remove_cv_t<typename std::remove_reference_t<T>>;
 
 template<typename T>
 concept ValidMathType = is_base_of_template<primitiveWrapper, base_type<T>>::value || (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>);
@@ -500,9 +373,6 @@ struct Circle
 /// a la Boost
 template <typename T, typename... Rest>
 void Hash_combine(size_t& seed, const T& v, const Rest&... rest) noexcept;
-
-template<class FwdIt, class Compare = std::less<typename std::iterator_traits<FwdIt>::value_type>>
-void InsertionSort(FwdIt first, FwdIt last, Compare cmp = Compare());
 
 /** Ogre3D
 @brief Normalise the selected rotations to be within the +/-180 degree range.

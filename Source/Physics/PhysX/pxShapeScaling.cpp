@@ -108,8 +108,7 @@ void Scale(PxCapsuleGeometry& geometry, PxTransform& pose, const PxVec3& scaling
     const PxMat33 scaleMat = PxMat33::createDiagonal(scaling) * PxMat33(pose.q);  // == (pose^-1 * scaling)^T
     geometry.halfHeight *= scaleMat.column0.magnitude();
     // Bi-directional shape-space approximation
-    geometry.radius *=
-        Sqrt(scaleMat.column1.magnitude() * scaleMat.column2.magnitude());
+    geometry.radius *= Sqrt<F32>(scaleMat.column1.magnitude() * scaleMat.column2.magnitude());
 
     pose.p = pose.p.multiply(scaling);
 }

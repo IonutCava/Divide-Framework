@@ -258,6 +258,7 @@ namespace Divide
 
         if ( _gScene != nullptr )
         {
+            DIVIDE_ASSERT(deltaTimeGameUS > 0u);
             _gScene->simulate( Time::MicrosecondsToMilliseconds<physx::PxReal>( deltaTimeGameUS ) );
             _physxResultsPending.store(true);
         }

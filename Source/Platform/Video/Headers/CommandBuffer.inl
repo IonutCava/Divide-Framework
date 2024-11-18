@@ -48,11 +48,11 @@ namespace
     {
         constexpr size_t g_commandSize = prevPOW2( sizeof( T ) );
 
-        if constexpr ( std::is_same<T, GFX::BindShaderResourcesCommand>::value )
+        if constexpr ( std::is_same_v<T, GFX::BindShaderResourcesCommand> )
         {
             return g_commandSize * (1u << 5);
         }
-        else if constexpr ( std::is_same<T, GFX::DrawCommand>::value )
+        else if constexpr ( std::is_same_v<T, GFX::DrawCommand> )
         {
             return g_commandSize * (1u << 6);
         }

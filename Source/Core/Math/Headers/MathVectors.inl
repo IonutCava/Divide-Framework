@@ -72,6 +72,43 @@ namespace Divide
             b = _mm_hadd_ps( a, a );
             return _mm_hadd_ps( b, b );
         }
+
+        inline __m128 LoadFloat3(const vec3<Angle::DEGREES_F>& value)
+        {
+            __m128 x = _mm_load_ss(&value.x.value);
+            __m128 y = _mm_load_ss(&value.y.value);
+            __m128 z = _mm_load_ss(&value.z.value);
+            __m128 xy = _mm_movelh_ps(x, y);
+            return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
+        }
+
+        inline __m128 LoadFloat3(const vec3<Angle::RADIANS_F>& value)
+        {
+            __m128 x = _mm_load_ss(&value.x.value);
+            __m128 y = _mm_load_ss(&value.y.value);
+            __m128 z = _mm_load_ss(&value.z.value);
+            __m128 xy = _mm_movelh_ps(x, y);
+            return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
+        }
+
+        inline __m128 LoadFloat3(const float3& value)
+        {
+            __m128 x = _mm_load_ss(&value.x);
+            __m128 y = _mm_load_ss(&value.y);
+            __m128 z = _mm_load_ss(&value.z);
+            __m128 xy = _mm_movelh_ps(x, y);
+            return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
+        }
+
+        inline F32 Dot(const __m128 a, const __m128 b)
+        {
+            return _mm_cvtss_f32(DotSimd(a, b));
+        }
+
+        inline F32 Length(const __m128 reg)
+        {
+            return Sqrt<F32>(DotSimd(reg, reg));
+        }
     } //namespace SSE
 #endif //HAS_SSE42
 
@@ -162,6 +199,43 @@ namespace Divide
     {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
+
+#if defined(HAS_SSE42)
+    /*template <>
+    FORCE_INLINE F32 Dot(const float3& a, const float3& b) noexcept
+    {
+        return SSE::Dot(SSE::LoadFloat3(a), SSE::LoadFloat3(b));
+    }
+    template <>
+    FORCE_INLINE Angle::DEGREES_F Dot(const vec3<Angle::DEGREES_F>& a, const vec3<Angle::DEGREES_F>& b) noexcept
+    {
+        return Angle::DEGREES_F{ SSE::Dot(SSE::LoadFloat3(a), SSE::LoadFloat3(b)) };
+    }
+
+    template <>
+    FORCE_INLINE Angle::RADIANS_F Dot(const vec3<Angle::RADIANS_F>& a, const vec3<Angle::RADIANS_F>& b) noexcept
+    {
+        return Angle::RADIANS_F{ SSE::Dot(SSE::LoadFloat3(a), SSE::LoadFloat3(b)) };
+    }
+
+    template<>
+    FORCE_INLINE F32 float3::length() const noexcept
+    {
+        return SSE::Length(SSE::LoadFloat3(*this));
+    }
+
+    template<>
+    FORCE_INLINE Angle::DEGREES_F vec3<Angle::DEGREES_F>::length() const noexcept
+    {
+        return Angle::DEGREES_F{ SSE::Length(SSE::LoadFloat3(*this)) };
+    }
+
+    template<>
+    FORCE_INLINE Angle::RADIANS_F vec3<Angle::RADIANS_F>::length() const noexcept
+    {
+        return Angle::RADIANS_F{ SSE::Length(SSE::LoadFloat3(*this)) };
+    }*/
+#endif //HAS_SSE42
 
     /// general vec3 cross function
     template <typename T>
@@ -344,14 +418,14 @@ namespace Divide
     template <typename T>
     FORCE_INLINE T vec2<T>::lengthSquared() const noexcept
     {
-        return Divide::Dot( *this, *this );
+        return Dot( *this, *this );
     }
 
     /// compute the vector's distance to another specified vector
     template <typename T>
     FORCE_INLINE T vec2<T>::distance( const vec2& v ) const
     {
-        return Divide::Sqrt( distanceSquared( v ) );
+        return Sqrt<T>( distanceSquared( v ) );
     }
 
     /// compute the vector's squared distance to another specified vector
@@ -359,7 +433,7 @@ namespace Divide
     FORCE_INLINE T vec2<T>::distanceSquared( const vec2& v ) const noexcept
     {
         const vec2 d = v - *this;
-        return Divide::Dot( d, d );
+        return Dot( d, d );
     }
 
     /// convert the vector to unit length
@@ -529,7 +603,7 @@ namespace Divide
     template <typename T>
     FORCE_INLINE T vec3<T>::lengthSquared() const noexcept
     {
-        return Divide::Dot( *this, *this );
+        return Dot( *this, *this );
     }
 
     /// transform the vector to unit length
@@ -581,14 +655,14 @@ namespace Divide
     template <typename T>
     FORCE_INLINE T vec3<T>::dot( const vec3& v ) const noexcept
     {
-        return Divide::Dot( *this, v );
+        return Dot( *this, v );
     }
 
     /// compute the vector's distance to another specified vector
     template <typename T>
     FORCE_INLINE T vec3<T>::distance( const vec3& v ) const noexcept
     {
-        return Divide::Sqrt( distanceSquared( v ) );
+        return Sqrt<T>( distanceSquared( v ) );
     }
 
     /// compute the vector's squared distance to another specified vector
@@ -596,7 +670,7 @@ namespace Divide
     FORCE_INLINE T vec3<T>::distanceSquared( const vec3& v ) const noexcept
     {
         const vec3 d{ v.x - this->x, v.y - this->y, v.z - this->z };
-        return Divide::Dot( d, d );
+        return Dot( d, d );
     }
 
     /// returns the angle in radians between '*this' and 'v'
@@ -974,50 +1048,40 @@ namespace Divide
 
 
 #if defined(HAS_SSE42)
-    FORCE_INLINE F32 Dot(const __m128 a, const __m128 b)
-    {
-        return _mm_cvtss_f32(SSE::DotSimd(a, b));
-    }
-
     template <>
     FORCE_INLINE F32 Dot( const float4& a, const float4& b ) noexcept
     {
-        return Dot( a._reg._reg, b._reg._reg );
+        return SSE::Dot( a._reg._reg, b._reg._reg );
     }
 
     template <>
     FORCE_INLINE Angle::DEGREES_F Dot(const vec4<Angle::DEGREES_F>& a, const vec4<Angle::DEGREES_F>& b) noexcept
     {
-        return Angle::DEGREES_F{Dot(a._reg._reg, b._reg._reg)};
+        return Angle::DEGREES_F{ SSE::Dot(a._reg._reg, b._reg._reg)};
     }
 
     template <>
     FORCE_INLINE Angle::RADIANS_F Dot(const vec4<Angle::RADIANS_F>& a, const vec4<Angle::RADIANS_F>& b) noexcept
     {
-        return Angle::RADIANS_F{Dot(a._reg._reg, b._reg._reg)};
-    }
-
-    FORCE_INLINE F32 Length(const __m128 reg)
-    {
-        return Divide::Sqrt<F32>(SSE::DotSimd(reg, reg));
+        return Angle::RADIANS_F{SSE::Dot(a._reg._reg, b._reg._reg)};
     }
 
     template<>
     FORCE_INLINE F32 float4::length() const noexcept
     {
-        return Length( this->_reg._reg );
+        return SSE::Length( this->_reg._reg );
     }
 
     template<>
     FORCE_INLINE Angle::DEGREES_F vec4<Angle::DEGREES_F>::length() const noexcept
     {
-        return Angle::DEGREES_F{ Length(this->_reg._reg) };
+        return Angle::DEGREES_F{ SSE::Length(this->_reg._reg) };
     }
 
     template<>
     FORCE_INLINE Angle::RADIANS_F vec4<Angle::RADIANS_F>::length() const noexcept
     {
-        return Angle::RADIANS_F{ Length(this->_reg._reg) };
+        return Angle::RADIANS_F{ SSE::Length(this->_reg._reg) };
     }
 
 #endif //HAS_SSE42
@@ -1026,7 +1090,7 @@ namespace Divide
     template <typename T>
     FORCE_INLINE T vec4<T>::dot( const vec4& v ) const noexcept
     {
-        return Divide::Dot( *this, v );
+        return Dot( *this, v );
     }
 
     /// return the squared distance of the vector

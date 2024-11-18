@@ -54,8 +54,8 @@ namespace
 
         const RenderStateBlock& block = pipeline.descriptor()._stateBlock;
         Util::Hash_combine( hash,
-                            to_U32( std::floor( block._zBias * 1000.0f + 0.5f ) ),   //VK_DYNAMIC_STATE_DEPTH_BIAS
-                            to_U32( std::floor( block._zUnits * 1000.0f + 0.5f ) ),  //VK_DYNAMIC_STATE_DEPTH_BIAS
+                            to_U32( FLOOR( block._zBias * 1000.0f + 0.5f ) ),   //VK_DYNAMIC_STATE_DEPTH_BIAS
+                            to_U32( FLOOR( block._zUnits * 1000.0f + 0.5f ) ),  //VK_DYNAMIC_STATE_DEPTH_BIAS
                             to_U32( block._cullMode ),                               //VK_DYNAMIC_STATE_CULL_MODE
                             block._scissorTestEnabled,                               //VK_DYNAMIC_STATE_SCISSOR
                             block._frontFaceCCW,                                     //VK_DYNAMIC_STATE_FRONT_FACE 
@@ -94,8 +94,8 @@ namespace
 
         const RenderStateBlock& block = descriptor._stateBlock;
         Util::Hash_combine( hash,
-                            //to_U32( std::floor( block._zBias * 1000.0f + 0.5f ) ),   //VK_DYNAMIC_STATE_DEPTH_BIAS
-                            //to_U32( std::floor( block._zUnits * 1000.0f + 0.5f ) ),  //VK_DYNAMIC_STATE_DEPTH_BIAS
+                            //to_U32( FLOOR( block._zBias * 1000.0f + 0.5f ) ),        //VK_DYNAMIC_STATE_DEPTH_BIAS
+                            //to_U32( FLOOR( block._zUnits * 1000.0f + 0.5f ) ),       //VK_DYNAMIC_STATE_DEPTH_BIAS
                             //to_U32( block._cullMode ),                               //VK_DYNAMIC_STATE_CULL_MODE
                             //block._frontFaceCCW,                                     //VK_DYNAMIC_STATE_FRONT_FACE 
                             //block._depthTestEnabled,                                 //VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE 

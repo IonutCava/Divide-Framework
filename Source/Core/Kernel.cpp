@@ -273,13 +273,13 @@ void Kernel::onLoop()
         {
             static bool statsEnabled = false;
             // Turn on perf metric measuring 2 seconds before perf dump
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(8)) == 0)
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds<U8>(8)) == 0)
             {
                 statsEnabled = platformContext().gfx().queryPerformanceStats();
                 platformContext().gfx().queryPerformanceStats(true);
             }
             // Our stats should be up to date now
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds(10)) == 0)
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds<U8>(10)) == 0)
             {
                 Console::printfn(platformContext().debug().output().c_str());
                 if (!statsEnabled)
@@ -332,7 +332,7 @@ void Kernel::onLoop()
     if (frameLimit > 0)
     {
         const F32 elapsedMS = Time::MicrosecondsToMilliseconds<F32>(_appLoopTimerMain.get());
-        const F32 deltaMilliseconds = std::floorf(elapsedMS - (elapsedMS * 0.015f));
+        const F32 deltaMilliseconds = FLOOR(elapsedMS - (elapsedMS * 0.015f));
         const F32 targetFrameTime = 1000.0f / frameLimit;
 
         if (deltaMilliseconds < targetFrameTime)

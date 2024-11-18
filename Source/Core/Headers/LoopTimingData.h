@@ -37,8 +37,8 @@ namespace Divide
 {
 /// Application update rate
 constexpr U32 TICKS_PER_SECOND = Config::TARGET_FRAME_RATE / Config::TICK_DIVISOR;
-constexpr U64 FIXED_UPDATE_RATE_US = Time::SecondsToMicroseconds( 1 ) / TICKS_PER_SECOND;
-constexpr U64 MAX_FRAME_TIME_US = Time::MillisecondsToMicroseconds( 250 );
+constexpr U64 FIXED_UPDATE_RATE_US = Time::SecondsToMicroseconds<U64>( 1 ) / TICKS_PER_SECOND;
+constexpr U64 MAX_FRAME_TIME_US = Time::MillisecondsToMicroseconds<U64>( 250 );
 
 struct LoopTimingData
 {

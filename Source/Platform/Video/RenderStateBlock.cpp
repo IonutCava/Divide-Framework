@@ -82,8 +82,8 @@ namespace TypeUtil
 size_t GetHash( const RenderStateBlock& block )
 {
     // Avoid small float rounding errors offsetting the general hash value
-    const U32 zBias = to_U32(std::floor( block._zBias * 1000.0f + 0.5f));
-    const U32 zUnits = to_U32(std::floor( block._zUnits * 1000.0f + 0.5f));
+    const U32 zBias  = to_U32(FLOOR( block._zBias * 1000.0f + 0.5f));
+    const U32 zUnits = to_U32(FLOOR( block._zUnits * 1000.0f + 0.5f));
 
     size_t hash = 59;
     Util::Hash_combine(hash, block._colourWrite.i,

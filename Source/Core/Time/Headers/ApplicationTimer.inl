@@ -58,20 +58,9 @@ inline void ApplicationTimer::getFrameRateAndTime(F32& fpsOut, F32& frameTimeOut
 namespace App
 {
     /// The following functions force a timer update (a call to query performance timer).
-    FORCE_INLINE U64 ElapsedNanoseconds() noexcept
-    {
-        return MicrosecondsToNanoseconds( ElapsedMicroseconds() );
-    }
-
-    FORCE_INLINE D64 ElapsedMilliseconds() noexcept
-    {
-        return MicrosecondsToMilliseconds<D64, U64>( ElapsedMicroseconds() );
-    }
-
-    FORCE_INLINE D64 ElapsedSeconds() noexcept
-    {
-        return MicrosecondsToSeconds( ElapsedMicroseconds() );
-    }
+    FORCE_INLINE D64 ElapsedNanoseconds()  noexcept { return MicrosecondsToNanoseconds( ElapsedMicroseconds() );  }
+    FORCE_INLINE D64 ElapsedMilliseconds() noexcept { return MicrosecondsToMilliseconds( ElapsedMicroseconds() ); }
+    FORCE_INLINE D64 ElapsedSeconds()      noexcept { return MicrosecondsToSeconds( ElapsedMicroseconds() ); }
 } //namespace App
 
 }  // namespace Divide::Time

@@ -154,9 +154,9 @@ T Quaternion<T>::magnituteSQ() const
 template <typename T>
 bool Quaternion<T>::compare(const Quaternion<T>& rq, Angle::RADIANS_F tolerance) const
 {
-    const Angle::RADIANS_F angleRad = std::acosf(to_F32(dot(rq)));
+    const F32 angleRad = std::acosf(to_F32(dot(rq)));
 
-    return IS_TOLERANCE(angleRad, tolerance) || COMPARE_TOLERANCE(angleRad, Angle::RADIANS_F(M_PI_f), tolerance);
+    return COMPARE_TOLERANCE(angleRad, tolerance) || COMPARE_TOLERANCE(angleRad, M_PI_f, tolerance);
 }
 
 template <typename T>
@@ -796,7 +796,7 @@ Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>
     }
     else
     {
-        const F32 s = Divide::Sqrt((1 + d) * 2.0f);
+        const F32 s = Sqrt<F32>((1 + d) * 2.f);
         const F32 invs = 1.f / s;
 
         const vec3<T> c(Cross(v0, v1) * invs);

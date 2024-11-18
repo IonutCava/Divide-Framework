@@ -47,6 +47,7 @@ public:
         PhysX = 0,
         ODE,
         Bullet,
+        Jolt,
         COUNT
     };
 
@@ -88,3 +89,4 @@ private:
 };  // namespace Divide
 
 #endif //DVD_PHYSICS_DEVICE_H_
+

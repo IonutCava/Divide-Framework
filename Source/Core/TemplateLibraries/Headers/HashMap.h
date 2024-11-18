@@ -83,7 +83,7 @@ namespace Divide {
     {
         FORCE_INLINE size_t operator()(const T& elem) const
         {
-            return hasher<T, hashAlg::is_enum<T>::value>()(elem);
+            return hasher<T, hashAlg::is_enum_v<T>>()(elem);
         }
     };
 

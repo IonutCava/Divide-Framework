@@ -90,7 +90,7 @@ namespace Divide
     {
         Console::printfn( LOCALE_STR( "UNLOAD_VEGETATION_BEGIN" ), resourceName().c_str() );
 
-        WAIT_FOR_CONDITION_TIMEOUT( getState() != ResourceState::RES_LOADING, Time::Milliseconds( 3000.0 ) );
+        WAIT_FOR_CONDITION_TIMEOUT( getState() != ResourceState::RES_LOADING, Time::Milliseconds( 3000 ) );
 
         assert( getState() != ResourceState::RES_LOADING );
         {

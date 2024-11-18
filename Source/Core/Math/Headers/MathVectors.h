@@ -377,7 +377,7 @@ namespace Divide
         /// return the vector's length
         [[nodiscard]] T length()        const noexcept
         {
-            return Divide::Sqrt( lengthSquared() );
+            return Sqrt<T>( lengthSquared() );
         }
         [[nodiscard]] T lengthSquared() const noexcept;
         /// return the angle defined by the 2 components
@@ -750,7 +750,7 @@ namespace Divide
         /// return the vector's length
         [[nodiscard]] T length() const  noexcept
         {
-            return Divide::Sqrt( lengthSquared() );
+            return Divide::Sqrt<T>( lengthSquared() );
         }
         /// return true if length is zero
         [[nodiscard]] bool isZeroLength() const  noexcept

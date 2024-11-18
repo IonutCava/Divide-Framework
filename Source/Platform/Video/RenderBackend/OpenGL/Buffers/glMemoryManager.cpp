@@ -15,7 +15,7 @@ namespace
 {
     namespace detail
     {
-        constexpr size_t zeroDataBaseSize = TO_MEGABYTES(64u);
+        constexpr size_t zeroDataBaseSize = Bytes::Mega(64u);
     };
 
     eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, Byte_ZERO );

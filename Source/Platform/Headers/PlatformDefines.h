@@ -238,6 +238,9 @@ using PlayerIndex = U8;
 // code license: public domain or equivalent
 // post: https://notes.underscorediscovery.com/constexpr-fnv1a/
 
+template<typename T>
+concept is_pod = (std::is_trivial_v<T> && std::is_standard_layout_v<T>);
+
 constexpr U32 val_32_const = 0x811c9dc5;
 constexpr U32 prime_32_const = 0x1000193;
 constexpr U64 val_64_const = 0xcbf29ce484222325;
@@ -440,106 +443,12 @@ constexpr eastl::array<T, N> create_eastl_array(const T& value) {
     return detail::create_eastl_array(value, make_index_sequence<N>());
 }
 
-/* See
-http://randomascii.wordpress.com/2012/01/11/tricks-with-the-floating-point-format/
-for the potential portability problems with the union and bit-fields below.
-*/
-union Float_t {
-    explicit Float_t(const F32 num = 0.0f) noexcept : f(num) {}
-
-    // Portable extraction of components.
-    [[nodiscard]] bool Negative() const noexcept { return (i >> 31) != 0; }
-    [[nodiscard]] I32 RawMantissa() const noexcept { return i & ((1 << 23) - 1); }
-    [[nodiscard]] I32 RawExponent() const noexcept { return (i >> 23) & 0xFF; }
-
-    I32 i;
-    F32 f;
-};
-
-union Double_t {
-    explicit Double_t(const D64 num = 0.0) noexcept : d(num) {}
-
-    // Portable extraction of components.
-    [[nodiscard]] bool Negative() const noexcept { return (i >> 63) != 0; }
-    [[nodiscard]] I64 RawMantissa() const noexcept { return i & ((1LL << 52) - 1); }
-    [[nodiscard]] I64 RawExponent() const noexcept { return (i >> 52) & 0x7FF; }
-
-    I64 i;
-    D64 d;
-};
-
-[[nodiscard]]
-inline bool AlmostEqualUlpsAndAbs(const F32 A, const F32 B, const F32 maxDiff, const I32 maxUlpsDiff) noexcept {
-    // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const F32 absDiff = std::abs(A - B);
-    if (absDiff <= maxDiff) {
-        return true;
-    }
-
-    const Float_t uA(A);
-    const Float_t uB(B);
-
-    // Different signs means they do not match.
-    if (uA.Negative() != uB.Negative()) {
-        return false;
-    }
-
-    // Find the difference in ULPs.
-    return std::abs(uA.i - uB.i) <= maxUlpsDiff;
-}
-
-[[nodiscard]]
-inline bool AlmostEqualUlpsAndAbs(const D64 A, const D64 B, const D64 maxDiff, const I32 maxUlpsDiff) noexcept {
-    // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const D64 absDiff = std::abs(A - B);
-    if (absDiff <= maxDiff) {
-        return true;
-    }
-
-    const Double_t uA(A);
-    const Double_t uB(B);
-
-    // Different signs means they do not match.
-    if (uA.Negative() != uB.Negative()) {
-        return false;
-    }
-
-    // Find the difference in ULPs.
-    return std::abs(uA.i - uB.i) <= maxUlpsDiff;
-}
-
-[[nodiscard]]
-inline bool AlmostEqualRelativeAndAbs(const F32 A, const F32 B, const F32 maxDiff, const F32 maxRelDiff)  noexcept {
-    // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const F32 diff = std::abs(A - B);
-    if (diff <= maxDiff) {
-        return true;
-    }
-
-    const F32 largest = std::max(std::abs(A), std::abs(B));
-    return diff <= largest * maxRelDiff;
-}
-
-[[nodiscard]]
-inline bool AlmostEqualRelativeAndAbs(D64 A, D64 B, const D64 maxDiff, const D64 maxRelDiff) noexcept {
-    // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const D64 diff = std::abs(A - B);
-    if (diff <= maxDiff) {
-        return true;
-    }
-
-    A = std::abs(A);
-    B = std::abs(B);
-    const D64 largest = B > A ? B : A;
-
-    return diff <= largest * maxRelDiff;
-}
-
 #define NOP() static_assert(true, "")
 
 //Andrei Alexandrescu's ScopeGuard macros from "Declarative Control Flow" (CppCon 2015)
 //ref: https://gist.github.com/mmha/6bee3983caf2eab04d80af8e0eaddfbe
-namespace detail {
+namespace detail
+{
     enum class ScopeGuardOnExit{};
     enum class ScopeGuardOnFail{};
     enum class ScopeGuardOnSuccess{};
@@ -548,18 +457,34 @@ namespace detail {
     class ScopeGuard
     {
         public:
-            ScopeGuard(Fun &&fn) noexcept : fn(MOV(fn)) {}
-            ~ScopeGuard() { fn(); }
+            ScopeGuard(Fun &&fn) noexcept
+                : fn(MOV(fn))
+            {
+            }
+
+            ~ScopeGuard()
+            {
+                fn();
+            }
+
         private:
             Fun fn;
     };
 
     class UncaughtExceptionCounter
     {
-        int exceptionCount_;
+        I32 exceptionCount_;
+
     public:
-        UncaughtExceptionCounter() noexcept : exceptionCount_(std::uncaught_exceptions()) {}
-        bool newUncaughtException() noexcept { return std::uncaught_exceptions() > exceptionCount_; }
+        UncaughtExceptionCounter() noexcept 
+            : exceptionCount_(std::uncaught_exceptions())
+        {
+        }
+
+        bool newUncaughtException() noexcept
+        {
+            return std::uncaught_exceptions() > exceptionCount_;
+        }
     };
 
     template <typename FunctionType, bool executeOnException>
@@ -567,28 +492,40 @@ namespace detail {
     {
         FunctionType function_;
         UncaughtExceptionCounter ec_;
+
     public:
-        explicit ScopeGuardForNewException(const FunctionType &fn) : function_(fn) {}
-        explicit ScopeGuardForNewException(FunctionType &&fn) : function_(MOV(fn)) {}
-        ~ScopeGuardForNewException() noexcept(executeOnException) {
-            if (executeOnException == ec_.newUncaughtException()) {
+        explicit ScopeGuardForNewException(const FunctionType &fn) : function_(fn)
+        {
+        }
+
+        explicit ScopeGuardForNewException(FunctionType &&fn) : function_(MOV(fn))
+        {
+        }
+
+        ~ScopeGuardForNewException() noexcept(executeOnException)
+        {
+            if (executeOnException == ec_.newUncaughtException()) 
+            {
                 function_();
             }
         }
     };
 
     template <typename Fun>
-    auto operator+(ScopeGuardOnExit, Fun &&fn) noexcept {
+    auto operator+(ScopeGuardOnExit, Fun &&fn) noexcept
+    {
         return ScopeGuard<Fun>(FWD(fn));
     }
 
     template <typename Fun>
-    auto operator+(ScopeGuardOnFail, Fun &&fn) 	{
+    auto operator+(ScopeGuardOnFail, Fun &&fn)
+    {
         return ScopeGuardForNewException<std::decay_t<Fun>, true>(FWD(fn));
     }
 
     template <typename Fun>
-    auto operator+(ScopeGuardOnSuccess, Fun &&fn) 	{
+    auto operator+(ScopeGuardOnSuccess, Fun &&fn)
+    {
         return ScopeGuardForNewException<std::decay_t<Fun>, false>(FWD(fn));
     }
 } //namespace detail
@@ -626,77 +563,299 @@ inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
 constexpr F32 EPSILON_F32 = std::numeric_limits<F32>::epsilon();
 constexpr D64 EPSILON_D64 = std::numeric_limits<D64>::epsilon();
 
-template <typename T, typename U = T>
-[[nodiscard]] bool IS_IN_RANGE_INCLUSIVE(const T x, const U min, const U max) noexcept {
-    return x >= min && x <= max;
+
+template<std::floating_point T>
+[[nodiscard]] constexpr T ABS(const T input)
+{
+    // mostly for floats
+    return input >= T{ 0 } ? input : (input < T{ 0 } ? -input : T{ 0 });
 }
-template <typename T, typename U = T>
-[[nodiscard]] bool IS_IN_RANGE_EXCLUSIVE(const T x, const U min, const U max) noexcept {
-    return x > min && x < max;
+
+template<std::signed_integral T>
+[[nodiscard]] constexpr T ABS(const T input)
+{
+    return input >= T{ 0 } ? input : -input;
+}
+
+template<std::unsigned_integral T>
+[[nodiscard]] constexpr T ABS(const T input)
+{
+    return input;
 }
 
 template <typename T>
-[[nodiscard]] bool IS_ZERO(const T X) noexcept {
-    return X == 0;
+[[nodiscard]] constexpr bool IS_ZERO(const T X) noexcept
+{
+    return X == T{ 0 };
 }
 
 template <>
-[[nodiscard]] inline bool IS_ZERO(const F32 X) noexcept {
-    return abs(X) < EPSILON_F32;
+[[nodiscard]] constexpr bool IS_ZERO(const F32 X) noexcept
+{
+    return ABS(X) < EPSILON_F32;
 }
+
 template <>
-[[nodiscard]] inline bool IS_ZERO(const D64 X) noexcept {
-    return abs(X) < EPSILON_D64;
+[[nodiscard]] constexpr bool IS_ZERO(const D64 X) noexcept
+{
+    return ABS(X) < EPSILON_D64;
 }
 
-template <typename T>
-[[nodiscard]] bool IS_TOLERANCE(const T X, const T TOLERANCE) noexcept {
-    return abs(X) <= TOLERANCE;
+template <typename T, typename U = T>
+[[nodiscard]] constexpr bool COMPARE_TOLERANCE(const T X, const U TOLERANCE) noexcept
+{
+    return ABS(X) <= TOLERANCE;
 }
 
-template<typename T, typename U = T>
-[[nodiscard]] bool COMPARE_TOLERANCE(const T X, const U Y, const T TOLERANCE) noexcept {
-    return abs(X - static_cast<T>(Y)) <= TOLERANCE;
+template<typename T, typename U = T, typename W = T>
+[[nodiscard]] constexpr bool COMPARE_TOLERANCE(const T X, const U Y, const W TOLERANCE) noexcept
+{
+    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U>)
+    {
+        return COMPARE_TOLERANCE((X >= Y ? subtract(X, Y) : subtract(Y, X)), TOLERANCE);
+    }
+
+    return COMPARE_TOLERANCE(subtract(X, Y), TOLERANCE);
 }
 
-template<typename T, typename U = T>
-[[nodiscard]] bool COMPARE_TOLERANCE_ACCURATE(const T X, const T Y, const T TOLERANCE) noexcept {
-    return COMPARE_TOLERANCE(X, Y, TOLERANCE);
+template<typename T, typename U  = T>
+[[nodiscard]] constexpr bool COMPARE(const T X, const U Y) noexcept
+{
+    return X == Y;
+}
+
+template<is_pod T, is_pod U = T>
+[[nodiscard]] constexpr bool COMPARE(const T X, const U Y) noexcept
+{
+    return X == static_cast<resolve_uac<T, U>::return_type>(Y);
 }
 
 template<>
-[[nodiscard]] inline bool COMPARE_TOLERANCE_ACCURATE(const F32 X, const F32 Y, const F32 TOLERANCE) noexcept {
-    return AlmostEqualUlpsAndAbs(X, Y, TOLERANCE, 4);
-}
-
-template<>
-[[nodiscard]] inline bool COMPARE_TOLERANCE_ACCURATE(const D64 X, const D64 Y, const D64 TOLERANCE) noexcept {
-    return AlmostEqualUlpsAndAbs(X, Y, TOLERANCE, 4);
-}
-
-template<typename T, typename U = T>
-[[nodiscard]] bool COMPARE(T X, U Y) noexcept {
-    return X == static_cast<T>(Y);
-}
-
-template<>
-[[nodiscard]] inline bool COMPARE(const F32 X, const F32 Y) noexcept {
+[[nodiscard]] constexpr bool COMPARE(const F32 X, const F32 Y) noexcept
+{
     return COMPARE_TOLERANCE(X, Y, EPSILON_F32);
 }
 
 template<>
-[[nodiscard]] inline bool COMPARE(const D64 X, const D64 Y) noexcept {
+[[nodiscard]] constexpr  bool COMPARE(const D64 X, const D64 Y) noexcept
+{
     return COMPARE_TOLERANCE(X, Y, EPSILON_D64);
+}
+
+template<typename T, typename tagType>
+[[nodiscard]] constexpr primitiveWrapper<T, tagType> ABS(const primitiveWrapper<T, tagType> input)
+{
+    return ABS<T>(input.value);
+}
+
+template<typename T, typename tagType>
+[[nodiscard]] constexpr bool COMPARE(const primitiveWrapper<T, tagType> X, const primitiveWrapper<T, tagType> Y) noexcept
+{
+    return COMPARE(X.value, Y.value);
+}
+
+template<typename T, typename tagType, typename W>
+[[nodiscard]] constexpr bool COMPARE_TOLERANCE(const primitiveWrapper<T, tagType> X, const primitiveWrapper<T, tagType> Y, const W TOLERANCE) noexcept
+{
+    return COMPARE_TOLERANCE(X.value, Y.value, TOLERANCE);
+}
+
+/* See
+http://randomascii.wordpress.com/2012/01/11/tricks-with-the-floating-point-format/
+for the potential portability problems with the union and bit-fields below.
+*/
+union Float_t
+{
+    explicit constexpr Float_t(const F32 num = 0.0f) noexcept : f(num) {}
+
+    // Portable extraction of components.
+    [[nodiscard]] constexpr bool Negative()    const noexcept { return (i >> 31) != 0; }
+    [[nodiscard]] constexpr I32  RawMantissa() const noexcept { return i & ((1 << 23) - 1); }
+    [[nodiscard]] constexpr I32  RawExponent() const noexcept { return (i >> 23) & 0xFF; }
+
+    I32 i;
+    F32 f;
+};
+
+union Double_t
+{
+    explicit constexpr Double_t(const D64 num = 0.0) noexcept : d(num) {}
+
+    // Portable extraction of components.
+    [[nodiscard]] constexpr bool Negative()    const noexcept { return (i >> 63) != 0; }
+    [[nodiscard]] constexpr I64  RawMantissa() const noexcept { return i & ((1LL << 52) - 1); }
+    [[nodiscard]] constexpr I64  RawExponent() const noexcept { return (i >> 52) & 0x7FF; }
+
+    I64 i;
+    D64 d;
+};
+
+[[nodiscard]]
+constexpr bool ALMOST_EQUAL_ULPS_AND_ABS(const F32 A, const F32 B, const F32 maxDiff, const I32 maxUlpsDiff) noexcept
+{
+    // Check if the numbers are really close -- needed when comparing numbers near zero.
+    const F32 absDiff = ABS(A - B);
+    if (absDiff <= maxDiff)
+    {
+        return true;
+    }
+
+    const Float_t uA(A);
+    const Float_t uB(B);
+
+    // Different signs means they do not match.
+    if (uA.Negative() != uB.Negative())
+    {
+        return false;
+    }
+
+    // Find the difference in ULPs.
+    return ABS(uA.i - uB.i) <= maxUlpsDiff;
+}
+
+[[nodiscard]]
+constexpr bool ALMOST_EQUAL_ULPS_AND_ABS(const D64 A, const D64 B, const D64 maxDiff, const I32 maxUlpsDiff) noexcept
+{
+    // Check if the numbers are really close -- needed when comparing numbers near zero.
+    const D64 absDiff = ABS(A - B);
+    if (absDiff <= maxDiff)
+    {
+        return true;
+    }
+
+    const Double_t uA(A);
+    const Double_t uB(B);
+
+    // Different signs means they do not match.
+    if (uA.Negative() != uB.Negative())
+    {
+        return false;
+    }
+
+    // Find the difference in ULPs.
+    return ABS(uA.i - uB.i) <= maxUlpsDiff;
+}
+
+[[nodiscard]]
+constexpr bool ALMOST_EQUAL_RELATIVE_AND_ABS(const F32 A, const F32 B, const F32 maxDiff, const F32 maxRelDiff) noexcept
+{
+    // Check if the numbers are really close -- needed when comparing numbers near zero.
+    const F32 diff = ABS(A - B);
+    if (diff <= maxDiff)
+    {
+        return true;
+    }
+
+    const F32 largest = std::max(ABS(A), ABS(B));
+    return diff <= largest * maxRelDiff;
+}
+
+[[nodiscard]]
+constexpr bool ALMOST_EQUAL_RELATIVE_AND_ABS(D64 A, D64 B, const D64 maxDiff, const D64 maxRelDiff) noexcept
+{
+    // Check if the numbers are really close -- needed when comparing numbers near zero.
+    const D64 diff = ABS(A - B);
+    if (diff <= maxDiff)
+    {
+        return true;
+    }
+
+    A = ABS(A);
+    B = ABS(B);
+    const D64 largest = B > A ? B : A;
+
+    return diff <= largest * maxRelDiff;
+}
+
+[[nodiscard]] constexpr bool COMPARE_TOLERANCE_ACCURATE(const F32 X, const F32 Y, const F32 TOLERANCE) noexcept
+{
+    return ALMOST_EQUAL_ULPS_AND_ABS(X, Y, TOLERANCE, 4);
+}
+
+[[nodiscard]] constexpr bool COMPARE_TOLERANCE_ACCURATE(const D64 X, const D64 Y, const D64 TOLERANCE) noexcept
+{
+    return ALMOST_EQUAL_ULPS_AND_ABS(X, Y, TOLERANCE, 4);
 }
 
 /// should be fast enough as the first condition is almost always true
 template <typename T>
-[[nodiscard]] bool IS_GEQUAL(T X, T Y) noexcept {
+[[nodiscard]] constexpr bool IS_GEQUAL(const T X, const T Y) noexcept
+{
     return X > Y || COMPARE(X, Y);
 }
 template <typename T>
-[[nodiscard]] bool IS_LEQUAL(T X, T Y) noexcept {
+[[nodiscard]] constexpr bool IS_LEQUAL(const T X, const T Y) noexcept
+{
     return X < Y || COMPARE(X, Y);
+}
+
+template<typename T>
+[[nodiscard]] constexpr T FLOOR(const T input)
+{
+    return input;
+}
+
+template<>
+[[nodiscard]] constexpr F32 FLOOR(const F32 input)
+{
+    const I32 i = to_I32(input);
+    const F32 f = to_F32(i);
+    return (input >= 0.f ? f : (COMPARE(input, f) ? input : f - 1.f));
+}
+
+template<>
+[[nodiscard]] constexpr D64 FLOOR(const D64 input)
+{
+    const I64 i = to_I64(input);
+    const D64 f = to_D64(i);
+    return (input >= 0.0 ? f : (COMPARE(input, f) ? input : f - 1.0));
+}
+
+template<>
+[[nodiscard]] constexpr D128 FLOOR(const D128 input)
+{
+    const long long int i = static_cast<long long int>(input);
+    const D128 f = to_D128(i);
+    return (input >= 0.0 ? f : (COMPARE(input, f) ? input : f - 1.0));
+}
+
+template<typename T>
+constexpr T CEIL(const T input)
+{
+    return input;
+}
+
+template<>
+constexpr F32 CEIL(const F32 input)
+{
+    const I32 i = to_I32(input);
+    return to_F32(input > i ? i + 1 : i);
+}
+
+template<>
+constexpr D64 CEIL(const D64 input)
+{
+    const I64 i = to_I64(input);
+    return to_D64(input > i ? i + 1 : i);
+}
+
+template<>
+constexpr D128 CEIL(const D128 input)
+{
+    const long long int i = static_cast<long long int>(input);
+    return to_D128(input > i ? i + 1 : i);
+}
+
+template <typename T, typename U = T>
+[[nodiscard]] bool constexpr IS_IN_RANGE_INCLUSIVE(const T x, const U min, const U max) noexcept
+{
+    return x >= min && x <= max;
+}
+
+template <typename T, typename U = T>
+[[nodiscard]] bool constexpr IS_IN_RANGE_EXCLUSIVE(const T x, const U min, const U max) noexcept
+{
+    return x > min && x < max;
 }
 
 ///ref: http://blog.molecular-matters.com/2011/08/12/a-safer-static_cast/#more-120
@@ -711,8 +870,8 @@ struct safe_static_cast_helper<false, false>
     template <typename TO, typename FROM>
     static TO cast(FROM from)
     {
-        assert(IS_IN_RANGE_INCLUSIVE(std::is_enum<FROM>::value 
-                                         ? static_cast<U32>(to_underlying_type(from))
+        assert(IS_IN_RANGE_INCLUSIVE(std::is_enum_v<FROM> 
+                                         ? to_U32(to_underlying_type(from))
                                          : from,
                                      std::numeric_limits<TO>::lowest(),
                                      std::numeric_limits<TO>::max()) &&
@@ -749,7 +908,7 @@ struct safe_static_cast_helper<true, false>
         assert(from >= 0 && "Number to cast exceeds numeric limits.");
 
         // assuring a positive input, we can safely cast it into its unsigned type and check the numeric limits
-        using UnsignedFrom = typename std::make_unsigned<FROM>::type;
+        using UnsignedFrom = std::make_unsigned_t<FROM>;
         assert(IS_IN_RANGE_INCLUSIVE(static_cast<UnsignedFrom>(from),
                                      std::numeric_limits<TO>::lowest(),
                                      std::numeric_limits<TO>::max()) &&
@@ -765,7 +924,7 @@ struct safe_static_cast_helper<true, true>
     template <typename TO, typename FROM>
     static TO cast(FROM from)
     {
-        assert(IS_IN_RANGE_INCLUSIVE(std::is_enum<FROM>::value ? to_underlying_type(from) : from,
+        assert(IS_IN_RANGE_INCLUSIVE(std::is_enum_v<FROM> ? to_underlying_type(from) : from,
                                      std::numeric_limits<TO>::lowest(),
                                      std::numeric_limits<TO>::max()) &&
             "Number to cast exceeds numeric limits.");

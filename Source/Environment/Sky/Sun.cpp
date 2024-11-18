@@ -64,9 +64,9 @@ namespace {
         const Angle::RADIANS_D E_RAD = FNrange(Angle::to_RADIANS(E_DEG));
 
         D64 x = std::cos(E_RAD) - ECC_RAD;
-        D64 y = std::sin(E_RAD) * Sqrt(1.0 - SQUARED(ECC_RAD.value));
+        D64 y = std::sin(E_RAD) * Sqrt<D64>(1.0 - SQUARED(ECC_RAD.value));
 
-        const D64 r = Sqrt(SQUARED(x) + SQUARED(y));
+        const D64 r = Sqrt<D64>(SQUARED(x) + SQUARED(y));
         const Angle::DEGREES_D v = Angle::to_DEGREES(Angle::RADIANS_D(std::atan2(y, x)));
 
         // longitude of sun
@@ -81,7 +81,7 @@ namespace {
 
         // Sun's mean longitude
         L = FNrange(W_RAD + M_RAD);
-        delta = std::atan2(zequat, Sqrt(SQUARED(x) + SQUARED(yequat)));
+        delta = std::atan2(zequat, Sqrt<D64>(SQUARED(x) + SQUARED(yequat)));
         RA = Angle::to_DEGREES(Angle::RADIANS_D(std::atan2(yequat, x)));
 
         //   Ecliptic longitude of the Sun

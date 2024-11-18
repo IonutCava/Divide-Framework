@@ -65,9 +65,9 @@ void ApplicationTimer::update()
 namespace App
 {
 
-U64 ElapsedMicroseconds() noexcept
+D64 ElapsedMicroseconds() noexcept
 {
-    return to_U64( std::chrono::duration_cast<USec>(std::chrono::high_resolution_clock::now() - g_startupTicks).count() );
+    return to_D64( std::chrono::duration_cast<USec>(std::chrono::high_resolution_clock::now() - g_startupTicks).count() );
 }
 
 } //namespace App

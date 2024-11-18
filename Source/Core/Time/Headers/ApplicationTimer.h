@@ -75,8 +75,8 @@ class ApplicationTimer
 namespace App
 {
     /// The following functions force a timer update (a call to query performance timer).
-    U64 ElapsedNanoseconds() noexcept;
-    U64 ElapsedMicroseconds() noexcept;
+    D64 ElapsedNanoseconds() noexcept;
+    D64 ElapsedMicroseconds() noexcept;
     D64 ElapsedMilliseconds() noexcept;
     D64 ElapsedSeconds() noexcept;
 

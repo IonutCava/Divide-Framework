@@ -1115,7 +1115,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     float2 snappedXZ = eyeXZ;
     for (U8 i = 0; i < 2; ++i) {
         if (SNAP_GRID_SIZE[i] > 0.f) {
-            snappedXZ[i] = std::floorf(snappedXZ[i] / SNAP_GRID_SIZE[i]) * SNAP_GRID_SIZE[i];
+            snappedXZ[i] = FLOOR(snappedXZ[i] / SNAP_GRID_SIZE[i]) * SNAP_GRID_SIZE[i];
         }
     }
 

@@ -50,13 +50,14 @@ namespace Divide
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::OTHER )
     };
 
-    NO_DESTROY std::array<size_t, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocatorSizes{
-        TO_MEGABYTES( 1 << 10 ),
-        TO_MEGABYTES( 1 << 8 ),
-        TO_MEGABYTES( 1 << 9 ),
-        TO_MEGABYTES( 1 << 7 ),
-        TO_MEGABYTES( 1 << 7 )
-    };
+    NO_DESTROY std::array<size_t, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocatorSizes
+    {{
+        Bytes::Mega(1 << 10),
+        Bytes::Mega(1 << 8),
+        Bytes::Mega(1 << 9),
+        Bytes::Mega(1 << 7),
+        Bytes::Mega(1 << 7 )
+    }};
 
     constexpr bool g_breakOnGLCall = false;
 

@@ -307,7 +307,7 @@ namespace Divide
             }
 
             _accumulator -= _timeStep;
-            _targetScene->frameStarted( Time::SecondsToMicroseconds( _timeStep ) );
+            _targetScene->frameStarted( Time::SecondsToMicroseconds<U64>( _timeStep ) );
         }
     }
 

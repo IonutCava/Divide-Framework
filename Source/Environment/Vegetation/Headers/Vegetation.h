@@ -132,7 +132,7 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     const VegetationDescriptor _descriptor;
 
     F32 _windX = 0.0f, _windZ = 0.0f, _windS = 0.0f;
-    U64 _stateRefreshIntervalUS = Time::SecondsToMicroseconds(1);
+    U64 _stateRefreshIntervalUS = Time::SecondsToMicroseconds<D64>(1);
     U64 _stateRefreshIntervalBufferUS = 0ULL;
     float4 _grassExtents = VECTOR4_UNIT;
     float4 _treeExtents = VECTOR4_UNIT;

@@ -43,6 +43,7 @@ namespace Divide
 
             default:
             case PhysicsAPI::ODE:
+            case PhysicsAPI::Jolt:
             case PhysicsAPI::Bullet:
             case PhysicsAPI::COUNT:
             {

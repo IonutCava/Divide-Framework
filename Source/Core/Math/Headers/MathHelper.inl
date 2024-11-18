@@ -110,7 +110,7 @@ namespace Divide
     }
 
     /// Clamps value n between min and max
-    template <typename T> requires std::is_arithmetic<T>::value
+    template <typename T> requires std::is_arithmetic_v<T>
     constexpr void CLAMP( T& n, const T min, const T max ) noexcept
     {
         n = std::min( std::max( n, min), max);
@@ -122,7 +122,7 @@ namespace Divide
         return CLAMP( n, static_cast<T>(0), static_cast<T>(1) );
     }
 
-    template <typename T> requires std::is_arithmetic<T>::value
+    template <typename T> requires std::is_arithmetic_v<T>
     constexpr T CLAMPED( const T n, const T min, const T max ) noexcept
     {
         T ret = n;
@@ -130,14 +130,14 @@ namespace Divide
         return ret;
     }
 
-    template <typename T> requires std::is_arithmetic<T>::value
+    template <typename T> requires std::is_arithmetic_v<T>
     constexpr T CLAMPED_01( const T n ) noexcept
     {
         return CLAMPED( n, static_cast<T>( 0 ), static_cast<T>( 1 ) );
     }
 
 
-    template <typename T> requires std::is_arithmetic<T>::value
+    template <typename T> requires std::is_arithmetic_v<T>
     constexpr T MAP(const T input, const T in_min, const T in_max, const T out_min, const T out_max, D64& slopeOut ) noexcept
     {
         const D64 diff = in_max > in_min ? to_D64( in_max - in_min ) : EPSILON_D64;
@@ -151,8 +151,7 @@ namespace Divide
         input = MAP( input, in_min, in_max, out_min, out_max, slopeOut );
     }
 
-    template <typename T>
-        requires std::is_arithmetic<T>::value
+    template <typename T> requires std::is_arithmetic_v<T>
     constexpr T SQUARED( T input ) noexcept
     {
         return input * input;
@@ -196,7 +195,7 @@ namespace Divide
         return COORDS_IN_RECT( input_x, input_y, rect.x, rect.y, rect.z, rect.w );
     }
 
-    template<typename T> requires std::is_integral<T>::value && std::is_unsigned<T>::value
+    template<typename T> requires std::is_integral_v<T> && std::is_unsigned_v<T>
     constexpr T roundup( T value, unsigned maxb = sizeof( T ) * CHAR_BIT, unsigned curb = 1 )
     {
         return maxb <= curb
@@ -231,7 +230,7 @@ namespace Divide
     {
         if ( width >= T{1} && height >= T{1} )
         {
-            return static_cast<T>(std::floorf(std::log2f(std::fmaxf(to_F32(width), to_F32(height))))) + T{1};
+            return static_cast<T>(FLOOR(std::log2f(std::fmaxf(to_F32(width), to_F32(height))))) + T{1};
         }
 
         return T{1};
@@ -247,37 +246,21 @@ namespace Divide
         return result;
     }
 
-    template <typename T, typename U>
-    T Lerp( const T v1, const T v2, const U t ) noexcept
-    {
-        return v1 * (static_cast<U>(1) - t) + v2 * t;
-    }
+    template <typename T, typename U> T Lerp    ( const T v1, const T v2, const U t ) noexcept { return v1 * (U{1} - t) + v2 * t; }
+    template <typename T, typename U> T LerpFast( const T v1, const T v2, const U t ) noexcept { return v1 + t * (v2 - v1); }
 
-    template <typename T, typename U>
-    T FastLerp( const T v1, const T v2, const U t ) noexcept
-    {
-        return v1 + t * (v2 - v1);
-    }
-
-    template <typename T>
-    T Sqrt( const T input ) noexcept
-    {
-        return static_cast<T>(std::sqrt( input ));
-    }
-
-    template <typename T, typename U>
-    T Sqrt( const U input ) noexcept
-    {
-        return static_cast<T>(std::sqrt( input ));
-    }
+    template <typename T, typename U> T Sqrt( const U input )       noexcept { return static_cast<T>(std::sqrt( input )); }
+    template <typename T, typename U> T InvSqrt( const U input )    noexcept { return static_cast<T>(1.0 / Sqrt<D64>(to_D64(input))); }
+    template <typename T, typename U> T InvSqrtFast( const U input) noexcept { return static_cast<T>(1.f / Sqrt<F32>(to_F32(input))); }
 
 #if defined(HAS_SSE42)
-    template <>
-    inline F32 Sqrt( const __m128 input ) noexcept
-    {
-        return _mm_cvtss_f32( _mm_sqrt_ss( input ) );
-    }
+    template<> inline F32 Sqrt( const __m128 input )      noexcept { return _mm_cvtss_f32( _mm_sqrt_ss( input )); }
+    template<> inline F32 InvSqrt(const __m128 input)     noexcept { return 1.f / Sqrt<F32>(input); }
+    template<> inline F32 InvSqrtFast(const __m128 input) noexcept { return _mm_cvtss_f32(_mm_rsqrt_ss(input)); }
 
+    template<> inline F32 Sqrt(const F32 input)        noexcept { return Sqrt<F32>(_mm_set_ss(input)); }
+    template<> inline F32 InvSqrt(const F32 input)     noexcept { return InvSqrt<F32>(_mm_set_ss(input)); }
+    template<> inline F32 InvSqrtFast(const F32 input) noexcept { return InvSqrtFast<F32>(_mm_set_ss(input)); }
 #endif //HAS_SSE42
 
     ///(thx sqrt[-1] and canuckle of opengl.org forums)
@@ -291,7 +274,7 @@ namespace Divide
     constexpr I8 FLOAT_TO_CHAR_SNORM( const F32_SNORM value ) noexcept
     {
         assert( value >= -1.f && value <= 1.f );
-        return to_I8( (value >= 1.0f ? 127 : (value <= -1.0f ? -127 : to_I32( SIGN( value ) * std::floor( std::abs( value ) * 128.0f ) ))) );
+        return to_I8( (value >= 1.0f ? 127 : (value <= -1.0f ? -127 : to_I32( SIGN( value ) * FLOOR(ABS( value ) * 128.0f ) ))) );
     }
 
     constexpr F32_SNORM SNORM_CHAR_TO_FLOAT( const I8 value ) noexcept
@@ -322,7 +305,7 @@ namespace Divide
     constexpr U8 FLOAT_TO_CHAR_UNORM( const F32_NORM value ) noexcept
     {
         assert( value >= 0.f && value <= 1.f );
-        return to_U8( (value >= 1.0f ? 255 : (value <= 0.0f ? 0 : to_I32( std::floor( value * 256.0f ) ))) );
+        return to_U8( (value >= 1.0f ? 255 : (value <= 0.0f ? 0 : to_I32(FLOOR( value * 256.0f ) ))) );
     }
 
     namespace Util
@@ -362,441 +345,87 @@ namespace Divide
 
     namespace Angle
     {
+        template <typename T> constexpr DEGREES<T> to_VerticalFoV(   const DEGREES<T> horizontalFoV, const D64 aspectRatio ) noexcept { return to_DEGREES<T>(RADIANS<T>(2 * std::atan( std::tan( to_RADIANS<T>( horizontalFoV ) * 0.5f ) ) / aspectRatio)); }
+        template <typename T> constexpr DEGREES<T> to_HorizontalFoV( const DEGREES<T> verticalFoV,   const D64 aspectRatio ) noexcept { return to_DEGREES<T>(RADIANS<T>(2 * std::atan( std::tan( to_RADIANS<T>( verticalFoV )   * 0.5f ) ) * aspectRatio)); }
 
-        template <typename T>
-        constexpr DEGREES<T> to_VerticalFoV( const DEGREES<T> horizontalFoV, D64 aspectRatio ) noexcept
-        {
-            return  to_DEGREES<T>(RADIANS<T>(2 * std::atan( std::tan( to_RADIANS<T>( horizontalFoV ) * 0.5f ) / aspectRatio)));
-        }
+        template <typename T> inline       vec4<RADIANS<T>> to_RADIANS( const vec4<DEGREES<T>>& angle ) noexcept { return { to_RADIANS(angle.xyz), to_RADIANS(angle.w) }; }
+        template <typename T> inline       vec3<RADIANS<T>> to_RADIANS( const vec3<DEGREES<T>>& angle ) noexcept { return { to_RADIANS(angle.xy),  to_RADIANS(angle.z) }; }
+        template <typename T> inline       vec2<RADIANS<T>> to_RADIANS( const vec2<DEGREES<T>>& angle ) noexcept { return { to_RADIANS(angle.x),   to_RADIANS(angle.y) }; }
+        template <typename T> FORCE_INLINE RADIANS<T>       to_RADIANS( const DEGREES<T> angle )        noexcept { return RADIANS<T>{angle.value * M_PI_DIV_180};         }
+        template <>           FORCE_INLINE RADIANS_F        to_RADIANS( const DEGREES_F  angle )        noexcept { return RADIANS_F{angle.value * M_PI_DIV_180_f};        }
 
-        template <typename T>
-        constexpr DEGREES<T> to_HorizontalFoV( const DEGREES<T> verticalFoV, D64 aspectRatio ) noexcept
-        {
-            return to_DEGREES<T>(RADIANS<T>(2 * std::atan( std::tan( to_RADIANS<T>( verticalFoV ) * 0.5f ) ) * aspectRatio));
-        }
-
-        template <typename T>
-        FORCE_INLINE RADIANS<T> to_RADIANS( const DEGREES<T> angle ) noexcept
-        {
-            return RADIANS<T>{angle.value * M_PI_DIV_180};
-        }
-
-        template <>
-        FORCE_INLINE RADIANS_F to_RADIANS( const DEGREES_F angle ) noexcept
-        {
-            return RADIANS_F{angle.value * M_PI_DIV_180_f};
-        }
-
-        template <typename T>
-        FORCE_INLINE DEGREES<T> to_DEGREES( const RADIANS<T> angle ) noexcept
-        {
-            return DEGREES<T>(angle.value * M_180_DIV_PI);
-        }
-
-        template <>
-        FORCE_INLINE DEGREES_F to_DEGREES( const RADIANS_F angle ) noexcept
-        {
-            return DEGREES_F(angle.value * M_180_DIV_PI_f);
-        }
-
-        template <typename T>
-        FORCE_INLINE vec2<RADIANS<T>> to_RADIANS( const vec2<DEGREES<T>> angle ) noexcept
-        {
-            return vec2<RADIANS<T>>
-            {
-                to_RADIANS(angle.x),
-                to_RADIANS(angle.y)
-            };
-        }
-
-        template <typename T>
-        FORCE_INLINE vec2<DEGREES<T>> to_DEGREES( const vec2<RADIANS<T>> angle ) noexcept
-        {
-            return vec2<DEGREES<T>>
-            {
-                to_DEGREES(angle.x),
-                to_DEGREES(angle.y)
-            };
-        }
-
-        template <typename T>
-        FORCE_INLINE vec3<RADIANS<T>> to_RADIANS( const vec3<DEGREES<T>>& angle ) noexcept
-        {
-            return vec3<RADIANS<T>>
-            {
-                to_RADIANS(angle.x),
-                to_RADIANS(angle.y),
-                to_RADIANS(angle.z)
-            };
-        }
-
-        template <typename T>
-        FORCE_INLINE vec3<DEGREES<T>> to_DEGREES( const vec3<RADIANS<T>>& angle ) noexcept
-        {
-            return vec3<DEGREES<T>>
-            {
-                to_DEGREES(angle.x),
-                to_DEGREES(angle.y),
-                to_DEGREES(angle.z)
-            };
-        }
-
-        template <typename T>
-        FORCE_INLINE vec4<RADIANS<T>> to_RADIANS( const vec4<DEGREES<T>>& angle ) noexcept
-        {
-            return vec4<RADIANS<T>>
-            {
-                to_RADIANS(angle.x),
-                to_RADIANS(angle.y),
-                to_RADIANS(angle.z),
-                to_RADIANS(angle.w)
-            };
-        }
-
-        template <typename T>
-        FORCE_INLINE vec4<DEGREES<T>> to_DEGREES( const vec4<RADIANS<T>>& angle ) noexcept
-        {
-            return vec4<DEGREES<T>>
-            {
-                to_DEGREES(angle.x),
-                to_DEGREES(angle.y),
-                to_DEGREES(angle.z),
-                to_DEGREES(angle.w)
-            };
-        }
+        template <typename T> inline       vec4<DEGREES<T>> to_DEGREES( const vec4<RADIANS<T>>& angle ) noexcept { return { to_DEGREES(angle.xyz), to_DEGREES(angle.w) }; }
+        template <typename T> inline       vec3<DEGREES<T>> to_DEGREES( const vec3<RADIANS<T>>& angle ) noexcept { return { to_DEGREES(angle.xy),  to_DEGREES(angle.z) }; }
+        template <typename T> inline       vec2<DEGREES<T>> to_DEGREES( const vec2<RADIANS<T>>& angle ) noexcept { return { to_DEGREES(angle.x),   to_DEGREES(angle.y) }; }
+        template <typename T> FORCE_INLINE DEGREES<T>       to_DEGREES( const RADIANS<T> angle )        noexcept { return DEGREES<T>(angle.value * M_180_DIV_PI);         }
+        template <>           FORCE_INLINE DEGREES_F        to_DEGREES( const RADIANS_F  angle )        noexcept { return DEGREES_F(angle.value * M_180_DIV_PI_f);        }
 
     }  // namespace Angle
 
     namespace Metric
     {
-
-        /// Base value * 1000000000000
-        template <typename T>
-        constexpr T Tera( const T a )
-        {
-            return Tera<T, T>( a );
-        }
-
-        /// Base value * 1000000000
-        template <typename T>
-        constexpr T Giga( const T a )
-        {
-            return Giga<T, T>( a );
-        }
-
-        /// Base value * 1000000
-        template <typename T>
-        constexpr T Mega( const T a )
-        {
-            return Mega<T, T>( a );
-        }
-
-        /// Base value * 1000
-        template <typename T>
-        constexpr T Kilo( const T a )
-        {
-            return Kilo<T, T>( a );
-        }
-
-        /// Base value * 100
-        template <typename T>
-        constexpr T Hecto( const T a )
-        {
-            return Hecto<T, T>( a );
-        }
-
-        /// Base value * 10
-        template <typename T>
-        constexpr T Deca( const T a )
-        {
-            return Deca<T, T>( a );
-        }
-
-        /// Base value
-        template <typename T>
-        constexpr T Base( const T a )
-        {
-            return Base<T, T>( a );
-        }
-
-        /// Base value * 0.1
-        template <typename T>
-        constexpr T Deci( const T a )
-        {
-            return Deci<T, T>( a );
-        }
-
-        /// Base value * 0.01
-        template <typename T>
-        constexpr T Centi( const T a )
-        {
-            return Centi<T, T>( a );
-        }
-
-        /// Base value * 0.001
-        template <typename T>
-        constexpr T Milli( const T a )
-        {
-            return Milli<T, T>( a );
-        }
-
-        /// Base value * 0.000001
-        template <typename T>
-        constexpr T Micro( const T a )
-        {
-            return Micro<T, T>( a );
-        }
-
-        /// Base value * 0.000000001
-        template <typename T>
-        constexpr T Nano( const T a )
-        {
-            return Nano<T, T>( a );
-        }
-
-        /// Base value * 0.000000000001
-        template <typename T>
-        constexpr T Pico( const T a )
-        {
-            return Pico<T, T>( a );
-        }
-
-
-        template <typename T, typename U>
-        constexpr T Tera( const U a )
-        {
-            return static_cast<T>(multiply( a, 1'000'000'000'000 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Giga( const U a )
-        {
-            return static_cast<T>(multiply( a, 1'000'000'000 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Mega( const U a )
-        {
-            return static_cast<T>(multiply( a, 1'000'000 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Kilo( const U a )
-        {
-            return static_cast<T>(multiply( a, 1'000 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Hecto( const U a )
-        {
-            return static_cast<T>(multiply( a, 100 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Deca( const U a )
-        {
-            return static_cast<T>(multiply( a, 10 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Base( const U a )
-        {
-            return static_cast<T>(a);
-        }
-
-        template <typename T, typename U>
-        constexpr T Deci( const U a )
-        {
-            return static_cast<T>(divide( a, 10.0 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Centi( const U a )
-        {
-            return static_cast<T>(divide( a, 100.0 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Milli( const U a )
-        {
-            return static_cast<T>(divide( a, 1000.0 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Micro( const U a )
-        {
-            return static_cast<T>(divide( a, 1e6 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Nano( const U a )
-        {
-            return static_cast<T>(divide( a, 1e9 ));
-        }
-
-        template <typename T, typename U>
-        constexpr T Pico( const U a )
-        {
-            return static_cast<T>(divide( a, 1e12 ));
-        }
-
+        template <typename OutType, typename InType> constexpr OutType Peta(  const InType a ) { return static_cast<OutType>(multiply( a, 1e15 )); }
+        template <typename OutType, typename InType> constexpr OutType Tera(  const InType a ) { return static_cast<OutType>(multiply( a, 1e12 )); }
+        template <typename OutType, typename InType> constexpr OutType Giga(  const InType a ) { return static_cast<OutType>(multiply( a, 1e9  )); }
+        template <typename OutType, typename InType> constexpr OutType Mega(  const InType a ) { return static_cast<OutType>(multiply( a, 1e6  )); }
+        template <typename OutType, typename InType> constexpr OutType Kilo(  const InType a ) { return static_cast<OutType>(multiply( a, 1e3  )); }
+        template <typename OutType, typename InType> constexpr OutType Hecto( const InType a ) { return static_cast<OutType>(multiply( a, 1e2  )); }
+        template <typename OutType, typename InType> constexpr OutType Deca(  const InType a ) { return static_cast<OutType>(multiply( a, 1e1  )); }
+        template <typename OutType, typename InType> constexpr OutType Base(  const InType a ) { return static_cast<OutType>(multiply( a, 1e0  )); }
+        template <typename OutType, typename InType> constexpr OutType Deci(  const InType a ) { return static_cast<OutType>(  divide( a, 1e1  )); }
+        template <typename OutType, typename InType> constexpr OutType Centi( const InType a ) { return static_cast<OutType>(  divide( a, 1e2  )); }
+        template <typename OutType, typename InType> constexpr OutType Milli( const InType a ) { return static_cast<OutType>(  divide( a, 1e3  )); }
+        template <typename OutType, typename InType> constexpr OutType Micro( const InType a ) { return static_cast<OutType>(  divide( a, 1e6  )); }
+        template <typename OutType, typename InType> constexpr OutType Nano(  const InType a ) { return static_cast<OutType>(  divide( a, 1e9  )); }
+        template <typename OutType, typename InType> constexpr OutType Pico(  const InType a ) { return static_cast<OutType>(  divide( a, 1e12 )); }
     }  // namespace Metric
+
+    namespace Bytes
+    {
+        constexpr size_t Factor_B  = 1u;
+        constexpr size_t Factor_KB = Factor_B  * 1024u;
+        constexpr size_t Factor_MB = Factor_KB * 1024u;
+        constexpr size_t Factor_GB = Factor_MB * 1024u;
+        constexpr size_t Factor_TB = Factor_GB * 1024u;
+        constexpr size_t Factor_PB = Factor_TB * 1024u;
+
+        template <typename OutType, typename InType> constexpr OutType Peta( const InType a ) { return static_cast<OutType>(multiply(a, Factor_PB)); }
+        template <typename OutType, typename InType> constexpr OutType Tera( const InType a ) { return static_cast<OutType>(multiply(a, Factor_TB)); }
+        template <typename OutType, typename InType> constexpr OutType Giga( const InType a ) { return static_cast<OutType>(multiply(a, Factor_GB)); }
+        template <typename OutType, typename InType> constexpr OutType Mega( const InType a ) { return static_cast<OutType>(multiply(a, Factor_MB)); }
+        template <typename OutType, typename InType> constexpr OutType Kilo( const InType a ) { return static_cast<OutType>(multiply(a, Factor_KB)); }
+        template <typename OutType, typename InType> constexpr OutType Base( const InType a ) { return static_cast<OutType>(multiply(a, Factor_B )); }
+    } //namespace Bytes
 
     namespace Time
     {
+        template <typename OutType, typename InType> constexpr OutType Hours(        const InType a ) { return Metric::Base<OutType, InType>(a); }
+        template <typename OutType, typename InType> constexpr OutType Minutes(      const InType a ) { return Metric::Base<OutType, InType>(a); }
+        template <typename OutType, typename InType> constexpr OutType Seconds(      const InType a ) { return Metric::Base<OutType, InType>(a); }
+        template <typename OutType, typename InType> constexpr OutType Milliseconds( const InType a ) { return Metric::Base<OutType, InType>(a); }
+        template <typename OutType, typename InType> constexpr OutType Microseconds( const InType a ) { return Metric::Base<OutType, InType>(a); }
+        template <typename OutType, typename InType> constexpr OutType Nanoseconds(  const InType a ) { return Metric::Base<OutType, InType>(a); }
 
-        template <typename T>
-        constexpr T Hours( const T a )
-        {
-            return a;
-        }
-
-        template <typename T>
-        constexpr T Minutes( const T a )
-        {
-            return a;
-        }
-
-        template <typename T>
-        constexpr T Seconds( const T a )
-        {
-            return a;
-        }
-
-        template <typename T>
-        constexpr T Milliseconds( const T a )
-        {
-            return a;
-        }
-
-        template <typename T>
-        constexpr T Microseconds( const T a )
-        {
-            return a;
-        }
-
-        template <typename T>
-        constexpr T Nanoseconds( const T a )
-        {
-            return a;
-        }
-
-        template <typename T, typename U>
-        constexpr T Hours( const U a )
-        {
-            return static_cast<T>(a);
-        }
-
-        template <typename T, typename U>
-        constexpr T Minutes( const U a )
-        {
-            return static_cast<T>(a);
-        }
-
-        template <typename T, typename U>
-        constexpr T Seconds( const U a )
-        {
-            return static_cast<T>(a);
-        }
-
-        template <typename T, typename U>
-        constexpr T Milliseconds( const U a )
-        {
-            return static_cast<T>(a);
-        }
-
-        template <typename T, typename U>
-        constexpr T Microseconds( const U a )
-        {
-            return static_cast<T>(a);
-        }
-
-        template <typename T, typename U>
-        constexpr T Nanoseconds( const U a )
-        {
-            return static_cast<T>(a);
-        }
-
-        template <typename T, typename U>
-        constexpr T NanosecondsToSeconds( const U a ) noexcept
-        {
-            return Metric::Nano<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T NanosecondsToMilliseconds( const U a ) noexcept
-        {
-            return Metric::Micro<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T NanosecondsToMicroseconds( const U a ) noexcept
-        {
-            return Metric::Milli<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T MicrosecondsToSeconds( const U a ) noexcept
-        {
-            return Metric::Micro<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T MicrosecondsToMilliseconds( const U a ) noexcept
-        {
-            return Metric::Milli<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T MicrosecondsToNanoseconds( const U a ) noexcept
-        {
-            return Metric::Kilo<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T MillisecondsToSeconds( const U a ) noexcept
-        {
-            return Metric::Milli<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T MillisecondsToMicroseconds( const U a ) noexcept
-        {
-            return Metric::Kilo<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T MillisecondsToNanoseconds( const U a ) noexcept
-        {
-            return Metric::Mega<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T SecondsToMilliseconds( const U a ) noexcept
-        {
-            return Metric::Kilo<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T SecondsToMicroseconds( const U a ) noexcept
-        {
-            return Metric::Mega<T, U>( a );
-        }
-
-        template <typename T, typename U>
-        constexpr T SecondsToNanoseconds( const U a ) noexcept
-        {
-            return Metric::Giga<T, U>( a );
-        }
+        template <typename OutType, typename InType> constexpr OutType NanosecondsToSeconds(       const InType a ) noexcept { return Metric::Nano<OutType, InType>( a );  }
+        template <typename OutType, typename InType> constexpr OutType NanosecondsToMilliseconds(  const InType a ) noexcept { return Metric::Micro<OutType, InType>( a ); }
+        template <typename OutType, typename InType> constexpr OutType NanosecondsToMicroseconds(  const InType a ) noexcept { return Metric::Milli<OutType, InType>( a ); }
+        template <typename OutType, typename InType> constexpr OutType MicrosecondsToSeconds(      const InType a ) noexcept { return Metric::Micro<OutType, InType>( a ); }
+        template <typename OutType, typename InType> constexpr OutType MicrosecondsToMilliseconds( const InType a ) noexcept { return Metric::Milli<OutType, InType>( a ); }
+        template <typename OutType, typename InType> constexpr OutType MicrosecondsToNanoseconds(  const InType a ) noexcept { return Metric::Kilo<OutType, InType>( a );  }
+        template <typename OutType, typename InType> constexpr OutType MillisecondsToSeconds(      const InType a ) noexcept { return Metric::Milli<OutType, InType>( a ); }
+        template <typename OutType, typename InType> constexpr OutType MillisecondsToMicroseconds( const InType a ) noexcept { return Metric::Kilo<OutType, InType>( a );  }
+        template <typename OutType, typename InType> constexpr OutType MillisecondsToNanoseconds(  const InType a ) noexcept { return Metric::Mega<OutType, InType>( a );  }
+        template <typename OutType, typename InType> constexpr OutType SecondsToMilliseconds(      const InType a ) noexcept { return Metric::Kilo<OutType, InType>( a );  }
+        template <typename OutType, typename InType> constexpr OutType SecondsToMicroseconds(      const InType a ) noexcept { return Metric::Mega<OutType, InType>( a );  }
+        template <typename OutType, typename InType> constexpr OutType SecondsToNanoseconds(       const InType a ) noexcept { return Metric::Giga<OutType, InType>( a );  }
 
     }  // namespace Time
 
     namespace Util
     {
-
         FORCE_INLINE size_t GetAlignmentCorrected( const size_t value, const size_t alignment ) noexcept
         {
-            return value % alignment == 0u
+            return (value % alignment == 0u)
                                       ? value
                                       : ((value + alignment - 1u) / alignment) * alignment;
         }
@@ -809,23 +438,12 @@ namespace Divide
             (Hash_combine( seed, rest ), ...);
         };
 
-        template<typename T, typename... Rest> requires std::is_integral<T>::value && std::is_unsigned<T>::value
+        template<typename T, typename... Rest> requires std::is_integral_v<T> && std::is_unsigned_v<T>
         FORCE_INLINE void Hash_combine( size_t& seed, const T& v, const Rest&... rest ) noexcept
         {
             seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             (Hash_combine( seed, rest ), ...);
         }
-
-        template<class FwdIt, class Compare>
-        void InsertionSort( FwdIt first, FwdIt last, Compare cmp )
-        {
-            for ( auto it = first; it != last; ++it )
-            {
-                auto const insertion = eastl::upper_bound( first, it, *it, cmp );
-                eastl::rotate( insertion, it, eastl::next( it ) );
-            }
-        }
-
     }  // namespace Util
 }  // namespace Divide
 

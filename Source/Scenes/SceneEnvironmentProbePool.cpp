@@ -347,8 +347,8 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
         Set(binding._data, targetView, ImageUsage::SHADER_WRITE);
 
-        const U32 groupsX = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
-        const U32 groupsY = to_U32(std::ceil(s_LUTTextureSize / to_F32(8)));
+        const U32 groupsX = to_U32(CEIL(s_LUTTextureSize / to_F32(8)));
+        const U32 groupsY = to_U32(CEIL(s_LUTTextureSize / to_F32(8)));
         GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { groupsX, groupsY, 1 };
 
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
@@ -609,8 +609,8 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
     PushConstantsStruct& fastData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>(bufferInOut)->_fastData;
     fastData.data[0]._vec[0].xyz.set(to_F32(s_IrradianceTextureSize), to_F32(s_IrradianceTextureSize), to_F32(layerID));
 
-    const U32 groupsX = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
-    const U32 groupsY = to_U32(std::ceil(s_IrradianceTextureSize / to_F32(8)));
+    const U32 groupsX = to_U32(CEIL(s_IrradianceTextureSize / to_F32(8)));
+    const U32 groupsY = to_U32(CEIL(s_IrradianceTextureSize / to_F32(8)));
     GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize = { groupsX, groupsY, 1 };
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back( TextureLayoutChange
