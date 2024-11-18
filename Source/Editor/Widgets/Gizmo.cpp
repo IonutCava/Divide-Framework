@@ -9,14 +9,9 @@
 
 #include <imgui_internal.h>
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4505) //Unreferenced local function has been removed
-#endif
+DISABLE_MSVC_WARNING_PUSH(4505) //Unreferenced local function has been removed
 #include <ImGuizmo.h>
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+DISABLE_MSVC_WARNING_POP()
 
 namespace Divide
 {

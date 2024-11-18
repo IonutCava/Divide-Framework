@@ -10,11 +10,9 @@
 
 #include "API.h"
 
-#pragma warning(push)
-
 // warning C4293: '<<': shift count negative or too big, undefined behavior
 // note we are using a static_assert to ensure this won't be the case.
-#pragma warning(disable: 4293)
+DISABLE_MSVC_WARNING_PUSH(4293)
 
 namespace ECS { namespace util {
 	
@@ -236,6 +234,6 @@ namespace ECS { namespace util {
 
 }} // namespace ECS::util
 
-#pragma warning(pop)
+DISABLE_MSVC_WARNING_POP()
 
 #endif // ! ECS__HANDLE_H__

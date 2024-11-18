@@ -372,10 +372,10 @@ void Quaternion<T>::fromEuler(const Angle::RADIANS<T> pitch, const Angle::RADIAN
 
     const vec3<Angle::RADIANS_F> eulerAngles(pitch * 0.5f,  yaw   * 0.5f, roll  * 0.5f);
 
-    const vec3<F32> c(std::cos(eulerAngles.x),
+    const float3 c(std::cos(eulerAngles.x),
                       std::cos(eulerAngles.y),
                       std::cos(eulerAngles.z));
-    const vec3<F32> s(std::sin(eulerAngles.x),
+    const float3 s(std::sin(eulerAngles.x),
                       std::sin(eulerAngles.y),
                       std::sin(eulerAngles.z));
 
@@ -766,7 +766,7 @@ Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>
 
     T d = v0.dot(v1);
     // If dot == 1, vectors are the same
-    if (d >= 1.0f)
+    if (d >= 1)
     {
         return q;
     }
@@ -784,8 +784,11 @@ Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>
             vec3<T> axis;
             axis.cross(WORLD_X_AXIS, v);
 
-            if (axis.isZeroLength())  // pick another if collinear
+            if (axis.isZeroLength())
+            {
+                // pick another if collinear
                 axis.cross(WORLD_Y_AXIS, v);
+            }
 
             axis.normalize();
             q.fromAxisAngle(axis, M_PI_f);

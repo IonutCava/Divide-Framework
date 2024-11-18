@@ -103,8 +103,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <ctre.hpp>
 
+DISABLE_MSVC_WARNING_PUSH(4702) // unreachable code
 #include <chaiscript/chaiscript.hpp>
 #include <chaiscript/utility/utility.hpp>
+DISABLE_MSVC_WARNING_POP()
 
 #include "Platform/Threading/Headers/SharedMutex.h"
 

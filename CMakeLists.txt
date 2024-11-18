@@ -32,7 +32,7 @@ set(FETCHCONTENT_QUIET TRUE)
 set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/OverlayPorts")
 
 project ( Divide-Framework
-          VERSION 0.1
+          VERSION 0.2
           LANGUAGES C CXX
           HOMEPAGE_URL "http://divide-studio.co.uk"
           DESCRIPTION "A test framework for various game development and rendering techniques"

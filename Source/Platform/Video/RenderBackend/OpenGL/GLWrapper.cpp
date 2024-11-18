@@ -41,7 +41,8 @@ namespace Divide
     std::unique_ptr<glHardwareQueryPool> GL_API::s_hardwareQueryPool = nullptr;
     NO_DESTROY eastl::fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS, false> GL_API::s_TexBindQueue;
 
-    NO_DESTROY std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = {
+    NO_DESTROY std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = 
+    {
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::SHADER_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::UNIFORM_BUFFER ),
         GLUtil::GLMemory::DeviceAllocator( GLUtil::GLMemory::GLMemoryType::VERTEX_BUFFER ),
@@ -1611,6 +1612,8 @@ namespace Divide
                             case ImageUsage::RT_COLOUR_ATTACHMENT:
                             case ImageUsage::RT_DEPTH_ATTACHMENT:
                             case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+
+                            default:
                             case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();  break;
                         }
 
@@ -1633,6 +1636,7 @@ namespace Divide
                             DIVIDE_UNEXPECTED_CALL();
                         }
                     } break;
+                    default:
                     case DescriptorSetBindingType::COUNT:
                     {
                         DIVIDE_UNEXPECTED_CALL();

@@ -39,6 +39,7 @@ namespace Divide
                 case LightType::DIRECTIONAL: return to_I32( Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS );
                 case LightType::POINT: return to_I32( Config::Lighting::MAX_SHADOW_CASTING_POINT_LIGHTS );
                 case LightType::SPOT: return to_I32( Config::Lighting::MAX_SHADOW_CASTING_SPOT_LIGHTS );
+                default:
                 case LightType::COUNT: break;
             }
 
@@ -305,7 +306,7 @@ namespace Divide
                     propsTarget._details = propsSource._lightDetails;
                     propsTarget._position = propsSource._lightPosition[0];
                     layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
-                }break;
+                } break;
                 case LightType::SPOT:
                 {
                     SpotShadowProperties& propsTarget = _shadowBufferData._spotLights[shadowIndex];
@@ -313,7 +314,7 @@ namespace Divide
                     propsTarget._vpMatrix = propsSource._lightVP[0];
                     propsTarget._position = propsSource._lightPosition[0];
                     layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + 1u ) );
-                }break;
+                } break;
                 case LightType::DIRECTIONAL:
                 {
                     CSMShadowProperties& propsTarget = _shadowBufferData._dirLights[shadowIndex];
@@ -330,10 +331,12 @@ namespace Divide
                     }
 
                     layerRange._count = std::max( layerRange._count, to_U16( light->getShadowArrayOffset() + static_cast<DirectionalLightComponent*>(light)->csmSplitCount() ) );
-                }break;
+                } break;
+
+                default:
                 case LightType::COUNT:
-                DIVIDE_UNEXPECTED_CALL();
-                break;
+                    DIVIDE_UNEXPECTED_CALL();
+                    break;
             }
             light->cleanShadowProperties();
 

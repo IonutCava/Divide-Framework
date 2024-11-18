@@ -33,9 +33,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PROFILER_H_
 #define DVD_PROFILER_H_
 
-#include "config.h"
+#include "Platform/Headers/PlatformDefines.h"
 
+DISABLE_NON_MSVC_WARNING_PUSH("ignored-attributes")
 #include <optick.h>
+DISABLE_NON_MSVC_WARNING_POP()
 
 namespace Divide
 {

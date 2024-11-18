@@ -19,13 +19,12 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 
-#ifdef _MSC_VER
-# pragma warning (push)
-# pragma warning (disable: 4505)
-#endif
+DISABLE_MSVC_WARNING_PUSH(4505)
 
 #include <TileableVolumeNoise.h>
 #include <CurlNoise/Curl.h>
+
+DISABLE_NON_MSVC_WARNING_PUSH("switch-default")
 
 #ifndef STBI_INCLUDE_STB_IMAGE_WRITE_H
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -33,9 +32,9 @@
 #include <stb_image_write.h>
 #include <stb_image.h>
 #endif //STBI_INCLUDE_STB_IMAGE_WRITE_H
-#ifdef _MSC_VER
-# pragma warning (pop)
-#endif
+
+DISABLE_NON_MSVC_WARNING_POP()
+DISABLE_MSVC_WARNING_POP()
 
 namespace Divide
 {

@@ -79,8 +79,8 @@ namespace Divide
     using s64x = I64x;
 
     //double is 8 bytes with Microsoft's compiler)
-    using F32 = float;
-    using D64 = double;
+    using F32  = float;
+    using D64  = double;
     using D128 = long double;
 
     using r32 = F32;

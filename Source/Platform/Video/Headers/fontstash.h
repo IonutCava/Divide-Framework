@@ -325,14 +325,11 @@ static void fons__tmpfree(void* ptr, void* up);
 #define STBTT_free(x,u)      fons__tmpfree(x,u)
 
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4505) //unreferenced local function has been removed
-#endif //_MSC_VER
+DISABLE_MSVC_WARNING_PUSH(4505) //unreferenced local function has been removed
+DISABLE_NON_MSVC_WARNING_PUSH("switch-default")
 #include <stb_truetype.h>
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif //_MSC_VER
+DISABLE_NON_MSVC_WARNING_POP()
+DISABLE_MSVC_WARNING_POP()
 
 struct FONSttFontImpl {
 	stbtt_fontinfo font;

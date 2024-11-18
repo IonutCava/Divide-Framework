@@ -335,6 +335,8 @@ namespace Divide
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: filePath = ReflCacheLocation() / ReflTargetName( fileName ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() / fileName; break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: filePath = SpvCacheLocation() / SpvTargetName( fileName ); break;
+
+                default:
                 case ShaderProgram::LoadData::ShaderCacheType::COUNT: return false;
             }
 
@@ -356,6 +358,8 @@ namespace Divide
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: err = deleteFile( ReflCacheLocation(), ReflTargetName( fileName ).string() ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), fileName.c_str() ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: err = deleteFile( SpvCacheLocation(), SpvTargetName( fileName ).string() ); break;
+
+                default:
                 case ShaderProgram::LoadData::ShaderCacheType::COUNT: err = FileError::FILE_EMPTY; return false;
             }
 
@@ -1218,6 +1222,8 @@ namespace Divide
                     bindingData._glBinding = s_bufferSlot++;
                 }
                 break;
+
+            default:
             case DescriptorSetBindingType::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
                 break;
@@ -1237,6 +1243,7 @@ namespace Divide
                 case DescriptorSetBindingType::IMAGE: count = 2u; break;
                 case DescriptorSetBindingType::UNIFORM_BUFFER:
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: count = 4u; break;
+                default:
                 case DescriptorSetBindingType::COUNT: break;
             }
         }
@@ -1555,7 +1562,7 @@ namespace Divide
                     Console::errorfn( LOCALE_STR( "ERROR_SHADER_SAVE_REFL_FAILED" ), dataIn._shaderName.c_str() );
                 }
             } break;
-
+            default:
             case LoadData::ShaderCacheType::COUNT: break;
         }
 
@@ -1638,7 +1645,7 @@ namespace Divide
             {
                 return Reflection::LoadReflectionData( ReflCacheLocation(), ReflTargetName( dataInOut._shaderName ), dataInOut._reflectionData, atomIDsOut );
             }
-
+            default:
             case LoadData::ShaderCacheType::COUNT: break;
         }
 

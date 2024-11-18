@@ -312,6 +312,8 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
                 floatData = Util::ToFloatColour(clearColour);
                 return (bufferPtr)floatData._v;
             }
+
+            default:
             case GFXDataFormat::COUNT:
             {
                 DIVIDE_UNEXPECTED_CALL();

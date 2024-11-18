@@ -104,6 +104,7 @@ set(IMAGE_LIBRARIES
 )
 
 include_directories(
+    SYSTEM
     ${Stb_INCLUDE_DIR}
     ${IL_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}
@@ -113,6 +114,9 @@ include_directories(
     ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS}
     ${expat_INCLUDE_DIR}
     "${Vulkan_INCLUDE_DIR}/vma"
+)
+
+include_directories(
     "ThirdParty/EntityComponentSystem/include/ECS"
     "ThirdParty/EntityComponentSystem/include"
 )

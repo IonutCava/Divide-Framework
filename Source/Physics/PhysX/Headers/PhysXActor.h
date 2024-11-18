@@ -37,7 +37,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Physics/Headers/PhysicsAsset.h"
 
+DISABLE_NON_MSVC_WARNING_PUSH("switch-default")
 #include <physx/PxRigidActor.h>
+DISABLE_NON_MSVC_WARNING_POP()
 
 namespace Divide {
 

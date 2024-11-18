@@ -42,21 +42,25 @@ void PlatformContextIdleCall();
 template<typename T, typename U>
 constexpr void assert_type( const U& )
 {
-    static_assert(std::is_same<U, T>::value, "value type not satisfied");
+    static_assert(std::is_same_v<U, T>, "value type not satisfied");
 }
 
-#define WAIT_FOR_CONDITION_2_ARGS(condition, yld)  \
-{                                                  \
-    assert_type<bool>(yld);                        \
-                                                   \
-    if (yld) [[likely]] {                          \
-        while (!(condition)) {                     \
-            PlatformContextIdleCall();             \
-            std::this_thread::yield();             \
-        }                                          \
-    } else {                                       \
-        while(!(condition)) {}                     \
-    }                                              \
+#define WAIT_FOR_CONDITION_2_ARGS(condition, yld) \
+{                                                 \
+    assert_type<bool>(yld);                       \
+                                                  \
+    if (yld) [[likely]]                           \
+    {                                             \
+        while (!(condition))                      \
+        {                                         \
+            PlatformContextIdleCall();            \
+            std::this_thread::yield();            \
+        }                                         \
+    }                                             \
+    else                                          \
+    {                                             \
+        while(!(condition)) {}                    \
+    }                                             \
 }
 
 #define WAIT_FOR_CONDITION_1_ARGS(condition) WAIT_FOR_CONDITION_2_ARGS(condition, true)
@@ -67,23 +71,27 @@ constexpr void assert_type( const U& )
 #define WAIT_FOR_CONDITION_TIMEOUT_3_ARGS(condition, timeoutMS, yld)   \
 {                                                                      \
     assert_type<bool>(yld);                                            \
-    assert_type<D64>(timeoutMS);                                       \
                                                                        \
-    if (timeoutMS >= 0.0) {                                            \
+    if (timeoutMS >= 0.0)                                              \
+    {                                                                  \
         const D64 start = Time::App::ElapsedMilliseconds();            \
                                                                        \
-        while (!(condition)) {                                         \
+        while (!(condition))                                           \
+        {                                                              \
             PlatformContextIdleCall();                                 \
             if (Time::App::ElapsedMilliseconds() - start >= timeoutMS) \
             {                                                          \
                 break;                                                 \
             }                                                          \
                                                                        \
-            if (yld) [[likely]] {                                      \
+            if (yld) [[likely]]                                        \
+            {                                                          \
                 std::this_thread::yield();                             \
             }                                                          \
         }                                                              \
-    } else {                                                           \
+    }                                                                  \
+    else                                                               \
+    {                                                                  \
         WAIT_FOR_CONDITION(condition, yld);                            \
     }                                                                  \
 }
@@ -98,10 +106,12 @@ constexpr void assert_type( const U& )
 {                                                                        \
     assert_type<bool>(yld);                                              \
                                                                          \
-    while (!(condition)) {                                               \
+    while (!(condition))                                                 \
+    {                                                                    \
         cbk(param);                                                      \
         PlatformContextIdleCall();                                       \
-        if (yld) [[likely]] {                                            \
+        if (yld) [[likely]]                                              \
+        {                                                                \
             std::this_thread::yield();                                   \
         }                                                                \
     }                                                                    \
@@ -114,29 +124,34 @@ constexpr void assert_type( const U& )
 #define ___DETAIL_WAIT_FOR_CONDITION_CALLBACK(...) EXP(GET_4TH_ARG(__VA_ARGS__, WAIT_FOR_CONDITION_CALLBACK_3_ARGS, WAIT_FOR_CONDITION_CALLBACK_2_ARGS, WAIT_FOR_CONDITION_CALLBACK_1_ARGS, ))
 #define WAIT_FOR_CONDITION_CALLBACK(...) EXP(___DETAIL_WAIT_FOR_CONDITION_CALLBACK(__VA_ARGS__)(__VA_ARGS__)); static_assert(true, "")
 
-#define WAIT_FOR_CONDITION_CALLBACK_TIMEOUT_5_ARGS(condition, cbk, param, timeoutMS, yld)   \
-{                                                                                           \
-    assert_type<bool>(yld);                                                                 \
-    assert_type<D64>(timeoutMS);                                                            \
-                                                                                            \
-    if ((timeoutMS) >= 0.0) {                                                               \
-        const D64 start = Time::ElapsedMilliseconds(true);                                  \
-                                                                                            \
-        while (!(condition)) {                                                              \
-            cbk(param);                                                                     \
-            PlatformContextIdleCall();                                                      \
-                                                                                            \
-            if (Time::ElapsedMilliseconds(true) - start >= (timeoutMS)) {                   \
-                break;                                                                      \
-            }                                                                               \
-                                                                                            \
-            if (yld) [[likely]] {                                                           \
-                std::this_thread::yield();                                                  \
-            }                                                                               \
-        }                                                                                   \
-    } else {                                                                                \
-        WAIT_FOR_CONDITION_CALLBACK(condition, cbk, param, yld);                            \
-    }                                                                                       \
+#define WAIT_FOR_CONDITION_CALLBACK_TIMEOUT_5_ARGS(condition, cbk, param, timeoutMS, yld) \
+{                                                                                         \
+    assert_type<bool>(yld);                                                               \
+                                                                                          \
+    if ((timeoutMS) >= 0.0)                                                               \
+    {                                                                                     \
+        const D64 start = Time::ElapsedMilliseconds(true);                                \
+                                                                                          \
+        while (!(condition))                                                              \
+        {                                                                                 \
+            cbk(param);                                                                   \
+            PlatformContextIdleCall();                                                    \
+                                                                                          \
+            if (Time::ElapsedMilliseconds(true) - start >= (timeoutMS))                   \
+            {                                                                             \
+                break;                                                                    \
+            }                                                                             \
+                                                                                          \
+            if (yld) [[likely]]                                                           \
+            {                                                                             \
+                std::this_thread::yield();                                                \
+            }                                                                             \
+        }                                                                                 \
+    }                                                                                     \
+    else                                                                                  \
+    {                                                                                     \
+        WAIT_FOR_CONDITION_CALLBACK(condition, cbk, param, yld);                          \
+    }                                                                                     \
 }
 
 #define WAIT_FOR_CONDITION_CALLBACK_TIMEOUT_4_ARGS(condition, cbk, param, timeoutMS) WAIT_FOR_CONDITION_CALLBACK_TIMEOUT_5_ARGS(condition, cbk, param, timeoutMS, true)

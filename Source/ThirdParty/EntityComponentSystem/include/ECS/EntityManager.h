@@ -22,13 +22,9 @@
 
 #include "util/Handle.h"
 
-#ifdef _MSC_VER
-#pragma warning(push)
-
 // warning C4291: 'void *operator new(::size_t,void *) throw()': no matching operator delete found; memory will not be freed if initialization throws an exception
 // note we are using custom memory allocator no need for delete
-#pragma warning(disable: 4291)
-#endif //_MSC_VER
+DISABLE_MSVC_WARNING_PUSH(4291)
 
 namespace ECS
 {	
@@ -302,8 +298,6 @@ namespace ECS
 	 
 } // namespace ECS
 
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif //_MSC_VER
+DISABLE_MSVC_WARNING_POP()
 
 #endif // ECS__ENTITY_MANAGER_H__

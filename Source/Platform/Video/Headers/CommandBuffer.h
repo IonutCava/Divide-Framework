@@ -156,7 +156,7 @@ class CommandBuffer : private NonCopyable
       Str<64> _name;
 };
 
-static void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
+void ToString(const CommandBase& cmd, CommandType type, I32& crtIndent, string& out);
 
 // Return true if merge is successful
 template<typename T = CommandBase> requires std::is_base_of_v<CommandBase, T>

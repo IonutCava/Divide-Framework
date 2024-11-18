@@ -521,7 +521,7 @@ namespace Divide
                         default: break;
                     };
                 } break;
-
+                default:
                 case GFXDataFormat::COUNT: break;
             }
 
@@ -537,7 +537,7 @@ namespace Divide
                 case DescriptorSetBindingType::IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 case DescriptorSetBindingType::UNIFORM_BUFFER: return isPushDescriptor ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: return isPushDescriptor ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-
+                default:
                 case DescriptorSetBindingType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
             }
 

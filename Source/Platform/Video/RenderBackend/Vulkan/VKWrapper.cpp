@@ -1540,6 +1540,7 @@ namespace Divide
 
                         descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &imageInfo, 1u ) );
                     } break;
+                    default:
                     case DescriptorSetBindingType::COUNT:
                     {
                         DIVIDE_UNEXPECTED_CALL();

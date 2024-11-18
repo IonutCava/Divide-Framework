@@ -61,15 +61,18 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
                                     /wd5026 /wd5027 /wd5039 /wd5045 /wd5204 /wd5219 /wd5220
                                     /wd5262 /wd5267
     )
+
 else()
 
     set(DIVIDE_COMPILE_OPTIONS -Wall
-                               -Wno-unused-function
+                               -pedantic
     )
+
     set(THIRD_PARTY_COMPILE_OPTIONS -Wno-unused-but-set-variable
                                     -Wno-parentheses
                                     -Wno-misleading-indentation
                                     -Wno-unused-variable
+                                    -Wno-unused-function
                                     -Wno-char-subscripts
                                     $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
     )
@@ -101,6 +104,7 @@ else()
                                         -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
                                         -Wno-nonportable-system-include-path
         )
+
     else() #GCC
         set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}
                                         -Wno-format-overflow

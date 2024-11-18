@@ -39,31 +39,26 @@
 
 #define VMA_DEBUG_LOG(format, ...) do { Divide::Console::printfn(format, ##__VA_ARGS__); } while(false)
 
-#ifdef _MSVC_LANG
+DISABLE_MSVC_WARNING_PUSH(4127) // conditional expression is constant
+DISABLE_MSVC_WARNING_PUSH(4100) // unreferenced formal parameter
+DISABLE_MSVC_WARNING_PUSH(4189) // local variable is initialized but not referenced
+DISABLE_MSVC_WARNING_PUSH(4324) // structure was padded due to alignment specifier
 
-#pragma warning(push, 4)
-#pragma warning(disable: 4127) // conditional expression is constant
-#pragma warning(disable: 4100) // unreferenced formal parameter
-#pragma warning(disable: 4189) // local variable is initialized but not referenced
-#pragma warning(disable: 4324) // structure was padded due to alignment specifier
-
-#endif  // #ifdef _MSVC_LANG
-
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare" // comparison of unsigned expression < 0 is always false
-#pragma clang diagnostic ignored "-Wunused-private-field"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#pragma clang diagnostic ignored "-Wnullability-completeness"
-#endif
+DISABLE_NON_MSVC_WARNING_PUSH("tautological-compare") // comparison of unsigned expression < 0 is always fals"
+DISABLE_NON_MSVC_WARNING_PUSH("unused-private-field")
+DISABLE_NON_MSVC_WARNING_PUSH("unused-parameter")
+DISABLE_NON_MSVC_WARNING_PUSH("missing-field-initializers")
+DISABLE_NON_MSVC_WARNING_PUSH("nullability-completeness")
 
 #include <vk_mem_alloc.h>
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+DISABLE_NON_MSVC_WARNING_POP()
+DISABLE_NON_MSVC_WARNING_POP()
+DISABLE_NON_MSVC_WARNING_POP()
+DISABLE_NON_MSVC_WARNING_POP()
+DISABLE_NON_MSVC_WARNING_POP()
 
-#ifdef _MSVC_LANG
-#pragma warning(pop)
-#endif
+DISABLE_MSVC_WARNING_POP()
+DISABLE_MSVC_WARNING_POP()
+DISABLE_MSVC_WARNING_POP()
+DISABLE_MSVC_WARNING_POP()

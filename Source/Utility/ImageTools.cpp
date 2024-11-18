@@ -12,7 +12,11 @@
 
 #include "stb_image.h"
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
+
+DISABLE_NON_MSVC_WARNING_PUSH("array-bounds-pointer-arithmetic")
 #include "stb_image_resize2.h"
+DISABLE_NON_MSVC_WARNING_POP()
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 

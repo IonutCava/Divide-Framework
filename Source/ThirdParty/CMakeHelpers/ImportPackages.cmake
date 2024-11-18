@@ -147,6 +147,7 @@ if (BUILD_TESTING_INTERNAL)
 endif()
 
 include_directories(
+    SYSTEM
     ${spirv-reflect_SOURCE_DIR}
     ${optick_SOURCE_DIR}/src
     ${vk_bootstrap_SOURCE_DIR}/src
@@ -174,6 +175,11 @@ set( SIMPLE_FILE_WATCHER_SRC_FILES ${simple_file_watcher_SOURCE_DIR}/source/File
                                    ${simple_file_watcher_SOURCE_DIR}/source/FileWatcherWin32.cpp
 )
 
+if(NOT MSVC)
+    set( SIMPLE_FILE_WATCHER_SRC_FILES_COMPILE_OPTIONS "-Wno-switch-default")
+    set_source_files_properties( ${SIMPLE_FILE_WATCHER_SRC_FILES} PROPERTIES COMPILE_FLAGS ${SIMPLE_FILE_WATCHER_SRC_FILES_COMPILE_OPTIONS} )
+endif()
+
 set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
                     ${fcpp_SOURCE_DIR}/cpp2.c
                     ${fcpp_SOURCE_DIR}/cpp3.c
@@ -183,6 +189,11 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
                     #${fcpp_SOURCE_DIR}/usecpp.c
 )
 
+if(NOT MSVC)
+    set( FCPP_COMPILE_OPTIONS "-Wno-switch-default -Wno-date-time")
+    set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FCPP_COMPILE_OPTIONS} )
+endif()
+
 set( IMGUIZMO_SRC_FILES ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp
                         ${imguizmo_SOURCE_DIR}/GraphEditor.cpp
                         ${imguizmo_SOURCE_DIR}/ImCurveEdit.cpp
@@ -190,6 +201,15 @@ set( IMGUIZMO_SRC_FILES ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp
                         ${imguizmo_SOURCE_DIR}/ImSequencer.cpp
 )
 
+set(IMGUIZMO_COMPILE_OPTIONS "")
+
+if(MSVC)
+    list(APPEND IMGUIZMO_COMPILE_OPTIONS "/wd4245 /wd4189")
+else()
+    list(APPEND IMGUIZMO_COMPILE_OPTIONS "-Wno-nested-anon-types -Wno-sign-compare -Wno-ignored-qualifiers -Wno-switch-default")
+endif()
+    
+set_source_files_properties( ${IMGUIZMO_SRC_FILES} PROPERTIES COMPILE_FLAGS ${IMGUIZMO_COMPILE_OPTIONS} )
 
 set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}
                                  ${CURL_NOISE_SRC_FILES}

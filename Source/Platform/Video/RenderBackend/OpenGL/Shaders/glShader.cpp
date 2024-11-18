@@ -33,6 +33,7 @@ namespace
             case ShaderType::COMPUTE:           return gl46core::UseProgramStageMask::GL_COMPUTE_SHADER_BIT;
             case ShaderType::MESH_NV:           return gl46core::UseProgramStageMask::GL_MESH_SHADER_BIT_NV;
             case ShaderType::TASK_NV:           return gl46core::UseProgramStageMask::GL_TASK_SHADER_BIT_NV;
+            default:
             case ShaderType::COUNT:             break;
         }
 

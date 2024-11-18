@@ -434,6 +434,8 @@ namespace Divide
                     case TextureType::TEXTURE_CUBE_MAP:
                     case TextureType::TEXTURE_1D_ARRAY:
                     case TextureType::TEXTURE_CUBE_ARRAY:
+
+                    default:
                     case TextureType::COUNT: 
                         DIVIDE_UNEXPECTED_CALL();
                         break;

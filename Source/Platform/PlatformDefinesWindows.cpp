@@ -22,11 +22,13 @@
 
 #include <mimalloc-new-delete.h>
 
+DISABLE_NON_MSVC_WARNING_PUSH("missing-variable-declarations")
 extern "C"
 {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
     _declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 0x00000001;
 }
+DISABLE_NON_MSVC_WARNING_POP()
 
 LRESULT DlgProc([[maybe_unused]] HWND hWnd, [[maybe_unused]] UINT uMsg, [[maybe_unused]] WPARAM wParam, [[maybe_unused]] LPARAM lParam) noexcept
 {
