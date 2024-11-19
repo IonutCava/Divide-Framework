@@ -27,7 +27,7 @@ jobs:
     - uses: lukka/get-cmake@latest
       with:
         cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1t
+        ninjaVersion: 1.11.1
   
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
