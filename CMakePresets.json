@@ -13,7 +13,7 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/Build/${presetName}",
             "installDir": "${sourceDir}/Install/${presetName}",
-            "warnings": { "dev": false },
+            "warnings": { "dev": true },
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"
             }
