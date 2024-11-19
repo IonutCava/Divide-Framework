@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
 
     steps:
     - uses: actions/checkout@v4
@@ -25,6 +25,9 @@ jobs:
         fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
