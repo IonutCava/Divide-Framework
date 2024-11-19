@@ -18,9 +18,6 @@ jobs:
     #  matrix:
     #    os: [ubuntu-latest]
         
-    env:
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
-
     steps:
     - uses: actions/checkout@v4
       with:
