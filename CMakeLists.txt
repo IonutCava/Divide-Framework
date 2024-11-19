@@ -13,6 +13,18 @@ option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug build
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
 
+set(vcpkg "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+if(NOT CMAKE_TOOLCHAIN_FILE)
+    if ( EXISTS "${vcpkg}")
+        set(CMAKE_TOOLCHAIN_FILE "${vcpkg}" CACHE FILEPATH "CMake toolchain file")
+    else()
+        set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "Vcpkg toolchain file")
+    endif()
+endif()
+  
+message(STATUS "vcpkg toolchain found in: ${CMAKE_TOOLCHAIN_FILE}")
+
+
 # Enable Hot Reload for MSVC compilers if supported.
 if (NOT ENABLE_ASAN AND NOT ENABLE_UBSAN AND POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
