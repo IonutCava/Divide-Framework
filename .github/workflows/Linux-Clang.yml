@@ -23,7 +23,10 @@ jobs:
         submodules: true
         #fetch-depth: 0
 
-    - uses: lukka/get-cmake@3.29.2
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
 
     - name: Patch for linux build
       run: |
