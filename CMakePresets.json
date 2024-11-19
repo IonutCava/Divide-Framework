@@ -17,6 +17,10 @@
             "warnings": { "dev": true },
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"
+            },
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
             }
         },
         {
@@ -28,10 +32,6 @@
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
-            },
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
             },
             "toolset": {
                 "value": "host=x64",
@@ -50,10 +50,6 @@
                     "Linux",
                     "Darwin"
                 ]
-            },
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
             }
         },
         {
