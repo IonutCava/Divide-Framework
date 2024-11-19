@@ -26,10 +26,6 @@ jobs:
 
     - uses: lukka/get-cmake@latest
 
-    - name: List $RUNNER_WORKSPACE before vcpkg is setup
-      run: find $RUNNER_WORKSPACE
-      shell: bash
-
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       id: runvcpkg
