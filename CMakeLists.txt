@@ -14,11 +14,12 @@ option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug build
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
 
 set(vcpkg "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-if(NOT CMAKE_TOOLCHAIN_FILE)
+set(local_vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
+if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
     if ( EXISTS "${vcpkg}")
         set(CMAKE_TOOLCHAIN_FILE "${vcpkg}" CACHE FILEPATH "CMake toolchain file")
     else()
-        set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE STRING "Vcpkg toolchain file")
+        set(CMAKE_TOOLCHAIN_FILE "${local_vcpkg}" CACHE FILEPATH "Make toolchain file")
     endif()
 endif()
   
