@@ -31,11 +31,7 @@ jobs:
       id: runvcpkg
       with:
         vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-        vcpkgJsonGlob: 'vcpkg-configuration.json'
-
-    - name: List $RUNNER_WORKSPACE before build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
+        vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
 
     - name: Prints output of run-vcpkg's action.
       run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
