@@ -17,18 +17,18 @@ jobs:
       matrix:
         os: [ubuntu-latest]
 
-    env:
-      VCPKG_ROOT:
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
         #fetch-depth: 0
 
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
+    - uses: lukka/get-cmake@3.29.2
+
+    - name: Patch for linux build
+      run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build
 
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
