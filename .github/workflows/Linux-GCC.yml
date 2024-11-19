@@ -28,6 +28,11 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
+    - name: Patch for linux build
+      run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build
+
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
       with:
