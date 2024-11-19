@@ -11,12 +11,12 @@ on:
 jobs:
   job:
     name: ${{ matrix.os }}-${{ github.workflow }}
-    #runs-on: ${{ matrix.os }}
-    runs-on: self-hosted
-    #strategy:
-    #  fail-fast: false
-    #  matrix:
-    #    os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    #runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
