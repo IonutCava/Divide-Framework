@@ -17,10 +17,6 @@
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"
             },
-            "architecture": {
-                "strategy": "set",
-                "value": "x64"
-            },
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": {
                     "type": "FILEPATH",
