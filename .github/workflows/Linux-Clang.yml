@@ -17,6 +17,9 @@ jobs:
     #  fail-fast: false
     #  matrix:
     #    os: [ubuntu-latest]
+        
+    env:
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
 
     steps:
     - uses: actions/checkout@v4
@@ -54,7 +57,7 @@ jobs:
 
     - name: Build and test Editor in Profile mode
       uses: lukka/run-cmake@v10
-      id: runcmake_editor_release
+      id: runcmake_editor_profile
       with:
         configurePreset: 'unixlike-clang-profile-editor'
         buildPreset: 'unixlike-clang-profile-editor'
@@ -62,7 +65,7 @@ jobs:
 
     - name: Build and test Editor in Debug mode
       uses: lukka/run-cmake@v10
-      id: runcmake_editor_release
+      id: runcmake_editor_debug
       with:
         configurePreset: 'unixlike-clang-debug-editor'
         buildPreset: 'unixlike-clang-debug-editor'
@@ -70,7 +73,7 @@ jobs:
 
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
-      id: runcmake_game_debug
+      id: runcmake_game_release
       with:
         configurePreset: 'unixlike-clang-release'
         buildPreset: 'unixlike-clang-release'
@@ -78,7 +81,7 @@ jobs:
 
     - name: Build and test Game in Profile mode
       uses: lukka/run-cmake@v10
-      id: runcmake_game_debug
+      id: runcmake_game_profile
       with:
         configurePreset: 'unixlike-clang-profile'
         buildPreset: 'unixlike-clang-profile'
