@@ -11,7 +11,8 @@ on:
 jobs:
   job:
     name: ${{ matrix.os }}-${{ github.workflow }}
-    runs-on: ${{ matrix.os }}
+    #runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
