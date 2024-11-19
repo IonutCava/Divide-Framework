@@ -36,13 +36,41 @@ jobs:
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'windows-msvc-release'
+        configurePreset: 'windows-msvc'
         buildPreset: 'windows-msvc-release'
         testPreset: 'test-windows-msvc-release'
+            
+    - name: Build and test Game in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc'
+        buildPreset: 'windows-msvc-profile'
+        testPreset: 'test-windows-msvc-profile'
+
+    - name: Build and test Game in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc'
+        buildPreset: 'windows-msvc-debug'
+        testPreset: 'test-windows-msvc-debug'
+
+    - name: Build and test Editor in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc-editor'
+        buildPreset: 'windows-msvc-release-editor'
+        testPreset: 'test-windows-msvc-release-editor'
+
+    - name: Build and test Editor in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc-editor'
+        buildPreset: 'windows-msvc-profile-editor'
+        testPreset: 'test-windows-msvc-profile-editor'
 
     - name: Build and test Editor in Debug mode
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'windows-msvc-debug-editor'
+        configurePreset: 'windows-msvc-editor'
         buildPreset: 'windows-msvc-debug-editor'
         testPreset: 'test-windows-msvc-debug-editor'

@@ -33,17 +33,45 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-clang'
+        buildPreset: 'windows-clang-release'
+        testPreset: 'test-windows-clang-release'
+
+    - name: Build and test Game in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-clang'
+        buildPreset: 'windows-clang-profile'
+        testPreset: 'test-windows-clang-profile'
+        
     - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'windows-clang-debug'
+        configurePreset: 'windows-clang'
         buildPreset: 'windows-clang-debug'
         testPreset: 'test-windows-clang-debug'
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'windows-clang-release-editor'
+        configurePreset: 'windows-clang-editor'
         buildPreset: 'windows-clang-release-editor'
         testPreset: 'test-windows-clang-release-editor'
+
+    - name: Build and test Editor in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-clang-editor'
+        buildPreset: 'windows-clang-profile-editor'
+        testPreset: 'test-windows-clang-profile-editor'
+
+    - name: Build and test Editor in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-clang-editor'
+        buildPreset: 'windows-clang-debug-editor'
+        testPreset: 'test-windows-clang-debug-editor'
         

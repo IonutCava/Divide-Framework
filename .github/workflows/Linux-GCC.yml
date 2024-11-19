@@ -44,7 +44,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
       with:
-        configurePreset: 'unixlike-gcc-release-editor'
+        configurePreset: 'unixlike-gcc-editor'
         buildPreset: 'unixlike-gcc-release-editor'
         testPreset: 'test-unixlike-gcc-release-editor'
             
@@ -52,7 +52,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_profile
       with:
-        configurePreset: 'unixlike-gcc-profile-editor'
+        configurePreset: 'unixlike-gcc-editor'
         buildPreset: 'unixlike-gcc-profile-editor'
         testPreset: 'test-unixlike-gcc-profile-editor'
 
@@ -60,7 +60,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_debug
       with:
-        configurePreset: 'unixlike-gcc-debug-editor'
+        configurePreset: 'unixlike-gcc-editor'
         buildPreset: 'unixlike-gcc-debug-editor'
         testPreset: 'test-unixlike-gcc-debug-editor'
 
@@ -68,7 +68,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_release
       with:
-        configurePreset: 'unixlike-gcc-release'
+        configurePreset: 'unixlike-gcc'
         buildPreset: 'unixlike-gcc-release'
         testPreset: 'test-unixlike-gcc-release'
 
@@ -76,7 +76,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_profile
       with:
-        configurePreset: 'unixlike-gcc-profile'
+        configurePreset: 'unixlike-gcc'
         buildPreset: 'unixlike-gcc-profile'
         testPreset: 'test-unixlike-gcc-profile'
 
@@ -84,6 +84,6 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_debug
       with:
-        configurePreset: 'unixlike-gcc-debug'
+        configurePreset: 'unixlike-gcc'
         buildPreset: 'unixlike-gcc-debug'
         testPreset: 'test-unixlike-gcc-debug'

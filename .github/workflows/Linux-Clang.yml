@@ -44,7 +44,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
       with:
-        configurePreset: 'unixlike-clang-release-editor'
+        configurePreset: 'unixlike-clang-editor'
         buildPreset: 'unixlike-clang-release-editor'
         testPreset: 'test-unixlike-clang-release-editor'
 
@@ -52,7 +52,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_profile
       with:
-        configurePreset: 'unixlike-clang-profile-editor'
+        configurePreset: 'unixlike-clang-editor'
         buildPreset: 'unixlike-clang-profile-editor'
         testPreset: 'test-unixlike-clang-profile-editor'
 
@@ -60,7 +60,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_debug
       with:
-        configurePreset: 'unixlike-clang-debug-editor'
+        configurePreset: 'unixlike-clang-editor'
         buildPreset: 'unixlike-clang-debug-editor'
         testPreset: 'test-unixlike-clang-debug-editor'
 
@@ -68,7 +68,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_release
       with:
-        configurePreset: 'unixlike-clang-release'
+        configurePreset: 'unixlike-clang'
         buildPreset: 'unixlike-clang-release'
         testPreset: 'test-unixlike-clang-release'
 
@@ -76,7 +76,7 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_profile
       with:
-        configurePreset: 'unixlike-clang-profile'
+        configurePreset: 'unixlike-clang'
         buildPreset: 'unixlike-clang-profile'
         testPreset: 'test-unixlike-clang-profile'
 
@@ -84,6 +84,6 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_debug
       with:
-        configurePreset: 'unixlike-clang-debug'
+        configurePreset: 'unixlike-clang'
         buildPreset: 'unixlike-clang-debug'
         testPreset: 'test-unixlike-clang-debug'
