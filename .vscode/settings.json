@@ -97,5 +97,6 @@
         "scoped_allocator": "cpp",
         "*.inc": "cpp",
         "parentbad": "cpp"
-    }
+    },
+    "cmake.options.statusBarVisibility": "visible"
 }
