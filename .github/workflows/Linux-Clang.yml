@@ -30,7 +30,8 @@ jobs:
       uses: lukka/run-vcpkg@v11
       id: runvcpkg
       with:
-        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+      # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
         vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
 
     - name: Prints output of run-vcpkg's action.
