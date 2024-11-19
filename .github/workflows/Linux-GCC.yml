@@ -11,37 +11,38 @@ on:
 jobs:
   job:
     name: ${{ matrix.os }}-${{ github.workflow }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
+    #runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
+    #strategy:
+    #  fail-fast: false
+    #  matrix:
+    #    os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        #fetch-depth: 0
+        fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
 
-    - name: Patch for linux build
-      run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build
+    - name: List $RUNNER_WORKSPACE before vcpkg is setup
+      run: find $RUNNER_WORKSPACE
+      shell: bash
 
-    - name: Patch for linux build
-      run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build
+    - name: List $RUNNER_WORKSPACE before build
+      run: find $RUNNER_WORKSPACE
+      shell: bash
 
-    - name: Restore from cache and setup vcpkg executable and data files.
+    - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
+      id: runvcpkg
       with:
-        vcpkgJsonGlob: 'vcpkg.json'
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+        vcpkgJsonGlob: 'vcpkg-configuration.json'
+
+    - name: Prints output of run-vcpkg's action.
+      run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -49,6 +50,34 @@ jobs:
         configurePreset: 'unixlike-gcc-release-editor'
         buildPreset: 'unixlike-gcc-release-editor'
         testPreset: 'test-unixlike-gcc-release-editor'
+            
+    - name: Build and test Editor in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'unixlike-gcc-profile-editor'
+        buildPreset: 'unixlike-gcc-profile-editor'
+        testPreset: 'test-unixlike-gcc-profile-editor'
+
+    - name: Build and test Editor in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'unixlike-gcc-debug-editor'
+        buildPreset: 'unixlike-gcc-debug-editor'
+        testPreset: 'test-unixlike-gcc-debug-editor'
+
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'unixlike-gcc-release'
+        buildPreset: 'unixlike-gcc-release'
+        testPreset: 'test-unixlike-gcc-release'
+
+    - name: Build and test Game in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'unixlike-gcc-profile'
+        buildPreset: 'unixlike-gcc-profile'
+        testPreset: 'test-unixlike-gcc-profile'
 
     - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10

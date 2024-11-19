@@ -11,11 +11,12 @@ on:
 jobs:
   job:
     name: ${{ matrix.os }}-${{ github.workflow }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
+    #runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
+    #strategy:
+    #  fail-fast: false
+    #  matrix:
+    #    os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -24,6 +25,7 @@ jobs:
         fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
+  
     - name: List $RUNNER_WORKSPACE before vcpkg is setup
       run: find $RUNNER_WORKSPACE
       shell: bash
@@ -50,9 +52,37 @@ jobs:
         buildPreset: 'unixlike-clang-release-editor'
         testPreset: 'test-unixlike-clang-release-editor'
 
-    - name: List $RUNNER_WORKSPACE after first build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
+    - name: Build and test Editor in Profile mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_release
+      with:
+        configurePreset: 'unixlike-clang-profile-editor'
+        buildPreset: 'unixlike-clang-profile-editor'
+        testPreset: 'test-unixlike-clang-profile-editor'
+
+    - name: Build and test Editor in Debug mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_release
+      with:
+        configurePreset: 'unixlike-clang-debug-editor'
+        buildPreset: 'unixlike-clang-debug-editor'
+        testPreset: 'test-unixlike-clang-debug-editor'
+
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_debug
+      with:
+        configurePreset: 'unixlike-clang-release'
+        buildPreset: 'unixlike-clang-release'
+        testPreset: 'test-unixlike-clang-release'
+
+    - name: Build and test Game in Profile mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_debug
+      with:
+        configurePreset: 'unixlike-clang-profile'
+        buildPreset: 'unixlike-clang-profile'
+        testPreset: 'test-unixlike-clang-profile'
 
     - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
@@ -61,7 +91,3 @@ jobs:
         configurePreset: 'unixlike-clang-debug'
         buildPreset: 'unixlike-clang-debug'
         testPreset: 'test-unixlike-clang-debug'
-
-    - name: List $RUNNER_WORKSPACE after second build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
