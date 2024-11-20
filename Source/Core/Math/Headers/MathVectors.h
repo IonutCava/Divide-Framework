@@ -1319,7 +1319,7 @@ namespace Divide
         /// return the vector's length
         [[nodiscard]] T length() const  noexcept
         {
-            return Divide::Sqrt( lengthSquared() );
+            return Sqrt( lengthSquared() );
         }
         /// return the squared distance of the vector
         [[nodiscard]] T lengthSquared() const noexcept;

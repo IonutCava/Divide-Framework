@@ -1507,7 +1507,7 @@ namespace Divide
     {
         const U c = std::cos( angle );
         const U s = std::sin( angle );
-        U l = static_cast<U>(Sqrt( static_cast<D64>(x * x + y * y + z * z) ));
+        U l = Sqrt<U>( to_D64(x * x + y * y + z * z) );
 
         l = l < EPSILON_F32 ? 1 : 1 / l;
         x *= l;
