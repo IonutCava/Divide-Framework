@@ -47,6 +47,9 @@ jobs:
     - name: Print output of run-vcpkg's action.
       run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
 
+    - name: Print compiler version
+      run: g++ --version 
+
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
