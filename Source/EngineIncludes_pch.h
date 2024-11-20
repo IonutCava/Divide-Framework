@@ -49,7 +49,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdexcept>
 #include <bytell_hash_map.hpp>
 
-DISABLE_GCC_WARNING_PUSH("array-bounds")
+CHANGE_GCC_WARNING_PUSH("array-bounds=0")
 #include <EASTL/map.h>
 #include <EASTL/list.h>
 #include <EASTL/array.h>
@@ -62,7 +62,7 @@ DISABLE_GCC_WARNING_PUSH("array-bounds")
 #include <EASTL/fixed_vector.h>
 #include <EASTL/fixed_string.h>
 #include <EASTL/unordered_set.h>
-DISABLE_GCC_WARNING_POP()
+CHANGE_GCC_WARNING_POP()
 
 #include <climits>
 #include <xmmintrin.h>

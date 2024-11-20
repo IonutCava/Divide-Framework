@@ -102,13 +102,24 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     DO_PRAGMA(GCC diagnostic push)                              \
     DO_PRAGMA(GCC diagnostic ignored STR_CAT("-W", WARNING_ID))
 
+
 #define DISABLE_GCC_WARNING_POP() \
+    DO_PRAGMA(GCC diagnostic pop)
+
+#define CHANGE_GCC_WARNING_PUSH(WARNING_ID)                     \
+    DO_PRAGMA(GCC diagnostic push)                              \
+    DO_PRAGMA(GCC diagnostic warning STR_CAT("-W", WARNING_ID))
+
+#define CHANGE_GCC_WARNING_POP() \
     DO_PRAGMA(GCC diagnostic pop)
 
 #else //USING_GCC
 
 #define DISABLE_GCC_WARNING_PUSH(WARNING_ID)
 #define DISABLE_GCC_WARNING_POP()
+
+#define CHANGE_GCC_WARNING_PUSH(WARNING_ID)
+#define CHANGE_GCC_WARNING_POP()
 
 #endif //USING_GCC
 
