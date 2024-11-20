@@ -742,9 +742,9 @@ namespace Divide
         };
 
         RenderTargetDescriptor editorDesc = {};
-        editorDesc._attachments =
+        editorDesc._attachments.emplace_back(InternalRTAttachmentDescriptor
         {
-            InternalRTAttachmentDescriptor { editorDescriptor, _editorSampler, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO }
+            editorDescriptor, _editorSampler, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO
         };
 
         editorDesc._resolution = renderResolution;

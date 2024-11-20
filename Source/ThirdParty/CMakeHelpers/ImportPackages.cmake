@@ -190,7 +190,7 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
 )
 
 if(NOT MSVC)
-    set( FCPP_COMPILE_OPTIONS "-Wno-switch-default -Wno-date-time")
+    set( FCPP_COMPILE_OPTIONS "-Wno-switch-default -Wno-date-time -Wno-pedantic")
     set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS ${FCPP_COMPILE_OPTIONS} )
 endif()
 

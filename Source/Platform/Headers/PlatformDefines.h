@@ -165,11 +165,11 @@ do {                                                  \
 #ifdef USING_GCC
 
 #define DISABLE_GCC_WARNING_PUSH(WARNING_ID)                    \
-    DO_PRAGMA(gcc diagnostic push)                              \
-    DO_PRAGMA(gcc diagnostic ignored STR_CAT("-W", WARNING_ID))
+    DO_PRAGMA(GCC diagnostic push)                              \
+    DO_PRAGMA(GCC diagnostic ignored STR_CAT("-W", WARNING_ID))
 
 #define DISABLE_GCC_WARNING_POP() \
-    DO_PRAGMA(gcc diagnostic pop)
+    DO_PRAGMA(GCC diagnostic pop)
 
 #else //USING_GCC
 

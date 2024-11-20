@@ -162,8 +162,9 @@ DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
 
      void onEditorChange(std::string_view field);
 
+     void createVegetation( PlatformContext& context );
+
      [[nodiscard]] bool loadResources( PlatformContext& context );
-     [[nodiscard]] void createVegetation( PlatformContext& context );
 
      PROPERTY_R(TessellationParams, tessParams);
 

@@ -55,11 +55,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     # All of these (including the Clang/GCC equivalents) could just be avoided with /W0..3, but I want to be explicit about the warnings I encounter with external libs
     set(THIRD_PARTY_COMPILE_OPTIONS /wd4061 /wd4062 /wd4127 /wd4191 /wd4242 /wd4244 /wd4255
                                     /wd4265 /wd4266 /wd4305 /wd4312 /wd4365 /wd4371 /wd4388
-                                    /wd4435 /wd4456 /wd4457 /wd4458 /wd4464 /wd4477 /wd4505
-                                    /wd4582 /wd4583 /wd4619 /wd4623 /wd4625 /wd4626 /wd4701
-                                    /wd4706 /wd4710 /wd4774 /wd4777 /wd4800 /wd4820 /wd4868
-                                    /wd5026 /wd5027 /wd5039 /wd5045 /wd5204 /wd5219 /wd5220
-                                    /wd5262 /wd5267
+                                    /wd4100 /wd4267 /wd4435 /wd4456 /wd4457 /wd4458 /wd4464
+                                    /wd4477 /wd4505 /wd4582 /wd4583 /wd4619 /wd4623 /wd4625
+                                    /wd4626 /wd4701 /wd4706 /wd4710 /wd4774 /wd4777 /wd4800
+                                    /wd4820 /wd4868 /wd5026 /wd5027 /wd5039 /wd5045 /wd5204
+                                    /wd5219 /wd5220 /wd5262 /wd5267
     )
 
 else()
@@ -108,6 +108,8 @@ else()
     else() #GCC
         set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}
                                         -Wno-format-overflow
+                                        -Wno-unused-result
+                                        -Wno-stringop-truncation
         )
     endif()
 endif()

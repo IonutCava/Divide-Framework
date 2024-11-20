@@ -180,7 +180,7 @@ class DivideDtCrowd final : public NonCopyable {
     /// The maximum number of agents that are allowed in this crowd.
     [[nodiscard]] I32 getMaxNbAgents() const { return _crowd->getAgentCount(); }
     /// Get all (active) agents in this crowd.
-    [[nodiscard]] void getActiveAgents( vector<dtCrowdAgent*>& agentsOut ) const;
+                  void getActiveAgents( vector<dtCrowdAgent*>& agentsOut ) const;
     /// Get the IDs of all (active) agents in this crowd.
     [[nodiscard]] vector<I32> getActiveAgentIDs() const;
     /// The last set destination for the crowd.

@@ -51,7 +51,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <EASTL/array.h>
 #include <EASTL/stack.h>
 #include <EASTL/queue.h>
+DISABLE_GCC_WARNING_PUSH("array-bounds")
 #include <EASTL/string.h>
+DISABLE_GCC_WARNING_POP()
 #include <EASTL/shared_ptr.h>
 #include <EASTL/fixed_set.h>
 #include <EASTL/fixed_vector.h>

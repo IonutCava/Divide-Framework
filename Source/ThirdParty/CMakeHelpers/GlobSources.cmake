@@ -69,13 +69,10 @@ set (THIRD_PARTY_MINIZIP ThirdParty/ImGuiMisc/imguifilesystem/minizip/ioapi.c
                          ThirdParty/ImGuiMisc/imguifilesystem/minizip/zip.c
 )
 
-set_source_files_properties(${THIRD_PARTY_LOCAL_HEADER_FILES} PROPERTIES HEADER_FILE_ONLY ON)
-LIST (APPEND ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_MINIZIP} ${THIRD_PARTY_LOCAL_HEADER_FILES})
-
-if(MSVC)
-    set(WARNING_DISABLE_FLAGS "/wd4100;/wd4244;/wd4706;/wd4267")
-    set_source_files_properties(${THIRD_PARTY_LOCAL_SRC_FILES} PROPERTIES COMPILE_OPTIONS "${WARNING_DISABLE_FLAGS}")
-else()
+if(NOT MSVC)
     set( MINIZIP_COMPILE_OPTIONS "-Wno-switch-default -Wno-missing-variable-declarations -Wno-date-time")
     set_source_files_properties(${THIRD_PARTY_MINIZIP} PROPERTIES COMPILE_FLAGS "${MINIZIP_COMPILE_OPTIONS}")
 endif()
+
+set_source_files_properties(${THIRD_PARTY_LOCAL_HEADER_FILES} PROPERTIES HEADER_FILE_ONLY ON)
+LIST (APPEND ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_MINIZIP} ${THIRD_PARTY_LOCAL_HEADER_FILES})
