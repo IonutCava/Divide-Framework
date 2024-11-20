@@ -56,24 +56,6 @@
 //#include <iterator>
 #include <cmath>
 
-namespace std
-{
-    [[nodiscard]] inline float asinf(const float in)
-    {
-        return ::asinf(in);
-    }
-    
-     [[nodiscard]] inline float acosf(const float in)
-    {
-        return ::acosf(in);
-    }
-
-    [[nodiscard]] inline float floorf(const float in)
-    {
-        return ::floorf(in);
-    }
-};
-
 #ifdef None
 #undef None
 #endif //None

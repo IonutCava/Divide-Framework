@@ -345,7 +345,7 @@ namespace Divide
 
             using custom_memory_buffer = fmt::basic_memory_buffer<char, fmt::inline_buffer_size, dvd_allocator<char>>;
 
-            FORCE_INLINE custom_memory_buffer vformat( fmt::string_view format_str, fmt::format_args args )
+            inline custom_memory_buffer vformat( fmt::string_view format_str, fmt::format_args args )
             {
                 custom_memory_buffer buf(s_allocator );
                 fmt::vformat_to( std::back_inserter( buf ), format_str, args );
@@ -355,14 +355,14 @@ namespace Divide
         } //namespace detail
 
         template <typename Str, typename... Args> requires (!concept_const_char<Str>)
-        FORCE_INLINE Str StringFormat( const char* fmt, Args&& ...args )
+        inline Str StringFormat( const char* fmt, Args&& ...args )
         {
             const detail::custom_memory_buffer buffer = detail::vformat( fmt, fmt::make_format_args( args... ) );
             return Str( buffer.data(), buffer.size(), detail::s_allocator );
         }
 
         template <typename Str, typename... Args> requires (!concept_const_char<Str>)
-        FORCE_INLINE void StringFormat( Str& output, const char* fmt, Args&& ...args )
+        inline void StringFormat( Str& output, const char* fmt, Args&& ...args )
         {
             const detail::custom_memory_buffer buffer = detail::vformat( fmt, fmt::make_format_args( args... ) );
             output.assign(buffer.data(), buffer.size());

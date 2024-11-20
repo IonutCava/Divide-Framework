@@ -66,10 +66,7 @@ template<typename T, size_t N, bool allowResize>
 void ObjectPool<T, N, allowResize>::deallocate(const PoolHandle handle)
 {
     T* obj = find(handle);
-    if ( obj != nullptr )
-    {
-        delete obj;
-    }
+    delete obj;
     unregisterExisting(handle);
 }
 
