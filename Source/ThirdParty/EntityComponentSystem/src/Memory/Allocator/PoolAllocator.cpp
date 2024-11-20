@@ -27,7 +27,7 @@ namespace ECS { namespace Memory { namespace Allocator {
 	}
 	
 
-	void* PoolAllocator::allocate(size_t memSize, u8 alignment)
+	void* PoolAllocator::allocate([[maybe_unused]] size_t memSize, [[maybe_unused]] u8 alignment)
 	{
 		assert(memSize > 0 && "allocate called with memSize = 0.");
 		assert(memSize == this->OBJECT_SIZE && alignment == this->OBJECT_ALIGNMENT);
