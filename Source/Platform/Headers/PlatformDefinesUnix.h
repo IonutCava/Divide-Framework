@@ -97,7 +97,7 @@ inline int _stricmp(const char* str1, const char* str2) {
 }
 
 
-#if (defined(USING_GCC) && __GNUC__  < 14) || defined(USING_CLANG)
+#if (defined(USING_GCC) && __GNUC__  < 14) || (defined(USING_CLANG) && __clang_major__ < 18)
 namespace std
 {
     [[nodiscard]] inline float asinf(const float in)
