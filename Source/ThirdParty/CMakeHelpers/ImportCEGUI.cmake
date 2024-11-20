@@ -2,12 +2,14 @@ include(FetchContent)
 
 set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if (MSVC_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4312 /wd4477 /wd4996")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+elseif(CLANG_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+elseif(GNU_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-deprecated-declarations -Wno-deprecated-copy -Wno-misleading-indentation")
+else()
+    message(FATAL_ERROR "Unknown compiler type")
 endif()
 
 

@@ -31,7 +31,7 @@ set(DIVIDE_COMPILE_OPTIONS "")
 set(PCH_COMPILE_OPTIONS "")
 set(THIRD_PARTY_COMPILE_OPTIONS "")
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if (MSVC_COMPILER)
 
     # Bit of a long one, but this is what happens when projects don't get built with /Wall.
     set(DIVIDE_COMPILE_OPTIONS /Wall
@@ -77,7 +77,7 @@ else()
                                     $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
     )
 
-    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if(CLANG_COMPILER)
 
         set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS}  -Wno-macro-redefined           -Wno-clang-cl-pch
                                    -Wno-old-style-cast        -Wno-format-nonliteral         -Wno-c++98-compat
@@ -105,12 +105,14 @@ else()
                                         -Wno-nonportable-system-include-path
         )
 
-    else() #GCC
+    elseif(GNU_COMPILER)
         set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}
                                         -Wno-format-overflow
                                         -Wno-unused-result
                                         -Wno-stringop-truncation
         )
+    else()
+        message( FATAL_ERROR "Unknow compiler type")
     endif()
 endif()
 
@@ -193,7 +195,7 @@ if(BUILD_TESTING_INTERNAL)
         catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
     endif()
 
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    if (MSVC_COMPILER)
         target_compile_options(${APP_EXE_TEST_PLATFORM} PRIVATE /wd4866 /wd4868)
         target_compile_options(${APP_EXE_TEST_ENGINE} PRIVATE /wd4866 /wd4868)
     endif()
