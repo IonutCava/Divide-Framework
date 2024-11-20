@@ -10,7 +10,6 @@ include(ThirdParty/CMakeHelpers/FetchContentExcludeFromAll.cmake)
 add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
 add_compile_definitions(IMGUI_DISABLE_OBSOLETE_KEYIO)
 add_compile_definitions(IMGUI_USE_STB_SPRINTF)
-add_compile_definitions(IMGUI_DEFINE_MATH_OPERATORS)
 
 #SPIRV-Reflect
 FetchContent_Declare(

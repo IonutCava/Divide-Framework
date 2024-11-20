@@ -42,23 +42,27 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Divide Framework requires C++20 support at a minimum!"
 #endif 
 
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+#define IMGUI_DEFINE_MATH_OPERATORS
+#endif //IMGUI_DEFINE_MATH_OPERATORS
+
 #include <stdexcept>
 #include <bytell_hash_map.hpp>
 
-#include <EASTL/set.h>
+DISABLE_GCC_WARNING_PUSH("array-bounds")
 #include <EASTL/map.h>
 #include <EASTL/list.h>
 #include <EASTL/array.h>
 #include <EASTL/stack.h>
 #include <EASTL/queue.h>
-DISABLE_GCC_WARNING_PUSH("array-bounds")
+#include <EASTL/set.h>
 #include <EASTL/string.h>
-DISABLE_GCC_WARNING_POP()
-#include <EASTL/shared_ptr.h>
 #include <EASTL/fixed_set.h>
+#include <EASTL/shared_ptr.h>
 #include <EASTL/fixed_vector.h>
 #include <EASTL/fixed_string.h>
 #include <EASTL/unordered_set.h>
+DISABLE_GCC_WARNING_POP()
 
 #include <climits>
 #include <xmmintrin.h>
