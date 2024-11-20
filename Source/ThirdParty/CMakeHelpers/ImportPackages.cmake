@@ -174,7 +174,7 @@ set( SIMPLE_FILE_WATCHER_SRC_FILES ${simple_file_watcher_SOURCE_DIR}/source/File
                                    ${simple_file_watcher_SOURCE_DIR}/source/FileWatcherWin32.cpp
 )
 
-if(NOT USING_MSVC)
+if(NOT MSVC_COMPILER)
     set_source_files_properties( ${SIMPLE_FILE_WATCHER_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default" )
 endif()
 
@@ -187,7 +187,7 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
                     #${fcpp_SOURCE_DIR}/usecpp.c
 )
 
-if (NOT USING_MSVC)
+if (NOT MSVC_COMPILER)
     set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic" )
 endif()
 
@@ -200,7 +200,7 @@ set( IMGUIZMO_SRC_FILES ${imguizmo_SOURCE_DIR}/ImGuizmo.cpp
 
 set(IMGUIZMO_COMPILE_OPTIONS "")
 
-if(USING_MSVC)
+if(MSVC_COMPILER)
     list(APPEND IMGUIZMO_COMPILE_OPTIONS "/wd4245 /wd4189")
 else()
     list(APPEND IMGUIZMO_COMPILE_OPTIONS "-Wno-nested-anon-types -Wno-sign-compare -Wno-ignored-qualifiers -Wno-switch-default")
