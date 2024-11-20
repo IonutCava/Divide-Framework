@@ -128,10 +128,10 @@ void DVDTextureTarget::initialiseRenderTexture()
     };
 
     RenderTargetDescriptor editorDesc = {};
-    editorDesc._attachments = 
+    editorDesc._attachments.emplace_back(InternalRTAttachmentDescriptor 
     {
-        InternalRTAttachmentDescriptor{ descriptor, _sampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0}
-    };
+        descriptor, _sampler, RTAttachmentType::COLOUR, RTColourAttachmentSlot::SLOT_0
+    });
 
     Util::StringFormat( editorDesc._name, "CEGUI_Target_{}", FBO_INDEX++ );
     editorDesc._resolution = { DEFAULT_SIZE , DEFAULT_SIZE };

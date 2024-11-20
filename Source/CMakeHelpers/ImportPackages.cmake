@@ -1,6 +1,7 @@
 set(IMGUI_USER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/Source/Core/Headers/ImGUICustomConfig.h")
 
 add_compile_definitions(IL_STATIC_LIB)
+add_compile_definitions(PX_PHYSX_STATIC_LIB)
 add_compile_definitions(BOOST_EXCEPTION_DISABLE)
 add_compile_definitions(GLBINDING_STATIC_DEFINE)
 add_compile_definitions(GLBINDING_AUX_STATIC_DEFINE)

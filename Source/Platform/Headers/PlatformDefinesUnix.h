@@ -97,7 +97,7 @@ inline int _stricmp(const char* str1, const char* str2) {
 }
 
 
-#if defined(USING_GCC) && __GNUC__  < 14
+#if (defined(USING_GCC) && __GNUC__  < 14) || defined(USING_CLANG)
 namespace std
 {
     [[nodiscard]] inline float asinf(const float in)
@@ -114,6 +114,6 @@ namespace std
         return ::floorf(in);
     }
 };
-#endif //USING_GCC && __GNUC__ < 14
+#endif //(USING_GCC && __GNUC__ < 14) || USING_CLANG
 
 #endif //DVD_PLATFORM_DEFINES_UNIX_H_

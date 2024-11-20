@@ -111,6 +111,9 @@ else()
                                         -Wno-unused-result
                                         -Wno-stringop-truncation
         )
+
+        #Sadly, with array-bounds set to default, anything that uses EASTL will spam the build log
+        set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS} -Warray-bounds=0)
     else()
         message( FATAL_ERROR "Unknow compiler type")
     endif()

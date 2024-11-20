@@ -49,8 +49,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdexcept>
 #include <bytell_hash_map.hpp>
 
-CHANGE_GCC_WARNING_PUSH("array-bounds=0")
-#include <EASTL/map.h>
+DISABLE_GCC_WARNING_PUSH(nonnull)
 #include <EASTL/list.h>
 #include <EASTL/array.h>
 #include <EASTL/stack.h>
@@ -59,10 +58,11 @@ CHANGE_GCC_WARNING_PUSH("array-bounds=0")
 #include <EASTL/string.h>
 #include <EASTL/fixed_set.h>
 #include <EASTL/shared_ptr.h>
+#include <EASTL/map.h>
 #include <EASTL/fixed_vector.h>
 #include <EASTL/fixed_string.h>
 #include <EASTL/unordered_set.h>
-CHANGE_GCC_WARNING_POP()
+DISABLE_GCC_WARNING_POP()
 
 #include <climits>
 #include <xmmintrin.h>
