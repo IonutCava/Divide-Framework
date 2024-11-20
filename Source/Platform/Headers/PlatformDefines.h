@@ -60,15 +60,6 @@ do {                                                  \
 #define STUBBED(x) static_assert(true, "")
 #endif
 
-#ifndef STR_CAT
-#define STR_CAT(STR1, STR2) STR1 STR2
-#endif //STR_CAT
-
-#ifndef TO_STRING
-#define TO_STRING_NAME(X) #X
-#define TO_STRING(X) TO_STRING_NAME(X)
-#endif //TO_STRING
-
 /// Makes writing and reading smart pointer types easier and cleaner
 /// Faster to write ClassName_uptr than std::unique_ptr<ClassName>
 /// Also cleaner and easier to read the managed type in nested templated parameters 
@@ -115,82 +106,6 @@ do {                                                  \
 #define NO_DESTROY
 #endif //USING_CLANG
 #endif //NO_DESTROY
-
-#ifndef DO_PRAGMA
-#define DO_PRAGMA(X) _Pragma(TO_STRING_NAME(X))
-#endif //DO_PRAGMA
-
-#ifndef DISABLE_MSVC_WARNING_PUSH
-
-#ifdef USING_MSVC
-
-#define DISABLE_MSVC_WARNING_PUSH(WARNING_ID) \
-    DO_PRAGMA(warning(push))                  \
-    DO_PRAGMA(warning(disable: WARNING_ID))
-
-#define DISABLE_MSVC_WARNING_POP() \
-    DO_PRAGMA(warning(pop))
-
-#else //USING_MSVC
-
-#define DISABLE_MSVC_WARNING_PUSH(WARNING_ID)
-#define DISABLE_MSVC_WARNING_POP()
-
-#endif//USING_MSVC
-
-#endif //DISABLE_MSVC_WARNING_PUSH
-
-#ifndef DISABLE_CLANG_WARNING_PUSH
-
-#ifdef USING_CLANG
-
-#define DISABLE_CLANG_WARNING_PUSH(WARNING_ID)                    \
-    DO_PRAGMA(clang diagnostic push)                              \
-    DO_PRAGMA(clang diagnostic ignored STR_CAT("-W", WARNING_ID))
-
-#define DISABLE_CLANG_WARNING_POP() \
-    DO_PRAGMA(clang diagnostic pop)
-
-#else //USING_CLANG
-
-#define DISABLE_CLANG_WARNING_PUSH(WARNING_ID)
-#define DISABLE_CLANG_WARNING_POP()
-
-#endif //USING_CLANG
-
-#endif //DISABLE_CLANG_WARNING_PUSH
-
-#ifndef DISABLE_GCC_WARNING_PUSH
-
-#ifdef USING_GCC
-
-#define DISABLE_GCC_WARNING_PUSH(WARNING_ID)                    \
-    DO_PRAGMA(GCC diagnostic push)                              \
-    DO_PRAGMA(GCC diagnostic ignored STR_CAT("-W", WARNING_ID))
-
-#define DISABLE_GCC_WARNING_POP() \
-    DO_PRAGMA(GCC diagnostic pop)
-
-#else //USING_GCC
-
-#define DISABLE_GCC_WARNING_PUSH(WARNING_ID)
-#define DISABLE_GCC_WARNING_POP()
-
-#endif //USING_GCC
-
-#endif //DISABLE_GCC_WARNING_PUSH
-
-#ifndef DISABLE_NON_MSVC_WARNING_PUSH
-
-#define DISABLE_NON_MSVC_WARNING_PUSH(WARNING_ID) \
-    DISABLE_GCC_WARNING_PUSH(WARNING_ID)          \
-    DISABLE_CLANG_WARNING_PUSH(WARNING_ID)
-
-#define DISABLE_NON_MSVC_WARNING_POP() \
-    DISABLE_CLANG_WARNING_POP()        \
-    DISABLE_GCC_WARNING_POP()
-
-#endif //DISABLE_NON_MSVC_WARNING_PUSH
 
 #define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF)                         \
 template<typename... Args>                                                     \

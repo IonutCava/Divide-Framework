@@ -745,7 +745,7 @@ namespace Divide
         editorDesc._attachments.emplace_back(InternalRTAttachmentDescriptor
         {
             editorDescriptor, _editorSampler, RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO
-        };
+        });
 
         editorDesc._resolution = renderResolution;
         editorDesc._name = "Node_Preview";

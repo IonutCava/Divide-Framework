@@ -160,10 +160,11 @@ else ()
 
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_compile_definitions(USING_CLANG)
-    add_compile_options(-Wno-c++17-extensions -Wno-unknown-argument -Wno-unused-command-line-argument)
+    add_compile_options(-Wno-unknown-argument -Wno-unused-command-line-argument)
   else ()
     add_compile_definitions(USING_GCC)
   endif ()
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-c++17-extensions>)
 
   if ( ENABLE_ASAN )
     list(APPEND EXTRA_COMPILE_FLAGS "-fsanitize=address")
