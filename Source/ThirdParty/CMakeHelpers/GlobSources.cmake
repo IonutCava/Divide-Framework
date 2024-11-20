@@ -72,8 +72,8 @@ set (THIRD_PARTY_IMGUIFILESYSTEM ThirdParty/ImGuiMisc/imguifilesystem/imguifiles
                                  ThirdParty/ImGuiMisc/imguistyleserializer/imguistyleserializer.cpp
 )
 
-if(NOT USING_MSVC)
-    set( MINIZIP_COMPILE_OPTIONS "-Wno-switch-default -Wno-missing-variable-declarations -Wno-date-time" )
+if(NOT MSVC_COMPILER)
+    set( MINIZIP_COMPILE_OPTIONS "-Wno-switch-default -Wno-missing-variable-declarations -Wno-date-time -Wno-unused-parameter" )
     set_source_files_properties(${THIRD_PARTY_MINIZIP} PROPERTIES COMPILE_FLAGS "${MINIZIP_COMPILE_OPTIONS}")
 
     set( IMGUIFILESYSTEM_COMPILE_OPTIONS "-Wno-unused-parameter" )
