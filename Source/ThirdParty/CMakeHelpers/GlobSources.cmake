@@ -69,7 +69,7 @@ set (THIRD_PARTY_MINIZIP ThirdParty/ImGuiMisc/imguifilesystem/minizip/ioapi.c
                          ThirdParty/ImGuiMisc/imguifilesystem/minizip/zip.c
 )
 
-if(NOT MSVC)
+if(NOT USING_MSVC)
     set( MINIZIP_COMPILE_OPTIONS "-Wno-switch-default -Wno-missing-variable-declarations -Wno-date-time")
     set_source_files_properties(${THIRD_PARTY_MINIZIP} PROPERTIES COMPILE_FLAGS "${MINIZIP_COMPILE_OPTIONS}")
 endif()
