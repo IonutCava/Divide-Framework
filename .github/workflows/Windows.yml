@@ -1,6 +1,6 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: Win64 - Clang
+name: Windows Builds
 
 on:
   push:
@@ -9,8 +9,74 @@ on:
   workflow_dispatch:
     
 jobs:
-  job:
-    name: ${{ matrix.os }}-${{ github.workflow }}
+  msvc_job:
+    name: Windows - MSVC Builds
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
+
+    - name: Restore from cache and setup vcpkg executable and data files.
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
+
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc'
+        buildPreset: 'windows-msvc-release'
+        testPreset: 'test-windows-msvc-release'
+            
+    - name: Build and test Game in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc'
+        buildPreset: 'windows-msvc-profile'
+        testPreset: 'test-windows-msvc-profile'
+
+    - name: Build and test Game in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc'
+        buildPreset: 'windows-msvc-debug'
+        testPreset: 'test-windows-msvc-debug'
+
+    - name: Build and test Editor in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc-editor'
+        buildPreset: 'windows-msvc-release-editor'
+        testPreset: 'test-windows-msvc-release-editor'
+
+    - name: Build and test Editor in Profile mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc-editor'
+        buildPreset: 'windows-msvc-profile-editor'
+        testPreset: 'test-windows-msvc-profile-editor'
+
+    - name: Build and test Editor in Debug mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc-editor'
+        buildPreset: 'windows-msvc-debug-editor'
+        testPreset: 'test-windows-msvc-debug-editor'
+
+  clang_job:
+    name: Windows - Clang Builds
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -75,3 +141,4 @@ jobs:
         buildPreset: 'windows-clang-debug-editor'
         testPreset: 'test-windows-clang-debug-editor'
         
+

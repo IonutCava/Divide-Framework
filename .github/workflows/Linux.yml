@@ -1,0 +1,210 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: Linux Builds
+
+on:
+  push:
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+    
+jobs:
+  info_job:
+    name: Ubuntu 24-04 - Print Info
+    runs-on: ${{ matrix.os }}
+    #runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+
+    steps:
+    - name: Print GCC version
+      run: g++ --version 
+
+    - name: Print CLANG version
+      run: clang --version 
+
+  gcc_job:
+    needs: info_job
+
+    name: Ubuntu 24-04 - GCC Builds
+    runs-on: ${{ matrix.os }}
+    #runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      id: runvcpkg
+      with:
+        # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
+        vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
+
+    - name: Install extra required packages
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+
+    - name: List $RUNNER_WORKSPACE before build
+      run: find $RUNNER_WORKSPACE
+      shell: bash
+
+    - name: Print output of run-vcpkg's action.
+      run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
+
+    - name: Build and test Editor in Release mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_release
+      with:
+        configurePreset: 'unixlike-gcc-editor'
+        buildPreset: 'unixlike-gcc-release-editor'
+        testPreset: 'test-unixlike-gcc-release-editor'
+
+    - name: List $RUNNER_WORKSPACE after build
+      run: find $RUNNER_WORKSPACE
+      shell: bash
+
+    - name: Build and test Editor in Profile mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_profile
+      with:
+        configurePreset: 'unixlike-gcc-editor'
+        buildPreset: 'unixlike-gcc-profile-editor'
+        testPreset: 'test-unixlike-gcc-profile-editor'
+
+    - name: Build and test Editor in Debug mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_debug
+      with:
+        configurePreset: 'unixlike-gcc-editor'
+        buildPreset: 'unixlike-gcc-debug-editor'
+        testPreset: 'test-unixlike-gcc-debug-editor'
+
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_release
+      with:
+        configurePreset: 'unixlike-gcc'
+        buildPreset: 'unixlike-gcc-release'
+        testPreset: 'test-unixlike-gcc-release'
+
+    - name: Build and test Game in Profile mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_profile
+      with:
+        configurePreset: 'unixlike-gcc'
+        buildPreset: 'unixlike-gcc-profile'
+        testPreset: 'test-unixlike-gcc-profile'
+
+    - name: Build and test Game in Debug mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_debug
+      with:
+        configurePreset: 'unixlike-gcc'
+        buildPreset: 'unixlike-gcc-debug'
+        testPreset: 'test-unixlike-gcc-debug'
+
+  clang_job:
+    needs: info_job
+
+    name: Ubuntu 24-04 - Clang Builds
+    runs-on: ${{ matrix.os }}
+    #runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+        
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
+  
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      id: runvcpkg
+      with:
+        # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
+        vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
+
+    - name: Install extra required packages
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+
+    - name: List $RUNNER_WORKSPACE before build
+      run: find $RUNNER_WORKSPACE
+      shell: bash
+
+    - name: Print output of run-vcpkg's action.
+      run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
+
+    - name: Build and test Editor in Release mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_release
+      with:
+        configurePreset: 'unixlike-clang-editor'
+        buildPreset: 'unixlike-clang-release-editor'
+        testPreset: 'test-unixlike-clang-release-editor'
+
+    - name: List $RUNNER_WORKSPACE after build
+      run: find $RUNNER_WORKSPACE
+      shell: bash
+
+    - name: Build and test Editor in Profile mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_profile
+      with:
+        configurePreset: 'unixlike-clang-editor'
+        buildPreset: 'unixlike-clang-profile-editor'
+        testPreset: 'test-unixlike-clang-profile-editor'
+
+    - name: Build and test Editor in Debug mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_debug
+      with:
+        configurePreset: 'unixlike-clang-editor'
+        buildPreset: 'unixlike-clang-debug-editor'
+        testPreset: 'test-unixlike-clang-debug-editor'
+
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_release
+      with:
+        configurePreset: 'unixlike-clang'
+        buildPreset: 'unixlike-clang-release'
+        testPreset: 'test-unixlike-clang-release'
+
+    - name: Build and test Game in Profile mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_profile
+      with:
+        configurePreset: 'unixlike-clang'
+        buildPreset: 'unixlike-clang-profile'
+        testPreset: 'test-unixlike-clang-profile'
+
+    - name: Build and test Game in Debug mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_game_debug
+      with:
+        configurePreset: 'unixlike-clang'
+        buildPreset: 'unixlike-clang-debug'
+        testPreset: 'test-unixlike-clang-debug'
