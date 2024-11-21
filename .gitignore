@@ -5,3 +5,4 @@ build/
 /Logs/*.log
 /Cache/
 html
+/XML/Editor/Editor.xml.bak
