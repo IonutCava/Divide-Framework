@@ -984,7 +984,7 @@ namespace Divide
                 const F32 dot = Dot( vert._normal, WORLD_Y_AXIS );
                 //const F32 lengthSq1 = vert._normal.lengthSquared(); = 1.0f (normalised)
                 //const F32 lengthSq2 = WORLD_Y_AXIS.lengthSquared(); = 1.0f (normalised)
-                //const F32 length = Divide::Sqrt(lengthSq1 * lengthSq2); = 1.0f
+                //const F32 length = Sqrt(lengthSq1 * lengthSq2); = 1.0f
                 constexpr F32 length = 1.0f;
                 const Angle::DEGREES_F angle = Angle::to_DEGREES( Angle::RADIANS_F(std::acos( dot / length ) ));
                 if ( angle > slopeLimit )

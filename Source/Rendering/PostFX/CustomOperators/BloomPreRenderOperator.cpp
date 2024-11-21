@@ -145,7 +145,7 @@ void BloomPreRenderOperator::knee(const F32 val)
 
 bool BloomPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, [[maybe_unused]] const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
-    assert(input._targetID != output._targetID);
+    DIVIDE_ASSERT(input._targetID != output._targetID);
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     const auto& screenTex = Get(screenAtt->texture());

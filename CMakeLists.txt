@@ -11,10 +11,20 @@ option(ENABLE_ASAN "Enable address sanitization" OFF)
 option(ENABLE_UBSAN "Enable undefined behbaviour sanitization" OFF)
 option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug builds (/JMC)" OFF)
 
-# This is required to be before the first project() call of the CMake build.
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file.")
-
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
+
+set(vcpkg "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+set(local_vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
+if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
+    if ( EXISTS "${vcpkg}")
+        set(CMAKE_TOOLCHAIN_FILE "${vcpkg}" CACHE FILEPATH "CMake toolchain file")
+    else()
+        set(CMAKE_TOOLCHAIN_FILE "${local_vcpkg}" CACHE FILEPATH "Make toolchain file")
+    endif()
+endif()
+  
+message(STATUS "vcpkg toolchain found in: ${CMAKE_TOOLCHAIN_FILE}")
+
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (NOT ENABLE_ASAN AND NOT ENABLE_UBSAN AND POLICY CMP0141)
@@ -43,6 +53,25 @@ set(PROJECT_LICENSE_FILE "${CMAKE_SOURCE_DIR}/../LICENSE" CACHE FILEPATH "Path t
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+set(MSVC_COMPILER OFF) 
+set(CLANG_COMPILER OFF)
+set(GNU_COMPILER OFF)
+
+message("Trying to match compiler for ID: ${CMAKE_CXX_COMPILER_ID}")
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    message("Using MSVC compiler")
+    set(MSVC_COMPILER ON) 
+endif()
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
+    message("Using Clang compiler")
+    set(CLANG_COMPILER ON) 
+endif()
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    message("Using GNU compiler")
+    set(GNU_COMPILER ON) 
+endif()
 
 set(EXTRA_COMPILE_FLAGS "")
 set(EXTRA_LINK_FLAGS "")
@@ -78,7 +107,7 @@ if ( ENABLE_SSE42 OR ENABLE_AVX OR ENABLE_AVX2 )
     message("Enabling AVX2 + AVX + SSE4.2 support!")
 
     add_compile_definitions(HAS_AVX2 HAS_AVX HAS_SSE42)
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    if (MSVC_COMPILER)
       add_compile_options(/arch:AVX2)
     else()
       add_compile_options(-mavx2 -mavx -msse4.2)
@@ -91,7 +120,7 @@ if ( ENABLE_SSE42 OR ENABLE_AVX OR ENABLE_AVX2 )
     message("Enabling AVX + SSE4.2 support!")
 
     add_compile_definitions(HAS_AVX HAS_SSE42)
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    if (MSVC_COMPILER)
       add_compile_options(/arch:AVX)
     else()
       add_compile_options(-mno-avx2 -mavx -msse4.2)
@@ -104,7 +133,7 @@ if ( ENABLE_SSE42 OR ENABLE_AVX OR ENABLE_AVX2 )
     message("Enabling SSE4.2 support!")
 
     add_compile_definitions(HAS_SSE42)
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    if (MSVC_COMPILER)
       add_compile_options(/d2archSSE42)
     else()
       add_compile_options(-mno-avx2 -mno-avx -msse4.2)
@@ -118,12 +147,14 @@ endif ()
 
 if ( NOT AVX2_OPT AND NOT AVX_OPT AND NOT SSE42_OPT)
   add_compile_definitions(NO_SIMD)
-  if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+
+  if (NOT MSVC_COMPILER)
     add_compile_options(-mno-avx2 -mno-avx -mno-sse4.2)
   endif()
+
 endif ()
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+if (MSVC_COMPILER)
   set(CMAKE_DEBUG_PREFIX /D)
 
   add_compile_definitions(USING_MSVC _CRT_SECURE_NO_WARNINGS)
@@ -148,12 +179,15 @@ else ()
 
   set(CMAKE_DEBUG_PREFIX -D)
 
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  if (CLANG_COMPILER)
     add_compile_definitions(USING_CLANG)
-    add_compile_options(-Wno-c++17-extensions -Wno-unknown-argument -Wno-unused-command-line-argument)
-  else ()
+    add_compile_options(-Wno-unknown-argument -Wno-unused-command-line-argument)
+  elseif(GNU_COMPILER)
     add_compile_definitions(USING_GCC)
+  else()
+    message( FATAL_ERROR "Unknown compiler type")
   endif ()
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-c++17-extensions>)
 
   if ( ENABLE_ASAN )
     list(APPEND EXTRA_COMPILE_FLAGS "-fsanitize=address")

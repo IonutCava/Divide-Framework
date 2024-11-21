@@ -850,7 +850,7 @@ namespace Divide
         _euler = Angle::to_DEGREES( _data._orientation.getEuler() );
 
         // Extract the pitch angle from the view matrix.
-        _accumPitch = Angle::to_DEGREES( Angle::RADIANS_F(std::asinf( _data._viewMatrix.getForwardDirection().y ) ));
+        _accumPitch = Angle::to_DEGREES( Angle::RADIANS_F(asinf( _data._viewMatrix.getForwardDirection().y ) ));
 
         if ( _reflectionActive )
         {

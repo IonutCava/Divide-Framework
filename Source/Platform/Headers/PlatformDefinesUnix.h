@@ -56,24 +56,6 @@
 //#include <iterator>
 #include <cmath>
 
-namespace std
-{
-    [[nodiscard]] inline float asinf(const float in)
-    {
-        return ::asinf(in);
-    }
-    
-     [[nodiscard]] inline float acosf(const float in)
-    {
-        return ::acosf(in);
-    }
-
-    [[nodiscard]] inline float floorf(const float in)
-    {
-        return ::floorf(in);
-    }
-};
-
 #ifdef None
 #undef None
 #endif //None
@@ -100,18 +82,5 @@ namespace Divide {
     };
 
 }; //namespace Divide
-
-template <typename T>
-bool isfinite(T val) {
-	return std::isfinite(val);
-}
-
-inline int _strnicmp(const char* str1, const char* str2, unsigned long int n) {
-    return strncasecmp(str1, str2, n);
-}
-
-inline int _stricmp(const char* str1, const char* str2) {
-    return strcasecmp(str1, str2);
-}
 
 #endif //DVD_PLATFORM_DEFINES_UNIX_H_

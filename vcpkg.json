@@ -18,7 +18,6 @@
         "meshoptimizer",
         "nvtt",
         "openal-soft",
-        "physx",
         "expat",
         "recastnavigation",
         "imgui-node-editor",
@@ -32,6 +31,8 @@
         "assimp",
         "sdl2",
         "sdl2-image",
+        "mimalloc",
+        "physx",
         {
             "name": "sdl2-mixer",
             "features": [
@@ -46,10 +47,6 @@
         {
             "name": "imgui",
             "features": [ "docking-experimental", "no-obsolete-keyio", "no-obsolete-functions" ]
-        },
-        {
-            "name": "mimalloc",
-            "features": []
         }
     ]
 }

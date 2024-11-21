@@ -41,4 +41,100 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PlatformDefinesUnix.h"
 #endif
 
+#ifndef STR_CAT
+#define STR_CAT(STR1, STR2) STR1 STR2
+#endif //STR_CAT
+
+#ifndef TO_STRING
+#define TO_STRING_NAME(X) #X
+#define TO_STRING(X) TO_STRING_NAME(X)
+#endif //TO_STRING
+
+#ifndef DO_PRAGMA
+#define DO_PRAGMA(X) _Pragma(TO_STRING_NAME(X))
+#endif //DO_PRAGMA
+
+#ifndef DISABLE_MSVC_WARNING_PUSH
+
+#ifdef USING_MSVC
+
+#define DISABLE_MSVC_WARNING_PUSH(WARNING_ID) \
+    DO_PRAGMA(warning(push))                  \
+    DO_PRAGMA(warning(disable: WARNING_ID))
+
+#define DISABLE_MSVC_WARNING_POP() \
+    DO_PRAGMA(warning(pop))
+
+#else //USING_MSVC
+
+#define DISABLE_MSVC_WARNING_PUSH(WARNING_ID)
+#define DISABLE_MSVC_WARNING_POP()
+
+#endif//USING_MSVC
+
+#endif //DISABLE_MSVC_WARNING_PUSH
+
+#ifndef DISABLE_CLANG_WARNING_PUSH
+
+#ifdef USING_CLANG
+
+#define DISABLE_CLANG_WARNING_PUSH(WARNING_ID)                    \
+    DO_PRAGMA(clang diagnostic push)                              \
+    DO_PRAGMA(clang diagnostic ignored STR_CAT("-W", WARNING_ID))
+
+#define DISABLE_CLANG_WARNING_POP() \
+    DO_PRAGMA(clang diagnostic pop)
+
+#else //USING_CLANG
+
+#define DISABLE_CLANG_WARNING_PUSH(WARNING_ID)
+#define DISABLE_CLANG_WARNING_POP()
+
+#endif //USING_CLANG
+
+#endif //DISABLE_CLANG_WARNING_PUSH
+
+#ifndef DISABLE_GCC_WARNING_PUSH
+
+#ifdef USING_GCC
+
+#define DISABLE_GCC_WARNING_PUSH(WARNING_ID)                    \
+    DO_PRAGMA(GCC diagnostic push)                              \
+    DO_PRAGMA(GCC diagnostic ignored STR_CAT("-W", WARNING_ID))
+
+
+#define DISABLE_GCC_WARNING_POP() \
+    DO_PRAGMA(GCC diagnostic pop)
+
+#define CHANGE_GCC_WARNING_PUSH(WARNING_ID)                     \
+    DO_PRAGMA(GCC diagnostic push)                              \
+    DO_PRAGMA(GCC diagnostic warning STR_CAT("-W", WARNING_ID))
+
+#define CHANGE_GCC_WARNING_POP() \
+    DO_PRAGMA(GCC diagnostic pop)
+
+#else //USING_GCC
+
+#define DISABLE_GCC_WARNING_PUSH(WARNING_ID)
+#define DISABLE_GCC_WARNING_POP()
+
+#define CHANGE_GCC_WARNING_PUSH(WARNING_ID)
+#define CHANGE_GCC_WARNING_POP()
+
+#endif //USING_GCC
+
+#endif //DISABLE_GCC_WARNING_PUSH
+
+#ifndef DISABLE_NON_MSVC_WARNING_PUSH
+
+#define DISABLE_NON_MSVC_WARNING_PUSH(WARNING_ID) \
+    DISABLE_GCC_WARNING_PUSH(WARNING_ID)          \
+    DISABLE_CLANG_WARNING_PUSH(WARNING_ID)
+
+#define DISABLE_NON_MSVC_WARNING_POP() \
+    DISABLE_CLANG_WARNING_POP()        \
+    DISABLE_GCC_WARNING_POP()
+
+#endif //DISABLE_NON_MSVC_WARNING_PUSH
+
 #endif //DVD_PLATFORM_DEFINES_OS_H_

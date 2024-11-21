@@ -411,7 +411,7 @@ namespace Divide
         assert( tComp != nullptr );
 
         const float3& position = tComp->getWorldPosition();
-        const float4& orientation = tComp->getWorldOrientation().asVec4();
+        const float4 orientation = tComp->getWorldOrientation().asVec4();
         const physx::PxTransform posePxTransform( Util::toVec3( position ), physx::PxQuat( orientation.x, orientation.y, orientation.z, orientation.w ).getConjugate() );
 
         newActor->_actor = createActorForGroup( parentComp.physicsCollisionGroup(), posePxTransform );

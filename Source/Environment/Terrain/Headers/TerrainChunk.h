@@ -54,7 +54,8 @@ namespace Attorney
     class TerrainChunkVegetation;
 }
 
-class TerrainChunk {
+class TerrainChunk
+{
     static U32 _chunkID;
     friend class Attorney::TerrainChunkVegetation;
 
@@ -62,9 +63,9 @@ class TerrainChunk {
     TerrainChunk(Terrain* parentTerrain, QuadtreeNode& parentNode) noexcept;
 
     void load(U8 depth, const uint2 pos, U32 targetChunkDimension, uint2 HMSize, BoundingBox& bbInOut);
-    
 
-    [[nodiscard]] float4 getOffsetAndSize() const noexcept {
+    [[nodiscard]] float4 getOffsetAndSize() const noexcept
+    {
         return float4(_xOffset, _yOffset, _sizeX, _sizeY);
     }
 

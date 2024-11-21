@@ -39,6 +39,7 @@ set( THIRD_PARTY_LOCAL_HEADER_FILES ThirdParty/EntityComponentSystem/include/ECS
                                     ThirdParty/ImGuiMisc/imguifilesystem/minizip/zip.h
                                     ThirdParty/ImGuiMisc/imguistyleserializer/imguistyleserializer.h
 )
+set_source_files_properties(${THIRD_PARTY_LOCAL_HEADER_FILES} PROPERTIES HEADER_FILE_ONLY ON)
 
 set( THIRD_PARTY_LOCAL_SRC_FILES ThirdParty/EntityComponentSystem/src/API.cpp
                                  ThirdParty/EntityComponentSystem/src/ComponentManager.cpp
@@ -60,8 +61,6 @@ set( THIRD_PARTY_LOCAL_SRC_FILES ThirdParty/EntityComponentSystem/src/API.cpp
                                  ThirdParty/EntityComponentSystem/src/Memory/Allocator/StackAllocator.cpp
                                  ThirdParty/EntityComponentSystem/src/util/FamilyTypeID.cpp
                                  ThirdParty/EntityComponentSystem/src/util/Timer.cpp
-                                 ThirdParty/ImGuiMisc/imguifilesystem/imguifilesystem.cpp
-                                 ThirdParty/ImGuiMisc/imguistyleserializer/imguistyleserializer.cpp
 )
 
 set (THIRD_PARTY_MINIZIP ThirdParty/ImGuiMisc/imguifilesystem/minizip/ioapi.c
@@ -69,13 +68,20 @@ set (THIRD_PARTY_MINIZIP ThirdParty/ImGuiMisc/imguifilesystem/minizip/ioapi.c
                          ThirdParty/ImGuiMisc/imguifilesystem/minizip/zip.c
 )
 
-set_source_files_properties(${THIRD_PARTY_LOCAL_HEADER_FILES} PROPERTIES HEADER_FILE_ONLY ON)
-LIST (APPEND ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_MINIZIP} ${THIRD_PARTY_LOCAL_HEADER_FILES})
+set (THIRD_PARTY_IMGUIFILESYSTEM ThirdParty/ImGuiMisc/imguifilesystem/imguifilesystem.cpp
+                                 ThirdParty/ImGuiMisc/imguistyleserializer/imguistyleserializer.cpp
+)
 
-if(MSVC)
-    set(WARNING_DISABLE_FLAGS "/wd4100;/wd4244;/wd4706;/wd4267")
-    set_source_files_properties(${THIRD_PARTY_LOCAL_SRC_FILES} PROPERTIES COMPILE_OPTIONS "${WARNING_DISABLE_FLAGS}")
-else()
-    set( MINIZIP_COMPILE_OPTIONS "-Wno-switch-default -Wno-missing-variable-declarations -Wno-date-time")
+if(NOT MSVC_COMPILER)
+    set( MINIZIP_COMPILE_OPTIONS "-Wno-switch-default -Wno-missing-variable-declarations -Wno-date-time -Wno-unused-parameter" )
     set_source_files_properties(${THIRD_PARTY_MINIZIP} PROPERTIES COMPILE_FLAGS "${MINIZIP_COMPILE_OPTIONS}")
+
+    set( IMGUIFILESYSTEM_COMPILE_OPTIONS "-Wno-unused-parameter" )
+    set_source_files_properties(${THIRD_PARTY_IMGUIFILESYSTEM} PROPERTIES COMPILE_FLAGS "${IMGUIFILESYSTEM_COMPILE_OPTIONS}")
 endif()
+
+set (THIRD_PARTY_LOCAL_SRC_FILES ${THIRD_PARTY_LOCAL_SRC_FILES}
+                                 ${THIRD_PARTY_MINIZIP}
+                                 ${THIRD_PARTY_IMGUIFILESYSTEM}
+                                  ${THIRD_PARTY_LOCAL_HEADER_FILES})
+

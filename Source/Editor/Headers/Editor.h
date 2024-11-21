@@ -42,6 +42,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/TemplateLibraries/Headers/CircularBuffer.h"
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Editor/Widgets/Headers/Gizmo.h"
+#include "Editor/Widgets/Headers/DockedWindow.h"
 #include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/Video/Headers/Pipeline.h"
@@ -83,7 +84,6 @@ namespace Divide
     class ECSManager;
     class UndoManager;
     class IMPrimitive;
-    class DockedWindow;
     class OutputWindow;
     class PanelManager;
     class PostFXWindow;

@@ -8,14 +8,18 @@
     "configurePresets": [
         {
             "name": "conf-common",
-            "description": "General settings that apply to all configurations",
+            "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations",
             "hidden": true,
-            "generator": "Ninja",
+            "generator": "Ninja Multi-Config",
             "binaryDir": "${sourceDir}/Build/${presetName}",
             "installDir": "${sourceDir}/Install/${presetName}",
             "warnings": { "dev": false },
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"
+            },
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
             }
         },
         {
@@ -27,10 +31,6 @@
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
-            },
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
             },
             "toolset": {
                 "value": "host=x64",
@@ -52,378 +52,202 @@
             }
         },
         {
-            "name": "windows-msvc-debug-editor",
-            "displayName": "Debug Editor (MSVC)",
-            "description": "Target Windows with the msvc compiler, debug-editor build type",
+            "name": "windows-msvc",
+            "displayName": "Game Build (MSVC)",
+            "description": "Target Windows with the msvc compiler",
             "inherits": "conf-windows-common",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_C_COMPILER": "cl",
-                "CMAKE_CXX_COMPILER": "cl",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "windows-msvc-profile-editor",
-            "displayName": "Profile Editor (MSVC)",
-            "description": "Target Windows with the msvc compiler, profile-editor build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_C_COMPILER": "cl",
-                "CMAKE_CXX_COMPILER": "cl",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "windows-msvc-release-editor",
-            "displayName": "Release Editor (MSVC)",
-            "description": "Target Windows with the msvc compiler, release-editor build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_C_COMPILER": "cl",
-                "CMAKE_CXX_COMPILER": "cl",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "windows-msvc-debug",
-            "displayName": "Debug (MSVC)",
-            "description": "Target Windows with the msvc compiler, debug build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_C_COMPILER": "cl",
                 "CMAKE_CXX_COMPILER": "cl"
             }
         },
         {
-            "name": "windows-msvc-profile",
-            "displayName": "Profile (MSVC)",
-            "description": "Target Windows with the msvc compiler, profile build type",
-            "inherits": "conf-windows-common",
+            "name": "windows-msvc-editor",
+            "displayName": "Editor Build (MSVC)",
+            "description": "Target Windows with the msvc compiler. Editor build.",
+            "inherits": "windows-msvc",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_C_COMPILER": "cl",
-                "CMAKE_CXX_COMPILER": "cl"
-            }
-        },
-        {
-            "name": "windows-msvc-release",
-            "displayName": "Release (MSVC)",
-            "description": "Target Windows with the msvc compiler, release build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_C_COMPILER": "cl",
-                "CMAKE_CXX_COMPILER": "cl"
-            }
-        },
-        {
-            "name": "windows-clang-debug-editor",
-            "displayName": "Debug Editor (CLANG)",
-            "description": "Target Windows with the clang compiler, debug-editor build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl",
                 "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
             }
         },
         {
-            "name": "windows-clang-profile-editor",
-            "displayName": "Profile Editor (CLANG)",
-            "description": "Target Windows with the clang compiler, profile-editor build type",
+            "name": "windows-clang",
+            "displayName": "Game Build (Win64 - CLANG)",
+            "description": "Target Windows with the clang compiler",
             "inherits": "conf-windows-common",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "windows-clang-release-editor",
-            "displayName": "Release Editor (CLANG)",
-            "description": "Target Windows with the clang compiler, release-editor build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "windows-clang-debug",
-            "displayName": "Debug (CLANG)",
-            "description": "Target Windows with the clang compiler, debug build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_C_COMPILER": "clang-cl",
                 "CMAKE_CXX_COMPILER": "clang-cl"
             }
         },
         {
-            "name": "windows-clang-profile",
-            "displayName": "Profile (CLANG)",
-            "description": "Target Windows with the clang compiler, profile build type",
-            "inherits": "conf-windows-common",
+            "name": "windows-clang-editor",
+            "displayName": "Editor Build (Win64 - CLANG)",
+            "description": "Target Windows with the clang compiler. Editor build.",
+            "inherits": "windows-clang",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl"
-            }
-        },
-        {
-            "name": "windows-clang-release",
-            "displayName": "Release (CLANG)",
-            "description": "Target Windows with the clang compiler, release build type",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl"
-            }
-        },
-        {
-            "name": "unixlike-gcc-debug-editor",
-            "displayName": "Debug Editor (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler, debug-editor build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
-                "CMAKE_BUILD_TYPE": "Debug",
                 "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
             }
         },
         {
-            "name": "unixlike-gcc-profile-editor",
-            "displayName": "Profile Editor (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler, profile-editor build type",
+            "name": "unixlike-gcc",
+            "displayName": "Game Build (GCC)",
+            "description": "Target Unix-like OS with the gcc compiler",
             "inherits": "conf-unixlike-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "unixlike-gcc-editor",
+            "displayName": "Editor Build (GCC)",
+            "description": "Target Unix-like OS with the gcc compiler. Editor build.",
+            "inherits": "unixlike-gcc",
+            "cacheVariables": {
                 "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
             }
         },
         {
-            "name": "unixlike-gcc-release-editor",
-            "displayName": "Release Editor (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler, release-editor build type",
+            "name": "unixlike-clang",
+            "displayName": "Game Build (Linux - CLANG)",
+            "description": "Target Unix-like OS with the clang compiler",
             "inherits": "conf-unixlike-common",
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
-                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "unixlike-clang-editor",
+            "displayName": "Editor Build (Linux - CLANG)",
+            "description": "Target Unix-like OS with the clang compiler. Editor build.",
+            "inherits": "unixlike-clang",
+            "cacheVariables": {
                 "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "unixlike-gcc-debug",
-            "displayName": "Debug (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler, debug build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "unixlike-gcc-profile",
-            "displayName": "Profile (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler, profile build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-            }
-        },
-        {
-            "name": "unixlike-gcc-release",
-            "displayName": "Release (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler, release build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++",
-                "CMAKE_BUILD_TYPE": "Release"
-            }
-        },
-        {
-            "name": "unixlike-clang-debug-editor",
-            "displayName": "Debug Editor (CLANG)",
-            "description": "Target Unix-like OS with the clang compiler, debug-editor build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_BUILD_TYPE": "Debug",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "unixlike-clang-profile-editor",
-            "displayName": "Profile Editor (CLANG)",
-            "description": "Target Unix-like OS with the clang compiler, profile-editor build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "unixlike-clang-release-editor",
-            "displayName": "Release Editor (CLANG)",
-            "description": "Target Unix-like OS with the clang compiler, release-editor build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_BUILD_TYPE": "Release",
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "unixlike-clang-debug",
-            "displayName": "Debug (CLANG)",
-            "description": "Target Unix-like OS with the clang compiler, debug build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "unixlike-clang-profile",
-            "displayName": "Profile (CLANG)",
-            "description": "Target Unix-like OS with the clang compiler, profile build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-            }
-        },
-        {
-            "name": "unixlike-clang-release",
-            "displayName": "Release (CLANG)",
-            "description": "Target Unix-like OS with the clang compiler, release build type",
-            "inherits": "conf-unixlike-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_BUILD_TYPE": "Release"
             }
         }
     ],
     "buildPresets": [
         {
             "name": "windows-msvc-debug-editor",
-            "configurePreset": "windows-msvc-debug-editor"
+            "configurePreset": "windows-msvc-editor",
+            "configuration": "Debug"
         },
         {
             "name": "windows-msvc-profile-editor",
-            "configurePreset": "windows-msvc-profile-editor"
+            "configurePreset": "windows-msvc-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "windows-msvc-release-editor",
-            "configurePreset": "windows-msvc-release-editor"
+            "configurePreset": "windows-msvc-editor",
+            "configuration": "Release"
         },
         {
             "name": "windows-msvc-debug",
-            "configurePreset": "windows-msvc-debug"
+            "configurePreset": "windows-msvc",
+            "configuration": "Debug"
         },
         {
             "name": "windows-msvc-profile",
-            "configurePreset": "windows-msvc-profile"
+            "configurePreset": "windows-msvc",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "windows-msvc-release",
-            "configurePreset": "windows-msvc-release"
+            "configurePreset": "windows-msvc",
+            "configuration": "Release"
         },
         {
             "name": "windows-clang-debug-editor",
-            "configurePreset": "windows-clang-debug-editor"
+            "configurePreset": "windows-clang-editor",
+            "configuration": "Debug"
         },
         {
             "name": "windows-clang-profile-editor",
-            "configurePreset": "windows-clang-profile-editor"
+            "configurePreset": "windows-clang-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "windows-clang-release-editor",
-            "configurePreset": "windows-clang-release-editor"
+            "configurePreset": "windows-clang-editor",
+            "configuration": "Release"
         },
         {
             "name": "windows-clang-debug",
-            "configurePreset": "windows-clang-debug"
+            "configurePreset": "windows-clang",
+            "configuration": "Debug"
         },
         {
             "name": "windows-clang-profile",
-            "configurePreset": "windows-clang-profile"
+            "configurePreset": "windows-clang",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "windows-clang-release",
-            "configurePreset": "windows-clang-release"
+            "configurePreset": "windows-clang",
+            "configuration": "Release"
         },
         {
             "name": "unixlike-gcc-debug-editor",
-            "configurePreset": "unixlike-gcc-debug-editor"
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "Debug"
         },
         {
             "name": "unixlike-gcc-profile-editor",
-            "configurePreset": "unixlike-gcc-profile-editor"
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "unixlike-gcc-release-editor",
-            "configurePreset": "unixlike-gcc-release-editor"
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "Release"
         },
         {
             "name": "unixlike-gcc-debug",
-            "configurePreset": "unixlike-gcc-debug"
+            "configurePreset": "unixlike-gcc",
+            "configuration": "Debug"
         },
         {
             "name": "unixlike-gcc-profile",
-            "configurePreset": "unixlike-gcc-profile"
+            "configurePreset": "unixlike-gcc",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "unixlike-gcc-release",
-            "configurePreset": "unixlike-gcc-release"
+            "configurePreset": "unixlike-gcc",
+            "configuration": "Release"
         },
         {
             "name": "unixlike-clang-debug-editor",
-            "configurePreset": "unixlike-clang-debug-editor"
+            "configurePreset": "unixlike-clang-editor",
+            "configuration": "Debug"
         },
         {
             "name": "unixlike-clang-profile-editor",
-            "configurePreset": "unixlike-clang-profile-editor"
+            "configurePreset": "unixlike-clang-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "unixlike-clang-release-editor",
-            "configurePreset": "unixlike-clang-release-editor"
+            "configurePreset": "unixlike-clang-editor",
+            "configuration": "Release"
         },
         {
             "name": "unixlike-clang-debug",
-            "configurePreset": "unixlike-clang-debug"
+            "configurePreset": "unixlike-clang",
+            "configuration": "Debug"
         },
         {
             "name": "unixlike-clang-profile",
-            "configurePreset": "unixlike-clang-profile"
+            "configurePreset": "unixlike-clang",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "unixlike-clang-release",
-            "configurePreset": "unixlike-clang-release"
+            "configurePreset": "unixlike-clang",
+            "configuration": "Release"
         }
     ],
     "testPresets": [
@@ -444,126 +268,192 @@
             "displayName": "Test-MSVC-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-debug-editor"
+            "configurePreset": "windows-msvc-editor",
+            "configuration": "Debug"
         },
         {
             "name": "test-windows-msvc-profile-editor",
             "displayName": "Test-MSVC-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-profile-editor"
+            "configurePreset": "windows-msvc-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-windows-msvc-release-editor",
             "displayName": "Test-MSVC-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-release-editor"
+            "configurePreset": "windows-msvc-editor",
+            "configuration": "Release"
         },
         {
             "name": "test-windows-msvc-debug",
             "displayName": "Test-MSVC-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-debug"
+            "configurePreset": "windows-msvc",
+            "configuration": "Debug"
         },
         {
             "name": "test-windows-msvc-profile",
             "displayName": "Test-MSVC-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-profile"
+            "configurePreset": "windows-msvc",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-windows-msvc-release",
             "displayName": "Test-MSVC-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-release"
+            "configurePreset": "windows-msvc",
+            "configuration": "Release"
         },
         {
             "name": "test-windows-clang-debug",
             "displayName": "Test-Clang-Win64-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-clang-debug"
+            "configurePreset": "windows-clang",
+            "configuration": "Debug"
         },
         {
             "name": "test-windows-clang-profile",
             "displayName": "Test-Clang-Win64-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-clang-profile"
+            "configurePreset": "windows-clang",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-windows-clang-release",
             "displayName": "Test-Clang-Win64-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-clang-release"
+            "configurePreset": "windows-clang",
+            "configuration": "Release"
         },
         {
             "name": "test-windows-clang-debug-editor",
             "displayName": "Test-Clang-Win64-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-clang-debug-editor"
+            "configurePreset": "windows-clang-editor",
+            "configuration": "Debug"
         },
         {
             "name": "test-windows-clang-profile-editor",
             "displayName": "Test-Clang-Win64-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-clang-profile-editor"
+            "configurePreset": "windows-clang-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-windows-clang-release-editor",
             "displayName": "Test-Clang-Win64-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-clang-release-editor"
+            "configurePreset": "windows-clang-editor",
+            "configuration": "Release"
         },
         {
             "name": "test-unixlike-gcc-debug",
             "displayName": "Test-GCC-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc-debug"
+            "configurePreset": "unixlike-gcc",
+            "configuration": "Debug"
         },
         {
             "name": "test-unixlike-gcc-profile",
             "displayName": "Test-GCC-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc-profile"
+            "configurePreset": "unixlike-gcc",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-unixlike-gcc-release",
             "displayName": "Test-GCC-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc-release"
+            "configurePreset": "unixlike-gcc",
+            "configuration": "Release"
+        },
+        {
+            "name": "test-unixlike-gcc-debug-editor",
+            "displayName": "Test-GCC-Debug-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "Debug"
+        },
+        {
+            "name": "test-unixlike-gcc-profile-editor",
+            "displayName": "Test-GCC-Profile-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "test-unixlike-gcc-release-editor",
+            "displayName": "Test-GCC-Release-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "Release"
         },
         {
             "name": "test-unixlike-clang-debug-editor",
             "displayName": "Test-Clang-Unix-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang-debug-editor"
+            "configurePreset": "unixlike-clang-editor",
+            "configuration": "Debug"
         },
         {
             "name": "test-unixlike-clang-profile-editor",
             "displayName": "Test-Clang-Unix-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang-profile-editor"
+            "configurePreset": "unixlike-clang-editor",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-unixlike-clang-release-editor",
             "displayName": "Test-Clang-Unix-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang-release-editor"
+            "configurePreset": "unixlike-clang-editor",
+            "configuration": "Release"
+        },
+        {
+            "name": "test-unixlike-clang-debug",
+            "displayName": "Test-Clang-Unix-Debug",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang",
+            "configuration": "Debug"
+        },
+        {
+            "name": "test-unixlike-clang-profile",
+            "displayName": "Test-Clang-Unix-Profile",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "test-unixlike-clang-release",
+            "displayName": "Test-Clang-Unix-Release",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang",
+            "configuration": "Release"
         }
     ]
 }

@@ -154,7 +154,7 @@ T Quaternion<T>::magnituteSQ() const
 template <typename T>
 bool Quaternion<T>::compare(const Quaternion<T>& rq, Angle::RADIANS_F tolerance) const
 {
-    const F32 angleRad = std::acosf(to_F32(dot(rq)));
+    const F32 angleRad = acosf(to_F32(dot(rq)));
 
     return COMPARE_TOLERANCE(angleRad, tolerance) || COMPARE_TOLERANCE(angleRad, M_PI_f, tolerance);
 }
@@ -407,7 +407,7 @@ void Quaternion<T>::lookRotation( vec3<T> forward, vec3<T> up)
     
     if (num8 > 0)
     {
-        T num = Divide::Sqrt(num8 + 1);
+        T num = Sqrt(num8 + 1);
         W(num * 0.5); num = T{ 0.5f / num };
         X((m12 - m21) * num);
         Y((m20 - m02) * num);
@@ -417,7 +417,7 @@ void Quaternion<T>::lookRotation( vec3<T> forward, vec3<T> up)
 
     if ((m00 >= m11) && (m00 >= m22))
     {
-        const T num7 = Divide::Sqrt(((1 + m00) - m11) - m22);
+        const T num7 = Sqrt(((1 + m00) - m11) - m22);
         const T num4 = T{ 0.5f / num7 };
         X(0.5 * num7);
         Y((m01 + m10) * num4);
@@ -428,7 +428,7 @@ void Quaternion<T>::lookRotation( vec3<T> forward, vec3<T> up)
 
     if (m11 > m22)
     {
-        const T num6 = Divide::Sqrt(((1 + m11) - m00) - m22);
+        const T num6 = Sqrt(((1 + m11) - m00) - m22);
         const T num3 = T{ 0.5f / num6 };
         X((m10 + m01) * num3);
         Y(0.5 * num6);
@@ -437,7 +437,7 @@ void Quaternion<T>::lookRotation( vec3<T> forward, vec3<T> up)
         return;
     }
 
-    const T num5 = Divide::Sqrt(((1 + m22) - m00) - m11);
+    const T num5 = Sqrt(((1 + m22) - m00) - m11);
     const T num2 = T{ 0.5f / num5 };
     X((m20 + m02) * num2);
     Y((m21 + m12) * num2);

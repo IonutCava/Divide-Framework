@@ -1,5 +1,5 @@
-[![Win64 - MSVC](https://github.com/IonutCava/Divide-Framework/actions/workflows/Win64-MSVC.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Win64-MSVC.yml) [![Win64 - Clang](https://github.com/IonutCava/Divide-Framework/actions/workflows/Win64-Clang.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Win64-Clang.yml)
-[![Linux - Clang](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux-Clang.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux-Clang.yml) [![Linux - GCC](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux-GCC.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux-GCC.yml)
+[![Windows Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/Windows.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Windows.yml)
+[![Linux Builds](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux.yml/badge.svg)](https://github.com/IonutCava/Divide-Framework/actions/workflows/Linux.yml)
 
 # Divide-Framework [![MIT Licensed](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 

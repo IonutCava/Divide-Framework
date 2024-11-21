@@ -73,20 +73,14 @@
 #define NO_INLINE __declspec(noinline)
 #endif //NO_INLINE
 
-
 #include <Windows.h>
-
-#if defined(DELETE)
-#undef DELETE
-#endif //DELETE
 
 #if defined(_WIN64)
 #define WIN64
 #else
-#define WIN32
+#error "Divide Framework requires a 64bit OS"
 #endif
 
-#define strncasecmp _strnicmp
 #define strcasecmp _stricmp
 
 LRESULT DlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;

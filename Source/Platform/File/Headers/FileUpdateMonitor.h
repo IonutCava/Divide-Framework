@@ -38,10 +38,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 
-enum class FileUpdateEvent : U8 {
-    ADD = 0,
-    DELETE,
-    MODIFY,
+enum class FileUpdateEvent : U8
+{
+    ADDED = 0,
+    DELETED,
+    MODIFIED,
     COUNT
 };
 
@@ -60,7 +61,6 @@ private:
     FileUpdateCbk _cbk;
     vector<char> _ignoredEndingCharacters;
     vector<Str<8>> _ignoredExtensions;
-
 };
 
 }; //namespace Divide
