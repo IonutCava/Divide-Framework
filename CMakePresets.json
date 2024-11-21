@@ -384,6 +384,30 @@
             "configuration": "Release"
         },
         {
+            "name": "test-unixlike-gcc-debug-editor",
+            "displayName": "Test-GCC-Debug-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "Debug"
+        },
+        {
+            "name": "test-unixlike-gcc-profile-editor",
+            "displayName": "Test-GCC-Profile-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "test-unixlike-gcc-release-editor",
+            "displayName": "Test-GCC-Release-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-gcc-editor",
+            "configuration": "Release"
+        },
+        {
             "name": "test-unixlike-clang-debug-editor",
             "displayName": "Test-Clang-Unix-Debug-Editor",
             "description": "Enable output and stop on failure",
@@ -405,6 +429,30 @@
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "unixlike-clang-editor",
+            "configuration": "Release"
+        },
+        {
+            "name": "test-unixlike-clang-debug",
+            "displayName": "Test-Clang-Unix-Debug",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang",
+            "configuration": "Debug"
+        },
+        {
+            "name": "test-unixlike-clang-profile",
+            "displayName": "Test-Clang-Unix-Profile",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "test-unixlike-clang-release",
+            "displayName": "Test-Clang-Unix-Release",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "unixlike-clang",
             "configuration": "Release"
         }
     ]
