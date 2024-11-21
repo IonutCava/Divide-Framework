@@ -1,7 +1,6 @@
 set(IMGUI_USER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/Source/Core/Headers/ImGUICustomConfig.h")
 
 add_compile_definitions(IL_STATIC_LIB)
-add_compile_definitions(PX_PHYSX_STATIC_LIB)
 add_compile_definitions(BOOST_EXCEPTION_DISABLE)
 add_compile_definitions(GLBINDING_STATIC_DEFINE)
 add_compile_definitions(GLBINDING_AUX_STATIC_DEFINE)
@@ -146,7 +145,6 @@ set(EXTERNAL_LIBS
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
     Freetype::Freetype
-    unofficial::omniverse-physx-sdk::sdk
     Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
     RecastNavigation::Detour RecastNavigation::Recast RecastNavigation::DebugUtils RecastNavigation::DetourCrowd
     $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
@@ -154,5 +152,20 @@ set(EXTERNAL_LIBS
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main> $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
     glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper
 )
+
+if(UNIX)
+  set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
+                    PhysXExtensions_static_64
+                    PhysX_static_64
+                    PhysXPvdSDK_static_64
+                    PhysXCommon_static_64
+                    PhysXFoundation_static_64
+                    PhysXCharacterKinematic_static_64
+                    PhysXVehicle_static_64
+                    PhysXCooking_static_64)
+else()
+  set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
+                    unofficial::omniverse-physx-sdk::sdk)
+endif()
 
 add_compile_definitions(CEGUI_STATIC)
