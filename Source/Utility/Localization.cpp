@@ -33,7 +33,7 @@ namespace detail
     /// Callback for external file changes. 
     static UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt)
     {
-        if (evt == FileUpdateEvent::DELETE)
+        if (evt == FileUpdateEvent::DELETED)
         {
             return;
         }

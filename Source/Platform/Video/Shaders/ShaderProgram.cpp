@@ -2120,7 +2120,7 @@ namespace Divide
 
         // Do nothing if the specified file is "deleted". We do not want to break running programs
         // ADD and MODIFY events should get processed as usual
-        if ( evt == FileUpdateEvent::DELETE )
+        if ( evt == FileUpdateEvent::DELETED )
         {
             return;
         }

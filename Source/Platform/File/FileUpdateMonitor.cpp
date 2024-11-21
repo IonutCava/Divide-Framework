@@ -10,11 +10,13 @@ UpdateListener::UpdateListener(FileUpdateCbk&& cbk)
 {
 }
 
-void UpdateListener::addIgnoredExtension(const char* extension) {
+void UpdateListener::addIgnoredExtension(const char* extension)
+{
     _ignoredExtensions.emplace_back(extension);
 }
 
-void UpdateListener::addIgnoredEndCharacter(char character) {
+void UpdateListener::addIgnoredEndCharacter(char character)
+{
     _ignoredEndingCharacters.emplace_back(character);
 }
 
@@ -35,20 +37,22 @@ void UpdateListener::handleFileAction([[maybe_unused]] const FW::WatchID watchid
     if (!_ignoredExtensions.empty() && 
         eastl::any_of(cbegin(_ignoredExtensions),
                       cend(_ignoredExtensions),
-                      [filename](const Str<8>& extension) {
+                      [filename](const Str<8>& extension)
+                      {
                           return hasExtension(filename, extension);
                       }))
     {
         return;
     }
 
-    if (_cbk) {
+    if (_cbk)
+    {
         FileUpdateEvent evt = FileUpdateEvent::COUNT;
         switch (action)
         {
-            case FW::Actions::Add: evt = FileUpdateEvent::ADD; break;
-            case FW::Actions::Delete: evt = FileUpdateEvent::DELETE; break;
-            case FW::Actions::Modified: evt = FileUpdateEvent::MODIFY; break;
+            case FW::Actions::Add: evt = FileUpdateEvent::ADDED; break;
+            case FW::Actions::Delete: evt = FileUpdateEvent::DELETED; break;
+            case FW::Actions::Modified: evt = FileUpdateEvent::MODIFIED; break;
             default: DIVIDE_UNEXPECTED_CALL();
         }
 
