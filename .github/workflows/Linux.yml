@@ -28,7 +28,7 @@ jobs:
   gcc_job_editor:
     needs: info_job
 
-    name: Ubuntu 24-04 - GCC Builds
+    name: Ubuntu 24-04 - GCC Editor Builds
     runs-on: ${{ matrix.os }}
     #runs-on: self-hosted
     strategy:
@@ -89,10 +89,10 @@ jobs:
         buildPreset: 'unixlike-gcc-debug-editor'
         testPreset: 'test-unixlike-gcc-debug-editor'
 
-gcc_job_game:
+  gcc_job_game:
     needs: info_job
 
-    name: Ubuntu 24-04 - GCC Builds
+    name: Ubuntu 24-04 - GCC Game Builds
     runs-on: ${{ matrix.os }}
     #runs-on: self-hosted
     strategy:
@@ -156,7 +156,7 @@ gcc_job_game:
   clang_job_editor:
     needs: info_job
 
-    name: Ubuntu 24-04 - Clang Builds
+    name: Ubuntu 24-04 - Clang Editor Builds
     runs-on: ${{ matrix.os }}
     #runs-on: self-hosted
     strategy:
@@ -217,10 +217,10 @@ gcc_job_game:
         buildPreset: 'unixlike-clang-debug-editor'
         testPreset: 'test-unixlike-clang-debug-editor'
 
-   clang_job_game:
+  clang_job_game:
     needs: info_job
 
-    name: Ubuntu 24-04 - Clang Builds
+    name: Ubuntu 24-04 - Clang Game Builds
     runs-on: ${{ matrix.os }}
     #runs-on: self-hosted
     strategy:
