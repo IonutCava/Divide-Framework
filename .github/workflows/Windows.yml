@@ -164,7 +164,7 @@ jobs:
         configurePreset: 'windows-clang'
         buildPreset: 'windows-clang-debug'
         testPreset: 'test-windows-clang-debug'
-  
+    
   clang_job_editor:
     needs: info_job
     name: Windows - Clang Editor Builds
@@ -211,3 +211,22 @@ jobs:
         buildPreset: 'windows-clang-debug-editor'
         testPreset: 'test-windows-clang-debug-editor'
 
+  output_job:
+    needs: [msvc_job_game, msvc_job_editor, clang_job_game, clang_job_editor]
+    name: Finished builds
+    runs-on: ${{ matrix.os }}
+    if: always()
+    steps:
+      - name: Retrieve results
+        run: |
+          result=""
+          if [[ "$\{{ contains(needs.msvc_job_game.result, 'failure') }}" == "true" || $\{{ contains(needs.msvc_job_editor.result, 'failure') }}" == "true" ]]; then
+            result="MSVC builds failed"
+          elif [[ "$\{{ contains(needs.clang_job_game.result, 'failure') }}" == "true" || $\{{ contains(needs.clang_job_editor.result, 'failure') }}" == "true" ]]; then
+            result="CLANG builds failed"
+          elif [[ "$\{{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            result="cancelled"
+          else
+            result="success"
+          fi
+          echo "result=$result" >> $GITHUB_OUTPUT

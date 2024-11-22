@@ -280,3 +280,23 @@ jobs:
         configurePreset: 'unixlike-clang'
         buildPreset: 'unixlike-clang-debug'
         testPreset: 'test-unixlike-clang-debug'
+        
+  output_job:
+    needs: [gcc_job_game, gcc_job_editor, clang_job_game, clang_job_editor]
+    name: Finished builds
+    runs-on: ${{ matrix.os }}
+    if: always()
+    steps:
+      - name: Retrieve results
+        run: |
+          result=""
+          if [[ "$\{{ contains(needs.gcc_job_game.result, 'failure') }}" == "true" || $\{{ contains(needs.gcc_job_editor.result, 'failure') }}" == "true" ]]; then
+            result="MSVC builds failed"
+          elif [[ "$\{{ contains(needs.clang_job_game.result, 'failure') }}" == "true" || $\{{ contains(needs.clang_job_editor.result, 'failure') }}" == "true" ]]; then
+            result="CLANG builds failed"
+          elif [[ "$\{{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            result="cancelled"
+          else
+            result="success"
+          fi
+          echo "result=$result" >> $GITHUB_OUTPUT
