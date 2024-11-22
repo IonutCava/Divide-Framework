@@ -9,7 +9,24 @@ on:
   workflow_dispatch:
     
 jobs:
+  info_job:
+    name: Windows - Print Info
+    runs-on: ${{ matrix.os }}
+    #runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+
+    steps:
+    - name: Print MSVC version
+      run: cl.exe
+
+    - name: Print CLANG version
+      run: clang.exe --version 
+
   msvc_job_game:
+    needs: info_job
     name: Windows - MSVC Game Builds
     runs-on: ${{ matrix.os }}
     strategy:
@@ -55,6 +72,7 @@ jobs:
         testPreset: 'test-windows-msvc-debug'
 
   msvc_job_editor:
+    needs: info_job
     name: Windows - MSVC Editor Builds
     runs-on: ${{ matrix.os }}
     strategy:
@@ -100,6 +118,7 @@ jobs:
         testPreset: 'test-windows-msvc-debug-editor'
 
   clang_job_game:
+    needs: info_job
     name: Windows - Clang Game Builds
     runs-on: ${{ matrix.os }}
     strategy:
@@ -145,6 +164,7 @@ jobs:
         testPreset: 'test-windows-clang-debug'
   
   clang_job_editor:
+    needs: info_job
     name: Windows - Clang Editor Builds
     runs-on: ${{ matrix.os }}
     strategy:
