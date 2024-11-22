@@ -291,12 +291,12 @@ jobs:
         run: |
           result=""
           if [[ "$\{{ contains(needs.gcc_job_game.result, 'failure') }}" == "true" || $\{{ contains(needs.gcc_job_editor.result, 'failure') }}" == "true" ]]; then
-            result="MSVC builds failed"
+            result="GCC builds failed."
           elif [[ "$\{{ contains(needs.clang_job_game.result, 'failure') }}" == "true" || $\{{ contains(needs.clang_job_editor.result, 'failure') }}" == "true" ]]; then
-            result="CLANG builds failed"
+            result="CLANG builds failed."
           elif [[ "$\{{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            result="cancelled"
+            result="Builds cancelled."
           else
-            result="success"
+            result="Success!"
           fi
           echo "result=$result" >> $GITHUB_OUTPUT
