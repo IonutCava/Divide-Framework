@@ -214,7 +214,7 @@ jobs:
   output_job:
     needs: [msvc_job_game, msvc_job_editor, clang_job_game, clang_job_editor]
     name: Finished builds
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     if: always()
     steps:
       - name: Retrieve results
