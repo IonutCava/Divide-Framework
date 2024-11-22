@@ -19,6 +19,8 @@ jobs:
         os: [windows-latest]
 
     steps:
+    - uses: ilammy/msvc-dev-cmd@v1.4.1
+
     - name: Print MSVC version
       run: cl.exe
 
