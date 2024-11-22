@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     
 jobs:
-  msvc_job:
+  msvc_job_game:
     name: Windows - MSVC Builds
     runs-on: ${{ matrix.os }}
     strategy:
@@ -33,12 +33,12 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-    #- name: Build and test Game in Release mode
-    #  uses: lukka/run-cmake@v10
-    #  with:
-    #    configurePreset: 'windows-msvc'
-    #    buildPreset: 'windows-msvc-release'
-    #    testPreset: 'test-windows-msvc-release'
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-msvc'
+        buildPreset: 'windows-msvc-release'
+        testPreset: 'test-windows-msvc-release'
             
     - name: Build and test Game in Profile mode
       uses: lukka/run-cmake@v10
@@ -54,28 +54,52 @@ jobs:
         buildPreset: 'windows-msvc-debug'
         testPreset: 'test-windows-msvc-debug'
 
-    - name: Build and test Editor in Release mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-msvc-editor'
-        buildPreset: 'windows-msvc-release-editor'
-        testPreset: 'test-windows-msvc-release-editor'
+     msvc_job_editor:
+      name: Windows - MSVC Builds
+      runs-on: ${{ matrix.os }}
+      strategy:
+        fail-fast: false
+        matrix:
+          os: [windows-latest]
+  
+      steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+  
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: 3.29.2
+          ninjaVersion: 1.11.1
+  
+      - name: Restore from cache and setup vcpkg executable and data files.
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
+  
+      - name: Build and test Editor in Release mode
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'windows-msvc-editor'
+          buildPreset: 'windows-msvc-release-editor'
+          testPreset: 'test-windows-msvc-release-editor'
+  
+      #- name: Build and test Editor in Profile mode
+      #  uses: lukka/run-cmake@v10
+      #  with:
+      #    configurePreset: 'windows-msvc-editor'
+      #    buildPreset: 'windows-msvc-profile-editor'
+      #    testPreset: 'test-windows-msvc-profile-editor'
+  
+      - name: Build and test Editor in Debug mode
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: 'windows-msvc-editor'
+          buildPreset: 'windows-msvc-debug-editor'
+          testPreset: 'test-windows-msvc-debug-editor'
 
-    #- name: Build and test Editor in Profile mode
-    #  uses: lukka/run-cmake@v10
-    #  with:
-    #    configurePreset: 'windows-msvc-editor'
-    #    buildPreset: 'windows-msvc-profile-editor'
-    #    testPreset: 'test-windows-msvc-profile-editor'
-
-    - name: Build and test Editor in Debug mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-msvc-editor'
-        buildPreset: 'windows-msvc-debug-editor'
-        testPreset: 'test-windows-msvc-debug-editor'
-
-  clang_job:
+  clang_job_game:
     name: Windows - Clang Builds
     runs-on: ${{ matrix.os }}
     strategy:
@@ -99,12 +123,12 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-    #- name: Build and test Game in Release mode
-    #  uses: lukka/run-cmake@v10
-    #  with:
-    #    configurePreset: 'windows-clang'
-    #    buildPreset: 'windows-clang-release'
-    #    testPreset: 'test-windows-clang-release'
+    - name: Build and test Game in Release mode
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'windows-clang'
+        buildPreset: 'windows-clang-release'
+        testPreset: 'test-windows-clang-release'
 
     - name: Build and test Game in Profile mode
       uses: lukka/run-cmake@v10
@@ -119,6 +143,30 @@ jobs:
         configurePreset: 'windows-clang'
         buildPreset: 'windows-clang-debug'
         testPreset: 'test-windows-clang-debug'
+  
+  clang_job_editor:
+    name: Windows - Clang Builds
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
+
+    - name: Restore from cache and setup vcpkg executable and data files.
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -140,5 +188,4 @@ jobs:
         configurePreset: 'windows-clang-editor'
         buildPreset: 'windows-clang-debug-editor'
         testPreset: 'test-windows-clang-debug-editor'
-        
 
