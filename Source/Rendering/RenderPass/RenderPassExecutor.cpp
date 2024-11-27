@@ -349,6 +349,10 @@ namespace Divide
         mat4<F32>::Multiply(previousViewProjectionMatrix, transformOut._worldMatrix, transformOut._prevWVPMatrix);
 
         const SceneGraphNode* node = rComp->parentSGN();
+        const TransformComponent* const transform = node->get<TransformComponent>();
+        transform->getWorldMatrixInterpolated(transformOut._worldMatrix);
+        transform->getWorldRotationMatrixInterpolated(transformOut._normalMatrixW);
+        transformOut._normalMatrixW.setRow(3, node->get<BoundsComponent>()->getBoundingSphere().asVec4());
 
         if ( node->HasComponents( ComponentType::ANIMATION ) )
         {
@@ -360,7 +364,7 @@ namespace Divide
                 frameIndex = animComp->frameIndex();
             }
             transformOut._normalMatrixW.element(1, 3) = to_F32(std::max(frameIndex._curr, 0));
-            transformOut._normalMatrixW.element( 2, 3 ) = to_F32( boneCount );
+            transformOut._normalMatrixW.element(2, 3) = to_F32( boneCount );
         }
         else
         {
@@ -371,13 +375,25 @@ namespace Divide
         U8 selectionFlag = 0u;
         if ( node->HasComponents( ComponentType::SELECTION ) )
         {
-            selectionFlag = to_U8( node->get<SelectionComponent>()->selectionType() );
-        }
+            auto selComp = node->get<SelectionComponent>();
+            selectionFlag = to_U8(selComp->selectionType() );
 
-        const TransformComponent* const transform = node->get<TransformComponent>();
-        transform->getWorldMatrixInterpolated( transformOut._worldMatrix );
-        transform->getWorldRotationMatrixInterpolated( transformOut._normalMatrixW );
-        transformOut._normalMatrixW.setRow( 3, node->get<BoundsComponent>()->getBoundingSphere().asVec4() );
+            if (selectionFlag != 0u)
+            {
+                if (!selComp->hoverHighlightEnabled() &&
+                    (selectionFlag == to_U8(SelectionComponent::SelectionType::HOVERED) ||
+                     selectionFlag == to_U8(SelectionComponent::SelectionType::PARENT_HOVERED)))
+                {
+                    selectionFlag = 0u;
+                }
+                if (!selComp->selectionHighlightEnabled() &&
+                    (selectionFlag == to_U8(SelectionComponent::SelectionType::SELECTED) ||
+                     selectionFlag == to_U8(SelectionComponent::SelectionType::PARENT_SELECTED)))
+                {
+                    selectionFlag = 0u;
+                }
+            }
+        }
 
         transformOut._normalMatrixW.element( 0, 3 ) = to_F32( Util::PACK_UNORM4x8(
             0u,

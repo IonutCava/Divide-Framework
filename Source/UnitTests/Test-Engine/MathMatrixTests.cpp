@@ -654,4 +654,22 @@ TEST_CASE( "Mat Inverse Tests", "[math_matrix_test]" )
     CHECK_EQUAL(input2, result2);
 }
 
+TEST_CASE("Mat Vec Multiply Tests", "[math_matrix_test]")
+{
+    const vec3<F32> input1{0.5f, 0.5f, 0.5f};
+    const vec4<F32> input2{0.5f, 0.5f, 0.5f};
+    const mat3<F32> identity1 = MAT3_IDENTITY;
+    const mat4<F32> identity2 = MAT4_IDENTITY;
+    
+    const vec3<F32> result1 = identity2 * input1;
+    const vec4<F32> result2 = identity2 * input2;
+    const vec3<F32> result3 = identity1 * input1;
+    const vec4<F32> result4 = identity1 * input2;
+
+    CHECK_EQUAL(input1, result1);
+    CHECK_EQUAL(input2, result2);
+    CHECK_EQUAL(input1, result3);
+    CHECK_EQUAL(input2, result4);
+}
+
 } //namespace Divide

@@ -28,22 +28,27 @@ AnimEvaluator::AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept
     Console::d_printfn(LOCALE_STR("CREATE_ANIMATION_BEGIN"), name().c_str());
 
     _channels.resize(pAnim->mNumChannels);
-    for (U32 a = 0; a < pAnim->mNumChannels; a++) {
+    for (U32 a = 0; a < pAnim->mNumChannels; a++)
+    {
         const aiNodeAnim* srcChannel = pAnim->mChannels[a];
         AnimationChannel& dstChannel = _channels[a];
 
         dstChannel._name = srcChannel->mNodeName.data;
         dstChannel._nameKey = _ID(dstChannel._name.c_str());
 
-        for (U32 i(0); i < srcChannel->mNumPositionKeys; i++) {
+        for (U32 i(0); i < srcChannel->mNumPositionKeys; i++)
+        {
             dstChannel._positionKeys.push_back(srcChannel->mPositionKeys[i]);
         }
-        for (U32 i(0); i < srcChannel->mNumRotationKeys; i++) {
+        for (U32 i(0); i < srcChannel->mNumRotationKeys; i++)
+        {
             dstChannel._rotationKeys.push_back(srcChannel->mRotationKeys[i]);
         }
-        for (U32 i(0); i < srcChannel->mNumScalingKeys; i++) {
+        for (U32 i(0); i < srcChannel->mNumScalingKeys; i++)
+        {
             dstChannel._scalingKeys.push_back(srcChannel->mScalingKeys[i]);
         }
+
         dstChannel._numPositionKeys = srcChannel->mNumPositionKeys;
         dstChannel._numRotationKeys = srcChannel->mNumRotationKeys;
         dstChannel._numScalingKeys = srcChannel->mNumScalingKeys;
@@ -56,22 +61,16 @@ AnimEvaluator::AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept
 
 bool AnimEvaluator::initBuffers(GFXDevice& context)
 {
-    DIVIDE_ASSERT(boneBuffer() == nullptr && !_transforms.empty(),
-                  "AnimEvaluator error: can't create bone buffer at current stage!");
+    DIVIDE_ASSERT(boneBuffer() == nullptr && !_transforms.empty(), "AnimEvaluator error: can't create bone buffer at current stage!");
 
-    DIVIDE_ASSERT(_transforms.size() <= Config::MAX_BONE_COUNT_PER_NODE,
-        "AnimEvaluator error: Too many bones for current node! "
-        "Increase MAX_BONE_COUNT_PER_NODE in Config!");
+    DIVIDE_ASSERT(_transforms.size() <= Config::MAX_BONE_COUNT_PER_NODE, "AnimEvaluator error: Too many bones for current node! Increase MAX_BONE_COUNT_PER_NODE in Config!");
 
     vector<mat4<F32>> animationData;
 
     animationData.reserve( frameCount() * _transforms.size());
-    for (const auto& transform : _transforms)
+    for (const BoneTransforms& boneTransforms : _transforms)
     {
-        for (const mat4<F32>& mat : transform.matrices())
-        {
-            animationData.push_back(mat);
-        }
+        animationData.insert(eastl::end(animationData), eastl::begin(boneTransforms), eastl::end(boneTransforms));
     }
 
     if (!animationData.empty())
@@ -92,23 +91,24 @@ bool AnimEvaluator::initBuffers(GFXDevice& context)
     return false;
 }
 
-AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) const noexcept
+AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS, const bool forward) const noexcept
 {
-    D64 time = 0.0;
-
-    if (duration() > 0.0)
-    {
-        // get a [0.f ... 1.f) value by allowing the percent to wrap around 1
-        time = std::fmod(elapsedTimeS * ticksPerSecond(), duration());
-    }
-
-    const D64 percent = time / duration();
-
     FrameIndex ret = {};
+
     if (!_transforms.empty())
     {
+        D64 time = 0.0;
+
+        if (duration() > 0.0)
+        {
+            // get a [0.f ... 1.f) value by allowing the percent to wrap around 1
+            time = std::fmod(elapsedTimeS * ticksPerSecond(), duration());
+        }
+
+        const D64 percent = time / duration();
+
         // this will invert the percent so the animation plays backwards
-        if (playAnimationForward())
+        if (forward)
         {
             ret._curr = std::min(to_I32(_transforms.size() * percent), to_I32(_transforms.size() - 1));
             ret._prev = ret._curr > 0 ? ret._curr - 1 : to_I32(_transforms.size()) - 1;
@@ -126,12 +126,13 @@ AnimEvaluator::FrameIndex AnimEvaluator::frameIndexAt(const D64 elapsedTimeS) co
 
 // ------------------------------------------------------------------------------------------------
 // Evaluates the animation tracks for a given time stamp.
-void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton)
+void AnimEvaluator::evaluate(const D64 dt, Bone& skeleton)
 {
     const D64 pTime = dt * ticksPerSecond();
 
     D64 time = 0.0f;
-    if (duration() > 0.0) {
+    if (duration() > 0.0)
+    {
         time = std::fmod(pTime, duration());
     }
 
@@ -145,9 +146,10 @@ void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton)
     for (U32 a = 0; a < _channels.size(); a++) {
         
         const AnimationChannel* channel = &_channels[a];
-        Bone* bonenode = skeleton->find(channel->_nameKey);
+        Bone* boneNode = skeleton.find(channel->_nameKey);
 
-        if (bonenode == nullptr) {
+        if (boneNode == nullptr)
+        {
             Console::d_errorfn(LOCALE_STR("ERROR_BONE_FIND"), channel->_name.c_str());
             continue;
         }
@@ -240,9 +242,7 @@ void AnimEvaluator::evaluate(const D64 dt, Bone* skeleton)
         mat.a4  = presentPosition.x;
         mat.b4  = presentPosition.y;
         mat.c4  = presentPosition.z;
-        mat4<F32> out;
-        AnimUtils::TransformMatrix(mat, out);
-        bonenode->localTransform(out);
+        AnimUtils::TransformMatrix(mat, boneNode->_localTransform);
     }
     _lastTime = time;
 }

@@ -44,12 +44,12 @@ namespace Divide {
             }
 
             comp->_currentTimeStamp = comp->_parentTimeStamp;
-            const D64 timeStampS = Time::MillisecondsToSeconds<D64>(comp->_currentTimeStamp);
+            const D64 timeStampSec = Time::MillisecondsToSeconds<D64>(comp->_currentTimeStamp);
 
             if (comp->playAnimations())
             {
                 // Update Animations
-                comp->_frameIndex = animator->frameIndexForTimeStamp(comp->animationIndex(), timeStampS);
+                comp->_frameIndex = animator->frameIndexForTimeStamp(comp->animationIndex(), timeStampSec, !comp->playInReverse());
 
                 if (comp->animationIndex() != comp->previousAnimationIndex() && comp->animationIndex() != U32_MAX)
                 {
@@ -86,6 +86,37 @@ namespace Divide {
                         ._sourceCmp = comp
                     }
                 );
+            }
+
+            if ( comp->_animationStateChanged )
+            {
+                comp->parentSGN()->SendEvent(
+                    ECS::CustomEvent
+                    {
+                        ._type = ECS::CustomEvent::Type::AnimationChanged,
+                        ._sourceCmp = comp,
+                        ._flag = comp->_animationIndex,
+                        ._dataPair = 
+                        {
+                            ._first  = to_U16(comp->_applyAnimationChangeToAllMeshes ? 1u : 0u),
+                            ._second = to_U16(comp->_playInReverse ? 1u : 0u)
+                        }
+                    }
+                );
+                comp->_animationStateChanged = false;
+            }
+            else if ( comp->_resyncAllSiblings )
+            {
+                comp->parentSGN()->SendEvent(
+                    ECS::CustomEvent
+                    {
+                        ._type = ECS::CustomEvent::Type::AnimationReSync,
+                        ._sourceCmp = comp,
+                        ._flag = comp->_animationIndex,
+                        ._data = comp->_playInReverse ? 1u : 0u
+                    }
+                );
+                comp->_resyncAllSiblings = false;
             }
         }
     }

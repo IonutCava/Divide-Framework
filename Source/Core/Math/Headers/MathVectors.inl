@@ -116,13 +116,13 @@ namespace Divide
     *  useful vector functions
     */
     /// general vec2 cross function
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec2<T> Cross( const vec2<T> v1, const vec2<T> v2 ) noexcept
     {
         return v1.x * v2.y - v1.y * v2.x;
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec2<T> Inverse( const vec2<T> v ) noexcept
     {
         return
@@ -132,38 +132,38 @@ namespace Divide
         };
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec2<T> Normalize( vec2<T>& vector ) noexcept
     {
         return vector.normalize();
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec2<T> Normalized( const vec2<T> vector ) noexcept
     {
         return vec2<T>( vector ).normalize();
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec2<T> operator*( T fl, const vec2<T> v ) noexcept
     {
         return v * fl;
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE T Dot( const vec2<T> a, const vec2<T> b ) noexcept
     {
         return a.x * b.x + a.y * b.y;
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE void OrthoNormalize( vec2<T>& n, vec2<T>& u ) noexcept
     {
         n.normalize();
         u.set( Cross( Normalized( Cross( n, u ) ), n ) );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]]
     FORCE_INLINE vec2<T> Clamped( const vec2<T> v, const vec2<T> min, const vec2<T> max ) noexcept
     {
@@ -174,27 +174,27 @@ namespace Divide
         };
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Normalize( vec3<T>& vector ) noexcept
     {
         return vector.normalize();
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Normalized( const vec3<T>& vector ) noexcept
     {
         return vec3<T>( vector ).normalize();
     }
 
     /// multiply a vector by a value
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> operator*( T fl, const vec3<T>& v ) noexcept
     {
         return v * fl;
     }
 
     /// general vec3 dot product
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE T Dot( const vec3<T>& a, const vec3<T>& b ) noexcept
     {
         return a.x * b.x + a.y * b.y + a.z * b.z;
@@ -238,7 +238,7 @@ namespace Divide
 #endif //HAS_SSE42
 
     /// general vec3 cross function
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Cross( const vec3<T>& v1, const vec3<T>& v2 ) noexcept
     {
         return
@@ -249,14 +249,14 @@ namespace Divide
         };
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> AreOrthogonal( const vec3<T>& v1, const vec3<T>& v2 ) noexcept
     {
         constexpr F32 tolerance = 1e-6f;
         return SQUARED( Dot( v1, v2 ) ) < (Dot( v1, v1 ) * Dot( v2, v2 ) * tolerance);
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Inverse( const vec3<T>& v ) noexcept
     {
         return
@@ -267,7 +267,7 @@ namespace Divide
         };
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Perpendicular( const vec3<T>& v ) noexcept
     {
         T min = std::abs( v.x );
@@ -287,20 +287,20 @@ namespace Divide
         return Cross( v, cardinalAxis );
     }
 
-    template<typename T>
+    template<ValidMathType T>
     FORCE_INLINE vec3<T> ProjectToNorm( const vec3<T>& in, const vec3<T>& direction )
     {
         return direction * Dot( in, direction );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE void OrthoNormalize( vec3<T>& n, vec3<T>& u ) noexcept
     {
         n.normalize();
         u.set( Cross( Normalized( Cross( n, u ) ), n ) );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE void OrthoNormalize( vec3<T>& v1, vec3<T>& v2, vec3<T>& v3 ) noexcept
     {
         v1.normalize();
@@ -311,7 +311,7 @@ namespace Divide
         v3.normalize();
     }
 
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]]
     FORCE_INLINE vec3<T> Clamped( const vec3<T>& v, const vec3<T>& min, const vec3<T>& max ) noexcept
     {
@@ -323,7 +323,7 @@ namespace Divide
         };
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec4<T> Abs( const vec4<T>& vector ) noexcept
     {
         return
@@ -336,40 +336,40 @@ namespace Divide
     }
 
     /// min/max functions
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec4<T> Min( const vec4<T>& v1, const vec4<T>& v2 ) noexcept
     {
         return vec4<T>( std::min( v1.x, v2.x ), std::min( v1.y, v2.y ),
                         std::min( v1.z, v2.z ), std::min( v1.w, v2.w ) );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec4<T> Max( const vec4<T>& v1, const vec4<T>& v2 ) noexcept
     {
         return vec4<T>( std::max( v1.x, v2.x ), std::max( v1.y, v2.y ),
                         std::max( v1.z, v2.z ), std::max( v1.w, v2.w ) );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec4<T> Normalize( vec4<T>& vector ) noexcept
     {
         return vector.normalize();
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec4<T> Normalized( const vec4<T>& vector ) noexcept
     {
         return vec4<T>( vector ).normalize();
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE void OrthoNormalize( vec4<T>& n, vec4<T>& u )
     {
         n.normalize();
         u.set( Cross( Normalized( Cross( n, u ) ), n ) );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE void OrthoNormalize( vec4<T>& v1, vec4<T>& v2, vec4<T>& v3 )
     {
         v1.normalize();
@@ -380,7 +380,7 @@ namespace Divide
         v3.normalize();
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec4<T> Perpendicular( const vec4<T>& vec, const vec4<T>& hint1, const vec4<T>& hint2 ) noexcept
     {
         const vec4 perp = Normalized( Cross( vec, hint1 ) );
@@ -392,7 +392,7 @@ namespace Divide
         return perp;
     }
 
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]]
     FORCE_INLINE vec4<T> Clamped( const vec4<T>& v, const vec4<T>& min, const vec4<T>& max ) noexcept
     {
@@ -405,7 +405,7 @@ namespace Divide
     }
 
     /// multiply a vector by a value
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec4<T> operator*( T fl, const vec4<T>& v ) noexcept
     {
         return v * fl;
@@ -465,7 +465,7 @@ namespace Divide
 
     /// compare 2 vectors
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec2<T>::compare( const vec2<U> v ) const noexcept
     {
         return COMPARE( this->x, v.x ) &&
@@ -474,11 +474,11 @@ namespace Divide
 
     /// compare 2 vectors using the given tolerance
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec2<T>::compare( const vec2<U> v, U epsi ) const noexcept
     {
         return COMPARE_TOLERANCE( this->x, v.x, epsi ) &&
-            COMPARE_TOLERANCE( this->y, v.y, epsi );
+               COMPARE_TOLERANCE( this->y, v.y, epsi );
     }
 
     /// return the projection factor from *this to the line determined by points vA
@@ -549,7 +549,7 @@ namespace Divide
     }
 
     /// linear interpolation between 2 vectors
-    template <typename T, typename U> requires ValidMathType<U>
+    template <typename T, ValidMathType U>
     FORCE_INLINE vec2<T> Lerp( const vec2<T> u, const vec2<T> v, U factor ) noexcept
     {
         return { Lerp( u.x, v.x, factor ), Lerp( u.y, v.y, factor ) };
@@ -568,7 +568,7 @@ namespace Divide
 
     /// compare 2 vectors
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec3<T>::compare( const vec3<U>& v ) const noexcept
     {
         return COMPARE( this->x, v.x ) &&
@@ -578,7 +578,7 @@ namespace Divide
 
     /// compare 2 vectors within the specified tolerance
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec3<T>::compare( const vec3<U>& v, U epsi ) const noexcept
     {
         return COMPARE_TOLERANCE( this->x, v.x, epsi ) &&
@@ -594,7 +594,7 @@ namespace Divide
     }
 
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec3<T>::isPerpendicular( const vec3<U>& other, const F32 epsilon ) const noexcept
     {
         return SQUARED( dot( other ) ) <= SQUARED( epsilon ) * lengthSquared() * other.lengthSquared();
@@ -774,8 +774,7 @@ namespace Divide
         std::swap( this->z, iv->z );
     }
 
-    /// export the vector's components in the first 3 positions of the specified
-    /// array
+    /// export the vector's components in the first 3 positions of the specified array
     template <typename T>
     FORCE_INLINE void vec3<T>::get( T* v ) const noexcept
     {
@@ -792,16 +791,14 @@ namespace Divide
         return vec3( vp1.x - vp2.x, vp1.y - vp2.y, vp1.z - vp2.z );
     }
 
-    /// return the closest point on the line defined by the 2 points (A, B) and this
-    /// vector
+    /// return the closest point on the line defined by the 2 points (A, B) and this vector
     template <typename T>
     FORCE_INLINE vec3<T> vec3<T>::closestPointOnLine( const vec3& vA, const vec3& vB )
     {
         return (vB - vA) * this->projectionOnLine( vA, vB ) + vA;
     }
 
-    /// return the closest point on the line segment created between the 2 points
-    /// (A, B) and this vector
+    /// return the closest point on the line segment created between the 2 points (A, B) and this vector
     template <typename T>
     FORCE_INLINE vec3<T> vec3<T>::closestPointOnSegment( const vec3& vA, const vec3& vB )
     {
@@ -815,32 +812,32 @@ namespace Divide
     }
 
     /// lerp between the 2 specified vectors by the specified amount
-    template <typename T, typename U> requires ValidMathType<U>
+    template <typename T, ValidMathType U>
     FORCE_INLINE vec3<T> Lerp( const vec3<T>& u, const vec3<T>& v, U factor ) noexcept
     {
         return { Lerp( u.x, v.x, factor ), Lerp( u.y, v.y, factor ), Lerp( u.z, v.z, factor ) };
     }
 
     /// lerp between the 2 specified vectors by the specified amount for each component
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Lerp( const vec3<T>& u, const vec3<T>& v, const vec3<T>& factor ) noexcept
     {
         return { Lerp( u.x, v.x, factor.x ), Lerp( u.y, v.y, factor.y ), Lerp( u.z, v.z, factor.z ) };
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Abs( const vec3<T>& vector ) noexcept
     {
         return { std::abs( vector.x ), std::abs( vector.y ), std::abs( vector.z ) };
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Min( const vec3<T>& v1, const vec3<T>& v2 ) noexcept
     {
         return vec3<T>( std::min( v1.x, v2.x ), std::min( v1.y, v2.y ), std::min( v1.z, v2.z ) );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE vec3<T> Max( const vec3<T>& v1, const vec3<T>& v2 ) noexcept
     {
         return vec3<T>( std::max( v1.x, v2.x ), std::max( v1.y, v2.y ), std::max( v1.z, v2.z ) );
@@ -989,7 +986,7 @@ namespace Divide
 
     /// compare 2 vectors
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec4<T>::compare( const vec4<U>& v ) const noexcept
     {
         return COMPARE( this->x, v.x ) &&
@@ -1000,7 +997,7 @@ namespace Divide
 
     /// compare this vector with the one specified and see if they match within the specified amount
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec4<T>::compare( const vec4<U>& v, const U epsi ) const noexcept
     {
         return COMPARE_TOLERANCE( this->x, v.x, epsi ) &&
@@ -1040,7 +1037,7 @@ namespace Divide
     }
 
     /// general vec4 dot product
-    template <typename T>
+    template <ValidMathType T>
     FORCE_INLINE T Dot( const vec4<T>& a, const vec4<T>& b ) noexcept
     {
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
@@ -1152,7 +1149,7 @@ namespace Divide
 
     /// The current vector is perpendicular to the specified one within epsilon
     template <typename T>
-    template <typename U> requires ValidMathType<U>
+    template<ValidMathType U>
     FORCE_INLINE bool vec4<T>::isPerpendicular( const vec4<U>& other, const F32 epsilon ) const noexcept
     {
         return SQUARED( dot( other ) ) <= SQUARED( epsilon ) * lengthSquared() * other.lengthSquared();
@@ -1187,8 +1184,8 @@ namespace Divide
         set( Lerp( *this, v, factor ) );
     }
     /// lerp between the 2 vectors by the specified amount
-    template <typename T>
-    FORCE_INLINE vec4<T> Lerp( const vec4<T>& u, const vec4<T>& v, T factor ) noexcept
+    template <typename T, ValidMathType U>
+    FORCE_INLINE vec4<T> Lerp( const vec4<T>& u, const vec4<T>& v, U factor ) noexcept
     {
         return { Lerp( u.x, v.x, factor ), Lerp( u.y, v.y, factor ), Lerp( u.z, v.z, factor ), Lerp( u.w, v.w, factor ) };
     }
@@ -1200,13 +1197,13 @@ namespace Divide
         return { Lerp( u.x, v.x, factor.x ), Lerp( u.y, v.y, factor.y ), Lerp( u.z, v.z, factor.z ), Lerp( u.w, v.w, factor.w ) };
     }
 
-    template <typename Type>
+    template <ValidMathType Type>
     FORCE_INLINE vec2<Type> Random( const vec2<Type> min, const vec2<Type> max )
     {
         return vec2<Type>( Random( min.x, max.x ), Random( min.y, max.y ) );
     }
 
-    template <typename Type>
+    template <ValidMathType Type>
     FORCE_INLINE vec3<Type> Random( const vec3<Type>& min, const vec3<Type>& max )
     {
         return vec3<Type>( Random( min.x, max.x ), Random( min.y, max.y ),

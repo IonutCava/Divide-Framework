@@ -71,6 +71,17 @@
             }
         },
         {
+            "name": "windows-msvc-editor-asan",
+            "displayName": "Editor Build (MSVC)",
+            "description": "Target Windows with the msvc compiler. Editor build.",
+            "inherits": "windows-msvc",
+            "cacheVariables": {
+                "DIVIDE_STARTUP_TYPE": "IN_EDITOR",
+                "RUN_ASAN": true,
+                "RUN_UBSAN": true
+            }
+        },
+        {
             "name": "windows-clang",
             "displayName": "Game Build (Win64 - CLANG)",
             "description": "Target Windows with the clang compiler",
@@ -87,6 +98,17 @@
             "inherits": "windows-clang",
             "cacheVariables": {
                 "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
+            }
+        },
+        {
+            "name": "windows-clang-editor-asan",
+            "displayName": "Editor Build (Win64 - CLANG)",
+            "description": "Target Windows with the clang compiler. Editor build.",
+            "inherits": "windows-clang",
+            "cacheVariables": {
+                "DIVIDE_STARTUP_TYPE": "IN_EDITOR",
+                "RUN_ASAN": true,
+                "RUN_UBSAN": true
             }
         },
         {
@@ -130,6 +152,11 @@
     ],
     "buildPresets": [
         {
+            "name": "windows-msvc-profile-editor-asan",
+            "configurePreset": "windows-msvc-editor-asan",
+            "configuration": "RelWithDebInfo"
+        },
+        {
             "name": "windows-msvc-debug-editor",
             "configurePreset": "windows-msvc-editor",
             "configuration": "Debug"
@@ -163,6 +190,11 @@
             "name": "windows-clang-debug-editor",
             "configurePreset": "windows-clang-editor",
             "configuration": "Debug"
+        },
+        {
+            "name": "windows-clang-profile-editor-asan",
+            "configurePreset": "windows-clang-editor-asan",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "windows-clang-profile-editor",
@@ -264,12 +296,12 @@
             }
         },
         {
-            "name": "test-windows-msvc-debug-editor",
-            "displayName": "Test-MSVC-Debug-Editor",
+            "name": "test-windows-msvc-profile-editor-asan",
+            "displayName": "Test-MSVC-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-editor",
-            "configuration": "Debug"
+            "configurePreset": "windows-msvc-editor-asan",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-windows-msvc-profile-editor",
@@ -334,6 +366,14 @@
             "inherits": "test-common",
             "configurePreset": "windows-clang",
             "configuration": "Release"
+        },
+        {
+            "name": "test-windows-clang-profile-editor-asan",
+            "displayName": "Test-Clang-Win64-Profile-Editor-Asan",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "windows-clang-editor-asan",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "test-windows-clang-debug-editor",

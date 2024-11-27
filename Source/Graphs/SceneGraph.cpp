@@ -546,7 +546,7 @@ namespace Divide
 
             {
                 const SceneGraphNode::ChildContainer& children = sgn->getChildren();
-                SharedLock<SharedMutex> w_lock( children._lock );
+                SharedLock<SharedMutex> r_lock( children._lock );
                 const U32 childCount = children._count;
                 for ( U32 i = 0u; i < childCount; ++i )
                 {
@@ -632,7 +632,7 @@ namespace Divide
             entry.put( "<xmlattr>.type", Names::sceneNodeType[to_base( node->getNode().type() )] );
 
             const SceneGraphNode::ChildContainer& children = node->getChildren();
-            SharedLock<SharedMutex> w_lock( children._lock );
+            SharedLock<SharedMutex> r_lock( children._lock );
             const U32 childCount = children._count;
             for ( U32 i = 0u; i < childCount; ++i )
             {
@@ -672,7 +672,7 @@ namespace Divide
         }
 
         const SceneGraphNode::ChildContainer& children = _root->getChildren();
-        SharedLock<SharedMutex> w_lock( children._lock );
+        SharedLock<SharedMutex> r_lock( children._lock );
         const U32 childCount = children._count;
         for ( U32 i = 0u; i < childCount; ++i )
         {

@@ -104,11 +104,11 @@ namespace Divide
 
         EditorComponentField colourField = {};
         colourField._name = "Colour";
-        colourField._dataGetter = [this]( void* dataOut ) noexcept
+        colourField._dataGetter = [this]( void* dataOut, [[maybe_unused]] void* user_data) noexcept
         {
             static_cast<FColour3*>(dataOut)->set( getDiffuseColour() );
         };
-        colourField._dataSetter = [this]( const void* data ) noexcept
+        colourField._dataSetter = [this]( const void* data, [[maybe_unused]] void* user_data) noexcept
         {
             setDiffuseColour( *static_cast<const FColour3*>(data) );
         };

@@ -52,6 +52,10 @@ BEGIN_COMPONENT(Selection, ComponentType::SELECTION)
 
         PROPERTY_R_IW( SelectionType, selectionType, SelectionType::NONE);
 
+        PROPERTY_R_IW( bool, hoverHighlightEnabled, true);
+        PROPERTY_R_IW( bool, selectionHighlightEnabled, true);
+        PROPERTY_R_IW( bool, selectionWidgetEnabled, true);
+
 END_COMPONENT(Selection);
 
 } //namespace Divide

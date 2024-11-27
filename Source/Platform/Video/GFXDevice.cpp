@@ -239,7 +239,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 10,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: reflect
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 11,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: refract
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 12,  DescriptorSetBindingType::IMAGE,                  ShaderStageVisibility::ALL );                  // Image
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::ALL );                  // SSBO (e.g. bone buffer or histogram buffer)
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY);  // SSBO (e.g. bone buffer or histogram buffer)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 14,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 15,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
 

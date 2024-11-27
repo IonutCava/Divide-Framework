@@ -55,9 +55,11 @@ and a name.
 
 namespace Divide {
 
-namespace Attorney {
+namespace Attorney
+{
     class SubMeshMesh;
     class SubMeshMeshImporter;
+    class SubMeshMeshSceneGraphNode;
 };
 
 class MeshImporter;
@@ -68,6 +70,7 @@ DEFINE_3D_OBJECT_TYPE(SubMesh, SceneNodeType::TYPE_SUBMESH)
 {
     friend class Attorney::SubMeshMesh;
     friend class Attorney::SubMeshMeshImporter;
+    friend class Attorney::SubMeshMeshSceneGraphNode;
 
     enum class BoundingBoxState : U8 {
         Computing = 0,
@@ -95,7 +98,8 @@ private:
     void updateBB(U32 animIndex);
 
 protected:
-    void onAnimationChange(SceneGraphNode* sgn, U32 newIndex) override;
+    void onAnimationChange(SceneGraphNode* sgn, U32 newIndex, bool applyToAllSiblings, bool playInReverse);
+    void onAnimationSync(SceneGraphNode* sgn, U32 animIndex, bool playInReverse);
 
 private:
     /// Build status of bounding boxes for each animation
@@ -136,6 +140,20 @@ class SubMeshMeshImporter
     }
 
     friend class Divide::MeshImporter;
+};
+
+class SubMeshMeshSceneGraphNode
+{
+    static void onAnimationChange(SubMesh& subMesh, SceneGraphNode* sgn, const U32 newIndex, const bool applyToAllSiblings, const bool playInReverse)
+    {
+        subMesh.onAnimationChange(sgn, newIndex, applyToAllSiblings, playInReverse);
+    }
+    static void onAnimationSync(SubMesh& subMesh, SceneGraphNode* sgn, const U32 animIndex, const bool playInReverse)
+    {
+        subMesh.onAnimationSync(sgn, animIndex, playInReverse);
+    }
+
+    friend class Divide::SceneGraphNode;
 };
 };  // namespace Attorney
 };  // namespace Divide

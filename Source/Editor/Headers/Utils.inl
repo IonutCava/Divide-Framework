@@ -300,11 +300,11 @@ inline bool inputOrSlider(Editor& parent, const char* label, const F32 stepIn, c
         auto* tempData = field._data;
         auto tempSetter = field._dataSetter;
 
-        RegisterUndo<FieldDataType, IsSlider>(parent, field._basicType, field.get<FieldDataType>(), val, label, [tempData, tempSetter](const FieldDataType& oldVal)
+        RegisterUndo<FieldDataType, IsSlider>(parent, field._basicType, field.get<FieldDataType>(), val, label, [tempData, tempSetter, userData = field._userData](const FieldDataType& oldVal)
         {
             if (tempSetter != nullptr)
             {
-                tempSetter(&oldVal);
+                tempSetter(&oldVal, userData);
             }
             else
             {
@@ -414,11 +414,11 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
     {
         auto* tempData = field._data;
         auto tempSetter = field._dataSetter;
-        RegisterUndo<T, false>(parent, field._basicType, field.get<T>(), mat, label, [tempData, tempSetter](const T& oldVal)
+        RegisterUndo<T, false>(parent, field._basicType, field.get<T>(), mat, label, [tempData, tempSetter, userData = field._userData](const T& oldVal)
         {
             if (tempSetter != nullptr)
             {
-                tempSetter(&oldVal);
+                tempSetter(&oldVal, userData);
             }
             else
             {

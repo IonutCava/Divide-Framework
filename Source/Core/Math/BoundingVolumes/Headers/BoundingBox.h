@@ -35,16 +35,19 @@
 
 #include "Core/Math/Headers/Ray.h"
 
-namespace Divide {
+namespace Divide
+{
 
-namespace Attorney {
+namespace Attorney
+{
     class BoundingBoxEditor;
 }
 
 class OBB;
 class PropertyWindow;
 class BoundingSphere;
-class BoundingBox {
+class BoundingBox
+{
     friend class Attorney::BoundingBoxEditor;
 
    public:
@@ -52,8 +55,7 @@ class BoundingBox {
     explicit BoundingBox(const OBB& obb) noexcept;
     explicit BoundingBox(const BoundingSphere& bSphere) noexcept;
     explicit BoundingBox(float3 min, float3 max) noexcept;
-    explicit BoundingBox(const vector<float3>& points) noexcept;
-    explicit BoundingBox(const std::array<float3, 8>& points) noexcept;
+    explicit BoundingBox(std::span<const float3> points) noexcept;
     explicit BoundingBox(F32 minX, F32 minY, F32 minZ, F32 maxX, F32 maxY, F32 maxZ) noexcept;
 
     BoundingBox(const BoundingBox& b) noexcept;
@@ -73,8 +75,7 @@ class BoundingBox {
     /// Optimized method
     [[nodiscard]] RayResult intersect(const Ray& r, F32 t0, F32 t1) const noexcept;
 
-    void createFromPoints(const vector<float3>& points) noexcept;
-    void createFromPoints(const std::array<float3, 8>& points) noexcept;
+    void createFromPoints(std::span<const float3> points) noexcept;
     void createFromSphere(const BoundingSphere& bSphere) noexcept;
     void createFromSphere(const float3& center, F32 radius) noexcept;
     void createFromCenterAndSize(const float3& center, const float3& size) noexcept;
@@ -92,7 +93,8 @@ class BoundingBox {
 
     void transform(float3 initialMin, float3 initialMax, const mat4<F32>& mat) noexcept;
     void transform(const BoundingBox& initialBoundingBox, const mat4<F32>& mat) noexcept;
-    void transform(const mat4<F32>& mat) noexcept;
+    void transform(const mat3<F32>& rotationMatrix) noexcept;
+    void transform(const mat4<F32>& transformMatrix) noexcept;
 
     [[nodiscard]] const float3& getMin() const noexcept;
     [[nodiscard]] const float3& getMax() const noexcept;
@@ -127,6 +129,10 @@ class BoundingBox {
 
     [[nodiscard]] inline float3 getPVertex(const float3& normal) const noexcept;
     [[nodiscard]] inline float3 getNVertex(const float3& normal) const noexcept;
+
+   private:
+    template<typename T> requires std::is_same_v<T, mat3<F32>> || std::is_same_v<T, mat4<F32>>
+    void transformInternal(float3 initialMin, float3 initialMax, const float3 translation, const T& rotation) noexcept;
 
    private:
     float3 _min, _max;

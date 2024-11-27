@@ -90,7 +90,7 @@ namespace Divide
     };
 
 #if defined(HAS_SSE42)
-    template<typename T>
+    template<ValidMathType T>
     struct alignas(16) SimdVector<T, std::enable_if_t<Is_Float_Angle<T> || std::is_same_v<F32, T>>>
     {
         public:
@@ -139,18 +139,18 @@ namespace Divide
         vec2( T value ) noexcept : vec2( value, value )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2( U value ) noexcept : vec2( value, value )
         {
         }
         vec2( T xIn, T yIn ) noexcept : x( xIn ), y( yIn )
         {
         }
-        template <typename U> requires ValidMathType<U>
+        template <ValidMathType U>
         vec2( U xIn, U yIn ) noexcept : x( static_cast<T>(xIn) ), y( static_cast<T>(yIn) )
         {
         }
-        template <typename U, typename V> requires ValidMathType<U> && ValidMathType<U>
+        template <ValidMathType U, ValidMathType V>
         vec2( U xIn, V yIn ) noexcept : x( static_cast<T>(xIn) ), y( static_cast<T>(yIn) )
         {
         }
@@ -163,15 +163,15 @@ namespace Divide
         vec2( const vec4<T>& _v ) noexcept : vec2( _v.xy() )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2( const vec2<U>& v ) noexcept : vec2( v.x, v.y )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2( const vec3<U>& v ) noexcept : vec2( v.x, v.y )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2( const vec4<U>& v ) noexcept : vec2( v.x, v.y )
         {
         }
@@ -200,33 +200,33 @@ namespace Divide
         {
             return !this->compare( v );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         bool operator!=( const vec2<U>& v ) const noexcept
         {
             return !this->compare( v );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         bool operator==( const vec2<U>& v ) const noexcept
         {
             return this->compare( v );
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec2 operator-( U _f ) const noexcept
         {
             return vec2( this->x - _f, this->y - _f );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec2 operator+( U _f ) const noexcept
         {
             return vec2( this->x + _f, this->y + _f );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec2 operator*( U _f ) const noexcept
         {
             return vec2( this->x * _f, this->y * _f );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec2 operator/( U _i ) const noexcept
         {
             if ( !IS_ZERO( _i ) )
@@ -235,17 +235,17 @@ namespace Divide
             } return *this;
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec2 operator+( const vec2<U> v ) const noexcept
         {
             return vec2( this->x + v.x, this->y + v.y );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec2 operator-( const vec2<U> v ) const noexcept
         {
             return vec2( this->x - v.x, this->y - v.y );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec2 operator*( const vec2<U> v ) const noexcept
         {
             return vec2( this->x * v.x, this->y * v.y );
@@ -256,54 +256,54 @@ namespace Divide
             return vec2( -this->x, -this->y );
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator+=( U _f ) noexcept
         {
             this->set( *this + _f ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator-=( U _f ) noexcept
         {
             this->set( *this - _f ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator*=( U _f ) noexcept
         {
             this->set( *this * _f ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator/=( U _f ) noexcept
         {
             this->set( *this / _f ); return *this;
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator*=( const vec2<U> v ) noexcept
         {
             this->set( *this * v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator+=( const vec2<U> v ) noexcept
         {
             this->set( *this + v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator-=( const vec2<U> v ) noexcept
         {
             this->set( *this - v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec2& operator/=( const vec2<U> v ) noexcept
         {
             this->set( *this / v ); return *this;
         }
 
-        template<typename U> requires std::is_unsigned_v<U>
+        template<std::unsigned_integral U>
         [[nodiscard]] T& operator[]( U i )       noexcept
         {
             return this->_v[i];
         }
-        template<typename U> requires std::is_unsigned_v<U>
+        template<std::unsigned_integral U>
         [[nodiscard]] const T& operator[]( U i ) const noexcept
         {
             return this->_v[i];
@@ -349,7 +349,7 @@ namespace Divide
         {
             this->x = xIn; this->y = yIn;
         }
-        template <typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         void set( U xIn, U yIn ) noexcept
         {
             this->x = static_cast<T>(xIn); this->y = static_cast<T>(yIn);
@@ -415,10 +415,10 @@ namespace Divide
         /// return the closest point on the line segment defined between the 2 points (A, B) and this vector
         [[nodiscard]] vec2 closestPointOnSegment( const vec2& vA, const vec2& vB );
         /// compare 2 vectors
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool compare( vec2<U> v ) const noexcept;
         /// compare 2 vectors within the specified tolerance
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool compare( vec2<U> v, U epsi ) const noexcept;
         /// export the vector's components in the first 2 positions of the specified array
         [[nodiscard]] void get( T* v ) const;
@@ -451,27 +451,27 @@ namespace Divide
     };
 
     /// lerp between the 2 specified vectors by the specified amount
-    template <typename T, typename U> requires ValidMathType<U>
+    template <typename T, ValidMathType U>
     [[nodiscard]] vec2<T> Lerp( vec2<T> u, vec2<T> v, U factor ) noexcept;
     /// lerp between the 2 specified vectors by the specified amount for each component
     template <typename T>
     [[nodiscard]] vec2<T> Lerp( vec2<T> u, vec2<T> v, vec2<T> factor ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec2<T> Cross( vec2<T> v1, vec2<T> v2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec2<T> Inverse( vec2<T> v ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec2<T> Normalize( vec2<T>& vector ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec2<T> Normalized( vec2<T> vector ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] T Dot( vec2<T> a, vec2<T> b ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] void OrthoNormalize( vec2<T>& n, vec2<T>& u ) noexcept;
     /// multiply a vector by a value
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec2<T> operator*( T fl, vec2<T> v ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec2<T> Clamped( vec2<T> v, vec2<T> min, vec2<T> max ) noexcept;
 
     /***********************************************************************
@@ -489,26 +489,26 @@ namespace Divide
         vec3( T value ) noexcept : vec3( value, value, value )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3( U value ) noexcept : vec3( value, value, value )
         {
         }
         vec3( T xIn, T yIn, T zIn ) noexcept : x( xIn ), y( yIn ), z( zIn )
         {
         }
-        template <typename U> requires ValidMathType<U>
+        template <ValidMathType U> 
         vec3( U xIn, U yIn, U zIn )  noexcept : x( static_cast<T>(xIn) ), y( static_cast<T>(yIn) ), z( static_cast<T>(zIn) )
         {
         }
-        template <typename U, typename V>
+        template <ValidMathType U, ValidMathType V>
         vec3( U xIn, U yIn, V zIn ) noexcept : x( static_cast<T>(xIn) ), y( static_cast<T>(yIn) ), z( static_cast<T>(zIn) )
         {
         }
-        template <typename U, typename V>
+        template <ValidMathType U, ValidMathType V>
         vec3( U xIn, V yIn, V zIn ) noexcept : x( static_cast<T>(xIn) ), y( static_cast<T>(yIn) ), z( static_cast<T>(zIn) )
         {
         }
-        template <typename U, typename V, typename W>
+        template <ValidMathType U, ValidMathType V, ValidMathType W>
         vec3( U xIn, V yIn, W zIn ) noexcept : x( static_cast<T>(xIn) ), y( static_cast<T>(yIn) ), z( static_cast<T>(zIn) )
         {
         }
@@ -524,15 +524,15 @@ namespace Divide
         vec3( const vec4<T>& v ) noexcept : vec3( v.x, v.y, v.z )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3( const vec2<U> v ) noexcept : vec3( v.x, v.y, U{0} )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3( const vec3<U>& v ) noexcept : vec3( v.x, v.y, v.z )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3( const vec4<U>& v ) noexcept : vec3( v.x, v.y, v.z )
         {
         }
@@ -561,33 +561,33 @@ namespace Divide
         {
             return this->compare( v );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool operator!=( const vec3<U>& v ) const noexcept
         {
             return !this->compare( v );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool operator==( const vec3<U>& v ) const noexcept
         {
             return this->compare( v );
         }
 
-        template <typename U> requires ValidMathType<U>
+        template <ValidMathType U>
         [[nodiscard]] vec3 operator+( U _f ) const noexcept
         {
             return vec3( this->x + _f, this->y + _f, this->z + _f );
         }
-        template <typename U> requires ValidMathType<U>
+        template <ValidMathType U>
         [[nodiscard]] vec3 operator-( U _f ) const noexcept
         {
             return vec3( this->x - _f, this->y - _f, this->z - _f );
         }
-        template <typename U> requires ValidMathType<U>
+        template <ValidMathType U>
         [[nodiscard]] vec3 operator*( U _f ) const noexcept
         {
             return vec3( this->x * _f, this->y * _f, this->z * _f );
         }
-        template <typename U> requires ValidMathType<U>
+        template <ValidMathType U>
         [[nodiscard]] vec3 operator/( U _f ) const noexcept
         {
             if ( IS_ZERO( _f ) )
@@ -602,76 +602,76 @@ namespace Divide
             return vec3( -this->x, -this->y, -this->z );
         }
 
-        template <typename U> requires ValidMathType<U>
+        template <ValidMathType U>
         [[nodiscard]] vec3 operator+( const vec3<U>& v ) const noexcept
         {
             return vec3( this->x + v.x, this->y + v.y, this->z + v.z );
         }
-        template <typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec3 operator-( const vec3<U>& v ) const noexcept
         {
             return vec3( this->x - v.x, this->y - v.y, this->z - v.z );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec3 operator*( const vec3<U>& v ) const noexcept
         {
             return vec3( this->x * v.x, this->y * v.y, this->z * v.z );
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator+=( U _f ) noexcept
         {
             this->set( *this + _f ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator-=( U _f ) noexcept
         {
             this->set( *this - _f ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator*=( U _f ) noexcept
         {
             this->set( *this * _f ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator/=( U _f ) noexcept
         {
             this->set( *this / _f ); return *this;
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator*=( const vec3<U>& v ) noexcept
         {
             this->set( *this * v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator+=( const vec3<U>& v ) noexcept
         {
             this->set( *this + v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator-=( const vec3<U>& v ) noexcept
         {
             this->set( *this - v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec3& operator/=( const vec3<U>& v ) noexcept
         {
             this->set( *this / v ); return *this;
         }
 
-        template<typename U> requires std::is_unsigned_v<U>
+        template<std::unsigned_integral U>
         [[nodiscard]] T& operator[]( const U i ) noexcept
         {
             return this->_v[i];
         }
-        template<typename U> requires std::is_unsigned_v<U>
+        template<std::unsigned_integral U>
         [[nodiscard]] const T& operator[]( const U i ) const noexcept
         {
             return this->_v[i];
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec3 operator/( const vec3<U>& v ) const noexcept
         {
             return vec3( IS_ZERO( v.x ) ? this->x : this->x / v.x,
@@ -722,7 +722,7 @@ namespace Divide
         {
             this->x = xIn; this->y = yIn; this->z = zIn;
         }
-        template <typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         void set( U xIn, U yIn, U zIn ) noexcept
         {
             this->x = static_cast<T>(xIn); this->y = static_cast<T>(yIn); this->z = static_cast<T>(zIn);
@@ -758,15 +758,15 @@ namespace Divide
             return lengthSquared() < EPSILON_F32;
         }
         /// compare 2 vectors
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool compare( const vec3<U>& v ) const noexcept;
         /// compare 2 vectors within the specified tolerance
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool compare( const vec3<U>& v, U epsi ) const noexcept;
         /// uniform vector: x = y = z
         [[nodiscard]] bool isUniform( F32 tolerance = 0.0001f ) const noexcept;
         /// The current vector is perpendicular to the specified one within epsilon
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool isPerpendicular( const vec3<U>& other, F32 epsilon = EPSILON_F32 ) const noexcept;
         /// return the squared distance of the vector
         [[nodiscard]] T lengthSquared() const noexcept;
@@ -869,43 +869,43 @@ namespace Divide
     };
 
     /// lerp between the 2 specified vectors by the specified amount
-    template <typename T, typename U> requires ValidMathType<U>
+    template <typename T, ValidMathType U>
     [[nodiscard]] vec3<T> Lerp( const vec3<T>& u, const vec3<T>& v, U factor ) noexcept;
     /// lerp between the 2 specified vectors by the specified amount for each component
     template <typename T>
     [[nodiscard]] vec3<T> Lerp( const vec3<T>& u, const vec3<T>& v, const vec3<T>& factor ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Abs( const vec3<T>& vector ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Min( const vec3<T>& v1, const vec3<T>& v2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Max( const vec3<T>& v1, const vec3<T>& v2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Normalize( vec3<T>& vector ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Normalized( const vec3<T>& vector ) noexcept;
     /// general vec3 dot product
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] T Dot( const vec3<T>& a, const vec3<T>& b ) noexcept;
     /// general vec3 cross function
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Cross( const vec3<T>& v1, const vec3<T>& v2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> AreOrthogonal( const vec3<T>& v1, const vec3<T>& v2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Inverse( const vec3<T>& v ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> operator*( T fl, const vec3<T>& v ) noexcept;
     // project 'in' onto the given direction
-    template<typename T>
+    template<ValidMathType T>
     [[nodiscard]] vec3<T> ProjectToNorm( const vec3<T>& in, const vec3<T>& direction );
-    template <typename T>
+    template <ValidMathType T>
     void OrthoNormalize( vec3<T>& n, vec3<T>& u ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     void OrthoNormalize( vec3<T>& v1, vec3<T>& v2, vec3<T>& v3 ) noexcept;
-    template<typename T>
+    template<ValidMathType T>
     [[nodiscard]] vec3<T> Perpendicular( const vec3<T>& v ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec3<T> Clamped( const vec3<T>& v, const vec3<T>& min, const vec3<T>& max ) noexcept;
 
     /**********************************************************************************************************************
@@ -928,11 +928,11 @@ namespace Divide
         vec4( T xIn, T yIn, T zIn ) noexcept : x( xIn ), y( yIn ), z( zIn ), w( T{1} )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4( U xIn, U yIn, U zIn, U wIn ) noexcept : x( static_cast<T>(xIn) ), y( static_cast<T>(yIn) ), z( static_cast<T>(zIn) ), w( static_cast<T>(wIn) )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4( U xIn, U yIn, U zIn ) noexcept : vec4( xIn, yIn, zIn, T{1} )
         {
         }
@@ -947,7 +947,7 @@ namespace Divide
         vec4( T value ) noexcept : vec4( value, value, value, value )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4( U value ) noexcept : vec4( value, value, value, value )
         {
         }
@@ -969,15 +969,15 @@ namespace Divide
         vec4( const vec3<T>& v, T wIn ) noexcept : vec4( v.x, v.y, v.z, wIn )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4( const vec2<U> v ) noexcept : vec4( v.x, v.y, U{0}, U{0} )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4( const vec3<U>& v ) noexcept : vec4( v.x, v.y, v.z, U{0} )
         {
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4( const vec4<U>& v ) noexcept : vec4( v.x, v.y, v.z, v.w )
         {
         }
@@ -1006,32 +1006,32 @@ namespace Divide
         {
             return !this->compare( v );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool operator!=( const vec4<U>& v ) const noexcept
         {
             return !this->compare( v );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool operator==( const vec4<U>& v ) const noexcept
         {
             return this->compare( v );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator-( U _f ) const noexcept
         {
             return vec4( this->x - _f, this->y - _f, this->z - _f, this->w - _f );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator+( U _f ) const noexcept
         {
             return vec4( this->x + _f, this->y + _f, this->z + _f, this->w + _f );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator*( U _f ) const noexcept
         {
             return vec4( this->x * _f, this->y * _f, this->z * _f, this->w * _f );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator/( U _f ) const noexcept
         {
             if ( !IS_ZERO( _f ) )
@@ -1050,22 +1050,22 @@ namespace Divide
             return vec4( -x, -y, -z, -w );
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator+( const vec4<U>& v ) const noexcept
         {
             return vec4( this->x + v.x, this->y + v.y, this->z + v.z, this->w + v.w );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator-( const vec4<U>& v ) const noexcept
         {
             return vec4( this->x - v.x, this->y - v.y, this->z - v.z, this->w - v.w );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator*( const vec4<U>& v ) const noexcept
         {
             return vec4( this->x * v.x, this->y * v.y, this->z * v.z, this->w * v.w );
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] vec4 operator/( const vec4<U>& v ) const noexcept
         {
             return vec4( IS_ZERO( v.x ) ? this->x : this->x / v.x,
@@ -1074,25 +1074,25 @@ namespace Divide
                          IS_ZERO( v.w ) ? this->w : this->w / v.w );
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator+=( U _f ) noexcept
         {
             this->set( *this + _f );
             return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator-=( U _f ) noexcept
         {
             this->set( *this - _f );
             return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator*=( U _f ) noexcept
         {
             this->set( *this * _f );
             return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator/=( U _f ) noexcept
         {
             if ( !IS_ZERO( _f ) )
@@ -1101,22 +1101,22 @@ namespace Divide
             } return *this;
         }
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator*=( const vec4<U>& v ) noexcept
         {
             this->set( *this * v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator/=( const vec4<U>& v ) noexcept
         {
             this->set( *this / v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator+=( const vec4<U>& v ) noexcept
         {
             this->set( *this + v ); return *this;
         }
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         vec4& operator-=( const vec4<U>& v ) noexcept
         {
             this->set( *this - v ); return *this;
@@ -1131,12 +1131,12 @@ namespace Divide
             return this->_v;
         }
 
-        template<typename U> requires std::is_unsigned_v<U>
+        template<std::unsigned_integral U>
         [[nodiscard]] T& operator[]( U i ) noexcept
         {
             return this->_v[i];
         }
-        template<typename U> requires std::is_unsigned_v<U>
+        template<std::unsigned_integral U>
         [[nodiscard]] const T& operator[]( U _i ) const noexcept
         {
             return this->_v[_i];
@@ -1260,7 +1260,7 @@ namespace Divide
         {
             _reg = SimdVector<T>( xIn, yIn, zIn, wIn );
         }
-        template <typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         void set( U xIn, U yIn, U zIn, U wIn ) noexcept
         {
             set( static_cast<T>(xIn), static_cast<T>(yIn), static_cast<T>(zIn), static_cast<T>(wIn) );
@@ -1296,10 +1296,10 @@ namespace Divide
             this->set( T{0} );
         }
         /// compare 2 vectors
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool compare( const vec4<U>& v ) const noexcept;
         /// compare 2 vectors within the specified tolerance
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool compare( const vec4<U>& v, U epsi ) const noexcept;
         /// swap the components  of this vector with that of the specified one
         void swap( vec4* iv ) noexcept;
@@ -1308,7 +1308,7 @@ namespace Divide
         /// transform the vector to unit length
         vec4& normalize() noexcept;
         /// The current vector is perpendicular to the specified one within epsilon
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool isPerpendicular( const vec4<U>& other, F32 epsilon = EPSILON_F32 ) const noexcept;
         /// get the smallest value of X,Y,Z or W
         [[nodiscard]] T minComponent() const noexcept;
@@ -1409,32 +1409,32 @@ namespace Divide
 #pragma pack(pop)
 
     /// lerp between the 2 specified vectors by the specified amount
-    template <typename T>
-    [[nodiscard]] vec4<T> Lerp( const vec4<T>& u, const vec4<T>& v, T factor ) noexcept;
+    template <typename T, ValidMathType U = T>
+    [[nodiscard]] vec4<T> Lerp( const vec4<T>& u, const vec4<T>& v, U factor ) noexcept;
     /// lerp between the 2 specified vectors by the specified amount for each component
     template <typename T>
     [[nodiscard]] vec4<T> Lerp( const vec4<T>& u, const vec4<T>& v, const vec4<T>& factor ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec4<T> Abs( const vec4<T>& vector ) noexcept;
     /// min/max functions
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec4<T> Min( const vec4<T>& v1, const vec4<T>& v2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec4<T> Max( const vec4<T>& v1, const vec4<T>& v2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec4<T> Normalize( vec4<T>& vector ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec4<T> Normalized( const vec4<T>& vector ) noexcept;
     /// multiply a vector by a value
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec4<T> operator*( T fl, const vec4<T>& v ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     void OrthoNormalize( vec4<T>& n, vec4<T>& u );
-    template <typename T>
+    template <ValidMathType T>
     void OrthoNormalize( vec4<T>& v1, vec4<T>& v2, vec4<T>& v3 );
-    template<typename T>
+    template<ValidMathType T>
     [[nodiscard]] vec4<T> Perpendicular( const vec4<T>& vec, const vec4<T>& hint1, const vec4<T>& hint2 ) noexcept;
-    template <typename T>
+    template <ValidMathType T>
     [[nodiscard]] vec4<T> Clamped( const vec4<T>& v, const vec4<T>& min, const vec4<T>& max ) noexcept;
 
     /// Quaternion multiplications require these to be floats
@@ -1472,7 +1472,7 @@ namespace Divide
         public:
         using vec4<T>::vec4;
 
-        template<typename U> requires ValidMathType<U>
+        template<ValidMathType U>
         [[nodiscard]] bool contains( U xIn, U yIn ) const noexcept
         {
             return COORDS_IN_RECT( static_cast<T>(xIn), static_cast<T>(yIn), *this );

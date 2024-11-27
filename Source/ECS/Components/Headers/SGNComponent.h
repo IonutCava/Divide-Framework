@@ -48,11 +48,16 @@ struct RenderStagePass;
 
 } //namespace Divide 
 
-namespace ECS {
-    struct CustomEvent {
-        enum class Type : Divide::U8 {
+namespace ECS
+{
+    struct CustomEvent
+    {
+        enum class Type : Divide::U8
+        {
             TransformUpdated = 0,
             AnimationUpdated,
+            AnimationChanged,
+            AnimationReSync,
             RelationshipCacheInvalidated,
             BoundsUpdated,
             DrawBoundsChanged,

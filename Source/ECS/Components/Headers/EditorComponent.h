@@ -107,7 +107,7 @@ namespace Divide
         SLIDER_TYPE,
         SEPARATOR,
         BUTTON,
-        DROPDOWN_TYPE, ///<Only U8 types supported!
+        DROPDOWN_TYPE,
         BOUNDING_BOX,
         BOUNDING_SPHERE,
         ORIENTED_BOUNDING_BOX,
@@ -118,9 +118,11 @@ namespace Divide
 
     struct EditorComponentField
     {
-        DELEGATE_STD<void, void*> _dataGetter = {};
-        DELEGATE_STD<void, const void*> _dataSetter = {};
-        DELEGATE_STD<const char*, U8> _displayNameGetter = {};
+        void* _userData = nullptr;
+
+        DELEGATE_STD<void, void*, void*> _dataGetter = {};
+        DELEGATE_STD<void, const void*, void*> _dataSetter = {};
+        DELEGATE_STD<const char*, U32, void*> _displayNameGetter = {};
 
         Str<128> _tooltip = "";
         void* _data = nullptr;
@@ -154,7 +156,7 @@ namespace Divide
         template<typename T>
         void set(const T& dataIn);
 
-        [[nodiscard]] const char* getDisplayName(const U8 index) const;
+        [[nodiscard]] const char* getDisplayName(const U32 index) const;
         [[nodiscard]] bool supportsByteCount() const noexcept;
         [[nodiscard]] bool isMatrix() const noexcept;
     };

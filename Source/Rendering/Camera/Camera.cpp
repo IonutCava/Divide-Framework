@@ -855,7 +855,7 @@ namespace Divide
         if ( _reflectionActive )
         {
             _data._viewMatrix.reflect( _reflectionPlane );
-            _data._eye.set( mat4<F32>( _reflectionPlane ).transformNonHomogeneous( _data._eye ) );
+            _data._eye = mat4<F32>( _reflectionPlane ) * _data._eye;
         }
         _data._viewMatrix.getInverse( _data._invViewMatrix );
         _viewMatrixDirty = false;

@@ -208,9 +208,9 @@ float4 VertexBuffer::getBoneWeights(const U32 index) const
 {
     const vec4<U8>& weight = _data[index]._weights;
     return float4(UNORM_CHAR_TO_FLOAT(weight.x),
-                     UNORM_CHAR_TO_FLOAT(weight.y),
-                     UNORM_CHAR_TO_FLOAT(weight.z),
-                     UNORM_CHAR_TO_FLOAT(weight.w));
+                  UNORM_CHAR_TO_FLOAT(weight.y),
+                  UNORM_CHAR_TO_FLOAT(weight.z),
+                  UNORM_CHAR_TO_FLOAT(weight.w));
 }
 
 size_t VertexBuffer::getIndexCount() const noexcept
@@ -367,12 +367,13 @@ void VertexBuffer::modifyBoneIndices(const U32 index, const vec4<U8> indices)
 
 void VertexBuffer::modifyBoneWeights(const U32 index, const FColour4& weights)
 {
-    vec4<U8> boneWeights;
-    boneWeights.x = FLOAT_TO_CHAR_UNORM(weights.x);
-    boneWeights.y = FLOAT_TO_CHAR_UNORM(weights.y);
-    boneWeights.z = FLOAT_TO_CHAR_UNORM(weights.z);
-    boneWeights.w = FLOAT_TO_CHAR_UNORM(weights.w);
-    modifyBoneWeights(index, boneWeights);
+    modifyBoneWeights(index, vec4<U8>
+    {
+        FLOAT_TO_CHAR_UNORM(weights.x),
+        FLOAT_TO_CHAR_UNORM(weights.y),
+        FLOAT_TO_CHAR_UNORM(weights.z),
+        FLOAT_TO_CHAR_UNORM(weights.w)
+    });
 }
 
 void VertexBuffer::modifyBoneWeights( const U32 index, const vec4<U8> packedWeights )

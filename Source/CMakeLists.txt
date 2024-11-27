@@ -125,6 +125,8 @@ if(WIN32)
     target_link_libraries(${APP_THIRD_PARTY_LIB} PUBLIC Shcore.lib Winmm.lib)
 endif()
 
+set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS})
+
 target_compile_options(${APP_THIRD_PARTY_LIB} PUBLIC ${DIVIDE_COMPILE_OPTIONS} ${PCH_COMPILE_OPTIONS} ${THIRD_PARTY_COMPILE_OPTIONS})
 
 set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
@@ -137,6 +139,8 @@ add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" ${ENGINE_SOURCE_CODE} )
 target_link_libraries(${APP_LIB_DIVIDE} ${APP_THIRD_PARTY_LIB})
 target_precompile_headers(${APP_LIB_DIVIDE} REUSE_FROM ${APP_THIRD_PARTY_LIB})
 target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS})
+
+target_link_options(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_LINK_FLAGS})
 
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
@@ -205,8 +209,9 @@ if(BUILD_TESTING_INTERNAL)
 endif()
 
 foreach( APP_EXE ${APP_BUILD_EXES} )
+    target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS})
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
-    set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-    target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS} ${EXTRA_COMPILE_FLAGS})
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
+
+    set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()

@@ -109,35 +109,37 @@ namespace Divide {
             std::array<TextureEntry, to_base(TextureSlot::COUNT)> _textures;
         };
 
-        struct SubMeshData {
-            struct Vertex {
+        struct SubMeshData
+        {
+            struct Vertex
+            {
                 float3 position = {0.f, 0.f, 0.f };
                 float3 normal = {0.f, 0.f, 0.f };
                 float4 tangent = { 0.f, 0.f, 0.f, 0.f };
                 float3 texcoord = { 0.f, 0.f, 0.f };
                 float4 weights = {0.f, 0.f, 0.f, 0.f};
-                vec4<U8>  indices = {0u, 0u, 0u, 0u};
+                vec4<U8> indices = {0u, 0u, 0u, 0u};
+                U8 weightCount = 0u;
             };
 
             bool serialize(ByteBuffer& dataOut) const;
             bool deserialize(ByteBuffer& dataIn);
 
             PROPERTY_RW(Str<64>, name);
-            PROPERTY_RW(U32, index, 0u);
-            PROPERTY_RW(U8, lodCount, 0u);
-            PROPERTY_RW(U8, boneCount, 0u);
-            PROPERTY_RW(float3, minPos);
-            PROPERTY_RW(float3, maxPos);
-            PROPERTY_RW(float3, worldOffset);
-
-            std::array<U16, MAX_LOD_LEVELS> _partitionIDs{};
-            vector<uint3> _triangles[MAX_LOD_LEVELS];
-            vector<U32> _indices[MAX_LOD_LEVELS];
-            vector<Vertex> _vertices[MAX_LOD_LEVELS];
-
-            AttributeFlags _useAttribute{};
 
             MaterialData _material;
+            AttributeFlags _useAttribute{};
+            vector<Vertex> _vertices;
+            vector<uint3> _triangles[MAX_LOD_LEVELS];
+            vector<U32> _indices[MAX_LOD_LEVELS];
+            std::array<U16, MAX_LOD_LEVELS> _partitionIDs{};
+
+            float3 _minPos{};
+            float3 _maxPos{};
+            float3 _worldOffset{};
+            U32 _index{0u};
+            U8 _lodCount{0u};
+            U8 _boneCount{0u};
         };
 
         struct ImportData
@@ -151,7 +153,7 @@ namespace Divide {
             bool saveToFile(PlatformContext& context, const ResourcePath& path, std::string_view fileName);
             bool loadFromFile(PlatformContext& context, const ResourcePath& path, std::string_view fileName);
 
-            Bone* _skeleton = nullptr;
+            Bone_uptr _skeleton = nullptr;
 
             // Was it loaded from file, or just created?
             PROPERTY_RW(bool, loadedFromFile, false);
@@ -162,10 +164,8 @@ namespace Divide {
             PROPERTY_RW(Str<256>, modelName);
             PROPERTY_RW(ResourcePath, modelPath);
             PROPERTY_RW(bool, fromFile, false);
-            vector<Bone*> _bones;
             Divide::MeshNodeData _nodeData;
             vector<SubMeshData> _subMeshData;
-
             size_t _animationCount{0u};
             vector<std::unique_ptr<AnimEvaluator>> _animations;
         };
