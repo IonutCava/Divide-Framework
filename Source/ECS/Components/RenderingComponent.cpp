@@ -335,8 +335,8 @@ namespace Divide
 
         // Draw bounding box if needed and only in the final stage to prevent Shadow/PostFX artifacts
         drawBounds( _drawAABB || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_AABB ),
-                    _drawOBB || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_OBB ),
-                    _drawBS || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_BSPHERES ) );
+                    _drawOBB  || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_OBB ),
+                    _drawBS   || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_BSPHERES ) );
 
         if ( renderOptionEnabled( RenderOptions::RENDER_AXIS ) ||
              (sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::SELECTION_GIZMO ) && _parentSGN->hasFlag( SceneGraphNode::Flags::SELECTED )) ||

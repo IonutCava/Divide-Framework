@@ -37,70 +37,39 @@
 #ifndef DVD_BONE_H_
 #define DVD_BONE_H_
 
-namespace Divide {
+namespace Divide
+{
 
-class Bone : public eastl::enable_shared_from_this<Bone> {
-    PROPERTY_RW(string, name);
-    PROPERTY_RW(I32, boneID, -1);
-    PROPERTY_RW(mat4<F32>, offsetMatrix);
-    PROPERTY_RW(mat4<F32>, localTransform);
-    PROPERTY_RW(mat4<F32>, globalTransform);
-    PROPERTY_RW(mat4<F32>, originalLocalTransform);
+FWD_DECLARE_MANAGED_CLASS(Bone);
 
+class Bone
+{
 public:
-    Bone* _parent = nullptr;
-    vector<Bone*> _children;
+    static constexpr U8 INVALID_BONE_IDX = U8_MAX;
 
-    // index in the current animation's channel array.
-    explicit Bone(const string& name)
-        : _name(name)
-    {
-    }
+    PROPERTY_RW(string, name);
+    PROPERTY_RW(U8, boneID, INVALID_BONE_IDX);
 
-    ~Bone()
-    {
-        for (Bone* child : _children)
-        {
-            delete child;
-        }
-    }
 
-    [[nodiscard]] size_t hierarchyDepth() const {
-        size_t size = _children.size();
-        for (const auto& child : _children) {
-            size += child->hierarchyDepth();
-        }
+    PROPERTY_R_IW(U64, nameHash, 0u );
+    POINTER_R_IW(Bone, parent, nullptr);
 
-        return size;
-    }
+    mat4<F32> _offsetMatrix;
+    mat4<F32> _localTransform;
+    
+    explicit Bone(std::string_view name, Bone* parent);
 
-    [[nodiscard]] Bone* find(const string& name) {
-        return find(_ID(name.c_str()));
-    }
+    [[nodiscard]] size_t hierarchyDepth() const;
 
-    [[nodiscard]] Bone* find(const U64 nameKey) {
-        if (_ID(_name.c_str()) == nameKey) {
-            return this;
-        }
+    [[nodiscard]] Bone* find(const U64 nameKey);
 
-        for (const auto& child : _children) {
-            Bone* childNode = child->find(nameKey);
-            if (childNode != nullptr) {
-                return childNode;
-            }
-        }
+    inline const vector<Bone_uptr>& children() const { return _children; }
 
-        return nullptr;
-    }
-
-    void createBoneList(vector<Bone*>& boneList) {
-        boneList.push_back(this);
-        for (Bone* child : _children) {
-            child->createBoneList(boneList);
-        }
-    }
+private:
+    vector<Bone_uptr> _children;
 };
 
-};  // namespace Divide
+
+}  // namespace Divide
 
 #endif //DVD_BONE_H_

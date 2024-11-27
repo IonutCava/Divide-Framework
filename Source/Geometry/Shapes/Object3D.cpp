@@ -77,13 +77,12 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
     {
         if (cmdsOut.size() == 0u)
         {
-            const U16 partitionID = _geometryPartitionIDs[0];
             GenericDrawCommand& cmd = cmdsOut.emplace_back();
             toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
             cmd._sourceBuffer = geometryBuffer()->handle();
-            cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(partitionID));
-            cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(partitionID));
+            cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(_geometryPartitionIDs[0]));
+            cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(_geometryPartitionIDs[0]));
             cmd._cmd.instanceCount = sgn->instanceCount();
         }
         

@@ -40,7 +40,7 @@ namespace Divide
         if ( _dataGetter )
         {
             T* ret = nullptr;
-            _dataGetter( ret );
+            _dataGetter( ret, _userData );
             return ret;
         }
         return static_cast<T*>(_data);
@@ -52,7 +52,7 @@ namespace Divide
         if ( _dataGetter )
         {
             T dataOut = {};
-            _dataGetter( &dataOut );
+            _dataGetter( &dataOut, _userData );
             return dataOut;
         }
 
@@ -64,7 +64,7 @@ namespace Divide
     {
         if ( _dataGetter )
         {
-            _dataGetter( &dataOut );
+            _dataGetter( &dataOut, _userData );
         }
         else
         {
@@ -82,7 +82,7 @@ namespace Divide
 
         if ( _dataSetter )
         {
-            _dataSetter( &dataIn );
+            _dataSetter( &dataIn, _userData );
         }
         else if ( _data )
         {
@@ -94,11 +94,11 @@ namespace Divide
         }
     }
 
-    inline const char* EditorComponentField::getDisplayName( const U8 index ) const
+    inline const char* EditorComponentField::getDisplayName( const U32 index ) const
     {
         if ( _displayNameGetter )
         {
-            return _displayNameGetter( index );
+            return _displayNameGetter( index, _userData );
         }
         return "Error: no name getter!";
     }

@@ -169,4 +169,18 @@ else()
                     unofficial::omniverse-physx-sdk::sdk)
 endif()
 
+if(UNIX)
+  set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
+                    PhysXExtensions_static_64
+                    PhysX_static_64
+                    PhysXPvdSDK_static_64
+                    PhysXCommon_static_64
+                    PhysXFoundation_static_64
+                    pthread
+                    dl)
+else()
+  set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
+                    unofficial::omniverse-physx-sdk::sdk)
+endif()
+
 add_compile_definitions(CEGUI_STATIC)

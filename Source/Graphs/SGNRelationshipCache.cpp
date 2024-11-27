@@ -147,7 +147,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
         const SceneGraphNode::ChildContainer& children = _parentNode->getChildren();
-        SharedLock<SharedMutex> w_lock( children._lock );
+        SharedLock<SharedMutex> r_lock( children._lock );
         const U32 childCount = children._count;
         for ( U32 i = 0u; i < childCount; ++i )
         {
@@ -178,7 +178,7 @@ namespace Divide
         if (parent != nullptr )
         {
             const SceneGraphNode::ChildContainer& children = parent->getChildren();
-            SharedLock<SharedMutex> w_lock( children._lock );
+            SharedLock<SharedMutex> r_lock( children._lock );
             const U32 childCount = children._count;
             for ( U32 i = 0u; i < childCount; ++i )
             {

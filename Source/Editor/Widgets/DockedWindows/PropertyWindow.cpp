@@ -187,7 +187,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = eye._v;
-                camField._dataSetter = [cam]( const void* val ) noexcept
+                camField._dataSetter = [cam]( const void* val, [[maybe_unused]] void* user_data) noexcept
                 {
                     cam->setEye( *static_cast<const float3*>(val) );
                 };
@@ -207,7 +207,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = euler._v;
-                camField._dataSetter = [cam]( const void* e ) noexcept
+                camField._dataSetter = [cam]( const void* e, [[maybe_unused]] void* user_data) noexcept
                 {
                     cam->setEuler( *static_cast<const vec3<Angle::DEGREES_F>*>(e) );
                 };
@@ -230,7 +230,7 @@ namespace Divide
                 camField._tooltip = "Change camera speed factor. (units / second) \nT = Turn speed, M = Move speed, Z = Zoom speed";
                 camField._data = speed._v;
                 camField._resetValue = 5.f;
-                camField._dataSetter = [cam]( const void* e ) noexcept
+                camField._dataSetter = [cam]( const void* e, [[maybe_unused]] void* user_data) noexcept
                 {
                     const float3 speed = *static_cast<const float3*>(e);
                     cam->speedFactor( speed );
@@ -255,7 +255,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = &aspect;
-                camField._dataSetter = [cam]( const void* a ) noexcept
+                camField._dataSetter = [cam]( const void* a, [[maybe_unused]] void* user_data) noexcept
                 {
                     cam->setAspectRatio( *static_cast<const F32*>(a) );
                 };
@@ -269,7 +269,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = &horizontalFoV;
-                camField._dataSetter = [cam]( const void* fov ) noexcept
+                camField._dataSetter = [cam]( const void* fov, [[maybe_unused]] void* user_data) noexcept
                 {
                     cam->setHorizontalFoV( *static_cast<const F32*>(fov) );
                 };
@@ -283,7 +283,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = zPlanes._v;
-                camField._dataSetter = [cam]( const void* planes )
+                camField._dataSetter = [cam]( const void* planes, [[maybe_unused]] void* user_data)
                 {
                     if ( cam->snapshot()._isOrthoCamera )
                     {
@@ -305,7 +305,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = orthoRect._v;
-                camField._dataSetter = [cam]( const void* rect )
+                camField._dataSetter = [cam]( const void* rect, [[maybe_unused]] void* user_data)
                 {
                     cam->setProjection( *static_cast<const float4*>(rect), cam->snapshot()._zPlanes );
                 };
@@ -375,7 +375,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = &radius;
-                camField._dataSetter = [cam]( const void* radius ) noexcept
+                camField._dataSetter = [cam]( const void* radius, [[maybe_unused]] void* user_data) noexcept
                 {
                     cam->maxRadius( *static_cast<const F32*>(radius) );
                 };
@@ -389,7 +389,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = &radius;
-                camField._dataSetter = [cam]( const void* radius ) noexcept
+                camField._dataSetter = [cam]( const void* radius, [[maybe_unused]] void* user_data) noexcept
                 {
                     cam->maxRadius( *static_cast<const F32*>(radius) );
                 };
@@ -403,7 +403,7 @@ namespace Divide
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
                 camField._data = &radius;
-                camField._dataSetter = [cam]( const void* radius ) noexcept
+                camField._dataSetter = [cam]( const void* radius, [[maybe_unused]] void* user_data) noexcept
                 {
                     cam->curRadius( *static_cast<const F32*>(radius) );
                 };
@@ -628,7 +628,7 @@ namespace Divide
                             tempField._data = &bleedBias;
                             tempField._format = "%.6f";
                             tempField._range = { 0.0f, 1.0f };
-                            tempField._dataSetter = [&activeSceneState]( const void* bias ) noexcept
+                            tempField._dataSetter = [&activeSceneState]( const void* bias, [[maybe_unused]] void* user_data) noexcept
                             {
                                 activeSceneState->lightBleedBias( *static_cast<const F32*>(bias) );
                             };
@@ -644,7 +644,7 @@ namespace Divide
                             tempField._data = &shadowVariance;
                             tempField._range = { 0.00001f, 0.99999f };
                             tempField._format = "%.6f";
-                            tempField._dataSetter = [&activeSceneState]( const void* variance ) noexcept
+                            tempField._dataSetter = [&activeSceneState]( const void* variance, [[maybe_unused]] void* user_data) noexcept
                             {
                                 activeSceneState->minShadowVariance( *static_cast<const F32*>(variance) );
                             };
@@ -950,29 +950,29 @@ namespace Divide
                 }
 
                 printFieldName();
-                const U8 entryStart = to_U8( field._range.offset );
-                const U8 entryCount = to_U8( field._range.count );
+                const U32 entryStart = to_U32( field._range.offset );
+                const U32 entryCount = to_U32( field._range.count );
                 static UndoEntry<I32> typeUndo = {};
-                if ( entryCount > 0 && entryStart <= entryCount )
+                if ( entryCount > 0u && entryStart <= entryCount )
                 {
                     ImGui::PushID( field._name.c_str() );
 
-                    const U8 crtMode = field.get<U8>();
+                    const U32 crtMode = field.get<U32>();
                     ret = ImGui::BeginCombo( "", field.getDisplayName( crtMode ) );
                     if ( ret )
                     {
-                        for ( U8 n = entryStart; n < entryCount; ++n )
+                        for ( U32 n = entryStart; n < entryCount; ++n )
                         {
                             const bool isSelected = crtMode == n;
                             if ( ImGui::Selectable( field.getDisplayName( n ), isSelected ) )
                             {
                                 typeUndo._type = PushConstantType::UINT;
                                 typeUndo._name = "Drop Down Selection";
-                                typeUndo._oldVal = to_U32( crtMode );
-                                typeUndo._newVal = to_U32( n );
+                                typeUndo._oldVal = crtMode;
+                                typeUndo._newVal = n;
                                 typeUndo._dataSetter = [&field]( const U32& data )
                                 {
-                                    field.set( to_U8( data ) );
+                                    field.set( data );
                                 };
 
                                 field.set( n );
@@ -1011,7 +1011,7 @@ namespace Divide
                     bbField._readOnly = field._readOnly;
                     bbField._data = bbMin;
                     bbField._hexadecimal = field._hexadecimal;
-                    bbField._dataSetter = [&field]( const void* val )
+                    bbField._dataSetter = [&field]( const void* val, [[maybe_unused]] void* user_data)
                     {
                         BoundingBox aabb = {};
                         field.get<BoundingBox>( aabb );
@@ -1028,7 +1028,7 @@ namespace Divide
                     bbField._readOnly = field._readOnly;
                     bbField._data = bbMax;
                     bbField._hexadecimal = field._hexadecimal;
-                    bbField._dataSetter = [&field]( const void* val )
+                    bbField._dataSetter = [&field]( const void* val, [[maybe_unused]] void* user_data)
                     {
                         BoundingBox aabb = {};
                         field.get<BoundingBox>( aabb );
@@ -1114,7 +1114,7 @@ namespace Divide
                     bbField._readOnly = field._readOnly;
                     bbField._hexadecimal = field._hexadecimal;
                     bbField._data = center;
-                    bbField._dataSetter = [&field]( const void* c )
+                    bbField._dataSetter = [&field]( const void* c, [[maybe_unused]] void* user_data)
                     {
                         BoundingSphere bSphere = {};
                         field.get<BoundingSphere>( bSphere );
@@ -1131,7 +1131,7 @@ namespace Divide
                     bbField._readOnly = field._readOnly;
                     bbField._hexadecimal = field._hexadecimal;
                     bbField._data = &radius;
-                    bbField._dataSetter = [&field]( const void* r )
+                    bbField._dataSetter = [&field]( const void* r, [[maybe_unused]] void* user_data)
                     {
                         BoundingSphere bSphere = {};
                         field.get<BoundingSphere>( bSphere );
@@ -1485,7 +1485,7 @@ namespace Divide
                 tempField._data = &zBias;
                 tempField._range = { 0.0f, 1000.0f };
                 const RenderStagePass tempPass = currentStagePass;
-                tempField._dataSetter = [material, &stateBlock, tempPass]( const void* data )
+                tempField._dataSetter = [material, &stateBlock, tempPass]( const void* data, [[maybe_unused]] void* user_data)
                 {
                     stateBlock._zBias = *static_cast<const F32*>(data);
                     material->setRenderStateBlock( stateBlock, tempPass._stage, tempPass._passType, tempPass._variant );
@@ -1501,7 +1501,7 @@ namespace Divide
                 tempField._data = &zUnits;
                 tempField._range = { 0.0f, 65536.0f };
                 const RenderStagePass tempPass = currentStagePass;
-                tempField._dataSetter = [material, &stateBlock, tempPass]( const void* data )
+                tempField._dataSetter = [material, &stateBlock, tempPass]( const void* data, [[maybe_unused]] void* user_data)
                 {
                     stateBlock._zUnits = *static_cast<const F32*>(data);
                     material->setRenderStateBlock( stateBlock, tempPass._stage, tempPass._passType, tempPass._variant );
@@ -2122,7 +2122,7 @@ namespace Divide
                     tempField._readOnly = readOnly;
                     tempField._data = &shininess;
                     tempField._range = { 0.0f, Material::MAX_SHININESS };
-                    tempField._dataSetter = [&material]( const void* s )
+                    tempField._dataSetter = [&material]( const void* s, [[maybe_unused]] void* user_data)
                     {
                         material->properties().shininess( *static_cast<const F32*>(s) );
                     };
@@ -2179,7 +2179,7 @@ namespace Divide
                     }
                     tempField._data = &metallic;
                     tempField._range = { 0.0f, 1.0f };
-                    tempField._dataSetter = [material]( const void* m )
+                    tempField._dataSetter = [material]( const void* m, [[maybe_unused]] void* user_data)
                     {
                         material->properties().metallic( *static_cast<const F32*>(m) );
                     };
@@ -2213,7 +2213,7 @@ namespace Divide
                     }
                     tempField._data = &roughness;
                     tempField._range = { 0.0f, 1.0f };
-                    tempField._dataSetter = [material]( const void* r )
+                    tempField._dataSetter = [material]( const void* r, [[maybe_unused]] void* user_data)
                     {
                         material->properties().roughness( *static_cast<const F32*>(r) );
                     };
@@ -2246,7 +2246,7 @@ namespace Divide
                     }
                     tempField._data = &occlusion;
                     tempField._range = { 0.0f, 1.0f };
-                    tempField._dataSetter = [material]( const void* m )
+                    tempField._dataSetter = [material]( const void* m, [[maybe_unused]] void* user_data)
                     {
                         material->properties().occlusion( *static_cast<const F32*>(m) );
                     };
@@ -2277,7 +2277,7 @@ namespace Divide
                 tempField._readOnly = readOnly;
                 tempField._data = &parallax;
                 tempField._range = { 0.0f, 1.0f };
-                tempField._dataSetter = [material]( const void* p )
+                tempField._dataSetter = [material]( const void* p, [[maybe_unused]] void* user_data)
                 {
                     material->properties().parallaxFactor( *static_cast<const F32*>(p) );
                 };

@@ -36,8 +36,8 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
 
     EditorComponentField directionField = {};
     directionField._name = "Direction";
-    directionField._dataGetter = [this](void* dataOut) noexcept { static_cast<float3*>(dataOut)->set(directionCache()); };
-    directionField._dataSetter = [this](const void* data) { setDirection(*static_cast<const float3*>(data)); };
+    directionField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data) noexcept { static_cast<float3*>(dataOut)->set(directionCache()); };
+    directionField._dataSetter = [this](const void* data, [[maybe_unused]] void* user_data) { setDirection(*static_cast<const float3*>(data)); };
     directionField._type = EditorComponentFieldType::PUSH_TYPE;
     directionField._readOnly = true;
     directionField._basicType = PushConstantType::VEC3;

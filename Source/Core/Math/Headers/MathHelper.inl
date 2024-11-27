@@ -61,20 +61,20 @@ namespace Divide
             srand<Engine>( rnddev() );
         }
 
-        template<typename T, typename Engine, typename Distribution> requires std::is_arithmetic_v<T> && std::is_fundamental_v<T>
+        template<ValidMathType T, typename Engine, typename Distribution>
         T rand( T min, T max )
         {
             return static_cast<T>(Distribution{ min, max }(detail::getEngine<Engine>()));
         }
 
-        template<typename T, typename Engine, typename Distribution> requires std::is_arithmetic_v<T>
+        template<ValidMathType T, typename Engine, typename Distribution>
         T rand()
         {
             return rand<T, Engine, Distribution>( 0, std::numeric_limits<T>::max() );
         }
     }  // namespace customRNG
 
-    template <typename T, typename Engine, typename Distribution> requires std::is_arithmetic_v<T>
+    template <ValidMathType T, typename Engine, typename Distribution>
     T Random( T min, T max )
     {
         if ( min > max ) [[unlikely]]
@@ -85,13 +85,13 @@ namespace Divide
         return customRNG::rand<T, Engine, Distribution>( min, max );
     }
 
-    template <typename T, typename Engine, typename Distribution> requires std::is_arithmetic_v<T>
+    template <ValidMathType T, typename Engine, typename Distribution>
     T Random( T max )
     {
         return Random<T, Engine, Distribution>( max < 0 ? std::numeric_limits<T>::lowest() : 0, max );
     }
 
-    template <typename T, typename Engine, typename Distribution> requires std::is_arithmetic_v<T>
+    template <ValidMathType T, typename Engine, typename Distribution>
     T Random()
     {
         return Random<T, Engine, Distribution>( std::numeric_limits<T>::max() );
@@ -110,19 +110,19 @@ namespace Divide
     }
 
     /// Clamps value n between min and max
-    template <typename T> requires std::is_arithmetic_v<T>
+    template <ValidMathType T>
     constexpr void CLAMP( T& n, const T min, const T max ) noexcept
     {
         n = std::min( std::max( n, min), max);
     }
 
-    template <typename T>
+    template <ValidMathType T>
     constexpr void CLAMP_01( T& n ) noexcept
     {
         return CLAMP( n, static_cast<T>(0), static_cast<T>(1) );
     }
 
-    template <typename T> requires std::is_arithmetic_v<T>
+    template <ValidMathType T>
     constexpr T CLAMPED( const T n, const T min, const T max ) noexcept
     {
         T ret = n;
@@ -130,14 +130,14 @@ namespace Divide
         return ret;
     }
 
-    template <typename T> requires std::is_arithmetic_v<T>
+    template <ValidMathType T>
     constexpr T CLAMPED_01( const T n ) noexcept
     {
         return CLAMPED( n, static_cast<T>( 0 ), static_cast<T>( 1 ) );
     }
 
 
-    template <typename T> requires std::is_arithmetic_v<T>
+    template <ValidMathType T>
     constexpr T MAP(const T input, const T in_min, const T in_max, const T out_min, const T out_max, D64& slopeOut ) noexcept
     {
         const D64 diff = in_max > in_min ? to_D64( in_max - in_min ) : EPSILON_D64;
@@ -145,58 +145,58 @@ namespace Divide
         return static_cast<T>(out_min + slopeOut * (input - in_min));
     }
 
-    template <typename T>
+    template <ValidMathType T>
     constexpr void REMAP( T& input, T in_min, T in_max, T out_min, T out_max, D64& slopeOut ) noexcept
     {
         input = MAP( input, in_min, in_max, out_min, out_max, slopeOut );
     }
 
-    template <typename T> requires std::is_arithmetic_v<T>
+    template <ValidMathType T>
     constexpr T SQUARED( T input ) noexcept
     {
         return input * input;
     }
 
-    template<typename T>
+    template<ValidMathType T>
     void CLAMP_IN_RECT( T& inout_x, T& inout_y, T rect_x, T rect_y, T rect_z, T rect_w ) noexcept
     {
         CLAMP( inout_x, rect_x, rect_z + rect_x );
         CLAMP( inout_y, rect_y, rect_w + rect_y );
     }
 
-    template<typename T>
+    template<ValidMathType T>
     void CLAMP_IN_RECT( T& inout_x, T& inout_y, const Rect<T>& rect ) noexcept
     {
         CLAMP_IN_RECT( inout_x, inout_y, rect.x, rect.y, rect.z, rect.w );
     }
 
-    template<typename T>
+    template<ValidMathType T>
     void CLAMP_IN_RECT( T& inout_x, T& inout_y, const vec4<T>& rect ) noexcept
     {
         CLAMP_IN_RECT( inout_x, inout_y, rect.x, rect.y, rect.z, rect.w );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     bool COORDS_IN_RECT( T input_x, T input_y, T rect_x, T rect_y, T rect_z, T rect_w ) noexcept
     {
         return IS_IN_RANGE_INCLUSIVE( input_x, rect_x, rect_z + rect_x ) &&
-            IS_IN_RANGE_INCLUSIVE( input_y, rect_y, rect_w + rect_y );
+               IS_IN_RANGE_INCLUSIVE( input_y, rect_y, rect_w + rect_y );
     }
 
-    template<typename T>
+    template<ValidMathType T>
     bool COORDS_IN_RECT( T input_x, T input_y, const Rect<T>& rect ) noexcept
     {
         return COORDS_IN_RECT( input_x, input_y, rect.x, rect.y, rect.z, rect.w );
     }
 
-    template <typename T>
+    template <ValidMathType T>
     bool COORDS_IN_RECT( T input_x, T input_y, const vec4<T>& rect ) noexcept
     {
         return COORDS_IN_RECT( input_x, input_y, rect.x, rect.y, rect.z, rect.w );
     }
 
-    template<typename T> requires std::is_integral_v<T> && std::is_unsigned_v<T>
-    constexpr T roundup( T value, unsigned maxb = sizeof( T ) * CHAR_BIT, unsigned curb = 1 )
+    template<ValidMathType T>
+    constexpr T roundup( T value, U32 maxb, U32 curb )
     {
         return maxb <= curb
             ? value
@@ -225,7 +225,7 @@ namespace Divide
         return n - (n >> 1);
     }
 
-    template<typename T>
+    template<ValidMathType T>
     constexpr T MipCount(const T width, const T height) noexcept
     {
         if ( width >= T{1} && height >= T{1} )
@@ -246,27 +246,27 @@ namespace Divide
         return result;
     }
 
-    template <typename T, typename U> T Lerp    ( const T v1, const T v2, const U t ) noexcept { return v1 * (U{1} - t) + v2 * t; }
-    template <typename T, typename U> T LerpFast( const T v1, const T v2, const U t ) noexcept { return v1 + t * (v2 - v1); }
+    template <typename T, ValidMathType U> T Lerp    ( const T v1, const T v2, const U t ) noexcept { return v1 * (U{1} - t) + v2 * t; }
+    template <typename T, ValidMathType U> T LerpFast( const T v1, const T v2, const U t ) noexcept { return v1 + t * (v2 - v1); }
 
-    template <typename T, typename U> T Sqrt( const U input )       noexcept { return static_cast<T>(std::sqrt( input )); }
-    template <typename T, typename U> T InvSqrt( const U input )    noexcept { return static_cast<T>(1.0 / Sqrt<D64>(to_D64(input))); }
-    template <typename T, typename U> T InvSqrtFast( const U input) noexcept { return static_cast<T>(1.f / Sqrt<F32>(to_F32(input))); }
+    template <ValidMathType T, typename U> T Sqrt( const U input )       noexcept { return static_cast<T>(std::sqrt( input )); }
+    template <ValidMathType T, typename U> T InvSqrt( const U input )    noexcept { return static_cast<T>(1.0 / Sqrt<D64>(to_D64(input))); }
+    template <ValidMathType T, typename U> T InvSqrtFast( const U input) noexcept { return static_cast<T>(1.f / Sqrt<F32>(to_F32(input))); }
 
 #if defined(HAS_SSE42)
-    template<> inline F32 Sqrt( const __m128 input )      noexcept { return _mm_cvtss_f32( _mm_sqrt_ss( input )); }
-    template<> inline F32 InvSqrt(const __m128 input)     noexcept { return 1.f / Sqrt<F32>(input); }
-    template<> inline F32 InvSqrtFast(const __m128 input) noexcept { return _mm_cvtss_f32(_mm_rsqrt_ss(input)); }
+    template<> FORCE_INLINE F32 Sqrt( const __m128 input )      noexcept { return _mm_cvtss_f32( _mm_sqrt_ss( input )); }
+    template<> FORCE_INLINE F32 InvSqrt(const __m128 input)     noexcept { return 1.f / Sqrt<F32>(input); }
+    template<> FORCE_INLINE F32 InvSqrtFast(const __m128 input) noexcept { return _mm_cvtss_f32(_mm_rsqrt_ss(input)); }
 
-    template<> inline F32 Sqrt(const F32 input)        noexcept { return Sqrt<F32>(_mm_set_ss(input)); }
-    template<> inline F32 InvSqrt(const F32 input)     noexcept { return InvSqrt<F32>(_mm_set_ss(input)); }
-    template<> inline F32 InvSqrtFast(const F32 input) noexcept { return InvSqrtFast<F32>(_mm_set_ss(input)); }
+    template<> FORCE_INLINE F32 Sqrt(const F32 input)        noexcept { return Sqrt<F32, __m128>(_mm_set_ss(input)); }
+    template<> FORCE_INLINE F32 InvSqrt(const F32 input)     noexcept { return InvSqrt<F32, __m128>(_mm_set_ss(input)); }
+    template<> FORCE_INLINE F32 InvSqrtFast(const F32 input) noexcept { return InvSqrtFast<F32, __m128>(_mm_set_ss(input)); }
 #endif //HAS_SSE42
 
     ///(thx sqrt[-1] and canuckle of opengl.org forums)
 
     // Helper method to emulate GLSL
-    inline F32 FRACT( const F32 floatValue ) noexcept
+    FORCE_INLINE F32 FRACT( const F32 floatValue ) noexcept
     {
         return to_F32( fmod( floatValue, 1.0f ) );
     }
@@ -431,19 +431,19 @@ namespace Divide
         }
 
         /// a la Boost
-        template<typename T, typename... Rest>
+        template<std::unsigned_integral T, typename... Rest>
         FORCE_INLINE void Hash_combine( std::size_t& seed, const T& v, const Rest&... rest ) noexcept
-        {
-            seed ^= std::hash<T>{}(v)+0x9e3779b9 + (seed << 6) + (seed >> 2);
-            (Hash_combine( seed, rest ), ...);
-        };
-
-        template<typename T, typename... Rest> requires std::is_integral_v<T> && std::is_unsigned_v<T>
-        FORCE_INLINE void Hash_combine( size_t& seed, const T& v, const Rest&... rest ) noexcept
         {
             seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
             (Hash_combine( seed, rest ), ...);
         }
+
+        template<typename T, typename... Rest>
+        FORCE_INLINE void Hash_combine(std::size_t& seed, const T& v, const Rest&... rest) noexcept
+        {
+            Hash_combine(seed, std::hash<T>{}(v), FWD(rest)...);
+        };
+
     }  // namespace Util
 }  // namespace Divide
 

@@ -7,8 +7,8 @@ option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their val
 option(ENABLE_AVX2 "Build with AVX2 support if available. Will also enable AVX and SSE42" ON)
 option(ENABLE_AVX "Build with AVX support if available. Will also enable SSE42." ON)
 option(ENABLE_SSE42 "Build with SSE4.2 support if available" ON)
-option(ENABLE_ASAN "Enable address sanitization" OFF)
-option(ENABLE_UBSAN "Enable undefined behbaviour sanitization" OFF)
+option(ENABLE_ASAN "Enable address sanitization" ${RUN_ASAN})
+option(ENABLE_UBSAN "Enable undefined behbaviour sanitization" ${RUN_UBSAN})
 option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug builds (/JMC)" OFF)
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")

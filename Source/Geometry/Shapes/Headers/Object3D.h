@@ -70,8 +70,6 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 
     inline void geometryBuffer(const VertexBuffer_ptr& vb) noexcept { _geometryBuffer = vb; }
 
-    virtual void onAnimationChange([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] const U32 newIndex) {}
-
     [[nodiscard]] U8 getGeometryPartitionCount() const noexcept {
         U8 ret = 0;
         for (auto partition : _geometryPartitionIDs) {

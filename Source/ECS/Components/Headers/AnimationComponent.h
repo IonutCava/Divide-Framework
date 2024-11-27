@@ -48,6 +48,8 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
    public:
     explicit AnimationComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 
+    void setAnimator(SceneAnimator* animator);
+
     /// Select an animation by name
     bool playAnimation(const string& name);
     /// Select an animation by index
@@ -67,20 +69,25 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     
     [[nodiscard]] AnimEvaluator& getAnimationByIndex(U32 animationID) const;
 
-    void resetTimers() noexcept;
+    void resetTimers(D64 parentTimeStamp) noexcept;
 
     [[nodiscard]] AnimEvaluator::FrameIndex frameIndex() const noexcept { return _frameIndex; }
+
     [[nodiscard]] I32 frameCount() const { return frameCount( animationIndex() ); }
 
     [[nodiscard]] AnimEvaluator& getCurrentAnimation() const { return getAnimationByIndex(animationIndex()); }
 
     PROPERTY_R(bool, showSkeleton, false);
     PROPERTY_RW(F32, animationSpeed, 1.f);
+    PROPERTY_RW(bool, playInReverse, false);
+
     /// Pointer to the mesh's animator. Owned by the mesh!
-    POINTER_RW(SceneAnimator, animator, nullptr);
+    POINTER_R(SceneAnimator, animator, nullptr);
     /// Current animation index for the current SGN
     PROPERTY_R(U32, animationIndex, U32_MAX);
     PROPERTY_RW(U32, previousAnimationIndex, U32_MAX);
+
+    PROPERTY_RW(bool, applyAnimationChangeToAllMeshes, true);
 
                   void playAnimations(const bool state)       noexcept { _playAnimations = state;}
     [[nodiscard]] bool playAnimations()                 const noexcept { return _playAnimations && s_globalAnimationState; }
@@ -96,9 +103,12 @@ BEGIN_COMPONENT(Animation, ComponentType::ANIMATION)
     /// Previous animation index
     /// Parent time stamp (e.g. Mesh). 
     /// Should be identical for all nodes of the same level with the same parent
-    D64 _parentTimeStamp = 0.0;
+    PROPERTY_R(D64, parentTimeStamp, 0.);
 
     bool _playAnimations = true;
+
+    bool _animationStateChanged = false;
+    bool _resyncAllSiblings = false;
 
     static bool s_globalAnimationState;
 END_COMPONENT(Animation)

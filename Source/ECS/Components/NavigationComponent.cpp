@@ -12,29 +12,35 @@ NavigationComponent::NavigationComponent(SceneGraphNode* parentSGN, PlatformCont
 {
 }
 
-void NavigationComponent::navigationContext(const NavigationContext& newContext) {
+void NavigationComponent::navigationContext(const NavigationContext& newContext)
+{
     _navigationContext = newContext;
-    
+
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
-    SharedLock<SharedMutex> w_lock(children._lock);
+    SharedLock<SharedMutex> r_lock(children._lock);
     const U32 childCount = children._count;
-    for (U32 i = 0u; i < childCount; ++i) {
+    for (U32 i = 0u; i < childCount; ++i)
+    {
         NavigationComponent* navComp = children._data[i]->get<NavigationComponent>();
-        if (navComp != nullptr) {
+        if (navComp != nullptr)
+        {
             navComp->navigationContext(newContext);
         }
     }
 }
 
-void NavigationComponent::navigationDetailOverride(const bool detailOverride) {
+void NavigationComponent::navigationDetailOverride(const bool detailOverride)
+{
     _overrideNavMeshDetail = detailOverride;
 
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
-    SharedLock<SharedMutex> w_lock(children._lock);
+    SharedLock<SharedMutex> r_lock(children._lock);
     const U32 childCount = children._count;
-    for (U32 i = 0u; i < childCount; ++i) {
+    for (U32 i = 0u; i < childCount; ++i)
+    {
         NavigationComponent* navComp = children._data[i]->get<NavigationComponent>();
-        if (navComp != nullptr) {
+        if (navComp != nullptr)
+        {
             navComp->navigationDetailOverride(detailOverride);
         }
     }

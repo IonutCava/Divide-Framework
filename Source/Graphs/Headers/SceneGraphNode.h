@@ -135,12 +135,12 @@ namespace Divide
         {
             mutable SharedMutex _lock;
             eastl::fixed_vector<SceneGraphNode*, 32, true> _data;
-            std::atomic_uint _count{ 0u };
+            U32 _count{ 0u };
 
             /// Return a specific child by index. Does not recurse.
             SceneGraphNode* getChild( const U32 idx )
             {
-                assert( idx < _count.load() );
+                DIVIDE_ASSERT( idx < _count );
 
                 SharedLock<SharedMutex> r_lock( _lock );
                 return _data[idx];

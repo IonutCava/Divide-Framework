@@ -86,7 +86,7 @@ namespace Divide
             const SceneGraphNode::ChildContainer& rootChildren = sceneGraph.getRoot()->getChildren();
 
             SharedLock<SharedMutex> r_lock( rootChildren._lock );
-            const U32 iterCount = rootChildren._count.load();
+            const U32 iterCount = rootChildren._count;
 
             if ( iterCount > g_nodesPerCullingPartition * 2 )
             {
@@ -154,19 +154,19 @@ namespace Divide
             }
 
             SceneGraphNode::ChildContainer& children = currentNode->getChildren();
+            SharedLock<SharedMutex> r_lock(children._lock);
 
             ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = children._count.load();
+            descriptor._iterCount = children._count;
 
             if ( descriptor._iterCount > 0u )
             {
-                SharedLock<SharedMutex> r_lock( children._lock );
-
                 if ( descriptor._iterCount > g_nodesPerCullingPartition * 2 )
                 {
                     descriptor._partitionSize = g_nodesPerCullingPartition;
                     descriptor._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
                     descriptor._useCurrentThread = true;
+
                     Parallel_For( currentNode->context().taskPool( TaskPoolType::RENDERER ), descriptor, [&]( const Task*, const U32 start, const U32 end )
                     {
                         for ( U32 i = start; i < end; ++i )

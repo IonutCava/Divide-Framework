@@ -53,13 +53,13 @@ class VertexBuffer final : public VertexDataInterface
 
     struct Vertex
     {
-        UColour4  _colour{0u, 0u, 0u, 1u};
-        float3 _position{};
-        float2 _texcoord{};
-        vec4<U8>  _weights{0u};
-        vec4<U8>  _indices{0u};
-        F32       _normal{0.f};
-        F32       _tangent{0.f};
+        UColour4 _colour{0u, 0u, 0u, 1u};
+        float3   _position{};
+        float2   _texcoord{};
+        vec4<U8> _weights{0u};
+        vec4<U8> _indices{0u};
+        F32      _normal{0.f};
+        F32      _tangent{0.f};
     };
 
     struct Descriptor

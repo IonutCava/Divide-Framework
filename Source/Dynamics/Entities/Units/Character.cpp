@@ -107,7 +107,8 @@ void Character::playAnimation(U32 index) const
         else
         {
             const SceneGraphNode::ChildContainer& children = node->getChildren();
-            const U32 childCount =  children._count;
+            SharedLock<SharedMutex> r_lock(children._lock);
+            const U32 childCount = children._count;
 
             for (U32 i = 0u; i < childCount; ++i)
             {
@@ -121,18 +122,26 @@ void Character::playAnimation(U32 index) const
     }
 }
 
-void Character::playNextAnimation() const {
+void Character::playNextAnimation() const
+{
     SceneGraphNode* node(getBoundNode());
-    if (node) {
+    if (node)
+    {
         AnimationComponent* anim = node->get<AnimationComponent>();
-        if (anim) {
+        if (anim)
+        {
             anim->playNextAnimation();
-        } else {
+        }
+        else
+        {
             const SceneGraphNode::ChildContainer& children = node->getChildren();
+            SharedLock<SharedMutex> r_lock(children._lock);
             const U32 childCount = children._count;
-            for (U32 i = 0u; i < childCount; ++i) {
+            for (U32 i = 0u; i < childCount; ++i)
+            {
                 AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
-                if (childAnim) {
+                if (childAnim)
+                {
                     childAnim->playNextAnimation();
                 }
             }
@@ -142,16 +151,23 @@ void Character::playNextAnimation() const {
 
 void Character::playPreviousAnimation() const {
     SceneGraphNode* node(getBoundNode());
-    if (node) {
+    if (node)
+    {
         AnimationComponent* anim = node->get<AnimationComponent>();
-        if (anim) {
+        if (anim)
+        {
             anim->playPreviousAnimation();
-        } else {
+        }
+        else
+        {
             const SceneGraphNode::ChildContainer& children = node->getChildren();
+            SharedLock<SharedMutex> r_lock(children._lock);
             const U32 childCount = children._count;
-            for (U32 i = 0u; i < childCount; ++i) {
+            for (U32 i = 0u; i < childCount; ++i)
+            {
                 AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
-                if (childAnim) {
+                if (childAnim)
+                {
                     childAnim->playPreviousAnimation();
                 }
             }
@@ -159,18 +175,26 @@ void Character::playPreviousAnimation() const {
     }
 }
 
-void Character::pauseAnimation(bool state) const {
+void Character::pauseAnimation(bool state) const
+{
     SceneGraphNode* node(getBoundNode());
-    if (node) {
+    if (node)
+    {
         AnimationComponent* anim = node->get<AnimationComponent>();
-        if (anim) {
+        if (anim)
+        {
             anim->playAnimations(state);
-        } else {
+        }
+        else
+        {
             const SceneGraphNode::ChildContainer& children = node->getChildren();
+            SharedLock<SharedMutex> r_lock(children._lock);
             const U32 childCount = children._count;
-            for (U32 i = 0u; i < childCount; ++i) {
+            for (U32 i = 0u; i < childCount; ++i)
+            {
                 AnimationComponent* childAnim = children._data[i]->get<AnimationComponent>();
-                if (childAnim) {
+                if (childAnim)
+                {
                     childAnim->playAnimations(state);
                 }
             }

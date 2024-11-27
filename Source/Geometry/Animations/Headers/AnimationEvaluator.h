@@ -45,7 +45,8 @@ namespace Divide {
 
 class ByteBuffer;
 
-struct AnimationChannel {
+struct AnimationChannel
+{
     vector<aiVectorKey> _positionKeys;
     vector<aiQuatKey>   _rotationKeys;
     vector<aiVectorKey> _scalingKeys;
@@ -57,17 +58,7 @@ struct AnimationChannel {
     U32 _numScalingKeys = 0u;
 };
 
-struct BoneTransform
-{
-    using Container = vector<mat4<F32>>;
-
-    void matrices(const Container& matricesIn) { _matrices = matricesIn; }
-    const Container& matrices() const noexcept { return _matrices; }
-    [[nodiscard]] size_t count() const noexcept { return _matrices.size(); }
-
-private:
-    Container _matrices;
-};
+using BoneTransforms = vector<mat4<F32>>;
 
 class GFXDevice;
 class AnimEvaluator {
@@ -83,44 +74,50 @@ class AnimEvaluator {
 
     explicit AnimEvaluator(const aiAnimation* pAnim, U32 idx) noexcept;
 
-    void evaluate(D64 dt, Bone* skeleton);
+    void evaluate(D64 dt, Bone& skeleton);
 
-    [[nodiscard]] FrameIndex frameIndexAt(D64 elapsedTimeS) const noexcept;
+    [[nodiscard]] FrameIndex frameIndexAt(D64 elapsedTimeS, bool forward) const noexcept;
 
     [[nodiscard]] U32 frameCount() const noexcept { return to_U32(_transforms.size()); }
 
-    [[nodiscard]] vector<BoneTransform>& transforms() noexcept { return _transforms; }
+    [[nodiscard]] vector<BoneTransforms>& transforms() noexcept { return _transforms; }
     
-    [[nodiscard]] const vector<BoneTransform>& transforms() const noexcept { return _transforms; }
+    [[nodiscard]] const vector<BoneTransforms>& transforms() const noexcept { return _transforms; }
 
-    [[nodiscard]] BoneTransform& transforms(const U32 frameIndex) {
+    [[nodiscard]] BoneTransforms& transforms(const U32 frameIndex)
+    {
         assert(frameIndex < to_U32(_transforms.size()));
         return _transforms[frameIndex];
     }
 
-    [[nodiscard]] const BoneTransform& transforms(const U32 frameIndex) const {
+    [[nodiscard]] const BoneTransforms& transforms(const U32 frameIndex) const
+    {
         assert(frameIndex < to_U32(_transforms.size()));
         return _transforms[frameIndex];
     }
 
-    [[nodiscard]] BoneTransform& transforms(const D64 elapsedTime, I32& resultingFrameIndex) {
-        resultingFrameIndex = frameIndexAt(elapsedTime)._curr;
+    [[nodiscard]] BoneTransforms& transforms(const D64 elapsedTime, const bool forward, I32& resultingFrameIndex)
+    {
+        resultingFrameIndex = frameIndexAt(elapsedTime, forward)._curr;
         return transforms(to_U32(resultingFrameIndex));
     }
 
-    [[nodiscard]] BoneTransform& transforms(const D64 elapsedTime) {
+    [[nodiscard]] BoneTransforms& transforms(const D64 elapsedTime, const bool forward)
+    {
         I32 resultingFrameIndex = 0;
-        return transforms(elapsedTime, resultingFrameIndex);
+        return transforms(elapsedTime, forward, resultingFrameIndex);
     }
 
-    [[nodiscard]] const BoneTransform& transforms(const D64 elapsedTime, I32& resultingFrameIndex) const {
-        resultingFrameIndex = frameIndexAt(elapsedTime)._curr;
+    [[nodiscard]] const BoneTransforms& transforms(const D64 elapsedTime, const bool forward, I32& resultingFrameIndex) const
+    {
+        resultingFrameIndex = frameIndexAt(elapsedTime, forward)._curr;
         return transforms(to_U32(resultingFrameIndex));
     }
 
-    [[nodiscard]] const BoneTransform& transforms(const D64 elapsedTime) const {
+    [[nodiscard]] const BoneTransforms& transforms(const D64 elapsedTime, const bool forward) const
+    {
         I32 resultingFrameIndex = 0;
-        return transforms(elapsedTime, resultingFrameIndex);
+        return transforms(elapsedTime, forward, resultingFrameIndex);
     }
 
     bool initBuffers(GFXDevice& context);
@@ -129,7 +126,6 @@ class AnimEvaluator {
     static void load(AnimEvaluator& evaluator, ByteBuffer& dataIn);
 
     PROPERTY_RW(D64, ticksPerSecond, 0.0);
-    PROPERTY_RW(bool, playAnimationForward, true);
     PROPERTY_R_IW(D64, duration, 0.0);
     PROPERTY_R_IW(string, name, "");
 
@@ -137,7 +133,7 @@ class AnimEvaluator {
 
    protected:
     /// Array to return transformations results inside.
-    vector<BoneTransform> _transforms;
+    vector<BoneTransforms> _transforms;
     vector<uint3> _lastPositions;
     /// vector that holds all bone channels
     vector<AnimationChannel> _channels;

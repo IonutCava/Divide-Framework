@@ -12,7 +12,7 @@
 namespace Divide::Util
 {
 
-bool decomposeMatrix(const mat4<F32>& transform,
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut,
@@ -77,16 +77,17 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
     return true;
 }
-bool decomposeMatrix(const mat4<F32>& transform,
+
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut)
 {
     bool uniformScaleTemp = false;
-    return decomposeMatrix(transform, translationOut, scaleOut, rotationOut, uniformScaleTemp);
+    return DecomposeMatrix(transform, translationOut, scaleOut, rotationOut, uniformScaleTemp);
 }
 
-bool decomposeMatrix(const mat4<F32>& transform,
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut)
 {
@@ -137,7 +138,7 @@ bool decomposeMatrix(const mat4<F32>& transform,
     return true;
 }
 
-bool decomposeMatrix(const mat4<F32>& transform,
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut)
 {
     using T = F32;

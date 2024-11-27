@@ -96,7 +96,7 @@ namespace Import
         tempBuffer << _ID("BufferEntryPoint");
         tempBuffer << _modelName;
         tempBuffer << _modelPath;
-        tempBuffer << _animationCount;
+        tempBuffer << _animations.size();
 
         if (_vertexBuffer->serialize(tempBuffer))
         {
@@ -135,10 +135,12 @@ namespace Import
                 {
                     return false;
                 }
-
+                size_t animCount = 0u;
                 tempBuffer >> _modelName;
                 tempBuffer >> _modelPath;
-                tempBuffer >> _animationCount;
+                tempBuffer >> animCount;
+
+                _animations.reserve(animCount);
 
                 // The descriptor is updated from the input file but the name isn't, so that's all that we have to set here
                 _vertexBuffer = context.gfx().newVB(VertexBuffer::Descriptor{ ._name = _modelName });
@@ -351,20 +353,20 @@ namespace Import
 
         mesh->renderState().drawState(true);
         mesh->geometryBuffer( tempMeshData._vertexBuffer );
-        mesh->setAnimationCount(tempMeshData._animationCount);
+        mesh->setAnimationCount(tempMeshData._animations.size());
 
         std::atomic_uint taskCounter(0u);
 
         for (const Import::SubMeshData& subMeshData : tempMeshData._subMeshData)
         {
-            const size_t boneCount = tempMeshData._animationCount > 0u ? subMeshData.boneCount() : 0u;
+            const size_t boneCount = tempMeshData._animations.empty() ? 0u : subMeshData._boneCount;
 
             // Submesh is created as a resource when added to the SceneGraph
             ResourceDescriptor<SubMesh> subMeshDescriptor( subMeshData.name().c_str() );
             subMeshDescriptor.data(
             { 
                 boneCount,
-                subMeshData.index(), 
+                subMeshData._index, 
                 0u
             });
 
@@ -374,10 +376,10 @@ namespace Import
             // it may already be loaded
             if (!tempSubMesh->parentMesh())
             {
-                Attorney::MeshImporter::addSubMesh(*mesh, tempSubMeshHandle, subMeshData.index());
+                Attorney::MeshImporter::addSubMesh(*mesh, tempSubMeshHandle, subMeshData._index);
                 Attorney::SubMeshMesh::setParentMesh( *tempSubMesh, mesh );
 
-                for (U8 lod = 0u, j = 0u; lod < subMeshData.lodCount(); ++lod)
+                for (U8 lod = 0u, j = 0u; lod < subMeshData._lodCount; ++lod)
                 {
                     if (!subMeshData._triangles[lod].empty())
                     {
@@ -387,7 +389,7 @@ namespace Import
                     }
                 }
 
-                Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData.minPos(), subMeshData.maxPos(), subMeshData.worldOffset());
+                Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData._minPos, subMeshData._maxPos, subMeshData._worldOffset);
 
                 if (tempSubMesh->getMaterialTpl() == INVALID_HANDLE<Material>)
                 {
@@ -398,7 +400,7 @@ namespace Import
 
         Attorney::MeshImporter::setNodeData(*mesh, tempMeshData._nodeData);
 
-        if ( tempMeshData._animationCount > 0u )
+        if ( !tempMeshData._animations.empty() )
         {
             SceneAnimator* animator = mesh->getAnimator();
             DIVIDE_ASSERT(animator != nullptr);
@@ -407,7 +409,9 @@ namespace Import
             ByteBuffer tempBuffer;
 
             const string saveFileName = Util::StringFormat( "{}.{}", tempMeshData.modelName(), g_parsedAssetAnimationExt );
-            if (tempBuffer.loadFromFile(Paths::g_geometryCacheLocation, saveFileName ))
+            if (context.config().debug.cache.enabled  &&
+                context.config().debug.cache.geometry &&
+                tempBuffer.loadFromFile(Paths::g_geometryCacheLocation, saveFileName ))
             {
                 animator->load(context, tempBuffer);
             }
@@ -419,7 +423,7 @@ namespace Import
                     Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, tempMeshData._animations);
                     DIVIDE_ASSERT(tempMeshData._animations.empty());
 
-                    animator->init(context, tempMeshData._skeleton, tempMeshData._bones);
+                    animator->init(context, MOV(tempMeshData._skeleton));
                     animator->save(context, tempBuffer);
                     if (!tempBuffer.dumpToFile(Paths::g_geometryCacheLocation, saveFileName ))
                     {

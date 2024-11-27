@@ -364,7 +364,8 @@ set( GEOMETRY_SOURCE_HEADERS Geometry/Animations/Headers/AnimationEvaluator.h
                              Geometry/Shapes/Predefined/Headers/Sphere3D.h
 )
 
-set( GEOMETRY_SOURCE Geometry/Animations/AnimationEvaluator.cpp
+set( GEOMETRY_SOURCE Geometry/Animations/Bone.cpp
+                     Geometry/Animations/AnimationEvaluator.cpp
                      Geometry/Animations/AnimationUtils.cpp
                      Geometry/Animations/SceneAnimator.cpp
                      Geometry/Animations/SceneAnimatorFileIO.cpp

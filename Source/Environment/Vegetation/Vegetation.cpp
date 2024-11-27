@@ -558,6 +558,7 @@ namespace Divide
             tComp->setScale( _descriptor.treeScales[meshID] );
 
             const SceneGraphNode::ChildContainer& children = _treeParentNode->getChildren();
+            SharedLock<SharedMutex> r_lock(children._lock);
             const U32 childCount = children._count;
             for ( U32 i = 0u; i < childCount; ++i )
             {
@@ -757,6 +758,7 @@ namespace Divide
                 if ( _treeParentNode != nullptr )
                 {
                     const SceneGraphNode::ChildContainer& children = _treeParentNode->getChildren();
+                    SharedLock<SharedMutex> r_lock(children._lock);
                     const U32 childCount = children._count;
                     for ( U32 i = 0u; i < childCount; ++i )
                     {
@@ -772,8 +774,6 @@ namespace Divide
 
     void Vegetation::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
-        const U16 partitionID = _lodPartitions[0];
-
         VegetationInstance* instance = nullptr;
         {
             SharedLock<SharedMutex> w_lock( _instanceLock );
@@ -796,8 +796,8 @@ namespace Divide
 
         cmd._sourceBuffer = _buffer->handle();
         cmd._cmd.instanceCount = instance->_instanceCountGrass;
-        cmd._cmd.indexCount = to_U32( _buffer->getPartitionIndexCount( partitionID ) );
-        cmd._cmd.firstIndex = to_U32( _buffer->getPartitionOffset( partitionID ) );
+        cmd._cmd.indexCount = to_U32( _buffer->getPartitionIndexCount(_lodPartitions[0]) );
+        cmd._cmd.firstIndex = to_U32( _buffer->getPartitionOffset(_lodPartitions[0]) );
 
         RenderingComponent* rComp = sgn->get<RenderingComponent>();
         U16 prevID = 0;
