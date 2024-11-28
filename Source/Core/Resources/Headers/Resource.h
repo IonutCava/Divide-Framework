@@ -83,7 +83,7 @@ namespace Divide
         std::atomic<ResourceState> _resourceState;
     };
 
-    void WaitForReady( Resource* res );
+    [[nodiscard]] bool WaitForReady( Resource* res );
     [[nodiscard]] bool SafeToDelete( Resource* res );
 
     struct ResourceDescriptorBase;

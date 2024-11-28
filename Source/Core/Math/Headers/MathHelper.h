@@ -411,6 +411,16 @@ void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept;
 void ToFloatColour( const uint4& uintColour, FColour4& colourOut ) noexcept;
 void ToFloatColour( const uint3& uintColour, FColour3& colourOut ) noexcept;
 
+bool ToDualQuaternion(const mat4<F32>& transform,
+                      Quaternion<F32>& rotQuatOut,
+                      Quaternion<F32>& transQuatOut);
+
+bool DecomposeMatrix(const mat4<F32>& transform,
+                     float3& translationOut,
+                     float3& scaleOut,
+                     Quaternion<F32>& rotationOut,
+                     bool& isUniformScaleOut);
+
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
@@ -421,6 +431,11 @@ bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut);
+                     
+bool DecomposeMatrix(const mat4<F32>& transform,
+                     float3& translationOut,
+                     float3& scaleOut,
+                     Quaternion<F32>& rotationOut);
 
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,

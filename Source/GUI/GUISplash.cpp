@@ -87,8 +87,11 @@ void GUISplash::render(GFXDevice& context)
     viewportCommand._viewport.set(0, 0, _dimensions.width, _dimensions.height);
     GFX::EnqueueCommand( buffer, viewportCommand);
 
-    WaitForReady( Get(_splashShader) );
-    WaitForReady( Get(_splashImage) );
+    if ( !WaitForReady( Get(_splashShader) ) ||
+         !WaitForReady( Get(_splashImage) ) )
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>( buffer );
     cmd->_usage = DescriptorSetUsage::PER_DRAW;

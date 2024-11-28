@@ -79,10 +79,11 @@ DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
     friend class Attorney::MeshImporter;
 
    public:
-    struct MeshData {
+    struct MeshData
+    {
         Handle<SubMesh> _mesh{INVALID_HANDLE<SubMesh>};
         U32 _index{0u};
-};
+    };
 
    public:
     explicit Mesh( const ResourceDescriptor<Mesh>& descriptor );
@@ -93,11 +94,12 @@ DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
     bool unload() override;
     void setMaterialTpl(Handle<Material> material) override;
 
-    void setAnimationCount(const size_t count);
+    void setAnimationCount(size_t count, bool useDualQuaternions);
 
     [[nodiscard]] SceneAnimator* getAnimator() const noexcept;
 
     PROPERTY_R(size_t, animationCount, 0u);
+    PROPERTY_R(bool, dualQuaternionAnimations, true);
 
    protected:
     void addSubMesh(Handle<SubMesh> subMesh, U32 index);
@@ -107,14 +109,15 @@ DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
 
    protected:
     U64 _lastTimeStamp = 0ull;
-    /// Animation player to animate the mesh if necessary
     SceneAnimator_uptr _animator;
     vector<MeshData> _subMeshList;
     MeshNodeData _nodeStructure;
 };
 
-namespace Attorney {
-    class MeshImporter {
+namespace Attorney
+{
+    class MeshImporter
+    {
         static void setNodeData(Mesh& parentMesh, const MeshNodeData& nodeStructure)
         {
             parentMesh.setNodeData(nodeStructure);

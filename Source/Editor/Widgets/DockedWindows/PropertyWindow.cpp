@@ -1372,6 +1372,8 @@ namespace Divide
             stateBlock = material->getOrCreateRenderStateBlock( currentStagePass );
         }
 
+        ImGui::Text("Skinning Mode: %s", TypeUtil::SkinningModeToString(material->properties().skinningMode()));
+
         if ( ImGui::CollapsingHeader( ("Program: " + shaderName).c_str() ) )
         {
             if ( program != nullptr )
@@ -1510,7 +1512,6 @@ namespace Divide
             }
 
             ImGui::Text( "Tessellation control points: %d", stateBlock._tessControlPoints );
-
             {
                 CullMode cMode = stateBlock._cullMode;
 

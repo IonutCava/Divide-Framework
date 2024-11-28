@@ -42,6 +42,7 @@ enum class ShaderBuildStage : U8 {
     REQUESTED,
     COMPUTED,
     READY,
+    FAILED,
     COUNT
 };
 

@@ -346,9 +346,11 @@ set( ENVIRONMENT_SOURCE Environment/Sky/Sky.cpp
 )
 
 set( GEOMETRY_SOURCE_HEADERS Geometry/Animations/Headers/AnimationEvaluator.h
+                             Geometry/Animations/Headers/AnimationEvaluator.inl
                              Geometry/Animations/Headers/AnimationUtils.h
                              Geometry/Animations/Headers/Bone.h
                              Geometry/Animations/Headers/SceneAnimator.h
+                             Geometry/Animations/Headers/SceneAnimator.inl
                              Geometry/Importer/Headers/DVDConverter.h
                              Geometry/Importer/Headers/MeshImporter.h
                              Geometry/Material/Headers/Material.h
@@ -368,7 +370,6 @@ set( GEOMETRY_SOURCE Geometry/Animations/Bone.cpp
                      Geometry/Animations/AnimationEvaluator.cpp
                      Geometry/Animations/AnimationUtils.cpp
                      Geometry/Animations/SceneAnimator.cpp
-                     Geometry/Animations/SceneAnimatorFileIO.cpp
                      Geometry/Importer/DVDConverter.cpp
                      Geometry/Importer/MeshImporter.cpp
                      Geometry/Material/Material.cpp

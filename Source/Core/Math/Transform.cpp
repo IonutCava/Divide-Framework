@@ -14,10 +14,11 @@ Transform::Transform(const Quaternion<F32>& orientation, const float3& translati
 
 void Transform::setTransforms(const mat4<F32>& transform)
 {
-    vec3<Angle::RADIANS_F> tempEuler = VECTOR3_ZERO;
-    if (Util::DecomposeMatrix(transform, _translation, _scale, tempEuler))
+    const TransformValues previous = *this;
+    if (!Util::DecomposeMatrix(transform, _translation, _scale, _orientation))
     {
-        _orientation.fromEuler(-tempEuler);
+        DebugBreak();
+        setValues(previous);
     }
 }
 

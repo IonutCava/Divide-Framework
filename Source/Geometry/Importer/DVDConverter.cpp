@@ -290,7 +290,13 @@ bool Load(PlatformContext& context, Import::ImportData& target)
             }
             else
             {
-                target._animations.emplace_back(std::make_unique<AnimEvaluator>(animation, i));
+                const auto& evaluator = target._animations.emplace_back(std::make_unique<AnimEvaluator>(animation, i));
+
+                if (evaluator->hasScaling())
+                {
+                    target._useDualQuatAnimation = false;
+                }
+
                 ++target._animationCount;
             }
         }

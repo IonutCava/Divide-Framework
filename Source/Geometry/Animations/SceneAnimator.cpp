@@ -5,10 +5,13 @@
 #include "Headers/AnimationUtils.h"
 
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/ByteBuffer.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide
 {
+    constexpr U16 BYTE_BUFFER_VERSION_ANIMATOR = 1u;
+    constexpr U16 BYTE_BUFFER_VERSION_SKELETON = 2u;
 
 namespace
 {
@@ -55,6 +58,11 @@ namespace
     }
 }
 
+SceneAnimator::SceneAnimator(const bool useDualQuaternion)
+    : _useDualQuaternion(useDualQuaternion)
+{
+}
+
 SceneAnimator::~SceneAnimator()
 {
     release(true);
@@ -77,7 +85,7 @@ void SceneAnimator::release(const bool releaseAnimations)
     }
 }
 
-void UpdateTransformContainer(const Bone_uptr& node, BoneTransforms& containerOut)
+void UpdateTransformContainer(const Bone_uptr& node, BoneMatrices& containerOut)
 {
     if ( node != nullptr)
     {
@@ -109,18 +117,40 @@ bool SceneAnimator::init([[maybe_unused]] PlatformContext& context)
         const D64 duration = crtAnimation->duration();
         const D64 tickStep = crtAnimation->ticksPerSecond() / ANIMATION_TICKS_PER_SECOND;
         D64 dt = 0;
+        U32 frameCount = 0u;
         for (D64 ticks = 0; ticks < duration; ticks += tickStep)
         {
             dt += timeStep;
             calculate(i, dt);
 
-            BoneTransforms& transformMatrices = crtAnimation->transforms().emplace_back();
+            BoneMatrices& transformMatrices = crtAnimation->transformMatrices().emplace_back();
             transformMatrices.resize(_skeletonDepthCache, MAT4_IDENTITY);
             UpdateTransformContainer(_skeleton, transformMatrices);
+            ++frameCount;
         }
 
         _maximumAnimationFrames = std::max(crtAnimation->frameCount(), _maximumAnimationFrames);
         _skeletonLines[i].resize(_maximumAnimationFrames, -1);
+
+        if ( useDualQuaternion() )
+        {
+            crtAnimation->transformQuaternions().reserve(crtAnimation->transformMatrices().size());
+
+            for (const BoneMatrices& transformMatrices : crtAnimation->transformMatrices() )
+            {
+                BoneQuaternions& transformQuaternions = crtAnimation->transformQuaternions().emplace_back();
+                transformQuaternions.resize(transformMatrices.size());
+
+                size_t index = 0u;
+                for ( const mat4<F32>& matrix : transformMatrices )
+                {
+                    DualQuaternion& dualQuat = transformQuaternions[index++];
+                    Util::ToDualQuaternion(matrix, dualQuat.a, dualQuat.b);
+                }
+            }
+        }
+
+        Attorney::AnimEvaluatorSceneAnimator::frameCount(*crtAnimation, frameCount);
     }
 
     Console::d_printfn(LOCALE_STR("LOAD_ANIMATIONS_END"), _skeletonDepthCache);
@@ -131,9 +161,12 @@ bool SceneAnimator::init([[maybe_unused]] PlatformContext& context)
 void SceneAnimator::buildBuffers(GFXDevice& gfxDevice)
 {
     // pay the cost upfront
-    for (auto& crtAnimation : _animations)
+    for (AnimEvaluator_uptr& crtAnimation : _animations)
     {
-        crtAnimation->initBuffers(gfxDevice);
+        if ( !crtAnimation->initBuffers(gfxDevice, useDualQuaternion()) )
+        {
+            DIVIDE_UNEXPECTED_CALL();
+        }
     }
 }
 
@@ -206,6 +239,120 @@ const vector<Line>& SceneAnimator::skeletonLines(const U32 animationIndex, const
     }
 
     return lines;
+}
+
+void SceneAnimator::save([[maybe_unused]] PlatformContext& context, ByteBuffer& dataOut) const
+{
+    // first recursively save the skeleton
+    if (_skeleton != nullptr)
+    {
+        saveSkeleton(dataOut, *_skeleton);
+    }
+
+    dataOut << BYTE_BUFFER_VERSION_ANIMATOR;
+
+    // the number of animations
+    const U32 nsize = to_U32(_animations.size());
+    dataOut << nsize;
+
+    for (U32 i = 0u; i < nsize; i++)
+    {
+        AnimEvaluator::save(*_animations[i], dataOut);
+    }
+}
+
+void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn)
+{
+    // make sure to clear this before writing new data
+    release(true);
+    assert(_animations.empty());
+
+    _skeleton.reset(loadSkeleton(dataIn, nullptr));
+    _skeletonDepthCache = to_U8(std::min(_skeleton->hierarchyDepth(), to_size(U8_MAX)));
+
+    auto tempVer = decltype(BYTE_BUFFER_VERSION_ANIMATOR){0};
+    dataIn >> tempVer;
+    if (tempVer != BYTE_BUFFER_VERSION_ANIMATOR)
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+
+    // the number of animations
+    U32 nsize = 0u;
+    dataIn >> nsize;
+    _animations.resize(nsize);
+
+    for (U32 idx = 0u; idx < nsize; ++idx)
+    {
+        _animations[idx] = std::make_unique<AnimEvaluator>();
+        AnimEvaluator::load(*_animations[idx], dataIn);
+        // get all the animation names so I can reference them by name and get the correct id
+        insert(_animationNameToID, _ID(_animations[idx]->name().c_str()), idx);
+    }
+
+    init(context);
+}
+
+void SceneAnimator::saveSkeleton(ByteBuffer& dataOut, const Bone& parent) const
+{
+    dataOut << BYTE_BUFFER_VERSION_SKELETON;
+
+    // the name of the bone
+    dataOut << parent.name();
+    // the bone offsets
+    dataOut << parent._offsetMatrix;
+    // original bind pose
+    dataOut << parent._localTransform;
+    // bone ID
+    dataOut << parent._boneID;
+
+    // number of children
+    const U32 nsize = to_U32(parent.children().size());
+    dataOut << nsize;
+    // continue for all children
+    for (const Bone_uptr& child : parent.children())
+    {
+        saveSkeleton(dataOut, *child);
+    }
+}
+
+Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parentIn)
+{
+    auto tempVer = decltype(BYTE_BUFFER_VERSION_SKELETON){0};
+    dataIn >> tempVer;
+    if (tempVer != BYTE_BUFFER_VERSION_SKELETON)
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
+
+    string tempString;
+    // the name of the bone
+    dataIn >> tempString;
+    // create a node and set the parent, in the case this is the root node, it will be null
+    Bone* internalNode = new Bone(tempString, parentIn);
+
+    // the bone offsets
+    dataIn >> internalNode->_offsetMatrix;
+
+    // original bind pose
+    dataIn >> internalNode->_localTransform;
+
+    // bone ID
+    dataIn >> internalNode->_boneID;
+
+    // the number of children
+    U32 nsize = 0u;
+    dataIn >> nsize;
+
+    // recursively call this function on all children
+    // continue for all child nodes and assign the created internal nodes as our children
+    for (U32 a = 0u; a < nsize; a++)
+    {
+        Bone* crtNode = loadSkeleton(dataIn, internalNode);
+        DIVIDE_UNUSED(crtNode);
+    }
+
+    return internalNode;
 }
 
 } //namespace Divide

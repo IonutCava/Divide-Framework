@@ -41,7 +41,7 @@ void Mesh::setMaterialTpl( const Handle<Material> material)
     }
 }
 
-void Mesh::setAnimationCount( const size_t animationCount )
+void Mesh::setAnimationCount( const size_t animationCount, const bool useDualQuaternions)
 {
     _animationCount = animationCount;
     if ( _animationCount == 0 && _animator != nullptr)
@@ -50,7 +50,7 @@ void Mesh::setAnimationCount( const size_t animationCount )
     }
     else if ( _animationCount > 0u && _animator == nullptr)
     {
-        _animator = std::make_unique<SceneAnimator>();
+        _animator = std::make_unique<SceneAnimator>(useDualQuaternions);
     }
 }
 

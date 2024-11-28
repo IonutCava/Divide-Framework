@@ -96,6 +96,7 @@ namespace Import
         tempBuffer << _ID("BufferEntryPoint");
         tempBuffer << _modelName;
         tempBuffer << _modelPath;
+        tempBuffer << _useDualQuatAnimation;
         tempBuffer << _animationCount;
 
         if (_vertexBuffer->serialize(tempBuffer))
@@ -138,6 +139,7 @@ namespace Import
                 
                 tempBuffer >> _modelName;
                 tempBuffer >> _modelPath;
+                tempBuffer >> _useDualQuatAnimation;
                 tempBuffer >> _animationCount;
 
                 _animations.reserve(_animationCount);
@@ -353,14 +355,19 @@ namespace Import
 
         mesh->renderState().drawState(true);
         mesh->geometryBuffer( tempMeshData._vertexBuffer );
-        mesh->setAnimationCount(tempMeshData._animationCount);
+        mesh->setAnimationCount(tempMeshData._animationCount, tempMeshData._useDualQuatAnimation);
 
         std::atomic_uint taskCounter(0u);
 
         for (const Import::SubMeshData& subMeshData : tempMeshData._subMeshData)
         {
             const size_t boneCount = tempMeshData._animationCount > 0u ? subMeshData._boneCount : 0u;
-
+            const SkinningMode skinningMode = boneCount == 0u
+                                                         ? SkinningMode::COUNT
+                                                         : tempMeshData._useDualQuatAnimation 
+                                                                            ? SkinningMode::DUAL_QUAT
+                                                                            : SkinningMode::MATRIX;
+            
             // Submesh is created as a resource when added to the SceneGraph
             ResourceDescriptor<SubMesh> subMeshDescriptor( subMeshData.name().c_str() );
             subMeshDescriptor.data(
@@ -393,7 +400,7 @@ namespace Import
 
                 if (tempSubMesh->getMaterialTpl() == INVALID_HANDLE<Material>)
                 {
-                    tempSubMesh->setMaterialTpl(loadSubMeshMaterial(subMeshData._material, tempMeshData.fromFile(), boneCount > 0, taskCounter));
+                    tempSubMesh->setMaterialTpl(loadSubMeshMaterial(subMeshData._material, tempMeshData.fromFile(), skinningMode, taskCounter));
                 }
             }
         }
@@ -423,7 +430,11 @@ namespace Import
                     Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, tempMeshData._animations);
                     DIVIDE_ASSERT(tempMeshData._animations.empty());
 
-                    animator->init(context, MOV(tempMeshData._skeleton));
+                    if ( !animator->init(context, MOV(tempMeshData._skeleton)))
+                    {
+                        DIVIDE_UNEXPECTED_CALL();
+                    }
+
                     animator->save(context, tempBuffer);
                     if (!tempBuffer.dumpToFile(Paths::g_geometryCacheLocation, saveFileName ))
                     {
@@ -450,7 +461,7 @@ namespace Import
     }
 
     /// Load the material for the current SubMesh
-    Handle<Material> MeshImporter::loadSubMeshMaterial( const Import::MaterialData& importData, const bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter)
+    Handle<Material> MeshImporter::loadSubMeshMaterial( const Import::MaterialData& importData, const bool loadedFromCache, const SkinningMode skinningMode, std::atomic_uint& taskCounter)
     {
         bool wasInCache = false;
         Handle<Material> tempMaterialHandle = CreateResource(ResourceDescriptor<Material>(importData.name().c_str()), wasInCache);
@@ -466,7 +477,7 @@ namespace Import
             tempMaterial->ignoreXMLData(true);
         }
 
-        tempMaterial->properties().hardwareSkinning(skinned);
+        tempMaterial->properties().skinningMode(skinningMode);
         tempMaterial->properties().emissive(importData.emissive());
         tempMaterial->properties().ambient(importData.ambient());
         tempMaterial->properties().specular(importData.specular().rgb);

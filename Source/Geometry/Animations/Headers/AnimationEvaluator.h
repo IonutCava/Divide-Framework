@@ -41,9 +41,13 @@
 #include <assimp/anim.h>
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
 
-namespace Divide {
+namespace Divide
+{
 
-class ByteBuffer;
+namespace Attorney
+{
+    class AnimEvaluatorSceneAnimator;
+}
 
 struct AnimationChannel
 {
@@ -58,12 +62,25 @@ struct AnimationChannel
     U32 _numScalingKeys = 0u;
 };
 
-using BoneTransforms = vector<mat4<F32>>;
+struct DualQuaternion
+{
+    Quaternion<F32> a;
+    Quaternion<F32> b;
+};
+
+using BoneQuaternions = vector<DualQuaternion>;
+using BoneMatrices   = vector<mat4<F32>>;
 
 class GFXDevice;
-class AnimEvaluator {
+class ByteBuffer;
+class SceneAnimator;
+class AnimEvaluator
+{
+    friend class Attorney::AnimEvaluatorSceneAnimator;
+
    public:
-    struct FrameIndex {
+    struct FrameIndex
+    {
         I32 _curr = 0;
         I32 _prev = 0;
         I32 _next = 0;
@@ -78,49 +95,21 @@ class AnimEvaluator {
 
     [[nodiscard]] FrameIndex frameIndexAt(D64 elapsedTimeS, bool forward) const noexcept;
 
-    [[nodiscard]] U32 frameCount() const noexcept { return to_U32(_transforms.size()); }
+    [[nodiscard]]       vector<BoneMatrices>&   transformMatrices()       noexcept;
+    [[nodiscard]] const vector<BoneMatrices>&   transformMatrices() const noexcept;
+    [[nodiscard]]       vector<BoneQuaternions>& transformQuaternions()    noexcept;
+    [[nodiscard]] const vector<BoneQuaternions>& transQuaternions()  const noexcept;
 
-    [[nodiscard]] vector<BoneTransforms>& transforms() noexcept { return _transforms; }
-    
-    [[nodiscard]] const vector<BoneTransforms>& transforms() const noexcept { return _transforms; }
+    [[nodiscard]]       BoneMatrices& transformMatrices(const U32 frameIndex);
+    [[nodiscard]] const BoneMatrices& transformMatrices(const U32 frameIndex) const;
 
-    [[nodiscard]] BoneTransforms& transforms(const U32 frameIndex)
-    {
-        assert(frameIndex < to_U32(_transforms.size()));
-        return _transforms[frameIndex];
-    }
+    [[nodiscard]] BoneMatrices& transformMatrices(const D64 elapsedTime, const bool forward);
+    [[nodiscard]] BoneMatrices& transformMatrices(const D64 elapsedTime, const bool forward, I32& resultingFrameIndex);
 
-    [[nodiscard]] const BoneTransforms& transforms(const U32 frameIndex) const
-    {
-        assert(frameIndex < to_U32(_transforms.size()));
-        return _transforms[frameIndex];
-    }
+    [[nodiscard]] const BoneMatrices& transformMatrices(const D64 elapsedTime, const bool forward) const;
+    [[nodiscard]] const BoneMatrices& transformMatrices(const D64 elapsedTime, const bool forward, I32& resultingFrameIndex) const;
 
-    [[nodiscard]] BoneTransforms& transforms(const D64 elapsedTime, const bool forward, I32& resultingFrameIndex)
-    {
-        resultingFrameIndex = frameIndexAt(elapsedTime, forward)._curr;
-        return transforms(to_U32(resultingFrameIndex));
-    }
-
-    [[nodiscard]] BoneTransforms& transforms(const D64 elapsedTime, const bool forward)
-    {
-        I32 resultingFrameIndex = 0;
-        return transforms(elapsedTime, forward, resultingFrameIndex);
-    }
-
-    [[nodiscard]] const BoneTransforms& transforms(const D64 elapsedTime, const bool forward, I32& resultingFrameIndex) const
-    {
-        resultingFrameIndex = frameIndexAt(elapsedTime, forward)._curr;
-        return transforms(to_U32(resultingFrameIndex));
-    }
-
-    [[nodiscard]] const BoneTransforms& transforms(const D64 elapsedTime, const bool forward) const
-    {
-        I32 resultingFrameIndex = 0;
-        return transforms(elapsedTime, forward, resultingFrameIndex);
-    }
-
-    bool initBuffers(GFXDevice& context);
+    [[nodiscard]] bool initBuffers(GFXDevice& context, bool useDualQuaternions);
 
     static void save(const AnimEvaluator& evaluator, ByteBuffer& dataOut);
     static void load(AnimEvaluator& evaluator, ByteBuffer& dataIn);
@@ -128,12 +117,16 @@ class AnimEvaluator {
     PROPERTY_RW(D64, ticksPerSecond, 0.0);
     PROPERTY_R_IW(D64, duration, 0.0);
     PROPERTY_R_IW(string, name, "");
+    PROPERTY_R(bool, hasScaling, false);
+    PROPERTY_R(U32, frameCount, 0u);
 
     [[nodiscard]] inline ShaderBuffer* boneBuffer() const { return _boneBuffer.get(); }
 
    protected:
     /// Array to return transformations results inside.
-    vector<BoneTransforms> _transforms;
+    vector<BoneMatrices>   _transformMatrices;
+    vector<BoneQuaternions> _transformQuaternions;
+
     vector<uint3> _lastPositions;
     /// vector that holds all bone channels
     vector<AnimationChannel> _channels;
@@ -142,6 +135,23 @@ class AnimEvaluator {
     D64 _lastTime = 0.0;
 };
 
+namespace Attorney
+{
+    class AnimEvaluatorSceneAnimator
+    {
+        static void frameCount(AnimEvaluator& animation, const U32 frameCount)
+        {
+            DIVIDE_ASSERT(frameCount == animation._transformMatrices.size());
+
+            animation._frameCount = frameCount;
+        }
+
+        friend class Divide::SceneAnimator;
+    };
+}
+
 };  // namespace Divide
 
-#endif 
+#endif  //ANIMATION_EVALUATOR_H_
+
+#include "AnimationEvaluator.inl"

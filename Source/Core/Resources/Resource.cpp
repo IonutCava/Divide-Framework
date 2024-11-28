@@ -24,12 +24,28 @@ void Resource::setState(const ResourceState currentState)
     _resourceState.store(currentState, std::memory_order_relaxed);
 }
 
-void WaitForReady( Resource* res )
+bool WaitForReady( Resource* res )
 {
     if ( res != nullptr )
     {
-        WAIT_FOR_CONDITION( res->getState() == ResourceState::RES_LOADED );
+        while( res->getState() != ResourceState::RES_LOADED )
+        {
+            if (res->getState() != ResourceState::RES_CREATED &&
+                res->getState() != ResourceState::RES_LOADING &&
+                res->getState() != ResourceState::RES_THREAD_LOADED)
+            {
+                // We failed the load!
+                return false;
+            }
+
+            PlatformContextIdleCall();
+            std::this_thread::yield();
+        }
+
+        return true;
     }
+
+    return false;
 }
 
 bool SafeToDelete( Resource* res )

@@ -166,8 +166,9 @@ namespace Divide {
             PROPERTY_RW(bool, fromFile, false);
             Divide::MeshNodeData _nodeData;
             vector<SubMeshData> _subMeshData;
-            size_t _animationCount{0u};
             vector<std::unique_ptr<AnimEvaluator>> _animations;
+            size_t _animationCount{0u};
+            bool _useDualQuatAnimation{true};
         };
     };
 
@@ -180,7 +181,7 @@ namespace Divide {
 
         protected:
             static bool loadMeshDataFromFile( PlatformContext& context, Import::ImportData& dataOut);
-            static Handle<Material> loadSubMeshMaterial(const Import::MaterialData& importData, bool loadedFromCache, bool skinned, std::atomic_uint& taskCounter);
+            static Handle<Material> loadSubMeshMaterial(const Import::MaterialData& importData, bool loadedFromCache, SkinningMode skinningMode, std::atomic_uint& taskCounter);
     };
 
 };  // namespace Divide

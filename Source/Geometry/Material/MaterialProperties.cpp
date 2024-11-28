@@ -66,15 +66,6 @@ void Material::Properties::ignoreTexDiffuseAlpha(const bool state) noexcept
     }
 }
 
-void Material::Properties::hardwareSkinning(const bool state) noexcept
-{
-    if (_hardwareSkinning != state)
-    {
-        _hardwareSkinning = state;
-        _needsNewShader = true;
-    }
-}
-
 void Material::Properties::texturesInFragmentStageOnly(const bool state) noexcept
 {
     if (_texturesInFragmentStageOnly != state)
@@ -126,9 +117,19 @@ void Material::Properties::shadingMode(const ShadingMode mode) noexcept
     }
 }
 
+void Material::Properties::skinningMode(const SkinningMode mode) noexcept
+{
+    if (_skinningMode != mode)
+    {
+        _skinningMode = mode;
+        _needsNewShader = true;
+    }
+}
+
 void Material::Properties::saveToXML(const std::string& entryName, boost::property_tree::ptree& pt) const
 {
     pt.put(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()));
+    pt.put(entryName + ".skinningMode", TypeUtil::SkinningModeToString(skinningMode()));
 
     pt.put(entryName + ".colour.<xmlattr>.r", baseColour().r);
     pt.put(entryName + ".colour.<xmlattr>.g", baseColour().g);
@@ -177,6 +178,7 @@ void Material::Properties::saveToXML(const std::string& entryName, boost::proper
 void Material::Properties::loadFromXML(const std::string& entryName, const boost::property_tree::ptree& pt)
 {
     shadingMode(TypeUtil::StringToShadingMode(pt.get<std::string>(entryName + ".shadingMode", TypeUtil::ShadingModeToString(shadingMode()))));
+    skinningMode(TypeUtil::StringToSkinningMode(pt.get<std::string>(entryName + ".skinningMode", TypeUtil::SkinningModeToString(skinningMode()))));
 
     baseColour(FColour4(pt.get<F32>(entryName + ".colour.<xmlattr>.r", baseColour().r),
                         pt.get<F32>(entryName + ".colour.<xmlattr>.g", baseColour().g),

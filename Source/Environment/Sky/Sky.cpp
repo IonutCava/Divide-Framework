@@ -492,7 +492,10 @@ bool Sky::load( PlatformContext& context )
         return shaderDescriptor;
     });
 
-    WaitForReady( Get(_weatherTex) );
+    if (!WaitForReady( Get(_weatherTex) ))
+    {
+        DIVIDE_UNEXPECTED_CALL();
+    }
 
     skyMatPtr->setTexture( TextureSlot::UNIT0, _skybox, _skyboxSampler, TextureOperation::NONE );
     skyMatPtr->setTexture( TextureSlot::HEIGHTMAP, _weatherTex, noiseSamplerMipMap, TextureOperation::NONE );

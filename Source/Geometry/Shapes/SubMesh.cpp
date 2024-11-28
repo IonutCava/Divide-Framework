@@ -130,7 +130,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
         return;
     }
 
-    const vector<BoneTransforms>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transforms();
+    const vector<BoneMatrices>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transformMatrices();
 
     auto& parentVB = _parentMesh->geometryBuffer();
     const size_t partitionOffset = parentVB->getPartitionOffset(_geometryPartitionIDs[0]);
@@ -140,7 +140,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
     BoundingBox& currentBB = _boundingBoxes.at(animationIndex);
     currentBB.reset();
 
-    for (const BoneTransforms& matrices : currentAnimation)
+    for (const BoneMatrices& matrices : currentAnimation)
     {
         // loop through all vertex weights of all bones
         for (U32 j = 0u; j < partitionCount; ++j)

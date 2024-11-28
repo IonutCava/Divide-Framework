@@ -113,6 +113,9 @@ namespace TypeUtil {
     [[nodiscard]] const char* ShadingModeToString(ShadingMode shadingMode) noexcept;
     [[nodiscard]] ShadingMode StringToShadingMode(std::string_view name);
 
+    [[nodiscard]] const char* SkinningModeToString(SkinningMode skinningMode) noexcept;
+    [[nodiscard]] SkinningMode StringToSkinningMode(std::string_view name);
+
     [[nodiscard]] const char* TextureSlotToString(TextureSlot texUsage) noexcept;
     [[nodiscard]] TextureSlot StringToTextureSlot(std::string_view name);
 
@@ -166,7 +169,8 @@ class Material final : public CachedResource {
         Str<32> _colourShaderFragVariant = "";
     };
 
-    struct Properties {
+    struct Properties
+    {
         friend class Material;
         PROPERTY_R(FColour4, baseColour, DefaultColours::WHITE);
 
@@ -185,11 +189,11 @@ class Material final : public CachedResource {
         PROPERTY_R(bool, receivesShadows, true);
         PROPERTY_R(bool, isStatic, false);
         PROPERTY_R(bool, isInstanced, false);
-        PROPERTY_R(bool, hardwareSkinning, false);
         PROPERTY_R(bool, texturesInFragmentStageOnly, true);
         PROPERTY_R(ReflectorType, reflectorType, ReflectorType::COUNT);
         PROPERTY_R(RefractorType, refractorType, RefractorType::COUNT);
         PROPERTY_R(bool, doubleSided, false);
+        PROPERTY_R(SkinningMode, skinningMode, SkinningMode::COUNT);
         PROPERTY_R(ShadingMode, shadingMode, ShadingMode::COUNT);
         PROPERTY_R(TranslucencySource, translucencySource, TranslucencySource::COUNT);
         /// If the metalness textures has 3 (or 4) channels, those channels are interpreted automatically as R: Occlusion, G: Metalness, B: Roughness
@@ -210,9 +214,9 @@ class Material final : public CachedResource {
         PROPERTY_R_IW(bool, needsNewShader, true);
 
     public:
-        void hardwareSkinning(bool state) noexcept;
         void texturesInFragmentStageOnly(bool state) noexcept;
         void shadingMode(ShadingMode mode) noexcept;
+        void skinningMode(SkinningMode mode) noexcept;
         void doubleSided(bool state) noexcept;
         void receivesShadows(bool state) noexcept;
         void reflectorType(ReflectorType state) noexcept;

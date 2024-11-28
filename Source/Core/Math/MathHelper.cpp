@@ -4,13 +4,33 @@
 #include <glm/gtc/packing.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/epsilon.hpp>
-
 //ref for decomposeMatrix:
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/dual_quaternion.hpp>
 
 namespace Divide::Util
 {
+
+bool ToDualQuaternion(const mat4<F32>& transform,
+                      Quaternion<F32>& rotQuatOut,
+                      Quaternion<F32>& transQuatOut)
+{
+    float3 translation = VECTOR3_ZERO, scale = VECTOR3_UNIT;
+
+    rotQuatOut.identity();
+    transQuatOut.identity();
+
+    if (DecomposeMatrix(transform, translation, scale, rotQuatOut))
+    {
+        transQuatOut.set(translation.x, translation.y, translation.z, 0.f);
+        transQuatOut = transQuatOut * rotQuatOut * 0.5f;
+
+        return true;
+    }
+
+    return false;
+}
 
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
@@ -81,7 +101,32 @@ bool DecomposeMatrix(const mat4<F32>& transform,
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
+                     Quaternion<F32>& rotationOut,
+                     bool& isUniformScaleOut)
+{
+    vec3<Angle::RADIANS_F> tempEuler = VECTOR3_ZERO;
+    if (DecomposeMatrix(transform, translationOut, scaleOut, tempEuler, isUniformScaleOut))
+    {
+        rotationOut.fromEuler(tempEuler);
+        return true;
+    }
+
+    return false;
+}
+
+bool DecomposeMatrix(const mat4<F32>& transform,
+                     float3& translationOut,
+                     float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut)
+{
+    bool uniformScaleTemp = false;
+    return DecomposeMatrix(transform, translationOut, scaleOut, rotationOut, uniformScaleTemp);
+}
+
+bool DecomposeMatrix(const mat4<F32>& transform,
+                     float3& translationOut,
+                     float3& scaleOut,
+                     Quaternion<F32>& rotationOut)
 {
     bool uniformScaleTemp = false;
     return DecomposeMatrix(transform, translationOut, scaleOut, rotationOut, uniformScaleTemp);
@@ -272,7 +317,7 @@ void ToFloatColour(const uint4& uintColour, FColour4& colourOut) noexcept
                   uintColour.a / 255.0f);
 }
 
-void ToFloatColour(const vec3<U32>& uintColour, FColour3& colourOut) noexcept 
+void ToFloatColour(const uint3& uintColour, FColour3& colourOut) noexcept 
 {
     colourOut.set(uintColour.r / 255.0f,
                   uintColour.g / 255.0f,
@@ -314,7 +359,7 @@ FColour4 ToFloatColour(const uint4& uintColour) noexcept
     return tempColour;
 }
 
-FColour3 ToFloatColour(const vec3<U32>& uintColour) noexcept
+FColour3 ToFloatColour(const uint3& uintColour) noexcept
 {
     FColour3 tempColour;
     ToFloatColour(uintColour, tempColour);

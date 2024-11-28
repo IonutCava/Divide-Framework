@@ -97,6 +97,24 @@ namespace Divide
             return ShadingMode::COUNT;
         }
 
+        const char* SkinningModeToString(const SkinningMode skinningMode) noexcept
+        {
+            return Names::skinningMode[to_base( skinningMode )];
+        }
+
+        SkinningMode StringToSkinningMode(const std::string_view name)
+        {
+            for (U8 i = 0; i < to_U8(SkinningMode::COUNT); ++i)
+            {
+                if (name == Names::skinningMode[i])
+                {
+                    return static_cast<SkinningMode>(i);
+                }
+            }
+
+            return SkinningMode::COUNT;
+        }
+
         const char* TextureOperationToString( const TextureOperation textureOp ) noexcept
         {
             return Names::textureOperation[to_base( textureOp )];
@@ -512,7 +530,10 @@ namespace Divide
             _context->shaderComputeQueue().process( shaderElement );
             info._shaderCompStage = ShaderBuildStage::COMPUTED;
             DIVIDE_ASSERT( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
-            WaitForReady( Get(info._shaderRef) );
+            if ( !WaitForReady( Get(info._shaderRef) ) )
+            {
+                info._shaderCompStage = ShaderBuildStage::FAILED;
+            }
         }
         else
         {
@@ -600,6 +621,11 @@ namespace Divide
 
         shaderJustFinishedLoading = false;
         ShaderProgramInfo& info = shaderInfo( renderStagePass );
+        if ( info._shaderCompStage == ShaderBuildStage::FAILED )
+        {
+            return false;
+        }
+
         if ( info._shaderCompStage == ShaderBuildStage::REQUESTED )
         {
             setShaderProgramInternal( _computeShaderCBK( this, renderStagePass ),
@@ -623,11 +649,17 @@ namespace Divide
         {
             assert( info._shaderRef != INVALID_HANDLE<ShaderProgram> );
             // ... wait for the shader to finish loading
-            WaitForReady( Get(info._shaderRef) );
+            if ( !WaitForReady( Get(info._shaderRef) ) )
+            {
+                info._shaderCompStage = ShaderBuildStage::FAILED;
+            }
+            else
+            {
+                info._shaderCompStage = ShaderBuildStage::READY;
+                info._shaderKeyCache = Get(info._shaderRef)->getGUID();
+            }
             // Once it has finished loading, it is ready for drawing
             shaderJustFinishedLoading = true;
-            info._shaderCompStage = ShaderBuildStage::READY;
-            info._shaderKeyCache = Get(info._shaderRef)->getGUID();
         }
 
         // If the shader isn't ready it may have not passed through the computational stage yet (e.g. the first time this method is called)
@@ -829,9 +861,18 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back( "OVERRIDE_DATA_IDX", true );
         }
 
-        if ( properties().hardwareSkinning() )
+        if (properties().skinningMode() != SkinningMode::COUNT)
         {
-            moduleDefines[to_base( ShaderType::VERTEX )].emplace_back( "USE_GPU_SKINNING", true );
+            moduleDefines[to_base(ShaderType::VERTEX)].emplace_back("USE_GPU_SKINNING", true);
+        }
+
+        switch ( properties().skinningMode() )
+        {
+            case SkinningMode::MATRIX:     moduleDefines[to_base( ShaderType::VERTEX )].emplace_back( "USE_MATRIX_SKINNING", true ); break;
+            case SkinningMode::DUAL_QUAT:  moduleDefines[to_base( ShaderType::VERTEX )].emplace_back( "USE_DUAL_QUAT_SKINNING", true ); break;
+
+            default:
+            case SkinningMode::COUNT: break;
         }
         if ( !properties().texturesInFragmentStageOnly() )
         {

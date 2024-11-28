@@ -168,6 +168,20 @@ namespace Divide {
 
     static_assert(ArrayCount(Names::shadingMode) == to_base(ShadingMode::COUNT) + 1, "ShadingMode name array out of sync!");
 
+    enum class SkinningMode : U8 {
+        DUAL_QUAT = 0,
+        MATRIX,
+        COUNT
+    };
+
+    namespace Names {
+        static const char* skinningMode[] = {
+            "DUAL_QUAT", "MATRIX", "NONE"
+        };
+    };
+
+    static_assert(ArrayCount(Names::skinningMode) == to_base(SkinningMode::COUNT) + 1, "SkinningMode name array out of sync!");
+
     enum class MaterialUpdateResult : U8 {
         OK = toBit(1),
         NEW_CULL = toBit(2),
