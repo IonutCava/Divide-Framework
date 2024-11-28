@@ -53,10 +53,12 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
 
     EditorComponentField typeField = {};
     typeField._name = "Is Local";
-    typeField._dataGetter = [this](void* dataOut) {
+    typeField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data)
+    {
         *static_cast<bool*>(dataOut) = _probeType == ProbeType::TYPE_LOCAL;
     };
-    typeField._dataSetter = [this](const void* data) {
+    typeField._dataSetter = [this](const void* data, [[maybe_unused]] void* user_data)
+    {
         _probeType = *static_cast<const bool*>(data) ? ProbeType::TYPE_LOCAL : ProbeType::TYPE_INFINITE;
     };
     typeField._type = EditorComponentFieldType::PUSH_TYPE;
@@ -88,14 +90,17 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
     updateTypeField._name = "Update Type";
     updateTypeField._type = EditorComponentFieldType::DROPDOWN_TYPE;
     updateTypeField._readOnly = false;
-    updateTypeField._range = { 0u, to_U8(UpdateType::COUNT) };
-    updateTypeField._dataGetter = [this](void* dataOut) {
-        *static_cast<U8*>(dataOut) = to_U8(updateType());
+    updateTypeField._range = { 0u, to_U32(UpdateType::COUNT) };
+    updateTypeField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data)
+    {
+        *static_cast<U32*>(dataOut) = to_U32(updateType());
     };
-    updateTypeField._dataSetter = [this](const void* data) noexcept {
+    updateTypeField._dataSetter = [this](const void* data, [[maybe_unused]] void* user_data) noexcept
+    {
         updateType(*static_cast<const UpdateType*>(data));
     };
-    updateTypeField._displayNameGetter = [](const U8 index) noexcept {
+    updateTypeField._displayNameGetter = [](const U32 index, [[maybe_unused]] void* user_data) noexcept
+    {
         return TypeUtil::EnvProveUpdateTypeToString(static_cast<UpdateType>(index));
     };
 

@@ -149,11 +149,13 @@ namespace Divide {
         }
     }
 
-    bool SolutionExplorerWindow::nodeHasChildrenInView(const SceneGraphNode* sgn) const {
+    bool SolutionExplorerWindow::nodeHasChildrenInView(const SceneGraphNode* sgn) const
+    {
         const SceneGraphNode::ChildContainer& children = sgn->getChildren();
         SharedLock<SharedMutex> r_lock(children._lock);
         const U32 childCount = children._count;
-        for (U32 i = 0u; i < childCount; ++i) {
+        for (U32 i = 0u; i < childCount; ++i)
+        {
             if (Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *children._data[i]) ||
                 nodeHasChildrenInView(children._data[i]))
             {
@@ -188,13 +190,21 @@ namespace Divide {
             node_flags |= ImGuiTreeNodeFlags_Selected;
         }
 
-        if (sgn->getChildren()._count.load() == 0u) {
-            node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet;
+        if (sgn->getChildren()._count == 0u)
+        {
+            SharedLock<SharedMutex> r_lock(sgn->getChildren()._lock);
+            if (sgn->getChildren()._count == 0u)
+            {
+                node_flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet;
+            }
         }
 
-        const auto printNode = [&](const char* icon) {
-            if (s_onlyVisibleNodes && !Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *sgn)) {
-                if (!sgn->hasFlag(SceneGraphNode::Flags::IS_CONTAINER) || !nodeHasChildrenInView(sgn)) {
+        const auto printNode = [&](const char* icon)
+        {
+            if (s_onlyVisibleNodes && !Attorney::EditorSolutionExplorerWindow::isNodeInView(_parent, *sgn))
+            {
+                if (!sgn->hasFlag(SceneGraphNode::Flags::IS_CONTAINER) || !nodeHasChildrenInView(sgn))
+                {
                     return false;
                 }
             }
@@ -210,53 +220,75 @@ namespace Divide {
                                                     (modifierPressed && !isRoot) ? ICON_FK_CHECK_SQUARE_O : "",
                                                     (wasSelected ? ICON_FK_CHEVRON_CIRCLE_LEFT : isHovered ? ICON_FK_CHEVRON_LEFT : ""));
             
-            if (!secondaryView && wasSelected) {
+            if (!secondaryView && wasSelected)
+            {
                 drawContextMenu(sgn);
             }
 
-            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-                if (secondaryView) {
+            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+            {
+                if (secondaryView)
+                {
                     _tempParent = sgn;
-                } else {
+                }
+                else
+                {
                     const bool parentSelected = !isRoot && sgn->parent()->hasFlag(SceneGraphNode::Flags::SELECTED);
-                    const bool childrenSelected = sgn->getChildren()._count.load() > 0u && sgn->getChildren().getChild(0u)->hasFlag(SceneGraphNode::Flags::SELECTED);
+                    if (modifierPressed || projectManager->resetSelection(0, false))
+                    {
+                        bool childrenSelected = false;
 
-                    if (modifierPressed || projectManager->resetSelection(0, false)) {
-                        if (!wasSelected || parentSelected || childrenSelected) {
+                        {
+                            SharedLock<SharedMutex> r_lock(sgn->getChildren()._lock);
+                            childrenSelected = sgn->getChildren()._count > 0u && sgn->getChildren().getChild(0u)->hasFlag(SceneGraphNode::Flags::SELECTED);
+                        }
+
+                        if (!wasSelected || parentSelected || childrenSelected)
+                        {
                             projectManager->setSelected(0, { sgn }, wasSelected);
                         }
                         Attorney::EditorSolutionExplorerWindow::setSelectedCamera(_parent, nullptr);
                     }
                 }
             }
-            if (!secondaryView && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
+
+            if (!secondaryView && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_None))
+            {
                 goToNode(sgn);
             }
             return nodeOpen;
         };
 
-        if (_filter.Filters.empty()) {
-            if (printNode(getIconForNode(sgn))) {
+        if (_filter.Filters.empty())
+        {
+            if (printNode(getIconForNode(sgn)))
+            {
                 const SceneGraphNode::ChildContainer& children = sgn->getChildren();
                 SharedLock<SharedMutex> r_lock(children._lock);
                 const U32 childCount = children._count;
-                for (U32 i = 0u; i < childCount; ++i) {
+                for (U32 i = 0u; i < childCount; ++i)
+                {
                     printSceneGraphNode(projectManager, children._data[i], i, false, secondaryView, modifierPressed);
                 }
                 ImGui::TreePop();
             }
-        } else {
+        }
+        else
+        {
             bool nodeOpen = false;
-            if (_filter.PassFilter(sgn->name().c_str())) {
+            if (_filter.PassFilter(sgn->name().c_str()))
+            {
                 nodeOpen = printNode(getIconForNode(sgn));
             }
             const SceneGraphNode::ChildContainer& children = sgn->getChildren();
             SharedLock<SharedMutex> r_lock(children._lock);
             const U32 childCount = children._count;
-            for (U32 i = 0u; i < childCount; ++i) {
+            for (U32 i = 0u; i < childCount; ++i)
+            {
                 printSceneGraphNode(projectManager, children._data[i], i, false, secondaryView, modifierPressed);
             }
-            if (nodeOpen) {
+            if (nodeOpen)
+            {
                 ImGui::TreePop();
             }
         }

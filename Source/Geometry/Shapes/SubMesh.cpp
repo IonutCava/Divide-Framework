@@ -31,7 +31,7 @@ void SubMesh::postLoad(SceneGraphNode* sgn)
         _boundingBoxesState.resize(animationCount, { BoundingBoxState::COUNT });
         _boundingBoxes.resize(animationCount);
 
-        sgn->get<AnimationComponent>()->animator(_parentMesh->getAnimator());
+        sgn->get<AnimationComponent>()->setAnimator(_parentMesh->getAnimator());
     }
 
     Object3D::postLoad(sgn);
@@ -41,12 +41,86 @@ bool SubMesh::postLoad()
 {
     return Object3D::postLoad();
 }
+
+void ChangeAnimationForAllChildren(SceneGraphNode* parentNode, const U32 animationIndex, const bool playInReverse)
+{
+    if (parentNode != nullptr)
+    {
+        const SceneGraphNode::ChildContainer& children = parentNode->getChildren();
+        SharedLock<SharedMutex> r_lock(children._lock);
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i)
+        {
+            SceneGraphNode* child = children._data[i];
+            if (child->HasComponents(ComponentType::ANIMATION))
+            {
+                auto* aComp = child->get<AnimationComponent>();
+
+                const bool applyToChildren = aComp->applyAnimationChangeToAllMeshes();
+                aComp->applyAnimationChangeToAllMeshes(false);
+                aComp->playInReverse(playInReverse);
+                aComp->playAnimation(animationIndex);
+                aComp->applyAnimationChangeToAllMeshes(applyToChildren);
+            }
+
+            ChangeAnimationForAllChildren(child, animationIndex, playInReverse);
+        }
+    }
+}
+
+void SyncAnimationForAllChildren(SceneGraphNode* parentNode, const D64 parentTimeStamp, const bool playInReverse)
+{
+    if (parentNode != nullptr)
+    {
+        const SceneGraphNode::ChildContainer& children = parentNode->getChildren();
+        SharedLock<SharedMutex> r_lock(children._lock);
+        const U32 childCount = children._count;
+        for (U32 i = 0u; i < childCount; ++i)
+        {
+            SceneGraphNode* child = children._data[i];
+            if (child->HasComponents(ComponentType::ANIMATION))
+            {
+                auto* aComp = child->get<AnimationComponent>();
+                aComp->resetTimers(parentTimeStamp);
+            }
+
+            SyncAnimationForAllChildren(child, parentTimeStamp, playInReverse);
+        }
+    }
+}
+
 /// update possible animations
-void SubMesh::onAnimationChange(SceneGraphNode* sgn, const U32 newIndex)
+void SubMesh::onAnimationChange(SceneGraphNode* sgn, const U32 newIndex, const bool applyToAllSiblings, const bool playInReverse)
 {
     computeBBForAnimation(sgn, newIndex);
 
-    Object3D::onAnimationChange(sgn, newIndex);
+    if ( applyToAllSiblings )
+    {
+        SceneGraphNode* parentSGN = sgn->parent();
+        while (parentSGN && parentSGN->node()->type() != SceneNodeType::TYPE_MESH)
+        {
+            parentSGN = parentSGN->parent();
+        }
+
+        ChangeAnimationForAllChildren(parentSGN, newIndex, playInReverse);
+    }
+}
+
+void SubMesh::onAnimationSync(SceneGraphNode* sgn, [[maybe_unused]] const U32 animIndex, const bool playInReverse)
+{
+    auto aComp = sgn->get<AnimationComponent>();
+
+    const D64 currentTimeStamp = aComp->parentTimeStamp();
+
+    SceneGraphNode* parentSGN = sgn->parent();
+    while (parentSGN && parentSGN->node()->type() != SceneNodeType::TYPE_MESH)
+    {
+        parentSGN = parentSGN->parent();
+    }
+
+    SyncAnimationForAllChildren(parentSGN, currentTimeStamp, playInReverse);
+
+    aComp->resetTimers(currentTimeStamp);
 }
 
 void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask, const U32 animationIndex, const AnimationComponent* const animComp)
@@ -56,7 +130,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
         return;
     }
 
-    const vector<BoneTransform>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transforms();
+    const vector<BoneTransforms>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transforms();
 
     auto& parentVB = _parentMesh->geometryBuffer();
     const size_t partitionOffset = parentVB->getPartitionOffset(_geometryPartitionIDs[0]);
@@ -66,21 +140,22 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
     BoundingBox& currentBB = _boundingBoxes.at(animationIndex);
     currentBB.reset();
 
-    for (const BoneTransform& transforms : currentAnimation)
+    for (const BoneTransforms& matrices : currentAnimation)
     {
-        const BoneTransform::Container& matrices = transforms.matrices();
         // loop through all vertex weights of all bones
         for (U32 j = 0u; j < partitionCount; ++j)
         {
             const U32 idx = parentVB->getIndex(j + partitionOffset);
-            const vec4<U8> ind = parentVB->getBoneIndices(idx);
-            const float4& wgh = parentVB->getBoneWeights(idx);
-            const float3& curentVert = parentVB->getPosition(idx);
+            const VertexBuffer::Vertex& vertex = parentVB->getVertices()[idx];
 
-            currentBB.add((wgh.x * (matrices[ind.x] * curentVert)) +
-                          (wgh.y * (matrices[ind.y] * curentVert)) +
-                          (wgh.z * (matrices[ind.z] * curentVert)) +
-                          (wgh.w * (matrices[ind.w] * curentVert)) );
+            const float3&  pos = vertex._position;
+            const vec4<U8> ind = vertex._indices;
+            const vec4<U8> wgh = vertex._weights;
+
+            currentBB.add((UNORM_CHAR_TO_FLOAT(wgh.x) * (matrices[ind.x] * pos)) +
+                          (UNORM_CHAR_TO_FLOAT(wgh.y) * (matrices[ind.y] * pos)) +
+                          (UNORM_CHAR_TO_FLOAT(wgh.z) * (matrices[ind.z] * pos)) +
+                          (UNORM_CHAR_TO_FLOAT(wgh.w) * (matrices[ind.w] * pos)) );
         }
     }
 }

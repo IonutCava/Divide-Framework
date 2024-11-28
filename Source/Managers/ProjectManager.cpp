@@ -1105,7 +1105,7 @@ namespace Divide
                 nodesOut.append( temp );
 
                 const auto& children = sgn->getChildren();
-                SharedLock<SharedMutex> w_lock( children._lock );
+                SharedLock<SharedMutex> r_lock( children._lock );
                 const U32 childCount = children._count;
                 for ( U32 i = 0u; i < childCount; ++i )
                 {

@@ -100,24 +100,30 @@ struct SubRange
     bool operator==(const SubRange&) const = default;
 };
 
+template<typename T>
+using base_type = typename std::remove_cv_t<typename std::remove_reference_t<T>>;
+
+template<typename T>
+concept ValidMathType = is_base_of_template<primitiveWrapper, base_type<T>>::value || (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>);
+
 template<typename T> using SignedIntegerBasedOnSize   = std::conditional_t<sizeof(T) == 8, I64, I32>;
 template<typename T> using UnsignedIntegerBasedOnSize = std::conditional_t<sizeof(T) == 8, U64, U32>;
 template<typename T> using IntegerTypeBasedOnSign     = std::conditional_t<std::is_unsigned_v<T>, UnsignedIntegerBasedOnSize<T>, SignedIntegerBasedOnSize<T>>;
 template<typename T> using DefaultDistribution        = std::conditional_t<std::is_integral_v<T>,  std::uniform_int_distribution<IntegerTypeBasedOnSign<T>>, std::uniform_real_distribution<T>>;
 
-template <typename T, 
+template <ValidMathType T,
           typename Engine = std::mt19937_64,
-          typename Distribution = DefaultDistribution<T>> requires std::is_arithmetic_v<T>
+          typename Distribution = DefaultDistribution<T>>
 [[nodiscard]] T Random(T min, T max);
 
-template <typename T,
+template <ValidMathType T,
           typename Engine = std::mt19937_64,
-          typename Distribution = DefaultDistribution<T>> requires std::is_arithmetic_v<T>
+          typename Distribution = DefaultDistribution<T>>
 [[nodiscard]] T Random(T max);
 
-template <typename T,
+template <ValidMathType T,
           typename Engine = std::mt19937_64,
-          typename Distribution = DefaultDistribution<T>> requires std::is_arithmetic_v<T>
+          typename Distribution = DefaultDistribution<T>>
 [[nodiscard]] T Random();
 
 template<typename Engine = std::mt19937_64>
@@ -126,96 +132,103 @@ void SeedRandom();
 template<typename Engine = std::mt19937_64>
 void SeedRandom(U32 seed);
 
-template <typename T> 
-constexpr I32 SIGN(const T val) {
+template <ValidMathType T>
+constexpr I32 SIGN(const T val)
+{
     return (val < 0) ? -1 : (val > 0) ? 1 : 0;
 }
 
 /// Clamps value n between min and max
-template <typename T> requires std::is_arithmetic_v<T>
+template <ValidMathType T>
 constexpr void CLAMP(T& n, T min, T max) noexcept;
 
-template <typename T> requires std::is_arithmetic_v<T>
+template <ValidMathType T>
 constexpr void CLAMP_01(T& n) noexcept;
 
-template <typename T> requires std::is_arithmetic_v<T>
+template <ValidMathType T>
 [[nodiscard]] constexpr T CLAMPED(T n, T min, T max) noexcept;
 
-template <typename T> requires std::is_arithmetic_v<T>
+template <ValidMathType T>
 [[nodiscard]] constexpr T CLAMPED_01(T n) noexcept;
 
-template <typename T> requires std::is_arithmetic_v<T>
+template <ValidMathType T>
 [[nodiscard]] constexpr T MAP(T input, T in_min, T in_max, T out_min, T out_max, D64& slopeOut) noexcept;
 
-template <typename T>
+template <ValidMathType T>
 constexpr void REMAP(T& input, T in_min, T in_max, T out_min, T out_max, D64& slopeOut) noexcept;
 
-template <typename T>
+template <ValidMathType T>
 [[nodiscard]] constexpr T SQUARED(T input) noexcept;
 
-template <typename T>
+template <ValidMathType T>
 [[nodiscard]] constexpr T MAP(const T input, const T in_min, const T in_max, const T out_min, const T out_max) noexcept {
     D64 slope = 0.0;
     return MAP(input, in_min, in_max, out_min, out_max, slope);
 }
 
-template <typename T>
-constexpr void REMAP(T& input, T in_min, T in_max, T out_min, T out_max) noexcept {
+template <ValidMathType T>
+constexpr void REMAP(T& input, T in_min, T in_max, T out_min, T out_max) noexcept
+{
     D64 slope = 0.0;
     input = MAP(input, in_min, in_max, out_min, out_max, slope);
 }
 
-template <typename T>
-[[nodiscard]] vec2<T> COORD_REMAP(vec2<T> input, const Rect<T>& in_rect, const Rect<T>& out_rect) noexcept {
+template <ValidMathType T>
+[[nodiscard]] vec2<T> COORD_REMAP(vec2<T> input, const Rect<T>& in_rect, const Rect<T>& out_rect) noexcept
+{
     return vec2<T> {
         MAP(input.x, in_rect.x, in_rect.x + in_rect.z, out_rect.x, out_rect.x + out_rect.z),
         MAP(input.y, in_rect.y, in_rect.y + in_rect.w, out_rect.y, out_rect.y + out_rect.w)
     };
 }
 
-template <typename T>
-[[nodiscard]] vec3<T> COORD_REMAP(vec3<T> input, const Rect<T>& in_rect, const Rect<T>& out_rect) noexcept {
+template <ValidMathType T>
+[[nodiscard]] vec3<T> COORD_REMAP(vec3<T> input, const Rect<T>& in_rect, const Rect<T>& out_rect) noexcept
+{
     return vec3<T>(COORD_REMAP(input.xy(), in_rect, out_rect), input.z);
 }
 
-template <typename T>
-[[nodiscard]] T NORMALIZE(T input, const T range_min, const T range_max) noexcept {
+template <ValidMathType T>
+[[nodiscard]] T NORMALIZE(T input, const T range_min, const T range_max) noexcept
+{
     return MAP<T>(input, range_min, range_max, T(0), T(1));
 }
 
-template<typename T>
+template<ValidMathType T>
 void CLAMP_IN_RECT(T& inout_x, T& inout_y, T rect_x, T rect_y, T rect_z, T rect_w) noexcept;
 
-template<typename T>
+template<ValidMathType T>
 void CLAMP_IN_RECT(T& inout_x, T& inout_y, const Rect<T>& rect) noexcept;
 
-template<typename T>
+template<ValidMathType T>
 void CLAMP_IN_RECT(T& inout_x, T& inout_y, const vec4<T>& rect) noexcept;
 
-template<typename T>
+template<ValidMathType T>
 [[nodiscard]] bool COORDS_IN_RECT(T input_x, T input_y, T rect_x, T rect_y, T rect_z, T rect_w) noexcept;
 
-template<typename T>
+template<ValidMathType T>
 [[nodiscard]] bool COORDS_IN_RECT(T input_x, T input_y, const Rect<T>& rect) noexcept;
 
-template<typename T>
+template<ValidMathType T>
 [[nodiscard]] bool COORDS_IN_RECT(T input_x, T input_y, const vec4<T>& rect) noexcept;
 
+template<ValidMathType T>
+[[nodiscard]] constexpr T roundup(T value, U32 maxb = sizeof(T) * CHAR_BIT, U32 curb = 1);
 [[nodiscard]] constexpr U32 nextPOW2(U32 n) noexcept;
 [[nodiscard]] constexpr U32 prevPOW2(U32 n) noexcept;
 
-template<typename T>
+template<ValidMathType T>
 [[nodiscard]] constexpr T MipCount(T width, T height) noexcept;
 
 // Calculate the smallest NxN matrix that can hold the specified
 // number of elements. Returns N
 [[nodiscard]] constexpr U32 minSquareMatrixSize(U32 elementCount) noexcept;
 
-template <typename T, typename U = T> [[nodiscard]] T Lerp(T v1, T v2, U t) noexcept;
-template <typename T, typename U = T> [[nodiscard]] T LerpFast(T v1, T v2, U t) noexcept;
-template <typename T, typename U = T> [[nodiscard]] T Sqrt(U input) noexcept;
-template <typename T, typename U = T> [[nodiscard]] T InvSqrt(U input) noexcept;
-template <typename T, typename U = T> [[nodiscard]] T InvSqrtFast(U input) noexcept;
+template <typename T, ValidMathType U = T> [[nodiscard]] T Lerp(T v1, T v2, U t) noexcept;
+template <typename T, ValidMathType U = T> [[nodiscard]] T LerpFast(T v1, T v2, U t) noexcept;
+template <ValidMathType T, typename U = T> [[nodiscard]] T Sqrt(U input) noexcept;
+template <ValidMathType T, typename U = T> [[nodiscard]] T InvSqrt(U input) noexcept;
+template <ValidMathType T, typename U = T> [[nodiscard]] T InvSqrtFast(U input) noexcept;
 
 ///Helper methods to go from an snorm float (-1...1) to packed unorm char (value => (value + 1) * 0.5 => U8)
 [[nodiscard]] constexpr U8 PACKED_FLOAT_TO_CHAR_UNORM(F32_SNORM value) noexcept;
@@ -348,11 +361,6 @@ struct SimpleLocation
     F32 _latitude = 0;
     F32 _longitude = 0;
 };
-template<typename T>
-using base_type = typename std::remove_cv_t<typename std::remove_reference_t<T>>;
-
-template<typename T>
-concept ValidMathType = is_base_of_template<primitiveWrapper, base_type<T>>::value || (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>);
 
 template<typename T>
 inline constexpr bool Is_Float_Angle = std::is_same_v<T, Angle::RADIANS<F32>> || std::is_same_v<T, Angle::DEGREES<F32>>;
@@ -372,7 +380,7 @@ struct Circle
 
 /// a la Boost
 template <typename T, typename... Rest>
-void Hash_combine(size_t& seed, const T& v, const Rest&... rest) noexcept;
+void Hash_combine(std::size_t& seed, const T& v, const Rest&... rest) noexcept;
 
 /** Ogre3D
 @brief Normalise the selected rotations to be within the +/-180 degree range.
@@ -389,8 +397,8 @@ void Normalize(vec3<Angle::RADIANS_F>& inputRotation,
                bool normPitch = true,
                bool normRoll = true) noexcept;
 
-[[nodiscard]] UColour4  ToByteColour(const FColour4& floatColour) noexcept;
-[[nodiscard]] UColour3  ToByteColour(const FColour3& floatColour) noexcept;
+[[nodiscard]] UColour4 ToByteColour(const FColour4& floatColour) noexcept;
+[[nodiscard]] UColour3 ToByteColour(const FColour3& floatColour) noexcept;
 [[nodiscard]] FColour4 ToFloatColour(const UColour4& byteColour) noexcept;
 [[nodiscard]] FColour3 ToFloatColour(const UColour3& byteColour) noexcept;
 [[nodiscard]] FColour4 ToFloatColour( const uint4& colour ) noexcept;
@@ -403,22 +411,22 @@ void ToFloatColour(const UColour3& byteColour, FColour3& colourOut) noexcept;
 void ToFloatColour( const uint4& uintColour, FColour4& colourOut ) noexcept;
 void ToFloatColour( const uint3& uintColour, FColour3& colourOut ) noexcept;
 
-bool decomposeMatrix(const mat4<F32>& transform,
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut,
                      bool& isUniformScaleOut);
 
-bool decomposeMatrix(const mat4<F32>& transform,
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
                      vec3<Angle::RADIANS_F>& rotationOut);
 
-bool decomposeMatrix(const mat4<F32>& transform,
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut);
 
-bool decomposeMatrix(const mat4<F32>& transform,
+bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut);
 
 //ref: https://community.khronos.org/t/glsl-packing-a-normal-in-a-single-float/52039/3
@@ -428,48 +436,49 @@ bool decomposeMatrix(const mat4<F32>& transform,
 
 [[nodiscard]] F32 PACK_VEC3(const vec3<F32_SNORM>& value) noexcept;
 
-[[nodiscard]] U32 PACK_HALF2x16(float2 value);
-void UNPACK_HALF2x16(U32 src, float2& value);
+[[nodiscard]] U32    PACK_HALF2x16(float2 value);
+              void   UNPACK_HALF2x16(U32 src, float2& value);
 [[nodiscard]] float2 UNPACK_HALF2x16(U32 src);
 
-[[nodiscard]] U32 PACK_HALF2x16(F32 x, F32 y);
-void UNPACK_HALF2x16(U32 src, F32& x, F32& y);
+[[nodiscard]] U32  PACK_HALF2x16(F32 x, F32 y);
+              void UNPACK_HALF2x16(U32 src, F32& x, F32& y);
 
 /// Only convert the range [-1024., 1024.] for accurate results
-[[nodiscard]] U16 PACK_HALF1x16(F32 value);
+[[nodiscard]] U16  PACK_HALF1x16(F32 value);
 /// Only convert the range [-1024., 1024.] for accurate results
-void UNPACK_HALF1x16(U16 src, F32& value);
+              void UNPACK_HALF1x16(U16 src, F32& value);
 /// Only convert the range [-1024., 1024.] for accurate results
-[[nodiscard]] F32 UNPACK_HALF1x16(U16 src);
+[[nodiscard]] F32  UNPACK_HALF1x16(U16 src);
 
 [[nodiscard]] F32 UINT_TO_FLOAT(U32 src);
-U32 FLOAT_TO_UINT(F32 src);
+[[nodiscard]] U32 FLOAT_TO_UINT(F32 src);
 
 [[nodiscard]] F32 INT_TO_FLOAT(I32 src);
-I32 FLOAT_TO_INT(F32 src);
+[[nodiscard]] I32 FLOAT_TO_INT(F32 src);
 
-[[nodiscard]] U32 PACK_UNORM4x8(const vec4<F32_NORM>& value);
-[[nodiscard]] U32 PACK_UNORM4x8(vec4<U8> value);
-void UNPACK_UNORM4x8(U32 src, vec4<F32_NORM>& value);
+[[nodiscard]] U32  PACK_UNORM4x8(const vec4<F32_NORM>& value);
+[[nodiscard]] U32  PACK_UNORM4x8(vec4<U8> value);
+              void UNPACK_UNORM4x8(U32 src, vec4<F32_NORM>& value);
 
-[[nodiscard]] U32 PACK_UNORM4x8(F32_NORM x, F32_NORM y, F32_NORM z, F32_NORM w);
-[[nodiscard]] U32 PACK_UNORM4x8(U8 x, U8 y, U8 z, U8 w);
-void UNPACK_UNORM4x8(U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_NORM& w);
-void UNPACK_UNORM4x8(U32 src, U8& x, U8& y, U8& z, U8& w);
-[[nodiscard]] vec4<U8> UNPACK_UNORM4x8_U8(U32 src);
+[[nodiscard]] U32  PACK_UNORM4x8(F32_NORM x, F32_NORM y, F32_NORM z, F32_NORM w);
+[[nodiscard]] U32  PACK_UNORM4x8(U8 x, U8 y, U8 z, U8 w);
+              void UNPACK_UNORM4x8(U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z, F32_NORM& w);
+              void UNPACK_UNORM4x8(U32 src, U8& x, U8& y, U8& z, U8& w);
+
+[[nodiscard]] vec4<U8>       UNPACK_UNORM4x8_U8(U32 src);
 [[nodiscard]] vec4<F32_NORM> UNPACK_UNORM4x8_F32(U32 src);
 
 // UnPack 3 values from 1 float
-void UNPACK_VEC3(F32 src, F32_SNORM& x, F32_SNORM& y, F32_SNORM& z) noexcept;
-void UNPACK_VEC3(F32 src, vec3<F32_SNORM>& res) noexcept;
+              void            UNPACK_VEC3(F32 src, F32_SNORM& x, F32_SNORM& y, F32_SNORM& z) noexcept;
+              void            UNPACK_VEC3(F32 src, vec3<F32_SNORM>& res) noexcept;
 [[nodiscard]] vec3<F32_SNORM> UNPACK_VEC3(F32 src) noexcept;
 
-[[nodiscard]] U32 PACK_11_11_10(const vec3<F32_NORM>& value);
-void UNPACK_11_11_10(U32 src, vec3<F32_NORM>& res);
+[[nodiscard]] U32            PACK_11_11_10(const vec3<F32_NORM>& value);
+              void           UNPACK_11_11_10(U32 src, vec3<F32_NORM>& res);
 [[nodiscard]] vec3<F32_NORM> UNPACK_11_11_10(U32 src);
 
-[[nodiscard]] U32 PACK_11_11_10(F32_NORM x, F32_NORM y, F32_NORM z);
-void UNPACK_11_11_10(U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z);
+[[nodiscard]] U32  PACK_11_11_10(F32_NORM x, F32_NORM y, F32_NORM z);
+              void UNPACK_11_11_10(U32 src, F32_NORM& x, F32_NORM& y, F32_NORM& z);
 
 }  // namespace Util
 }  // namespace Divide

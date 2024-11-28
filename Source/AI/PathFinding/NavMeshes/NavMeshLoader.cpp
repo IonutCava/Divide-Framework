@@ -308,7 +308,8 @@ void AddTriangle(NavModelData* modelData,
 }
 
 const float3 g_borderOffset(BORDER_PADDING);
-bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
+bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn)
+{
     assert(sgn != nullptr);
 
     const NavigationComponent* navComp = sgn->get<NavigationComponent>();
@@ -333,7 +334,8 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
         MeshDetailLevel level = MeshDetailLevel::MAXIMUM;
         SamplePolyAreas areaType = SamplePolyAreas::SAMPLE_AREA_OBSTACLE;
-        if ( Is3DObject(nodeType)) {
+        if ( Is3DObject(nodeType))
+        {
             // Check if we need to override detail level
             if ( navComp && !navComp->navMeshDetailOverride() && sgn->usageContext() == NodeUsageContext::NODE_STATIC )
             {
@@ -377,13 +379,15 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
             assert(geometry != nullptr);
 
             const auto& vertices = geometry->getVertices();
-            if (vertices.empty()) {
+            if (vertices.empty())
+            {
                 Console::printfn(LOCALE_STR("NAV_MESH_NODE_NO_DATA"), resourceName);
                 goto next;
             }
 
             const auto& triangles = obj->getTriangles(obj->getGeometryPartitionID(0u));
-            if (triangles.empty()) {
+            if (triangles.empty())
+            {
                 Console::printfn(LOCALE_STR("NAV_MESH_NODE_NO_DATA"), resourceName);
                 goto next;
             }
@@ -391,23 +395,30 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
             mat4<F32> nodeTransform = MAT4_IDENTITY;
             sgn->get<TransformComponent>()->getWorldMatrix(nodeTransform);
 
-            for (const VertexBuffer::Vertex& vert : vertices) {
+            for (const VertexBuffer::Vertex& vert : vertices)
+            {
                 // Apply the node's transform and add the vertex to the NavMesh
                 AddVertex(&outData, nodeTransform * vert._position);
             }
 
-            for (const uint3& triangle : triangles) {
+            for (const uint3& triangle : triangles)
+            {
                 AddTriangle(&outData, triangle, currentTriangleIndexOffset, areaType);
             }
-        } else if (level == MeshDetailLevel::BOUNDINGBOX) {
+        }
+        else if (level == MeshDetailLevel::BOUNDINGBOX)
+        {
             std::array<float3, 8> vertices = box.getPoints();
 
-            for (U32 i = 0; i < 8; i++) {
+            for (U32 i = 0; i < 8; i++)
+            {
                 AddVertex(&outData, vertices[i]);
             }
 
-            for (U32 f = 0; f < 6; f++) {
-                for (U32 v = 2; v < 4; v++) {
+            for (U32 f = 0; f < 6; f++)
+            {
+                for (U32 v = 2; v < 4; v++)
+                {
                     // Note: We reverse the normal on the polygons to prevent things from going inside out
                     AddTriangle(&outData,
                                 uint3(g_cubeFaces[f][0], g_cubeFaces[f][v - 1],
@@ -415,7 +426,9 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
                                 currentTriangleIndexOffset, areaType);
                 }
             }
-        } else {
+        }
+        else
+        {
             Console::errorfn(LOCALE_STR("ERROR_RECAST_LEVEL"), to_base(level));
         }
 
@@ -424,10 +437,14 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn) {
 
 next: // although labels are bad, skipping here using them is the easiest solution to follow -Ionut
     const SceneGraphNode::ChildContainer& children = sgn->getChildren();
+    SharedLock<SharedMutex> r_lock(children._lock);
+
     const U32 childCount = children._count;
-    for (U32 i = 0u; i < childCount; ++i) {
+    for (U32 i = 0u; i < childCount; ++i)
+    {
         SceneGraphNode* child = children._data[i];
-        if (!Parse(child->get<BoundsComponent>()->getBoundingBox(), outData, child)) {
+        if (!Parse(child->get<BoundsComponent>()->getBoundingBox(), outData, child))
+        {
             return false;
         }
     }

@@ -24,7 +24,7 @@ namespace Divide
 
         EditorComponentField worldMatField = {};
         worldMatField._name = "World Matrix";
-        worldMatField._dataGetter = [this](void* dataOut) { getWorldMatrix(*static_cast<mat4<F32>*>(dataOut)); };
+        worldMatField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data) { getWorldMatrix(*static_cast<mat4<F32>*>(dataOut)); };
         worldMatField._type = EditorComponentFieldType::PUSH_TYPE;
         worldMatField._readOnly = true;
         worldMatField._serialise = false;
@@ -586,13 +586,15 @@ namespace Divide
     {
         if ( !isUniformScaled() )
         {
+            mat3<F32> rotationMatrix;
+            getWorldMatrixInterpolated().extractMat3(rotationMatrix);
+
             // Non-uniform scaling requires an inverseTranspose to negate scaling contribution but preserve rotation
-            GetInverse(getWorldMatrixInterpolated(), matOut);
-            matOut.transpose();
+            matOut.setRotation( rotationMatrix.getInverseTranspose() );
         }
         else
         {
-            matOut.set( getWorldMatrixInterpolated() );
+            matOut.setRotation( mat3<F32>(getWorldMatrixInterpolated()) );
         }
     }
 

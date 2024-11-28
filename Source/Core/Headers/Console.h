@@ -148,6 +148,7 @@ struct Console : NonCopyable
         static void DecorateAndPrint(std::ostream& outStream, std::string_view text, bool newline, EntryType type);
         static void PrintToFile(const OutputEntry& entry);
 
+        static void FlushOutputStreams();
     private:
         static std::ofstream                     s_logStream;
         static std::ofstream                     s_errorStream;

@@ -123,6 +123,14 @@ void Console::PrintToFile(const OutputEntry& entry)
     }
 }
 
+void Console::FlushOutputStreams()
+{
+    s_logStream.flush();
+    s_errorStream.flush();
+    std::cerr << std::flush;
+    std::cout << std::flush;
+}
+
 void Console::Flush()
 {
     if ( s_flags & to_base( Flags::ENABLE_OUTPUT ) && s_running) [[likely]]
@@ -138,6 +146,8 @@ void Console::Flush()
                 PrintToFile(g_outputCache[i]);
             }
         } while (count > 0u);
+
+        FlushOutputStreams();
     }
 }
 
@@ -184,10 +194,7 @@ void Console::Stop()
         Flush();
         s_flags = DEFAULT_FLAGS;
         s_logStream << "------------------------------------------\n\n\n\n";
-        s_logStream.flush();
-        s_errorStream.flush();
-        std::cerr << std::flush;
-        std::cout << std::flush;
+        FlushOutputStreams();
     }
 }
 

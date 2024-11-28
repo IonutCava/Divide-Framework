@@ -1812,27 +1812,81 @@ namespace Divide
     }
 
     template<typename T>
-    template<typename U>
+    template<ValidMathType U>
     FORCE_INLINE vec2<U> mat4<T>::operator*( const vec2<U> v ) const noexcept
     {
-        return *this * vec4<U>( v );
+        const T x = m[0][0] * v.x + m[1][1] * v.y + m[3][0];
+        const T y = m[0][1] * v.x + m[1][1] * v.y + m[3][1];
+
+        return
+        {
+             static_cast<U>(x),
+             static_cast<U>(y)
+        };
     }
 
     template<typename T>
-    template<typename U>
+    template<ValidMathType U>
     FORCE_INLINE vec3<U> mat4<T>::operator*( const vec3<U>& v ) const noexcept
     {
-        return *this * vec4<U>( v );
+        const U v_w{ 1 };
+
+        const T x = m[0][0] * v.x + m[1][0] * v.y + m[2][0] * v.z + m[3][0] * v_w;
+        const T y = m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1] * v_w;
+        const T z = m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2] * v_w;
+
+        return
+        {
+             static_cast<U>(x),
+             static_cast<U>(y),
+             static_cast<U>(z)
+        };
     }
 
     template<typename T>
-    template<typename U>
+    template<ValidMathType U>
     FORCE_INLINE vec4<U> mat4<T>::operator*( const vec4<U>& v ) const noexcept
     {
-        return { mat[0] * v.x + mat[4] * v.y + mat[8] * v.z + mat[12] * v.w,
-                 mat[1] * v.x + mat[5] * v.y + mat[9] * v.z + mat[13] * v.w,
-                 mat[2] * v.x + mat[6] * v.y + mat[10] * v.z + mat[14] * v.w,
-                 mat[3] * v.x + mat[7] * v.y + mat[11] * v.z + mat[15] * v.w };
+        const T x = m[0][0] * v.x + m[1][0] * v.y + m[2][0] * v.z + m[3][0] * v.w;
+        const T y = m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1] * v.w;
+        const T z = m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2] * v.w;
+        const T w = m[0][3] * v.x + m[1][3] * v.y + m[2][3] * v.z + m[3][3] * v.w;
+
+        return
+        {
+             static_cast<U>(x),
+             static_cast<U>(y),
+             static_cast<U>(z),
+             static_cast<U>(w)
+        };
+    }
+
+    // Same as mat4 * vec3. Assumes w = 1;
+    template<typename T>
+    template<ValidMathType U>
+    FORCE_INLINE vec3<U> mat4<T>::transform(const vec3<U>& v) const noexcept
+    {
+        return this * v;
+    }
+
+    // Same as mat4 * vec3 but will normalize the result back so that W is always 1. More general case of transform. Slower.
+    template<typename T>
+    template<ValidMathType U>
+    vec3<U> mat4<T>::transformCoord(const vec3<U>& v) const noexcept
+    {
+        //Transforms the given 3-D vector by the matrix, projecting the result back into <i>w</i> = 1. (OGRE reference)
+        const T x = m[0][0] * v.x + m[1][0] * v.y + m[2][0] * v.z + m[3][0];
+        const T y = m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1];
+        const T z = m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2];
+        const T w = m[0][3] * v.x + m[1][3] * v.y + m[2][3] * v.z + m[3][3];
+
+        const F32 iw = 1.f / w;
+        return
+        {
+             static_cast<T>(x * iw),
+             static_cast<T>(y * iw),
+             static_cast<T>(z * iw)
+        };
     }
 
     template<typename T>
@@ -2581,6 +2635,21 @@ namespace Divide
     }
 
     template<typename T>
+    template<typename U>
+    FORCE_INLINE void mat4<T>::setRotation(const mat3<U>& m) noexcept
+    {
+        this->m[0][0] = static_cast<T>(m.m[0][0]);
+        this->m[0][1] = static_cast<T>(m.m[0][1]);
+        this->m[0][2] = static_cast<T>(m.m[0][2]);
+        this->m[1][0] = static_cast<T>(m.m[1][0]);
+        this->m[1][1] = static_cast<T>(m.m[1][1]);
+        this->m[1][2] = static_cast<T>(m.m[1][2]);
+        this->m[2][0] = static_cast<T>(m.m[2][0]);
+        this->m[2][1] = static_cast<T>(m.m[2][1]);
+        this->m[2][2] = static_cast<T>(m.m[2][2]);
+    }
+
+    template<typename T>
     FORCE_INLINE vec3<T> mat4<T>::getScale() const noexcept
     {
         return {
@@ -2636,34 +2705,6 @@ namespace Divide
     {
         // FWD = WORLD_NEG_Z_AXIS
         return -Normalized( -getForwardVec() );
-    }
-
-    template<typename T>
-    template<typename U>
-    FORCE_INLINE vec3<U> mat4<T>::transform( const vec3<U>& v, bool homogeneous ) const
-    {
-        return  homogeneous ? transformHomogeneous( v )
-                            : transformNonHomogeneous( v );
-    }
-
-    template<typename T>
-    template<typename U>
-    FORCE_INLINE vec3<U> mat4<T>::transformHomogeneous( const vec3<U>& v ) const
-    {
-        //Transforms the given 3-D vector by the matrix, projecting the result back into <i>w</i> = 1. (OGRE reference)
-        const F32 fInvW = 1.f / (m[0][3] * v.x + m[1][3] * v.y +
-                                 m[2][3] * v.z + m[3][3] * 1.f);
-
-        return { (m[0][0] * v.x + m[1][1] * v.y + m[2][0] * v.z + m[3][0]) * fInvW,
-                 (m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1]) * fInvW,
-                 (m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2]) * fInvW };
-    }
-
-    template<typename T>
-    template<typename U>
-    FORCE_INLINE vec3<U> mat4<T>::transformNonHomogeneous( const vec3<U>& v ) const noexcept
-    {
-        return *this * vec4<U>( v, static_cast<U>(0) );
     }
 
     template<typename T>
@@ -2742,20 +2783,17 @@ namespace Divide
     template<typename U>
     const mat4<T>& mat4<T>::reflect( const Plane<U>& plane ) noexcept
     {
-        constexpr U zero = static_cast<U>(0);
-        constexpr U one = static_cast<U>(1);
-
         const vec4<U>& eq = plane._equation;
 
-        U x = eq.x;
-        U y = eq.y;
-        U z = eq.z;
-        U d = eq.w;
+        const U x = eq.x;
+        const U y = eq.y;
+        const U z = eq.z;
+        const U d = eq.w;
 
-        *this = mat4( { -2 * x * x + 1,  -2 * y * x,      -2 * z * x,      zero,
-                        -2 * x * y,      -2 * y * y + 1,  -2 * z * y,      zero,
-                        -2 * x * z,      -2 * y * z,      -2 * z * z + 1,  zero,
-                        -2 * x * d,      -2 * y * d,      -2 * z * d,      one } ) * *this;
+        *this = mat4( { -2 * x * x + 1,  -2 * y * x,      -2 * z * x,      U{0},
+                        -2 * x * y,      -2 * y * y + 1,  -2 * z * y,      U{0},
+                        -2 * x * z,      -2 * y * z,      -2 * z * z + 1,  U{0},
+                        -2 * x * d,      -2 * y * d,      -2 * z * d,      U{1} } ) * *this;
 
         return *this;
     }
@@ -2869,5 +2907,6 @@ namespace Divide
         }
     }
 
+       
 } //namespace Divide
 #endif //DVD_MATH_MATRICES_INL_

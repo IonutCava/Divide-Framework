@@ -9,13 +9,17 @@
 namespace Divide {
 
 void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bool recursive) {
-    if (renderOptionEnabled(option) != state) {
-        if (recursive) {
+    if (renderOptionEnabled(option) != state)
+    {
+        if (recursive)
+        {
             const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
-            SharedLock<SharedMutex> w_lock(children._lock);
+            SharedLock<SharedMutex> r_lock(children._lock);
             const U32 childCount = children._count;
-            for (U32 i = 0u; i < childCount; ++i) {
-                if (children._data[i]->HasComponents(ComponentType::RENDERING)) {
+            for (U32 i = 0u; i < childCount; ++i)
+            {
+                if (children._data[i]->HasComponents(ComponentType::RENDERING))
+                {
                     children._data[i]->get<RenderingComponent>()->toggleRenderOption(option, state, recursive);
                 }
             }
@@ -27,21 +31,27 @@ void RenderingComponent::toggleRenderOption(RenderOptions option, bool state, bo
     }
 }
 
-bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const noexcept {
+bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const noexcept
+{
     return _renderMask & to_base(option);
 }
 
-void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS, const bool showOBB, bool recursive) {
-    if (recursive) {
+void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS, const bool showOBB, bool recursive)
+{
+    if (recursive)
+    {
         const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
-        SharedLock<SharedMutex> w_lock(children._lock);
+        SharedLock<SharedMutex> r_lock(children._lock);
         const U32 childCount = children._count;
-        for (U32 i = 0u; i < childCount; ++i) {
-            if (children._data[i]->HasComponents(ComponentType::RENDERING)) {
+        for (U32 i = 0u; i < childCount; ++i)
+        {
+            if (children._data[i]->HasComponents(ComponentType::RENDERING))
+            {
                 children._data[i]->get<RenderingComponent>()->toggleBoundsDraw(showAABB, showBS, showOBB, recursive);
             }
         }
     }
+
     _drawAABB = showAABB;
     _drawBS = showBS;
     _drawOBB = showOBB;

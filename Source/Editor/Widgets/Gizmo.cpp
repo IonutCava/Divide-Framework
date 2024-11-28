@@ -194,7 +194,7 @@ namespace Divide
         static float3 position, euler, scale;
         ImGuizmo::DecomposeMatrixToComponents( _deltaMatrix, position._v, euler._v, scale._v );
 
-        position = (_localToWorldMatrix * float4( position, 1.f )).xyz;
+        position = _localToWorldMatrix * position;
 
         applyTransforms( node, position, euler, scale );
 

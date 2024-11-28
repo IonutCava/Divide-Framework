@@ -507,12 +507,23 @@ class mat4 {
     template<typename U>
     explicit mat4(const Plane<U>& reflectionPlane) noexcept;
 
-    template<typename U>
+    // Assumes y, = 0, w = 1
+    template<ValidMathType U>
     [[nodiscard]] vec2<U> operator*(const vec2<U>  v) const noexcept;
-    template<typename U>
+    // Assumes w = 1
+    template<ValidMathType U>
     [[nodiscard]] vec3<U> operator*(const vec3<U> &v) const noexcept;
-    template<typename U>
+
+    template<ValidMathType U>
     [[nodiscard]] vec4<U> operator*(const vec4<U> &v) const noexcept;
+
+    // Same as mat4 * vec3. Assumes w = 1;
+    template<ValidMathType U>
+    [[nodiscard]] vec3<U> transform(const vec3<U> &v) const noexcept;
+
+    // Same as mat4 * vec3 but will normalize the result back so that W is always 1. More general case of transform. Slower.
+    template<ValidMathType U>
+    [[nodiscard]] vec3<U> transformCoord(const vec3<U> &v) const noexcept;
 
     template<typename U>
     [[nodiscard]] mat4 operator*(const mat4<U>& matrix) const noexcept;
@@ -651,6 +662,9 @@ class mat4 {
     template<typename U>
     void setScale(const vec3<U> &v) noexcept;
 
+    template<typename U>
+    void setRotation(const mat3<U>& m) noexcept;
+
     [[nodiscard]] vec3<T> getScale() const noexcept;
     [[nodiscard]] vec3<T> getScaleSq() const noexcept;
 
@@ -668,13 +682,6 @@ class mat4 {
     /// Returns normalized(getForwardVec())
     [[nodiscard]] vec3<T> getForwardDirection( ) const noexcept;
 
-    template<typename U>
-    [[nodiscard]] vec3<U> transform(const vec3<U> &v, bool homogeneous) const;
-    template<typename U>
-    [[nodiscard]] vec3<U> transformHomogeneous(const vec3<U> &v) const;
-    template<typename U>
-    [[nodiscard]] vec3<U> transformNonHomogeneous(const vec3<U> &v) const noexcept;
-       
     template<typename U>
     void translate(const vec3<U> &v) noexcept;
     template<typename U>
@@ -748,10 +755,18 @@ static const mat4<F32> MAT4_IDENTITY{};
 
 //MAT4_INITIAL_TRANSFORM is a special transform matrix that has the Y position and all of the scale axis set to a really low values
 //This avoids object popping up at (0,0,0) with whatever scale they were exported at while loading for MAX_FRAMES_IN_FLIGHT - 1u frames.
-static const mat4<F32> MAT4_INITIAL_TRANSFORM {
+static const mat4<F32> MAT4_INITIAL_TRANSFORM
+{
     float3(0.f, -65535.f, 0.f),
     float3(1.f / U8_MAX)
 };
+
+namespace Util
+{
+template<ValidMathType T>
+[[nodiscard]] vec3<T> TransformHomogeneous(const mat4<F32>& transform, const vec3<T>& v);
+
+}; //namesapce Util
 
 }  // namespace Divide
 

@@ -9,7 +9,8 @@
 
 #define UnpackVec3(VAL) (2.f * fract(vec3(1.f, 256.f, 65536.f) * VAL) - 1.f)
 
-NodeTransformData fetchInputData() {
+NodeTransformData fetchInputData()
+{
     ComputeIndirectionData();
     const NodeTransformData nodeData = dvd_Transforms[TRANSFORM_IDX];
 

@@ -54,8 +54,8 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 
     EditorComponentField vbbField = {};
     vbbField._name = "Show AABB";
-    vbbField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showAABB; };
-    vbbField._dataSetter = [this](const void* data) { showAABB(*static_cast<const bool*>(data)); };
+    vbbField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data) { *static_cast<bool*>(dataOut) = _showAABB; };
+    vbbField._dataSetter = [this](const void* data, [[maybe_unused]] void* user_data) { showAABB(*static_cast<const bool*>(data)); };
     vbbField._type = EditorComponentFieldType::SWITCH_TYPE;
     vbbField._basicType = PushConstantType::BOOL;
     vbbField._readOnly = false;
@@ -64,8 +64,8 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 
     EditorComponentField vobbField = {};
     vobbField._name = "Show OBB";
-    vobbField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showOBB; };
-    vobbField._dataSetter = [this](const void* data) { showOBB(*static_cast<const bool*>(data)); };
+    vobbField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data) { *static_cast<bool*>(dataOut) = _showOBB; };
+    vobbField._dataSetter = [this](const void* data, [[maybe_unused]] void* user_data) { showOBB(*static_cast<const bool*>(data)); };
     vobbField._type = EditorComponentFieldType::SWITCH_TYPE;
     vobbField._basicType = PushConstantType::BOOL;
     vobbField._readOnly = false;
@@ -74,8 +74,8 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
 
     EditorComponentField vbsField = {};
     vbsField._name = "Show Bounding Sphere";
-    vbsField._dataGetter = [this](void* dataOut) { *static_cast<bool*>(dataOut) = _showBS; };
-    vbsField._dataSetter = [this](const void* data) { showBS(*static_cast<const bool*>(data)); };
+    vbsField._dataGetter = [this](void* dataOut, [[maybe_unused]] void* user_data) { *static_cast<bool*>(dataOut) = _showBS; };
+    vbsField._dataSetter = [this](const void* data, [[maybe_unused]] void* user_data) { showBS(*static_cast<const bool*>(data)); };
     vbsField._type = EditorComponentFieldType::SWITCH_TYPE;
     vbsField._basicType = PushConstantType::BOOL;
     vbsField._readOnly = false;
@@ -89,7 +89,8 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     _editorComponent.registerField(MOV(recomputeBoundsField));
 
     _editorComponent.onChangedCbk([this](const std::string_view field) {
-        if (field == "Recompute Bounds") {
+        if (field == "Recompute Bounds")
+        {
             flagBoundingBoxDirty(to_base(TransformType::ALL), true);
         }
     });
@@ -172,19 +173,20 @@ void BoundsComponent::updateBoundingBoxTransform() {
     }
 
     const mat4<F32> mat = _parentSGN->get<TransformComponent>()->getWorldMatrix();
-    _boundingBox.transform(_refBoundingBox.getMin(), _refBoundingBox.getMax(), mat);
+    _boundingBox.transform(_refBoundingBox, mat);
 }
 
 void BoundsComponent::appendChildRefBBs() {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
-
-    SharedLock<SharedMutex> w_lock(children._lock);
+    SharedLock<SharedMutex> r_lock(children._lock);
     const U32 childCount = children._count;
     BoundingBox temp{};
-    for (U32 i = 0u; i < childCount; ++i) {
-        if (children._data[i]->HasComponents(ComponentType::BOUNDS)) {
+    for (U32 i = 0u; i < childCount; ++i)
+    {
+        if (children._data[i]->HasComponents(ComponentType::BOUNDS))
+        {
             BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
             bComp->appendChildRefBBs();
             temp = bComp->_refBoundingBox;
@@ -194,19 +196,23 @@ void BoundsComponent::appendChildRefBBs() {
     }
 }
 
-void BoundsComponent::appendChildBBs() {
+void BoundsComponent::appendChildBBs()
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (_transformUpdatedMask.exchange(0u) == 0u) {
+    if (_transformUpdatedMask.exchange(0u) == 0u)
+    {
         return;
     }
 
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
 
-    SharedLock<SharedMutex> w_lock(children._lock);
+    SharedLock<SharedMutex> r_lock(children._lock);
     const U32 childCount = children._count;
-    for (U32 i = 0u; i < childCount; ++i) {
-        if (children._data[i]->HasComponents(ComponentType::BOUNDS)) {
+    for (U32 i = 0u; i < childCount; ++i)
+    {
+        if (children._data[i]->HasComponents(ComponentType::BOUNDS))
+        {
             BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
             // This will also clear our transform flag so subsequent calls will be fast
             bComp->appendChildBBs();
@@ -217,8 +223,10 @@ void BoundsComponent::appendChildBBs() {
     _obbDirty.store(true);
 }
 
-const OBB& BoundsComponent::getOBB() {
-    if (_obbDirty.exchange(false)) {
+const OBB& BoundsComponent::getOBB()
+{
+    if (_obbDirty.exchange(false))
+    {
         const TransformComponent* transform = _parentSGN->get<TransformComponent>();
         _obb.fromBoundingBox(_refBoundingBox, transform->getWorldMatrix());
         //_obb.fromBoundingBox(_refBoundingBox, transform->getWorldPosition(), transform->getWorldOrientation(), transform->getWorldScale());

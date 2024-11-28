@@ -4,6 +4,7 @@
 
 #include "Core/Headers/PlatformContext.h"
 #include "Utility/Headers/Localization.h"
+#include "Geometry/Shapes/Headers/SubMesh.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Water/Headers/Water.h"
 #include "Geometry/Material/Headers/Material.h"
@@ -23,6 +24,7 @@
 #include "ECS/Components/Headers/DirectionalLightComponent.h"
 #include "ECS/Components/Headers/NetworkingComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
+#include "ECS/Components/Headers/SelectionComponent.h"
 
 
 namespace Divide {
@@ -186,8 +188,8 @@ SceneGraphNode::SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph
     clearFlag( Flags::VISIBILITY_LOCKED );
 
     const U32 dynamicNodeComponents = to_base( ComponentType::ANIMATION ) |
-        to_base( ComponentType::INVERSE_KINEMATICS ) |
-        to_base( ComponentType::RAGDOLL );
+                                      to_base( ComponentType::INVERSE_KINEMATICS ) |
+                                      to_base( ComponentType::RAGDOLL );
 
     if ( descriptor._componentMask & dynamicNodeComponents )
     {
@@ -300,7 +302,7 @@ void SceneGraphNode::setParentInternal()
         {
             LockGuard<SharedMutex> w_lock(_parent->_children._lock);
             _parent->_children._data.push_back(this);
-            _parent->_children._count.fetch_add(1);
+            _parent->_children._count += 1u;
         }
         Attorney::SceneGraphSGN::onNodeAdd(_sceneGraph, this);
         // That's it. Parent Transforms will be updated in the next render pass;
@@ -367,8 +369,7 @@ bool SceneGraphNode::removeNodesByType(SceneNodeType nodeType)
     U32 removalCount = 0, childRemovalCount = 0;
 
     SharedLock<SharedMutex> r_lock(_children._lock);
-    const U32 childCount = _children._count.load();
-    for (U32 i = 0u; i < childCount; ++i)
+    for (U32 i = 0u; i < _children._count; ++i)
     {
         if (_children._data[i]->removeNodesByType(nodeType))
         {
@@ -376,7 +377,7 @@ bool SceneGraphNode::removeNodesByType(SceneNodeType nodeType)
         }
     }
 
-    for (U32 i = 0u; i < childCount; ++i)
+    for (U32 i = 0u; i < _children._count; ++i)
     {
         if (_children._data[i]->getNode().type() == nodeType)
         {
@@ -398,7 +399,7 @@ bool SceneGraphNode::removeChildNode(const SceneGraphNode* node, const bool recu
     const I64 targetGUID = node->getGUID();
     {
         SharedLock<SharedMutex> r_lock(_children._lock);
-        const U32 count = _children._count.load();
+        const U32 count = _children._count;
         for (U32 i = 0u; i < count; ++i)
         {
             if (_children._data[i]->getGUID() == targetGUID)
@@ -410,7 +411,7 @@ bool SceneGraphNode::removeChildNode(const SceneGraphNode* node, const bool recu
                 else
                 {
                     _children._data.erase(_children._data.begin() + i);
-                    _children._count.fetch_sub(1);
+                    _children._count -= 1u;
                 }
                 return true;
             }
@@ -420,8 +421,7 @@ bool SceneGraphNode::removeChildNode(const SceneGraphNode* node, const bool recu
     if (recursive)
     {
         SharedLock<SharedMutex> r_lock(_children._lock);
-        const U32 childCount = _children._count.load();
-        for (U32 i = 0u; i < childCount; ++i)
+        for (U32 i = 0u; i < _children._count; ++i)
         {
             if (_children._data[i]->removeChildNode(node, true, deleteNode))
             {
@@ -570,7 +570,7 @@ void SceneGraphNode::processDeleteQueue(vector<size_t>& childList)
             _sceneGraph->destroySceneGraphNode(_children._data[childIdx]);
         }
         EraseIndices(_children._data, childList);
-        _children._count.store(to_U32(_children._data.size()));
+        _children._count = to_U32(_children._data.size());
     }
 }
 
@@ -625,7 +625,13 @@ void SceneGraphNode::processEvents()
                     RenderingComponent* rComp = get<RenderingComponent>();
                     if (rComp != nullptr)
                     {
-                        const bool state = evt._dataPair._first == 1u;
+                        bool state = false;
+                        SelectionComponent* sComp = get<SelectionComponent>();
+                        if ( sComp == nullptr || sComp->selectionWidgetEnabled())
+                        {
+                            state = evt._dataPair._first == 1u;
+                        }
+
                         const bool recursive = evt._dataPair._second == 1u;
                         rComp->toggleRenderOption(RenderingComponent::RenderOptions::RENDER_SELECTION, state, recursive);
                     }
@@ -646,6 +652,23 @@ void SceneGraphNode::processEvents()
             case ECS::CustomEvent::Type::BoundsUpdated:
             {
                 PROFILE_SCOPE("onNodeSpatialChange", Profiler::Category::Scene );
+                Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
+            } break;
+            case ECS::CustomEvent::Type::AnimationChanged:
+            case ECS::CustomEvent::Type::AnimationReSync:
+            {
+                if (getNode().type() == SceneNodeType::TYPE_SUBMESH)
+                {
+                    if ( evt._type == ECS::CustomEvent::Type::AnimationChanged)
+                    {
+                        Attorney::SubMeshMeshSceneGraphNode::onAnimationChange(getNode<SubMesh>(), this, evt._flag, evt._dataPair._first == 1u, evt._dataPair._second == 1u);
+                    }
+                    else
+                    {
+                        Attorney::SubMeshMeshSceneGraphNode::onAnimationSync(getNode<SubMesh>(), this, evt._flag, evt._data == 1u);
+                    }
+                }
+
                 Attorney::SceneGraphSGN::onNodeSpatialChange(sceneGraph(), *this);
             } break;
             default: break;
@@ -690,7 +713,7 @@ void SceneGraphNode::prepareRender( RenderingComponent& rComp,
 
             if (!boneEntry)
             {
-                boneEntry = &AddBinding( set, 13u, ShaderStageVisibility::VERTEX );
+                boneEntry = &AddBinding( set, 13u, ShaderStageVisibility::COMPUTE_AND_DRAW );
             }
 
             Set(boneEntry->_data, boneBuffer, {0u, boneBuffer->getPrimitiveCount()});

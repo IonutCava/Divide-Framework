@@ -50,9 +50,6 @@ namespace Attorney {
     class SceneAnimatorMeshImporter;
 };
 
-/// Calculates the global transformation matrix for the given internal node
-void CalculateBoneToWorldTransform(Bone* pInternalNode) noexcept;
-
 class Mesh;
 class ByteBuffer;
 class MeshImporter;
@@ -60,7 +57,8 @@ class PlatformContext;
 
 class AnimEvaluator;
 
-class SceneAnimator {
+class SceneAnimator
+{
     friend class Attorney::SceneAnimatorMeshImporter;
    public:
     ~SceneAnimator();
@@ -70,30 +68,14 @@ class SceneAnimator {
     using LineCollection = vector<LineMap>;
 
     /// This must be called to fill the SceneAnimator with valid data
-    /// PASS OWNERSHIP OF SKELETON (and bones) TO THE ANIMATOR!!!
-    bool init(PlatformContext& context, Bone* skeleton, const vector<Bone*>& bones);
+    bool init(PlatformContext& context, Bone_uptr&& skeleton);
     /// Frees all memory and initializes everything to a default state
     void release(bool releaseAnimations);
     void save(PlatformContext& context, ByteBuffer& dataOut) const;
     void load(PlatformContext& context, ByteBuffer& dataIn);
     /// Lets the caller know if there is a skeleton present
     bool hasSkeleton() const noexcept { return _skeleton != nullptr; }
-    /// The next two functions are good if you want to change the direction of
-    /// the current animation.
-    /// You could use a forward walking animation and reverse it to get a
-    /// walking backwards
-    inline void playAnimationForward(const U32 animationIndex)
-    {
-        assert(animationIndex < _animations.size());
 
-        _animations[animationIndex]->playAnimationForward(true);
-    }
-
-    void playAnimationBackward(const U32 animationIndex)
-    {
-        assert( animationIndex < _animations.size() );
-        _animations[animationIndex]->playAnimationForward(false);
-    }
     /// This function will adjust the current animations speed by a percentage.
     /// So, passing 100, would do nothing, passing 50, would decrease the speed
     /// by half, and 150 increase it by 50%
@@ -118,13 +100,13 @@ class SceneAnimator {
 
     /// Get the transforms needed to pass to the vertex shader.
     /// This will wrap the dt value passed, so it is safe to pass 50000000 as a valid number
-    inline AnimEvaluator::FrameIndex frameIndexForTimeStamp(const U32 animationIndex, const D64 dt) const
+    inline AnimEvaluator::FrameIndex frameIndexForTimeStamp(const U32 animationIndex, const D64 dt, const bool forward) const
     {
         assert( animationIndex < _animations.size() );
-        return _animations[animationIndex]->frameIndexAt(dt);
+        return _animations[animationIndex]->frameIndexAt(dt, forward);
     }
 
-    inline const BoneTransform& transforms(const U32 animationIndex, const U32 index) const
+    inline const BoneTransforms& transforms(const U32 animationIndex, const U32 index) const
     {
         assert( animationIndex < _animations.size() );
         return _animations[animationIndex]->transforms(index);
@@ -176,15 +158,16 @@ class SceneAnimator {
 
         return U32_MAX;
     }
+    
     /// GetBoneTransform will return the matrix of the bone given its name and the time.
     /// Be careful with this to make sure and send the correct dt. If the dt is
     /// different from what the model is currently at, the transform will be off
-    inline const mat4<F32>& boneTransform(const U32 animationIndex, const D64 dt, const string& bName)
+    inline const mat4<F32>& boneTransform(const U32 animationIndex, const D64 dt, const bool forward, const U64 boneNameHash)
     {
-        const I32 boneID = boneIndex(bName);
-        if (boneID != -1)
+        const U8 boneID = boneIndexByNameHash(boneNameHash);
+        if (boneID != Bone::INVALID_BONE_IDX)
         {
-            return boneTransform(animationIndex, dt, boneID);
+            return boneTransform(animationIndex, dt, forward, boneID);
         }
 
         _boneTransformCache.identity();
@@ -192,12 +175,12 @@ class SceneAnimator {
     }
 
     /// Same as above, except takes the index
-    inline const mat4<F32>& boneTransform(const U32 animationIndex, const D64 dt, const I32 bIndex)
+    inline const mat4<F32>& boneTransform(const U32 animationIndex, const D64 dt, const bool forward, const U8 bIndex)
     {
-        if (bIndex != -1)
+        if (bIndex != Bone::INVALID_BONE_IDX)
         {
             assert( animationIndex < _animations.size() );
-            return _animations[animationIndex]->transforms(dt).matrices()[bIndex];
+            return _animations[animationIndex]->transforms(dt, forward)[bIndex];
         }
 
         _boneTransformCache.identity();
@@ -205,23 +188,22 @@ class SceneAnimator {
     }
 
     /// Get the bone's global transform
-    inline const mat4<F32>& boneOffsetTransform(const string& bName)
+    inline const mat4<F32>& boneOffsetTransform(const U64 boneNameHash)
     {
-        const Bone* bone = boneByName(bName);
+        const Bone* bone = boneByNameHash(boneNameHash);
         if (bone != nullptr)
         {
-            _boneTransformCache = bone->offsetMatrix();
+            _boneTransformCache = bone->_offsetMatrix;
         }
 
         return _boneTransformCache;
     }
 
-    Bone* boneByName(const string& name) const;
+    Bone* boneByNameHash(U64 nameHash) const;
     /// GetBoneIndex will return the index of the bone given its name.
-    /// The index can be used to index directly into the vector returned from
-    /// GetTransform
-    I32 boneIndex(const string& bName) const;
-    const vector<Line>& skeletonLines(U32 animationIndex, D64 dt);
+    /// The index can be used to index directly into the vector returned from GetTransform
+    U8 boneIndexByNameHash(U64 nameHash) const;
+    const vector<Line>& skeletonLines(U32 animationIndex, D64 dt, bool forward);
 
     /// Returns the frame count of the longest registered animation
     inline U32 getMaxAnimationFrames() const noexcept
@@ -231,7 +213,7 @@ class SceneAnimator {
 
     inline U8 boneCount() const noexcept
     {
-        return _skeletonDepthCache > -1 ? to_U8(_skeletonDepthCache) : U8_ZERO;
+        return to_U8(_skeletonDepthCache);
     }
 
    private:
@@ -239,22 +221,17 @@ class SceneAnimator {
     void buildBuffers(GFXDevice& gfxDevice);
 
     /// I/O operations
-    void saveSkeleton(ByteBuffer& dataOut, Bone* parent) const;
-    Bone* loadSkeleton(ByteBuffer& dataIn, Bone* parent);
+    void  saveSkeleton(ByteBuffer& dataOut, const Bone& parentIn) const;
+    Bone* loadSkeleton(ByteBuffer& dataIn,  Bone* parentIn);
 
-    static void UpdateTransforms(Bone* pNode);
     void calculate(U32 animationIndex, D64 pTime);
-    static I32 CreateSkeleton(Bone* piNode,
-                              const mat4<F32>& parent,
-                              vector<Line>& lines);
 
    private:
     /// Frame count of the longest registered animation
     U32 _maximumAnimationFrames = 0u;
     /// Root node of the internal scene structure
-    Bone* _skeleton = nullptr;
-    I16   _skeletonDepthCache = -1;
-    vector<Bone*> _bones;
+    Bone_uptr _skeleton = nullptr;
+    U8        _skeletonDepthCache = 0u;
     /// A vector that holds each animation
     vector<std::unique_ptr<AnimEvaluator>> _animations;
     /// find animations quickly
@@ -265,7 +242,8 @@ class SceneAnimator {
 };
 
 namespace Attorney {
-    class SceneAnimatorMeshImporter {
+    class SceneAnimatorMeshImporter
+    {
         /// PASS OWNERSHIP OF ANIMATIONS TO THE ANIMATOR!!!
         static void registerAnimations(SceneAnimator& animator, vector<std::unique_ptr<AnimEvaluator>>& animations)
         {
