@@ -28,11 +28,14 @@ bool WaitForReady( Resource* res )
 {
     if ( res != nullptr )
     {
-        while( res->getState() != ResourceState::RES_LOADED )
+        ResourceState state = res->getState();
+
+        while( state != ResourceState::RES_LOADED && state != ResourceState::RES_UNKNOWN )
         {
-            if (res->getState() != ResourceState::RES_CREATED &&
-                res->getState() != ResourceState::RES_LOADING &&
-                res->getState() != ResourceState::RES_THREAD_LOADED)
+            DIVIDE_ASSERT(state != ResourceState::RES_UNLOADING);
+
+            if ( state == ResourceState::RES_THREAD_LOAD_FAILED ||
+                 state == ResourceState::RES_LOAD_FAILED )
             {
                 // We failed the load!
                 return false;
@@ -40,6 +43,7 @@ bool WaitForReady( Resource* res )
 
             PlatformContextIdleCall();
             std::this_thread::yield();
+            state = res->getState();
         }
 
         return true;
