@@ -36,8 +36,45 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-lates]
+        os: [macos-latest]
 
     steps:
     - name: Print CLANG version
       run: clang --version 
+
+  clang_game_job:
+     needs: info_job 
+
+     name: macOS - Clang Editor Builds
+     runs-on: ${{ matrix.os }}
+     #runs-on: self-hosted
+     strategy:
+       fail-fast: false
+       matrix:
+         os: [macos-latest]
+
+     steps:
+     - uses: actions/checkout@v4
+       with:
+        submodules: true
+        fetch-depth: 0
+
+     - uses: lukka/get-cmake@latest
+       with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
+
+     - name: Setup vcpkg
+       uses: lukka/run-vcpkg@v11
+       id: runvcpkg
+       with:
+          # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
+          vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
+          vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
+      
+     - name: List $RUNNER_WORKSPACE before build
+       run: find $RUNNER_WORKSPACE
+       shell: bash
+
+     - name: Print output of run-vcpkg's action.
+       run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
