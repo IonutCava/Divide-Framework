@@ -35,9 +35,29 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Platform/Headers/PlatformDefines.h"
 
+#define USE_OPTICK ENABLE_OPTICK_PROFILER
+
 DISABLE_NON_MSVC_WARNING_PUSH("ignored-attributes")
 #include <optick.h>
 DISABLE_NON_MSVC_WARNING_POP()
+
+#if ENABLE_OPTICK_PROFILER
+
+#define NO_DESTROY_OPTICK NO_DESTROY
+
+#else //ENABLE_OPTICK_PROFILER
+
+#define NO_DESTROY_OPTICK
+
+namespace Optick
+{
+    struct Category
+    {
+        using Type = uint64_t;
+    };
+};
+
+#endif //ENABLE_OPTICK_PROFILER
 
 namespace Divide
 {
@@ -45,10 +65,6 @@ class Application;
 
 namespace Profiler
 {
-namespace detail
-{
-    constexpr bool enabled = Config::Profile::ENABLE_FUNCTION_PROFILING;
-};
 
 void Initialise();
 void RegisterApp(Application* app);
@@ -59,15 +75,27 @@ void OnThreadStop();
 
 namespace Category
 {
-    constexpr Optick::Category::Type Graphics = Optick::Category::Rendering;
-    constexpr Optick::Category::Type Sound = Optick::Category::Audio;
-    constexpr Optick::Category::Type Physics = Optick::Category::Physics;
+#if ENABLE_OPTICK_PROFILER
+    constexpr Optick::Category::Type Graphics  = Optick::Category::Rendering;
+    constexpr Optick::Category::Type Sound     = Optick::Category::Audio;
+    constexpr Optick::Category::Type Physics   = Optick::Category::Physics;
     constexpr Optick::Category::Type GameLogic = Optick::Category::GameLogic;
-    constexpr Optick::Category::Type GUI = Optick::Category::UI;
+    constexpr Optick::Category::Type GUI       = Optick::Category::UI;
     constexpr Optick::Category::Type Streaming = Optick::Category::Streaming;
-    constexpr Optick::Category::Type Scene = Optick::Category::Scene;
+    constexpr Optick::Category::Type Scene     = Optick::Category::Scene;
     constexpr Optick::Category::Type Threading = Optick::Category::Wait;
-    constexpr Optick::Category::Type IO = Optick::Category::IO;
+    constexpr Optick::Category::Type IO        = Optick::Category::IO;
+#else //ENABLE_OPTICK_PROFILER
+    constexpr Optick::Category::Type Graphics  =  0u;
+    constexpr Optick::Category::Type Sound     =  1u;
+    constexpr Optick::Category::Type Physics   =  2u;
+    constexpr Optick::Category::Type GameLogic =  3u;
+    constexpr Optick::Category::Type GUI       =  4u;
+    constexpr Optick::Category::Type Streaming =  5u;
+    constexpr Optick::Category::Type Scene     =  6u;
+    constexpr Optick::Category::Type Threading =  7u;
+    constexpr Optick::Category::Type IO        =  8u;
+#endif
 };
 
 enum class State : U8
@@ -88,7 +116,7 @@ bool OnProfilerStateChanged( const Profiler::State state );
 #define PROFILE_SCOPE(NAME, CATEGORY) OPTICK_EVENT(NAME, CATEGORY); static_assert(true, "")
 #define PROFILE_SCOPE_AUTO(CATEGORY) OPTICK_EVENT(OPTICK_FUNC, CATEGORY); static_assert(true, "")
 #define PROFILE_TAG(NAME, ...) OPTICK_TAG( NAME, __VA_ARGS__ ); static_assert(true, "")
-#define PROFILE_FRAME(NAME) NO_DESTROY OPTICK_FRAME( NAME ); static_assert(true, "")
+#define PROFILE_FRAME(NAME) NO_DESTROY_OPTICK OPTICK_FRAME( NAME ); static_assert(true, "")
 
 
 #if 1

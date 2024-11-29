@@ -14,26 +14,20 @@ namespace Divide
 {
     void DebugInterface::idle( const PlatformContext& context )
     {
-        if constexpr( !Config::Profile::ENABLE_FUNCTION_PROFILING )
-        {
-            return;
-        }
+#       if ENABLE_FUNCTION_PROFILING
+            PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
-        PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
-
-        if ( !enabled() )
-        {
-            return;
-        }
-
-        const LoopTimingData& timingData = Attorney::KernelDebugInterface::timingData( context.kernel() );
-
-        if ( GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0 )
-        {
-            Util::StringFormat( _output, "Scene Update Loops: {}", timingData.updateLoops() );
-
-            if constexpr( Config::Profile::ENABLE_FUNCTION_PROFILING )
+            if ( !enabled() )
             {
+                return;
+            }
+
+            const LoopTimingData& timingData = Attorney::KernelDebugInterface::timingData( context.kernel() );
+
+            if ( GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0 )
+            {
+                Util::StringFormat( _output, "Scene Update Loops: {}", timingData.updateLoops() );
+
                 const PerformanceMetrics perfMetrics = context.gfx().getPerformanceMetrics();
 
                 _output.append( "\n" );
@@ -48,7 +42,8 @@ namespace Divide
                 _output.append( "\n" );
                 _output.append( Time::ProfileTimer::printAll() );
             }
-        }
+#       else //ENABLE_FUNCTION_PROFILING
+            DIVIDE_UNUSED(context);
+#       endif //ENABLE_FUNCTION_PROFILING
     }
-
 } //namespace Divide

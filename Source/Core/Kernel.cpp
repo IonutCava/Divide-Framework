@@ -273,25 +273,30 @@ void Kernel::onLoop()
         {
             static bool statsEnabled = false;
             // Turn on perf metric measuring 2 seconds before perf dump
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds<U8>(8)) == 0)
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds<U16>(8u)) == 0u)
             {
                 statsEnabled = platformContext().gfx().queryPerformanceStats();
                 platformContext().gfx().queryPerformanceStats(true);
             }
             // Our stats should be up to date now
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds<U8>(10)) == 0)
+            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE * Time::Seconds<U16>(10u)) == 0u)
             {
-                Console::printfn(platformContext().debug().output().c_str());
+#               if ENABLE_FUNCTION_PROFILING
+                    Console::printfn(platformContext().debug().output().c_str());
+#               endif //ENABLE_FUNCTION_PROFILING
+
                 if (!statsEnabled)
                 {
                     platformContext().gfx().queryPerformanceStats(false);
                 }
             }
 
-            if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u)
-            {
-                _platformContext.gui().modifyText("ProfileData", platformContext().debug().output(), true);
-            }
+#           if ENABLE_FUNCTION_PROFILING
+                if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u)
+                {
+                    _platformContext.gui().modifyText("ProfileData", platformContext().debug().output(), true);
+                }
+#           endif //ENABLE_FUNCTION_PROFILING
         }
 
         if constexpr(!Config::Build::IS_SHIPPING_BUILD)
@@ -906,6 +911,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         return ErrorCode::MISSING_SCENE_LOAD_CALL;
     }
 
+#if ENABLE_FUNCTION_PROFILING
     _platformContext.gui().addText("ProfileData",                // Unique ID
                                     RelativePosition2D{
                                          ._x = RelativeValue{
@@ -922,6 +928,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
                                     "",                          // Text
                                     true,                        // Multiline
                                     12);                         // Font size
+#endif //ENABLE_FUNCTION_PROFILING
 
     ShadowMap::initShadowMaps(_platformContext.gfx());
 

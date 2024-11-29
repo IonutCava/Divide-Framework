@@ -3,13 +3,15 @@ cmake_minimum_required (VERSION 3.29.2)
 
 option(BUILD_TESTING_INTERNAL "Build unit test executables" ON)
 option(RUN_TESTING_INTERNAL "Run unit test after every build" ON)
+option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug builds (/JMC)" OFF)
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
 option(ENABLE_AVX2 "Build with AVX2 support if available. Will also enable AVX and SSE42" ON)
 option(ENABLE_AVX "Build with AVX support if available. Will also enable SSE42." ON)
 option(ENABLE_SSE42 "Build with SSE4.2 support if available" ON)
 option(ENABLE_ASAN "Enable address sanitization" ${RUN_ASAN})
 option(ENABLE_UBSAN "Enable undefined behbaviour sanitization" ${RUN_UBSAN})
-option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug builds (/JMC)" OFF)
+option(ENABLE_OPTICK_PROFILER "Enable in-code instrumentation for the Optick profiler" ${ENABLE_OPTICK_PROFILER})
+option(ENABLE_FUNCTION_PROFILING "Enable in-code instrumentation of function calls using native solutions." ${ENABLE_FUNCTION_PROFILING})
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
 
@@ -152,6 +154,14 @@ if ( NOT AVX2_OPT AND NOT AVX_OPT AND NOT SSE42_OPT)
     add_compile_options(-mno-avx2 -mno-avx -mno-sse4.2)
   endif()
 
+endif ()
+
+if ( ENABLE_OPTICK_PROFILER )
+    add_compile_definitions(ENABLE_OPTICK_PROFILER)
+endif ()
+
+if ( ENABLE_FUNCTION_PROFILING )
+    add_compile_definitions(ENABLE_FUNCTION_PROFILING)
 endif ()
 
 if (MSVC_COMPILER)

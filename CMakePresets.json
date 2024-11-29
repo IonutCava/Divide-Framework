@@ -8,7 +8,7 @@
     "configurePresets": [
         {
             "name": "conf-common",
-            "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations",
+            "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations.",
             "hidden": true,
             "generator": "Ninja Multi-Config",
             "binaryDir": "${sourceDir}/Build/${presetName}",
@@ -24,7 +24,7 @@
         },
         {
             "name": "conf-windows-common",
-            "description": "Windows settings for MSBuild toolchain that apply to msvc and clang",
+            "description": "Windows settings for MSBuild toolchain that apply to msvc and clang.",
             "hidden": true,
             "inherits": "conf-common",
             "condition": {
@@ -39,7 +39,7 @@
         },
         {
             "name": "conf-unixlike-common",
-            "description": "Unix-like OS settings for gcc and clang toolchains",
+            "description": "Unix-like OS settings for gcc and clang toolchains.",
             "hidden": true,
             "inherits": "conf-common",
             "condition": {
@@ -52,9 +52,38 @@
             }
         },
         {
+            "name": "editor-build",
+            "hidden": true,
+            "cacheVariables": {
+                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
+            }
+        },
+        {
+            "name": "asan-build",
+            "hidden": true,
+            "cacheVariables": {
+                "RUN_ASAN": true,
+                "RUN_UBSAN": true
+            }
+        },
+        {
+            "name": "optick-build",
+            "hidden": true,
+            "cacheVariables": {
+                "ENABLE_OPTICK_PROFILER": true
+            }
+        },
+        {
+            "name": "function-profiling-build",
+            "hidden": true,
+            "cacheVariables": {
+                "ENABLE_FUNCTION_PROFILING": true
+            }
+        },
+        {
             "name": "windows-msvc",
             "displayName": "Game Build (MSVC)",
-            "description": "Target Windows with the msvc compiler",
+            "description": "Target Windows with the msvc compiler.",
             "inherits": "conf-windows-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "cl",
@@ -62,29 +91,9 @@
             }
         },
         {
-            "name": "windows-msvc-editor",
-            "displayName": "Editor Build (MSVC)",
-            "description": "Target Windows with the msvc compiler. Editor build.",
-            "inherits": "windows-msvc",
-            "cacheVariables": {
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "windows-msvc-editor-asan",
-            "displayName": "Editor Build (MSVC)",
-            "description": "Target Windows with the msvc compiler. Editor build.",
-            "inherits": "windows-msvc",
-            "cacheVariables": {
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR",
-                "RUN_ASAN": true,
-                "RUN_UBSAN": true
-            }
-        },
-        {
             "name": "windows-clang",
             "displayName": "Game Build (Win64 - CLANG)",
-            "description": "Target Windows with the clang compiler",
+            "description": "Target Windows with the clang compiler.",
             "inherits": "conf-windows-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang-cl",
@@ -92,42 +101,13 @@
             }
         },
         {
-            "name": "windows-clang-editor",
-            "displayName": "Editor Build (Win64 - CLANG)",
-            "description": "Target Windows with the clang compiler. Editor build.",
-            "inherits": "windows-clang",
-            "cacheVariables": {
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "windows-clang-editor-asan",
-            "displayName": "Editor Build (Win64 - CLANG)",
-            "description": "Target Windows with the clang compiler. Editor build.",
-            "inherits": "windows-clang",
-            "cacheVariables": {
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR",
-                "RUN_ASAN": true,
-                "RUN_UBSAN": true
-            }
-        },
-        {
             "name": "unixlike-gcc",
             "displayName": "Game Build (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler",
+            "description": "Target Unix-like OS with the gcc compiler.",
             "inherits": "conf-unixlike-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "gcc",
                 "CMAKE_CXX_COMPILER": "g++"
-            }
-        },
-        {
-            "name": "unixlike-gcc-editor",
-            "displayName": "Editor Build (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler. Editor build.",
-            "inherits": "unixlike-gcc",
-            "cacheVariables": {
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
             }
         },
         {
@@ -141,21 +121,91 @@
             }
         },
         {
+            "name": "windows-msvc-instrumentation",
+            "displayName": "Game Build (MSVC) + Instrumentation",
+            "description": "Target Windows with the msvc compiler. Instrumentation enabled.",
+            "inherits": [ "windows-msvc", "optick-build", "function-profiling-build" ]
+        },
+        {
+            "name": "windows-msvc-editor",
+            "displayName": "Editor Build (MSVC)",
+            "description": "Target Windows with the msvc compiler. Editor build.",
+            "inherits": [ "windows-msvc", "editor-build" ]
+        },
+        {
+            "name": "windows-msvc-editor-asan",
+            "displayName": "Editor Build (MSVC)",
+            "description": "Target Windows with the msvc compiler. Editor build. ASAN enabled.",
+            "inherits": [ "windows-msvc-editor", "asan-build" ]
+        },
+        {
+            "name": "windows-msvc-editor-instrumentation",
+            "displayName": "Editor Build (MSVC) + Instrumentation",
+            "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "windows-msvc-instrumentation", "editor-build" ]
+        },
+        {
+            "name": "windows-clang-editor",
+            "displayName": "Editor Build (Win64 - CLANG)",
+            "description": "Target Windows with the clang compiler. Editor build.",
+            "inherits": [ "windows-clang", "editor-build" ]
+        },
+        {
+            "name": "windows-clang-instrumentation",
+            "displayName": "Game Build (Win64 - CLANG) + Instrumentation",
+            "description": "Target Windows with the clang compiler. Instrumentation enabled.",
+            "inherits": [ "windows-clang", "optick-build", "function-profiling-build" ]
+        },
+        {
+            "name": "windows-clang-editor-instrumentation",
+            "displayName": "Editor Build (Win64 - CLANG) + Instrumentation",
+            "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "windows-clang-instrumentation", "editor-build" ]
+        },
+        {
+            "name": "windows-clang-editor-asan",
+            "displayName": "Editor Build (Win64 - CLANG)",
+            "description": "Target Windows with the clang compiler. Editor build. ASAN enabled.",
+            "inherits": [ "windows-clang-editor", "asan-build" ]
+        },
+        {
+            "name": "unixlike-gcc-editor",
+            "displayName": "Editor Build (GCC)",
+            "description": "Target Unix-like OS with the gcc compiler. Editor build.",
+            "inherits": [ "unixlike-gcc", "editor-build" ]
+        },
+        {
+            "name": "unixlike-gcc-instrumentation",
+            "displayName": "Game Build (GCC) + Instrumentation",
+            "description": "Target Unix-like OS with the gcc compiler. Instrumentation enabled.",
+            "inherits": [ "unixlike-gcc", "function-profiling-build" ]
+        },
+        {
+            "name": "unixlike-gcc-editor-instrumentation",
+            "displayName": "Editor Build (GCC) + Instrumentation",
+            "description": "Target Unix-like OS with the gcc compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "unixlike-gcc-instrumentation", "editor-build" ]
+        },
+        {
             "name": "unixlike-clang-editor",
             "displayName": "Editor Build (Linux - CLANG)",
             "description": "Target Unix-like OS with the clang compiler. Editor build.",
-            "inherits": "unixlike-clang",
-            "cacheVariables": {
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
+            "inherits": [ "unixlike-clang", "editor-build" ]
+        },
+        {
+            "name": "unixlike-clang-instrumentation",
+            "displayName": "Game Build (Linux - CLANG) + Instrumentation",
+            "description": "Target Unix-like OS with the clang compiler. Instrumentation enabled.",
+            "inherits": [ "unixlike-clang", "function-profiling-build" ]
+        },
+        {
+            "name": "unixlike-clang-editor-instrumentation",
+            "displayName": "Editor Build (Linux - CLANG) + Instrumentation",
+            "description": "Target Unix-like OS with the clang compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "unixlike-clang-instrumentation", "editor-build" ]
         }
     ],
     "buildPresets": [
-        {
-            "name": "windows-msvc-profile-editor-asan",
-            "configurePreset": "windows-msvc-editor-asan",
-            "configuration": "RelWithDebInfo"
-        },
         {
             "name": "windows-msvc-debug-editor",
             "configurePreset": "windows-msvc-editor",
@@ -170,6 +220,26 @@
             "name": "windows-msvc-release-editor",
             "configurePreset": "windows-msvc-editor",
             "configuration": "Release"
+        },
+        {
+            "name": "windows-msvc-debug-editor-instrumentation",
+            "configurePreset": "windows-msvc-editor-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-msvc-profile-editor-instrumentation",
+            "configurePreset": "windows-msvc-editor-instrumentation",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-msvc-release-editor-instrumentation",
+            "configurePreset": "windows-msvc-editor-instrumentation",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-msvc-profile-editor-asan",
+            "configurePreset": "windows-msvc-editor-asan",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "windows-msvc-debug",
@@ -187,9 +257,19 @@
             "configuration": "Release"
         },
         {
-            "name": "windows-clang-profile-editor-asan",
-            "configurePreset": "windows-clang-editor-asan",
+            "name": "windows-msvc-debug-instrumentation",
+            "configurePreset": "windows-msvc-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-msvc-profile-instrumentation",
+            "configurePreset": "windows-msvc-instrumentation",
             "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-msvc-release-instrumentation",
+            "configurePreset": "windows-msvc-instrumentation",
+            "configuration": "Release"
         },
         {
             "name": "windows-clang-debug-editor",
@@ -207,6 +287,26 @@
             "configuration": "Release"
         },
         {
+            "name": "windows-clang-debug-editor-instrumentation",
+            "configurePreset": "windows-clang-editor-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-clang-profile-editor-instrumentation",
+            "configurePreset": "windows-clang-editor-instrumentation",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-clang-release-editor-instrumentation",
+            "configurePreset": "windows-clang-editor-instrumentation",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-clang-profile-editor-asan",
+            "configurePreset": "windows-clang-editor-asan",
+            "configuration": "RelWithDebInfo"
+        },
+        {
             "name": "windows-clang-debug",
             "configurePreset": "windows-clang",
             "configuration": "Debug"
@@ -219,6 +319,21 @@
         {
             "name": "windows-clang-release",
             "configurePreset": "windows-clang",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-clang-debug-instrumentation",
+            "configurePreset": "windows-clang-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "windows-clang-profile-instrumentation",
+            "configurePreset": "windows-clang-instrumentation",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "windows-clang-release-instrumentation",
+            "configurePreset": "windows-clang-instrumentation",
             "configuration": "Release"
         },
         {
@@ -237,6 +352,21 @@
             "configuration": "Release"
         },
         {
+            "name": "unixlike-gcc-debug-editor-instrumentation",
+            "configurePreset": "unixlike-gcc-editor-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "unixlike-gcc-profile-editor-instrumentation",
+            "configurePreset": "unixlike-gcc-editor-instrumentation",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "unixlike-gcc-release-editor-instrumentation",
+            "configurePreset": "unixlike-gcc-editor-instrumentation",
+            "configuration": "Release"
+        },
+        {
             "name": "unixlike-gcc-debug",
             "configurePreset": "unixlike-gcc",
             "configuration": "Debug"
@@ -249,6 +379,21 @@
         {
             "name": "unixlike-gcc-release",
             "configurePreset": "unixlike-gcc",
+            "configuration": "Release"
+        },
+        {
+            "name": "unixlike-gcc-debug-instrumentation",
+            "configurePreset": "unixlike-gcc-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "unixlike-gcc-profile-instrumentation",
+            "configurePreset": "unixlike-gcc-instrumentation",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "unixlike-gcc-release-instrumentation",
+            "configurePreset": "unixlike-gcc-instrumentation",
             "configuration": "Release"
         },
         {
@@ -267,6 +412,21 @@
             "configuration": "Release"
         },
         {
+            "name": "unixlike-clang-debug-editor-instrumentation",
+            "configurePreset": "unixlike-clang-editor-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "unixlike-clang-profile-editor-instrumentation",
+            "configurePreset": "unixlike-clang-editor-instrumentation",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "unixlike-clang-release-editor-instrumentation",
+            "configurePreset": "unixlike-clang-editor-instrumentation",
+            "configuration": "Release"
+        },
+        {
             "name": "unixlike-clang-debug",
             "configurePreset": "unixlike-clang",
             "configuration": "Debug"
@@ -279,6 +439,21 @@
         {
             "name": "unixlike-clang-release",
             "configurePreset": "unixlike-clang",
+            "configuration": "Release"
+        },
+        {
+            "name": "unixlike-clang-debug-instrumentation",
+            "configurePreset": "unixlike-clang-instrumentation",
+            "configuration": "Debug"
+        },
+        {
+            "name": "unixlike-clang-profile-instrumentation",
+            "configurePreset": "unixlike-clang-instrumentation",
+            "configuration": "RelWithDebInfo"
+        },
+        {
+            "name": "unixlike-clang-release-instrumentation",
+            "configurePreset": "unixlike-clang-instrumentation",
             "configuration": "Release"
         }
     ],

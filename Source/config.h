@@ -79,14 +79,11 @@ namespace Assert {
     constexpr bool CONTINUE_ON_ASSERT = false;
 } // namespace Assert
 
-namespace Profile {
+namespace Profile
+{
     /// How many profiling timers are we allowed to use in our applications. We allocate them upfront, so a max limit is needed
     constexpr unsigned short MAX_PROFILE_TIMERS = 1 << 10;
-
-    /// Enable function level profiling
-    constexpr bool ENABLE_FUNCTION_PROFILING = !Build::IS_SHIPPING_BUILD;
 } // namespace Profile
-
 
 constexpr float ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
 
