@@ -75,6 +75,30 @@ jobs:
         vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
         vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
 
+    # from: https://github.com/apache/flink/blob/02d30ace69dc18555a5085eccf70ee884e73a16e/tools/azure-pipelines/free_disk_space.sh
+    - name: Remove large packages
+      run: |
+        echo "=============================================================================="
+        echo "Freeing up disk space on CI system"
+        echo "=============================================================================="
+
+        echo "Listing 100 largest packages"
+        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+        df -h
+        echo "Removing large packages"
+        sudo apt-get remove -y '^ghc-8.*'
+        sudo apt-get remove -y '^dotnet-.*'
+        sudo apt-get remove -y '^llvm-.*'
+        sudo apt-get remove -y 'php.*'
+        sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell mono-devel
+        sudo apt-get autoremove -y
+        sudo apt-get clean
+        df -h
+        echo "Removing large directories"
+        # deleting 15GB
+        rm -rf /usr/share/dotnet/
+        df -h
+
     - name: Install extra required packages
       run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
@@ -138,6 +162,30 @@ jobs:
         # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
         vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
         vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
+
+    # from: https://github.com/apache/flink/blob/02d30ace69dc18555a5085eccf70ee884e73a16e/tools/azure-pipelines/free_disk_space.sh
+    - name: Remove large packages
+      run: |
+        echo "=============================================================================="
+        echo "Freeing up disk space on CI system"
+        echo "=============================================================================="
+
+        echo "Listing 100 largest packages"
+        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+        df -h
+        echo "Removing large packages"
+        sudo apt-get remove -y '^ghc-8.*'
+        sudo apt-get remove -y '^dotnet-.*'
+        sudo apt-get remove -y '^llvm-.*'
+        sudo apt-get remove -y 'php.*'
+        sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell mono-devel
+        sudo apt-get autoremove -y
+        sudo apt-get clean
+        df -h
+        echo "Removing large directories"
+        # deleting 15GB
+        rm -rf /usr/share/dotnet/
+        df -h
 
     - name: Install extra required packages
       run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
