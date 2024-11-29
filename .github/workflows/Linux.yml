@@ -88,7 +88,7 @@ jobs:
         df -h
         echo "Removing large packages"
         sudo apt-get remove -y '^dotnet-.*'
-        sudo apt-get remove -y azure-cli hhvm google-chrome-stable firefox powershell-lts
+        sudo apt-get remove -y azure-cli google-chrome-stable firefox powershell-lts
         sudo apt-get autoremove -y
         sudo apt-get clean
         df -h
@@ -180,7 +180,7 @@ jobs:
         df -h
         echo "Removing large packages"
         sudo apt-get remove -y '^dotnet-.*'
-        sudo apt-get remove -y azure-cli hhvm google-chrome-stable firefox powershell-lts
+        sudo apt-get remove -y azure-cli google-chrome-stable firefox powershell-lts
         sudo apt-get autoremove -y
         sudo apt-get clean
         df -h
