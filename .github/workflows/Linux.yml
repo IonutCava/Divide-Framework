@@ -96,12 +96,6 @@ jobs:
         # deleting 15GB
         rm -rf /usr/share/dotnet/
         df -h
-        continue-on-error: true
-    - uses: mainmatter/continue-on-error-comment@v1
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        outcome: ${{ steps.clean.outcome }}
-        test-id: Error code ${{ matrix.code }}
 
     - name: Install extra required packages
       run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
@@ -188,12 +182,6 @@ jobs:
         # deleting 15GB
         rm -rf /usr/share/dotnet/
         df -h
-        continue-on-error: true
-    - uses: mainmatter/continue-on-error-comment@v1
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        outcome: ${{ steps.clean.outcome }}
-        test-id: Error code ${{ matrix.code }}
 
     - name: Install extra required packages
       run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
