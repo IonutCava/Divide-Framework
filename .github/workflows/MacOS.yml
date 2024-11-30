@@ -42,7 +42,52 @@ jobs:
     - name: Print CLANG version
       run: clang --version 
 
-  clang_game_job:
+  clang_job_editor:
+    needs: info_job
+
+    name: macOS - Clang Editor Builds
+    runs-on: ${{ matrix.os }}
+    #runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest]
+        
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.29.2
+        ninjaVersion: 1.11.1
+  
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      id: runvcpkg
+      with:
+        # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
+        vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
+        vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
+
+    - name: List $RUNNER_WORKSPACE before build
+      run: find $RUNNER_WORKSPACE
+      shell: bash
+
+    - name: Print output of run-vcpkg's action.
+      run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
+
+    - name: Build and test Editor in Release mode
+      uses: lukka/run-cmake@v10
+      id: runcmake_editor_release
+      with:
+        configurePreset: 'macos-clang-editor'
+        buildPreset: 'macos-clang-release-editor'
+        testPreset: 'test-macos-clang-release-editor'
+
+  clang_job_game:
      needs: info_job 
 
      name: macOS - Clang Editor Builds
@@ -78,3 +123,28 @@ jobs:
 
      - name: Print output of run-vcpkg's action.
        run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
+
+     - name: Build and test Game in Release mode
+       uses: lukka/run-cmake@v10
+       id: runcmake_game_release
+       with:
+        configurePreset: 'macos-clang'
+        buildPreset: 'unixlike-clang-release'
+        testPreset: 'test-unixlike-clang-release'
+
+  output_job:
+    needs: [clang_job_game,  clang_job_editor]
+
+    name: Finished builds
+    runs-on: macos-latest
+    if: always()
+    steps:
+      - name: Retrieve results
+        run: |
+          result=""
+          if [[ "$\{{ contains(needs.clang_job_game.result, 'failure') }}" == "true" || "$\{{ contains(needs.clang_job_editor.result, 'failure') }}" == "true"  ]]; then
+            result="Clang build failed."
+          else
+            result="Success!"
+          fi
+          echo "result=$result" >> $GITHUB_OUTPUT

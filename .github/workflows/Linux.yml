@@ -111,25 +111,25 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
       with:
-        configurePreset: 'unixlike-gcc-editor'
-        buildPreset: 'unixlike-gcc-release-editor'
-        testPreset: 'test-unixlike-gcc-release-editor'
+        configurePreset: 'linux-gcc-editor'
+        buildPreset: 'linux-gcc-release-editor'
+        testPreset: 'test-linux-gcc-release-editor'
 
     - name: Build and test Editor in Profile mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_profile
       with:
-        configurePreset: 'unixlike-gcc-editor'
-        buildPreset: 'unixlike-gcc-profile-editor'
-        testPreset: 'test-unixlike-gcc-profile-editor'
+        configurePreset: 'linux-gcc-editor'
+        buildPreset: 'linux-gcc-profile-editor'
+        testPreset: 'test-linux-gcc-profile-editor'
 
     - name: Build and test Editor in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_debug
       with:
-        configurePreset: 'unixlike-gcc-editor'
-        buildPreset: 'unixlike-gcc-debug-editor'
-        testPreset: 'test-unixlike-gcc-debug-editor'
+        configurePreset: 'linux-gcc-editor'
+        buildPreset: 'linux-gcc-debug-editor'
+        testPreset: 'test-linux-gcc-debug-editor'
 
   gcc_job_game:
     needs: info_job
@@ -197,25 +197,25 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_release
       with:
-        configurePreset: 'unixlike-gcc'
-        buildPreset: 'unixlike-gcc-release'
-        testPreset: 'test-unixlike-gcc-release'
+        configurePreset: 'linux-gcc'
+        buildPreset: 'linux-gcc-release'
+        testPreset: 'test-linux-gcc-release'
 
     - name: Build and test Game in Profile mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_profile
       with:
-        configurePreset: 'unixlike-gcc'
-        buildPreset: 'unixlike-gcc-profile'
-        testPreset: 'test-unixlike-gcc-profile'
+        configurePreset: 'linux-gcc'
+        buildPreset: 'linux-gcc-profile'
+        testPreset: 'test-linux-gcc-profile'
 
     - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_debug
       with:
-        configurePreset: 'unixlike-gcc'
-        buildPreset: 'unixlike-gcc-debug'
-        testPreset: 'test-unixlike-gcc-debug'
+        configurePreset: 'linux-gcc'
+        buildPreset: 'linux-gcc-debug'
+        testPreset: 'test-linux-gcc-debug'
 
   clang_job_editor:
     needs: info_job
@@ -261,25 +261,25 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
       with:
-        configurePreset: 'unixlike-clang-editor'
-        buildPreset: 'unixlike-clang-release-editor'
-        testPreset: 'test-unixlike-clang-release-editor'
+        configurePreset: 'linux-clang-editor'
+        buildPreset: 'linux-clang-release-editor'
+        testPreset: 'test-linux-clang-release-editor'
 
     #- name: Build and test Editor in Profile mode
     #  uses: lukka/run-cmake@v10
     #  id: runcmake_editor_profile
     #  with:
-    #    configurePreset: 'unixlike-clang-editor'
-    #    buildPreset: 'unixlike-clang-profile-editor'
-    #    testPreset: 'test-unixlike-clang-profile-editor'
+    #    configurePreset: 'linux-clang-editor'
+    #    buildPreset: 'linux-clang-profile-editor'
+    #    testPreset: 'test-linux-clang-profile-editor'
 
     - name: Build and test Editor in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_debug
       with:
-        configurePreset: 'unixlike-clang-editor'
-        buildPreset: 'unixlike-clang-debug-editor'
-        testPreset: 'test-unixlike-clang-debug-editor'
+        configurePreset: 'linux-clang-editor'
+        buildPreset: 'linux-clang-debug-editor'
+        testPreset: 'test-linux-clang-debug-editor'
 
   clang_job_game:
     needs: info_job
@@ -325,25 +325,25 @@ jobs:
       uses: lukka/run-cmake@v10
       id: runcmake_game_release
       with:
-        configurePreset: 'unixlike-clang'
-        buildPreset: 'unixlike-clang-release'
-        testPreset: 'test-unixlike-clang-release'
+        configurePreset: 'linux-clang'
+        buildPreset: 'linux-clang-release'
+        testPreset: 'test-linux-clang-release'
 
     #- name: Build and test Game in Profile mode
     #  uses: lukka/run-cmake@v10
     #  id: runcmake_game_profile
     #  with:
-    #    configurePreset: 'unixlike-clang'
-    #    buildPreset: 'unixlike-clang-profile'
-    #    testPreset: 'test-unixlike-clang-profile'
+    #    configurePreset: 'linux-clang'
+    #    buildPreset: 'linux-clang-profile'
+    #    testPreset: 'test-linux-clang-profile'
 
     - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_debug
       with:
-        configurePreset: 'unixlike-clang'
-        buildPreset: 'unixlike-clang-debug'
-        testPreset: 'test-unixlike-clang-debug'
+        configurePreset: 'linux-clang'
+        buildPreset: 'linux-clang-debug'
+        testPreset: 'test-linux-clang-debug'
         
   output_job:
     needs: [gcc_job_game, gcc_job_editor, clang_job_game, clang_job_editor]

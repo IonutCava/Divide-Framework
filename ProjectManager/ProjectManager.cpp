@@ -79,7 +79,7 @@ static std::string GetLastErrorAsString()
 }
 
 #else //IS_WINDOWS_BUILD
-constexpr const char* OS_PREFIX = "unixlike";
+constexpr const char* OS_PREFIX = "Linux";
 constexpr bool WINDOWS_BUILD = false;
 std::pair<std::string, bool> Startup( [[maybe_unused]] const char* lpApplicationName, [[maybe_unused]] const char* params, [[maybe_unused]] const std::filesystem::path& workingDir )
 {

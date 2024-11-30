@@ -38,17 +38,25 @@
             }
         },
         {
-            "name": "conf-unixlike-common",
-            "description": "Unix-like OS settings for gcc and clang toolchains.",
+            "name": "conf-linux-common",
+            "description": "Linux OS settings for gcc and clang toolchains.",
             "hidden": true,
             "inherits": "conf-common",
             "condition": {
-                "type": "inList",
-                "string": "${hostSystemName}",
-                "list": [
-                    "Linux",
-                    "Darwin"
-                ]
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "conf-macos-common",
+            "description": "macOS builds",
+            "hidden": true,
+            "inherits": "conf-common",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
             }
         },
         {
@@ -101,20 +109,30 @@
             }
         },
         {
-            "name": "unixlike-gcc",
+            "name": "linux-gcc",
             "displayName": "Game Build (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler.",
-            "inherits": "conf-unixlike-common",
+            "description": "Target Linux OS with the gcc compiler.",
+            "inherits": "conf-linux-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "gcc",
                 "CMAKE_CXX_COMPILER": "g++"
             }
         },
         {
-            "name": "unixlike-clang",
+            "name": "linux-clang",
             "displayName": "Game Build (Linux - CLANG)",
-            "description": "Target Unix-like OS with the clang compiler",
-            "inherits": "conf-unixlike-common",
+            "description": "Target Linux OS with the clang compiler",
+            "inherits": "conf-linux-common",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "macos-clang",
+            "displayName": "Game Build (macOS - CLANG)",
+            "description": "Target macOS with the clang compiler",
+            "inherits": "conf-macos-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang",
                 "CMAKE_CXX_COMPILER": "clang++"
@@ -169,40 +187,46 @@
             "inherits": [ "windows-clang-editor", "asan-build" ]
         },
         {
-            "name": "unixlike-gcc-editor",
+            "name": "linux-gcc-editor",
             "displayName": "Editor Build (GCC)",
-            "description": "Target Unix-like OS with the gcc compiler. Editor build.",
-            "inherits": [ "unixlike-gcc", "editor-build" ]
+            "description": "Target Linux OS with the gcc compiler. Editor build.",
+            "inherits": [ "linux-gcc", "editor-build" ]
         },
         {
-            "name": "unixlike-gcc-instrumentation",
+            "name": "linux-gcc-instrumentation",
             "displayName": "Game Build (GCC) + Instrumentation",
-            "description": "Target Unix-like OS with the gcc compiler. Instrumentation enabled.",
-            "inherits": [ "unixlike-gcc", "function-profiling-build" ]
+            "description": "Target Linux OS with the gcc compiler. Instrumentation enabled.",
+            "inherits": [ "linux-gcc", "function-profiling-build" ]
         },
         {
-            "name": "unixlike-gcc-editor-instrumentation",
+            "name": "linux-gcc-editor-instrumentation",
             "displayName": "Editor Build (GCC) + Instrumentation",
-            "description": "Target Unix-like OS with the gcc compiler. Editor build. Instrumentation enabled.",
-            "inherits": [ "unixlike-gcc-instrumentation", "editor-build" ]
+            "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "linux-gcc-instrumentation", "editor-build" ]
         },
         {
-            "name": "unixlike-clang-editor",
+            "name": "linux-clang-editor",
             "displayName": "Editor Build (Linux - CLANG)",
-            "description": "Target Unix-like OS with the clang compiler. Editor build.",
-            "inherits": [ "unixlike-clang", "editor-build" ]
+            "description": "Target Linux OS with the clang compiler. Editor build.",
+            "inherits": [ "linux-clang", "editor-build" ]
         },
         {
-            "name": "unixlike-clang-instrumentation",
+            "name": "linux-clang-instrumentation",
             "displayName": "Game Build (Linux - CLANG) + Instrumentation",
-            "description": "Target Unix-like OS with the clang compiler. Instrumentation enabled.",
-            "inherits": [ "unixlike-clang", "function-profiling-build" ]
+            "description": "Target Linux OS with the clang compiler. Instrumentation enabled.",
+            "inherits": [ "linux-clang", "function-profiling-build" ]
         },
         {
-            "name": "unixlike-clang-editor-instrumentation",
+            "name": "linux-clang-editor-instrumentation",
             "displayName": "Editor Build (Linux - CLANG) + Instrumentation",
-            "description": "Target Unix-like OS with the clang compiler. Editor build. Instrumentation enabled.",
-            "inherits": [ "unixlike-clang-instrumentation", "editor-build" ]
+            "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "linux-clang-instrumentation", "editor-build" ]
+        },
+        {
+            "name": "macos-clang-editor",
+            "displayName": "Editor Build (MacOS - CLANG)",
+            "description": "Target macOS with the clang compiler. Editor build.",
+            "inherits": [ "macos-clang", "editor-build" ]
         }
     ],
     "buildPresets": [
@@ -337,123 +361,133 @@
             "configuration": "Release"
         },
         {
-            "name": "unixlike-gcc-debug-editor",
-            "configurePreset": "unixlike-gcc-editor",
+            "name": "linux-gcc-debug-editor",
+            "configurePreset": "linux-gcc-editor",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-gcc-profile-editor",
-            "configurePreset": "unixlike-gcc-editor",
+            "name": "linux-gcc-profile-editor",
+            "configurePreset": "linux-gcc-editor",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-gcc-release-editor",
-            "configurePreset": "unixlike-gcc-editor",
+            "name": "linux-gcc-release-editor",
+            "configurePreset": "linux-gcc-editor",
             "configuration": "Release"
         },
         {
-            "name": "unixlike-gcc-debug-editor-instrumentation",
-            "configurePreset": "unixlike-gcc-editor-instrumentation",
+            "name": "linux-gcc-debug-editor-instrumentation",
+            "configurePreset": "linux-gcc-editor-instrumentation",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-gcc-profile-editor-instrumentation",
-            "configurePreset": "unixlike-gcc-editor-instrumentation",
+            "name": "linux-gcc-profile-editor-instrumentation",
+            "configurePreset": "linux-gcc-editor-instrumentation",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-gcc-release-editor-instrumentation",
-            "configurePreset": "unixlike-gcc-editor-instrumentation",
+            "name": "linux-gcc-release-editor-instrumentation",
+            "configurePreset": "linux-gcc-editor-instrumentation",
             "configuration": "Release"
         },
         {
-            "name": "unixlike-gcc-debug",
-            "configurePreset": "unixlike-gcc",
+            "name": "linux-gcc-debug",
+            "configurePreset": "linux-gcc",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-gcc-profile",
-            "configurePreset": "unixlike-gcc",
+            "name": "linux-gcc-profile",
+            "configurePreset": "linux-gcc",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-gcc-release",
-            "configurePreset": "unixlike-gcc",
+            "name": "linux-gcc-release",
+            "configurePreset": "linux-gcc",
             "configuration": "Release"
         },
         {
-            "name": "unixlike-gcc-debug-instrumentation",
-            "configurePreset": "unixlike-gcc-instrumentation",
+            "name": "linux-gcc-debug-instrumentation",
+            "configurePreset": "linux-gcc-instrumentation",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-gcc-profile-instrumentation",
-            "configurePreset": "unixlike-gcc-instrumentation",
+            "name": "linux-gcc-profile-instrumentation",
+            "configurePreset": "linux-gcc-instrumentation",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-gcc-release-instrumentation",
-            "configurePreset": "unixlike-gcc-instrumentation",
+            "name": "linux-gcc-release-instrumentation",
+            "configurePreset": "linux-gcc-instrumentation",
             "configuration": "Release"
         },
         {
-            "name": "unixlike-clang-debug-editor",
-            "configurePreset": "unixlike-clang-editor",
+            "name": "linux-clang-debug-editor",
+            "configurePreset": "linux-clang-editor",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-clang-profile-editor",
-            "configurePreset": "unixlike-clang-editor",
+            "name": "linux-clang-profile-editor",
+            "configurePreset": "linux-clang-editor",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-clang-release-editor",
-            "configurePreset": "unixlike-clang-editor",
+            "name": "linux-clang-release-editor",
+            "configurePreset": "linux-clang-editor",
             "configuration": "Release"
         },
         {
-            "name": "unixlike-clang-debug-editor-instrumentation",
-            "configurePreset": "unixlike-clang-editor-instrumentation",
+            "name": "linux-clang-debug-editor-instrumentation",
+            "configurePreset": "linux-clang-editor-instrumentation",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-clang-profile-editor-instrumentation",
-            "configurePreset": "unixlike-clang-editor-instrumentation",
+            "name": "linux-clang-profile-editor-instrumentation",
+            "configurePreset": "linux-clang-editor-instrumentation",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-clang-release-editor-instrumentation",
-            "configurePreset": "unixlike-clang-editor-instrumentation",
+            "name": "linux-clang-release-editor-instrumentation",
+            "configurePreset": "linux-clang-editor-instrumentation",
             "configuration": "Release"
         },
         {
-            "name": "unixlike-clang-debug",
-            "configurePreset": "unixlike-clang",
+            "name": "linux-clang-debug",
+            "configurePreset": "linux-clang",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-clang-profile",
-            "configurePreset": "unixlike-clang",
+            "name": "linux-clang-profile",
+            "configurePreset": "linux-clang",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-clang-release",
-            "configurePreset": "unixlike-clang",
+            "name": "linux-clang-release",
+            "configurePreset": "linux-clang",
             "configuration": "Release"
         },
         {
-            "name": "unixlike-clang-debug-instrumentation",
-            "configurePreset": "unixlike-clang-instrumentation",
+            "name": "linux-clang-debug-instrumentation",
+            "configurePreset": "linux-clang-instrumentation",
             "configuration": "Debug"
         },
         {
-            "name": "unixlike-clang-profile-instrumentation",
-            "configurePreset": "unixlike-clang-instrumentation",
+            "name": "linux-clang-profile-instrumentation",
+            "configurePreset": "linux-clang-instrumentation",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "unixlike-clang-release-instrumentation",
-            "configurePreset": "unixlike-clang-instrumentation",
+            "name": "linux-clang-release-instrumentation",
+            "configurePreset": "linux-clang-instrumentation",
+            "configuration": "Release"
+        },
+        {
+            "name": "macos-clang-release",
+            "configurePreset": "macos-clang",
+            "configuration": "Release"
+        },
+        {
+            "name": "macos-clang-release-editor",
+            "configurePreset": "macos-clang-editor",
             "configuration": "Release"
         }
     ],
@@ -583,99 +617,115 @@
             "configuration": "Release"
         },
         {
-            "name": "test-unixlike-gcc-debug",
+            "name": "test-linux-gcc-debug",
             "displayName": "Test-GCC-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc",
+            "configurePreset": "linux-gcc",
             "configuration": "Debug"
         },
         {
-            "name": "test-unixlike-gcc-profile",
+            "name": "test-linux-gcc-profile",
             "displayName": "Test-GCC-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc",
+            "configurePreset": "linux-gcc",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "test-unixlike-gcc-release",
+            "name": "test-linux-gcc-release",
             "displayName": "Test-GCC-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc",
+            "configurePreset": "linux-gcc",
             "configuration": "Release"
         },
         {
-            "name": "test-unixlike-gcc-debug-editor",
+            "name": "test-linux-gcc-debug-editor",
             "displayName": "Test-GCC-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc-editor",
+            "configurePreset": "linux-gcc-editor",
             "configuration": "Debug"
         },
         {
-            "name": "test-unixlike-gcc-profile-editor",
+            "name": "test-linux-gcc-profile-editor",
             "displayName": "Test-GCC-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc-editor",
+            "configurePreset": "linux-gcc-editor",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "test-unixlike-gcc-release-editor",
+            "name": "test-linux-gcc-release-editor",
             "displayName": "Test-GCC-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-gcc-editor",
+            "configurePreset": "linux-gcc-editor",
             "configuration": "Release"
         },
         {
-            "name": "test-unixlike-clang-debug-editor",
-            "displayName": "Test-Clang-Unix-Debug-Editor",
+            "name": "test-linux-clang-debug-editor",
+            "displayName": "Test-Clang-Linux-Debug-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang-editor",
+            "configurePreset": "linux-clang-editor",
             "configuration": "Debug"
         },
         {
-            "name": "test-unixlike-clang-profile-editor",
-            "displayName": "Test-Clang-Unix-Profile-Editor",
+            "name": "test-linux-clang-profile-editor",
+            "displayName": "Test-Clang-Linux-Profile-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang-editor",
+            "configurePreset": "linux-clang-editor",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "test-unixlike-clang-release-editor",
-            "displayName": "Test-Clang-Unix-Release-Editor",
+            "name": "test-linux-clang-release-editor",
+            "displayName": "Test-Clang-Linux-Release-Editor",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang-editor",
+            "configurePreset": "linux-clang-editor",
             "configuration": "Release"
         },
         {
-            "name": "test-unixlike-clang-debug",
-            "displayName": "Test-Clang-Unix-Debug",
+            "name": "test-linux-clang-debug",
+            "displayName": "Test-Clang-Linux-Debug",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang",
+            "configurePreset": "linux-clang",
             "configuration": "Debug"
         },
         {
-            "name": "test-unixlike-clang-profile",
-            "displayName": "Test-Clang-Unix-Profile",
+            "name": "test-linux-clang-profile",
+            "displayName": "Test-Clang-Linux-Profile",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang",
+            "configurePreset": "linux-clang",
             "configuration": "RelWithDebInfo"
         },
         {
-            "name": "test-unixlike-clang-release",
-            "displayName": "Test-Clang-Unix-Release",
+            "name": "test-linux-clang-release",
+            "displayName": "Test-Clang-Linux-Release",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "unixlike-clang",
+            "configurePreset": "linux-clang",
+            "configuration": "Release"
+        },
+        {
+            "name": "test-macos-clang-release-editor",
+            "displayName": "Test-macOS-Clang-Release-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "macos-clang-editor",
+            "configuration": "Release"
+        },
+        {
+            "name": "test-macos-clang-release",
+            "displayName": "Test-macOS-Clang-Release",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "macos-clang",
             "configuration": "Release"
         }
     ]
