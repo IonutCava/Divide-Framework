@@ -4,7 +4,6 @@
 
 // Jolt includes
 #include <Jolt/RegisterTypes.h>
-#include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
@@ -39,9 +38,9 @@ static bool AssertFailedImpl(const char* inExpression, const char* inMessage, co
 {
     std::stringstream ss;
     // Print to the TTY
-    ss << inFile << ":" << inLine << ": (" << inExpression << ") " << (inMessage != nullptr ? inMessage : "") << endl;
+    ss << inFile << ":" << inLine << ": (" << inExpression << ") " << (inMessage != nullptr ? inMessage : "") << std::endl;
 
-    Divide::DIVIDE_UNEXPECTED_CALL_MSG(ss.string());
+    Divide::DIVIDE_UNEXPECTED_CALL_MSG(ss.str());
 
     // Breakpoint
     Divide::DebugBreak();
@@ -194,9 +193,6 @@ namespace Divide
 
     namespace 
     {
-        // 10 Megs
-        TempAllocatorImpl temp_allocator(Bytes::Mega(10u));
-
         constexpr uint cMaxBodies = 1024;
         constexpr uint cNumBodyMutexes = 0;
         constexpr uint cMaxBodyPairs = 1024;
@@ -223,6 +219,8 @@ namespace Divide
         _factory = std::make_unique<Factory>();
         RegisterTypes();
 
+        _allocator = std::make_unique<TempAllocatorImpl>(Bytes::Mega(10u));
+
         _threadPool = std::make_unique<JobSystemThreadPool>(cMaxPhysicsJobs, cMaxPhysicsBarriers, thread::hardware_concurrency() - 1);
 
         _physicsSystem = std::make_unique<PhysicsSystem>();
@@ -240,6 +238,7 @@ namespace Divide
     {
         _physicsSystem.reset();
         _threadPool.reset();
+        _allocator.reset();
         UnregisterTypes();
         _factory.reset();
 
@@ -253,7 +252,7 @@ namespace Divide
         const I32 cCollisionSteps = to_I32(CEIL(std::max(60.f / _simulationFrameRate, 1.f)));
 
         _physicsSystem->OptimizeBroadPhase();
-        _physicsSystem->Update(Time::MicrosecondsToSeconds<F32>(deltaTimeGameUS), cCollisionSteps, &temp_allocator, _threadPool.get());
+        _physicsSystem->Update(Time::MicrosecondsToSeconds<F32>(deltaTimeGameUS), cCollisionSteps, _allocator.get(), _threadPool.get());
     }
 
     /// Update actors

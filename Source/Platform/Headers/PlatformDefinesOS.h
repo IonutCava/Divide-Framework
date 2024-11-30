@@ -65,7 +65,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #else //USING_MSVC
 
 #ifndef FORCE_INLINE
-#define FORCE_INLINE __attribute__((always_inline))
+#define FORCE_INLINE inline __attribute__((always_inline))
 #endif //FORCE_INLINE
 
 #ifndef NO_INLINE
@@ -75,7 +75,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef USING_CLANG
 
 #ifndef NOINITVTABLE
-#define NOINITVTABLE novtable
+#define NOINITVTABLE __declspec(novtable)
 #endif  //NOINITVTABLE
 
 #else //USING_CLANG

@@ -42,6 +42,7 @@
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
+#include <Jolt/Core/TempAllocator.h>
 
 namespace Divide
 {
@@ -76,6 +77,7 @@ private:
     std::unique_ptr<JPH::Factory> _factory;
     std::unique_ptr<JPH::JobSystemThreadPool> _threadPool;
     std::unique_ptr<JPH::PhysicsSystem> _physicsSystem;
+    std::unique_ptr<JPH::TempAllocatorImpl> _allocator;
 };
 
 };  // namespace Divide
