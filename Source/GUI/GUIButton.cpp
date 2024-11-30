@@ -6,21 +6,18 @@ namespace Divide {
 
 NO_DESTROY GUIButton::AudioCallback GUIButton::s_soundCallback;
 
-GUIButton::GUIButton(const string& name,
-                     const string& text,
-                     const string& guiScheme,
+GUIButton::GUIButton(const std::string_view name,
+                     const std::string_view text,
+                     const std::string_view guiScheme,
                      const RelativePosition2D& offset,
                      const RelativeScale2D& size,
                      CEGUI::Window* parent)
     : GUIElementBase(name, parent),
       _btnWindow(nullptr)
 {
-    
-    NO_DESTROY static string buttonInfo = guiScheme + "/Button";
-
     if (parent != nullptr)
     {
-        _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(buttonInfo.c_str(), name.c_str());
+        _btnWindow = CEGUI::WindowManager::getSingleton().createWindow(CEGUI::String(guiScheme.data(), guiScheme.length()) + "/Button", CEGUI::String(name.data(), name.length()));
 
         const CEGUI::UDim sizeX(0.f, size._x._width);
         const CEGUI::UDim sizeY(0.f, size._y._height);
@@ -34,7 +31,7 @@ GUIButton::GUIButton(const string& name,
 
         _btnWindow->setSize( ceguiSize );
 
-        _btnWindow->setText(text.c_str());
+        _btnWindow->setText(CEGUI::String(text.data(), text.length()));
 
 
         _connections[to_base(Event::MouseMove)] =
@@ -91,56 +88,67 @@ GUIButton::GUIButton(const string& name,
 
 GUIButton::~GUIButton()
 {
-    if (_btnWindow != nullptr) {
+    if (_btnWindow != nullptr)
+    {
         _btnWindow->removeAllEvents();
         _parent->removeChild(_btnWindow);
     }
 }
 
-void GUIButton::active(const bool active) noexcept {
-    if (_btnWindow != nullptr && GUIElement::active() != active) {
+void GUIButton::active(const bool active) noexcept
+{
+    if (_btnWindow != nullptr && GUIElement::active() != active)
+    {
         GUIElement::active(active);
         _btnWindow->setEnabled(active);
     }
 }
 
 void GUIButton::visible(const bool visible) noexcept {
-    if (_btnWindow != nullptr && GUIElement::visible() != visible) {
+    if (_btnWindow != nullptr && GUIElement::visible() != visible)
+    {
         GUIElement::visible(visible);
         _btnWindow->setVisible(visible);
     }
 }
 
-void GUIButton::setText(const std::string_view& text) const {
-    if (_btnWindow != nullptr) {
+void GUIButton::setText(const std::string_view text) const
+{
+    if (_btnWindow != nullptr)
+    {
         _btnWindow->setText(CEGUI::String{ text.data(), text.length() });
     }
 }
 
-void GUIButton::setTooltip(const string& tooltipText) {
-    if (_btnWindow != nullptr) {
-        _btnWindow->setTooltipText(tooltipText.c_str());
+void GUIButton::setTooltip(const std::string_view tooltipText)
+{
+    if (_btnWindow != nullptr)
+    {
+        _btnWindow->setTooltipText(CEGUI::String(tooltipText.data(), tooltipText.length()));
     }
 }
 
-void GUIButton::setFont(const string& fontName,
-                        const string& fontFileName, const U32 size) const
+void GUIButton::setFont(const std::string_view fontName, const std::string_view fontFileName, const U32 size) const
 {
-    if (_btnWindow != nullptr) {
-        if (!fontName.empty()) {
-            if (!CEGUI::FontManager::getSingleton().isDefined(fontName.c_str())) {
-                CEGUI::FontManager::getSingleton().createFreeTypeFont(
-                    fontName.c_str(), to_F32(size), true, fontFileName.c_str());
+    if (_btnWindow != nullptr)
+    {
+        if (!fontName.empty())
+        {
+            const CEGUI::String fontNameStr(fontName.data(), fontName.length());
+
+            if (!CEGUI::FontManager::getSingleton().isDefined(fontNameStr))
+            {
+                CEGUI::FontManager::getSingleton().createFreeTypeFont(fontNameStr, to_F32(size), true, CEGUI::String(fontFileName.data(), fontFileName.length()));
             }
 
-            if (CEGUI::FontManager::getSingleton().isDefined(fontName.c_str())) {
-                _btnWindow->setFont(fontName.c_str());
-            }
+            DIVIDE_ASSERT(CEGUI::FontManager::getSingleton().isDefined(fontNameStr));
+            _btnWindow->setFont(fontNameStr);
         }
     }
 }
 
-bool GUIButton::soundCallback(const AudioCallback& cbk) {
+bool GUIButton::soundCallback(const AudioCallback& cbk)
+{
     const bool hasCbk = s_soundCallback ? true : false;
     s_soundCallback = cbk;
 
@@ -149,28 +157,33 @@ bool GUIButton::soundCallback(const AudioCallback& cbk) {
 
 bool GUIButton::onEvent(const Event event, const CEGUI::EventArgs& /*e*/)
 {
-    if (_callbackFunction[to_base(event)])
+    if (!_callbackFunction[to_base(event)])
     {
-        _callbackFunction[to_base(event)](getGUID());
-
-        if (_eventSound[to_base(event)] != INVALID_HANDLE<AudioDescriptor> && s_soundCallback)
-        {
-            s_soundCallback(_eventSound[to_base(event)]);
-        }
-        return true;
+        return false;
     }
-    return false;
+
+    _callbackFunction[to_base(event)](getGUID());
+
+    if (_eventSound[to_base(event)] != INVALID_HANDLE<AudioDescriptor> && s_soundCallback)
+    {
+        s_soundCallback(_eventSound[to_base(event)]);
+    }
+
+    return true;
 }
 
-void GUIButton::setEventCallback(const Event event, const ButtonCallback& callback) {
+void GUIButton::setEventCallback(const Event event, const ButtonCallback& callback)
+{
     _callbackFunction[to_base(event)] = callback;
 }
 
-void GUIButton::setEventSound(const Event event, const Handle<AudioDescriptor> sound) {
+void GUIButton::setEventSound(const Event event, const Handle<AudioDescriptor> sound)
+{
     _eventSound[to_base(event)] = sound;
 }
 
-void GUIButton::setEventCallback(const Event event, const ButtonCallback& callback, const Handle<AudioDescriptor> sound) {
+void GUIButton::setEventCallback(const Event event, const ButtonCallback& callback, const Handle<AudioDescriptor> sound)
+{
     setEventCallback(event, callback);
     setEventSound(event, sound);
 }

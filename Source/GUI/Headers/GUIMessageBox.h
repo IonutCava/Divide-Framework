@@ -58,8 +58,8 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
     virtual ~GUIMessageBox() override;
 
     bool onConfirm(const CEGUI::EventArgs& /*e*/) noexcept;
-    void setTitle(const string& titleText);
-    void setMessage(const string& message);
+    void setTitle(std::string_view titleText);
+    void setMessage(std::string_view message);
     void setOffset(int2 offsetFromCentre);
     void setMessageType(MessageType type);
 
@@ -68,9 +68,9 @@ class GUIMessageBox final : public GUIElementBase<GUIType::GUI_MESSAGE_BOX> {
         visible(true);
     }
 
-    GUIMessageBox(const string& name,
-                  const string& title,
-                  const string& message,
+    GUIMessageBox(std::string_view name,
+                  std::string_view title,
+                  std::string_view message,
                   int2 offsetFromCentre = int2(0),
                   CEGUI::Window* parent = nullptr);
 

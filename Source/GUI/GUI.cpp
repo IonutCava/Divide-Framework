@@ -106,7 +106,7 @@ namespace Divide
         }
     }
 
-    void DIVIDE_ASSERT_MSG_BOX( const char* failMessage ) noexcept
+    void DIVIDE_ASSERT_MSG_BOX( const std::string_view failMessage ) noexcept
     {
         if constexpr( Config::Assert::SHOW_MESSAGE_BOX )
         {

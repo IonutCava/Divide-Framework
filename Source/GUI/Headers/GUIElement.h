@@ -64,9 +64,9 @@ struct TypeHelper {
 class GUIElement : public GUIDWrapper {
     friend class GUI;
   public:
-    GUIElement(string name, CEGUI::Window* parent) noexcept;
+    GUIElement(std::string_view name, CEGUI::Window* parent) noexcept;
     
-    virtual void setTooltip([[maybe_unused]] const string& tooltipText) {}
+    virtual void setTooltip([[maybe_unused]] const std::string_view tooltipText) {}
 
     PROPERTY_RW(string, name, "");
 
@@ -82,9 +82,10 @@ class GUIElement : public GUIDWrapper {
 };
 
 template<GUIType EnumVal>
-struct GUIElementBase : GUIElement {
+struct GUIElementBase : GUIElement
+{
 
-    GUIElementBase(const string& name, CEGUI::Window* const parent)
+    GUIElementBase(const std::string_view name, CEGUI::Window* const parent)
         : GUIElement(name, parent)
     {}
 

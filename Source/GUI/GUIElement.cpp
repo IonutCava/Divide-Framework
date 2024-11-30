@@ -4,9 +4,9 @@
 
 namespace Divide {
 
-GUIElement::GUIElement(string name, CEGUI::Window* const parent) noexcept
+GUIElement::GUIElement(const std::string_view name, CEGUI::Window* const parent) noexcept
     : GUIDWrapper(),
-      _name(MOV(name)),
+      _name(name),
       _parent(parent)
 {
 }

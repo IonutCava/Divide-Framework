@@ -42,11 +42,13 @@ namespace CEGUI {
     class EventArgs;
 };
 
-namespace Divide {
+namespace Divide
+{
 
 class AudioDescriptor;
 
-class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
+class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON>
+{
     using ButtonCallback = DELEGATE<void, I64>;
     using AudioCallback = DELEGATE<void, Handle<AudioDescriptor>>;
 
@@ -54,7 +56,8 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     friend class SceneGUIElements;
 
     public:
-    enum class Event : U8 {
+    enum class Event : U8
+    {
         HoverEnter = 0,
         HoverLeave,
         MouseDown,
@@ -67,9 +70,9 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     };
 
    public:
-    void setTooltip(const string& tooltipText) override;
-    void setText(const std::string_view& text) const;
-    void setFont(const string& fontName, const string& fontFileName, U32 size) const;
+    void setTooltip(std::string_view tooltipText) override;
+    void setText(std::string_view text) const;
+    void setFont(std::string_view fontName, std::string_view fontFileName, U32 size) const;
     void active(bool active) noexcept override;
     void visible(bool visible) noexcept override;
 
@@ -81,9 +84,9 @@ class GUIButton final : public GUIElementBase<GUIType::GUI_BUTTON> {
     static bool soundCallback(const AudioCallback& cbk);
 
    protected:
-    GUIButton(const string& name,
-              const string& text,
-              const string& guiScheme, 
+    GUIButton(std::string_view name,
+              std::string_view text,
+              std::string_view guiScheme, 
               const RelativePosition2D& offset,
               const RelativeScale2D& size,
               CEGUI::Window* parent);

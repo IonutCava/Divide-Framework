@@ -2,8 +2,12 @@
 
 #include "Headers/PXDevice.h"
 
-#include "Utility/Headers/Localization.h"
+#if !defined(IS_MACOS_BUILD)
 #include "Physics/PhysX/Headers/PhysX.h"
+#endif //IS_MACOS_BUILD
+#include "Physics/Jolt/Headers/Jolt.h"
+#include "Physics/None/Headers/None.h"
+#include "Utility/Headers/Localization.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 
@@ -32,25 +36,36 @@ namespace Divide
 
     ErrorCode PXDevice::initPhysicsAPI( const U8 targetFrameRate, const F32 simSpeed )
     {
-        DIVIDE_ASSERT( _api == nullptr,
-                       "PXDevice error: initPhysicsAPI called twice!" );
+        DIVIDE_ASSERT( _api == nullptr, "PXDevice error: initPhysicsAPI called twice!" );
         switch ( _apiID )
         {
             case PhysicsAPI::PhysX:
             {
-                _api = std::make_unique<PhysX>( _context );
+#           if !defined(IS_MACOS_BUILD)
+                    _api = std::make_unique<PhysX>( _context );
+#           else
+                    Console::errorfn(LOCALE_STR("ERROR_PFX_DEVICE_API"));
+                    return ErrorCode::PFX_NON_SPECIFIED;
+#           endif
+            } break;
+
+            case PhysicsAPI::Jolt:
+            {
+                _api = std::make_unique<PhysicsJolt>(_context);
+            } break;
+            case PhysicsAPI::None:
+            {
+                _api = std::make_unique<PhysicsNone>(_context);
             } break;
 
             default:
-            case PhysicsAPI::ODE:
-            case PhysicsAPI::Jolt:
-            case PhysicsAPI::Bullet:
             case PhysicsAPI::COUNT:
             {
                 Console::errorfn( LOCALE_STR( "ERROR_PFX_DEVICE_API" ) );
                 return ErrorCode::PFX_NON_SPECIFIED;
             };
         };
+
         _simulationSpeed = CLAMPED( simSpeed, 0.f, g_maxSimSpeed );
         return _api->initPhysicsAPI( targetFrameRate, _simulationSpeed );
     }
@@ -69,21 +84,21 @@ namespace Divide
         return state;
     }
 
-    void PXDevice::updateTimeStep( const U8 timeStepFactor, const F32 simSpeed )
+    void PXDevice::updateTimeStep( const U8 simulationFrameRate, const F32 simSpeed )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
-        _api->updateTimeStep( timeStepFactor, simSpeed );
+        _api->updateTimeStep(simulationFrameRate, simSpeed );
     }
 
     bool PXDevice::frameEnded( const FrameEvent& evt ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
         
-        frameEnded( evt._time._game._deltaTimeUS );
+        frameEndedInternal( evt._time._game._deltaTimeUS );
         return true;
     }
 
-    void PXDevice::frameEnded( const U64 deltaTimeGameUS ) noexcept
+    void PXDevice::frameEndedInternal( const U64 deltaTimeGameUS ) noexcept
     {
         _api->frameEnded( deltaTimeGameUS );
     }
@@ -92,11 +107,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
 
-        frameStarted( evt._time._game._deltaTimeUS );
+        frameStartedInternal( evt._time._game._deltaTimeUS );
         return true;
     }
 
-    void PXDevice::frameStarted( const U64 deltaTimeGameUS )
+    void PXDevice::frameStartedInternal( const U64 deltaTimeGameUS )
     {
         _api->frameStarted( deltaTimeGameUS );
     }
