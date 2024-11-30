@@ -710,7 +710,9 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
 
+#   if defined(IS_MACOS_BUILD)
     _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
+#   endif //IS_MACOS_BUILD
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
 
     ASIO::SET_LOG_FUNCTION([](const std::string_view msg, const bool isError)

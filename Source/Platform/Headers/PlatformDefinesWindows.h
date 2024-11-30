@@ -57,27 +57,9 @@
 #define NOMINMAX
 #endif  //NOMINMAX
 
-#ifndef _RESTRICT_
-#define _RESTRICT_ __restrict
-#endif
-
-#ifndef NOINITVTABLE
-#define NOINITVTABLE __declspec(novtable)
-#endif  //NOINITVTABLE
-
-#ifndef FORCE_INLINE
-#define FORCE_INLINE __forceinline
-#endif //FORCE_INLINE
-
-#ifndef NO_INLINE
-#define NO_INLINE __declspec(noinline)
-#endif //NO_INLINE
-
 #include <Windows.h>
 
-#if defined(_WIN64)
-#define WIN64
-#else
+#if !defined(_WIN64)
 #error "Divide Framework requires a 64bit OS"
 #endif
 

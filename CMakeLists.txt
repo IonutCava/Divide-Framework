@@ -27,7 +27,6 @@ endif()
   
 message(STATUS "vcpkg toolchain found in: ${CMAKE_TOOLCHAIN_FILE}")
 
-
 # Enable Hot Reload for MSVC compilers if supported.
 if (NOT ENABLE_ASAN AND NOT ENABLE_UBSAN AND POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
@@ -73,6 +72,19 @@ endif()
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     message("Using GNU compiler")
     set(GNU_COMPILER ON) 
+endif()
+
+if(WINDOWS_OS_BUILD)
+    message("Detected Windows Build")
+    add_compile_definitions(IS_WINDOWS_BUILD)
+elseif(LINUX_OS_BUILD)
+    message("Detected Linux Build")
+    add_compile_definitions(IS_LINUX_BUILD)
+elseif(MAC_OS_BUILD)
+    message("Detected MacOS Build")
+    add_compile_definitions(IS_MACOS_BUILD)
+else()
+    message(FATAL_ERROR "Unknow target operating system!")
 endif()
 
 set(EXTRA_COMPILE_FLAGS "")

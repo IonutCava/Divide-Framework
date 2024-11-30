@@ -37,10 +37,14 @@ else ()
   set(CMAKE_DEBUG_PREFIX -D)
 endif ()
 
-if(WIN32)
+if(WINDOWS_OS_BUILD)
     add_compile_definitions(IS_WINDOWS_BUILD)
+elseif(LINUX_OS_BUILD)
+    add_compile_definitions(IS_LINUX_BUILD)
+elseif(MAC_OS_BUILD)
+    add_compile_definitions(IS_MACOS_BUILD)
 else()
-    add_compile_definitions(IS_UNIXLIKE_BUILD)
+    message( FATAL_ERROR "Unknow target operating system!");
 endif()
 
 set(IMGUI_USER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/../Source/Core/Headers/ImGUICustomConfig.h")

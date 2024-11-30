@@ -20,6 +20,9 @@
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
+            },
+            "cacheVariables": {
+                "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
             }
         },
         {
@@ -35,6 +38,9 @@
             "toolset": {
                 "value": "host=x64",
                 "strategy": "external"
+            },
+            "cacheVariables": {
+                "WINDOWS_OS_BUILD": true
             }
         },
         {
@@ -46,6 +52,9 @@
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "LINUX_OS_BUILD": true
             }
         },
         {
@@ -57,6 +66,9 @@
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Darwin"
+            },
+            "cacheVariables": {
+                "MAC_OS_BUILD": true
             }
         },
         {

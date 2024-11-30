@@ -33,13 +33,62 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_DEFINES_OS_H_
 #define DVD_PLATFORM_DEFINES_OS_H_
 
-#if defined(_WIN32)
+#if defined(IS_WINDOWS_BUILD)
 #include "PlatformDefinesWindows.h"
-#elif defined(__APPLE_CC__) 
+#elif defined(IS_MACOS_BUILD) 
 #include "PlatformDefinesApple.h"
-#else //defined(__linux) || defined (__unix)
+#elif defined(IS_LINUX_BUILD)
 #include "PlatformDefinesUnix.h"
+#else
+#error "Unknow operating system!"
 #endif
+
+// Everyone agreed on this one. Yay!
+#ifndef RESTRICT
+#define RESTRICT __restrict
+#endif //RESTRICT
+
+#ifdef USING_MSVC
+
+#ifndef FORCE_INLINE
+#define FORCE_INLINE __forceinline
+#endif //FORCE_INLINE
+
+#ifndef NO_INLINE
+#define NO_INLINE __declspec(noinline)
+#endif //NO_INLINE
+
+#ifndef NOINITVTABLE
+#define NOINITVTABLE __declspec(novtable)
+#endif  //NOINITVTABLE
+
+#else //USING_MSVC
+
+#ifndef FORCE_INLINE
+#define FORCE_INLINE __attribute__((always_inline))
+#endif //FORCE_INLINE
+
+#ifndef NO_INLINE
+#define NO_INLINE __attribute__((noinline))
+#endif //NO_INLINE
+
+#ifdef USING_CLANG
+
+#ifndef NOINITVTABLE
+#define NOINITVTABLE novtable
+#endif  //NOINITVTABLE
+
+#else //USING_CLANG
+
+// GCC does not have this attribute
+#ifndef NOINITVTABLE
+#define NOINITVTABLE
+#endif  //NOINITVTABLE
+
+#endif //USING_CLANG
+
+#endif //USING_MSVC
+
 
 #ifndef STR_CAT
 #define STR_CAT(STR1, STR2) STR1 STR2

@@ -25,12 +25,17 @@ DISABLE_NON_MSVC_WARNING_POP()
 #include <IL/ilu.h>
 //#include <IL/ilut.h>
 
-#include <nvtt/nvtt.h>
 #include <glm/detail/type_half.hpp>
+
+#if !defined(IS_MACOS_BUILD)
+#include <nvtt/nvtt.h>
+#endif //!IS_MACOS_BUILD
 
 namespace Divide::ImageTools
 {
     constexpr bool g_KeepDevILDDSCompatibility = true;
+
+#if !defined(IS_MACOS_BUILD)
 
 namespace nvttHelpers
 {
@@ -152,6 +157,8 @@ namespace nvttHelpers
         return nvtt::MipmapFilter_Box;
     }
 }; // namespace nvttHelpers
+
+#endif //!IS_MACOS_BUILD
 
 namespace
 {
@@ -571,7 +578,11 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         useCache = false;
     }
 
+#if defined(IS_MACOS_BUILD)
+    const bool createDDS = false;
+#else
     const bool createDDS = useCache || _loadingData._createdDDSData;
+#endif
 
     // We either want to convert or we already have DDS faces/layers
     if ( _loadingData._fileIndex > 0u)
@@ -583,6 +594,9 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
     if ( createDDS )
     {
+#if defined(IS_MACOS_BUILD)
+        _loadingData._createdDDSData = false;
+#else //IS_MACOS_BUILD
         _loadingData._createdDDSData = true;
 
         const ResourcePath cachePath = Paths::Textures::g_metadataLocation / _path;
@@ -790,6 +804,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                 }
             }
         }
+#       endif //!IS_MACOS_BUILD
     }
 
     // At this point, we either don't care about DDS versions, or we utterly failed to create a DDS cached file, so just load the original image

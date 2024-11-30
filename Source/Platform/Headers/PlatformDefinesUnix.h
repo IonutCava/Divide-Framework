@@ -34,22 +34,6 @@
 #ifndef DVD_PLATFORM_DEFINES_UNIX_H_
 #define DVD_PLATFORM_DEFINES_UNIX_H_
 
-#ifndef _RESTRICT_
-#define _RESTRICT_ __restrict__
-#endif
-
-#ifndef NOINITVTABLE
-#define NOINITVTABLE
-#endif  //NOINITVTABLE
-
-#ifndef FORCE_INLINE
-#define FORCE_INLINE inline __attribute__((always_inline))
-#endif //FORCE_INLINE
-
-#ifndef NO_INLINE
-#define NO_INLINE __attribute__ ((noinline))
-#endif //NO_INLINE
-
 #include <sys/time.h>
 #include <X11/X.h>
 #include <strings.h>

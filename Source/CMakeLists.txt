@@ -158,6 +158,8 @@ target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
 
+if(NOT MAC_OS_BUILD)
+
 if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
     if(UNIX)
         # Add rpath setting to find .so libraries on unix based systems
@@ -175,6 +177,8 @@ if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
     endif()
 else()
     message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
+endif()
+
 endif()
 
 if(BUILD_TESTING_INTERNAL)

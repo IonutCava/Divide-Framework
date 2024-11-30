@@ -874,12 +874,12 @@ template <typename TO>
     return static_cast<TO>(from);
 } 
 
-extern void DIVIDE_ASSERT_MSG_BOX(const char* failMessage) noexcept;
+extern void DIVIDE_ASSERT_MSG_BOX(std::string_view failMessage) noexcept;
 
 namespace Assert
 {
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
-    bool DIVIDE_ASSERT_FUNC(bool expression, const char* expressionStr, const char* file, int line, const char* failMessage) noexcept;
+    bool DIVIDE_ASSERT_FUNC(bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
 }
 
 #define DIVIDE_ASSERT_2_ARGS(expression, msg) Assert::DIVIDE_ASSERT_FUNC(expression, #expression, __FILE__, __LINE__, msg)

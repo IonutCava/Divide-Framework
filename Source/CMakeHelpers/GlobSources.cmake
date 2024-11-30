@@ -472,19 +472,35 @@ set( PHYSICS_SOURCE_HEADERS Physics/Headers/PhysicsAPIWrapper.h
                             Physics/Headers/PhysicsAsset.h
                             Physics/Headers/PhysicsSceneInterface.h
                             Physics/Headers/PXDevice.h
-                            Physics/PhysX/Headers/PhysX.h
-                            Physics/PhysX/Headers/PhysXActor.h
-                            Physics/PhysX/Headers/PhysXSceneInterface.h
-                            Physics/PhysX/Headers/pxShapeScaling.h
 )
 
 set( PHYSICS_SOURCE Physics/PhysicsAPIWrapper.cpp
                     Physics/PhysicsAsset.cpp
                     Physics/PXDevice.cpp
                     Physics/PhysX/PhysX.cpp
+set( PHYSX_SOURCE "")
+set( PHYSX_SOURCE_HEADERS "")
+
+if(NOT MAC_OS_BUILD)
+    set( PHYSX_SOURCE Physics/PhysX/PhysX.cpp
                     Physics/PhysX/PhysXActor.cpp
                     Physics/PhysX/PhysXSceneInterface.cpp
                     Physics/PhysX/pxShapeScaling.cpp
+)
+
+    set( PHYSX_SOURCE_HEADERS Physics/PhysX/Headers/PhysX.h
+                              Physics/PhysX/Headers/PhysXActor.h
+                              Physics/PhysX/Headers/PhysXSceneInterface.h
+                              Physics/PhysX/Headers/pxShapeScaling.h
+    )
+endif()
+
+set( PHYSICS_SOURCE ${PHYSICS_SOURCE}
+                    ${PHYSX_SOURCE}
+)
+
+set( PHYSICS_SOURCE_HEADERS ${PHYSICS_SOURCE_HEADERS}
+                            ${PHYSX_SOURCE_HEADERS}
 )
 
 set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h

@@ -22,13 +22,13 @@ namespace Divide
     namespace Assert
     {
 
-        bool DIVIDE_ASSERT_FUNC( const bool expression, const char* expressionStr, const char* file, const int line, const char* failMessage ) noexcept
+        bool DIVIDE_ASSERT_FUNC( const bool expression, const std::string_view expressionStr, const std::string_view file, const int line, const std::string_view failMessage ) noexcept
         {
             if constexpr ( !Config::Build::IS_SHIPPING_BUILD )
             {
                 if ( !expression ) [[unlikely]]
                 {
-                    if ( failMessage == nullptr || strlen( failMessage ) == 0 ) [[unlikely]]
+                    if ( failMessage.empty() ) [[unlikely]]
                     {
                         return DIVIDE_ASSERT_FUNC( false, expressionStr, file, line, "Message truncated" );
                     }

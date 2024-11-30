@@ -66,7 +66,7 @@ namespace Divide {
             // Resolve ragdoll
             // if (comp->_resolveRagdoll)
             //{
-                /// Use PhysX actor from RigidBodyComponent to feed new bone positions/orientation
+                /// Use a physics actor from RigidBodyComponent to feed new bone positions/orientation
                 /// And read back ragdoll results to update transforms accordingly
             //}
         }

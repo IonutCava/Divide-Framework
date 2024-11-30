@@ -38,21 +38,8 @@
 #define _RESTRICT_ __restrict__
 #endif
 
-#ifndef NOINITVTABLE
-#define NOINITVTABLE
-#endif  //NOINITVTABLE
-
-#ifndef FORCE_INLINE
-#define FORCE_INLINE __attribute__((always_inline))
-#endif //FORCE_INLINE
-
-#ifndef NO_INLINE
-#define NO_INLINE __attribute__ ((noinline))
-#endif //NO_INLINE
-
 #include <Carbon/Carbon.h>
 void checkMacEvents();
-
 
 namespace Divide {
     struct WindowHandle {

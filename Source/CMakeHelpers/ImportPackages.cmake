@@ -24,7 +24,6 @@ find_package(glbinding CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(meshoptimizer CONFIG REQUIRED)
 find_package(OpenAL CONFIG REQUIRED)
-find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 find_package(expat CONFIG REQUIRED)
 find_package(recastnavigation CONFIG REQUIRED)
 find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
@@ -43,6 +42,11 @@ find_package(ZLIB REQUIRED)
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
+
+set(NVTT_LIBRARIES "")
+
+if(NOT MAC_OS_BUILD)
+    find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 
 find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
@@ -91,6 +95,7 @@ set(NVTT_LIBRARIES
     ${NVSQUISH_LIBRARIES}
     ${NVMATH_LIBRARIES}
 )
+endif()
 
 find_library(JASPER_LIBRARY NAMES jasper)
 find_library(JPEG_LIBRARY NAMES jpeg)
@@ -111,10 +116,13 @@ include_directories(
     ${SIMPLEINI_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
-    ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS}
     ${expat_INCLUDE_DIR}
     "${Vulkan_INCLUDE_DIR}/vma"
 )
+
+if(NOT MAC_OS_BUILD)
+    include_directories( SYSTEM ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS} )
+endif()
 
 include_directories(
     "ThirdParty/EntityComponentSystem/include/ECS"
@@ -153,7 +161,7 @@ set(EXTERNAL_LIBS
     glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper
 )
 
-if(UNIX)
+if(LINUX_OS_BUILD)
   set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
                     PhysXExtensions_static_64
                     PhysX_static_64
@@ -164,7 +172,7 @@ if(UNIX)
                     PhysXCommon_static_64
                     PhysXFoundation_static_64
   )
-else()
+elseif(WINDOWS_OS_BUILD)
   set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
                     unofficial::omniverse-physx-sdk::sdk)
 endif()
