@@ -40,6 +40,18 @@
 //#include <iterator>
 #include <cmath>
 
+#ifdef Complex
+#undef Complex
+#endif //Complex
+
+#ifdef Nonconvex
+#undef Nonconvex
+#endif //Nonconvex
+
+#ifdef Convex
+#undef Convex
+#endif //Convex
+
 #ifdef None
 #undef None
 #endif //None

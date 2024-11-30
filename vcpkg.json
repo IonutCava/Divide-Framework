@@ -32,7 +32,6 @@
         "sdl2",
         "sdl2-image",
         "mimalloc",
-        "joltphysics",
         "physx",
         {
             "name": "sdl2-mixer",

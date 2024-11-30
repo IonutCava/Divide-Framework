@@ -40,6 +40,14 @@ set(OPTICK_USE_VULKAN TRUE)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 
+FetchContent_Declare(
+    JoltPhysics
+    GIT_REPOSITORY  https://github.com/jrouwe/JoltPhysics.git
+    GIT_TAG         master
+    GIT_SHALLOW     TRUE
+    #GIT_PROGRESS    TRUE
+)
+
 #Skarupke hash maps
 FetchContent_Declare(
     skarupke
@@ -141,6 +149,8 @@ FetchContent_MakeAvailableExcludeFromAll(
     chaiscript
 )
 
+FetchContent_MakeAvailable_JoltPhysics()
+
 if (BUILD_TESTING_INTERNAL)
     set(BUILD_TESTING ON)
 endif()
@@ -160,6 +170,7 @@ include_directories(
     ${imguizmo_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
     ${chaiscript_SOURCE_DIR}/include
+    ${JoltPhysics_SOURCE_DIR}/..
 )
 
 set( TILEABLE_VOLUME_NOISE_SRC_FILES ${tileable_volume_noise_SOURCE_DIR}/TileableVolumeNoise.cpp )

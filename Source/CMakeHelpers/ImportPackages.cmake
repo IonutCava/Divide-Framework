@@ -39,7 +39,6 @@ find_package(SDL2_image CONFIG REQUIRED)
 find_package(SDL2_mixer CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(Jolt CONFIG REQUIRED)
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
 
@@ -117,7 +116,7 @@ include_directories(
     ${PYTHON_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     ${expat_INCLUDE_DIR}
-    "${Vulkan_INCLUDE_DIR}/vma"
+    ${Vulkan_INCLUDE_DIR}/vma
 )
 
 if(NOT MAC_OS_BUILD)
@@ -143,7 +142,7 @@ set(EXTERNAL_LIBS
     fmt::fmt
     OptickCore
     EASTL
-    Jolt::Jolt
+    Jolt
     OpenAL::OpenAL
     expat::expat
     imgui::imgui

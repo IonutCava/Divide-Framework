@@ -80,8 +80,6 @@ DISABLE_GCC_WARNING_POP()
 
 #include <fmt/printf.h>
 
-#include <Jolt/Jolt.h>
-
 #include "Core/TemplateLibraries/Headers/TemplateAllocator.h"
 #include "Core/TemplateLibraries/Headers/HashMap.h"
 #include "Core/TemplateLibraries/Headers/Vector.h"

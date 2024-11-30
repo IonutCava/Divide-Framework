@@ -28,7 +28,7 @@ static void TraceImpl(const char* inFMT, ...)
     vsnprintf(buffer, sizeof(buffer), inFMT, list);
     va_end(list);
 
-    Divide::Console::printfn({}, buffer);
+    Divide::Console::printfn("JoltPhysics: {}", buffer);
 }
 
 #ifdef JPH_ENABLE_ASSERTS
