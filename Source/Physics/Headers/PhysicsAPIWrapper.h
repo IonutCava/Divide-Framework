@@ -62,7 +62,7 @@ enum class ErrorCode : I8;
 enum class PhysicsGroup : U8;
 class RigidBodyComponent;
 
-class NOINITVTABLE PhysicsAPIWrapper : public PlatformContextComponent
+NOINITVTABLE class PhysicsAPIWrapper : public PlatformContextComponent
 {
    public:
     explicit PhysicsAPIWrapper( PlatformContext& context );

@@ -45,7 +45,8 @@
 namespace Divide {
 namespace Util {
 
-struct NOINITVTABLE GraphPlot {
+NOINITVTABLE struct GraphPlot
+{
     explicit GraphPlot(string name) noexcept : _plotName(MOV(name))
     {
     }

@@ -203,7 +203,7 @@ else ()
 
   if (CLANG_COMPILER)
     add_compile_definitions(USING_CLANG)
-    add_compile_options(-Wno-unknown-argument -Wno-unused-command-line-argument)
+    add_compile_options(-Wno-unknown-argument -Wno-unused-command-line-argument -fdeclspec)
   elseif(GNU_COMPILER)
     add_compile_definitions(USING_GCC)
   else()

@@ -85,7 +85,8 @@ protected:
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
 /// All the information needed for a single light's shadowmap
-class NOINITVTABLE ShadowMap {
+NOINITVTABLE class ShadowMap
+{
   public:
     static constexpr U8 MAX_SHADOW_FRAME_LIFETIME = 32u;
     static constexpr U8 WORLD_AO_LAYER_INDEX = (Config::Lighting::MAX_SHADOW_CASTING_DIRECTIONAL_LIGHTS * Config::Lighting::MAX_CSM_SPLITS_PER_LIGHT) ;

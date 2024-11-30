@@ -160,7 +160,8 @@ struct DebugScope
 };
 
 /// Renderer Programming Interface
-class NOINITVTABLE RenderAPIWrapper : NonCopyable {
+NOINITVTABLE class RenderAPIWrapper : NonCopyable
+{
 public:
     virtual ~RenderAPIWrapper() = default;
 

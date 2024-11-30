@@ -51,7 +51,7 @@ class AudioState {
 constexpr U32 MAX_SOUND_BUFFERS = 64;
 
 /// Audio Programming Interface
-class NOINITVTABLE AudioAPIWrapper : public PlatformContextComponent, public FrameListener
+NOINITVTABLE class AudioAPIWrapper : public PlatformContextComponent, public FrameListener
 {
    public:
      using MusicPlaylist = std::pair<U32, vector< Handle<AudioDescriptor>>>;

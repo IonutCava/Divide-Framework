@@ -43,7 +43,7 @@
 
 namespace Divide {
 
-class NOINITVTABLE GenericVertexData : public VertexDataInterface,
+NOINITVTABLE class GenericVertexData : public VertexDataInterface,
                                        public RingBuffer
 {
    public:

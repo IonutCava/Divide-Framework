@@ -44,7 +44,8 @@ struct GenericDrawCommand;
 
 struct VDIUserData{};
 
-class NOINITVTABLE VertexDataInterface : public GUIDWrapper, public GraphicsResource {
+NOINITVTABLE class VertexDataInterface : public GUIDWrapper, public GraphicsResource
+{
    public:
     using Handle = PoolHandle;
     static constexpr Handle INVALID_VDI_HANDLE{U16_MAX, 0u};

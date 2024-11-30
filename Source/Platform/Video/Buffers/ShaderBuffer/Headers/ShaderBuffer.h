@@ -45,7 +45,7 @@ namespace Attorney {
 };
 
 class ShaderProgram;
-class NOINITVTABLE ShaderBuffer : public GUIDWrapper,
+NOINITVTABLE class ShaderBuffer : public GUIDWrapper,
                                   public GraphicsResource,
                                   public RingBufferSeparateWrite
                                   

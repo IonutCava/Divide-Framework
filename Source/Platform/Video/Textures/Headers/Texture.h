@@ -79,7 +79,7 @@ using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 6, true>;
 [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
 
 /// An API-independent representation of a texture
-class NOINITVTABLE Texture : public CachedResource, public GraphicsResource
+NOINITVTABLE class Texture : public CachedResource, public GraphicsResource
 {
     friend class ResourceCache;
     friend struct ResourceLoader;

@@ -52,7 +52,8 @@ enum class FilterSpace : U8 {
 class PreRenderBatch;
 /// It's called a prerender operator because it operates on the buffer before "rendering" to the screen
 /// Technically, it's a post render operation
-class NOINITVTABLE PreRenderOperator {
+NOINITVTABLE class PreRenderOperator
+{
    public:
     /// The RenderStage is used to inform the GFXDevice of what we are currently
     /// doing to set up appropriate states

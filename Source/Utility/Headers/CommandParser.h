@@ -36,7 +36,8 @@
 namespace Divide {
 
 /// A utility class used to process a string input
-class NOINITVTABLE CommandParser {
+NOINITVTABLE class CommandParser
+{
    public:
     CommandParser() noexcept = default;
     virtual ~CommandParser() = default;
