@@ -90,7 +90,7 @@ jobs:
   clang_job_game:
      needs: info_job 
 
-     name: macOS - Clang Editor Builds
+     name: macOS - Clang Game Builds
      runs-on: ${{ matrix.os }}
      #runs-on: self-hosted
      strategy:
