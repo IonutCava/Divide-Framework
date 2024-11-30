@@ -477,16 +477,27 @@ set( PHYSICS_SOURCE_HEADERS Physics/Headers/PhysicsAPIWrapper.h
 set( PHYSICS_SOURCE Physics/PhysicsAPIWrapper.cpp
                     Physics/PhysicsAsset.cpp
                     Physics/PXDevice.cpp
-                    Physics/PhysX/PhysX.cpp
+                    
+)
+
+set ( PHYSICS_NONE_SOURCE Physics/None/None.cpp
+)
+
+set ( PHYSICS_NONE_SOURCE_HEADERS Physics/None/Headers/None.h
+)
+
+set ( JOLT_SOURCE_HEADERS Physics/Jolt/Headers/Jolt.h
+)
+
 set( PHYSX_SOURCE "")
 set( PHYSX_SOURCE_HEADERS "")
 
 if(NOT MAC_OS_BUILD)
     set( PHYSX_SOURCE Physics/PhysX/PhysX.cpp
-                    Physics/PhysX/PhysXActor.cpp
-                    Physics/PhysX/PhysXSceneInterface.cpp
-                    Physics/PhysX/pxShapeScaling.cpp
-)
+                      Physics/PhysX/PhysXActor.cpp
+                      Physics/PhysX/PhysXSceneInterface.cpp
+                      Physics/PhysX/pxShapeScaling.cpp
+    )
 
     set( PHYSX_SOURCE_HEADERS Physics/PhysX/Headers/PhysX.h
                               Physics/PhysX/Headers/PhysXActor.h
@@ -496,10 +507,14 @@ if(NOT MAC_OS_BUILD)
 endif()
 
 set( PHYSICS_SOURCE ${PHYSICS_SOURCE}
+                    ${PHYSICS_NONE_SOURCE}
+                    ${JOLT_SOURCE}
                     ${PHYSX_SOURCE}
 )
 
 set( PHYSICS_SOURCE_HEADERS ${PHYSICS_SOURCE_HEADERS}
+                            ${PHYSICS_NONE_SOURCE_HEADERS}
+                            ${JOLT_SOURCE_HEADERS}
                             ${PHYSX_SOURCE_HEADERS}
 )
 

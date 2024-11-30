@@ -32,6 +32,7 @@
         "sdl2",
         "sdl2-image",
         "mimalloc",
+        "joltphysics",
         "physx",
         {
             "name": "sdl2-mixer",
@@ -46,7 +47,11 @@
         },
         {
             "name": "imgui",
-            "features": [ "docking-experimental", "no-obsolete-keyio", "no-obsolete-functions" ]
+            "features": [
+                "docking-experimental",
+                "no-obsolete-keyio",
+                "no-obsolete-functions"
+            ]
         }
     ]
 }

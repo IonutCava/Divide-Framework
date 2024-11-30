@@ -73,17 +73,27 @@ class NOINITVTABLE PhysicsAPIWrapper : public PlatformContextComponent
     friend class PXDevice;
     virtual ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) = 0;
     virtual bool closePhysicsAPI() = 0;
-    virtual void updateTimeStep(U8 timeStepFactor, F32 simSpeed) = 0;
     virtual void idle() = 0;
     virtual bool initPhysicsScene(Scene& scene) = 0;
     virtual bool destroyPhysicsScene(const Scene& scene) = 0;
 
-    virtual void frameStarted( const U64 deltaTimeGameUS ) = 0;
-    virtual void frameEnded( const U64 deltaTimeGameUS ) = 0;
+   
+    virtual void frameStartedInternal( const U64 deltaTimeGameUS ) = 0;
+    virtual void frameEndedInternal( const U64 deltaTimeGameUS ) = 0;
 
     virtual PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) = 0;
 
     virtual bool intersect(const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersectionsOut) const = 0;
+
+    void frameStarted(const U64 deltaTimeGameUS);
+    void frameEnded(const U64 deltaTimeGameUS);
+
+    void updateTimeStep(U8 simulationFrameRate, F32 simSpeed);
+
+   protected:
+       F32 _timeStepSec = 0.f;
+       F32 _accumulatorSec = 0.f;
+       U8  _simualationFrameRate = 1u;
 };
 
 FWD_DECLARE_MANAGED_CLASS(PhysicsAPIWrapper);

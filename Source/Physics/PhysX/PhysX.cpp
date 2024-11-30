@@ -284,35 +284,19 @@ namespace Divide
         }
     }
 
-    inline void PhysX::updateTimeStep( U8 timeStepFactor, const F32 simSpeed )
-    {
-        timeStepFactor = to_U8( std::max( 1u, timeStepFactor * 1u ) );
-        _timeStepFactor = timeStepFactor;
-        _timeStep = 1.0f / _timeStepFactor;
-        _timeStep *= simSpeed;
-    }
 
     /// Process results
-    void PhysX::frameStarted( const U64 deltaTimeGameUS )
+    void PhysX::frameStartedInternal( const U64 deltaTimeGameUS )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Physics );
-
-        if ( _targetScene != nullptr && _timeStep > 0.0f )
+        if ( _targetScene != nullptr )
         {
-            _accumulator += Time::MicrosecondsToMilliseconds<physx::PxReal>( deltaTimeGameUS );
-
-            if ( _accumulator < _timeStep )
-            {
-                return;
-            }
-
-            _accumulator -= _timeStep;
-            _targetScene->frameStarted( Time::SecondsToMicroseconds<U64>( _timeStep ) );
+            _targetScene->frameStarted( deltaTimeGameUS );
         }
     }
 
     /// Update actors
-    void PhysX::frameEnded( const U64 deltaTimeGameUS )
+    void PhysX::frameEndedInternal( const U64 deltaTimeGameUS )
     {
         if ( _targetScene != nullptr ) [[likely]]
         {

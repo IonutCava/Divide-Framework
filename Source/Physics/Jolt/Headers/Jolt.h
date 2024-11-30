@@ -30,50 +30,34 @@
  */
 
 #pragma once
-#ifndef DVD_PHYSX_H_
-#define DVD_PHYSX_H_
+#ifndef DVD_PHYSICS_JOLT_H_
+#define DVD_PHYSICS_JOLT_H_
 
 #ifndef DVD_PHYSICS_API_FOUND_
 #define DVD_PHYSICS_API_FOUND_
 #endif
 
-#include "PhysXActor.h"
-#include "PhysXSceneInterface.h"
 #include "Physics/Headers/PhysicsAPIWrapper.h"
-
-namespace physx
-{
-    class PxPvd;
-    class PxPvdTransport;
-}
 
 constexpr auto MAX_ACTOR_QUEUE = 30;
 
-namespace Divide {
-
-class PhysX;
-class PxDefaultAllocator final : public physx::PxAllocatorCallback
+namespace JPH
 {
-    void* allocate(const size_t size, const char*, const char*, int) noexcept override
-    {
-        return mi_new_aligned_nothrow(size, 16);
-    }
+    class Factory;
+} //namespace JPH
 
-    void deallocate(void* ptr) noexcept override
-    {
-        mi_free_aligned(ptr, s_alignment);
-    }
+class PhysicsSystem;
+class JobSystemThreadPool;
 
-private:
-    static constexpr size_t s_alignment = 16u;
-};
+namespace Divide {
 
 class PhysicsAsset;
 class SceneGraphNode;
-class PhysX final : public PhysicsAPIWrapper {
+class PhysicsJolt final : public PhysicsAPIWrapper
+{
 
 public:
-    explicit PhysX( PlatformContext& context );
+    explicit PhysicsJolt( PlatformContext& context );
 
     [[nodiscard]] ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
     [[nodiscard]] bool closePhysicsAPI() override;
@@ -81,38 +65,24 @@ public:
     void frameEndedInternal(U64 deltaTimeGameUS ) override;
     void idle() override;
 
+
     [[nodiscard]] bool initPhysicsScene(Scene& scene) override;
     [[nodiscard]] bool destroyPhysicsScene(const Scene& scene) override;
 
     [[nodiscard]] bool intersect(const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersectionsOut) const override;
 
-    [[nodiscard]] physx::PxPhysics* getSDK() const noexcept { return _gPhysicsSDK; }
-
     [[nodiscard]] PhysicsAsset* createRigidActor(SceneGraphNode* node, RigidBodyComponent& parentComp) override;
 
     [[nodiscard]] bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
-    void togglePvdConnection() const;
-    void createPvdConnection(const char* ip, physx::PxU32 port, physx::PxU32 timeout, bool useFullConnection);
 
-#if PX_SUPPORT_GPU_PHYSX
-    POINTER_R(physx::PxCudaContextManager, cudaContextManager, nullptr);
-#endif //PX_SUPPORT_GPU_PHYSX
-
-protected:
-    PhysXSceneInterface_uptr _targetScene;
-    physx::PxRigidActor* createActorForGroup(PhysicsGroup group, const physx::PxTransform& pose);
 private:
     F32 _simulationSpeed = 1.0f;
-    physx::PxPhysics* _gPhysicsSDK = nullptr;
-    physx::PxFoundation* _foundation = nullptr;
-    physx::PxMaterial* _defaultMaterial = nullptr;
-    physx::PxPvd* _pvd = nullptr;
-    physx::PxPvdTransport* _transport = nullptr;
 
-    static SharedMutex s_meshCacheLock;
-    static hashMap<U64, physx::PxTriangleMesh*> s_gMeshCache;
+    std::unique_ptr<JPH::Factory> _factory;
+    std::unique_ptr<JobSystemThreadPool> _threadPool;
+    std::unique_ptr<PhysicsSystem> _physicsSystem;
 };
 
 };  // namespace Divide
 
-#endif //DVD_PHYSX_H_
+#endif //DVD_PHYSICS_JOLT_H_

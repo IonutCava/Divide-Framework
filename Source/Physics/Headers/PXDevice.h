@@ -43,11 +43,11 @@ class PhysicsAsset;
 class PXDevice final : public PhysicsAPIWrapper, public FrameListener
 {
 public:
-    enum class PhysicsAPI : U8 {
+    enum class PhysicsAPI : U8
+    {
         PhysX = 0,
-        ODE,
-        Bullet,
         Jolt,
+        None,
         COUNT
     };
 
@@ -57,7 +57,8 @@ public:
     ErrorCode initPhysicsAPI(U8 targetFrameRate, F32 simSpeed) override;
     bool closePhysicsAPI() override;
 
-    void updateTimeStep(U8 timeStepFactor, F32 simSpeed) override;
+    void updateTimeStep(U8 simulationFrameRate, F32 simSpeed);
+
     void idle() override;
     bool convertActor(PhysicsAsset* actor, PhysicsGroup newGroup) override;
 
@@ -77,8 +78,8 @@ public:
     PROPERTY_RW(PhysicsAPI, apiID, PhysicsAPI::COUNT);
 
 protected:
-    void frameStarted( U64 deltaTimeGameUS ) override;
-    void frameEnded( U64 deltaTimeGameUS ) noexcept override;
+    void frameStartedInternal( U64 deltaTimeGameUS ) override;
+    void frameEndedInternal( U64 deltaTimeGameUS ) noexcept override;
 
 private:
     F32 _simulationSpeed = 1.0f;
