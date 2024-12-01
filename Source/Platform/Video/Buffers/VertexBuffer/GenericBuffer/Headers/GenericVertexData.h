@@ -43,8 +43,8 @@
 
 namespace Divide {
 
-NOINITVTABLE class GenericVertexData : public VertexDataInterface,
-                                       public RingBuffer
+NOINITVTABLE_CLASS(GenericVertexData) : public VertexDataInterface,
+                                        public RingBuffer
 {
    public:
      static constexpr size_t INVALID_INDEX_OFFSET = SIZE_MAX;

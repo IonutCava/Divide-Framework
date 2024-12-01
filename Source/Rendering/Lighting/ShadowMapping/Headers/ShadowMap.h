@@ -85,7 +85,7 @@ protected:
 
 FWD_DECLARE_MANAGED_STRUCT(DebugView);
 /// All the information needed for a single light's shadowmap
-NOINITVTABLE class ShadowMap
+NOINITVTABLE_CLASS(ShadowMap)
 {
   public:
     static constexpr U8 MAX_SHADOW_FRAME_LIFETIME = 32u;

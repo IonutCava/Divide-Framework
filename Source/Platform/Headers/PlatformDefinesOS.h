@@ -59,7 +59,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif //NO_INLINE
 
 #ifndef NOINITVTABLE
-#define NOINITVTABLE __declspec(novtable)
+#define NOINITVTABLE_CLASS(X) class __declspec(novtable) X
+#define NOINITVTABLE_STRUCT(X) struct __declspec(novtable) X
 #endif  //NOINITVTABLE
 
 #else //USING_MSVC
@@ -75,14 +76,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef USING_CLANG
 
 #ifndef NOINITVTABLE
-#define NOINITVTABLE __declspec(novtable)
+#define NOINITVTABLE_CLASS(X) __declspec(novtable) class X
+#define NOINITVTABLE_STRUCT(X) __declspec(novtable) struct X
 #endif  //NOINITVTABLE
 
 #else //USING_CLANG
 
 // GCC does not have this attribute
 #ifndef NOINITVTABLE
-#define NOINITVTABLE
+#define NOINITVTABLE_CLASS(X)
+#define NOINITVTABLE_STRUCT(X)
 #endif  //NOINITVTABLE
 
 #endif //USING_CLANG

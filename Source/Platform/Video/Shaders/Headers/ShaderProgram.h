@@ -114,8 +114,8 @@ namespace Divide
         static SharedMutex s_shaderNameLock;
     };
 
-    NOINITVTABLE class ShaderProgram : public CachedResource,
-                                       public GraphicsResource
+    NOINITVTABLE_CLASS(ShaderProgram) : public CachedResource,
+                                        public GraphicsResource
     {
     public:
         static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";

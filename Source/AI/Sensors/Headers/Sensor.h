@@ -43,7 +43,7 @@ enum class SensorType : U8 {
 };
 
 class AIEntity;
-NOINITVTABLE class Sensor
+NOINITVTABLE_CLASS(Sensor)
 {
    public:
     virtual ~Sensor() = default;

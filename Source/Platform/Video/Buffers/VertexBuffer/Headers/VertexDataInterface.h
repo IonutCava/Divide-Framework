@@ -44,7 +44,7 @@ struct GenericDrawCommand;
 
 struct VDIUserData{};
 
-NOINITVTABLE class VertexDataInterface : public GUIDWrapper, public GraphicsResource
+NOINITVTABLE_CLASS(VertexDataInterface) : public GUIDWrapper, public GraphicsResource
 {
    public:
     using Handle = PoolHandle;

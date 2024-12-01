@@ -57,7 +57,7 @@ struct RenderTargetDescriptor
     U8 _msaaSamples{ 0u };
 };
 
-NOINITVTABLE class RenderTarget : public GUIDWrapper, public GraphicsResource
+NOINITVTABLE_CLASS(RenderTarget) : public GUIDWrapper, public GraphicsResource
 {
    public:
     enum class Usage : U8 {

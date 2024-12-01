@@ -43,7 +43,7 @@ namespace AI {
 class AIManager;
 enum class AIMsg : U8;
 /// Provides a scene-level AI implementation
-NOINITVTABLE class AIProcessor : NonCopyable
+NOINITVTABLE_CLASS(AIProcessor) : NonCopyable
 {
    public:
     AIProcessor(AIManager& parentManager);

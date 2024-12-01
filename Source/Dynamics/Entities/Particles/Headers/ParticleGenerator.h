@@ -37,7 +37,7 @@
 
 namespace Divide {
 
-NOINITVTABLE class ParticleGenerator
+NOINITVTABLE_CLASS(ParticleGenerator)
 {
    public:
     virtual ~ParticleGenerator() = default;

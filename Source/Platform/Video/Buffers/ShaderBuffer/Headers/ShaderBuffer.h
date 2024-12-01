@@ -45,9 +45,9 @@ namespace Attorney {
 };
 
 class ShaderProgram;
-NOINITVTABLE class ShaderBuffer : public GUIDWrapper,
-                                  public GraphicsResource,
-                                  public RingBufferSeparateWrite
+NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
+                                   public GraphicsResource,
+                                   public RingBufferSeparateWrite
                                   
 {
     friend class Attorney::ShaderBufferBind;
