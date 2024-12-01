@@ -132,7 +132,7 @@
         },
         {
             "name": "linux-clang",
-            "displayName": "Game Build (Linux - CLANG)",
+            "displayName": "Game Build (CLANG)",
             "description": "Target Linux OS with the clang compiler",
             "inherits": "conf-linux-common",
             "cacheVariables": {
@@ -218,19 +218,19 @@
         },
         {
             "name": "linux-clang-editor",
-            "displayName": "Editor Build (Linux - CLANG)",
+            "displayName": "Editor Build (CLANG)",
             "description": "Target Linux OS with the clang compiler. Editor build.",
             "inherits": [ "linux-clang", "editor-build" ]
         },
         {
             "name": "linux-clang-instrumentation",
-            "displayName": "Game Build (Linux - CLANG) + Instrumentation",
+            "displayName": "Game Build (CLANG) + Instrumentation",
             "description": "Target Linux OS with the clang compiler. Instrumentation enabled.",
             "inherits": [ "linux-clang", "function-profiling-build" ]
         },
         {
             "name": "linux-clang-editor-instrumentation",
-            "displayName": "Editor Build (Linux - CLANG) + Instrumentation",
+            "displayName": "Editor Build (CLANG) + Instrumentation",
             "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled.",
             "inherits": [ "linux-clang-instrumentation", "editor-build" ]
         },
