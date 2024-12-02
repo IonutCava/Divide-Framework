@@ -84,8 +84,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // GCC does not have this attribute
 #ifndef NOINITVTABLE
-#define NOINITVTABLE_CLASS(X)
-#define NOINITVTABLE_STRUCT(X)
+#define NOINITVTABLE_CLASS(X) class X
+#define NOINITVTABLE_STRUCT(X) struct X
 #endif  //NOINITVTABLE
 
 #endif //USING_CLANG
