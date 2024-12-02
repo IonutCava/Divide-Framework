@@ -19,11 +19,11 @@ function (Toggle_Available_Vector_Extensions)
         string(REPLACE "_" "" flag "${flag}")
 
         if("${flag}" MATCHES "AVX512F")
-        set(AVX512_OPT ON)
+            set(AVX512_OPT ON)
         endif()
 
         if("${flag}" MATCHES "AVX2")
-        set(AVX2_OPT ON)
+            set(AVX2_OPT ON)
         endif()
 
         if("${flag}" MATCHES "AVX")
@@ -39,15 +39,15 @@ function (Toggle_Available_Vector_Extensions)
         endif()
 
         if("${flag}" MATCHES "fma4")
-        set(FMA4_OPT ON)
+            set(FMA4_OPT ON)
         endif()
 
         if("${flag}" MATCHES "bmi2")
-        set(BMI2_OPT ON)
+            set(BMI2_OPT ON)
         endif()
 
         if("${flag}" MATCHES "f16c")
-        set(F16C_OPT ON)
+            set(F16C_OPT ON)
         endif()
 
     endforeach(flag)
@@ -149,6 +149,16 @@ function (Toggle_Available_Vector_Extensions)
             add_compile_options(-mno-f16c)
         endif()
     endif()
+
+    set(AVX512_OPT  ${AVX512_OPT} PARENT_SCOPE)
+    set(AVX2_OPT    ${AVX2_OPT}   PARENT_SCOPE)
+    set(AVX_OPT     ${AVX_OPT}    PARENT_SCOPE)
+    set(SSE41_OPT   ${SSE41_OPT}  PARENT_SCOPE)
+    set(SSE42_OPT   ${SSE42_OPT}  PARENT_SCOPE)
+    set(FMA4_OPT    ${FMA4_OPT}   PARENT_SCOPE)
+    set(BMI2_OPT    ${BMI2_OPT}   PARENT_SCOPE)
+    set(F16C_OPT    ${F16C_OPT}   PARENT_SCOPE)
+    set(EXTENSIONS} ${EXTENSIONS} PARENT_SCOPE)
 
     message("Available extensions: " ${EXTENSIONS})
 
