@@ -38,8 +38,10 @@ function (FetchContent_MakeAvailable_JoltPhysics)
         message("Enabling AVX512 support:" ${AVX512_OPT})
 
         option(USE_LZCNT "Enable LZCNT" ${BMI2_OPT})
+        message("Enabling LZCNT support:" ${BMI2_OPT})
+
         option(USE_TZCNT "Enable TZCNT" ${BMI2_OPT})
-        message("BMI2 support:" ${BMI2_OPT})
+        message("Enabling TZCNT support:" ${BMI2_OPT})
 
         option(USE_F16C "Enable F16C" ${F16C_OPT})
         message("Enabling F16C support:" ${F16C_OPT})
@@ -49,11 +51,16 @@ function (FetchContent_MakeAvailable_JoltPhysics)
 
         option(USE_ASSERTS "Enable asserts" ON)
         option(DOUBLE_PRECISION "Use double precision math" OFF)
-        if (CMAKE_BUILD_TYPE MATCHES Release)
-            option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" OFF)
+
+        if (${GNU_COMPILER})
+            option(ENABLE_ALL_WARNINGS "Enable all warnings and warnings as errors" OFF)
+            message("Enable all warnings and warnings as errors: OFF")
         else()
-            option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" ON)
+            option(ENABLE_ALL_WARNINGS "Enable all warnings and warnings as errors" ON)
+            message("Enable all warnings and warnings as errors: ON")
         endif()
+        
+        option(GENERATE_DEBUG_SYMBOLS "Generate debug symbols" $<$<CONFIG:Debug,RelWithDebInfo>:ON>$<$<CONFIG:Release>:OFF>)
         option(OVERRIDE_CXX_FLAGS "Override CMAKE_CXX_FLAGS_DEBUG/RELEASE" OFF)
         option(CROSS_PLATFORM_DETERMINISTIC "Cross platform deterministic" ON)
         option(CROSS_COMPILE_ARM "Cross compile to aarch64-linux-gnu" OFF)
@@ -63,7 +70,8 @@ function (FetchContent_MakeAvailable_JoltPhysics)
         option(CPP_RTTI_ENABLED "Enable C++ RTTI" OFF)
         option(OBJECT_LAYER_BITS "Number of bits in ObjectLayer" 16)
         option(USE_WASM_SIMD "Enable SIMD for WASM" OFF)
-        option(ENABLE_ALL_WARNINGS "Enable all warnings and warnings as errors" ON)
+
+
         option(TRACK_BROADPHASE_STATS "Track Broadphase Stats" OFF)
         option(TRACK_NARROWPHASE_STATS "Track Narrowphase Stats" OFF)
         option(DEBUG_RENDERER_IN_DEBUG_AND_RELEASE "Enable debug renderer in Debug and Release builds" ON)
