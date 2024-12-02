@@ -82,7 +82,13 @@
             "name": "asan-build",
             "hidden": true,
             "cacheVariables": {
-                "RUN_ASAN": true,
+                "RUN_ASAN": true
+            }
+        },
+        {
+            "name": "ubsan-build",
+            "hidden": true,
+            "cacheVariables": {
                 "RUN_UBSAN": true
             }
         },
@@ -163,10 +169,10 @@
             "inherits": [ "windows-msvc", "editor-build" ]
         },
         {
-            "name": "windows-msvc-editor-asan",
-            "displayName": "Editor Build (MSVC)",
+            "name": "windows-msvc-editor-asan-ubsan",
+            "displayName": "Editor Build (MSVC) + ASAN + UBSAN",
             "description": "Target Windows with the msvc compiler. Editor build. ASAN enabled.",
-            "inherits": [ "windows-msvc-editor", "asan-build" ]
+            "inherits": [ "windows-msvc-editor", "asan-build", "ubsan-build" ]
         },
         {
             "name": "windows-msvc-editor-instrumentation",
@@ -193,10 +199,10 @@
             "inherits": [ "windows-clang-instrumentation", "editor-build" ]
         },
         {
-            "name": "windows-clang-editor-asan",
-            "displayName": "Editor Build (Win64 - CLANG)",
+            "name": "windows-clang-editor-asan-ubsan",
+            "displayName": "Editor Build (Win64 - CLANG) + ASAN + UBSAN",
             "description": "Target Windows with the clang compiler. Editor build. ASAN enabled.",
-            "inherits": [ "windows-clang-editor", "asan-build" ]
+            "inherits": [ "windows-clang-editor", "asan-build", "ubsan-build" ]
         },
         {
             "name": "linux-gcc-editor",
@@ -221,6 +227,12 @@
             "displayName": "Editor Build (CLANG)",
             "description": "Target Linux OS with the clang compiler. Editor build.",
             "inherits": [ "linux-clang", "editor-build" ]
+        },
+        {
+            "name": "linux-clang-editor-asan-ubsan",
+            "displayName": "Editor Build (CLANG) + ASAN + UBSAN",
+            "description": "Target Linux OS with the clang compiler. Editor build.",
+            "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ]
         },
         {
             "name": "linux-clang-instrumentation",
@@ -273,8 +285,8 @@
             "configuration": "Release"
         },
         {
-            "name": "windows-msvc-profile-editor-asan",
-            "configurePreset": "windows-msvc-editor-asan",
+            "name": "windows-msvc-profile-editor-asan-ubsan",
+            "configurePreset": "windows-msvc-editor-asan-ubsan",
             "configuration": "RelWithDebInfo"
         },
         {
@@ -338,8 +350,8 @@
             "configuration": "Release"
         },
         {
-            "name": "windows-clang-profile-editor-asan",
-            "configurePreset": "windows-clang-editor-asan",
+            "name": "windows-clang-profile-editor-asan-ubsan",
+            "configurePreset": "windows-clang-editor-asan-ubsan",
             "configuration": "RelWithDebInfo"
         },
         {
@@ -448,6 +460,11 @@
             "configuration": "Release"
         },
         {
+            "name": "linux-clang-release-editor-asan-ubsan",
+            "configurePreset": "linux-clang-editor-asan-ubsan",
+            "configuration": "Release"
+        },
+        {
             "name": "linux-clang-debug-editor-instrumentation",
             "configurePreset": "linux-clang-editor-instrumentation",
             "configuration": "Debug"
@@ -517,11 +534,11 @@
             }
         },
         {
-            "name": "test-windows-msvc-profile-editor-asan",
-            "displayName": "Test-MSVC-Profile-Editor",
+            "name": "test-windows-msvc-profile-editor-asan-ubsan",
+            "displayName": "Test-MSVC-Profile-Editor + ASAN + UBSAN",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-msvc-editor-asan",
+            "configurePreset": "windows-msvc-editor-asan-ubsan",
             "configuration": "RelWithDebInfo"
         },
         {
@@ -597,11 +614,11 @@
             "configuration": "Release"
         },
         {
-            "name": "test-windows-clang-profile-editor-asan",
-            "displayName": "Test-Clang-Win64-Profile-Editor-Asan",
+            "name": "test-windows-clang-profile-editor-asan-ubsan",
+            "displayName": "Test-Clang-Win64-Profile-Editor-Asan-Ubsan",
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
-            "configurePreset": "windows-clang-editor-asan",
+            "configurePreset": "windows-clang-editor-asan-ubsan",
             "configuration": "RelWithDebInfo"
         },
         {
