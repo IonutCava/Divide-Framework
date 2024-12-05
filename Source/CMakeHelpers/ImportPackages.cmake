@@ -46,6 +46,7 @@ set(NVTT_LIBRARIES "")
 
 if(NOT MAC_OS_BUILD)
     find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
+    include_directories( SYSTEM ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS} )
 
     find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
@@ -118,10 +119,6 @@ include_directories(
     ${expat_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}/vma
 )
-
-if(NOT MAC_OS_BUILD)
-    include_directories( SYSTEM ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS} )
-endif()
 
 include_directories(
     "ThirdParty/EntityComponentSystem/include/ECS"

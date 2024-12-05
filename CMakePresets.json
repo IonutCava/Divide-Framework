@@ -68,7 +68,8 @@
                 "rhs": "Darwin"
             },
             "cacheVariables": {
-                "MAC_OS_BUILD": true
+                "MAC_OS_BUILD": true,
+                "CMAKE_OSX_ARCHITECTURES": "x86_64" // A lot of our third party stuff doesn't work with NEON/M1 platforms. Force this for now.
             }
         },
         {

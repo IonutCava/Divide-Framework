@@ -40,6 +40,7 @@ set(OPTICK_USE_VULKAN TRUE)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 
+#Jolt Physics
 FetchContent_Declare(
     JoltPhysics
     GIT_REPOSITORY  https://github.com/jrouwe/JoltPhysics.git
