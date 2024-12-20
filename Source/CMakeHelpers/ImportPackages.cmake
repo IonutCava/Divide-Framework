@@ -8,12 +8,15 @@ add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
 add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 add_compile_definitions(HAVE_M_PI)
 add_compile_definitions(SDL_MAIN_HANDLED)
-add_compile_definitions(EASTL_USER_DEFINED_ALLOCATOR)
 add_compile_definitions(EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED=1)
 add_compile_definitions(IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
 
+if (ENABLE_MIMALLOC)
+    find_package(mimalloc CONFIG REQUIRED)
+    add_compile_definitions(EASTL_USER_DEFINED_ALLOCATOR)
+endif()
+
 find_package(PkgConfig REQUIRED)
-find_package(mimalloc CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(fmt CONFIG REQUIRED)
@@ -175,3 +178,4 @@ elseif(WINDOWS_OS_BUILD)
 endif()
 
 add_compile_definitions(CEGUI_STATIC)
+

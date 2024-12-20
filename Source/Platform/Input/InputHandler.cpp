@@ -3,7 +3,7 @@
 #include "Headers/InputHandler.h"
 #include "Headers/InputAggregatorInterface.h"
 
-#include "Core/Headers/Kernel.h"
+#include "Core/Headers/Application.h"
 
 namespace Divide {
 namespace Input {

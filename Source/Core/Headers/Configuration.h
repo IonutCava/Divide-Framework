@@ -77,6 +77,7 @@ struct Configuration final : XML::IXMLSerializable {
     struct Runtime
     {
         string title = "DIVIDE Framework";
+        bool enableEditor = true;
         U8 targetDisplay = 0;
         U8 targetRenderingAPI = 0;
         I16 maxWorkerThreads = -1;

@@ -697,6 +697,10 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         config.debug.renderer.useExtensions = false;
     }
+    if (Util::FindCommandLineArgument(_argc, _argv, "disableEditor"))
+    {
+        config.runtime.enableEditor = false;
+    }
 
     if ( Util::ExtractStartupProject( _argc, _argv, config.startupProject ) )
     {
@@ -711,9 +715,9 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
 
 #   if defined(IS_MACOS_BUILD)
-        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
-#   else //IS_MACOS_BUILD
         _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
+#   else //IS_MACOS_BUILD
+        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
 #   endif //IS_MACOS_BUILD
 
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
@@ -861,7 +865,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     Str<256> startupProject = config.startupProject.c_str();
-    if constexpr ( Config::Build::IS_EDITOR_BUILD )
+    if ( Config::Build::IS_EDITOR_BUILD && config.runtime.enableEditor)
     {
         startupProject = Config::DEFAULT_PROJECT_NAME;
         Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject.c_str() );
@@ -949,6 +953,12 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         {
             ctx->editor().selectionChangeCallback(idx, nodes);
         });
+
+        if (!config.runtime.enableEditor)
+        {
+            _platformContext.editor().toggle(false);
+        }
+
     }
 
     Console::printfn(LOCALE_STR("INITIAL_DATA_LOADED"));

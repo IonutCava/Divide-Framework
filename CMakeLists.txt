@@ -5,17 +5,18 @@ option(BUILD_TESTING_INTERNAL "Build unit test executables" ON)
 option(RUN_TESTING_INTERNAL "Run unit test after every build" ON)
 option(ENABLE_JUST_MY_CODE "Enable jsut my code debugging in MSVC in debug builds (/JMC)" OFF)
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
+option(SHOW_CONSOLE_WINDOW "Show the console window and Win32 builds and direct all log output to it" OFF)
+option(ENABLE_MIMALLOC "Use mimalloc to override malloc/free calls" OFF)
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/ToggleVectorExtensions.cmake")
 
-set(vcpkg "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-set(local_vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
+set(vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
     if ( EXISTS "${vcpkg}")
         set(CMAKE_TOOLCHAIN_FILE "${vcpkg}" CACHE FILEPATH "CMake toolchain file")
     else()
-        set(CMAKE_TOOLCHAIN_FILE "${local_vcpkg}" CACHE FILEPATH "Make toolchain file")
+        message( FATAL_ERROR "Missing VCPKCG CMake toolchain file" )
     endif()
 endif()
   
@@ -103,6 +104,10 @@ Toggle_Available_Vector_Extensions()
 set(EXTRA_COMPILE_FLAGS "")
 set(EXTRA_LINK_FLAGS "")
 
+if (ENABLE_MIMALLOC)
+    add_compile_definitions(ENABLE_MIMALLOC)
+endif()
+
 if (MSVC_COMPILER)
   set(CMAKE_DEBUG_PREFIX /D)
 
@@ -110,7 +115,6 @@ if (MSVC_COMPILER)
   add_compile_options(/Zc:__cplusplus /Zm256 /utf-8) 
   add_compile_options("$<$<CONFIG:DEBUG>:/d2Obforceinline>")
   add_link_options(/INCREMENTAL)
-
   set (CMAKE_VS_JUST_MY_CODE_DEBUGGING $<IF:$<AND:$<CONFIG:Debug>,$<BOOL:${ENABLE_JUST_MY_CODE}>>,ON,OFF>)
 
   if ( RUN_ASAN )
@@ -126,6 +130,14 @@ if (MSVC_COMPILER)
     message("UBSAN enabled but not yet supported!")
   else()
     message("UBSAN disabled!")
+  endif()
+
+  if ( ENABLE_FUNCTION_PROFILING )
+    add_link_options(/PROFILE)
+  endif()
+
+  if (SHOW_CONSOLE_WINDOW)
+    add_compile_definitions(SHOW_CONSOLE_WINDOW)
   endif()
 
 else ()

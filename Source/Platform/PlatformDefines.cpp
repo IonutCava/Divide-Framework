@@ -21,7 +21,6 @@ namespace Divide
 
     namespace Assert
     {
-
         bool DIVIDE_ASSERT_FUNC( const bool expression, const std::string_view expressionStr, const std::string_view file, const int line, const std::string_view failMessage ) noexcept
         {
             if constexpr ( !Config::Build::IS_SHIPPING_BUILD )
@@ -73,16 +72,21 @@ namespace Divide
         SeedRandom();
 
         InitSysInfo( sysInfo(), argc, argv );
-        Paths::initPaths();
-        if ( Paths::g_logPath.empty() )
+        ErrorCode ret = ErrorCode::NO_ERR;
+        
+        ret =  Paths::initPaths();
+
+        ResourcePath consolePath = Paths::g_logPath;
+        if ( ret != ErrorCode::NO_ERR )
         {
-            return ErrorCode::PATHS_ERROR;
+            consolePath = {};
         }
-        Console::Start( OUTPUT_LOG_FILE,
+
+        Console::Start( consolePath,
+                        OUTPUT_LOG_FILE,
                         ERROR_LOG_FILE,
                         !Util::FindCommandLineArgument( argc, argv, "disableCopyright" ) );
-        
-        return ErrorCode::NO_ERR;
+        return ret;
     }
 
     bool PlatformClose()

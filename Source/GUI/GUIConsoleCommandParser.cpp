@@ -6,6 +6,7 @@
 
 #include "AI/PathFinding/NavMeshes/Headers/NavMesh.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/Application.h"
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"

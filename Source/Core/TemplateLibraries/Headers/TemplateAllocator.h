@@ -35,9 +35,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <EASTL/internal/config.h>
 
-template<class T>
+#if !defined(ENABLE_MIMALLOC)
+
+template<typename T>
+class dvd_allocator : public std::allocator<T>
+{
+};
+
+#else //ENABLE_MIMALLOC
+
+template<typename T>
 using dvd_allocator = mi_stl_allocator<T>;
 
+#if defined(EASTL_USER_DEFINED_ALLOCATOR)
 namespace eastl
 {
 	inline allocator::allocator( const char* EASTL_NAME( pName ) )
@@ -128,5 +138,7 @@ namespace eastl
 #endif
 
 } // namespace eastl
+#endif //EASTL_USER_DEFINED_ALLOCATOR
+#endif //ENABLE_MIMALLOC
 
 #endif //DVD_TEMPLATE_ALLOCATOR_H_

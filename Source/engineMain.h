@@ -33,17 +33,19 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_ENGINE_MAIN_HEADER_
 #define DVD_ENGINE_MAIN_HEADER_
 
-#include "Core/Headers/Application.h"
+#include "Core/Headers/ErrorCodes.h"
 
-namespace Divide {
+namespace Divide
+{
 
 struct Engine final : NonCopyable, NonMovable
 {
-    [[nodiscard]] ErrorCode init(int argc, char **argv);
-    [[nodiscard]] ErrorCode run(const int argc, char** argv);
+
+    [[nodiscard]] static ErrorCode Run(const int argc, char** argv);
 
 private:
-    Application_uptr _app{};
+    [[nodiscard]] static ErrorCode Init(Application& app, int argc, char **argv);
+    [[nodiscard]] static ErrorCode RunInternal(const int argc, char** argv);
 };
 
 } // namespace Divide

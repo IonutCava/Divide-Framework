@@ -48,6 +48,8 @@ set( AI_SOURCE AI/ActionInterface/CustomGOAP/Action.cpp
 set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/Application.h
                          Core/Headers/Application.inl
+                         Core/Headers/DisplayManager.h
+                         Core/Headers/DisplayManager.inl
                          Core/Headers/ByteBuffer.inl
                          Core/Headers/ByteBuffer.h
                          Core/Headers/Configuration.h
@@ -124,6 +126,7 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
 )
 
 set( CORE_SOURCE Core/Application.cpp
+                 Core/DisplayManager.cpp
                  Core/ByteBuffer.cpp
                  Core/Configuration.cpp
                  Core/Console.cpp

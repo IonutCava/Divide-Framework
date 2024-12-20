@@ -79,7 +79,7 @@ ResourcePath Paths::Shaders::GLSL::g_meshAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_taskAtomLoc;
 ResourcePath Paths::Shaders::GLSL::g_comnAtomLoc;
 
-void Paths::initPaths() 
+ErrorCode Paths::initPaths()
 {
     g_logPath          = ResourcePath( "Logs" );
     g_xmlDataLocation  = ResourcePath( "XML" );
@@ -174,6 +174,19 @@ void Paths::initPaths()
     Shaders::GLSL::g_meshAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "MeshAtoms";
     Shaders::GLSL::g_taskAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "TaskAtoms";
     Shaders::GLSL::g_comnAtomLoc = Shaders::GLSL::g_GLSLShaderLoc / "Common";
+
+    ErrorCode ret = ErrorCode::NO_ERR;
+
+    if (!pathExists(g_logPath) ||
+        !pathExists(g_xmlDataLocation) ||
+        !pathExists(g_projectsLocation) ||
+        !pathExists(g_assetsLocation) ||
+        !pathExists(g_localisationPath))
+    {
+        ret = ErrorCode::PATHS_ERROR;
+    }
+
+    return ret;
 }
 
 

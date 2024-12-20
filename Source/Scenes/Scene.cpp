@@ -1185,30 +1185,34 @@ namespace Divide
         static bool hadWindowGrab = false;
         static int2 lastMousePosition;
 
-        state()->playerState( index ).cameraLockedToMouse( lockState );
-
-        const DisplayWindow* window = _context.app().windowManager().getFocusedWindow();
-        if ( lockState )
+        if (state()->playerState(index).cameraLockedToMouse() != lockState )
         {
-            if ( window != nullptr )
+            state()->playerState( index ).cameraLockedToMouse( lockState );
+
+            const DisplayWindow* window = _context.app().windowManager().getFocusedWindow();
+            if ( lockState )
             {
-                hadWindowGrab = window->grabState();
+                if ( window != nullptr )
+                {
+                    hadWindowGrab = window->grabState();
+                }
+                lastMousePosition = WindowManager::GetGlobalCursorPosition();
+                WindowManager::ToggleRelativeMouseMode( true );
             }
-            lastMousePosition = WindowManager::GetGlobalCursorPosition();
-            WindowManager::ToggleRelativeMouseMode( true );
-        }
-        else
-        {
-            WindowManager::ToggleRelativeMouseMode( false );
-            state()->playerState( index ).resetMoveDirections();
-            if ( window != nullptr )
+            else
             {
-                window->grabState( hadWindowGrab );
+                WindowManager::ToggleRelativeMouseMode( false );
+                state()->playerState( index ).resetMoveDirections();
+                if ( window != nullptr )
+                {
+                    window->grabState( hadWindowGrab );
+                }
+                WindowManager::SetGlobalCursorPosition( lastMousePosition.x, lastMousePosition.y );
             }
-            WindowManager::SetGlobalCursorPosition( lastMousePosition.x, lastMousePosition.y );
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     bool Scene::load()
@@ -1240,28 +1244,18 @@ namespace Divide
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = to_U32( childCount );
         descriptor._partitionSize = 3u;
-
-        if ( descriptor._iterCount > descriptor._partitionSize * 3u )
+        descriptor._priority = TaskPriority::DONT_CARE;
+        descriptor._useCurrentThread = true;
+        descriptor._allowPoolIdle = true;
+        descriptor._waitForFinish = true;
+        Parallel_For( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor, [this, &rootNode, &rootChildren]( const Task* parentTask, const U32 start, const U32 end )
         {
-            descriptor._priority = TaskPriority::DONT_CARE;
-            descriptor._useCurrentThread = true;
-            descriptor._allowPoolIdle = true;
-            descriptor._waitForFinish = true;
-            Parallel_For( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor, [this, &rootNode, &rootChildren]( const Task* parentTask, const U32 start, const U32 end )
+            for ( U32 i = start; i < end; ++i )
             {
-                for ( U32 i = start; i < end; ++i )
-                {
-                    loadAsset( parentTask, rootChildren[i], rootNode );
-                }
-            });
-        }
-        else
-        {
-            for ( U32 i = 0u; i < descriptor._iterCount; ++i )
-            {
-                loadAsset( nullptr, rootChildren[i], rootNode );
+                loadAsset( parentTask, rootChildren[i], rootNode );
             }
-        }
+        });
+
         WAIT_FOR_CONDITION( _loadingTasks.load() == 0u );
 
         // We always add a sky
@@ -2391,7 +2385,7 @@ namespace Divide
                 const U8 currentPlayerCount = playerCount();
 
                 float3 camPos;
-                Quaternion<F32> camOrientation;
+                quatf camOrientation;
 
                 U8 currentPlayerIndex = 0u;
                 U8 previousPlayerCount = 0u;

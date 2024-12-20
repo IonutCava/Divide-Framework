@@ -163,7 +163,7 @@ struct Paths {
     // project specifying command line argument
     static constexpr auto g_useProjectPattern = ctll::fixed_string{ R"((--project\s*=\s*)([0-9a-zA-Z]*))" };
 
-    static void initPaths();
+    [[nodiscard]] static ErrorCode initPaths();
 }; //class Paths
 
 struct FileEntry

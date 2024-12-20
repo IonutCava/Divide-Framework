@@ -3,6 +3,7 @@
 #include "Headers/RenderTarget.h"
 
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"

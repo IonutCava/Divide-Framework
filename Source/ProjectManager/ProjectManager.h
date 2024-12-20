@@ -86,6 +86,21 @@ constexpr const char* CONFIG_LOGO_TAG = "logo";
 constexpr const char* CONFIG_IDE_CMD_TAG = "IDECommand";
 constexpr const char* CONFIG_IDE_NAME_TAG = "IDEName";
 
+
+enum LaunchMode : uint8_t
+{
+    IDE,
+    GAME,
+    EDITOR
+};
+
+constexpr const char* OPERATION_MODES[] =
+{
+    /*0*/ EDITOR_NAME,
+    /*1*/ "Editor Mode",
+    /*2*/ "Game Mode"
+};
+
 //Source: game-icons.net
 constexpr const char* ICONS[] =
 {
@@ -98,12 +113,6 @@ constexpr const char* ICONS[] =
     /*6*/ "auto-repair.png"
 };
 
-constexpr const char* OPERATION_MODES[] = 
-{
-    /*0*/ EDITOR_NAME,
-    /*1*/ "Editor Mode",
-    /*2*/ "Game Mode"
-};
 
 constexpr const char* LAUNCH_CONFIG = "Launch Config:";
 constexpr const char* BUILD_TOOLSET = "Build Toolset:";
@@ -151,25 +160,5 @@ constexpr const char* ERRORS[] =
     /*7*/ "Failed to parse XML file: [ {} ]\n{}",
     /*8*/ "Failed to save to XML file: [ {} ]\n{}",
 };
-
-enum class BuildTarget : uint8_t
-{
-    Release,
-    Profile,
-    Debug,
-    COUNT
-};
-
-static const char* BuildTargetNames[] = { "release", "profile", "debug", "COUNT" };
-
-enum class BuildType : uint8_t
-{
-    Editor,
-    Game,
-    COUNT
-};
-
-static const char* BuildTypetNames[] = { "Editor", "Game", "COUNT" };
-
 
 #endif //DVD_PROJECTMANAGER_H

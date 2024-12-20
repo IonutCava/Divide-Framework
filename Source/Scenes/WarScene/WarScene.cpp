@@ -207,7 +207,7 @@ bool WarScene::load() {
 
     // Position camera
     Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setEye(float3(43.13f, 147.09f, -4.41f));
-    Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setGlobalRotation(-90.0f /*yaw*/, 59.21f /*pitch*/);
+    Camera::GetUtilityCamera(Camera::UtilityCamera::DEFAULT)->setRotation(-90.0f /*yaw*/, 59.21f /*pitch*/);
 
     // Add some obstacles
 
@@ -745,8 +745,7 @@ void WarScene::postLoadMainThread() {
                          CLAMP<F32>(eyePos.z,
                                      ter.getDimensions().height * 0.5f * -1.0f,
                                      ter.getDimensions().height * 0.5f);
-                         mat4<F32> mat = MAT4_IDENTITY;
-                         terrain->get<TransformComponent>()->getWorldMatrix(mat);
+                         const mat4<F32>& mat = terrain->get<TransformComponent>()->getWorldMatrix();
                          Terrain::Vert terVert = ter.getVertFromGlobal(eyePos.x, eyePos.z, true);
                          const float3 terPos = mat * terVert._position;
                          const float3& terNorm = terVert._normal;

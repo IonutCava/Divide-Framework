@@ -1,6 +1,7 @@
 ﻿set(APP_THIRD_PARTY_LIB Divide-ThirdParty-Lib)
 set(APP_LIB_DIVIDE Divide-Framework-Lib)
 set(APP_EXE_DIVIDE Divide-Framework)
+set(APP_EXE_PROJECT_MANAGER Divide-Project-Manager)
 
 if(BUILD_TESTING_INTERNAL)
     set(APP_EXE_TEST_PLATFORM "Divide-Test-Platform")
@@ -10,9 +11,13 @@ if(BUILD_TESTING_INTERNAL)
         ${APP_EXE_DIVIDE}
         ${APP_EXE_TEST_PLATFORM}
         ${APP_EXE_TEST_ENGINE}
+        ${APP_EXE_PROJECT_MANAGER}
     )
 else()
-    set(APP_BUILD_EXES ${APP_EXE_DIVIDE})
+    set(APP_BUILD_EXES
+        ${APP_EXE_DIVIDE}
+        ${APP_EXE_PROJECT_MANAGER}
+    )
 endif()
 
 set(APP_BUILD_TARGETS
@@ -145,11 +150,20 @@ target_link_options(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_LINK_FLAGS})
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
 
-set(COMMON_LIBS $<IF:$<TARGET_EXISTS:mimalloc>,mimalloc,mimalloc-static>
-                ${APP_LIB_DIVIDE} 
+if (ENABLE_MIMALLOC)
+    target_compile_definitions( ${APP_EXE_DIVIDE} PUBLIC MIMALLOC_OVERRIDE_NEW_DELETE)
+endif()
+
+set(COMMON_LIBS ${APP_LIB_DIVIDE} 
                 ${APP_THIRD_PARTY_LIB}
                 ${EXTERNAL_LIBS}
 )
+
+if (ENABLE_MIMALLOC)
+    set(COMMON_LIBS ${COMMON_LIBS} 
+                    $<IF:$<TARGET_EXISTS:mimalloc>,mimalloc,mimalloc-static>
+    )
+endif()
 
 target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE ZLIB::ZLIB
@@ -181,10 +195,10 @@ endif()
 
 endif()
 
+add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
+
 if(BUILD_TESTING_INTERNAL)
     include(Catch)
-
-    add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
 
     add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE})
     target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
@@ -212,10 +226,33 @@ if(BUILD_TESTING_INTERNAL)
     endif()
 endif()
 
+add_executable (${APP_EXE_PROJECT_MANAGER}
+                "ProjectManager/ProjectManager.cpp"
+                "ProjectManager/ProjectManager.h"
+                "Platform/PlatformDataTypes.cpp")
+
+target_link_libraries(${APP_EXE_PROJECT_MANAGER} PRIVATE
+                                                 ${COMMON_LIBS}
+                                                 PRIVATE 
+                                                 imgui::imgui
+                                                 fmt::fmt
+                                                 $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main> $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+                                                 $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+
+add_dependencies(${APP_EXE_PROJECT_MANAGER} ${APP_EXE_DIVIDE}BinGenerated)
+
+target_precompile_headers(${APP_EXE_PROJECT_MANAGER} REUSE_FROM ${APP_LIB_DIVIDE})
+
+
 foreach( APP_EXE ${APP_BUILD_EXES} )
     target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS})
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
 
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+    if (MSVC_COMPILER)
+        target_link_options(${APP_EXE} PRIVATE "-mwindows")
+    endif()
 endforeach()
+

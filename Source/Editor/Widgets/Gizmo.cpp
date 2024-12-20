@@ -155,17 +155,17 @@ namespace Divide
             case ImGuizmo::TRANSLATE_X: node.tComp->translateX( position.x ); updateGridMatrix = true; break;
             case ImGuizmo::TRANSLATE_Y: node.tComp->translateY( position.y ); updateGridMatrix = true; break;
             case ImGuizmo::TRANSLATE_Z: node.tComp->translateZ( position.z ); updateGridMatrix = true; break;
-            case ImGuizmo::SCALE:   node.tComp->scale( Max( scale, float3( EPSILON_F32 ) ) ); break;
+            case ImGuizmo::SCALE:       node.tComp->scale( Max( scale, float3( EPSILON_F32 ) ) );      break;
             case ImGuizmo::SCALE_XU:
-            case ImGuizmo::SCALE_X: node.tComp->scaleX( std::max( scale.x, EPSILON_F32 ) ); break;
+            case ImGuizmo::SCALE_X:     node.tComp->scaleX( std::max( scale.x, EPSILON_F32 ) );        break;
             case ImGuizmo::SCALE_YU:
-            case ImGuizmo::SCALE_Y: node.tComp->scaleY( std::max( scale.y, EPSILON_F32 ) ); break;
+            case ImGuizmo::SCALE_Y:     node.tComp->scaleY( std::max( scale.y, EPSILON_F32 ) );        break;
             case ImGuizmo::SCALE_ZU:
-            case ImGuizmo::SCALE_Z:  node.tComp->scaleZ( std::max( scale.z, EPSILON_F32 ) ); break;
-            case ImGuizmo::ROTATE:   node.tComp->rotate( -euler );    updateGridMatrix = true; break;
-            case ImGuizmo::ROTATE_X: node.tComp->rotateX( -euler.x ); updateGridMatrix = true; break;
-            case ImGuizmo::ROTATE_Y: node.tComp->rotateY( -euler.y ); updateGridMatrix = true; break;
-            case ImGuizmo::ROTATE_Z: node.tComp->rotateZ( -euler.z ); updateGridMatrix = true; break;
+            case ImGuizmo::SCALE_Z:     node.tComp->scaleZ( std::max( scale.z, EPSILON_F32 ) );        break;
+            case ImGuizmo::ROTATE:      node.tComp->rotate(  euler );    updateGridMatrix = true;      break;
+            case ImGuizmo::ROTATE_X:    node.tComp->rotateX( euler.x ); updateGridMatrix = true;       break;
+            case ImGuizmo::ROTATE_Y:    node.tComp->rotateY( euler.y ); updateGridMatrix = true;       break;
+            case ImGuizmo::ROTATE_Z:    node.tComp->rotateZ( euler.z ); updateGridMatrix = true;       break;
 
             default:
             case ImGuizmo::SCALEU:
@@ -176,8 +176,7 @@ namespace Divide
 
         if (updateGridMatrix)
         {
-            _gridMatrix.fromEuler(node.tComp->getWorldOrientation().getEuler());
-            _gridMatrix.setTranslation(node.tComp->getWorldPosition());
+            _gridMatrix.set(node.tComp->getWorldPosition(), VECTOR3_UNIT, node.tComp->getWorldOrientation().getConjugate());
         }
     }
 
@@ -304,28 +303,28 @@ namespace Divide
         {
             const TransformComponent* tComp = _selectedNodes.front().tComp;
             _workMatrix = tComp->getWorldMatrix();
-            SceneGraphNode* parent = tComp->parentSGN()->parent();
+            /*SceneGraphNode* parent = tComp->parentSGN()->parent();
             if ( parent != nullptr )
             {
-                parent->get<TransformComponent>()->getWorldMatrix().getInverse( _localToWorldMatrix );
+               _workMatrix.getInverse( _localToWorldMatrix );
             }
             const BoundsComponent* bComp = tComp->parentSGN()->get<BoundsComponent>();
             if ( bComp != nullptr )
             {
                 const float3& boundsCenter = bComp->getBoundingSphere().getCenter();
                 _workMatrix.setTranslation(boundsCenter);
-            }
+            }*/
         }
         else
         {
-            BoundingBox nodesBB = {};
+            BoundingBox nodesBB{};
             for ( const SelectedNode& node : _selectedNodes )
             {
                 const TransformComponent* tComp = node.tComp;
                 const BoundsComponent* bComp = tComp->parentSGN()->get<BoundsComponent>();
                 if ( bComp != nullptr )
                 {
-                    nodesBB.add( bComp->getBoundingSphere().getCenter() );
+                    nodesBB.add( bComp->getBoundingSphere()._sphere.center );
                 }
                 else
                 {
@@ -435,19 +434,22 @@ namespace Divide
         return ret;
     }
 
-    bool Gizmo::onMouseButtonPressed([[maybe_unused]] Input::MouseButtonEvent& argInOut) noexcept
+    bool Gizmo::onMouseButtonPressed( Input::MouseButtonEvent& argInOut ) noexcept
     {
-        _wasUsed = false;
-        if ( isActive() )
+        if (argInOut.button() == Input::MouseButton::MB_Left)
         {
-            ScopedImGuiContext ctx(_imguiContext);
-            return ImGuizmo::IsOver();
+            _wasUsed = false;
+            if ( isActive() )
+            {
+                ScopedImGuiContext ctx(_imguiContext);
+                return ImGuizmo::IsOver();
+            }
         }
 
         return false;
     }
 
-    bool Gizmo::onMouseButtonReleased([[maybe_unused]] Input::MouseButtonEvent& argInOut) noexcept
+    bool Gizmo::onMouseButtonReleased( Input::MouseButtonEvent& argInOut ) noexcept
     {
         if (_wasUsed)
         {

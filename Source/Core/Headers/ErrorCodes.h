@@ -33,8 +33,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_CORE_ERROR_CODES_H_
 #define DVD_CORE_ERROR_CODES_H_
 
-namespace Divide {
-    enum class ErrorCode : I8 {
+namespace Divide
+{
+    enum class ErrorCode : I8
+    {
         NO_ERR = 0,
         MISSING_SCENE_DATA,
         MISSING_PROJECT_DATA,

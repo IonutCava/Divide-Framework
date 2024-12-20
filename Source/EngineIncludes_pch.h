@@ -33,7 +33,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PCH_
 #define DVD_PCH_
 
+#if defined(ENABLE_MIMALLOC)
 #include <mimalloc.h>
+#endif //ENABLE_MIMALLOC
 
 #include "Platform/Headers/PlatformDefinesOS.h"
 

@@ -11,8 +11,6 @@
             "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations.",
             "hidden": true,
             "generator": "Ninja Multi-Config",
-            "binaryDir": "${sourceDir}/Build/${presetName}",
-            "installDir": "${sourceDir}/Install/${presetName}",
             "warnings": { "dev": false },
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"

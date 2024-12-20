@@ -49,7 +49,9 @@
             "features": [
                 "docking-experimental",
                 "no-obsolete-keyio",
-                "no-obsolete-functions"
+                "no-obsolete-functions",
+                "sdl2-binding",
+                "sdl2-renderer-binding"
             ]
         }
     ]

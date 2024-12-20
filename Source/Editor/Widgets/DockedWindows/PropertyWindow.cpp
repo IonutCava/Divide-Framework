@@ -180,9 +180,15 @@ namespace Divide
             ImGui::Separator();
             Util::PushNarrowLabelWidth();
             {
+                constexpr const char* CamMoveLabels[] = {
+                       "R", "U", "F"
+                };
+
+
                 float3 eye = cam->snapshot()._eye;
                 EditorComponentField camField = {};
                 camField._name = "Eye";
+                camField._labels = CamMoveLabels;
                 camField._basicType = PushConstantType::VEC3;
                 camField._type = EditorComponentFieldType::PUSH_TYPE;
                 camField._readOnly = false;
@@ -209,7 +215,7 @@ namespace Divide
                 camField._data = euler._v;
                 camField._dataSetter = [cam]( const void* e, [[maybe_unused]] void* user_data) noexcept
                 {
-                    cam->setEuler( *static_cast<const vec3<Angle::DEGREES_F>*>(e) );
+                    cam->setRotation( *static_cast<const vec3<Angle::DEGREES_F>*>(e) );
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
             }
@@ -996,11 +1002,11 @@ namespace Divide
             case EditorComponentFieldType::BOUNDING_BOX:
             {
                 printFieldName();
-                BoundingBox bb = {};
+                BoundingBox bb{};
                 field.get<BoundingBox>( bb );
 
-                F32* bbMin = Attorney::BoundingBoxEditor::min( bb );
-                F32* bbMax = Attorney::BoundingBoxEditor::max( bb );
+                F32* bbMin = bb._min._v;
+                F32* bbMax = bb._max._v;
                 float3 halfExtent = bb.getHalfExtent();
                 float3 bbCenter = bb.getCenter();
                 {
@@ -1013,7 +1019,7 @@ namespace Divide
                     bbField._hexadecimal = field._hexadecimal;
                     bbField._dataSetter = [&field]( const void* val, [[maybe_unused]] void* user_data)
                     {
-                        BoundingBox aabb = {};
+                        BoundingBox aabb{};
                         field.get<BoundingBox>( aabb );
                         aabb.setMin( *static_cast<const float3*>(val) );
                         field.set<BoundingBox>( aabb );
@@ -1030,7 +1036,7 @@ namespace Divide
                     bbField._hexadecimal = field._hexadecimal;
                     bbField._dataSetter = [&field]( const void* val, [[maybe_unused]] void* user_data)
                     {
-                        BoundingBox aabb = {};
+                        BoundingBox aabb{};
                         field.get<BoundingBox>( aabb );
                         aabb.setMax( *static_cast<const float3*>(val) );
                         field.set<BoundingBox>( aabb );
@@ -1104,8 +1110,8 @@ namespace Divide
 
                 BoundingSphere bs = {};
                 field.get<BoundingSphere>( bs );
-                F32* center = Attorney::BoundingSphereEditor::center( bs );
-                F32& radius = Attorney::BoundingSphereEditor::radius( bs );
+                F32* center = bs._sphere.center._v;
+                F32& radius = bs._sphere.radius;
                 {
                     EditorComponentField bbField = {};
                     bbField._name = "Center ";
@@ -1271,7 +1277,30 @@ namespace Divide
             ImGui::SetTooltip( "Toggle per-axis independent scale values.\nAllow shear/tear/squash/etc.\nBreaks the scene hierarchy in many ways but should be fine for leaf nodes" );
             skipAutoTooltip( true );
         }
-        
+
+        bool parentRelativeRotations = transform->rotationMode() == TransformComponent::RotationMode::RELATIVE_TO_PARENT;
+        if (ImGui::Checkbox("Parent-relative rotations", &parentRelativeRotations))
+        {
+            const TransformComponent::RotationMode newMode = parentRelativeRotations ? TransformComponent::RotationMode::RELATIVE_TO_PARENT : TransformComponent::RotationMode::LOCAL;
+            RegisterUndo<bool, false>( _parent,
+                                       PushConstantType::UINT,
+                                       to_U32( scalingMode ),
+                                       to_U32( newMode ),
+                                       "Parent-relative rotations",
+                                       [transform]( const bool& oldVal ) noexcept
+                                       {
+                                           transform->rotationMode( static_cast<TransformComponent::RotationMode>(oldVal) );
+                                       } );
+
+            transform->rotationMode( newMode );
+            ret = true;
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("If enabled, the child objects will rotate AROUND the parent object's center as opposed to their own local center.\nExample: Solar sytem: In parent-relative mode, rotating the sun parent object will rotate the child planet objects around it.");
+            skipAutoTooltip(true);
+        }
+
         if ( ImGui::Button( ICON_FK_UNDO" RESET", ImVec2( 90.f, 20 ) ) )
         {
             transform->reset();

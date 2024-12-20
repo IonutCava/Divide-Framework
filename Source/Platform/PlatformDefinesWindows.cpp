@@ -20,7 +20,11 @@
 
 #include <iostream>
 
+#if defined(ENABLE_MIMALLOC)
+#if defined(MIMALLOC_OVERRIDE_NEW_DELETE)
 #include <mimalloc-new-delete.h>
+#endif //MIMALLOC_OVERRIDE_NEW_DELETE
+#endif //ENABLE_MIMALLOC
 
 DISABLE_NON_MSVC_WARNING_PUSH("missing-variable-declarations")
 extern "C"

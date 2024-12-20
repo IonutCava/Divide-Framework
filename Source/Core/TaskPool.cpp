@@ -434,6 +434,13 @@ namespace Divide
             return;
         }
 
+        // Shortcut for small looops
+        if (descriptor._useCurrentThread && descriptor._iterCount < descriptor._partitionSize)
+        {
+            cbk(nullptr, 0u, descriptor._iterCount);
+            return;
+        }
+
         const U32 crtPartitionSize = std::min( descriptor._partitionSize, descriptor._iterCount );
         const U32 partitionCount = descriptor._iterCount / crtPartitionSize;
         const U32 remainder = descriptor._iterCount % crtPartitionSize;

@@ -11,7 +11,11 @@ void* operator new[](const size_t size,
                      [[maybe_unused]] const char* file,
                      [[maybe_unused]] int line)
 {
+#if defined(ENABLE_MIMALLOC)
     return mi_new_aligned_nothrow(size, alignment);
+#else//ENABLE_MIMALLOC
+    return new std::byte[size];
+#endif//ENABLE_MIMALLOC
 }
 
 void* operator new[](const size_t size,
@@ -21,7 +25,11 @@ void* operator new[](const size_t size,
                      [[maybe_unused]] const char* file,
                      [[maybe_unused]] int line)
 {
+#if defined(ENABLE_MIMALLOC)
     return mi_new_nothrow(size);
+#else//ENABLE_MIMALLOC
+    return new std::byte[size];
+#endif//ENABLE_MIMALLOC
 }
 
 int Vsnprintf8( char* p, size_t n, const char* pFormat, va_list arguments )

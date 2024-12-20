@@ -129,7 +129,7 @@ struct Console : NonCopyable
     };
 
     static void Flush();
-    static void Start( std::string_view logFilePath, std::string_view erroFilePath, bool printCopyright ) noexcept;
+    static void Start( const ResourcePath& parentPath, std::string_view logFilePath, std::string_view errorFilePath, bool printCopyright ) noexcept;
     static void Stop();
 
     static void  ToggleFlag( const Flags flag, const bool state )
@@ -157,6 +157,27 @@ struct Console : NonCopyable
         static U32                               s_flags;
         static std::atomic_bool                  s_running;
 };
+
+namespace Names
+{
+    static const char* consoleEntryType[] = {
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "COMMAND",
+        "UNKNOWN"
+    };
+} //namespace Names
+
+static_assert(std::size(Names::consoleEntryType) == to_base(Console::EntryType::COUNT) + 1u, "EntryType name array out of sync!");
+
+namespace TypeUtil
+{
+    [[nodiscard]] inline const char* ConsoleEntryTypeToString(const Console::EntryType type) noexcept
+    {
+        return Names::consoleEntryType[to_base(type)];
+    }
+}
 
 }  // namespace Divide
 

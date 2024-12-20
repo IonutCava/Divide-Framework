@@ -4,10 +4,11 @@
 #include "Headers/FrameListenerManager.h"
 #include "Headers/RenderPassManager.h"
 
-#include "Core/Headers/ByteBuffer.h"
-#include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/Application.h"
+#include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/ParamHandler.h"
+#include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
@@ -544,7 +545,7 @@ namespace Divide
         {
             players[i] = std::make_shared<Player>( to_U8( i ) );
             players[i]->camera()->fromCamera( *Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT ) );
-            players[i]->camera()->setFixedYawAxis( true );
+            players[i]->camera()->setGlobalAxis(true, false, false);
 
             {
                 boost::property_tree::ptree pt;
@@ -688,7 +689,7 @@ namespace Divide
                     const BoundsComponent* bComp = node->get<BoundsComponent>();
                     if ( bComp != nullptr )
                     {
-                        const float3& center = bComp->getBoundingSphere().getCenter();
+                        const float3& center = bComp->getBoundingSphere()._sphere.center;
                         const vec2<U16> resolution = gfx.renderingResolution();
                         const Rect<I32> targetViewport( 0, 0, to_I32( resolution.width ), to_I32( resolution.height ) );
                         return screenRect.contains( camera.project( center, targetViewport ) );
@@ -717,7 +718,7 @@ namespace Divide
         for ( size_t i = 0u; i < inRectList.size(); ++i )
         {
             const VisibleNode& node = inRectList.node( i );
-            if ( HasLoSToCamera( node._node, node._node->get<BoundsComponent>()->getBoundingSphere().getCenter() ) )
+            if ( HasLoSToCamera( node._node, node._node->get<BoundsComponent>()->getBoundingSphere()._sphere.center ) )
             {
                 LoSList.append( node );
             }
@@ -958,8 +959,8 @@ namespace Divide
         if ( targetNode->parent() != nullptr )
         {
             bSphere = SceneGraph::GetBounds(targetNode);
-            targetPos = bSphere.getCenter();
-            eyePos = targetPos - (bSphere.getRadius() * 1.5f * camera->viewMatrix().getForwardDirection());
+            targetPos = bSphere._sphere.center;
+            eyePos = targetPos - (bSphere._sphere.radius * 1.5f * camera->viewMatrix().getForwardDirection());
         }
         else
         {

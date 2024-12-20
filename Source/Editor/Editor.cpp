@@ -3,10 +3,11 @@
 #include "Headers/Editor.h"
 
 #include "Headers/Utils.h"
-#include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
-#include "Core/Headers/PlatformContext.h"
+#include "Core/Headers/Application.h"
 #include "Core/Headers/StringHelper.h"
+#include "Core/Headers/Configuration.h"
+#include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "ECS/Components/Headers/TransformComponent.h"
@@ -95,7 +96,7 @@ namespace Divide
         {
             PlatformContext* _context = nullptr;
         };
-
+#if defined(ENABLE_MIMALLOC)
         FORCE_INLINE void* MallocWrapper( const size_t size, [[maybe_unused]] void* user_data ) noexcept
         {
             // PlatformContext* user_data;
@@ -110,6 +111,8 @@ namespace Divide
 
         static ImGuiMemAllocFunc g_ImAllocatorAllocFunc = MallocWrapper;
         static ImGuiMemFreeFunc g_ImAllocatorFreeFunc = FreeWrapper;
+#endif //ENABLE_MIMALLOC
+
         static ImGuiAllocatorUserData g_ImAllocatorUserData{};
     }; // namespace ImGuiCustom
 
@@ -125,7 +128,8 @@ namespace Divide
         return Handle<Texture>{ ._data = to_U32(texData) };
     }
 
-     std::array<Input::MouseButton, 5> Editor::g_oisButtons = {
+     std::array<Input::MouseButton, 5> g_editorButtons =
+     {
         Input::MouseButton::MB_Left,
         Input::MouseButton::MB_Right,
         Input::MouseButton::MB_Middle,
@@ -158,10 +162,12 @@ namespace Divide
         , _editorRenderTimer( Time::ADD_TIMER( "Editor Render Timer" ) )
         , _currentTheme( theme )
     {
+
+#if defined(ENABLE_MIMALLOC)
         ImGui::SetAllocatorFunctions( ImGuiCustom::g_ImAllocatorAllocFunc,
                                       ImGuiCustom::g_ImAllocatorFreeFunc,
                                       &ImGuiCustom::g_ImAllocatorUserData );
-
+#endif //ENABLE_MIMALLOC
         ImGuiFs::Dialog::ExtraWindowFlags |= ImGuiWindowFlags_NoSavedSettings;
 
         _menuBar = std::make_unique<MenuBar>( context, true );
@@ -265,14 +271,14 @@ namespace Divide
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
         _editorCamera = Camera::CreateCamera( "Editor Camera", Camera::Mode::FREE_FLY );
         _editorCamera->fromCamera( *Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT ) );
-        _editorCamera->setFixedYawAxis( true );
-        _editorCamera->setEye( 60.f, 45.f, 60.f );
-        _editorCamera->setEuler( -15.f, 40.f, 0.f );
+        _editorCamera->setGlobalAxis( true, false, false );
+        _editorCamera->setEye( 0.f, 20.f, 60.f );
+        _editorCamera->setRotation( 0.f, 15.f, 0.f );
         _editorCamera->speedFactor().turn = 45.f;
 
         _nodePreviewCamera = Camera::CreateCamera( "Node Preview Camera", Camera::Mode::ORBIT );
         _nodePreviewCamera->fromCamera( *Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT ) );
-        _nodePreviewCamera->setFixedYawAxis( true );
+        _nodePreviewCamera->setGlobalAxis(true, false, false);
         _nodePreviewCamera->speedFactor().turn = 125.f;
         _nodePreviewCamera->speedFactor().zoom = 175.f;
 
@@ -1080,7 +1086,7 @@ namespace Divide
                     {
                         teleportToNode( nodePreviewCamera(), _previewNode );
                         nodePreviewCamera()->setTarget( _previewNode->get<TransformComponent>() );
-                        const F32 radius = SceneGraph::GetBounds( _previewNode ).getRadius();
+                        const F32 radius = SceneGraph::GetBounds( _previewNode )._sphere.radius;
                         nodePreviewCamera()->minRadius( radius * 0.75f );
                         nodePreviewCamera()->maxRadius( radius * 10.f );
                         nodePreviewCamera()->curRadius( radius );
@@ -2006,9 +2012,9 @@ namespace Divide
 
         for ( ImGuiContext* ctx : _imguiContexts )
         {
-            for ( size_t i = 0; i < g_oisButtons.size(); ++i )
+            for ( size_t i = 0; i < g_editorButtons.size(); ++i )
             {
-                if (argInOut.button() == g_oisButtons[i] )
+                if (argInOut.button() == g_editorButtons[i] )
                 {
                     ctx->IO.AddMouseButtonEvent( to_I32( i ), true );
                     break;
@@ -2040,9 +2046,9 @@ namespace Divide
 
         for ( ImGuiContext* ctx : _imguiContexts )
         {
-            for ( size_t i = 0; i < g_oisButtons.size(); ++i )
+            for ( size_t i = 0; i < g_editorButtons.size(); ++i )
             {
-                if (argInOut.button() == g_oisButtons[i] )
+                if (argInOut.button() == g_editorButtons[i] )
                 {
                     ctx->IO.AddMouseButtonEvent( to_I32( i ), false );
                     break;
@@ -2877,14 +2883,6 @@ namespace Divide
         pt.put( "editor.nodeBGColour.<xmlattr>.g", nodePreviewBGColour().g );
         pt.put( "editor.nodeBGColour.<xmlattr>.b", nodePreviewBGColour().b );
 
-        if ( _editorCamera )
-        {
-            _editorCamera->saveToXML( pt, "editor" );
-        }
-        if ( _nodePreviewCamera )
-        {
-            _nodePreviewCamera->saveToXML( pt, "editor" );
-        }
         for ( size_t i = 0u; i < _recentSceneList.size(); ++i )
         {
             pt.add( "editor.recentScene.entry", _recentSceneList.get( i )._name.c_str() );
@@ -2959,14 +2957,6 @@ namespace Divide
                 }
             }
 
-            if ( _editorCamera )
-            {
-                _editorCamera->loadFromXML( pt, "editor" );
-            }
-            if ( _nodePreviewCamera )
-            {
-                _nodePreviewCamera->loadFromXML( pt, "editor" );
-            }
             infiniteGridEnabledScene( pt.get( "editor.grid.<xmlattr>.enabled_scene",
                                               infiniteGridEnabledScene() ) );
             infiniteGridEnabledNode( pt.get( "editor.grid.<xmlattr>.enabled_node", infiniteGridEnabledNode() ) );

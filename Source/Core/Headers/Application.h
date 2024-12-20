@@ -34,6 +34,7 @@
 #define DVD_CORE_APPLICATION_H_
 
 #include "WindowManager.h"
+#include "Core/Headers/Kernel.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 
 namespace Divide {
@@ -43,7 +44,6 @@ struct Configuration;
 struct SizeChangeParams;
 struct DisplayManager;
 
-class Kernel;
 class GL_API;
 class VK_API;
 
@@ -51,10 +51,6 @@ namespace Attorney
 {
     class ApplicationKernel;
     class ApplicationProfiler;
-
-    class DisplayManagerApplication;
-    class DisplayManagerRenderingAPI;
-    class DisplayManagerWindowManager;
 };
 
 enum class AppStepResult : U8
@@ -99,8 +95,7 @@ class Application final : public SDLEventListener
     friend class Attorney::ApplicationProfiler;
 
 public:
-     Application() noexcept;
-     ~Application() override;
+    Application() noexcept;
 
     [[nodiscard]] ErrorCode     start(const string& entryPoint, I32 argc, char** argv);
                   void          stop( const AppStepResult stepResult );
@@ -159,42 +154,7 @@ private:
 
 FWD_DECLARE_MANAGED_CLASS(Application);
 
-struct DisplayManager
-{
-    struct OutputDisplayProperties
-    {
-        string _formatName{};
-        vec2<U16> _resolution{ 1u };
-        U8 _bitsPerPixel{ 8u };
-        U8 _maxRefreshRate{ 24u }; ///< As returned by SDL_GetPixelFormatName
-    };
 
-    friend class Attorney::DisplayManagerWindowManager;
-    friend class Attorney::DisplayManagerRenderingAPI;
-    friend class Attorney::DisplayManagerApplication;
-
-    static constexpr U8 g_maxDisplayOutputs = 4u;
-
-    using OutputDisplayPropertiesContainer = vector<OutputDisplayProperties>;
-
-    [[nodiscard]] static const OutputDisplayPropertiesContainer& GetDisplayModes( const size_t displayIndex ) noexcept;
-    [[nodiscard]] static U8 ActiveDisplayCount() noexcept;
-    [[nodiscard]] static U8 MaxMSAASamples() noexcept;
-
-private:
-    static void MaxMSAASamples( const U8 maxSampleCount ) noexcept;
-    static void SetActiveDisplayCount( const U8 displayCount );
-    static void RegisterDisplayMode( const U8 displayIndex, const OutputDisplayProperties& mode );
-
-    static void Reset() noexcept;
-
-private:
-    static U8 s_activeDisplayCount;
-    static U8 s_maxMSAASAmples;
-    static std::array<OutputDisplayPropertiesContainer, g_maxDisplayOutputs> s_supportedDisplayModes;
-};
-
-bool operator==( const DisplayManager::OutputDisplayProperties& lhs, const DisplayManager::OutputDisplayProperties& rhs ) noexcept;
 
 namespace Attorney
 {
@@ -216,42 +176,6 @@ namespace Attorney
         }
 
         friend bool Profiler::OnProfilerStateChanged( const Profiler::State state);
-    };
-
-    class DisplayManagerWindowManager
-    {
-        static void SetActiveDisplayCount( const U8 displayCount )
-        {
-            DisplayManager::SetActiveDisplayCount(displayCount);
-        }
-
-        static void RegisterDisplayMode( const U8 displayIndex, const DisplayManager::OutputDisplayProperties& mode )
-        {
-            DisplayManager::RegisterDisplayMode(displayIndex, mode);
-        }
-
-        friend class Divide::WindowManager;
-    };
-
-    class DisplayManagerRenderingAPI
-    {
-        static void MaxMSAASamples( const U8 maxSampleCount ) noexcept
-        {
-            DisplayManager::MaxMSAASamples(maxSampleCount);
-        }
-
-        friend class Divide::GL_API;
-        friend class Divide::VK_API;
-    };
-
-    class DisplayManagerApplication
-    {
-        static void Reset() noexcept
-        {
-            DisplayManager::Reset();
-        }
-
-        friend class Divide::Application;
     };
 };
 
