@@ -474,6 +474,7 @@ private:
     void setClipPlanes(const FrustumClipPlanes& clipPlanes);
     void renderFromCamera(const CameraSnapshot& cameraSnapshot);
     void shadowingSettings(const F32 lightBleedBias, const F32 minShadowVariance) noexcept;
+    void prevViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
     void worldAOViewProjectionMatrix(const mat4<F32>& vpMatrix) noexcept;
 
     [[nodiscard]] ErrorCode createAPIInstance(RenderAPI api);

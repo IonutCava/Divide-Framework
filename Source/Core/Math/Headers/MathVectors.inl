@@ -57,7 +57,7 @@ namespace Divide
         }
 
         //ref: https://www.opengl.org/discussion_boards/showthread.php/159586-my-SSE-code-is-slower-than-normal-why
-        inline __m128 DotSimd( const __m128 a, const __m128 b ) noexcept
+        /*inline __m128 DotSimd( const __m128 a, const __m128 b ) noexcept
         {
             __m128 r = _mm_mul_ps( a, b );
             r = _mm_add_ps( _mm_movehl_ps( r, r ), r );
@@ -66,12 +66,12 @@ namespace Divide
             return r;
         }
 
-        inline __m128 SimpleDot( __m128 a, __m128 b ) noexcept
+        inline __m128 SimpleDot( const __m128 a, const __m128 b ) noexcept
         {
             a = _mm_mul_ps( a, b );
             b = _mm_hadd_ps( a, a );
             return _mm_hadd_ps( b, b );
-        }
+        }*/
 
         inline __m128 LoadFloat3(const vec3<Angle::DEGREES_F>& value)
         {
@@ -102,12 +102,12 @@ namespace Divide
 
         inline F32 Dot(const __m128 a, const __m128 b)
         {
-            return _mm_cvtss_f32(DotSimd(a, b));
+            return _mm_cvtss_f32(_mm_dp_ps(a, b, 0xFF));
         }
 
         inline F32 Length(const __m128 reg)
         {
-            return Sqrt<F32>(DotSimd(reg, reg));
+            return Sqrt<F32>(_mm_dp_ps(reg, reg, 0xFF));
         }
     } //namespace SSE
 #endif //HAS_SSE42
@@ -586,12 +586,18 @@ namespace Divide
                COMPARE_TOLERANCE( this->z, v.z, epsi );
     }
 
-    /// uniform vector: x = y = z
-    template <typename T>
-    FORCE_INLINE bool vec3<T>::isUniform( const F32 tolerance ) const noexcept
+    template <ValidMathType T>
+    FORCE_INLINE bool IsUniform(const vec3<T>& vector, const T epsilon) noexcept
     {
-        return COMPARE_TOLERANCE( this->x, this->y, tolerance ) && COMPARE_TOLERANCE( this->y, this->z, tolerance );
+        return IsUniform(vector.x, vector.y, vector.z, epsilon);
     }
+
+    template <ValidMathType T>
+    FORCE_INLINE bool IsUniform(const T X, const T Y, const T Z, const T epsilon) noexcept
+    {
+        return COMPARE_TOLERANCE(X, Y, epsilon) && COMPARE_TOLERANCE(Y, Z, epsilon);
+    }
+
 
     template <typename T>
     template<ValidMathType U>
@@ -1122,7 +1128,7 @@ namespace Divide
 #if defined(HAS_SSE42)
     FORCE_INLINE __m128 normalizeSIMD(__m128 reg)
     {
-        return _mm_mul_ps(reg, _mm_rsqrt_ps(SSE::SimpleDot(reg, reg)));
+        return _mm_mul_ps(reg, _mm_rsqrt_ps(_mm_dp_ps(reg, reg, 0xFF)));
     }
 
     template <>

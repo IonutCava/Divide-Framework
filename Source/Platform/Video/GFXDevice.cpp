@@ -6,9 +6,11 @@
 #include "Headers/GFXRTPool.h"
 #include "Editor/Headers/Editor.h"
 
-#include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/Application.h"
 #include "Core/Headers/ParamHandler.h"
+#include "Core/Headers/Configuration.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -2106,6 +2108,14 @@ namespace Divide
         _gpuBlock._camNeedsUpload = true;
     }
 
+    void GFXDevice::prevViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
+    {
+        GFXShaderData::CamData& data = _gpuBlock._camData;
+        data._prevViewProjectionMatrix = vpMatrix;
+        _gpuBlock._camNeedsUpload = true;
+    } 
+    
+
     void GFXDevice::setPreviousViewProjectionMatrix( const PlayerIndex index, const mat4<F32>& prevViewMatrix, const mat4<F32> prevProjectionMatrix )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -2129,6 +2139,8 @@ namespace Divide
         if ( projectionDirty || viewDirty )
         {
             mat4<F32>::Multiply( frameData._previousProjectionMatrix, frameData._previousViewMatrix, frameData._previousViewProjectionMatrix );
+
+            prevViewProjectionMatrix(frameData._previousProjectionMatrix);
         }
     }
 

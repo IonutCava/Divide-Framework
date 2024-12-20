@@ -7,8 +7,9 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide {
-    namespace {
-        constexpr U32 g_parallelPartitionSize = 32;
+    namespace
+    {
+        constexpr U32 g_parallelPartitionSize = 256;
     }
 
     TransformSystem::TransformSystem(ECS::ECSEngine& parentEngine, PlatformContext& context)
@@ -30,7 +31,7 @@ namespace Divide {
             if (updateMask != to_base(TransformType::NONE))
             {
                 Attorney::SceneGraphNodeSystem::setTransformDirty(comp->parentSGN(), updateMask);
-                comp->resetCache();
+                comp->_local._computed = comp->_world._computed = false;
             }
         }
     }
@@ -39,10 +40,11 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-        static vector<std::pair<TransformComponent*, U32>> events;
+        static vector<TransformComponent*> dirtyComponents;
 
         Parent::Update(dt);
 
+        dirtyComponents.reserve(_componentCache.size());
 
         for (TransformComponent* comp : _componentCache)
         {
@@ -50,46 +52,41 @@ namespace Divide {
             const U32 previousMask = comp->_transformUpdatedMask.exchange(to_U32(TransformType::NONE));
             if (previousMask != to_U32(TransformType::NONE))
             {
-                events.emplace_back(comp, previousMask);
+                dirtyComponents.emplace_back(comp);
+                comp->_broadcastMask = previousMask;
             }
         }
 
-        const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
+        Parallel_For( _context.taskPool( TaskPoolType::HIGH_PRIORITY ),
+                      ParallelForDescriptor
+                      {
+                          ._iterCount = to_U32(dirtyComponents.size()),
+                          ._partitionSize = g_parallelPartitionSize
+                      },
+                      [](const Task*, const U32 start, const U32 end)
+                      {
+                          for (U32 i = start; i < end; ++i)
+                          {
+                              TransformComponent* comp = dirtyComponents[i];
+                              comp->_local._previousValues = comp->_local._values;
 
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = to_U32(events.size());
-        if (descriptor._iterCount > g_parallelPartitionSize * 3)
-        {
-            descriptor._partitionSize = g_parallelPartitionSize;
-            Parallel_For( _context.taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [interpFactor](const Task*, const U32 start, const U32 end)
-            {
-                for (U32 i = start; i < end; ++i)
-                {
-                    events[i].first->updateLocalMatrix( interpFactor );
-                }
-            });
-        }
-        else
-        {
-            for (U32 i = 0u; i < descriptor._iterCount; ++i)
-            {
-                events[i].first->updateLocalMatrix( interpFactor );
-            }
-        }
+                              {
+                                  LockGuard<SharedMutex> w_lock(comp->_lock);
+                                  comp->_local._values = comp->_transformInterface;
+                              }
 
-        for (const auto& [comp, mask] : events)
-        {
-            comp->parentSGN()->SendEvent(
-                ECS::CustomEvent
-                {
-                      ._type = ECS::CustomEvent::Type::TransformUpdated,
-                      ._sourceCmp = comp,
-                      ._flag = mask
-                }
-            );
-        }
+                              comp->_local._matrix = mat4<F32>
+                              {
+                                  comp->_local._values._translation,
+                                  comp->_local._values._scale,
+                                  comp->_local._values._orientation.getConjugate()
+                              };
 
-        efficient_clear( events );
+                              comp->_local._computed = true;
+                          }
+                      });
+
+        efficient_clear( dirtyComponents );
     }
 
     void TransformSystem::PostUpdate(const F32 dt)
@@ -100,8 +97,67 @@ namespace Divide {
 
         for (TransformComponent* comp : _componentCache)
         {
-            comp->updateCachedValues();
+            computeWorldMatrix(comp);
         }
+
+        for (TransformComponent* comp : _componentCache)
+        {
+            if ( comp->_broadcastMask != 0u )
+            {
+                comp->parentSGN()->SendEvent(
+                    ECS::CustomEvent
+                    {
+                          ._type = ECS::CustomEvent::Type::TransformUpdated,
+                          ._sourceCmp = comp,
+                          ._flag = comp->_broadcastMask
+                    }
+                );
+
+
+                comp->_broadcastMask = 0u;
+            }
+        }
+    }
+
+    void TransformSystem::computeWorldMatrix(TransformComponent* comp) const
+    {
+        if ( comp->_world._computed )
+        {
+            return;
+        }
+
+        const bool useLocalRotations = comp->rotationMode() == TransformComponent::RotationMode::LOCAL;
+
+        comp->_world._matrix         = comp->_local._matrix;
+        comp->_world._previousValues = comp->_world._values;
+        comp->_world._values         = comp->_local._values;
+
+        SceneGraphNode* grandParent = comp->_parentSGN->parent();
+        if ( grandParent != nullptr ) 
+        {
+            TransformComponent* tComp = grandParent->get<TransformComponent>();
+            if ( tComp != nullptr )
+            {
+                computeWorldMatrix(tComp);
+
+                comp->_world._values._orientation = tComp->_world._values._orientation * comp->_world._values._orientation;
+                comp->_world._values._scale       = tComp->_world._values._scale       * comp->_world._values._scale;
+
+                const float3 worldPosition = useLocalRotations ? comp->_world._values._translation
+                                                               : tComp->_world._values._orientation * (tComp->_world._values._scale * comp->_world._values._translation);
+
+                comp->_world._values._translation = tComp->_world._values._translation + worldPosition;
+            }
+        }
+
+        comp->_world._matrix = mat4<F32>
+        {
+            comp->_world._values._translation,
+            comp->_world._values._scale,
+            comp->_world._values._orientation.getConjugate()
+        };
+
+        comp->_world._computed = true;
     }
 
     bool TransformSystem::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer)

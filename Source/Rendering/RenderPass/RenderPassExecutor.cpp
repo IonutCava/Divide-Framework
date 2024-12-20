@@ -23,7 +23,6 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 
 #include "Rendering/Headers/Renderer.h"
-#include "Rendering/RenderPass/Headers/RenderQueue.h"
 #include "Rendering/PostFX/Headers/PostFX.h"
 #include "Rendering/Camera/Headers/Camera.h"
 
@@ -321,11 +320,10 @@ namespace Divide
 
             pipelineDescriptor._shaderProgramHandle = OITCompositionShaderMS;
             s_OITCompositionMSPipeline = context.newPipeline( pipelineDescriptor );
-
         }
     }
 
-    RenderPassExecutor::ParseResult RenderPassExecutor::processVisibleNodeTransform(const mat4<F32>& previousViewProjectionMatrix, RenderingComponent* rComp, U32& transformIDXOut)
+    RenderPassExecutor::ParseResult RenderPassExecutor::processVisibleNodeTransform(RenderingComponent* rComp, const D64 interpolationFactor, U32& transformIDXOut)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
@@ -345,14 +343,39 @@ namespace Divide
         // Should be thread safe at this point
         NodeTransformData& transformOut = s_transformBuffer._data._gpuData[transformIDXOut];
 
-        // Out last used transform matrix is now our previous transform
-        mat4<F32>::Multiply(previousViewProjectionMatrix, transformOut._worldMatrix, transformOut._prevWVPMatrix);
-
         const SceneGraphNode* node = rComp->parentSGN();
-        const TransformComponent* const transform = node->get<TransformComponent>();
-        transform->getWorldMatrixInterpolated(transformOut._worldMatrix);
-        transform->getWorldRotationMatrixInterpolated(transformOut._normalMatrixW);
-        transformOut._normalMatrixW.setRow(3, node->get<BoundsComponent>()->getBoundingSphere().asVec4());
+
+        transformOut._prevTransform = transformOut._transform;
+
+        if ( COMPARE(interpolationFactor, 1.))
+        {
+            const TransformValues& transformIn    = node->get<TransformComponent>()->world()._values;
+            transformOut._transform._position.xyz = transformIn._translation;
+            transformOut._transform._scale.xyz    = transformIn._scale;
+            transformOut._transform._rotation     = transformIn._orientation;
+        }
+        else if ( COMPARE(interpolationFactor, 0.))
+        {
+            const TransformValues& transformInPrev = node->get<TransformComponent>()->world()._previousValues;
+            transformOut._transform._position.xyz  = transformInPrev._translation;
+            transformOut._transform._scale.xyz     = transformInPrev._scale;
+            transformOut._transform._rotation      = transformInPrev._orientation;
+        }
+        else
+        {
+            auto tComp = node->get<TransformComponent>();
+            const TransformValues& transformInCrt  = tComp->world()._values;
+            const TransformValues& transformInPrev = tComp->world()._previousValues;
+
+            const TransformValues interpolatedValues = Lerp(transformInPrev, transformInCrt, to_F32(interpolationFactor));
+            transformOut._transform._position.xyz    = interpolatedValues._translation;
+            transformOut._transform._scale.xyz       = interpolatedValues._scale;
+            transformOut._transform._rotation        = interpolatedValues._orientation;
+        }
+
+        transformOut._boundingSphere = node->get<BoundsComponent>()->getBoundingSphere()._sphere;
+
+        transformOut._data = VECTOR4_ZERO;
 
         if ( node->HasComponents( ComponentType::ANIMATION ) )
         {
@@ -363,14 +386,11 @@ namespace Divide
             {
                 frameIndex = animComp->frameIndex();
             }
-            transformOut._normalMatrixW.element(1, 3) = to_F32(std::max(frameIndex._curr, 0));
-            transformOut._normalMatrixW.element(2, 3) = to_F32( boneCount );
+            transformOut._data.x = to_F32(std::max(frameIndex._curr, 0));
+            transformOut._data.y = to_F32(boneCount);
         }
-        else
-        {
-            transformOut._normalMatrixW.element(1, 3) = 0.f;
-            transformOut._normalMatrixW.element(2, 3) = 0.f;
-        }
+
+        transformOut._data.z = rComp->getLoDLevel(RenderStage::DISPLAY);
 
         U8 selectionFlag = 0u;
         if ( node->HasComponents( ComponentType::SELECTION ) )
@@ -395,12 +415,16 @@ namespace Divide
             }
         }
 
-        transformOut._normalMatrixW.element( 0, 3 ) = to_F32( Util::PACK_UNORM4x8(
-            0u,
-            selectionFlag,
-            rComp->getLoDLevel( _stage ),
-            rComp->occlusionCull() ? 1u : 0u
-        ));
+        transformOut._data.w = to_F32
+        (
+            Util::PACK_UNORM4x8
+            (
+                rComp->occlusionCull() ? 1u : 0u,
+                selectionFlag,
+                0u,
+                0u
+            )
+        );
 
         ret._updateBuffer = true;
         return ret;
@@ -521,16 +545,14 @@ namespace Divide
         return ret;
     }
 
-    void RenderPassExecutor::parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index)
+    void RenderPassExecutor::parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index, const D64 interpolationFactor)
     {
         U32 minTransform = U32_MAX, maxTransform = 0u;
-
-        const mat4<F32>& previousViewProjectionMatrix = _context.previousFrameData(index)._previousViewProjectionMatrix;
 
         for (U32 i = start; i < end; ++i)
         {
             U32 transformIDXOut = 0u;
-            ParseResult ret = processVisibleNodeTransform(previousViewProjectionMatrix, queue[i], transformIDXOut);
+            ParseResult ret = processVisibleNodeTransform( queue[i], interpolationFactor, transformIDXOut );
             DIVIDE_ASSERT(!ret._updateIndirection);
 
             if (transformIDXOut < minTransform)
@@ -630,6 +652,8 @@ namespace Divide
 
         bool updateTaskDirty = false;
 
+        const D64 interpFactor = GFXDevice::FrameInterpolationFactor();
+
         TaskPool& pool = _context.context().taskPool( TaskPoolType::RENDERER );
         Task* updateTask = CreateTask( TASK_NOP );
         {
@@ -643,19 +667,19 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    Start( *CreateTask( updateTask, [this, index, &queue, midPoint]( const Task& )
+                    Start( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint]( const Task& )
                                         {
-                                            parseTransformRange( queue, 0u, midPoint, index);
+                                            parseTransformRange( queue, 0u, midPoint, index, interpFactor );
                                         } ), pool );
-                    Start( *CreateTask( updateTask, [this, index, &queue, midPoint, queueSize]( const Task& )
+                    Start( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
                                         {
-                                            parseTransformRange(queue, midPoint, queueSize, index);
+                                            parseTransformRange(queue, midPoint, queueSize, index, interpFactor );
                                         } ), pool );
                     updateTaskDirty = true;
                 }
                 else
                 {
-                    parseTransformRange(queue, 0u, queueSize, index);
+                    parseTransformRange(queue, 0u, queueSize, index, interpFactor );
                 }
                 nodeCount += queueSize;
             }
@@ -824,19 +848,16 @@ namespace Divide
                 memCmdInOut._bufferLocks.insert(memCmdInOut._bufferLocks.cend(), postDrawMemCmd._bufferLocks.cbegin(), postDrawMemCmd._bufferLocks.cend());
             };
 
-            if ( _visibleNodesCache.size() < g_nodesPerPrepareDrawPartition )
+            const ParallelForDescriptor descriptor
             {
-                cbk( nullptr, 0, to_U32(_visibleNodesCache.size()) );
-            }
-            else
-            {
-                ParallelForDescriptor descriptor = {};
-                descriptor._iterCount = to_U32( _visibleNodesCache.size() );
-                descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
-                descriptor._priority = TaskPriority::DONT_CARE;
-                descriptor._useCurrentThread = true;
-                Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
-            }
+                ._iterCount = to_U32( _visibleNodesCache.size() ),
+                ._partitionSize = g_nodesPerPrepareDrawPartition,
+                ._priority = TaskPriority::DONT_CARE,
+                ._useCurrentThread = true
+            };
+
+            Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
+            
             _renderQueue->sort( stagePass );
         }
 
@@ -890,21 +911,15 @@ namespace Divide
             memCmdInOut._bufferLocks.insert( memCmdInOut._bufferLocks.cend(), postDrawMemCmd._bufferLocks.cbegin(), postDrawMemCmd._bufferLocks.cend() );
         };
 
-        if ( nodeCount > g_nodesPerPrepareDrawPartition * 2 )
+        PROFILE_SCOPE( "prepareRenderQueues - parallel gather", Profiler::Category::Scene );
+        const ParallelForDescriptor descriptor
         {
-            PROFILE_SCOPE( "prepareRenderQueues - parallel gather", Profiler::Category::Scene );
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = nodeCount;
-            descriptor._partitionSize = g_nodesPerPrepareDrawPartition;
-            descriptor._priority = TaskPriority::DONT_CARE;
-            descriptor._useCurrentThread = true;
-            Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
-        }
-        else
-        {
-            PROFILE_SCOPE( "prepareRenderQueues - serial gather", Profiler::Category::Scene );
-            cbk( nullptr, 0u, nodeCount );
-        }
+            ._iterCount = nodeCount,
+            ._partitionSize = g_nodesPerPrepareDrawPartition,
+            ._priority = TaskPriority::DONT_CARE,
+            ._useCurrentThread = true
+        };
+        Parallel_For( _parent.parent().platformContext().taskPool( TaskPoolType::RENDERER ), descriptor, cbk );
 
         // Sort all bins
         _renderQueue->sort( stagePass, targetBin, renderOrder );

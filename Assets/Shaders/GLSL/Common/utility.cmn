@@ -47,12 +47,27 @@
 vec3 Homogenize( in vec4 v ) { return v.xyz / v.w; }
 
 #define MSToSeconds(ms) (ms * 0.001f)
-#define QuaternionRotate(V, Q) (V + 2.f * cross(Q.xyz, cross(Q.xyz, V) + Q.w * V))
 #define ReMap(V, Min0, Max0, Min1, Max1) ((Min1) + ((((V) - (Min0)) / ((Max0) - (Min0))) * ((Max1) - (Min1))))
 #define ScaledTextureCoords(UV, SCALE) ((UV) * (SCALE))
 
 #define ViewSpaceZ(DEPTH, INV_PROJ_MAT) (-1.f / (INV_PROJ_MAT[2][3] * DEPTH + INV_PROJ_MAT[3][3]))
 #define ViewSpacePos(TEX_COORD, DEPTH, INV_PROJ_MAT) Homogenize( INV_PROJ_MAT * vec4( 2.f * TEX_COORD - 1.f, DEPTH, 1.f ) )
 #define ToLinearDepth(DEPTH, ZPLANES) (2.f * (ZPLANES).x * (ZPLANES).y / ((ZPLANES).y + (ZPLANES).x - DEPTH * ((ZPLANES).y - (ZPLANES).x)))
+
+#define QuaternionRotate(Q, V) (V + 2.f * cross(Q.xyz, cross(Q.xyz, V) + Q.w * V))
+
+#define QuaternionInverse(Q) vec4(-Q.xyz, Q.w)
+
+vec4 QuaternionDot(in vec4 q1, in vec4 q2)
+{
+    const vec3 v = cross(q1.xyz, q2.xyz) + q1.w * q2.xyz + q2.w * q1.xyz;
+    const float scalar = q1.w * q2.w - dot(q1.xyz, q2.xyz);
+    return vec4(v, scalar);
+}
+
+vec3 QuaternionMultiply(const vec4 q, const vec3 v)
+{
+    return QuaternionDot(q, QuaternionDot(vec4(v, 0.f), QuaternionInverse(q))).xyz;
+}
 
 #endif //_UTILITY_CMN_

@@ -67,10 +67,7 @@ DirectionalLightComponent::DirectionalLightComponent(SceneGraphNode* sgn, Platfo
 
     registerFields(editorComponent());
 
-    BoundingBox bb = {};
-    bb.setMin(-g_defaultLightDistance * 0.5f);
-    bb.setMax(-g_defaultLightDistance * 0.5f);
-    Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), bb);
+    Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), BoundingBox(float3(-g_defaultLightDistance * 0.5f), float3(-g_defaultLightDistance * 0.5f)));
 
     _positionCache.set(VECTOR3_ZERO);
     _feedbackContainers.resize(csmSplitCount());

@@ -63,11 +63,10 @@ void SceneNode::postLoad(SceneGraphNode* sgn)
     sgn->postLoad();
 }
 
-void SceneNode::setBounds(const BoundingBox& aabb, const float3& worldOffset)
+void SceneNode::setBounds(const BoundingBox& aabb)
 {
     _boundsChanged = true;
     _boundingBox.set(aabb);
-    _worldOffset.set(worldOffset);
 }
 
 Handle<Material> SceneNode::getMaterialTpl() const

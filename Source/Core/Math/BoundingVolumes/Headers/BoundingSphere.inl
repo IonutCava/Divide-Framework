@@ -32,129 +32,142 @@
 #ifndef DVD_CORE_MATH_BOUNDINGVOLUMES_BOUNDINGSPHERE_INL_
 #define DVD_CORE_MATH_BOUNDINGVOLUMES_BOUNDINGSPHERE_INL_
 
-namespace Divide {
+namespace Divide
+{
 
-inline void BoundingSphere::fromBoundingBox(const BoundingBox& bBox) noexcept {
-    _center.set(bBox.getCenter());
-    _radius = (bBox.getMax() - _center).length();
+inline void BoundingSphere::fromBoundingBox(const BoundingBox& bBox) noexcept
+{
+    _sphere.center = bBox.getCenter();
+    _sphere.radius = (bBox._max - _sphere.center).length();
 }
 
-inline void BoundingSphere::fromBoundingSphere(const BoundingSphere& bSphere) noexcept {
-    _center.set(bSphere.getCenter());
-    _radius = bSphere.getRadius();
+inline void BoundingSphere::fromBoundingSphere(const BoundingSphere& bSphere) noexcept
+{
+    _sphere = bSphere._sphere;
 }
 
 // https://code.google.com/p/qe3e/source/browse/trunk/src/BoundingSphere.h?r=28
-inline void BoundingSphere::add(const BoundingSphere& bSphere) noexcept {
-    const F32 dist = (bSphere._center - _center).length();
+inline void BoundingSphere::add(const BoundingSphere& bSphere) noexcept
+{
+    const F32 dist = (bSphere._sphere.center - _sphere.center).length();
 
-    if (_radius >= dist + bSphere._radius) {
+    if (_sphere.radius >= dist + bSphere._sphere.radius)
+    {
         return;
     }
 
-    if (bSphere._radius >= dist + _radius) {
-        _center = bSphere._center;
-        _radius = bSphere._radius;
+    if (bSphere._sphere.radius >= dist + _sphere.radius)
+    {
+        _sphere = bSphere._sphere;
     }
 
-    if (dist > EPSILON_F32) {
-        const F32 nRadius = (_radius + dist + bSphere._radius) * 0.5f;
-        const F32 ratio = (nRadius - _radius) / dist;
-        _center += (bSphere._center - _center) * ratio;
+    if (dist > EPSILON_F32)
+    {
+        const F32 nRadius = (_sphere.radius + dist + bSphere._sphere.radius) * 0.5f;
+        const F32 ratio = (nRadius - _sphere.radius) / dist;
+        _sphere.center += (bSphere._sphere.center - _sphere.center) * ratio;
 
-        _radius = nRadius;
-    }
-}
-
-inline void BoundingSphere::addRadius(const BoundingSphere& bSphere) noexcept {
-    const F32 dist = (bSphere._center - _center).length() + bSphere._radius;
-    if (_radius < dist) {
-        _radius = dist;
+        _sphere.radius = nRadius;
     }
 }
 
-inline void BoundingSphere::add(const float3& point) noexcept {
-    const float3 diff(point - _center);
+inline void BoundingSphere::addRadius(const BoundingSphere& bSphere) noexcept
+{
+    const F32 dist = (bSphere._sphere.center - _sphere.center).length() + bSphere._sphere.radius;
+    if (_sphere.radius < dist)
+    {
+        _sphere.radius = dist;
+    }
+}
+
+inline void BoundingSphere::add(const float3& point) noexcept
+{
+    const float3 diff(point - _sphere.center);
     const F32 dist = diff.length();
-    if (_radius < dist) {
-        const F32 nRadius = (dist - _radius) * 0.5f;
-        _center += diff * (nRadius / dist);
-        _radius += nRadius;
+    if (_sphere.radius < dist)
+    {
+        const F32 nRadius = (dist - _sphere.radius) * 0.5f;
+        _sphere.center += diff * (nRadius / dist);
+        _sphere.radius += nRadius;
     }
 }
 
-inline void BoundingSphere::addRadius(const float3& point) noexcept {
-    const F32 dist = (point - _center).length();
-    if (_radius < dist) {
-        _radius = dist;
+inline void BoundingSphere::addRadius(const float3& point) noexcept
+{
+    const F32 dist = (point - _sphere.center).length();
+    if (_sphere.radius < dist)
+    {
+        _sphere.radius = dist;
     }
 }
 
-inline void BoundingSphere::createFromPoints(const vector<float3>& points) noexcept {
-    _radius = 0;
+inline void BoundingSphere::createFromPoints(const vector<float3>& points) noexcept
+{
+    _sphere.radius = 0.f;
     const F32 numPoints = to_F32(points.size());
 
-    for (const float3& p : points) {
-        _center += p / numPoints;
+    for (const float3& p : points)
+    {
+        _sphere.center += p / numPoints;
     }
 
-    for (const float3& p : points) {
-        const F32 distance = (p - _center).length();
+    for (const float3& p : points)
+    {
+        const F32 distance = (p - _sphere.center).length();
 
-        if (distance > _radius) {
-            _radius = distance;
+        if (distance > _sphere.radius)
+        {
+            _sphere.radius = distance;
         }
     }
 }
 
-inline void BoundingSphere::createFromPoints(const std::array<float3, 8>& points) noexcept {
-    _radius = 0;
+inline void BoundingSphere::createFromPoints(const std::array<float3, 8>& points) noexcept
+{
+    _sphere.radius = 0.f;
 
-    for (const float3& p : points) {
-        _center += p / 8;
+    for (const float3& p : points)
+    {
+        _sphere.center += p / 8;
     }
 
-    for (const float3& p : points) {
-        const F32 distance = (p - _center).length();
+    for (const float3& p : points)
+    {
+        const F32 distance = (p - _sphere.center).length();
 
-        if (distance > _radius) {
-            _radius = distance;
+        if (distance > _sphere.radius)
+        {
+            _sphere.radius = distance;
         }
     }
 }
 
-inline void BoundingSphere::reset() noexcept {
-    _center.reset();
-    _radius = 0.0f;
+inline void BoundingSphere::reset() noexcept
+{
+    _sphere = VECTOR4_ZERO;
 }
 
-inline void BoundingSphere::setRadius(const F32 radius) noexcept {
-    _radius = radius;
+inline void BoundingSphere::setRadius(const F32 radius) noexcept
+{
+    _sphere.radius = radius;
 }
 
-inline void BoundingSphere::setCenter(const float3& center) noexcept {
-    _center = center;
+inline void BoundingSphere::setCenter(const float3& center) noexcept
+{
+    _sphere.center = center;
 }
-
-inline const float3& BoundingSphere::getCenter() const noexcept { return _center; }
-
-inline F32 BoundingSphere::getRadius() const noexcept { return _radius; }
-
-inline F32 BoundingSphere::getDiameter() const noexcept { return _radius * 2; }
 
 inline F32 BoundingSphere::getDistanceFromPoint(const float3& point) const noexcept
 {
-    return getCenter().distance(point) - getRadius();
+    return _sphere.center.distance(point) - _sphere.radius;
 }
+
 inline F32 BoundingSphere::getDistanceSQFromPoint(const float3& point) const noexcept
 {
     // If this is negative, than the sphere contains the point, so we clamp min distance
-    return std::max(getCenter().distanceSquared(point) - SQUARED(getRadius()), 0.f);
+    return std::max(_sphere.center.distanceSquared(point) - SQUARED(_sphere.radius), 0.f);
 }
-inline float4 BoundingSphere::asVec4() const noexcept
-{
-    return float4(getCenter(), getRadius());
-}
+
 }  // namespace Divide
 
 #endif  //DVD_CORE_MATH_BOUNDINGVOLUMES_BOUNDINGSPHERE_INL_

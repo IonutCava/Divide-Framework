@@ -7,11 +7,13 @@
 
 namespace Divide {
 namespace Util {
-    float3 toVec3(const physx::PxVec3& vec) noexcept {
+    float3 toVec3(const physx::PxVec3& vec) noexcept
+    {
         return { vec.x, vec.y, vec.z };
     }
 
-    physx::PxVec3 toVec3(const float3& vec) noexcept {
+    physx::PxVec3 toVec3(const float3& vec) noexcept
+    {
         return { vec.x, vec.y, vec.z };
     }
 } //namespace Util
@@ -23,30 +25,35 @@ namespace Util {
 
     PhysXActor::~PhysXActor()
     {
-        if (_actor != nullptr) {
+        if (_actor != nullptr)
+        {
             _actor->release();
         }
     }
 
     /// Set the local X,Y and Z position
-    void PhysXActor::setPosition(const float3& position) {
+    void PhysXActor::setPosition(const float3& position)
+    {
         setPosition(position.x, position.y, position.z);
     }
 
     /// Set the local X,Y and Z position
-    void PhysXActor::setPosition(const F32 x, const F32 y, const F32 z) {
+    void PhysXActor::setPosition(const F32 x, const F32 y, const F32 z)
+    {
         DIVIDE_UNUSED(x);
         DIVIDE_UNUSED(y);
         DIVIDE_UNUSED(z);
     }
 
     /// Set the object's position on the X axis
-    void PhysXActor::setPositionX(const F32 positionX) {
+    void PhysXActor::setPositionX(const F32 positionX)
+    {
         DIVIDE_UNUSED(positionX);
 
     }
     /// Set the object's position on the Y axis
-    void PhysXActor::setPositionY(const F32 positionY) {
+    void PhysXActor::setPositionY(const F32 positionY)
+    {
         DIVIDE_UNUSED(positionY);
 
     }
@@ -55,8 +62,21 @@ namespace Util {
         DIVIDE_UNUSED(positionZ);
     }
 
+    void PhysXActor::setScale(const F32 amount)
+    {
+        DIVIDE_UNUSED(amount);
+    }
+
+    void PhysXActor::setScale(const F32 X, const F32 Y, const F32 Z)
+    {
+        DIVIDE_UNUSED(X);
+        DIVIDE_UNUSED(Y);
+        DIVIDE_UNUSED(Z);
+    }
+
     /// Set the local X,Y and Z scale factors
-    void PhysXActor::setScale(const float3& scale) {
+    void PhysXActor::setScale(const float3& scale)
+    {
         DIVIDE_UNUSED(scale);
     }
 
@@ -76,7 +96,7 @@ namespace Util {
     }
 
     /// Set the local orientation so that it matches the specified quaternion.
-    void PhysXActor::setRotation(const Quaternion<F32>& quat) {
+    void PhysXActor::setRotation(const quatf& quat) {
         DIVIDE_UNUSED(quat);
     }
 
@@ -108,12 +128,12 @@ namespace Util {
     }
 
     /// Apply the specified Quaternion rotation starting from the current orientation.
-    void PhysXActor::rotate(const Quaternion<F32>& quat) {
+    void PhysXActor::rotate(const quatf& quat) {
         DIVIDE_UNUSED(quat);
     }
 
     /// Perform a SLERP rotation towards the specified quaternion
-    void PhysXActor::rotateSlerp(const Quaternion<F32>& quat, const D64 deltaTime) {
+    void PhysXActor::rotateSlerp(const quatf& quat, const D64 deltaTime) {
         DIVIDE_UNUSED(quat);
         DIVIDE_UNUSED(deltaTime);
     }
@@ -195,7 +215,7 @@ namespace Util {
     }
 
     /// Return the orientation quaternion
-    void  PhysXActor::getOrientation(Quaternion<F32>& quatOut) const {
+    void  PhysXActor::getOrientation(quatf& quatOut) const {
         quatOut.identity();
     }
 

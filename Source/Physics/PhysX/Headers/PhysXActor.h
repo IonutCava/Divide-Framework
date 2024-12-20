@@ -50,7 +50,8 @@ namespace Util {
     physx::PxVec3 toVec3(const float3& vec) noexcept;
 } //namespace Util
 
-class PhysXActor final : public PhysicsAsset {
+class PhysXActor final : public PhysicsAsset
+{
 public:
     explicit PhysXActor(RigidBodyComponent& parent) noexcept;
     ~PhysXActor() override;
@@ -63,7 +64,9 @@ public:
     void translate(const float3& axisFactors) override;
     using ITransform::setPosition;
 
+    void setScale(F32 amount) override;
     void setScale(const float3& scale) override;
+    void setScale(F32 X, F32 Y, F32 Z) override;
     void setScaleX(F32 amount) override;
     void setScaleY(F32 amount) override;
     void setScaleZ(F32 amount) override;
@@ -75,7 +78,7 @@ public:
 
     void setRotation(const float3& axis, Angle::DEGREES_F degrees) override;
     void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
-    void setRotation(const Quaternion<F32>& quat) override;
+    void setRotation(const quatf& quat) override;
     void setRotationX(Angle::DEGREES_F angle) override;
     void setRotationY(Angle::DEGREES_F angle) override;
     void setRotationZ(Angle::DEGREES_F angle) override;
@@ -83,8 +86,8 @@ public:
 
     void rotate(const float3& axis, Angle::DEGREES_F degrees) override;
     void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
-    void rotate(const Quaternion<F32>& quat) override;
-    void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
+    void rotate(const quatf& quat) override;
+    void rotateSlerp(const quatf& quat, D64 deltaTime) override;
     void rotateX(Angle::DEGREES_F angle) override;
     void rotateY(Angle::DEGREES_F angle) override;
     void rotateZ(Angle::DEGREES_F angle) override;
@@ -92,7 +95,7 @@ public:
 
     void getScale(float3& scaleOut) const override;
     void getPosition(float3& posOut) const override;
-    void getOrientation(Quaternion<F32>& quatOut) const override;
+    void getOrientation(quatf& quatOut) const override;
 
     void physicsCollisionGroup(PhysicsGroup group) override;
 

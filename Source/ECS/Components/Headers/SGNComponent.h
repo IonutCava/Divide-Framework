@@ -60,7 +60,6 @@ namespace ECS
             AnimationReSync,
             RelationshipCacheInvalidated,
             BoundsUpdated,
-            DrawBoundsChanged,
             EntityPostLoad,
             EntityFlagChanged,
             NewShaderReady,

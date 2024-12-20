@@ -96,10 +96,7 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* rootMeshNode, SceneGraphNod
 
     Util::StringFormat( subMeshDescriptor._name, "{}_{}", parentNode->name().c_str(), meshIndex );
 
-    SceneGraphNode* sgn = parentNode->addChildNode(subMeshDescriptor);
-    sgn->get<TransformComponent>()->setPosition(subMesh->getWorldOffset());
-
-    return sgn;
+    return parentNode->addChildNode(subMeshDescriptor);
 }
 
 void Mesh::processNode(SceneGraphNode* rootMeshNode, SceneGraphNode* parentNode, const MeshNodeData& node)

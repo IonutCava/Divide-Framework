@@ -3,6 +3,7 @@
 #include "Headers/VKWrapper.h"
 
 #include "Core/Headers/Application.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/Kernel.h"

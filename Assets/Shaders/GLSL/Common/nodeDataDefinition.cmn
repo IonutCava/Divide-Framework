@@ -14,17 +14,25 @@
 #define SELECTION_FLAG_SELECTED 3
 #define SELECTION_FLAG_PARENT_SELECTED 4
 
+struct TransformData
+{
+    float4 _position; // (w - unused)
+    float4 _scale;    // (w - unused)
+    float4 _rotation;
+};
+
 struct NodeTransformData
 {
-    mat4 _worldMatrix;
-    mat4 _prevWVPMatrix;
-    //[0][0]...[2][2] - normalMatrix
-    //[0][3] = 4x8U: unused, selection flag, LoDLevel, occlusion cull
-    //[1][3] = animationFrameCurrent
-    //[2][3] = boneCount
-    //[3][0..3] = boundingSphere
-    mat4 _normalMatrixW;
+    TransformData _transform;
+    TransformData _prevTransform;
+    vec4          _boundingSphere;
+    vec4          _data; //x = animation frame, y = bone count, z = LoDLevel, w = 4x8u: occlusion cull flag, selection flag, unused, unused
 };
+
+vec4 Transform(in vec4 positionIn, in TransformData transform)
+{
+   return vec4(transform._position.xyz + QuaternionRotate(transform._rotation, positionIn.xyz * transform._scale.xyz), positionIn.w);
+}
 
 #define NodeIndirectionData uvec4
 
@@ -80,14 +88,12 @@ struct NodeMaterialData
 
 #endif //FRAG_SHADER
 
-#define dvd_WorldMatrix(transformData) transformData._worldMatrix
-#define dvd_NormalMatrixW(transformData) mat3(transformData._normalMatrixW)
-#define dvd_NodeData(transformData) unpackUnorm4x8(uint(transformData._normalMatrixW[0][3]))
+#define dvd_NodeData(transformData) unpackUnorm4x8(uint(transformData._data.w))
+#define dvd_CullNode(transformData) (uint(dvd_NodeData(transformData).x * 255) == 1u)
 #define dvd_SelectionFlag(transformData) uint(dvd_NodeData(transformData).y * 255)
-#define dvd_LoDLevel(transformData) uint(dvd_NodeData(transformData).z * 255)
-#define dvd_CullNode(transformData) (uint(dvd_NodeData(transformData).w * 255) == 1u)
-#define dvd_AnimationFrame(transformData) uint(transformData._normalMatrixW[1][3])
-#define dvd_BoneCount(transformData) uint(transformData._normalMatrixW[2][3])
-#define dvd_BoundingSphere(transformData) transformData._normalMatrixW[3]
+#define dvd_LoDLevel(transformData) uint(transformData._data.z)
+#define dvd_AnimationFrame(transformData) uint(transformData._data.x)
+#define dvd_BoneCount(transformData) uint(transformData._data.y)
+#define dvd_BoundingSphere(transformData) transformData._boundingSphere
 
 #endif //_NODE_DATA_DEFINITION_CMN_

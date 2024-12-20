@@ -40,14 +40,24 @@ namespace Divide
         F32 s_lastFrameTimeSec = 0.f;
     }
 
+    FORCE_INLINE float3 Camera::worldForwardAxis() const noexcept
+    {
+        return WORLD_Z_NEG_AXIS;
+    }
+
+    FORCE_INLINE float3 Camera::worldUpAxis() const noexcept
+    {
+        return WORLD_Y_AXIS;
+    }
+
+    FORCE_INLINE float3 Camera::worldRightAxis() const noexcept
+    {
+        return WORLD_X_AXIS;
+    }
+
     inline const CameraSnapshot& Camera::snapshot() const noexcept
     {
         return _data;
-    }
-
-    inline void Camera::setGlobalRotation( const vec3<Angle::DEGREES_F>& euler ) noexcept
-    {
-        setGlobalRotation( euler.yaw, euler.pitch, euler.roll );
     }
 
     /// Sets the camera to point at the specified target point
@@ -78,46 +88,31 @@ namespace Divide
         setRotation( _euler.yaw, _euler.pitch, angle );
     }
 
-    /// Sets the camera's Yaw angle.
-    /// This creates a new orientation quaternion for the camera and extracts the Euler angles
-    inline void Camera::setGlobalYaw( const Angle::DEGREES_F angle ) noexcept
+    inline void Camera::setEye(const F32 right, const F32 up, const F32 forward) noexcept
     {
-        setGlobalRotation( angle, _euler.pitch, _euler.roll );
-    }
-
-    /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-    inline void Camera::setGlobalPitch( const Angle::DEGREES_F angle ) noexcept
-    {
-        setGlobalRotation( _euler.yaw, angle, _euler.roll );
-    }
-
-    /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-    inline void Camera::setGlobalRoll( const Angle::DEGREES_F angle ) noexcept
-    {
-        setGlobalRotation( _euler.yaw, _euler.pitch, angle );
-    }
-
-    inline void Camera::setEye( const F32 x, const F32 y, const F32 z ) noexcept
-    {
-        _data._eye.set( x, y, z );
+        _data._eye.right = right;
+        _data._eye.up = up;
+        _data._eye.forward = forward;
+        
+        _translationAccumulator.reset();
         _viewMatrixDirty = true;
     }
 
     inline void Camera::setEye( const float3& position ) noexcept
     {
-        setEye( position.x, position.y, position.z );
+        setEye( position.right, position.up, position.forward );
     }
 
-    inline void Camera::setRotation( const Quaternion<F32>& q ) noexcept
+    inline void Camera::setRotation( const quatf& q ) noexcept
     {
-        _data._orientation = q;
-        _viewMatrixDirty = true;
+        const vec3<Angle::DEGREES_F> euler = Angle::to_DEGREES(q.getEuler());
+        setRotation(euler.yaw, euler.pitch, euler.roll);
     }
 
     /// Creates a quaternion based on the specified axis-angle and calls "rotate" to change the orientation
     inline void Camera::rotate( const float3& axis, const Angle::DEGREES_F angle )
     {
-        rotate( Quaternion<F32>( axis, Angle::to_RADIANS(angle * speedFactor().turn * s_lastFrameTimeSec )) );
+        rotate(quatf( axis, Angle::to_RADIANS(angle)));
     }
 
     inline void Camera::moveForward( const F32 factor ) noexcept
@@ -137,21 +132,16 @@ namespace Divide
         move( 0.0f, factor, 0.0f );
     }
 
-    /// Exactly as in Ogre3D: locks the yaw movement to the specified axis
-    inline void Camera::setFixedYawAxis( const bool useFixed, const float3& fixedAxis ) noexcept
+    inline void Camera::setGlobalAxis(const bool yaw, const bool pitch, const bool roll) noexcept
     {
-        _yawFixed = useFixed;
-        _fixedYawAxis = fixedAxis;
+        _yawFixed = yaw;
+        _pitchFixed = pitch;
+        _rollFixed = roll;
     }
 
-    inline void Camera::setEuler( const vec3<Angle::DEGREES_F>& euler ) noexcept
+    inline void Camera::setRotation( const vec3<Angle::DEGREES_F>& euler ) noexcept
     {
         setRotation( euler.yaw, euler.pitch, euler.roll );
-    }
-
-    inline void Camera::setEuler( const Angle::DEGREES_F& pitch, const Angle::DEGREES_F& yaw, const Angle::DEGREES_F& roll ) noexcept
-    {
-        setRotation( yaw, pitch, roll );
     }
 
     inline const mat4<F32>& Camera::viewMatrix() const noexcept

@@ -29,8 +29,8 @@ namespace Divide {
                 }
                 {
                     IM::BoxDescriptor descriptor;
-                    descriptor.min = aabb.getMin();
-                    descriptor.max = aabb.getMax();
+                    descriptor.min = aabb._min;
+                    descriptor.max = aabb._max;
                     descriptor.colour = DefaultColours::BLUE_U8;
                     context().gfx().debugDrawBox(comp->getGUID() + 1, descriptor);
                 }

@@ -86,30 +86,24 @@ namespace Divide
             const SceneGraphNode::ChildContainer& rootChildren = sceneGraph.getRoot()->getChildren();
 
             SharedLock<SharedMutex> r_lock( rootChildren._lock );
-            const U32 iterCount = rootChildren._count;
-
-            if ( iterCount > g_nodesPerCullingPartition * 2 )
-            {
-                ParallelForDescriptor descriptor = {};
-                descriptor._iterCount = iterCount;
-                descriptor._partitionSize = g_nodesPerCullingPartition;
-                descriptor._priority = TaskPriority::DONT_CARE;
-                descriptor._useCurrentThread = true;
-                Parallel_For( context.taskPool( TaskPoolType::RENDERER ), descriptor, [&]( const Task*, const U32 start, const U32 end )
+            Parallel_For
+            (
+                context.taskPool( TaskPoolType::RENDERER ),
+                ParallelForDescriptor
+                {
+                    ._iterCount = rootChildren._count,
+                    ._partitionSize = g_nodesPerCullingPartition,
+                    ._priority = TaskPriority::DONT_CARE,
+                    ._useCurrentThread = true
+                },
+                [&]( const Task*, const U32 start, const U32 end )
                 {
                     for ( U32 i = start; i < end; ++i )
                     {
                         FrustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
                     }
-                });
-            }
-            else
-            {
-                for ( U32 i = 0u; i < iterCount; ++i )
-                {
-                    FrustumCullNode( rootChildren._data[i], params, cullFlags, 0u, nodesOut );
-                };
-            }
+                }
+            );
         }
 
         PostCullNodes( params, cullFlags, FilterMask( context ), nodesOut );
@@ -156,33 +150,24 @@ namespace Divide
             SceneGraphNode::ChildContainer& children = currentNode->getChildren();
             SharedLock<SharedMutex> r_lock(children._lock);
 
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = children._count;
-
-            if ( descriptor._iterCount > 0u )
-            {
-                if ( descriptor._iterCount > g_nodesPerCullingPartition * 2 )
+            Parallel_For
+            (
+                currentNode->context().taskPool( TaskPoolType::RENDERER ),
+                ParallelForDescriptor
                 {
-                    descriptor._partitionSize = g_nodesPerCullingPartition;
-                    descriptor._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME;
-                    descriptor._useCurrentThread = true;
-
-                    Parallel_For( currentNode->context().taskPool( TaskPoolType::RENDERER ), descriptor, [&]( const Task*, const U32 start, const U32 end )
-                    {
-                        for ( U32 i = start; i < end; ++i )
-                        {
-                            FrustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
-                        }
-                    });
-                }
-                else
+                    ._iterCount = children._count,
+                    ._partitionSize = g_nodesPerCullingPartition,
+                    ._priority = recursionLevel < 2 ? TaskPriority::DONT_CARE : TaskPriority::REALTIME,
+                    ._useCurrentThread = true,
+                },
+                [&]( const Task*, const U32 start, const U32 end )
                 {
-                    for ( U32 i = 0u; i < descriptor._iterCount; ++i )
+                    for ( U32 i = start; i < end; ++i )
                     {
                         FrustumCullNode( children._data[i], params, cullFlags, recursionLevel + 1, nodes );
-                    };
+                    }
                 }
-            }
+            );
         }
     }
 
@@ -214,7 +199,7 @@ namespace Divide
         for ( SceneGraphNode* node : nodes )
         {
             BoundsComponent* bComp = node->get<BoundsComponent>();
-            const F32 distanceSqToCamera = bComp != nullptr ? bComp->getBoundingSphere().getCenter().distanceSquared( cameraEye ) : F32_MAX;
+            const F32 distanceSqToCamera = bComp != nullptr ? bComp->getBoundingSphere()._sphere.center.distanceSquared( cameraEye ) : F32_MAX;
             nodesOut.append( { node, distanceSqToCamera } );
         }
     }

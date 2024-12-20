@@ -97,6 +97,12 @@ Quaternion<T>::Quaternion(const mat3<T>& rotationMatrix) noexcept
 }
 
 template <typename T>
+Quaternion<T>::Quaternion(const mat4<T>& rotationMatrix) noexcept
+{
+    fromMatrix(rotationMatrix);
+}
+
+template <typename T>
 Quaternion<T>::Quaternion(const vec3<T>& axis, Angle::RADIANS<T> angle) noexcept
 {
     fromAxisAngle(axis, angle);
@@ -501,34 +507,35 @@ void Quaternion<T>::fromMatrix(const mat3<T>& rotationMatrix) noexcept
 }
 
 template <typename T>
-void Quaternion<T>::getMatrix(mat3<T>& outMatrix) const noexcept
+template <typename U> requires std::is_same_v<U, mat3<T>> || std::is_same_v<U, mat4<T>>
+void Quaternion<T>::getMatrix(U& outMatrix) const noexcept
 {
-    const T& x = X();
-    const T& y = Y();
-    const T& z = Z();
-    const T& w = W();
-    T fTx = x + x;
-    T fTy = y + y;
-    T fTz = z + z;
-    T fTwx = fTx*w;
-    T fTwy = fTy*w;
-    T fTwz = fTz*w;
-    T fTxx = fTx*x;
-    T fTxy = fTy*x;
-    T fTxz = fTz*x;
-    T fTyy = fTy*y;
-    T fTyz = fTz*y;
-    T fTzz = fTz*z;
+    const T x = _elements.x;
+    const T y = _elements.y;
+    const T z = _elements.z;
+    const T w = _elements.w;
+    const T fTx = x + x;
+    const T fTy = y + y;
+    const T fTz = z + z;
+    const T fTwx = fTx * w;
+    const T fTwy = fTy * w;
+    const T fTwz = fTz * w;
+    const T fTxx = fTx * x;
+    const T fTxy = fTy * x;
+    const T fTxz = fTz * x;
+    const T fTyy = fTy * y;
+    const T fTyz = fTz * y;
+    const T fTzz = fTz * z;
 
-    outMatrix.m[0][0] = static_cast<T>(1.0f - (fTyy + fTzz));
-    outMatrix.m[0][1] =         fTxy - fTwz;
-    outMatrix.m[0][2] =         fTxz + fTwy;
-    outMatrix.m[1][0] =         fTxy + fTwz;
-    outMatrix.m[1][1] = static_cast<T>(1.0f - (fTxx + fTzz));
-    outMatrix.m[1][2] =         fTyz - fTwx;
-    outMatrix.m[2][0] =         fTxz - fTwy;
-    outMatrix.m[2][1] =         fTyz + fTwx;
-    outMatrix.m[2][2] = static_cast<T>(1.0f - (fTxx + fTyy));
+    outMatrix.m[0][0] = static_cast<T>(1.f - (fTyy + fTzz));
+    outMatrix.m[0][1] =                       fTxy - fTwz;
+    outMatrix.m[0][2] =                       fTxz + fTwy;
+    outMatrix.m[1][0] =                       fTxy + fTwz;
+    outMatrix.m[1][1] = static_cast<T>(1.f - (fTxx + fTzz));
+    outMatrix.m[1][2] =                       fTyz - fTwx;
+    outMatrix.m[2][0] =                       fTxz - fTwy;
+    outMatrix.m[2][1] =                       fTyz + fTwx;
+    outMatrix.m[2][2] = static_cast<T>(1.f - (fTxx + fTyy));
 }
 
 template <typename T>
@@ -816,13 +823,21 @@ Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t) noe
 }
 
 template <typename T>
-mat3<T> GetMatrix(const Quaternion<T>& q) noexcept
+mat3<T> GetMat3(const Quaternion<T>& q) noexcept
 {
     mat3<T> temp;
     q.getMatrix(temp);
     return temp;
 }
 
+template <typename T>
+mat4<T> GetMat4(const Quaternion<T>& q) noexcept
+{
+    mat4<T> temp;
+    q.getMatrix(temp);
+    return temp;
+
+}
 template <typename T>
 vec3<Angle::RADIANS<T>> GetEuler(const Quaternion<T>& q)
 {
@@ -852,9 +867,7 @@ vec3<T> DirectionFromAxis(const Quaternion<T>& q, const vec3<T>& AXIS) noexcept
 template <typename T>
 vec3<T> DirectionFromEuler(vec3<Angle::RADIANS<T>> const& euler, const vec3<T>& FORWARD_DIRECTION)
 {
-    Quaternion<F32> q = {};
-    q.fromEuler(euler);
-    return DirectionFromAxis(q, FORWARD_DIRECTION);
+    return DirectionFromAxis(quatf(euler), FORWARD_DIRECTION);
 }
 }  // namespace Divide
 

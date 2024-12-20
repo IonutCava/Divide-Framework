@@ -2,10 +2,10 @@
 #include "Headers/PhysXActor.h"
 #include "Headers/PhysXSceneInterface.h"
 
+#include "Core/Headers/Application.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Scenes/Headers/Scene.h"
 #include "Utility/Headers/Localization.h"
-
 
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
@@ -32,7 +32,6 @@
 #include <extensions/PxDefaultAllocator.h>
 #include <extensions/PxDefaultStreams.h>
 #include <extensions/PxRigidActorExt.h>
-#include <foundation/Px.h>
 #include <foundation/PxErrorCallback.h>
 #include <foundation/PxErrors.h>
 #include <foundation/PxFoundation.h>
@@ -79,7 +78,12 @@ namespace Divide
 
         const physx::PxTolerancesScale g_toleranceScale{};
         physx::PxPvdInstrumentationFlags  g_pvdFlags{};
-        physx::PxDefaultAllocator g_gDefaultAllocatorCallback;
+
+#if defined(ENABLE_MIMALLOC)
+        Divide::PxDefaultAllocator g_gDefaultAllocatorCallback;
+#else //ENABLE_MIMALLOC
+        physx::PxDefaultAllocator  g_gDefaultAllocatorCallback;
+#endif //ENABLE_MIMALLOC
 
         const char* g_pvd_target_ip = "127.0.0.1";
         physx::PxU32 g_pvd_target_port = 5425;
@@ -141,7 +145,8 @@ namespace Divide
 
         // Make sure we always try to close as much of our API stuff as possible on failure
         bool init = false;
-        SCOPE_EXIT{
+        SCOPE_EXIT
+        {
             if ( !init && !closePhysicsAPI() )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_START_PHYSX_API" ) );
@@ -151,6 +156,7 @@ namespace Divide
         Console::printfn( LOCALE_STR( "START_PHYSX_API" ) ) ;
 
         _simulationSpeed = simSpeed;
+
         // create foundation object with default error and allocator callbacks.
         _foundation = PxCreateFoundation( PX_PHYSICS_VERSION, g_gDefaultAllocatorCallback, g_physxErrorCallback );
         if ( _foundation == nullptr )
@@ -158,18 +164,6 @@ namespace Divide
             return ErrorCode::PHYSX_INIT_ERROR;
         }
 
-#if PX_SUPPORT_GPU_PHYSX
-        physx::PxCudaContextManagerDesc cudaContextManagerDesc;
-        _cudaContextManager = PxCreateCudaContextManager( *_foundation, cudaContextManagerDesc, PxGetProfilerCallback() );
-        if ( _cudaContextManager != nullptr )
-        {
-            if ( !_cudaContextManager->contextIsValid() )
-            {
-                _cudaContextManager->release();
-                _cudaContextManager = nullptr;
-            }
-        }
-#endif //PX_SUPPORT_GPU_PHYSX
         if constexpr( Config::Build::IS_DEBUG_BUILD || Config::Build::IS_PROFILE_BUILD )
         {
             createPvdConnection( g_pvd_target_ip,
@@ -193,6 +187,21 @@ namespace Divide
         }
 
         _gPhysicsSDK->registerDeletionListener( g_deletionListener, physx::PxDeletionEventFlag::eUSER_RELEASE );
+
+#if PX_SUPPORT_GPU_PHYSX
+        physx::PxCudaContextManagerDesc cudaContextManagerDesc;
+        cudaContextManagerDesc.appGUID = _context.app().name().c_str();
+
+        _cudaContextManager = PxCreateCudaContextManager( *_foundation, cudaContextManagerDesc, PxGetProfilerCallback() );
+        if ( _cudaContextManager != nullptr )
+        {
+            if ( !_cudaContextManager->contextIsValid() )
+            {
+                _cudaContextManager->release();
+                _cudaContextManager = nullptr;
+            }
+        }
+#endif //PX_SUPPORT_GPU_PHYSX
 
         //ToDo: Add proper material controls to RigidBodyComponent -Ionut
         _defaultMaterial = _gPhysicsSDK->createMaterial( 0.5f, 0.5f, 0.1f );
@@ -396,7 +405,7 @@ namespace Divide
 
         const float3& position = tComp->getWorldPosition();
         const float4 orientation = tComp->getWorldOrientation().asVec4();
-        const physx::PxTransform posePxTransform( Util::toVec3( position ), physx::PxQuat( orientation.x, orientation.y, orientation.z, orientation.w ).getConjugate() );
+        const physx::PxTransform posePxTransform( Util::toVec3( position ), physx::PxQuat( orientation.x, orientation.y, orientation.z, orientation.w ) );
 
         newActor->_actor = createActorForGroup( parentComp.physicsCollisionGroup(), posePxTransform );
         if ( newActor->_actor == nullptr )

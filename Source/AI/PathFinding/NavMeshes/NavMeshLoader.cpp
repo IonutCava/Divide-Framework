@@ -392,8 +392,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn)
                 goto next;
             }
 
-            mat4<F32> nodeTransform = MAT4_IDENTITY;
-            sgn->get<TransformComponent>()->getWorldMatrix(nodeTransform);
+            const mat4<F32>& nodeTransform = sgn->get<TransformComponent>()->getWorldMatrix();
 
             for (const VertexBuffer::Vertex& vert : vertices)
             {

@@ -64,8 +64,8 @@ struct AnimationChannel
 
 struct DualQuaternion
 {
-    Quaternion<F32> a;
-    Quaternion<F32> b;
+    quatf a;
+    quatf b;
 };
 
 using BoneQuaternions = vector<DualQuaternion>;

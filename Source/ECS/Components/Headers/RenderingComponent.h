@@ -189,7 +189,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     void drawDebugAxis();
     void drawSelectionGizmo();
     void drawSkeleton();
-    void drawBounds(bool AABB, bool OBB, bool Sphere);
     
     PROPERTY_R(bool, showAxis, false);
     PROPERTY_R(bool, receiveShadows, false);
@@ -205,7 +204,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     [[nodiscard]] RenderPackage& getDrawPackage(const RenderStagePass& renderStagePass);
     [[nodiscard]] U8             getLoDLevelInternal(const F32 distSQtoCenter, RenderStage renderStage, vec4<U16> lodThresholds);
 
-    void toggleBoundsDraw(bool showAABB, bool showBS, bool showOBB, bool recursive);
     void onRenderOptionChanged(RenderOptions option, bool state);
     void clearDrawPackages(const RenderStage stage, const RenderPassType pass);
     void clearDrawPackages();
@@ -295,9 +293,6 @@ BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
 
 
     bool _selectionGizmoDirty{ true };
-    bool _drawAABB{ false };
-    bool _drawOBB{ false };
-    bool _drawBS{ false };
     bool _updateReflection{ false };
     bool _updateRefraction{ false };
     U32 _materialUpdateMask{ to_base(MaterialUpdateResult::OK) };

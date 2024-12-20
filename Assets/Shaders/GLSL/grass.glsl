@@ -53,7 +53,7 @@ void main() {
     const float height = dvd_Vertex.y;
     dvd_Vertex.xyz *= scale;
     dvd_Vertex.y -= (1.f - scale) * 0.25f;
-    dvd_Vertex.xyz = QuaternionRotate(dvd_Vertex.xyz, data.orientationQuad);
+    dvd_Vertex.xyz = QuaternionRotate(data.orientationQuad, dvd_Vertex.xyz);
     VAR._vertexW = dvd_Vertex + vec4(data.positionAndScale.xyz, 0.0f);
 
     if (animate) {
@@ -74,7 +74,7 @@ void main() {
 #endif //!SHADOW_PASS
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;
-    dvd_Normal = normalize(QuaternionRotate(dvd_Normal, data.orientationQuad));
+    dvd_Normal = normalize(QuaternionRotate(data.orientationQuad, dvd_Normal));
 
     computeLightVectors(nodeData);
 

@@ -40,7 +40,7 @@ namespace Navigation {
 
 /// A point in space that AI units can navigate to
 struct Waypoint {
-    PROPERTY_RW(Quaternion<F32>, orientation);
+    PROPERTY_RW(quatf, orientation);
     PROPERTY_RW(float3, position);
     PROPERTY_R(U32, time, 0u);
     PROPERTY_R(U32, ID, 0xFFFFFFFF);

@@ -173,7 +173,7 @@ private:
                              GFX::CommandBuffer& bufferInOut,
                              GFX::MemoryBarrierCommand& memCmdInOut);
 
-    ParseResult processVisibleNodeTransform( const mat4<F32>& previousViewProjectionMatrix, RenderingComponent* rComp, U32& transformIDXOut);
+    ParseResult processVisibleNodeTransform(RenderingComponent* rComp, D64 interpolationFactor, U32& transformIDXOut);
 
     // Returns true on a cache hit
     ParseResult processVisibleNodeMaterial( RenderingComponent* rComp, U32& materialIDXOut, U32& indirectionIDXOut );
@@ -199,7 +199,7 @@ private:
     void resolveMainScreenTarget(const RenderPassParams& params, GFX::CommandBuffer& bufferInOut) const;
 
     [[nodiscard]] bool validateNodesForStagePass(RenderStagePass stagePass);
-    void parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index);
+    void parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index, D64 interpolationFactor);
     void parseMaterialRange(RenderBin::SortedQueue& queue, U32 start, U32 end);
 
 private:

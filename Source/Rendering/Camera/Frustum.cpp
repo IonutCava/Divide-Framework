@@ -58,7 +58,7 @@ FrustumCollision Frustum::ContainsPoint(const float3& point, I8& lastPlaneCache)
 
 FrustumCollision PlaneBoundingSphereIntersect(const Plane<F32>& plane, const BoundingSphere& bsphere) noexcept
 {
-    return PlaneSphereIntersect(plane, bsphere.getCenter(), bsphere.getRadius());
+    return PlaneSphereIntersect(plane, bsphere._sphere.center, bsphere._sphere.radius);
 }
 
 FrustumCollision PlaneSphereIntersect(const Plane<F32>& plane, const float3& center, const F32 radius) noexcept
@@ -214,7 +214,7 @@ FrustumCollision PlaneBoundingBoxIntersect(const Plane<F32>& plane, const Boundi
 
 FrustumCollision Frustum::ContainsSphere(const BoundingSphere& bSphere, I8& lastPlaneCache) const noexcept
 {
-    return ContainsSphere(bSphere.getCenter(), bSphere.getRadius(), lastPlaneCache);
+    return ContainsSphere(bSphere._sphere.center, bSphere._sphere.radius, lastPlaneCache);
 }
 
 FrustumCollision Frustum::ContainsBoundingBox(const BoundingBox& bbox, I8& lastPlaneCache) const noexcept

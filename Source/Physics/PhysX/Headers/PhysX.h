@@ -50,6 +50,8 @@ namespace physx
 namespace Divide {
 
 class PhysX;
+
+#if defined(ENABLE_MIMALLOC)
 class PxDefaultAllocator final : public physx::PxAllocatorCallback
 {
     void* allocate(const size_t size, const char*, const char*, int) noexcept override
@@ -65,6 +67,7 @@ class PxDefaultAllocator final : public physx::PxAllocatorCallback
 private:
     static constexpr size_t s_alignment = 16u;
 };
+#endif //ENABLE_MIMALLOC
 
 class PhysicsAsset;
 class SceneGraphNode;

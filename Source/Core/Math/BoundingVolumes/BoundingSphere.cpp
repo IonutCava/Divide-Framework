@@ -6,26 +6,17 @@
 namespace Divide
 {
 
-BoundingSphere::BoundingSphere() noexcept
-    : _radius(0.0f)
-{
-    _center.reset();
-}
-
-BoundingSphere::BoundingSphere(float3 center, const F32 radius) noexcept
-    : _center(MOV(center)),
-      _radius(radius)
+BoundingSphere::BoundingSphere(const float3& center, const F32 radius) noexcept
+    : _sphere(center, radius)
 {
 }
 
 BoundingSphere::BoundingSphere(const vector<float3>& points) noexcept
-    : BoundingSphere()
 {
     createFromPoints(points);
 }
 
 BoundingSphere::BoundingSphere(const std::array<float3, 8>& points) noexcept
-    : BoundingSphere()
 {
     createFromPoints(points);
 }
@@ -49,25 +40,25 @@ bool BoundingSphere::containsBoundingBox(const BoundingBox& AABB) const noexcept
 
 bool BoundingSphere::containsPoint(const float3& point) const noexcept
 {
-    const F32 distanceSQ = _center.distanceSquared(point);
-    return distanceSQ <= _radius * _radius;
+    const F32 distanceSQ = _sphere.center.distanceSquared(point);
+    return distanceSQ <= _sphere.radius * _sphere.radius;
 }
 
 bool BoundingSphere::collision(const BoundingSphere& sphere2) const noexcept
 {
-    F32 radiusSq = _radius + sphere2._radius;
+    F32 radiusSq = _sphere.radius + sphere2._sphere.radius;
     radiusSq *= radiusSq;
-    return _center.distanceSquared(sphere2._center) <= radiusSq;
+    return _sphere.center.distanceSquared(sphere2._sphere.center) <= radiusSq;
 }
 
-RayResult BoundingSphere::intersect(const Ray& r, const F32 tMin, const F32 tMax) const noexcept
+RayResult BoundingSphere::intersect(const IntersectionRay& r, const F32 tMin, const F32 tMax) const noexcept
 {
     const float3& p = r._origin;
     const float3& d = r._direction;
 
-    const float3 m = p - _center;
+    const float3 m = p - _sphere.center;
     const F32 b = Dot(m, d);
-    const F32 c = Dot(m, m) - SQUARED(_radius);
+    const F32 c = Dot(m, m) - SQUARED(_sphere.radius);
 
     // Exit if r's origin outside s (c > 0) and r pointing away from s (b > 0) 
     if (c > 0.f && b > 0.f)

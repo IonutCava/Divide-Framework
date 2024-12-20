@@ -53,8 +53,8 @@ namespace Divide {
         DIVIDE_ASSERT(worldMatrix.isColOrthogonal()); // We cannot convert transform an AABB to OBB if it gets sheared in the process.
 
         fromBoundingBox(aabb);
-
-        _position = worldMatrix * _position;
+        //transform(worldMatrix);
+        _position = worldMatrix.transformCoord(_position);
         _axis[0]  = Normalized(worldMatrix * float4(_axis[0], 0.f));
         _axis[1]  = Normalized(worldMatrix * float4(_axis[1], 0.f));
         _axis[2]  = Normalized(worldMatrix * float4(_axis[2], 0.f));
@@ -66,20 +66,20 @@ namespace Divide {
         OrthoNormalize(_axis[0], _axis[1], _axis[2]);
     }
 
-    void OBB::fromBoundingBox(const BoundingBox& aabb, const Quaternion<F32>& orientation)
+    void OBB::fromBoundingBox(const BoundingBox& aabb, const quatf& orientation)
     {
-        fromBoundingBox(aabb, mat4<F32>(GetMatrix(orientation), false));
+        fromBoundingBox(aabb, GetMat4(orientation));
     }
 
-    void OBB::fromBoundingBox(const BoundingBox& aabb, const float3& position, const Quaternion<F32>& rotation, const float3& scale)
+    void OBB::fromBoundingBox(const BoundingBox& aabb, const float3& position, const quatf& rotation, const float3& scale)
     {
-        fromBoundingBox(aabb, mat4<F32>(position, scale, GetMatrix(rotation)));
+        fromBoundingBox(aabb, mat4<F32>(position, scale, rotation));
     }
 
     void OBB::fromBoundingSphere(const BoundingSphere& sphere) noexcept
     {
-        _position.set(sphere.getCenter());
-        _halfExtents.set(sphere.getRadius());
+        _position.set(sphere._sphere.center);
+        _halfExtents.set(sphere._sphere.radius);
         _axis = { WORLD_X_AXIS, WORLD_Y_AXIS, WORLD_Z_AXIS };
     }
 
@@ -116,9 +116,9 @@ namespace Divide {
         }
     }
 
-    void OBB::transform(const Quaternion<F32>& rotation)
+    void OBB::transform(const quatf& rotation)
     {
-        transform(GetMatrix(rotation));
+        transform(GetMat3(rotation));
     }
 
     BoundingBox OBB::toBoundingBox() const noexcept
@@ -240,20 +240,23 @@ namespace Divide {
 
     bool OBB::containsSphere(const BoundingSphere& bSphere) const noexcept
     {
-        return distance(bSphere.getCenter()) - bSphere.getRadius() < 0.f;
+        return distance(bSphere._sphere.center) - bSphere._sphere.radius < 0.f;
     }
 
-    RayResult OBB::intersect(const Ray& ray, const F32 t0In, const F32 t1In) const noexcept
+    RayResult OBB::intersect(const IntersectionRay& ray, const F32 t0In, const F32 t1In) const noexcept
     {
         F32 tNear = -F32_MAX;
         F32 tFar  =  F32_MAX;
 
+        const float3& rayDir = ray._direction.xyz;
+        const float3& rayOrg = ray._origin.xyz;
+
         for (U8 i = 0; i < 3; ++i)
         {
-            if (std::abs(Dot(ray._direction, _axis[i])) < EPSILON_F32)
+            if (std::abs(Dot(rayDir, _axis[i])) < EPSILON_F32)
             {
                 // Ray parallel to planes
-                const F32 r = Dot(_axis[i], _position - ray._origin);
+                const F32 r = Dot(_axis[i], _position - rayOrg);
                 if (-r - _halfExtents[i] > 0.f ||
                     -r + _halfExtents[i] > 0.f)
                 {
@@ -261,8 +264,8 @@ namespace Divide {
                 }
             }
 
-            const F32 r = Dot(_axis[i], _position - ray._origin);
-            const F32 s = Dot(_axis[i], ray._direction);
+            const F32 r = Dot(_axis[i], _position - rayOrg);
+            const F32 s = Dot(_axis[i], rayDir);
             F32 t0 = (r + _halfExtents[i]) / s;
             F32 t1 = (r - _halfExtents[i]) / s;
             if (t0 > t1)

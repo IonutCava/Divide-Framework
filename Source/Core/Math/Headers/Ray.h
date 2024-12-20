@@ -43,7 +43,9 @@
 #ifndef DVD_RAY_H_
 #define DVD_RAY_H_
 
-namespace Divide {
+namespace Divide
+{
+
 struct RayResult
 {
     bool hit = false;
@@ -51,43 +53,46 @@ struct RayResult
     F32 dist = F32_INFINITY;
 };
 
-struct Ray {
-    struct CollisionHelpers {
-        float3 _invDirection;
-        int3 _sign;
-    };
+struct Ray
+{
 
-    float3 _origin;
-    float3 _direction;
-
-    void identity() noexcept {
-        _origin = VECTOR3_ZERO;
-        _direction = WORLD_Y_AXIS;
-    }
-
-    [[nodiscard]] CollisionHelpers getCollisionHelpers() const noexcept {
-        CollisionHelpers ret = {};
-        if (!IS_ZERO(_direction.x)) {
-            ret._invDirection.x = 1.0f / _direction.x;
-        } else {
-            ret._invDirection.x = F32_INFINITY;
-        }
-        if (!IS_ZERO(_direction.y)) {
-            ret._invDirection.y = 1.0f / _direction.y;
-        } else {
-            ret._invDirection.y = F32_INFINITY;
-        }
-        if (!IS_ZERO(_direction.z)) {
-            ret._invDirection.z = 1.0f / _direction.z;
-        } else {
-            ret._invDirection.z = F32_INFINITY;
-        }
-        ret._sign.x = ret._invDirection.x < 0.0f;
-        ret._sign.y = ret._invDirection.y < 0.0f;
-        ret._sign.z = ret._invDirection.z < 0.0f;
-        return ret;
-    }
+    float4 _origin = VECTOR4_ZERO;
+    float4 _direction = WORLD_Y_AXIS;
 };
+
+
+struct IntersectionRay : Ray
+{
+    float4 _invDirection = WORLD_Y_NEG_AXIS;
+    bool _signbit[4] = {{}};
+};
+
+inline void Identity(Ray& rayInOut) noexcept
+{
+    rayInOut._origin = VECTOR4_ZERO;
+    rayInOut._direction = WORLD_Y_AXIS;
+}
+
+[[nodiscard]] inline IntersectionRay GetIntersectionRay(const Ray& ray) noexcept
+{
+    IntersectionRay ret{};
+
+    for ( U8 d = 0u; d < 3u; ++d)
+    {
+        if (!IS_ZERO(ray._direction._v[d]))
+        {
+            ret._invDirection._v[d] = 1.f / ray._direction._v[d];
+        }
+        else
+        {
+            ret._invDirection._v[d] = F32_INFINITY;
+        }
+
+        ret._signbit[d] = std::signbit(ret._invDirection._v[d]);
+    }
+
+    return ret;
+}
 
 }  // namespace Divide
 

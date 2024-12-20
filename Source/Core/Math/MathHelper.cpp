@@ -13,8 +13,8 @@ namespace Divide::Util
 {
 
 bool ToDualQuaternion(const mat4<F32>& transform,
-                      Quaternion<F32>& rotQuatOut,
-                      Quaternion<F32>& transQuatOut)
+                      quatf& rotQuatOut,
+                      quatf& transQuatOut)
 {
     float3 translation = VECTOR3_ZERO, scale = VECTOR3_UNIT;
 
@@ -81,7 +81,7 @@ bool DecomposeMatrix(const mat4<F32>& transform,
     Row[1] = glm::detail::scale(Row[1], static_cast<T>(1));
     scaleOut.z = length(Row[2]);
     Row[2] = glm::detail::scale(Row[2], static_cast<T>(1));
-    isUniformScaleOut = scaleOut.isUniform();
+    isUniformScaleOut = IsUniform(scaleOut, EPSILON_F32);
 
     rotationOut.y = asin(-Row[0][2]);
     if (!IS_ZERO(cos(rotationOut.y)))
@@ -101,7 +101,7 @@ bool DecomposeMatrix(const mat4<F32>& transform,
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
-                     Quaternion<F32>& rotationOut,
+                     quatf& rotationOut,
                      bool& isUniformScaleOut)
 {
     vec3<Angle::RADIANS_F> tempEuler = VECTOR3_ZERO;
@@ -126,7 +126,7 @@ bool DecomposeMatrix(const mat4<F32>& transform,
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
-                     Quaternion<F32>& rotationOut)
+                     quatf& rotationOut)
 {
     bool uniformScaleTemp = false;
     return DecomposeMatrix(transform, translationOut, scaleOut, rotationOut, uniformScaleTemp);

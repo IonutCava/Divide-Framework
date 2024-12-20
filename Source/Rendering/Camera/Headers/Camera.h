@@ -128,10 +128,6 @@ namespace Divide
         void setReflection( const Plane<F32>& reflectionPlane ) noexcept;
         /// Clears the reflection plane specified (if any)
         void clearReflection() noexcept;
-        /// Global rotations are applied relative to the world axis, not the camera's
-        void setGlobalRotation( Angle::DEGREES_F yaw, Angle::DEGREES_F pitch, Angle::DEGREES_F roll = 0.0f ) noexcept;
-        /// Global rotations are applied relative to the world axis, not the camera's
-        void setGlobalRotation( const vec3<Angle::DEGREES_F>& euler ) noexcept;
         /// Sets the camera's view matrix to specify the specified value by extracting the eye position, orientation and other data from it 
         const mat4<F32>& lookAt( const mat4<F32>& viewMatrix );
         /// Sets the camera's position, target and up directions
@@ -147,23 +143,16 @@ namespace Divide
         void setPitch( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
         void setRoll( const Angle::DEGREES_F angle ) noexcept;
-        /// Sets the camera's Yaw angle.
-        /// This creates a new orientation quaternion for the camera and extracts the Euler angles
-        void setGlobalYaw( const Angle::DEGREES_F angle ) noexcept;
-        /// Sets the camera's Pitch angle. Yaw and Roll are previous extracted values
-        void setGlobalPitch( const Angle::DEGREES_F angle ) noexcept;
-        /// Sets the camera's Roll angle. Yaw and Pitch are previous extracted values
-        void setGlobalRoll( const Angle::DEGREES_F angle ) noexcept;
         /// Sets the camera's eye position
-        void setEye( const F32 x, const F32 y, const F32 z ) noexcept;
+        void setEye(const F32 right, const F32 up, const F32 forward) noexcept;
         /// Sets the camera's eye position
         void setEye( const float3& position ) noexcept;
         /// Sets the camera's orientation
-        void setRotation( const Quaternion<F32>& q ) noexcept;
+        void setRotation( const quatf& q ) noexcept;
         /// Sets the camera's orientation
         void setRotation( const Angle::DEGREES_F yaw, const Angle::DEGREES_F pitch, const Angle::DEGREES_F roll = 0.0f ) noexcept;
         /// Rotates the camera (changes its orientation) by the specified quaternion (_orientation *= q)
-        void rotate( const Quaternion<F32>& q );
+        void rotate( const quatf& q );
         /// Sets the camera's orientation to match the specified yaw, pitch and roll values;
         /// Creates a quaternion based on the specified Euler angles and calls "rotate" to change the orientation
         void rotate( Angle::DEGREES_F yaw, Angle::DEGREES_F pitch, Angle::DEGREES_F roll ) noexcept;
@@ -177,30 +166,20 @@ namespace Divide
         void rotateRoll( Angle::DEGREES_F angle );
         /// Change camera's pitch
         void rotatePitch( Angle::DEGREES_F angle );
-        /// Returns a quaternion representing a yaw rotation of the specified angle with the current camera settings applied
-        Quaternion<F32> rotationYaw( Angle::DEGREES_F angle ) const;
-        /// Returns a quaternion representing a roll rotation of the specified angle with the current camera settings applied
-        Quaternion<F32> rotationRoll( Angle::DEGREES_F angle ) const;
-        /// Returns a quaternion representing a pitch rotation of the specified angle with the current camera settings applied
-        Quaternion<F32> rotationPitch( Angle::DEGREES_F angle ) const;
 
         /// Moves the camera by the specified offsets in each direction
-        void move( F32 dx, F32 dy, F32 dz ) noexcept;
+        void move( F32 strafe, F32 height, F32 forward ) noexcept;
         /// Moves the camera forward or backwards
         void moveForward( const F32 factor ) noexcept;
         /// Moves the camera left or right
         void moveStrafe( const F32 factor ) noexcept;
         /// Moves the camera up or down
         void moveUp( const F32 factor ) noexcept;
-        /// Exactly as in Ogre3D: locks the yaw movement to the specified axis
-        void setFixedYawAxis( const bool useFixed, const float3& fixedAxis = WORLD_Y_AXIS ) noexcept;
-        bool moveRelative( const float3& relMovement );
-        bool rotateRelative( const vec3<Angle::DEGREES_F>& relRotation );
+        /// The specified axis will not be affected by orientation when computing rotation
+        void setGlobalAxis(const bool yaw, const bool pitch, const bool roll) noexcept;
         bool zoom( F32 zoomFactor ) noexcept;
         /// Set the camera's rotation to match the specified euler angles
-        void setEuler( const vec3<Angle::DEGREES_F>& euler ) noexcept;
-        /// Set the camera's rotation to match the specified euler angles
-        void setEuler( const Angle::DEGREES_F& pitch, const Angle::DEGREES_F& yaw, const Angle::DEGREES_F& roll ) noexcept;
+        void setRotation( const vec3<Angle::DEGREES_F>& euler ) noexcept;
         void setAspectRatio( F32 ratio ) noexcept;
         void setVerticalFoV( Angle::DEGREES_F verticalFoV ) noexcept;
         void setHorizontalFoV( Angle::DEGREES_F horizontalFoV ) noexcept;
@@ -280,7 +259,17 @@ namespace Divide
         bool updateProjection() noexcept;
         void update() noexcept;
 
+        [[nodiscard]] float3 worldForwardAxis() const noexcept;
+        [[nodiscard]] float3 worldUpAxis()      const noexcept;
+        [[nodiscard]] float3 worldRightAxis()   const noexcept;
+
     protected:
+        struct RotationLimits
+        {
+            vec2<Angle::DEGREES_F> _limits{0.f};
+            bool _enabled{false};
+        };
+
         CameraListenerMap _updateCameraListeners;
         CameraSnapshot _data;
         Frustum _frustum;
@@ -288,17 +277,16 @@ namespace Divide
         mat4<F32> _viewProjectionMatrix;
         Plane<F32> _reflectionPlane;
         vec3<Angle::RADIANS_F> _cameraRotation{ VECTOR3_ZERO };
-        float3 _fixedYawAxis{ WORLD_Y_AXIS };
         float3 _offsetDir{ WORLD_Z_AXIS };
-        Angle::DEGREES_F _accumPitch{ 0.0f };
-        F32 _currentRotationX{ 0.0f };
-        F32 _currentRotationY{ 0.0f };
+        vec3<Angle::DEGREES_F> _rotationAccumulator{ 0.0f };
+        vec3<F32> _translationAccumulator{ 0.0f };
+        RotationLimits _pitchLimits, _yawLimits, _rollLimits;
+
         U32 _updateCameraId{ 0u };
         bool _projectionDirty{ true };
         bool _viewMatrixDirty{ false };
         bool _frustumDirty{ true };
-        bool _yawFixed{ false };
-        bool _rotationDirty{ true };
+        bool _yawFixed{ false }, _pitchFixed{ false }, _rollFixed{false};
 
         // Camera pool
         public:

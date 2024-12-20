@@ -68,6 +68,8 @@ using FColour3 = float3;
 using UColour4 = vec4<U8>;
 using FColour4 = float4;
 
+using quatf = Quaternion<F32>;
+
 #if !defined(M_PI)
     constexpr D64 M_PI = std::numbers::pi;
 #endif
@@ -412,13 +414,13 @@ void ToFloatColour( const uint4& uintColour, FColour4& colourOut ) noexcept;
 void ToFloatColour( const uint3& uintColour, FColour3& colourOut ) noexcept;
 
 bool ToDualQuaternion(const mat4<F32>& transform,
-                      Quaternion<F32>& rotQuatOut,
-                      Quaternion<F32>& transQuatOut);
+                      quatf& rotQuatOut,
+                      quatf& transQuatOut);
 
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
-                     Quaternion<F32>& rotationOut,
+                     quatf& rotationOut,
                      bool& isUniformScaleOut);
 
 bool DecomposeMatrix(const mat4<F32>& transform,
@@ -435,7 +437,7 @@ bool DecomposeMatrix(const mat4<F32>& transform,
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,
                      float3& scaleOut,
-                     Quaternion<F32>& rotationOut);
+                     quatf& rotationOut);
 
 bool DecomposeMatrix(const mat4<F32>& transform,
                      float3& translationOut,

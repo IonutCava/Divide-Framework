@@ -56,9 +56,24 @@ inline bool BoundingBox::operator!=(const BoundingBox& B) const noexcept
     return !compare(B);
 }
 
-inline bool BoundingBox::containsBox(const BoundingBox& AABB2) const noexcept
+inline bool BoundingBox::containsAABB(const BoundingBox& AABB2) const noexcept
 {
-    return AABB2._min >= _min && AABB2._max <= _max;
+    return containsAABB(AABB2._min, AABB2._max);
+}
+
+inline bool BoundingBox::containsAABB(const float3& min, const float3& max) const noexcept
+{
+    return min >= _min && max <= _max;
+}
+
+inline bool BoundingBox::containsSphere(const float3& center, const F32 radius) const noexcept
+{
+    return center.x - _min.x > radius &&
+           center.y - _min.y > radius &&
+           center.z - _min.z > radius &&
+           _max.x - center.x > radius &&
+           _max.y - center.y > radius &&
+           _max.z - center.z > radius;
 }
 
 inline void BoundingBox::createFromPoints(std::span<const float3> points) noexcept
@@ -73,6 +88,41 @@ inline void BoundingBox::createFromSphere(const float3& center, const F32 radius
 {
     _max.set(center + radius);
     _min.set(center - radius);
+}
+
+inline void BoundingBox::createFromCenterAndSize(const float3& center, const float3& size) noexcept
+{
+    const float3 halfSize = 0.5f * size;
+    setMin(center - halfSize);
+    setMax(center + halfSize);
+}
+
+inline bool BoundingBox::collision(const float3& center, const float3& halfExtent) const noexcept
+{
+    const float3& localCenter = this->getCenter();
+    const float3& localHalfExtent = this->getHalfExtent();
+
+    return ABS(localCenter.x - center.x) <= localHalfExtent.x + halfExtent.x &&
+           ABS(localCenter.y - center.y) <= localHalfExtent.y + halfExtent.y &&
+           ABS(localCenter.z - center.z) <= localHalfExtent.z + halfExtent.z;
+}
+
+inline bool BoundingBox::collision(const float3& center, const F32 radius) const noexcept
+{
+    F32 dmin = 0;
+    for (U8 i = 0u; i < 3u; ++i)
+    {
+        if (center[i] < _min[i])
+        {
+            dmin += SQUARED(center[i] - _min[i]);
+        }
+        else if (center[i] > _max[i])
+        {
+            dmin += SQUARED(center[i] - _max[i]);
+        }
+    }
+
+    return dmin <= SQUARED(radius);
 }
 
 inline void BoundingBox::add(const float3& v) noexcept
@@ -155,16 +205,6 @@ inline void BoundingBox::multiplyMin(const float3& v) noexcept
     _min.x *= v.x;
     _min.y *= v.y;
     _min.z *= v.z;
-}
-
-inline const float3& BoundingBox::getMin() const noexcept
-{
-    return _min;
-}
-
-inline const float3& BoundingBox::getMax() const noexcept
-{
-    return _max;
 }
 
 inline float3 BoundingBox::getCenter() const noexcept
@@ -303,7 +343,7 @@ inline std::array<float3, 8> BoundingBox::getPoints() const noexcept
 
 inline float3 BoundingBox::nearestPoint(const float3& pos) const noexcept
 {
-    return Clamped(pos, getMin(), getMax());
+    return Clamped(pos, _min, _max);
 }
 
 inline float3 BoundingBox::getPVertex(const float3& normal) const noexcept
@@ -322,21 +362,26 @@ inline float3 BoundingBox::getNVertex(const float3& normal) const noexcept
 
 inline void BoundingBox::transform(const mat3<F32>& mat) noexcept
 {
-    transformInternal(getMin(), getMax(), VECTOR3_ZERO, mat);
+    transformInternal(_min, _max, VECTOR3_ZERO, mat);
 }
 
 inline void BoundingBox::transform(const mat4<F32>& mat) noexcept
 {
-    transformInternal(getMin(), getMax(), mat.getTranslation(), mat);
+    transform(_min, _max, mat);
 }
 
 inline void BoundingBox::transform(const BoundingBox& initialBoundingBox, const mat4<F32>& mat) noexcept
 {
-    transformInternal(initialBoundingBox.getMin(), initialBoundingBox.getMax(), mat.getTranslation(), mat);
+    transform(initialBoundingBox._min, initialBoundingBox._max, mat);
+}
+
+inline void BoundingBox::transform(const float3& initialMin, const float3& initialMax, const mat4<F32>& mat) noexcept
+{
+    transformInternal(initialMin, initialMax, mat.getTranslation(), mat);
 }
 
 template<typename T> requires std::is_same_v<T, mat3<F32>> || std::is_same_v<T, mat4<F32>>
-void BoundingBox::transformInternal(float3 initialMin, float3 initialMax, const float3 translation, const T& rotation) noexcept
+void BoundingBox::transformInternal(const float3& initialMin, const float3& initialMax, const float3 translation, const T& rotation) noexcept
 {
     _min = _max = translation;
 

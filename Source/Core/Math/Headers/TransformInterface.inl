@@ -65,18 +65,8 @@ namespace Divide
         {
             values._translation,
             values._scale,
-            GetMatrix( values._orientation )
+            values._orientation
         };
-    }
-
-    inline void ITransform::setScale( const F32 ammout )
-    {
-        setScale( float3( ammout ) );
-    }
-
-    inline void ITransform::setScale( const F32 x, const F32 y, const F32 z )
-    {
-        setScale( float3( x, y, z ) );
     }
 
     inline void ITransform::setRotationEuler( const vec3<Angle::DEGREES_F>& euler )

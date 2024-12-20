@@ -81,12 +81,15 @@ ECSManager::ECSManager(PlatformContext& context, ECS::ECSEngine& engine)
     _ecsEngine.GetSystemManager()->UpdateSystemWorkOrder();
 }
 
-bool ECSManager::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) const {
+bool ECSManager::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) const
+{
     outputBuffer << BYTE_BUFFER_VERSION;
 
-    const auto saveSystemCache = [sgn, &outputBuffer](ECS::ISystem* system) {
+    const auto saveSystemCache = [sgn, &outputBuffer](ECS::ISystem* system)
+    {
         ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
-        if (!serializer.saveCache(sgn, outputBuffer)) {
+        if (!serializer.saveCache(sgn, outputBuffer))
+        {
             Console::errorfn(LOCALE_STR("ECS_SAVE_ERROR"), system->GetSystemTypeName());
         }
 
@@ -99,13 +102,17 @@ bool ECSManager::saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) 
     return true;
 }
 
-bool ECSManager::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) const {
+bool ECSManager::loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) const
+{
     auto tempVer = decltype(BYTE_BUFFER_VERSION){0};
     inputBuffer >> tempVer;
-    if (tempVer == BYTE_BUFFER_VERSION) {
-        const auto loadSystemCache = [sgn, &inputBuffer](ECS::ISystem* system) {
+    if (tempVer == BYTE_BUFFER_VERSION)
+    {
+        const auto loadSystemCache = [sgn, &inputBuffer](ECS::ISystem* system)
+        {
             ECSSerializerProxy& serializer = static_cast<ECSSerializerProxy&>(system->GetSerializer());
-            if (!serializer.loadCache(sgn, inputBuffer)) {
+            if (!serializer.loadCache(sgn, inputBuffer))
+            {
                 Console::errorfn(LOCALE_STR("ECS_LOAD_ERROR"), system->GetSystemTypeName());
             }
             inputBuffer.readSkipToMarker(g_cacheMarkerByteValue);

@@ -58,6 +58,7 @@ class Quaternion
 #endif //HAS_SSE42
 
     explicit Quaternion(const mat3<T>& rotationMatrix) noexcept;
+    explicit Quaternion(const mat4<T>& rotationMatrix) noexcept;
     Quaternion(const vec3<T>& axis, Angle::RADIANS<T> angle) noexcept;
     Quaternion(const vec3<T>& forward, const vec3<T>& up = WORLD_Y_AXIS) noexcept;
     Quaternion(const vec3<Angle::RADIANS<T>>& euler) noexcept;
@@ -141,7 +142,8 @@ class Quaternion
     void fromMatrix(const mat4<T>& viewMatrix) noexcept;
 
     //! Convert to Matrix
-    void getMatrix(mat3<T>& outMatrix) const noexcept;
+    template<typename U> requires std::is_same_v<U, mat3<T>> || std::is_same_v<U, mat4<T>>
+    void getMatrix(U& outMatrix) const noexcept;
 
     //! Convert to Axis/Angles
     void getAxisAngle(vec3<T>& axis, Angle::RADIANS<T>& angle) const;
@@ -181,6 +183,12 @@ class Quaternion
     vec4<T> _elements;
 };
 
+template<typename T>
+using quat = Quaternion<T>;
+
+using quatf = quat<F32>;
+using quatd = quat<D64>;
+
 /// get the shortest arc quaternion to rotate vector 'v' to the target vector 'u'
 /// (from Ogre3D!)
 template <typename T>
@@ -190,7 +198,10 @@ template <typename T>
 Quaternion<T> Slerp(const Quaternion<T>& q0, const Quaternion<T>& q1, F32 t) noexcept;
 
 template <typename T>
-mat3<T> GetMatrix(const Quaternion<T>& q) noexcept;
+mat3<T> GetMat3(const Quaternion<T>& q) noexcept;
+
+template <typename T>
+mat4<T> GetMat4(const Quaternion<T>& q) noexcept;
 
 template <typename T>
 vec3<Angle::RADIANS<T>> GetEuler(const Quaternion<T>& q);

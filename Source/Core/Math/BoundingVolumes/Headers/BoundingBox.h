@@ -38,23 +38,16 @@
 namespace Divide
 {
 
-namespace Attorney
-{
-    class BoundingBoxEditor;
-}
-
 class OBB;
-class PropertyWindow;
 class BoundingSphere;
 class BoundingBox
 {
-    friend class Attorney::BoundingBoxEditor;
-
    public:
-    BoundingBox() noexcept;
+    BoundingBox() = default;
+
     explicit BoundingBox(const OBB& obb) noexcept;
     explicit BoundingBox(const BoundingSphere& bSphere) noexcept;
-    explicit BoundingBox(float3 min, float3 max) noexcept;
+    explicit BoundingBox(const float3& min, const float3& max) noexcept;
     explicit BoundingBox(std::span<const float3> points) noexcept;
     explicit BoundingBox(F32 minX, F32 minY, F32 minZ, F32 maxX, F32 maxY, F32 maxZ) noexcept;
 
@@ -62,18 +55,22 @@ class BoundingBox
     BoundingBox& operator=(const BoundingBox& b) noexcept;
 
     [[nodiscard]] bool containsPoint(const float3& point) const noexcept;
-    [[nodiscard]] bool containsBox(const BoundingBox& AABB2) const noexcept;
+    [[nodiscard]] bool containsAABB(const BoundingBox& AABB2) const noexcept;
+    [[nodiscard]] bool containsAABB(const float3& min, const float3& max) const noexcept;
     [[nodiscard]] bool containsSphere(const BoundingSphere& bSphere) const noexcept;
+    [[nodiscard]] bool containsSphere(const float3& center, F32 radius) const noexcept;
 
     [[nodiscard]] bool collision(const BoundingBox& AABB2) const  noexcept;
+    [[nodiscard]] bool collision(const float3& min, const float3& halfExtent) const noexcept;
     [[nodiscard]] bool collision(const BoundingSphere& bSphere) const noexcept;
+    [[nodiscard]] bool collision(const float3& center, F32 radius) const noexcept;
 
     [[nodiscard]] bool compare(const BoundingBox& bb) const noexcept;
     [[nodiscard]] bool operator==(const BoundingBox& B) const noexcept;
     [[nodiscard]] bool operator!=(const BoundingBox& B) const noexcept;
 
     /// Optimized method
-    [[nodiscard]] RayResult intersect(const Ray& r, F32 t0, F32 t1) const noexcept;
+    [[nodiscard]] RayResult intersect(const IntersectionRay& r, F32 t0, F32 t1) const noexcept;
 
     void createFromPoints(std::span<const float3> points) noexcept;
     void createFromSphere(const BoundingSphere& bSphere) noexcept;
@@ -91,13 +88,10 @@ class BoundingBox
     void multiplyMax(const float3& v) noexcept;
     void multiplyMin(const float3& v) noexcept;
 
-    void transform(float3 initialMin, float3 initialMax, const mat4<F32>& mat) noexcept;
+    void transform(const float3& initialMin, const float3& initialMax, const mat4<F32>& mat) noexcept;
     void transform(const BoundingBox& initialBoundingBox, const mat4<F32>& mat) noexcept;
     void transform(const mat3<F32>& rotationMatrix) noexcept;
     void transform(const mat4<F32>& transformMatrix) noexcept;
-
-    [[nodiscard]] const float3& getMin() const noexcept;
-    [[nodiscard]] const float3& getMax() const noexcept;
 
     [[nodiscard]] float3 getCenter() const noexcept;
     [[nodiscard]] float3 getExtent() const noexcept;
@@ -132,23 +126,20 @@ class BoundingBox
 
    private:
     template<typename T> requires std::is_same_v<T, mat3<F32>> || std::is_same_v<T, mat4<F32>>
-    void transformInternal(float3 initialMin, float3 initialMax, const float3 translation, const T& rotation) noexcept;
+    void transformInternal(const float3& initialMin, const float3& initialMax, const float3 translation, const T& rotation) noexcept;
 
-   private:
-    float3 _min, _max;
-};
+   public:
+    union
+    {
+        struct
+        {
+            float3 _min;
+            float3 _max;
+        };
 
-namespace Attorney {
-    class BoundingBoxEditor {
-        static F32* min(BoundingBox& bb) noexcept {
-            return bb._min._v;
-        }
-        static F32* max(BoundingBox& bb) noexcept {
-            return bb._max._v;
-        }
-        friend class Divide::PropertyWindow;
+        float3 _corners[2]{ {-EPSILON_F32 * 2}, { EPSILON_F32 * 2}};
     };
-} //namespace Attorney
+};
 
 }  // namespace Divide
 

@@ -563,7 +563,7 @@ namespace Divide
     void WaterPlane::updatePlaneEquation( const SceneGraphNode* sgn, Plane<F32>& plane, const bool reflection, const F32 offset ) const
     {
         const F32 waterLevel = sgn->get<TransformComponent>()->getWorldPosition().y * (reflection ? -1.f : 1.f);
-        const Quaternion<F32>& orientation = sgn->get<TransformComponent>()->getWorldOrientation();
+        const quatf& orientation = sgn->get<TransformComponent>()->getWorldOrientation();
 
         plane.set( Normalized( float3( orientation * (reflection ? WORLD_Y_AXIS : WORLD_Y_NEG_AXIS) ) ), offset + waterLevel );
     }

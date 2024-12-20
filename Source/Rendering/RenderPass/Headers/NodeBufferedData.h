@@ -39,17 +39,22 @@ namespace Divide {
     static constexpr U8 TEXTURES_IDX = 2u;
 
 #pragma pack(push, 1)
+    struct TransformData
+    {
+        float4 _position; //(w - unused)
+        float4 _scale; //(w - unused)
+        quatf  _rotation;
+    };
+
     struct NodeTransformData
     {
-        mat4<F32> _worldMatrix = MAT4_INITIAL_TRANSFORM;
-        mat4<F32> _prevWVPMatrix = MAT4_INITIAL_TRANSFORM;
-        //[0][0]...[2][2] - normalMatrix
-        //[0][3] = 4x8U: unused, unused, LoDLevel, occlusion cull
-        //[1][3] = animationFrame
-        //[2][3] = boneCount
-        //[3][0..3] = boundingSphere
-        mat4<F32> _normalMatrixW = MAT4_IDENTITY;
+        TransformData _transform;
+        TransformData _prevTransform;
+        float4        _boundingSphere;
+        float4        _data; //x = animation frame, y = bone count, z = LoDLevel, w = 4x8u: occlusion cull flag, selection flag, unused, unused
     };
+
+    static_assert(sizeof(NodeTransformData) == sizeof(mat4<F32>) * 2, "Wrong Node Transform Data entry size!");
 
     struct NodeMaterialData
     {

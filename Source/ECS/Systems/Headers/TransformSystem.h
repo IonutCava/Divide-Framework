@@ -51,6 +51,10 @@ namespace Divide {
 
         bool saveCache(const SceneGraphNode* sgn, ByteBuffer& outputBuffer) override;
         bool loadCache(SceneGraphNode* sgn, ByteBuffer& inputBuffer) override;
+
+
+       protected:
+         void computeWorldMatrix(TransformComponent* comp) const;
     };
 }
 

@@ -3,6 +3,7 @@
 #include "Headers/Texture.h"
 
 #include "Core/Headers/ByteBuffer.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
@@ -462,49 +463,56 @@ namespace Divide
         {
             if ( HasAlphaChannel( fileData.format() ) )
             {
-                bool hasTransulenctOrOpaquePixels = false;
+                bool hasTranslucentOrOpaquePixels = false;
                 // Allow about 4 pixels per partition to be ignored
                 constexpr U32 transparentPixelsSkipCount = 4u;
 
                 std::atomic_uint transparentPixelCount = 0u;
 
-                ParallelForDescriptor descriptor = {};
-                descriptor._iterCount = width;
-                descriptor._partitionSize = std::max( 16u, to_U32( width / 10 ) );
-                descriptor._useCurrentThread = true;
-                Parallel_For( _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&]( const Task* /*parent*/, const U32 start, const U32 end )
-                {
-                    U8 tempA = 0u;
-                    for ( U32 i = start; i < end; ++i )
+                Parallel_For
+                (
+                    _context.context().taskPool( TaskPoolType::HIGH_PRIORITY ),
+                    ParallelForDescriptor
                     {
-                        for ( I32 j = 0; j < height; ++j )
+                        ._iterCount = width,
+                        ._partitionSize = std::max(16u, to_U32(width / 10)),
+                        ._useCurrentThread = true
+                    },
+                    [&]( const Task* /*parent*/, const U32 start, const U32 end )
+                    {
+                        U8 tempA = 0u;
+                        for ( U32 i = start; i < end; ++i )
                         {
-                            if ( _hasTransparency && (_hasTranslucency || hasTransulenctOrOpaquePixels) )
+                            for ( I32 j = 0; j < height; ++j )
                             {
-                                return;
-                            }
-                            fileData.getAlpha( i, j, tempA, layer );
-                            if ( IS_IN_RANGE_INCLUSIVE( tempA, 0, 250 ) )
-                            {
-                                if ( transparentPixelCount.fetch_add( 1u ) >= transparentPixelsSkipCount )
+                                if ( _hasTransparency && (_hasTranslucency || hasTranslucentOrOpaquePixels) )
                                 {
-                                    _hasTransparency = true;
-                                    _hasTranslucency = tempA > 1;
-                                    if ( _hasTranslucency )
+                                    return;
+                                }
+                                fileData.getAlpha( i, j, tempA, layer );
+                                if ( IS_IN_RANGE_INCLUSIVE( tempA, 0, 250 ) )
+                                {
+                                    if ( transparentPixelCount.fetch_add( 1u ) >= transparentPixelsSkipCount )
                                     {
-                                        hasTransulenctOrOpaquePixels = true;
-                                        return;
+                                        _hasTransparency = true;
+                                        _hasTranslucency = tempA > 1;
+                                        if ( _hasTranslucency )
+                                        {
+                                            hasTranslucentOrOpaquePixels = true;
+                                            return;
+                                        }
                                     }
                                 }
-                            }
-                            else if ( tempA > 250 )
-                            {
-                                hasTransulenctOrOpaquePixels = true;
+                                else if ( tempA > 250 )
+                                {
+                                    hasTranslucentOrOpaquePixels = true;
+                                }
                             }
                         }
                     }
-                });
-                if ( _hasTransparency && !_hasTranslucency && !hasTransulenctOrOpaquePixels )
+                );
+
+                if ( _hasTransparency && !_hasTranslucency && !hasTranslucentOrOpaquePixels)
                 {
                     // All the alpha values are 0, so this channel is useless.
                     _hasTransparency = _hasTranslucency = false;

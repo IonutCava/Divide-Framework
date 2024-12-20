@@ -50,6 +50,11 @@ public:
     void PreUpdate(F32 dt) override;
     void Update(F32 dt) override;
     void PostUpdate(F32 dt) override;
+
+private:
+    bool _renderAABB{false};
+    bool _renderOBB{false};
+    bool _renderBS{false};
 };
 }
 

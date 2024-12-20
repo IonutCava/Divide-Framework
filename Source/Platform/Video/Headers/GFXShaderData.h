@@ -39,13 +39,16 @@ namespace Divide {
 
 enum class RenderStage : U8;
 
-struct GFXShaderData {
+struct GFXShaderData
+{
 #pragma pack(push, 1)
-      struct CamData {
+      struct CamData
+      {
           mat4<F32> _projectionMatrix = MAT4_IDENTITY;
           mat4<F32> _viewMatrix = MAT4_IDENTITY;
           mat4<F32> _invViewMatrix = MAT4_IDENTITY;
           mat4<F32> _worldAOVPMatrix = MAT4_IDENTITY;
+          mat4<F32> _prevViewProjectionMatrix = MAT4_IDENTITY;
           float4 _viewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           // x - scale, y - bias, z - light bleed bias, w - min shadow variance
           float4 _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
@@ -54,9 +57,11 @@ struct GFXShaderData {
           //xy - depth range, zw - light cluster size X / Y
           float4 _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
           float4 _clipPlanes[Config::MAX_CLIP_DISTANCES];
-          float4 _padding__[9];
+          float4 _padding__[5];
       } _camData;
 #pragma pack(pop)
+
+    static_assert(sizeof(CamData) == sizeof(mat4<F32>) * 8, "Wrong GPU data struct size!");
 
     struct PrevFrameData
     {

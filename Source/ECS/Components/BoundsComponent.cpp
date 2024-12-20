@@ -13,7 +13,6 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     : BaseComponentType<BoundsComponent, ComponentType::BOUNDS>(sgn, context)
 {
     _refBoundingBox.set(sgn->getNode().getBounds());
-    _worldOffset.set(sgn->getNode().getWorldOffset());
 
     _boundingBox.set(_refBoundingBox);
     _boundingSphere.fromBoundingBox(_boundingBox);
@@ -88,7 +87,8 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     recomputeBoundsField._readOnly = false; //disabled/enabled
     _editorComponent.registerField(MOV(recomputeBoundsField));
 
-    _editorComponent.onChangedCbk([this](const std::string_view field) {
+    _editorComponent.onChangedCbk([this](const std::string_view field)
+    {
         if (field == "Recompute Bounds")
         {
             flagBoundingBoxDirty(to_base(TransformType::ALL), true);
@@ -96,102 +96,70 @@ BoundsComponent::BoundsComponent(SceneGraphNode* sgn, PlatformContext& context)
     });
 }
 
-void BoundsComponent::showAABB(const bool state) {
-    if (_showAABB != state) {
-        _showAABB = state;
-
-        _parentSGN->SendEvent(
-            {
-                ._type = ECS::CustomEvent::Type::DrawBoundsChanged,
-                ._sourceCmp = this
-            });
-    }
-}
-
-void BoundsComponent::showOBB(const bool state) {
-    if (_showOBB != state) {
-        _showOBB = state;
-
-        _parentSGN->SendEvent(
-            {
-                ._type = ECS::CustomEvent::Type::DrawBoundsChanged,
-                ._sourceCmp = this
-            });
-    }
-}
-
-void BoundsComponent::showBS(const bool state) {
-    if (_showBS != state) {
-        _showBS = state;
-
-        _parentSGN->SendEvent(
-            {
-                ._type = ECS::CustomEvent::Type::DrawBoundsChanged,
-                ._sourceCmp = this
-            });
-    }
-}
-
 void BoundsComponent::flagBoundingBoxDirty(const U32 transformMask, const bool recursive) {
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (_transformUpdatedMask.exchange(transformMask) != 0u) {
+    if (_transformUpdatedMask.exchange(transformMask) != 0u)
+    {
         // already dirty
         return;
     }
 
-    if (recursive) {
+    _lastTransform = _parentSGN->get<TransformComponent>()->getWorldMatrix();
+
+    if (recursive)
+    {
         const SceneGraphNode* parent = _parentSGN->parent();
-        if (parent != nullptr) {
-            // We stop if the parent sgn doesn't have a bounds component.
-            if (parent->HasComponents(ComponentType::BOUNDS)) {
-                parent->get<BoundsComponent>()->flagBoundingBoxDirty(transformMask, true);
-            }
+        // We stop if the parent sgn doesn't have a bounds component.
+        if (parent != nullptr && parent->HasComponents(ComponentType::BOUNDS))
+        {
+            parent->get<BoundsComponent>()->flagBoundingBoxDirty(transformMask, true);
         }
     }
 }
 
-void BoundsComponent::OnData(const ECS::CustomEvent& data) {
+void BoundsComponent::OnData(const ECS::CustomEvent& data)
+{
     SGNComponent::OnData(data);
 
-    if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
+    if (data._type == ECS::CustomEvent::Type::TransformUpdated)
+    {
         flagBoundingBoxDirty(data._flag, true);
     }
 }
 
-void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept {
+void BoundsComponent::setRefBoundingBox(const BoundingBox& nodeBounds) noexcept
+{
     // All the parents should already be dirty thanks to the bounds system
     _refBoundingBox.set(nodeBounds);
     _transformUpdatedMask.store(to_base(TransformType::ALL));
 }
 
-void BoundsComponent::updateBoundingBoxTransform() {
+void BoundsComponent::updateBoundingBoxTransform()
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
-    if (_transformUpdatedMask == 0u) {
-        return;
+    if (_transformUpdatedMask > 0u)
+    {
+        _boundingBox.transform(_refBoundingBox, _lastTransform);
     }
-
-    const mat4<F32> mat = _parentSGN->get<TransformComponent>()->getWorldMatrix();
-    _boundingBox.transform(_refBoundingBox, mat);
 }
 
-void BoundsComponent::appendChildRefBBs() {
+void BoundsComponent::appendChildRefBBs()
+{
     PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
     const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
     SharedLock<SharedMutex> r_lock(children._lock);
     const U32 childCount = children._count;
-    BoundingBox temp{};
+
     for (U32 i = 0u; i < childCount; ++i)
     {
         if (children._data[i]->HasComponents(ComponentType::BOUNDS))
         {
             BoundsComponent* const bComp = children._data[i]->get<BoundsComponent>();
             bComp->appendChildRefBBs();
-            temp = bComp->_refBoundingBox;
-            temp.translate(bComp->_worldOffset);
-            _refBoundingBox.add(temp);
+            _refBoundingBox.add(bComp->_refBoundingBox);
         }
     }
 }

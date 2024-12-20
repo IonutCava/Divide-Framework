@@ -63,10 +63,7 @@ SpotLightComponent::SpotLightComponent(SceneGraphNode* sgn, PlatformContext& con
         }
     });
 
-    BoundingBox bb = {};
-    bb.setMin(-1.0f);
-    bb.setMax(1.0f);
-    Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), bb);
+    Attorney::SceneNodeLightComponent::setBounds(sgn->getNode(), BoundingBox(float3(-1.0f), float3(1.0f)));
 }
 
 F32 SpotLightComponent::outerConeRadius() const noexcept

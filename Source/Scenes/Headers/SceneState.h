@@ -157,12 +157,7 @@ struct MovementStack
     [[nodiscard]] inline F32 topValue() const noexcept
     {
         const MoveDirectionRequest& direction = top();
-        if (direction._direction == MoveDirection::NONE)
-        {
-            return 0.f;
-        }
-
-        return (direction._speedPercentage / 255.f) * (direction._direction == MoveDirection::NEGATIVE ? -1.f : 1.f);
+        return (direction._speedPercentage / 255.f) * to_base(direction._direction);
     }
 
     void push( const MoveDirectionRequest direction ) noexcept

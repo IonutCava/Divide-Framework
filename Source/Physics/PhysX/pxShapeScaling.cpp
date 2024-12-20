@@ -126,7 +126,7 @@ void Scale(PxConvexMeshGeometry& geometry, PxTransform& pose, const PxVec3& scal
 
     /* 
         MONITOR: only allows for one kind of scaling
-        geometry.scale.rotation = pose.q.getConjugate();
+        geometry.scale.rotation = pose.q;
         geometry.scale.scale = geometry.scale.scale.multiply(scaling);
     */
     pose.p = pose.p.multiply(scaling);
@@ -145,7 +145,7 @@ void Scale(PxTriangleMeshGeometry&geometry, PxTransform&pose, const PxVec3&scali
 
     /*
         MONITOR: only allows for one kind of scaling
-        geometry.scale.rotation = pose.q.getConjugate();
+        geometry.scale.rotation = pose.q;
         geometry.scale.scale = geometry.scale.scale.multiply(scaling);
     */
     pose.p = pose.p.multiply(scaling);

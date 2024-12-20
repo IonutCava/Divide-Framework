@@ -153,7 +153,6 @@ namespace Divide
         struct QueueModelSpawn;
 
         public:
-        static std::array<Input::MouseButton, 5> g_oisButtons;
         static std::array<const char*, 3> g_supportedExportPlatforms;
 
         enum class WindowType : U8

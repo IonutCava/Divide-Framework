@@ -297,7 +297,7 @@ namespace
             {
                 dirty = true;
             }
-            if (ImGui::SliderFloat("Jitter Ammount", &jitterAmount, 0.01f, 10.0f))
+            if (ImGui::SliderFloat("Jitter Amount", &jitterAmount, 0.01f, 10.0f))
             {
                 dirty = true;
             }

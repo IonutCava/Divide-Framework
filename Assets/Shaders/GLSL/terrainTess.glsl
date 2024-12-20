@@ -151,7 +151,7 @@ void main(void)
                                  gl_in[2].gl_Position.xyz +
                                  gl_in[3].gl_Position.xyz);
 
-    const mat4 worldMat = dvd_WorldMatrix(dvd_Transforms[TRANSFORM_IDX]) * dvd_terrainWorld;
+    const mat4 worldMat = Transform(dvd_terrainWorld, dvd_Transforms[TRANSFORM_IDX]._transform);
 
     const vec4 pos0 = worldMat * gl_in[0].gl_Position;
     const vec4 pos1 = worldMat * gl_in[2].gl_Position;
@@ -304,7 +304,8 @@ vec3 LerpDebugColours(in vec3 cIn[5], vec2 uv) {
 }
 #endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
 
-mat3 getTBNW(in vec3 normalW) {
+mat3 getTBNW(in vec3 normalW)
+{
     // We need to compute tangent and bitengent vectors with 
     // as cotangent_frame's results do not apply for what we need them to do
     const vec3 N = normalize(normalW);
@@ -326,12 +327,13 @@ void main()
                             gl_in[3].gl_Position.xyz,
                             gl_TessCoord.xy);
     _out._texCoord = WorldXZtoHeightUV(pos.xz);
-    _out._vertexW = dvd_WorldMatrix(dvd_Transforms[TRANSFORM_IDX]) * dvd_terrainWorld * vec4(pos.x, GetHeight(_out._texCoord), pos.z, 1.0f);
+    _out._vertexW = Transform(dvd_terrainWorld * vec4(pos.x, GetHeight(_out._texCoord), pos.z, 1.0f), dvd_Transforms[TRANSFORM_IDX]._transform);
     _out._vertexWV = dvd_ViewMatrix * _out._vertexW;
 #if !defined(NO_CLIP_CULL_OUT)
     setClipPlanes(); //Only need world vertex position for clipping
 #endif //!NO_CLIP_CULL_OUT
-    _out._normalW = dvd_NormalMatrixW(dvd_Transforms[TRANSFORM_IDX]) * getNormal(_out._texCoord);
+
+    _out._normalW = QuaternionRotate(dvd_Transforms[TRANSFORM_IDX]._transform._rotation, getNormal(_out._texCoord));
     _out._tbnWV = mat3(dvd_ViewMatrix) * getTBNW(_out._normalW);
     _out._indirectionIDs = _in[0]._indirectionIDs;
 
