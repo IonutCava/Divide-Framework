@@ -64,7 +64,6 @@ struct Ray
 struct IntersectionRay : Ray
 {
     float4 _invDirection = WORLD_Y_NEG_AXIS;
-    bool _signbit[4] = {{}};
 };
 
 inline void Identity(Ray& rayInOut) noexcept
@@ -87,8 +86,6 @@ inline void Identity(Ray& rayInOut) noexcept
         {
             ret._invDirection._v[d] = F32_INFINITY;
         }
-
-        ret._signbit[d] = std::signbit(ret._invDirection._v[d]);
     }
 
     return ret;

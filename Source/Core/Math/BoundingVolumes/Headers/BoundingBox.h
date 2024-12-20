@@ -129,16 +129,8 @@ class BoundingBox
     void transformInternal(const float3& initialMin, const float3& initialMax, const float3 translation, const T& rotation) noexcept;
 
    public:
-    union
-    {
-        struct
-        {
-            float3 _min;
-            float3 _max;
-        };
-
-        float3 _corners[2]{ {-EPSILON_F32 * 2}, { EPSILON_F32 * 2}};
-    };
+        float3 _min;
+        float3 _max;
 };
 
 }  // namespace Divide

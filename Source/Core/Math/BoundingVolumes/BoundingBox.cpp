@@ -82,17 +82,11 @@ RayResult BoundingBox::intersect(const IntersectionRay& r, F32 t0, F32 t1) const
 
     for (U8 d = 0u; d < 3u; ++d)
     {
-        const bool sign  = r._signbit[d];
-        const F32 origin = r._origin[d];
-        const F32 invDir = r._invDirection[d];
-        const F32 bmin   = _corners[ sign][d];
-        const F32 bmax   = _corners[!sign][d];
+        const F32 t1 = (_min[d] - r._origin[d]) * r._invDirection[d];
+        const F32 t2 = (_max[d] - r._origin[d]) * r._invDirection[d];
 
-        const F32 dmin = (bmin - origin) * invDir;
-        const F32 dmax = (bmax - origin) * invDir;
-
-        tmin = std::max(dmin, tmin);
-        tmax = std::min(dmax, tmax);
+        tmin = std::min(std::max(t1, tmin), std::max(t2, tmin));
+        tmax = std::max(std::min(t1, tmax), std::min(t2, tmax));
     }
 
     return RayResult
