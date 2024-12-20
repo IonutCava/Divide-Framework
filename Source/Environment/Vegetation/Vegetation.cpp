@@ -1029,7 +1029,7 @@ namespace Divide
                     modelRotation = RotationFromVToU( WORLD_Y_AXIS, vert._normal, WORLD_Z_NEG_AXIS );
                 }
 
-                entry._orientationQuat = (quatf( vert._normal, Angle::to_RADIANS(Angle::DEGREES_F(Random( 360.0f )))) * modelRotation).asVec4();
+                entry._orientationQuat = (quatf( vert._normal, Angle::to_RADIANS(Angle::DEGREES_F(Random( 360.0f )))) * modelRotation)._elements;
                 entry._data = {
                     to_F32( arrayLayer ),
                     to_F32( ID ),

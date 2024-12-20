@@ -1954,16 +1954,16 @@ namespace Divide
         // needed for rendering (e.g. changed by RenderTarget::End())
 
         const float4 tempViewport{ activeViewport() };
-        if ( _gpuBlock._camData._viewPort != tempViewport )
+        if ( _gpuBlock._camData.dvd_ViewPort != tempViewport )
         {
-            _gpuBlock._camData._viewPort.set( tempViewport );
+            _gpuBlock._camData.dvd_ViewPort.set( tempViewport );
             const U32 clustersX = to_U32( CEIL( to_F32( tempViewport.sizeX ) / Config::Lighting::ClusteredForward::CLUSTERS_X ) );
             const U32 clustersY = to_U32( CEIL( to_F32( tempViewport.sizeY ) / Config::Lighting::ClusteredForward::CLUSTERS_Y ) );
-            if ( clustersX != to_U32( _gpuBlock._camData._renderTargetInfo.z ) ||
-                 clustersY != to_U32( _gpuBlock._camData._renderTargetInfo.w ) )
+            if ( clustersX != to_U32( _gpuBlock._camData.dvd_renderTargetInfo.z ) ||
+                 clustersY != to_U32( _gpuBlock._camData.dvd_renderTargetInfo.w ) )
             {
-                _gpuBlock._camData._renderTargetInfo.z = to_F32( clustersX );
-                _gpuBlock._camData._renderTargetInfo.w = to_F32( clustersY );
+                _gpuBlock._camData.dvd_renderTargetInfo.z = to_F32( clustersX );
+                _gpuBlock._camData.dvd_renderTargetInfo.w = to_F32( clustersY );
             }
             _gpuBlock._camNeedsUpload = true;
         }
@@ -2019,7 +2019,7 @@ namespace Divide
             {
                 if ( states[i] )
                 {
-                    _gpuBlock._camData._clipPlanes[count++].set( planes[i]._equation );
+                    _gpuBlock._camData.dvd_clipPlanes[count++].set( planes[i]._equation );
                     if ( count == Config::MAX_CLIP_DISTANCES )
                     {
                         break;
@@ -2027,7 +2027,7 @@ namespace Divide
                 }
             }
 
-            _gpuBlock._camData._cameraProperties.w = to_F32( count );
+            _gpuBlock._camData.dvd_camProperties.w = to_F32( count );
             _gpuBlock._camNeedsUpload = true;
         }
     }
@@ -2035,9 +2035,9 @@ namespace Divide
     void GFXDevice::setDepthRange( const float2 depthRange )
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        if ( data._renderTargetInfo.xy != depthRange )
+        if ( data.dvd_renderTargetInfo.xy != depthRange )
         {
-            data._renderTargetInfo.xy = depthRange;
+            data.dvd_renderTargetInfo.xy = depthRange;
             _gpuBlock._camNeedsUpload = true;
         }
     }
@@ -2050,18 +2050,18 @@ namespace Divide
 
         bool projectionDirty = false, viewDirty = false;
 
-        if ( cameraSnapshot._projectionMatrix != data._projectionMatrix )
+        if ( cameraSnapshot._projectionMatrix != data.dvd_ProjectionMatrix)
         {
             const F32 zNear = cameraSnapshot._zPlanes.min;
             const F32 zFar = cameraSnapshot._zPlanes.max;
 
-            data._projectionMatrix.set( cameraSnapshot._projectionMatrix );
-            data._cameraProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
+            data.dvd_ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
+            data.dvd_camProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
 
             if ( cameraSnapshot._isOrthoCamera )
             {
-                data._lightingTweakValues.x = 1.f; //scale
-                data._lightingTweakValues.y = 0.f; //bias
+                data.dvd_lightingTweakValues.x = 1.f; //scale
+                data.dvd_lightingTweakValues.y = 0.f; //bias
             }
             else
             {
@@ -2069,16 +2069,16 @@ namespace Divide
                 constexpr F32 CLUSTERS_Z = to_F32( Config::Lighting::ClusteredForward::CLUSTERS_Z );
                 const F32 zLogRatio = std::log( zFar / zNear );
 
-                data._lightingTweakValues.x = CLUSTERS_Z / zLogRatio; //scale
-                data._lightingTweakValues.y = -(CLUSTERS_Z * std::log( zNear ) / zLogRatio); //bias
+                data.dvd_lightingTweakValues.x = CLUSTERS_Z / zLogRatio; //scale
+                data.dvd_lightingTweakValues.y = -(CLUSTERS_Z * std::log( zNear ) / zLogRatio); //bias
             }
             projectionDirty = true;
         }
 
-        if ( cameraSnapshot._viewMatrix != data._viewMatrix )
+        if ( cameraSnapshot._viewMatrix != data.dvd_ViewMatrix)
         {
-            data._viewMatrix.set( cameraSnapshot._viewMatrix );
-            data._invViewMatrix.set( cameraSnapshot._invViewMatrix );
+            data.dvd_ViewMatrix.set( cameraSnapshot._viewMatrix );
+            data.dvd_InverseViewMatrix.set( cameraSnapshot._invViewMatrix );
             viewDirty = true;
         }
 
@@ -2093,10 +2093,10 @@ namespace Divide
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
 
-        if ( !COMPARE( data._lightingTweakValues.z, lightBleedBias ) ||
-             !COMPARE( data._lightingTweakValues.w, minShadowVariance ) )
+        if ( !COMPARE( data.dvd_lightingTweakValues.z, lightBleedBias ) ||
+             !COMPARE( data.dvd_lightingTweakValues.w, minShadowVariance ) )
         {
-            data._lightingTweakValues.zw = { lightBleedBias, minShadowVariance };
+            data.dvd_lightingTweakValues.zw = { lightBleedBias, minShadowVariance };
             _gpuBlock._camNeedsUpload = true;
         }
     }
@@ -2104,14 +2104,14 @@ namespace Divide
     void GFXDevice::worldAOViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        data._worldAOVPMatrix = vpMatrix;
+        data.dvd_WorldAOVPMatrix = vpMatrix;
         _gpuBlock._camNeedsUpload = true;
     }
 
     void GFXDevice::prevViewProjectionMatrix( const mat4<F32>& vpMatrix ) noexcept
     {
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        data._prevViewProjectionMatrix = vpMatrix;
+        data.dvd_PrevViewProjectionMatrix = vpMatrix;
         _gpuBlock._camNeedsUpload = true;
     } 
     

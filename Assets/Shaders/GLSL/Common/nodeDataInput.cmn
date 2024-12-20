@@ -56,7 +56,7 @@ DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_BATCH, 1, std140) uniform dvd_CamBlock
     //xy - depth range, zw - light cluster size X / Y
     vec4  dvd_renderTargetInfo;
     vec4  dvd_clipPlanes[MAX_CLIP_PLANES];
-    vec4 _padding_[5];
+    vec4 _padding_;
 };
 
 #define DEPTH_RANGE dvd_renderTargetInfo.xy

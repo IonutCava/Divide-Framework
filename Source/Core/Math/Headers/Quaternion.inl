@@ -752,13 +752,6 @@ void Quaternion<T>::identity() noexcept
     _elements.set(0, 0, 0, 1);
 }
 
-template <typename T>
-const vec4<T>& Quaternion<T>::asVec4() const noexcept
-{
-    return _elements;
-}
-
-
 /// get the shortest arc quaternion to rotate vector 'v' to the target vector 'u'(from Ogre3D!)
 template <typename T>
 Quaternion<T> RotationFromVToU(const vec3<T>& v, const vec3<T>& u, const vec3<T>& fallbackAxis) noexcept

@@ -352,14 +352,14 @@ namespace Divide
             const TransformValues& transformIn    = node->get<TransformComponent>()->world()._values;
             transformOut._transform._position.xyz = transformIn._translation;
             transformOut._transform._scale.xyz    = transformIn._scale;
-            transformOut._transform._rotation     = transformIn._orientation;
+            transformOut._transform._rotation     = transformIn._orientation._elements;
         }
         else if ( COMPARE(interpolationFactor, 0.))
         {
             const TransformValues& transformInPrev = node->get<TransformComponent>()->world()._previousValues;
             transformOut._transform._position.xyz  = transformInPrev._translation;
             transformOut._transform._scale.xyz     = transformInPrev._scale;
-            transformOut._transform._rotation      = transformInPrev._orientation;
+            transformOut._transform._rotation      = transformInPrev._orientation._elements;
         }
         else
         {
@@ -370,7 +370,7 @@ namespace Divide
             const TransformValues interpolatedValues = Lerp(transformInPrev, transformInCrt, to_F32(interpolationFactor));
             transformOut._transform._position.xyz    = interpolatedValues._translation;
             transformOut._transform._scale.xyz       = interpolatedValues._scale;
-            transformOut._transform._rotation        = interpolatedValues._orientation;
+            transformOut._transform._rotation        = interpolatedValues._orientation._elements;
         }
 
         transformOut._boundingSphere = node->get<BoundsComponent>()->getBoundingSphere()._sphere;

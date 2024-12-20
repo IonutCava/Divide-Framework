@@ -38,12 +38,14 @@ namespace Divide {
     static constexpr U8 MATERIAL_IDX = 1u;
     static constexpr U8 TEXTURES_IDX = 2u;
 
+    static_assert(sizeof(quatf) == sizeof(float4) && sizeof(float4) == 4 * sizeof(F32));
+
 #pragma pack(push, 1)
     struct TransformData
     {
         float4 _position; //(w - unused)
         float4 _scale; //(w - unused)
-        quatf  _rotation;
+        float4 _rotation;
     };
 
     struct NodeTransformData

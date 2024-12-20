@@ -177,9 +177,6 @@ class Quaternion
 
     void identity() noexcept;
 
-    [[nodiscard]] const vec4<T>& asVec4() const noexcept;
-
-   private:
     vec4<T> _elements;
 };
 

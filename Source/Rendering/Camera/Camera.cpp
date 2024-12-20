@@ -903,8 +903,6 @@ namespace Divide
 
     void Camera::saveToXML( boost::property_tree::ptree& pt, const std::string prefix ) const
     {
-        const float4 orientation = _data._orientation.asVec4();
-
         std::string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
         savePath.append(Util::MakeXMLSafe(resourceName()));
 
@@ -935,10 +933,10 @@ namespace Divide
         pt.put( savePath + ".eye.<xmlattr>.x", _data._eye.x );
         pt.put( savePath + ".eye.<xmlattr>.y", _data._eye.y );
         pt.put( savePath + ".eye.<xmlattr>.z", _data._eye.z );
-        pt.put( savePath + ".orientation.<xmlattr>.x", orientation.x );
-        pt.put( savePath + ".orientation.<xmlattr>.y", orientation.y );
-        pt.put( savePath + ".orientation.<xmlattr>.z", orientation.z );
-        pt.put( savePath + ".orientation.<xmlattr>.w", orientation.w );
+        pt.put( savePath + ".orientation.<xmlattr>.x", _data._orientation._elements.x );
+        pt.put( savePath + ".orientation.<xmlattr>.y", _data._orientation._elements.y );
+        pt.put( savePath + ".orientation.<xmlattr>.z", _data._orientation._elements.z );
+        pt.put( savePath + ".orientation.<xmlattr>.w", _data._orientation._elements.w );
         pt.put( savePath + ".aspectRatio", _data._aspectRatio );
         pt.put( savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min );
         pt.put( savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max );
@@ -964,8 +962,6 @@ namespace Divide
 
     void Camera::loadFromXML( const boost::property_tree::ptree& pt, const std::string prefix )
     {
-        const float4 orientation = _data._orientation.asVec4();
-
         std::string savePath = (prefix.empty() ? "camera." : (prefix + ".camera."));
         savePath.append(Util::MakeXMLSafe(resourceName()));
 
@@ -1015,10 +1011,10 @@ namespace Divide
             pt.get( savePath + ".eye.<xmlattr>.z", _data._eye.z )
         );
         _data._orientation.set(
-            pt.get( savePath + ".orientation.<xmlattr>.x", orientation.x ),
-            pt.get( savePath + ".orientation.<xmlattr>.y", orientation.y ),
-            pt.get( savePath + ".orientation.<xmlattr>.z", orientation.z ),
-            pt.get( savePath + ".orientation.<xmlattr>.w", orientation.w )
+            pt.get( savePath + ".orientation.<xmlattr>.x", _data._orientation._elements.x ),
+            pt.get( savePath + ".orientation.<xmlattr>.y", _data._orientation._elements.y ),
+            pt.get( savePath + ".orientation.<xmlattr>.z", _data._orientation._elements.z ),
+            pt.get( savePath + ".orientation.<xmlattr>.w", _data._orientation._elements.w )
         );
         _data._zPlanes.set(
             pt.get( savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min ),
