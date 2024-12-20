@@ -36,7 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 	bool DebugBreak(const bool condition) noexcept;
 	namespace Assert {
-		bool DIVIDE_ASSERT_FUNC(const bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
+		extern bool DIVIDE_ASSERT_FUNC(const bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
 	};
 };
 
