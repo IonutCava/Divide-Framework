@@ -28,7 +28,7 @@
 
 #include <boost/property_tree/xml_parser.hpp>
 
-#include <ImGuiMisc/imguistyleserializer/ImGuiStyleSerializer.cpp>
+#include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
 #include <imgui_stdlib.h>
 
 #if defined(IS_WINDOWS_BUILD)
@@ -384,7 +384,7 @@ int main( int, char** )
     // Setup SDL
     if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER ) != 0 )
     {
-        printf( fmt::format(ERRORS[3], SDL_GetError()).c_str() );
+        printf( "%s", fmt::format(ERRORS[3], SDL_GetError()).c_str() );
         return -1;
     }
     // From 2.0.18: Enable native IME.
@@ -396,13 +396,13 @@ int main( int, char** )
     SDL_Window* window = SDL_CreateWindow( WINDOW_TITLE, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI );
     if ( window == nullptr )
     {
-        printf(fmt::format(ERRORS[4], SDL_GetError()).c_str() );
+        printf("%s", fmt::format(ERRORS[4], SDL_GetError()).c_str() );
         return -1;
     }
     SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED );
     if ( renderer == nullptr )
     {
-        printf(fmt::format(ERRORS[5], SDL_GetError()).c_str() );
+        printf("%s", fmt::format(ERRORS[5], SDL_GetError()).c_str() );
         return 0;
     }
 

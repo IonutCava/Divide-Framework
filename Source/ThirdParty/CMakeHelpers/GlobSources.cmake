@@ -81,7 +81,8 @@ if(NOT MSVC_COMPILER)
 endif()
 
 set (THIRD_PARTY_LOCAL_SRC_FILES ${THIRD_PARTY_LOCAL_SRC_FILES}
+                                 ${THIRD_PARTY_LOCAL_HEADER_FILES}
                                  ${THIRD_PARTY_MINIZIP}
                                  ${THIRD_PARTY_IMGUIFILESYSTEM}
-                                  ${THIRD_PARTY_LOCAL_HEADER_FILES})
+)
 
