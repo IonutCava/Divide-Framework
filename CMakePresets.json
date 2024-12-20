@@ -67,7 +67,6 @@
             },
             "cacheVariables": {
                 "MAC_OS_BUILD": true,
-                // A lot of our third party stuff doesn't work with NEON/M1 platforms. Force this for now.
                 "CMAKE_OSX_ARCHITECTURES": "arm64"
             }
         },
