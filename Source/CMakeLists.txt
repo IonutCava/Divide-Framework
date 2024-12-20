@@ -1,5 +1,4 @@
-﻿set(APP_THIRD_PARTY_LIB Divide-ThirdParty-Lib)
-set(APP_LIB_DIVIDE Divide-Framework-Lib)
+﻿set(APP_LIB_DIVIDE Divide-Framework-Lib)
 set(APP_EXE_DIVIDE Divide-Framework)
 set(APP_EXE_PROJECT_MANAGER Divide-Project-Manager)
 
@@ -21,7 +20,6 @@ else()
 endif()
 
 set(APP_BUILD_TARGETS
-    ${APP_THIRD_PARTY_LIB}
     ${APP_LIB_DIVIDE}
     ${APP_BUILD_EXES}
 )
@@ -124,26 +122,25 @@ else()
     endif()
 endif()
 
-add_library( ${APP_THIRD_PARTY_LIB} STATIC ${THIRD_PARTY_LOCAL_SRC_FILES} ${THIRD_PARTY_FETCH_SRC_FILES} )
-
-if(WIN32)
-    target_link_libraries(${APP_THIRD_PARTY_LIB} PUBLIC Shcore.lib Winmm.lib)
-endif()
-
 set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS} ${EXTRA_COMPILE_FLAGS})
 
-target_compile_options(${APP_THIRD_PARTY_LIB} PUBLIC ${DIVIDE_COMPILE_OPTIONS} ${PCH_COMPILE_OPTIONS} ${THIRD_PARTY_COMPILE_OPTIONS})
+add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" 
+                                     ${ENGINE_SOURCE_CODE}
+                                     ${THIRD_PARTY_LOCAL_SRC_FILES}
+                                     ${THIRD_PARTY_FETCH_SRC_FILES}
+)
+
+if(WIN32)
+    target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Shcore.lib Winmm.lib)
+endif()
 
 set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
-target_precompile_headers(${APP_THIRD_PARTY_LIB} PUBLIC 
+target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC 
     "$<$<COMPILE_LANGUAGE:CXX>:EngineIncludes_pch.h>"
     "$<$<COMPILE_LANGUAGE:CXX>:CEGUIIncludes_pch.h>"
 )
 
-add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" ${ENGINE_SOURCE_CODE} )
-target_link_libraries(${APP_LIB_DIVIDE} ${APP_THIRD_PARTY_LIB})
-target_precompile_headers(${APP_LIB_DIVIDE} REUSE_FROM ${APP_THIRD_PARTY_LIB})
-target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS})
+target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS} ${PCH_COMPILE_OPTIONS} ${THIRD_PARTY_COMPILE_OPTIONS})
 
 target_link_options(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_LINK_FLAGS})
 
@@ -155,7 +152,6 @@ if (ENABLE_MIMALLOC)
 endif()
 
 set(COMMON_LIBS ${APP_LIB_DIVIDE} 
-                ${APP_THIRD_PARTY_LIB}
                 ${EXTERNAL_LIBS}
 )
 

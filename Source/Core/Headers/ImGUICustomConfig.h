@@ -36,7 +36,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 	bool DebugBreak(const bool condition) noexcept;
 	namespace Assert {
-		extern bool DIVIDE_ASSERT_FUNC(const bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
+		bool Callback(const bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
 	};
 };
 
@@ -48,7 +48,7 @@ namespace ImGui {
 	inline void CaptureMouseFromApp() { SetNextFrameWantCaptureMouse(true); }
 };
 
-#define IM_ASSERT(_EXPR) Divide::Assert::DIVIDE_ASSERT_FUNC(_EXPR, #_EXPR, __FILE__, __LINE__, "IMGUI_ASSERT")
+#define IM_ASSERT(_EXPR) Divide::Assert::Callback(_EXPR, #_EXPR, __FILE__, __LINE__, "IMGUI_ASSERT")
 #define IM_DEBUG_BREAK() Divide::DebugBreak(true)
 #define AddBezierCurve AddBezierCubic
 #endif //DVD_IMGUI_CUSTOM_CONFIG_H_

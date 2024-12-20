@@ -879,10 +879,10 @@ extern void DIVIDE_ASSERT_MSG_BOX(std::string_view failMessage) noexcept;
 namespace Assert
 {
     /// It is safe to call evaluate expressions and call functions inside the assert check as it will compile for every build type
-    bool DIVIDE_ASSERT_FUNC(bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
+    bool Callback(bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
 }
 
-#define DIVIDE_ASSERT_2_ARGS(expression, msg) Assert::DIVIDE_ASSERT_FUNC(expression, #expression, __FILE__, __LINE__, msg)
+#define DIVIDE_ASSERT_2_ARGS(expression, msg) Assert::Callback(expression, #expression, __FILE__, __LINE__, msg)
 #define DIVIDE_ASSERT_1_ARGS(expression) DIVIDE_ASSERT_2_ARGS(expression, "UNEXPECTED CALL")
 
 #define ___DETAIL_DIVIDE_ASSERT(...) EXP(GET_3RD_ARG(__VA_ARGS__, DIVIDE_ASSERT_2_ARGS, DIVIDE_ASSERT_1_ARGS, ))
