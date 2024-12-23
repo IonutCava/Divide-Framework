@@ -73,6 +73,7 @@ namespace Divide
         PATHS_ERROR,
         EDITOR_INIT_ERROR,
         GUI_INIT_ERROR,
+        NETWORK_CONNECT_ERROR,
         COUNT
     };
 
@@ -115,6 +116,7 @@ namespace Divide
             "PATHS ERROR",
             "EDITOR INIT ERROR",
             "GUI INIT ERROR",
+            "NETWORK CONNECTION ERROR",
             "UNKNOWN"
         };
     }

@@ -194,7 +194,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     }
 
     auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
-    Util::StringFormat( cmd->_scopeName, "EnvironmentProbePass Id: [ {} ]", rtLayerIndex() ),
+    Util::StringFormatTo( cmd->_scopeName, "EnvironmentProbePass Id: [ {} ]", rtLayerIndex() ),
     cmd->_scopeId = rtLayerIndex();
 
     RenderPassParams params

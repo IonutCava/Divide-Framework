@@ -96,7 +96,16 @@
         "hash_set": "cpp",
         "scoped_allocator": "cpp",
         "*.inc": "cpp",
-        "parentbad": "cpp"
+        "parentbad": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "__verbose_abort": "cpp",
+        "locale": "cpp",
+        "__bit_reference": "cpp",
+        "ios": "cpp"
     },
     "cmake.options.statusBarVisibility": "visible"
 }

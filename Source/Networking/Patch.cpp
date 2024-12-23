@@ -9,12 +9,15 @@ namespace
     NO_DESTROY vector<FileData> s_ModelData;
 };
 
-namespace Patch {
-    void addGeometry(const FileData& data) {
+namespace Patch
+{
+    void addGeometry(const FileData& data)
+    {
         s_ModelData.push_back(data);
     }
 
-    bool compareData(const PatchData& /*data*/) {
+    bool compareData(const PatchData& /*data*/) 
+    {
         const bool updated = true;
         /*XML::loadScene(data.sceneName);
         for (vector<FileData>::iterator _iter = std::begin(ModelData);
@@ -42,11 +45,14 @@ namespace Patch {
         // that needs patching;
         return updated;
     }
-    const vector<FileData>& modelData() noexcept {
+
+    const vector<FileData>& modelData() noexcept
+    {
         return s_ModelData;
     }
 
-    void clearModelData() noexcept {
+    void clearModelData() noexcept
+    {
         efficient_clear( s_ModelData );
     }
 };

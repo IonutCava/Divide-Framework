@@ -5,7 +5,8 @@
 #include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
-#include "Core/Networking/Headers/LocalClient.h"
+#include "Networking/Headers/Client.h"
+
 #include "Core/Headers/PlatformContext.h"
 
 namespace Divide {

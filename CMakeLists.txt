@@ -146,6 +146,11 @@ else ()
   if (CLANG_COMPILER OR GNU_COMPILER)
     if (CLANG_COMPILER)
       add_compile_options( -Wno-unknown-argument -Wno-unused-command-line-argument -fdeclspec )
+      
+      if(LINUX_OS_BUILD)
+        add_link_options("-fuse-ld=lld")
+      endif()
+
     endif()
 
     add_compile_options( -mpopcnt )

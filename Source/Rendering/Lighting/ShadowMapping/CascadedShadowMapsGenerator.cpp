@@ -399,7 +399,7 @@ namespace Divide
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
         auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut);
-        Util::StringFormat( cmd->_scopeName, "Cascaded Shadow Pass Light: [ {} ]", lightIndex );
+        Util::StringFormatTo( cmd->_scopeName, "Cascaded Shadow Pass Light: [ {} ]", lightIndex );
         cmd->_scopeId = lightIndex;
 
         RenderPassManager* rpm = _context.context().kernel().renderPassManager().get();
@@ -409,7 +409,7 @@ namespace Divide
             params._targetDescriptorMainPass._writeLayers[RT_DEPTH_ATTACHMENT_IDX]._layer._offset = i;
             params._targetDescriptorMainPass._writeLayers[to_base( RTColourAttachmentSlot::SLOT_0 )]._layer._offset = i;
 
-            Util::StringFormat( params._passName, "CSM_PASS_{}", i );
+            Util::StringFormatTo( params._passName, "CSM_PASS_{}", i );
             params._stagePass._pass = static_cast<RenderStagePass::PassIndex>(i);
             params._minExtents.set( g_minExtentsFactors[i] );
             if ( i > 0 && dirLight.csmUseSceneAABBFit()[i] )

@@ -6,11 +6,12 @@
 #include "Headers/Configuration.h"
 #include "Headers/PlatformContext.h"
 
+#include "Networking/Headers/Client.h"
+#include "Networking/Headers/Server.h"
+
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/StringHelper.h"
-#include "Core/Networking/Headers/LocalClient.h"
-#include "Core/Networking/Headers/Server.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Editor/Headers/Editor.h"
@@ -722,27 +723,26 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
 
-    ASIO::SET_LOG_FUNCTION([](const std::string_view msg, const bool isError)
-    {
-        if (isError)
-        {
-            Console::errorfn(string(msg).c_str());
-        }
-        else
-        {
-            Console::printfn(string(msg).c_str());
-        }
-    });
-
     Console::printfn( LOCALE_STR( "START_APPLICATION_WORKING_DIRECTORY" ) , systemInfo._workingDirectory.string() );
 
-    Console::printfn( LOCALE_STR( "START_RENDER_INTERFACE" ) ) ;
+    Console::printfn( LOCALE_STR( "START_NETWORK_INTERFACE" ) ) ;
 
-    _platformContext.server().init(static_cast<U16>(443), "127.0.0.1", true);
+    ErrorCode initError = ErrorCode::NO_ERR;
 
-    if (!_platformContext.client().connect(config.serverAddress, 443))
+    if (IsLocalHostAddress(config.serverAddress) ||
+        !_platformContext.client().connect(config.serverAddress, NetworkingPort))
     {
-        _platformContext.client().connect("127.0.0.1", 443);
+        _platformContext.server().init(NetworkingPort, LocalHostAddress);
+        if ( !_platformContext.client().connect(LocalHostAddress, NetworkingPort))
+        {
+            _platformContext.server().close();
+            initError = ErrorCode::NETWORK_CONNECT_ERROR;
+        }
+    }
+
+    if (initError != ErrorCode::NO_ERR)
+    {
+        return initError;
     }
 
     Locale::ChangeLanguage(config.language.c_str());
@@ -751,7 +751,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     const RenderAPI renderingAPI = static_cast<RenderAPI>(config.runtime.targetRenderingAPI);
 
-    ErrorCode initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
+    initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
 
     if (initError != ErrorCode::NO_ERR)
     {

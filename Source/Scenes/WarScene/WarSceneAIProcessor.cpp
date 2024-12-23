@@ -322,7 +322,7 @@ void WarSceneAIProcessor::requestOrders() {
     GOAPGoal* goal = findRelevantGoal();
     
     if (goal != nullptr) {
-         Util::StringFormat( _planStatus, "Current goal: [ {} ]\n", goal->name().c_str());
+         Util::StringFormatTo( _planStatus, "Current goal: [ {} ]\n", goal->name().c_str());
 
         // Hack to loop in idle
         worldState().setVariable(GOAPFact(Fact::IDLING), GOAPValue(false));

@@ -573,7 +573,7 @@ namespace Divide
 
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
-                Util::StringFormat( bufferDescriptor._name, "DVD_GPU_CAM_DATA_{}", i );
+                Util::StringFormatTo( bufferDescriptor._name, "DVD_GPU_CAM_DATA_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB( bufferDescriptor );
                 _gfxBuffers._perFrameBuffers[i]._camBufferWriteRange = {};
             }
@@ -593,7 +593,7 @@ namespace Divide
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
-                Util::StringFormat( bufferDescriptor._name, "CULL_COUNTER_{}", i );
+                Util::StringFormatTo( bufferDescriptor._name, "CULL_COUNTER_{}", i );
                 _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB( bufferDescriptor );
             }
         }
@@ -875,14 +875,14 @@ namespace Divide
                 refDesc._resolution = vec2<U16>( reflectRes );
                 for ( U32 i = 0; i < Config::MAX_REFLECTIVE_PLANAR_NODES_IN_VIEW; ++i )
                 {
-                    Util::StringFormat( refDesc._name, "Reflection_Planar_{}", i );
+                    Util::StringFormatTo( refDesc._name, "Reflection_Planar_{}", i );
                     RenderTargetNames::REFLECT::PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
                 refDesc._resolution = vec2<U16>(refractRes);
                 for ( U32 i = 0; i < Config::MAX_REFRACTIVE_PLANAR_NODES_IN_VIEW; ++i )
                 {
-                    Util::StringFormat( refDesc._name, "Refraction_Planar_{}", i );
+                    Util::StringFormatTo( refDesc._name, "Refraction_Planar_{}", i );
                     RenderTargetNames::REFRACT::PLANAR[i] = _rtPool->allocateRT( refDesc )._targetID;
                 }
 
@@ -924,14 +924,14 @@ namespace Divide
             refDesc._resolution = vec2<U16>(reflectRes);
             for (U32 i = 0; i < Config::MAX_REFLECTIVE_CUBE_NODES_IN_VIEW; ++i)
             {
-                Util::StringFormat(refDesc._name, "Reflection_Cube_{}", i);
+                Util::StringFormatTo(refDesc._name, "Reflection_Cube_{}", i);
                 RenderTargetNames::REFLECT::CUBE[i] = _rtPool->allocateRT(refDesc)._targetID;
             }
 
             refDesc._resolution = vec2<U16>(refractRes);
             for (U32 i = 0; i < Config::MAX_REFRACTIVE_CUBE_NODES_IN_VIEW; ++i)
             {
-                Util::StringFormat(refDesc._name, "Refraction_Cube_{}", i);
+                Util::StringFormatTo(refDesc._name, "Refraction_Cube_{}", i);
                 RenderTargetNames::REFRACT::CUBE[i] = _rtPool->allocateRT(refDesc)._targetID;
             }
         }
@@ -999,7 +999,7 @@ namespace Divide
                         ExternalRTAttachmentDescriptor{ depthAttachment,  depthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
 
-                    Util::StringFormat( oitDesc._name, "OIT_REFLECT_PLANAR_{}", i );
+                    Util::StringFormatTo( oitDesc._name, "OIT_REFLECT_PLANAR_{}", i );
                     oitDesc._externalAttachments = externalAttachments;
                     RenderTargetNames::REFLECT::PLANAR_OIT[i] = _rtPool->allocateRT( oitDesc )._targetID;
                 }
@@ -1017,7 +1017,7 @@ namespace Divide
                         ExternalRTAttachmentDescriptor{ depthAttachment,  depthAttachment->_descriptor._sampler, RTAttachmentType::DEPTH, RTColourAttachmentSlot::SLOT_0 }
                     };
 
-                    Util::StringFormat(oitDesc._name, "OIT_REFRACT_PLANAR_{}", i);
+                    Util::StringFormatTo(oitDesc._name, "OIT_REFRACT_PLANAR_{}", i);
                     oitDesc._externalAttachments = externalAttachments;
                     RenderTargetNames::REFRACT::PLANAR_OIT[i] = _rtPool->allocateRT(oitDesc)._targetID;
                 }

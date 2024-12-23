@@ -1,11 +1,9 @@
 
 
-#include "Headers/Session.h"
+#include "Headers/TCPUDPImpl.h"
 #include "Headers/Server.h"
 #include "Headers/OPCodesImpl.h"
 #include "Headers/Patch.h"
-
-#include "Networking/Headers/ASIO.h"
 
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/Resource.h"
@@ -14,33 +12,30 @@
 namespace Divide
 {
 
-    Session::Session( boost::asio::io_context& io_context, channel& ch )
-        : tcp_session_tpl( io_context, ch )
+    TCPUDPImpl::TCPUDPImpl( boost::asio::io_context& io_context, channel& ch )
+        : TCPUDPInterface( io_context, ch )
     {
     }
 
-    void Session::handlePacket( WorldPacket& p )
+    void TCPUDPImpl::handlePacket( WorldPacket& p )
     {
         switch ( p.opcode() )
         {
-            case OPCodesEx::CMSG_GEOMETRY_LIST:
-                HandleGeometryListOpCode( p );
+            case OPCodesEx::CMSG_GEOMETRY_LIST: HandleGeometryListOpCode( p );
                 break;
-            case OPCodesEx::CMSG_REQUEST_GEOMETRY:
-                HandleRequestGeometry( p );
-                break;
+
             default:
-                tcp_session_tpl::handlePacket( p );
+                TCPUDPInterface::handlePacket( p );
                 break;
         };
     }
 
-    void Session::HandleGeometryListOpCode( WorldPacket& p )
+    void TCPUDPImpl::HandleGeometryListOpCode( WorldPacket& p )
     {
         PatchData dataIn;
         p >> dataIn.sceneName;
         p >> dataIn.size;
-        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_RECEIVE_GEOMETRY_LIST"), dataIn.size ).c_str() );
+        Console::printfn( Util::StringFormat(LOCALE_STR("ASIO_RECEIVE_GEOMETRY_LIST"), dataIn.size ) );
         for ( U32 i = 0; i < dataIn.size; i++ )
         {
             string name, modelname;
@@ -70,23 +65,13 @@ namespace Divide
                 r << dataOut.Scale.y;
                 r << dataOut.Scale.z;
             }
-            ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_SEND_GEOMETRY_APPEND"), patchData.size() ).c_str() );
+            Console::printfn( Util::StringFormat(LOCALE_STR("ASIO_SEND_GEOMETRY_APPEND"), patchData.size() ) );
 
             sendPacket( r );
             Patch::clearModelData();
         }
     }
 
-    void Session::HandleRequestGeometry( WorldPacket& p )
-    {
-        string file;
-        p >> file;
-
-        ASIO::LOG_PRINT( Util::StringFormat(LOCALE_STR("ASIO_SEND_FILE"), file).c_str() );
-        WorldPacket r( OPCodesEx::SMSG_SEND_FILE );
-        r << (U8)0;
-        sendPacket( r );
-        sendFile( file );
-    }
+    
 
 };  // namespace Divide

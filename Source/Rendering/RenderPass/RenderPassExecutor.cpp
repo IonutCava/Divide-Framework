@@ -178,7 +178,7 @@ namespace Divide
         bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
         bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        Util::StringFormat( bufferDescriptor._name, "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
+        Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
         _cmdBuffer = _context.newSB( bufferDescriptor );
     }
 
@@ -952,7 +952,7 @@ namespace Divide
         if ( params._stagePass._passType != RenderPassType::PRE_PASS )
         {
             auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
-            Util::StringFormat( cmd->_scopeName, "Post Render pass for stage [ {} ]", TypeUtil::RenderStageToString( stagePass._stage ), to_U32( stagePass._stage ) );
+            Util::StringFormatTo( cmd->_scopeName, "Post Render pass for stage [ {} ]", TypeUtil::RenderStageToString( stagePass._stage ), to_U32( stagePass._stage ) );
 
             _renderQueue->postRender( Attorney::ProjectManagerRenderPass::renderState( _parent.parent().projectManager().get() ),
                                       params._stagePass,
@@ -1220,11 +1220,11 @@ namespace Divide
         GFX::BeginDebugScopeCommand* beginDebugScopeCmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>( bufferInOut );
         if ( params._passName.empty() )
         {
-            Util::StringFormat<Str<64>>( beginDebugScopeCmd->_scopeName, "Custom pass ( {} )", TypeUtil::RenderStageToString( _stage ) );
+            Util::StringFormatTo( beginDebugScopeCmd->_scopeName, "Custom pass ( {} )", TypeUtil::RenderStageToString( _stage ) );
         }
         else
         {
-            Util::StringFormat<Str<64>>( beginDebugScopeCmd->_scopeName, "Custom pass ( {} - {} )", TypeUtil::RenderStageToString( _stage ), params._passName );
+            Util::StringFormatTo( beginDebugScopeCmd->_scopeName, "Custom pass ( {} - {} )", TypeUtil::RenderStageToString( _stage ), params._passName );
         }
 
         

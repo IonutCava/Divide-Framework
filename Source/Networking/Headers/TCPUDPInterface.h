@@ -50,18 +50,13 @@ namespace Divide
         eastl::set<subscriber_ptr> subscribers_;
     };
 
-    /// This is a single session handled by the server. It is mapped to a single
-    /// client
-    class tcp_session_tpl : public subscriber,
-        public std::enable_shared_from_this<tcp_session_tpl>
+    /// This is a single session handled by the server. It is mapped to a single client
+    class TCPUDPInterface : public subscriber, public std::enable_shared_from_this<TCPUDPInterface>
     {
-        public:
-        tcp_session_tpl( boost::asio::io_context& io_context, channel& ch );
+       public:
+        TCPUDPInterface( boost::asio::io_context& io_context, channel& ch );
 
-        tcp_socket& getSocket() noexcept
-        {
-            return _socket;
-        }
+        inline tcp_socket& getSocket() noexcept { return _socket; }
 
         // Called by the server object to initiate the four actors.
         virtual void start();
@@ -69,32 +64,24 @@ namespace Divide
         // Push a new packet in the output queue
         void sendPacket( const WorldPacket& p ) override;
 
-        // Push a new file in the output queue
-        virtual void sendFile( const string& fileName );
-
-        private:
+       private:
         virtual void stop();
         virtual bool stopped() const;
 
         // Read Packet;
         virtual void start_read();
-        virtual void handle_read_body( const boost::system::error_code& ec,
-                                       size_t bytes_transferred );
-        virtual void handle_read_packet( const boost::system::error_code& ec,
-                                         size_t bytes_transferred );
+        virtual void handle_read_body( const boost::system::error_code& ec, size_t bytes_transferred, WorldPacket::Header header );
+        virtual void handle_read_packet( const boost::system::error_code& ec, size_t bytes_transferred, WorldPacket::Header header );
 
         // Write Packet
         virtual void start_write();
-        virtual void handle_write( const boost::system::error_code& ec );
-
-        // Write File
-        virtual void handle_write_file( const boost::system::error_code& ec );
+        virtual void handle_write( const boost::system::error_code& ec, size_t bytes_transferred );
 
         // Update Timers
         virtual void await_output();
         virtual void check_deadline( deadline_timer* deadline );
 
-        protected:
+      protected:
         // Define this functions to implement various packet handling (a switch
         // statement for example)
         // switch(p.getOpcode()) { case SMSG_XXXXX: bla bla bla break; case
@@ -105,14 +92,13 @@ namespace Divide
         virtual void HandleDisconnectOpCode( WorldPacket& p );
         virtual void HandlePingOpCode( WorldPacket& p );
         virtual void HandleEntityUpdateOpCode( WorldPacket& p );
-
-        private:
-        size_t _header;
+        virtual void HandleRequestFile( WorldPacket& p );
+        
+      private:
         channel& _channel;
         tcp_socket _socket;
         boost::asio::streambuf _inputBuffer;
         eastl::deque<WorldPacket> _outputQueue;
-        eastl::deque<string> _outputFileQueue;
         deadline_timer _inputDeadline;
         deadline_timer _nonEmptyOutputQueue;
         deadline_timer _outputDeadline;
@@ -121,14 +107,14 @@ namespace Divide
         std::unique_ptr<boost::asio::io_context::strand> _strand;
     };
 
-    using tcp_session_ptr = std::shared_ptr<tcp_session_tpl>;
+    FWD_DECLARE_MANAGED_CLASS(TCPUDPInterface);
 
     //----------------------------------------------------------------------
 
-    class udp_broadcaster final : public subscriber
+    class UDPBroadcaster final : public subscriber
     {
         public:
-        udp_broadcaster( boost::asio::io_context& io_context,
+        UDPBroadcaster( boost::asio::io_context& io_context,
                          const boost::asio::ip::udp::endpoint& broadcast_endpoint );
 
         [[nodiscard]] inline udp_socket& getSocket() noexcept

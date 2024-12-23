@@ -549,7 +549,7 @@ namespace Divide
             nodeDescriptor._serialize = false;
             nodeDescriptor._instanceCount = instance->_instanceCountTrees;
             nodeDescriptor._nodeHandle = FromHandle(crtMesh);
-            Util::StringFormat( nodeDescriptor._name, "Trees_chunk_{}", ID );
+            Util::StringFormatTo( nodeDescriptor._name, "Trees_chunk_{}", ID );
             _treeParentNode = sgn->addChildNode( nodeDescriptor );
 
             TransformComponent* tComp = _treeParentNode->get<TransformComponent>();

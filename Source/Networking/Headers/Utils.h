@@ -42,12 +42,21 @@ namespace Divide
 {
     using deadline_timer = boost::asio::basic_deadline_timer<boost::posix_time::ptime, boost::asio::time_traits<boost::posix_time::ptime>, boost::asio::io_context::executor_type>;
 
-    using tcp_socket = boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
+    using tcp_socket   = boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
     using tcp_acceptor = boost::asio::basic_socket_acceptor<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
     using tcp_resolver = boost::asio::ip::basic_resolver<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
 
-    using udp_socket = boost::asio::basic_datagram_socket<boost::asio::ip::udp, boost::asio::io_context::executor_type>;
+    using udp_socket   = boost::asio::basic_datagram_socket<boost::asio::ip::udp, boost::asio::io_context::executor_type>;
     using udp_resolver = boost::asio::ip::basic_resolver<boost::asio::ip::udp, boost::asio::io_context::executor_type>;
+
+    static constexpr string LocalHostAddress = "127.0.0.1";
+    static constexpr U16 NetworkingPort = 3443u;
+
+    [[nodiscard]] inline bool IsLocalHostAddress(const std::string_view address) noexcept
+    {
+        return address == "localhost" ||
+               address == LocalHostAddress;
+    }
 } // namespace Divide
 
 #endif //DVD_DIVIDE_ASIO_UTILS_H_

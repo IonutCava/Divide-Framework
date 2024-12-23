@@ -102,11 +102,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Math/Headers/Transform.inl
                          Core/Math/Headers/TransformInterface.h
                          Core/Math/Headers/TransformInterface.inl
-                         Core/Networking/Headers/LocalClient.h
-                         Core/Networking/Headers/OPCodesImpl.h
-                         Core/Networking/Headers/Patch.h
-                         Core/Networking/Headers/Server.h
-                         Core/Networking/Headers/Session.h
                          Core/Resources/Headers/Resource.h
                          Core/Resources/Headers/ResourceCache.h
                          Core/Resources/Headers/ResourceCache.inl
@@ -149,10 +144,6 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/Math/BoundingVolumes/BoundingBox.cpp
                  Core/Math/BoundingVolumes/BoundingSphere.cpp
                  Core/Math/BoundingVolumes/OBB.cpp
-                 Core/Networking/LocalClient.cpp
-                 Core/Networking/Patch.cpp
-                 Core/Networking/Server.cpp
-                 Core/Networking/Session.cpp
                  Core/Resources/Resource.cpp
                  Core/Resources/ResourceCache.cpp
                  Core/Time/ApplicationTimer.cpp
@@ -457,18 +448,27 @@ set( MANAGERS_SOURCE Managers/FrameListenerManager.cpp
                      Managers/ProjectManager.cpp
 )
 
-set( NETWORKING_SOURCE_HEADERS Networking/Headers/ASIO.h
-                               Networking/Headers/Client.h
+set( NETWORKING_SOURCE_HEADERS Networking/Headers/NetworkClientInterface.h
+                               Networking/Headers/NetworkClientImpl.h
                                Networking/Headers/OPCodesTpl.h
-                               Networking/Headers/tcp_session_tpl.h
+                               Networking/Headers/TCPUDPInterface.h
+                               Networking/Headers/TCPUDPImpl.h
                                Networking/Headers/Utils.h
                                Networking/Headers/WorldPacket.h
+                               Networking/Headers/OPCodesImpl.h
+                               Networking/Headers/Patch.h
+                               Networking/Headers/Client.h
+                               Networking/Headers/Server.h
 )
 
-set( NETWORKING_SOURCE Networking/ASIO.cpp
-                       Networking/Client.cpp
-                       Networking/tcp_session_tpl.cpp
+set( NETWORKING_SOURCE Networking/NetworkClientInterface.cpp
+                       Networking/NetworkClientImpl.cpp
+                       Networking/TCPUDPInterface.cpp
+                       Networking/TCPUDPImpl.cpp
                        Networking/WorldPacket.cpp
+                       Networking/Patch.cpp
+                       Networking/Client.cpp
+                       Networking/Server.cpp
 )
 
 set( PHYSICS_SOURCE_HEADERS Physics/Headers/PhysicsAPIWrapper.h

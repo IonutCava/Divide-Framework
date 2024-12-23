@@ -33,7 +33,7 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 {
     if ( _descriptor._name.empty() )
     {
-        Util::StringFormat( _descriptor._name, "DVD_FB_{}", getGUID() );
+        Util::StringFormatTo( _descriptor._name, "DVD_FB_{}", getGUID() );
     }
 }
 

@@ -306,8 +306,8 @@ TEST_CASE( "Format Test In Place", "[string_tests]" )
     string temp1;
     string temp2;
 
-    Util::StringFormat<string>( temp1, input1, "is ok,", 2, "\n" );
-    Util::StringFormat<string>( temp2, input2, 12.2111f );
+    Util::StringFormatTo( temp1, input1, "is ok,", 2, "\n" );
+    Util::StringFormatTo( temp2, input2, 12.2111f );
 
     CHECK_EQUAL( temp1, result1 );
     CHECK_EQUAL( temp2, result2 );

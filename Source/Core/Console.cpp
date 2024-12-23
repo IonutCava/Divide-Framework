@@ -20,6 +20,10 @@ constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
                               to_base( Console::Flags::DECORATE_SEVERITY ) |
                               to_base( Console::Flags::DECORATE_FRAME ) |
                               to_base( Console::Flags::ENABLE_OUTPUT ) |
+//#if defined(SHOW_CONSOLE_WINDOW)
+                              to_base( Console::Flags::PRINT_TO_STD_CONSOLE ) |
+                              to_base( Console::Flags::FLUSH_ON_PRINT ) |
+//#endif //SHOW_CONSOLE_WINDOW
                               to_base( Console::Flags::ENABLE_ERROR_STREAM );
 
 U32 Console::s_flags = DEFAULT_FLAGS;
@@ -59,7 +63,7 @@ void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view t
     }
     if ( s_flags & to_base( Flags::DECORATE_SEVERITY ) ) [[likely]]
     {
-        outStream << TypeUtil::ConsoleEntryTypeToString(type);
+        outStream << "[ " << TypeUtil::ConsoleEntryTypeToString(type) << " ] ";
     }
 
     outStream << text;
@@ -100,6 +104,10 @@ void Console::Output(const std::string_view text, const bool newline, const Entr
             PrintToFile(entry);
             DIVIDE_UNEXPECTED_CALL();
         }
+        if ( s_flags & to_base( Flags::FLUSH_ON_PRINT))
+        {
+            Flush();
+        }
     }
 }
 
@@ -108,9 +116,10 @@ void Console::PrintToFile(const OutputEntry& entry)
     if ( s_running ) [[likely]]
     {
 
-#if defined(SHOW_CONSOLE_WINDOW)
-        ::printf("[%s] : [%s]", TypeUtil::ConsoleEntryTypeToString(entry._type), entry._text.c_str());
-#endif //SHOW_CONSOLE_WINDOW
+        if ( s_flags & to_base( Flags::PRINT_TO_STD_CONSOLE))
+        {
+            ::printf("%s", entry._text.c_str());
+        }
 
         std::ofstream& outStream = (entry._type == EntryType::ERR && s_flags & to_base( Flags::ENABLE_ERROR_STREAM ) ? s_errorStream : s_logStream );
         outStream << entry._text.c_str();

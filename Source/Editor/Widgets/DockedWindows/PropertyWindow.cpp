@@ -1095,7 +1095,7 @@ namespace Divide
                 for ( U8 i = 0; i < 3; ++i )
                 {
                     EditorComponentField bbField = {};
-                    Util::StringFormat( bbField._name, "Axis [ {} ]", i );
+                    Util::StringFormatTo( bbField._name, "Axis [ {} ]", i );
                     bbField._basicType = PushConstantType::VEC3;
                     bbField._type = EditorComponentFieldType::PUSH_TYPE;
                     bbField._readOnly = true;

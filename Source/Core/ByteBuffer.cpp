@@ -30,7 +30,8 @@ void ByteBuffer::clear() noexcept {
     _rpos = _wpos = 0u;
 }
 
-void ByteBuffer::append(const Byte *src, const size_t cnt) {
+void ByteBuffer::append(const Byte *src, const size_t cnt)
+ {
     if (src != nullptr && cnt > 0) {
         _storage.reserve(DEFAULT_SIZE);
 

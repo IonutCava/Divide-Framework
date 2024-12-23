@@ -113,7 +113,7 @@ namespace Divide {
                 g_particleSource.reset();
 
                 g_nodeDescriptor = {};
-                Util::StringFormat( g_nodeDescriptor._name, "New_Child_Node_{}", sgn->getGUID());
+                Util::StringFormatTo( g_nodeDescriptor._name, "New_Child_Node_{}", sgn->getGUID());
                 g_nodeDescriptor._componentMask = to_U32(ComponentType::TRANSFORM);
                 g_currentNodeType = SceneNodeType::TYPE_TRANSFORM;
                 _parentNode = sgn;

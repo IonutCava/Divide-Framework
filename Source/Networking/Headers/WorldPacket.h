@@ -11,12 +11,21 @@
 
 namespace Divide {
 
-class WorldPacket : public ByteBuffer {
+class WorldPacket : public ByteBuffer
+{
    public:
     WorldPacket() noexcept;
 
-    explicit WorldPacket(const OPCodes::ValueType opCode, const size_t res = 200);
-    void Initialize(const U16 opCode, const size_t newres = 200);
+    struct Header
+    {
+        U32 _byteLength = 0u;
+        OPCodes::ValueType _opCode = OPCodes::MSG_NOP;
+    };
+
+    static constexpr size_t HEADER_SIZE = sizeof(Header);
+
+    explicit WorldPacket(const OPCodes::ValueType opCode);
+    void Initialize(const U16 opCode);
     PROPERTY_RW( OPCodes::ValueType, opcode );
 
     [[nodiscard]] bool loadFromBuffer(boost::asio::streambuf& buf);

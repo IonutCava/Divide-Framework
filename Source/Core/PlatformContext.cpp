@@ -8,8 +8,8 @@
 #include "Utility/Headers/Localization.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
-#include "Core/Networking/Headers/LocalClient.h"
-#include "Core/Networking/Headers/Server.h"
+#include "Networking/Headers/Client.h"
+#include "Networking/Headers/Server.h"
 #include "Editor/Headers/Editor.h"
 #include "GUI/Headers/GUI.h"
 #include "Physics/Headers/PXDevice.h"
@@ -59,7 +59,7 @@ void PlatformContext::init(Kernel& kernel)
     _sfx = std::make_unique<SFXDevice>(*this);
     _pfx = std::make_unique<PXDevice>(*this);
     _gui =  std::make_unique<GUI>( kernel );
-    _client = std::make_unique<LocalClient>( kernel );
+    _client = std::make_unique<Client>( kernel );
     _editor = (Config::Build::ENABLE_EDITOR ? std::make_unique<Editor>(*this) : nullptr);
 }
 

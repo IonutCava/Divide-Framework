@@ -965,7 +965,7 @@ void Terrain::postLoad(SceneGraphNode* sgn)
     for ( const TerrainChunk* chunk : _terrainChunks )
     {
         vegetationNodeDescriptor._nodeHandle = FromHandle(_vegetation);
-        Util::StringFormat( vegetationNodeDescriptor._name, "Vegetation_chunk_{}", chunk->id() );
+        Util::StringFormatTo( vegetationNodeDescriptor._name, "Vegetation_chunk_{}", chunk->id() );
         vegetationNodeDescriptor._dataFlag = chunk->id();
         vegParent->addChildNode( vegetationNodeDescriptor );
     }

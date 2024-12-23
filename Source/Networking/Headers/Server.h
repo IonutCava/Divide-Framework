@@ -30,24 +30,39 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef DVD_SESSION_IMPL_H_
-#define DVD_SESSION_IMPL_H_
+#ifndef DVD_SERVER_H_
+#define DVD_SERVER_H_
 
-#include "Networking/Headers/tcp_session_tpl.h"
+#include "Networking/Headers/WorldPacket.h"
 
+//----------------------------------------------------------------------
 namespace Divide
 {
-    class Session final : public tcp_session_tpl
-    {
-        public:
-        Session( boost::asio::io_context& io_context, channel& ch );
 
-        private:
-        void handlePacket( WorldPacket& p ) override;
-        void HandleGeometryListOpCode( WorldPacket& p );
-        void HandleRequestGeometry( WorldPacket& p );
-    };
+FWD_DECLARE_MANAGED_CLASS(channel);
+FWD_DECLARE_MANAGED_CLASS(TCPUDPInterface);
+
+class Server
+{
+  public:
+    Server();
+    ~Server();
+
+    void init(U16 port, const string& broadcast_endpoint_address);
+    void close();
+
+  private:
+    void handle_accept(const TCPUDPInterface_ptr& session, const boost::system::error_code& ec);
+
+  private:
+    boost::asio::io_context _ioService;
+    std::unique_ptr<std::thread> _thread;
+    std::unique_ptr<tcp_acceptor> _acceptor;
+    std::unique_ptr<boost::asio::io_context::work> _work;
+    channel_ptr _channel;
+
+};
 
 };  // namespace Divide
 
-#endif //DVD_SESSION_IMPL_H_
+#endif //DVD_SERVER_H_

@@ -94,7 +94,7 @@ SceneGraphNode* Mesh::addSubMeshNode(SceneGraphNode* rootMeshNode, SceneGraphNod
         subMeshDescriptor._componentMask |= skinnedMask;
     }
 
-    Util::StringFormat( subMeshDescriptor._name, "{}_{}", parentNode->name().c_str(), meshIndex );
+    Util::StringFormatTo( subMeshDescriptor._name, "{}_{}", parentNode->name().c_str(), meshIndex );
 
     return parentNode->addChildNode(subMeshDescriptor);
 }

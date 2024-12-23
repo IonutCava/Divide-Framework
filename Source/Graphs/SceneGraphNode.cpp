@@ -174,11 +174,11 @@ SceneGraphNode::SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph
     {
         if ( _node->resourceName().empty() )
         {
-            Util::StringFormat( _name, "{}_SGN", getGUID() );
+            Util::StringFormatTo( _name, "{}_SGN", getGUID() );
         }
         else
         {
-            Util::StringFormat( _name, "{}_SGN", _node->resourceName().c_str() );
+            Util::StringFormatTo( _name, "{}_SGN", _node->resourceName().c_str() );
         }
     }
 

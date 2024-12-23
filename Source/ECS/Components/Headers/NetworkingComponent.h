@@ -40,7 +40,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-class LocalClient;
+class Client;
 BEGIN_COMPONENT(Networking, ComponentType::NETWORKING)
 public:
     NetworkingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
@@ -61,7 +61,7 @@ private:
     [[nodiscard]] WorldPacket deltaDecompress(const WorldPacket& crt, const WorldPacket& previous) const;
 
 private:
-    LocalClient& _parentClient;
+    Client& _parentClient;
 
     bool _resendRequired;
     WorldPacket _previousSent;

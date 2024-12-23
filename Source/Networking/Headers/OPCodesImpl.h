@@ -37,11 +37,10 @@
 
 namespace Divide {
 
-class OPCodesEx : public OPCodes {
-public:
-    static constexpr ValueType CMSG_GEOMETRY_LIST = OPCODE_ID(1);
+struct OPCodesEx : public OPCodes
+{
+    static constexpr ValueType CMSG_GEOMETRY_LIST   = OPCODE_ID(1);
     static constexpr ValueType SMSG_GEOMETRY_APPEND = OPCODE_ID(2);
-    static constexpr ValueType CMSG_REQUEST_GEOMETRY = OPCODE_ID(3);
 };
 
 };  // namespace Divide

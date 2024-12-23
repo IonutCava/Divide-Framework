@@ -10,17 +10,15 @@ namespace Divide
     {
     }
 
-    WorldPacket::WorldPacket( const OPCodes::ValueType code, const size_t res )
+    WorldPacket::WorldPacket( const OPCodes::ValueType code )
         : ByteBuffer()
         , _opcode( code )
     {
-        _storage.reserve( res );
     }
 
-    void WorldPacket::Initialize( const U16 opcode, const size_t newres  )
+    void WorldPacket::Initialize( const U16 opcode  )
     {
         clear();
-        _storage.reserve( newres );
         _opcode = opcode;
     }
 

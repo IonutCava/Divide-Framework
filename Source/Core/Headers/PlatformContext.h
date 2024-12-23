@@ -37,13 +37,13 @@ namespace Divide {
 
 class GUI;
 class Kernel;
+class Client;
 class Server;
 class Editor;
 class GFXDevice;
 class SFXDevice;
 class PXDevice;
 class Application;
-class LocalClient;
 class ParamHandler;
 class DisplayWindow;
 
@@ -81,13 +81,13 @@ class PlatformContext final : private NonCopyable, private NonMovable
         GUI = 1 << 5,
         XMLData = 1 << 6,
         Configuration = 1 << 7,
-        LocalClient = 1 << 8,
+        NetworkClient = 1 << 8,
         DebugInterface = 1 << 9,
         Editor = 1 << 10,
         InputHandler = 1 << 11,
         COUNT = 11,
         ALL = Application | GFXDevice | SFXDevice | PXDevice | GUI | XMLData |
-              Configuration | LocalClient | DebugInterface | Editor | InputHandler
+              Configuration | NetworkClient | DebugInterface | Editor | InputHandler
     };
 
  public:
@@ -117,8 +117,8 @@ class PlatformContext final : private NonCopyable, private NonMovable
     [[nodiscard]] Configuration& config() noexcept { return *_config; }
     [[nodiscard]] const Configuration& config() const noexcept { return *_config; }
 
-    [[nodiscard]] LocalClient& client() noexcept { return *_client; }
-    [[nodiscard]] const LocalClient& client() const noexcept { return *_client; }
+    [[nodiscard]] Client& client() noexcept { return *_client; }
+    [[nodiscard]] const Client& client() const noexcept { return *_client; }
 
     [[nodiscard]] Server& server() noexcept { return *_server; }
     [[nodiscard]] const Server& server() const noexcept { return *_server; }
@@ -177,7 +177,7 @@ class PlatformContext final : private NonCopyable, private NonMovable
     /// Access to the physics system
     std::unique_ptr<PXDevice> _pfx;
     /// Networking client
-    std::unique_ptr<LocalClient> _client;
+    std::unique_ptr<Client> _client;
     /// Networking server
     std::unique_ptr<Server> _server;
     /// Game editor

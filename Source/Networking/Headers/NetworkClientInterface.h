@@ -30,11 +30,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 #pragma once
-#ifndef DVD_DIVIDE_BOOST_ASIO_TPL_H_
-#define DVD_DIVIDE_BOOST_ASIO_TPL_H_
+#ifndef DVD_NETWORK_CLIENT_INTERFACE_H_
+#define DVD_NETWORK_CLIENT_INTERFACE_H_
 
 #include "WorldPacket.h"
-#include "Client.h"
+#include "NetworkClientImpl.h"
 
 namespace Divide
 {
@@ -44,36 +44,29 @@ namespace Divide
     "Please include 'OPCodesTpl' and define custom OPcodes before using the networking library!"
 #endif
 
-    class OPCodes;
-    FWD_DECLARE_MANAGED_CLASS( Client );
-    class ASIO
+    FWD_DECLARE_MANAGED_CLASS( NetworkClientImpl );
+    struct OPCodes;
+
+    class NetworkClientInterface
     {
-        public:
+      public:
+        virtual ~NetworkClientInterface();
+
         /// Send a packet to the target server
         virtual bool sendPacket( WorldPacket& p ) const;
         /// Init a connection to the target address:port
         virtual bool init( const string& address, U16 port );
-        /// Connect to target address:port only if we have a new IP:PORT combo or
-        /// our connection timed out
+        /// Connect to target address:port only if we have a new IP:PORT combo or our connection timed out
         virtual bool connect( const string& address, U16 port );
         /// Disconnect from the server
         virtual void disconnect();
         /// Check connection state;
         virtual bool isConnected() const noexcept;
-        /// Toggle the printing of debug information
-        virtual void toggleDebugOutput( bool debugOutput ) noexcept;
 
+      protected:
+        NetworkClientInterface() noexcept = default;
 
-        using LOG_CBK = DELEGATE<void, std::string_view /*msg*/, bool /*is_error*/>;
-        static void SET_LOG_FUNCTION( const LOG_CBK& cbk );
-        static void LOG_PRINT( const char* msg, bool error = false );
-
-        virtual ~ASIO();
-
-        protected:
-        ASIO() noexcept = default;
-
-        friend class Client;
+        friend class NetworkClientImpl;
         void close();
 
         // Define this functions to implement various packet handling (a switch
@@ -82,18 +75,15 @@ namespace Divide
         // MSG_HEARTBEAT: break;}
         virtual void handlePacket( WorldPacket& p ) = 0;
 
-        protected:
+      protected:
         boost::asio::io_context _ioService;
         std::unique_ptr<boost::asio::io_context::work> _work;
         std::unique_ptr<std::thread> _thread;
-        Client_uptr _localClient;
+        NetworkClientImpl_uptr _localClient;
         bool _connected{false};
-        bool _debugOutput{true};
         string _address, _port;
-
-        static LOG_CBK s_logCBK;
     };
 
 };  // namespace Divide
 
-#endif //DVD_DIVIDE_BOOST_ASIO_TPL_H_
+#endif //DVD_NETWORK_CLIENT_INTERFACE_H_
