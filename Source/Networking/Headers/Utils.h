@@ -49,7 +49,7 @@ namespace Divide
     using udp_socket   = boost::asio::basic_datagram_socket<boost::asio::ip::udp, boost::asio::io_context::executor_type>;
     using udp_resolver = boost::asio::ip::basic_resolver<boost::asio::ip::udp, boost::asio::io_context::executor_type>;
 
-    static constexpr string LocalHostAddress = "127.0.0.1";
+    static constexpr char LocalHostAddress[] = "127.0.0.1";
     static constexpr U16 NetworkingPort = 3443u;
 
     [[nodiscard]] inline bool IsLocalHostAddress(const std::string_view address) noexcept

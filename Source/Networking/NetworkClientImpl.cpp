@@ -168,10 +168,10 @@ namespace Divide
         (
             _socket,
             std::array<boost::asio::const_buffer, 2>
-            {
+            {{
                 boost::asio::buffer( &header, WorldPacket::HEADER_SIZE ),
                 buf.data()
-            },
+            }},
             _strand->wrap
             (
                 [&]( const boost::system::error_code ec, const size_t bytes_transferred)

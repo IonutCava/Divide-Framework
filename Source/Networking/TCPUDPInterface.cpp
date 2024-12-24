@@ -178,10 +178,10 @@ namespace Divide
         (
             _socket,
             std::array<boost::asio::const_buffer, 2>
-            {
+            {{
                 boost::asio::buffer( &header, WorldPacket::HEADER_SIZE ),
                 buf.data()
-            },
+            }},
             _strand->wrap
             (
                 [&]( const boost::system::error_code code, const size_t bytes_transferred)
@@ -296,10 +296,10 @@ namespace Divide
         socket_.send
         (
             std::array<boost::asio::const_buffer, 2>
-            {
+            {{
                 boost::asio::buffer( &header, WorldPacket::HEADER_SIZE ),
                 buf.data()
-            },
+            }},
             0,
             ignored_ec
         );
