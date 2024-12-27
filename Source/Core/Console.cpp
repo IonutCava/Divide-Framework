@@ -118,6 +118,7 @@ void Console::PrintToFile(const OutputEntry& entry)
 
         if ( s_flags & to_base( Flags::PRINT_TO_STD_CONSOLE))
         {
+            assert(entry._text.length() < 4096);
             ::printf("%s", entry._text.c_str());
         }
 

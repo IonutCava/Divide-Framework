@@ -46,6 +46,7 @@ struct GFXShaderData
       {
           mat4<F32> dvd_ProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_ViewMatrix = MAT4_IDENTITY;
+          mat4<F32> dvd_ViewProjectionMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_InverseViewMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_WorldAOVPMatrix = MAT4_IDENTITY;
           mat4<F32> dvd_PrevViewProjectionMatrix = MAT4_IDENTITY;
@@ -61,7 +62,7 @@ struct GFXShaderData
       } _camData;
 #pragma pack(pop)
 
-    static_assert(sizeof(CamData) == sizeof(mat4<F32>) * 7, "Wrong GPU data struct size!");
+    static_assert(sizeof(CamData) == sizeof(mat4<F32>) * 8, "Wrong GPU data struct size!");
 
     struct PrevFrameData
     {

@@ -51,6 +51,17 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
+namespace Networking
+{
+    class Connection;
+};
+
+namespace Attorney
+{
+    class ByteBufferStorageAccessor;
+} //namespace Attorney
+
+
 class ByteBufferException {
    public:
     ByteBufferException(bool add, size_t pos, size_t esize, size_t size);
@@ -71,7 +82,10 @@ struct Unused {
     }
 };
 
-class ByteBuffer {
+class ByteBuffer
+{
+    friend class Attorney::ByteBufferStorageAccessor;
+
    public:
     static const U8 BUFFER_FORMAT_VERSION { 10u };
     static const size_t DEFAULT_SIZE { 0x1000 };
@@ -193,7 +207,21 @@ class ByteBuffer {
     vector<Byte> _storage;
 };
 
+namespace Attorney
+{
+    class ByteBufferStorageAccessor
+    {
+        static vector<Byte>& bufferStorage(Divide::ByteBuffer& buffer)
+        {
+            return buffer._storage;
+        }
+      friend class Divide::Networking::Connection;  
+    };
+} // namespace Attorney
+
 }  // namespace Divide
 #endif //DVD_CORE_BYTE_BUFFER_H_
+
+
 
 #include "ByteBuffer.inl"

@@ -6,11 +6,7 @@
 #include "Headers/Configuration.h"
 #include "Headers/PlatformContext.h"
 
-#include "Networking/Headers/Client.h"
-#include "Networking/Headers/Server.h"
-
 #include "Core/Debugging/Headers/DebugInterface.h"
-#include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
@@ -679,8 +675,6 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     g_printTimer = g_printTimerBase;
 
-    // Don't log parameter requests
-    _platformContext.paramHandler().setDebugOutput(false);
     // Load info from XML files
     Configuration& config = _platformContext.config();
     loadFromXML( config, Paths::g_xmlDataLocation, entryPoint.c_str() );
@@ -727,18 +721,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     Console::printfn( LOCALE_STR( "START_NETWORK_INTERFACE" ) ) ;
 
-    ErrorCode initError = ErrorCode::NO_ERR;
-
-    if (IsLocalHostAddress(config.serverAddress) ||
-        !_platformContext.client().connect(config.serverAddress, NetworkingPort))
-    {
-        _platformContext.server().init(NetworkingPort, LocalHostAddress);
-        if ( !_platformContext.client().connect(LocalHostAddress, NetworkingPort))
-        {
-            _platformContext.server().close();
-            initError = ErrorCode::NETWORK_CONNECT_ERROR;
-        }
-    }
+    ErrorCode initError = _platformContext.networking().init(config.serverAddress);
 
     if (initError != ErrorCode::NO_ERR)
     {

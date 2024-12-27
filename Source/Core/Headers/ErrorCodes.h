@@ -74,6 +74,7 @@ namespace Divide
         EDITOR_INIT_ERROR,
         GUI_INIT_ERROR,
         NETWORK_CONNECT_ERROR,
+        NETWORK_SERVER_START_ERROR,
         COUNT
     };
 
@@ -117,6 +118,7 @@ namespace Divide
             "EDITOR INIT ERROR",
             "GUI INIT ERROR",
             "NETWORK CONNECTION ERROR",
+            "NETWORK SERVER START ERROR",
             "UNKNOWN"
         };
     }

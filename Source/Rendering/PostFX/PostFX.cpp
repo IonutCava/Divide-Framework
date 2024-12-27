@@ -3,7 +3,6 @@
 #include "Headers/PostFX.h"
 #include "Headers/PreRenderOperator.h"
 
-#include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
@@ -49,8 +48,6 @@ namespace Divide
         , _preRenderBatch( context.gfx(), *this )
     {
         std::atomic_uint loadTasks = 0u;
-
-        context.paramHandler().setParam<bool>( _ID( "postProcessing.enableVignette" ), false );
 
         Console::printfn( LOCALE_STR( "START_POST_FX" ) );
 

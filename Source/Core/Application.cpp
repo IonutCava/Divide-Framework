@@ -4,11 +4,11 @@
 #include "Headers/DisplayManager.h"
 
 #include "Headers/Kernel.h"
-#include "Headers/ParamHandler.h"
 #include "Headers/Configuration.h"
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/File/Headers/FileManagement.h"
+#include "Utility/Headers/Localization.h"
 
 namespace Divide {
 

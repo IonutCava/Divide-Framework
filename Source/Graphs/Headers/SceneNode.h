@@ -49,7 +49,6 @@ class Camera;
 class Player;
 class SceneGraph;
 class SceneState;
-class WorldPacket;
 class SceneRenderState;
 class BoundsSystem;
 class BoundsComponent;
@@ -64,6 +63,11 @@ class DirectionalLightComponent;
 struct RenderPackage;
 struct RenderStagePass;
 struct CameraSnapshot;
+
+namespace Networking
+{
+    struct NetworkPacket;
+};
 
 namespace GFX
 {
@@ -144,8 +148,8 @@ class SceneNode : public CachedResource
     PROPERTY_RW(bool, rebuildDrawCommands, false);
 
    protected:
-     virtual void onNetworkSend(SceneGraphNode* sgn, WorldPacket& dataOut) const;
-     virtual void onNetworkReceive(SceneGraphNode* sgn, WorldPacket& dataIn) const;
+     virtual void onNetworkSend(SceneGraphNode* sgn, Networking::NetworkPacket& dataOut) const;
+     virtual void onNetworkReceive(SceneGraphNode* sgn, Networking::NetworkPacket& dataIn) const;
 
    protected:
     std::unique_ptr<EditorComponent> _editorComponent;
@@ -187,12 +191,15 @@ class SceneNodeSceneGraph {
     friend class Divide::SceneGraphNode;
 };
 
-class SceneNodeNetworkComponent {
-    static void onNetworkSend(SceneGraphNode* sgn, const SceneNode& node, WorldPacket& dataOut) {
+class SceneNodeNetworkComponent
+{
+    static void onNetworkSend(SceneGraphNode* sgn, const SceneNode& node, Networking::NetworkPacket& dataOut)
+    {
         node.onNetworkSend(sgn, dataOut);
     }
 
-    static void onNetworkReceive(SceneGraphNode* sgn, const SceneNode& node, WorldPacket& dataIn) {
+    static void onNetworkReceive(SceneGraphNode* sgn, const SceneNode& node, Networking::NetworkPacket& dataIn)
+    {
         node.onNetworkReceive(sgn, dataIn);
     }
 

@@ -401,14 +401,12 @@ void PerVertex(in int i, in vec3 edge_dist, in mat4 viewProjectionMatrix)
 
 void main(void)
 {
-    const mat4 ViewProjectionMatrix = dvd_ProjectionMatrix* dvd_ViewMatrix;
-
     // Calculate edge distances for wireframe
     vec3 edge_dist = vec3(0.0);
     {
-        vec4 pos0 = ViewProjectionMatrix * gl_in[0].gl_Position;
-        vec4 pos1 = ViewProjectionMatrix * gl_in[1].gl_Position;
-        vec4 pos2 = ViewProjectionMatrix * gl_in[2].gl_Position;
+        vec4 pos0 = dvd_ViewProjectionMatrix * gl_in[0].gl_Position;
+        vec4 pos1 = dvd_ViewProjectionMatrix * gl_in[1].gl_Position;
+        vec4 pos2 = dvd_ViewProjectionMatrix * gl_in[2].gl_Position;
 
         vec2 p0 = vec2(dvd_ViewPort.zw * (pos0.xy / pos0.w));
         vec2 p1 = vec2(dvd_ViewPort.zw * (pos1.xy / pos1.w));

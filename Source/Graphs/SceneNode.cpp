@@ -116,11 +116,11 @@ void SceneNode::buildDrawCommands([[maybe_unused]] SceneGraphNode* sgn,
 {
 }
 
-void SceneNode::onNetworkSend([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataOut) const
+void SceneNode::onNetworkSend([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] Networking::NetworkPacket& dataOut) const
 {
 }
 
-void SceneNode::onNetworkReceive([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] WorldPacket& dataIn) const
+void SceneNode::onNetworkReceive([[maybe_unused]] SceneGraphNode* sgn, [[maybe_unused]] Networking::NetworkPacket& dataIn) const
 {
 }
 

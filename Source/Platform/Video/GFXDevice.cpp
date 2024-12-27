@@ -8,7 +8,6 @@
 
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Application.h"
-#include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/PlatformContext.h"
@@ -1250,8 +1249,6 @@ namespace Divide
                 _drawFSDepthPipelineCmd._pipeline = newPipeline( pipelineDescriptor );
             }
         }
-
-        context().paramHandler().setParam<bool>( _ID( "rendering.previewDebugViews" ), false );
         {
             // Create general purpose render state blocks
             RenderStateBlock primitiveStateBlock{};
@@ -2084,6 +2081,8 @@ namespace Divide
 
         if ( projectionDirty || viewDirty )
         {
+            mat4<F32>::Multiply(data.dvd_ProjectionMatrix, data.dvd_ViewMatrix, data.dvd_ViewProjectionMatrix);
+
             _gpuBlock._camNeedsUpload = true;
             _activeCameraSnapshot = cameraSnapshot;
         }

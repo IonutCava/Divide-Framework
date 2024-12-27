@@ -23,6 +23,7 @@
 #include "Geometry/Shapes/Headers/Object3D.h"
 #include "Environment/Terrain/Headers/Terrain.h"
 #include "Environment/Vegetation/Headers/Vegetation.h"
+#include "Networking/Headers/Common.h"
 
 #include <cassert>
 #include <common/PxBase.h>
@@ -85,7 +86,7 @@ namespace Divide
         physx::PxDefaultAllocator  g_gDefaultAllocatorCallback;
 #endif //ENABLE_MIMALLOC
 
-        const char* g_pvd_target_ip = "127.0.0.1";
+        const char* g_pvd_target_ip = Networking::LocalHostAddress;
         physx::PxU32 g_pvd_target_port = 5425;
         physx::PxU32 g_pvd_target_timeout_ms = 10;
 

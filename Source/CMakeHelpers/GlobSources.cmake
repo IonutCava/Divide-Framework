@@ -67,8 +67,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/NonMovable.h
                          Core/Headers/ObjectPool.h
                          Core/Headers/ObjectPool.inl
-                         Core/Headers/ParamHandler.h
-                         Core/Headers/ParamHandler.inl
                          Core/Headers/PlatformContext.h
                          Core/Headers/PlatformContextComponent.h
                          Core/Headers/PoolHandle.h
@@ -448,26 +446,16 @@ set( MANAGERS_SOURCE Managers/FrameListenerManager.cpp
                      Managers/ProjectManager.cpp
 )
 
-set( NETWORKING_SOURCE_HEADERS Networking/Headers/NetworkClientInterface.h
-                               Networking/Headers/NetworkClientImpl.h
-                               Networking/Headers/OPCodesTpl.h
-                               Networking/Headers/TCPUDPInterface.h
-                               Networking/Headers/TCPUDPImpl.h
-                               Networking/Headers/Utils.h
-                               Networking/Headers/WorldPacket.h
-                               Networking/Headers/OPCodesImpl.h
-                               Networking/Headers/Patch.h
-                               Networking/Headers/Client.h
+set( NETWORKING_SOURCE_HEADERS Networking/Headers/Client.h
+                               Networking/Headers/Common.h
+                               Networking/Headers/Connection.h
+                               Networking/Headers/NetworkPacket.h
                                Networking/Headers/Server.h
 )
 
-set( NETWORKING_SOURCE Networking/NetworkClientInterface.cpp
-                       Networking/NetworkClientImpl.cpp
-                       Networking/TCPUDPInterface.cpp
-                       Networking/TCPUDPImpl.cpp
-                       Networking/WorldPacket.cpp
-                       Networking/Patch.cpp
-                       Networking/Client.cpp
+set( NETWORKING_SOURCE Networking/Client.cpp
+                       Networking/Connection.cpp
+                       Networking/NetworkPacket.cpp
                        Networking/Server.cpp
 )
 

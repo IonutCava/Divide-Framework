@@ -36,11 +36,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "SGNComponent.h"
 
-#include "Networking/Headers/WorldPacket.h"
+#include "Networking/Headers/NetworkPacket.h"
 
 namespace Divide {
 
-class Client;
 BEGIN_COMPONENT(Networking, ComponentType::NETWORKING)
 public:
     NetworkingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
@@ -48,25 +47,22 @@ public:
 
     void onNetworkSend(U32 frameCountIn);
 
-    void flagDirty() noexcept;
+    void flagDirty(U32 srcClientID, U32 frameCount) noexcept;
 
-    static NetworkingComponent* getReceiver(I64 guid);
-
-private:
-    friend void UpdateEntities(WorldPacket& p);
-    void onNetworkReceive(WorldPacket& dataIn);
+    static NetworkingComponent* GetReceiver(I64 guid);
 
 private:
-    [[nodiscard]] WorldPacket deltaCompress(const WorldPacket& crt, const WorldPacket& previous) const;
-    [[nodiscard]] WorldPacket deltaDecompress(const WorldPacket& crt, const WorldPacket& previous) const;
+    void onNetworkReceive(Networking::NetworkPacket& dataIn);
 
 private:
-    Client& _parentClient;
+    [[nodiscard]] Networking::NetworkPacket deltaCompress(const Networking::NetworkPacket& crt, const Networking::NetworkPacket& previous) const;
+    [[nodiscard]] Networking::NetworkPacket deltaDecompress(const Networking::NetworkPacket& crt, const Networking::NetworkPacket& previous) const;
 
-    bool _resendRequired;
-    WorldPacket _previousSent;
-    WorldPacket _previousReceived;
-    
+private:
+    Networking::Client& _parentClient;
+
+    Networking::NetworkPacket _previousSent{Networking::OPCodes::MSG_NOP};
+    Networking::NetworkPacket _previousReceived{Networking::OPCodes::MSG_NOP};
 
     static hashMap<I64, NetworkingComponent*> s_NetComponents;
 END_COMPONENT(Networking);

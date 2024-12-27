@@ -32,7 +32,7 @@ ErrorCode Engine::Run(const int argc, char** argv)
     const ErrorCode ret = RunInternal(argc, argv);
     if (ret != ErrorCode::NO_ERR)
     {
-        Console::errorfn(LOCALE_STR("GENERIC_ERROR"), TypeUtil::ErrorCodeToString(ret));
+        Console::errorfn( ret == ErrorCode::PATHS_ERROR ? "%s" : LOCALE_STR("GENERIC_ERROR"), TypeUtil::ErrorCodeToString(ret));
     }
 
     return ret;
@@ -79,7 +79,7 @@ ErrorCode Engine::RunInternal(const int argc, char** argv)
             Profiler::Shutdown();
             app.stop(result);
 
-            Console::printfn("Engine shutdown request : {}\nDivide engine shutdown after {} engine steps and {} restart(s). Total time: {} seconds.",
+            Console::printfn( LOCALE_STR("SHUTDOWN_REQUEST"),
                               TypeUtil::AppStepResultToString( result ),
                               stepCount,
                               restartCount,

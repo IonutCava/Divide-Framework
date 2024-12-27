@@ -7,7 +7,6 @@
 #include "AI/PathFinding/NavMeshes/Headers/NavMesh.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Application.h"
-#include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
@@ -28,7 +27,6 @@ GUIConsoleCommandParser::GUIConsoleCommandParser(PlatformContext& context)
     _commands[_ID("say")] = [this](const string& args) { handleSayCommand(args); };
     _commands[_ID("quit")] = [this](const string& args) { handleQuitCommand(args); };
     _commands[_ID("help")] = [this](const string& args) { handleHelpCommand(args); };
-    _commands[_ID("editparam")] = [this](const string& args) { handleEditParamCommand(args); };
     _commands[_ID("playsound")] = [this](const string& args) { handlePlaySoundCommand(args); };
     _commands[_ID("createnavmesh")] = [this](const string& args) { handleNavMeshCommand(args); };
     _commands[_ID("setfov")] = [this](const string& args) { handleFOVCommand(args); };
@@ -38,7 +36,6 @@ GUIConsoleCommandParser::GUIConsoleCommandParser(PlatformContext& context)
     _commandHelp[_ID("say")] = LOCALE_STR("CONSOLE_SAY_COMMAND_HELP");
     _commandHelp[_ID("quit")] = LOCALE_STR("CONSOLE_QUIT_COMMAND_HELP");
     _commandHelp[_ID("help")] = LOCALE_STR("CONSOLE_HELP_COMMAND_HELP");
-    _commandHelp[_ID("editparam")] = LOCALE_STR("CONSOLE_EDITPARAM_COMMAND_HELP");
     _commandHelp[_ID("playsound")] = LOCALE_STR("CONSOLE_PLAYSOUND_COMMAND_HELP");
     _commandHelp[_ID("createnavmesh")] = LOCALE_STR("CONSOLE_NAVMESH_COMMAND_HELP");
     _commandHelp[_ID("recompileshader")] = LOCALE_STR("CONSOLE_SHADER_RECOMPILE_COMMAND_HELP");
@@ -106,15 +103,6 @@ void GUIConsoleCommandParser::handleHelpCommand(const string& args) {
         } else {
             Console::printfn("{}", _commandHelp[_ID("invalidhelp")]);
         }
-    }
-}
-
-void GUIConsoleCommandParser::handleEditParamCommand(const string& args) {
-    if (context().paramHandler().isParam<string>(_ID(args.c_str()))) {
-        Console::printfn(LOCALE_STR("CONSOLE_EDITPARAM_FOUND"), args.c_str(),
-                         "N/A", "N/A", "N/A");
-    } else {
-        Console::printfn(LOCALE_STR("CONSOLE_EDITPARAM_NOT_FOUND"), args.c_str());
     }
 }
 
