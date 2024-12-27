@@ -202,7 +202,7 @@ void PlatformContext::Network::update()
 
     if ( _server != nullptr ) 
     {
-        _server->update(SIZE_MAX, true);
+        _server->update(SIZE_MAX, false);
     }
 }
 

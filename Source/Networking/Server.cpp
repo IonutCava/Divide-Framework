@@ -221,7 +221,7 @@ namespace Divide::Networking
             {
                 U8 codeIn{U8_MAX};
                 msg >> codeIn;
-                Console::printfn(LOCALE_STR("SERVER_ON_RECEIVE_HEARTBEAT!"), codeIn, client->id());
+                Console::printfn(LOCALE_STR("SERVER_ON_RECEIVE_HEARTBEAT"), codeIn, client->id());
             } break;
             case OPCodes::CMSG_PING:
             {
@@ -237,7 +237,7 @@ namespace Divide::Networking
             } break;
             case OPCodes::CMSG_ALL:
             {
-                Console::printfn(LOCALE_STR("SERVER_ON_RECEIVE_MSG_ALL!"), client->id());
+                Console::printfn(LOCALE_STR("SERVER_ON_RECEIVE_MSG_ALL"), client->id());
                 NetworkPacket msgOut{ OPCodes::SMSG_MSG };
                 msgOut << client->id();
                 messageAllClients(msgOut, client);
@@ -259,7 +259,7 @@ namespace Divide::Networking
             } break;
             case OPCodes::MSG_NOP:
             {
-                Console::printfn(LOCALE_STR("SERVER_ON_RECEIVE_NOP!"));
+                Console::printfn(LOCALE_STR("SERVER_ON_RECEIVE_NOP"));
             } break;
             case OPCodes::CMSG_REQUEST_FILE:
             {
