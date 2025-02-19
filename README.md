@@ -15,7 +15,7 @@ Mastodon: [peoplemaking.games/@KIonutzR](https://peoplemaking.games/@KIonutzR)
 Yup, YAGE. Yet Another Game Engine. A toy engine, mind you, never intended for general release or something people will ever require support with.
 It is something I use to experiment on, learn new things, practice, prototype and eventually, try and ship a game or two with.
 
-This code started during my first days in uni. The first iteration looked like this: [Youtube link](https://www.youtube.com/watch?v=VWNjdmhz-lM).
+This code started during my first days in university. The first iteration looked like this: [Youtube link](https://www.youtube.com/watch?v=VWNjdmhz-lM).
 
 Next to no programming experience and it shows in the parts of code that survived since then (all the SceneNode and Resource stuff). Started with a lot of OOP and "Clean Code" with C++98 and currently developed using as much DoD as possible (basic structs and enums, inheritance mostly for interfaces or restrictions {NonCopyable, NonMovable, etc}) but with C++20 for ease of use (constexpr and concepts over templates, threading and filesystem builtin, lambdas over function pointers etc).
 
