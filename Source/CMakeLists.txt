@@ -62,7 +62,7 @@ if (MSVC_COMPILER)
                                     /wd4477 /wd4505 /wd4582 /wd4583 /wd4619 /wd4623 /wd4625
                                     /wd4626 /wd4701 /wd4706 /wd4710 /wd4774 /wd4777 /wd4800
                                     /wd4820 /wd4868 /wd5026 /wd5027 /wd5039 /wd5045 /wd5204
-                                    /wd5219 /wd5220 /wd5262 /wd5267
+                                    /wd5219 /wd5220 /wd5262 /wd5267 /wd5045
     )
 
 else()
@@ -247,7 +247,7 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
 
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
-    if (MSVC_COMPILER)
+    if (NOT MSVC_COMPILER)
         target_link_options(${APP_EXE} PRIVATE "-mwindows")
     endif()
 endforeach()

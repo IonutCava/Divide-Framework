@@ -130,7 +130,9 @@ macro(AutodetectHostArchitecture)
          # 4E | Skylake Client
          # 3C | Broadwell (likely a bug in the SDE)
          # 3C | Haswell
-         if(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158) # 8E, 9E
+         if(_cpu_model GREATER 158)
+            set(TARGET_ARCHITECTURE "coffee-lake+")
+         elseif(_cpu_model EQUAL 142 OR _cpu_model EQUAL 158) # 8E, 9E
             set(TARGET_ARCHITECTURE "kaby-lake")
          elseif(_cpu_model EQUAL 106)
             set(TARGET_ARCHITECTURE "icelake")
@@ -184,7 +186,9 @@ macro(AutodetectHostArchitecture)
          message(WARNING "Your CPU family ${_cpu_family} (vendor ${_vendor_id} model ${_cpu_model}) is not supported by OptimizeForArchitecture.cmake.")
       endif()
    elseif(_vendor_id STREQUAL "AuthenticAMD")
-      if(_cpu_family EQUAL 25)
+      if(_cpu_family GREATER 25)
+        set(TARGET_ARCHITECTURE "zen4+")
+      elseif(_cpu_family EQUAL 25)
          set(TARGET_ARCHITECTURE "zen3")
       elseif(_cpu_family EQUAL 23)
          set(TARGET_ARCHITECTURE "zen")
@@ -227,10 +231,10 @@ Using an incorrect setting here can result in crashes of the resulting binary be
 Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
 Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
 \"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
-\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"icelake\", \"silvermont\", \
+\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"coffee-lake+\", \"cannonlake\", \"icelake\", \"silvermont\", \
 \"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
 \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
-\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\", \"x86-64\", \"x86-64-v2\", \"x86-64-v3\", \"x86-64-v4\".")
+\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\", \"zen4+\", \"x86-64\", \"x86-64-v2\", \"x86-64-v3\", \"x86-64-v4\".")
    set(_force)
    if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
       message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
@@ -352,7 +356,7 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       _cannonlake()
    elseif(TARGET_ARCHITECTURE STREQUAL "cannonlake")
       _cannonlake()
-   elseif(TARGET_ARCHITECTURE STREQUAL "kaby-lake")
+   elseif(TARGET_ARCHITECTURE STREQUAL "kaby-lake" OR TARGET_ARCHITECTURE STREQUAL "coffee-lake+")
       _skylake()
    elseif(TARGET_ARCHITECTURE STREQUAL "skylake-xeon" OR TARGET_ARCHITECTURE STREQUAL "skylake-avx512")
       _skylake_avx512()
@@ -395,6 +399,12 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
    elseif(TARGET_ARCHITECTURE STREQUAL "zen")
       list(APPEND _march_flag_list "znver1")
       list(APPEND _available_vector_units_list "sse" "sse2" "sse3" "ssse3" "sse4a" "sse4.1" "sse4.2" "avx" "avx2" "fma" "f16c" "bmi" "bmi2")
+   elseif(TARGET_ARCHITECTURE STREQUAL "zen4+")
+      list(APPEND _march_flag_list "znver4")
+      list(APPEND _march_flag_list "znver3")
+      list(APPEND _march_flag_list "znver2")
+      list(APPEND _march_flag_list "znver1")
+      list(APPEND _available_vector_units_list "sse" "sse2" "sse3" "ssse3" "sse4a" "sse4.1" "sse4.2" "avx" "avx2" "fma" "f16c" "bmi" "bmi2" "avx512f")
    elseif(TARGET_ARCHITECTURE STREQUAL "zen3")
       list(APPEND _march_flag_list "znver3")
       list(APPEND _march_flag_list "znver2")

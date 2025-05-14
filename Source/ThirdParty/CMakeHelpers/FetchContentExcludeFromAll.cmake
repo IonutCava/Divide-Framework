@@ -26,28 +26,28 @@ function (FetchContent_MakeAvailable_JoltPhysics)
         option(USE_SSE4_1 "Enable SSE4.1" ON)
 
         option(USE_SSE4_2 "Enable SSE4.2" ${SSE42_OPT})
-        message("Enabling SSE4.2 support:" ${SSE42_OPT})
+        message("Toggling SSE4.2 support:" ${SSE42_OPT})
 
         option(USE_AVX "Enable AVX" ${AVX_OPT})
-        message("Enabling AVX support:" ${AVX_OPT})
+        message("Toggling AVX support:" ${AVX_OPT})
 
         option(USE_AVX2 "Enable AVX2" ${AVX2_OPT})
-        message("Enabling AVX2 support:" ${AVX2_OPT})
+        message("Toggling AVX2 support:" ${AVX2_OPT})
         
         option(USE_AVX512 "Enable AVX512" ${AVX512_OPT})
-        message("Enabling AVX512 support:" ${AVX512_OPT})
+        message("Toggling AVX512 support:" ${AVX512_OPT})
 
         option(USE_LZCNT "Enable LZCNT" ${BMI2_OPT})
-        message("Enabling LZCNT support:" ${BMI2_OPT})
+        message("Toggling LZCNT support:" ${BMI2_OPT})
 
         option(USE_TZCNT "Enable TZCNT" ${BMI2_OPT})
-        message("Enabling TZCNT support:" ${BMI2_OPT})
+        message("Toggling TZCNT support:" ${BMI2_OPT})
 
         option(USE_F16C "Enable F16C" ${F16C_OPT})
-        message("Enabling F16C support:" ${F16C_OPT})
+        message("Toggling F16C support:" ${F16C_OPT})
 
         option(USE_FMADD "Enable FMADD" ${FMA4_OPT})
-        message("Enabling FMADD support:" ${FMA4_OPT})
+        message("Toggling FMADD support:" ${FMA4_OPT})
 
         option(USE_ASSERTS "Enable asserts" ON)
         option(DOUBLE_PRECISION "Use double precision math" OFF)
@@ -87,6 +87,10 @@ function (FetchContent_MakeAvailable_JoltPhysics)
         add_definitions(-DJPH_FLOATING_POINT_EXCEPTIONS_ENABLED)
 
         message("END: Configuring JoltPhysics library")
+        if (MSVC_COMPILER)
+            # Spectre mitigation warning
+            add_compile_options("/wd5045") 
+        endif()
 
         add_subdirectory(${${lc_JoltPhysics}_SOURCE_DIR}/Build ${${lc_JoltPhysics}_BINARY_DIR})
     endif ()
