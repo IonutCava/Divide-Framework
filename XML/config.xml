@@ -34,6 +34,8 @@
 	<!-- RUNTIME: Values use by the application after loading is complete -->
 	<runtime>
 		<title>DIVIDE Framework</title>
+		<!-- toggle in engine editor on/off-->
+		<enableEditor>true</enableEditor>
 		<!-- 0 = primary display, 1 = secondary display, etc. Value is clamped between [1, LAST_DISPLAY] -->
 		<targetDisplay>1</targetDisplay>
 		<!-- 0 = NULL, 1 - OpenGL4, 2 - Vulkan-->

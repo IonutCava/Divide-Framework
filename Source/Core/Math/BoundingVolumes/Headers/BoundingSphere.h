@@ -35,19 +35,17 @@
 
 #include "BoundingBox.h"
 
-namespace Divide {
-namespace Attorney {
-    class BoundingSphereEditor;
-}
+namespace Divide
+{
 
 class OBB;
-class PropertyWindow;
-class BoundingSphere {
-    friend class Attorney::BoundingSphereEditor;
+class BoundingSphere
+{
 
-   public:
-    BoundingSphere() noexcept;
-    explicit BoundingSphere(float3 center, F32 radius) noexcept;
+  public:
+    BoundingSphere() = default;
+
+    explicit BoundingSphere(const float3& center, F32 radius) noexcept;
     explicit BoundingSphere(const vector<float3>& points) noexcept;
     explicit BoundingSphere(const std::array<float3, 8>& points) noexcept;
 
@@ -69,37 +67,19 @@ class BoundingSphere {
     void setRadius(F32 radius) noexcept;
     void setCenter(const float3& center) noexcept;
 
-    [[nodiscard]] const float3& getCenter() const noexcept;
-    [[nodiscard]] F32 getRadius() const noexcept;
-    [[nodiscard]] F32 getDiameter() const noexcept;
 
     [[nodiscard]] F32 getDistanceFromPoint(const float3& point) const noexcept;
     [[nodiscard]] F32 getDistanceSQFromPoint(const float3& point) const noexcept;
 
     void reset() noexcept;
-    [[nodiscard]] float4 asVec4() const noexcept;
 
     [[nodiscard]] bool collision(const BoundingSphere& sphere2) const noexcept;
 
-    [[nodiscard]] RayResult intersect(const Ray& r, F32 tMin, F32 tMax) const noexcept;
+    [[nodiscard]] RayResult intersect(const IntersectionRay& r, F32 tMin, F32 tMax) const noexcept;
 
-
-   private:
-    float3 _center;
-    F32 _radius;
+   public:
+    float4 _sphere{VECTOR4_ZERO};
 };
-
-namespace Attorney {
-    class BoundingSphereEditor {
-        static F32* center(BoundingSphere& bs) noexcept {
-            return bs._center._v;
-        }
-        static F32& radius(BoundingSphere& bs) noexcept {
-            return bs._radius;
-        }
-        friend class Divide::PropertyWindow;
-    };
-} //namespace Attorney
 
 }  // namespace Divide
 

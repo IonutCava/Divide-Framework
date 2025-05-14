@@ -763,8 +763,6 @@ namespace Divide
         /// compare 2 vectors within the specified tolerance
         template<ValidMathType U>
         [[nodiscard]] bool compare( const vec3<U>& v, U epsi ) const noexcept;
-        /// uniform vector: x = y = z
-        [[nodiscard]] bool isUniform( F32 tolerance = 0.0001f ) const noexcept;
         /// The current vector is perpendicular to the specified one within epsilon
         template<ValidMathType U>
         [[nodiscard]] bool isPerpendicular( const vec3<U>& other, F32 epsilon = EPSILON_F32 ) const noexcept;
@@ -849,6 +847,10 @@ namespace Divide
             };
             struct
             {
+                T right, up, forward;
+            };
+            struct
+            {
                 T width, height, depth;
             };
             struct
@@ -876,6 +878,10 @@ namespace Divide
     [[nodiscard]] vec3<T> Lerp( const vec3<T>& u, const vec3<T>& v, const vec3<T>& factor ) noexcept;
     template <ValidMathType T>
     [[nodiscard]] vec3<T> Abs( const vec3<T>& vector ) noexcept;
+    template <ValidMathType T>
+    [[nodiscard]] bool IsUniform(const vec3<T>& vector, T epsilon) noexcept;
+    template <ValidMathType T>
+    [[nodiscard]] bool IsUniform(T X, T Y, T Z, T epsilon) noexcept;
     template <ValidMathType T>
     [[nodiscard]] vec3<T> Min( const vec3<T>& v1, const vec3<T>& v2 ) noexcept;
     template <ValidMathType T>
@@ -1384,6 +1390,10 @@ namespace Divide
             struct
             {
                 vec3<T> rgb; T _a;
+            };
+            struct
+            {
+                vec3<T> center; T radius;
             };
             struct
             {

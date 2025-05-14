@@ -228,7 +228,8 @@ void GUIConsole::update(const U64 /*deltaTimeUS*/) {
         Console::OutputEntry message;
         while(_outputBuffer.try_dequeue(message)) {
             const Console::EntryType type = message._type;
-            if (_lastMsgType != type) {
+            if (_lastMsgType != type)
+            {
                 _lastMsgType = type;
                 OutputText(message);
                 _lastMsg.clear();

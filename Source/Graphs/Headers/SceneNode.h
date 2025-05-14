@@ -49,7 +49,6 @@ class Camera;
 class Player;
 class SceneGraph;
 class SceneState;
-class WorldPacket;
 class SceneRenderState;
 class BoundsSystem;
 class BoundsComponent;
@@ -64,6 +63,11 @@ class DirectionalLightComponent;
 struct RenderPackage;
 struct RenderStagePass;
 struct CameraSnapshot;
+
+namespace Networking
+{
+    struct NetworkPacket;
+};
 
 namespace GFX
 {
@@ -118,7 +122,6 @@ class SceneNode : public CachedResource
     [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
 
     [[nodiscard]] inline const BoundingBox& getBounds() const noexcept { return _boundingBox; }
-    [[nodiscard]] inline const float3& getWorldOffset() const noexcept { return _worldOffset; }
 
     [[nodiscard]] inline U32 requiredComponentMask() const noexcept { return _requiredComponentMask; }
 
@@ -137,7 +140,7 @@ class SceneNode : public CachedResource
     // Post insertion calls (Use this to setup child objects during creation)
     virtual void postLoad(SceneGraphNode* sgn);
 
-    void setBounds(const BoundingBox& aabb, const float3& worldOffset = {});
+    void setBounds(const BoundingBox& aabb);
 
     void registerEditorComponent( PlatformContext& context );
 
@@ -145,8 +148,8 @@ class SceneNode : public CachedResource
     PROPERTY_RW(bool, rebuildDrawCommands, false);
 
    protected:
-     virtual void onNetworkSend(SceneGraphNode* sgn, WorldPacket& dataOut) const;
-     virtual void onNetworkReceive(SceneGraphNode* sgn, WorldPacket& dataIn) const;
+     virtual void onNetworkSend(SceneGraphNode* sgn, Networking::NetworkPacket& dataOut) const;
+     virtual void onNetworkReceive(SceneGraphNode* sgn, Networking::NetworkPacket& dataIn) const;
 
    protected:
     std::unique_ptr<EditorComponent> _editorComponent;
@@ -157,7 +160,6 @@ class SceneNode : public CachedResource
 
     /// The initial bounding box as it was at object's creation (i.e. no transforms applied)
     BoundingBox _boundingBox{};
-    float3 _worldOffset{};
     bool _boundsChanged = false;
 
 private:
@@ -189,33 +191,42 @@ class SceneNodeSceneGraph {
     friend class Divide::SceneGraphNode;
 };
 
-class SceneNodeNetworkComponent {
-    static void onNetworkSend(SceneGraphNode* sgn, const SceneNode& node, WorldPacket& dataOut) {
+class SceneNodeNetworkComponent
+{
+    static void onNetworkSend(SceneGraphNode* sgn, const SceneNode& node, Networking::NetworkPacket& dataOut)
+    {
         node.onNetworkSend(sgn, dataOut);
     }
 
-    static void onNetworkReceive(SceneGraphNode* sgn, const SceneNode& node, WorldPacket& dataIn) {
+    static void onNetworkReceive(SceneGraphNode* sgn, const SceneNode& node, Networking::NetworkPacket& dataIn)
+    {
         node.onNetworkReceive(sgn, dataIn);
     }
 
     friend class Divide::NetworkingComponent;
 };
 
-class SceneNodeBoundsSystem {
-    static void setBounds(SceneNode& node, const BoundingBox& aabb, const float3& worldOffset = {}) {
-        node.setBounds(aabb, worldOffset);
+class SceneNodeBoundsSystem
+{
+    static void setBounds(SceneNode& node, const BoundingBox& aabb)
+    {
+        node.setBounds(aabb);
     }
 
-    static bool boundsChanged(const SceneNode& node) noexcept {
+    static bool boundsChanged(const SceneNode& node) noexcept
+    {
         return node._boundsChanged;
     }
 
-    static void setBoundsChanged(SceneNode& node) noexcept {
+    static void setBoundsChanged(SceneNode& node) noexcept
+    {
         node._boundsChanged = true;
     }
 
-    static bool clearBoundsChanged(SceneNode& node) noexcept {
-        if (!node._boundsChanged) {
+    static bool clearBoundsChanged(SceneNode& node) noexcept
+    {
+        if (!node._boundsChanged)
+        {
             return false;
         }
 
@@ -226,9 +237,11 @@ class SceneNodeBoundsSystem {
     friend class Divide::BoundsSystem;
 };
 
-class SceneNodeLightComponent {
-    static void setBounds(SceneNode& node, const BoundingBox& aabb, const float3& worldOffset = {}) {
-        node.setBounds(aabb, worldOffset);
+class SceneNodeLightComponent
+{
+    static void setBounds(SceneNode& node, const BoundingBox& aabb)
+    {
+        node.setBounds(aabb);
     }
 
     friend class Divide::Light;
@@ -237,9 +250,11 @@ class SceneNodeLightComponent {
     friend class Divide::DirectionalLightComponent;
 };
 
-class SceneNodePlayer {
-    static void setBounds(SceneNode& node, const BoundingBox& aabb, const float3& worldOffset = {}) {
-        node.setBounds(aabb, worldOffset);
+class SceneNodePlayer
+{
+    static void setBounds(SceneNode& node, const BoundingBox& aabb)
+    {
+        node.setBounds(aabb);
     }
 
     friend class Divide::Player;

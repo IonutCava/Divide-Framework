@@ -89,7 +89,7 @@ bool AnimEvaluator::initBuffers( GFXDevice& context, const bool useDualQuaternio
 
         ShaderBufferDescriptor bufferDescriptor{};
         bufferDescriptor._ringBufferLength = 1;
-        Util::StringFormat(bufferDescriptor._name, "BONE_BUFFER_{}", name());
+        Util::StringFormatTo(bufferDescriptor._name, "BONE_BUFFER_{}", name());
         bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
 

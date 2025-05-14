@@ -2,11 +2,14 @@
 
 #include "Headers/GLWrapper.h"
 
+#include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/Application.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"

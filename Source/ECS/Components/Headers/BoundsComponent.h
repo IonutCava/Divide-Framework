@@ -53,14 +53,10 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         void appendChildRefBBs();
         [[nodiscard]] FORCE_INLINE bool isClean() const noexcept { return _transformUpdatedMask.load() == 0u; }
 
-        PROPERTY_R(bool, showAABB, false);
-        PROPERTY_R(bool, showOBB, false);
-        PROPERTY_R(bool, showBS, false);
         PROPERTY_RW(bool, collisionsEnabled, true);
-
-        void showAABB(bool state);
-        void showOBB(bool state);
-        void showBS(bool state);
+        PROPERTY_RW(bool, showAABB, false);
+        PROPERTY_RW(bool, showOBB, false);
+        PROPERTY_RW(bool, showBS, false);
 
     protected:
         friend class SceneGraph;
@@ -79,10 +75,12 @@ BEGIN_COMPONENT_EXT1(Bounds, ComponentType::BOUNDS, GUIDWrapper)
         std::atomic_uint _transformUpdatedMask;
         BoundingBox _boundingBox{};
         BoundingBox _refBoundingBox{};
-        float3 _worldOffset{};
         BoundingSphere _boundingSphere{};
         OBB _obb{};
+        mat4<F32> _lastTransform{MAT4_IDENTITY};
         std::atomic_bool _obbDirty = false;
+
+
 END_COMPONENT(Bounds)
 
 [[nodiscard]] bool Collision(const BoundsComponent& lhs, const BoundsComponent& rhs) noexcept;

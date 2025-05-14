@@ -43,55 +43,55 @@ constexpr int MAX_CONSOLE_ENTRIES = 128;
 struct Console : NonCopyable
 {
     template <typename... T>
-    NO_INLINE static void printfn(const char* format, T&&... args);
+    NO_INLINE static void printfn(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void printf(const char* format, T&&... args);
+    NO_INLINE static void printf(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void warnfn(const char* format, T&&... args);
+    NO_INLINE static void warnfn(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void warnf(const char* format, T&&... args);
+    NO_INLINE static void warnf(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void errorfn(const char* format, T&&... args);
+    NO_INLINE static void errorfn(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void errorf(const char* format, T&&... args);
+    NO_INLINE static void errorf(std::string_view format, T&&... args);
 
     template <typename... T>
-    NO_INLINE static void d_printfn(const char* format, T&&... args);
+    NO_INLINE static void d_printfn(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_printf(const char* format, T&&... args);
+    NO_INLINE static void d_printf(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_warnfn(const char* format, T&&... args);
+    NO_INLINE static void d_warnfn(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_warnf(const char* format, T&&... args);
+    NO_INLINE static void d_warnf(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_errorfn(const char* format, T&&... args);
+    NO_INLINE static void d_errorfn(std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_errorf(const char* format, T&&... args);
+    NO_INLINE static void d_errorf(std::string_view format, T&&... args);
 
     template <typename... T>
-    NO_INLINE static void printfn(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void printfn(std::ofstream& outStream, std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void printf(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void printf(std::ofstream& outStream, std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void warnfn(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void warnfn(std::ofstream& outStream, std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void warnf(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void warnf(std::ofstream& outStream, std::string_view format, T&&... args);
     template <typename... T>
-    NO_INLINE static void errorfn(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void errorfn(std::ofstream& outStream, std::string_view  format, T&&... args);
     template <typename... T>
-    NO_INLINE static void errorf(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void errorf(std::ofstream& outStream, std::string_view  format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_printfn(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void d_printfn(std::ofstream& outStream, std::string_view  format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_printf(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void d_printf(std::ofstream& outStream, std::string_view  format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_warnfn(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void d_warnfn(std::ofstream& outStream, std::string_view  format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_warnf(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void d_warnf(std::ofstream& outStream, std::string_view  format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_errorfn(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void d_errorfn(std::ofstream& outStream, std::string_view  format, T&&... args);
     template <typename... T>
-    NO_INLINE static void d_errorf(std::ofstream& outStream, const char* format, T&&... args);
+    NO_INLINE static void d_errorf(std::ofstream& outStream, std::string_view  format, T&&... args);
 
 
     enum class EntryType : U8
@@ -103,7 +103,7 @@ struct Console : NonCopyable
         COUNT
     };
 
-    enum class Flags : U8
+    enum class Flags : U16
     {
         DECORATE_TIMESTAMP = toBit( 1 ),
         DECORATE_THREAD_ID = toBit( 2 ),
@@ -112,7 +112,9 @@ struct Console : NonCopyable
         ENABLE_OUTPUT = toBit( 5 ),
         ENABLE_ERROR_STREAM = toBit( 6 ),
         PRINT_IMMEDIATE = toBit( 7 ),
-        COUNT = 7
+        FLUSH_ON_PRINT = toBit( 8 ),
+        PRINT_TO_STD_CONSOLE = toBit( 9 ),
+        COUNT = 9
     };
 
     struct OutputEntry
@@ -129,7 +131,7 @@ struct Console : NonCopyable
     };
 
     static void Flush();
-    static void Start( std::string_view logFilePath, std::string_view erroFilePath, bool printCopyright ) noexcept;
+    static void Start( const ResourcePath& parentPath, std::string_view logFilePath, std::string_view errorFilePath, bool printCopyright ) noexcept;
     static void Stop();
 
     static void  ToggleFlag( const Flags flag, const bool state )
@@ -157,6 +159,27 @@ struct Console : NonCopyable
         static U32                               s_flags;
         static std::atomic_bool                  s_running;
 };
+
+namespace Names
+{
+    static const char* consoleEntryType[] = {
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "COMMAND",
+        "UNKNOWN"
+    };
+} //namespace Names
+
+static_assert(std::size(Names::consoleEntryType) == to_base(Console::EntryType::COUNT) + 1u, "EntryType name array out of sync!");
+
+namespace TypeUtil
+{
+    [[nodiscard]] inline const char* ConsoleEntryTypeToString(const Console::EntryType type) noexcept
+    {
+        return Names::consoleEntryType[to_base(type)];
+    }
+}
 
 }  // namespace Divide
 

@@ -21,12 +21,15 @@ void ParticleFloorUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, Parti
     descriptor._partitionSize = s_particlesPerThread;
     Parallel_For( context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&p, floorY, bounce](const Task*, const U32 start, const U32 end)
     {
-        for (U32 i = start; i < end; ++i) {
-            if (p._position[i].y - p._position[i].w / 2 < floorY) {
+        for (U32 i = start; i < end; ++i)
+        {
+            if (p._position[i].y - p._position[i].w / 2 < floorY)
+            {
                 float3 force(p._acceleration[i]);
 
                 const F32 normalFactor = force.dot(WORLD_Y_AXIS);
-                if (normalFactor < 0.0f) {
+                if (normalFactor < 0.0f)
+                {
                     force -= WORLD_Y_AXIS * normalFactor;
                 }
                 const F32 velFactor = p._velocity[i].xyz.dot(WORLD_Y_AXIS);

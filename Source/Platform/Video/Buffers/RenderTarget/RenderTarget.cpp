@@ -3,6 +3,7 @@
 #include "Headers/RenderTarget.h"
 
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -32,7 +33,7 @@ RenderTarget::RenderTarget(GFXDevice& context, const RenderTargetDescriptor& des
 {
     if ( _descriptor._name.empty() )
     {
-        Util::StringFormat( _descriptor._name, "DVD_FB_{}", getGUID() );
+        Util::StringFormatTo( _descriptor._name, "DVD_FB_{}", getGUID() );
     }
 }
 

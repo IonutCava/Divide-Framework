@@ -20,6 +20,10 @@ constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
                               to_base( Console::Flags::DECORATE_SEVERITY ) |
                               to_base( Console::Flags::DECORATE_FRAME ) |
                               to_base( Console::Flags::ENABLE_OUTPUT ) |
+//#if defined(SHOW_CONSOLE_WINDOW)
+                              to_base( Console::Flags::PRINT_TO_STD_CONSOLE ) |
+                              to_base( Console::Flags::FLUSH_ON_PRINT ) |
+//#endif //SHOW_CONSOLE_WINDOW
                               to_base( Console::Flags::ENABLE_ERROR_STREAM );
 
 U32 Console::s_flags = DEFAULT_FLAGS;
@@ -57,9 +61,9 @@ void Console::DecorateAndPrint(std::ostream& outStream, const std::string_view t
     {
         outStream << "[ " << std::this_thread::get_id() << " ] ";
     }
-    if ( s_flags & to_base( Flags::DECORATE_SEVERITY ) && (type == EntryType::WARNING || type == EntryType::ERR) )
+    if ( s_flags & to_base( Flags::DECORATE_SEVERITY ) ) [[likely]]
     {
-        outStream << (type == EntryType::ERR ? " Error: " : " Warning: ");
+        outStream << "[ " << TypeUtil::ConsoleEntryTypeToString(type) << " ] ";
     }
 
     outStream << text;
@@ -100,6 +104,10 @@ void Console::Output(const std::string_view text, const bool newline, const Entr
             PrintToFile(entry);
             DIVIDE_UNEXPECTED_CALL();
         }
+        if ( s_flags & to_base( Flags::FLUSH_ON_PRINT))
+        {
+            Flush();
+        }
     }
 }
 
@@ -107,6 +115,13 @@ void Console::PrintToFile(const OutputEntry& entry)
 {
     if ( s_running ) [[likely]]
     {
+
+        if ( s_flags & to_base( Flags::PRINT_TO_STD_CONSOLE))
+        {
+            assert(entry._text.length() < 4096);
+            ::printf("%s", entry._text.c_str());
+        }
+
         std::ofstream& outStream = (entry._type == EntryType::ERR && s_flags & to_base( Flags::ENABLE_ERROR_STREAM ) ? s_errorStream : s_logStream );
         outStream << entry._text.c_str();
 
@@ -151,13 +166,13 @@ void Console::Flush()
     }
 }
 
-void Console::Start( const std::string_view logFilePath, const std::string_view erroFilePath, const bool printCopyright ) noexcept
+void Console::Start(const ResourcePath& parentPath, const std::string_view logFilePath, const std::string_view errorFilePath, const bool printCopyright ) noexcept
 {
     s_flags = DEFAULT_FLAGS;
     s_running.store(true);
 
-    s_logStream   = std::ofstream{ (Paths::g_logPath / logFilePath).fileSystemPath(),  std::ofstream::out | std::ofstream::trunc };
-    s_errorStream = std::ofstream{ (Paths::g_logPath / erroFilePath).fileSystemPath(), std::ofstream::out | std::ofstream::trunc };
+    s_logStream   = std::ofstream{ (parentPath / logFilePath).fileSystemPath(),  std::ofstream::out | std::ofstream::trunc };
+    s_errorStream = std::ofstream{ (parentPath / errorFilePath).fileSystemPath(), std::ofstream::out | std::ofstream::trunc };
 
     std::cout.rdbuf( s_logStream.rdbuf() );
     std::cerr.rdbuf( s_errorStream.rdbuf() );

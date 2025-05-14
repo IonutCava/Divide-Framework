@@ -53,7 +53,6 @@ class LoadSave;
 class ByteBuffer;
 class IMPrimitive;
 class ParticleData;
-class ParamHandler;
 class ProjectManager;
 class SceneGraphNode;
 class ParticleEmitter;

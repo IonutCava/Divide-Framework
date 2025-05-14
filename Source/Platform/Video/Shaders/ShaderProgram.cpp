@@ -463,16 +463,16 @@ namespace Divide
             passData.append( "\n" );
             for ( const auto& [varType, name] : shaderVaryings )
             {
-                passData.append( Util::StringFormat( baseString.c_str(), name, name ) );
+                passData.append( Util::StringFormat( baseString, name, name ) );
                 passData.append( "\n" );
             }
 
             passData.append( "#if defined(HAS_VELOCITY)\n" );
-            passData.append( Util::StringFormat( baseString.c_str(), "_prevVertexWVP", "_prevVertexWVP" ) );
+            passData.append( Util::StringFormat( baseString, "_prevVertexWVP", "_prevVertexWVP" ) );
             passData.append( "\n#endif //HAS_VELOCITY\n" );
 
             passData.append( "#if defined(ENABLE_TBN)\n" );
-            passData.append( Util::StringFormat( baseString.c_str(), "_tbnWV", "_tbnWV" ) );
+            passData.append( Util::StringFormat( baseString, "_tbnWV", "_tbnWV" ) );
             passData.append( "\n#endif //ENABLE_TBN\n" );
 
             passData.append( "}\n" );
@@ -2049,7 +2049,7 @@ namespace Divide
                 : ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_DRAW,
                                                                 loadDataInOut._reflectionData._uniformBlockBindingIndex );
 
-            Util::StringFormat( uniformBlock, uniformBlock.c_str(), layoutIndex, Util::StringFormat( "dvd_UniformBlock_{}", blockIndexInOut ) );
+            Util::StringFormatTo( uniformBlock, uniformBlock.c_str(), layoutIndex, Util::StringFormat( "dvd_UniformBlock_{}", blockIndexInOut ) );
 
             previousUniformsInOut = loadDataInOut._uniforms;
         }

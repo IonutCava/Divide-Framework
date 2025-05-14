@@ -54,33 +54,36 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
     friend class Attorney::TransformComponentSGN;
 
     public:
-        enum class ScalingMode : U8 {
+        enum class ScalingMode : U8
+        {
             UNIFORM = 0u,
             NON_UNIFORM
             //PROPAGATE_TO_LEAFS_ALL,
             //PROPAGATE_TO_LEAFS_NON_UNIFORM
         };
+
+        enum class RotationMode: U8
+        {
+            LOCAL,
+            RELATIVE_TO_PARENT
+        };
+
+        struct Values
+        {
+
+            mat4<F32> _matrix{ MAT4_IDENTITY };
+            TransformValues _previousValues;
+            TransformValues _values;
+            bool _computed = false;
+        };
+
     public:
      TransformComponent(SceneGraphNode* parentSGN, PlatformContext& context);
 
      void reset();
 
-                   void      getWorldMatrix(mat4<F32>& matOut) const;
-                   void      getWorldMatrixInterpolated( mat4<F32>& matrixOut) const;
-     [[nodiscard]] mat4<F32> getWorldMatrix() const;
-     [[nodiscard]] mat4<F32> getWorldMatrixInterpolated() const;
-
-     /// This returns a "normal matrix". If we have uniform scaling, this is just the upper 3x3 part of our world matrix
-     /// If we have non-uniform scaling, that 3x3 mat goes through an inverse-transpose step to get rid of any scaling factors but keep rotations
-     /// Padded to fit into a mat4 for convenient. Can cast to a mat3 afterwards as row 3 and column 3 are just 0,0,0,1
-     void getLocalRotationMatrix( mat4<F32>& matOut ) const;
-     void getLocalRotationMatrixInterpolated( mat4<F32>& matOut ) const;
-
-     /// This returns a "normal matrix". If we have uniform scaling, this is just the upper 3x3 part of our local matrix
-     /// If we have non-uniform scaling, that 3x3 mat goes through an inverse-transpose step to get rid of any scaling factors but keep rotations
-     /// Padded to fit into a mat4 for convenient. Can cast to a mat3 afterwards as row 3 and column 3 are just 0,0,0,1
-     void getWorldRotationMatrix( mat4<F32>& matOut ) const;
-     void getWorldRotationMatrixInterpolated( mat4<F32>& matOut ) const;
+                   void             getWorldMatrix(mat4<F32>& matOut) const;
+     [[nodiscard]] const mat4<F32>& getWorldMatrix() const;
 
      /// Component <-> Transform interface
      void setPosition(const float3& position) override;
@@ -91,7 +94,9 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void translate(const float3& axisFactors) override;
      using ITransform::setPosition;
 
+     void setScale(F32 amount) override;
      void setScale(const float3& amount) override;
+     void setScale(F32 X, F32 Y, F32 Z) override;
      void setScaleX(F32 amount) override;
      void setScaleY(F32 amount) override;
      void setScaleZ(F32 amount) override;
@@ -103,7 +108,7 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
      void setRotation(const float3& axis, Angle::DEGREES_F degrees) override;
      void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
-     void setRotation(const Quaternion<F32>& quat) override;
+     void setRotation(const quatf& quat) override;
      void setRotationX(Angle::DEGREES_F angle) override;
      void setRotationY(Angle::DEGREES_F angle) override;
      void setRotationZ(Angle::DEGREES_F angle) override;
@@ -111,8 +116,8 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
 
      void rotate(const float3& axis, Angle::DEGREES_F degrees) override;
      void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) override;
-     void rotate(const Quaternion<F32>& quat) override;
-     void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
+     void rotate(const quatf& quat) override;
+     void rotateSlerp(const quatf& quat, D64 deltaTime) override;
      void rotateX(Angle::DEGREES_F angle) override;
      void rotateY(Angle::DEGREES_F angle) override;
      void rotateZ(Angle::DEGREES_F angle) override;
@@ -125,16 +130,10 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void setDirection(const float3& fwdDirection, const float3& upDirection = WORLD_Y_AXIS);
      void setTransform(const TransformValues& values);
 
-     [[nodiscard]] bool isUniformScaled() const noexcept;
-
      /// Return the position
-     [[nodiscard]] float3 getWorldPosition() const;
+     [[nodiscard]] const float3& getWorldPosition() const;
      /// Return the local position
-     [[nodiscard]] float3 getLocalPosition() const;
-     /// Return the position
-     [[nodiscard]] float3 getWorldPositionInterpolated() const;
-     /// Return the local position
-     [[nodiscard]] float3 getLocalPositionInterpolated() const;
+     [[nodiscard]] const float3& getLocalPosition() const;
 
      /// Return the derived forward direction
      [[nodiscard]] float3 getFwdVector() const;
@@ -144,25 +143,14 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      [[nodiscard]] float3 getRightVector() const;
 
      /// Return the scale factor
-     [[nodiscard]] float3 getWorldScale() const;
+     [[nodiscard]] const float3& getWorldScale() const;
      /// Return the local scale factor
-     [[nodiscard]] float3 getLocalScale() const;
-     /// Return the scale factor
-     [[nodiscard]] float3 getWorldScaleInterpolated() const;
-     /// Return the local scale factor
-     [[nodiscard]] float3 getLocalScaleInterpolated() const;
+     [[nodiscard]] const float3& getLocalScale() const;
 
      /// Return the orientation quaternion
-     [[nodiscard]] Quaternion<F32> getWorldOrientation() const;
+     [[nodiscard]] const quatf& getWorldOrientation() const;
      /// Return the local orientation quaternion
-     [[nodiscard]] Quaternion<F32> getLocalOrientation() const;
-     /// Return the orientation quaternion
-     [[nodiscard]] Quaternion<F32> getWorldOrientationInterpolated() const;
-     /// Return the local orientation quaternion
-     [[nodiscard]] Quaternion<F32> getLocalOrientationInterpolated() const;
-
-     void getWorldTransforms(float3& positionOut, float3& scaleOut, Quaternion<F32>& rotationOut);
-     void getWorldTransformsInterpolated(float3& positionOut, float3& scaleOut, Quaternion<F32>& rotationOut);
+     [[nodiscard]] const quatf& getLocalOrientation() const;
 
      void setTransforms(const mat4<F32>& transform);
 
@@ -171,21 +159,19 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void pushTransforms();
      bool popTransforms();
 
-     void resetCache();
-     void setOffset(bool state, const mat4<F32>& offset = mat4<F32>()) noexcept;
-
      [[nodiscard]] bool saveCache(ByteBuffer& outputBuffer) const override;
      [[nodiscard]] bool loadCache(ByteBuffer& inputBuffer) override;
 
-     PROPERTY_R_IW(TransformValues, cachedDerivedTransform);
 
      PROPERTY_RW(bool, editorLockPosition, false);
      PROPERTY_RW(bool, editorLockRotation, false);
      PROPERTY_RW(bool, editorLockScale, false);
-     PROPERTY_RW(ScalingMode, scalingMode, ScalingMode::UNIFORM);
 
-     PROPERTY_R_IW(mat4<F32>, localMatrix, MAT4_IDENTITY);
-     PROPERTY_R_IW(mat4<F32>, localMatrixInterpolated, MAT4_IDENTITY);
+     PROPERTY_RW(ScalingMode, scalingMode, ScalingMode::UNIFORM);
+     PROPERTY_RW(RotationMode, rotationMode, RotationMode::RELATIVE_TO_PARENT);
+
+     PROPERTY_R_IW(Values, local);
+     PROPERTY_R_IW(Values, world);
 
   protected:
      friend class TransformSystem;
@@ -196,62 +182,54 @@ BEGIN_COMPONENT_EXT1(Transform, ComponentType::TRANSFORM, ITransform)
      void setTransformDirty(TransformType type) noexcept;
      void setTransformDirty(U32 typeMask) noexcept;
 
-     void updateCachedValues();
-
      void onParentTransformDirty(U32 transformMask) noexcept;
      void onParentUsageChanged(NodeUsageContext context) noexcept;
 
      void onParentChanged(const SceneGraphNode* oldParent, const SceneGraphNode* newParent);
 
-     // Local transform interface access (all are in local space)
      void getScale(float3& scaleOut) const override;
      void getPosition(float3& posOut) const override;
-     void getOrientation(Quaternion<F32>& quatOut) const override;
+     void getOrientation(quatf& quatOut) const override;
 
      //Derived = World
-     [[nodiscard]] Quaternion<F32> getDerivedOrientation() const;
-     [[nodiscard]] float3       getDerivedPosition()    const;
-     [[nodiscard]] float3       getDerivedScale()       const;
+     [[nodiscard]] quatf  getDerivedOrientation() const;
+     [[nodiscard]] float3 getDerivedPosition()    const;
+     [[nodiscard]] float3 getDerivedScale()       const;
 
-     //Called only when then transform changed in the main update loop!
-     void updateLocalMatrix( D64 interpolationFactor );
-  private:
-     void updateLocalMatrixLocked();
-     void updateLocalMatrixInterpolated( D64 interpolationFactor );
 
   private:
-    std::pair<bool, mat4<F32>> _transformOffset;
-
     using TransformStack = std::stack<TransformValues>;
 
     std::atomic_uint _transformUpdatedMask{};
-    TransformValues  _prevTransformValues;
-    TransformValues  _transformValuesInterpolated;
     TransformStack   _transformStack{};
     Transform        _transformInterface;
 
     NodeUsageContext _parentUsageContext;
 
-    bool _cacheDirty = true;
+    U32 _broadcastMask = 0u;
     bool _uniformScaled = true;
 
-    mutable SharedMutex _localMatrixLock{};
     mutable SharedMutex _lock{};
 
 
 END_COMPONENT(Transform);
 
-namespace Attorney {
-    class TransformComponentSGN {
-        static void onParentTransformDirty(TransformComponent& comp, const U32 transformMask) noexcept {
+namespace Attorney
+{
+    class TransformComponentSGN
+    {
+        static void onParentTransformDirty(TransformComponent& comp, const U32 transformMask) noexcept
+        {
             comp.onParentTransformDirty(transformMask);
         }
 
-        static void onParentUsageChanged(TransformComponent& comp, const NodeUsageContext context) noexcept {
+        static void onParentUsageChanged(TransformComponent& comp, const NodeUsageContext context) noexcept
+        {
             comp.onParentUsageChanged(context);
         }
         
-        static void onParentChanged(TransformComponent& comp, const SceneGraphNode* oldParent, const SceneGraphNode* newParent) noexcept {
+        static void onParentChanged(TransformComponent& comp, const SceneGraphNode* oldParent, const SceneGraphNode* newParent) noexcept
+        {
             comp.onParentChanged(oldParent, newParent);
         }
         friend class Divide::SceneGraphNode;

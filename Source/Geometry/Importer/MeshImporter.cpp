@@ -184,7 +184,6 @@ namespace Import
         dataOut << _partitionIDs;
         dataOut << _minPos;
         dataOut << _maxPos;
-        dataOut << _worldOffset;
         for (const auto& triangle : _triangles)
         {
             dataOut << triangle;
@@ -202,7 +201,6 @@ namespace Import
         dataIn >> _partitionIDs;
         dataIn >> _minPos;
         dataIn >> _maxPos;
-        dataIn >> _worldOffset;
         for (auto& triangle : _triangles)
         {
             dataIn >> triangle;
@@ -396,7 +394,7 @@ namespace Import
                     }
                 }
 
-                Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData._minPos, subMeshData._maxPos, subMeshData._worldOffset);
+                Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData._minPos, subMeshData._maxPos);
 
                 if (tempSubMesh->getMaterialTpl() == INVALID_HANDLE<Material>)
                 {

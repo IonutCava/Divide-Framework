@@ -7,10 +7,7 @@
 #include "Headers/PlatformContext.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
-#include "Core/Headers/ParamHandler.h"
 #include "Core/Headers/StringHelper.h"
-#include "Core/Networking/Headers/LocalClient.h"
-#include "Core/Networking/Headers/Server.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Editor/Headers/Editor.h"
@@ -678,8 +675,6 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     g_printTimer = g_printTimerBase;
 
-    // Don't log parameter requests
-    _platformContext.paramHandler().setDebugOutput(false);
     // Load info from XML files
     Configuration& config = _platformContext.config();
     loadFromXML( config, Paths::g_xmlDataLocation, entryPoint.c_str() );
@@ -697,6 +692,10 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         config.debug.renderer.useExtensions = false;
     }
+    if (Util::FindCommandLineArgument(_argc, _argv, "disableEditor"))
+    {
+        config.runtime.enableEditor = false;
+    }
 
     if ( Util::ExtractStartupProject( _argc, _argv, config.startupProject ) )
     {
@@ -711,34 +710,22 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
 
 #   if defined(IS_MACOS_BUILD)
-        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
-#   else //IS_MACOS_BUILD
         _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
+#   else //IS_MACOS_BUILD
+        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
 #   endif //IS_MACOS_BUILD
 
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
 
-    ASIO::SET_LOG_FUNCTION([](const std::string_view msg, const bool isError)
-    {
-        if (isError)
-        {
-            Console::errorfn(string(msg).c_str());
-        }
-        else
-        {
-            Console::printfn(string(msg).c_str());
-        }
-    });
-
     Console::printfn( LOCALE_STR( "START_APPLICATION_WORKING_DIRECTORY" ) , systemInfo._workingDirectory.string() );
 
-    Console::printfn( LOCALE_STR( "START_RENDER_INTERFACE" ) ) ;
+    Console::printfn( LOCALE_STR( "START_NETWORK_INTERFACE" ) ) ;
 
-    _platformContext.server().init(static_cast<U16>(443), "127.0.0.1", true);
+    ErrorCode initError = _platformContext.networking().init(config.serverAddress);
 
-    if (!_platformContext.client().connect(config.serverAddress, 443))
+    if (initError != ErrorCode::NO_ERR)
     {
-        _platformContext.client().connect("127.0.0.1", 443);
+        return initError;
     }
 
     Locale::ChangeLanguage(config.language.c_str());
@@ -747,7 +734,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     const RenderAPI renderingAPI = static_cast<RenderAPI>(config.runtime.targetRenderingAPI);
 
-    ErrorCode initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
+    initError = Attorney::ApplicationKernel::SetRenderingAPI(_platformContext.app(), renderingAPI);
 
     if (initError != ErrorCode::NO_ERR)
     {
@@ -861,7 +848,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     Str<256> startupProject = config.startupProject.c_str();
-    if constexpr ( Config::Build::IS_EDITOR_BUILD )
+    if ( Config::Build::IS_EDITOR_BUILD && config.runtime.enableEditor)
     {
         startupProject = Config::DEFAULT_PROJECT_NAME;
         Console::printfn(LOCALE_STR("START_FRAMEWORK_EDITOR"), startupProject.c_str() );
@@ -949,6 +936,12 @@ ErrorCode Kernel::initialize(const string& entryPoint)
         {
             ctx->editor().selectionChangeCallback(idx, nodes);
         });
+
+        if (!config.runtime.enableEditor)
+        {
+            _platformContext.editor().toggle(false);
+        }
+
     }
 
     Console::printfn(LOCALE_STR("INITIAL_DATA_LOADED"));

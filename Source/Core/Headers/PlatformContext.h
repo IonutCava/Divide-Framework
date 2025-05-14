@@ -37,24 +37,29 @@ namespace Divide {
 
 class GUI;
 class Kernel;
-class Server;
 class Editor;
 class GFXDevice;
 class SFXDevice;
 class PXDevice;
 class Application;
-class LocalClient;
-class ParamHandler;
 class DisplayWindow;
+
+namespace Networking
+{
+    class Client;
+    class Server;
+}; //namespace Networking
 
 struct Configuration;
 struct DebugInterface;
 
-namespace Attorney {
+namespace Attorney
+{
     class PlatformContextKernel;
 };
 
-namespace Input {
+namespace Input
+{
     class InputHandler;
 };
 
@@ -72,7 +77,8 @@ class PlatformContext final : private NonCopyable, private NonMovable
     friend class Attorney::PlatformContextKernel;
 
  public:
-    enum class SystemComponentType : U32 {
+    enum class SystemComponentType : U32
+    {
         NONE = 0,
         Application = 1 << 1,
         GFXDevice = 1 << 2,
@@ -81,13 +87,33 @@ class PlatformContext final : private NonCopyable, private NonMovable
         GUI = 1 << 5,
         XMLData = 1 << 6,
         Configuration = 1 << 7,
-        LocalClient = 1 << 8,
+        NetworkClient = 1 << 8,
         DebugInterface = 1 << 9,
         Editor = 1 << 10,
         InputHandler = 1 << 11,
         COUNT = 11,
         ALL = Application | GFXDevice | SFXDevice | PXDevice | GUI | XMLData |
-              Configuration | LocalClient | DebugInterface | Editor | InputHandler
+              Configuration | NetworkClient | DebugInterface | Editor | InputHandler
+    };
+
+ protected:
+    struct Network
+    {
+        ///client
+        std::unique_ptr<Networking::Client> _client;
+        ///server
+        std::unique_ptr<Networking::Server> _server;
+
+        [[nodiscard]] Networking::Client& client() noexcept { return *_client; }
+        [[nodiscard]] const Networking::Client& client() const noexcept { return *_client; }
+
+        [[nodiscard]] Networking::Server& server() noexcept { return *_server; }
+        [[nodiscard]] const Networking::Server& server() const noexcept { return *_server; }
+
+        [[nodiscard]] ErrorCode init(const std::string_view serverIPAddress);
+
+        void close();
+        void update();
     };
 
  public:
@@ -117,12 +143,6 @@ class PlatformContext final : private NonCopyable, private NonMovable
     [[nodiscard]] Configuration& config() noexcept { return *_config; }
     [[nodiscard]] const Configuration& config() const noexcept { return *_config; }
 
-    [[nodiscard]] LocalClient& client() noexcept { return *_client; }
-    [[nodiscard]] const LocalClient& client() const noexcept { return *_client; }
-
-    [[nodiscard]] Server& server() noexcept { return *_server; }
-    [[nodiscard]] const Server& server() const noexcept { return *_server; }
-
     [[nodiscard]] DebugInterface& debug() noexcept { return *_debug; }
     [[nodiscard]] const DebugInterface& debug() const noexcept { return *_debug; }
 
@@ -135,9 +155,6 @@ class PlatformContext final : private NonCopyable, private NonMovable
     [[nodiscard]] Input::InputHandler& input() noexcept { return *_inputHandler; }
     [[nodiscard]] const Input::InputHandler& input() const noexcept { return *_inputHandler; }
 
-    [[nodiscard]] ParamHandler& paramHandler() noexcept { return *_paramHandler; }
-    [[nodiscard]] const ParamHandler& paramHandler() const noexcept { return *_paramHandler; }
-
     [[nodiscard]] Kernel& kernel() noexcept;
     [[nodiscard]] const Kernel& kernel() const noexcept;
 
@@ -146,6 +163,9 @@ class PlatformContext final : private NonCopyable, private NonMovable
 
     [[nodiscard]] DisplayWindow& activeWindow() noexcept;
     [[nodiscard]] const DisplayWindow& activeWindow() const noexcept;
+
+    [[nodiscard]] Network& networking() noexcept { return *_networking; }
+    [[nodiscard]] const Network& networking() const noexcept { return *_networking; }
 
     PROPERTY_RW(U32, componentMask, 0u);
 
@@ -160,8 +180,6 @@ class PlatformContext final : private NonCopyable, private NonMovable
 
     /// Task pools
     std::array<std::unique_ptr<TaskPool>, to_base(TaskPoolType::COUNT)> _taskPool;
-    /// Param handler
-    std::unique_ptr<ParamHandler> _paramHandler;
     /// User configured settings
     std::unique_ptr<Configuration> _config;
     /// Debugging interface: read only / editable variables
@@ -176,12 +194,10 @@ class PlatformContext final : private NonCopyable, private NonMovable
     std::unique_ptr<SFXDevice> _sfx;
     /// Access to the physics system
     std::unique_ptr<PXDevice> _pfx;
-    /// Networking client
-    std::unique_ptr<LocalClient> _client;
-    /// Networking server
-    std::unique_ptr<Server> _server;
     /// Game editor
     std::unique_ptr<Editor> _editor;
+
+    std::unique_ptr<Network> _networking;
 };
 
 namespace Attorney

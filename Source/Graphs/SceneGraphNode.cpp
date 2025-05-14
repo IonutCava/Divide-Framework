@@ -174,11 +174,11 @@ SceneGraphNode::SceneGraphNode( PlatformContext& context, SceneGraph* sceneGraph
     {
         if ( _node->resourceName().empty() )
         {
-            Util::StringFormat( _name, "{}_SGN", getGUID() );
+            Util::StringFormatTo( _name, "{}_SGN", getGUID() );
         }
         else
         {
-            Util::StringFormat( _name, "{}_SGN", _node->resourceName().c_str() );
+            Util::StringFormatTo( _name, "{}_SGN", _node->resourceName().c_str() );
         }
     }
 
@@ -507,7 +507,7 @@ SceneGraphNode* SceneGraphNode::findChild(const I64 GUID, const bool sceneNodeGu
                          : findChildInternal<false>(GUID, recursive);
 }
 
-bool SceneGraphNode::intersect(const Ray& intersectionRay, const float2 range, vector<SGNRayResult>& intersections) const
+bool SceneGraphNode::intersect(const IntersectionRay& ray, const float2 range, vector<SGNRayResult>& intersections) const
 {
     vector<SGNRayResult> ret{};
 
@@ -518,15 +518,15 @@ bool SceneGraphNode::intersect(const Ray& intersectionRay, const float2 range, v
         const U32 childCount = _children._count;
         for (U32 i = 0u; i < childCount; ++i)
         {
-            _children._data[i]->intersect(intersectionRay, range, intersections);
+            _children._data[i]->intersect(ray, range, intersections);
         }
     }
     else
     {
         // If we hit a bounding sphere, we proceed to the more expensive OBB test
-        if (HasComponents(ComponentType::BOUNDS) && get<BoundsComponent>()->getBoundingSphere().intersect(intersectionRay, range.min, range.max).hit)
+        if (HasComponents(ComponentType::BOUNDS) && get<BoundsComponent>()->getBoundingSphere().intersect(ray, range.min, range.max).hit)
         {
-            const RayResult result = get<BoundsComponent>()->getOBB().intersect(intersectionRay, range.min, range.max);
+            const RayResult result = get<BoundsComponent>()->getOBB().intersect(ray, range.min, range.max);
             if (result.hit)
             {
                 intersections.push_back({ getGUID(), result.dist, result.inside, name().c_str() });
@@ -535,7 +535,7 @@ bool SceneGraphNode::intersect(const Ray& intersectionRay, const float2 range, v
                 const U32 childCount = _children._count;
                 for (U32 i = 0u; i < childCount; ++i)
                 {
-                    _children._data[i]->intersect(intersectionRay, range, intersections);
+                    _children._data[i]->intersect(ray, range, intersections);
                 };
             }
         }

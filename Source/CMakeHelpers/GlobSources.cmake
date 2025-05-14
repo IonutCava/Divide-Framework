@@ -48,6 +48,8 @@ set( AI_SOURCE AI/ActionInterface/CustomGOAP/Action.cpp
 set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/Application.h
                          Core/Headers/Application.inl
+                         Core/Headers/DisplayManager.h
+                         Core/Headers/DisplayManager.inl
                          Core/Headers/ByteBuffer.inl
                          Core/Headers/ByteBuffer.h
                          Core/Headers/Configuration.h
@@ -65,8 +67,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Headers/NonMovable.h
                          Core/Headers/ObjectPool.h
                          Core/Headers/ObjectPool.inl
-                         Core/Headers/ParamHandler.h
-                         Core/Headers/ParamHandler.inl
                          Core/Headers/PlatformContext.h
                          Core/Headers/PlatformContextComponent.h
                          Core/Headers/PoolHandle.h
@@ -100,11 +100,6 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/Math/Headers/Transform.inl
                          Core/Math/Headers/TransformInterface.h
                          Core/Math/Headers/TransformInterface.inl
-                         Core/Networking/Headers/LocalClient.h
-                         Core/Networking/Headers/OPCodesImpl.h
-                         Core/Networking/Headers/Patch.h
-                         Core/Networking/Headers/Server.h
-                         Core/Networking/Headers/Session.h
                          Core/Resources/Headers/Resource.h
                          Core/Resources/Headers/ResourceCache.h
                          Core/Resources/Headers/ResourceCache.inl
@@ -124,6 +119,7 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
 )
 
 set( CORE_SOURCE Core/Application.cpp
+                 Core/DisplayManager.cpp
                  Core/ByteBuffer.cpp
                  Core/Configuration.cpp
                  Core/Console.cpp
@@ -146,10 +142,6 @@ set( CORE_SOURCE Core/Application.cpp
                  Core/Math/BoundingVolumes/BoundingBox.cpp
                  Core/Math/BoundingVolumes/BoundingSphere.cpp
                  Core/Math/BoundingVolumes/OBB.cpp
-                 Core/Networking/LocalClient.cpp
-                 Core/Networking/Patch.cpp
-                 Core/Networking/Server.cpp
-                 Core/Networking/Session.cpp
                  Core/Resources/Resource.cpp
                  Core/Resources/ResourceCache.cpp
                  Core/Time/ApplicationTimer.cpp
@@ -454,18 +446,17 @@ set( MANAGERS_SOURCE Managers/FrameListenerManager.cpp
                      Managers/ProjectManager.cpp
 )
 
-set( NETWORKING_SOURCE_HEADERS Networking/Headers/ASIO.h
-                               Networking/Headers/Client.h
-                               Networking/Headers/OPCodesTpl.h
-                               Networking/Headers/tcp_session_tpl.h
-                               Networking/Headers/Utils.h
-                               Networking/Headers/WorldPacket.h
+set( NETWORKING_SOURCE_HEADERS Networking/Headers/Client.h
+                               Networking/Headers/Common.h
+                               Networking/Headers/Connection.h
+                               Networking/Headers/NetworkPacket.h
+                               Networking/Headers/Server.h
 )
 
-set( NETWORKING_SOURCE Networking/ASIO.cpp
-                       Networking/Client.cpp
-                       Networking/tcp_session_tpl.cpp
-                       Networking/WorldPacket.cpp
+set( NETWORKING_SOURCE Networking/Client.cpp
+                       Networking/Connection.cpp
+                       Networking/NetworkPacket.cpp
+                       Networking/Server.cpp
 )
 
 set( PHYSICS_SOURCE_HEADERS Physics/Headers/PhysicsAPIWrapper.h

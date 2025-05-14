@@ -495,6 +495,8 @@ class mat4 {
     template<typename U>
     explicit mat4(const vec3<U> &translation, const vec3<U> &scale, const mat3<U>& rotation) noexcept;
     template<typename U>
+    explicit mat4(const vec3<U>& translation, const vec3<U>& scale, const Quaternion<U>& rotation) noexcept;
+    template<typename U>
     explicit mat4(const vec3<U>& translation, const vec3<U>& scale, const vec3<Angle::RADIANS<U>>& euler) noexcept;
     template<typename U>
     explicit mat4(const vec3<U> &translation) noexcept;
@@ -592,7 +594,11 @@ class mat4 {
     template<typename U>
     void set(const mat4<U> &matrix) noexcept;
     template<typename U>
+    void set(const Quaternion<U>& rotation) noexcept;
+    template<typename U>
     void set(const vec3<U> &translation, const vec3<U> &scale, const mat3<U>& rotation) noexcept;
+    template<typename U>
+    void set(const vec3<U>& translation, const vec3<U>& scale, const Quaternion<U>& rotation) noexcept;
     template<typename U>
     void set(const vec3<U> &translation, const vec3<U> &scale, const vec3<Angle::RADIANS<U>>& euler) noexcept;
 

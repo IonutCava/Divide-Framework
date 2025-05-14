@@ -63,14 +63,24 @@ inline void Transform::setPositionZ(const F32 positionZ) noexcept
     setPosition(_translation.x, _translation.y,  positionZ);
 }
 
+/// Set the local X,Y and Z scale amounts to the same factor
+inline void Transform::setScale(const F32 amount) noexcept
+{
+    _scale.set(amount);
+}
+
 /// Set the local X,Y and Z amount factors
 inline void Transform::setScale(const float3& amount) noexcept
 {
     _scale.set(amount);
 }
 
+inline void Transform::setScale(F32 X, F32 Y, F32 Z) noexcept
+{
+    _scale.set(X, Y, Z);
+}
+
 /// Set the local orientation using the Axis-Angle system.
-/// The angle can be in either degrees(default) or radians
 inline void Transform::setRotation(const float3& axis, const Angle::DEGREES_F degrees) noexcept
 {
     _orientation.fromAxisAngle(axis, Angle::to_RADIANS(degrees));
@@ -78,14 +88,13 @@ inline void Transform::setRotation(const float3& axis, const Angle::DEGREES_F de
 }
 
 /// Set the local orientation using the Euler system.
-/// The angles can be in either degrees(default) or radians
 inline void Transform::setRotation(const Angle::DEGREES_F pitch, const Angle::DEGREES_F yaw, const Angle::DEGREES_F roll) noexcept
 {
     _orientation.fromEuler(Angle::to_RADIANS(pitch), Angle::to_RADIANS(yaw), Angle::to_RADIANS(roll));
 }
 
 /// Set the local orientation so that it matches the specified quaternion.
-inline void Transform::setRotation(const Quaternion<F32>& quat) noexcept
+inline void Transform::setRotation(const quatf& quat) noexcept
 {
     _orientation.set(quat);
     _orientation.normalize();
@@ -103,30 +112,26 @@ inline void Transform::scale(const float3& axisFactors) noexcept
     _scale *= axisFactors;
 }
 
-/// Apply the specified Axis-Angle rotation starting from the current
-/// orientation.
-/// The angles can be in either degrees(default) or radians
+/// Apply the specified Axis-Angle rotation starting from the current orientation.
 inline void Transform::rotate(const float3& axis, const Angle::DEGREES_F degrees) noexcept
 {
-    rotate(Quaternion<F32>(axis, Angle::to_RADIANS(degrees)));
+    rotate(quatf(axis, Angle::to_RADIANS(degrees)));
 }
 
-/// Apply the specified Euler rotation starting from the current
-/// orientation.
-/// The angles can be in either degrees(default) or radians
+/// Apply the specified Euler rotation starting from the current orientation.
 inline void Transform::rotate(const Angle::DEGREES_F pitch, const Angle::DEGREES_F yaw, const Angle::DEGREES_F roll) noexcept
 {
-    rotate(Quaternion<F32>(Angle::to_RADIANS(pitch), Angle::to_RADIANS(yaw), Angle::to_RADIANS(roll)));
+    rotate(quatf(Angle::to_RADIANS(pitch), Angle::to_RADIANS(yaw), Angle::to_RADIANS(roll)));
 }
 
 /// Apply the specified Quaternion rotation starting from the current orientation.
-inline void Transform::rotate(const Quaternion<F32>& quat) noexcept
+inline void Transform::rotate(const quatf& quat) noexcept
 {
     setRotation(quat * _orientation);
 }
 
 /// Perform a SLERP rotation towards the specified quaternion
-inline void Transform::rotateSlerp(const Quaternion<F32>& quat, const D64 deltaTime)
+inline void Transform::rotateSlerp(const quatf& quat, const D64 deltaTime)
 {
     _orientation.slerp(quat, to_F32(deltaTime));
     _orientation.normalize();
@@ -162,38 +167,32 @@ inline void Transform::scaleZ(const F32 amount) noexcept
 {
     scale(float3(_scale.x, _scale.y, amount));
 }
-/// Rotate on the X axis (Axis-Angle used) by the specified angle (either
-/// degrees or radians)
+/// Rotate on the X axis (Axis-Angle used) by the specified angle
 inline void Transform::rotateX(const Angle::DEGREES_F angle) noexcept
 {
     rotate(float3(1, 0, 0), angle);
 }
-/// Rotate on the Y axis (Axis-Angle used) by the specified angle (either
-/// degrees or radians)
+/// Rotate on the Y axis (Axis-Angle used) by the specified angle
 inline void Transform::rotateY(const Angle::DEGREES_F angle) noexcept
 {
     rotate(float3(0, 1, 0), angle);
 }
-/// Rotate on the Z axis (Axis-Angle used) by the specified angle (either
-/// degrees or radians)
+/// Rotate on the Z axis (Axis-Angle used) by the specified angle
 inline void Transform::rotateZ(const Angle::DEGREES_F angle) noexcept
 {
     rotate(float3(0, 0, 1), angle);
 }
 /// Set the rotation on the X axis (Axis-Angle used) by the specified angle
-/// (either degrees or radians)
 inline void Transform::setRotationX(const Angle::DEGREES_F angle) noexcept
 {
     setRotation(float3(1, 0, 0), angle);
 }
 /// Set the rotation on the Y axis (Axis-Angle used) by the specified angle
-/// (either degrees or radians)
 inline void Transform::setRotationY(const Angle::DEGREES_F angle) noexcept
 {
     setRotation(float3(0, 1, 0), angle);
 }
-/// Set the rotation on the Z axis (Axis-Angle used) by the specified angle
-/// (either degrees or radians)
+/// Set the rotation on the Z axis (Axis-Angle used) by the specified angle 
 inline void Transform::setRotationZ(const Angle::DEGREES_F angle) noexcept
 {
     setRotation(float3(0, 0, 1), angle);
@@ -212,14 +211,9 @@ inline void Transform::getPosition(float3& posOut) const noexcept
 }
 
 /// Return the orientation quaternion
-inline void Transform::getOrientation(Quaternion<F32>& quatOut) const noexcept
+inline void Transform::getOrientation(quatf& quatOut) const noexcept
 {
     quatOut.set(_orientation);
-}
-
-inline bool Transform::isUniformScale(const F32 tolerance) const noexcept
-{
-    return _scale.isUniform(tolerance);
 }
 
 inline void Transform::clone(const Transform* const transform) noexcept

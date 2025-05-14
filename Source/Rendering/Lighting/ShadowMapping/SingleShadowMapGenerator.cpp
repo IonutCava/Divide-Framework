@@ -203,7 +203,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
     auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
-    Util::StringFormat( cmd->_scopeName, "Single Shadow Pass Light: [ {} ]", lightIndex);
+    Util::StringFormatTo( cmd->_scopeName, "Single Shadow Pass Light: [ {} ]", lightIndex);
     cmd->_scopeId = lightIndex;
 
     _context.context().kernel().renderPassManager()->doCustomPass(shadowCameras[0], params, bufferInOut, memCmdInOut);

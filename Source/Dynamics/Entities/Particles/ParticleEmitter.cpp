@@ -353,7 +353,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
         const TransformComponent* transform = sgn->get<TransformComponent>();
 
         const float3& pos = transform->getWorldPosition();
-        const Quaternion<F32>& rot = transform->getWorldOrientation();
+        const quatf& rot = transform->getWorldOrientation();
 
         F32 averageEmitRate = 0;
         for (const std::shared_ptr<ParticleSource>& source : _sources)

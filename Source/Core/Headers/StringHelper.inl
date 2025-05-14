@@ -355,14 +355,14 @@ namespace Divide
         } //namespace detail
 
         template <typename Str, typename... Args> requires (!concept_const_char<Str>)
-        inline Str StringFormat( const char* fmt, Args&& ...args )
+        inline Str StringFormat( const std::string_view fmt, Args&& ...args )
         {
             const detail::custom_memory_buffer buffer = detail::vformat( fmt, fmt::make_format_args( args... ) );
             return Str( buffer.data(), buffer.size(), detail::s_allocator );
         }
 
         template <typename Str, typename... Args> requires (!concept_const_char<Str>)
-        inline void StringFormat( Str& output, const char* fmt, Args&& ...args )
+        inline void StringFormatTo( Str& output, const std::string_view fmt, Args&& ...args )
         {
             const detail::custom_memory_buffer buffer = detail::vformat( fmt, fmt::make_format_args( args... ) );
             output.assign(buffer.data(), buffer.size());

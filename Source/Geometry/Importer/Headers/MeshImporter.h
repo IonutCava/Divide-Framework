@@ -136,7 +136,6 @@ namespace Divide {
 
             float3 _minPos{};
             float3 _maxPos{};
-            float3 _worldOffset{};
             U32 _index{0u};
             U8 _lodCount{0u};
             U8 _boneCount{0u};

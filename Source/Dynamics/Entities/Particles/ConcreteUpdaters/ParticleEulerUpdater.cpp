@@ -23,18 +23,21 @@ void ParticleEulerUpdater::update(const U64 deltaTimeUS, ParticleData& p) {
     Parallel_For( context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&p, dt, globalA](const Task*, const U32 start, const U32 end)
     {
         vector<float4>& acceleration = p._acceleration;
-        for (U32 i = start; i < end; ++i) {
+        for (U32 i = start; i < end; ++i)
+        {
             float4& acc = acceleration[i];
             acc.xyz = (acc + globalA).xyz;
         }
         vector<float4>& velocity = p._velocity;
-        for (U32 i = start; i < end; ++i) {
+        for (U32 i = start; i < end; ++i)
+        {
             float4& vel = velocity[i];
             vel.xyz = (vel + dt * acceleration[i]).xyz;
         }
 
         vector<float4>& position = p._position;
-        for (U32 i = start; i < end; ++i) {
+        for (U32 i = start; i < end; ++i)
+        {
             float4& pos = position[i];
             pos.xyz = (pos + dt * velocity[i]).xyz;
         }

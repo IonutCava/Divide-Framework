@@ -36,27 +36,6 @@ bool RenderingComponent::renderOptionEnabled(const RenderOptions option) const n
     return _renderMask & to_base(option);
 }
 
-void RenderingComponent::toggleBoundsDraw(const bool showAABB, const bool showBS, const bool showOBB, bool recursive)
-{
-    if (recursive)
-    {
-        const SceneGraphNode::ChildContainer& children = _parentSGN->getChildren();
-        SharedLock<SharedMutex> r_lock(children._lock);
-        const U32 childCount = children._count;
-        for (U32 i = 0u; i < childCount; ++i)
-        {
-            if (children._data[i]->HasComponents(ComponentType::RENDERING))
-            {
-                children._data[i]->get<RenderingComponent>()->toggleBoundsDraw(showAABB, showBS, showOBB, recursive);
-            }
-        }
-    }
-
-    _drawAABB = showAABB;
-    _drawBS = showBS;
-    _drawOBB = showOBB;
-}
-
 void RenderingComponent::onRenderOptionChanged(const RenderOptions option, const bool state)
 {
     switch (option)

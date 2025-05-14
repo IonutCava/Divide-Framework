@@ -39,7 +39,7 @@ IntersectionRecord::IntersectionRecord(BoundsComponent* hitObject)  noexcept :
 
 void IntersectionRecord::reset() noexcept
 {
-    _ray.identity();
+    Identity(_ray);
     _hasHit = false;
     _distance = D64_MAX;
     _intersectedObject1 = nullptr;

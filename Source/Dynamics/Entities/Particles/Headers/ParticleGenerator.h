@@ -48,11 +48,11 @@ NOINITVTABLE_CLASS(ParticleGenerator)
                           ParticleData& p,
                           U32 startIndex,
                           U32 endIndex) = 0;
-        void updateTransform(const float3& position, const Quaternion<F32>& orientation) noexcept;
+        void updateTransform(const float3& position, const quatf& orientation) noexcept;
 
     protected:
      float3 _sourcePosition;
-     Quaternion<F32> _sourceOrientation;
+     quatf _sourceOrientation;
 };
 }
 #endif //DVD_PARTICLE_GENERATOR_H_

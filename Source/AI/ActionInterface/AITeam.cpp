@@ -78,25 +78,21 @@ bool AITeam::update(TaskPool& parentPool, const U64 deltaTimeUS) {
         }
     }
     const U16 entityCount = to_U16(entities.size());
-    if (entityCount <= g_entityThreadedThreashold) {
-        for (AIEntity* entity : entities) {
-            if (!Attorney::AIEntityAITeam::update(*entity, deltaTimeUS)) {
+    ParallelForDescriptor descriptor = {};
+    descriptor._iterCount = entityCount;
+    descriptor._partitionSize = g_entityThreadedThreashold;
+    Parallel_For( parentPool, descriptor, [deltaTimeUS, &entities](const Task*, const U32 start, const U32 end)
+    {
+        for (U32 i = start; i < end; ++i)
+        {
+            if (!Attorney::AIEntityAITeam::update(*entities[i], deltaTimeUS))
+            {
                 //print error;
+                NOP();
             }
         }
-    } else {
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = entityCount;
-        descriptor._partitionSize = g_entityThreadedThreashold;
-        Parallel_For( parentPool, descriptor, [deltaTimeUS, &entities](const Task*, const U32 start, const U32 end)
-        {
-            for (U32 i = start; i < end; ++i) {
-                if (!Attorney::AIEntityAITeam::update(*entities[i], deltaTimeUS)) {
-                    //print error;
-                }
-            }
-        });
-    }
+    });
+
     return true;
 }
 
@@ -104,25 +100,21 @@ bool AITeam::processInput(TaskPool& parentPool, const U64 deltaTimeUS) {
     vector<AIEntity*> entities = getEntityList();
 
     const U16 entityCount = to_U16(entities.size());
-    if (entityCount <= g_entityThreadedThreashold) {
-        for (AIEntity* entity : entities) {
-            if (!Attorney::AIEntityAITeam::processInput(*entity, deltaTimeUS)) {
+
+    ParallelForDescriptor descriptor = {};
+    descriptor._iterCount = entityCount;
+    descriptor._partitionSize = g_entityThreadedThreashold;
+    Parallel_For( parentPool, descriptor, [deltaTimeUS, &entities](const Task*, const U32 start, const U32 end)
+    {
+        for (U32 i = start; i < end; ++i)
+        {
+            if (!Attorney::AIEntityAITeam::processInput(*entities[i], deltaTimeUS))
+            {
                 //print error;
+                NOP();
             }
         }
-    } else {
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = entityCount;
-        descriptor._partitionSize = g_entityThreadedThreashold;
-        Parallel_For( parentPool, descriptor, [deltaTimeUS, &entities](const Task*, const U32 start, const U32 end)
-        {
-            for (U32 i = start; i < end; ++i) {
-                if (!Attorney::AIEntityAITeam::processInput(*entities[i], deltaTimeUS)) {
-                    //print error;
-                }
-            }
-        });
-    }
+    });
 
     return true;
 }
@@ -131,25 +123,20 @@ bool AITeam::processData(TaskPool& parentPool, const U64 deltaTimeUS) {
     vector<AIEntity*> entities = getEntityList();
 
     const U16 entityCount = to_U16(entities.size());
-    if (entityCount <= g_entityThreadedThreashold) {
-        for (AIEntity* entity : entities) {
-            if (!Attorney::AIEntityAITeam::processData(*entity, deltaTimeUS)) {
+    ParallelForDescriptor descriptor = {};
+    descriptor._iterCount = entityCount;
+    descriptor._partitionSize = g_entityThreadedThreashold;
+    Parallel_For( parentPool, descriptor, [deltaTimeUS, &entities](const Task*, const U32 start, const U32 end)
+    {
+        for (U32 i = start; i < end; ++i)
+        {
+            if (!Attorney::AIEntityAITeam::processData(*entities[i], deltaTimeUS))
+            {
                 //print error;
+                NOP();
             }
         }
-    } else {
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = entityCount;
-        descriptor._partitionSize = g_entityThreadedThreashold;
-        Parallel_For( parentPool, descriptor, [deltaTimeUS, &entities](const Task*, const U32 start, const U32 end)
-        {
-            for (U32 i = start; i < end; ++i) {
-                if (!Attorney::AIEntityAITeam::processData(*entities[i], deltaTimeUS)) {
-                    //print error;
-                }
-            }
-        });
-    }
+    });
 
     return true;
 }

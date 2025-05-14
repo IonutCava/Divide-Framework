@@ -286,6 +286,9 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         const F32 msTime = Time::MicrosecondsToMilliseconds<F32>( deltaTimeUS );
+
+        TaskPool& threadPool = parentScene().context().taskPool(TaskPoolType::HIGH_PRIORITY);
+
         {
             PROFILE_SCOPE( "ECS::PreUpdate", Profiler::Category::Scene );
             GetECSEngine().PreUpdate( msTime );
@@ -300,56 +303,44 @@ namespace Divide
         }
         {
             PROFILE_SCOPE( "Process node scene update", Profiler::Category::Scene );
-            const U32 nodeCount = to_U32( _nodeList.size() );
-
-            // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
-            if ( nodeCount > g_nodesPerPartition * 2 )
-            {
-                ParallelForDescriptor descriptor = {};
-                descriptor._iterCount = nodeCount;
-                descriptor._partitionSize = g_nodesPerPartition;
-                Parallel_For( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
+            Parallel_For
+            (
+                threadPool,
+                ParallelForDescriptor
+                {
+                    ._iterCount = to_U32(_nodeList.size()),
+                    ._partitionSize = g_nodesPerPartition
+                },
+                [&]( const Task* /*parentTask*/, const U32 start, const U32 end )
                 {
                     for ( U32 i = start; i < end; ++i )
                     {
                         _nodeList[i]->sceneUpdate( deltaTimeUS, sceneState );
                     }
-                });
-            }
-            else
-            {
-                for ( SceneGraphNode* node : _nodeList )
-                {
-                    node->sceneUpdate( deltaTimeUS, sceneState );
                 }
-            }
+            );
+        
         }
         {
             PROFILE_SCOPE( "Process event queue", Profiler::Category::Scene );
-            const U32 nodeCount = to_U32( _nodeEventQueue.size() );
-
-            // Only do a parallel for if we have at least 2 partitions to run in parallel, otherwise we just waste a lot of time on setup and destruction
             LockGuard<Mutex> w_lock( _nodeEventLock );
-            if ( nodeCount > g_nodesPerPartition * 2 )
-            {
-                ParallelForDescriptor descriptor = {};
-                descriptor._iterCount = nodeCount;
-                descriptor._partitionSize = g_nodesPerPartition;
-                Parallel_For( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [this]( const Task* /*parentTask*/, const U32 start, const U32 end )
+            Parallel_For
+            ( 
+                threadPool,
+                ParallelForDescriptor
+                {
+                    ._iterCount = to_U32(_nodeEventQueue.size()),
+                    ._partitionSize = g_nodesPerPartition
+                }, 
+                [this]( const Task* /*parentTask*/, const U32 start, const U32 end )
                 {
                     for ( U32 i = start; i < end; ++i )
                     {
                         Attorney::SceneGraphNodeSceneGraph::processEvents( _nodeEventQueue[i] );
                     }
-                });
-            }
-            else
-            {
-                for ( SceneGraphNode* node : _nodeEventQueue )
-                {
-                    Attorney::SceneGraphNodeSceneGraph::processEvents( node );
                 }
-            }
+            );
+
             efficient_clear( _nodeEventQueue );
         }
 
@@ -401,7 +392,9 @@ namespace Divide
         if ( !parentScene().context().pfx().intersect( params._ray, params._range, intersectionsOut ) )
         {
             // Fallback to Sphere/AABB/OBB intersections
-            if ( !_root->intersect( params._ray, params._range, intersectionsOut ) )
+            const IntersectionRay intersectRay = GetIntersectionRay(params._ray);
+
+            if ( !_root->intersect(intersectRay, params._range, intersectionsOut ) )
             {
                 return false;
             }

@@ -38,11 +38,12 @@
 namespace Divide {
 
 //Not thread safe!
-class Transform final : public TransformValues, public ITransform, public GUIDWrapper, NonCopyable {
+class Transform final : public TransformValues, public ITransform, public GUIDWrapper, NonCopyable
+{
    public:
 
     Transform() noexcept = default;
-    explicit Transform(const Quaternion<F32>& orientation,
+    explicit Transform(const quatf& orientation,
                        const float3& translation,
                        const float3& scale) noexcept;
 
@@ -53,7 +54,9 @@ class Transform final : public TransformValues, public ITransform, public GUIDWr
     void setPositionZ(F32 positionZ) noexcept override;
     void translate(const float3& axisFactors) noexcept override;
 
+    void setScale(F32 amount) noexcept override;
     void setScale(const float3& amount) noexcept override;
+    void setScale(F32 X, F32 Y, F32 Z) noexcept override;
     void setScaleX(F32 amount) noexcept override;
     void setScaleY(F32 amount) noexcept override;
     void setScaleZ(F32 amount) noexcept override;
@@ -64,23 +67,21 @@ class Transform final : public TransformValues, public ITransform, public GUIDWr
 
     void setRotation(const float3& axis, Angle::DEGREES_F degrees) noexcept override;
     void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) noexcept override;
-    void setRotation(const Quaternion<F32>& quat) noexcept override;
+    void setRotation(const quatf& quat) noexcept override;
     void setRotationX(Angle::DEGREES_F angle) noexcept override;
     void setRotationY(Angle::DEGREES_F angle) noexcept override;
     void setRotationZ(Angle::DEGREES_F angle) noexcept override;
     void rotate(const float3& axis, Angle::DEGREES_F degrees) noexcept override;
     void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) noexcept override;
-    void rotate(const Quaternion<F32>& quat) noexcept override;
-    void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) override;
+    void rotate(const quatf& quat) noexcept override;
+    void rotateSlerp(const quatf& quat, D64 deltaTime) override;
     void rotateX(Angle::DEGREES_F angle) noexcept override;
     void rotateY(Angle::DEGREES_F angle) noexcept override;
     void rotateZ(Angle::DEGREES_F angle) noexcept override;
 
     void getScale(float3& scaleOut) const noexcept override;
     void getPosition(float3& posOut) const noexcept override;
-    void getOrientation(Quaternion<F32>& quatOut) const noexcept override;
-
-    [[nodiscard]] bool isUniformScale(const F32 tolerance = EPSILON_F32) const noexcept;
+    void getOrientation(quatf& quatOut) const noexcept override;
 
     /// Sets the transform to match a certain transformation matrix.
     /// Scale, orientation and translation are extracted from the specified matrix

@@ -21,7 +21,7 @@ void main(){
 #endif //!NO_TEXTURE
   _colour = inColourData;
   _lineWidth = inLineWidth;
-  gl_Position = dvd_ProjectionMatrix * dvd_ViewMatrix * dvd_WorldMatrix * vec4(inVertexData, 1.f);
+  gl_Position = dvd_ViewProjectionMatrix * dvd_WorldMatrix * vec4(inVertexData, 1.f);
 } 
 
 -- Fragment
@@ -74,7 +74,7 @@ layout(location = ATTRIB_FREE_START + 0) out vec4 _colour;
 void main() {
     VAR._texCoord = inTexCoordData;
     _colour = inColourData;
-    gl_Position = dvd_ProjectionMatrix * dvd_ViewMatrix * vec4( inVertexData, 0.0, 1.0);
+    gl_Position = dvd_ViewProjectionMatrix * vec4( inVertexData, 0.0, 1.0);
 }
 
 -- Fragment.GUI

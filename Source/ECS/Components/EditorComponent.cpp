@@ -130,7 +130,7 @@ namespace Divide {
                     const float3 scale = transform->getLocalScale();
                     const float3 position = transform->getLocalPosition();
 
-                    const Quaternion<F32> orientation = transform->getLocalOrientation();
+                    const quatf orientation = transform->getLocalOrientation();
                     const vec3<Angle::DEGREES_F> orientationEuler = Angle::to_DEGREES(orientation.getEuler());
 
                     pt.put(entryName + ".position.<xmlattr>.x", position.x);
@@ -156,15 +156,15 @@ namespace Divide {
                 } break;
                 case EditorComponentFieldType::BOUNDING_BOX:
                 {
-                    BoundingBox bb = {};
+                    BoundingBox bb{};
                     field.get<BoundingBox>(bb);
 
-                    pt.put(entryName + ".aabb.min.<xmlattr>.x", bb.getMin().x);
-                    pt.put(entryName + ".aabb.min.<xmlattr>.y", bb.getMin().y);
-                    pt.put(entryName + ".aabb.min.<xmlattr>.z", bb.getMin().z);
-                    pt.put(entryName + ".aabb.max.<xmlattr>.x", bb.getMax().x);
-                    pt.put(entryName + ".aabb.max.<xmlattr>.y", bb.getMax().y);
-                    pt.put(entryName + ".aabb.max.<xmlattr>.z", bb.getMax().z);
+                    pt.put(entryName + ".aabb.min.<xmlattr>.x", bb._min.x);
+                    pt.put(entryName + ".aabb.min.<xmlattr>.y", bb._min.y);
+                    pt.put(entryName + ".aabb.min.<xmlattr>.z", bb._min.z);
+                    pt.put(entryName + ".aabb.max.<xmlattr>.x", bb._max.x);
+                    pt.put(entryName + ".aabb.max.<xmlattr>.y", bb._max.y);
+                    pt.put(entryName + ".aabb.max.<xmlattr>.z", bb._max.z);
                 } break;
                 case EditorComponentFieldType::ORIENTED_BOUNDING_BOX:
                 {
@@ -175,10 +175,10 @@ namespace Divide {
                     BoundingSphere bs = {};
                     field.get<BoundingSphere>(bs);
 
-                    pt.put(entryName + ".aabb.center.<xmlattr>.x", bs.getCenter().x);
-                    pt.put(entryName + ".aabb.center.<xmlattr>.y", bs.getCenter().y);
-                    pt.put(entryName + ".aabb.center.<xmlattr>.z", bs.getCenter().z);
-                    pt.put(entryName + ".aabb.radius", bs.getRadius());
+                    pt.put(entryName + ".aabb.center.<xmlattr>.x", bs._sphere.center.x);
+                    pt.put(entryName + ".aabb.center.<xmlattr>.y", bs._sphere.center.y);
+                    pt.put(entryName + ".aabb.center.<xmlattr>.z", bs._sphere.center.z);
+                    pt.put(entryName + ".aabb.radius", bs._sphere.radius);
                 }break;
             }
         }
@@ -223,12 +223,11 @@ namespace Divide {
                                   pt.get<F32>(entryName + ".scale.<xmlattr>.y", 1.0f),
                                   pt.get<F32>(entryName + ".scale.<xmlattr>.z", 1.0f));
 
-                        Quaternion<F32> rotation;
+                        quatf rotation;
                         rotation.fromEuler(Angle::to_RADIANS(orientationEuler));
                         transform->setScale(scale);
                         transform->setRotation(rotation);
                         transform->setPosition(position);
-                        transform->resetCache();
                     } break;
                     case EditorComponentFieldType::MATERIAL:
                     {
@@ -243,19 +242,21 @@ namespace Divide {
                     } break;
                     case EditorComponentFieldType::BOUNDING_BOX:
                     {
-                        BoundingBox bb = {};
-                        bb.setMin(
+                        BoundingBox bb
                         {
-                            pt.get<F32>(entryName + ".aabb.min.<xmlattr>.x", -1.0f),
-                            pt.get<F32>(entryName + ".aabb.min.<xmlattr>.y", -1.0f),
-                            pt.get<F32>(entryName + ".aabb.min.<xmlattr>.z", -1.0f)
-                        });
-                        bb.setMax(
-                        {
-                            pt.get<F32>(entryName + ".aabb.max.<xmlattr>.x", 1.0f),
-                            pt.get<F32>(entryName + ".aabb.max.<xmlattr>.y", 1.0f),
-                            pt.get<F32>(entryName + ".aabb.max.<xmlattr>.z", 1.0f)
-                        });
+                            float3
+                            {
+                                pt.get<F32>(entryName + ".aabb.min.<xmlattr>.x", -1.0f),
+                                pt.get<F32>(entryName + ".aabb.min.<xmlattr>.y", -1.0f),
+                                pt.get<F32>(entryName + ".aabb.min.<xmlattr>.z", -1.0f)
+                            },
+                            float3
+                            {
+                                pt.get<F32>(entryName + ".aabb.max.<xmlattr>.x", 1.0f),
+                                pt.get<F32>(entryName + ".aabb.max.<xmlattr>.y", 1.0f),
+                                pt.get<F32>(entryName + ".aabb.max.<xmlattr>.z", 1.0f)
+                            }
+                        };
                         field.set<BoundingBox>(bb);
                     } break;
                     case EditorComponentFieldType::ORIENTED_BOUNDING_BOX:

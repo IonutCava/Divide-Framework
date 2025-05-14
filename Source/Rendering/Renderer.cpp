@@ -86,7 +86,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = totalLights;
         bufferDescriptor._bufferParams._elementSize = sizeof(U32);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            Util::StringFormat( bufferDescriptor._name, "LIGHT_INDEX_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormatTo( bufferDescriptor._name, "LIGHT_INDEX_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightIndexBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -94,7 +94,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            Util::StringFormat( bufferDescriptor._name, "GLOBAL_CLUSTER_AABB_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormatTo( bufferDescriptor._name, "GLOBAL_CLUSTER_AABB_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightClusterAABBsBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -102,7 +102,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = numClusters;
         bufferDescriptor._bufferParams._elementSize = sizeof(uint4);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            Util::StringFormat( bufferDescriptor._name, "LIGHT_GRID_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormatTo( bufferDescriptor._name, "LIGHT_GRID_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightGridBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }
@@ -111,7 +111,7 @@ Renderer::Renderer(PlatformContext& context)
         bufferDescriptor._bufferParams._elementCount = 1u;
         bufferDescriptor._bufferParams._elementSize =  sizeof(uint4);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
-            Util::StringFormat( bufferDescriptor._name, "GLOBAL_INDEX_COUNT_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
+            Util::StringFormatTo( bufferDescriptor._name, "GLOBAL_INDEX_COUNT_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._globalIndexCountBuffer = _context.gfx().newSB(bufferDescriptor);
         }
     }

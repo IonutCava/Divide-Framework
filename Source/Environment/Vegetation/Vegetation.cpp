@@ -3,6 +3,7 @@
 #include "Headers/Vegetation.h"
 
 #include "Core/Headers/Kernel.h"
+#include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
@@ -150,47 +151,47 @@ namespace Divide
             {
                 float3( -offsetBottom0, 0.f, -offsetBottom0 ),
                 VECTOR3_UNIT,
-                GetMatrix( Quaternion<F32>( Angle::to_RADIANS(vec3<Angle::DEGREES_F>(25.f, 0.f, 0.f))))
+                quatf( Angle::to_RADIANS(vec3<Angle::DEGREES_F>(25.f, 0.f, 0.f)))
             },
 
             mat4<F32>
             {
                 float3( -offsetBottom1, 0.f, offsetBottom1 ),
                 float3( 0.85f ),
-                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-12.5f,  0.f, 0.f))) * //Pitch
-                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(   0.f, 35.f, 0.f))))  //Yaw
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-12.5f,  0.f, 0.f))) * //Pitch
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(   0.f, 35.f, 0.f)))  //Yaw
             },
 
             mat4<F32>
             {
                 float3( offsetBottom0, 0.f, -offsetBottom1 ),
                 float3( 1.1f ),
-                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(30.f,   0.f, 0.f))) * //Pitch
-                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>( 0.f, -75.f, 0.f))))  //Yaw
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(30.f,   0.f, 0.f))) * //Pitch
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>( 0.f, -75.f, 0.f)))  //Yaw
             },
 
             mat4<F32>
             {
                 float3( offsetBottom1 * 2, 0.f, offsetBottom1 ),
                 float3( 0.9f ),
-                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-25.f,    0.f, 0.f))) * //Pitch
-                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, -125.f, 0.f))))  //Yaw
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-25.f,    0.f, 0.f))) * //Pitch
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, -125.f, 0.f)))  //Yaw
             },
 
             mat4<F32>
             {
                 float3( -offsetBottom1 * 2, 0.f, -offsetBottom1 * 2 ),
                 float3( 1.2f ),
-                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(5.f,    0.f, 0.f))) * //Pitch
-                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(0.f, -225.f, 0.f))))  //Yaw
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(5.f,    0.f, 0.f))) * //Pitch
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(0.f, -225.f, 0.f)))  //Yaw
             },
 
             mat4<F32>
             {
                 float3( offsetBottom0, 0.f, offsetBottom1 * 2 ),
                 float3( 0.75f ),
-                GetMatrix( Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-15.f,   0.f, 0.f))) * //Pitch
-                           Quaternion<F32>(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, 305.f, 0.f))))  //Yaw
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(-15.f,   0.f, 0.f))) * //Pitch
+                quatf(Angle::to_RADIANS(vec3<Angle::DEGREES_F>(  0.f, 305.f, 0.f)))  //Yaw
             }
         };
 
@@ -548,7 +549,7 @@ namespace Divide
             nodeDescriptor._serialize = false;
             nodeDescriptor._instanceCount = instance->_instanceCountTrees;
             nodeDescriptor._nodeHandle = FromHandle(crtMesh);
-            Util::StringFormat( nodeDescriptor._name, "Trees_chunk_{}", ID );
+            Util::StringFormatTo( nodeDescriptor._name, "Trees_chunk_{}", ID );
             _treeParentNode = sgn->addChildNode( nodeDescriptor );
 
             TransformComponent* tComp = _treeParentNode->get<TransformComponent>();
@@ -572,7 +573,7 @@ namespace Divide
             bs.fromBoundingBox( aabb );
 
             const float3& extents = aabb.getExtent();
-            _treeExtents.set( extents, bs.getRadius() );
+            _treeExtents.set( extents, bs._sphere.radius );
             _grassExtents.w = _grassExtents.xyz.length();
         }
 
@@ -1018,7 +1019,7 @@ namespace Divide
                 //vert._position.y = (((0.0f*heightExtent) + vert._position.y) - ((0.0f*scale) + vert._position.y)) + vert._position.y;
                 VegetationData entry = {};
                 entry._positionAndScale.set( vert._position, scale );
-                Quaternion<F32> modelRotation;
+                quatf modelRotation;
                 if ( treeData )
                 {
                     modelRotation.fromEuler( descriptor.treeRotations[meshID] );
@@ -1028,7 +1029,7 @@ namespace Divide
                     modelRotation = RotationFromVToU( WORLD_Y_AXIS, vert._normal, WORLD_Z_NEG_AXIS );
                 }
 
-                entry._orientationQuat = (Quaternion<F32>( vert._normal, Angle::to_RADIANS(Angle::DEGREES_F(Random( 360.0f )))) * modelRotation).asVec4();
+                entry._orientationQuat = (quatf( vert._normal, Angle::to_RADIANS(Angle::DEGREES_F(Random( 360.0f )))) * modelRotation)._elements;
                 entry._data = {
                     to_F32( arrayLayer ),
                     to_F32( ID ),

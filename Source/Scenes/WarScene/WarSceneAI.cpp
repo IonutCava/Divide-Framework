@@ -316,7 +316,7 @@ bool WarScene::addUnits() {
             {
                 npcNodeDescriptor._nodeHandle = lightNodeMesh;
                 currentScale = lightNode->get<TransformComponent>()->getWorldScale();
-                Util::StringFormat( currentName, "Soldier_1_{}_{}", k, i );
+                Util::StringFormatTo( currentName, "Soldier_1_{}_{}", k, i );
                 speed = Metric::Base(Random(6.5f, 9.5f));
                 acc = Metric::Base(Random(4.5f, 8.0f));
                 type = AI::WarSceneAIProcessor::AIType::LIGHT;
@@ -325,7 +325,7 @@ bool WarScene::addUnits() {
             {
                 npcNodeDescriptor._nodeHandle = animalNodeMesh;
                 currentScale = animalNode->get<TransformComponent>()->getWorldScale();
-                Util::StringFormat( currentName, "Soldier_2_{}_{}", k, i % 5 );
+                Util::StringFormatTo( currentName, "Soldier_2_{}_{}", k, i % 5 );
                 speed = Metric::Base(Random(8.5f, 11.5f));
                 acc = Metric::Base(Random(6.0f, 9.0f));
                 zFactor = 1.0f;
@@ -336,7 +336,7 @@ bool WarScene::addUnits() {
             {
                 npcNodeDescriptor._nodeHandle = heavyNodeMesh;
                 currentScale = heavyNode->get<TransformComponent>()->getWorldScale();
-                Util::StringFormat( currentName, "Soldier_3_{}_{}", k, i % 10 );
+                Util::StringFormatTo( currentName, "Soldier_3_{}_{}", k, i % 10 );
                 speed = Metric::Base(Random(4.5f, 7.5f));
                 acc = Metric::Base(Random(4.0f, 6.5f));
                 zFactor = 2.0f;

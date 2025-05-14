@@ -367,7 +367,7 @@ namespace Divide
                     for ( size_t j = 0u; j < bMember._arrayInnerSize; ++j )
                     {
                         BlockMember newMember = bMember;
-                        Util::StringFormat( newMember._name, "{}[{}][{}]", bMember._name.c_str(), i, j );
+                        Util::StringFormatTo( newMember._name, "{}[{}][{}]", bMember._name.c_str(), i, j );
                         newMember._nameHash = _ID( newMember._name.c_str() );
                         newMember._size -= offset;
                         newMember._offset = offset;
@@ -380,7 +380,7 @@ namespace Divide
                 for ( size_t i = 0u; i < bMember._arrayOuterSize; ++i )
                 {
                     BlockMember newMember = bMember;
-                    Util::StringFormat( newMember._name, "{}[{}]", bMember._name.c_str(), i );
+                    Util::StringFormatTo( newMember._name, "{}[{}]", bMember._name.c_str(), i );
                     newMember._nameHash = _ID( newMember._name.c_str() );
                     newMember._size -= i * (bMember._arrayInnerSize * bMember._elementSize);
                     newMember._offset = i * (bMember._arrayInnerSize * bMember._elementSize);
@@ -393,7 +393,7 @@ namespace Divide
                 for ( size_t i = 0u; i < bMember._arrayOuterSize; ++i )
                 {
                     BlockMember newMember = bMember;
-                    Util::StringFormat( newMember._name, "{}[{}]", bMember._name.c_str(), i );
+                    Util::StringFormatTo( newMember._name, "{}[{}]", bMember._name.c_str(), i );
                     newMember._nameHash = _ID( newMember._name.c_str() );
                     newMember._size -= offset;
                     newMember._offset = offset;

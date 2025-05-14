@@ -4,6 +4,7 @@
 
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/Kernel.h"
+#include "Core/Headers/Application.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
@@ -26,7 +27,7 @@ namespace Divide
 
             if ( GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / (Config::Build::IS_DEBUG_BUILD ? 4 : 2)) == 0 )
             {
-                Util::StringFormat( _output, "Scene Update Loops: {}", timingData.updateLoops() );
+                Util::StringFormatTo( _output, "Scene Update Loops: {}", timingData.updateLoops() );
 
                 const PerformanceMetrics perfMetrics = context.gfx().getPerformanceMetrics();
 

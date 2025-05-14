@@ -6,7 +6,7 @@
 void main() 
 {
     const NodeTransformData data = fetchInputData();
-    VAR._vertexW = data._worldMatrix * dvd_Vertex;
+    VAR._vertexW = Transform(dvd_Vertex, data._transform);
     VAR._vertexW.xyz += dvd_CameraPosition;
 
     VAR._vertexWV = dvd_ViewMatrix * VAR._vertexW;

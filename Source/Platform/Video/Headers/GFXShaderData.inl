@@ -35,15 +35,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 inline F32 AspectRatio(const GFXShaderData::CamData& dataIn) noexcept {
-    return dataIn._viewPort.z / dataIn._viewPort.w;
+    return dataIn.dvd_ViewPort.z / dataIn.dvd_ViewPort.w;
 }
 
 inline float2 CameraZPlanes(const GFXShaderData::CamData& dataIn) noexcept {
-    return dataIn._cameraProperties.xy;
+    return dataIn.dvd_camProperties.xy;
 }
 
 inline F32 FoV(const GFXShaderData::CamData& dataIn) noexcept {
-    return dataIn._cameraProperties.z;
+    return dataIn.dvd_camProperties.z;
 }
 
 }; //namespace Divide

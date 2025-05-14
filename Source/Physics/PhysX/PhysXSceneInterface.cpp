@@ -226,16 +226,22 @@ namespace Divide
             PROFILE_SCOPE( "Updating actors", Profiler::Category::Physics );
 
             // update each render object with the new transform
-            ParallelForDescriptor descriptor = {};
-            descriptor._iterCount = to_U32( nbActiveActors );
-            descriptor._partitionSize = g_parallelPartitionSize;
-            Parallel_For( parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [activeActors]( const Task*, const U32 start, const U32 end )
-            {
-                for ( U32 i = start; i < end; ++i )
+            Parallel_For
+            (
+                parentScene().context().taskPool( TaskPoolType::HIGH_PRIORITY ),
+                ParallelForDescriptor
                 {
-                    UpdateActor( activeActors[i] );
+                    ._iterCount = to_U32(nbActiveActors),
+                    ._partitionSize = g_parallelPartitionSize
+                },
+                [activeActors]( const Task*, const U32 start, const U32 end )
+                {
+                    for ( U32 i = start; i < end; ++i )
+                    {
+                        UpdateActor( activeActors[i] );
+                    }
                 }
-            });
+            );
         }
     }
 
@@ -247,8 +253,8 @@ namespace Divide
         TransformComponent* tComp = static_cast<SceneGraphNode*>(rigidActor->userData)->get<TransformComponent>();
 
         const physx::PxTransform pT = rigidActor->getGlobalPose();
-        const physx::PxQuat pQ = pT.q.getConjugate();
-        tComp->setRotation( Quaternion<F32>( pQ.x, pQ.y, pQ.z, pQ.w ) );
+        const physx::PxQuat pQ = pT.q;
+        tComp->setRotation( quatf( pQ.x, pQ.y, pQ.z, pQ.w ) );
         tComp->setPosition( pT.p.x, pT.p.y, pT.p.z );
     }
 

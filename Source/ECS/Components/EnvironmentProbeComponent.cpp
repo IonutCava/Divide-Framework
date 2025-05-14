@@ -127,7 +127,7 @@ EnvironmentProbeComponent::EnvironmentProbeComponent(SceneGraphNode* sgn, Platfo
             queueRefresh();
         } else {
             const float3 pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
-            setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
+            setBounds(_refaabb._min + pos, _refaabb._max + pos);
         }
     });
 
@@ -194,7 +194,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     }
 
     auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
-    Util::StringFormat( cmd->_scopeName, "EnvironmentProbePass Id: [ {} ]", rtLayerIndex() ),
+    Util::StringFormatTo( cmd->_scopeName, "EnvironmentProbePass Id: [ {} ]", rtLayerIndex() ),
     cmd->_scopeId = rtLayerIndex();
 
     RenderPassParams params
@@ -300,25 +300,32 @@ void EnvironmentProbeComponent::updateType(const UpdateType type) {
     }
 }
 
-F32 EnvironmentProbeComponent::distanceSqTo(const float3& pos) const noexcept {
+F32 EnvironmentProbeComponent::distanceSqTo(const float3& pos) const noexcept
+{
     return _aabb.getCenter().distanceSquared(pos);
 }
 
-void EnvironmentProbeComponent::OnData(const ECS::CustomEvent& data) {
+void EnvironmentProbeComponent::OnData(const ECS::CustomEvent& data)
+{
     SGNComponent::OnData(data);
 
-    if (data._type == ECS::CustomEvent::Type::TransformUpdated) {
+    if (data._type == ECS::CustomEvent::Type::TransformUpdated)
+    {
         const float3 pos = _parentSGN->get<TransformComponent>()->getWorldPosition();
-        setBounds(_refaabb.getMin() + pos, _refaabb.getMax() + pos);
-    } else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged) {
+        setBounds(_refaabb._min + pos, _refaabb._max + pos);
+    }
+    else if (data._type == ECS::CustomEvent::Type::EntityFlagChanged)
+    {
         const SceneGraphNode::Flags flag = static_cast<SceneGraphNode::Flags>(data._flag);
-        if (flag == SceneGraphNode::Flags::SELECTED) {
+        if (flag == SceneGraphNode::Flags::SELECTED)
+        {
             _drawImpostor = data._dataPair._first == 1u;
         }
     }
 }
 
-void EnvironmentProbeComponent::loadFromXML(const boost::property_tree::ptree& pt) {
+void EnvironmentProbeComponent::loadFromXML(const boost::property_tree::ptree& pt)
+{
     SGNComponent::loadFromXML(pt);
     updateProbeData();
 }

@@ -65,8 +65,8 @@ void TerrainChunk::load(const U8 depth, const uint2 pos, const U32 targetChunkDi
         }
     }
 
-    bbInOut.setMin(bbInOut.getMin().x, tempMin, bbInOut.getMin().z);
-    bbInOut.setMax(bbInOut.getMax().x, tempMax, bbInOut.getMax().z);
+    bbInOut.setMin(bbInOut._min.x, tempMin, bbInOut._min.z);
+    bbInOut.setMax(bbInOut._max.x, tempMax, bbInOut._max.z);
 
     Attorney::TerrainChunk::registerTerrainChunk(*_parentTerrain, this);
 }

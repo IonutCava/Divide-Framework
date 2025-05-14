@@ -55,7 +55,6 @@ class GUIConsoleCommandParser final : public CommandParser, public PlatformConte
     void handleSayCommand(const string& args);
     void handleQuitCommand(const string& args);
     void handleHelpCommand(const string& args);
-    void handleEditParamCommand(const string& args);
     void handlePlaySoundCommand(const string& args);
     void handleNavMeshCommand(const string& args);
     void handleShaderRecompileCommand(const string& args);

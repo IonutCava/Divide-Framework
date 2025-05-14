@@ -4,12 +4,11 @@
 #include "Headers/Configuration.h"
 
 #include "Core/Headers/Kernel.h"
-#include "Core/Headers/ParamHandler.h"
 #include "Utility/Headers/Localization.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
-#include "Core/Networking/Headers/LocalClient.h"
-#include "Core/Networking/Headers/Server.h"
+#include "Networking/Headers/Client.h"
+#include "Networking/Headers/Server.h"
 #include "Editor/Headers/Editor.h"
 #include "GUI/Headers/GUI.h"
 #include "Physics/Headers/PXDevice.h"
@@ -22,10 +21,8 @@ namespace Divide {
 
 PlatformContext::PlatformContext(Application& app)
   : _app(app)
-  , _paramHandler(std::make_unique<ParamHandler>())
   , _config(std::make_unique<Configuration>())
   , _debug(std::make_unique<DebugInterface>())
-  , _server(std::make_unique<Server>())
 {
     const char* taskPoolNames[] =
     {
@@ -59,14 +56,17 @@ void PlatformContext::init(Kernel& kernel)
     _sfx = std::make_unique<SFXDevice>(*this);
     _pfx = std::make_unique<PXDevice>(*this);
     _gui =  std::make_unique<GUI>( kernel );
-    _client = std::make_unique<LocalClient>( kernel );
+    _networking = std::make_unique<Network>();
+
     _editor = (Config::Build::ENABLE_EDITOR ? std::make_unique<Editor>(*this) : nullptr);
 }
 
 void PlatformContext::terminate()
 {
+    _networking->close();
+
     _editor.reset();
-    _client.reset();
+    _networking.reset();
     _gui.reset();
     _pfx.reset();
     _sfx.reset();
@@ -109,6 +109,11 @@ void PlatformContext::idle(const bool fast, const U64 deltaTimeUSGame, const U64
     for (U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i)
     {
         _taskPool[i]->flushCallbackQueue();
+    }
+
+    if ( !fast )
+    {
+        _networking->update();
     }
 }
 
@@ -155,6 +160,49 @@ void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::th
         {
             ShaderProgram::OnThreadCreated(*_gfx, threadID, isMainRenderThread);
         }
+    }
+}
+
+ErrorCode PlatformContext::Network::init(const std::string_view serverIPAddress)
+{
+    _client = std::make_unique<Networking::Client>();
+
+    if (Networking::IsLocalHostAddress(serverIPAddress) || !client().connect(serverIPAddress, Networking::NetworkingPort))
+    {
+        _server = std::make_unique<Networking::Server>(Networking::NetworkingPort);
+        if (!_server->start())
+        {
+            _client.reset();
+            return ErrorCode::NETWORK_SERVER_START_ERROR;
+        }
+
+        if (!client().connect(Networking::LocalHostAddress, Networking::NetworkingPort))
+        {
+            _server.reset();
+            _client.reset();
+            return ErrorCode::NETWORK_CONNECT_ERROR;
+        }
+    }
+
+    return ErrorCode::NO_ERR;
+}
+
+void PlatformContext::Network::close()
+{
+    //Should also disconnect
+    _client.reset();
+    //Should also shut down cleanly
+    _server.reset();
+}
+
+void PlatformContext::Network::update()
+{
+    DIVIDE_ASSERT(_client != nullptr);
+    _client->update();
+
+    if ( _server != nullptr ) 
+    {
+        _server->update(SIZE_MAX, false);
     }
 }
 

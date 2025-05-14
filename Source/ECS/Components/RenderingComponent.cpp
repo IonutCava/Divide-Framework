@@ -333,11 +333,6 @@ namespace Divide
             return;
         }
 
-        // Draw bounding box if needed and only in the final stage to prevent Shadow/PostFX artifacts
-        drawBounds( _drawAABB || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_AABB ),
-                    _drawOBB  || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_OBB ),
-                    _drawBS   || sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::RENDER_BSPHERES ) );
-
         if ( renderOptionEnabled( RenderOptions::RENDER_AXIS ) ||
              (sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::SELECTION_GIZMO ) && _parentSGN->hasFlag( SceneGraphNode::Flags::SELECTED )) ||
              sceneRenderState.isEnabledOption( SceneRenderState::RenderOptions::ALL_GIZMOS ) )
@@ -909,7 +904,7 @@ namespace Divide
             _axisGizmoLinesDescriptor._lines.push_back( temp );
         }
 
-        _axisGizmoLinesDescriptor.worldMatrix = mat4<F32>(GetMatrix(_parentSGN->get<TransformComponent>()->getWorldOrientation()));
+        _axisGizmoLinesDescriptor.worldMatrix = GetMat4(_parentSGN->get<TransformComponent>()->getWorldOrientation());
         _axisGizmoLinesDescriptor.worldMatrix.scale(VECTOR3_UNIT * 10.f);
         _gfxContext.debugDrawLines( _parentSGN->getGUID() + 321, _axisGizmoLinesDescriptor );
     }
@@ -933,49 +928,6 @@ namespace Divide
         }
     }
 
-    void RenderingComponent::drawBounds( const bool AABB, const bool OBB, const bool Sphere )
-    {
-        if ( !AABB && !Sphere && !OBB )
-        {
-            return;
-        }
-
-        const SceneNode& node = _parentSGN->getNode();
-        const bool isSubMesh = node.type() == SceneNodeType::TYPE_SUBMESH;
-
-        if ( AABB )
-        {
-            const BoundingBox& bb = _parentSGN->get<BoundsComponent>()->getBoundingBox();
-            IM::BoxDescriptor descriptor;
-            descriptor.min = bb.getMin();
-            descriptor.max = bb.getMax();
-            descriptor.colour = isSubMesh ? UColour4( 0, 0, 255, 255 ) : UColour4( 255, 0, 255, 255 );
-            _gfxContext.debugDrawBox( _parentSGN->getGUID() + 123, descriptor );
-        }
-
-        if ( OBB )
-        {
-            const auto& obb = _parentSGN->get<BoundsComponent>()->getOBB();
-            IM::OBBDescriptor descriptor;
-            descriptor.box = obb;
-            descriptor.colour = isSubMesh ? UColour4( 128, 0, 255, 255 ) : UColour4( 255, 0, 128, 255 );
-
-            _gfxContext.debugDrawOBB( _parentSGN->getGUID() + 123, descriptor );
-        }
-
-        if ( Sphere )
-        {
-            const BoundingSphere& bs = _parentSGN->get<BoundsComponent>()->getBoundingSphere();
-            IM::SphereDescriptor descriptor;
-            descriptor.center = bs.getCenter();
-            descriptor.radius = bs.getRadius();
-            descriptor.colour = isSubMesh ? UColour4( 0, 255, 0, 255 ) : UColour4( 255, 255, 0, 255 );
-            descriptor.slices = 16u;
-            descriptor.stacks = 16u;
-            _gfxContext.debugDrawSphere( _parentSGN->getGUID() + 123, descriptor );
-        }
-    }
-
     void RenderingComponent::OnData( const ECS::CustomEvent& data )
     {
         SGNComponent::OnData( data );
@@ -988,13 +940,8 @@ namespace Divide
                 assert( tComp != nullptr );
                 updateNearestProbes( tComp->getWorldPosition() );
 
-                _axisGizmoLinesDescriptor.worldMatrix = mat4<F32>( GetMatrix( tComp->getWorldOrientation() ) );
+                _axisGizmoLinesDescriptor.worldMatrix = GetMat4( tComp->getWorldOrientation() );
                 _axisGizmoLinesDescriptor.worldMatrix.setTranslation( tComp->getWorldPosition() );
-            } break;
-            case ECS::CustomEvent::Type::DrawBoundsChanged:
-            {
-                const BoundsComponent* bComp = static_cast<BoundsComponent*>(data._sourceCmp);
-                toggleBoundsDraw( bComp->showAABB(), bComp->showBS(), bComp->showOBB(), false );
             } break;
             case ECS::CustomEvent::Type::BoundsUpdated:
             {

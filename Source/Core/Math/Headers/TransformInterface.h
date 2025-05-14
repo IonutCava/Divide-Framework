@@ -40,7 +40,7 @@ struct TransformValues
 {
     /// All orientation/rotation info is stored in a Quaternion
     /// (because they are awesome and also have an internal mat4 if needed)
-    Quaternion<F32> _orientation{};
+    quatf _orientation{};
     /// The object's position in the world as a 3 component vector
     float3 _translation{ VECTOR3_ZERO };
     /// Scaling is stored as a 3 component vector.
@@ -51,10 +51,14 @@ struct TransformValues
 [[nodiscard]] TransformValues Lerp(const TransformValues& a, const TransformValues& b, F32 t);
 [[nodiscard]] mat4<F32> GetMatrix(const TransformValues& values);
 
+[[nodiscard]] TransformValues ApplyTransform(const TransformValues& src, const TransformValues& transform);
+
 bool operator==(const TransformValues& lhs, const TransformValues& rhs);
 bool operator!=(const TransformValues& lhs, const TransformValues& rhs);
 
-class ITransform {
+
+class ITransform
+{
 public:
 	virtual ~ITransform() = default;
 	/// Set the local X,Y and Z position
@@ -70,8 +74,12 @@ public:
     /// Add the specified translation factors to the current local position
     virtual void translate(const float3& axisFactors) = 0;
 
+    /// Set the local X,Y and Z scale to the same factor
+    virtual void setScale(F32 amount) = 0;
     /// Set the local X,Y and Z scale factors
     virtual void setScale(const float3& amount) = 0;
+    /// Set the local X,Y and Z scale factors
+    virtual void setScale(F32 X, F32 Y, F32 Z) = 0;
     /// Set the scaling factor on the X axis
     virtual void setScaleX(F32 amount) = 0;
     /// Set the scaling factor on the Y axis
@@ -94,7 +102,7 @@ public:
     /// The angles can be in either degrees(default) or radians
     virtual void setRotation(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) = 0;
     /// Set the local orientation so that it matches the specified quaternion.
-    virtual void setRotation(const Quaternion<F32>& quat) = 0;
+    virtual void setRotation(const quatf& quat) = 0;
     /// Set the rotation on the X axis (Axis-Angle used) by the specified angle
     /// (either degrees or radians)
     virtual void setRotationX(Angle::DEGREES_F angle) = 0;
@@ -111,19 +119,15 @@ public:
     /// The angles can be in either degrees(default) or radians
     virtual void rotate(Angle::DEGREES_F pitch, Angle::DEGREES_F yaw, Angle::DEGREES_F roll) = 0;
     /// Apply the specified Quaternion rotation starting from the current orientation.
-    virtual void rotate(const Quaternion<F32>& quat) = 0;
+    virtual void rotate(const quatf& quat) = 0;
     /// Perform a SLERP rotation towards the specified quaternion
-    virtual void rotateSlerp(const Quaternion<F32>& quat, D64 deltaTime) = 0;
+    virtual void rotateSlerp(const quatf& quat, D64 deltaTime) = 0;
     /// Rotate on the X axis (Axis-Angle used) by the specified angle (either degrees or radians)
     virtual void rotateX(Angle::DEGREES_F angle) = 0;
     /// Rotate on the Y axis (Axis-Angle used) by the specified angle (either degrees or radians)
     virtual void rotateY(Angle::DEGREES_F angle) = 0;
     /// Rotate on the Z axis (Axis-Angle used) by the specified angle (either degrees or radians)
     virtual void rotateZ(Angle::DEGREES_F angle) = 0;
-    /// Set an uniform scale on all three axis
-    void setScale( F32 amount );
-    /// Set a scaling factor for each axis
-    void setScale( F32 x, F32 y, F32 z );
     /// Set the euler rotation in degrees
     void setRotationEuler( const vec3<Angle::DEGREES_F>& euler );
     /// Translate the object on each axis by the specified amount 
@@ -148,7 +152,7 @@ public:
     /// Return the position
     virtual void getPosition(float3& posOut) const = 0;
     /// Return the orientation quaternion
-    virtual void getOrientation(Quaternion<F32>& quatOut) const = 0;
+    virtual void getOrientation(quatf& quatOut) const = 0;
 };
 
 }

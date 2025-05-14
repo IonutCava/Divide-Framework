@@ -230,7 +230,8 @@ namespace ECS
 			}
 		}
 
-		void PassDataToAllComponents(const EntityId entityId, const CustomEvent& data) {
+		void PassDataToAllComponents(const EntityId entityId, const CustomEvent& data)
+		{
 			static const size_t NUM_COMPONENTS = this->m_EntityComponentMap[0].size();
 
 			for (ComponentTypeId componentTypeId = 0; componentTypeId < NUM_COMPONENTS; ++componentTypeId)
@@ -239,7 +240,8 @@ namespace ECS
 				if (componentId == INVALID_COMPONENT_ID)
 					continue;
 
-				if (IComponent* component = this->m_ComponentLUT[componentId]) {
+				if (IComponent* component = this->m_ComponentLUT[componentId])
+				{
 					component->OnData(data);
 				}
 			}

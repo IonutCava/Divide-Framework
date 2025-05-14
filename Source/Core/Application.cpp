@@ -1,19 +1,16 @@
 
 
 #include "Headers/Application.h"
+#include "Headers/DisplayManager.h"
 
 #include "Headers/Kernel.h"
-#include "Headers/ParamHandler.h"
 #include "Headers/Configuration.h"
 
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Platform/File/Headers/FileManagement.h"
+#include "Utility/Headers/Localization.h"
 
 namespace Divide {
-
-U8 DisplayManager::s_activeDisplayCount{1u};
-U8 DisplayManager::s_maxMSAASAmples{0u};
-NO_DESTROY std::array<DisplayManager::OutputDisplayPropertiesContainer, DisplayManager::g_maxDisplayOutputs> DisplayManager::s_supportedDisplayModes;
 
 Application::Application() noexcept
     : SDLEventListener("Application")
@@ -21,11 +18,6 @@ Application::Application() noexcept
     , _mainLoopActive{false}
     , _freezeRendering{false}
 {
-}
-
-Application::~Application()
-{
-    DIVIDE_ASSERT( _kernel == nullptr );
 }
 
 ErrorCode Application::start(const string& entryPoint, const I32 argc, char** argv)

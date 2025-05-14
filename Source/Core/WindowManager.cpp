@@ -4,6 +4,7 @@
 
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/CommandBufferPool.h"
@@ -94,6 +95,10 @@ ErrorCode WindowManager::init(PlatformContext& context,
     }
 
     _context = &context;
+
+    const char* videoDriver = SDL_GetCurrentVideoDriver();
+
+    Console::printfn(LOCALE_STR("SDL_VIDEO_DRIVER"), videoDriver != nullptr ? videoDriver : "UNKNOWN");
 
     efficient_clear( _monitors );
     const I32 displayCount = SDL_GetNumVideoDisplays();

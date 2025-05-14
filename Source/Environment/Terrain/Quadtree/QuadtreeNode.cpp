@@ -52,16 +52,16 @@ void QuadtreeNode::build(const U8 depth,
         // Compute children bounding boxes
         const float3& center = _boundingBox.getCenter();
         _children[to_base(ChildPosition::CHILD_NW)] = std::make_unique<QuadtreeNode>(_parent);
-        _children[to_base(ChildPosition::CHILD_NW)]->setBoundingBox(BoundingBox(_boundingBox.getMin(), center));
+        _children[to_base(ChildPosition::CHILD_NW)]->setBoundingBox(BoundingBox(_boundingBox._min, center));
 
         _children[to_base(ChildPosition::CHILD_NE)] = std::make_unique<QuadtreeNode>(_parent);
-        _children[to_base(ChildPosition::CHILD_NE)]->setBoundingBox(BoundingBox(float3(center.x, 0.0f, _boundingBox.getMin().z), float3(_boundingBox.getMax().x, 0.0f, center.z)));
+        _children[to_base(ChildPosition::CHILD_NE)]->setBoundingBox(BoundingBox(float3(center.x, 0.0f, _boundingBox._min.z), float3(_boundingBox._max.x, 0.0f, center.z)));
 
         _children[to_base(ChildPosition::CHILD_SW)] = std::make_unique<QuadtreeNode>(_parent);
-        _children[to_base(ChildPosition::CHILD_SW)]->setBoundingBox(BoundingBox(float3(_boundingBox.getMin().x, 0.0f, center.z), float3(center.x, 0.0f, _boundingBox.getMax().z)));
+        _children[to_base(ChildPosition::CHILD_SW)]->setBoundingBox(BoundingBox(float3(_boundingBox._min.x, 0.0f, center.z), float3(center.x, 0.0f, _boundingBox._max.z)));
 
         _children[to_base(ChildPosition::CHILD_SE)] = std::make_unique<QuadtreeNode>(_parent);
-        _children[to_base(ChildPosition::CHILD_SE)]->setBoundingBox(BoundingBox(center, _boundingBox.getMax()));
+        _children[to_base(ChildPosition::CHILD_SE)]->setBoundingBox(BoundingBox(center, _boundingBox._max));
 
         // Compute children positions
         vec2<U16> tNewHMpos[4];
@@ -104,8 +104,8 @@ void QuadtreeNode::toggleBoundingBoxes()
 void QuadtreeNode::drawBBox(GFXDevice& context)
 {
     IM::BoxDescriptor descriptor;
-    descriptor.min = _boundingBox.getMin();
-    descriptor.max = _boundingBox.getMax();
+    descriptor.min = _boundingBox._min;
+    descriptor.max = _boundingBox._max;
     descriptor.colour = UColour4(0, 128, 255, 255);
 
     context.debugDrawBox(_terrainChunk != nullptr ? _terrainChunk->id() : 121221, descriptor);

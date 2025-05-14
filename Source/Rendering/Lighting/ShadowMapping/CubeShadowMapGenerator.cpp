@@ -32,7 +32,7 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     const float3 lightPos = light.sgn()->get<TransformComponent>()->getWorldPosition();
 
     auto cmd = GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut);
-    Util::StringFormat( cmd->_scopeName, "Cube Shadow Pass Light: [ {} ]", lightIndex );
+    Util::StringFormatTo( cmd->_scopeName, "Cube Shadow Pass Light: [ {} ]", lightIndex );
     cmd->_scopeId = lightIndex;
 
     RenderPassParams params = {};

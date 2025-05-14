@@ -154,7 +154,7 @@ U32 PopulateNodeData(aiNode* node, MeshNodeData& target, const aiMatrix4x4& axis
         {
             float3(pPosition.x, pPosition.y, pPosition.y),
             float3(pScaling.x, pScaling.y, pScaling.y),
-            GetMatrix(Quaternion<F32>{ pRotation.x, pRotation.y, pRotation.z, pRotation.w })
+            quatf{ pRotation.x, pRotation.y, pRotation.z, pRotation.w }
         };
     }
 
@@ -450,9 +450,6 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
 {
     subMeshData._maxPos = { source->mAABB.mMax.x, source->mAABB.mMax.y, source->mAABB.mMax.z };
     subMeshData._minPos = { source->mAABB.mMin.x, source->mAABB.mMin.y, source->mAABB.mMin.z };
-    subMeshData._worldOffset = target._animationCount > 0u ? VECTOR3_ZERO : ((subMeshData._maxPos + subMeshData._minPos) * 0.5f);
-    subMeshData._maxPos = subMeshData._maxPos - subMeshData._worldOffset;
-    subMeshData._minPos = subMeshData._minPos - subMeshData._worldOffset;
 
     vector<U32> input_indices(source->mNumFaces * 3u);
     for (U32 j = 0u, k = 0u; k < source->mNumFaces; ++k)
@@ -470,7 +467,7 @@ void LoadSubMeshGeometry(const aiMesh* source, Import::SubMeshData& subMeshData,
         const aiVector3D position = source->mVertices[j];
         const aiVector3D normal = source->mNormals[j];
 
-        vertices[j].position.set(float3{ position.x, position.y, position.z } - subMeshData._worldOffset);
+        vertices[j].position.set( position.x, position.y, position.z );
         vertices[j].normal.set( normal.x, normal.y, normal.z );
     }
     subMeshData._useAttribute[to_base( AttribLocation::POSITION )] = true;

@@ -35,7 +35,6 @@
 
 #include "PlatformContext.h"
 #include "LoopTimingData.h"
-#include "Core/Headers/Application.h"
 #include "Managers/Headers/FrameListenerManager.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
 
@@ -63,7 +62,7 @@ enum class RenderStage : U8;
 
 struct FrameEvent;
 struct DebugInterface;
-
+struct SizeChangeParams;
 
 namespace Attorney {
     class KernelApplication;

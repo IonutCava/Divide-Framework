@@ -39,24 +39,30 @@ namespace Divide {
 
 enum class RenderStage : U8;
 
-struct GFXShaderData {
+struct GFXShaderData
+{
 #pragma pack(push, 1)
-      struct CamData {
-          mat4<F32> _projectionMatrix = MAT4_IDENTITY;
-          mat4<F32> _viewMatrix = MAT4_IDENTITY;
-          mat4<F32> _invViewMatrix = MAT4_IDENTITY;
-          mat4<F32> _worldAOVPMatrix = MAT4_IDENTITY;
-          float4 _viewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
+      struct CamData
+      {
+          mat4<F32> dvd_ProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> dvd_ViewMatrix = MAT4_IDENTITY;
+          mat4<F32> dvd_ViewProjectionMatrix = MAT4_IDENTITY;
+          mat4<F32> dvd_InverseViewMatrix = MAT4_IDENTITY;
+          mat4<F32> dvd_WorldAOVPMatrix = MAT4_IDENTITY;
+          mat4<F32> dvd_PrevViewProjectionMatrix = MAT4_IDENTITY;
+          float4    dvd_ViewPort = { 0.0f, 0.0f, 1.0f, 1.0f };
           // x - scale, y - bias, z - light bleed bias, w - min shadow variance
-          float4 _lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
+          float4    dvd_lightingTweakValues = { 1.f, 1.f, 0.2f, 0.001f};
           //x - nearPlane, y - farPlane, z - FoV, w - clip plane count
-          float4 _cameraProperties = { 0.01f, 1.0f, 40.f, 0.f };
+          float4    dvd_camProperties = { 0.01f, 1.0f, 40.f, 0.f };
           //xy - depth range, zw - light cluster size X / Y
-          float4 _renderTargetInfo{0.f, 1.f, 1.f, 1.f};
-          float4 _clipPlanes[Config::MAX_CLIP_DISTANCES];
-          float4 _padding__[9];
+          float4    dvd_renderTargetInfo{0.f, 1.f, 1.f, 1.f};
+          float4    dvd_clipPlanes[Config::MAX_CLIP_DISTANCES];
+          float4    _padding_;
       } _camData;
 #pragma pack(pop)
+
+    static_assert(sizeof(CamData) == sizeof(mat4<F32>) * 8, "Wrong GPU data struct size!");
 
     struct PrevFrameData
     {

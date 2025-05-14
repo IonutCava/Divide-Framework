@@ -51,19 +51,21 @@ namespace Divide::Profiler
     void Initialise()
     {
 #       if ENABLE_OPTICK_PROFILER
-            OPTICK_SET_MEMORY_ALLOCATOR([](size_t size) -> void*
-                                         {
-                                             return mi_new(size);
-                                         },
-                                         []( void* p )
-                                         {
-                                             mi_free(p);
-                                         },
-                                         []()
-                                         {
-                                             // Thread allocator
-                                             NOP();
-                                         })
+#           if defined(ENABLE_MIMALLOC)
+                OPTICK_SET_MEMORY_ALLOCATOR([](size_t size) -> void*
+                                             {
+                                                 return mi_new(size);
+                                             },
+                                             []( void* p )
+                                             {
+                                                 mi_free(p);
+                                             },
+                                             []()
+                                             {
+                                                 // Thread allocator
+                                                 NOP();
+                                             })
+#           endif //ENABLE_MIMALLOC
             if constexpr (g_TrackOptickStateChange)
             {
                 OPTICK_SET_STATE_CHANGED_CALLBACK( OnOptickStateChanged )

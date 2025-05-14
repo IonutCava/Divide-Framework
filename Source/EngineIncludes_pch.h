@@ -33,7 +33,9 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PCH_
 #define DVD_PCH_
 
+#if defined(ENABLE_MIMALLOC)
 #include <mimalloc.h>
+#endif //ENABLE_MIMALLOC
 
 #include "Platform/Headers/PlatformDefinesOS.h"
 
@@ -86,9 +88,10 @@ DISABLE_GCC_WARNING_POP()
 #include "Core/TemplateLibraries/Headers/String.h"
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/asio/deadline_timer.hpp>
 #include <boost/functional/factory.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/deadline_timer.hpp>
 
 #include <SDL2/SDL.h>
 

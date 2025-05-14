@@ -5,7 +5,7 @@
 namespace Divide
 {
 
-Transform::Transform(const Quaternion<F32>& orientation, const float3& translation, const float3& scale) noexcept
+Transform::Transform(const quatf& orientation, const float3& translation, const float3& scale) noexcept
 {
     _scale.set(scale);
     _translation.set(translation);

@@ -33,8 +33,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_CORE_ERROR_CODES_H_
 #define DVD_CORE_ERROR_CODES_H_
 
-namespace Divide {
-    enum class ErrorCode : I8 {
+namespace Divide
+{
+    enum class ErrorCode : I8
+    {
         NO_ERR = 0,
         MISSING_SCENE_DATA,
         MISSING_PROJECT_DATA,
@@ -71,6 +73,8 @@ namespace Divide {
         PATHS_ERROR,
         EDITOR_INIT_ERROR,
         GUI_INIT_ERROR,
+        NETWORK_CONNECT_ERROR,
+        NETWORK_SERVER_START_ERROR,
         COUNT
     };
 
@@ -113,6 +117,8 @@ namespace Divide {
             "PATHS ERROR",
             "EDITOR INIT ERROR",
             "GUI INIT ERROR",
+            "NETWORK CONNECTION ERROR",
+            "NETWORK SERVER START ERROR",
             "UNKNOWN"
         };
     }

@@ -132,11 +132,9 @@ class SubMeshMeshImporter
 {
     static void setBoundingBox(SubMesh& subMesh,
                                const float3& min,
-                               const float3& max,
-                               const float3& worldOffset) noexcept
-                               {
+                               const float3& max) noexcept
+    {
         subMesh._boundingBox.set(min, max);
-        subMesh._worldOffset.set(worldOffset);
     }
 
     friend class Divide::MeshImporter;

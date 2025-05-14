@@ -609,8 +609,8 @@ bool Terrain::loadResources( PlatformContext& context )
     terrainBB.set( float3( -terrainDimensions.x * 0.5f, minAltitude, -terrainDimensions.y * 0.5f ),
                    float3( terrainDimensions.x * 0.5f, maxAltitude, terrainDimensions.y * 0.5f ) );
 
-    const float3& bMin = terrainBB.getMin();
-    const float3& bMax = terrainBB.getMax();
+    const float3& bMin = terrainBB._min;
+    const float3& bMax = terrainBB._max;
 
     ByteBuffer terrainCache;
     if ( terrainCache.loadFromFile( Paths::g_terrainCacheLocation, (terrainRawFile.string() + ".cache") ) )
@@ -965,7 +965,7 @@ void Terrain::postLoad(SceneGraphNode* sgn)
     for ( const TerrainChunk* chunk : _terrainChunks )
     {
         vegetationNodeDescriptor._nodeHandle = FromHandle(_vegetation);
-        Util::StringFormat( vegetationNodeDescriptor._name, "Vegetation_chunk_{}", chunk->id() );
+        Util::StringFormatTo( vegetationNodeDescriptor._name, "Vegetation_chunk_{}", chunk->id() );
         vegetationNodeDescriptor._dataFlag = chunk->id();
         vegParent->addChildNode( vegetationNodeDescriptor );
     }
@@ -1188,8 +1188,8 @@ Terrain::Vert Terrain::getSmoothVert(const F32 x_clampf, const F32 z_clampf) con
              x_clampf > 1.0f || z_clampf > 1.0f));
 
     const vec2<U16>& dim   = _descriptor._dimensions;
-    const float3& bbMin = _boundingBox.getMin();
-    const float3& bbMax = _boundingBox.getMax();
+    const float3& bbMin = _boundingBox._min;
+    const float3& bbMax = _boundingBox._max;
 
     const float2 posF(x_clampf * dim.width,    z_clampf * dim.height);
           int2 posI(to_I32(posF.width),      to_I32(posF.height));

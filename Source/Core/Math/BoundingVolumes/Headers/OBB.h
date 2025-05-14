@@ -58,8 +58,8 @@ public:
 
     void fromBoundingBox(const BoundingBox& aabb) noexcept;
     void fromBoundingBox(const BoundingBox& aabb, const mat4<F32>& worldMatrix);
-    void fromBoundingBox(const BoundingBox& aabb, const Quaternion<F32>& orientation);
-    void fromBoundingBox(const BoundingBox& aabb, const float3& position, const Quaternion<F32>& rotation, const float3& scale);
+    void fromBoundingBox(const BoundingBox& aabb, const quatf& orientation);
+    void fromBoundingBox(const BoundingBox& aabb, const float3& position, const quatf& rotation, const float3& scale);
     void fromBoundingSphere(const BoundingSphere &sphere)  noexcept;
 
     void translate(const float3& offset);
@@ -69,7 +69,7 @@ public:
     void scale(const float3& centerPoint, const float3& scaleFactor);
     void transform(const mat3<F32>& transform);
     void transform(const mat4<F32>& transform);
-    void transform(const Quaternion<F32>& rotation);
+    void transform(const quat<F32>& rotation);
 
     [[nodiscard]] BoundingBox toBoundingBox() const noexcept;
 
@@ -90,7 +90,7 @@ public:
     [[nodiscard]] bool containsBox(const BoundingBox& AABB) const noexcept;
     [[nodiscard]] bool containsSphere(const BoundingSphere& bSphere) const noexcept;
 
-    [[nodiscard]] RayResult intersect(const Ray& ray, F32 t0In, F32 t1In) const noexcept;
+    [[nodiscard]] RayResult intersect(const IntersectionRay& ray, F32 t0In, F32 t1In) const noexcept;
 
     PROPERTY_RW(float3, position, VECTOR3_ZERO);
     PROPERTY_RW(float3, halfExtents, VECTOR3_UNIT);

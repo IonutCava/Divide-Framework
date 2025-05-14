@@ -3,9 +3,10 @@
 #include "Headers/MenuBar.h"
 #include "Editor/Headers/Utils.h"
 
+#include "Core/Headers/Kernel.h"
 #include "Core/Headers/Application.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/Kernel.h"
+#include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
@@ -34,7 +35,6 @@
 #include "ECS/Components/Headers/EnvironmentProbeComponent.h"
 #include "ECS/Systems/Headers/ECSManager.h"
 
-#include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Systems/Headers/AnimationSystem.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Geometry/Material/Headers/MaterialEnums.h"
@@ -362,7 +362,7 @@ namespace Divide
 
                 if ( g_nodeDescriptor._name.empty() )
                 {
-                    Util::StringFormat( g_nodeDescriptor._name, "Primitive_{}", DefaultObjectIndex++ );
+                    Util::StringFormatTo( g_nodeDescriptor._name, "Primitive_{}", DefaultObjectIndex++ );
                 }
 
                 SceneNodeHandle handle{};

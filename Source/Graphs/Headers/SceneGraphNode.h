@@ -204,7 +204,7 @@ namespace Divide
         void postLoad();
 
         /// Find the graph nodes whom's bounding boxes intersects the given ray
-        bool intersect( const Ray& intersectionRay, float2 range, vector<SGNRayResult>& intersections ) const;
+        bool intersect( const IntersectionRay& ray, float2 range, vector<SGNRayResult>& intersections ) const;
 
         void changeUsageContext( const NodeUsageContext& newContext );
 
