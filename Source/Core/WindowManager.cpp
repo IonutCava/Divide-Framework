@@ -95,10 +95,16 @@ ErrorCode WindowManager::init(PlatformContext& context,
     }
 
     _context = &context;
+    U8 numDrivers = SDL_GetNumVideoDrivers();
+    for ( U8 i = 0u; i < numDrivers; ++i)
+    {
+        const char* crtDriver = SDL_GetVideoDriver(i);
+        Console::printfn(LOCALE_STR("SDL_VIDEO_DRIVER"), crtDriver != nullptr ? crtDriver : fmt::format("UNKNOWN DRIVER [ {} ]", i));
+    }
 
     const char* videoDriver = SDL_GetCurrentVideoDriver();
 
-    Console::printfn(LOCALE_STR("SDL_VIDEO_DRIVER"), videoDriver != nullptr ? videoDriver : "UNKNOWN");
+    Console::printfn(LOCALE_STR("SDL_CURRENT_VIDEO_DRIVER"), videoDriver != nullptr ? videoDriver : "UNKNOWN");
 
     efficient_clear( _monitors );
     const I32 displayCount = SDL_GetNumVideoDisplays();

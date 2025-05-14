@@ -21,7 +21,7 @@ ErrorCode Engine::Init(Application& app, const int argc, char** argv)
     if ( errorCode != ErrorCode::NO_ERR)
     {
         // If any error occurred, close the application as details should already be logged
-        Console::errorfn(LOCALE_STR("GENERIC_ERROR"), TypeUtil::ErrorCodeToString( errorCode ) );
+        Console::errorfn(LOCALE_STR("APP_INIT_ERROR"), TypeUtil::ErrorCodeToString( errorCode ) );
     }
 
     return errorCode;
@@ -29,73 +29,99 @@ ErrorCode Engine::Init(Application& app, const int argc, char** argv)
 
 ErrorCode Engine::Run(const int argc, char** argv)
 {
-    const ErrorCode ret = RunInternal(argc, argv);
-    if (ret != ErrorCode::NO_ERR)
+    ErrorCode errorCode = PlatformInit(argc, argv);
     {
-        Console::errorfn( ret == ErrorCode::PATHS_ERROR ? "%s" : LOCALE_STR("GENERIC_ERROR"), TypeUtil::ErrorCodeToString(ret));
+        if ( errorCode != ErrorCode::NO_ERR )
+        {
+            if ( !PlatformClose() )
+            {
+                NOP();
+            }
+
+            std::cerr << TypeUtil::ErrorCodeToString(errorCode) << std::endl;
+            return errorCode;
+        }
+
+        Console::Start(Paths::g_logPath, OUTPUT_LOG_FILE, ERROR_LOG_FILE, !Util::FindCommandLineArgument(argc, argv, "disableCopyright"));
+        {
+            errorCode = Locale::Init();
+            {
+                if ( errorCode != ErrorCode::NO_ERR)
+                {
+                    Locale::Clear();
+                    Console::errorfn("Error detected during engine startup: [ {} ]", TypeUtil::ErrorCodeToString(errorCode));
+                }
+                else
+                {
+                    errorCode = RunInternal(argc, argv);
+                    if (errorCode != ErrorCode::NO_ERR)
+                    {
+                        Console::errorfn(LOCALE_STR("ENGINE_INIT_ERROR"), TypeUtil::ErrorCodeToString(errorCode));
+                    }
+                }
+            }
+            Locale::Clear();
+        }
+        Console::Stop();
     }
 
-    return ret;
+    if (!PlatformClose())
+    {
+        errorCode = ErrorCode::PLATFORM_CLOSE_ERROR;
+        std::cerr << TypeUtil::ErrorCodeToString(errorCode) << std::endl;
+    }
+
+    return errorCode;
 }
 
-ErrorCode Engine::RunInternal(const int argc, char** argv)
-{
-    ErrorCode errorCode = PlatformInit( argc, argv );
-    if ( errorCode != ErrorCode::NO_ERR)
-    {
-        return errorCode;
-    }
 
+ErrorCode Engine::RunInternal(const int argc, char** argv)
+{  
     //Win32: SetProcessDpiAwareness
     EnforceDPIScaling();
 
-    // Read language table
-    errorCode = Locale::Init();
-    if ( errorCode == ErrorCode::NO_ERR )
+    Profiler::Initialise();
+
+    AppStepResult result = AppStepResult::COUNT;
+
+    U64 restartCount = 0u;
+
+    ErrorCode errorCode = ErrorCode::NO_ERR;
+
+    do
     {
-        Profiler::Initialise();
+        U64 stepCount = 0u;
 
-        AppStepResult result = AppStepResult::COUNT;
+        const auto startTime = std::chrono::high_resolution_clock::now();
 
-        U64 restartCount = 0u;
-        do
+        // Start the engine
+        Application app;
+        errorCode = Init( app, argc, argv );
+        if (errorCode == ErrorCode::NO_ERR)
         {
-            U64 stepCount = 0u;
-
-            const auto startTime = std::chrono::high_resolution_clock::now();
-
-            // Start the engine
-            Application app;
-            errorCode = Init( app, argc, argv );
-            if (errorCode == ErrorCode::NO_ERR)
+            // Step the entire application
+            while ( (result = app.step()) == AppStepResult::OK )
             {
-                // Step the entire application
-                while ( (result = app.step()) == AppStepResult::OK )
-                {
-                    ++stepCount;
-                }
+                ++stepCount;
             }
+        }
+        else
+        {
+            result = AppStepResult::ERROR;
+        }
 
-            Profiler::Shutdown();
-            app.stop(result);
+        Profiler::Shutdown();
+        app.stop(result);
 
-            Console::printfn( LOCALE_STR("SHUTDOWN_REQUEST"),
-                              TypeUtil::AppStepResultToString( result ),
-                              stepCount,
-                              restartCount,
-                              std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startTime).count());
+        Console::printfn( LOCALE_STR("SHUTDOWN_REQUEST"),
+                            TypeUtil::AppStepResultToString( result ),
+                            stepCount,
+                            restartCount,
+                            std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startTime).count());
 
-            ++restartCount;
+        ++restartCount;
 
-        } while (errorCode == ErrorCode::NO_ERR && (result == AppStepResult::RESTART || result == AppStepResult::RESTART_CLEAR_CACHE));
-
-        Locale::Clear();
-    }
-
-    if ( !PlatformClose() )
-    {
-        errorCode = ErrorCode::PLATFORM_CLOSE_ERROR;
-    }
+    } while (errorCode == ErrorCode::NO_ERR && (result == AppStepResult::RESTART || result == AppStepResult::RESTART_CLEAR_CACHE));
 
     return errorCode;
 }

@@ -72,29 +72,12 @@ namespace Divide
         SeedRandom();
 
         InitSysInfo( sysInfo(), argc, argv );
-        ErrorCode ret = ErrorCode::NO_ERR;
-        
-        ret =  Paths::initPaths();
-
-        ResourcePath consolePath = Paths::g_logPath;
-        if ( ret != ErrorCode::NO_ERR )
-        {
-            consolePath = {};
-        }
-
-        Console::Start( consolePath,
-                        OUTPUT_LOG_FILE,
-                        ERROR_LOG_FILE,
-                        !Util::FindCommandLineArgument( argc, argv, "disableCopyright" ) );
-        return ret;
+        return Paths::initPaths();
     }
 
     bool PlatformClose()
     {
-        Runtime::resetMainThreadID();
-        Console::Stop();
-
-        return true;
+        return Runtime::resetMainThreadID();
     }
 
     void InitSysInfo( SysInfo& info, [[maybe_unused]] const I32 argc, [[maybe_unused]] char** argv )

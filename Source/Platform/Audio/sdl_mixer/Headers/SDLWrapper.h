@@ -35,7 +35,7 @@
 
 #include "Platform/Audio/Headers/AudioAPIWrapper.h"
 
-typedef struct _Mix_Music Mix_Music;
+typedef struct Mix_Music Mix_Music;
 struct Mix_Chunk;
 
 namespace Divide {
