@@ -114,6 +114,8 @@ if (MSVC_COMPILER)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
   add_compile_options(/Zc:__cplusplus /Zm256 /utf-8) 
   add_compile_options("$<$<CONFIG:DEBUG>:/d2Obforceinline>")
+  add_compile_options("$<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>")
+  add_link_options("$<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>")
   add_link_options(/INCREMENTAL)
   set (CMAKE_VS_JUST_MY_CODE_DEBUGGING $<IF:$<AND:$<CONFIG:Debug>,$<BOOL:${ENABLE_JUST_MY_CODE}>>,ON,OFF>)
 
