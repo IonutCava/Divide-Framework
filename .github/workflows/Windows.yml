@@ -37,9 +37,10 @@ jobs:
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
       
-    #- name: Print dev cmd info
-      #uses: ilammy/msvc-dev-cmd@v1.4.1
-
+    - name: Print dev cmd info
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+          arch: amd64_x86
       
     - name: Print MSVC version
       run: cl.exe
