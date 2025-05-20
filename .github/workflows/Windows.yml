@@ -31,12 +31,7 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Windows - Print Info
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: ilammy/msvc-dev-cmd@v1.4.1
@@ -50,11 +45,7 @@ jobs:
   msvc_job_game:
     needs: info_job
     name: Windows - MSVC Game Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
@@ -96,11 +87,7 @@ jobs:
   msvc_job_editor:
     needs: info_job
     name: Windows - MSVC Editor Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
@@ -142,11 +129,7 @@ jobs:
   clang_job_game:
     needs: info_job
     name: Windows - Clang Game Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
@@ -188,11 +171,7 @@ jobs:
   clang_job_editor:
     needs: info_job
     name: Windows - Clang Editor Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
