@@ -31,16 +31,17 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Windows - Print Info
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
-    - uses: ilammy/msvc-dev-cmd@v1.4.1
-
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Print dev cmd info
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+          arch: amd64_x86
+      
     - name: Print MSVC version
       run: cl.exe
 
@@ -50,11 +51,7 @@ jobs:
   msvc_job_game:
     needs: info_job
     name: Windows - MSVC Game Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
@@ -63,9 +60,9 @@ jobs:
         fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
+      #with:
+      #  cmakeVersion: 3.29.2
+      #  ninjaVersion: 1.11.1
 
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
@@ -96,11 +93,7 @@ jobs:
   msvc_job_editor:
     needs: info_job
     name: Windows - MSVC Editor Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
@@ -142,11 +135,7 @@ jobs:
   clang_job_game:
     needs: info_job
     name: Windows - Clang Game Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
@@ -188,11 +177,7 @@ jobs:
   clang_job_editor:
     needs: info_job
     name: Windows - Clang Editor Builds
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: [self-hosted, Windows]
 
     steps:
     - uses: actions/checkout@v4
