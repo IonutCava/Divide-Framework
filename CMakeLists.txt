@@ -157,8 +157,6 @@ else ()
       endif()
 
     endif()
-
-    add_compile_options( -mpopcnt )
   else()
     message( FATAL_ERROR "Unknown compiler type")
   endif ()

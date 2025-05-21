@@ -449,7 +449,7 @@ namespace Divide
         return false;
     }
 
-    bool Gizmo::onMouseButtonReleased( Input::MouseButtonEvent& argInOut ) noexcept
+    bool Gizmo::onMouseButtonReleased( [[maybe_unused]] Input::MouseButtonEvent& argInOut ) noexcept
     {
         if (_wasUsed)
         {
