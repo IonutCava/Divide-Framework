@@ -291,6 +291,7 @@ namespace Divide::Networking
                 }
                 client->send(msgOut);
             } break;
+            default: break;
         }
     }
 } //namespace Divide::Networking

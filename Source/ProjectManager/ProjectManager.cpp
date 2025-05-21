@@ -240,11 +240,11 @@ static boost::property_tree::iptree GetXmlTree(std::filesystem::path filePath)
     boost::property_tree::iptree XmlTree;
     try
     {
-        boost::property_tree::read_xml( (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string(), XmlTree );
+        boost::property_tree::read_xml( filePath.string(), XmlTree );
     }
     catch ( boost::property_tree::xml_parser_error& e )
     {
-        g_globalMessage = fmt::format( ERRORS[7], (g_projectPath / PROJECT_MANAGER_FOLDER_NAME / MANAGER_CONFIG_FILE_NAME).string(), e.what() );
+        g_globalMessage = fmt::format( ERRORS[7], filePath.string(), e.what() );
     }
 
     return XmlTree;

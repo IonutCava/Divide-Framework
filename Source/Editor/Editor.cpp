@@ -128,18 +128,21 @@ namespace Divide
         return Handle<Texture>{ ._data = to_U32(texData) };
     }
 
-     std::array<Input::MouseButton, 5> g_editorButtons =
-     {
-        Input::MouseButton::MB_Left,
-        Input::MouseButton::MB_Right,
-        Input::MouseButton::MB_Middle,
-        Input::MouseButton::MB_Button3,
-        Input::MouseButton::MB_Button4,
-    };
+    namespace
+    {
+        std::array<Input::MouseButton, 5> g_editorButtons =
+        {
+            Input::MouseButton::MB_Left,
+            Input::MouseButton::MB_Right,
+            Input::MouseButton::MB_Middle,
+            Input::MouseButton::MB_Button3,
+            Input::MouseButton::MB_Button4,
+        };
+    }
 
     std::array<const char*, 3> Editor::g_supportedExportPlatforms = { "Windows",
-                                                                      "Linux",
-                                                                      "macOS" };
+                                                                        "Linux",
+                                                                        "macOS" };
 
     PushConstantsStruct IMGUICallbackToPushConstants( const IMGUICallbackData& data, const bool isArrayTexture )
     {

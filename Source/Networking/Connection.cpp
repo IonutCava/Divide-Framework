@@ -40,7 +40,7 @@ namespace Divide::Networking
             (
                 _socket,
                 endpoints,
-                [this](std::error_code ec, boost::asio::ip::tcp::endpoint endpoint)
+                [this](std::error_code ec, [[maybe_unused]] boost::asio::ip::tcp::endpoint endpoint)
                 {
                     if (!ec)
                     {
@@ -113,7 +113,7 @@ namespace Divide::Networking
         (
             _socket,
             boost::asio::buffer(&_messagesOut.front().header(), NetworkPacket::HEADER_SIZE),
-            [this](std::error_code ec, std::size_t length)
+            [this](std::error_code ec, [[maybe_unused]] std::size_t length)
             {
                 // asio has now sent the bytes - if there was a problem an error would be available...
                 if (!ec)
@@ -159,7 +159,7 @@ namespace Divide::Networking
         (
             _socket,
             boost::asio::buffer(_messagesOut.front().body().contents(), _messagesOut.front().body().bufferSize()),
-            [this](std::error_code ec, std::size_t length)
+            [this](std::error_code ec, [[maybe_unused]] std::size_t length)
             {
                 if (!ec)
                 {
@@ -196,7 +196,7 @@ namespace Divide::Networking
         (
             _socket,
             boost::asio::buffer(&_msgTemporaryIn._header, NetworkPacket::HEADER_SIZE),
-            [this](std::error_code ec, std::size_t length)
+            [this](std::error_code ec, [[maybe_unused]] std::size_t length)
             {
                 if (!ec)
                 {
@@ -238,7 +238,7 @@ namespace Divide::Networking
         (
             _socket,
             boost::asio::buffer(storage.data(), storage.size()),
-            [this](std::error_code ec, std::size_t length)
+            [this](std::error_code ec, [[maybe_unused]] std::size_t length)
             {
                 if (!ec)
                 {

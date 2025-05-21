@@ -14,6 +14,7 @@ void* operator new[](const size_t size,
 #if defined(ENABLE_MIMALLOC)
     return mi_new_aligned_nothrow(size, alignment);
 #else//ENABLE_MIMALLOC
+    DIVIDE_UNUSED(alignment);
     return new std::byte[size];
 #endif//ENABLE_MIMALLOC
 }

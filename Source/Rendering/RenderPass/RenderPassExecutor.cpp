@@ -545,7 +545,7 @@ namespace Divide
         return ret;
     }
 
-    void RenderPassExecutor::parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, const PlayerIndex index, const D64 interpolationFactor)
+    void RenderPassExecutor::parseTransformRange(RenderBin::SortedQueue& queue, U32 start, U32 end, [[maybe_unused]] const PlayerIndex index, const D64 interpolationFactor)
     {
         U32 minTransform = U32_MAX, maxTransform = 0u;
 
