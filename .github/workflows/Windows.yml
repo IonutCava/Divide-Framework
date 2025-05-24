@@ -17,9 +17,9 @@ on:
         options:
         - GitHub
         - self-hosted
-- 
-- run-name: Windows Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_type || 'GitHub Runner' }}
-  
+
+run-name: Windows Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_type || 'GitHub Runner' }}
+
 jobs:
   check_date:
     runs-on: windows-latest
