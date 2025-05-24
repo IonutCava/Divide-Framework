@@ -1,23 +1,16 @@
 ﻿{
-    "version": 6,
-    "cmakeMinimumRequired": {
-        "major": 3,
-        "minor": 29,
-        "patch": 2
-    },
+    "version": 8,
     "configurePresets": [
         {
             "name": "conf-common",
             "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations.",
             "hidden": true,
             "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
             "warnings": { "dev": false },
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"
-            },
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
             },
             "cacheVariables": {
                 "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
@@ -34,11 +27,21 @@
                 "rhs": "Windows"
             },
             "toolset": {
-                "value": "host=x64",
+                "value": "v143,host=x64",
+                "strategy": "external"
+            },
+            "architecture": {
+                "value": "x64",
                 "strategy": "external"
             },
             "cacheVariables": {
-                "WINDOWS_OS_BUILD": true
+                "WINDOWS_OS_BUILD": true,
+                "CMAKE_MAKE_PROGRAM": "ninja.exe"
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                    "hostOS": [ "Windows" ]
+                }
             }
         },
         {
@@ -53,6 +56,14 @@
             },
             "cacheVariables": {
                 "LINUX_OS_BUILD": true
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                    "hostOS": [ "Linux" ]
+                },
+                "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+                    "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
+                }
             }
         },
         {
@@ -123,6 +134,11 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang-cl",
                 "CMAKE_CXX_COMPILER": "clang-cl"
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                    "intelliSenseMode": "windows-clang-x64"
+                }
             }
         },
         {

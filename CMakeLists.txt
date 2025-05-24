@@ -36,6 +36,8 @@ set(CMAKE_CXX_EXTENSIONS Off)
 set(CXX_SCAN_FOR_MODULES Off)
 set(FETCHCONTENT_QUIET TRUE)
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/OverlayPorts")
 
 project ( Divide-Framework
