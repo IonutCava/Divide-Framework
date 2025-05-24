@@ -39,7 +39,7 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Windows - Print Info
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -63,7 +63,7 @@ jobs:
   msvc_job_game:
     needs: info_job
     name: Windows - MSVC Game Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +109,7 @@ jobs:
   msvc_job_editor:
     needs: info_job
     name: Windows - MSVC Editor Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -155,7 +155,7 @@ jobs:
   clang_job_game:
     needs: info_job
     name: Windows - Clang Game Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -201,7 +201,7 @@ jobs:
   clang_job_editor:
     needs: info_job
     name: Windows - Clang Editor Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
