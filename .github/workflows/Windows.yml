@@ -83,7 +83,7 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
-    - name: Clean vcpkg tools directory (self-hosted only)
+    - name: Clean workspace (self-hosted only)
       if: runner.self-hosted
       run: |
         if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
@@ -136,7 +136,7 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
-    - name: Clean vcpkg tools directory (self-hosted only)
+    - name: Clean workspace (self-hosted only)
       if: runner.self-hosted
       run: |
         if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
@@ -189,7 +189,7 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
-    - name: Clean vcpkg tools directory (self-hosted only)
+    - name: Clean workspace (self-hosted only)
       if: runner.self-hosted
       run: |
         if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
@@ -242,7 +242,7 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
-    - name: Clean vcpkg tools directory (self-hosted only)
+    - name: Clean workspace (self-hosted only)
       if: runner.self-hosted
       run: |
         if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {

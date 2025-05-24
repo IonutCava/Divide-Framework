@@ -39,7 +39,7 @@ jobs:
     needs: check_date
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
     name: Ubuntu latest - Print Info
-    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]') || matrix.os }}
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -86,6 +86,8 @@ jobs:
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
       with:
         vcpkgJsonGlob: 'vcpkg.json'
         
@@ -152,6 +154,8 @@ jobs:
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
       with:
         vcpkgJsonGlob: 'vcpkg.json'
         
@@ -218,6 +222,8 @@ jobs:
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
       with:
         vcpkgJsonGlob: 'vcpkg.json'
        
@@ -284,6 +290,8 @@ jobs:
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
