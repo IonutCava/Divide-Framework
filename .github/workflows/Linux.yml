@@ -56,7 +56,7 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - GCC Editor Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]') || matrix.os }}
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -107,7 +107,7 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - GCC Game Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]') || matrix.os }}
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -157,7 +157,7 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - Clang Editor Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]') || matrix.os }}
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -207,7 +207,7 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - Clang Game Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]') || matrix.os }}
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
