@@ -31,12 +31,9 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Ubuntu latest - Print Info
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
+    runs-on: [self-hosted, ubuntu-latest]
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
 
     steps:
     - name: Print GCC version
@@ -49,12 +46,9 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - GCC Editor Builds
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
+    runs-on: [self-hosted, ubuntu-latest]
     strategy:
       fail-fast: false
-      matrix:
-        os: [self-hosted, ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -100,12 +94,9 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - GCC Game Builds
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
+    runs-on: [self-hosted, ubuntu-latest]
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -150,12 +141,9 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - Clang Editor Builds
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
+    runs-on: [self-hosted, ubuntu-latest]
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
         
     steps:
     - uses: actions/checkout@v4
@@ -200,12 +188,9 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - Clang Game Builds
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
+    runs-on: [self-hosted, ubuntu-latest]
     strategy:
       fail-fast: false
-      matrix:
-        os: [self-hosted, ubuntu-latest]
         
     steps:
     - uses: actions/checkout@v4
