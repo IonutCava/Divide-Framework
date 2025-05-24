@@ -95,7 +95,7 @@ jobs:
         df -h
 
     - name: Install extra required packages
-      run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
 
     - name: List $RUNNER_WORKSPACE before build
       run: find $RUNNER_WORKSPACE
@@ -175,7 +175,7 @@ jobs:
         df -h
 
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
 
     - name: List $RUNNER_WORKSPACE before build
       run: find $RUNNER_WORKSPACE
@@ -233,7 +233,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
 
     - name: List $RUNNER_WORKSPACE before build
       run: find $RUNNER_WORKSPACE
@@ -291,7 +291,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
 
     - name: List $RUNNER_WORKSPACE before build
       run: find $RUNNER_WORKSPACE
