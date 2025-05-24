@@ -61,14 +61,9 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Enable no password for sudo
-      run: |
-        sudo sed -i '' 's/%admin		ALL = (ALL) ALL/%admin		ALL = (ALL) NOPASSWD: ALL/g' /etc/sudoers
-        sudo -v
         
     - name: Install extra required packages
-      run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -114,13 +109,8 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
         
-    - name: Enable no password for sudo
-      run: |
-        sudo sed -i '' 's/%admin		ALL = (ALL) ALL/%admin		ALL = (ALL) NOPASSWD: ALL/g' /etc/sudoers
-        sudo -v
-        
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
@@ -165,14 +155,9 @@ jobs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Enable no password for sudo
-      run: |
-        sudo sed -i '' 's/%admin		ALL = (ALL) ALL/%admin		ALL = (ALL) NOPASSWD: ALL/g' /etc/sudoers
-        sudo -v
-        
+       
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -218,13 +203,8 @@ jobs:
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-    - name: Enable no password for sudo
-      run: |
-        sudo sed -i '' 's/%admin		ALL = (ALL) ALL/%admin		ALL = (ALL) NOPASSWD: ALL/g' /etc/sudoers
-        sudo -v
-        
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      run: apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
