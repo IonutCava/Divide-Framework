@@ -60,46 +60,17 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-    # from: https://github.com/apache/flink/blob/02d30ace69dc18555a5085eccf70ee884e73a16e/tools/azure-pipelines/free_disk_space.sh
-    - name: Remove large packages
-      id: clean
-      run: |
-        echo "=============================================================================="
-        echo "Freeing up disk space on CI system"
-        echo "=============================================================================="
-
-        echo "Listing 100 largest packages"
-        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
-        df -h
-        echo "Removing large packages"
-        sudo apt-get remove -y '^dotnet-.*'
-        sudo apt-get remove -y azure-cli google-chrome-stable firefox
-        sudo apt-get autoremove -y
-        sudo apt-get clean
-        df -h
-        echo "Removing large directories"
-        # deleting 15GB
-        rm -rf /usr/share/dotnet/
-        df -h
 
     - name: Install extra required packages
-      run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
-
-    - name: List $RUNNER_WORKSPACE before build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
+      run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -140,46 +111,16 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgJsonGlob: 'vcpkg.json'
 
-    # from: https://github.com/apache/flink/blob/02d30ace69dc18555a5085eccf70ee884e73a16e/tools/azure-pipelines/free_disk_space.sh
-    - name: Remove large packages
-      id: clean
-      run: |
-        echo "=============================================================================="
-        echo "Freeing up disk space on CI system"
-        echo "=============================================================================="
-
-        echo "Listing 100 largest packages"
-        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
-        df -h
-        echo "Removing large packages"
-        sudo apt-get remove -y '^dotnet-.*'
-        sudo apt-get remove -y azure-cli google-chrome-stable firefox
-        sudo apt-get autoremove -y
-        sudo apt-get clean
-        df -h
-        echo "Removing large directories"
-        # deleting 15GB
-        rm -rf /usr/share/dotnet/
-        df -h
-
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
-
-    - name: List $RUNNER_WORKSPACE before build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
@@ -220,12 +161,8 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
   
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
@@ -233,11 +170,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
-
-    - name: List $RUNNER_WORKSPACE before build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -278,12 +211,8 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: true
-        fetch-depth: 0
 
     - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
   
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
@@ -291,11 +220,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install extra required packages
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev ninja-build
-
-    - name: List $RUNNER_WORKSPACE before build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
