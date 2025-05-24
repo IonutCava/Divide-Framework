@@ -8,6 +8,15 @@ on:
   pull_request:
     branches: [ "master" ]
   workflow_dispatch:
+   inputs:
+      runner_type:
+        description: 'Runner type to run on (GitHub or Self Hosted)'
+        required: false
+        default: 'GitHub'
+        type: choice
+        options:
+        - GitHub
+        - self-hosted
     
 jobs:
   check_date:
@@ -31,9 +40,11 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Ubuntu latest - Print Info
-    runs-on: [self-hosted, ubuntu-latest]
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, ubuntu-latest]') || matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
 
     steps:
     - name: Print GCC version
@@ -46,9 +57,11 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - GCC Editor Builds
-    runs-on: [self-hosted, ubuntu-latest]
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, ubuntu-latest]') || matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -63,6 +76,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
         
     - name: Install extra required packages
+      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
       continue-on-error: true
       run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
@@ -94,9 +108,11 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - GCC Game Builds
-    runs-on: [self-hosted, ubuntu-latest]
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, ubuntu-latest]') || matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -142,9 +158,11 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - Clang Editor Builds
-    runs-on: [self-hosted, ubuntu-latest]
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, ubuntu-latest]') || matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
         
     steps:
     - uses: actions/checkout@v4
@@ -190,9 +208,11 @@ jobs:
     needs: info_job
 
     name: Ubuntu latest - Clang Game Builds
-    runs-on: [self-hosted, ubuntu-latest]
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, ubuntu-latest]') || matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
         
     steps:
     - uses: actions/checkout@v4

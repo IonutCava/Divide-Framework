@@ -8,7 +8,15 @@ on:
   pull_request:
     branches: [ "master" ]
   workflow_dispatch:
-    
+    inputs:
+      runner_type:
+        description: 'Runner type to run on (GitHub or Self Hosted)'
+        required: false
+        default: 'GitHub'
+        type: choice
+        options:
+        - GitHub
+        - self-hosted
 jobs:
   check_date:
     runs-on: windows-latest
@@ -31,7 +39,11 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Windows - Print Info
-    runs-on: windows-latest
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
 
     steps:
     - name: Add msbuild to PATH
@@ -51,7 +63,11 @@ jobs:
   msvc_job_game:
     needs: info_job
     name: Windows - MSVC Game Builds
-    runs-on: windows-latest
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -93,7 +109,11 @@ jobs:
   msvc_job_editor:
     needs: info_job
     name: Windows - MSVC Editor Builds
-    runs-on: windows-latest
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -135,7 +155,11 @@ jobs:
   clang_job_game:
     needs: info_job
     name: Windows - Clang Game Builds
-    runs-on: windows-latest
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -177,7 +201,11 @@ jobs:
   clang_job_editor:
     needs: info_job
     name: Windows - Clang Editor Builds
-    runs-on: windows-latest
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && '[self-hosted, windows-latest]') || matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -219,7 +247,7 @@ jobs:
   output_job:
     needs: [msvc_job_game, msvc_job_editor, clang_job_game, clang_job_editor]
     name: Finished builds
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Retrieve results
