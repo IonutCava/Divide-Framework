@@ -31,7 +31,7 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Windows - Print Info
-    runs-on: [self-hosted, Windows]
+    runs-on: windows-latest
 
     steps:
     - name: Add msbuild to PATH
@@ -51,7 +51,7 @@ jobs:
   msvc_job_game:
     needs: info_job
     name: Windows - MSVC Game Builds
-    runs-on: [self-hosted, Windows]
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -93,7 +93,7 @@ jobs:
   msvc_job_editor:
     needs: info_job
     name: Windows - MSVC Editor Builds
-    runs-on: [self-hosted, Windows]
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -135,7 +135,7 @@ jobs:
   clang_job_game:
     needs: info_job
     name: Windows - Clang Game Builds
-    runs-on: [self-hosted, Windows]
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -177,7 +177,7 @@ jobs:
   clang_job_editor:
     needs: info_job
     name: Windows - Clang Editor Builds
-    runs-on: [self-hosted, Windows]
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
