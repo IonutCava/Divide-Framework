@@ -63,7 +63,8 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
         
     - name: Install extra required packages
-      run: apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      continue-on-error: true
+      run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -110,7 +111,8 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
         
     - name: Install extra required packages
-      run: apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      continue-on-error: true
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
@@ -157,7 +159,8 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
        
     - name: Install extra required packages
-      run: apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      continue-on-error: true
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
@@ -204,7 +207,8 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install extra required packages
-      run: apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
+      continue-on-error: true
+      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
