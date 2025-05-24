@@ -63,11 +63,20 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
+    - name: Clean workspace (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        sudo git clean -xdf
+        sudo git reset --hard
+
     - uses: actions/checkout@v4
       with:
         submodules: true
 
     - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.31.6
+        ninjaVersion: 1.11.1
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
@@ -114,11 +123,20 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
+    - name: Clean workspace (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        sudo git clean -xdf
+        sudo git reset --hard
+
     - uses: actions/checkout@v4
       with:
         submodules: true
 
     - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.31.6
+        ninjaVersion: 1.11.1
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
@@ -126,6 +144,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
         
     - name: Install extra required packages
+      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
       continue-on-error: true
       run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
@@ -164,11 +183,20 @@ jobs:
         os: [ubuntu-latest]
         
     steps:
+    - name: Clean workspace (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        sudo git clean -xdf
+        sudo git reset --hard
+
     - uses: actions/checkout@v4
       with:
         submodules: true
 
     - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.31.6
+        ninjaVersion: 1.11.1
   
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
@@ -176,6 +204,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
        
     - name: Install extra required packages
+      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
       continue-on-error: true
       run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
@@ -214,11 +243,20 @@ jobs:
         os: [ubuntu-latest]
         
     steps:
+    - name: Clean workspace (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        sudo git clean -xdf
+        sudo git reset --hard
+
     - uses: actions/checkout@v4
       with:
         submodules: true
 
     - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 3.31.6
+        ninjaVersion: 1.11.1
   
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
@@ -226,6 +264,7 @@ jobs:
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install extra required packages
+      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
       continue-on-error: true
       run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
 
