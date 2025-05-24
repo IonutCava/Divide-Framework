@@ -83,6 +83,13 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
+    - name: Clean vcpkg tools directory (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
+          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
+        }
+
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
       with:
@@ -128,6 +135,13 @@ jobs:
       with:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
+
+    - name: Clean vcpkg tools directory (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
+          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
+        }
 
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
@@ -175,6 +189,13 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
 
+    - name: Clean vcpkg tools directory (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
+          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
+        }
+
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
       with:
@@ -220,6 +241,13 @@ jobs:
       with:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
+
+    - name: Clean vcpkg tools directory (self-hosted only)
+      if: runner.self-hosted
+      run: |
+        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
+          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
+        }
 
     - name: Restore from cache and setup vcpkg executable and data files.
       uses: lukka/run-vcpkg@v11
