@@ -33,6 +33,8 @@ jobs:
         os: [macos-latest]
 
     steps:
+      - uses: actions/checkout@v4
+  
       - name: Get CLANG version
         id: clang_info
         run: |
@@ -51,6 +53,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - uses: actions/checkout@v4
+  
       - uses: ./.github/actions/build-setup/macos
 
       - uses: ./.github/actions/cmake-build/macos

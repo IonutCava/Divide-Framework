@@ -40,6 +40,8 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
+    - uses: actions/checkout@v4
+  
     - name: Print GCC version
       run: g++ --version 
 
@@ -71,9 +73,7 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - uses: lukka/get-cmake@latest
-        with:
-          cmakeVersion: 3.31.6
+      - uses: actions/checkout@v4
 
       - uses: ./.github/actions/build-setup/linux
         with:

@@ -44,6 +44,8 @@ jobs:
       clang_version: ${{ steps.clang.outputs.clang_version }}
 
     steps:
+    - uses: actions/checkout@v4
+  
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v2
       
@@ -54,15 +56,19 @@ jobs:
       
     - name: Print MSVC version
       id: msvc
+      shell: cmd
       run: |
-        cl.exe | findstr "Version"
-        echo "msvc_version=$(cl.exe | findstr "Version")" >> $GITHUB_OUTPUT
+        cl 2>&1 | findstr "Version" > msvc_version.txt
+        set /p MSVC_VERSION=<msvc_version.txt
+        echo "msvc_version=%MSVC_VERSION%" >> %GITHUB_OUTPUT%
 
     - name: Print CLANG version
       id: clang
+      shell: cmd
       run: |
-        clang.exe --version | head -n 1
-        echo "clang_version=$(clang.exe --version | head -n 1)" >> $GITHUB_OUTPUT
+        clang --version > clang_version.txt
+        set /p CLANG_VERSION=<clang_version.txt
+        echo "clang_version=%CLANG_VERSION%" >> %GITHUB_OUTPUT%
 
   build_job:
     needs: info_job
@@ -83,6 +89,8 @@ jobs:
     timeout-minutes: 180
 
     steps:
+      - uses: actions/checkout@v4
+ 
       - uses: ./.github/actions/build-setup/windows
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
