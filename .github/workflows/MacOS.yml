@@ -11,7 +11,7 @@ on:
     
 jobs:
   check_date:
-    uses: .github/actions/reusable/check-date.yml
+    uses: .github/actions/reusable/check-date.yml@main
 
   info_job:
     needs: check_date
