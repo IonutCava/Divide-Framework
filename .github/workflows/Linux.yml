@@ -24,8 +24,9 @@ jobs:
    outputs:
       should_run: ${{ steps.check.outputs.should_run }}
    steps:
+      - uses: actions/checkout@v4 
       - id: check
-        uses: .github/actions/check-date
+        uses: ./.github/actions/check-date
 
   info_job:
     needs: check_date
@@ -74,14 +75,14 @@ jobs:
         with:
           cmakeVersion: 3.31.6
 
-      - uses: .github/actions/build-setup/linux
+      - uses: ./.github/actions/build-setup/linux
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
           compiler: ${{ matrix.compiler }}
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
-      - uses: .github/actions/cmake-build/linux
+      - uses: ./.github/actions/cmake-build/linux
         with:
           compiler: ${{ matrix.compiler }}
           build-type: ${{ matrix.build-type }}

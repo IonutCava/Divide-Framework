@@ -15,8 +15,9 @@ jobs:
    outputs:
       should_run: ${{ steps.check.outputs.should_run }}
    steps:
+      - uses: actions/checkout@v4  
       - id: check
-        uses: .github/actions/check-date
+        uses: ./.github/actions/check-date
 
   info_job:
     needs: check_date
@@ -50,9 +51,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: .github/actions/build-setup/macos
+      - uses: ./.github/actions/build-setup/macos
 
-      - uses: .github/actions/cmake-build/macos
+      - uses: ./.github/actions/cmake-build/macos
         with:
           build-type: ${{ matrix.build-type }}
 

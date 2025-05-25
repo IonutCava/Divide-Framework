@@ -24,8 +24,9 @@ jobs:
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
+      - uses: actions/checkout@v4 
       - id: check
-        uses: .github/actions/check-date
+        uses: ./.github/actions/check-date
 
   info_job:
     needs: check_date
@@ -82,14 +83,14 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - uses: .github/actions/build-setup/windows
+      - uses: ./.github/actions/build-setup/windows
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
           compiler: ${{ matrix.compiler }}
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
-      - uses: .github/actions/cmake-build/windows
+      - uses: ./.github/actions/cmake-build/windows
         with:
           compiler: ${{ matrix.compiler }}
           build-type: ${{ matrix.build-type }}
