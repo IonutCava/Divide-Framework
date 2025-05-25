@@ -3,7 +3,10 @@
     "version-string": "latest",
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "dependencies": [
-        "physx",
+        {
+            "name": "physx",
+            "platform": "!osx"
+        },
         "pkgconf",
         "boost-property-tree",
         "boost-asio",
