@@ -88,6 +88,9 @@ jobs:
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'macos-clang-editor'
         buildPreset: 'macos-clang-release-editor'
@@ -133,6 +136,9 @@ jobs:
      - name: Build and test Game in Release mode
        uses: lukka/run-cmake@v10
        id: runcmake_game_release
+       env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
        with:
         configurePreset: 'macos-clang'
         buildPreset: 'unixlike-clang-release'

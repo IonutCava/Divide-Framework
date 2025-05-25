@@ -101,6 +101,9 @@ jobs:
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-gcc-editor'
         buildPreset: 'linux-gcc-release-editor'
@@ -109,6 +112,9 @@ jobs:
     - name: Build and test Editor in Profile mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_profile
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-gcc-editor'
         buildPreset: 'linux-gcc-profile-editor'
@@ -117,6 +123,9 @@ jobs:
     - name: Build and test Editor in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_debug
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-gcc-editor'
         buildPreset: 'linux-gcc-debug-editor'
@@ -169,6 +178,9 @@ jobs:
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_release
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-gcc'
         buildPreset: 'linux-gcc-release'
@@ -177,6 +189,9 @@ jobs:
     - name: Build and test Game in Profile mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_profile
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-gcc'
         buildPreset: 'linux-gcc-profile'
@@ -185,6 +200,9 @@ jobs:
     - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_debug
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-gcc'
         buildPreset: 'linux-gcc-debug'
@@ -237,6 +255,9 @@ jobs:
     - name: Build and test Editor in Release mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_release
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-clang-editor'
         buildPreset: 'linux-clang-release-editor'
@@ -245,6 +266,9 @@ jobs:
     #- name: Build and test Editor in Profile mode
     #  uses: lukka/run-cmake@v10
     #  id: runcmake_editor_profile
+    #  env:
+    #    VCPKG_CMAKE_GENERATOR: Ninja
+    #    CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
     #  with:
     #    configurePreset: 'linux-clang-editor'
     #    buildPreset: 'linux-clang-profile-editor'
@@ -253,6 +277,9 @@ jobs:
     - name: Build and test Editor in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_editor_debug
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-clang-editor'
         buildPreset: 'linux-clang-debug-editor'
@@ -305,6 +332,9 @@ jobs:
     - name: Build and test Game in Release mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_release
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-clang'
         buildPreset: 'linux-clang-release'
@@ -313,6 +343,9 @@ jobs:
     #- name: Build and test Game in Profile mode
     #  uses: lukka/run-cmake@v10
     #  id: runcmake_game_profile
+    #  env:
+    #    VCPKG_CMAKE_GENERATOR: Ninja
+    #   CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
     #  with:
     #    configurePreset: 'linux-clang'
     #    buildPreset: 'linux-clang-profile'
@@ -321,6 +354,9 @@ jobs:
     - name: Build and test Game in Debug mode
       uses: lukka/run-cmake@v10
       id: runcmake_game_debug
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         configurePreset: 'linux-clang'
         buildPreset: 'linux-clang-debug'
