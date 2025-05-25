@@ -48,7 +48,7 @@ jobs:
     name: Ubuntu latest - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         compiler: [gcc, clang]
         build-type: [editor, game]

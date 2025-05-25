@@ -40,7 +40,7 @@ jobs:
   build_job:
     needs: info_job
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         build-type: [editor, game]
 
