@@ -12,6 +12,6 @@ runs:
     - name: Build and test ${{ inputs.build-type }}
       uses: lukka/run-cmake@v10
       with:
-        configurePreset: 'macos-clang${{ inputs.build-type == "editor" && "-editor" || "" }}'
-        buildPreset: 'macos-clang-release${{ inputs.build-type == "editor" && "-editor" || "" }}'
-        testPreset: 'test-macos-clang-release${{ inputs.build-type == "editor" && "-editor" || "" }}'
+        configurePreset: macos-clang${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        buildPreset: macos-clang-release${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        testPreset: test-macos-clang-release${{ inputs.build-type == 'editor' && '-editor' || '' }}
