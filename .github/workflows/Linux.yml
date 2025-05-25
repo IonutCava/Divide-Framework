@@ -20,7 +20,7 @@ run-name: Linux Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_
 
 jobs:
   check_date:
-    uses: .github/actions/reusable/check-date.yml@main
+    uses: .github/workflows/reusable/check-date.yml@main
 
   info_job:
     needs: check_date
