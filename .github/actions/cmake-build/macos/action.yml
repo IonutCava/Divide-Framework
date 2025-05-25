@@ -1,0 +1,17 @@
+name: 'macOS CMake Build'
+description: 'Run CMake build and test steps for macOS'
+
+inputs:
+  build-type:
+    required: true
+    description: 'Build type (editor or game)'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build and test ${{ inputs.build-type }}
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: 'macos-clang${{ inputs.build-type == "editor" && "-editor" || "" }}'
+        buildPreset: 'macos-clang-release${{ inputs.build-type == "editor" && "-editor" || "" }}'
+        testPreset: 'test-macos-clang-release${{ inputs.build-type == "editor" && "-editor" || "" }}'

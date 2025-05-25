@@ -1,0 +1,44 @@
+name: 'Windows CMake Build'
+description: 'Run CMake build and test steps for Windows'
+
+inputs:
+  compiler:
+    required: true
+    description: 'Compiler to use (msvc or clang)'
+  build-type:
+    required: true
+    description: 'Build type (editor or game)'
+  configuration:
+    required: true
+    description: 'Build configuration (debug, release, or profile)'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get number of CPU cores
+      shell: pwsh
+      id: cpu-cores
+      run: echo "count=$env:NUMBER_OF_PROCESSORS" >> $env:GITHUB_OUTPUT
+      
+    - name: Build and test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
+      uses: lukka/run-cmake@v10
+      env:
+        CMAKE_BUILD_PARALLEL_LEVEL: ${{ steps.cpu-cores.outputs.count }}
+      with:
+        configurePreset: 'windows-${{ inputs.compiler }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
+        buildPreset: 'windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
+        testPreset: 'test-windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
+
+    - name: Record build timing
+      shell: pwsh
+      run: |
+        Get-Date -Format "yyyy-MM-dd HH:mm:ss" >> $env:GITHUB_STEP_SUMMARY
+        echo "Build completed for ${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}" >> $env:GITHUB_STEP_SUMMARY
+
+    - name: Record build metrics
+      shell: pwsh
+      run: |
+        $buildDuration = [math]::Round(($env:GITHUB_ACTION_END_TIME - $env:GITHUB_ACTION_START_TIME).TotalMinutes, 2)
+        echo "## Build Metrics" >> $env:GITHUB_STEP_SUMMARY
+        echo "* Duration: ${buildDuration} minutes" >> $env:GITHUB_STEP_SUMMARY
+        echo "* Configuration: ${{ inputs.configuration }}" >> $env:GITHUB_STEP_SUMMARY

@@ -1,0 +1,14 @@
+name: 'Common Configuration'
+description: 'Shared configuration for all platforms'
+
+outputs:
+  cmake-version:
+    description: "CMake version to use"
+    value: '3.31.6'
+  ninja-version:
+    description: "Ninja version to use"
+    value: '1.11.1'
+
+runs:
+  using: "composite"
+  steps: []

@@ -11,20 +11,7 @@ on:
     
 jobs:
   check_date:
-    runs-on: macos-latest
-    name: Check latest commit
-    outputs:
-      should_run: ${{ steps.should_run.outputs.should_run }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: print latest_commit
-        run: echo ${{ github.sha }}
-
-      - id: should_run
-        continue-on-error: true
-        name: check latest commit is less than a day
-        if: ${{ github.event_name == 'schedule' }}
-        run: test -z $(git rev-list  --after="24 hours" ${{ github.sha }}) && echo "should_run=false" >> "$GITHUB_OUTPUT"
+    uses: ./.github/actions/reusable/check-date.yml
 
   info_job:
     needs: check_date
@@ -32,131 +19,56 @@ jobs:
 
     name: macOS - Print Info
     runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
+    outputs:
+      clang_version: ${{ steps.clang_info.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest]
 
     steps:
-    - name: Print CLANG version
-      run: clang --version 
+      - name: Get CLANG version
+        id: clang_info
+        run: |
+          version=$(clang --version | head -n 1)
+          echo "version=$version" >> $GITHUB_OUTPUT
 
-  clang_job_editor:
+  build_job:
     needs: info_job
-
-    name: macOS - Clang Editor Builds
-    runs-on: ${{ matrix.os }}
-    #runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest]
-        
+        build-type: [editor, game]
+
+    name: macOS - Clang ${{ matrix.build-type }}
+    runs-on: ${{ matrix.os }}
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
+      - uses: ./.github/actions/build-setup/macos
 
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
-  
-    - name: Check Ninja version and path
-      run: |
-        which ninja
-        ninja --version
-        echo "NINJA_PATH=$(which ninja)" >> $GITHUB_ENV
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: List $RUNNER_WORKSPACE before build
-      run: find $RUNNER_WORKSPACE
-      shell: bash
-
-    - name: Print output of run-vcpkg's action.
-      run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
-
-    - name: Build and test Editor in Release mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_editor_release
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'macos-clang-editor'
-        buildPreset: 'macos-clang-release-editor'
-        testPreset: 'test-macos-clang-release-editor'
-
-  clang_job_game:
-     needs: info_job 
-
-     name: macOS - Clang Game Builds
-     runs-on: ${{ matrix.os }}
-     #runs-on: self-hosted
-     strategy:
-       fail-fast: false
-       matrix:
-         os: [macos-latest]
-
-     steps:
-     - uses: actions/checkout@v4
-       with:
-        submodules: true
-        fetch-depth: 0
-
-     - uses: lukka/get-cmake@latest
-       with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
-
-     - name: Setup vcpkg
-       uses: lukka/run-vcpkg@v11
-       id: runvcpkg
-       with:
-          # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
-          vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
-          vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
-      
-     - name: List $RUNNER_WORKSPACE before build
-       run: find $RUNNER_WORKSPACE
-       shell: bash
-
-     - name: Print output of run-vcpkg's action.
-       run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
-
-     - name: Build and test Game in Release mode
-       uses: lukka/run-cmake@v10
-       id: runcmake_game_release
-       env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-       with:
-        configurePreset: 'macos-clang'
-        buildPreset: 'unixlike-clang-release'
-        testPreset: 'test-unixlike-clang-release'
+      - uses: ./.github/actions/cmake-build/macos
+        with:
+          build-type: ${{ matrix.build-type }}
 
   output_job:
-    needs: [clang_job_game,  clang_job_editor]
-
-    name: Finished builds
-    runs-on: macos-latest
+    needs: [info_job, build_job]
     if: always()
+    runs-on: macos-latest
     steps:
       - name: Retrieve results
+        id: results
         run: |
-          result=""
-          if [[ "$\{{ contains(needs.clang_job_game.result, 'failure') }}" == "true" || "$\{{ contains(needs.clang_job_editor.result, 'failure') }}" == "true"  ]]; then
-            result="Clang build failed."
+          if [[ "${{ needs.build_job.result }}" == "failure" || "${{ needs.info_job.result }}" == "failure" ]]; then
+            echo "status=Build or Info job failed" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.build_job.result }}" == "cancelled" || "${{ needs.info_job.result }}" == "cancelled" ]]; then
+            echo "status=Build or Info job cancelled" >> $GITHUB_OUTPUT
           else
-            result="Success!"
+            echo "status=Success" >> $GITHUB_OUTPUT
           fi
-          echo "result=$result" >> $GITHUB_OUTPUT
+
+      - name: Build Summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Status: ${{ steps.results.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,106 @@
+name: 'Linux Build Setup'
+description: 'Common build setup steps for Linux builds'
+
+inputs:
+  runner_type:
+    description: 'Type of runner (GitHub or self-hosted)'
+    required: false
+    default: 'GitHub'
+  compiler:
+    description: 'Compiler to use (gcc or clang)'
+    required: false
+  build-type:
+    description: 'Build type (editor or game)'
+    required: false
+  configuration:
+    description: 'Build configuration (debug, release, or profile)'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/reusable/common-config
+      id: common-config
+      
+    - name: Clean workspace (self-hosted only)
+      if: runner.self-hosted
+      shell: bash
+      run: |
+        sudo git clean -xdf
+        sudo git reset --hard
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: ${{ steps.common-config.outputs.cmake-version }}
+        ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
+
+    - name: Cache build artifacts
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ github.workspace }}/out/build
+          !${{ github.workspace }}/out/build/**/CMakeCache.txt
+        key: linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+        restore-keys: |
+          linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-
+          linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-
+          linux-build-${{ runner.os }}-${{ inputs.compiler }}-
+          linux-build-${{ runner.os }}-
+          linux-build-
+
+    - name: Cache vcpkg
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ github.workspace }}/vcpkg/installed
+          ${{ github.workspace }}/vcpkg/packages
+        key: linux-vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          linux-vcpkg-${{ runner.os }}-
+          linux-vcpkg-
+
+    - name: Check Ninja version and path
+      shell: bash
+      id: ninja-setup
+      run: |
+        if ! which ninja > /dev/null; then
+          echo "::error::Ninja not found in PATH"
+          exit 1
+        fi
+        NINJA_PATH=$(which ninja)
+        echo "ninja_path=${NINJA_PATH}" >> $GITHUB_OUTPUT
+        echo "PATH=$(dirname ${NINJA_PATH}):$PATH" >> $GITHUB_ENV
+        ninja --version
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ steps.ninja-setup.outputs.ninja_path }}
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
+
+    - name: Install extra required packages
+      if: inputs.runner_type == 'GitHub'
+      continue-on-error: true
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libxi-dev \
+          libgl1-mesa-dev \
+          libglu1-mesa-dev \
+          mesa-common-dev \
+          libxrandr-dev \
+          libxxf86vm-dev \
+          autoconf \
+          automake \
+          libtool \
+          pkg-config \
+          libltdl-dev \
+          lld

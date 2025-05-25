@@ -5,14 +5,12 @@
             "name": "conf-common",
             "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations.",
             "hidden": true,
+            "generator": "Ninja Multi-Config",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "installDir": "${sourceDir}/out/install/${presetName}",
             "warnings": { "dev": false },
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"
-            },
-            "cacheVariables": {
-                "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
             }
         },
         {
@@ -20,7 +18,6 @@
             "description": "Windows settings for MSBuild toolchain that apply to msvc and clang.",
             "hidden": true,
             "inherits": "conf-common",
-            "generator": "Ninja Multi-Config",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
@@ -36,7 +33,8 @@
             },
             "cacheVariables": {
                 "WINDOWS_OS_BUILD": true,
-                "CMAKE_MAKE_PROGRAM": "ninja.exe"
+                "CMAKE_MAKE_PROGRAM": "ninja.exe",
+                "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
             },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -49,7 +47,6 @@
             "description": "Linux OS settings for gcc and clang toolchains.",
             "hidden": true,
             "inherits": "conf-common",
-            "generator": "Ninja",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
@@ -72,7 +69,6 @@
             "description": "macOS builds",
             "hidden": true,
             "inherits": "conf-common",
-            "generator": "Ninja",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
@@ -80,7 +76,7 @@
             },
             "cacheVariables": {
                 "MAC_OS_BUILD": true,
-                "CMAKE_OSX_ARCHITECTURES": "arm64"
+                "CMAKE_OSX_ARCHITECTURES": "x86_64"
             }
         },
         {

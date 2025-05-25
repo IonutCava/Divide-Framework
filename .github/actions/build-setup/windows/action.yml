@@ -1,0 +1,74 @@
+name: 'Windows Build Setup'
+description: 'Common build setup steps for Windows builds'
+
+inputs:
+  runner_type:
+    description: 'Type of runner (GitHub or self-hosted)'
+    required: false
+    default: 'GitHub'
+  compiler:
+    description: 'Compiler to use (msvc or clang)'
+    required: false
+  build-type:
+    description: 'Build type (editor or game)'
+    required: false
+  configuration:
+    description: 'Build configuration (debug, release, or profile)'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/reusable/common-config
+      id: common-config
+      
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: ${{ steps.common-config.outputs.cmake-version }}
+        ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
+        
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64_x86
+
+    - name: Cache build artifacts
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ github.workspace }}/out/build
+          !${{ github.workspace }}/out/build/**/CMakeCache.txt
+        key: windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+        restore-keys: |
+          windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-
+          windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-
+          windows-build-${{ runner.os }}-${{ inputs.compiler }}-
+          windows-build-${{ runner.os }}-
+          windows-build-
+
+    - name: Cache vcpkg
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ github.workspace }}/vcpkg/installed
+          ${{ github.workspace }}/vcpkg/packages
+        key: windows-vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: windows-vcpkg-
+
+    - name: Clean workspace (self-hosted only)
+      if: runner.self-hosted
+      shell: pwsh
+      run: |
+        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
+          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
+        }
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'

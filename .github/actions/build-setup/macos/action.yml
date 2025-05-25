@@ -1,0 +1,36 @@
+name: 'macOS Build Setup'
+description: 'Common build setup steps for macOS builds'
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/reusable/common-config
+      id: common-config
+      
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 0
+
+    - uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: ${{ steps.common-config.outputs.cmake-version }}
+        ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
+
+    - name: Check Ninja version and path
+      shell: bash
+      run: |
+        which ninja
+        ninja --version
+        NINJA_PATH=$(which ninja)
+        echo "NINJA_PATH=${NINJA_PATH}" >> $GITHUB_ENV
+        echo "PATH=$(dirname ${NINJA_PATH}):$PATH" >> $GITHUB_ENV
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
+
+    - name: List workspace
+      shell: bash
+      run: find $RUNNER_WORKSPACE

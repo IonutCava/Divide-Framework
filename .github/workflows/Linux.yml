@@ -20,24 +20,12 @@ run-name: Linux Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_
 
 jobs:
   check_date:
-    runs-on: ubuntu-latest
-    name: Check latest commit
-    outputs:
-      should_run: ${{ steps.should_run.outputs.should_run }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: print latest_commit
-        run: echo ${{ github.sha }}
-
-      - id: should_run
-        continue-on-error: true
-        name: check latest commit is less than a day
-        if: ${{ github.event_name == 'schedule' }}
-        run: test -z $(git rev-list  --after="24 hours" ${{ github.sha }}) && echo "should_run=false" >> "$GITHUB_OUTPUT"
+    uses: ./.github/actions/reusable/check-date.yml
 
   info_job:
     needs: check_date
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
+
     name: Ubuntu latest - Print Info
     runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
     strategy:
@@ -52,333 +40,63 @@ jobs:
     - name: Print CLANG version
       run: clang --version 
 
-  gcc_job_editor:
+  build_job:
     needs: info_job
-
-    name: Ubuntu latest - GCC Editor Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
+        compiler: [gcc, clang]
+        build-type: [editor, game]
+        configuration: [debug, release]
+        exclude:
+          - compiler: clang
+            configuration: profile
+        include:
+          - compiler: gcc
+            build-type: editor
+            configuration: profile
+          - compiler: gcc
+            build-type: game
+            configuration: profile
 
-    steps:
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        sudo git clean -xdf
-        sudo git reset --hard
-
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.31.6
-        ninjaVersion: 1.11.1
-
-    - name: Check Ninja version and path
-      run: |
-        which ninja
-        ninja --version
-        echo "NINJA_PATH=$(which ninja)" >> $GITHUB_ENV
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-        
-    - name: Install extra required packages
-      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
-      continue-on-error: true
-      run: sudo apt-get install -y lld libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
-
-    - name: Build and test Editor in Release mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_editor_release
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-gcc-editor'
-        buildPreset: 'linux-gcc-release-editor'
-        testPreset: 'test-linux-gcc-release-editor'
-
-    - name: Build and test Editor in Profile mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_editor_profile
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-gcc-editor'
-        buildPreset: 'linux-gcc-profile-editor'
-        testPreset: 'test-linux-gcc-profile-editor'
-
-    - name: Build and test Editor in Debug mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_editor_debug
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-gcc-editor'
-        buildPreset: 'linux-gcc-debug-editor'
-        testPreset: 'test-linux-gcc-debug-editor'
-
-  gcc_job_game:
-    needs: info_job
-
-    name: Ubuntu latest - GCC Game Builds
+    name: Ubuntu latest - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
     runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
+    timeout-minutes: 180
 
     steps:
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        sudo git clean -xdf
-        sudo git reset --hard
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: 3.31.6
 
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
+      - uses: ./.github/actions/build-setup/linux
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+          compiler: ${{ matrix.compiler }}
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
 
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.31.6
-        ninjaVersion: 1.11.1
+      - uses: ./.github/actions/cmake-build/linux
+        with:
+          compiler: ${{ matrix.compiler }}
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
 
-    - name: Check Ninja version and path
-      run: |
-        which ninja
-        ninja --version
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-        
-    - name: Install extra required packages
-      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
-      continue-on-error: true
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
-
-    - name: Build and test Game in Release mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_game_release
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-gcc'
-        buildPreset: 'linux-gcc-release'
-        testPreset: 'test-linux-gcc-release'
-
-    - name: Build and test Game in Profile mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_game_profile
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-gcc'
-        buildPreset: 'linux-gcc-profile'
-        testPreset: 'test-linux-gcc-profile'
-
-    - name: Build and test Game in Debug mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_game_debug
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-gcc'
-        buildPreset: 'linux-gcc-debug'
-        testPreset: 'test-linux-gcc-debug'
-
-  clang_job_editor:
-    needs: info_job
-
-    name: Ubuntu latest - Clang Editor Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        
-    steps:
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        sudo git clean -xdf
-        sudo git reset --hard
-
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.31.6
-        ninjaVersion: 1.11.1
-
-    - name: Check Ninja version and path
-      run: |
-        which ninja
-        ninja --version
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-       
-    - name: Install extra required packages
-      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
-      continue-on-error: true
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
-
-    - name: Build and test Editor in Release mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_editor_release
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-clang-editor'
-        buildPreset: 'linux-clang-release-editor'
-        testPreset: 'test-linux-clang-release-editor'
-
-    #- name: Build and test Editor in Profile mode
-    #  uses: lukka/run-cmake@v10
-    #  id: runcmake_editor_profile
-    #  env:
-    #    VCPKG_CMAKE_GENERATOR: Ninja
-    #    CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-    #  with:
-    #    configurePreset: 'linux-clang-editor'
-    #    buildPreset: 'linux-clang-profile-editor'
-    #    testPreset: 'test-linux-clang-profile-editor'
-
-    - name: Build and test Editor in Debug mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_editor_debug
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-clang-editor'
-        buildPreset: 'linux-clang-debug-editor'
-        testPreset: 'test-linux-clang-debug-editor'
-
-  clang_job_game:
-    needs: info_job
-
-    name: Ubuntu latest - Clang Game Builds
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Linux"]')) || matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        
-    steps:
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        sudo git clean -xdf
-        sudo git reset --hard
-
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.31.6
-        ninjaVersion: 1.11.1
-
-    - name: Check Ninja version and path
-      run: |
-        which ninja
-        ninja --version
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Install extra required packages
-      if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.runner_type == 'GitHub' }}
-      continue-on-error: true
-      run: sudo apt-get install -y libxi-dev libgl1-mesa-dev libglu1-mesa-dev mesa-common-dev libxrandr-dev libxxf86vm-dev autoconf automake libtool pkg-config libltdl-dev
-
-    - name: Build and test Game in Release mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_game_release
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-clang'
-        buildPreset: 'linux-clang-release'
-        testPreset: 'test-linux-clang-release'
-
-    #- name: Build and test Game in Profile mode
-    #  uses: lukka/run-cmake@v10
-    #  id: runcmake_game_profile
-    #  env:
-    #    VCPKG_CMAKE_GENERATOR: Ninja
-    #   CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-    #  with:
-    #    configurePreset: 'linux-clang'
-    #    buildPreset: 'linux-clang-profile'
-    #    testPreset: 'test-linux-clang-profile'
-
-    - name: Build and test Game in Debug mode
-      uses: lukka/run-cmake@v10
-      id: runcmake_game_debug
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
-      with:
-        configurePreset: 'linux-clang'
-        buildPreset: 'linux-clang-debug'
-        testPreset: 'test-linux-clang-debug'
-        
   output_job:
-    needs: [gcc_job_game, gcc_job_editor, clang_job_game, clang_job_editor]
-
-    name: Finished builds
-    runs-on: ubuntu-latest
+    needs: build_job
     if: always()
+    runs-on: ubuntu-latest
     steps:
       - name: Retrieve results
+        id: results
         run: |
-          result=""
-          if [[ "$\{{ contains(needs.gcc_job_game.result, 'failure') }}" == "true" || "$\{{ contains(needs.gcc_job_editor.result, 'failure') }}" == "true" ]]; then
-            result="GCC builds failed."
-          elif [[ "$\{{ contains(needs.clang_job_game.result, 'failure') }}" == "true" || "$\{{ contains(needs.clang_job_editor.result, 'failure') }}" == "true" ]]; then
-            result="CLANG builds failed."
-          elif [[ "$\{{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            result="Builds cancelled."
+          if [[ "${{ needs.build_job.result }}" == "failure" ]]; then
+            echo "status=Build failed" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.build_job.result }}" == "cancelled" ]]; then
+            echo "status=Builds cancelled" >> $GITHUB_OUTPUT
           else
-            result="Success!"
+            echo "status=Success" >> $GITHUB_OUTPUT
           fi
-          echo "result=$result" >> $GITHUB_OUTPUT
+
+      - name: Report Status
+        run: echo "${{ steps.results.outputs.status }}"

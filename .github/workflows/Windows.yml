@@ -1,5 +1,3 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: Windows Builds
 
 on:
@@ -22,31 +20,22 @@ run-name: Windows Build - ${{ github.ref_name }} - ${{ github.event.inputs.runne
 
 jobs:
   check_date:
-    runs-on: windows-latest
-    name: Check latest commit
-    outputs:
-      should_run: ${{ steps.should_run.outputs.should_run }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: print latest_commit
-        run: echo ${{ github.sha }}
-
-      - id: should_run
-        continue-on-error: true
-        name: check latest commit is less than a day
-        if: ${{ github.event_name == 'schedule' }}
-        run: test -z $(git rev-list  --after="24 hours"  ${{ github.sha }})&& echo "should_run=false" >> "$GITHUB_OUTPUT"
+    uses: ./.github/actions/reusable/check-date.yml
 
   info_job:
     needs: check_date
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
-    name: Windows - Print Info
-    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
+    name: Windows latest - Print Info
+    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]')) || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest]
+
+    outputs:
+      msvc_version: ${{ steps.msvc.outputs.msvc_version }}
+      clang_version: ${{ steps.clang.outputs.clang_version }}
 
     steps:
     - name: Add msbuild to PATH
@@ -58,239 +47,73 @@ jobs:
           arch: amd64_x86
       
     - name: Print MSVC version
-      run: cl.exe
+      id: msvc
+      run: |
+        cl.exe | findstr "Version"
+        echo "msvc_version=$(cl.exe | findstr "Version")" >> $GITHUB_OUTPUT
 
     - name: Print CLANG version
-      run: clang.exe --version 
+      id: clang
+      run: |
+        clang.exe --version | head -n 1
+        echo "clang_version=$(clang.exe --version | head -n 1)" >> $GITHUB_OUTPUT
 
-  msvc_job_game:
+  build_job:
     needs: info_job
-    name: Windows - MSVC Game Builds
-    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [windows-latest]
+        compiler: [msvc, clang]
+        build-type: [editor, game]
+        configuration: [debug, release, profile]
+        exclude:
+          - compiler: clang
+            build-type: editor
+            configuration: profile
+
+    name: Windows - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: ${{ (github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
+    timeout-minutes: 180
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
+      - uses: ./.github/actions/build-setup/windows
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+          compiler: ${{ matrix.compiler }}
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
 
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
-
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
-          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
-        }
-
-    - name: Restore from cache and setup vcpkg executable and data files.
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Build and test Game in Release mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-msvc'
-        buildPreset: 'windows-msvc-release'
-        testPreset: 'test-windows-msvc-release'
-            
-    - name: Build and test Game in Profile mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-msvc'
-        buildPreset: 'windows-msvc-profile'
-        testPreset: 'test-windows-msvc-profile'
-
-    - name: Build and test Game in Debug mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-msvc'
-        buildPreset: 'windows-msvc-debug'
-        testPreset: 'test-windows-msvc-debug'
-
-  msvc_job_editor:
-    needs: info_job
-    name: Windows - MSVC Editor Builds
-    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
-
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
-          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
-        }
-
-    - name: Restore from cache and setup vcpkg executable and data files.
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Build and test Editor in Release mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-msvc-editor'
-        buildPreset: 'windows-msvc-release-editor'
-        testPreset: 'test-windows-msvc-release-editor'
-
-    #- name: Build and test Editor in Profile mode
-    #  uses: lukka/run-cmake@v10
-    #  with:
-    #    configurePreset: 'windows-msvc-editor'
-    #    buildPreset: 'windows-msvc-profile-editor'
-    #    testPreset: 'test-windows-msvc-profile-editor'
-
-    - name: Build and test Editor in Debug mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-msvc-editor'
-        buildPreset: 'windows-msvc-debug-editor'
-        testPreset: 'test-windows-msvc-debug-editor'
-
-  clang_job_game:
-    needs: info_job
-    name: Windows - Clang Game Builds
-    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
-
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
-          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
-        }
-
-    - name: Restore from cache and setup vcpkg executable and data files.
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Build and test Game in Release mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-clang'
-        buildPreset: 'windows-clang-release'
-        testPreset: 'test-windows-clang-release'
-
-    - name: Build and test Game in Profile mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-clang'
-        buildPreset: 'windows-clang-profile'
-        testPreset: 'test-windows-clang-profile'
-        
-    - name: Build and test Game in Debug mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-clang'
-        buildPreset: 'windows-clang-debug'
-        testPreset: 'test-windows-clang-debug'
-    
-  clang_job_editor:
-    needs: info_job
-    name: Windows - Clang Editor Builds
-    runs-on: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-        fetch-depth: 0
-
-    - uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 3.29.2
-        ninjaVersion: 1.11.1
-
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      run: |
-        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
-          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
-        }
-
-    - name: Restore from cache and setup vcpkg executable and data files.
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Build and test Editor in Release mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-clang-editor'
-        buildPreset: 'windows-clang-release-editor'
-        testPreset: 'test-windows-clang-release-editor'
-
-    #- name: Build and test Editor in Profile mode
-    #  uses: lukka/run-cmake@v10
-    #  with:
-    #    configurePreset: 'windows-clang-editor'
-    #    buildPreset: 'windows-clang-profile-editor'
-    #    testPreset: 'test-windows-clang-profile-editor'
-
-    - name: Build and test Editor in Debug mode
-      uses: lukka/run-cmake@v10
-      with:
-        configurePreset: 'windows-clang-editor'
-        buildPreset: 'windows-clang-debug-editor'
-        testPreset: 'test-windows-clang-debug-editor'
+      - uses: ./.github/actions/cmake-build/windows
+        with:
+          compiler: ${{ matrix.compiler }}
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
 
   output_job:
-    needs: [msvc_job_game, msvc_job_editor, clang_job_game, clang_job_editor]
-    name: Finished builds
-    runs-on: ubuntu-latest
+    needs: [info_job, build_job]
     if: always()
+    runs-on: windows-latest
     steps:
       - name: Retrieve results
+        id: results
+        shell: pwsh
         run: |
-          result=""
-          if [[ "$\{{ contains(needs.msvc_job_game.result, 'failure') }}" == "true" || "$\{{ contains(needs.msvc_job_editor.result, 'failure') }}" == "true" ]]; then
-            result="MSVC builds failed."
-          elif [[ "$\{{ contains(needs.clang_job_game.result, 'failure') }}" == "true" || "$\{{ contains(needs.clang_job_editor.result, 'failure') }}" == "true" ]]; then
-            result="CLANG builds failed"
-          elif [[ "$\{{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            result="Builds cancelled."
-          else
-            result="Success!"
-          fi
-          echo "result=$result" >> $GITHUB_OUTPUT
+          $buildResult = "${{ needs.build_job.result }}"
+          $infoResult = "${{ needs.info_job.result }}"
+          if ($buildResult -eq "failure" -or $infoResult -eq "failure") {
+            $status = "Build or Info job failed"
+          } elseif ($buildResult -eq "cancelled" -or $infoResult -eq "cancelled") {
+            $status = "Build or Info job cancelled"
+          } else {
+            $status = "Success"
+          }
+          echo "status=$status" >> $env:GITHUB_OUTPUT
+
+      - name: Generate Build Summary
+        shell: pwsh
+        run: |
+          echo "## Build Summary" >> $env:GITHUB_STEP_SUMMARY
+          echo "Status: ${{ steps.results.outputs.status }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "MSVC Version: ${{ needs.info_job.outputs.msvc_version }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $env:GITHUB_STEP_SUMMARY

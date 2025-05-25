@@ -1,0 +1,24 @@
+name: Check Latest Commit
+on:
+  workflow_call:
+    outputs:
+      should_run:
+        description: "Whether the workflow should run"
+        value: ${{ jobs.check_date.outputs.should_run }}
+
+jobs:
+  check_date:
+    runs-on: ubuntu-latest
+    name: Check latest commit
+    outputs:
+      should_run: ${{ steps.should_run.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: print latest_commit
+        run: echo ${{ github.sha }}
+
+      - id: should_run
+        continue-on-error: true
+        name: check latest commit is less than a day
+        if: ${{ github.event_name == 'schedule' }}
+        run: test -z $(git rev-list  --after="24 hours" ${{ github.sha }}) && echo "should_run=false" >> "$GITHUB_OUTPUT"
