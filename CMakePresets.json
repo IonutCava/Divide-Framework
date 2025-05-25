@@ -72,7 +72,7 @@
             "description": "macOS builds",
             "hidden": true,
             "inherits": "conf-common",
-            "generator": "Ninja Multi-Config",
+            "generator": "Ninja",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",

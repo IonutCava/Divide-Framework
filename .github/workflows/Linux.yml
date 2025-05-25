@@ -83,11 +83,13 @@ jobs:
       run: |
         which ninja
         ninja --version
+        echo "NINJA_PATH=$(which ninja)" >> $GITHUB_ENV
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       env:
         VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
         vcpkgJsonGlob: 'vcpkg.json'
         

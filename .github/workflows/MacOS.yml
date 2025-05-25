@@ -64,13 +64,19 @@ jobs:
         cmakeVersion: 3.29.2
         ninjaVersion: 1.11.1
   
+    - name: Check Ninja version and path
+      run: |
+        which ninja
+        ninja --version
+        echo "NINJA_PATH=$(which ninja)" >> $GITHUB_ENV
+
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
-      id: runvcpkg
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ env.NINJA_PATH }}
       with:
-        # This one is deliberately pointing to a non existing directory (so that vcpkg is not identified as a submodule of this repository).
-        vcpkgDirectory: '${{ github.workspace }}/vcpkg_none'
-        vcpkgJsonGlob: '${{ github.workspace }}/vcpkg-configuration.json'
+        vcpkgJsonGlob: 'vcpkg.json'
 
     - name: List $RUNNER_WORKSPACE before build
       run: find $RUNNER_WORKSPACE
