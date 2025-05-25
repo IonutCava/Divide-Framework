@@ -35,7 +35,7 @@ runs:
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
       with:
-        arch: amd64_x86
+        arch: amd64
 
     - name: Cache build artifacts
       uses: actions/cache@v3
