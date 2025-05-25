@@ -25,9 +25,9 @@ runs:
       env:
         CMAKE_BUILD_PARALLEL_LEVEL: ${{ steps.cpu-cores.outputs.count }}
       with:
-        configurePreset: 'linux-${{ inputs.compiler }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
-        buildPreset: 'linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
-        testPreset: 'test-linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
+        configurePreset: linux-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        buildPreset: linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        testPreset: test-linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
 
     - name: Record build timing
       shell: bash
