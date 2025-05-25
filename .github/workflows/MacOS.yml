@@ -11,26 +11,22 @@ on:
     
 jobs:
   check_date:
-   runs-on: ubuntu-latest
-   outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
-   steps:
-      - uses: actions/checkout@v4  
-      - id: check
-        uses: ./.github/actions/check-date
+    runs-on: ubuntu-latest
+    outputs:
+       should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+       - uses: actions/checkout@v4  
+       - id: check
+         uses: ./.github/actions/check-date
 
   info_job:
     needs: check_date
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: macOS - Print Info
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     outputs:
       clang_version: ${{ steps.clang_info.outputs.version }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -46,11 +42,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]
         build-type: [editor, game]
 
     name: macOS - Clang ${{ matrix.build-type }}
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4

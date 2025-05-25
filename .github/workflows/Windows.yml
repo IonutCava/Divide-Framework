@@ -33,11 +33,7 @@ jobs:
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
 
     name: Windows latest - Print Info
-    runs-on: ${{ ((github.event_name == 'workflow_dispatch' && github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]')) || matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
 
     outputs:
       msvc_version: ${{ steps.msvc.outputs.msvc_version }}
@@ -73,11 +69,10 @@ jobs:
   build_job:
     needs: info_job
     name: Windows - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: ${{ (github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest]
         compiler: [msvc, clang]
         build-type: [editor, game]
         configuration: [debug, release, profile]
