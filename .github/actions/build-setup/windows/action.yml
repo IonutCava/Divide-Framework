@@ -19,7 +19,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: .github/actions/common-config
+    - uses: ./.github/actions/common-config
       id: common-config
       
     - uses: actions/checkout@v4
