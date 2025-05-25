@@ -19,7 +19,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - uses: ./.github/actions/reusable/common-config
+    - uses: .github/actions/reusable/common-config
       id: common-config
       
     - name: Clean workspace (self-hosted only)
