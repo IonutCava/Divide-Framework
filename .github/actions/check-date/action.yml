@@ -1,0 +1,21 @@
+name: 'Check Latest Commit'
+description: 'Check if the latest commit is within the last 24 hours'
+
+outputs:
+  should_run:
+    description: "Whether the workflow should run"
+    value: ${{ steps.should_run.outputs.should_run }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: print latest_commit
+      shell: bash
+      run: echo ${{ github.sha }}
+
+    - id: should_run
+      shell: bash
+      continue-on-error: true
+      name: check latest commit is less than a day
+      if: ${{ github.event_name == 'schedule' }}
+      run: test -z $(git rev-list  --after="24 hours" ${{ github.sha }}) && echo "should_run=false" >> "$GITHUB_OUTPUT"

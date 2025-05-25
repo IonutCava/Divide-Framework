@@ -20,7 +20,12 @@ run-name: Linux Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_
 
 jobs:
   check_date:
-    uses: .github/workflows/reusable/check-date.yml@main
+   runs-on: ubuntu-latest
+   outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+   steps:
+      - id: check
+        uses: .github/actions/check-date
 
   info_job:
     needs: check_date
