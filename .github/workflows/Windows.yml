@@ -20,7 +20,7 @@ run-name: Windows Build - ${{ github.ref_name }} - ${{ github.event.inputs.runne
 
 jobs:
   check_date:
-    uses: ./.github/actions/reusable/check-date.yml
+    uses: .github/actions/reusable/check-date.yml
 
   info_job:
     needs: check_date
@@ -77,14 +77,14 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - uses: ./.github/actions/build-setup/windows
+      - uses: .github/actions/build-setup/windows
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
           compiler: ${{ matrix.compiler }}
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
-      - uses: ./.github/actions/cmake-build/windows
+      - uses: .github/actions/cmake-build/windows
         with:
           compiler: ${{ matrix.compiler }}
           build-type: ${{ matrix.build-type }}
