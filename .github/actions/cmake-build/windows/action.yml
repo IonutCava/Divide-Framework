@@ -25,9 +25,9 @@ runs:
       env:
         CMAKE_BUILD_PARALLEL_LEVEL: ${{ steps.cpu-cores.outputs.count }}
       with:
-        configurePreset: 'windows-${{ inputs.compiler }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
-        buildPreset: 'windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
-        testPreset: 'test-windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == "editor" && "-editor" || "" }}'
+        configurePreset: windows-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        buildPreset: windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        testPreset: test-windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
 
     - name: Record build timing
       shell: pwsh
