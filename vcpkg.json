@@ -20,7 +20,10 @@
         "glbinding",
         "glm",
         "meshoptimizer",
-        "nvtt",
+        {
+            "name": "nvtt",
+            "platform": "!osx"
+        },
         "openal-soft",
         "expat",
         "recastnavigation",
