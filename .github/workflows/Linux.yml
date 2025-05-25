@@ -49,6 +49,8 @@ jobs:
 
   build_job:
     needs: info_job
+    name: Ubuntu latest - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -67,8 +69,6 @@ jobs:
             build-type: game
             configuration: profile
 
-    name: Ubuntu latest - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || matrix.os }}
     timeout-minutes: 180
 
     steps:

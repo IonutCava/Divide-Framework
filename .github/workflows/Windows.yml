@@ -72,6 +72,8 @@ jobs:
 
   build_job:
     needs: info_job
+    name: Windows - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: ${{ (github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -84,8 +86,6 @@ jobs:
             build-type: editor
             configuration: profile
 
-    name: Windows - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: ${{ (github.event.inputs.runner_type == 'self-hosted') && fromJson('["self-hosted","Windows"]') || matrix.os }}
     timeout-minutes: 180
 
     steps:
