@@ -23,10 +23,6 @@
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             },
-            "toolset": {
-                "value": "v143,host=x64",
-                "strategy": "external"
-            },
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
