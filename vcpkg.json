@@ -22,7 +22,7 @@
         "meshoptimizer",
         {
             "name": "nvtt",
-            "platform": "!osx"
+            "platform": "!osx & !linux"
         },
         "openal-soft",
         "expat",
