@@ -265,7 +265,7 @@ namespace Divide::Networking
             case OPCodes::CMSG_REQUEST_FILE:
             {
                 ResourcePath filePath;
-                std::string fileName;
+                string fileName;
                 vector<Byte> fileData;
 
                 msg >> filePath;

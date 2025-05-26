@@ -58,6 +58,14 @@ struct UniformData
 {
     struct Entry
     {
+        Entry() = default;
+        Entry(U64 bindingHash, const BufferRange<>& range, PushConstantType type)
+            : _bindingHash(bindingHash)
+            , _range(range)
+            , _type(type)
+        {
+        }
+
         U64 _bindingHash{0u};
         BufferRange<> _range;
         PushConstantType _type{PushConstantType::COUNT};

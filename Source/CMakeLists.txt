@@ -169,26 +169,25 @@ target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
 
-if(NOT MAC_OS_BUILD)
+if(WINDOWS_OS_BUILD)
+    if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
+        if(UNIX)
+            # Add rpath setting to find .so libraries on unix based systems
+            set_target_properties( ${APP_EXE_DIVIDE} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN" )
+        endif()
 
-if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
-    if(UNIX)
-        # Add rpath setting to find .so libraries on unix based systems
-        set_target_properties( ${APP_EXE_DIVIDE} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN" )
-    endif()
-
-    add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                                                                                      $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-library>
-                                                                                      $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
-    )
-    if(WIN32)
         add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                                                                                        $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
-                                                                                        $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>)
+                                                                                          $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-library>
+                                                                                          $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
+        )
+        if(WIN32)
+            add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                                                                            $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
+                                                                                            $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>)
+        endif()
+    else()
+        message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
     endif()
-else()
-    message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
-endif()
 
 endif()
 
@@ -247,9 +246,5 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
 
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
-
-    if (NOT MSVC_COMPILER)
-        target_link_options(${APP_EXE} PRIVATE "-mwindows")
-    endif()
 endforeach()
 

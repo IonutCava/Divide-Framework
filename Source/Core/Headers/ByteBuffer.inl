@@ -150,6 +150,25 @@ inline ByteBuffer& ByteBuffer::operator>>(string& value)
     return *this;
 }
 
+template<>
+inline ByteBuffer& ByteBuffer::operator>>(std::string& value)
+{
+    value.clear();
+
+    char c;
+    while (rpos() < storageSize())
+    {
+        read<char>(c);
+        if (c == U8_ZERO )
+        {
+            break;
+        }
+        value += c;
+    }
+
+    return *this;
+}
+
 template <typename T>
 void ByteBuffer::readNoSkip(T& value)
 {
@@ -165,6 +184,28 @@ inline void ByteBuffer::readNoSkip(bool& value) {
 
 template <>
 inline void ByteBuffer::readNoSkip(string& value)
+{
+    value.clear();
+    size_t inc = 0;
+
+    char c;
+    // prevent crash at wrong string format in packet
+    while (rpos() < storageSize())
+    {
+        read<char>(c);
+        ++inc;
+        if (c == U8_ZERO )
+        {
+            break;
+        }
+        value += c;
+    }
+
+    _rpos -= inc;
+}
+
+template <>
+inline void ByteBuffer::readNoSkip(std::string& value)
 {
     value.clear();
     size_t inc = 0;
@@ -403,6 +444,12 @@ inline void ByteBuffer::append(const string& str) {
 }
 
 template<>
+inline void ByteBuffer::append(const std::string& str) {
+    append(str.c_str(), str.length());
+    append(U8_ZERO);
+}
+
+template<>
 inline void ByteBuffer::append(const ResourcePath& str) {
     append(str.string() );
 }
@@ -580,6 +627,28 @@ inline ByteBuffer &operator>>(ByteBuffer &b, std::array<string, N>& a) {
     return b;
 }
 
+template <size_t N>
+inline ByteBuffer &operator<<(ByteBuffer &b, const std::array<std::string, N>& a) {
+    b << static_cast<U64>(N);
+    for (const std::string& str : a) {
+        b << str;
+    }
+
+    return b;
+}
+
+template <size_t N>
+inline ByteBuffer &operator>>(ByteBuffer &b, std::array<std::string, N>& a) {
+    U64 size;
+    b >> size;
+    assert(size == static_cast<U64>(N));
+    for (std::string& str : a) {
+        b >> str;
+    }
+
+    return b;
+}
+
 template <typename T>
 inline ByteBuffer &operator<<(ByteBuffer &b, const vector<T>& v) {
     b << to_U32(v.size());
@@ -617,6 +686,28 @@ inline ByteBuffer &operator>>(ByteBuffer &b, vector<string>& v) {
     }
     return b;
 }
+
+template <>
+inline ByteBuffer &operator<<(ByteBuffer &b, const vector<std::string>& v) {
+    b << to_U32(v.size());
+    for (const std::string& str : v) {
+        b << str;
+    }
+
+    return b;
+}
+
+template <>
+inline ByteBuffer &operator>>(ByteBuffer &b, vector<std::string>& v) {
+    U32 vsize;
+    b >> vsize;
+    v.resize(vsize);
+    for (std::string& str : v) {
+        b >> str;
+    }
+    return b;
+}
+
 template <typename T>
 inline ByteBuffer &operator<<(ByteBuffer &b, const std::list<T>& v) {
     b << to_U32(v.size());

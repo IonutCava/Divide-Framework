@@ -75,10 +75,7 @@ namespace Divide
             };
             _buffer.insert(_buffer.end(), dataSize, Byte_ZERO);
 
-            Entry& newEntry = _data.emplace_back( bindingHash );
-            newEntry._bindingHash = bindingHash;
-            newEntry._range = range;
-            newEntry._type = type;
+            _data.emplace_back(bindingHash, range, type);
         }
 
         std::memcpy(&_buffer[range._startOffset], values, sizeof(T) * count);
