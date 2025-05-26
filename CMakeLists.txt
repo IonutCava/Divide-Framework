@@ -22,6 +22,12 @@ endif()
   
 message(STATUS "vcpkg toolchain found in: ${CMAKE_TOOLCHAIN_FILE}")
 
+if(DEFINED ENV{GITHUB_ACTIONS})
+    set(IS_GITHUB_ACTIONS TRUE)
+else()
+    set(IS_GITHUB_ACTIONS FALSE)
+endif()
+
 # Enable Hot Reload for MSVC compilers if supported.
 if (NOT RUN_ASAN AND NOT RUN_UBSAN AND POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
@@ -40,7 +46,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/OverlayPorts")
 
-project ( Divide-Framework
+project (Divide-Framework
           VERSION 0.2
           LANGUAGES C CXX
           HOMEPAGE_URL "http://divide-studio.co.uk"
@@ -129,8 +135,12 @@ if (MSVC_COMPILER)
   else()
     message("ASAN disabled!")
     add_link_options("$<IF:$<CONFIG:Debug>,/INCREMENTAL,/INCREMENTAL:NO>")
-    add_compile_options("$<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>")
-    add_link_options("$<$<CONFIG:RelWithDebInfo>:/dynamicdeopt /DEBUG>")
+    if(NOT IS_GITHUB_ACTIONS)
+        add_compile_options("$<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>")
+        add_link_options("$<$<CONFIG:RelWithDebInfo>:/dynamicdeopt /DEBUG>")
+      else()
+        message(STATUS "Skipping /dynamicdeopt for GitHub Actions build")
+    endif()
   endif ()
 
   if ( RUN_UBSAN )
@@ -211,5 +221,4 @@ if (PRINT_ALL_CMAKE_VARIABLES)
     foreach(flag ${Vc_ARCHITECTURE_FLAGS})
       message("Architecture flag: " ${flag})
     endforeach()
-
 endif()
