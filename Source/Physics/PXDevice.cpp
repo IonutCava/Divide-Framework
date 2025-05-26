@@ -42,12 +42,12 @@ namespace Divide
         {
             case PhysicsAPI::PhysX:
             {
-#           if !defined(IS_MACOS_BUILD)
+#           if defined(IS_WINDOWS_BUILD)
                     _api = std::make_unique<PhysX>( _context );
-#           else
+#           else //IS_WINDOWS_BUILD
                     Console::errorfn(LOCALE_STR("ERROR_PFX_DEVICE_API"));
                     return ErrorCode::PFX_NON_SPECIFIED;
-#           endif
+#           endif //IS_WINDOWS_BUILD
             } break;
 
             case PhysicsAPI::Jolt:
