@@ -41,9 +41,11 @@
 #include <Carbon/Carbon.h>
 void checkMacEvents();
 
-namespace Divide {
-    struct WindowHandle {
-        id _handle{};
+namespace Divide
+{
+    struct WindowHandle
+    {
+        void* _handle{nullptr};
     };
 }; //namespace Divide
 

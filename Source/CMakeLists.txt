@@ -84,7 +84,8 @@ else()
 
         set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS}  -Wno-macro-redefined           -Wno-clang-cl-pch
                                    -Wno-old-style-cast        -Wno-format-nonliteral         -Wno-c++98-compat
-                                   -Wno-c++98-compat-pedantic -Wno-cast-function-type-strict -Wno-global-constructors #Really now?
+                                   -Wno-c++98-compat-pedantic -Wno-global-constructors #Really now?
+                                   $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wno-cast-function-type-strict>
         )
         set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}         -Wno-reserved-macro-identifier                -Wno-documentation
                                         -Wno-documentation-unknown-command     -Wno-ignored-attributes                       -Wno-undef
