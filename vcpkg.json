@@ -5,7 +5,7 @@
     "dependencies": [
         {
             "name": "physx",
-            "platform": "!osx"
+            "platform": "!osx & !linux"
         },
         "pkgconf",
         "boost-property-tree",
@@ -22,7 +22,7 @@
         "meshoptimizer",
         {
             "name": "nvtt",
-            "platform": "!osx & !linux"
+            "platform": "!osx"
         },
         "openal-soft",
         "expat",
