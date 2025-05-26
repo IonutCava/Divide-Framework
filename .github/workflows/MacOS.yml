@@ -9,7 +9,7 @@ on:
     branches: [ "master" ]
   workflow_dispatch:
 
-run-name: MacOS Build - ${{ github.ref_name }} - 'GitHub Runner'
+run-name: MacOS Build - ${{ github.ref_name }} - 'GitHub'
 
 jobs:
   check_date:
