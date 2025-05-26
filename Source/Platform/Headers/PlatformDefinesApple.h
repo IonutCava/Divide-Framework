@@ -39,6 +39,15 @@
 #endif
 
 #include <Carbon/Carbon.h>
+
+#ifdef roundup
+#undef roundup
+#endif //roundup
+
+#ifdef INTEL
+#undef INTEL
+#endif //INTEL
+
 void checkMacEvents();
 
 namespace Divide
