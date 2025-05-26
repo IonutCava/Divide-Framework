@@ -486,7 +486,7 @@ set ( JOLT_SOURCE_HEADERS Physics/Jolt/Headers/Jolt.h
 set( PHYSX_SOURCE "")
 set( PHYSX_SOURCE_HEADERS "")
 
-if(NOT MAC_OS_BUILD)
+if(NOT MAC_OS_BUILD and NOT LINUX_OS_BUILD)
     set( PHYSX_SOURCE Physics/PhysX/PhysX.cpp
                       Physics/PhysX/PhysXActor.cpp
                       Physics/PhysX/PhysXSceneInterface.cpp

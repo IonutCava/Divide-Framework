@@ -52,6 +52,7 @@ if(NOT MAC_OS_BUILD)
         find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
         include_directories( SYSTEM ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS} )
     endif()
+
     find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
     find_library(NVTT_LIBRARY_RELEASE NAMES nvtt PATH_SUFFIXES nvtt static shared)
