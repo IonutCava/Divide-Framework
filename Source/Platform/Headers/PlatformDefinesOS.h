@@ -80,6 +80,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define NOINITVTABLE_STRUCT(X) __declspec(novtable) struct X
 #endif  //NOINITVTABLE
 
+#ifdef roundup
+#undef roundup
+#endif
+
 #else //USING_CLANG
 
 // GCC does not have this attribute
