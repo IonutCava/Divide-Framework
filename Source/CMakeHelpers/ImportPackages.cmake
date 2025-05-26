@@ -48,9 +48,10 @@ find_path(expat_INCLUDE_DIR "expat.h")
 set(NVTT_LIBRARIES "")
 
 if(NOT MAC_OS_BUILD)
-    find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
-    include_directories( SYSTEM ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS} )
-
+    if(NOT LINUX_OS_BUILD)
+        find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
+        include_directories( SYSTEM ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS} )
+    endif()
     find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
     find_library(NVTT_LIBRARY_RELEASE NAMES nvtt PATH_SUFFIXES nvtt static shared)
@@ -161,18 +162,7 @@ set(EXTERNAL_LIBS
     glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper
 )
 
-if(LINUX_OS_BUILD)
-  set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
-                    PhysXExtensions_static_64
-                    PhysX_static_64
-                    PhysXPvdSDK_static_64
-                    PhysXVehicle_static_64
-                    PhysXCharacterKinematic_static_64
-                    PhysXCooking_static_64
-                    PhysXCommon_static_64
-                    PhysXFoundation_static_64
-  )
-elseif(WINDOWS_OS_BUILD)
+if(WINDOWS_OS_BUILD)
   set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
                     unofficial::omniverse-physx-sdk::sdk)
 endif()
