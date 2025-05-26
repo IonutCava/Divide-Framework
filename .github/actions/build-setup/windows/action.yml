@@ -37,28 +37,28 @@ runs:
       with:
         arch: amd64
 
-    - name: Cache build artifacts
-      uses: actions/cache@v3
-      with:
-        path: |
-          ${{ github.workspace }}/out/build
-          !${{ github.workspace }}/out/build/**/CMakeCache.txt
-        key: windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
-        restore-keys: |
-          windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-
-          windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-
-          windows-build-${{ runner.os }}-${{ inputs.compiler }}-
-          windows-build-${{ runner.os }}-
-          windows-build-
-
-    - name: Cache vcpkg
-      uses: actions/cache@v3
-      with:
-        path: |
-          ${{ github.workspace }}/vcpkg/installed
-          ${{ github.workspace }}/vcpkg/packages
-        key: windows-vcpkg-${{ hashFiles('vcpkg.json') }}
-        restore-keys: windows-vcpkg-
+    #- name: Cache build artifacts
+    #  uses: actions/cache@v3
+    #  with:
+    #    path: |
+    #      ${{ github.workspace }}/out/build
+    #      !${{ github.workspace }}/out/build/**/CMakeCache.txt
+    #    key: windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+    #    restore-keys: |
+    #      windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-
+    #      windows-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-
+    #      windows-build-${{ runner.os }}-${{ inputs.compiler }}-
+    #      windows-build-${{ runner.os }}-
+    #      windows-build-
+    #
+    #- name: Cache vcpkg
+    #  uses: actions/cache@v3
+    #  with:
+    #    path: |
+    #      ${{ github.workspace }}/vcpkg/installed
+    #      ${{ github.workspace }}/vcpkg/packages
+    #    key: windows-vcpkg-${{ hashFiles('vcpkg.json') }}
+    #    restore-keys: windows-vcpkg-
 
     - name: Clean workspace (self-hosted only)
       if: runner.self-hosted

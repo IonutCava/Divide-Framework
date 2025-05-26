@@ -39,30 +39,30 @@ runs:
         cmakeVersion: ${{ steps.common-config.outputs.cmake-version }}
         ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
 
-    - name: Cache build artifacts
-      uses: actions/cache@v3
-      with:
-        path: |
-          ${{ github.workspace }}/out/build
-          !${{ github.workspace }}/out/build/**/CMakeCache.txt
-        key: linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
-        restore-keys: |
-          linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-
-          linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-
-          linux-build-${{ runner.os }}-${{ inputs.compiler }}-
-          linux-build-${{ runner.os }}-
-          linux-build-
-
-    - name: Cache vcpkg
-      uses: actions/cache@v3
-      with:
-        path: |
-          ${{ github.workspace }}/vcpkg/installed
-          ${{ github.workspace }}/vcpkg/packages
-        key: linux-vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-        restore-keys: |
-          linux-vcpkg-${{ runner.os }}-
-          linux-vcpkg-
+    #   - name: Cache build artifacts
+    #     uses: actions/cache@v3
+    #     with:
+    #       path: |
+    #         ${{ github.workspace }}/out/build
+    #         !${{ github.workspace }}/out/build/**/CMakeCache.txt
+    #       key: linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-${{ hashFiles('CMakeLists.txt', 'vcpkg.json') }}
+    #       restore-keys: |
+    #         linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}-
+    #         linux-build-${{ runner.os }}-${{ inputs.compiler }}-${{ inputs.build-type }}-
+    #         linux-build-${{ runner.os }}-${{ inputs.compiler }}-
+    #         linux-build-${{ runner.os }}-
+    #         linux-build-
+    #   
+    #   - name: Cache vcpkg
+    #     uses: actions/cache@v3
+    #     with:
+    #       path: |
+    #         ${{ github.workspace }}/vcpkg/installed
+    #         ${{ github.workspace }}/vcpkg/packages
+    #       key: linux-vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+    #       restore-keys: |
+    #         linux-vcpkg-${{ runner.os }}-
+    #         linux-vcpkg-
 
     - name: Check Ninja version and path
       shell: bash
