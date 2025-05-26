@@ -2,9 +2,10 @@
 
 #include "Headers/PXDevice.h"
 
-#if !defined(IS_MACOS_BUILD)
+#if defined(IS_WINDOWS_BUILD)
 #include "Physics/PhysX/Headers/PhysX.h"
-#endif //IS_MACOS_BUILD
+#endif //IS_WINDOWS_BUILD
+
 #include "Physics/Jolt/Headers/Jolt.h"
 #include "Physics/None/Headers/None.h"
 #include "Utility/Headers/Localization.h"
