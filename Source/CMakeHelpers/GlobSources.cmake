@@ -29,10 +29,10 @@ set( AI_SOURCE AI/ActionInterface/CustomGOAP/Action.cpp
                AI/ActionInterface/CustomGOAP/Planner.cpp
                AI/ActionInterface/CustomGOAP/WorldState.cpp
                AI/ActionInterface/AIProcessor.cpp
-               AI/ActionInterface//AITeam.cpp
+               AI/ActionInterface/AITeam.cpp
                AI/ActionInterface/GOAPInterface.cpp
                AI/PathFinding/NavMeshes/NavMesh.cpp
-               AI/PathFinding/NavMeshes//NavMeshContext.cpp
+               AI/PathFinding/NavMeshes/NavMeshContext.cpp
                AI/PathFinding/NavMeshes/NavMeshDebugDraw.cpp
                AI/PathFinding/NavMeshes/NavMeshLoader.cpp
                AI/PathFinding/Waypoints/Waypoint.cpp
@@ -486,7 +486,7 @@ set ( JOLT_SOURCE_HEADERS Physics/Jolt/Headers/Jolt.h
 set( PHYSX_SOURCE "")
 set( PHYSX_SOURCE_HEADERS "")
 
-if(NOT MAC_OS_BUILD and NOT LINUX_OS_BUILD)
+if(WINDOWS_OS_BUILD)
     set( PHYSX_SOURCE Physics/PhysX/PhysX.cpp
                       Physics/PhysX/PhysXActor.cpp
                       Physics/PhysX/PhysXSceneInterface.cpp

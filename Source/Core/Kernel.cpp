@@ -709,11 +709,11 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
 
-#   if defined(IS_MACOS_BUILD)
-        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
-#   else //IS_MACOS_BUILD
+#   if defined(WINDOWS_OS_BUILD)
         _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
-#   endif //IS_MACOS_BUILD
+#   else //WINDOWS_OS_BUILD
+        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
+#   endif //WINDOWS_OS_BUILD
 
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
 
