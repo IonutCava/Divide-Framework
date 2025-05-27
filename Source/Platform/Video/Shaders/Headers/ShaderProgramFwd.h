@@ -49,6 +49,12 @@ namespace Divide {
 
     struct ModuleDefine
     {
+        ModuleDefine() = default;
+        ModuleDefine(const Str<64>& define, const bool addPrefix = true)
+            : _define(define), _addPrefix(addPrefix)
+        {
+        }
+
         string _define;
         bool _addPrefix{true};
     };
