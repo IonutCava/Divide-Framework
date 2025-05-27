@@ -86,7 +86,7 @@ namespace Divide {
         bool expected = true;
         if (ECS::ComponentMonitor<U>::s_ComponentsChanged.compare_exchange_strong(expected, false))
         {
-            const auto container = _engine.GetComponentManager()->GetComponentContainer<U>();
+            const auto container = _engine.GetComponentManager()->template GetComponentContainer<U>();
             const size_t compCount = container->size();
             _componentCache.resize(compCount);
 
