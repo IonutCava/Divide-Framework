@@ -56,6 +56,13 @@ namespace Divide {
 
     struct Directory
     {
+        Directory() = default;
+        Directory(const ResourcePath& path, const ResourcePath& name)
+            : _path(path), _name(name)
+        {
+        }
+
+
         ResourcePath _path;
         ResourcePath _name;
         vector<File> _files;
