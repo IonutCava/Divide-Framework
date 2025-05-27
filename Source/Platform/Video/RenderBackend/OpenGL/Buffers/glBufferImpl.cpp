@@ -81,10 +81,7 @@ namespace Divide
         if ( !Runtime::isMainThread() && _lockManager != nullptr )
         {
             auto sync = LockManager::CreateSyncObject( RenderAPI::OpenGL, LockManager::DEFAULT_SYNC_FLAG_SSBO );
-            if ( !lockRange( { 0u, _params._dataSize }, sync ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( lockRange( { 0u, _params._dataSize }, sync ) );
         }
 
         context.getPerformanceMetrics()._bufferVRAMUsage += _memoryBlock._size;
@@ -93,10 +90,7 @@ namespace Divide
 
     glBufferImpl::~glBufferImpl()
     {
-        if (!waitForLockedRange({0u, _memoryBlock._size})) [[unlikely]]
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( waitForLockedRange({0u, _memoryBlock._size}) );
 
         _context.getPerformanceMetrics()._bufferVRAMUsage -= _memoryBlock._size;
         _allocator->deallocate( _memoryBlock );
@@ -158,10 +152,7 @@ namespace Divide
         DIVIDE_ASSERT(_params._bufferParams._hostVisible);
         DIVIDE_ASSERT(outData.second >= rangeInBytes && _memoryBlock._size >= offsetInBytes + rangeInBytes);
 
-        if ( !waitForLockedRange( {offsetInBytes, rangeInBytes} ) ) [[unlikely]]
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( waitForLockedRange( {offsetInBytes, rangeInBytes} ) );
 
         LockGuard<Mutex> w_lock(_dataLock);
         if (_params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE) [[likely]]

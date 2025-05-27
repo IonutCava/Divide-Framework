@@ -218,10 +218,8 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
         if ( failed )
         {
             auto& newChunk = _chunks.emplace_back(_chunkAllocator->allocate(alignedSize, storageMask, accessMask, flags));
-            if(!newChunk->allocate(alignedSize, initialData, block))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( newChunk->allocate(alignedSize, initialData, block) );
+
             failed = false;
         }
 
@@ -300,10 +298,7 @@ void freeBuffer(gl46core::GLuint& bufferId)
 
     if (bufferId != GL_NULL_HANDLE && bufferId != 0u)
     {
-        if (!GL_API::DeleteBuffers(1, &bufferId))
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteBuffers(1, &bufferId) );
 
         bufferId = GL_NULL_HANDLE;
         GLMemory::g_bufferCount.fetch_sub(1u);

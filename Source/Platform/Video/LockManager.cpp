@@ -189,10 +189,7 @@ namespace Divide
 
         // We failed once, so create a new object
         BufferLockPoolEntry newEntry{};
-        if ( !InitLockPoolEntry( api, newEntry, flag, GFXDevice::FrameCount() ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( InitLockPoolEntry( api, newEntry, flag, GFXDevice::FrameCount() ) );
 
         s_bufferLockPool.emplace_back( MOV( newEntry ) );
         return SyncObjectHandle{ s_bufferLockPool.size() - 1u, newEntry._generation };

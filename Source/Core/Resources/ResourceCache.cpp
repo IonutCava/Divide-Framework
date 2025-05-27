@@ -33,10 +33,7 @@ ResourceLoadLock::ResourceLoadLock(const size_t hash, PlatformContext& context)
 
 ResourceLoadLock::~ResourceLoadLock()
 {
-    if (!SetLoadingFinished(_loadingHash))
-    {
-        DIVIDE_UNEXPECTED_CALL_MSG( "ResourceLoadLock failed to remove a resource lock!" );
-    }
+    DIVIDE_EXPECTED_CALL_MSG( SetLoadingFinished(_loadingHash),  "ResourceLoadLock failed to remove a resource lock!" );
 }
 
 bool ResourceLoadLock::SetLoading(const size_t hash)

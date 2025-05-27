@@ -602,10 +602,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         const ResourcePath cachePath = Paths::Textures::g_metadataLocation / _path;
 
         // Try and save regular images to DDS for better compression next time
-        if ( createDirectory(cachePath) != FileError::NONE )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( createDirectory(cachePath) == FileError::NONE );
 
         const string cacheFileName = Util::StringFormat("{}.{}", _name, Paths::Textures::g_ddsExtension);
 
@@ -636,16 +633,10 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
 
                 SCOPE_EXIT
                 {
-                    if (success && moveFile(cachePath, cacheFileNameTemp, cachePath, cacheFileName) != FileError::NONE)
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL(success && moveFile(cachePath, cacheFileNameTemp, cachePath, cacheFileName) == FileError::NONE);
 
                     UniqueLock<Mutex> lock(s_imageCompressionMutex);
-                    if (s_fileLoadingHashes.erase(cacheFilePathHash) == 0u)
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL(s_fileLoadingHashes.erase(cacheFilePathHash) > 0u);
                 };
 
                 {
@@ -705,11 +696,8 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                             break;
                     }
 
-                    if (!context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions))
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
-
+                    DIVIDE_EXPECTED_CALL( context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions) );
+                    
                     F32 coverage = 0.f;
                     if (options._isNormalMap)
                     {
@@ -721,10 +709,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                         image.setAlphaMode(nvtt::AlphaMode::AlphaMode_Transparency);
                     }
 
-                    if (!context.compress(image, 0, 0, compressionOptions, outputOptions))
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( context.compress(image, 0, 0, compressionOptions, outputOptions) );
 
                     // Build and output mipmaps.
                     if (!options._skipMipMaps)
@@ -741,10 +726,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                                 image.scaleAlphaToCoverage(coverage, Config::ALPHA_DISCARD_THRESHOLD);
                             }
 
-                            if (!context.compress(image, 0, m, compressionOptions, outputOptions))
-                            {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
+                            DIVIDE_EXPECTED_CALL( context.compress(image, 0, m, compressionOptions, outputOptions) );
 
                             m++;
                         }

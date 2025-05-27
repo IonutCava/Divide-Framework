@@ -80,12 +80,20 @@ namespace Divide
         _threadCreateCbk = {};
     }
 
-    bool TaskPool::enqueue( Task& task, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction )
+    void TaskPool::enqueue( Task& task, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-        if (priority == TaskPriority::REALTIME)
+
+        if (priority == TaskPriority::REALTIME ) [[unlikely]]
         {
-            return runRealTime( task, onCompletionFunction);
+            DIVIDE_EXPECTED_CALL(waitForJobs(task, priority, false));
+            runTask(task);
+            if (onCompletionFunction)
+            {
+                onCompletionFunction();
+            }
+
+            return;
         }
 
         bool hasOnCompletionFunction = false;
@@ -99,7 +107,7 @@ namespace Divide
                 if ( entry._taskID == U32_MAX)
                 {
                     entry._taskID = task._id;
-                    entry._cbk = onCompletionFunction;
+                    entry._cbk = MOV(onCompletionFunction);
                     found = true;
                     break;
                 }
@@ -107,17 +115,55 @@ namespace Divide
 
             if ( !found )
             {
-                _taskCallbacks.emplace_back( onCompletionFunction, task._id );
+                _taskCallbacks.emplace_back( MOV(onCompletionFunction), task._id );
             }
         }
 
-        //Returning false from a PoolTask lambda will just reschedule it for later execution again. 
-        //This may leave the task in an infinite loop, always re-queuing!
-        const auto poolTask = [this, &task, hasOnCompletionFunction]( const bool isIdleCall )
+        DIVIDE_EXPECTED_CALL
+        (
+            _queue.enqueue(
+                // Returning false from a PoolTask lambda will just reschedule it for later execution again. 
+                // This may leave the task in an infinite loop, always re-queuing!
+                [this, &task, priority, hasOnCompletionFunction](const bool isIdleCall)
+                {
+                    if (!waitForJobs(task, priority, isIdleCall))
+                    {
+                        return false;
+                    }
+
+                    // Can't run this task at the current moment. We're in an idle loop and the task needs express execution (e.g. render pass task)
+                    if (task._runWhileIdle || !isIdleCall)
+                    {
+                        runTask(task);
+
+                        if (hasOnCompletionFunction)
+                        {
+                            _threadedCallbackBuffer.enqueue(task._id);
+                        }
+
+                        return true;
+                    }
+
+                    return false;
+                }
+            )
+        );
+    }
+
+    bool TaskPool::waitForJobs(Task& task, const TaskPriority priority, const bool isIdleCall)
+    {
+        while (task._unfinishedJobs.load() > 1u)
         {
-            while ( task._unfinishedJobs.load() > 1u )
+            if (priority == TaskPriority::REALTIME)
             {
-                if ( isIdleCall )
+                if (flushCallbackQueue() == 0u)
+                {
+                    threadWaiting();
+                }
+            }
+            else
+            {
+                if (isIdleCall)
                 {
                     // Can't be run at this time. It will be executed again later!
                     return false;
@@ -126,43 +172,14 @@ namespace Divide
                 // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
                 threadWaiting();
             }
+        }
 
-            // Can't run this task at the current moment. We're in an idle loop and the task needs express execution (e.g. render pass task)
-            if ( !task._runWhileIdle && isIdleCall )
-            {
-                return false;
-            }
-
-            taskStarted( task );
-
-            if ( task._callback ) [[likely]]
-            {
-                task._callback( task );
-            }
-            if ( hasOnCompletionFunction )
-            {
-                _threadedCallbackBuffer.enqueue( task._id );
-            }
-
-            taskCompleted( task );
-
-            return true;
-        };
-
-        return addTask( MOV( poolTask ) );
+        return true;
     }
 
-    bool TaskPool::runRealTime( Task& task, const DELEGATE<void>& onCompletionFunction )
+    void TaskPool::runTask( Task& task )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-
-        while ( task._unfinishedJobs.load() > 1u )
-        {
-            if ( flushCallbackQueue() == 0u)
-            {
-                threadWaiting();
-            }
-        }
 
         taskStarted( task );
 
@@ -172,13 +189,6 @@ namespace Divide
         }
 
         taskCompleted( task );
-
-        if ( onCompletionFunction )
-        {
-            onCompletionFunction();
-        }
-
-        return true;
     }
 
     void TaskPool::waitForTask( const Task& task )
@@ -307,10 +317,8 @@ namespace Divide
             {
                 const auto idx = g_allocatedTasks++ & Config::MAX_POOLED_TASKS - 1u;
                 Task& crtTask = g_taskAllocator[idx];
-                if ( idx == 0u && ++retryCount > s_maxTaskRetry )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( idx != 0u || ++retryCount <= s_maxTaskRetry );
+
                 if ( crtTask._unfinishedJobs.compare_exchange_strong( expected, 1u ) )
                 {
                     task = &crtTask;
@@ -340,7 +348,6 @@ namespace Divide
 
     void TaskPool::threadWaiting()
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
         executeOneTask( true );
     }
 
@@ -375,18 +382,19 @@ namespace Divide
         }
     }
 
-    bool TaskPool::addTask( PoolTask&& job )
-    {
-        return _queue.enqueue( MOV( job ) );
-    }
-
     void TaskPool::executeOneTask( const bool isIdleCall )
     {
+        PROFILE_SCOPE_AUTO(Profiler::Category::Threading);
+
         PoolTask task = {};
-        if ( deque( isIdleCall, task ) &&
-             !task( isIdleCall ) )
+        if ( !deque( isIdleCall, task ) )
         {
-            addTask( MOV( task ) );
+            return;
+        }
+
+        if ( !task( isIdleCall ) )
+        {
+            DIVIDE_EXPECTED_CALL( _queue.enqueue( task ) );
         }
     }
 

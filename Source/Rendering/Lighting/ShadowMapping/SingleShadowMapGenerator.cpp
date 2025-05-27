@@ -165,10 +165,8 @@ SingleShadowMapGenerator::SingleShadowMapGenerator(GFXDevice& context)
 
 SingleShadowMapGenerator::~SingleShadowMapGenerator()
 {
-    if (!_context.renderTargetPool().deallocateRT(_drawBufferDepth))
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( _context.renderTargetPool().deallocateRT(_drawBufferDepth) );
+
     DestroyResource( _blurDepthMapShader );
 }
 

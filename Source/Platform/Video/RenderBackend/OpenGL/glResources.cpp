@@ -450,10 +450,8 @@ namespace Divide
             if ( errCode != 0 )
             {
                 Console::errorfn( LOCALE_STR( "SDL_ERROR" ), SDL_GetError() );
-                if ( assert )
-                {
-                    DIVIDE_UNEXPECTED_CALL_MSG( SDL_GetError() );
-                }
+                DIVIDE_EXPECTED_CALL_MSG( !assert, SDL_GetError() );
+                
                 return false;
             }
 

@@ -63,7 +63,8 @@ void CubeShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamera,
     GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
 }
 
-void CubeShadowMapGenerator::updateMSAASampleCount([[maybe_unused]] const U8 sampleCount) noexcept {
+void CubeShadowMapGenerator::updateMSAASampleCount([[maybe_unused]] const U8 sampleCount) noexcept
+{
     DIVIDE_UNEXPECTED_CALL();
 }
 

@@ -94,12 +94,8 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 
     [[nodiscard]] const vector<uint3>& getTriangles(const U16 partitionID)
     {
-         if (!computeTriangleList(partitionID))
-         {
-             DIVIDE_UNEXPECTED_CALL();
-         }
-
-         return _geometryTriangles[partitionID];
+        DIVIDE_EXPECTED_CALL( computeTriangleList(partitionID) );
+        return _geometryTriangles[partitionID];
     }
 
     void addTriangles(const U16 partitionID, const vector<uint3>& triangles)

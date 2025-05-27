@@ -928,10 +928,7 @@ namespace Divide
         // Our GPU Arena will clean up the memory, but we should still destroy these
         _uniformBlockBuffers.clear();
         // Unregister the program from the manager
-        if ( !UnregisterShaderProgram( this ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( UnregisterShaderProgram( this ) );
 
         return true;
     }
@@ -966,10 +963,7 @@ namespace Divide
     {
         Preprocessor::OnThreadCreated();
 
-        if ( !InitGLSW( gfx.renderAPI(), gfx.context().config() ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( InitGLSW( gfx.renderAPI(), gfx.context().config() ) );
     }
 
     void ShaderProgram::Idle( [[maybe_unused]] PlatformContext& platformContext, const bool fast )
@@ -1069,10 +1063,7 @@ namespace Divide
             const vector<ResourcePath> atomLocations = GetAllAtomLocations();
             for ( const ResourcePath& loc : atomLocations )
             {
-                if ( createDirectory( loc ) != FileError::NONE )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( createDirectory( loc ) == FileError::NONE );
                 watcher().addWatch( loc.string().c_str(), &g_sFileWatcherListener );
             }
         }
@@ -1485,10 +1476,7 @@ namespace Divide
         eastl::set<U64>& atoms = s_atomIncludes[atomNameHash];
         atoms.clear();
 
-        if ( readFile( filePath, atomName, FileType::TEXT, output ) != FileError::NONE )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( readFile( filePath, atomName, FileType::TEXT, output ) == FileError::NONE );
 
         if ( recurse )
         {
@@ -1867,11 +1855,8 @@ namespace Divide
         {
             // Hot reloading will always reparse GLSL source files so the best way to achieve that is to delete cache files
             needGLSL = true;
-            if ( !DeleteCache( LoadData::ShaderCacheType::COUNT, loadDataInOut._shaderName ) )
-            {
-                // We should have cached the existing shader, so a failure here is NOT expected
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            // We should have cached the existing shader, so a failure here is NOT expected
+            DIVIDE_EXPECTED_CALL( DeleteCache( LoadData::ShaderCacheType::COUNT, loadDataInOut._shaderName ) );
         }
 
         // Load SPIRV code from cache (if needed)

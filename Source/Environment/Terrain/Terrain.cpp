@@ -752,10 +752,7 @@ bool Terrain::loadResources( PlatformContext& context )
 
         terrainCache << BYTE_BUFFER_VERSION;
         terrainCache << _physicsVerts;
-        if ( !terrainCache.dumpToFile( Paths::g_terrainCacheLocation, terrainRawFile.string() + ".cache" ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( terrainCache.dumpToFile( Paths::g_terrainCacheLocation, terrainRawFile.string() + ".cache" ) );
     }
 
     // Then compute quadtree and all additional terrain-related structures
@@ -850,14 +847,8 @@ void Terrain::createVegetation( PlatformContext& context )
     ImageTools::ImportOptions options{};
     options._alphaChannelTransparency = false;
     options._isNormalMap = false;
-    if ( !vegDetails.grassMap->loadFromFile( context, false, 0, 0, terrainLocation, grassMap, options ) )
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
-    if ( !vegDetails.treeMap->loadFromFile( context, false, 0, 0, terrainLocation, treeMap, options ) )
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( vegDetails.grassMap->loadFromFile( context, false, 0, 0, terrainLocation, grassMap, options ) );
+    DIVIDE_EXPECTED_CALL( vegDetails.treeMap->loadFromFile( context, false, 0, 0, terrainLocation, treeMap, options ) );
 
     ResourceDescriptor<Vegetation> descriptor{ vegDetails.name, vegDetails };
     descriptor.assetName( vegDetails.name );

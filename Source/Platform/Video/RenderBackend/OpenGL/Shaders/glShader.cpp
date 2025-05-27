@@ -60,10 +60,7 @@ glShader::~glShader()
     if (_handle != GL_NULL_HANDLE)
     {
         Console::d_printfn(LOCALE_STR("SHADER_DELETE"), name().c_str());
-        if (!GL_API::DeleteShaderPrograms(1, &_handle))
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteShaderPrograms(1, &_handle) );
     }
 }
 
@@ -92,10 +89,7 @@ ShaderResult glShader::uploadToGPU()
 
         if (_handle != GL_NULL_HANDLE)
         {
-            if (!GL_API::DeleteShaderPrograms(1, &_handle))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( GL_API::DeleteShaderPrograms(1, &_handle) );
         }
 
         _handle = gl46core::glCreateProgram();
@@ -292,10 +286,7 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data)
 
     if (_handle != GL_NULL_HANDLE)
     {
-        if (!GL_API::DeleteShaderPrograms(1, &_handle))
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteShaderPrograms(1, &_handle) );
     }
 
     _stageMask = gl46core::UseProgramStageMask::GL_NONE_BIT;
@@ -340,10 +331,7 @@ glShaderEntry glShader::LoadShader(GFXDevice& context,
             shader_ptr.reset( new glShader( context, name, ret._generation ) );
 
             // At this stage, we have a valid Shader object, so load the source code
-            if (!static_cast<glShader*>(shader_ptr.get())->load(data))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( static_cast<glShader*>(shader_ptr.get())->load(data) );
         } 
         else 
         {

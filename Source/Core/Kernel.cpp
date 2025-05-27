@@ -195,10 +195,8 @@ void Kernel::onLoop()
             // exiting the rendering loop will return us to the last control point
             _platformContext.app().mainLoopActive(false);
 
-            if (!projectManager()->saveActiveScene(true, false))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( projectManager()->saveActiveScene(true, false) );
+
             return;
         }
 

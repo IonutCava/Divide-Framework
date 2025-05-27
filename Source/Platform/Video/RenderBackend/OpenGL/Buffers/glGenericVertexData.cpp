@@ -43,10 +43,8 @@ namespace Divide
         if (_indexBuffer._buffer != nullptr &&
             _indexBuffer._data.count > 0u)
         {
-            if (GL_API::GetStateTracker().setActiveBuffer(gl46core::GL_ELEMENT_ARRAY_BUFFER, _indexBuffer._buffer->getBufferHandle()) == GLStateTracker::BindResult::FAILED) [[unlikely]]
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL(GL_API::GetStateTracker().setActiveBuffer(gl46core::GL_ELEMENT_ARRAY_BUFFER, _indexBuffer._buffer->getBufferHandle()) != GLStateTracker::BindResult::FAILED);
+            
             if (firstIndexOffsetCount() == INVALID_INDEX_OFFSET)
             {
                 // Skip this draw for now
@@ -300,13 +298,10 @@ namespace Divide
                 offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
             }
 
-            if (GL_API::GetStateTracker().bindActiveBuffer( bindConfig._bindIdx,
+            DIVIDE_EXPECTED_CALL( GL_API::GetStateTracker().bindActiveBuffer( bindConfig._bindIdx,
                                                             impl->_buffer->getBufferHandle(),
                                                             offsetInBytes,
-                                                            impl->_elementStride ) == GLStateTracker::BindResult::FAILED )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+                                                            impl->_elementStride ) != GLStateTracker::BindResult::FAILED );
         }
     }
 

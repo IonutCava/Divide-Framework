@@ -692,10 +692,7 @@ namespace Divide
         s_stateTracker._endFrameFences.push( std::make_pair( CreateFenceSync(), GFXDevice::FrameCount() ) );
         _context.getPerformanceMetrics()._queuedGPUFrames = s_stateTracker._endFrameFences.size();
 
-        if ( gl46core::glGetGraphicsResetStatus() != gl46core::GL_NO_ERROR )
-        {
-            DIVIDE_UNEXPECTED_CALL_MSG( "OpenGL Reset Status raised!" );
-        }
+        DIVIDE_EXPECTED_CALL_MSG( gl46core::glGetGraphicsResetStatus() == gl46core::GL_NO_ERROR , "OpenGL Reset Status raised!" );
 
         clearStates(s_stateTracker);
         return true;
@@ -775,10 +772,7 @@ namespace Divide
         if ( s_TexBindQueue.size() == 1u )
         {
             const TexBindEntry& texEntry = s_TexBindQueue.front();
-            if ( s_stateTracker.bindTexture( texEntry._slot, texEntry._handle, texEntry._sampler ) == GLStateTracker::BindResult::FAILED )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( s_stateTracker.bindTexture( texEntry._slot, texEntry._handle, texEntry._sampler ) != GLStateTracker::BindResult::FAILED );
         }
         else
         {
@@ -829,30 +823,22 @@ namespace Divide
                     else if ( idx > 0u )
                     {
                         // We found a hole in the texture range. Flush the current range and start a new one
-                        if ( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) == GLStateTracker::BindResult::FAILED )
-                        {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+                        DIVIDE_EXPECTED_CALL( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) != GLStateTracker::BindResult::FAILED );
+
                         idx = 0u;
                     }
                 }
                 // Handle the final range (if any)
                 if ( idx > 0u )
                 {
-                    if ( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) == GLStateTracker::BindResult::FAILED )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( s_stateTracker.bindTextures( bindOffset, idx, s_textureHandles.data(), s_textureSamplers.data() ) != GLStateTracker::BindResult::FAILED );
                 }
             }
             else
             {
                 for ( const TexBindEntry& texEntry : s_TexBindQueue )
                 {
-                    if ( s_stateTracker.bindTexture( texEntry._slot, texEntry._handle, texEntry._sampler ) == GLStateTracker::BindResult::FAILED )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( s_stateTracker.bindTexture( texEntry._slot, texEntry._handle, texEntry._sampler ) != GLStateTracker::BindResult::FAILED );
                 }
             }
         }
@@ -941,10 +927,7 @@ namespace Divide
                 {
                     PROFILE_SCOPE( "Begin Screen Target", Profiler::Category::Graphics );
 
-                    if ( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) == GLStateTracker::BindResult::FAILED )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) != GLStateTracker::BindResult::FAILED );
 
                     s_stateTracker._activeRenderTarget = nullptr;
                     s_stateTracker._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
@@ -972,10 +955,7 @@ namespace Divide
                     glFramebuffer* rt = static_cast<glFramebuffer*>(_context.renderTargetPool().getRenderTarget( crtCmd->_target ));
 
                     const GLStateTracker::BindResult bindResult = s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, rt->framebufferHandle() );
-                    if ( bindResult == GLStateTracker::BindResult::FAILED )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( bindResult != GLStateTracker::BindResult::FAILED );
 
                     Attorney::GLAPIRenderTarget::begin( *rt, crtCmd->_descriptor, crtCmd->_clearDescriptor );
                     s_stateTracker._activeRenderTarget = rt;
@@ -1303,10 +1283,7 @@ namespace Divide
                                 handle = LockManager::CreateSyncObject( RenderAPI::OpenGL );
                             }
 
-                            if ( !buffer->lockRange( lock._range, handle ) )
-                            {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
+                            DIVIDE_EXPECTED_CALL( buffer->lockRange( lock._range, handle ) );
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:
                         {
@@ -1499,19 +1476,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( !stateTracker.unbindTextures() )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( stateTracker.unbindTextures() );
 
-        if ( stateTracker.setActiveBuffer( gl46core::GL_ELEMENT_ARRAY_BUFFER, 0 ) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-        if ( stateTracker.setActiveFB( RenderTarget::Usage::RT_READ_WRITE, 0 ) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( stateTracker.setActiveBuffer( gl46core::GL_ELEMENT_ARRAY_BUFFER, 0 ) != GLStateTracker::BindResult::FAILED );
+
+        DIVIDE_EXPECTED_CALL( stateTracker.setActiveFB( RenderTarget::Usage::RT_READ_WRITE, 0 ) != GLStateTracker::BindResult::FAILED );
 
         const U8 blendCount = to_U8( stateTracker._blendEnabled.size() );
         for ( U8 i = 0u; i < blendCount; ++i )
@@ -1527,18 +1496,11 @@ namespace Divide
         stateTracker._activeRenderTarget = nullptr;
         stateTracker._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         stateTracker._activeRenderTargetDimensions = drawableSize;
-        if ( stateTracker.setActiveProgram( 0u ) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-        if ( stateTracker.setActiveShaderPipeline( 0u ) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
-        if ( stateTracker.setStateBlock({}) == GLStateTracker::BindResult::FAILED )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( stateTracker.setActiveProgram( 0u ) != GLStateTracker::BindResult::FAILED );
+
+        DIVIDE_EXPECTED_CALL( stateTracker.setActiveShaderPipeline( 0u ) != GLStateTracker::BindResult::FAILED );
+
+        DIVIDE_EXPECTED_CALL( stateTracker.setStateBlock({}) != GLStateTracker::BindResult::FAILED );
     }
 
     bool GL_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
@@ -1593,10 +1555,8 @@ namespace Divide
                         }
 
                         const DescriptorCombinedImageSampler& imageSampler = srcBinding._data._sampledImage;
-                        if ( !makeTextureViewResident( glBindingSlot, imageSampler._image, imageSampler._imageHash, imageSampler._sampler, imageSampler._samplerHash ) )
-                        {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+                        DIVIDE_EXPECTED_CALL( makeTextureViewResident( glBindingSlot, imageSampler._image, imageSampler._imageHash, imageSampler._sampler, imageSampler._samplerHash ) );
+
                     } break;
                     case DescriptorSetBindingType::IMAGE:
                     {
@@ -1728,10 +1688,7 @@ namespace Divide
         const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
         {
             PROFILE_SCOPE( "Set Raster State", Profiler::Category::Graphics );
-            if ( s_stateTracker.setStateBlock( pipelineDescriptor._stateBlock ) == GLStateTracker::BindResult::FAILED )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( s_stateTracker.setStateBlock( pipelineDescriptor._stateBlock ) != GLStateTracker::BindResult::FAILED );
         }
         {
             PROFILE_SCOPE( "Set Blending", Profiler::Category::Graphics );
@@ -1762,14 +1719,8 @@ namespace Divide
 
             if ( ret != ShaderResult::OK )
             {
-                if ( s_stateTracker.setActiveProgram( 0u ) == GLStateTracker::BindResult::FAILED )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
-                if ( s_stateTracker.setActiveShaderPipeline( 0u ) == GLStateTracker::BindResult::FAILED )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveProgram( 0u ) != GLStateTracker::BindResult::FAILED );
+                DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveShaderPipeline( 0u ) != GLStateTracker::BindResult::FAILED );
                 s_stateTracker._activePipeline = nullptr;
             }
             else
@@ -1876,10 +1827,7 @@ namespace Divide
             {
                 if ( s_stateTracker._activeShaderProgramHandle == programs[i] )
                 {
-                    if ( s_stateTracker.setActiveProgram( 0u ) == GLStateTracker::BindResult::FAILED )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveProgram( 0u ) != GLStateTracker::BindResult::FAILED );
                 }
                 gl46core::glDeleteProgram( programs[i] );
             }

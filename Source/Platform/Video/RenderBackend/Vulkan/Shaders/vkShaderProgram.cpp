@@ -50,10 +50,7 @@ namespace Divide {
             {
                 shader_ptr.reset( new vkShader( context, data._shaderName, ret._generation ));
                 // At this stage, we have a valid Shader object, so load the source code
-                if (!static_cast<vkShader*>(shader_ptr.get())->load(data))
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( static_cast<vkShader*>(shader_ptr.get())->load(data) );
             }
             else
             {

@@ -76,10 +76,7 @@ namespace Divide
     Light::~Light()
     {
         UnregisterAllEventCallbacks();
-        if ( !_parentPool.removeLight( *this ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _parentPool.removeLight( *this ) );
     }
 
     void Light::registerFields( EditorComponent& comp )

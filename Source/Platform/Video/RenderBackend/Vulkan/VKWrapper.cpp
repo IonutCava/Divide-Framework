@@ -2676,10 +2676,8 @@ namespace Divide
                                 memoryBarrier.dstAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
                             }
 
-                            if ( !lock._buffer->lockRange( lock._range, handle ) )
-                            {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
+                            DIVIDE_EXPECTED_CALL( lock._buffer->lockRange( lock._range, handle ) );
+
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:
                         {

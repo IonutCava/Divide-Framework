@@ -39,10 +39,8 @@ GUIConsole::GUIConsole(GUI& parent, PlatformContext& context)
 
 GUIConsole::~GUIConsole()
 {
-    if (!Console::UnbindConsoleOutput(_consoleCallbackIndex))
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( Console::UnbindConsoleOutput(_consoleCallbackIndex) );
+
     _closing = true;
 
     if (_consoleWindow)

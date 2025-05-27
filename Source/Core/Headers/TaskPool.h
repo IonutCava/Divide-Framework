@@ -79,10 +79,6 @@ public:
     /// Use this to run another task (if any) and return to the previous execution point
     void threadWaiting();
 
-
-    // Add a new task to the pool's queue
-    bool addTask( PoolTask&& job );
-
     // Reinitializes the thread pool (joins and closes out all existing threads first)
     void init();
     // Join all of the threads and block until all running tasks have completed.
@@ -99,15 +95,16 @@ public:
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
     friend struct Task;
-    friend void Start(Task& task, TaskPool& pool, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction);
+    friend void Start(Task& task, TaskPool& pool, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
     friend void Wait(const Task& task, TaskPool& pool);
     friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor);
 
     void taskStarted(Task& task);
     void taskCompleted(Task& task);
     
-    bool enqueue(Task& task, TaskPriority priority, const DELEGATE<void>& onCompletionFunction);
-    bool runRealTime(Task& task, const DELEGATE<void>& onCompletionFunction );
+    void enqueue(Task& task, TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
+    void runTask(Task& task);
+    bool waitForJobs(Task& task, TaskPriority priority, bool isIdleCall);
 
     bool deque( bool isIdleCall, PoolTask& taskOut );
     void waitForTask(const Task& task);
@@ -117,6 +114,12 @@ public:
 
      struct CallbackEntry
      {
+         CallbackEntry() = default;
+         CallbackEntry(DELEGATE<void>&& cbk, U32 taskID) noexcept
+             : _cbk(std::move(cbk)), _taskID(taskID)
+         {
+         }
+
          DELEGATE<void> _cbk;
          U32 _taskID = U32_MAX;
      };

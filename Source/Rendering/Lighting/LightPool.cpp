@@ -257,10 +257,8 @@ namespace Divide
                 const U16 crtShadowIOffset = light->getShadowArrayOffset();
                 if ( crtShadowIOffset != U16_MAX )
                 {
-                    if ( !ShadowMap::freeShadowMapOffset( *light ) )
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( ShadowMap::freeShadowMapOffset( *light ) );
+
                     light->setShadowArrayOffset( U16_MAX );
                 }
                 continue;

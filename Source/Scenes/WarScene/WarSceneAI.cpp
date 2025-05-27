@@ -382,18 +382,12 @@ bool WarScene::addUnits() {
             soldier->setAcceleration(acc);
 
             aiSoldier = soldier->getAIEntity();
-            if (!aiSoldier->addSensor( AI::SensorType::VISUAL_SENSOR ))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( aiSoldier->addSensor( AI::SensorType::VISUAL_SENSOR ) );
 
             AI::WarSceneAIProcessor* brain = new AI::WarSceneAIProcessor( type, *_aiManager );
             // GOAP
             brain->registerGOAPPackage( goapPackages[to_U32( type )] );
-            if (!aiSoldier->setAndSurrenderAIProcessor( brain ))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( aiSoldier->setAndSurrenderAIProcessor( brain ) );
 
             currentNode->get<UnitComponent>()->setUnit(soldier);
             _armyNPCs[k].push_back(currentNode);

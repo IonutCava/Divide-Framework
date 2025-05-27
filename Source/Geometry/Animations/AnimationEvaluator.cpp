@@ -384,10 +384,7 @@ void AnimEvaluator::load(AnimEvaluator& evaluator, ByteBuffer& dataIn)
 
     auto tempVer = decltype(BYTE_BUFFER_VERSION_EVALUATOR){0};
     dataIn >> tempVer;
-    if (tempVer != BYTE_BUFFER_VERSION_EVALUATOR)
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL(tempVer == BYTE_BUFFER_VERSION_EVALUATOR);
 
     // the animation name
     dataIn >> evaluator._name;

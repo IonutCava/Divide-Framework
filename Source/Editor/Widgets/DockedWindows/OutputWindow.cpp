@@ -44,10 +44,7 @@ namespace Divide
 
     OutputWindow::~OutputWindow()
     {
-        if ( !Console::UnbindConsoleOutput( _consoleCallbackIndex ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( Console::UnbindConsoleOutput( _consoleCallbackIndex ) );
 
         clearLog();
     }

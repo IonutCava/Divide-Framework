@@ -1348,10 +1348,7 @@ namespace Divide
         _sceneData.reset();
         // Close the shader manager
         _shaderComputeQueue.reset();
-        if ( !ShaderProgram::OnShutdown() )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( ShaderProgram::OnShutdown() );
 
         RenderPassExecutor::OnShutdown( *this );
         Texture::OnShutdown();
@@ -1545,10 +1542,8 @@ namespace Divide
         _gfxBuffers.onEndFrame();
         ShaderProgram::OnEndFrame( *this );
         
-        if (!_api->frameEnded())
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _api->frameEnded() );
+
         {
             PROFILE_SCOPE( "Lifetime updates", Profiler::Category::Graphics );
 
@@ -3242,17 +3237,17 @@ namespace Divide
                 }
 
                 // Save to file
-                if ( !ImageTools::SaveImage( ResourcePath( Util::StringFormat( "{}/{}_Date_{}.png", Paths::g_screenshotPath, fileName, CurrentDateTimeString().c_str() )),
-                                             data._width,
-                                             data._height,
-                                             data._numComponents,
-                                             data._bpp,
-                                             data._sourceIsBGR,
-                                             data._data.data(),
-                                             ImageTools::SaveImageFormat::PNG ) )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL
+                (
+                    ImageTools::SaveImage( ResourcePath( Util::StringFormat( "{}/{}_Date_{}.png", Paths::g_screenshotPath, fileName, CurrentDateTimeString().c_str() )),
+                                           data._width,
+                                           data._height,
+                                           data._numComponents,
+                                           data._bpp,
+                                           data._sourceIsBGR,
+                                           data._data.data(),
+                                           ImageTools::SaveImageFormat::PNG )
+                );
             }
         };
     }

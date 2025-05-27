@@ -49,10 +49,7 @@ bool Merge( UniformData& lhs, UniformData& rhs, bool& partial)
             }
 
             lhs.set(otherUniform._bindingHash, otherUniform._type, &rhs._buffer[otherUniform._range._startOffset], otherUniform._range._length);
-            if (!rhs.remove(otherUniform._bindingHash))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( rhs.remove(otherUniform._bindingHash) );
 
             partial = true;
         }

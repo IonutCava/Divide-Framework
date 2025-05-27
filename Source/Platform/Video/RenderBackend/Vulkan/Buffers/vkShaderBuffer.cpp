@@ -48,10 +48,7 @@ namespace Divide
 
     BufferLock vkShaderBuffer::writeBytesInternal( const BufferRange<> range, const bufferPtr data ) noexcept
     {
-        if ( !_bufferImpl->waitForLockedRange( range ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _bufferImpl->waitForLockedRange( range ) );
 
         const bool isCommandBuffer = getUsage() == BufferUsageType::COMMAND_BUFFER;
         const VkAccessFlags2 dstAccessMask = VK_ACCESS_SHADER_READ_BIT | (isCommandBuffer ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : VK_ACCESS_NONE);
@@ -63,10 +60,7 @@ namespace Divide
 
     void vkShaderBuffer::readBytesInternal( BufferRange<> range, std::pair<bufferPtr, size_t> outData ) noexcept
     {
-        if ( !_bufferImpl->waitForLockedRange( range ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _bufferImpl->waitForLockedRange( range ) );
 
         range._length = std::min( std::min( range._length, outData.second ), _alignedBufferSize - range._startOffset );
 

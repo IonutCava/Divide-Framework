@@ -268,10 +268,7 @@ inline void ByteBuffer::readSkip<string>()
 
 inline void ByteBuffer::readSkip(const size_t skip) noexcept
 {
-    if (_rpos + skip > storageSize())
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL(_rpos + skip <= storageSize());
 
     _rpos += skip;
 }
@@ -286,20 +283,15 @@ void ByteBuffer::read(T& out)
 template <typename T>
 void ByteBuffer::readNoSkipFrom(const size_t pos, T& out) const
 {
-    if (pos + sizeof(T) > storageSize())
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( pos + sizeof(T) <= storageSize() );
+
 
     std::memcpy(&out, &_storage[pos], sizeof(T));
 }
 
 inline void ByteBuffer::read(Byte *dest, const size_t len)
 {
-    if (_rpos + len > storageSize())
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( _rpos + len <= storageSize() );
 
     memcpy(dest, &_storage[_rpos], len);
     _rpos += len;
@@ -420,9 +412,8 @@ inline const Byte* ByteBuffer::contents() const noexcept {
 }
 
 inline void ByteBuffer::put(const size_t pos, const Byte *src, const size_t cnt) {
-    if (pos + cnt > storageSize()) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL(pos + cnt <= storageSize());
+
     memcpy(&_storage[pos], src, cnt);
 }
 

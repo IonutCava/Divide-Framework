@@ -891,6 +891,9 @@ namespace Assert
 #define DIVIDE_UNEXPECTED_CALL_MSG(X) DIVIDE_ASSERT(false, X)
 #define DIVIDE_UNEXPECTED_CALL() DIVIDE_UNEXPECTED_CALL_MSG("UNEXPECTED CALL")
 
+#define DIVIDE_EXPECTED_CALL( X ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG("Expected call failed: " #X); }
+#define DIVIDE_EXPECTED_CALL_MSG( X, MSG ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG( MSG ); }
+
 template <typename Ret, typename... Args >
 using DELEGATE_EASTL = eastl::function< Ret(Args...) >;
 

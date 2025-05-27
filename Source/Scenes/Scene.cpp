@@ -537,10 +537,7 @@ namespace Divide
                     case _ID( "INFINITE_PLANE" ):
                     {
                         normalMask |= to_base( ComponentType::RENDERING );
-                        if ( !addInfPlane( parent, nodeTree, sceneNode.name ) )
-                        {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+                        DIVIDE_EXPECTED_CALL ( addInfPlane( parent, nodeTree, sceneNode.name ) );
                     } break;
                     case _ID( "WATER" ):
                     {
@@ -584,10 +581,8 @@ namespace Divide
                     {
                         //ToDo: Change this - Currently, just load the default sky.
                         normalMask |= to_base( ComponentType::RENDERING );
-                        if ( !addSky( parent, nodeTree, sceneNode.name ) )
-                        {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+                        DIVIDE_EXPECTED_CALL( addSky( parent, nodeTree, sceneNode.name ) );
+
                     } break;
                     // Everything else
                     default:
@@ -640,10 +635,7 @@ namespace Divide
 
         auto initData = [emitter, data]( )
         {
-            if ( !Get(emitter)->initData( data ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( Get(emitter)->initData( data ) );
         };
 
         TaskPool& pool = _context.taskPool( TaskPoolType::ASSET_LOADER );
@@ -1171,10 +1163,7 @@ namespace Divide
         ret = actions.registerInputAction( actionID++, dragSelectBegin ) && ret;        // 33
         ret = actions.registerInputAction( actionID++, dragSelectEnd ) && ret;          // 34
 
-        if ( !ret )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_ASSERT( ret );
 
         return actionID;
     }
@@ -1659,10 +1648,7 @@ namespace Divide
 
     void Scene::addGuiTimer( const TimerClass intervalClass, const U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk )
     {
-        if ( !cbk )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( cbk );
 
         _guiTimers.emplace_back( TimerStruct
         {
@@ -1674,10 +1660,7 @@ namespace Divide
 
     void Scene::addTaskTimer( const TimerClass intervalClass, const U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk )
     {
-        if ( !cbk )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( cbk );
 
         _taskTimers.emplace_back( TimerStruct
         {

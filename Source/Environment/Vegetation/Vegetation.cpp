@@ -1044,10 +1044,8 @@ namespace Divide
             chunkCache << BYTE_BUFFER_VERSION;
             chunkCache << container.size();
             chunkCache.append( container.data(), container.size() );
-            if ( !chunkCache.dumpToFile(Paths::g_terrainCacheLocation, cacheFileName ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( chunkCache.dumpToFile(Paths::g_terrainCacheLocation, cacheFileName ) );
+
         }
 
         Console::printfn( LOCALE_STR( "CREATE_GRASS_END" ) );

@@ -6,15 +6,9 @@
 namespace Divide
 {
 
-    void Start( Task& task, TaskPool& pool, const TaskPriority priority, const DELEGATE<void>& onCompletionFunction )
+    void Start( Task& task, TaskPool& pool, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction )
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-
-        if ( !pool.enqueue( task, priority, onCompletionFunction ) ) [[unlikely]]
-        {
-            Console::errorfn( LOCALE_STR( "TASK_SCHEDULE_FAIL" ), 1 );
-            Start( task, pool, TaskPriority::REALTIME, onCompletionFunction );
-        }
+        pool.enqueue( task, priority, MOV(onCompletionFunction) );
     }
 
     void Wait( const Task& task, TaskPool& pool )

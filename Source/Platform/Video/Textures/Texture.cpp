@@ -60,10 +60,8 @@ namespace Divide
         defaultTexData[3] = to_byte( 1u ); //Alpha: 1
 
         ImageTools::ImageData imgDataDefault = {};
-        if ( !imgDataDefault.loadFromMemory( defaultTexData, 4, 1u, 1u, 1u, 4 ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( imgDataDefault.loadFromMemory( defaultTexData, 4, 1u, 1u, 1u, 4 ) );
+
         Get(s_defaultTexture2D)->createWithData( imgDataDefault, {});
         Get(s_defaultTexture2DArray)->createWithData( imgDataDefault, {});
 
@@ -309,10 +307,7 @@ namespace Divide
 
             Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOAD" ), name );
             // missing_texture.jpg must be something that really stands out
-            if ( !fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_texturesLocation, s_missingTextureFileName ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_texturesLocation, s_missingTextureFileName ) );
         }
         else if ( !fileData.hasDummyAlphaChannel() )
         {
@@ -521,10 +516,7 @@ namespace Divide
                 metadataCache << BYTE_BUFFER_VERSION;
                 metadataCache << _hasTransparency;
                 metadataCache << _hasTranslucency;
-                if ( !metadataCache.dumpToFile( cachePath, cacheName ) )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( metadataCache.dumpToFile( cachePath, cacheName ) );
             }
         }
 

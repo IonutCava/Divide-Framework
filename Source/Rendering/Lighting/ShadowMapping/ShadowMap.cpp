@@ -256,19 +256,15 @@ namespace Divide
 
         for ( RenderTargetHandle& handle : s_shadowMaps )
         {
-            if ( !context.renderTargetPool().deallocateRT( handle ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( context.renderTargetPool().deallocateRT( handle ) );
+
             handle._rt = nullptr;
         }
 
         for ( RenderTargetHandle& handle : s_shadowMapCaches )
         {
-            if ( !context.renderTargetPool().deallocateRT( handle ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( context.renderTargetPool().deallocateRT( handle ) );
+
             handle._rt = nullptr;
         }
 

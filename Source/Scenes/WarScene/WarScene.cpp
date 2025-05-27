@@ -489,26 +489,23 @@ U16 WarScene::registerInputActions() {
     {
         PressReleaseActions::Entry actionEntry = {};
         actionEntry.releaseIDs().insert(actionID);
-        if (!_input->actionList().registerInputAction(actionID, [this](const InputParams& param) {toggleCamera(param); })) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _input->actionList().registerInputAction(actionID, [this](const InputParams& param) {toggleCamera(param); }) );
+
         _input->addKeyMapping(Input::KeyCode::KC_TAB, actionEntry);
         actionID++;
     }
     {
         PressReleaseActions::Entry actionEntry = {};
-        if (!_input->actionList().registerInputAction(actionID, [this](const InputParams& /*param*/) {registerPoint(0u, ""); })) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _input->actionList().registerInputAction(actionID, [this](const InputParams& /*param*/) {registerPoint(0u, ""); }) );
+
         actionEntry.releaseIDs().insert(actionID);
         _input->addKeyMapping(Input::KeyCode::KC_1, actionEntry);
         actionID++;
     }
     {
         PressReleaseActions::Entry actionEntry = {};
-        if (!_input->actionList().registerInputAction(actionID, [this](const InputParams& /*param*/) {registerPoint(1u, ""); })) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _input->actionList().registerInputAction(actionID, [this](const InputParams& /*param*/) {registerPoint(1u, ""); }));
+
         actionEntry.releaseIDs().insert(actionID);
         _input->addKeyMapping(Input::KeyCode::KC_2, actionEntry);
         actionID++;
@@ -535,7 +532,8 @@ U16 WarScene::registerInputActions() {
             } else {
                 _lightPool->toggleLightType(LightType::POINT, true);
             }
-        })) {
+        }))
+        {
             DIVIDE_UNEXPECTED_CALL();
         }
         actionEntry.releaseIDs().insert(actionID);

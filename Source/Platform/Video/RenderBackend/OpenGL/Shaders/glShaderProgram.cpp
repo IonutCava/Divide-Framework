@@ -105,10 +105,7 @@ bool glShaderProgram::unload()
 
         if (GL_API::GetStateTracker()._activeShaderPipelineHandle == _glHandle)
         {
-            if (GL_API::GetStateTracker().setActiveShaderPipeline(0u) == GLStateTracker::BindResult::FAILED)
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL(GL_API::GetStateTracker().setActiveShaderPipeline(0u) != GLStateTracker::BindResult::FAILED);
         }
 
         gl46core::glDeleteProgramPipelines(1, &_glHandle);

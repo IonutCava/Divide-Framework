@@ -178,10 +178,7 @@ namespace Divide {
                 _indexBuffer._data.dynamic != indices.dynamic || // Buffer usage mode changed
                 _indexBuffer._data.count < indices.count ) // Buffer not big enough
             {
-                if ( !_indexBuffer._buffer->waitForLockedRange( {0, U32_MAX} ) )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL ( _indexBuffer._buffer->waitForLockedRange( {0, U32_MAX} ) );
                 _indexBuffer = {};
             }
         }
@@ -286,10 +283,7 @@ namespace Divide {
             offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * queueIndex();
         }
 
-        if (!buffer._buffer->waitForLockedRange({ offsetInBytes, dataCurrentSizeInBytes }))
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( buffer._buffer->waitForLockedRange({ offsetInBytes, dataCurrentSizeInBytes }) );
 
         const BufferRange<> range = { offsetInBytes , dataCurrentSizeInBytes };
         return buffer._buffer->writeBytes(range, dstAccessMask, dstStageMask, data);

@@ -72,9 +72,7 @@ void Quadtree::build(const BoundingBox& terrainBBox,
 const BoundingBox& Quadtree::computeBoundingBox() const {
     assert(_root);
     BoundingBox rootBB = _root->getBoundingBox();
-    if (!_root->computeBoundingBox(rootBB)) {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( _root->computeBoundingBox(rootBB) );
 
     return _root->getBoundingBox();
 }

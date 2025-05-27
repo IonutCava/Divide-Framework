@@ -428,10 +428,7 @@ namespace Import
                     Attorney::SceneAnimatorMeshImporter::registerAnimations(*animator, tempMeshData._animations);
                     DIVIDE_ASSERT(tempMeshData._animations.empty());
 
-                    if ( !animator->init(context, MOV(tempMeshData._skeleton)))
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( animator->init(context, MOV(tempMeshData._skeleton)) );
 
                     animator->save(context, tempBuffer);
                     if (!tempBuffer.dumpToFile(Paths::g_geometryCacheLocation, saveFileName ))

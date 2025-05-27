@@ -17,9 +17,9 @@ namespace
         std::cout << line << std::endl;
     };
 
-    void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {})
+    void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, DELEGATE<void>&& onCompletionFunction = {})
     {
-        Start( task, pool, priority, onCompletionFunction );
+        Start( task, pool, priority, MOV(onCompletionFunction) );
         Wait( task, pool );
     }
 

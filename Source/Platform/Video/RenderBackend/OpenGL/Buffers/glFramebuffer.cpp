@@ -40,17 +40,11 @@ namespace Divide
 
     glFramebuffer::~glFramebuffer()
     {
-        if (!GL_API::DeleteFramebuffers( 1, &_framebufferHandle ))
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( GL_API::DeleteFramebuffers( 1, &_framebufferHandle ) );
 
         if ( _framebufferResolveHandle != GL_NULL_HANDLE )
         {
-            if (!GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle ))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL ( GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle ) );
         }
     }
 
@@ -196,10 +190,7 @@ namespace Divide
         }
         else if ( !needsAutoResolve && _framebufferResolveHandle != GL_NULL_HANDLE )
         {
-            if (!GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle ))
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( GL_API::DeleteFramebuffers( 1, &_framebufferResolveHandle ) );
 
             _framebufferResolveHandle = GL_NULL_HANDLE;
         }

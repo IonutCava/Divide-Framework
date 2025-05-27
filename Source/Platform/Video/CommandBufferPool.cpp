@@ -74,10 +74,7 @@ Handle<CommandBuffer> CommandBufferPool::allocateBufferLocked( const char* name,
 
     if (!found)
     {
-        if (retry)
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL(!retry);
 
         const size_t newSize = _pool.size() + _poolSizeFactor;
         _pool.resize( newSize, nullptr );

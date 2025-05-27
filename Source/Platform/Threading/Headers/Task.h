@@ -56,7 +56,7 @@ struct alignas(128) Task
 
 constexpr auto TASK_NOP = [](Task&) { NOP(); };
 
-void Start(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, const DELEGATE<void>& onCompletionFunction = {});
+void Start(Task& task, TaskPool& pool, TaskPriority priority = TaskPriority::DONT_CARE, DELEGATE<void>&& onCompletionFunction = {});
 void Wait(const Task& task, TaskPool& pool);
 
 [[nodiscard]] bool Finished(const Task& task) noexcept;

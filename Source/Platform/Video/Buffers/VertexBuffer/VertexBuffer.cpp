@@ -467,10 +467,7 @@ bool VertexBuffer::refresh( size_t& indexOffsetCountOut, BufferLock& dataLockOut
         const size_t effectiveEntrySize = GetTotalDataSize( _useAttribute );
 
         vector<Byte> smallData(_data.size() * effectiveEntrySize);
-        if (!getMinimalData(_data, smallData.data(), smallData.size()))
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( getMinimalData(_data, smallData.data(), smallData.size()) );
 
         if (_dataLayoutChanged)
         {
@@ -532,17 +529,11 @@ void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data)
 
         if ( dataLock._range._length > 0u )
         {
-            if ( !dataLock._buffer->lockRange( dataLock._range, sync ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( dataLock._buffer->lockRange( dataLock._range, sync ) );
         }
         if ( indexLock._range._length > 0u )
         {
-            if ( !indexLock._buffer->lockRange( indexLock._range, sync ) )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL ( indexLock._buffer->lockRange( indexLock._range, sync ) );
         }
     }
 }

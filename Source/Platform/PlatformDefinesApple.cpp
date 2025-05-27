@@ -82,9 +82,7 @@ namespace Divide {
         } break;
         }
 
-        if (!pthread_setschedparam(thread, SCHED_FIFO, &sch_params)) {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( pthread_setschedparam(thread, SCHED_FIFO, &sch_params) );
     }
 
     void SetThreadPriority(const ThreadPriority priority) {

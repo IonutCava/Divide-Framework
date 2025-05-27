@@ -268,10 +268,7 @@ bool createFileInternal(const ResourcePath& filePathAndName, const bool overwrit
         return std::ofstream(filePathAndName.string().c_str(), std::fstream::in | std::fstream::trunc).good();
     }
 
-    if (createDirectory(const_sysInfo()._workingDirectory / splitPathToNameAndLocation(filePathAndName)._path) != FileError::NONE )
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL(createDirectory(const_sysInfo()._workingDirectory / splitPathToNameAndLocation(filePathAndName)._path) == FileError::NONE );
 
     return std::ifstream(filePathAndName.string().c_str(), std::fstream::in).good();
 }

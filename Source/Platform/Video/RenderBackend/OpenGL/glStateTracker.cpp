@@ -323,10 +323,8 @@ namespace Divide
             {
                 _textureBoundMap[idx] = GL_NULL_HANDLE;
                 gl46core::glBindTextureUnit( idx, 0u );
-                if ( bindSamplers( idx, 1, nullptr ) == BindResult::FAILED )
-                {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( bindSamplers( idx, 1, nullptr ) != BindResult::FAILED );
+
                 return true;
             }
         }
@@ -663,10 +661,7 @@ namespace Divide
         // Prevent double bind
         if ( _activeShaderProgramHandle != programHandle )
         {
-            if ( setActiveShaderPipeline( 0u ) == GLStateTracker::BindResult::FAILED )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( setActiveShaderPipeline( 0u ) != GLStateTracker::BindResult::FAILED );
 
             // Remember the new binding for future reference
             _activeShaderProgramHandle = programHandle;
@@ -691,10 +686,7 @@ namespace Divide
         // Prevent double bind
         if ( _activeShaderPipelineHandle != pipelineHandle )
         {
-            if ( setActiveProgram( 0u ) == GLStateTracker::BindResult::FAILED )
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( setActiveProgram( 0u ) != GLStateTracker::BindResult::FAILED );
 
             // Remember the new binding for future reference
             _activeShaderPipelineHandle = pipelineHandle;

@@ -202,10 +202,7 @@ namespace Divide
                         }
                         else if ( !Util::CompareIgnoreCase( newScene._name.c_str(), Config::DEFAULT_SCENE_NAME ) )
                         {
-                            if (!Attorney::EditorGeneralWidget::switchScene( _context.editor(), newScene, true ) )
-                            {
-                                DIVIDE_UNEXPECTED_CALL();
-                            }
+                            DIVIDE_EXPECTED_CALL( Attorney::EditorGeneralWidget::switchScene( _context.editor(), newScene, true ) );
                         }
                         else
                         {
@@ -571,10 +568,8 @@ namespace Divide
                                 }
                             }
                         }
-                        if (!success)
-                        {
-                            DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat(LOCALE_STR("ERROR_PROJECT_LOAD"), projectList[i]._name).c_str());
-                        }
+
+                        DIVIDE_EXPECTED_CALL_MSG(success, Util::StringFormat(LOCALE_STR("ERROR_PROJECT_LOAD"), projectList[i]._name).c_str());
                     }
                 }
                 ImGui::EndMenu();

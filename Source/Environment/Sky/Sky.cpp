@@ -312,19 +312,15 @@ bool Sky::load( PlatformContext& context )
     const string perlWolFile = (procLocation() / perlWorlTexName).string();
     Byte* perlWorlData = (Byte*)stbi_load( perlWolFile.c_str(), &x, &y, &n, STBI_rgb_alpha );
     ImageTools::ImageData imgDataPerl = {};
-    if ( !imgDataPerl.loadFromMemory( perlWorlData, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) )
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( imgDataPerl.loadFromMemory( perlWorlData, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) );
+
     stbi_image_free( perlWorlData );
 
     const string worlFile = (procLocation() / worlTexName).string();
     Byte* worlNoise = (Byte*)stbi_load( worlFile.c_str(), &x, &y, &n, STBI_rgb_alpha );
     ImageTools::ImageData imgDataWorl = {};
-    if ( !imgDataWorl.loadFromMemory( worlNoise, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) )
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( imgDataWorl.loadFromMemory( worlNoise, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) );
+
     stbi_image_free( worlNoise );
 
     _skyboxSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
@@ -492,10 +488,7 @@ bool Sky::load( PlatformContext& context )
         return shaderDescriptor;
     });
 
-    if (!WaitForReady( Get(_weatherTex) ))
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL( WaitForReady( Get(_weatherTex) ) );
 
     skyMatPtr->setTexture( TextureSlot::UNIT0, _skybox, _skyboxSampler, TextureOperation::NONE );
     skyMatPtr->setTexture( TextureSlot::HEIGHTMAP, _weatherTex, noiseSamplerMipMap, TextureOperation::NONE );

@@ -85,10 +85,8 @@ namespace Divide
         if ( ret != FileError::NONE )
         {
             ret = removeDirectory( scenePath / scene._name );
-            if (ret != FileError::NONE) 
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( ret == FileError::NONE );
+}
             return false;
         }
 
@@ -216,10 +214,7 @@ namespace Divide
                     if ( unloadPrevious && sceneToUnload )
                     {
                         Attorney::SceneProjectManager::onRemoveActive( sceneToUnload );
-                        if ( !unloadScene( sceneToUnload )) 
-                        {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+                        DIVIDE_EXPECTED_CALL( unloadScene( sceneToUnload ) );
                     }
                 }
             }),

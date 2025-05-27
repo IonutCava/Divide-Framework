@@ -163,10 +163,7 @@ void SceneAnimator::buildBuffers(GFXDevice& gfxDevice)
     // pay the cost upfront
     for (AnimEvaluator_uptr& crtAnimation : _animations)
     {
-        if ( !crtAnimation->initBuffers(gfxDevice, useDualQuaternion()) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( crtAnimation->initBuffers(gfxDevice, useDualQuaternion()) );
     }
 }
 
@@ -272,10 +269,7 @@ void SceneAnimator::load(PlatformContext& context, ByteBuffer& dataIn)
 
     auto tempVer = decltype(BYTE_BUFFER_VERSION_ANIMATOR){0};
     dataIn >> tempVer;
-    if (tempVer != BYTE_BUFFER_VERSION_ANIMATOR)
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL(tempVer == BYTE_BUFFER_VERSION_ANIMATOR);
 
     // the number of animations
     U32 nsize = 0u;
@@ -320,10 +314,7 @@ Bone* SceneAnimator::loadSkeleton(ByteBuffer& dataIn, Bone* parentIn)
 {
     auto tempVer = decltype(BYTE_BUFFER_VERSION_SKELETON){0};
     dataIn >> tempVer;
-    if (tempVer != BYTE_BUFFER_VERSION_SKELETON)
-    {
-        DIVIDE_UNEXPECTED_CALL();
-    }
+    DIVIDE_EXPECTED_CALL(tempVer == BYTE_BUFFER_VERSION_SKELETON);
 
     string tempString;
     // the name of the bone

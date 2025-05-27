@@ -363,9 +363,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
         } break;
         case ActionType::APPROACH_ENEMY_FLAG: {
             PRINT("Starting approach flag action");
-            if (!_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value())) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( _entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value()));
         } break;
         case ActionType::CAPTURE_ENEMY_FLAG: {
             PRINT("Starting capture flag action");
@@ -381,9 +379,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
         } break;
         case ActionType::RETURN_TO_BASE: {
             PRINT("Starting return to base action");
-            if  (!_entity->updateDestination(_initialFlagPositions[ownTeamID])) {
-              DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL( _entity->updateDestination(_initialFlagPositions[ownTeamID])) ;
         } break;
         case ActionType::ATTACK_ENEMY: {
             PRINT("Starting attack enemy action");
@@ -392,9 +388,7 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
 
                 if (_localWorkingMemory._isFlagRetriever.value() == false) {
                     SceneGraphNode* enemy = _visualSensor->findClosestNode(g_enemyTeamContainer);
-                    if (!_entity->updateDestination(enemy->get<TransformComponent>()->getWorldPosition(), true)) {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL( _entity->updateDestination(enemy->get<TransformComponent>()->getWorldPosition(), true));
                     _localWorkingMemory._currentTarget.value(enemy);
                 } else {
                     if (_globalWorkingMemory._flagCarriers[enemyTeamID].value() == nullptr) {
@@ -406,22 +400,16 @@ bool WarSceneAIProcessor::preAction(const ActionType type, const WarSceneAction*
                             .value()
                             ->getUnitRef()
                             ->getBoundNode();
-                    if (!_entity->updateDestination(enemy->get<TransformComponent>()->getWorldPosition(), true)) {
-                        DIVIDE_UNEXPECTED_CALL();
-                    }
+                    DIVIDE_EXPECTED_CALL(_entity->updateDestination(enemy->get<TransformComponent>()->getWorldPosition(), true));
                     _localWorkingMemory._currentTarget.value(enemy);
                 }
             } else {
-                if (!_entity->updateDestination(_localWorkingMemory._currentTarget.value()->get<TransformComponent>()->getWorldPosition())) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( _entity->updateDestination(_localWorkingMemory._currentTarget.value()->get<TransformComponent>()->getWorldPosition()));
             }
         } break;
         case ActionType::RECOVER_FLAG: {
             PRINT("Starting recover flag action");
-            if (!_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value())) {
-                DIVIDE_UNEXPECTED_CALL();
-            }
+            DIVIDE_EXPECTED_CALL(_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value()));
         } break;
         default: 
         case ActionType::COUNT: {
@@ -555,9 +543,7 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
         case ActionType::CAPTURE_ENEMY_FLAG: {
             state = nearEnemyFlag();
             if (!state) {
-                if (!_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value(), true)) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL(_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[enemyTeamID].value(), true));
             }
         } break;
 
@@ -572,9 +558,7 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
                 _entity->destinationReached();
 
             if (!state){
-                if (!_entity->updateDestination(_initialFlagPositions[ownTeamID])) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL(_entity->updateDestination(_initialFlagPositions[ownTeamID]));
             }
           
         } break;
@@ -583,9 +567,7 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
         case ActionType::RETURN_TO_BASE: {
             state = atHomeBase();
             if (!state && _entity->destinationReached()) {
-                if (!_entity->updateDestination(_initialFlagPositions[ownTeamID])) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( _entity->updateDestination(_initialFlagPositions[ownTeamID]));
             }
         } break;
         case ActionType::ATTACK_ENEMY: {
@@ -598,9 +580,7 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
                         targetNPC->getAttribute(to_base(UnitAttributes::HEALTH_POINTS)) == 0;
                 if (!state) {
                     if (_entity->getPosition().distanceSquared(targetNPC->getPosition()) >= g_ATTACK_RADIUS_SQ) {
-                        if (!_entity->updateDestination(targetNPC->getPosition(), true)) {
-                            DIVIDE_UNEXPECTED_CALL();
-                        }
+                        DIVIDE_EXPECTED_CALL( _entity->updateDestination(targetNPC->getPosition(), true));
                     }
                 }
             }
@@ -608,9 +588,7 @@ bool WarSceneAIProcessor::checkCurrentActionComplete(const GOAPAction& planStep)
         case ActionType::RECOVER_FLAG: {
             state = _globalWorkingMemory._flagsAtBase[ownTeamID].value();
             if (!state) {
-                if (!_entity->updateDestination(_globalWorkingMemory._teamFlagPosition[ownTeamID].value())) {
-                    DIVIDE_UNEXPECTED_CALL();
-                }
+                DIVIDE_EXPECTED_CALL( _entity->updateDestination(_globalWorkingMemory._teamFlagPosition[ownTeamID].value()));
             }
         } break;
         default:

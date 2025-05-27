@@ -265,10 +265,7 @@ namespace Divide
             return false;
         }
 
-        if ( createDirectory( Paths::g_saveLocation / Paths::Editor::g_saveLocation ) != FileError::NONE )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( createDirectory( Paths::g_saveLocation / Paths::Editor::g_saveLocation ) == FileError::NONE );
 
         _mainWindow = &_context.app().windowManager().getWindow( 0u );
         _render2DSnapshot = Camera::GetUtilityCamera( Camera::UtilityCamera::_2D_FLIP_Y )->snapshot();
@@ -819,10 +816,7 @@ namespace Divide
             window.reset();
         }
 
-        if ( !_context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( _context.gfx().renderTargetPool().deallocateRT( _nodePreviewRTHandle ) );
 
         Camera::DestroyCamera( _editorCamera );
         Camera::DestroyCamera( _nodePreviewCamera );

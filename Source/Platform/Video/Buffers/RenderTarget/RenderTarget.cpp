@@ -143,10 +143,7 @@ bool RenderTarget::create()
 
         att->setTexture(renderTexture, resolveTexture);
 
-        if ( !initAttachment( att, attDesc._type, attDesc._slot ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( initAttachment( att, attDesc._type, attDesc._slot ) );
     }
 
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )
@@ -158,10 +155,7 @@ bool RenderTarget::create()
 
         RTAttachment* att = updateAttachment(attDesc);
         att->setTexture( renderTexture, resolveTexture );
-        if ( !initAttachment( att, attDesc._type, attDesc._slot ) )
-        {
-            DIVIDE_UNEXPECTED_CALL();
-        }
+        DIVIDE_EXPECTED_CALL( initAttachment( att, attDesc._type, attDesc._slot ) );
     }
 
     return true;
