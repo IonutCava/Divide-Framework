@@ -163,6 +163,13 @@ class Kernel final : public Input::InputAggregatorInterface,
     private:
         struct InputInterfacePair
         {
+            InputInterfacePair() = default;
+            InputInterfacePair(InputAggregatorInterface* ptr, InputConsumerType type)
+                : _ptr(ptr)
+                , _type(type)
+            {
+            }
+
             InputAggregatorInterface* _ptr{nullptr};
             InputConsumerType _type{ InputConsumerType::COUNT };
         };
