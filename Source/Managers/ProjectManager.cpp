@@ -86,7 +86,7 @@ namespace Divide
         {
             ret = removeDirectory( scenePath / scene._name );
             DIVIDE_EXPECTED_CALL( ret == FileError::NONE );
-}
+
             return false;
         }
 
