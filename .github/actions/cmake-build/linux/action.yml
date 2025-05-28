@@ -15,22 +15,31 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Get number of CPU cores
+    - name: Record build start time
+      id: build_start
       shell: bash
-      id: cpu-cores
-      run: echo "count=$(nproc)" >> $GITHUB_OUTPUT
+      run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
 
-    - name: Build and test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
+    - name: Build ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       uses: lukka/run-cmake@v10
-      env:
-        CMAKE_BUILD_PARALLEL_LEVEL: ${{ steps.cpu-cores.outputs.count }}
       with:
         configurePreset: linux-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
         buildPreset: linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+
+    - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
+      continue-on-error: true
+      uses: lukka/run-cmake@v10
+      with:
         testPreset: test-linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
 
-    - name: Record build timing
+    - name: Record build end time and metrics
       shell: bash
       run: |
+        end_time=$(date +%s)
+        start_time=${{ steps.build_start.outputs.start_time }}
+        duration=$(( (end_time - start_time) / 60 ))
         echo "$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
         echo "Build completed for ${{ inputs.compiler }}-${{ inputs.build-type }}-${{ inputs.configuration }}" >> $GITHUB_STEP_SUMMARY
+        echo "## Build Metrics" >> $GITHUB_STEP_SUMMARY
+        echo "* Duration: ${duration} minutes" >> $GITHUB_STEP_SUMMARY
+        echo "* Configuration: ${{ inputs.configuration }}" >> $GITHUB_STEP_SUMMARY

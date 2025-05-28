@@ -72,9 +72,6 @@ jobs:
       - uses: ./.github/actions/build-setup/linux
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
-          compiler: ${{ matrix.compiler }}
-          build-type: ${{ matrix.build-type }}
-          configuration: ${{ matrix.configuration }}
 
       - uses: ./.github/actions/cmake-build/linux
         with:

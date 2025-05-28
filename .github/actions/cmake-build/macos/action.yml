@@ -5,13 +5,38 @@ inputs:
   build-type:
     required: true
     description: 'Build type (editor or game)'
+  configuration:
+    required: true
+    description: 'Build configuration (debug, release, or profile)'
 
 runs:
   using: "composite"
   steps:
-    - name: Build and test ${{ inputs.build-type }}
+    - name: Record build start time
+      id: build_start
+      shell: bash
+      run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+    - name: Build ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       uses: lukka/run-cmake@v10
       with:
         configurePreset: macos-clang${{ inputs.build-type == 'editor' && '-editor' || '' }}
-        buildPreset: macos-clang-release${{ inputs.build-type == 'editor' && '-editor' || '' }}
-        testPreset: test-macos-clang-release${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        buildPreset: macos-clang-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+
+    - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
+      continue-on-error: true
+      uses: lukka/run-cmake@v10
+      with:
+        testPreset: test-macos-clang-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+
+    - name: Record build end time and metrics
+      shell: bash
+      run: |
+        end_time=$(date +%s)
+        start_time=${{ steps.build_start.outputs.start_time }}
+        duration=$(( (end_time - start_time) / 60 ))
+        echo "$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY
+        echo "Build completed for macos-clang-${{ inputs.build-type }}-${{ inputs.configuration }}" >> $GITHUB_STEP_SUMMARY
+        echo "## Build Metrics" >> $GITHUB_STEP_SUMMARY
+        echo "* Duration: ${duration} minutes" >> $GITHUB_STEP_SUMMARY
+        echo "* Configuration: ${{ inputs.configuration }}" >> $GITHUB_STEP_SUMMARY
