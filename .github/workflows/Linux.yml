@@ -25,6 +25,9 @@ jobs:
       should_run: ${{ steps.check.outputs.should_run }}
    steps:
       - uses: actions/checkout@v4 
+        with:
+         fetch-depth: 1
+         submodules: false
       - id: check
         uses: ./.github/actions/check-date
 
@@ -35,8 +38,6 @@ jobs:
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
 
     steps:
-    - uses: actions/checkout@v4
-  
     - name: Print GCC version
       run: g++ --version 
 

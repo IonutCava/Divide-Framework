@@ -18,6 +18,9 @@ jobs:
        should_run: ${{ steps.check.outputs.should_run }}
     steps:
        - uses: actions/checkout@v4  
+         with:
+          fetch-depth: 1
+          submodules: false
        - id: check
          uses: ./.github/actions/check-date
 
@@ -31,8 +34,6 @@ jobs:
       clang_version: ${{ steps.clang_info.outputs.version }}
 
     steps:
-      - uses: actions/checkout@v4
-  
       - name: Get CLANG version
         id: clang_info
         run: |
