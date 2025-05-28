@@ -593,7 +593,7 @@ namespace Divide
                         ResourceCache::Build<T>( ptr, descriptor );
                     }),
                     s_context->taskPool( TaskPoolType::ASSET_LOADER ), 
-                    descriptor.waitForReady() ? TaskPriority::REALTIME : TaskPriority::DONT_CARE,
+                    descriptor.waitForReady() ? TaskPriority::REALTIME : TaskPriority::HIGH,
                     [ptr, ret, &taskCounter, resName = descriptor.resourceName()]()
                     {
                         DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);

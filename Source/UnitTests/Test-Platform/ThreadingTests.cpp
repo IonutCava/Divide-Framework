@@ -325,9 +325,17 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
     StartAndWait( *job, test, TaskPriority::DONT_CARE);
     CHECK_EQUAL( callbackValue, 3u );
 
+    job = CreateTask([&callbackValue]([[maybe_unused]] const Task& parentTask)
+                                     {
+                                         ++callbackValue;
+                                     });
+
+    StartAndWait(*job, test, TaskPriority::HIGH);
+    CHECK_EQUAL(callbackValue, 4u);
+
     callbackCount = test.flushCallbackQueue();
     CHECK_EQUAL( callbackCount, 0u );
-    CHECK_EQUAL( callbackValue, 3u );
+    CHECK_EQUAL( callbackValue, 4u );
 
     job = CreateTask( [&callbackValue]( [[maybe_unused]] const Task& parentTask )
                         {
@@ -338,7 +346,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                         ++callbackValue;
                     } );
 
-    CHECK_EQUAL( callbackValue, 5u );
+    CHECK_EQUAL( callbackValue, 6u );
 
     test.shutdown();
 }

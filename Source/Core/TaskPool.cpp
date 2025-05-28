@@ -129,7 +129,7 @@ namespace Divide
 
         DIVIDE_EXPECTED_CALL
         (
-            _queue.enqueue(
+            getQueue(priority).enqueue(
                 // Returning false from a PoolTask lambda will just reschedule it for later execution again. 
                 // This may leave the task in an infinite loop, always re-queuing!
                 [this, &task, hasOnCompletionFunction](const bool isIdleCall)
@@ -373,25 +373,41 @@ namespace Divide
         PROFILE_SCOPE_AUTO(Profiler::Category::Threading);
 
         PoolTask task = {};
-        if ( deque( isIdleCall, task ) &&
+        TaskPriority priorityOut = TaskPriority::DONT_CARE;
+
+        if ( deque( isIdleCall, task, priorityOut) &&
             !task( isIdleCall ) )
         {
-            DIVIDE_EXPECTED_CALL( _queue.enqueue( task ) );
+            DIVIDE_EXPECTED_CALL( getQueue(priorityOut).enqueue( task ) );
         }
     }
 
-    bool TaskPool::deque( const bool isIdleCall, PoolTask& taskOut )
+    bool TaskPool::deque( const bool isIdleCall, PoolTask& taskOut, TaskPriority& priorityOut)
+    {
+        PROFILE_SCOPE_AUTO(Profiler::Category::Threading);
+
+        priorityOut = TaskPriority::HIGH;
+        if ( !dequeInternal(priorityOut, isIdleCall, taskOut) )
+        {
+            priorityOut = TaskPriority::DONT_CARE;
+            return dequeInternal(priorityOut, isIdleCall, taskOut);
+        }
+
+        return true;
+    }
+
+    bool TaskPool::dequeInternal(const TaskPriority& priorityIn, bool isIdleCall, PoolTask& taskOut)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        if ( isIdleCall )
+        if ( isIdleCall || priorityIn == TaskPriority::HIGH )
         {
-            return _queue.try_dequeue( taskOut );
+            return getQueue(priorityIn).try_dequeue( taskOut );
         }
 
         if constexpr ( IsBlocking )
         {
-            while( !_queue.wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
+            while( !getQueue(priorityIn).wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
             {
                 if (!_isRunning) [[unlikely]]
                 {
@@ -402,7 +418,7 @@ namespace Divide
         }
         else
         {
-            while ( !_queue.try_dequeue( taskOut ) )
+            while ( !getQueue(priorityIn).try_dequeue( taskOut ) )
             {
                 if ( !_isRunning ) [[unlikely]]
                 {

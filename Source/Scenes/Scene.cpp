@@ -608,7 +608,7 @@ namespace Divide
             ParallelForDescriptor descriptor = {};
             descriptor._iterCount = childCount;
             descriptor._partitionSize = 3u;
-            descriptor._priority = TaskPriority::DONT_CARE;
+            descriptor._priority = TaskPriority::HIGH;
             descriptor._useCurrentThread = true;
             Parallel_For( _context.taskPool( TaskPoolType::ASSET_LOADER ), descriptor, [this, &sceneNode, &crtNode]( const Task* innerTask, const U32 start, const U32 end )
             {
@@ -1232,7 +1232,7 @@ namespace Divide
         ParallelForDescriptor descriptor = {};
         descriptor._iterCount = to_U32( childCount );
         descriptor._partitionSize = 3u;
-        descriptor._priority = TaskPriority::DONT_CARE;
+        descriptor._priority = TaskPriority::HIGH;
         descriptor._useCurrentThread = true;
         descriptor._allowPoolIdle = true;
         descriptor._waitForFinish = true;

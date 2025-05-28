@@ -46,6 +46,11 @@ namespace Divide {
     {
         return CreateTask(nullptr, MOV(threadedFunction), allowedInIdle );
     }
+
+    FORCE_INLINE TaskPool::QueueType& TaskPool::getQueue(const TaskPriority priority) noexcept
+    {
+        return (priority == TaskPriority::HIGH) ? _highPriorityqueue : _normalQueue;
+    }
 } //namespace Divide
 
 #endif //DVD_TASK_POOL_INL_

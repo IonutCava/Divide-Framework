@@ -58,10 +58,11 @@ struct ParallelForDescriptor
 using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
 
 class TaskPool final : public GUIDWrapper {
-public:
   public:
+     constexpr static bool IsBlocking = true;
+     using QueueType = std::conditional_t<IsBlocking, moodycamel::BlockingConcurrentQueue<PoolTask>, moodycamel::ConcurrentQueue<PoolTask>>;
 
-    constexpr static bool IsBlocking = true;
+  public:
 
     explicit TaskPool(std::string_view workerName);
     ~TaskPool();
@@ -105,8 +106,11 @@ public:
     void enqueue(Task& task, TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
     void runTask(Task& task);
 
-    bool deque( bool isIdleCall, PoolTask& taskOut );
+    bool deque( bool isIdleCall, PoolTask& taskOut, TaskPriority& priorityOut );
+    bool dequeInternal( const TaskPriority& priorityIn, bool isIdleCall, PoolTask& taskOut );
     void waitForTask(const Task& task);
+
+    QueueType& getQueue(TaskPriority priority) noexcept;
 
   private:
      const string _threadNamePrefix;
@@ -128,8 +132,8 @@ public:
 
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
 
-     using QueueType = std::conditional_t<IsBlocking, moodycamel::BlockingConcurrentQueue<PoolTask>, moodycamel::ConcurrentQueue<PoolTask>>;
-     QueueType _queue;
+     QueueType _normalQueue;
+     QueueType _highPriorityqueue;
 
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
