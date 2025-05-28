@@ -42,14 +42,14 @@ jobs:
 
   build_job:
     needs: info_job
+    name: macOS - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: macos-latest
     strategy:
       fail-fast: true
       matrix:
         build-type: [editor, game]
         configuration: [debug, release]
 
-    name: macOS - Clang ${{ matrix.build-type }}
-    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
