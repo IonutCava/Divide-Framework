@@ -86,8 +86,16 @@ namespace Divide
 
         if (priority == TaskPriority::REALTIME ) [[unlikely]]
         {
-            DIVIDE_EXPECTED_CALL(waitForJobs(task, priority, false));
+            while (task._unfinishedJobs.load() > 1u)
+            {
+                if (flushCallbackQueue() == 0u)
+                {
+                    threadWaiting();
+                }
+            }
+
             runTask(task);
+
             if (onCompletionFunction)
             {
                 onCompletionFunction();
@@ -124,57 +132,36 @@ namespace Divide
             _queue.enqueue(
                 // Returning false from a PoolTask lambda will just reschedule it for later execution again. 
                 // This may leave the task in an infinite loop, always re-queuing!
-                [this, &task, priority, hasOnCompletionFunction](const bool isIdleCall)
+                [this, &task, hasOnCompletionFunction](const bool isIdleCall)
                 {
-                    if (!waitForJobs(task, priority, isIdleCall))
+                    while (task._unfinishedJobs.load() > 1u)
+                    {
+                        if (isIdleCall)
+                        {
+                            // Can't be run at this time as we'll just recurse to infinity
+                            return false;
+                        }
+
+                        // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
+                        threadWaiting();
+                    }
+
+                    if (!task._runWhileIdle && isIdleCall)
                     {
                         return false;
                     }
 
-                    // Can't run this task at the current moment. We're in an idle loop and the task needs express execution (e.g. render pass task)
-                    if (task._runWhileIdle || !isIdleCall)
+                    runTask(task);
+
+                    if (hasOnCompletionFunction)
                     {
-                        runTask(task);
-
-                        if (hasOnCompletionFunction)
-                        {
-                            _threadedCallbackBuffer.enqueue(task._id);
-                        }
-
-                        return true;
+                        _threadedCallbackBuffer.enqueue(task._id);
                     }
 
-                    return false;
+                    return true;
                 }
             )
         );
-    }
-
-    bool TaskPool::waitForJobs(Task& task, const TaskPriority priority, const bool isIdleCall)
-    {
-        while (task._unfinishedJobs.load() > 1u)
-        {
-            if (priority == TaskPriority::REALTIME)
-            {
-                if (flushCallbackQueue() == 0u)
-                {
-                    threadWaiting();
-                }
-            }
-            else
-            {
-                if (isIdleCall)
-                {
-                    // Can't be run at this time. It will be executed again later!
-                    return false;
-                }
-
-                // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
-                threadWaiting();
-            }
-        }
-
-        return true;
     }
 
     void TaskPool::runTask( Task& task )
@@ -186,6 +173,7 @@ namespace Divide
         if ( task._callback ) [[likely]]
         {
             task._callback( task );
+            task._callback = {}; //< Needed to cleanup any stale resources (e.g. captured by lambdas)
         }
 
         taskCompleted( task );
@@ -281,8 +269,6 @@ namespace Divide
     void TaskPool::taskCompleted( Task& task )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-
-        task._callback = {}; ///<Needed to cleanup any stale resources (e.g. captured by lambdas)
 
         if ( task._parent != nullptr )
         {
@@ -387,12 +373,8 @@ namespace Divide
         PROFILE_SCOPE_AUTO(Profiler::Category::Threading);
 
         PoolTask task = {};
-        if ( !deque( isIdleCall, task ) )
-        {
-            return;
-        }
-
-        if ( !task( isIdleCall ) )
+        if ( deque( isIdleCall, task ) &&
+            !task( isIdleCall ) )
         {
             DIVIDE_EXPECTED_CALL( _queue.enqueue( task ) );
         }

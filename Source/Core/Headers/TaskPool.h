@@ -104,7 +104,6 @@ public:
     
     void enqueue(Task& task, TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
     void runTask(Task& task);
-    bool waitForJobs(Task& task, TaskPriority priority, bool isIdleCall);
 
     bool deque( bool isIdleCall, PoolTask& taskOut );
     void waitForTask(const Task& task);
@@ -116,7 +115,7 @@ public:
      {
          CallbackEntry() = default;
          CallbackEntry(DELEGATE<void>&& cbk, U32 taskID) noexcept
-             : _cbk(std::move(cbk)), _taskID(taskID)
+             : _cbk(MOV(cbk)), _taskID(taskID)
          {
          }
 

@@ -17,7 +17,7 @@ namespace
         std::cout << line << std::endl;
     };
 
-    void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority = TaskPriority::DONT_CARE, DELEGATE<void>&& onCompletionFunction = {})
+    void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction = {})
     {
         Start( task, pool, priority, MOV(onCompletionFunction) );
         Wait( task, pool );
@@ -236,7 +236,7 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
             Start( *CreateTask( job, TASK_NOP ), test );
         }
 
-        StartAndWait( *job, test );
+        StartAndWait( *job, test, TaskPriority::DONT_CARE);
 
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
@@ -309,7 +309,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
     StartAndWait( *job, test, TaskPriority::DONT_CARE, [&callbackValue]()
                     {
                         ++callbackValue;
-                    } );
+                    });
 
     CHECK_EQUAL( callbackValue, 1u );
 
@@ -322,7 +322,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                             ++callbackValue;
                         } );
 
-    StartAndWait( *job, test );
+    StartAndWait( *job, test, TaskPriority::DONT_CARE);
     CHECK_EQUAL( callbackValue, 3u );
 
     callbackCount = test.flushCallbackQueue();
