@@ -5,8 +5,8 @@
 #include "Headers/PlatformDefinesApple.h"
 
 #include <Carbon/Carbon.h>
-#include <SDL_syswm.h>
 #include <signal.h>
+#include <SDL2/SDL_syswm.h>
 
 namespace Divide {
 
