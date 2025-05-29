@@ -7,6 +7,10 @@
             "name": "physx",
             "platform": "!osx & !linux"
         },
+        {
+            "name": "wayland",
+            "platform": "linux"
+        },
         "pkgconf",
         "boost-property-tree",
         "boost-asio",

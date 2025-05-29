@@ -34,12 +34,6 @@
 #ifndef DVD_PLATFORM_DEFINES_UNIX_H_
 #define DVD_PLATFORM_DEFINES_UNIX_H_
 
-#include <sys/time.h>
-#include <X11/X.h>
-#include <strings.h>
-//#include <iterator>
-#include <cmath>
-
 #ifdef Complex
 #undef Complex
 #endif //Complex
@@ -72,9 +66,13 @@
 #undef Always
 #endif //Always
 
-namespace Divide {
-    struct WindowHandle {
-        Window _handle;
+namespace Divide
+{
+    struct WindowHandle
+    {
+        unsigned long x11_window{0u};
+        void* wl_display{nullptr};
+        void* wl_surface{ nullptr };
     };
 
 }; //namespace Divide

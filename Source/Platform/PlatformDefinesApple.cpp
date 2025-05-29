@@ -1,24 +1,22 @@
 
-
-#if defined(__APPLE_CC__)
+#if defined(__APPLE__)
 
 #include "Headers/PlatformDefinesApple.h"
 
 #include <Carbon/Carbon.h>
 #include <signal.h>
 #include <SDL2/SDL_syswm.h>
+#include <sys/sysctl.h>
 
 namespace Divide {
 
     bool DebugBreak(const bool condition) noexcept {
-        if (!condition) {
+        if (!condition)
+        {
             return false;
         }
-#if defined(SIGTRAP)
+
         raise(SIGTRAP);
-#else
-        raise(SIGABRT);
-#endif
 
         return true;
     }
@@ -83,21 +81,27 @@ namespace Divide {
         } break;
         }
 
-        DIVIDE_EXPECTED_CALL( pthread_setschedparam(thread, SCHED_FIFO, &sch_params) );
+        if( pthread_setschedparam(thread, SCHED_FIFO, &sch_params) != 0 )
+        {
+            Console::errofn(LOCALE_STR("ERROR_THREAD_PRIORITY"), thread, strerror(errno));
+        }
+
     }
 
-    void SetThreadPriority(const ThreadPriority priority) {
+    void SetThreadPriority(const ThreadPriority priority)
+    {
         SetThreadPriorityInternal(pthread_self(), priority);
     }
 
-    #include <sys/prctl.h>
-    void SetThreadName(const std::string_view threadName) noexcept {
+    void SetThreadName(const std::string_view threadName) noexcept
+    {
         pthread_setname_np(pthread_self(), threadName.data());
     }
 
-    bool CallSystemCmd(const char* cmd, const std::string_view args) {
+    bool CallSystemCmd(const char* cmd, const std::string_view args)
+    {
         return std::system(Util::StringFormat("{} {}", cmd, args).c_str()) == 0;
     }
 }; //namespace Divide
 
-#endif //defined(__APPLE_CC__)
+#endif //defined(__APPLE__)

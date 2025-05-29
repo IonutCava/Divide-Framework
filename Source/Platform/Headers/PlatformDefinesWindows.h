@@ -67,8 +67,10 @@
 
 LRESULT DlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;
 
-namespace Divide {
-    struct WindowHandle {
+namespace Divide
+{
+    struct WindowHandle
+    {
         HWND _handle = nullptr;
     };
 }; //namespace Divide

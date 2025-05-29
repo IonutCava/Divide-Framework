@@ -1,5 +1,3 @@
-
-
 #if defined(_WIN32)
 
 #if defined(_DEBUG)
@@ -12,11 +10,11 @@
 #include <ShellScalingApi.h>
 #include <comdef.h>
 
-#ifdef WIN32_LEAN_AND_MEAN
-#undef WIN32_LEAN_AND_MEAN
 // SDL redefines WIN32_LEAN_AND_MEAN
 #include <SDL2/SDL_syswm.h>
-#endif
+#ifdef WIN32_LEAN_AND_MEAN
+#undef WIN32_LEAN_AND_MEAN
+#endif //WIN32_LEAN_AND_MEAN
 
 #include <iostream>
 
@@ -194,11 +192,14 @@ namespace Divide {
         char* lpCommandLine = const_cast<char*>(commandLine.c_str());
 
         const BOOL ret = CreateProcess(nullptr, lpCommandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi);
+        if (ret == TRUE)
+        {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return true;
+        }
 
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-
-        return ret == TRUE;
+        return false;
     }
 }; //namespace Divide
 
