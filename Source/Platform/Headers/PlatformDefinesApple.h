@@ -48,6 +48,10 @@
 #undef INTEL
 #endif //INTEL
 
+#ifdef Byte
+#undef Byte
+#endif //Byte
+
 void checkMacEvents();
 
 namespace Divide
