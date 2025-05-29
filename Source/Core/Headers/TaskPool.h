@@ -67,7 +67,7 @@ class TaskPool final : public GUIDWrapper {
     explicit TaskPool(std::string_view workerName);
     ~TaskPool();
 
-    bool init(size_t threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreate = {});
+    bool init(size_t threadCount, DELEGATE<void, size_t, const std::thread::id&>&& onThreadCreate = {});
     void shutdown();
 
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func, bool allowedInIdle ) noexcept;
@@ -100,9 +100,6 @@ class TaskPool final : public GUIDWrapper {
     friend void Wait(const Task& task, TaskPool& pool);
     friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor);
 
-    void taskStarted(Task& task);
-    void taskCompleted(Task& task);
-    
     void enqueue(Task& task, TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
     void runTask(Task& task);
 
@@ -137,12 +134,12 @@ class TaskPool final : public GUIDWrapper {
 
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
-     DELEGATE<void, const std::thread::id&> _threadCreateCbk{};
+     DELEGATE<void, size_t, const std::thread::id&> _threadCreateCbk{};
 
      std::atomic_uint _runningTaskCount = 0u;
      std::atomic_size_t _activeThreads{ 0u };
 
-     bool _isRunning{ true };
+     std::atomic_bool _isRunning;
 };
 
 template<class Predicate>

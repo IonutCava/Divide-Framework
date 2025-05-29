@@ -104,7 +104,7 @@ private:
 
     void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
 
-    void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) override;
+    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) override;
 
     /// Reset as much of the GL default state as possible within the limitations given
     void clearStates(GLStateTracker& stateTracker) const;

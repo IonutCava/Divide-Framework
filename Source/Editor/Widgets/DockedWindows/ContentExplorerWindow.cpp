@@ -294,15 +294,7 @@ namespace Divide {
                                 {
                                     if (!_textureLoadQueueLocked)
                                     {
-                                        const EditorFileEntry entry
-                                        {
-                                           ._path = _selectedDir->_path,
-                                           ._file = 
-                                           {
-                                               ._path = file._path
-                                           }
-                                        };
-                                        _textureLoadQueue.push( entry );
+                                        _textureLoadQueue.emplace_back(_selectedDir->_path, file);
                                         lockTextureQueue = true;
                                     }
                                 }

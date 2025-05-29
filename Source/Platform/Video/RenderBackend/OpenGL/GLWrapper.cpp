@@ -1433,7 +1433,7 @@ namespace Divide
         NOP();
     }
 
-    void GL_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID, const bool isMainRenderThread )
+    void GL_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, const bool isMainRenderThread )
     {
         if ( isMainRenderThread )
         {

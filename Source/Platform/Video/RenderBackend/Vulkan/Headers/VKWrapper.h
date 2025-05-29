@@ -95,7 +95,7 @@ protected:
     bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
     bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
 
-    void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
+    void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
     void initDescriptorSets() override;
 
     [[nodiscard]] RenderTarget_uptr     newRT( const RenderTargetDescriptor& descriptor ) const override;

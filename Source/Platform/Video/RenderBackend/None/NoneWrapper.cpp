@@ -153,7 +153,7 @@ namespace Divide
         return true;
     }
 
-    void NONE_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
+    void NONE_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
     {
     }
 

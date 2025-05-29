@@ -20,6 +20,7 @@ namespace Divide
     TaskPool::TaskPool( const std::string_view workerName )
         : _threadNamePrefix( workerName )
     {
+        _isRunning.store(false);
     }
 
     TaskPool::~TaskPool()
@@ -27,7 +28,7 @@ namespace Divide
         DIVIDE_ASSERT( _activeThreads.load() == 0u, "Task pool is still active! Threads should be joined before destroying the pool. Call TaskPool::shutdown() first");
     }
 
-    bool TaskPool::init( const size_t threadCount, const DELEGATE<void, const std::thread::id&>& onThreadCreateCbk)
+    bool TaskPool::init( const size_t threadCount, DELEGATE<void, size_t, const std::thread::id&>&& onThreadCreateCbk )
     {
         shutdown();
         if (threadCount == 0u)
@@ -35,14 +36,15 @@ namespace Divide
             return false;
         }
 
-        _isRunning = true;
+        _isRunning.store(true);
         _threadCreateCbk = onThreadCreateCbk;
         _threads.reserve( threadCount );
         _activeThreads.store(threadCount);
 
-        for ( U32 idx = 0u; idx < threadCount; ++idx )
+        for (size_t idx = 0u; idx < threadCount; ++idx )
         {
-            _threads.emplace_back(
+            _threads.emplace_back
+            (
                 [&, idx]
                 {
                     const auto threadName = Util::StringFormat( "{}_{}", _threadNamePrefix, idx );
@@ -53,10 +55,11 @@ namespace Divide
 
                     if ( _threadCreateCbk )
                     {
-                        _threadCreateCbk( std::this_thread::get_id() );
+                        _threadCreateCbk( idx, std::this_thread::get_id() );
+                        _threadCreateCbk = {};
                     }
 
-                    while ( _isRunning )
+                    while ( _isRunning.load() )
                     {
                         executeOneTask( false );
                     }
@@ -64,7 +67,8 @@ namespace Divide
                     Profiler::OnThreadStop();
 
                     _activeThreads.fetch_sub( 1u );
-                } );
+                }
+            );
         }
 
         return true;
@@ -168,7 +172,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
-        taskStarted( task );
+        _runningTaskCount.fetch_add(1);
 
         if ( task._callback ) [[likely]]
         {
@@ -176,7 +180,16 @@ namespace Divide
             task._callback = {}; //< Needed to cleanup any stale resources (e.g. captured by lambdas)
         }
 
-        taskCompleted( task );
+        if (task._parent != nullptr)
+        {
+            task._parent->_unfinishedJobs.fetch_sub(1);
+        }
+
+        task._unfinishedJobs.fetch_sub(1);
+        _runningTaskCount.fetch_sub(1);
+
+        LockGuard<Mutex> lock(_taskFinishedMutex);
+        _taskFinishedCV.notify_one();
     }
 
     void TaskPool::waitForTask( const Task& task )
@@ -215,15 +228,11 @@ namespace Divide
             }
 
             LockGuard<SharedMutex> w_lock( _taskCallbacksLock );
-            const size_t callbackCount = _taskCallbacks.size();
-            DIVIDE_ASSERT( callbackCount > 0u );
-
             for ( size_t i = 0u; i < count; ++i )
             {
                 const U32 idx = completedTaskIndices[i];
-                for ( size_t j = 0u; j < callbackCount; ++j )
+                for (CallbackEntry& entry : _taskCallbacks)
                 {
-                    CallbackEntry& entry = _taskCallbacks[j];
                     if ( entry._taskID == idx)
                     {
                         if ( entry._cbk )
@@ -235,6 +244,7 @@ namespace Divide
                     }
                 }
             }
+
             ret += count;
         }
 
@@ -261,28 +271,6 @@ namespace Divide
         }
     }
 
-    void TaskPool::taskStarted( [[maybe_unused]] Task& task )
-    {
-        _runningTaskCount.fetch_add( 1 );
-    }
-
-    void TaskPool::taskCompleted( Task& task )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-
-        if ( task._parent != nullptr )
-        {
-            task._parent->_unfinishedJobs.fetch_sub(1);
-        }
-
-        task._unfinishedJobs.fetch_sub(1);
-
-        _runningTaskCount.fetch_sub(1);
-
-        LockGuard<Mutex> lock( _taskFinishedMutex );
-        _taskFinishedCV.notify_one();
-    }
-    
     Task* TaskPool::AllocateTask( Task* parentTask, DELEGATE<void, Task&>&& func, const bool allowedInIdle ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
@@ -339,16 +327,15 @@ namespace Divide
 
     void TaskPool::join()
     {
-        _isRunning = false;
+        _isRunning.store(false);
 
         for ( std::thread& thread : _threads )
         {
-            if (!thread.joinable())
+            if (thread.joinable())
             {
-                continue;
+                thread.join();
             }
 
-            thread.join();
         }
 
         WAIT_FOR_CONDITION( _activeThreads.load() == 0u );
@@ -356,15 +343,13 @@ namespace Divide
 
     void TaskPool::wait() const noexcept
     {
-        if ( !_isRunning )
+        if ( _isRunning.load() )
         {
-            return;
-        }
-
-        while ( _runningTaskCount.load() > 0u )
-        {
-            // Busy wait
-            std::this_thread::yield();
+            while ( _runningTaskCount.load() > 0u )
+            {
+                // Busy wait
+                std::this_thread::yield();
+            }
         }
     }
 
@@ -375,8 +360,8 @@ namespace Divide
         PoolTask task = {};
         TaskPriority priorityOut = TaskPriority::DONT_CARE;
 
-        if ( deque( isIdleCall, task, priorityOut) &&
-            !task( isIdleCall ) )
+        if ( deque( isIdleCall, task, priorityOut) && 
+             !task( isIdleCall ) )
         {
             DIVIDE_EXPECTED_CALL( getQueue(priorityOut).enqueue( task ) );
         }
@@ -409,7 +394,7 @@ namespace Divide
         {
             while( !getQueue(priorityIn).wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
             {
-                if (!_isRunning) [[unlikely]]
+                if (!_isRunning.load()) [[unlikely]]
                 {
                     return false;
                 }
@@ -420,7 +405,7 @@ namespace Divide
         {
             while ( !getQueue(priorityIn).try_dequeue( taskOut ) )
             {
-                if ( !_isRunning ) [[unlikely]]
+                if ( !_isRunning.load() ) [[unlikely]]
                 {
                     return false;
                 }

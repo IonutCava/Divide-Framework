@@ -42,12 +42,24 @@ namespace Divide {
 
     struct File
     {
+        File() = default;
+        File(const ResourcePath& path, const Str<32>& extension)
+            : _path(path), _extension(extension)
+        {
+        }
+
         ResourcePath _path;
         Str<32> _extension;
     };
 
     struct EditorFileEntry
     {
+        EditorFileEntry() = default;
+        EditorFileEntry(const ResourcePath& path, const File& file)
+            : _path(path), _file(file)
+        {
+        }
+
         ResourcePath _path{};
         File _file{};
     };

@@ -309,7 +309,7 @@ namespace Divide
 
     protected:
         friend class PlatformContext;
-        static void OnThreadCreated( const GFXDevice& gfx, const std::thread::id& threadID, bool isMainRenderThread );
+        static void OnThreadCreated( const GFXDevice& gfx, const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread );
 
     protected:
         vector<UniformBlockUploader> _uniformBlockBuffers;

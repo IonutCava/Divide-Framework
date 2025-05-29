@@ -497,7 +497,7 @@ namespace Divide
     void GFXDevice::renderThread()
     {
         SetThreadName("Main render thread");
-        onThreadCreated( std::this_thread::get_id(), true );
+        onThreadCreated( 0u, std::this_thread::get_id(), true );
 
         while ( s_renderThread._running )
         {
@@ -1375,9 +1375,9 @@ namespace Divide
         _graphicResources.clear();
     }
 
-    void GFXDevice::onThreadCreated( const std::thread::id& threadID, const bool isMainRenderThread ) const
+    void GFXDevice::onThreadCreated(const size_t threadIndex, const std::thread::id& threadID, const bool isMainRenderThread ) const
     {
-        _api->onThreadCreated( threadID, isMainRenderThread );
+        _api->onThreadCreated( threadIndex, threadID, isMainRenderThread );
     }
 
 #pragma endregion

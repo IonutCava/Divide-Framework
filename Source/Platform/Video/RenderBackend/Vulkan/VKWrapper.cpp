@@ -3108,7 +3108,7 @@ namespace Divide
         }
     }
 
-    void VK_API::onThreadCreated( [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
+    void VK_API::onThreadCreated( [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread ) noexcept
     {
     }
 

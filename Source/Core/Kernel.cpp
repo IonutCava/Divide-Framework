@@ -759,9 +759,9 @@ ErrorCode Kernel::initialize(const string& entryPoint)
             const TaskPoolType poolType = static_cast<TaskPoolType>(i);
              if (!_platformContext.taskPool( poolType ).init(
                 TotalThreadCount( poolType ),
-                [&threadCounter, poolType, &ctx = _platformContext](const std::thread::id& threadID)
+                [&threadCounter, poolType, &ctx = _platformContext](const size_t threadIndex, const std::thread::id& threadID)
                 {
-                    Attorney::PlatformContextKernel::onThreadCreated( ctx, poolType, threadID, false);
+                    Attorney::PlatformContextKernel::onThreadCreated( ctx, poolType, threadIndex, threadID, false);
                     threadCounter.fetch_sub(1);
                 }))
             {

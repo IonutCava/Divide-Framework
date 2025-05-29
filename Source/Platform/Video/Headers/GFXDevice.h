@@ -350,7 +350,7 @@ public:  // Accessors and Mutators
     [[nodiscard]] PerformanceMetrics& getPerformanceMetrics() noexcept;
     [[nodiscard]] const PerformanceMetrics& getPerformanceMetrics() const noexcept;
 
-    void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread) const;
+    void onThreadCreated(const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread) const;
 
     static void FrameInterpolationFactor(const D64 interpolation) noexcept { s_interpolationFactor = interpolation; }
     [[nodiscard]] static D64 FrameInterpolationFactor() noexcept { return s_interpolationFactor; }

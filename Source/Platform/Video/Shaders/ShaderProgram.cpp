@@ -959,7 +959,7 @@ namespace Divide
         return ShaderResult::OK;
     }
 
-    void ShaderProgram::OnThreadCreated( const GFXDevice& gfx, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread )
+    void ShaderProgram::OnThreadCreated( const GFXDevice& gfx, [[maybe_unused]] const size_t threadIndex, [[maybe_unused]] const std::thread::id& threadID, [[maybe_unused]] const bool isMainRenderThread )
     {
         Preprocessor::OnThreadCreated();
 

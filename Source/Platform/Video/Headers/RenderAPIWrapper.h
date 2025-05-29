@@ -188,7 +188,7 @@ protected:
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;
 
-    virtual void onThreadCreated(const std::thread::id& threadID, bool isMainRenderThread ) = 0;
+    virtual void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) = 0;
 
     virtual bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) = 0;
 

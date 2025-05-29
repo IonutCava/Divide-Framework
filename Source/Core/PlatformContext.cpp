@@ -149,16 +149,15 @@ const Kernel& PlatformContext::kernel() const noexcept
     return *_kernel;
 }
 
-void PlatformContext::onThreadCreated(const TaskPoolType poolType, const std::thread::id& threadID, bool isMainRenderThread ) const
+void PlatformContext::onThreadCreated(const TaskPoolType poolType, const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) const
 {
-    if ( poolType == TaskPoolType::ASSET_LOADER ||
-        poolType == TaskPoolType::RENDERER )
+    if ( poolType == TaskPoolType::ASSET_LOADER || poolType == TaskPoolType::RENDERER )
     {
-        _gfx->onThreadCreated(threadID, isMainRenderThread);
+        _gfx->onThreadCreated(threadIndex, threadID, isMainRenderThread);
 
         if ( poolType == TaskPoolType::ASSET_LOADER )
         {
-            ShaderProgram::OnThreadCreated(*_gfx, threadID, isMainRenderThread);
+            ShaderProgram::OnThreadCreated(*_gfx, threadIndex, threadID, isMainRenderThread);
         }
     }
 }
