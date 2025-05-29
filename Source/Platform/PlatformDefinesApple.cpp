@@ -4,6 +4,7 @@
 
 #include "Headers/PlatformDefinesApple.h"
 
+#include <Carbon/Carbon.h>
 #include <SDL_syswm.h>
 #include <signal.h>
 

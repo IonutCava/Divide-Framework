@@ -38,20 +38,6 @@
 #define _RESTRICT_ __restrict__
 #endif
 
-#include <Carbon/Carbon.h>
-
-#ifdef roundup
-#undef roundup
-#endif //roundup
-
-#ifdef INTEL
-#undef INTEL
-#endif //INTEL
-
-#ifdef Byte
-#undef Byte
-#endif //Byte
-
 void checkMacEvents();
 
 namespace Divide
