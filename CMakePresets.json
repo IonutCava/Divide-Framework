@@ -527,6 +527,16 @@
             "name": "macos-clang-release-editor",
             "configurePreset": "macos-clang-editor",
             "configuration": "Release"
+        },
+        {
+            "name": "macos-clang-debug",
+            "configurePreset": "macos-clang",
+            "configuration": "Debug"
+        },
+        {
+            "name": "macos-clang-debug-editor",
+            "configurePreset": "macos-clang-editor",
+            "configuration": "Debug"
         }
     ],
     "testPresets": [
@@ -765,6 +775,22 @@
             "inherits": "test-common",
             "configurePreset": "macos-clang",
             "configuration": "Release"
+        },
+        {
+            "name": "test-macos-clang-debug-editor",
+            "displayName": "Test-macOS-Clang-Debug-Editor",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "macos-clang-editor",
+            "configuration": "Debug"
+        },
+        {
+            "name": "test-macos-clang-debug",
+            "displayName": "Test-macOS-Clang-Debug",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "macos-clang",
+            "configuration": "Debug"
         }
     ]
 }
