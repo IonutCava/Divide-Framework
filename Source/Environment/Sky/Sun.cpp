@@ -2,6 +2,10 @@
 
 #include "Headers/Sun.h"
 
+#if defined(IS_MACOS_BUILD)
+#include <date/tz.h>
+#endif //IS_MACOS_BUILD
+
 namespace Divide {
 
 namespace {
@@ -20,6 +24,16 @@ namespace {
     const Angle::RADIANS_D Oblique_B  = Angle::to_RADIANS(Angle::DEGREES_D(3.563E-7));
     const Angle::RADIANS_D Ecliptic_A = Angle::to_RADIANS(Angle::DEGREES_D(1.915));
     const Angle::RADIANS_D Ecliptic_B = Angle::to_RADIANS(Angle::DEGREES_D(.02));
+
+    // Portable timegm: converts tm in UTC to time_t
+    FORCE_INLINE time_t TimeGM(std::tm* tm)
+    {
+#if defined(IS_WINDOWS_BUILD)
+        return _mkgmtime(tm);
+#else //IS_WINDOWS_BUILD
+        return timegm(tm);
+#endif //IS_WINDOWS_BUILD
+    }
 
     D64 FNrange(const Angle::RADIANS_D x) noexcept
     {
@@ -101,7 +115,19 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const Angle
     const I32 day = dateTime.tm_mday;
     // clock time just now
     const auto h = dateTime.tm_hour + dateTime.tm_min / 60.0;
-    const auto tzone = std::chrono::current_zone()->get_info( std::chrono::system_clock::now() ).offset.count() / 3600.0;
+
+    std::tm tm_copy = dateTime;
+    time_t tt = TimeGM(&tm_copy); // Use timegm for UTC
+
+    auto tp = std::chrono::system_clock::from_time_t(tt);
+
+#if defined(IS_MACOS_BUILD)
+    auto* tz = date::get_tzdb().current_zone(); // macOS uses date library for timezone handling
+#else //IS_MACOS_BUILD
+    auto* tz = std::chrono::current_zone();
+#endif //IS_MACOS_BUILD
+
+    const auto tzone = tz->get_info( tp ).offset.count() / 3600.0;
 
     // year = 1990; m=4; day=19; h=11.99;	// local time
     const auto UT = h - tzone;	// universal time

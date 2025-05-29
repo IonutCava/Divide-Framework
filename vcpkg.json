@@ -24,6 +24,10 @@
             "name": "nvtt",
             "platform": "!osx"
         },
+        {
+            "name": "date",
+            "platform": "osx"
+        },
         "openal-soft",
         "expat",
         "recastnavigation",

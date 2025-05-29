@@ -42,6 +42,10 @@ find_package(SDL2_image CONFIG REQUIRED)
 find_package(SDL2_mixer CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
+if(IS_MACOS_BUILD)
+    find_package(date REQUIRED)
+endif()
+
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
 
@@ -166,6 +170,11 @@ set(EXTERNAL_LIBS
 if(WINDOWS_OS_BUILD)
   set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
                     unofficial::omniverse-physx-sdk::sdk)
+endif()
+
+if(IS_MACOS_BUILD)
+    set(EXTERNAL_LIBS ${EXTERNAL_LIBS} date::date)
+    add_compile_definitions(USE_HINNANT_DATE)
 endif()
 
 add_compile_definitions(CEGUI_STATIC)
