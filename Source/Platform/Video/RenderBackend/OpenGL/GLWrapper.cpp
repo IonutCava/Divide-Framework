@@ -1618,13 +1618,8 @@ namespace Divide
 
         if ( imageView._srcTexture == nullptr )
         {
-            //unbind request;
-            s_TexBindQueue.emplace_back(TexBindEntry
-            {
-                ._handle = 0u,
-                ._sampler = 0u,
-                ._slot = bindingSlot
-            });
+            //unbind request
+            s_TexBindQueue.emplace_back(0u, 0u, bindingSlot);
 
             return true;
         }
