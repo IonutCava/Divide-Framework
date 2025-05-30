@@ -91,7 +91,7 @@ namespace Divide {
 
         if( pthread_setschedparam(thread, SCHED_FIFO, &sch_params) != 0 )
         {
-            Console::errofn(LOCALE_STR("ERROR_THREAD_PRIORITY"), thread, strerror(errno));
+            Console::errorfn(LOCALE_STR("ERROR_THREAD_PRIORITY"), thread, strerror(errno));
         }
 
     }
