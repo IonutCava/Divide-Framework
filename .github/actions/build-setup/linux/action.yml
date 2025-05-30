@@ -43,14 +43,6 @@ runs:
         echo "PATH=$(dirname ${NINJA_PATH}):$PATH" >> $GITHUB_ENV
         ninja --version
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      env:
-        VCPKG_CMAKE_GENERATOR: Ninja
-        CMAKE_MAKE_PROGRAM: ${{ steps.ninja-setup.outputs.ninja_path }}
-      with:
-        vcpkgJsonGlob: 'vcpkg.json'
-
     - name: Install extra required packages
       if: inputs.runner_type == 'GitHub'
       continue-on-error: true
@@ -78,3 +70,11 @@ runs:
           libibus-1.0-dev \
           bison \
           lld
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      env:
+        VCPKG_CMAKE_GENERATOR: Ninja
+        CMAKE_MAKE_PROGRAM: ${{ steps.ninja-setup.outputs.ninja_path }}
+      with:
+        vcpkgJsonGlob: 'vcpkg.json'
