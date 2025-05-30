@@ -67,6 +67,13 @@ namespace Divide {
 
     struct BufferLockInstance
     {
+        BufferLockInstance() = default;
+        BufferLockInstance( const BufferRange<>& range, const SyncObjectHandle& syncObjHandle )
+            : _range(range)
+            , _syncObjHandle(syncObjHandle)
+        {
+        }
+
         BufferRange<> _range{};
         SyncObjectHandle _syncObjHandle{};
     };
