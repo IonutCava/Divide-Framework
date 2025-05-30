@@ -82,11 +82,11 @@ namespace Divide
                 break;
 
             case SDL_SYSWM_WAYLAND:
-#if defined(HAS_WAYLAND_LIB)
+#if defined(SDL_VIDEO_DRIVER_WAYLAND)
                 handleOut.wl_display = wmInfo.info.wl.display;
                 handleOut.wl_surface = wmInfo.info.wl.surface;
                 break;
-#endif //HAS_WAYLAND_LIB
+#endif //SDL_VIDEO_DRIVER_WAYLAND
             default:
                 DIVIDE_UNEXPECTED_CALL();
                 break;
@@ -119,7 +119,6 @@ namespace Divide
             case ThreadPriority::TIME_CRITICAL: {
                 sch_params.sched_priority = 99;
             } break;
-            default:
             case ThreadPriority::COUNT: 
                 DIVIDE_UNEXPECTED_CALL();
                 break;

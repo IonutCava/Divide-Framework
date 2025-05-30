@@ -65,6 +65,7 @@ namespace Divide {
         pthread_getschedparam(thread, &policy, &sch_params);
 
         switch (priority) {
+            default:
             case ThreadPriority::IDLE: {
                 sch_params.sched_priority = 10;
             } break;
@@ -83,7 +84,6 @@ namespace Divide {
             case ThreadPriority::TIME_CRITICAL: {
                 sch_params.sched_priority = 99;
             } break;
-            default:
             case ThreadPriority::COUNT:
                 DIVIDE_UNEXPECTED_CALL();
                 break;
