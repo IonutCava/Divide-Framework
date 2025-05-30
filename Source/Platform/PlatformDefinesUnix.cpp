@@ -8,6 +8,8 @@
 #include <signal.h>
 #include <sys/prctl.h>
 
+#include "Utility/Headers/Localization.h"
+
 #if defined(HAS_WAYLAND_LIB)
 #include <wayland-client.h>
 #else
@@ -73,7 +75,7 @@ namespace Divide
         SDL_VERSION(&wmInfo.version);
         SDL_GetWindowWMInfo(static_cast<SDL_Window*>(window), &wmInfo);
 
-        handleOut._handle = nullptr;
+        handleOut = {};
         switch (wmInfo.subsystem) {
             case SDL_SYSWM_X11:
                 handleOut.x11_window = wmInfo.info.x11.window;
@@ -91,10 +93,8 @@ namespace Divide
         }
     }
 
-    void SetThreadPriorityInternal(pthread_t thread, const ThreadPriority priority) {
-        if (priority == ThreadPriority::COUNT) {
-            return;
-        }
+    void SetThreadPriorityInternal(pthread_t thread, const ThreadPriority priority)
+    {
         sched_param sch_params;
         int policy;
         pthread_getschedparam(thread, &policy, &sch_params);
@@ -119,11 +119,15 @@ namespace Divide
             case ThreadPriority::TIME_CRITICAL: {
                 sch_params.sched_priority = 99;
             } break;
+            default:
+            case ThreadPriority::COUNT: 
+                DIVIDE_UNEXPECTED_CALL();
+                break;
         }
 
         if( pthread_setschedparam(thread, SCHED_FIFO, &sch_params) != 0)
         {
-            Console::errofn(LOCALE_STR("ERROR_THREAD_PRIORITY"), thread, strerror(errno));
+            Console::errorfn(LOCALE_STR("ERROR_THREAD_PRIORITY"), thread, strerror(errno));
         }
     }
 

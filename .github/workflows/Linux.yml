@@ -16,7 +16,7 @@ on:
         - GitHub
         - self-hosted
 
-run-name: Linux Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_type || 'GitHub Runner' }}
+run-name: Linux Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_type || 'GitHub' }}
 
 jobs:
   check_date:

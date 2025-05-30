@@ -8,6 +8,8 @@
 #include <SDL2/SDL_syswm.h>
 #include <sys/sysctl.h>
 
+#include "Utility/Headers/Localization.h"
+
 namespace Divide {
 
     bool DebugBreak(const bool condition) noexcept {
@@ -53,32 +55,38 @@ namespace Divide {
     }
 
     void SetThreadPriorityInternal(pthread_t thread, const ThreadPriority priority) {
-        if (priority == ThreadPriority::COUNT) {
+        if (priority == ThreadPriority::COUNT)
+        {
             return;
         }
+
         sched_param sch_params;
         int policy;
         pthread_getschedparam(thread, &policy, &sch_params);
 
         switch (priority) {
-        case ThreadPriority::IDLE: {
-            sch_params.sched_priority = 10;
-        } break;
-        case ThreadPriority::BELOW_NORMAL: {
-            sch_params.sched_priority = 25;
-        } break;
-        case ThreadPriority::NORMAL: {
-            sch_params.sched_priority = 50;
+            case ThreadPriority::IDLE: {
+                sch_params.sched_priority = 10;
             } break;
-        case ThreadPriority::ABOVE_NORMAL: {
-            sch_params.sched_priority = 75;
-        } break;
-        case ThreadPriority::HIGHEST: {
-            sch_params.sched_priority = 85;
-        } break;
-        case ThreadPriority::TIME_CRITICAL: {
-            sch_params.sched_priority = 99;
-        } break;
+            case ThreadPriority::BELOW_NORMAL: {
+                sch_params.sched_priority = 25;
+            } break;
+            case ThreadPriority::NORMAL: {
+                sch_params.sched_priority = 50;
+                } break;
+            case ThreadPriority::ABOVE_NORMAL: {
+                sch_params.sched_priority = 75;
+            } break;
+            case ThreadPriority::HIGHEST: {
+                sch_params.sched_priority = 85;
+            } break;
+            case ThreadPriority::TIME_CRITICAL: {
+                sch_params.sched_priority = 99;
+            } break;
+            default:
+            case ThreadPriority::COUNT:
+                DIVIDE_UNEXPECTED_CALL();
+                break;
         }
 
         if( pthread_setschedparam(thread, SCHED_FIFO, &sch_params) != 0 )
@@ -95,7 +103,8 @@ namespace Divide {
 
     void SetThreadName(const std::string_view threadName) noexcept
     {
-        pthread_setname_np(pthread_self(), threadName.data());
+        //Why Apple, why??
+        pthread_setname_np(/*pthread_self(), */threadName.data());
     }
 
     bool CallSystemCmd(const char* cmd, const std::string_view args)
