@@ -38,6 +38,13 @@ namespace Divide {
     template<typename T = size_t> requires std::unsigned_integral<T>
     struct BufferRange
     {
+        BufferRange() = default;
+        BufferRange(const T startOffset, const T length) noexcept
+            : _startOffset(startOffset)
+            , _length(length)
+        {
+        }
+
         T _startOffset{ 0u };
         T _length{ 0u };
 
