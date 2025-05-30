@@ -2,9 +2,9 @@
 
 #include "Headers/Sun.h"
 
-#if defined(IS_MACOS_BUILD)
+#if defined(USE_HINNANT_DATE)
 #include <date/tz.h>
-#endif //IS_MACOS_BUILD
+#endif //USE_HINNANT_DATE
 
 namespace Divide {
 
@@ -121,11 +121,11 @@ SunInfo SunPosition::CalculateSunPosition(const struct tm &dateTime, const Angle
 
     auto tp = std::chrono::system_clock::from_time_t(tt);
 
-#if defined(IS_MACOS_BUILD)
+#if defined(USE_HINNANT_DATE)
     auto* tz = date::get_tzdb().current_zone(); // macOS uses date library for timezone handling
-#else //IS_MACOS_BUILD
+#else //USE_HINNANT_DATE
     auto* tz = std::chrono::current_zone();
-#endif //IS_MACOS_BUILD
+#endif //USE_HINNANT_DATE
 
     const auto tzone = tz->get_info( tp ).offset.count() / 3600.0;
 
