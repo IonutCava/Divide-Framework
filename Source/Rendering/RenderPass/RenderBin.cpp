@@ -81,7 +81,7 @@ namespace Divide
         const U16 binSize = _renderBinIndex.load();
         if ( binSize > k_parallelSortThreshold )
         {
-            std::sort( std::execution::par_unseq, begin( _renderBinStack ), begin( _renderBinStack ) + binSize, sortFunc );
+            UNSEQ_STD_SORT( begin( _renderBinStack ), begin( _renderBinStack ) + binSize, sortFunc );
         }
         else
         {

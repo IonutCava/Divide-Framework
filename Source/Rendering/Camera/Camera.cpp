@@ -53,6 +53,13 @@ namespace Divide
 
     struct CameraEntry
     {
+        CameraEntry() = default;
+        CameraEntry( Camera_uptr&& camera, const size_t useCount ) noexcept
+            : _camera( MOV(camera) )
+            , _useCount( useCount )
+        {
+        }
+
         Camera_uptr _camera;
         std::atomic_size_t _useCount{0u};
     };
@@ -165,8 +172,7 @@ namespace Divide
         }
 
         // No such luck. Create it ourselves.
-        s_cameraPool.emplace_back( nullptr, 1u);
-        s_cameraPool.back()._camera.reset( new Camera( cameraName, mode ));
+        s_cameraPool.emplace_back( std::make_unique<Camera>(cameraName, mode), 1u);
 
         return s_cameraPool.back()._camera.get();
     }

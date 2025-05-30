@@ -448,7 +448,7 @@ namespace Divide
         PROFILE_SCOPE( "LightPool::SortLights", Profiler::Category::Scene );
         if ( sortedLights.size() > LightList::kMaxSize )
         {
-            std::sort( std::execution::par_unseq, begin( sortedLights ), end( sortedLights ), lightSortCbk );
+            UNSEQ_STD_SORT( begin( sortedLights ), end( sortedLights ), lightSortCbk );
         }
         else
         {
@@ -551,7 +551,7 @@ namespace Divide
         SharedLock<SharedMutex> r_lock( _lightLock );
         if ( _lights.size() > k_parallelSortThreshold )
         {
-            std::for_each( std::execution::par_unseq, std::cbegin( _lights ), std::cend( _lights ), lightUpdateFunc );
+            UNSEQ_STD_FOR_EACH( std::cbegin( _lights ), std::cend( _lights ), lightUpdateFunc );
         }
         else
         {

@@ -189,4 +189,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #endif //DISABLE_NON_MSVC_WARNING_PUSH
 
+
+#if defined(__APPLE__)
+#define UNSEQ_STD_SORT(BEGIN, END, CBK) std::sort(BEGIN, END, CBK)
+#define UNSEQ_STD_FOR_EACH(BEGIN, END, CBK) std::for_each(BEGIN, END, CBK)
+#else// __APPLE__
+#define UNSEQ_STD_SORT(BEGIN, END, CBK) std::sort(std::execution::par_unseq, BEGIN, END, CBK)
+#define UNSEQ_STD_FOR_EACH(BEGIN, END, CBK) std::for_each(std::execution::par_unseq, BEGIN, END, CBK)
+#endif // __APPLE__
+
 #endif //DVD_PLATFORM_DEFINES_OS_H_
