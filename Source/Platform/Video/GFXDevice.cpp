@@ -1973,7 +1973,7 @@ namespace Divide
                 DIVIDE_ASSERT( frameBuffers._camBufferWriteRange._length == 0u );
             }
 
-            const BufferRange writtenRange = frameBuffers._camDataBuffer->writeData( &_gpuBlock._camData )._range;
+            const BufferRange<> writtenRange = frameBuffers._camDataBuffer->writeData( &_gpuBlock._camData )._range;
 
             if ( frameBuffers._camBufferWriteRange._length == 0u )
             {

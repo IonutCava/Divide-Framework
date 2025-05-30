@@ -106,7 +106,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        const BufferRange testRange{ lockBeginBytes, lockLength };
+        const BufferRange<> testRange{ lockBeginBytes, lockLength };
 
         bool error = false;
 
@@ -150,7 +150,7 @@ namespace Divide
 
         DIVIDE_ASSERT( syncObj._id != SyncObjectHandle::INVALID_SYNC_ID && lockLength > 0u, "LockManager::lockRange error: Invalid lock range!" );
 
-        const BufferRange testRange{ lockBeginBytes, lockLength };
+        const BufferRange<> testRange{ lockBeginBytes, lockLength };
 
         LockGuard<Mutex> w_lock( _bufferLockslock );
         // See if we can reuse an old lock. Ignore the old fence since the new one will guard the same mem region. (Right?)

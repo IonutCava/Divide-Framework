@@ -7,7 +7,7 @@ outputs:
     value: '3.31.6'
   ninja-version:
     description: "Ninja version to use"
-    value: '1.11.1'
+    value: '1.12.1'
 
 runs:
   using: "composite"

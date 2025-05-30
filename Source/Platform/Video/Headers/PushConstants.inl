@@ -54,7 +54,7 @@ namespace Divide
         const size_t dataSize = sizeof(T) * count;
 
         bool found = false;
-        BufferRange range{};
+        BufferRange<> range{};
 
         for ( Entry& entry : _data)
         {
@@ -68,11 +68,9 @@ namespace Divide
         }
         if ( !found )
         {
-            range = 
-            {
-                ._startOffset = _buffer.size(),
-                ._length = dataSize
-            };
+            range._startOffset = _buffer.size();
+            range._length = dataSize;
+
             _buffer.insert(_buffer.end(), dataSize, Byte_ZERO);
 
             _data.emplace_back(bindingHash, range, type);
