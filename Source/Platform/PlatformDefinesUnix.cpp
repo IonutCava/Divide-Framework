@@ -6,8 +6,9 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <signal.h>
+#include <unistd.h>
 #include <sys/prctl.h>
-
+#include <sys/syscall.h>
 #include "Utility/Headers/Localization.h"
 
 #if defined(HAS_WAYLAND_LIB)
@@ -126,7 +127,8 @@ namespace Divide
 
         if( pthread_setschedparam(thread, SCHED_FIFO, &sch_params) != 0)
         {
-            Console::errorfn(LOCALE_STR("ERROR_THREAD_PRIORITY"), thread, strerror(errno));
+            pid_t threadId = syscall(SYS_gettid);
+            Console::errorfn(LOCALE_STR("ERROR_THREAD_PRIORITY"), threadId, strerror(errno));
         }
     }
 
