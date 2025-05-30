@@ -134,6 +134,13 @@ private:
     static constexpr size_t InitialCacheSize = 128u;
     struct CacheEntry
     {
+        CacheEntry() = default;
+        CacheEntry(size_t hash, U32 idx) noexcept
+            : _hash(hash)
+            , _idx(idx)
+        {
+        }
+
         size_t _hash = 0u;
         U32    _idx = U32_MAX;
     };

@@ -62,7 +62,8 @@ struct BufferLockEntry;
 FWD_DECLARE_MANAGED_STRUCT(SyncObject);
 
 /// OpenGL implementation of the RenderAPIWrapper
-class GL_API final : public RenderAPIWrapper {
+class GL_API final : public RenderAPIWrapper
+{
     friend class glShader;
     friend class glTexture;
     friend class glFramebuffer;
@@ -158,7 +159,8 @@ protected:
 
 private:
 
-    enum class GlobalQueryTypes : U8 {
+    enum class GlobalQueryTypes : U8
+    {
         VERTICES_SUBMITTED = 0,
         PRIMITIVES_GENERATED,
         TESSELLATION_PATCHES,
@@ -169,6 +171,14 @@ private:
 
     struct glHardwareQueryEntry
     {
+        glHardwareQueryEntry() = default;
+        glHardwareQueryEntry(glHardwareQueryRing* query, QueryType type, U8 index) noexcept
+            : _query(query)
+            , _type(type)
+            , _index(index)
+        {
+        }
+
         glHardwareQueryRing* _query{ nullptr };
         QueryType _type{ QueryType::COUNT };
         U8 _index{ 0u };
@@ -176,6 +186,14 @@ private:
 
     struct TexBindEntry
     {
+        TexBindEntry() = default;
+        TexBindEntry(gl46core::GLuint handle, gl46core::GLuint sampler, gl46core::GLubyte slot) noexcept
+            : _handle(handle)
+            , _sampler(sampler)
+            , _slot(slot)
+        {
+        }
+
         gl46core::GLuint  _handle{ GL_NULL_HANDLE };
         gl46core::GLuint  _sampler{ GL_NULL_HANDLE };
         gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
@@ -188,6 +206,13 @@ private:
 
     struct CachedSamplerEntry
     {
+        CachedSamplerEntry() = default;
+        CachedSamplerEntry(const size_t hash, const gl46core::GLuint glHandle) noexcept
+            : _hash(hash)
+            , _glHandle(glHandle)
+        {
+        }
+
         size_t _hash = SIZE_MAX;
         gl46core::GLuint _glHandle = GL_NULL_HANDLE;
     };
