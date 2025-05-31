@@ -109,7 +109,7 @@ namespace Divide {
         pthread_setname_np(/*pthread_self(), */threadName.data());
     }
 
-    bool CallSystemCmd(const char* cmd, const std::string_view args)
+    bool CallSystemCmd(const std::string_view cmd, const std::string_view args)
     {
         return std::system(Util::StringFormat("{} {}", cmd, args).c_str()) == 0;
     }
