@@ -3,7 +3,6 @@
 #include "Headers/PlatformDefinesUnix.h"
 
 #include <SDL2/SDL_syswm.h>
-#include <malloc.h>
 #include <unistd.h>
 #include <signal.h>
 #include <unistd.h>
@@ -29,6 +28,7 @@
 #endif //SDL_VIDEO_DRIVER_WAYLAND
 #endif //HAS_WAYLAND_LIB
 
+#include <malloc.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 
