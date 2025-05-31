@@ -19,9 +19,9 @@ namespace ECS
 
 	namespace util { namespace Internal {
 
-		template<> u64 FamilyTypeID<IEntity>::s_count			= 0u;
-		template<> u64 FamilyTypeID<IComponent>::s_count		= 0u;
-		template<> u64 FamilyTypeID<ISystem>::s_count			= 0u;
+		template<> TypeID FamilyTypeID<IEntity>::s_count		= 0u;
+		template<> TypeID FamilyTypeID<IComponent>::s_count		= 0u;
+		template<> TypeID FamilyTypeID<ISystem>::s_count		= 0u;
 		
 		template class FamilyTypeID<IEntity>;
 		template class FamilyTypeID<IComponent>;
