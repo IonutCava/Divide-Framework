@@ -35,12 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(IS_WINDOWS_BUILD)
 #include "PlatformDefinesWindows.h"
-#elif defined(IS_MACOS_BUILD) 
-#if !defined(__APPLE__)
-#error "IS_MACOS_BUILD is defined, but __APPLE__ is not! Please check your build configuration."
-#endif //__APPLE__
-#include "PlatformDefinesApple.h"
-#elif defined(IS_LINUX_BUILD)
+#elif defined(IS_MACOS_BUILD) || defined(IS_LINUX_BUILD)
 #include "PlatformDefinesUnix.h"
 #else
 #error "Unknow operating system!"

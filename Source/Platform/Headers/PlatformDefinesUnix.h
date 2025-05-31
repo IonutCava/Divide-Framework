@@ -70,9 +70,15 @@ namespace Divide
 {
     struct WindowHandle
     {
+#if defined(IS_MACOS_BUILD)
+        void* _handle{ nullptr };
+#else //IS_MACOS_BUILD
         unsigned long x11_window{0u};
+#if defined(HAS_WAYLAND_LIB)
         void* wl_display{nullptr};
         void* wl_surface{ nullptr };
+#endif //HAS_WAYLAND_LIB
+#endif //IS_MACOS_BUILD
     };
 
 }; //namespace Divide

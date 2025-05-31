@@ -528,7 +528,6 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Headers/DisplayWindow.inl
                              Platform/Headers/PlatformDataTypes.h
                              Platform/Headers/PlatformDefines.h
-                             Platform/Headers/PlatformDefinesApple.h
                              Platform/Headers/PlatformDefinesOS.h
                              Platform/Headers/PlatformDefinesUnix.h
                              Platform/Headers/PlatformDefinesWindows.h
@@ -648,7 +647,6 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/DisplayWindow.cpp
                      Platform/PlatformDataTypes.cpp
                      Platform/PlatformDefines.cpp
-                     Platform/PlatformDefinesApple.cpp
                      Platform/PlatformDefinesUnix.cpp
                      Platform/PlatformDefinesWindows.cpp
                      Platform/PlatformRuntime.cpp
