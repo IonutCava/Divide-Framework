@@ -46,9 +46,14 @@ namespace Divide {
     class Camera;
     class DisplayWindow;
     class SceneGraphNode;
-    namespace GFX {
+    struct SizeChangeParams;
+
+    namespace GFX
+    {
         class CommandBuffer;
-    }
+        struct MemoryBarrierCommand;
+    };
+
     namespace Attorney {
         class GizmoEditor;
     }

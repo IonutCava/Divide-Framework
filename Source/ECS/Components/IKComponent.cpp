@@ -1,6 +1,7 @@
 
 
 #include "Headers/IKComponent.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
 

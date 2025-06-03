@@ -3,6 +3,7 @@
 #include "Headers/RenderingSystem.h"
 
 #include "Graphs/Headers/SceneNode.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 

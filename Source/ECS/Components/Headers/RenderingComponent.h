@@ -62,6 +62,8 @@ class EnvironmentProbeComponent;
 struct RenderBinItem;
 struct Configuration;
 
+enum class NodeUsageContext : U8;
+
 using EnvironmentProbeList = vector<EnvironmentProbeComponent*>;
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Material);

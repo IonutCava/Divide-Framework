@@ -35,7 +35,6 @@
 
 #include "SceneNode.h"
 #include "SceneGraph.h"
-#include "Core/Resources/Headers/ResourceCache.h"
 
 namespace Divide {
     template<class T, typename... Args>

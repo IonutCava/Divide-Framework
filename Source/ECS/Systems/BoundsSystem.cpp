@@ -6,6 +6,7 @@
 #include "Core/Headers/PlatformContext.h"
 
 #include "Graphs/Headers/SceneNode.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 
 // For debug rendering
 #include "Platform/Video/Headers/GFXDevice.h"

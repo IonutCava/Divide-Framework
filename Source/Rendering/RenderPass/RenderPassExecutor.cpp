@@ -9,7 +9,7 @@
 #include "Editor/Headers/Editor.h"
 
 #include "Graphs/Headers/SceneNode.h"
-
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/ProjectManager.h"

@@ -100,11 +100,13 @@ struct Factory {
     using FactoryContainerDestruct = ska::bytell_hash_map<ComponentType, DestructFunc>;
 
     template <typename... ConstructArgs>
-    static void construct(ComponentType type, SceneGraphNode* node, ConstructArgs&&... args) {
+    static void construct(ComponentType type, SceneGraphNode* node, ConstructArgs&&... args)
+    {
         constructData().at(type)(node, FWD(args)...);
     }
 
-    static void destruct(const ComponentType type, SceneGraphNode* node) {
+    static void destruct(const ComponentType type, SceneGraphNode* node)
+    {
         destructData().at(type)(node);
     }
 
@@ -144,7 +146,8 @@ struct Factory {
     friend Base;
 
 private:
-    struct Key {
+    struct Key
+    {
         Key(const bool registered) noexcept : _registered(registered) {}
 
       private:

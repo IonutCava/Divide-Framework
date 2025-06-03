@@ -1,6 +1,7 @@
 
 
 #include "Headers/RagdollComponent.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
 

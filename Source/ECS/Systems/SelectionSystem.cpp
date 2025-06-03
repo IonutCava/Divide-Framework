@@ -2,6 +2,8 @@
 
 #include "Headers/SelectionSystem.h"
 
+#include "Graphs/Headers/SceneGraphNode.h"
+
 namespace Divide
 {
 

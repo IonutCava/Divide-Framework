@@ -3,12 +3,13 @@
 #include "Headers/PhysicsAsset.h"
 
 #include "Core/Headers/PlatformContext.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "ECS/Components/Headers/RigidBodyComponent.h"
 
 namespace Divide {
 PhysicsAsset::PhysicsAsset(RigidBodyComponent& parent) noexcept
-    : _parentComponent(parent),
-      _context(parent.parentSGN()->context().pfx())
+    : _parentComponent(parent)
+    , _context(parent.parentSGN()->context().pfx())
 {
 }
 

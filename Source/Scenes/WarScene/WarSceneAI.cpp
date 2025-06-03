@@ -4,10 +4,11 @@
 #include "Headers/WarSceneAIProcessor.h"
 
 #include "AI/Headers/AIManager.h"
-#include "Graphs/Headers/SceneGraph.h"
 #include "GUI/Headers/GUIMessageBox.h"
-#include "Managers/Headers/ProjectManager.h"
+#include "Graphs/Headers/SceneGraph.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Graphs/Headers/SceneGraphNode.h"
+#include "Managers/Headers/ProjectManager.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Dynamics/Entities/Units/Headers/NPC.h"
 #include "ECS/Components/Headers/UnitComponent.h"

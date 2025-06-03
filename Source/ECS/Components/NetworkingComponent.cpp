@@ -14,8 +14,8 @@ namespace Divide {
 hashMap<I64, NetworkingComponent*> NetworkingComponent::s_NetComponents;
 
 NetworkingComponent::NetworkingComponent(SceneGraphNode* parentSGN, PlatformContext& context)
-    : BaseComponentType<NetworkingComponent, ComponentType::NETWORKING>(parentSGN, context),
-     _parentClient(context.networking().client())
+    : BaseComponentType<NetworkingComponent, ComponentType::NETWORKING>(parentSGN, context)
+    , _parentClient(context.networking().client())
 {
     // Register a receive callback with parent:
     // e.g.: _receive->bind(NetworkingComponent::onNetworkReceive);

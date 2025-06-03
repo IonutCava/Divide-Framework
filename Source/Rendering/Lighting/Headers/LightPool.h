@@ -52,6 +52,8 @@ class ShaderProgram;
 class SceneGraphNode;
 class SceneRenderState;
 
+struct CameraSnapshot;
+
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);
 
 class LightPool final : public FrameListener, 

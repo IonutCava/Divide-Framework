@@ -10,8 +10,9 @@
 
 #include "Editor/Headers/Editor.h"
 #include "Geometry/Material/Headers/Material.h"
-#include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneNode.h"
+#include "Graphs/Headers/SceneGraph.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"

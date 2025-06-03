@@ -6,6 +6,7 @@
 #include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Graphs/Headers/SceneGraph.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Rendering/Lighting/Headers/Light.h"

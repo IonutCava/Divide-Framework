@@ -2,12 +2,13 @@
 
 #include "Headers/AnimationSystem.h"
 
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Geometry/Animations/Headers/SceneAnimator.h"
 
 namespace Divide {
     AnimationSystem::AnimationSystem(ECS::ECSEngine& parentEngine, PlatformContext& context)
-        : PlatformContextComponent(context),
-          ECSSystem(parentEngine)
+        : PlatformContextComponent(context)
+        , ECSSystem(parentEngine)
     {
     }
 

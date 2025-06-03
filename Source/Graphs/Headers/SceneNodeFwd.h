@@ -38,13 +38,15 @@
 namespace Divide {
 
     /// Usage context affects lighting, navigation, physics, etc
-    enum class NodeUsageContext : U8 {
+    enum class NodeUsageContext : U8
+    {
         NODE_DYNAMIC = 0,
         NODE_STATIC
     };
 
     /// ToDo: Move particle emitter to components (it will make them way more dynamic) - Ionut
-    enum class SceneNodeType : U16 {
+    enum class SceneNodeType : U16
+    {
         TYPE_SPHERE_3D = 0,
         TYPE_BOX_3D,
         TYPE_QUAD_3D,
@@ -60,13 +62,15 @@ namespace Divide {
         COUNT
     };
 
-    namespace Names {
+    namespace Names
+    {
         extern const char* sceneNodeType[to_base(SceneNodeType::COUNT) + 1u];
     };
 
     FWD_DECLARE_MANAGED_CLASS(SceneNode);
 
-    struct SGNRayResult {
+    struct SGNRayResult
+    {
         I64 sgnGUID = -1;
         F32 dist = F32_MAX;
         bool inside = false;

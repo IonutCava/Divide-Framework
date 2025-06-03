@@ -15,6 +15,7 @@
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Scenes/Headers/SceneShaderData.h"
 #include "Scenes/Headers/SceneEnvironmentProbePool.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
 

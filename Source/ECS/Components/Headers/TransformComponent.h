@@ -36,10 +36,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SGNComponent.h"
 #include "Core/Math/Headers/Transform.h"
 
-namespace Divide {
+namespace Divide 
+{
 namespace Attorney {
     class TransformComponentSGN;
 }
+
+enum class NodeUsageContext : U8;
 
 enum class TransformType : U8 {
     NONE = 0,

@@ -10,6 +10,7 @@
 #include "Managers/Headers/RenderPassManager.h"
 #include "Scenes/Headers/Scene.h"
 #include "Graphs/Headers/SceneNode.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 #include "Platform/Video/Headers/PushConstants.h"

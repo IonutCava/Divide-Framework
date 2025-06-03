@@ -9,8 +9,9 @@
 #include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/File/Headers/FileManagement.h"
-
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
+#include "Utility/Headers/Localization.h"
 
 #include <recastnavigation/RecastDump.h>
 #include <recastnavigation/DetourDebugDraw.h>

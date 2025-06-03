@@ -40,6 +40,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
+namespace Networking
+{
+    class Client;
+    struct NetworkPacket;
+} // namespace Networking
+
 BEGIN_COMPONENT(Networking, ComponentType::NETWORKING)
 public:
     NetworkingComponent(SceneGraphNode* parentSGN, PlatformContext& context);
