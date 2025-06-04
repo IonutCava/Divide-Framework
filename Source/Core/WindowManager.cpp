@@ -36,9 +36,9 @@ namespace
         return SDL_SYSTEM_CURSOR_NOT_ALLOWED;
     }
 
-    bool Validate(const I32 errCode)
+    bool Validate(const bool result)
     {
-        if (errCode != 0)
+        if (!result)
         {
             Console::errorfn(LOCALE_STR("SDL_ERROR"), SDL_GetError());
             return false;
@@ -47,11 +47,11 @@ namespace
         return true;
     }
 
-    bool ValidateAssert(const I32 errCode)
+    bool ValidateAssert(const bool result)
     {
-        if (!Validate(errCode))
+        if (!Validate(result))
         {
-            assert(errCode == 0);
+            DIVIDE_UNEXPECTED_CALL();
             return false;
         }
 
