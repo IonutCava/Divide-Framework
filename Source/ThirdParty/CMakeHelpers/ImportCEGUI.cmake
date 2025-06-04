@@ -23,7 +23,8 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/IonutCava/cegui.git
   GIT_TAG origin/v0-8
   #GIT_PROGRESS   TRUE
-  SYSTEM
+  #SYSTEM
+  EXCLUDE_FROM_ALL
 )
 
 set(CEGUI_BUILD_STATIC_CONFIGURATION TRUE)

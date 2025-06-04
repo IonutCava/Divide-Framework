@@ -244,6 +244,11 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
 
         test.shutdown();
     }
+
+    ParallelForDescriptor descriptor = {};
+    descriptor._iterCount = loopCountB;
+    descriptor._partitionSize = partitionSize;
+
     {
         TaskPool test("SPEED_TEST_PARALLEL_FOR");
         const bool init = test.init( to_U8( std::thread::hardware_concurrency() ) );
@@ -252,9 +257,6 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
         Time::ProfileTimer timer;
         timer.start();
 
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = loopCountB;
-        descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = false;
         Parallel_For( test, descriptor, []( [[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end )
         {
@@ -274,9 +276,6 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
         Time::ProfileTimer timer;
         timer.start();
 
-        ParallelForDescriptor descriptor = {};
-        descriptor._iterCount = loopCountB;
-        descriptor._partitionSize = partitionSize;
         descriptor._useCurrentThread = true;
         Parallel_For( test, descriptor, []( [[maybe_unused]] const Task* parentTask, [[maybe_unused]] const U32 start, [[maybe_unused]] const U32 end )
         {

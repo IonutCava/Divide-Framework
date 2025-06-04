@@ -96,7 +96,7 @@ bool SaveStyle(const char* filename,const ImGuiStyle& style)
     fprintf(f, "[GrabRounding]\n%1.3f\n", style.GrabRounding);
     fprintf(f, "[TabRounding]\n%1.3f\n", style.TabRounding);
     fprintf(f, "[TabBorderSize]\n%1.3f\n", style.TabBorderSize);
-    fprintf(f, "[TabMinWidthForCloseButton]\n%1.3f",style.TabMinWidthForCloseButton);
+    fprintf(f, "[TabMinWidthForCloseButton]\n%1.3f",style.TabCloseButtonMinWidthUnselected);
     fprintf(f, "[ColorButtonPosition]\n%d\n", style.ColorButtonPosition);
     fprintf(f, "[SelectableTextAlign]\n%1.3f %1.3f\n", style.SelectableTextAlign.x,style.SelectableTextAlign.y);
     fprintf(f, "[DisplayWindowPadding]\n%1.3f %1.3f\n", style.DisplayWindowPadding.x,style.DisplaySafeAreaPadding.y);
@@ -184,7 +184,7 @@ bool LoadStyle(const char* filename,ImGuiStyle& style)
 		else if (strcmp(name, "WindowRounding")==0)		{npf=1;pf[0]=&style.WindowRounding;}
 		else if (strcmp(name, "WindowBorderSize")==0)		{npf=1;pf[0]=&style.WindowBorderSize;}
 		else if (strcmp(name, "WindowMinSize")==0)		{npf=2;pf[0]=&style.WindowMinSize.x;pf[1]=&style.WindowMinSize.y;}
-                else if (strcmp(name, "WindowMenuButtonPosition")==0)   {npi=1;pi[0]=&style.WindowMenuButtonPosition;}
+        else if (strcmp(name, "WindowMenuButtonPosition")==0)   {npi=1;pi[0]= reinterpret_cast<int*>(&(style.WindowMenuButtonPosition));}
 		else if (strcmp(name, "ChildRounding")==0 ||
 			 strcmp(name, "ChildWindowRounding")==0)	{npf=1;pf[0]=&style.ChildRounding;}
 		else if (strcmp(name, "ChildBorderSize")==0)		{npf=1;pf[0]=&style.ChildBorderSize;}
@@ -216,8 +216,8 @@ bool LoadStyle(const char* filename,ImGuiStyle& style)
                 else if (strcmp(name, "TabRounding")==0)         {npf=1;pf[0]=&style.TabRounding;}
                 else if (strcmp(name, "TabBorderSize")==0)         {npf=1;pf[0]=&style.TabBorderSize;}
                 else if (strcmp(name, "TabMinWidthForUnselectedCloseButton")==0 ||
-                         strcmp(name, "TabMinWidthForCloseButton")==0)    {npf=1;pf[0]=&style.TabMinWidthForCloseButton;}
-                else if (strcmp(name, "ColorButtonPosition")==0)   {npi=1;pi[0]=&style.ColorButtonPosition;}
+                         strcmp(name, "TabMinWidthForCloseButton")==0)    {npf=1;pf[0]= &style.TabCloseButtonMinWidthUnselected;}
+                else if (strcmp(name, "ColorButtonPosition")==0)   {npi=1;pi[0]= reinterpret_cast<int*>(&style.ColorButtonPosition);}
                 else if (strcmp(name, "SelectableTextAlign")==0)   {npf=2;pf[0]=&style.SelectableTextAlign.x;pf[1]=&style.SelectableTextAlign.y;}
                 // all the colors here
                 else {
@@ -378,7 +378,7 @@ bool LoadStyle(const char* filename,ImGuiStyle& style)
 	    if (style.WindowTitleAlign.y<0 || style.WindowTitleAlign.y>1) style.WindowTitleAlign.y = 0.5f;
 	    //---------------------------------------------------------------------------------
             // Fix FLT_MAX restoring
-            if (style.TabMinWidthForCloseButton>(FLT_MAX-0.002f)) style.TabMinWidthForCloseButton=FLT_MAX;
+            if (style.TabCloseButtonMinWidthUnselected >(FLT_MAX-0.002f)) style.TabCloseButtonMinWidthUnselected =FLT_MAX;
             //---------------------------------------------------------------------------------
             name[0]='\0'; // mandatory
         }
@@ -421,10 +421,10 @@ static inline void CreateDefaultTabColorsFor(ImGuiStyle& style,ImGuiCol baseHove
     style.Colors[ImGuiCol_TabHovered]           = ImColorLerp(style.Colors[baseHoveredColor], style.Colors[baseHoveredColor+1], hoveredLerp);
 
     style.Colors[ImGuiCol_Tab]                  = ImColorLerp(style.Colors[ImGuiCol_WindowBg],style.Colors[ImGuiCol_TabHovered], tabsLerps.x);
-    style.Colors[ImGuiCol_TabActive]            = ImColorLerp(style.Colors[ImGuiCol_TitleBgActive],style.Colors[ImGuiCol_TabHovered], tabsLerps.y);
+    style.Colors[ImGuiCol_TabSelected]          = ImColorLerp(style.Colors[ImGuiCol_TitleBgActive],style.Colors[ImGuiCol_TabHovered], tabsLerps.y);
 
-    style.Colors[ImGuiCol_TabUnfocused]         = ImColorLerp(style.Colors[ImGuiCol_WindowBg],style.Colors[ImGuiCol_Tab],unfocusedTabsLerp.x);
-    style.Colors[ImGuiCol_TabUnfocusedActive]   = ImColorLerp(style.Colors[ImGuiCol_WindowBg],style.Colors[ImGuiCol_TabActive],unfocusedTabsLerp.y);
+    style.Colors[ImGuiCol_TabDimmed]           = ImColorLerp(style.Colors[ImGuiCol_WindowBg],style.Colors[ImGuiCol_Tab],unfocusedTabsLerp.x);
+    style.Colors[ImGuiCol_TabDimmedSelected]   = ImColorLerp(style.Colors[ImGuiCol_WindowBg],style.Colors[ImGuiCol_TabSelected],unfocusedTabsLerp.y);
 }
 
 bool SelectStyleCombo(const char* label, int* selectedIndex, int maxNumItemsToDisplay, ImGuiStyle* styleToChange)   {
@@ -1111,7 +1111,7 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.87f, 0.55f, 0.08f, 1.00f);
         style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.47f, 0.60f, 0.76f, 0.47f);
         style.Colors[ImGuiCol_DragDropTarget] = ImVec4(0.58f, 0.58f, 0.58f, 0.90f);
-        style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+        style.Colors[ImGuiCol_NavCursor] = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
         style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
         style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
@@ -1120,9 +1120,9 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         style.TabRounding = 1.0f;
         style.Colors[ImGuiCol_Tab] = ImVec4(0.01f, 0.01f, 0.01f, 0.86f);
         style.Colors[ImGuiCol_TabHovered] = ImVec4(0.29f, 0.29f, 0.29f, 1.00f);
-        style.Colors[ImGuiCol_TabActive] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
-        style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
-        style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);
+        style.Colors[ImGuiCol_TabSelected] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+        style.Colors[ImGuiCol_TabDimmed] = ImVec4(0.02f, 0.02f, 0.02f, 1.00f);
+        style.Colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.19f, 0.19f, 0.19f, 1.00f);
 #       ifdef IMGUI_DOCKING_BRANCH     // incorrect definition... for now
         style.Colors[ImGuiCol_DockingPreview] = ImVec4(0.38f, 0.48f, 0.60f, 1.00f);
         style.Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
@@ -1181,7 +1181,7 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
 	style.Colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
 	style.Colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
 	style.Colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-	style.Colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+	style.Colors[ImGuiCol_NavCursor]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
 	style.Colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
 
 	if (styleEnum == ImGuiStyle_PurpleInverse) {
@@ -1342,7 +1342,7 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
 	style.Colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
 	style.Colors[ImGuiCol_ModalWindowDimBg]  = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
 	style.Colors[ImGuiCol_DragDropTarget]         = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-	style.Colors[ImGuiCol_NavHighlight]           = style.Colors[ImGuiCol_HeaderHovered];
+	style.Colors[ImGuiCol_NavCursor]           = style.Colors[ImGuiCol_HeaderHovered];
 	style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.70f, 0.70f, 0.70f, 0.70f);
 
 	if (styleEnum == ImGuiStyle_LightGreenInverse) {
@@ -1600,14 +1600,14 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         style.Colors[ImGuiCol_TextSelectedBg]         = black;
         style.Colors[ImGuiCol_ModalWindowDimBg]       = black;
         style.Colors[ImGuiCol_DragDropTarget]         = yellow;
-        style.Colors[ImGuiCol_NavHighlight]           = purple;
+        style.Colors[ImGuiCol_NavCursor]           = purple;
         style.Colors[ImGuiCol_NavWindowingHighlight]  = pink;
 
         style.Colors[ImGuiCol_TabHovered] = style.Colors[ImGuiCol_FrameBgActive];
         style.Colors[ImGuiCol_Tab] = style.Colors[ImGuiCol_FrameBg];
-        style.Colors[ImGuiCol_TabActive]  = style.Colors[ImGuiCol_FrameBgHovered];
-        style.Colors[ImGuiCol_TabUnfocused] = style.Colors[ImGuiCol_TitleBg];
-        style.Colors[ImGuiCol_TabUnfocusedActive] = style.Colors[ImGuiCol_TitleBgActive];
+        style.Colors[ImGuiCol_TabSelected]  = style.Colors[ImGuiCol_FrameBgHovered];
+        style.Colors[ImGuiCol_TabDimmed] = style.Colors[ImGuiCol_TitleBg];
+        style.Colors[ImGuiCol_TabDimmedSelected] = style.Colors[ImGuiCol_TitleBgActive];
 
         style.TabBorderSize = style.TabRounding = 0;
     }
@@ -1661,16 +1661,16 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         style.Colors[ImGuiCol_ResizeGripActive]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
         style.Colors[ImGuiCol_Tab]                    = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
         style.Colors[ImGuiCol_TabHovered]             = ImVec4(0.352f, 0.352f, 0.352f, 1.000f);
-        style.Colors[ImGuiCol_TabActive]              = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
-        style.Colors[ImGuiCol_TabUnfocused]           = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
-        style.Colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+        style.Colors[ImGuiCol_TabSelected]              = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+        style.Colors[ImGuiCol_TabDimmed]           = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
+        style.Colors[ImGuiCol_TabDimmedSelected]     = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
         style.Colors[ImGuiCol_PlotLines]              = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
         style.Colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
         style.Colors[ImGuiCol_PlotHistogram]          = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
         style.Colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
         style.Colors[ImGuiCol_TextSelectedBg]         = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
         style.Colors[ImGuiCol_DragDropTarget]         = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
-        style.Colors[ImGuiCol_NavHighlight]           = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+        style.Colors[ImGuiCol_NavCursor]           = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
         style.Colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
         style.Colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
         style.Colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
@@ -1744,15 +1744,15 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         style.Colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.73f, 0.73f, 0.73f, 0.35f);
         style.Colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
         style.Colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-        style.Colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        style.Colors[ImGuiCol_NavCursor]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
         style.Colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         style.Colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
 
         style.Colors[ImGuiCol_Tab]                = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
         style.Colors[ImGuiCol_TabHovered]         = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
-        style.Colors[ImGuiCol_TabActive]          = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
-        style.Colors[ImGuiCol_TabUnfocused]       = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
-        style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
+        style.Colors[ImGuiCol_TabSelected]          = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
+        style.Colors[ImGuiCol_TabDimmed]       = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);
+        style.Colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.33f, 0.33f, 0.33f, 1.00f);
 
 
 #       ifdef IMGUI_HAS_DOCK
@@ -1810,16 +1810,16 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         colors[ImGuiCol_ResizeGripActive] = ImVec4(0.62f, 0.62f, 0.62f, 0.75f);
         colors[ImGuiCol_Tab] = ImVec4(0.21f, 0.21f, 0.22f, 1.00f);
         colors[ImGuiCol_TabHovered] = ImVec4(0.37f, 0.37f, 0.39f, 1.00f);
-        colors[ImGuiCol_TabActive] = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);
-        colors[ImGuiCol_TabUnfocused] = ImVec4(0.12f, 0.12f, 0.12f, 0.97f);
-        colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.18f, 0.18f, 0.19f, 1.00f);
+        colors[ImGuiCol_TabSelected] = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);
+        colors[ImGuiCol_TabDimmed] = ImVec4(0.12f, 0.12f, 0.12f, 0.97f);
+        colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.18f, 0.18f, 0.19f, 1.00f);
         colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
         colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
         colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.59f, 0.98f, 0.50f);
         colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-        colors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_NavCursor] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
         colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
@@ -1870,16 +1870,16 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.59f, 0.54f, 0.18f, 1.00f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.35f, 0.42f, 0.31f, 1.00f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.54f, 0.57f, 0.51f, 0.78f);
-        colors[ImGuiCol_TabActive]              = ImVec4(0.59f, 0.54f, 0.18f, 1.00f);
-        colors[ImGuiCol_TabUnfocused]           = ImVec4(0.24f, 0.27f, 0.20f, 1.00f);
-        colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.35f, 0.42f, 0.31f, 1.00f);
+        colors[ImGuiCol_TabSelected]              = ImVec4(0.59f, 0.54f, 0.18f, 1.00f);
+        colors[ImGuiCol_TabDimmed]           = ImVec4(0.24f, 0.27f, 0.20f, 1.00f);
+        colors[ImGuiCol_TabDimmedSelected]     = ImVec4(0.35f, 0.42f, 0.31f, 1.00f);
         colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
         colors[ImGuiCol_PlotLinesHovered]       = ImVec4(0.59f, 0.54f, 0.18f, 1.00f);
         colors[ImGuiCol_PlotHistogram]          = ImVec4(1.00f, 0.78f, 0.28f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.59f, 0.54f, 0.18f, 1.00f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(0.73f, 0.67f, 0.24f, 1.00f);
-        colors[ImGuiCol_NavHighlight]           = ImVec4(0.59f, 0.54f, 0.18f, 1.00f);
+        colors[ImGuiCol_NavCursor]           = ImVec4(0.59f, 0.54f, 0.18f, 1.00f);
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
@@ -1939,16 +1939,16 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.34f, 0.59f, 0.18f, 1.00f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.43f, 0.58f, 0.48f, 1.00f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.38f, 0.43f, 0.40f, 0.78f);
-        colors[ImGuiCol_TabActive]              = ImVec4(0.34f, 0.59f, 0.18f, 1.00f);
-        colors[ImGuiCol_TabUnfocused]           = ImVec4(0.54f, 0.73f, 0.57f, 1.00f);
-        colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.43f, 0.58f, 0.48f, 1.00f);
+        colors[ImGuiCol_TabSelected]              = ImVec4(0.34f, 0.59f, 0.18f, 1.00f);
+        colors[ImGuiCol_TabDimmed]           = ImVec4(0.54f, 0.73f, 0.57f, 1.00f);
+        colors[ImGuiCol_TabDimmedSelected]     = ImVec4(0.43f, 0.58f, 0.48f, 1.00f);
         colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
         colors[ImGuiCol_PlotLinesHovered]       = ImVec4(0.34f, 0.59f, 0.18f, 1.00f);
         colors[ImGuiCol_PlotHistogram]          = ImVec4(0.64f, 0.91f, 0.25f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(0.60f, 0.88f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.28f, 0.48f, 0.15f, 1.00f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(0.37f, 0.62f, 0.20f, 1.00f);
-        colors[ImGuiCol_NavHighlight]           = ImVec4(0.28f, 0.49f, 0.15f, 1.00f);
+        colors[ImGuiCol_NavCursor]           = ImVec4(0.28f, 0.49f, 0.15f, 1.00f);
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(0.90f, 0.90f, 0.90f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.71f, 0.71f, 0.71f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.68f, 0.68f, 0.68f, 0.35f);
@@ -2008,16 +2008,16 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.78f, 0.55f, 0.21f, 1.00f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.51f, 0.36f, 0.15f, 1.00f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.91f, 0.64f, 0.13f, 1.00f);
-        colors[ImGuiCol_TabActive]              = ImVec4(0.78f, 0.55f, 0.21f, 1.00f);
-        colors[ImGuiCol_TabUnfocused]           = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
-        colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
+        colors[ImGuiCol_TabSelected]              = ImVec4(0.78f, 0.55f, 0.21f, 1.00f);
+        colors[ImGuiCol_TabDimmed]           = ImVec4(0.07f, 0.10f, 0.15f, 0.97f);
+        colors[ImGuiCol_TabDimmedSelected]     = ImVec4(0.14f, 0.26f, 0.42f, 1.00f);
         colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
         colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
         colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-        colors[ImGuiCol_NavHighlight]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_NavCursor]           = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
@@ -2093,16 +2093,16 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
         colors[ImGuiCol_Tab]                    = ImVec4(0.76f, 0.80f, 0.84f, 0.95f);
         colors[ImGuiCol_TabHovered]             = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-        colors[ImGuiCol_TabActive]              = ImVec4(0.60f, 0.73f, 0.88f, 0.95f);
-        colors[ImGuiCol_TabUnfocused]           = ImVec4(0.92f, 0.92f, 0.94f, 0.95f);
-        colors[ImGuiCol_TabUnfocusedActive]     = ImVec4(0.74f, 0.82f, 0.91f, 1.00f);
+        colors[ImGuiCol_TabSelected]              = ImVec4(0.60f, 0.73f, 0.88f, 0.95f);
+        colors[ImGuiCol_TabDimmed]           = ImVec4(0.92f, 0.92f, 0.94f, 0.95f);
+        colors[ImGuiCol_TabDimmedSelected]     = ImVec4(0.74f, 0.82f, 0.91f, 1.00f);
         colors[ImGuiCol_PlotLines]              = ImVec4(0.39f, 0.39f, 0.39f, 1.00f);
         colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
         colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.45f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
         colors[ImGuiCol_DragDropTarget]         = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-        colors[ImGuiCol_NavHighlight]           = colors[ImGuiCol_HeaderHovered];
+        colors[ImGuiCol_NavCursor]           = colors[ImGuiCol_HeaderHovered];
         colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(0.70f, 0.70f, 0.70f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]      = ImVec4(0.20f, 0.20f, 0.20f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg]       = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
@@ -2149,16 +2149,16 @@ bool ResetStyle(int styleEnum,ImGuiStyle& style) {
         colors[ImGuiCol_ResizeGripActive]      = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
         colors[ImGuiCol_Tab]                   = ImVec4(0.08f, 0.08f, 0.09f, 0.83f);
         colors[ImGuiCol_TabHovered]            = ImVec4(0.33f, 0.34f, 0.36f, 0.83f);
-        colors[ImGuiCol_TabActive]             = ImVec4(0.23f, 0.23f, 0.24f, 1.00f);
-        colors[ImGuiCol_TabUnfocused]          = ImVec4(0.08f, 0.08f, 0.09f, 1.00f);
-        colors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.13f, 0.14f, 0.15f, 1.00f);
+        colors[ImGuiCol_TabSelected]             = ImVec4(0.23f, 0.23f, 0.24f, 1.00f);
+        colors[ImGuiCol_TabDimmed]          = ImVec4(0.08f, 0.08f, 0.09f, 1.00f);
+        colors[ImGuiCol_TabDimmedSelected]    = ImVec4(0.13f, 0.14f, 0.15f, 1.00f);
         colors[ImGuiCol_PlotLines]             = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
         colors[ImGuiCol_PlotLinesHovered]      = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
         colors[ImGuiCol_PlotHistogram]         = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
         colors[ImGuiCol_PlotHistogramHovered]  = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg]        = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
         colors[ImGuiCol_DragDropTarget]        = ImVec4(0.11f, 0.64f, 0.92f, 1.00f);
-        colors[ImGuiCol_NavHighlight]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        colors[ImGuiCol_NavCursor]          = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
         colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
         colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);

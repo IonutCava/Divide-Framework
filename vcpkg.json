@@ -3,14 +3,6 @@
     "version-string": "latest",
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "dependencies": [
-        {
-            "name": "physx",
-            "platform": "!osx & !linux"
-        },
-        {
-            "name": "wayland",
-            "platform": "linux"
-        },
         "pkgconf",
         "boost-property-tree",
         "boost-asio",
@@ -23,15 +15,6 @@
         "simpleini",
         "glbinding",
         "glm",
-        "meshoptimizer",
-        {
-            "name": "nvtt",
-            "platform": "!osx"
-        },
-        {
-            "name": "date",
-            "platform": "osx"
-        },
         "openal-soft",
         "expat",
         "recastnavigation",
@@ -44,18 +27,16 @@
         "catch2",
         "fribidi",
         "assimp",
-        "sdl2",
-        "sdl2-image",
         "mimalloc",
+        "imguizmo",
+        "meshoptimizer",
+        "spirv-reflect",
+        "sdl3",
         {
-            "name": "sdl2-mixer",
+            "name": "sdl3-image",
             "features": [
-                "fluidsynth",
-                "libflac",
-                "libmodplug",
-                "mpg123",
-                "wavpack",
-                "opusfile"
+                "jpeg",
+                "png"
             ]
         },
         {
@@ -64,9 +45,32 @@
                 "docking-experimental",
                 "no-obsolete-keyio",
                 "no-obsolete-functions",
-                "sdl2-binding",
-                "sdl2-renderer-binding"
+                "sdl3-binding",
+                "sdl3-renderer-binding"
             ]
+        },
+        {
+            "name": "nvtt",
+            "platform": "!osx"
+        },
+        {
+            "name": "date",
+            "platform": "osx"
+        },
+        {
+            "name": "physx",
+            "platform": "!osx & !linux"
+        },
+        {
+            "name": "joltphysics",
+            "features": [
+                "debugrenderer",
+                "profiler"
+            ]
+        },
+        {
+            "name": "wayland",
+            "platform": "linux"
         }
     ]
 }

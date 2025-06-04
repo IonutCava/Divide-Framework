@@ -232,8 +232,8 @@ target_link_libraries(${APP_EXE_PROJECT_MANAGER} PRIVATE
                                                  PRIVATE 
                                                  imgui::imgui
                                                  fmt::fmt
-                                                 $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main> $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
-                                                 $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+                                                 SDL3::SDL3
+                                                 SDL3_image::SDL3_image)
 
 add_dependencies(${APP_EXE_PROJECT_MANAGER} ${APP_EXE_DIVIDE}BinGenerated)
 

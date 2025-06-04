@@ -7,7 +7,6 @@ add_compile_definitions(GLBINDING_AUX_STATIC_DEFINE)
 add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
 add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 add_compile_definitions(HAVE_M_PI)
-add_compile_definitions(SDL_MAIN_HANDLED)
 add_compile_definitions(EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED=1)
 add_compile_definitions(IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
 
@@ -37,14 +36,18 @@ find_package(glslang CONFIG REQUIRED)
 find_package(ctre CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
-find_package(SDL2 CONFIG REQUIRED)
-find_package(SDL2_image CONFIG REQUIRED)
-find_package(SDL2_mixer CONFIG REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
+find_package(SDL3_image CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(Jolt CONFIG REQUIRED)
+find_package(imguizmo CONFIG REQUIRED)
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+
 if(MAC_OS_BUILD)
     find_package(date CONFIG REQUIRED)
 endif()
+
 if(LINUX_OS_BUILD)
     include(CMakeHelpers/PlatformHelpers/FindWayland.cmake)
 endif()
@@ -151,23 +154,29 @@ set(EXTERNAL_LIBS
     fmt::fmt
     OptickCore
     EASTL
-    Jolt
+    Jolt::Jolt
     OpenAL::OpenAL
     expat::expat
     imgui::imgui
+    imguizmo::imguizmo
     assimp::assimp
     ctre::ctre
-    spirv-reflect-static
+    unofficial::spirv-reflect
     meshoptimizer::meshoptimizer
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
     Freetype::Freetype
     Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
-    RecastNavigation::Detour RecastNavigation::Recast RecastNavigation::DebugUtils RecastNavigation::DetourCrowd
-    $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
-    $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
-    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main> $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
-    glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV glslang::SPVRemapper
+    RecastNavigation::Detour
+    RecastNavigation::Recast
+    RecastNavigation::DebugUtils
+    RecastNavigation::DetourCrowd
+    SDL3::SDL3
+    SDL3_mixer::SDL3_mixer
+    SDL3_image::SDL3_image
+    glslang::glslang
+    glslang::glslang-default-resource-limits
+    glslang::SPIRV glslang::SPVRemapper
 )
 
 if(WINDOWS_OS_BUILD)
