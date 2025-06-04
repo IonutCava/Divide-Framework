@@ -139,7 +139,7 @@ protected:
 
 protected:
     friend class DisplayWindow;
-    [[nodiscard]] static ErrorCode ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor );
+    [[nodiscard]] static ErrorCode ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor, bool skipDebug = false );
     [[nodiscard]] static ErrorCode ApplyAPISettings( const PlatformContext& context, RenderAPI api, DisplayWindow* targetWindow, DisplayWindow* activeWindow );
     static void DestroyAPISettings(DisplayWindow* window) noexcept;
 

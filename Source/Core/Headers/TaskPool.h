@@ -76,17 +76,19 @@ class TaskPool final : public GUIDWrapper {
 
     /// Called by a task that isn't doing anything (e.g. waiting on child tasks).
     /// Use this to run another task (if any) and return to the previous execution point
-    void threadWaiting();
+    /// Returns true if a task was executed, false otherwise.
+    bool threadWaiting();
 
-    // Reinitializes the thread pool (joins and closes out all existing threads first)
+    /// Reinitializes the thread pool (joins and closes out all existing threads first)
     void init();
-    // Join all of the threads and block until all running tasks have completed.
+    /// Join all of the threads and block until all running tasks have completed.
     void join();
 
-    // Wait for all running jobs to finish
+    /// Wait for all running jobs to finish
     void wait() const noexcept;
 
-    void executeOneTask( bool isIdleCall );
+    /// Returns false if there were no available tasks to run
+    bool executeOneTask( bool isIdleCall );
 
     PROPERTY_R( vector<std::thread>, threads );
 
@@ -132,7 +134,6 @@ class TaskPool final : public GUIDWrapper {
 
      Mutex _taskFinishedMutex;
      std::condition_variable _taskFinishedCV;
-     DELEGATE<void, size_t, const std::thread::id&> _threadCreateCbk{};
 
      std::atomic_uint _runningTaskCount = 0u;
      std::atomic_size_t _activeThreads{ 0u };

@@ -445,12 +445,21 @@ namespace Divide
             return GLUtil::glTextureTypeTable[to_base( type )];
         }
 
-        bool ValidateSDL( const I32 errCode, bool assert  )
+        bool ValidateSDL( const bool success, bool assert  )
         {
-            if ( errCode != 0 )
+            if ( !success)
             {
-                Console::errorfn( LOCALE_STR( "SDL_ERROR" ), SDL_GetError() );
-                DIVIDE_EXPECTED_CALL_MSG( !assert, SDL_GetError() );
+                const char* errorStr = SDL_GetError();
+                if ( strlen(errorStr) > 0 )
+                {
+                    Console::errorfn( LOCALE_STR( "SDL_ERROR" ), errorStr );
+                    DIVIDE_EXPECTED_CALL_MSG( !assert, errorStr );
+                }
+                else
+                {
+                    Console::errorfn(LOCALE_STR("SDL_ERROR"), "SDL_ERROR");
+                    DIVIDE_EXPECTED_CALL_MSG( !assert, "EDL_ERROR!" );
+                }
                 
                 return false;
             }

@@ -159,7 +159,7 @@ void SDL_API::playSound(const Handle<AudioDescriptor> sound)
         if ( mixSoundPtr )
         {
             Mix_Volume( soundPtr->channelID(), soundPtr->volume());
-            if (Mix_PlayChannel( soundPtr->channelID(), mixSoundPtr, soundPtr->isLooping() ? -1 : 0) == -1)
+            if (!Mix_PlayChannel( soundPtr->channelID(), mixSoundPtr, soundPtr->isLooping() ? -1 : 0))
             {
                 Console::errorfn(LOCALE_STR("ERROR_SDL_CANT_PLAY"), soundPtr->resourceName().c_str(), SDL_GetError());
             }

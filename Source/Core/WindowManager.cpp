@@ -378,6 +378,15 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
 
     err = ApplyAPISettings( *_context, descriptor.targetAPI, window.get(), crtWindow != nullptr ? crtWindow : mainWindow() );
 
+    if ( err == ErrorCode::GL_OLD_HARDWARE)
+    {
+        err = ConfigureAPISettings(*_context, descriptor, true);
+        if ( err == ErrorCode::NO_ERR)
+        {
+            err = ApplyAPISettings(*_context, descriptor.targetAPI, window.get(), crtWindow != nullptr ? crtWindow : mainWindow());
+        }
+    }
+
     if ( err != ErrorCode::NO_ERR )
     {
         if ( isMainWindow )
@@ -478,7 +487,7 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
     }
 }
 
-ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor )
+ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor, const bool skipDebug)
 {
     const RenderAPI api = descriptor.targetAPI;
 
@@ -493,12 +502,17 @@ ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, c
         bool useDebugContext = false;
         if constexpr(Config::ENABLE_GPU_VALIDATION)
         {
-            // OpenGL error handling is available in any build configuration if the proper defines are in place.
-            OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
-            if (context.config().debug.renderer.enableRenderAPIDebugging || context.config().debug.renderer.enableRenderAPIBestPractices)
+            if (!skipDebug)
             {
-                useDebugContext = true;
-                OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
+                // OpenGL error handling is available in any build configuration if the proper defines are in place.
+                // ToDo: Figure out why this leads to failed context creation! -Ionut
+                OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
+                if (context.config().debug.renderer.enableRenderAPIDebugging || context.config().debug.renderer.enableRenderAPIBestPractices)
+                {
+                    useDebugContext = true;
+                    // ToDo: Figure out why this leads to failed context creation! -Ionut
+                    OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
+                }
             }
         }
         if (!useDebugContext)
@@ -521,7 +535,7 @@ ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, c
 
         Validate(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE));
         ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
-        if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6) != 0)
+        if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6))
         {
             ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5));
         }

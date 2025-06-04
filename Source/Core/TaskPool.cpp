@@ -37,9 +37,7 @@ namespace Divide
         }
 
         _isRunning.store(true);
-        _threadCreateCbk = onThreadCreateCbk;
         _threads.reserve( threadCount );
-        _activeThreads.store(threadCount);
 
         for (size_t idx = 0u; idx < threadCount; ++idx )
         {
@@ -48,29 +46,33 @@ namespace Divide
                 [&, idx]
                 {
                     const auto threadName = Util::StringFormat( "{}_{}", _threadNamePrefix, idx );
-
                     Profiler::OnThreadStart( threadName );
+
+                    _activeThreads.fetch_add( 1u ) ;
 
                     SetThreadName( threadName );
 
-                    if ( _threadCreateCbk )
+                    if (onThreadCreateCbk)
                     {
-                        _threadCreateCbk( idx, std::this_thread::get_id() );
-                        _threadCreateCbk = {};
+                        onThreadCreateCbk( idx, std::this_thread::get_id() );
                     }
 
                     while ( _isRunning.load() )
                     {
-                        executeOneTask( false );
+                        if ( !executeOneTask( false ) )
+                        {
+                            std::this_thread::yield();
+                        }
                     }
 
-                    Profiler::OnThreadStop();
-
                     _activeThreads.fetch_sub( 1u );
+                    Profiler::OnThreadStop();
                 }
             );
         }
 
+        WAIT_FOR_CONDITION(_activeThreads.load() == threadCount);
+        
         return true;
     }
 
@@ -81,7 +83,6 @@ namespace Divide
         waitForAllTasks( true );
         efficient_clear( _threads );
         _taskCallbacks.resize(0);
-        _threadCreateCbk = {};
     }
 
     void TaskPool::enqueue( Task& task, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction )
@@ -143,7 +144,10 @@ namespace Divide
                 }
 
                 // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
-                threadWaiting();
+                if ( !threadWaiting() )
+                {
+                    std::this_thread::yield();
+                }
             }
 
             if (priority == TaskPriority::DONT_CARE_NO_IDLE && isIdleCall)
@@ -301,9 +305,9 @@ namespace Divide
         return task;
     }
 
-    void TaskPool::threadWaiting()
+    bool TaskPool::threadWaiting()
     {
-        executeOneTask( true );
+        return executeOneTask( true );
     }
 
     void TaskPool::join()
@@ -334,18 +338,25 @@ namespace Divide
         }
     }
 
-    void TaskPool::executeOneTask( const bool isIdleCall )
+    bool TaskPool::executeOneTask( const bool isIdleCall )
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Threading);
 
         PoolTask task = {};
         TaskPriority priorityOut = TaskPriority::DONT_CARE;
 
-        if ( deque( isIdleCall, task, priorityOut) && 
-             !task( isIdleCall ) )
+        if ( !deque( isIdleCall, task, priorityOut))
+        {
+            return false;
+        }
+
+        if ( !task( isIdleCall ) )
         {
             DIVIDE_EXPECTED_CALL( getQueue(priorityOut).enqueue( task ) );
+            return false;
         }
+
+        return true;
     }
 
     bool TaskPool::deque( const bool isIdleCall, PoolTask& taskOut, TaskPriority& priorityOut)
@@ -379,34 +390,14 @@ namespace Divide
             }
         }
 
-        if constexpr ( IsBlocking )
+        if constexpr (IsBlocking)
         {
-            if ( !isIdleCall)
-            {
-                while( !getQueue(priorityIn).wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
-                {
-                    if (!_isRunning.load()) [[unlikely]]
-                    {
-                        return false;
-                    }
-                    std::this_thread::yield();
-                }
-
-                return true;
-            }
+            return getQueue(priorityIn).wait_dequeue_timed(taskOut, Time::MillisecondsToMicroseconds(2));
         }
-
-
-        while ( !getQueue(priorityIn).try_dequeue( taskOut ) )
+        else
         {
-            if (isIdleCall || !_isRunning.load() )
-            {
-                return false;
-            }
-            std::this_thread::yield();
+            return getQueue(priorityIn).try_dequeue(taskOut);
         }
-
-        return true;
     }
 
     void Parallel_For( TaskPool& pool, const ParallelForDescriptor& descriptor, const DELEGATE<void, const Task*, U32/*start*/, U32/*end*/>& cbk )
