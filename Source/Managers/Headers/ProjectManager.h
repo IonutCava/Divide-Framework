@@ -297,7 +297,8 @@ namespace Divide
         /// Mouse button released: return true if input was consumed
         [[nodiscard]] bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
 
-        [[nodiscard]] bool onTextEventInternal( Input::TextEvent& argInOut) override;
+        [[nodiscard]] bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+        [[nodiscard]] bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
 
         /// Called if a mouse move event was captured by a different system (editor, gui, etc).
         /// Used to cancel scene specific mouse move tracking

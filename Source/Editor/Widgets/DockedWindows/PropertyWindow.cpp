@@ -93,7 +93,7 @@ namespace Divide
         template<typename Pred>
         void ApplyAllButton( I32& id, const bool readOnly, const Material& material, Pred&& predicate )
         {
-            ImGui::SameLine( ImGui::GetWindowContentRegionMax().x - 40 );
+            ImGui::SameLine( ImGui::GetContentRegionAvail().x - 40 );
             ImGui::PushID( 4321234 + id++ );
             if ( readOnly )
             {
@@ -117,7 +117,7 @@ namespace Divide
         bool PreviewTextureButton( I32& id, const Handle<Texture> tex, const bool readOnly )
         {
             bool ret = false;
-            ImGui::SameLine( ImGui::GetWindowContentRegionMax().x - 15 );
+            ImGui::SameLine( ImGui::GetContentRegionAvail().x - 15 );
             ImGui::PushID( 4321234 + id++ );
             if ( readOnly )
             {

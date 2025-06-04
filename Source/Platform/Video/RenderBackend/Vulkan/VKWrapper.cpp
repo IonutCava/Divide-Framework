@@ -29,7 +29,7 @@
 #include "Textures/Headers/vkTexture.h"
 #include "Textures/Headers/vkSamplerObject.h"
 
-#include <SDL2/SDL_vulkan.h>
+#include <SDL3/SDL_vulkan.h>
 
 #define VMA_IMPLEMENTATION
 #include "Headers/vkMemAllocatorInclude.h"
@@ -744,7 +744,7 @@ namespace Divide
         DIVIDE_ASSERT(windowState._window != nullptr);
         if (windowState._surface == nullptr )
         {
-            SDL_Vulkan_CreateSurface( windowState._window->getRawWindow(), _vkbInstance.instance, &windowState._surface );
+            SDL_Vulkan_CreateSurface( windowState._window->getRawWindow(), _vkbInstance.instance, nullptr, &windowState._surface );
             DIVIDE_ASSERT(windowState._surface != nullptr);
         }
 
@@ -834,7 +834,7 @@ namespace Divide
         perWindowContext._window = window;
 
         // get the surface of the window we opened with SDL
-        SDL_Vulkan_CreateSurface( perWindowContext._window->getRawWindow(), _vkbInstance.instance, &perWindowContext._surface );
+        SDL_Vulkan_CreateSurface( perWindowContext._window->getRawWindow(), _vkbInstance.instance, nullptr, &perWindowContext._surface );
 
         if ( perWindowContext._surface == nullptr )
         {

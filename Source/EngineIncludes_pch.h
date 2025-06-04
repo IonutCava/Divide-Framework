@@ -93,7 +93,7 @@ DISABLE_GCC_WARNING_POP()
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/deadline_timer.hpp>
 
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 
 #include "Core/Headers/Profiler.h"
 

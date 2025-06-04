@@ -83,7 +83,7 @@ namespace Divide::Networking
                     // Display some useful(?) information
                     std::ostringstream os;
                     os << socket.remote_endpoint();
-                    Console::printfn(LOCALE_STR("SERVER_NEW_CONNECTION"), os.str());
+                    Console::printfn(LOCALE_STR("SERVER_NEW_INCOMING_CONNECTION"), os.str());
                     // Create a new connection to handle this client 
                     Connection_ptr newconn = std::make_shared<Connection>(Connection::Owner::SERVER, _asioContext, MOV(socket), _messagesIn);
 

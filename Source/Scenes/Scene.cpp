@@ -1182,18 +1182,18 @@ namespace Divide
             {
                 if ( window != nullptr )
                 {
-                    hadWindowGrab = window->grabState();
+                    hadWindowGrab = window->mouseGrabState();
                 }
                 lastMousePosition = WindowManager::GetGlobalCursorPosition();
-                WindowManager::ToggleRelativeMouseMode( true );
+                WindowManager::ToggleRelativeMouseMode(window, true );
             }
             else
             {
-                WindowManager::ToggleRelativeMouseMode( false );
+                WindowManager::ToggleRelativeMouseMode(window, false );
                 state()->playerState( index ).resetMoveDirections();
                 if ( window != nullptr )
                 {
-                    window->grabState( hadWindowGrab );
+                    window->mouseGrabState( hadWindowGrab );
                 }
                 WindowManager::SetGlobalCursorPosition( lastMousePosition.x, lastMousePosition.y );
             }
@@ -1633,7 +1633,7 @@ namespace Divide
         LockGuard<SharedMutex> w_lock( _tasksMutex );
         for ( vector<Task*>::iterator it = begin( _tasks ); it != end( _tasks ); ++it )
         {
-            if ( (*it)->_id == task._id )
+            if ( (*it)->_globalId == task._globalId)
             {
                 Wait( **it, _context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
                 _tasks.erase( it );

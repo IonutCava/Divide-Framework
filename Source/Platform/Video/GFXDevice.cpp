@@ -406,55 +406,6 @@ namespace Divide
                        Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
                        Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorgroupInvocations );
 
-        string refreshRates;
-
-        DisplayManager::OutputDisplayProperties prevMode;
-        const auto printMode = [&prevMode, &refreshRates]()
-        {
-            Console::printfn( LOCALE_STR( "CURRENT_DISPLAY_MODE" ),
-                              prevMode._resolution.width,
-                              prevMode._resolution.height,
-                              prevMode._bitsPerPixel,
-                              prevMode._formatName.c_str(),
-                              refreshRates.c_str() );
-        };
-
-        for ( size_t idx = 0; idx < DisplayManager::ActiveDisplayCount(); ++idx )
-        {
-            const auto& registeredModes = DisplayManager::GetDisplayModes( idx );
-            if ( !registeredModes.empty() )
-            {
-                Console::printfn( LOCALE_STR( "AVAILABLE_VIDEO_MODES" ), idx, registeredModes.size() );
-
-                prevMode = registeredModes.front();
-
-                for ( const auto& it : registeredModes )
-                {
-                    if ( prevMode._resolution != it._resolution ||
-                         prevMode._bitsPerPixel != it._bitsPerPixel ||
-                         prevMode._formatName != it._formatName )
-                    {
-                        printMode();
-                        refreshRates = "";
-                        prevMode = it;
-                    }
-
-                    if ( refreshRates.empty() )
-                    {
-                        refreshRates = Util::to_string( to_U32( it._maxRefreshRate ) );
-                    }
-                    else
-                    {
-                        refreshRates.append( Util::StringFormat( ", {}", it._maxRefreshRate ) );
-                    }
-                }
-            }
-            if ( !refreshRates.empty() )
-            {
-                printMode();
-            }
-        }
-
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
         I32 numLightsPerCluster = config.rendering.numLightsPerCluster;

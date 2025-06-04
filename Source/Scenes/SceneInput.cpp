@@ -387,11 +387,21 @@ namespace Divide
         return false;
     }
 
-    bool SceneInput::onTextEventInternal( [[maybe_unused]]  Input::TextEvent& argInOut)
+    bool SceneInput::onTextInputInternal( [[maybe_unused]] Input::TextInputEvent& argInOut)
     {
         if ( g_recordInput )
         {
            NOP();
+        }
+
+        return false;
+    }
+
+    bool SceneInput::onTextEditInternal( [[maybe_unused]] Input::TextEditEvent& argInOut )
+    {
+        if (g_recordInput)
+        {
+            NOP();
         }
 
         return false;

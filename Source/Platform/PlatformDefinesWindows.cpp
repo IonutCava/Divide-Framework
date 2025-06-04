@@ -11,7 +11,6 @@
 #include <comdef.h>
 
 // SDL redefines WIN32_LEAN_AND_MEAN
-#include <SDL2/SDL_syswm.h>
 #ifdef WIN32_LEAN_AND_MEAN
 #undef WIN32_LEAN_AND_MEAN
 #endif //WIN32_LEAN_AND_MEAN
@@ -39,7 +38,7 @@ LRESULT DlgProc([[maybe_unused]] HWND hWnd, [[maybe_unused]] UINT uMsg, [[maybe_
 
 namespace Divide {
     //https://msdn.microsoft.com/en-us/library/windows/desktop/ms679360%28v=vs.85%29.aspx
-    static std::string GetLastErrorText() noexcept
+    std::string GetLastErrorText() noexcept
     {
         //Get the error message ID, if any.
         DWORD errorMessageID = ::GetLastError();
@@ -71,10 +70,12 @@ namespace Divide {
 
     void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept
     {
-        SDL_SysWMinfo wmInfo = {};
-        SDL_VERSION(&wmInfo.version);
-        SDL_GetWindowWMInfo(static_cast<SDL_Window*>(window), &wmInfo);
-        handleOut._handle = wmInfo.info.win.window;
+        handleOut._handle = nullptr;
+        HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+        if (hwnd)
+        {
+            handleOut._handle = hwnd;
+        }
     }
 
     bool DebugBreak(const bool condition) noexcept

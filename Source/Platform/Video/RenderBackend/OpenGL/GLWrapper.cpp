@@ -91,7 +91,7 @@ namespace Divide
             {
                 for ( const SDLContextEntry& contextEntry : _contexts )
                 {
-                    SDL_GL_DeleteContext( contextEntry._context );
+                    SDL_GL_DestroyContext( contextEntry._context );
                 }
                 _contexts.clear();
                 return true;

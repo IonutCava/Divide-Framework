@@ -2,7 +2,7 @@
 
 #include "Headers/Input.h"
 
-#include <SDL2/SDL_keycode.h>
+#include <SDL3/SDL_keycode.h>
 
 namespace Divide {
 namespace Input {
@@ -27,42 +27,42 @@ namespace Input {
         {SDLK_EQUALS, KeyCode::KC_EQUALS},
         {SDLK_BACKSPACE, KeyCode::KC_BACK},
         {SDLK_TAB, KeyCode::KC_TAB},
-        {SDLK_q, KeyCode::KC_Q},
-        {SDLK_w, KeyCode::KC_W},
-        {SDLK_e, KeyCode::KC_E},
-        {SDLK_r, KeyCode::KC_R},
-        {SDLK_t, KeyCode::KC_T},
-        {SDLK_y, KeyCode::KC_Y},
-        {SDLK_u, KeyCode::KC_U},
-        {SDLK_i, KeyCode::KC_I},
-        {SDLK_o, KeyCode::KC_O},
-        {SDLK_p, KeyCode::KC_P},
+        {SDLK_Q, KeyCode::KC_Q},
+        {SDLK_W, KeyCode::KC_W},
+        {SDLK_E, KeyCode::KC_E},
+        {SDLK_R, KeyCode::KC_R},
+        {SDLK_T, KeyCode::KC_T},
+        {SDLK_Y, KeyCode::KC_Y},
+        {SDLK_U, KeyCode::KC_U},
+        {SDLK_I, KeyCode::KC_I},
+        {SDLK_O, KeyCode::KC_O},
+        {SDLK_P, KeyCode::KC_P},
         {SDLK_RETURN, KeyCode::KC_RETURN},
         {SDLK_LCTRL, KeyCode::KC_LCONTROL},
         {SDLK_RCTRL, KeyCode::KC_RCONTROL},
-        {SDLK_a, KeyCode::KC_A},
-        {SDLK_s, KeyCode::KC_S},
-        {SDLK_d, KeyCode::KC_D},
-        {SDLK_f, KeyCode::KC_F},
-        {SDLK_g, KeyCode::KC_G},
-        {SDLK_h, KeyCode::KC_H},
-        {SDLK_j, KeyCode::KC_J},
-        {SDLK_k, KeyCode::KC_K},
-        {SDLK_l, KeyCode::KC_L},
+        {SDLK_A, KeyCode::KC_A},
+        {SDLK_S, KeyCode::KC_S},
+        {SDLK_D, KeyCode::KC_D},
+        {SDLK_F, KeyCode::KC_F},
+        {SDLK_G, KeyCode::KC_G},
+        {SDLK_H, KeyCode::KC_H},
+        {SDLK_J, KeyCode::KC_J},
+        {SDLK_K, KeyCode::KC_K},
+        {SDLK_L, KeyCode::KC_L},
         {SDLK_SEMICOLON, KeyCode::KC_SEMICOLON},
         {SDLK_COLON, KeyCode::KC_COLON},
-        {SDLK_QUOTE, KeyCode::KC_APOSTROPHE},
-        {SDLK_BACKQUOTE, KeyCode::KC_GRAVE},
+        {SDLK_APOSTROPHE, KeyCode::KC_APOSTROPHE},
+        {SDLK_GRAVE, KeyCode::KC_GRAVE},
         {SDLK_LSHIFT, KeyCode::KC_LSHIFT},
         {SDLK_BACKSLASH, KeyCode::KC_BACKSLASH},
         {SDLK_SLASH, KeyCode::KC_SLASH},
-        {SDLK_z, KeyCode::KC_Z},
-        {SDLK_x, KeyCode::KC_X},
-        {SDLK_c, KeyCode::KC_C},
-        {SDLK_v, KeyCode::KC_V},
-        {SDLK_b, KeyCode::KC_B},
-        {SDLK_n, KeyCode::KC_N},
-        {SDLK_m, KeyCode::KC_M},
+        {SDLK_Z, KeyCode::KC_Z},
+        {SDLK_X, KeyCode::KC_X},
+        {SDLK_C, KeyCode::KC_C},
+        {SDLK_V, KeyCode::KC_V},
+        {SDLK_B, KeyCode::KC_B},
+        {SDLK_N, KeyCode::KC_N},
+        {SDLK_M, KeyCode::KC_M},
         {SDLK_COMMA, KeyCode::KC_COMMA},
         {SDLK_PERIOD, KeyCode::KC_PERIOD},
         {SDLK_RSHIFT, KeyCode::KC_RSHIFT},
@@ -123,8 +123,10 @@ namespace Input {
         {SDLK_APPLICATION, KeyCode::KC_APPS},
     };
 
-    SDL_Keycode SDLKeyCodeFromKey(const KeyCode code) noexcept {
-        for (const KeyMapEntry& entry : KeyCodeSDLMap) {
+    SDL_Keycode SDLKeyCodeFromKey(const KeyCode code) noexcept
+    {
+        for (const KeyMapEntry& entry : KeyCodeSDLMap)
+        {
             if (entry._kCode == code) {
                 return entry._sdlKCode;
             }
@@ -149,13 +151,13 @@ namespace Input {
 
     InputState GetKeyState([[maybe_unused]] const U8 deviceIndex, const KeyCode key) noexcept
     {
-        const Uint8 *state = SDL_GetKeyboardState(nullptr);
+        const bool *state = SDL_GetKeyboardState(nullptr);
 
-        return state[SDL_GetScancodeFromKey(SDLKeyCodeFromKey(key))] ? InputState::PRESSED : InputState::RELEASED;
+        return state[SDL_GetScancodeFromKey(SDLKeyCodeFromKey(key), nullptr)] ? InputState::PRESSED : InputState::RELEASED;
     }
 
     InputState GetMouseButtonState([[maybe_unused]] const U8 deviceIndex, const MouseButton button) noexcept {
-        I32 x = -1, y = -1;
+        F32 x = -1, y = -1;
         const U32 state = SDL_GetMouseState(&x, &y);
 
         U32 sdlButton = 0u;
@@ -184,7 +186,7 @@ namespace Input {
             return InputState::RELEASED;
         }
 
-        return (state & SDL_BUTTON(sdlButton)) != 0 ? InputState::PRESSED : InputState::RELEASED;
+        return (state & SDL_BUTTON_MASK(sdlButton)) != 0 ? InputState::PRESSED : InputState::RELEASED;
     }
 
     InputState GetJoystickElementState([[maybe_unused]] Joystick deviceIndex, [[maybe_unused]] JoystickElement element) noexcept {

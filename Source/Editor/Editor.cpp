@@ -116,10 +116,10 @@ namespace Divide
         static ImGuiAllocatorUserData g_ImAllocatorUserData{};
     }; // namespace ImGuiCustom
 
-    ImTextureID to_TexID( Handle<Texture> handle )
+    ImGui::ImTextureID to_TexID( Handle<Texture> handle )
     {
         const U32 texData = handle._data;
-        return ImTextureID(intptr_t(texData));
+        return ImGui::ImTextureID(intptr_t(texData));
     }
 
     Handle<Texture> from_TexID( ImTextureID texID )
@@ -394,13 +394,13 @@ namespace Divide
         const WindowManager::MonitorData& mainMonitor = monitors[_mainWindow->initialDisplay()];
 
         ImGuiContext*& editorContext = _imguiContexts[to_base(ImGuiContextType::Editor)];
+        ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         editorContext = ImGui::CreateContext();
         ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
         createFontTexture(io, mainMonitor.dpi / PlatformDefaultDPI());
-        initBasicImGUIState( io, true, _imguiStringBuffers[to_base(ImGuiContextType::Editor)] );
+        initBasicImGUIState( io, platform_io, true, _imguiStringBuffers[to_base(ImGuiContextType::Editor)] );
         editorContext->Viewports[0]->PlatformHandle = _mainWindow;
 
-        ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         platform_io.Platform_CreateWindow = []( ImGuiViewport* viewport )
         {
             if ( g_windowManager != nullptr )
@@ -459,15 +459,14 @@ namespace Divide
                         ._name = "Editor::MOVED"
                     });
 
-                    newWindow->addEventListener(WindowEvent::RESIZED,
+                    newWindow->addEventListener(WindowEvent::SIZE_CHANGED,
                     {
-                        ._cbk = [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs&
-                                    args ) noexcept
+                        ._cbk = [viewport]( [[maybe_unused]] const DisplayWindow::WindowEventArgs& args ) noexcept
                         {
                             viewport->PlatformRequestResize = true;
                             return true;
                         },
-                        ._name = "Editor::RESIZED"
+                        ._name = "Editor::SIZE_CHANGED"
                     });
 
                     viewport->PlatformHandle = (void*)newWindow;
@@ -689,7 +688,7 @@ namespace Divide
 
         ImGuiContext*& gizmoContext = _imguiContexts[to_base( ImGuiContextType::Gizmo )];
         gizmoContext = ImGui::CreateContext( io.Fonts );
-        initBasicImGUIState( gizmoContext->IO, false, _imguiStringBuffers[to_base(ImGuiContextType::Gizmo)]);
+        initBasicImGUIState( gizmoContext->IO, gizmoContext->PlatformIO, false, _imguiStringBuffers[to_base(ImGuiContextType::Gizmo)]);
         gizmoContext->Viewports[0]->PlatformHandle = _mainWindow;
 
         _gizmo = std::make_unique<Gizmo>( *this, gizmoContext, 0.3f );
@@ -825,15 +824,7 @@ namespace Divide
     void Editor::updateEditorFocus()
     {
         const bool editorHasFocus = hasFocus();
-
-        if ( editorHasFocus )
-        {
-            _imguiContexts[to_base(ImGuiContextType::Editor)]->IO.ConfigFlags &= ~ImGuiConfigFlags_NavNoCaptureKeyboard;
-        }
-        else
-        {
-            _imguiContexts[to_base(ImGuiContextType::Editor)]->IO.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
-        }
+        _imguiContexts[to_base(ImGuiContextType::Editor)]->IO.ConfigNavCaptureKeyboard = editorHasFocus;
 
         _context.kernel().projectManager()->onChangeFocus( !editorHasFocus );
         Attorney::GizmoEditor::onSceneFocus( _gizmo.get(), !editorHasFocus );
@@ -1528,7 +1519,7 @@ namespace Divide
 
         const bool flipClipY = _context.gfx().renderAPI() == RenderAPI::OpenGL;
 
-        ImTextureID crtImguiTexID = nullptr;
+        ImTextureID crtImguiTexID = 0u;
 
         U32 baseVertex = 0u;
         U32 indexOffset = 0u;
@@ -1720,7 +1711,7 @@ namespace Divide
         }
         const ImGuiKey imguiKey = DivideKeyToImGuiKey( argInOut._key );
         io.AddKeyEvent( imguiKey, true );
-        io.SetKeyEventNativeData( imguiKey, argInOut.sym, argInOut.scancode, argInOut.scancode );
+        io.SetKeyEventNativeData( imguiKey, argInOut._sdlKey, argInOut._sdlScancode, argInOut._sdlScancode);
 
         return wantsKeyboard();
     }
@@ -1777,7 +1768,7 @@ namespace Divide
         }
         const ImGuiKey imguiKey = DivideKeyToImGuiKey( argInOut._key );
         io.AddKeyEvent( imguiKey, false );
-        io.SetKeyEventNativeData( imguiKey, argInOut.sym, argInOut.scancode, argInOut.scancode );
+        io.SetKeyEventNativeData( imguiKey, argInOut._sdlKey, argInOut._sdlScancode, argInOut._sdlScancode);
 
         return wantsKeyboard() || ret;
     }
@@ -1920,7 +1911,7 @@ namespace Divide
     {
         if ( !argInOut._wheelEvent )
         {
-            if ( WindowManager::IsRelativeMouseMode() )
+            if ( WindowManager::IsRelativeMouseMode(_mainWindow) )
             {
                 return false;
             }
@@ -1944,9 +1935,9 @@ namespace Divide
             }
             if ( !_mouseCaptured)
             {
-                int2 posGlobal{};
+                float2 posGlobal{};
                 WindowManager::GetMouseState( posGlobal, true );
-                tempCoords = { to_F32( posGlobal.x ), to_F32( posGlobal.y ) };
+                tempCoords = { posGlobal.x, posGlobal.y };
             }
 
             updateFocusState( tempCoords );
@@ -2002,7 +1993,7 @@ namespace Divide
     /// Mouse button pressed: return true if input was consumed
     bool Editor::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
     {
-        if ( WindowManager::IsRelativeMouseMode() )
+        if ( WindowManager::IsRelativeMouseMode(_mainWindow) )
         {
             return false;
         }
@@ -2031,7 +2022,7 @@ namespace Divide
     /// Mouse button released: return true if input was consumed
     bool Editor::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
     {
-        if ( WindowManager::IsRelativeMouseMode() )
+        if ( WindowManager::IsRelativeMouseMode(_mainWindow) )
         {
             return false;
         }
@@ -2144,7 +2135,7 @@ namespace Divide
         return running() && !Hovered( _windowFocusState );
     }
 
-    bool Editor::onTextEventInternal( Input::TextEvent& argInOut)
+    bool Editor::onTextInputInternal( Input::TextInputEvent& argInOut)
     {
         if ( !hasFocus() )
         {
@@ -2154,13 +2145,19 @@ namespace Divide
         bool wantsCapture = false;
         for ( ImGuiContext* ctx : _imguiContexts )
         {
-            ctx->IO.AddInputCharactersUTF8( argInOut._text.c_str() );
+            ctx->IO.AddInputCharactersUTF8( argInOut._utf8Text );
             wantsCapture = ctx->IO.WantCaptureKeyboard || wantsCapture;
         }
 
         return wantsCapture;
     }
-     
+
+    bool Editor::onTextEditInternal( [[maybe_unused]] Input::TextEditEvent& argInOut)
+    {
+        // We don't handle text editing at the moment
+       return false;
+    }
+
     void Editor::onWindowSizeChange( const SizeChangeParams& params )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
@@ -2969,7 +2966,7 @@ namespace Divide
         return false;
     }
 
-    void Editor::initBasicImGUIState(ImGuiIO& io, const bool enableViewportSupport, string& clipboardStringBuffer) noexcept
+    void Editor::initBasicImGUIState(ImGuiIO& io, ImGuiPlatformIO& platform_io, const bool enableViewportSupport, string& clipboardStringBuffer) noexcept
     {
         if (enableViewportSupport)
         {
@@ -3002,19 +2999,19 @@ namespace Divide
         io.DisplayFramebufferScale.x = io.DisplaySize.x > 0 ? (F32)display_size.width  / io.DisplaySize.x : 1.f;
         io.DisplayFramebufferScale.y = io.DisplaySize.y > 0 ? (F32)display_size.height / io.DisplaySize.y : 1.f;
 
-        io.SetClipboardTextFn = []([[maybe_unused]] void* user_data, const char* text)
+        platform_io.Platform_SetClipboardTextFn = []([[maybe_unused]]ImGuiContext* ctx, const char* text)
         {
             SetClipboardText(text);
         };
 
-        io.GetClipboardTextFn = []( void* user_data)
+        platform_io.Platform_GetClipboardTextFn = [](ImGuiContext* ctx)
         {
-            string* clipboardStringBuffer = (string*)user_data;
+            string* clipboardStringBuffer = (string*)ctx->PlatformIO.Platform_ClipboardUserData;
             clipboardStringBuffer->assign(GetClipboardText());
             return clipboardStringBuffer->c_str();
         };
 
-        io.ClipboardUserData = &clipboardStringBuffer;
+        platform_io.Platform_ClipboardUserData = &clipboardStringBuffer;
     }
 
     namespace Util::detail

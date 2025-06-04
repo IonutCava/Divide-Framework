@@ -35,7 +35,7 @@
 
 #include "Input.h"
 
-#include <SDL2/SDL_keycode.h>
+#include <SDL3/SDL_keycode.h>
 
 namespace Divide
 {
@@ -134,11 +134,19 @@ struct JoystickEvent final : InputEvent
     JoystickElement _element;
 };
 
-struct TextEvent final : InputEvent
+struct TextInputEvent final : InputEvent
 {
-    explicit TextEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* text) noexcept;
+    explicit TextInputEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* utf8Text) noexcept;
 
-    Str<256> _text{};
+    const char* _utf8Text{nullptr};   /**< The input text, UTF-8 encoded */
+};
+
+struct TextEditEvent final : InputEvent
+{
+    explicit TextEditEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* utf8Text, I32 startPos, I32 length) noexcept;
+
+    const char* _utf8Text{nullptr};   /**< The input text, UTF-8 encoded */
+    I32 _startPos{0}, _length{0};
 };
 
 struct KeyEvent final : InputEvent
@@ -150,8 +158,8 @@ struct KeyEvent final : InputEvent
     bool _isRepeat{ false };
     U16 _modMask{0u};
     //Native data:
-    SDL_Scancode scancode{};    /**< SDL physical key code - see ::SDL_Scancode for details */
-    SDL_Keycode sym{};          /**< SDL virtual key code - see ::SDL_Keycode for details */
+    SDL_Scancode _sdlScancode{};    /**< SDL physical key code - see ::SDL_Scancode for details */
+    SDL_Keycode _sdlKey{};          /**< SDL virtual key code - see ::SDL_Keycode for details */
 };
 
 struct InputAggregatorInterface
@@ -178,7 +186,8 @@ struct InputAggregatorInterface
     virtual bool joystickBallMoved(JoystickEvent& argInOut);
     virtual bool joystickAddRemove(JoystickEvent& argInOut);
     virtual bool joystickRemap(JoystickEvent& argInOut);
-    virtual bool onTextEvent(TextEvent& argInOut);
+    virtual bool onTextInput(TextInputEvent& argInOut);
+    virtual bool onTextEdit(TextEditEvent& argInOut);
 
 protected:
     /// Keyboard: return true if input was consumed
@@ -198,7 +207,8 @@ protected:
     virtual bool joystickBallMovedInternal(JoystickEvent &argInOut) = 0;
     virtual bool joystickAddRemoveInternal(JoystickEvent &argInOut) = 0;
     virtual bool joystickRemapInternal(JoystickEvent &argInOut) = 0;
-    virtual bool onTextEventInternal(TextEvent& argInOut) = 0;
+    virtual bool onTextInputInternal(TextInputEvent& argInOut) = 0;
+    virtual bool onTextEditInternal(TextEditEvent& argInOut) = 0;
 
     PROPERTY_RW(bool, processInput, true);
 };

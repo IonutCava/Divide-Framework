@@ -43,18 +43,21 @@ namespace Divide
 
         thread_local auto beginTimer = std::chrono::high_resolution_clock::now();
 
-        static I32 w = -1, offsetX = 5;
-        static I32 h = -1, offsetY = 5;
+        static I32 w = -1.f, offsetX = 5;
+        static I32 h = -1.f, offsetY = 5;
 
-        if ( w == -1 )
+        if ( w == -1.f )
         {
-            SDL_QueryTexture( _texture, NULL, NULL, &w, &h );
+            F32 width = 0.f, height = 0.f;
+            SDL_GetTextureSize(_texture, &width, &height );
+            w = to_I32(std::floor(width));
+            h = to_I32(std::floor(height));
         }
 
         const I32 windowW = to_I32( window.getDimensions().width ), windowH = window.getDimensions().height;
         if ( windowW < w || windowH < h )
         {
-            SDL_RenderCopy( _renderer, _texture, NULL, NULL );
+            SDL_RenderTexture( _renderer, _texture, NULL, NULL );
         }
         else
         {
@@ -68,8 +71,8 @@ namespace Divide
                 offsetY = Random( 5, windowH - h );
             }
 
-            SDL_Rect dstrect = { offsetX, offsetY, w, h };
-            SDL_RenderCopy( _renderer, _texture, NULL, &dstrect );
+            SDL_FRect dstrect = { to_F32(offsetX), to_F32(offsetY), to_F32(w), to_F32(h) };
+            SDL_RenderTexture( _renderer, _texture, NULL, &dstrect );
         }
         SDL_RenderPresent( _renderer );
     }
@@ -89,7 +92,7 @@ namespace Divide
         DIVIDE_ASSERT( _renderer == nullptr );
 
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
-        _renderer = SDL_CreateRenderer( window.getRawWindow(), -1, 0u );
+        _renderer = SDL_CreateRenderer( window.getRawWindow(), nullptr );
         if ( _renderer == nullptr )
         {
             return ErrorCode::SDL_WINDOW_INIT_ERROR;
@@ -114,7 +117,7 @@ namespace Divide
                                 DefaultColours::DIVIDE_BLUE_U8.b,
                                 DefaultColours::DIVIDE_BLUE_U8.a );
 
-        SDL_RenderCopy( _renderer, _texture, NULL, NULL );
+        SDL_RenderTexture( _renderer, _texture, NULL, NULL );
 
         return ErrorCode::NO_ERR;
     }
@@ -124,7 +127,7 @@ namespace Divide
         DIVIDE_ASSERT( _renderer != nullptr );
 
         SDL_DestroyTexture( _texture );
-        SDL_FreeSurface( _background );
+        SDL_DestroySurface( _background );
         SDL_DestroyRenderer( _renderer );
         _texture = nullptr;
         _background = nullptr;

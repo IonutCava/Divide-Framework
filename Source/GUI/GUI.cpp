@@ -828,7 +828,12 @@ namespace Divide
         return _ceguiInput.joystickRemap(argInOut);
     }
 
-    bool GUI::onTextEventInternal( [[maybe_unused]] Input::TextEvent& argInOut) noexcept
+    bool GUI::onTextInputInternal( [[maybe_unused]] Input::TextInputEvent& argInOut)
+    {
+        return false;
+    }
+
+    bool GUI::onTextEditInternal( [[maybe_unused]] Input::TextEditEvent& argInOut)
     {
         return false;
     }

@@ -39,9 +39,9 @@ namespace Divide
     inline bool operator==(const DisplayManager::OutputDisplayProperties& lhs, const DisplayManager::OutputDisplayProperties& rhs) noexcept
     {
         return lhs._resolution == rhs._resolution &&
-            lhs._bitsPerPixel == rhs._bitsPerPixel &&
-            lhs._maxRefreshRate == rhs._maxRefreshRate &&
-            lhs._formatName == rhs._formatName;
+               lhs._bitsPerPixel == rhs._bitsPerPixel &&
+               lhs._formatName == rhs._formatName &&
+               COMPARE(lhs._maxRefreshRate, rhs._maxRefreshRate);
     }
 } //namespace Divide
 

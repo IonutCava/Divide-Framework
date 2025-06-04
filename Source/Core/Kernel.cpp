@@ -1171,11 +1171,24 @@ bool Kernel::joystickRemapInternal(Input::JoystickEvent & argInOut)
     return false;
 }
 
-bool Kernel::onTextEventInternal(Input::TextEvent& argInOut)
+bool Kernel::onTextInputInternal(Input::TextInputEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onTextEvent(argInOut))
+        if (inputConsumer._ptr->onTextInput(argInOut))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Kernel::onTextEditInternal(Input::TextEditEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->onTextEdit(argInOut))
         {
             return true;
         }

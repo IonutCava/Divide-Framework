@@ -105,17 +105,18 @@ namespace Divide
         SDL_SetClipboardText( text );
     }
 
-    void ToggleCursor( const bool state ) noexcept
+    void ToggleCursor( const bool visible ) noexcept
     {
-        if ( CursorState() != state )
+        if (CursorVisible() != visible)
         {
-            SDL_ShowCursor( state ? SDL_TRUE : SDL_FALSE );
+            visible ? SDL_ShowCursor()
+                    : SDL_HideCursor();
         }
     }
 
-    bool CursorState() noexcept
+    bool CursorVisible() noexcept
     {
-        return SDL_ShowCursor( SDL_QUERY ) == SDL_ENABLE;
+        return SDL_CursorVisible();
     }
 
     std::string CurrentDateTimeString()

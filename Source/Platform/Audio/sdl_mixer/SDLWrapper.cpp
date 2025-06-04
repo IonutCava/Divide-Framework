@@ -7,7 +7,7 @@
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
-#include <SDL2/SDL_mixer.h>
+#include <SDL3_mixer/SDL_mixer.h>
 
 namespace Divide {
 
@@ -31,21 +31,22 @@ SDL_API::SDL_API( PlatformContext& context )
 
 ErrorCode SDL_API::initAudioAPI()
 {
-    constexpr I32 flags = MIX_INIT_OGG | MIX_INIT_MP3 | MIX_INIT_FLAC/* | MIX_INIT_MOD*/;
+    constexpr I32 flags = MIX_INIT_WAVPACK | MIX_INIT_OGG | MIX_INIT_MP3;// | MIX_INIT_FLAC | MIX_INIT_MOD;
 
     const I32 ret = Mix_Init(flags);
     if ((ret & flags) == flags)
     {
-        // Try HiFi sound
-        if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096) == -1)
+        SDL_AudioSpec spec
         {
-            Console::errorfn("{}", Mix_GetError());
-            // Try lower quality
-            if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 2048) == -1)
-            {
-                Console::errorfn("{}", Mix_GetError());
-                return ErrorCode::SDL_AUDIO_MIX_INIT_ERROR;
-            }
+            .format = MIX_DEFAULT_FORMAT,
+            .channels = MIX_DEFAULT_CHANNELS,
+            .freq = MIX_DEFAULT_FREQUENCY
+        };
+
+        if ( !Mix_OpenAudio(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec) )
+        {
+            Console::errorfn("{}", SDL_GetError());
+            return ErrorCode::SDL_AUDIO_MIX_INIT_ERROR;
         }
 
         g_sfxDevice = &_context.sfx();
@@ -53,7 +54,7 @@ ErrorCode SDL_API::initAudioAPI()
         return ErrorCode::NO_ERR;
     }
 
-    Console::errorfn("{}", Mix_GetError());
+    Console::errorfn("{}", SDL_GetError());
     return ErrorCode::SDL_AUDIO_INIT_ERROR;
 }
 
@@ -114,9 +115,9 @@ void SDL_API::playMusic(const Handle<AudioDescriptor> music)
         if( mixMusicPtr )
         {
             Mix_VolumeMusic( musicPtr->volume());
-            if (Mix_PlayMusic( mixMusicPtr, musicPtr->isLooping() ? -1 : 0) == -1)
+            if ( !Mix_PlayMusic( mixMusicPtr, musicPtr->isLooping() ? -1 : 0) )
             {
-                Console::errorfn("{}", Mix_GetError());
+                Console::errorfn("{}", SDL_GetError());
             }
         }
         else
@@ -160,7 +161,7 @@ void SDL_API::playSound(const Handle<AudioDescriptor> sound)
             Mix_Volume( soundPtr->channelID(), soundPtr->volume());
             if (Mix_PlayChannel( soundPtr->channelID(), mixSoundPtr, soundPtr->isLooping() ? -1 : 0) == -1)
             {
-                Console::errorfn(LOCALE_STR("ERROR_SDL_CANT_PLAY"), soundPtr->resourceName().c_str(), Mix_GetError());
+                Console::errorfn(LOCALE_STR("ERROR_SDL_CANT_PLAY"), soundPtr->resourceName().c_str(), SDL_GetError());
             }
         }
         else

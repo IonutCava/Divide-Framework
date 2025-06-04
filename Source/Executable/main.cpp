@@ -2,6 +2,8 @@
 
 #include "engineMain.h"
 
+#include <SDL3/SDL_main.h>
+
 #if !defined(SHOW_CONSOLE_WINDOW)
 
 #if defined(_WIN32)

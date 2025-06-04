@@ -21,24 +21,48 @@ InputHandler::InputHandler(InputAggregatorInterface& eventListener, Application&
 namespace {
     Uint32 GetEventWindowID(const SDL_Event event) noexcept {
         switch (event.type) {
-            case SDL_KEYDOWN :
-            case SDL_KEYUP   :
+            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_KEY_UP:
                 return event.key.windowID;
 
-            case SDL_MOUSEBUTTONDOWN :
-            case SDL_MOUSEBUTTONUP   :
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
                 return event.button.windowID;
 
-            case SDL_MOUSEMOTION :
+            case SDL_EVENT_MOUSE_MOTION:
                 return event.motion.windowID;
 
-            case SDL_MOUSEWHEEL :
+            case SDL_EVENT_MOUSE_WHEEL:
                 return event.wheel.windowID;
 
-            case SDL_WINDOWEVENT :
+            case SDL_EVENT_WINDOW_SHOWN:
+            case SDL_EVENT_WINDOW_HIDDEN:
+            case SDL_EVENT_WINDOW_EXPOSED:
+            case SDL_EVENT_WINDOW_MOVED:
+            case SDL_EVENT_WINDOW_RESIZED:
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+            case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
+            case SDL_EVENT_WINDOW_MINIMIZED:
+            case SDL_EVENT_WINDOW_MAXIMIZED:
+            case SDL_EVENT_WINDOW_RESTORED:
+            case SDL_EVENT_WINDOW_MOUSE_ENTER:
+            case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+            case SDL_EVENT_WINDOW_FOCUS_GAINED:
+            case SDL_EVENT_WINDOW_FOCUS_LOST:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            case SDL_EVENT_WINDOW_HIT_TEST:
+            case SDL_EVENT_WINDOW_ICCPROF_CHANGED:
+            case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+            case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+            case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
+            case SDL_EVENT_WINDOW_OCCLUDED:
+            case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+            case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+            case SDL_EVENT_WINDOW_DESTROYED:
+            case SDL_EVENT_WINDOW_HDR_STATE_CHANGED:
                 return event.window.windowID;
 
-            case SDL_TEXTINPUT :
+            case SDL_EVENT_TEXT_INPUT:
                 return event.text.windowID;
             default: break;
         }
@@ -58,65 +82,70 @@ bool InputHandler::onSDLEvent(SDL_Event event)
 
      switch (event.type)
      {
-        case SDL_TEXTEDITING:
-        case SDL_TEXTINPUT:
+        case SDL_EVENT_TEXT_EDITING:
         {
-            TextEvent arg{eventWindow, 0, event.text.text};
-            _eventListener.onTextEvent(arg);
+            TextEditEvent arg{ eventWindow, 0, event.edit.text, event.edit.start, event.edit.length };
+            _eventListener.onTextEdit(arg);
+            return true;
+        }
+        case SDL_EVENT_TEXT_INPUT:
+        {
+            TextInputEvent arg{eventWindow, 0, event.text.text};
+            _eventListener.onTextInput(arg);
             return true;
         }
 
-        case SDL_KEYUP:
-        case SDL_KEYDOWN:
+        case SDL_EVENT_KEY_UP:
+        case SDL_EVENT_KEY_DOWN:
         {
             KeyEvent arg(eventWindow, 0);
-            arg._key = KeyCodeFromSDLKey(event.key.keysym.sym);
-            arg._pressed = event.type == SDL_KEYDOWN;
+            arg._key = KeyCodeFromSDLKey(event.key.key);
+            arg._pressed = event.type == SDL_EVENT_KEY_DOWN;
             arg._isRepeat = event.key.repeat;
-            arg.scancode = event.key.keysym.scancode;
-            arg.sym = event.key.keysym.sym;
+            arg._sdlScancode = event.key.scancode;
+            arg._sdlKey = event.key.key;
 
-            if ((event.key.keysym.mod & KMOD_LSHIFT) != 0)
+            if ((event.key.mod & SDL_KMOD_LSHIFT) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::LSHIFT);
             }
-            if ((event.key.keysym.mod & KMOD_RSHIFT) != 0)
+            if ((event.key.mod & SDL_KMOD_RSHIFT) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::RSHIFT);
             }
-            if ((event.key.keysym.mod & KMOD_LCTRL) != 0)
+            if ((event.key.mod & SDL_KMOD_LCTRL) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::LCTRL);
             }
-            if ((event.key.keysym.mod & KMOD_RCTRL) != 0)
+            if ((event.key.mod & SDL_KMOD_RCTRL) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::RCTRL);
             }
-            if ((event.key.keysym.mod & KMOD_LALT) != 0)
+            if ((event.key.mod & SDL_KMOD_LALT) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::LALT);
             }
-            if ((event.key.keysym.mod & KMOD_RALT) != 0)
+            if ((event.key.mod & SDL_KMOD_RALT) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::RALT);
             }
-            if ((event.key.keysym.mod & KMOD_LGUI) != 0)
+            if ((event.key.mod & SDL_KMOD_LGUI) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::LGUI);
             }
-            if ((event.key.keysym.mod & KMOD_RGUI) != 0)
+            if ((event.key.mod & SDL_KMOD_RGUI) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::RGUI);
             }
-            if ((event.key.keysym.mod & KMOD_NUM) != 0)
+            if ((event.key.mod & SDL_KMOD_NUM) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::NUM);
             }
-            if ((event.key.keysym.mod & KMOD_CAPS) != 0)
+            if ((event.key.mod & SDL_KMOD_CAPS) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::CAPS);
             }
-            if ((event.key.keysym.mod & KMOD_MODE) != 0)
+            if ((event.key.mod & SDL_KMOD_MODE) != 0)
             {
                 arg._modMask |= to_base(KeyModifier::MODE);
             }
@@ -130,11 +159,11 @@ bool InputHandler::onSDLEvent(SDL_Event event)
             }
             return true;
         }
-        case SDL_MOUSEBUTTONDOWN:
-        case SDL_MOUSEBUTTONUP:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
         {
             MouseButtonEvent arg(eventWindow, to_U8(event.button.which));
-            arg.pressed(event.type == SDL_MOUSEBUTTONDOWN);
+            arg.pressed(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
             switch (event.button.button)
             {
                 case SDL_BUTTON_LEFT:
@@ -179,10 +208,10 @@ bool InputHandler::onSDLEvent(SDL_Event event)
             }
             return true;
         }
-        case SDL_MOUSEWHEEL:
-        case SDL_MOUSEMOTION:
+        case SDL_EVENT_MOUSE_WHEEL:
+        case SDL_EVENT_MOUSE_MOTION:
         {
-            MouseMoveEvent arg(eventWindow, to_U8(event.motion.which), event.type == SDL_MOUSEWHEEL);
+            MouseMoveEvent arg(eventWindow, to_U8(event.motion.which), event.type == SDL_EVENT_MOUSE_WHEEL);
             auto& state = Attorney::MouseEventInputHandler::state( arg );
             state.X.abs = event.motion.x;
             state.X.rel = event.motion.xrel;
@@ -194,25 +223,25 @@ bool InputHandler::onSDLEvent(SDL_Event event)
             _eventListener.mouseMoved(arg);
             return true;
         }
-        case SDL_CONTROLLERAXISMOTION:
-        case SDL_JOYAXISMOTION:
+        case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+        case SDL_EVENT_JOYSTICK_AXIS_MOTION:
         {
             JoystickData jData = {};
-            jData._gamePad = event.type == SDL_CONTROLLERAXISMOTION;
-            jData._dataSigned = jData._gamePad ? event.caxis.value : event.jaxis.value;
+            jData._gamePad = event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION;
+            jData._dataSigned = jData._gamePad ? event.gaxis.value : event.jaxis.value;
 
             JoystickElement element = {};
             element._type = JoystickElementType::AXIS_MOVE;
             element._data = jData;
-            element._elementIndex = (jData._gamePad ? event.caxis.axis : event.jaxis.axis);
+            element._elementIndex = (jData._gamePad ? event.gaxis.axis : event.jaxis.axis);
 
-            JoystickEvent arg(eventWindow, to_U8(jData._gamePad ? event.caxis.which : event.jaxis.which));
+            JoystickEvent arg(eventWindow, to_U8(jData._gamePad ? event.gaxis.which : event.jaxis.which));
             arg._element = element;
 
             _eventListener.joystickAxisMoved(arg);
             return true;
         };
-        case SDL_JOYBALLMOTION:
+        case SDL_EVENT_JOYSTICK_BALL_MOTION:
         {
             JoystickData jData = {};
             jData._smallDataSigned[0] = event.jball.xrel;
@@ -229,7 +258,7 @@ bool InputHandler::onSDLEvent(SDL_Event event)
             _eventListener.joystickBallMoved(arg);
             return true;
         };
-        case SDL_JOYHATMOTION:
+        case SDL_EVENT_JOYSTICK_HAT_MOTION:
         {
             // POV
             U32 PovMask = 0;
@@ -282,40 +311,40 @@ bool InputHandler::onSDLEvent(SDL_Event event)
             _eventListener.joystickPovMoved(arg);
             return true;
         };
-        case SDL_CONTROLLERBUTTONDOWN:
-        case SDL_CONTROLLERBUTTONUP:
-        case SDL_JOYBUTTONDOWN:
-        case SDL_JOYBUTTONUP:
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP:
+        case SDL_EVENT_JOYSTICK_BUTTON_DOWN:
+        case SDL_EVENT_JOYSTICK_BUTTON_UP:
         {
             JoystickData jData = {};
-            jData._gamePad = event.type == SDL_CONTROLLERBUTTONDOWN || event.type == SDL_CONTROLLERBUTTONUP;
+            jData._gamePad = event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN || event.type == SDL_EVENT_GAMEPAD_BUTTON_UP;
 
-            const Uint8 state = jData._gamePad ? event.cbutton.state : event.jbutton.state;
-            jData._data = state == SDL_PRESSED ? to_U32(InputState::PRESSED) : to_U32(InputState::RELEASED);
+            const bool down = jData._gamePad ? event.gbutton.down : event.jbutton.down;
+            jData._data = down ? to_U32(InputState::PRESSED) : to_U32(InputState::RELEASED);
 
             JoystickElement element = {};
             element._type = JoystickElementType::BUTTON_PRESS;
             element._data = jData;
-            element._elementIndex = jData._gamePad ? event.cbutton.button : event.jbutton.button;
+            element._elementIndex = jData._gamePad ? event.gbutton.button : event.jbutton.button;
 
-            JoystickEvent arg(eventWindow, to_U8(jData._gamePad  ? event.cbutton.which : event.jbutton.which));
+            JoystickEvent arg(eventWindow, to_U8(jData._gamePad  ? event.gbutton.which : event.jbutton.which));
             arg._element = element;
 
-            if (event.type == SDL_JOYBUTTONDOWN || event.type == SDL_CONTROLLERBUTTONDOWN) {
+            if (event.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN || event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
                 _eventListener.joystickButtonPressed(arg);
             } else {
                 _eventListener.joystickButtonReleased(arg);
             }
             return true;
         };
-        case SDL_CONTROLLERDEVICEADDED:
-        case SDL_CONTROLLERDEVICEREMOVED:
-        case SDL_JOYDEVICEADDED:
-        case SDL_JOYDEVICEREMOVED:
+        case SDL_EVENT_GAMEPAD_ADDED:
+        case SDL_EVENT_GAMEPAD_REMOVED:
+        case SDL_EVENT_JOYSTICK_ADDED:
+        case SDL_EVENT_JOYSTICK_REMOVED:
         {
             JoystickData jData = {};
-            jData._gamePad = event.type == SDL_CONTROLLERDEVICEADDED || event.type == SDL_CONTROLLERDEVICEREMOVED;
-            jData._data = (jData._gamePad ? event.type == SDL_CONTROLLERDEVICEADDED : event.type == SDL_JOYDEVICEADDED) ? 1 : 0;
+            jData._gamePad = event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED;
+            jData._data = (jData._gamePad ? event.type == SDL_EVENT_GAMEPAD_ADDED : event.type == SDL_EVENT_JOYSTICK_ADDED) ? 1 : 0;
 
             JoystickElement element = {};
             element._type = JoystickElementType::JOY_ADD_REMOVE;
@@ -329,7 +358,7 @@ bool InputHandler::onSDLEvent(SDL_Event event)
         };
         
        
-        case SDL_CONTROLLERDEVICEREMAPPED:
+        case SDL_EVENT_GAMEPAD_REMAPPED:
         {
             JoystickElement element = {};
             element._type = JoystickElementType::JOY_REMAP;

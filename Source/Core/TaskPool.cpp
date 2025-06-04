@@ -14,7 +14,7 @@ namespace Divide
         std::atomic_uint g_taskIDCounter = 0u;
 
         NO_DESTROY thread_local Task g_taskAllocator[Config::MAX_POOLED_TASKS];
-        thread_local U64  g_allocatedTasks = 0u;
+        thread_local U32 g_allocatedTasks = 0u;
     }
 
     TaskPool::TaskPool( const std::string_view workerName )
@@ -98,7 +98,7 @@ namespace Divide
                 }
             }
 
-            runTask(task);
+            runTask(task, false);
 
             if (onCompletionFunction)
             {
@@ -118,7 +118,7 @@ namespace Divide
             {
                 if ( entry._taskID == U32_MAX)
                 {
-                    entry._taskID = task._id;
+                    entry._taskID = task._globalId;
                     entry._cbk = MOV(onCompletionFunction);
                     found = true;
                     break;
@@ -127,54 +127,45 @@ namespace Divide
 
             if ( !found )
             {
-                _taskCallbacks.emplace_back( MOV(onCompletionFunction), task._id );
+                _taskCallbacks.emplace_back( MOV(onCompletionFunction), task._globalId );
             }
         }
-
-        DIVIDE_EXPECTED_CALL
-        (
-            getQueue(priority).enqueue(
-                // Returning false from a PoolTask lambda will just reschedule it for later execution again. 
-                // This may leave the task in an infinite loop, always re-queuing!
-                [this, &task, hasOnCompletionFunction](const bool isIdleCall)
+        // Returning false from a PoolTask lambda will just reschedule it for later execution again. 
+        // This may leave the task in an infinite loop, always re-queuing!
+        auto poolTask = [this, &task, priority, hasOnCompletionFunction](const bool isIdleCall)
+        {
+            while (task._unfinishedJobs.load() > 1u)
+            {
+                if (isIdleCall)
                 {
-                    while (task._unfinishedJobs.load() > 1u)
-                    {
-                        if (isIdleCall)
-                        {
-                            // Can't be run at this time as we'll just recurse to infinity
-                            return false;
-                        }
-
-                        // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
-                        threadWaiting();
-                    }
-
-                    if (!task._runWhileIdle && isIdleCall)
-                    {
-                        return false;
-                    }
-
-                    runTask(task);
-
-                    if (hasOnCompletionFunction)
-                    {
-                        _threadedCallbackBuffer.enqueue(task._id);
-                    }
-
-                    return true;
+                    // Can't be run at this time as we'll just recurse to infinity
+                    return false;
                 }
-            )
-        );
+
+                // Else, we wait until our child tasks finish running. We also try and do some other work while waiting
+                threadWaiting();
+            }
+
+            if (priority == TaskPriority::DONT_CARE_NO_IDLE && isIdleCall)
+            {
+                return false;
+            }
+
+            runTask(task, hasOnCompletionFunction);
+
+            return true;
+        };
+
+        DIVIDE_EXPECTED_CALL( getQueue(priority).enqueue(MOV(poolTask)) );
     }
 
-    void TaskPool::runTask( Task& task )
+    void TaskPool::runTask( Task& task, const bool hasCompletionCallback)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
         _runningTaskCount.fetch_add(1);
 
-        if ( task._callback ) [[likely]]
+        if (task._callback ) [[likely]]
         {
             task._callback( task );
             task._callback = {}; //< Needed to cleanup any stale resources (e.g. captured by lambdas)
@@ -183,6 +174,11 @@ namespace Divide
         if (task._parent != nullptr)
         {
             task._parent->_unfinishedJobs.fetch_sub(1);
+        }
+
+        if (hasCompletionCallback)
+        {
+            _threadedCallbackBuffer.enqueue(task._globalId);
         }
 
         task._unfinishedJobs.fetch_sub(1);
@@ -280,42 +276,28 @@ namespace Divide
             parentTask->_unfinishedJobs.fetch_add( 1u );
         }
 
-        constexpr U8 s_maxTaskRetry = 10u;
-
+        U32 idx = 0u;
         Task* task = nullptr;
-        U8 retryCount = 0u;
         do
         {
-            U16 expected = 0u;
-            if constexpr ( false )
-            {
-                const auto idx = g_allocatedTasks++ & Config::MAX_POOLED_TASKS - 1u;
-                Task& crtTask = g_taskAllocator[idx];
-                DIVIDE_EXPECTED_CALL( idx != 0u || ++retryCount <= s_maxTaskRetry );
+            idx = g_allocatedTasks++ & (Config::MAX_POOLED_TASKS - 1u);
+            Task& crtTask = g_taskAllocator[idx];
 
-                if ( crtTask._unfinishedJobs.compare_exchange_strong( expected, 1u ) )
-                {
-                    task = &crtTask;
-                }
-            }
-            else
+            U32 expected = 0u;
+            if ( crtTask._unfinishedJobs.compare_exchange_strong( expected, 1u ) )
             {
-                Task& crtTask = g_taskAllocator[g_allocatedTasks++ & Config::MAX_POOLED_TASKS - 1u];
-                if ( crtTask._unfinishedJobs.compare_exchange_strong( expected, 1u ) )
-                {
-                    task = &crtTask;
-                }
+                task = &crtTask;
             }
         }
         while ( task == nullptr );
 
-        if ( task->_id == 0u )
-        {
-            task->_id = g_taskIDCounter.fetch_add( 1u );
-        }
         task->_parent = parentTask;
-        task->_callback = MOV( func );
 
+        if (task->_globalId == Task::INVALID_TASK_ID)
+        {
+            task->_globalId = g_taskIDCounter.fetch_add(1u);
+        }
+        task->_callback = MOV( func );
         return task;
     }
 
@@ -386,30 +368,42 @@ namespace Divide
 
         if ( isIdleCall || priorityIn == TaskPriority::HIGH )
         {
-            return getQueue(priorityIn).try_dequeue( taskOut );
+            if ( getQueue(priorityIn).try_dequeue( taskOut ) )
+            {
+                return true;
+            }
+
+            if (priorityIn == TaskPriority::HIGH)
+            {
+                return false;
+            }
         }
 
         if constexpr ( IsBlocking )
         {
-            while( !getQueue(priorityIn).wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
+            if ( !isIdleCall)
             {
-                if (!_isRunning.load()) [[unlikely]]
+                while( !getQueue(priorityIn).wait_dequeue_timed( taskOut, Time::MillisecondsToMicroseconds( 2 ) ))
                 {
-                    return false;
+                    if (!_isRunning.load()) [[unlikely]]
+                    {
+                        return false;
+                    }
+                    std::this_thread::yield();
                 }
-                std::this_thread::yield();
+
+                return true;
             }
         }
-        else
+
+
+        while ( !getQueue(priorityIn).try_dequeue( taskOut ) )
         {
-            while ( !getQueue(priorityIn).try_dequeue( taskOut ) )
+            if (isIdleCall || !_isRunning.load() )
             {
-                if ( !_isRunning.load() ) [[unlikely]]
-                {
-                    return false;
-                }
-                std::this_thread::yield();
+                return false;
             }
+            std::this_thread::yield();
         }
 
         return true;
@@ -424,7 +418,7 @@ namespace Divide
             return;
         }
 
-        // Shortcut for small looops
+        // Shortcut for small loops
         if (descriptor._useCurrentThread && descriptor._iterCount < descriptor._partitionSize)
         {
             cbk(nullptr, 0u, descriptor._iterCount);

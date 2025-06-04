@@ -192,6 +192,7 @@ struct SysInfo
 
 void InitSysInfo(SysInfo& info, I32 argc, char** argv);
 
+extern std::string GetLastErrorText() noexcept;
 extern F32 PlatformDefaultDPI() noexcept;
 
 struct WindowHandle;
@@ -224,9 +225,9 @@ void EnforceDPIScaling() noexcept;
 [[nodiscard]] string GetClipboardText() noexcept;
 void SetClipboardText(const char* text) noexcept;
 
-void ToggleCursor(bool state) noexcept;
+void ToggleCursor(bool visible) noexcept;
 
-[[nodiscard]] bool CursorState() noexcept;
+[[nodiscard]] bool CursorVisible() noexcept;
 
 [[nodiscard]] std::string CurrentDateTimeString();
 

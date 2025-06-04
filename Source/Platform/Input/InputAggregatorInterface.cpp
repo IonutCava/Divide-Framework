@@ -104,9 +104,17 @@ KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
 {
 }
 
-TextEvent::TextEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* text) noexcept
+TextInputEvent::TextInputEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* utf8Text) noexcept
     : InputEvent(sourceWindow, deviceIndex)
-    , _text(text)
+    , _utf8Text(utf8Text)
+{
+}
+
+TextEditEvent::TextEditEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* utf8Text, I32 startPos, I32 length) noexcept
+    : InputEvent(sourceWindow, deviceIndex)
+    , _utf8Text(utf8Text)
+    , _startPos(startPos)
+    , _length(length)
 {
 }
 
@@ -230,11 +238,21 @@ bool InputAggregatorInterface::joystickRemap(JoystickEvent& argInOut)
     return false;
 }
 
-bool InputAggregatorInterface::onTextEvent(TextEvent& argInOut)
+bool InputAggregatorInterface::onTextInput(TextInputEvent& argInOut)
 {
     if (processInput())
     {
-        return onTextEventInternal(argInOut);
+        return onTextInputInternal(argInOut);
+    }
+
+    return false;
+}
+
+bool InputAggregatorInterface::onTextEdit(TextEditEvent& argInOut)
+{
+    if (processInput())
+    {
+        return onTextEditInternal(argInOut);
     }
 
     return false;

@@ -30,7 +30,7 @@ namespace
         DIVIDE_ASSERT(tex != INVALID_HANDLE<Texture>);
 
         bool ret = false;
-        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 15);
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 15);
         ImGui::PushID(4321234 + id++);
         if (readOnly)
         {

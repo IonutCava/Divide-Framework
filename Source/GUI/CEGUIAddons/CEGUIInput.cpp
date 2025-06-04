@@ -392,59 +392,36 @@ bool CEGUIInput::joystickRemapInternal( [[maybe_unused]] Input::JoystickEvent & 
     return consumed;
 }
 
-bool CEGUIInput::onTextEventInternal(Input::TextEvent& argInOut)
+bool CEGUIInput::onTextInputInternal(Input::TextInputEvent& argInOut)
 {
     if (!_enabled)
     {
         return false;
     }
 
-    const char* utf8str = argInOut._text.c_str();
-
-    static SDL_iconv_t cd = SDL_iconv_t(-1);
-
-    if (cd == SDL_iconv_t(-1))
+    Uint32 codePoint = 0u;
+    while ((codePoint = SDL_StepUTF8(&argInOut._utf8Text, NULL)) != 0)
     {
-        // note: just "UTF-32" doesn't work as toFormat, because then you get BOMs, which we don't want.
-        const char* toFormat = "UTF-32LE"; // TODO: what does CEGUI expect on big endian machines?
-        cd = SDL_iconv_open(toFormat, "UTF-8");
-        if (cd == SDL_iconv_t(-1))
+        if (codePoint == SDL_INVALID_UNICODE_CODEPOINT) // invalid code point
         {
-            Console::errorfn(LOCALE_STR("ERROR_CEGUI_SDL_UTF"));
-            return false;
+            Console::errorfn(LOCALE_STR("ERROR_CEGUI_UTF_CONVERSION"));
+        }
+        else
+        {
+            _parent.getCEGUIContext()->injectChar(codePoint);
         }
     }
 
-    // utf8str has at most SDL_TEXTINPUTEVENT_TEXT_SIZE (32) chars,
-    // so we won't have have more utf32 chars than that
-    Uint32 utf32buf[SDL_TEXTINPUTEVENT_TEXT_SIZE] = {0};
+    return true;
+}
 
-    // we'll convert utf8str to a utf32 string, saved in utf32buf.
-    // the utf32 chars will be injected into cegui
-
-    size_t len = strlen(utf8str);
-
-    size_t inbytesleft = len;
-    size_t outbytesleft = 4 * SDL_TEXTINPUTEVENT_TEXT_SIZE; // *4 because utf-32 needs 4x as much space as utf-8
-    char* outbuf = (char*)utf32buf;
-    size_t n = SDL_iconv(cd, &utf8str, &inbytesleft, &outbuf, &outbytesleft);
-
-    if (n == size_t(-1)) // some error occured during iconv
+bool CEGUIInput::onTextEditInternal([[maybe_unused]] Input::TextEditEvent& argInOut)
+{
+    if (!_enabled)
     {
-        Console::errorfn(LOCALE_STR("ERROR_CEGUI_UTF_CONVERSION"));
         return false;
     }
 
-    for (U8 i = 0u; i < SDL_TEXTINPUTEVENT_TEXT_SIZE; ++i)
-    {
-        if (utf32buf[i] == 0)
-            break; // end of string
-
-        _parent.getCEGUIContext()->injectChar(utf32buf[i]);
-    }
-
-    // reset cd so it can be used again
-    SDL_iconv(cd, NULL, &inbytesleft, NULL, &outbytesleft);
     return true;
 }
 

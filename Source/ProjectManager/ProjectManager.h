@@ -159,6 +159,7 @@ constexpr const char* ERRORS[] =
     /*6*/ "Failed to duplicate project [ {} ]\n{}",
     /*7*/ "Failed to parse XML file: [ {} ]\n{}",
     /*8*/ "Failed to save to XML file: [ {} ]\n{}",
+    /*9*/ "Generic SDL error: [ {} ]\n"
 };
 
 #endif //DVD_PROJECTMANAGER_H

@@ -19,20 +19,21 @@ namespace
     {
         switch (style)
         {
-            case CursorStyle::ARROW:       return SDL_SYSTEM_CURSOR_ARROW;
-            case CursorStyle::HAND:        return SDL_SYSTEM_CURSOR_HAND;
-            case CursorStyle::NONE:        return SDL_SYSTEM_CURSOR_NO;
-            case CursorStyle::RESIZE_ALL:  return SDL_SYSTEM_CURSOR_SIZEALL;
-            case CursorStyle::RESIZE_EW:   return SDL_SYSTEM_CURSOR_SIZEWE;
-            case CursorStyle::RESIZE_NS:   return SDL_SYSTEM_CURSOR_SIZENS;
-            case CursorStyle::RESIZE_NESW: return SDL_SYSTEM_CURSOR_SIZENESW;
-            case CursorStyle::RESIZE_NWSE: return SDL_SYSTEM_CURSOR_SIZENWSE;
-            case CursorStyle::TEXT_INPUT:  return SDL_SYSTEM_CURSOR_IBEAM;
+            case CursorStyle::ARROW:       return SDL_SYSTEM_CURSOR_DEFAULT;
+            case CursorStyle::HAND:        return SDL_SYSTEM_CURSOR_POINTER;
+            case CursorStyle::NONE:        return SDL_SYSTEM_CURSOR_NOT_ALLOWED;
+            case CursorStyle::WAIT:        return SDL_SYSTEM_CURSOR_PROGRESS;
+            case CursorStyle::RESIZE_ALL:  return SDL_SYSTEM_CURSOR_MOVE;
+            case CursorStyle::RESIZE_EW:   return SDL_SYSTEM_CURSOR_EW_RESIZE;
+            case CursorStyle::RESIZE_NS:   return SDL_SYSTEM_CURSOR_NS_RESIZE;
+            case CursorStyle::RESIZE_NESW: return SDL_SYSTEM_CURSOR_NESW_RESIZE;
+            case CursorStyle::RESIZE_NWSE: return SDL_SYSTEM_CURSOR_NWSE_RESIZE;
+            case CursorStyle::TEXT_INPUT:  return SDL_SYSTEM_CURSOR_TEXT;
             default:
             case CursorStyle::COUNT:       break;
         }
 
-        return SDL_SYSTEM_CURSOR_NO;
+        return SDL_SYSTEM_CURSOR_NOT_ALLOWED;
     }
 
     bool Validate(const I32 errCode)
@@ -59,7 +60,7 @@ namespace
 
 } // namespace 
 
-SDL_DisplayMode WindowManager::s_mainDisplayMode;
+const SDL_DisplayMode* WindowManager::s_mainDisplayMode = nullptr;
 std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> WindowManager::s_cursors = create_array<to_base(CursorStyle::COUNT), SDL_Cursor*>(nullptr);
 
 WindowManager::WindowManager() noexcept
@@ -73,7 +74,12 @@ WindowManager::~WindowManager()
 
 vec2<U16> WindowManager::GetFullscreenResolution() noexcept
 {
-    return vec2<U16>( s_mainDisplayMode.w, s_mainDisplayMode.h);
+    if (s_mainDisplayMode == nullptr)
+    {
+        return vec2<U16>{1u};
+    }
+
+    return vec2<U16>( s_mainDisplayMode->w, s_mainDisplayMode->h);
 }
 
 ErrorCode WindowManager::init(PlatformContext& context,
@@ -89,7 +95,7 @@ ErrorCode WindowManager::init(PlatformContext& context,
         return ErrorCode::WINDOW_INIT_ERROR;
     }
 
-    if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0)
+    if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
     {
         return ErrorCode::WINDOW_INIT_ERROR;
     }
@@ -107,33 +113,45 @@ ErrorCode WindowManager::init(PlatformContext& context,
     Console::printfn(LOCALE_STR("SDL_CURRENT_VIDEO_DRIVER"), videoDriver != nullptr ? videoDriver : "UNKNOWN");
 
     efficient_clear( _monitors );
-    const I32 displayCount = SDL_GetNumVideoDisplays();
-    for (I32 i = 0; i < displayCount; ++i)
+    I32 displayCount = 0;
+    SDL_DisplayID* displays = SDL_GetDisplays(&displayCount);
+    if ( displays && displayCount > 0)
     {
-        MonitorData data = {};
+        for (I32 i = 0; i < displayCount; ++i)
+        {
+            SDL_DisplayID instance_id = displays[i];
 
-        SDL_Rect r;
-        SDL_GetDisplayBounds(i, &r);
-        data.viewport.xy = { to_I16(r.x), to_I16(r.y) };
-        data.viewport.zw = { to_I16(r.w), to_I16(r.h) };
+            MonitorData data = {};
 
-        SDL_GetDisplayUsableBounds(i, &r);
-        data.drawableArea.xy = { to_I16(r.x), to_I16(r.y) };
-        data.drawableArea.zw = { to_I16(r.w), to_I16(r.h) };
+            SDL_Rect r;
+            SDL_GetDisplayBounds(instance_id, &r);
+            data.viewport.xy = { to_I16(r.x), to_I16(r.y) };
+            data.viewport.zw = { to_I16(r.w), to_I16(r.h) };
 
-        SDL_GetDisplayDPI(i, &data.dpi, nullptr, nullptr);
+            SDL_GetDisplayUsableBounds(instance_id, &r);
+            data.drawableArea.xy = { to_I16(r.x), to_I16(r.y) };
+            data.drawableArea.zw = { to_I16(r.w), to_I16(r.h) };
+            data.dpi = PlatformDefaultDPI();
 
-        _monitors.push_back(data);
+            _monitors.push_back(data);
+        }
     }
+    else
+    {
+        SDL_free(displays);
+        return ErrorCode::SDL_WINDOW_INIT_ERROR;
+    }
+
+    const I32 displayIndex = std::max(std::min(targetDisplayIndex, displayCount - 1), 0);
+    s_mainDisplayMode = SDL_GetCurrentDisplayMode(displays[displayIndex]);
+    SDL_free(displays);
+
+
 
     for ( U8 i = 0; i < to_U8( CursorStyle::COUNT ); ++i )
     {
         s_cursors[i] = SDL_CreateSystemCursor( CursorToSDL( static_cast<CursorStyle>(i) ) );
     }
-
-    const I32 displayIndex = std::max(std::min(targetDisplayIndex, displayCount - 1), 0);
-
-    SDL_GetCurrentDisplayMode(displayIndex, &s_mainDisplayMode );
 
     WindowDescriptor descriptor = {};
     descriptor.position = initialPosition;
@@ -203,30 +221,80 @@ ErrorCode WindowManager::init(PlatformContext& context,
         });
 
         // Query available display modes (resolution, bit depth per channel and refresh rates)
-        I32 numberOfDisplayModes[DisplayManager::g_maxDisplayOutputs] = {};
 
-        const U8 numDisplays = to_U8(std::min(SDL_GetNumVideoDisplays(), to_I32( DisplayManager::g_maxDisplayOutputs )));
-        Attorney::DisplayManagerWindowManager::SetActiveDisplayCount(numDisplays);
-
-        for (I32 display = 0; display < numDisplays; ++display)
+        string refreshRates;
+        DisplayManager::OutputDisplayProperties prevMode;
+        const auto printMode = [&refreshRates](DisplayManager::OutputDisplayProperties& crtMode, const DisplayManager::OutputDisplayProperties& nextMode)
         {
-            numberOfDisplayModes[display] = SDL_GetNumDisplayModes(display);
-        }
-
-        DisplayManager::OutputDisplayProperties tempDisplayMode = {};
-        for (U8 display = 0u; display < numDisplays; ++display)
-        {
-            // Register the display modes with the GFXDevice object
-            for (I32 mode = 0; mode < numberOfDisplayModes[display]; ++mode)
+            if (!refreshRates.empty() )
             {
-                SDL_GetDisplayMode(display, mode, &s_mainDisplayMode );
-                tempDisplayMode._maxRefreshRate = to_U8( s_mainDisplayMode.refresh_rate);
-                tempDisplayMode._resolution.set( s_mainDisplayMode.w, s_mainDisplayMode.h);
-                tempDisplayMode._bitsPerPixel = SDL_BITSPERPIXEL( s_mainDisplayMode.format);
-                tempDisplayMode._formatName = SDL_GetPixelFormatName( s_mainDisplayMode.format);
-                Util::ReplaceStringInPlace(tempDisplayMode._formatName, "SDL_PIXELFORMAT_", "");
-                Attorney::DisplayManagerWindowManager::RegisterDisplayMode(to_U8(display), tempDisplayMode);
+                Console::printfn(LOCALE_STR("CURRENT_DISPLAY_MODE"),
+                    crtMode._resolution.width,
+                    crtMode._resolution.height,
+                    crtMode._bitsPerPixel,
+                    crtMode._formatName.c_str(),
+                    refreshRates.c_str());
+
+                refreshRates = "";
             }
+            crtMode = nextMode;
+        };
+
+
+        I32 numDisplays = 0, numDisplayModes = 0;
+        SDL_DisplayID* displays = SDL_GetDisplays(&numDisplays);
+        if (displays)
+        {
+            for (I32 displayIndex = 0; displayIndex < numDisplays; ++displayIndex)
+            {
+                SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(displays[displayIndex], &numDisplayModes);
+
+                if ( modes )
+                {
+                    Console::printfn(LOCALE_STR("AVAILABLE_VIDEO_MODES"), displayIndex, numDisplayModes);
+
+                    for (I32 modeIndex = 0; modeIndex < numDisplayModes; ++modeIndex)
+                    {
+                        SDL_DisplayMode* mode = modes[modeIndex];
+
+                        DisplayManager::OutputDisplayProperties tempDisplayMode
+                        {
+                            ._formatName = SDL_GetPixelFormatName(mode->format),
+                            ._resolution = {mode->w, mode->h},
+                            ._maxRefreshRate = mode->refresh_rate,
+                            ._bitsPerPixel = to_U8(SDL_BITSPERPIXEL(mode->format))
+                        };
+
+                        SDL_copyp(&tempDisplayMode._internalMode, mode);
+
+                        Attorney::DisplayManagerWindowManager::RegisterDisplayMode(tempDisplayMode);
+
+                        if (prevMode._resolution   != tempDisplayMode._resolution ||
+                            prevMode._bitsPerPixel != tempDisplayMode._bitsPerPixel ||
+                            prevMode._formatName   != tempDisplayMode._formatName)
+                        {
+                            printMode(prevMode, tempDisplayMode);
+                        }
+
+                        if (refreshRates.empty())
+                        {
+                            refreshRates = Util::StringFormat("{}", tempDisplayMode._maxRefreshRate);
+                        }
+                        else
+                        {
+                            refreshRates.append(Util::StringFormat(", {}", tempDisplayMode._maxRefreshRate));
+                        }
+                    }
+                    SDL_free(modes);
+                }
+            }
+
+            printMode(prevMode, {});
+            SDL_free(displays);
+        }
+        else
+        {
+            return ErrorCode::WINDOW_INIT_ERROR;
         }
 
         GFX::InitPools(64u);
@@ -246,7 +314,7 @@ void WindowManager::close()
 
     for (SDL_Cursor* it : s_cursors)
     {
-        SDL_FreeCursor(it);
+        SDL_DestroyCursor(it);
     }
 
     s_cursors.fill(nullptr);
@@ -270,47 +338,7 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
     {
         return nullptr;
     }
-
-    U32 windowFlags = descriptor.targetAPI == RenderAPI::Vulkan ? SDL_WINDOW_VULKAN : descriptor.targetAPI == RenderAPI::OpenGL ? SDL_WINDOW_OPENGL : 0u;
-
-    if (descriptor.flags & to_base(WindowDescriptor::Flags::RESIZEABLE))
-    {
-        windowFlags |= SDL_WINDOW_RESIZABLE;
-    }
-    if (descriptor.flags & to_base(WindowDescriptor::Flags::ALLOW_HIGH_DPI))
-    {
-        windowFlags |= SDL_WINDOW_ALLOW_HIGHDPI;
-    }
-    if (descriptor.flags & to_base(WindowDescriptor::Flags::HIDDEN))
-    {
-        windowFlags |= SDL_WINDOW_HIDDEN;
-    }
-    if (!(descriptor.flags & to_base(WindowDescriptor::Flags::DECORATED)))
-    {
-        windowFlags |= SDL_WINDOW_BORDERLESS;
-    }
-    if (descriptor.flags & to_base(WindowDescriptor::Flags::ALWAYS_ON_TOP))
-    {
-        windowFlags |= SDL_WINDOW_ALWAYS_ON_TOP;
-    }
-    if (descriptor.flags & to_base(WindowDescriptor::Flags::NO_TASKBAR_ICON))
-    {
-        windowFlags |= SDL_WINDOW_SKIP_TASKBAR;
-    }
-
-    WindowType winType = WindowType::WINDOW;
-    if (descriptor.flags & to_base(WindowDescriptor::Flags::FULLSCREEN))
-    {
-        winType = WindowType::FULLSCREEN;
-        windowFlags |= SDL_WINDOW_FULLSCREEN;
-    }
-    else if (descriptor.flags & to_base(WindowDescriptor::Flags::FULLSCREEN_DESKTOP))
-    {
-        winType = WindowType::FULLSCREEN_WINDOWED;
-        windowFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-    }
-
-    if (err == ErrorCode::NO_ERR)
+    else
     {
         err = ConfigureAPISettings( *_context, descriptor );
     }
@@ -329,16 +357,16 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         contextChanged = true;
     }
 
-    err = window->init(windowFlags, winType, descriptor);
-
-    if ( crtWindow != nullptr && contextChanged )
-    {
-        Validate( SDL_GL_MakeCurrent( crtWindow->getRawWindow(), nullptr ) );
-    }
+    err = window->init(descriptor);
 
     if (err != ErrorCode::NO_ERR)
     {
         return nullptr;
+    }
+
+    if ( crtWindow != nullptr && contextChanged )
+    {
+        Validate( SDL_GL_MakeCurrent( crtWindow->getRawWindow(), nullptr ) );
     }
 
     const bool isMainWindow = _mainWindow == nullptr;
@@ -443,7 +471,7 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
     {
         if ( window->userData()._ownsContext)
         {
-            SDL_GL_DeleteContext( window->userData()._glContext );
+            SDL_GL_DestroyContext( window->userData()._glContext );
         }
 
         window->userData()._glContext = nullptr;
@@ -527,15 +555,19 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
         {
             targetWindow->userData()._glContext = SDL_GL_CreateContext( targetWindow->getRawWindow() );
             targetWindow->userData()._ownsContext = true;
-            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
         }
 
         if ( targetWindow->userData()._glContext == nullptr)
         {
             Console::errorfn(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError());
+            Console::errorfn(LOCALE_STR("ERROR_SDL_OPENGL_CONTEXT"), GetLastErrorText());
             Console::warnfn(LOCALE_STR("WARN_SWITCH_API"));
             Console::warnfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
             return ErrorCode::GL_OLD_HARDWARE;
+        }
+        else
+        {
+            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
         }
 
         if ( targetWindow->flags() & to_base(WindowFlags::VSYNC))
@@ -545,7 +577,7 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
             // Late swap may fail
             if (context.config().runtime.adaptiveSync)
             {
-                vsyncSet = SDL_GL_SetSwapInterval(-1) != -1;
+                vsyncSet = SDL_GL_SetSwapInterval(SDL_WINDOW_SURFACE_VSYNC_ADAPTIVE);
                 if (!vsyncSet)
                 {
                     Console::warnfn(LOCALE_STR("WARN_ADAPTIVE_SYNC_NOT_SUPPORTED"));
@@ -554,14 +586,14 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
 
             if (!vsyncSet)
             {
-                vsyncSet = SDL_GL_SetSwapInterval(1) != -1;
+                vsyncSet = SDL_GL_SetSwapInterval(SDL_WINDOW_SURFACE_VSYNC_ENABLED);
             }
 
             DIVIDE_ASSERT(vsyncSet, "VSync change failed!");
         }
         else
         {
-            SDL_GL_SetSwapInterval(0);
+            SDL_GL_SetSwapInterval(SDL_WINDOW_SURFACE_VSYNC_DISABLED);
         }
 
         // Creating a context will also set it as current in SDL. So ... unset it here.
@@ -648,7 +680,9 @@ void WindowManager::stepResolution( const bool increment )
         return a.x > b.x || a.y > b.y;
     };
 
-    const auto& displayModes = DisplayManager::GetDisplayModes( mainWindow()->currentDisplayIndex() );
+    const SDL_DisplayID crtDisplayIndex = mainWindow()->currentDisplayIndex();
+
+    const auto& displayModes = DisplayManager::GetDisplayModes();
 
     const auto renderingResolution = _context->gfx().renderingResolution();
 
@@ -658,11 +692,17 @@ void WindowManager::stepResolution( const bool increment )
     {
         for ( auto it = displayModes.rbegin(); it != displayModes.rend(); ++it )
         {
+            if ( it->_internalMode.displayID != crtDisplayIndex)
+            {
+                continue;
+            }
+
             const vec2<U16> res = it->_resolution;
             if ( compare( res, renderingResolution ) )
             {
                 found = true;
                 foundRes.set( res );
+                _fullscreenMode = it->_internalMode;
                 break;
             }
         }
@@ -671,11 +711,17 @@ void WindowManager::stepResolution( const bool increment )
     {
         for ( const auto& mode : displayModes )
         {
+            if (mode._internalMode.displayID != crtDisplayIndex)
+            {
+                continue;
+            }
+
             const vec2<U16> res = mode._resolution;
             if ( compare( renderingResolution, res ) )
             {
                 found = true;
                 foundRes.set( res );
+                _fullscreenMode = mode._internalMode;
                 break;
             }
         }
@@ -685,6 +731,7 @@ void WindowManager::stepResolution( const bool increment )
     {
         _resolutionChangeQueued.first.set( foundRes );
         _resolutionChangeQueued.second = true;
+        
     }
 }
 
@@ -709,28 +756,27 @@ bool WindowManager::onWindowSizeChange(const DisplayWindow::WindowEventArgs& arg
 
 void WindowManager::CaptureMouse(const bool state) noexcept
 {
-    SDL_CaptureMouse(state ? SDL_TRUE : SDL_FALSE);
+    SDL_CaptureMouse(state);
 }
 
-bool WindowManager::setCursorPosition(I32 x, I32 y) noexcept
+bool WindowManager::SetCursorPosition(const DisplayWindow* window, I32 x, I32 y) noexcept
 {
-    const DisplayWindow* focusedWindow = getFocusedWindow();
-    if (focusedWindow == nullptr)
+    if (window == nullptr)
     {
-        focusedWindow = mainWindow();
+        return false;
     }
 
     if (x == -1)
     {
-        x = SDL_WINDOWPOS_CENTERED_DISPLAY(focusedWindow->currentDisplayIndex());
+        x = SDL_WINDOWPOS_CENTERED_DISPLAY(window->currentDisplayIndex());
     }
 
     if (y == -1)
     {
-        y = SDL_WINDOWPOS_CENTERED_DISPLAY(focusedWindow->currentDisplayIndex());
+        y = SDL_WINDOWPOS_CENTERED_DISPLAY(window->currentDisplayIndex());
     }
 
-    SDL_WarpMouseInWindow(focusedWindow->getRawWindow(), x, y);
+    SDL_WarpMouseInWindow(window->getRawWindow(), x, y);
     return true;
 }
 
@@ -759,32 +805,41 @@ void WindowManager::SetCursorStyle(const CursorStyle style)
     }
 }
 
-void WindowManager::ToggleRelativeMouseMode(const bool state) noexcept
+void WindowManager::ToggleRelativeMouseMode(const DisplayWindow* window, const bool state) noexcept
 {
-    [[maybe_unused]] const I32 result = SDL_SetRelativeMouseMode(state ? SDL_TRUE : SDL_FALSE);
-    assert(result != -1);
+    if (window == nullptr)
+    {
+        return;
+    }
+
+    SDL_SetWindowRelativeMouseMode(window->getRawWindow(), state);
 }
 
-bool WindowManager::IsRelativeMouseMode() noexcept
+bool WindowManager::IsRelativeMouseMode(const DisplayWindow* window) noexcept
 {
-    return SDL_GetRelativeMouseMode() == SDL_TRUE;
+    if (window == nullptr)
+    {
+        return false;
+    }
+
+    return SDL_GetWindowRelativeMouseMode(window->getRawWindow());
 }
 
-int2 WindowManager::GetGlobalCursorPosition() noexcept
+float2 WindowManager::GetGlobalCursorPosition() noexcept
 {
-    int2 ret(-1);
+    float2 ret(-1.f);
     SDL_GetGlobalMouseState(&ret.x, &ret.y);
     return ret;
 }
 
-int2 WindowManager::GetCursorPosition() noexcept
+float2 WindowManager::GetCursorPosition() noexcept
 {
-    int2 ret(-1);
+    float2 ret(-1.f);
     SDL_GetMouseState(&ret.x, &ret.y);
     return ret;
 }
 
-U32 WindowManager::GetMouseState(int2& pos, const bool global) noexcept
+U32 WindowManager::GetMouseState(float2& pos, const bool global) noexcept
 {
     if (global)
     {
@@ -796,19 +851,18 @@ U32 WindowManager::GetMouseState(int2& pos, const bool global) noexcept
 
 void WindowManager::SetCaptureMouse(const bool state) noexcept
 {
-    SDL_CaptureMouse(state ? SDL_TRUE : SDL_FALSE);
+    SDL_CaptureMouse(state);
 }
 
-void WindowManager::snapCursorToCenter()
+void WindowManager::SnapCursorToCenter(const DisplayWindow* window)
 {
-    const DisplayWindow* focusedWindow = getFocusedWindow();
-    if (focusedWindow == nullptr)
+    if (window == nullptr )
     {
-        focusedWindow = mainWindow();
+        return;
     }
 
-    const vec2<U16>& center = focusedWindow->getDimensions();
-    setCursorPosition(to_I32(center.x * 0.5f), to_I32(center.y * 0.5f));
+    const vec2<U16>& center = window->getDimensions();
+    SetCursorPosition(window, to_I32(center.x * 0.5f), to_I32(center.y * 0.5f));
 }
 
 void WindowManager::hideAll() noexcept

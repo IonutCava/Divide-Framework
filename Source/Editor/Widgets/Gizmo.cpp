@@ -377,7 +377,7 @@ namespace Divide
         }
         const ImGuiKey imguiKey = DivideKeyToImGuiKey(arg._key);
         io.AddKeyEvent(imguiKey, pressed);
-        io.SetKeyEventNativeData(imguiKey, arg.sym, arg.scancode, arg.scancode);
+        io.SetKeyEventNativeData(imguiKey, arg._sdlKey, arg._sdlScancode, arg._sdlScancode);
     }
 
     bool Gizmo::onKeyDown(Input::KeyEvent& argInOut)

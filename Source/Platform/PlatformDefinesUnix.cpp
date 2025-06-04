@@ -2,7 +2,6 @@
 
 #include "Headers/PlatformDefinesUnix.h"
 
-#include <SDL2/SDL_syswm.h>
 #include <unistd.h>
 #include <signal.h>
 #include <unistd.h>
@@ -99,6 +98,11 @@ namespace Divide
         return true;
     }
 
+    std::string GetLastErrorText() noexcept
+    {
+        return std::strerror(errno);
+    }
+
     F32 PlatformDefaultDPI() noexcept
     {
 #if defined(IS_MACOS_BUILD)
@@ -116,23 +120,31 @@ namespace Divide
 
         handleOut = {};
 #if defined(IS_MACOS_BUILD)
-        handleOut._handle = wmInfo.info.cocoa.window;
-#else //IS_MACOS_BUILD
-        switch (wmInfo.subsystem)
+        NSWindow* nswindow = (__bridge NSWindow*)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+        if (nswindow)
         {
-            case SDL_SYSWM_X11:
-                handleOut.x11_window = wmInfo.info.x11.window;
-                break;
-
-            case SDL_SYSWM_WAYLAND:
-#if defined(SDL_VIDEO_DRIVER_WAYLAND)
-                handleOut.wl_display = wmInfo.info.wl.display;
-                handleOut.wl_surface = wmInfo.info.wl.surface;
-                break;
-#endif //SDL_VIDEO_DRIVER_WAYLAND
-            default:
-                DIVIDE_UNEXPECTED_CALL();
-                break;
+            handleOut._handle = wmInfo.info.cocoa.window;
+        }
+#else //IS_MACOS_BUILD
+        if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "x11") == 0)
+        {
+            Display* xdisplay = (Display*)SDL_GetPointerProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+            Window xwindow = (Window)SDL_GetNumberProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+            if (xdisplay && xwindow)
+            {
+                _displayX11 = xdisplay;
+                _handleX11 = xwindow;
+            }
+        }
+        else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0)
+        {
+            struct wl_display* display = (struct wl_display*)SDL_GetPointerProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+            struct wl_surface* surface = (struct wl_surface*)SDL_GetPointerProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
+            if (display && surface)
+            {
+                _displayWL = display;
+                _surfaceWL = surface;
+            }
         }
 #endif //IS_MACOS_BUILD
     }

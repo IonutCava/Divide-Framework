@@ -53,33 +53,29 @@ namespace Divide
         {
             string _formatName{};
             vec2<U16> _resolution{ 1u };
+            F32 _maxRefreshRate{ 60.f };
             U8 _bitsPerPixel{ 8u };
-            U8 _maxRefreshRate{ 24u }; ///< As returned by SDL_GetPixelFormatName
+            SDL_DisplayMode _internalMode{};
         };
 
         friend class Attorney::DisplayManagerWindowManager;
         friend class Attorney::DisplayManagerRenderingAPI;
         friend class Attorney::DisplayManagerApplication;
 
-        static constexpr U8 g_maxDisplayOutputs = 4u;
-
         using OutputDisplayPropertiesContainer = vector<OutputDisplayProperties>;
 
-        [[nodiscard]] static const OutputDisplayPropertiesContainer& GetDisplayModes(const size_t displayIndex) noexcept;
-        [[nodiscard]] static U8 ActiveDisplayCount() noexcept;
+        [[nodiscard]] static const OutputDisplayPropertiesContainer& GetDisplayModes() noexcept;
         [[nodiscard]] static U8 MaxMSAASamples() noexcept;
 
     private:
         static void MaxMSAASamples(const U8 maxSampleCount) noexcept;
-        static void SetActiveDisplayCount(const U8 displayCount);
-        static void RegisterDisplayMode(const U8 displayIndex, const OutputDisplayProperties& mode);
+        static void RegisterDisplayMode(const OutputDisplayProperties& mode);
 
         static void Reset() noexcept;
 
     private:
-        static U8 s_activeDisplayCount;
         static U8 s_maxMSAASAmples;
-        static std::array<OutputDisplayPropertiesContainer, g_maxDisplayOutputs> s_supportedDisplayModes;
+        static OutputDisplayPropertiesContainer s_supportedDisplayModes;
     };
 
     bool operator==(const DisplayManager::OutputDisplayProperties& lhs, const DisplayManager::OutputDisplayProperties& rhs) noexcept;
@@ -88,14 +84,9 @@ namespace Divide
     {
         class DisplayManagerWindowManager
         {
-            static void SetActiveDisplayCount(const U8 displayCount)
+            static void RegisterDisplayMode( const DisplayManager::OutputDisplayProperties& mode)
             {
-                DisplayManager::SetActiveDisplayCount(displayCount);
-            }
-
-            static void RegisterDisplayMode(const U8 displayIndex, const DisplayManager::OutputDisplayProperties& mode)
-            {
-                DisplayManager::RegisterDisplayMode(displayIndex, mode);
+                DisplayManager::RegisterDisplayMode(mode);
             }
 
             friend class Divide::WindowManager;

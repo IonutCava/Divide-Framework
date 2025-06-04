@@ -5,8 +5,8 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "imgui_impl_sdl2.h"
-#include "imgui_impl_sdlrenderer2.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_sdlrenderer3.h"
 
 #include <regex>
 #include <stack>
@@ -21,9 +21,9 @@
 
 #include <filesystem>
 
-#include <SDL_image.h>
-#include <SDL_surface.h>
-#include <SDL.h>
+#include <SDL3_image/SDL_image.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_main.h>
 #include <fmt/core.h>
 
 #include <boost/property_tree/xml_parser.hpp>
@@ -93,8 +93,9 @@ struct Image
     const std::filesystem::path _path;
     SDL_Surface* _surface = nullptr;
     SDL_Texture* _texture = nullptr;
-    int _width = 1, _height = 1, _access = 0;
-    uint32_t _format = 0u;
+    int _width = 1, _height = 1;
+    Sint64 _access = 0;
+    SDL_PixelFormat _format;
     float _aspectRatio = 1.f;
 
     bool operator==( const Image& other ) const noexcept;
@@ -117,21 +118,48 @@ struct ProjectEntry
 
 using ProjectDB = std::vector<ProjectEntry>;
 
+template<typename T>
+static T* SDL_ASSERT( T* object)
+{
+    if (object == nullptr)
+    {
+        printf("%s", fmt::format(ERRORS[9], SDL_GetError()).c_str());
+        assert(false);
+    }
+
+    return object;
+}
+
+static void SDL_ASSERT( const bool condition )
+{
+    if ( !condition )
+    {
+        printf("%s", fmt::format(ERRORS[9], SDL_GetError()).c_str());
+        assert(false);
+    }
+}
+
 Image::Image( const std::filesystem::path& path, SDL_Renderer* renderer )
     : _path( path )
 {
-    _surface = IMG_Load( path.string().c_str() );
-    assert( _surface );
-    _texture = SDL_CreateTextureFromSurface( renderer, _surface );
-    assert( _texture );
-    SDL_QueryTexture( _texture, &_format, &_access, &_width, &_height );
+    _surface = SDL_ASSERT(IMG_Load( path.string().c_str() ));  
+    _texture = SDL_ASSERT(SDL_CreateTextureFromSurface( renderer, _surface ));
+
+    float w, h;
+    SDL_ASSERT(SDL_GetTextureSize(_texture, &w, &h));
+    _width = static_cast<int>(std::floor(w));
+    _height = static_cast<int>(std::floor(h));
+    SDL_PropertiesID properties = SDL_GetTextureProperties(_texture);
     _aspectRatio = _width / float( _height );
+    _format = (SDL_PixelFormat)SDL_GetNumberProperty(properties, SDL_PROP_TEXTURE_FORMAT_NUMBER, 0);
+    _access = SDL_GetNumberProperty(properties, SDL_PROP_TEXTURE_ACCESS_NUMBER, 0);
+    
 }
 
 Image::~Image()
 {
     SDL_DestroyTexture( _texture );
-    SDL_FreeSurface( _surface );
+    SDL_DestroySurface( _surface );
 }
 
 bool Image::operator==( const Image& other ) const noexcept
@@ -382,29 +410,13 @@ int main( int, char** )
     loadConfig();
 
     // Setup SDL
-    if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER ) != 0 )
-    {
-        printf( "%s", fmt::format(ERRORS[3], SDL_GetError()).c_str() );
-        return -1;
-    }
-    // From 2.0.18: Enable native IME.
-#ifdef SDL_HINT_IME_SHOW_UI
-    SDL_SetHint( SDL_HINT_IME_SHOW_UI, "1" );
-#endif
+    SDL_ASSERT(SDL_Init( SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) );
+
+    SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "1" );
 
     // Create window with SDL_Renderer graphics context
-    SDL_Window* window = SDL_CreateWindow( WINDOW_TITLE, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALLOW_HIGHDPI );
-    if ( window == nullptr )
-    {
-        printf("%s", fmt::format(ERRORS[4], SDL_GetError()).c_str() );
-        return -1;
-    }
-    SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED );
-    if ( renderer == nullptr )
-    {
-        printf("%s", fmt::format(ERRORS[5], SDL_GetError()).c_str() );
-        return 0;
-    }
+    SDL_Window* window = SDL_ASSERT(SDL_CreateWindow( WINDOW_TITLE, 1280, 720, SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIGH_PIXEL_DENSITY));
+    SDL_Renderer* renderer = SDL_ASSERT(SDL_CreateRenderer( window, nullptr));
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -417,8 +429,8 @@ int main( int, char** )
     ImGui::StyleColorsDark();
     ImGui::ResetStyle( ImGuiStyle_Dracula );
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForSDLRenderer( window, renderer );
-    ImGui_ImplSDLRenderer2_Init( renderer );
+    ImGui_ImplSDL3_InitForSDLRenderer( window, renderer );
+    ImGui_ImplSDLRenderer3_Init( renderer );
 
     constexpr uint8_t iconImageSize = 32u;
     constexpr uint8_t logoImageSize = 96u;
@@ -482,21 +494,20 @@ int main( int, char** )
         SDL_Event event;
         while ( SDL_PollEvent( &event ) )
         {
-            ImGui_ImplSDL2_ProcessEvent( &event );
+            ImGui_ImplSDL3_ProcessEvent( &event );
             switch (event.type)
             {
-                case SDL_QUIT : done = true; break;
-                case SDL_KEYUP:
+                case SDL_EVENT_QUIT: done = true; break;
+                case SDL_EVENT_KEY_UP:
                 {
-                    switch ( event.key.keysym.sym )
+                    if ( event.key.key == SDLK_ESCAPE)
                     {
-                        case SDLK_ESCAPE: done = true; break;
-                        default: break;
+                        done = true;
                     }
                 } break;
-                case SDL_WINDOWEVENT :
+                case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
                 {
-                    if (event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID( window ) )
+                    if (event.window.windowID == SDL_GetWindowID( window ) )
                     {
                         done = true;
                     }
@@ -506,8 +517,8 @@ int main( int, char** )
         }
 
         // Start the Dear ImGui frame
-        ImGui_ImplSDLRenderer2_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplSDLRenderer3_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
         bool p_open = true;
@@ -611,7 +622,7 @@ int main( int, char** )
                 ImVec2 center = ImGui::GetMainViewport()->GetCenter();
                 ImGui::SetNextWindowPos( ImVec2(center.x, 0.f), ImGuiCond_Always, ImVec2( 0.5f, -0.2f ) );
 
-                if ( ImGui::BeginChild( "##options", ImVec2( ImGui::GetContentRegionAvail().x * 0.45f, ImGui::GetContentRegionAvail().y * 0.125f ), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
+                if ( ImGui::BeginChild( "##options", ImVec2( ImGui::GetContentRegionAvail().x * 0.45f, ImGui::GetContentRegionAvail().y * 0.125f ), ImGuiChildFlags_Borders, ImGuiWindowFlags_None ) )
                 {
                     int mode = static_cast<int>(launch_mode);
 
@@ -745,7 +756,7 @@ int main( int, char** )
                 }
                 static float button_size = 120.f, button_distance = 15.f;
                 ImGui::SetNextWindowPos( center, ImGuiCond_Always, ImVec2( 0.51f, 0.45f ) );
-                if (ImGui::BeginChild( "##projectList", ImVec2( ImGui::GetContentRegionAvail().x - scaleWidth * 1.5f, ImGui::GetContentRegionAvail().y * 0.9f ), ImGuiChildFlags_Border, ImGuiWindowFlags_HorizontalScrollbar ))
+                if (ImGui::BeginChild( "##projectList", ImVec2( ImGui::GetContentRegionAvail().x - scaleWidth * 1.5f, ImGui::GetContentRegionAvail().y * 0.9f ), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar ))
                 {
                     float spacing_x = -button_size + ImGui::GetStyle().FramePadding.x;
                     const float& win_x = ImGui::GetWindowSize().x;
@@ -923,7 +934,7 @@ int main( int, char** )
 
                     ImGui::SameLine();
                     
-                    if ( ImGui::BeginChild( "##status", ImVec2( ImGui::GetContentRegionAvail().x * 0.95f, ImGui::GetContentRegionAvail().y * 0.8), ImGuiChildFlags_Border, ImGuiWindowFlags_None ) )
+                    if ( ImGui::BeginChild( "##status", ImVec2( ImGui::GetContentRegionAvail().x * 0.95f, ImGui::GetContentRegionAvail().y * 0.8), ImGuiChildFlags_Borders, ImGuiWindowFlags_None ) )
                     {
                         ImGui::Text( g_globalMessage.c_str() );
                         ImGui::EndChild();
@@ -989,19 +1000,19 @@ int main( int, char** )
         const ImVec4 clear_color( 0.45f, 0.55f, 0.60f, 1.00f );
         // Rendering
         ImGui::Render();
-        SDL_RenderSetScale( renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y );
+        SDL_SetRenderScale( renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y );
         SDL_SetRenderDrawColor( renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255) );
         SDL_RenderClear( renderer );
-        ImGui_ImplSDLRenderer2_RenderDrawData( ImGui::GetDrawData() );
-        SDL_RenderPresent( renderer );
+        ImGui_ImplSDLRenderer3_RenderDrawData( ImGui::GetDrawData(), renderer );
+        SDL_ASSERT(SDL_RenderPresent( renderer ));
     }
 
     saveConfig();
 
     // Cleanup
     imageDB.clear();
-    ImGui_ImplSDLRenderer2_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplSDLRenderer3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
     SDL_DestroyRenderer( renderer );

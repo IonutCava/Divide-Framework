@@ -54,6 +54,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct ImDrawData;
 
+#ifndef ImTextureID
+namespace ImGui
+{
+    typedef ImU64 ImTextureID;
+}
+#endif //ImTextureID
+
 namespace Divide
 {
 
@@ -129,8 +136,8 @@ namespace Divide
 
     PushConstantsStruct IMGUICallbackToPushConstants(const IMGUICallbackData& data, bool isArrayTexture);
 
-    ImTextureID to_TexID(Handle<Texture> handle);
-    Handle<Texture> from_TexID(ImTextureID texID);
+    ImGui::ImTextureID to_TexID(Handle<Texture> handle);
+    Handle<Texture> from_TexID(ImGui::ImTextureID texID);
 
     class Editor final : public PlatformContextComponent,
                          public FrameListener,
@@ -258,7 +265,8 @@ namespace Divide
         [[nodiscard]] bool joystickBallMovedInternal( Input::JoystickEvent& argInOut) noexcept override;
         [[nodiscard]] bool joystickAddRemoveInternal( Input::JoystickEvent& argInOut) noexcept override;
         [[nodiscard]] bool joystickRemapInternal( Input::JoystickEvent& argInOut) noexcept override;
-        [[nodiscard]] bool onTextEventInternal( Input::TextEvent& argInOut) override;
+        [[nodiscard]] bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+        [[nodiscard]] bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
 
         [[nodiscard]] bool wantsMouse() const;
         [[nodiscard]] bool wantsKeyboard() const noexcept;
@@ -344,7 +352,7 @@ namespace Divide
         [[nodiscard]] bool removeComponent( const Selections& selections, ComponentType newComponentType ) const;
 
         GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, U32 maxIndices, GFX::MemoryBarrierCommand& memCmdInOut );
-        void initBasicImGUIState(ImGuiIO& io, bool enableViewportSupport, string& clipboardStringBuffer) noexcept;
+        void initBasicImGUIState(ImGuiIO& io, ImGuiPlatformIO& platform_io, bool enableViewportSupport, string& clipboardStringBuffer) noexcept;
 
     protected:
         SceneGraphNode* _previewNode{ nullptr };

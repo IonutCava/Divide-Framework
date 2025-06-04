@@ -36,7 +36,7 @@
 #include <glbinding/gl46core/gl.h>
 
 struct SDL_Window;
-typedef void* SDL_GLContext;
+typedef struct SDL_GLContextState* SDL_GLContext;
 
 namespace NS_GLIM {
     enum class GLIM_ENUM : int;

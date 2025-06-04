@@ -117,7 +117,8 @@ namespace Divide
         bool mouseMovedInternal( Input::MouseMoveEvent& argInOut) override;
         bool mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut) override;
         bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
-        bool onTextEventInternal( Input::TextEvent& argInOut) override;
+        bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+        bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
         /// Returns false if the key is already assigned and couldn't be merged
         /// Call removeKeyMapping for the specified key first
         bool addKeyMapping( Input::KeyCode key, const PressReleaseActions::Entry& keyCbks );

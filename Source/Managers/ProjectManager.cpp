@@ -1260,9 +1260,14 @@ namespace Divide
         return activeProject()->getActiveScene()->input()->joystickRemap(argInOut);
     }
 
-    bool ProjectManager::onTextEventInternal( Input::TextEvent& argInOut)
+    bool ProjectManager::onTextInputInternal( Input::TextInputEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->onTextEvent(argInOut);
+        return activeProject()->getActiveScene()->input()->onTextInput(argInOut);
+    }
+
+    bool ProjectManager::onTextEditInternal( Input::TextEditEvent& argInOut)
+    {
+        return activeProject()->getActiveScene()->input()->onTextEdit(argInOut);
     }
 
     PlatformContext& ProjectManager::platformContext() noexcept

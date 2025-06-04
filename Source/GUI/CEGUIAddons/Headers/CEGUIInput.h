@@ -70,7 +70,8 @@ class CEGUIInput final : public Input::InputAggregatorInterface,
     /// Mouse button released: return true if input was consumed
     bool mouseButtonReleasedInternal(Input::MouseButtonEvent& argInOut) override;
 
-    bool onTextEventInternal(Input::TextEvent& argInOut) override;
+    bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+    bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
 
    protected:
     GUI& _parent;

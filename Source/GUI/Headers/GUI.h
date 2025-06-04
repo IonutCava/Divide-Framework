@@ -157,7 +157,9 @@ class GUI final : public GUIInterface,
         /// Mouse button released: return true if input was consumed
         [[nodiscard]] bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
         /// Called when text input was detected
-        [[nodiscard]] bool onTextEventInternal( Input::TextEvent& argInOut) noexcept override;
+        bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+        /// Called when text edit was detected
+        bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
 
     private:
         //// Try to find the requested FontStash font in the font cache. Load on cache miss.

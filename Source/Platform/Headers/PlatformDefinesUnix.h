@@ -66,17 +66,27 @@
 #undef Always
 #endif //Always
 
+#if defined(IS_MACOS_BUILD)
+typedef struct _NSWindow NSWindow;
+#else //IS_MACOS_BUILD
+struct Display;
+struct Window;
+struct wl_display;
+struct wl_surface;
+#endif //IS_MACOS_BUILD
+
 namespace Divide
 {
     struct WindowHandle
     {
 #if defined(IS_MACOS_BUILD)
-        void* _handle{ nullptr };
+        NSWindow* _handle{ nullptr };
 #else //IS_MACOS_BUILD
-        unsigned long x11_window{0u};
+        Display* _displayX11{ nullptr };
+        Window* _handleX11{ nullptr };
 #if defined(HAS_WAYLAND_LIB)
-        void* wl_display{nullptr};
-        void* wl_surface{ nullptr };
+        wl_display* _displayWL{nullptr};
+        wl_surface* _surfaceWL{ nullptr };
 #endif //HAS_WAYLAND_LIB
 #endif //IS_MACOS_BUILD
     };

@@ -69,31 +69,33 @@ ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage)
         return ErrorCode::NO_LANGUAGE_INI;
     }
 
-    _languageTable.clear();
-
-    CSimpleIni::TNamesDepend sections{};
-    languageFile.GetAllSections(sections);
-
-    for (const auto& section: sections)
     {
-        // Load all key-value pairs for the current section
-        const CSimpleIni::TKeyVal* keyValue = languageFile.GetSection(section.pItem);
-    
-        // And add all pairs to the language table
-        CSimpleIni::TKeyVal::const_iterator keyValuePairIt = keyValue->begin();
-        for (; keyValuePairIt != keyValue->end(); ++keyValuePairIt)
+        LockGuard<SharedMutex> w_lock(_languageTableMutex);
+        _languageTable.clear();
+
+        CSimpleIni::TNamesDepend sections{};
+        languageFile.GetAllSections(sections);
+
+        for (const auto& section: sections)
         {
-            emplace(_languageTable,
-                    _ID(keyValuePairIt->first.pItem),
-                    LanguageEntry
-                    {
-                        ._value = keyValuePairIt->second, 
-                        ._sectionAndValue = Util::StringFormat( "[ {} ] {}", section.pItem, keyValuePairIt->second )
-                    }
-                 );
+            // Load all key-value pairs for the current section
+            const CSimpleIni::TKeyVal* keyValue = languageFile.GetSection(section.pItem);
+    
+            // And add all pairs to the language table
+            CSimpleIni::TKeyVal::const_iterator keyValuePairIt = keyValue->begin();
+            for (; keyValuePairIt != keyValue->end(); ++keyValuePairIt)
+            {
+                emplace(_languageTable,
+                        _ID(keyValuePairIt->first.pItem),
+                        LanguageEntry
+                        {
+                            ._value = keyValuePairIt->second, 
+                            ._sectionAndValue = Util::StringFormat( "[ {} ] {}", section.pItem, keyValuePairIt->second )
+                        }
+                     );
+            }
         }
     }
-
     if (_languageChangeCallback)
     {
         _languageChangeCallback(newLanguage);
@@ -105,6 +107,7 @@ ErrorCode LanguageData::changeLanguage(const std::string_view newLanguage)
 const char* LanguageData::get(const U64 key, const bool appendSection, const char* defaultValue )
 {
     // When we ask for a string for the given key, we check our language cache first
+    SharedLock<SharedMutex> r_lock(_languageTableMutex);
     const auto& entry = _languageTable.find(key);
     if (entry != std::cend(_languageTable))
     {

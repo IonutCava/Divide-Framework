@@ -171,43 +171,40 @@ bool Application::onSDLEvent(const SDL_Event event) noexcept
 {
     switch ( event.type )
     {
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
         {
             RequestShutdown( false );
         } break;
-        case SDL_APP_TERMINATING:
+        case SDL_EVENT_TERMINATING:
         {
             Console::errorfn( LOCALE_STR( "ERROR_APPLICATION_SYSTEM_CLOSE_REQUEST" ) );
             RequestShutdown( false );
         } break;
-        case SDL_RENDER_TARGETS_RESET :
+        case SDL_EVENT_RENDER_TARGETS_RESET:
         {
             Console::warnfn( LOCALE_STR( "ERROR_APPLICATION_RENDER_TARGET_RESET" ) );
             //RequestShutdown( false );
         } break;
-        case SDL_RENDER_DEVICE_RESET :
+        case SDL_EVENT_RENDER_DEVICE_RESET:
         {
             Console::errorfn( LOCALE_STR("ERROR_APPLICATION_RENDER_DEVICE_RESET") );
             RequestShutdown( false );
         } break;
-        case SDL_APP_LOWMEMORY :
+        case SDL_EVENT_LOW_MEMORY:
         {
             Console::errorfn( LOCALE_STR( "ERROR_APPLICATION_LOW_MEMORY" ) );
             RequestShutdown( false );
         } break;
-        case SDL_DROPFILE:
-        case SDL_DROPTEXT:
-        case SDL_DROPBEGIN:
-        case SDL_DROPCOMPLETE:
+        case SDL_EVENT_DROP_FILE:
+        case SDL_EVENT_DROP_TEXT:
+        case SDL_EVENT_DROP_BEGIN:
+        case SDL_EVENT_DROP_COMPLETE:
         {
             Console::warnfn( LOCALE_STR("WARN_APPLICATION_DRAG_DROP") );
         } break;
-        case SDL_FINGERDOWN :
-        case SDL_FINGERUP :
-        case SDL_FINGERMOTION :
-        case SDL_DOLLARGESTURE :
-        case SDL_DOLLARRECORD :
-        case SDL_MULTIGESTURE :
+        case SDL_EVENT_FINGER_DOWN:
+        case SDL_EVENT_FINGER_UP:
+        case SDL_EVENT_FINGER_MOTION:
         {
             Console::warnfn( LOCALE_STR( "WARN_APPLICATION_TOUCH_EVENT" ) );
         } break;
@@ -227,26 +224,15 @@ bool Application::onResolutionChange(const SizeChangeParams& params) const
     return Attorney::KernelApplication::onResolutionChange(_kernel.get(), params);
 }
 
-void DisplayManager::SetActiveDisplayCount( const U8 displayCount )
+void DisplayManager::RegisterDisplayMode( const OutputDisplayProperties& mode )
 {
-    s_activeDisplayCount = std::min( displayCount, g_maxDisplayOutputs );
+    OutputDisplayProperties& it = s_supportedDisplayModes.emplace_back(mode);
+    Util::ReplaceStringInPlace(it._formatName, "SDL_PIXELFORMAT_", "");
 }
 
-void DisplayManager::RegisterDisplayMode( const U8 displayIndex, const OutputDisplayProperties& mode )
+const DisplayManager::OutputDisplayPropertiesContainer& DisplayManager::GetDisplayModes() noexcept
 {
-    DIVIDE_ASSERT( displayIndex < g_maxDisplayOutputs );
-    s_supportedDisplayModes[displayIndex].push_back( mode );
-}
-
-const DisplayManager::OutputDisplayPropertiesContainer& DisplayManager::GetDisplayModes( const size_t displayIndex ) noexcept
-{
-    DIVIDE_ASSERT( displayIndex < g_maxDisplayOutputs );
-    return s_supportedDisplayModes[displayIndex];
-}
-
-U8 DisplayManager::ActiveDisplayCount() noexcept
-{
-    return s_activeDisplayCount;
+    return s_supportedDisplayModes;
 }
 
 U8 DisplayManager::MaxMSAASamples() noexcept
@@ -261,10 +247,7 @@ void DisplayManager::MaxMSAASamples( const U8 maxSampleCount ) noexcept
 
 void DisplayManager::Reset() noexcept
 {
-    for ( auto& entries : s_supportedDisplayModes )
-    {
-        entries.clear();
-    }
+    s_supportedDisplayModes.clear();
 }
 
 }; //namespace Divide

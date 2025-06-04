@@ -33,7 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SDL_EVENT_LISTENER_H_
 #define DVD_SDL_EVENT_LISTENER_H_
 
-#include <SDL2/SDL_events.h>
+#include <SDL3/SDL_events.h>
 
 namespace Divide {
 

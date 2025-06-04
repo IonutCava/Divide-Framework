@@ -75,13 +75,10 @@ public:
     void decreaseResolution();
     void stepResolution( bool increment );
 
-    bool setCursorPosition(I32 x, I32 y) noexcept;
-    void snapCursorToCenter();
-
     static bool SetGlobalCursorPosition(I32 x, I32 y) noexcept;
-    static int2 GetCursorPosition() noexcept;
-    static int2 GetGlobalCursorPosition() noexcept;
-    static U32 GetMouseState(int2& pos, bool global) noexcept;
+    static float2 GetCursorPosition() noexcept;
+    static float2 GetGlobalCursorPosition() noexcept;
+    static U32 GetMouseState(float2& pos, bool global) noexcept;
     static void SetCaptureMouse(bool state) noexcept;
 
     //Returns null if no window is currently focused
@@ -109,8 +106,11 @@ public:
 
     static void SetCursorStyle(CursorStyle style);
 
-    static void ToggleRelativeMouseMode(bool state) noexcept;
-    static bool IsRelativeMouseMode() noexcept;
+    static void ToggleRelativeMouseMode(const DisplayWindow* window, bool state) noexcept;
+    static bool IsRelativeMouseMode(const DisplayWindow* window) noexcept;
+
+    static bool SetCursorPosition(const DisplayWindow* window, I32 x, I32 y) noexcept;
+    static void SnapCursorToCenter(const DisplayWindow* window);
 
     [[nodiscard]] DisplayWindow* activeWindow() const noexcept;
     /// Returns the total number of active windows after the push
@@ -119,6 +119,7 @@ public:
     size_t popActiveWindow();
 
     POINTER_R(DisplayWindow, mainWindow, nullptr);
+    PROPERTY_R(SDL_DisplayMode, fullscreenMode);
 
 protected:
     friend class Application;
@@ -148,9 +149,10 @@ protected:
     PlatformContext* _context{ nullptr };
     vector<MonitorData> _monitors;
     vector<std::unique_ptr<DisplayWindow>> _windows;
-    static SDL_DisplayMode s_mainDisplayMode;
+    static const SDL_DisplayMode* s_mainDisplayMode;
     static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
     eastl::stack<DisplayWindow*> _activeWindows;
+    
 };
 
 struct WindowDescriptor

@@ -37,7 +37,8 @@ struct ImVec2;
 
 namespace ImGui {
 #ifndef ImTextureID
-    typedef void* ImTextureID;          // Default: store a pointer or an integer fitting in a pointer (most renderer backends are ok with that)
+    typedef unsigned long long  ImU64;
+    typedef ImU64 ImTextureID;
 #endif
 
     bool ToggleButton(const char* str_id, bool* v);

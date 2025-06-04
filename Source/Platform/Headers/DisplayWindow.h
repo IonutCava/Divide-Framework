@@ -55,6 +55,7 @@ enum class CursorStyle : U8 {
     ARROW,
     TEXT_INPUT,
     HAND,
+    WAIT,
     RESIZE_ALL,
     RESIZE_NS,
     RESIZE_EW,
@@ -73,11 +74,11 @@ enum class WindowEvent : U8 {
     GAINED_FOCUS = 6,
     MOUSE_HOVER_ENTER = 7,
     MOUSE_HOVER_LEAVE = 8,
-    RESIZED = 9,
-    SIZE_CHANGED = 10,
-    MOVED = 11,
-    APP_LOOP = 12,
-    CLOSE_REQUESTED = 13,
+    SIZE_CHANGED = 9,
+    MOVED = 10,
+    APP_LOOP = 11,
+    CLOSE_REQUESTED = 12,
+    FULLSCREEN_TOGGLED = 13,
     COUNT
 };
 
@@ -94,11 +95,11 @@ namespace Names
       "GAINED_FOCUS",
       "MOUSE_HOVER_ENTER",
       "MOUSE_HOVER_LEAVE",
-      "RESIZED",
       "SIZE_CHANGED",
       "MOVED",
       "APP_LOOP",
       "CLOSE_REQUESTED",
+      "FULLSCREEN_TOGGLED",
       "UNKNOWN"
     };
 } // namespace Names
@@ -155,15 +156,13 @@ public:
     DisplayWindow(WindowManager& parent, PlatformContext& context);
 
 public:
-    ErrorCode init(U32 windowFlags,
-                   WindowType initialType,
-                   const WindowDescriptor& descriptor);
+    ErrorCode init(const WindowDescriptor& descriptor);
 
     ErrorCode destroyWindow();
 
     [[nodiscard]] inline SDL_Window* getRawWindow() const noexcept;
 
-    [[nodiscard]] I32 currentDisplayIndex() const noexcept;
+    [[nodiscard]] SDL_DisplayID currentDisplayIndex() const noexcept;
 
     [[nodiscard]] inline bool isHovered() const noexcept;
     [[nodiscard]] inline bool hasFocus() const noexcept;
@@ -225,8 +224,8 @@ public:
     [[nodiscard]] inline const Rect<I32>& renderingViewport() const noexcept;
     void renderingViewport(const Rect<I32>& viewport) noexcept;
 
-    [[nodiscard]] bool grabState() const noexcept;
-    void grabState(bool state) const noexcept;
+    [[nodiscard]] bool mouseGrabState() const noexcept;
+    void mouseGrabState(bool state) const noexcept;
 
     [[nodiscard]] bool onSDLEvent(SDL_Event event) override;
 

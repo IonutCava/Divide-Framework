@@ -64,6 +64,7 @@ private:
     /// each string value in the map matches the value in the ini file for the given key
     /// Basically, the hashMap is a direct copy of the [language] section of the give ini file
     hashMap<U64, LanguageEntry> _languageTable{};
+    SharedMutex _languageTableMutex{};
     LangCallback _languageChangeCallback{};
 };
 
