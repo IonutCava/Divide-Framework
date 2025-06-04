@@ -271,7 +271,7 @@ namespace Divide
         }
     }
 
-    Task* TaskPool::AllocateTask( Task* parentTask, DELEGATE<void, Task&>&& func, const bool allowedInIdle ) noexcept
+    Task* TaskPool::AllocateTask( Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
@@ -314,7 +314,6 @@ namespace Divide
             task->_id = g_taskIDCounter.fetch_add( 1u );
         }
         task->_parent = parentTask;
-        task->_runWhileIdle = allowedInIdle;
         task->_callback = MOV( func );
 
         return task;
@@ -381,7 +380,7 @@ namespace Divide
         return true;
     }
 
-    bool TaskPool::dequeInternal(const TaskPriority& priorityIn, bool isIdleCall, PoolTask& taskOut)
+    bool TaskPool::dequeInternal(const TaskPriority& priorityIn, const bool isIdleCall, PoolTask& taskOut)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
@@ -449,8 +448,7 @@ namespace Divide
                 {
                     cbk( &parentTask, start, end );
                     jobCount.fetch_sub( 1 );
-                },
-                descriptor._allowRunInIdle
+                }
             );
 
             Start( *parallelJob, pool, descriptor._priority );
@@ -465,8 +463,7 @@ namespace Divide
                 {
                     cbk( &parentTask, count - remainder, count );
                     jobCount.fetch_sub( 1 );
-                },
-                descriptor._allowRunInIdle
+                }
             );
 
             Start( *parallelJob, pool, descriptor._priority );

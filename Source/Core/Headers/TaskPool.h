@@ -51,8 +51,6 @@ struct ParallelForDescriptor
     bool _useCurrentThread = true;
     /// If true, we'll inform the thread pool to execute other tasks while waiting for the all async tasks to finish
     bool _allowPoolIdle = true;
-    /// If true, async tasks can be invoked from other task's idle callbacks
-    bool _allowRunInIdle = true;
 };
 
 using PoolTask = DELEGATE_STD<bool, bool/*threadWaitingCall*/>;
@@ -70,7 +68,7 @@ class TaskPool final : public GUIDWrapper {
     bool init(size_t threadCount, DELEGATE<void, size_t, const std::thread::id&>&& onThreadCreate = {});
     void shutdown();
 
-    static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func, bool allowedInIdle ) noexcept;
+    static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept;
 
     /// Returns the number of callbacks processed
     size_t flushCallbackQueue();
@@ -101,7 +99,7 @@ class TaskPool final : public GUIDWrapper {
     friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor);
 
     void enqueue(Task& task, TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
-    void runTask(Task& task);
+    void runTask(Task& task, bool hasCompletionCallback);
 
     bool deque( bool isIdleCall, PoolTask& taskOut, TaskPriority& priorityOut );
     bool dequeInternal( const TaskPriority& priorityIn, bool isIdleCall, PoolTask& taskOut );
@@ -143,10 +141,10 @@ class TaskPool final : public GUIDWrapper {
 };
 
 template<class Predicate>
-Task* CreateTask(Predicate&& threadedFunction, bool allowedInIdle = true);
+Task* CreateTask(Predicate&& threadedFunction);
 
 template<class Predicate>
-Task* CreateTask(Task* parentTask, Predicate&& threadedFunction, bool allowedInIdle = true);
+Task* CreateTask(Task* parentTask, Predicate&& threadedFunction);
 
 void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor, const DELEGATE<void, const Task*, U32/*start*/, U32/*end*/>& cbk);
 

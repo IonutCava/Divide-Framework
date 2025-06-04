@@ -1407,9 +1407,8 @@ namespace Divide
                                [activeScene, msgCallback, finishCallback, toCache]( const Task& /*parentTask*/ )
         {
             LoadSave::saveScene( activeScene, toCache, msgCallback, finishCallback );
-        },
-                               false );
-        Start( *_saveTask, pool, deferred ? TaskPriority::DONT_CARE : TaskPriority::REALTIME );
+        });
+        Start( *_saveTask, pool, deferred ? TaskPriority::DONT_CARE_NO_IDLE : TaskPriority::REALTIME );
 
         return true;
     }

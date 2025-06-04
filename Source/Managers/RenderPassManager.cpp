@@ -155,10 +155,9 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
 
                                            LockGuard<Mutex> w_lock( _waitForDependenciesLock );
                                            _waitForDependencies.notify_all();
-                                       },
-                                       false);
+                                       });
 
-        Start(*passData._workTask, pool, TaskPriority::DONT_CARE);
+        Start(*passData._workTask, pool, TaskPriority::DONT_CARE_NO_IDLE);
     }
 }
 

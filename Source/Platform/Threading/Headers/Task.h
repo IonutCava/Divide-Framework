@@ -40,19 +40,20 @@ class TaskPool;
 enum class TaskPriority : U8
 {
     DONT_CARE = 0,
+    DONT_CARE_NO_IDLE, ///< don't run this task while idle or when waiting for other tasks to finish
     HIGH,
     REALTIME, ///< not threaded
     COUNT
 };
 
-struct alignas(128) Task
+struct alignas(64) Task
 {
+    static constexpr U32 INVALID_TASK_ID = Config::MAX_POOLED_TASKS;
+
     DELEGATE<void, Task&> _callback;
     Task* _parent{ nullptr };
-    U32 _id{ 0u };
-    std::atomic_ushort _unfinishedJobs{ 0u };
-    bool _runWhileIdle{ true };
-    U8 _padding[48];
+    std::atomic_uint _unfinishedJobs{ 0u };
+    U32 _globalId{ INVALID_TASK_ID };
 };
 
 constexpr auto TASK_NOP = [](Task&) { NOP(); };
