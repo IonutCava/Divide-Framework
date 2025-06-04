@@ -9,7 +9,7 @@
 
 #include <glslang/Public/ShaderLang.h>
 
-#include <spirv_reflect.h>
+#include <spirv-reflect/spirv_reflect.h>
 
 namespace
 {
