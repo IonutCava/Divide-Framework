@@ -127,8 +127,11 @@ void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, co
 VertexBuffer::VertexBuffer(GFXDevice& context, const Descriptor& descriptor )
     : GraphicsResource(context, Type::BUFFER, getGUID(), descriptor._name.empty() ? 0 : _ID(descriptor._name.c_str()))
     , _descriptor(descriptor)
-    , _internalGVB(context, descriptor._name)
 {
+    _internalVB = context.newGPUBuffer( 1u, _descriptor._name );
+    _internalIB = context.newGPUBuffer( 1u, _descriptor._name );
+    _handles[0] = _internalVB->_handle;
+    _handles[1] = _internalIB->_handle;
 }
 
 void VertexBuffer::setVertexCount(const size_t size)
@@ -467,33 +470,23 @@ bool VertexBuffer::commitData( GFX::MemoryBarrierCommand& memCmdInOut )
         vector<Byte> smallData(_data.size() * effectiveEntrySize);
         DIVIDE_EXPECTED_CALL( getMinimalData(_data, smallData.data(), smallData.size()) );
 
-        if ( !_internalGVB._vertexBuffer )
-        {
-            _internalGVB._vertexBuffer = _context.newGPUBuffer( 1u, _descriptor._name);
-        }
-        if (!_internalGVB._indexBuffer)
-        {
-            _internalGVB._indexBuffer = _context.newGPUBuffer(1u, _descriptor._name);
-        }
-
         if (_dataLayoutChanged)
         {
             GPUBuffer::SetBufferParams setBufferParams{};
-            setBufferParams._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
-            setBufferParams._bufferParams._elementSize = effectiveEntrySize;
-            setBufferParams._bufferParams._elementCount = to_U32(_data.size());
-            setBufferParams._bufferParams._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
+            setBufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
+            setBufferParams._elementSize = effectiveEntrySize;
+            setBufferParams._elementCount = to_U32(_data.size());
+            setBufferParams._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
+            setBufferParams._bindIdx = 0u;
             setBufferParams._initialData = { smallData.data(), smallData.size() };
-            memCmdInOut._bufferLocks.emplace_back( _internalGVB._vertexBuffer->setBuffer(setBufferParams) );
+            memCmdInOut._bufferLocks.emplace_back( _internalVB->setBuffer(setBufferParams) );
         }
         else
         {
             DIVIDE_ASSERT( _descriptor._allowDynamicUpdates );
 
-            memCmdInOut._bufferLocks.emplace_back( _internalGVB._vertexBuffer->updateBuffer(0u, to_U32(_data.size()), smallData.data()) );
+            memCmdInOut._bufferLocks.emplace_back( _internalVB->updateBuffer(0u, to_U32(_data.size()), smallData.data()) );
         }
-
-        _internalGVB._vertexBufferBinding._bindIdx = 0u;
 
         if (!_descriptor._keepCPUData && !_descriptor._allowDynamicUpdates)
         {
@@ -510,10 +503,10 @@ bool VertexBuffer::commitData( GFX::MemoryBarrierCommand& memCmdInOut )
         _indicesChanged = false;
 
         GPUBuffer::SetBufferParams ibParams = {};
-        ibParams._bufferParams._usageType = BufferUsageType::INDEX_BUFFER;
-        ibParams._bufferParams._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
-        ibParams._bufferParams._elementCount = to_U32(_indices.size());
-        ibParams._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+        ibParams._usageType = BufferUsageType::INDEX_BUFFER;
+        ibParams._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
+        ibParams._elementCount = to_U32(_indices.size());
+        ibParams._updateFrequency = BufferUpdateFrequency::ONCE;
 
         if ( _indices.empty() )
         {
@@ -529,17 +522,17 @@ bool VertexBuffer::commitData( GFX::MemoryBarrierCommand& memCmdInOut )
                     _smallIndicesBuffer[i] = to_U16(_indices[i]);
                 }
             
-                ibParams._bufferParams._elementSize =  sizeof(U16);
-                ibParams._initialData = { (bufferPtr)_smallIndicesBuffer.data(), _smallIndicesBuffer.size() * ibParams._bufferParams._elementSize };
+                ibParams._elementSize =  sizeof(U16);
+                ibParams._initialData = { (bufferPtr)_smallIndicesBuffer.data(), _smallIndicesBuffer.size() * ibParams._elementSize };
             }
             else
             {
-                ibParams._bufferParams._elementSize = sizeof(U32);
-                ibParams._initialData = { (bufferPtr)_indices.data(), _indices.size() * ibParams._bufferParams._elementSize };
+                ibParams._elementSize = sizeof(U32);
+                ibParams._initialData = { (bufferPtr)_indices.data(), _indices.size() * ibParams._elementSize };
             }
         }
 
-        memCmdInOut._bufferLocks.emplace_back( _internalGVB._indexBuffer->setBuffer(ibParams) );
+        memCmdInOut._bufferLocks.emplace_back( _internalIB->setBuffer(ibParams) );
     }
 
     return true;
@@ -547,7 +540,7 @@ bool VertexBuffer::commitData( GFX::MemoryBarrierCommand& memCmdInOut )
 
 U32 VertexBuffer::firstIndexOffsetCount() const
 {
-    return _internalGVB._indexBuffer ? _internalGVB._indexBuffer->firstIndexOffsetCount() : 0u;
+    return _internalIB ? _internalIB->firstIndexOffsetCount() : 0u;
 }
 
 /// Activate and set all of the required vertex attributes.

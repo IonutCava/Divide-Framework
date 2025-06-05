@@ -175,9 +175,9 @@ namespace Divide
         return std::make_unique<noRenderTarget>( _context, descriptor );
     }
 
-    GPUBuffer_ptr NONE_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_uptr NONE_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<noGPUBuffer>( _context, ringBufferLength, name );
+        return std::make_unique<noGPUBuffer>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr NONE_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const

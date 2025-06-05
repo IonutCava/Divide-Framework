@@ -3,6 +3,7 @@
 #include "Headers/vkShaderBuffer.h"
 #include "Headers/vkBufferImpl.h"
 
+#include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/LockManager.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
@@ -32,10 +33,10 @@ namespace Divide
         const string bufferName = _name.empty() ? Util::StringFormat( "DVD_GENERAL_SHADER_BUFFER_{}", getGUID() ) : (_name + "_SHADER_BUFFER");
 
         _bufferImpl = std::make_unique<vkBufferImpl>( _params,
-                                                        _alignedBufferSize,
-                                                        queueLength(),
-                                                        descriptor._initialData,
-                                                        bufferName.c_str() );
+                                                      _alignedBufferSize,
+                                                      queueLength(),
+                                                      descriptor._initialData,
+                                                      bufferName.c_str() );
 
         _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
     }

@@ -310,9 +310,13 @@ namespace Divide
         // Maximum number of colour attachments per framebuffer
         GLUtil::getGLValue( gl46core::GL_MAX_COLOR_ATTACHMENTS, deviceInformation._maxRTColourAttachments );
 
-        deviceInformation._shaderCompilerThreads = GLUtil::getGLValue( gl::GL_MAX_SHADER_COMPILER_THREADS_ARB );
+        if ( SDL_GL_ExtensionSupported("GL_ARB_parallel_shader_compile") )
+        {
+            _supportsParallelShaderCompilation = true;
+            deviceInformation._shaderCompilerThreads = GLUtil::getGLValue( gl::GL_MAX_SHADER_COMPILER_THREADS_ARB );
+            gl::glMaxShaderCompilerThreadsARB( deviceInformation._shaderCompilerThreads );
+        }
         Console::printfn( LOCALE_STR( "GL_SHADER_THREADS" ), deviceInformation._shaderCompilerThreads );
-        gl::glMaxShaderCompilerThreadsARB( deviceInformation._shaderCompilerThreads );
 
         gl46core::glEnable( gl46core::GL_MULTISAMPLE );
         // Line smoothing should almost always be used
@@ -351,46 +355,66 @@ namespace Divide
         deviceInformation._maxVertAttributes = GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIBS );
         Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
+        _meshShadersSupported = SDL_GL_ExtensionSupported( "GL_NV_mesh_shader" );
+
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3u; ++i )
         {
-            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorgroupCount[i], i );
-            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorgroupSize[i], i );
+            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorkgroupCount[i], i );
+            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorkgroupSize[i], i );
 
-            GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorgroupSize[i], i);
-            GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorgroupSize[i], i);
+            if ( _meshShadersSupported )
+            {
+                GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorkgroupSize[i], i);
+                GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorkgroupSize[i], i);
 
-            // ToDo: This is wrong so needs fixing once mesh shaders in GL reach EXT status! -Ionut
-            deviceInformation._maxMeshWorgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
-            deviceInformation._maxTaskWorgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
+                // ToDo: This is wrong so needs fixing once mesh shaders in GL reach EXT status! -Ionut
+                deviceInformation._maxMeshWorkgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
+                deviceInformation._maxTaskWorkgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
+            }
+            else
+            {
+                deviceInformation._maxMeshWorkgroupSize[i] = deviceInformation._maxTaskWorkgroupSize[i] =
+                deviceInformation._maxMeshWorkgroupCount[i] =  deviceInformation._maxTaskWorkgroupCount[i] = 0u;
+            }
         }
 
-        deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
+        deviceInformation._maxWorkgroupInvocations = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
         deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_SHARED_MEMORY_SIZE );
 
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ) ,
-                          deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
-                          deviceInformation._maxWorgroupSize[0], deviceInformation._maxWorgroupSize[1], deviceInformation._maxWorgroupSize[2],
-                          deviceInformation._maxWorgroupInvocations );
+                          deviceInformation._maxWorkgroupCount[0], deviceInformation._maxWorkgroupCount[1], deviceInformation._maxWorkgroupCount[2],
+                          deviceInformation._maxWorkgroupSize[0], deviceInformation._maxWorkgroupSize[1], deviceInformation._maxWorkgroupSize[2],
+                          deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
-        deviceInformation._maxMeshShaderOutputVertices = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_VERTICES_NV);
-        deviceInformation._maxMeshShaderOutputPrimitives = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_PRIMITIVES_NV);
-        deviceInformation._maxMeshWorgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_INVOCATIONS_NV);
-        deviceInformation._maxTaskWorgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
+        if ( _meshShadersSupported )
+        {
+            deviceInformation._maxMeshShaderOutputVertices = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_VERTICES_NV);
+            deviceInformation._maxMeshShaderOutputPrimitives = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_PRIMITIVES_NV);
+            deviceInformation._maxMeshWorkgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_INVOCATIONS_NV);
+        }
+        else
+        {
+            deviceInformation._maxMeshShaderOutputVertices = 0u;
+            deviceInformation._maxMeshShaderOutputPrimitives = 0u;
+            deviceInformation._maxMeshWorkgroupInvocations = 0u;
+        }
+        
+        deviceInformation._maxTaskWorkgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
 
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
 
-        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxMeshWorgroupCount[0], deviceInformation._maxMeshWorgroupCount[1], deviceInformation._maxMeshWorgroupCount[2],
-                                    deviceInformation._maxMeshWorgroupSize[0], deviceInformation._maxMeshWorgroupSize[1], deviceInformation._maxMeshWorgroupSize[2],
-                                    deviceInformation._maxMeshWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxMeshWorkgroupCount[0], deviceInformation._maxMeshWorkgroupCount[1], deviceInformation._maxMeshWorkgroupCount[2],
+                                    deviceInformation._maxMeshWorkgroupSize[0], deviceInformation._maxMeshWorkgroupSize[1], deviceInformation._maxMeshWorkgroupSize[2],
+                                    deviceInformation._maxMeshWorkgroupInvocations);
                                     
-        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxTaskWorgroupCount[0], deviceInformation._maxTaskWorgroupCount[1], deviceInformation._maxTaskWorgroupCount[2],
-                                    deviceInformation._maxTaskWorgroupSize[0], deviceInformation._maxTaskWorgroupSize[1], deviceInformation._maxTaskWorgroupSize[2],
-                                    deviceInformation._maxTaskWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxTaskWorkgroupCount[0], deviceInformation._maxTaskWorkgroupCount[1], deviceInformation._maxTaskWorkgroupCount[2],
+                                    deviceInformation._maxTaskWorkgroupSize[0], deviceInformation._maxTaskWorkgroupSize[1], deviceInformation._maxTaskWorkgroupSize[2],
+                                    deviceInformation._maxTaskWorkgroupInvocations);
 
         // Maximum number of texture units we can address in shaders
         Console::printfn( LOCALE_STR( "GL_MAX_TEX_UNITS" ),
@@ -722,7 +746,7 @@ namespace Divide
                     case PrimitiveTopology::LINES:
                     case PrimitiveTopology::LINE_STRIP:
                     case PrimitiveTopology::LINE_STRIP_ADJACENCY:
-                    case PrimitiveTopology::LINES_ADJANCENCY: drawCmd._cmd.vertexCount = 2u; break;
+                    case PrimitiveTopology::LINES_ADJACENCY: drawCmd._cmd.vertexCount = 2u; break;
                     case PrimitiveTopology::TRIANGLES:
                     case PrimitiveTopology::TRIANGLE_STRIP:
                     case PrimitiveTopology::TRIANGLE_FAN:
@@ -749,80 +773,77 @@ namespace Divide
         gl46core::GLenum indexFormat = gl46core::GL_NONE;
         U32 firstIndex = cmd._cmd.firstIndex;
 
+        // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
+        thread_local GPUBufferActiveBindConfiguration s_lastVB = {};
+        thread_local GPUBufferActiveBindConfiguration s_lastIB = {};
+
         for ( size_t i = 0u; i < cmd._sourceBuffersCount; ++i )
         {
-            // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-            thread_local GPUVertexBuffer::Handle s_lastID = GPUVertexBuffer::INVALID_HANDLE;
-            thread_local GPUVertexBuffer* s_lastBuffer = nullptr;
+            GPUBufferActiveBindConfiguration activeConfig{};
+            activeConfig._handle = cmd._sourceBuffers[i];
+            activeConfig._buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
 
-            const PoolHandle handle = cmd._sourceBuffers[i];
+            DIVIDE_ASSERT(activeConfig._buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+            glGPUBuffer* glBuffer = static_cast<glGPUBuffer*>(activeConfig._buffer);
+            glBufferImpl* impl = glBuffer->_internalBuffer.get();
+            DIVIDE_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
-            if (s_lastID != handle)
+            const size_t elementSizeInBytes = impl->_params._elementSize;
+            activeConfig._bindIdx = glBuffer->_bindConfig._bindIdx;
+            activeConfig._offset = impl->getDataOffset();
+            if (glBuffer->queueLength() > 1)
             {
-                s_lastID = handle;
-                s_lastBuffer = GPUVertexBuffer::s_GVBPool.find(s_lastID);
+                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * glBuffer->queueIndex();
             }
-
-            DIVIDE_ASSERT(s_lastBuffer != nullptr);
-
-            if (s_lastBuffer->_vertexBuffer) 
+            activeConfig._elementStride = glBuffer->_bindConfig._elementStride == BufferBindConfig::INVALID_ELEMENT_STRIDE
+                                                                               ? elementSizeInBytes
+                                                                               : glBuffer->_bindConfig._elementStride;
+            
+            if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
             {
-                glGPUBuffer* buffer = static_cast<glGPUBuffer*>(s_lastBuffer->_vertexBuffer.get());
-                glBufferImpl* impl = buffer->_internalBuffer.get();
-
-                assert(impl != nullptr);
-
-                const auto& vbBindConfig = s_lastBuffer->_vertexBufferBinding;
-
-                size_t offsetInBytes = impl->getDataOffset();
-                if (buffer->queueLength() > 1) [[likely]]
+                if ( s_lastVB != activeConfig )
                 {
-                    offsetInBytes += impl->params()._elementCount * impl->params()._elementSize * buffer->queueIndex();
+                    s_lastVB = activeConfig;
+                    DIVIDE_EXPECTED_CALL
+                    (
+                        GetStateTracker().bindActiveBuffer(activeConfig._bindIdx,
+                                                           impl->getBufferHandle(),
+                                                           activeConfig._offset,
+                                                           activeConfig._elementStride) != GLStateTracker::BindResult::FAILED
+                    );
+                }
+            }
+            else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
+            {
+                DIVIDE_ASSERT(glBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+
+                if (s_lastIB != activeConfig)
+                {
+                    s_lastIB = activeConfig;
                 }
 
-                const size_t elementStride = vbBindConfig._elementStride == GPUBufferBindConfig::INVALID_ELEMENT_STRIDE
-                                                                    ? impl->params()._elementSize
-                                                                    : vbBindConfig._elementStride;
-                DIVIDE_EXPECTED_CALL
-                (
-                    GetStateTracker().bindActiveBuffer(vbBindConfig._bindIdx,
-                                                       impl->getBufferHandle(),
-                                                       offsetInBytes,
-                                                       elementStride) != GLStateTracker::BindResult::FAILED
-                );
-            }
-
-            if ( s_lastBuffer->_indexBuffer && s_lastBuffer->_indexBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET)
-            {
                 DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
                 hasIndexBuffer = true;
 
-                glGPUBuffer* buffer = static_cast<glGPUBuffer*>(s_lastBuffer->_indexBuffer.get());
-                glBufferImpl* impl = buffer->_internalBuffer.get();
+                firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
+                firstIndex += glBuffer->firstIndexOffsetCount();
+                indexFormat = elementSizeInBytes == sizeof(U16) ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT;
 
                 DIVIDE_EXPECTED_CALL
                 (
                     GL_API::GetStateTracker().setActiveBuffer(gl46core::GL_ELEMENT_ARRAY_BUFFER, impl->getBufferHandle()) != GLStateTracker::BindResult::FAILED
                 );
-
-                size_t offsetInBytes = 0u;
-
-                const size_t indexSizeInBytes = impl->params()._elementSize;
-
-                if (buffer->queueLength() > 1u) [[likely]]
-                {
-                    offsetInBytes += (impl->params()._elementCount * indexSizeInBytes) * buffer->queueIndex();
-                }
-
-                firstIndex += to_U32(offsetInBytes / indexSizeInBytes);
-                firstIndex += s_lastBuffer->_indexBuffer->firstIndexOffsetCount();
-                indexFormat = indexSizeInBytes == sizeof(U16) ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT;
+                cmd._cmd.firstIndex = firstIndex;
+            }
+            else
+            {
+                DIVIDE_UNEXPECTED_CALL_MSG("GL_API::Draw - Unsupported buffer usage type for drawing!");
+                ret = false;
             }
         }
 
         if ( indexFormat != gl46core::GL_NONE )
         {
-            cmd._cmd.firstIndex = firstIndex;
             GLUtil::SubmitRenderCommand(cmd, indexFormat);
         }
         else
@@ -1023,7 +1044,7 @@ namespace Divide
                         }
                         gl46core::glClear( mask );
                     }
-                    PushDebugMessage( crtCmd->_name.c_str(), SCREEN_TARGET_ID );
+                    PushDebugMessage( _context.context().config(), crtCmd->_name.c_str(), SCREEN_TARGET_ID );
                 }
                 else
                 {
@@ -1037,15 +1058,17 @@ namespace Divide
                     Attorney::GLAPIRenderTarget::begin( *rt, crtCmd->_descriptor, crtCmd->_clearDescriptor );
                     s_stateTracker._activeRenderTarget = rt;
                     s_stateTracker._activeRenderTargetDimensions = { rt->getWidth(), rt->getHeight() };
-                    PushDebugMessage(crtCmd->_name.c_str(), crtCmd->_target);
-                    AddDebugMessage(rt->debugMessage().c_str(), crtCmd->_target );
+
+                    const Configuration& config = _context.context().config();
+                    PushDebugMessage(config, crtCmd->_name.c_str(), crtCmd->_target);
+                    AddDebugMessage(config, rt->debugMessage().c_str(), crtCmd->_target );
                 }
             }break;
             case GFX::CommandType::END_RENDER_PASS:
             {
                 PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
 
-                PopDebugMessage();
+                PopDebugMessage(_context.context().config());
 
                 if ( GL_API::s_stateTracker._activeRenderTarget == nullptr )
                 {
@@ -1206,20 +1229,20 @@ namespace Divide
                 PROFILE_SCOPE( "BEGIN_DEBUG_SCOPE", Profiler::Category::Graphics );
 
                 const auto& crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
-                PushDebugMessage( crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
+                PushDebugMessage( _context.context().config(), crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE:
             {
                 PROFILE_SCOPE( "END_DEBUG_SCOPE", Profiler::Category::Graphics );
 
-                PopDebugMessage();
+                PopDebugMessage( _context.context().config() );
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE:
             {
                 PROFILE_SCOPE( "ADD_DEBUG_MESSAGE", Profiler::Category::Graphics );
 
                 const auto& crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
-                AddDebugMessage( crtCmd->_msg.c_str(), crtCmd->_msgId );
+                AddDebugMessage( _context.context().config(),crtCmd->_msg.c_str(), crtCmd->_msgId );
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
@@ -1349,8 +1372,6 @@ namespace Divide
                     }
 
                     glBufferImpl* buffer = static_cast<glBufferImpl*>(lock._buffer);
-                    const auto& params = buffer->params();
-
                     switch ( lock._type )
                     {
                         case BufferSyncUsage::CPU_WRITE_TO_GPU_READ:
@@ -1364,7 +1385,7 @@ namespace Divide
                         } break;
                         case BufferSyncUsage::GPU_WRITE_TO_CPU_READ:
                         {
-                            if ( params._updateFrequency == BufferUpdateFrequency::ONCE )
+                            if ( buffer->_params._updateFrequency == BufferUpdateFrequency::ONCE )
                             {
                                 mask |= gl46core::GL_BUFFER_UPDATE_BARRIER_BIT;
                             }
@@ -1376,7 +1397,7 @@ namespace Divide
                         case BufferSyncUsage::GPU_WRITE_TO_GPU_READ:
                         case BufferSyncUsage::GPU_READ_TO_GPU_WRITE:
                         {
-                            switch ( params._usageType )
+                            switch ( buffer->_params._usageType )
                             {
                                 case BufferUsageType::CONSTANT_BUFFER:
                                 {
@@ -1524,8 +1545,8 @@ namespace Divide
 
         // This also makes the context current
         assert( GLUtil::s_glSecondaryContext == nullptr && "GL_API::syncToThread: double init context for current thread!" );
-        [[maybe_unused]] const bool ctxFound = g_ContextPool.getAvailableContext( GLUtil::s_glSecondaryContext );
-        assert( ctxFound && "GL_API::syncToThread: context not found for current thread!" );
+        const bool ctxFound = g_ContextPool.getAvailableContext( GLUtil::s_glSecondaryContext );
+        DIVIDE_ASSERT( ctxFound, "GL_API::syncToThread: context not found for current thread!" );
 
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext ) );
         glbinding::Binding::initialize( []( const char* proc ) noexcept
@@ -1545,7 +1566,10 @@ namespace Divide
             gl46core::glDebugMessageCallback( (gl46core::GLDEBUGPROC)GLUtil::DebugCallback, GLUtil::s_glSecondaryContext );
         }
 
-        gl::glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
+        if ( _supportsParallelShaderCompilation )
+        {
+            gl::glMaxShaderCompilerThreadsARB( 0xFFFFFFFF );
+        }
     }
 
     /// Reset as much of the GL default state as possible within the limitations given
@@ -1857,38 +1881,46 @@ namespace Divide
         }
     }
 
-    void GL_API::AddDebugMessage( const char* message, const U32 id )
+    void GL_API::AddDebugMessage( const Configuration& config, const char* message, const U32 id )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
-            gl46core::glPopDebugGroup();
+            if ( config.debug.renderer.enableRenderAPIDebugGrouping)
+            {
+                gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+                gl46core::glPopDebugGroup();
+            }
         }
-        s_stateTracker._lastInsertedDebugMessage = {message, id};
+        GFXDevice::AddDebugMessage(message, id);
     }
 
-    void GL_API::PushDebugMessage( const char* message, const U32 id )
+    void GL_API::PushDebugMessage( const Configuration& config, const char* message, const U32 id )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+            if ( config.debug.renderer.enableRenderAPIDebugGrouping)
+            {
+                gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+            }
         }
-        assert( s_stateTracker._debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH );
-        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth++] = { message, id };
+        GFXDevice::PushDebugMessage(message, id);
     }
 
-    void GL_API::PopDebugMessage()
+    void GL_API::PopDebugMessage( const Configuration& config )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glPopDebugGroup();
+            if ( config.debug.renderer.enableRenderAPIDebugGrouping)
+            {
+                gl46core::glPopDebugGroup();
+            }
         }
-        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth--] = {};
+        GFXDevice::PopDebugMessage();
     }
 
     bool GL_API::DeleteShaderPrograms( const gl46core::GLuint count, gl46core::GLuint* programs )
@@ -2073,9 +2105,9 @@ namespace Divide
         return std::make_unique<glFramebuffer>( _context, descriptor );
     }
 
-    GPUBuffer_ptr GL_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_uptr GL_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<glGPUBuffer>( _context, ringBufferLength, name );
+        return std::make_unique<glGPUBuffer>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr GL_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const

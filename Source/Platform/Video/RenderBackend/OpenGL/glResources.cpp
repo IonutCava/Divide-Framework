@@ -3,9 +3,8 @@
 #include "Headers/glResources.h"
 #include "Headers/glHardwareQuery.h"
 
-#include "Platform/Video/Headers/GenericDrawCommand.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
-#include "Platform/Video/GLIM/glim.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide
@@ -154,7 +153,7 @@ namespace Divide
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES )] = gl46core::GL_TRIANGLES;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP )] = gl46core::GL_TRIANGLE_STRIP;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_FAN )] = gl46core::GL_TRIANGLE_FAN;
-            glPrimitiveTypeTable[to_base( PrimitiveTopology::LINES_ADJANCENCY )] = gl46core::GL_LINES_ADJACENCY;
+            glPrimitiveTypeTable[to_base( PrimitiveTopology::LINES_ADJACENCY )] = gl46core::GL_LINES_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::LINE_STRIP_ADJACENCY )] = gl46core::GL_LINE_STRIP_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES_ADJACENCY )] = gl46core::GL_TRIANGLES_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY )] = gl46core::GL_TRIANGLE_STRIP_ADJACENCY;
@@ -868,10 +867,10 @@ namespace Divide
             }
 
             std::string fullScope = "GL";
-            for ( U8 i = 0u; i < GL_API::GetStateTracker()._debugScopeDepth; ++i )
+            for ( U8 i = 0u; i < GFXDevice::s_debugScopeDepth; ++i )
             {
                 fullScope.append( "::" );
-                fullScope.append( GL_API::GetStateTracker()._debugScope[i]._name );
+                fullScope.append( GFXDevice::s_debugScope[i]._name );
             }
             // Print the message and the details
             const gl46core::GLuint activeProgram = GL_API::GetStateTracker()._activeShaderProgramHandle;

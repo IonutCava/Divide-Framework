@@ -154,10 +154,12 @@ namespace Divide
             return shaderDescriptor;
         } );
 
-        waterMat->properties().roughness( 0.01f );
-        waterMat->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, Get(_plane)->geometryBuffer()->generateAttributeMap() );
+        const AttributeMap attributes = Get(_plane)->geometryBuffer()->generateAttributeMap();
 
-        setMaterialTpl( waterMatHandle );
+        waterMat->properties().roughness( 0.01f );
+        waterMat->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, attributes );
+
+        setMaterialTemplate( waterMatHandle, attributes );
 
         const F32 halfWidth = _dimensions.width * 0.5f;
         const F32 halfLength = _dimensions.height * 0.5f;
@@ -369,7 +371,7 @@ namespace Divide
         fastData.data[0]._vec[2].set( noiseTile(), noiseFactor() );
         fastData.data[0]._vec[3].xy = fogStartEnd();
 
-        const VertexBuffer_ptr& waterBuffer = Get(_plane)->geometryBuffer();
+        VertexBuffer* waterBuffer = Get(_plane)->geometryBuffer();
         waterBuffer->commitData(postDrawMemCmd);
         rComp.setIndexBufferElementOffset(waterBuffer->firstIndexOffsetCount());
 
@@ -383,13 +385,12 @@ namespace Divide
 
     void WaterPlane::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
+        VertexBuffer* waterBuffer = Get(_plane)->geometryBuffer();
+
         GenericDrawCommand& cmd = cmdsOut.emplace_back();
         toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
-
-        const VertexBuffer_ptr& waterBuffer = Get(_plane)->geometryBuffer();
-
-        cmd._sourceBuffers = &waterBuffer->handle();
-        cmd._sourceBuffersCount = 1;
+        cmd._sourceBuffers = waterBuffer->handles().data();
+        cmd._sourceBuffersCount = waterBuffer->handles().size();
         cmd._cmd.indexCount = to_U32(waterBuffer->getIndexCount() );
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );

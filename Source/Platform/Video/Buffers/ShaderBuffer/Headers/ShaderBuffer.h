@@ -98,8 +98,8 @@ NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
 /// however for GPU->GPU buffers, we may want a sane initial state to work with.
 /// If _initialData is not NULL, we zero out whatever empty space is left available
 /// determined by comparing the data size to the buffer size
-struct ShaderBufferDescriptor {
-    BufferParams _bufferParams;
+struct ShaderBufferDescriptor : BufferParams
+{
     std::pair<bufferPtr, size_t> _initialData{nullptr, 0u};
     string _name{ "" };
     U16 _ringBufferLength{ 1u };

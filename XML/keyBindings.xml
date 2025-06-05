@@ -34,11 +34,12 @@
 <action id="27" name="shutdown"/>
 <action id="28" name="pov navigation"/>
 <action id="29" name="axis navigation"/>
-<action id="30" name="toggle debug interface" />
-<action id="31" name="toggle editor" />
-<action id="32" name="toggle console" />
-<action id="33" name="drag select begin" />
-<action id="34" name="drag select end" />
+<action id="30" name="ball navigation"/>
+<action id="31" name="toggle debug interface" />
+<action id="32" name="toggle editor" />
+<action id="33" name="toggle console" />
+<action id="34" name="drag select begin" />
+<action id="35" name="drag select end" />
 </actions>
 
 <!--
@@ -68,19 +69,19 @@ e.g.: <key actionDown="1,3,4,5" actionUp="2" modifier="LCtrl">KEY</key> =? actio
 <key actionDown="18" actionUp="20">UP</key>
 <key actionDown="19" actionUp="20">DOWN</key>
 <key actionUp="21">P</key>
-<key actionUp="22 "modifier="LCtrl,LShift">F1</key>
+<key actionUp="22" modifier="LCtrl,LShift">F1</key>
 <key actionUp="23" modifier="LAlt">RETURN</key>
 <key actionUp="24">F</key>
 <key actionUp="34">Y</key>
-<key actionUp="30">F11</key>
-<key actionUp="31" modifier="LCtrl,LShift">F11</key>
-<key actionUp="32">`</key>
+<key actionUp="31">F11</key>
+<key actionUp="32" modifier="LCtrl,LShift">F11</key>
+<key actionUp="33">`</key>
 </keys>
 
 <!-- Only a single mouse is supported (and a maximum of 8 buttons)! -->
 <mouseButtons>
 <!-- Allowed mouse button names: LEFT, RIGHT, MIDDLE, Button3, Button4, Button5, Button6, Button7 -->
-<button actionDown="33" actionUp="34">LEFT</button>
+<button actionDown="34" actionUp="35">LEFT</button>
 <button actionUp="26" modifier="LCtrl">LEFT</button>
 <button actionDown="25" actionUp="26">RIGHT</button>
 </mouseButtons>
@@ -95,9 +96,10 @@ e.g.: <key actionDown="1,3,4,5" actionUp="2" modifier="LCtrl">KEY</key> =? actio
 <joystick1>
 <button actionDown="28">POV</button>
 <button actionDown="29">AXIS</button>
-<button actiondown="33" actionUp="34">BUTTON_0</button>
-<button actionUp="37">BUTTON_1</button>
-<button actionUp="24">BUTTON_2</button>
+<button actionDown="30">BALL</button>
+<button actiondown="34" actionUp="35">BUTTON_0</button>
+<button actionUp="24">BUTTON_1</button>
+<button actionUp="21">BUTTON_2</button>
 </joystick1>
 <joystick2>
 </joystick2>

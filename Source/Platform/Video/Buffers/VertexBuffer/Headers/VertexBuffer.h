@@ -44,7 +44,6 @@ namespace GFX {
 } //namespace GFX
 
 class ByteBuffer;
-FWD_DECLARE_MANAGED_CLASS(GPUBuffer);
 /// Vertex Buffer interface class to allow API-independent implementation of data
 /// This class does NOT represent an API-level VB, such as: GL_ARRAY_BUFFER / D3DVERTEXBUFFER
 /// It is only a "buffer" for "vertex info" abstract of implementation. (e.g.: OGL uses a vertex array object for this)
@@ -54,6 +53,8 @@ class VertexBuffer final : public GUIDWrapper, public GraphicsResource
     constexpr static U32 PRIMITIVE_RESTART_INDEX_L = 0xFFFFFFFF;
     constexpr static U32 PRIMITIVE_RESTART_INDEX_S = 0xFFFF;
     constexpr static U16 INVALID_PARTITION_ID = 0xFFFF;
+
+    using Handles = std::array<GPUBuffer::Handle, 2>;
 
     struct Vertex
     {
@@ -170,7 +171,9 @@ class VertexBuffer final : public GUIDWrapper, public GraphicsResource
 
     [[nodiscard]] U32 firstIndexOffsetCount() const;
 
-    [[nodiscard]] inline const GPUVertexBuffer::Handle& handle() const noexcept { return _internalGVB._handle; }
+    [[nodiscard]] inline GPUBuffer::Handle vbHandle() const noexcept { return _handles[0]; }
+    [[nodiscard]] inline GPUBuffer::Handle ibHandle() const noexcept { return _handles[1]; }
+    [[nodiscard]] inline const Handles& handles() const noexcept { return _handles; }
     
     bool commitData(GFX::MemoryBarrierCommand& memCmdInOut);
    protected:
@@ -189,7 +192,9 @@ class VertexBuffer final : public GUIDWrapper, public GraphicsResource
     vector<U32> _indices;
     vector<U16> _smallIndicesBuffer;
     AttributeFlags _useAttribute{};
-    GPUVertexBuffer _internalGVB;
+    GPUBuffer_uptr _internalVB;
+    GPUBuffer_uptr _internalIB;
+    Handles _handles;
     bool _refreshQueued = false;
     bool _dataLayoutChanged = false;
     bool _indicesChanged = true;

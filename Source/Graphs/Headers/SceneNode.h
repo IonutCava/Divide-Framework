@@ -41,6 +41,7 @@
 #include "Core/Resources/Headers/Resource.h"
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
+#include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide {
 
@@ -115,8 +116,8 @@ class SceneNode : public CachedResource
     bool load( PlatformContext& context ) override;
     bool postLoad() override;
     bool unload() override;
-    virtual void setMaterialTpl( Handle<Material> material);
-    Handle<Material> getMaterialTpl() const;
+    virtual void setMaterialTemplate( Handle<Material> material, const AttributeMap& geometryAttributes = g_emptyAttributeMap );
+    Handle<Material> getMaterialTemplate() const;
 
     [[nodiscard]] inline SceneNodeRenderState& renderState() noexcept { return _renderState; }
     [[nodiscard]] inline const SceneNodeRenderState& renderState() const noexcept { return _renderState; }
@@ -144,6 +145,8 @@ class SceneNode : public CachedResource
 
     void registerEditorComponent( PlatformContext& context );
 
+    PrimitiveTopology GetGeometryTopology() const noexcept;
+
     PROPERTY_R(SceneNodeType, type, SceneNodeType::COUNT);
     PROPERTY_RW(bool, rebuildDrawCommands, false);
 
@@ -154,6 +157,7 @@ class SceneNode : public CachedResource
    protected:
     std::unique_ptr<EditorComponent> _editorComponent;
     Handle<Material> _materialTemplate = INVALID_HANDLE<Material>;
+    AttributeMap _geometryAttributes;
 
     /// The various states needed for rendering
     SceneNodeRenderState _renderState;

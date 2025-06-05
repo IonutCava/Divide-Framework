@@ -8,7 +8,7 @@
 layout(location = ATTRIB_POSITION) in vec4 inVertexData;
 layout(location = ATTRIB_COLOR)    in vec4 inColourData;
 
-layout(location = ATTRIB_FREE_START + 1) out vec4 vtx_adjancency;
+layout(location = ATTRIB_FREE_START + 1) out vec4 vtx_adjacency;
 layout(location = ATTRIB_FREE_START + 2) out float vtx_tileSize;
 layout(location = ATTRIB_FREE_START + 3) out flat uint vtx_ringID;
 
@@ -23,7 +23,7 @@ void main(void)
     const float v = iv / (CONTROL_VTX_PER_TILE_EDGE - 1.0f);
 
     vtx_tileSize = inVertexData.z;
-    vtx_adjancency = inColourData;
+    vtx_adjacency = inColourData;
     vtx_ringID = uint(inVertexData.w);
 
     const vec2 posXZ = vec2(u, v) * vtx_tileSize + inVertexData.xy;
@@ -39,7 +39,7 @@ void main(void)
 #include "terrainUtils.cmn"
 
 // Most of the stuff here is from nVidia's DX11 terrain tessellation sample
-layout(location = ATTRIB_FREE_START + 1) in vec4 vtx_adjancency[];
+layout(location = ATTRIB_FREE_START + 1) in vec4 vtx_adjacency[];
 layout(location = ATTRIB_FREE_START + 2) in float vtx_tileSize[];
 layout(location = ATTRIB_FREE_START + 3) in flat uint vtx_ringID[];
 
@@ -189,31 +189,31 @@ void main(void)
         // is the neighbour's size relative to ours.  Similarly for plus and Y, etc.  You really
         // need a diagram to make sense of the adjacency conditions in the if statements. :-(
         if (patchXY.x == 0) {
-            if (vtx_adjancency[0].x < 0.55f) {
+            if (vtx_adjacency[0].x < 0.55f) {
                 // Deal with neighbours that are smaller.
                 gl_TessLevelOuter[0] = SmallerNeighbourAdjacencyFix(0, 1, sideLen, worldViewMat);
-            } else if (vtx_adjancency[0].x > 1.1f) {
+            } else if (vtx_adjacency[0].x > 1.1f) {
                 // Deal with neighbours that are larger than us.
                 gl_TessLevelOuter[0] = LargerNeighbourAdjacencyFix(0, 1, patchXY.y, sideLen, worldViewMat);
             }
         } else if (patchXY.x == PATCHES_PER_TILE_EDGE - 1) {
-            if (vtx_adjancency[0].z < 0.55f) {
+            if (vtx_adjacency[0].z < 0.55f) {
                 gl_TessLevelOuter[2] = SmallerNeighbourAdjacencyFix(2, 3, sideLen, worldViewMat);
-            } else if (vtx_adjancency[0].z > 1.1f) {
+            } else if (vtx_adjacency[0].z > 1.1f) {
                 gl_TessLevelOuter[2] = LargerNeighbourAdjacencyFix(3, 2, patchXY.y, sideLen, worldViewMat);
             }
         }
 
         if (patchXY.y == 0) {
-            if (vtx_adjancency[0].y < 0.55f) {
+            if (vtx_adjacency[0].y < 0.55f) {
                 gl_TessLevelOuter[1] = SmallerNeighbourAdjacencyFix(3, 0, sideLen, worldViewMat);
-            } else if (vtx_adjancency[0].y > 1.1f) {
+            } else if (vtx_adjacency[0].y > 1.1f) {
                 gl_TessLevelOuter[1] = LargerNeighbourAdjacencyFix(0, 3, patchXY.x, sideLen, worldViewMat);	// NB: irregular index pattern - it's correct.
             }
         } else if (patchXY.y == PATCHES_PER_TILE_EDGE - 1) {
-            if (vtx_adjancency[0].w < 0.55f) {
+            if (vtx_adjacency[0].w < 0.55f) {
                 gl_TessLevelOuter[3] = SmallerNeighbourAdjacencyFix(1, 2, sideLen, worldViewMat);
-            } else if (vtx_adjancency[0].w > 1.1f) {
+            } else if (vtx_adjacency[0].w > 1.1f) {
                 gl_TessLevelOuter[3] = LargerNeighbourAdjacencyFix(1, 2, patchXY.x, sideLen, worldViewMat);	// NB: irregular index pattern - it's correct.
             }
         }

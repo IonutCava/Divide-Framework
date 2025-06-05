@@ -120,6 +120,7 @@ class PlatformContext final : private NonCopyable, private NonMovable
     explicit PlatformContext(Application& app);
     ~PlatformContext();
 
+    // Call only from the main thread!
     void idle(bool fast = true, U64 deltaTimeUSGame = 0u, U64 deltaTimeUSApp = 0u );
 
     void init(Kernel& kernel);

@@ -107,6 +107,10 @@ namespace Divide
             static PlatformContext* s_context;
             static RenderAPI s_renderAPI;
             static bool s_enabled;
+        private:
+            template<typename T>
+            friend struct ResourcePool;
+            static std::atomic_bool s_deletionQueueDirty;
     };
 
     template <typename T> requires std::is_base_of_v<CachedResource, T>

@@ -92,7 +92,7 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
     const bool readOnly = (flags & ImGuiInputTextFlags_ReadOnly);
     if (readOnly)
     {
-        PushReadOnly();
+        ImGui::BeginDisabled();
     }
 
     PushButtonStyle(true, buttonColour, buttonColourHovered, buttonColourActive);
@@ -129,7 +129,7 @@ inline DrawReturnValue DrawVecComponent(ImGuiDataType data_type,
 
     if (readOnly)
     {
-        PopReadOnly();
+        ImGui::EndDisabled();
     }
 
     return { ret, wasDeactivated };
@@ -180,7 +180,7 @@ inline bool colourInput4(Editor& parent, const char* name, FColour4& col, const 
     BeginPropertyTable(1, name);
     if (readOnly) 
     {
-        PushReadOnly();
+        ImGui::BeginDisabled();
     }
 
     ImGui::PushID(name);
@@ -189,7 +189,7 @@ inline bool colourInput4(Editor& parent, const char* name, FColour4& col, const 
 
     if (readOnly)
     {
-        PopReadOnly();
+        ImGui::EndDisabled();
     }
 
     EndPropertyTable();
@@ -209,7 +209,7 @@ inline bool colourInput3(Editor& parent, const char* name, FColour3& col, const 
 
     if (readOnly)
     {
-        PushReadOnly();
+        ImGui::BeginDisabled();
     }
 
     ImGui::PushID(name);
@@ -218,7 +218,7 @@ inline bool colourInput3(Editor& parent, const char* name, FColour3& col, const 
 
     if (readOnly)
     {
-        PopReadOnly();
+        ImGui::EndDisabled();
     }
 
     EndPropertyTable();
@@ -337,7 +337,7 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
     T mat = field.get<T>();
     if (field._readOnly)
     {
-        PushReadOnly();
+        ImGui::BeginDisabled();
     }
 
     bool showTooltip = false, copyToClipboard = false;;
@@ -370,7 +370,7 @@ inline bool inputMatrix(Editor & parent, const char* label, const F32 stepIn, co
     ImGui::PopItemWidth();
     if (field._readOnly)
     {
-        PopReadOnly();
+        ImGui::EndDisabled();
     }
 
     if (showTooltip && field._readOnly)

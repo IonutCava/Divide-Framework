@@ -163,7 +163,6 @@ namespace Divide
         , _editorRenderTimer( Time::ADD_TIMER( "Editor Render Timer" ) )
         , _currentTheme( theme )
     {
-
 #if defined(ENABLE_MIMALLOC)
         ImGui::SetAllocatorFunctions( ImGuiCustom::g_ImAllocatorAllocFunc,
                                       ImGuiCustom::g_ImAllocatorFreeFunc,
@@ -416,7 +415,7 @@ namespace Divide
                                                        : to_U16( WindowDescriptor::Flags::DECORATED );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration
                                                        ? 0
-                                                       : to_U16( WindowDescriptor::Flags::RESIZEABLE );
+                                                       : to_U16( WindowDescriptor::Flags::RESIZABLE );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_TopMost
                                                        ? to_U16( WindowDescriptor::Flags::ALWAYS_ON_TOP )
                                                        : 0;
@@ -771,12 +770,20 @@ namespace Divide
 
         PushImGuiContext(editorContext);
         ImGui::ResetStyle(_currentTheme);
+        
+        if ( loadFromXML() )
+        {
+            processInput(true);
+            return true;
+        }
 
-        return loadFromXML();
+        return false;
     }
 
     void Editor::close()
     {
+        processInput(false);
+
         if ( saveToXML() )
         {
             _context.config().save();
@@ -1133,7 +1140,7 @@ namespace Divide
 
         if (readOnly)
         {
-            PushReadOnly(true);
+            ImGui::BeginDisabled();
         }
 
         if ( _showMemoryEditor && !_showOptionsWindow )
@@ -1162,7 +1169,7 @@ namespace Divide
 
         if (readOnly)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
 
         ImGui::End();
@@ -1384,38 +1391,38 @@ namespace Divide
         {
             if (id == bufferGUID)
             {
-                GPUVertexBuffer* bufferPtr = buffer.get();
-                bufferPtr->incQueue();
-                return bufferPtr;
+                buffer._vertexBuffer->incQueue();
+                buffer._indexBuffer->incQueue();
+                return &buffer;
             }
         }
 
-        auto& [_, newBuffer] = _imguiBuffers.emplace_back(std::make_pair(bufferGUID, nullptr));
+        GPUVertexBuffer& newBuffer = _imguiBuffers.emplace_back(std::make_pair(bufferGUID, GPUVertexBuffer{})).second;
 
-        newBuffer = std::make_unique<GPUVertexBuffer>(_context.gfx(), Util::StringFormat("IMGUI_{}", bufferGUID).c_str());
-        newBuffer->_vertexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_VB_{}", bufferGUID).c_str() );
-        newBuffer->_indexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_IB_{}", bufferGUID).c_str() );
+        newBuffer._vertexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_VB_{}", bufferGUID).c_str() );
+        newBuffer._indexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_IB_{}", bufferGUID).c_str() );
+        newBuffer._handles[0] = newBuffer._vertexBuffer->_handle;
+        newBuffer._handles[1] = newBuffer._indexBuffer->_handle;
 
         GPUBuffer::SetBufferParams vbParams = {};
         vbParams._initialData = { nullptr, 0 };
-        vbParams._bufferParams._elementCount = maxVertices;
-        vbParams._bufferParams._elementSize = sizeof( ImDrawVert );
-        vbParams._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-        vbParams._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
-
-        memCmdInOut._bufferLocks.push_back( newBuffer->_vertexBuffer->setBuffer( vbParams )); //Pos, UV and Colour
-        newBuffer->_vertexBufferBinding._bindIdx = 0u;
+        vbParams._elementCount = maxVertices;
+        vbParams._elementSize = sizeof( ImDrawVert );
+        vbParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        vbParams._usageType = BufferUsageType::VERTEX_BUFFER;
+        vbParams._bindIdx = 0u;
+        memCmdInOut._bufferLocks.push_back( newBuffer._vertexBuffer->setBuffer( vbParams )); //Pos, UV and Colour
 
         GPUBuffer::SetBufferParams ibParams = {};
         ibParams._initialData = { nullptr, 0 };
-        ibParams._bufferParams._elementCount = maxIndices;
-        ibParams._bufferParams._elementSize = sizeof(ImDrawIdx);
-        ibParams._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-        ibParams._bufferParams._usageType = BufferUsageType::INDEX_BUFFER;
+        ibParams._elementCount = maxIndices;
+        ibParams._elementSize = sizeof(ImDrawIdx);
+        ibParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        ibParams._usageType = BufferUsageType::INDEX_BUFFER;
 
-        memCmdInOut._bufferLocks.push_back( newBuffer->_indexBuffer->setBuffer( ibParams ));
+        memCmdInOut._bufferLocks.push_back( newBuffer._indexBuffer->setBuffer( ibParams ));
 
-        return newBuffer.get();
+        return &newBuffer;
     }
 
     // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
@@ -1602,8 +1609,8 @@ namespace Divide
 
                     auto drawCmd = &drawCommand->_drawCommands.emplace_back();
 
-                    drawCmd->_sourceBuffers = &buffer->_handle;
-                    drawCmd->_sourceBuffersCount = 1u;
+                    drawCmd->_sourceBuffers = buffer->_handles.data();
+                    drawCmd->_sourceBuffersCount = to_U32(buffer->_handles.size());
                     drawCmd->_cmd.indexCount = pcmd.ElemCount;
                     drawCmd->_cmd.firstIndex = indexOffset + pcmd.IdxOffset;
                     drawCmd->_cmd.baseVertex = baseVertex + pcmd.VtxOffset;
@@ -1683,95 +1690,61 @@ namespace Divide
     }
 
     /// Key pressed: return true if input was consumed
-    bool Editor::onKeyDownInternal( Input::KeyEvent& argInOut )
+    bool Editor::onKeyInternal( Input::KeyEvent& argInOut )
     {
         if ( !hasFocus() || !simulationPaused() )
         {
             return false;
         }
+        const bool isPressed = argInOut._state == Input::InputState::PRESSED;
 
-        if ( _gizmo->onKeyDown(argInOut) )
+        const bool gizmoConsumed = isPressed ? _gizmo->onKeyDown(argInOut) : _gizmo->onKeyUp(argInOut);
+        if (gizmoConsumed)
         {
             return true;
         }
 
-        ImGuiIO& io = _imguiContexts[to_base( ImGuiContextType::Editor )]->IO;
-
-        if ( argInOut._key == Input::KeyCode::KC_LCONTROL || argInOut._key == Input::KeyCode::KC_RCONTROL )
-        {
-            io.AddKeyEvent( ImGuiMod_Ctrl, true );
-        }
-        if ( argInOut._key == Input::KeyCode::KC_LSHIFT || argInOut._key == Input::KeyCode::KC_RSHIFT )
-        {
-            io.AddKeyEvent( ImGuiMod_Shift, true );
-        }
-        if ( argInOut._key == Input::KeyCode::KC_LMENU || argInOut._key == Input::KeyCode::KC_RMENU )
-        {
-            io.AddKeyEvent( ImGuiMod_Alt, true );
-        }
-        if ( argInOut._key == Input::KeyCode::KC_LWIN || argInOut._key == Input::KeyCode::KC_RWIN )
-        {
-            io.AddKeyEvent( ImGuiMod_Super, true );
-        }
-        const ImGuiKey imguiKey = DivideKeyToImGuiKey( argInOut._key );
-        io.AddKeyEvent( imguiKey, true );
-        io.SetKeyEventNativeData( imguiKey, argInOut._sdlKey, argInOut._sdlScancode, argInOut._sdlScancode);
-
-        return wantsKeyboard();
-    }
-
-    // Key released: return true if input was consumed
-    bool Editor::onKeyUpInternal( Input::KeyEvent& argInOut )
-    {
-        if ( !hasFocus() || !simulationPaused() )
-        {
-            return false;
-        }
-
-        if ( _gizmo->onKeyUp(argInOut ) )
-        {
-            return true;
-        }
-
-        ImGuiIO& io = _imguiContexts[to_base( ImGuiContextType::Editor )]->IO;
-
+        ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
         bool ret = false;
-        if ( io.KeyCtrl )
+        if ( isPressed )
         {
-            if ( argInOut._key == Input::KeyCode::KC_Z )
+            if (io.KeyCtrl)
             {
-                if ( Undo() )
+                if (argInOut._key == Input::KeyCode::KC_Z)
                 {
-                    ret = true;
+                    if (Undo())
+                    {
+                        ret = true;
+                    }
                 }
-            }
-            else if ( argInOut._key == Input::KeyCode::KC_Y )
-            {
-                if ( Redo() )
+                else if (argInOut._key == Input::KeyCode::KC_Y)
                 {
-                    ret = true;
+                    if (Redo())
+                    {
+                        ret = true;
+                    }
                 }
             }
         }
 
         if ( argInOut._key == Input::KeyCode::KC_LCONTROL || argInOut._key == Input::KeyCode::KC_RCONTROL )
         {
-            io.AddKeyEvent( ImGuiMod_Ctrl, false );
+            io.AddKeyEvent( ImGuiMod_Ctrl, isPressed);
         }
         if ( argInOut._key == Input::KeyCode::KC_LSHIFT || argInOut._key == Input::KeyCode::KC_RSHIFT )
         {
-            io.AddKeyEvent( ImGuiMod_Shift, false );
+            io.AddKeyEvent( ImGuiMod_Shift, isPressed);
         }
         if ( argInOut._key == Input::KeyCode::KC_LMENU || argInOut._key == Input::KeyCode::KC_RMENU )
         {
-            io.AddKeyEvent( ImGuiMod_Alt, false );
+            io.AddKeyEvent( ImGuiMod_Alt, isPressed);
         }
         if ( argInOut._key == Input::KeyCode::KC_LWIN || argInOut._key == Input::KeyCode::KC_RWIN )
         {
-            io.AddKeyEvent( ImGuiMod_Super, false );
+            io.AddKeyEvent( ImGuiMod_Super, isPressed);
         }
         const ImGuiKey imguiKey = DivideKeyToImGuiKey( argInOut._key );
-        io.AddKeyEvent( imguiKey, false );
+        io.AddKeyEvent( imguiKey, isPressed);
         io.SetKeyEventNativeData( imguiKey, argInOut._sdlKey, argInOut._sdlScancode, argInOut._sdlScancode);
 
         return wantsKeyboard() || ret;
@@ -1866,9 +1839,9 @@ namespace Divide
         eventInOut._simulationPaused = simulationPaused();
     }
 
-    bool Editor::mouseMoved(Input::MouseMoveEvent& argInOut)
+    bool Editor::onMouseMoved(Input::MouseMoveEvent& argInOut)
     {
-        if (!InputAggregatorInterface::mouseMoved(argInOut))
+        if (!InputAggregatorInterface::onMouseMoved(argInOut))
         {
             if (_mouseCaptured)
             {
@@ -1888,9 +1861,9 @@ namespace Divide
         return true;
     }
 
-    bool Editor::mouseButtonPressed(Input::MouseButtonEvent& argInOut)
+    bool Editor::onMouseButton(Input::MouseButtonEvent& argInOut)
     {
-        if (!InputAggregatorInterface::mouseButtonPressed(argInOut))
+        if (!InputAggregatorInterface::onMouseButton(argInOut))
         {
             remapAbsolutePosition(argInOut);
             return false;
@@ -1899,19 +1872,7 @@ namespace Divide
         return true;
     }
 
-    bool Editor::mouseButtonReleased(Input::MouseButtonEvent& argInOut)
-    {
-        if (!InputAggregatorInterface::mouseButtonReleased(argInOut))
-        {
-            remapAbsolutePosition(argInOut);
-            return false;
-        }
-
-        return true;
-    }
-
-    /// Mouse moved: return true if input was consumed
-    bool Editor::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
+    bool Editor::onMouseMovedInternal( Input::MouseMoveEvent& argInOut)
     {
         if ( !argInOut._wheelEvent )
         {
@@ -1965,23 +1926,18 @@ namespace Divide
         }
         else
         {
+            const I32 HTicks = argInOut.state().Wheel.xTicks;
+            const I32 VTicks = argInOut.state().Wheel.yTicks;
+
             for ( ImGuiContext* ctx : _imguiContexts )
             {
-                if ( argInOut.state().HWheel > 0 )
+                if (HTicks != 0)
                 {
-                    ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH + 1, ctx->IO.MouseWheel );
+                    ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH + HTicks, ctx->IO.MouseWheel );
                 }
-                if ( argInOut.state().HWheel < 0 )
+                if (VTicks != 0)
                 {
-                    ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH - 1, ctx->IO.MouseWheel );
-                }
-                if ( argInOut.state().VWheel > 0 )
-                {
-                    ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH, ctx->IO.MouseWheel + 1 );
-                }
-                if ( argInOut.state().VWheel < 0 )
-                {
-                    ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH, ctx->IO.MouseWheel - 1 );
+                    ctx->IO.AddMouseWheelEvent( ctx->IO.MouseWheelH, ctx->IO.MouseWheel + VTicks );
                 }
             }
         }
@@ -1994,12 +1950,20 @@ namespace Divide
         return wantsMouse();
     }
 
-    /// Mouse button pressed: return true if input was consumed
-    bool Editor::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
+    bool Editor::onMouseButtonInternal( Input::MouseButtonEvent& argInOut)
     {
         if ( WindowManager::IsRelativeMouseMode(_mainWindow) )
         {
             return false;
+        }
+        const bool isPressed = argInOut.pressedState() == Input::InputState::PRESSED;
+
+        if ( !isPressed )
+        {
+            if (SetFocus(_windowFocusState))
+            {
+                updateEditorFocus();
+            }
         }
 
         for ( ImGuiContext* ctx : _imguiContexts )
@@ -2008,47 +1972,20 @@ namespace Divide
             {
                 if (argInOut.button() == g_editorButtons[i] )
                 {
-                    ctx->IO.AddMouseButtonEvent( to_I32( i ), true );
+                    ctx->IO.AddMouseButtonEvent( to_I32( i ), isPressed);
                     break;
                 }
             }
         }
 
-        if ( !hasFocus() && 
-             _gizmo->onMouseButtonPressed(argInOut))
+        if (isPressed )
         {
-            return true;
-        }
-
-        return wantsMouse();
-    }
-
-    /// Mouse button released: return true if input was consumed
-    bool Editor::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
-    {
-        if ( WindowManager::IsRelativeMouseMode(_mainWindow) )
-        {
-            return false;
-        }
-
-        if ( SetFocus( _windowFocusState ) )
-        {
-            updateEditorFocus();
-        }
-
-        for ( ImGuiContext* ctx : _imguiContexts )
-        {
-            for ( size_t i = 0; i < g_editorButtons.size(); ++i )
+            if ( !hasFocus() &&  _gizmo->onMouseButtonPressed(argInOut) )
             {
-                if (argInOut.button() == g_editorButtons[i] )
-                {
-                    ctx->IO.AddMouseButtonEvent( to_I32( i ), false );
-                    break;
-                }
+                return true;
             }
         }
-
-        if (_gizmo->onMouseButtonReleased(argInOut))
+        else if (_gizmo->onMouseButtonReleased(argInOut))
         {
             return true;
         }
@@ -2056,40 +1993,37 @@ namespace Divide
         return wantsMouse();
     }
 
-    bool Editor::joystickButtonPressedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
+
+    bool Editor::onJoystickButtonInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickButtonReleasedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
+    bool Editor::onJoystickAxisMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickAxisMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
+    bool Editor::onJoystickPovMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickPovMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
+    bool Editor::onJoystickBallMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickBallMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
+    bool Editor::onJoystickRemapInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
     {
         return wantsJoystick();
     }
 
-    bool Editor::joystickAddRemoveInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
+    bool Editor::onDeviceAddOrRemoveInternal( [[maybe_unused]] Input::InputEvent& argInOut)
     {
-        return wantsJoystick();
+        return false;
     }
 
-    bool Editor::joystickRemapInternal( [[maybe_unused]] Input::JoystickEvent& argInOut) noexcept
-    {
-        return wantsJoystick();
-    }
 
     bool Editor::wantsJoystick() const noexcept
     {
@@ -3022,18 +2956,6 @@ namespace Divide
     {
         static std::stack<ImGuiContext*> g_imguiContexts;
     }; // namespace Util::detail
-
-    void PushReadOnly( const bool fade, const F32 fadedAlpha)
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, fade ? CLAMPED_01(fadedAlpha) : 1.f);
-        ImGui::BeginDisabled();
-    }
-
-    void PopReadOnly()
-    {
-        ImGui::EndDisabled();
-        ImGui::PopStyleVar();
-    }
 
     void PushImGuiContext(ImGuiContext* ctx)
     {

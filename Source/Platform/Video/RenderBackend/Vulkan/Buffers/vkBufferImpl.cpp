@@ -205,7 +205,7 @@ namespace Divide
             request.dstBuffer = _buffer;
             request.dstAccessMask = dstAccessMask;
             request.dstStageMask = dstStageMask;
-            VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&request](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue)
+            VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer( [&request](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue)
             {
                 VK_API::SubmitTransferRequest( request, cmd );
             }, scopeName.c_str() );

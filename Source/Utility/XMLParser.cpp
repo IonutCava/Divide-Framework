@@ -224,9 +224,9 @@ void loadDefaultKeyBindings(const ResourcePath& file, const Scene* scene) {
             const ptree & attributes = value.get_child("<xmlattr>", g_emptyPtree);
             PopulatePressRelease(attributes, entry);
 
-            const Input::JoystickElement element = Input::joystickElementByName(Util::Trim(value.data()).c_str());
+            const auto[element, index] = Input::joystickElementByName(Util::Trim(value.data()).c_str());
 
-            scene->input()->addJoystickMapping(joystick, element._type, element._elementIndex, entry);
+            scene->input()->addJoystickMapping(joystick, element, index, entry);
         }
     }
 }

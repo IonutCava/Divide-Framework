@@ -128,7 +128,7 @@ bool OnProfilerStateChanged( const Profiler::State state );
 #define PROFILE_VK_EVENT(NAME) OPTICK_GPU_EVENT(NAME); static_assert(true, "")
 #define PROFILE_VK_EVENT_AND_CONTEX(NAME, BUFFER) OPTICK_GPU_CONTEXT(BUFFER) \
                                                   PROFILE_VK_EVENT(NAME); static_assert(true, "")
-#define PROFILE_VK_EVENT_AUTO_AND_CONTEX(BUFFER) PROFILE_VK_EVENT_AND_CONTEX(OPTICK_FUNC, BUFFER); static_assert(true, "")
+#define PROFILE_VK_EVENT_AUTO_AND_CONTEXT(BUFFER) PROFILE_VK_EVENT_AND_CONTEX(OPTICK_FUNC, BUFFER); static_assert(true, "")
 
 #else
 
@@ -138,7 +138,7 @@ bool OnProfilerStateChanged( const Profiler::State state );
 #define PROFILE_VK_EVENT_AUTO()  PROFILE_SCOPE_AUTO(Profiler::Category::Graphics ); static_assert(true, "")
 #define PROFILE_VK_EVENT(NAME)  PROFILE_SCOPE(NAME, Profiler::Category::Graphics ); static_assert(true, "")
 #define PROFILE_VK_EVENT_AND_CONTEX(NAME, BUFFER) PROFILE_VK_EVENT(NAME); static_assert(true, "")
-#define PROFILE_VK_EVENT_AUTO_AND_CONTEX(BUFFER) PROFILE_VK_EVENT_AUTO(); static_assert(true, "")
+#define PROFILE_VK_EVENT_AUTO_AND_CONTEXT(BUFFER) PROFILE_VK_EVENT_AUTO(); static_assert(true, "")
 
 #endif
 

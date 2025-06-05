@@ -10,7 +10,7 @@
 
 #include <Extensions/NRIDeviceCreation.h>
 #include <Extensions/NRIHelper.h>
-#include <Extensions/NRIResourceAllocator.h>
+#include <Extensions/NRIRayTracing.h>
 #include <Extensions/NRISwapChain.h>
 #include <Extensions/NRIWrapperVK.h>
 #if defined(WINDOWS_OS_BUILD)
@@ -195,9 +195,9 @@ namespace Divide
         return std::make_unique<nriRenderTarget>( _context, descriptor );
     }
 
-    GPUBuffer_ptr NVIDIA_RENDER_INTERFACE_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_uptr NVIDIA_RENDER_INTERFACE_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<nriGPUBuffer>( _context, ringBufferLength, name );
+        return std::make_unique<nriGPUBuffer>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr NVIDIA_RENDER_INTERFACE_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const

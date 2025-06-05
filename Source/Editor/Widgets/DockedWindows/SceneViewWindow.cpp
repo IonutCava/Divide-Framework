@@ -74,7 +74,7 @@ namespace Divide
         ImGui::SameLine(window->Size.x * 0.49f);
         if (play)
         {
-            PushReadOnly();
+            ImGui::BeginDisabled();
             readOnly = true;
         }
 
@@ -155,7 +155,7 @@ namespace Divide
 
         if (play)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
             readOnly = false;
         }
 
@@ -166,7 +166,7 @@ namespace Divide
 
         if (play || !enableGizmo)
         {
-            PushReadOnly();
+            ImGui::BeginDisabled();
             readOnly = true;
         }
         if (ImGui::RadioButton("Local", settings.currentGizmoMode == ImGuizmo::LOCAL))
@@ -574,7 +574,7 @@ namespace Divide
         _parent.setTransformSettings(settings);
         if (play || !enableGizmo)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
             readOnly = false;
         }
 

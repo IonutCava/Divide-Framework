@@ -40,24 +40,25 @@ namespace Divide {
 struct InputParams
 {
     static constexpr U8 MAX_PARAMS = 6u;
-    using Params = std::array<I32, MAX_PARAMS>;
 
-    explicit InputParams(const U8 deviceIndex, const U8 elementIndex) noexcept
+    explicit InputParams(const Input::InputDeviceType deviceType, const U32 deviceIndex, const U8 elementIndex) noexcept
         : _deviceIndex( deviceIndex )
         , _elementIndex(elementIndex )
+        , _deviceType( deviceType )
     {
     }
 
-    explicit InputParams(const U8 deviceIndex, const U8 elementIndex, const Params args) noexcept
-        : _deviceIndex( deviceIndex )
-        , _elementIndex( elementIndex )
-        , _var(args)
+    vec2<F32> _coords{0.f};
+    U32 _deviceIndex{0u};
+    union
     {
-    }
+        U32 _modMask{0u};
+        U32 _povMask;
+        I16 _signedData[2];
+    };
 
-    U8  _deviceIndex{0u};
-    U8  _elementIndex{0u};
-    Params _var = create_array<MAX_PARAMS, I32>(-1);
+    U8   _elementIndex{0u};
+    Input::InputDeviceType _deviceType{Input::InputDeviceType::COUNT};
 };
 
 class PressReleaseActions {

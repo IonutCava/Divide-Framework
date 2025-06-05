@@ -338,10 +338,10 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._name = "LUMINANCE_HISTOGRAM_BUFFER";
     bufferDescriptor._ringBufferLength = 0;
-    bufferDescriptor._bufferParams._elementCount = 256;
-    bufferDescriptor._bufferParams._elementSize = sizeof(U32);
-    bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._elementCount = 256;
+    bufferDescriptor._elementSize = sizeof(U32);
+    bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+    bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
 
     _histogramBuffer = _context.newShaderBuffer(bufferDescriptor);
 

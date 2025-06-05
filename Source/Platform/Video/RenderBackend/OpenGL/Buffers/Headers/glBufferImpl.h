@@ -62,7 +62,7 @@ public:
     bufferPtr getDataPtr() const;
     gl46core::GLuint getBufferHandle() const;
 
-    PROPERTY_R(BufferImplParams, params);
+    BufferImplParams _params{};
 
 protected:
     GFXDevice& _context;

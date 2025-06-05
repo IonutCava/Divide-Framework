@@ -179,7 +179,7 @@ ErrorCode WindowManager::init(PlatformContext& context,
 
     if (windowMode != WindowMode::WINDOWED || !_context->config().runtime.windowResizable)
     {
-        descriptor.flags &= ~to_base(WindowDescriptor::Flags::RESIZEABLE);
+        descriptor.flags &= ~to_base(WindowDescriptor::Flags::RESIZABLE);
     }
 
     if constexpr (Config::ENABLE_GPU_VALIDATION)

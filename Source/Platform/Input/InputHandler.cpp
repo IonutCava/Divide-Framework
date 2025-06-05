@@ -21,20 +21,6 @@ InputHandler::InputHandler(InputAggregatorInterface& eventListener, Application&
 namespace {
     Uint32 GetEventWindowID(const SDL_Event event) noexcept {
         switch (event.type) {
-            case SDL_EVENT_KEY_DOWN:
-            case SDL_EVENT_KEY_UP:
-                return event.key.windowID;
-
-            case SDL_EVENT_MOUSE_BUTTON_DOWN:
-            case SDL_EVENT_MOUSE_BUTTON_UP:
-                return event.button.windowID;
-
-            case SDL_EVENT_MOUSE_MOTION:
-                return event.motion.windowID;
-
-            case SDL_EVENT_MOUSE_WHEEL:
-                return event.wheel.windowID;
-
             case SDL_EVENT_WINDOW_SHOWN:
             case SDL_EVENT_WINDOW_HIDDEN:
             case SDL_EVENT_WINDOW_EXPOSED:
@@ -59,15 +45,18 @@ namespace {
             case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
             case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
             case SDL_EVENT_WINDOW_DESTROYED:
-            case SDL_EVENT_WINDOW_HDR_STATE_CHANGED:
-                return event.window.windowID;
-
-            case SDL_EVENT_TEXT_INPUT:
-                return event.text.windowID;
+            case SDL_EVENT_WINDOW_HDR_STATE_CHANGED:       return event.window.windowID;
+            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_KEY_UP:                         return event.key.windowID;
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:                return event.button.windowID;
+            case SDL_EVENT_MOUSE_MOTION:                   return event.motion.windowID;
+            case SDL_EVENT_MOUSE_WHEEL:                    return event.wheel.windowID;
+            case SDL_EVENT_TEXT_INPUT:                     return event.text.windowID;
             default: break;
         }
 
-        return 0;
+        return 0u;
     }
 };
 
@@ -85,22 +74,19 @@ bool InputHandler::onSDLEvent(SDL_Event event)
         case SDL_EVENT_TEXT_EDITING:
         {
             TextEditEvent arg{ eventWindow, 0, event.edit.text, event.edit.start, event.edit.length };
-            _eventListener.onTextEdit(arg);
-            return true;
+            return _eventListener.onTextEdit(arg);
         }
         case SDL_EVENT_TEXT_INPUT:
         {
             TextInputEvent arg{eventWindow, 0, event.text.text};
-            _eventListener.onTextInput(arg);
-            return true;
+            return _eventListener.onTextInput(arg);
         }
-
         case SDL_EVENT_KEY_UP:
         case SDL_EVENT_KEY_DOWN:
         {
             KeyEvent arg(eventWindow, 0);
             arg._key = KeyCodeFromSDLKey(event.key.key);
-            arg._pressed = event.type == SDL_EVENT_KEY_DOWN;
+            arg._state = event.type == SDL_EVENT_KEY_DOWN ? InputState::PRESSED : InputState::RELEASED;
             arg._isRepeat = event.key.repeat;
             arg._sdlScancode = event.key.scancode;
             arg._sdlKey = event.key.key;
@@ -149,47 +135,24 @@ bool InputHandler::onSDLEvent(SDL_Event event)
             {
                 arg._modMask |= to_base(KeyModifier::MODE);
             }
-            if (arg._pressed)
-            {
-                _eventListener.onKeyDown(arg);
-            }
-            else
-            {
-                _eventListener.onKeyUp(arg);
-            }
-            return true;
+            
+            return _eventListener.onKey(arg);
         }
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
         {
-            MouseButtonEvent arg(eventWindow, to_U8(event.button.which));
-            arg.pressed(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
+            MouseButtonEvent arg(eventWindow, event.button.which);
+            arg.pressedState(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? InputState::PRESSED : InputState::RELEASED);
             switch (event.button.button)
             {
-                case SDL_BUTTON_LEFT:
-                    arg.button(MouseButton::MB_Left);
-                    break;
-                case SDL_BUTTON_RIGHT:
-                    arg.button(MouseButton::MB_Right);
-                    break;
-                case SDL_BUTTON_MIDDLE:
-                    arg.button(MouseButton::MB_Middle);
-                    break;
-                case SDL_BUTTON_X1:
-                    arg.button(MouseButton::MB_Button3);
-                    break;
-                case SDL_BUTTON_X2:
-                    arg.button(MouseButton::MB_Button4);
-                    break;
-                case 6:
-                    arg.button(MouseButton::MB_Button5);
-                    break;
-                case 7:
-                    arg.button(MouseButton::MB_Button6);
-                    break;
-                case 8:
-                    arg.button(MouseButton::MB_Button7);
-                    break;
+                case SDL_BUTTON_LEFT:   arg.button(MouseButton::MB_Left);    break;
+                case SDL_BUTTON_RIGHT:  arg.button(MouseButton::MB_Right);   break;
+                case SDL_BUTTON_MIDDLE: arg.button(MouseButton::MB_Middle);  break;
+                case SDL_BUTTON_X1:     arg.button(MouseButton::MB_Button3); break;
+                case SDL_BUTTON_X2:     arg.button(MouseButton::MB_Button4); break;
+                case SDL_BUTTON_X2 + 1: arg.button(MouseButton::MB_Button5); break;
+                case SDL_BUTTON_X2 + 2: arg.button(MouseButton::MB_Button6); break;
+                case SDL_BUTTON_X2 + 3: arg.button(MouseButton::MB_Button7); break;
                 default: break;
             }
 
@@ -198,176 +161,136 @@ bool InputHandler::onSDLEvent(SDL_Event event)
             state.X.abs = event.button.x;
             state.Y.abs = event.button.y;
 
-            if (arg.pressed())
-            {
-                _eventListener.mouseButtonPressed(arg);
-            }
-            else
-            {
-                _eventListener.mouseButtonReleased(arg);
-            }
-            return true;
+            return _eventListener.onMouseButton(arg);
         }
         case SDL_EVENT_MOUSE_WHEEL:
+        {
+            const bool flipped = event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED;
+
+            MouseMoveEvent arg(eventWindow, event.wheel.which, true);
+            auto& state = Attorney::MouseEventInputHandler::state(arg);
+            state.Wheel.xAmount = event.wheel.x * (flipped ? -1 : 1);        /**< The amount scrolled horizontally, positive to the right and negative to the left */
+            state.Wheel.yAmount = event.wheel.y * (flipped ? -1 : 1);        /**< The amount scrolled vertically, positive away from the user and negative toward the user */
+            state.Wheel.xTicks = event.wheel.integer_x * (flipped ? -1 : 1); /**< The amount scrolled horizontally, accumulated to whole scroll "ticks" (added in 3.2.12) */
+            state.Wheel.yTicks = event.wheel.integer_y * (flipped ? -1 : 1); /**< The amount scrolled vertically, accumulated to whole scroll "ticks" (added in 3.2.12) */
+
+            return _eventListener.onMouseMoved(arg);
+        }
         case SDL_EVENT_MOUSE_MOTION:
         {
-            MouseMoveEvent arg(eventWindow, to_U8(event.motion.which), event.type == SDL_EVENT_MOUSE_WHEEL);
+            MouseMoveEvent arg(eventWindow, event.motion.which, false);
             auto& state = Attorney::MouseEventInputHandler::state( arg );
-            state.X.abs = event.motion.x;
-            state.X.rel = event.motion.xrel;
-            state.Y.abs = event.motion.y;
-            state.Y.rel = event.motion.yrel;
-            state.HWheel = event.wheel.x;
-            state.VWheel = event.wheel.y;
+            state.X.abs = event.motion.x;     /**< X coordinate, relative to window */
+            state.Y.abs = event.motion.y;     /**< Y coordinate, relative to window */
+            state.X.rel = event.motion.xrel;  /**< The relative motion in the X direction */
+            state.Y.rel = event.motion.yrel;  /**< The relative motion in the Y direction */
 
-            _eventListener.mouseMoved(arg);
-            return true;
+            return _eventListener.onMouseMoved(arg);
         }
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
         case SDL_EVENT_JOYSTICK_AXIS_MOTION:
         {
-            JoystickData jData = {};
-            jData._gamePad = event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION;
-            jData._dataSigned = jData._gamePad ? event.gaxis.value : event.jaxis.value;
+            constexpr I16 DEFAULT_DEADZONE = 8000;
 
-            JoystickElement element = {};
-            element._type = JoystickElementType::AXIS_MOVE;
-            element._data = jData;
-            element._elementIndex = (jData._gamePad ? event.gaxis.axis : event.jaxis.axis);
+            const bool isJoystick = event.type == SDL_EVENT_JOYSTICK_AXIS_MOTION;
 
-            JoystickEvent arg(eventWindow, to_U8(jData._gamePad ? event.gaxis.which : event.jaxis.which));
-            arg._element = element;
-
-            _eventListener.joystickAxisMoved(arg);
-            return true;
+            JoystickEvent arg(eventWindow, isJoystick ? event.jaxis.which : event.gaxis.which, isJoystick);
+            arg._type = JoystickElementType::AXIS_MOVE;
+            arg._elementIndex = isJoystick ? event.jaxis.axis : event.gaxis.axis;
+            arg._axisMovement[0] = isJoystick ? event.jaxis.value : event.gaxis.value;
+            arg._axisMovement[1] = DEFAULT_DEADZONE;
+            return _eventListener.onJoystickAxisMoved(arg);
         };
         case SDL_EVENT_JOYSTICK_BALL_MOTION:
         {
-            JoystickData jData = {};
-            jData._smallDataSigned[0] = event.jball.xrel;
-            jData._smallDataSigned[1] = event.jball.yrel;
+            JoystickEvent arg(eventWindow, event.jball.which, true);
+            arg._type = JoystickElementType::BALL_MOVE;
+            arg._elementIndex = event.jball.ball;
+            arg._ballRelMovement[0] = event.jball.xrel;
+            arg._ballRelMovement[1] = event.jball.yrel;
 
-            JoystickElement element = {};
-            element._type = JoystickElementType::BALL_MOVE;
-            element._data = jData;
-            element._elementIndex = (event.jball.ball);
-
-            JoystickEvent arg(eventWindow, to_U8(event.jball.which));
-            arg._element = element;
-
-            _eventListener.joystickBallMoved(arg);
-            return true;
+            return _eventListener.onJoystickBallMoved(arg);
         };
         case SDL_EVENT_JOYSTICK_HAT_MOTION:
         {
-            // POV
-            U32 PovMask = 0;
-            switch (event.jhat.value) {
-                case SDL_HAT_CENTERED:
-                    PovMask = to_base(JoystickPovDirection::CENTERED);
-                    break;
-                case SDL_HAT_UP:
-                    PovMask = to_base(JoystickPovDirection::UP);
-                    break;
-                case SDL_HAT_RIGHT:
-                    PovMask = to_base(JoystickPovDirection::RIGHT);
-                    break;
-                case SDL_HAT_DOWN:
-                    PovMask = to_base(JoystickPovDirection::DOWN);
-                    break;
-                case SDL_HAT_LEFT:
-                    PovMask = to_base(JoystickPovDirection::LEFT);
-                    break;
-                case SDL_HAT_RIGHTUP:
-                    PovMask = to_base(JoystickPovDirection::RIGHT) |
-                              to_base(JoystickPovDirection::UP);
-                    break;
-                case SDL_HAT_RIGHTDOWN:
-                    PovMask = to_base(JoystickPovDirection::RIGHT) |
-                              to_base(JoystickPovDirection::DOWN);
-                    break;
-                case SDL_HAT_LEFTUP:
-                    PovMask = to_base(JoystickPovDirection::LEFT) |
-                              to_base(JoystickPovDirection::UP);
-                    break;
-                case SDL_HAT_LEFTDOWN:
-                    PovMask = to_base(JoystickPovDirection::LEFT) |
-                              to_base(JoystickPovDirection::DOWN);
-                    break;
+            JoystickEvent arg(eventWindow, event.jhat.which, true);
+            arg._type = JoystickElementType::POV_MOVE;
+            arg._elementIndex = event.jhat.hat;
+            switch (event.jhat.value)
+            {
+                case SDL_HAT_CENTERED:  arg._povMask = to_base(JoystickPovDirection::CENTERED); break;
+                case SDL_HAT_UP:        arg._povMask = to_base(JoystickPovDirection::UP);       break;
+                case SDL_HAT_RIGHT:     arg._povMask = to_base(JoystickPovDirection::RIGHT);    break;
+                case SDL_HAT_DOWN:      arg._povMask = to_base(JoystickPovDirection::DOWN);     break;
+                case SDL_HAT_LEFT:      arg._povMask = to_base(JoystickPovDirection::LEFT);     break;
+                case SDL_HAT_RIGHTUP:   arg._povMask = to_base(JoystickPovDirection::RIGHT) |
+                                                       to_base(JoystickPovDirection::UP);       break;
+                case SDL_HAT_RIGHTDOWN: arg._povMask = to_base(JoystickPovDirection::RIGHT) |
+                                                       to_base(JoystickPovDirection::DOWN);     break;
+                case SDL_HAT_LEFTUP:    arg._povMask = to_base(JoystickPovDirection::LEFT)  |
+                                                       to_base(JoystickPovDirection::UP);       break;
+                case SDL_HAT_LEFTDOWN:  arg._povMask = to_base(JoystickPovDirection::LEFT)  |
+                                                       to_base(JoystickPovDirection::DOWN);     break;
                 default: break;
             };
 
-            JoystickData jData = {};
-            jData._data = PovMask;
-
-            JoystickElement element = {};
-            element._type = JoystickElementType::POV_MOVE;
-            element._data = jData;
-            element._elementIndex = (event.jhat.hat);
-
-            JoystickEvent arg(eventWindow, to_U8(event.jhat.which));
-            arg._element = element;
-
-            _eventListener.joystickPovMoved(arg);
-            return true;
+            return _eventListener.onJoystickPovMoved(arg);
         };
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         case SDL_EVENT_GAMEPAD_BUTTON_UP:
         case SDL_EVENT_JOYSTICK_BUTTON_DOWN:
         case SDL_EVENT_JOYSTICK_BUTTON_UP:
         {
-            JoystickData jData = {};
-            jData._gamePad = event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN || event.type == SDL_EVENT_GAMEPAD_BUTTON_UP;
+            const bool isJoystick = event.type == SDL_EVENT_JOYSTICK_BUTTON_UP || event.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN;
 
-            const bool down = jData._gamePad ? event.gbutton.down : event.jbutton.down;
-            jData._data = down ? to_U32(InputState::PRESSED) : to_U32(InputState::RELEASED);
+            JoystickEvent arg(eventWindow, isJoystick ? event.jbutton.which : event.gbutton.which, isJoystick);
+            arg._type = JoystickElementType::BUTTON_PRESS;
+            arg._elementIndex = isJoystick ? event.jbutton.button : event.gbutton.button;
+            arg._state = (isJoystick ? event.jbutton.down : event.gbutton.down) ? InputState::PRESSED : InputState::RELEASED;
 
-            JoystickElement element = {};
-            element._type = JoystickElementType::BUTTON_PRESS;
-            element._data = jData;
-            element._elementIndex = jData._gamePad ? event.gbutton.button : event.jbutton.button;
+            return _eventListener.onJoystickButton(arg);
+        };
+        case SDL_EVENT_GAMEPAD_REMAPPED:
+        {
+            JoystickEvent arg(eventWindow,  event.gdevice.which, false);
+            arg._type = JoystickElementType::JOY_REMAP;
 
-            JoystickEvent arg(eventWindow, to_U8(jData._gamePad  ? event.gbutton.which : event.jbutton.which));
-            arg._element = element;
-
-            if (event.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN || event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
-                _eventListener.joystickButtonPressed(arg);
-            } else {
-                _eventListener.joystickButtonReleased(arg);
-            }
-            return true;
+            return _eventListener.onJoystickRemap(arg);
         };
         case SDL_EVENT_GAMEPAD_ADDED:
         case SDL_EVENT_GAMEPAD_REMOVED:
         case SDL_EVENT_JOYSTICK_ADDED:
         case SDL_EVENT_JOYSTICK_REMOVED:
         {
-            JoystickData jData = {};
-            jData._gamePad = event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_GAMEPAD_REMOVED;
-            jData._data = (jData._gamePad ? event.type == SDL_EVENT_GAMEPAD_ADDED : event.type == SDL_EVENT_JOYSTICK_ADDED) ? 1 : 0;
+            const bool isJoystick = event.type == SDL_EVENT_JOYSTICK_ADDED || event.type == SDL_EVENT_JOYSTICK_REMOVED;
+            const bool added = event.type == SDL_EVENT_GAMEPAD_ADDED || event.type == SDL_EVENT_JOYSTICK_ADDED;
 
-            JoystickElement element = {};
-            element._type = JoystickElementType::JOY_ADD_REMOVE;
-            element._data = jData;
+            InputEvent arg(eventWindow,
+                           isJoystick ? InputDeviceType::JOYSTICK : InputDeviceType::GAMEPAD,
+                           added ? InputEventType::DEVICE_ADDED : InputEventType::DEVICE_REMOVED,
+                           isJoystick ? event.jdevice.which : event.cdevice.which);
 
-            JoystickEvent arg(eventWindow, to_U8(jData._gamePad ? event.cdevice.which : event.jdevice.which));
-            arg._element = element;
-
-            _eventListener.joystickAddRemove(arg);
-            return true;
+            return _eventListener.onDeviceAddOrRemove(arg);
         };
-        
-       
-        case SDL_EVENT_GAMEPAD_REMAPPED:
+        case SDL_EVENT_MOUSE_ADDED:
+        case SDL_EVENT_MOUSE_REMOVED:
         {
-            JoystickElement element = {};
-            element._type = JoystickElementType::JOY_REMAP;
+            InputEvent arg(eventWindow,
+                           InputDeviceType::MOUSE,
+                           event.type == SDL_EVENT_MOUSE_ADDED ? InputEventType::DEVICE_ADDED : InputEventType::DEVICE_REMOVED,
+                           event.mdevice.which); 
 
-            JoystickEvent arg(eventWindow, to_U8(event.jdevice.which));
-            arg._element = element;
+            return _eventListener.onDeviceAddOrRemove(arg);
+        };
+        case SDL_EVENT_KEYBOARD_ADDED:
+        case SDL_EVENT_KEYBOARD_REMOVED:
+        {
+            InputEvent arg(eventWindow,
+                InputDeviceType::KEYBOARD,
+                event.type == SDL_EVENT_KEYBOARD_ADDED ? InputEventType::DEVICE_ADDED : InputEventType::DEVICE_REMOVED,
+                event.kdevice.which);
 
-            _eventListener.joystickRemap(arg);
-            return true;
+            return _eventListener.onDeviceAddOrRemove(arg);
         };
         default: break;
      }

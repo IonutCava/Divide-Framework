@@ -25,32 +25,24 @@ Object3D::Object3D( const ResourceDescriptorBase& descriptor, const SceneNodeTyp
     _geometryPartitionIDs[0] = 0u;
 }
 
-void Object3D::rebuildInternal()
-{
-    NOP();
-}
-
-const VertexBuffer_ptr& Object3D::geometryBuffer()
+VertexBuffer* Object3D::geometryBuffer()
 {
     DIVIDE_ASSERT(_geometryBuffer != nullptr);
-
-    if (geometryDirty())
-    {
-        geometryDirty(false);
-        rebuildInternal();
-    }
-
-    return _geometryBuffer;
+    return _geometryBuffer.get();
 }
 
-void Object3D::setMaterialTpl(const Handle<Material> material)
+VertexBuffer* Object3D::geometryBuffer(GFXDevice& context, const VertexBuffer::Descriptor& descriptor) noexcept
 {
-    SceneNode::setMaterialTpl(material);
+    _geometryBuffer = context.newVB(descriptor);
+    return _geometryBuffer.get();
 
-    if (_materialTemplate != INVALID_HANDLE<Material> && geometryBuffer() != nullptr)
-    {
-        Get<Material>(material)->setPipelineLayout(GetGeometryBufferType(type()), geometryBuffer()->generateAttributeMap());
-    }
+}
+
+void Object3D::setMaterialTemplate( const Handle<Material> material, const AttributeMap& geometryAttributes )
+{
+    SceneNode::setMaterialTemplate( material, geometryAttributes );
+
+ 
 }
 
 void Object3D::prepareRender(SceneGraphNode* sgn,
@@ -81,8 +73,8 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
             GenericDrawCommand& cmd = cmdsOut.emplace_back();
             toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
-            cmd._sourceBuffers = &geometryBuffer()->handle();
-            cmd._sourceBuffersCount = 1u;
+            cmd._sourceBuffers = geometryBuffer()->handles().data();
+            cmd._sourceBuffersCount = geometryBuffer()->handles().size();
             cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(_geometryPartitionIDs[0]));
             cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(_geometryPartitionIDs[0]));
             cmd._cmd.instanceCount = sgn->instanceCount();
@@ -139,7 +131,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
 
     const size_t partitionOffset = _geometryBuffer->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = _geometryBuffer->getPartitionIndexCount(_geometryPartitionIDs[0]);
-    const PrimitiveTopology topology = GetGeometryBufferType(type());
+    const PrimitiveTopology topology = GetGeometryTopology();
 
     size_t indiceCount = partitionCount;
     if ( topology == PrimitiveTopology::TRIANGLE_STRIP)

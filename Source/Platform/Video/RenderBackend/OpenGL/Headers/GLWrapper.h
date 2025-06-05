@@ -103,7 +103,7 @@ private:
 
     void flushCommand( GFX::CommandBase* cmd ) override;
 
-    void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
+    void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) override;
 
     void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) override;
 
@@ -127,7 +127,7 @@ private:
     void flushPushConstantsLocks();
 
     [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
-    [[nodiscard]] GPUBuffer_ptr      newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
+    [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
     [[nodiscard]] ShaderBuffer_uptr  newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
 
 public:
@@ -137,9 +137,9 @@ public:
 
     static void QueueFlush() noexcept;
 
-    static void AddDebugMessage( const char* message, U32 id = U32_MAX );
-    static void PushDebugMessage( const char* message, U32 id = U32_MAX );
-    static void PopDebugMessage();
+    static void AddDebugMessage( const Configuration& config, const char* message, U32 id = U32_MAX );
+    static void PushDebugMessage( const Configuration& config, const char* message, U32 id = U32_MAX );
+    static void PopDebugMessage( const Configuration& config );
 
     [[nodiscard]] static bool DeleteShaderPrograms( gl46core::GLuint count, gl46core::GLuint * programs);
     [[nodiscard]] static bool DeleteSamplers( gl46core::GLuint count, gl46core::GLuint* samplers);
@@ -229,8 +229,9 @@ private:
     bool _runQueries{false};
 
     bool _uniformsNeedLock{false};
+    bool _supportsParallelShaderCompilation{false};
+    bool _meshShadersSupported{false};
     GFX::MemoryBarrierCommand _uniformsMemCommand{};
-
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
 
 private:
