@@ -2,11 +2,6 @@ include(FetchContent)
 
 set(BUILD_TESTING OFF)
 
-#CEGUI
-include(ThirdParty/CMakeHelpers/ImportCEGUI.cmake)
-
-include(ThirdParty/CMakeHelpers/FetchContentExcludeFromAll.cmake)
-
 add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
 add_compile_definitions(IMGUI_DISABLE_OBSOLETE_KEYIO)
 add_compile_definitions(IMGUI_USE_STB_SPRINTF)
@@ -118,7 +113,7 @@ set(SDLMIXER_GME OFF)
 set(SDLMIXER_MOD OFF)
 set(SDLMIXER_MIDI OFF)
 set(SDLMIXER_OPUS OFF)
-set(SDLMIXER_INSTALL OFF)
+#set(SDLMIXER_INSTALL OFF)
 FetchContent_Declare(
     SDL3_mixer
     GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
@@ -128,7 +123,7 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL
 )
 
-FetchContent_MakeAvailableExcludeFromAll(
+FetchContent_MakeAvailable(
     optick
     skarupke
     memory_pool
@@ -141,6 +136,8 @@ FetchContent_MakeAvailableExcludeFromAll(
     SDL3_mixer
     chaiscript
 )
+
+include(ThirdParty/CMakeHelpers/ImportCEGUI.cmake)
 
 if (BUILD_TESTING_INTERNAL)
     set(BUILD_TESTING ON)
