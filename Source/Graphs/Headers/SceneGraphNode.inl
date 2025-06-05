@@ -36,17 +36,60 @@
 #include "SceneNode.h"
 #include "SceneGraph.h"
 
-namespace Divide {
-    template<class T, typename... Args>
-    void AddSGNComponent(SceneGraphNode* node, Args... args)
+namespace Divide
+{
+    template<typename Base, typename... Args>
+    template<typename T, ComponentType C>
+    bool Factory<Base, Args...>::Register()
     {
-        node->template AddSGNComponent<T>(FWD(args)...);
+        ConstructData().emplace(C, 
+            []( SceneGraphNode* node, Args... args ) -> void
+            {
+                node->template AddSGNComponent<T>(FWD(args)...);
+            });
+
+        DestructData().emplace(C,
+           []( SceneGraphNode* node ) -> void
+           {
+                node->template RemoveSGNComponent<T>();
+           });
+
+        return true;
     }
 
-    template<class T>
-    void RemoveSGNComponent(SceneGraphNode* node)
+    template<class T, class ...P> requires std::is_base_of_v<SGNComponent, T>
+    T* SceneGraphNode::AddSGNComponent( P&&... param )
     {
-        node->template RemoveSGNComponent<T>();
+        SGNComponent* comp = static_cast<SGNComponent*>(AddComponent<T>( this, this->context(), FWD( param )... ));
+        AddSGNComponentInternal( comp );
+        return static_cast<T*>(comp);
+    }
+
+    template<class T> requires std::is_base_of_v<SGNComponent, T>
+    void SceneGraphNode::RemoveSGNComponent()
+    {
+        RemoveSGNComponentInternal( static_cast<SGNComponent*>(GetComponent<T>()) );
+        RemoveComponent<T>();
+    }
+
+    inline SceneGraphNode* SceneGraphNode::ChildContainer::getChild( const U32 idx )
+    {
+        DIVIDE_ASSERT( idx < _count );
+
+        SharedLock<SharedMutex> r_lock( _lock );
+        return _data[idx];
+    }
+
+    template<class E, class... ARGS>
+    void SceneGraphNode::SendEvent( ARGS&&... eventArgs ) const
+    {
+        GetECSEngine().SendEvent<E>( FWD( eventArgs )... );
+    }
+    /// Sends a global event with dispatched happening immediately. Avoid using often. Bad for performance.
+    template<class E, class... ARGS>
+    void SceneGraphNode::SendAndDispatchEvent( ARGS&&... eventArgs ) const
+    {
+        GetECSEngine().SendEventAndDispatch<E>( FWD( eventArgs )... );
     }
 
     FORCE_INLINE bool SceneGraphNode::hasFlag(const Flags flag) const noexcept

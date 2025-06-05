@@ -496,7 +496,7 @@ namespace Divide
     {
         // This tries to keep the object's global transform intact when switching from one parent to another
 
-        // Step 1: Embed parrent transform into ourselves
+        // Step 1: Embed parent transform into ourselves
         if (oldParent != nullptr && oldParent->HasComponents(ComponentType::TRANSFORM))
         {
             const mat4<F32>& parentTransform = oldParent->get<TransformComponent>()->getWorldMatrix();

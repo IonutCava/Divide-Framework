@@ -84,16 +84,13 @@ namespace ECS
     };
 }
 
-namespace Divide {
-
-template<class T, typename... Args>
-void AddSGNComponent(SceneGraphNode* node, Args... args);
-template<class T>
-void RemoveSGNComponent(SceneGraphNode* node);
+namespace Divide
+{
 
 //ref: http://www.nirfriedman.com/2018/04/29/unforgettable-factory/
 template <typename Base, typename... Args>
-struct Factory {
+struct Factory
+{
     using ConstructFunc = DELEGATE_STD<void, SceneGraphNode*, Args...>;
     using DestructFunc = DELEGATE_STD<void, SceneGraphNode*>;
     using FactoryContainerConstruct = ska::bytell_hash_map<ComponentType, ConstructFunc>;
@@ -102,13 +99,16 @@ struct Factory {
     template <typename... ConstructArgs>
     static void construct(ComponentType type, SceneGraphNode* node, ConstructArgs&&... args)
     {
-        constructData().at(type)(node, FWD(args)...);
+        ConstructData().at(type)(node, FWD(args)...);
     }
 
     static void destruct(const ComponentType type, SceneGraphNode* node)
     {
-        destructData().at(type)(node);
+        DestructData().at(type)(node);
     }
+
+    template<typename T, ComponentType C>
+    static bool Register();
 
     template <typename T, ComponentType C>
     struct Registrar : ECS::Component<T>,
@@ -122,20 +122,9 @@ struct Factory {
 
         void OnData([[maybe_unused]] const ECS::CustomEvent& data) override {}
 
-        static bool RegisterComponentType()
+        FORCE_INLINE static bool RegisterComponentType()
         {
-            Factory::constructData().emplace(C, 
-                                             []( SceneGraphNode* node, Args... args ) -> void
-                                             {
-                                                 AddSGNComponent<T, Args...>(node, FWD(args)...);
-                                             });
-
-            Factory::destructData().emplace(C,
-                                            []( SceneGraphNode* node ) -> void
-                                            {
-                                                 RemoveSGNComponent<T>( node );
-                                            } );
-            return true;
+            return Factory::Register<T, C>();
         }
 
         static bool s_registered;
@@ -159,13 +148,13 @@ private:
 
     Factory() = default;
 
-    static FactoryContainerConstruct& constructData()
+    static FactoryContainerConstruct& ConstructData()
     {
         NO_DESTROY static FactoryContainerConstruct container;
         return container;
     }
 
-    static FactoryContainerDestruct& destructData()
+    static FactoryContainerDestruct& DestructData()
     {
         NO_DESTROY static FactoryContainerDestruct container;
         return container;
