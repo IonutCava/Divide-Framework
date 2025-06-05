@@ -138,13 +138,7 @@ namespace Divide
             U32 _count{ 0u };
 
             /// Return a specific child by index. Does not recurse.
-            SceneGraphNode* getChild( const U32 idx )
-            {
-                DIVIDE_ASSERT( idx < _count );
-
-                SharedLock<SharedMutex> r_lock( _lock );
-                return _data[idx];
-            }
+            SceneGraphNode* getChild( const U32 idx );
         };
 
        public:
@@ -249,34 +243,20 @@ namespace Divide
 
         /// Sends a global event but dispatched is handled between update steps
         template<class E, class... ARGS>
-        void SendEvent( ARGS&&... eventArgs ) const
-        {
-            GetECSEngine().SendEvent<E>( FWD( eventArgs )... );
-        }
+        void SendEvent( ARGS&&... eventArgs ) const;
+
         /// Sends a global event with dispatched happening immediately. Avoid using often. Bad for performance.
         template<class E, class... ARGS>
-        void SendAndDispatchEvent( ARGS&&... eventArgs ) const
-        {
-            GetECSEngine().SendEventAndDispatch<E>( FWD( eventArgs )... );
-        }
+        void SendAndDispatchEvent( ARGS&&... eventArgs ) const;
 
         /// Emplacement call for an ECS component. Pass in the component's constructor parameters. Can only add one component of a single type. 
         /// This may be bad for scripts, but there are workarounds
         template<class T, class ...P> requires std::is_base_of_v<SGNComponent, T>
-        T* AddSGNComponent( P&&... param )
-        {
-            SGNComponent* comp = static_cast<SGNComponent*>(AddComponent<T>( this, this->context(), FWD( param )... ));
-            AddSGNComponentInternal( comp );
-            return static_cast<T*>(comp);
-        }
+        T* AddSGNComponent( P&&... param );
 
         /// Remove a component by type (if any). Because we have a limit of one component type per node, this works as expected
         template<class T> requires std::is_base_of_v<SGNComponent, T>
-        void RemoveSGNComponent()
-        {
-            RemoveSGNComponentInternal( static_cast<SGNComponent*>(GetComponent<T>()) );
-            RemoveComponent<T>();
-        }
+        void RemoveSGNComponent();
 
         void AddComponents( U32 componentMask, bool allowDuplicates );
         void RemoveComponents( U32 componentMask );
