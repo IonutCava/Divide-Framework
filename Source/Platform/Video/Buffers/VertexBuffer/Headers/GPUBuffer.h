@@ -44,65 +44,58 @@ namespace Divide {
 struct RenderStagePass;
 struct GenericDrawCommand;
 
-struct GPUBufferBindConfig
+struct BufferBindConfig
 {
     static constexpr size_t INVALID_ELEMENT_STRIDE = SIZE_MAX;
     U16 _bindIdx{ 0u };
     // Settings this to INVALID_ELEMENT_STRIDE will automatically default to elementSize as the stride.
     size_t _elementStride{ INVALID_ELEMENT_STRIDE };
-};
 
+    inline bool operator==(const BufferBindConfig& other) const noexcept = default;
+};
 
 NOINITVTABLE_CLASS(GPUBuffer) : public GUIDWrapper, public GraphicsResource, public RingBuffer
 {
    public:
+      using Handle = PoolHandle;
+      static constexpr Handle INVALID_HANDLE{ U16_MAX, 0u };
+
      static constexpr size_t INVALID_INDEX_OFFSET = SIZE_MAX;
 
-     struct SetBufferParams
+     struct SetBufferParams : BufferParams, BufferBindConfig
      {
-         BufferParams _bufferParams{._usageType = BufferUsageType::VERTEX_BUFFER };
          std::pair<bufferPtr, size_t> _initialData{nullptr, 0};
      };
 
    public:
-      GPUBuffer(GFXDevice& context, U16 ringBufferLength, const std::string_view name);
+      explicit GPUBuffer(GFXDevice& context, U16 ringBufferLength, const std::string_view name);
+      ~GPUBuffer() override;
 
       /// When reading and writing to the same buffer, we use a round-robin approach and offset the reading and writing to multiple copies of the data
-      [[nodiscard]] virtual BufferLock setBuffer(const SetBufferParams& params) = 0;
+      [[nodiscard]] virtual BufferLock setBuffer(const SetBufferParams& params);
       [[nodiscard]] virtual BufferLock updateBuffer(U32 elementCountOffset, U32 elementCountRange, bufferPtr data) = 0;
 
+      PROPERTY_RW(BufferBindConfig, bindConfig, {});
       PROPERTY_R_IW(Str<256>, name, 0u);
       PROPERTY_R_IW(size_t, firstIndexOffsetCount, 0u);
+
+      const Handle _handle{ INVALID_HANDLE };
+
+      using GPUBufferPool = ObjectPool<GPUBuffer, 256, true>;
+      static GPUBufferPool s_BufferPool;
 };
 
 FWD_DECLARE_MANAGED_CLASS(GPUBuffer);
 
-//ToDo: Completely remove this class and just use separate GPUBuffers directly.
-// Maybe use a thin wrapper to hold binding info if needed.
-// Move the pool to GPUBuffer instead.
-class GPUVertexBuffer final : public GUIDWrapper, public GraphicsResource
+struct GPUBufferActiveBindConfiguration : BufferBindConfig
 {
-public:
-    using Handle = PoolHandle;
-    static constexpr Handle INVALID_HANDLE{ U16_MAX, 0u };
+  GPUBuffer::Handle _handle{ GPUBuffer::INVALID_HANDLE };
+  GPUBuffer* _buffer{nullptr};
+  size_t _offset{0u};
 
-    explicit GPUVertexBuffer(GFXDevice& context, const std::string_view name);
-    ~GPUVertexBuffer() override;
-
-    void incQueue();
-
-    GPUBuffer_ptr _vertexBuffer = nullptr;
-    GPUBuffer_ptr _indexBuffer = nullptr;
-
-    GPUBufferBindConfig _vertexBufferBinding{};
-
-    const Handle _handle{ INVALID_HANDLE };
-
-    using GVBPool = ObjectPool<GPUVertexBuffer, 256, true>;
-    static GVBPool s_GVBPool;
+  bool operator==(const GPUBufferActiveBindConfiguration& rhs) const noexcept;
 };
 
-FWD_DECLARE_MANAGED_CLASS(GPUVertexBuffer);
 
 };  // namespace Divide
 

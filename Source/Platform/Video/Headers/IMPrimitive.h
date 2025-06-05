@@ -149,8 +149,9 @@ class IMPrimitive final {
 
     vector<U32> _indices;
     std::array<BufferRange<U32>, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexRange;
-    vector<GPUVertexBuffer_uptr> _buffers;
-    vector<GPUVertexBuffer::Handle> _bufferHandles;
+    GPUBuffer_uptr _indexBuffer;
+    vector<GPUBuffer_uptr> _vertexBuffers;
+    vector<GPUBuffer::Handle> _bufferHandles;
     GFX::MemoryBarrierCommand _memCmd{};
 };
 

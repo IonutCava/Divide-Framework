@@ -97,7 +97,7 @@ namespace Divide
             ImGui::PushID( 4321234 + id++ );
             if ( readOnly )
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             if ( ImGui::SmallButton( "A" ) )
             {
@@ -109,7 +109,7 @@ namespace Divide
             }
             if ( readOnly )
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
             ImGui::PopID();
         }
@@ -121,7 +121,7 @@ namespace Divide
             ImGui::PushID( 4321234 + id++ );
             if ( readOnly )
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             if ( ImGui::SmallButton( "T" ) )
             {
@@ -133,7 +133,7 @@ namespace Divide
             }
             if ( readOnly )
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
             ImGui::PopID();
             return ret;
@@ -473,9 +473,9 @@ namespace Divide
         }
         if ( comp->fields().empty() )
         {
-            PushReadOnly();
+            ImGui::BeginDisabled();
             ImGui::CollapsingHeader( fieldName, ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet );
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
         else
         {
@@ -925,7 +925,7 @@ namespace Divide
             {
                 if ( field._readOnly )
                 {
-                    PushReadOnly();
+                    ImGui::BeginDisabled();
                 }
                 if ( field._range.y - field._range.x > 1.0f )
                 {
@@ -937,7 +937,7 @@ namespace Divide
                 }
                 if ( field._readOnly )
                 {
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
             }break;
             case EditorComponentFieldType::SLIDER_TYPE:
@@ -953,7 +953,7 @@ namespace Divide
             {
                 if ( field._readOnly )
                 {
-                    PushReadOnly();
+                    ImGui::BeginDisabled();
                 }
 
                 printFieldName();
@@ -997,7 +997,7 @@ namespace Divide
                 }
                 if ( field._readOnly )
                 {
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
             }break;
             case EditorComponentFieldType::BOUNDING_BOX:
@@ -1331,7 +1331,7 @@ namespace Divide
 
         if ( readOnly )
         {
-            PushReadOnly();
+            ImGui::BeginDisabled();
         }
 
         bool ret = false;
@@ -2017,7 +2017,7 @@ namespace Divide
                 ImGui::PushID( 4321234 + id++ );
                 if ( ro || readOnly )
                 {
-                    PushReadOnly();
+                    ImGui::BeginDisabled();
                 }
 
                 bool showTexture = false;
@@ -2028,7 +2028,7 @@ namespace Divide
                 }
                 if ( ro || readOnly )
                 {
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
                 if ( ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
                 {
@@ -2054,7 +2054,7 @@ namespace Divide
                 ImGui::PushID( 4321234 + id++ );
                 if ( ro || readOnly )
                 {
-                    PushReadOnly();
+                    ImGui::BeginDisabled();
                 }
                 bool showTexture = false;
                 if ( ImGui::Button( "Normal Map" ) )
@@ -2064,7 +2064,7 @@ namespace Divide
                 }
                 if ( ro || readOnly )
                 {
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
                 if ( ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
                 {
@@ -2341,7 +2341,7 @@ namespace Divide
                     ImGui::PushID( 4321234 + id++ );
                     if ( !hasTexture )
                     {
-                        PushReadOnly();
+                        ImGui::BeginDisabled();
                     }
                     const TextureOperation crtOp = material->getTextureInfo( targetTex )._operation;
                     ImGui::Text( names[i] );
@@ -2379,7 +2379,7 @@ namespace Divide
                                     } );
                     if ( !hasTexture )
                     {
-                        PopReadOnly();
+                        ImGui::EndDisabled();
                         if ( ImGui::IsItemHovered() )
                         {
                             ImGui::SetTooltip( "Insuficient input textures for this operation!" );
@@ -2509,7 +2509,7 @@ namespace Divide
 
         if ( readOnly )
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
             ret = false;
         }
         return ret;
@@ -2536,7 +2536,7 @@ namespace Divide
             {
                 if ( field._readOnly )
                 {
-                    PushReadOnly();
+                    ImGui::BeginDisabled();
                 }
 
                 ImFont* boldFont = ImGui::GetIO().Fonts->Fonts[1];
@@ -2578,7 +2578,7 @@ namespace Divide
                 }
                 if ( field._readOnly )
                 {
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
             }break;
             case PushConstantType::INT:

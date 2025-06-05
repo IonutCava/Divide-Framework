@@ -37,6 +37,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
+namespace Attorney {
+    class MainThreadTaskPool;
+}
+
+class Kernel;
+class PlatformContext;
+
+struct TaskUTWrapper;
+
 struct ParallelForDescriptor
 {
     /// For loop iteration count
@@ -87,13 +96,6 @@ class TaskPool final : public GUIDWrapper {
     /// </summary>
     void shutdown();
 
-
-    /// <summary>
-    /// Flushes the callback queue, executing all pending callbacks. Must be called from the main thread.
-    /// </summary>
-    /// <returns>Returns the number of callbacks processed</returns>
-    size_t flushCallbackQueue();
-
     /// <summary>
     /// Called by a task that isn't doing anything (e.g. waiting on child tasks).
     /// Use this to run another task (if any) and return to the previous execution point
@@ -110,6 +112,14 @@ class TaskPool final : public GUIDWrapper {
 
 
     PROPERTY_R( vector<std::thread>, threads );
+
+  protected:
+    friend class Attorney::MainThreadTaskPool;
+    /// <summary>
+    /// Flushes the callback queue, executing all pending callbacks. Must be called from the main thread.
+    /// </summary>
+    /// <returns>Returns the number of callbacks processed</returns>
+    size_t flushCallbackQueue();
 
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
@@ -171,6 +181,19 @@ Task* CreateTask(Task* parentTask, Predicate&& threadedFunction);
 
 void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor, const DELEGATE<void, const Task*, U32/*start*/, U32/*end*/>& cbk);
 
+namespace Attorney {
+    class MainThreadTaskPool
+    {
+        static size_t flushCallbackQueue(TaskPool& pool)
+        {
+            return pool.flushCallbackQueue();
+        }
+        
+        friend class Divide::Kernel;
+        friend class Divide::TaskUTWrapper;
+        friend class Divide::PlatformContext;
+    };
+} //namespace Attorney
 } //namespace Divide
 
 #endif //DVD_TASK_POOL_H_

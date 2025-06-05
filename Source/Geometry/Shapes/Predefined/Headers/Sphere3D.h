@@ -54,7 +54,7 @@ DEFINE_3D_OBJECT_TYPE( Sphere3D, SceneNodeType::TYPE_SPHERE_3D )
     PROPERTY_R(U32, resolution, 16u);
 
   private:
-    void rebuildInternal() override;
+    void rebuildInternal();
     const ResourceDescriptor<Sphere3D> _descriptor;
 };
 

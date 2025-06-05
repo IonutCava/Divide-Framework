@@ -123,6 +123,7 @@ namespace Divide
         if ( handle != INVALID_HANDLE<T> )
         {
             _deletionQueue.enqueue(handle);
+            ResourceCache::s_deletionQueueDirty.store(true, std::memory_order_release);
             handle = INVALID_HANDLE<T>;
         }
     }

@@ -47,11 +47,6 @@ namespace Divide
     void GLStateTracker::setDefaultState()
     {
         _activeState = {};
-        for (auto& scope : _debugScope)
-        {
-            scope = {};
-        }
-        _debugScopeDepth = 0u;
         _attributeHash = 0u;
         _activePipeline = nullptr;
         _activeShaderProgram = nullptr;

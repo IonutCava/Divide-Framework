@@ -98,7 +98,7 @@ namespace Divide
 
         if ( readOnly )
         {
-            PushReadOnly(false);
+            ImGui::BeginDisabled();
         }
 
         if ( ImGui::BeginMainMenuBar() )
@@ -374,7 +374,7 @@ namespace Divide
                         nodeDescriptor.enumValue( Util::FLOAT_TO_UINT( sphereRadius ) );
 
                         Handle<Sphere3D> handleTmp = CreateResource( nodeDescriptor );
-                        materialHandle = Get( handleTmp )->getMaterialTpl();
+                        materialHandle = Get( handleTmp )->getMaterialTemplate();
                         handle = FromHandle(handleTmp);
                     } break;
                     case SceneNodeType::TYPE_BOX_3D:
@@ -389,7 +389,7 @@ namespace Divide
                         );
 
                         const Handle<Box3D> handleTmp = CreateResource( nodeDescriptor );
-                        materialHandle = Get( handleTmp )->getMaterialTpl();
+                        materialHandle = Get( handleTmp )->getMaterialTemplate();
                         handle = FromHandle(handleTmp);
                     } break;
                     case SceneNodeType::TYPE_QUAD_3D:
@@ -402,7 +402,7 @@ namespace Divide
                         nodeDescriptor.mask( quadMask );
                         const float3 halfSides = sides * 0.5f;
                         const Handle<Quad3D> handleTmp = CreateResource( nodeDescriptor );
-                        materialHandle = Get( handleTmp )->getMaterialTpl();
+                        materialHandle = Get( handleTmp )->getMaterialTemplate();
                         handle = FromHandle( handleTmp );
 
                         ResourcePtr<Quad3D> node = Get( handleTmp );
@@ -475,7 +475,7 @@ namespace Divide
                         ImGui::SameLine();
                         if ( g_nodeDescriptor._name.empty() )
                         {
-                            PushReadOnly();
+                            ImGui::BeginDisabled();
                         }
                         if ( ImGui::Button( "Create", ImVec2( 120, 0 ) ) )
                         {
@@ -485,7 +485,7 @@ namespace Divide
                         }
                         if ( g_nodeDescriptor._name.empty() )
                         {
-                            PopReadOnly();
+                            ImGui::EndDisabled();
                         }
 
                         std::memset( buf, 0, 64 * sizeof( char ) );
@@ -503,7 +503,7 @@ namespace Divide
 
         if (readOnly)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
     }
 
@@ -693,7 +693,7 @@ namespace Divide
             {
                 for ( auto platform : Editor::g_supportedExportPlatforms )
                 {
-                    PushReadOnly(true);
+                    ImGui::BeginDisabled();
                     if ( ImGui::MenuItem( platform, "", false, true ) )
                     {
                         if ( hasUnsavedElements )
@@ -703,7 +703,7 @@ namespace Divide
                         Attorney::EditorGeneralWidget::showStatusMessage( _context.editor(), Util::StringFormat( "Exported game for [ {} ]!", platform ), Time::SecondsToMilliseconds<F32>( 3.0f ), false );
                         break;
                     }
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
 
                 ImGui::EndMenu();

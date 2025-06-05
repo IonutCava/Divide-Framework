@@ -23,7 +23,7 @@ void StatusBar::draw(const bool readOnly) const
 
     if (readOnly)
     {
-        PushReadOnly(false);
+        ImGui::BeginDisabled();
     }
 
     if (ImGui::BeginViewportSideBar("##MainStatusBar", viewport, ImGuiDir_Down, ImGui::GetFrameHeight(), window_flags))
@@ -50,7 +50,7 @@ void StatusBar::draw(const bool readOnly) const
     }
     if (readOnly)
     {
-        PopReadOnly();
+        ImGui::EndDisabled();
     }
 }
 

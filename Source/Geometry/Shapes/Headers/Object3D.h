@@ -42,33 +42,17 @@ namespace Divide {
 class BoundingBox;
 enum class RigidBodyShape : U8;
 
-[[nodiscard]] FORCE_INLINE constexpr PrimitiveTopology GetGeometryBufferType(const SceneNodeType type) noexcept
-{
-    if ( !Is3DObject( type ) ) [[unlikely]]
-    {
-        return PrimitiveTopology::COUNT;
-    }
-    if (type == SceneNodeType::TYPE_BOX_3D ||
-        type == SceneNodeType::TYPE_MESH ||
-        type == SceneNodeType::TYPE_SUBMESH)
-    {
-        return PrimitiveTopology::TRIANGLES;
-    }
-
-    return PrimitiveTopology::TRIANGLE_STRIP;
-}
-
 DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 {
    public:
 
     explicit Object3D( const ResourceDescriptorBase& descriptor, SceneNodeType type);
 
-    void setMaterialTpl( Handle<Material> material) override;
+    void setMaterialTemplate( Handle<Material> material, const AttributeMap & geometryAttributes ) override;
 
-    [[nodiscard]] const VertexBuffer_ptr& geometryBuffer();
+    [[nodiscard]] virtual VertexBuffer* geometryBuffer();
 
-    inline void geometryBuffer(const VertexBuffer_ptr& vb) noexcept { _geometryBuffer = vb; }
+    VertexBuffer* geometryBuffer(GFXDevice& context, const VertexBuffer::Descriptor& descriptor) noexcept;
 
     [[nodiscard]] U8 getGeometryPartitionCount() const noexcept {
         U8 ret = 0;
@@ -116,14 +100,11 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
-    PROPERTY_RW(bool, geometryDirty, true);
     PROPERTY_R_IW(bool, playAnimationsOverride, false);
 
    protected:
     // Create a list of triangles from the vertices + indices lists based on primitive type
     [[nodiscard]] bool computeTriangleList(U16 partitionID, bool force = false);
-
-    virtual void rebuildInternal();
 
     void prepareRender(SceneGraphNode* sgn,
                     RenderingComponent& rComp,
@@ -141,7 +122,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition
     vector<vector<uint3>> _geometryTriangles;
-    VertexBuffer_ptr _geometryBuffer = nullptr;
+    VertexBuffer_uptr _geometryBuffer = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Object3D);

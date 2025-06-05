@@ -152,12 +152,21 @@ struct Console : NonCopyable
 
         static void FlushOutputStreams();
     private:
+
+        enum class StreamType : U8
+        {
+            STD_FILE = 0,
+            ERR_FILE,
+            COUNT
+        };
+
         static std::ofstream                     s_logStream;
         static std::ofstream                     s_errorStream;
         static SharedMutex                       s_callbackLock;
         static vector<ConsolePrintCallbackEntry> s_guiConsoleCallbacks;
         static U32                               s_flags;
         static std::atomic_bool                  s_running;
+        static std::array<bool, to_base(StreamType::COUNT)> s_streamDirty;
 };
 
 namespace Names

@@ -38,6 +38,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide {
+    struct Configuration;
+
     struct VertexInputDescription {
 
         vector<VkVertexInputBindingDescription> bindings;
@@ -53,7 +55,7 @@ namespace Divide {
         explicit VMABuffer( BufferParams params );
         ~VMABuffer();
 
-        const BufferParams _params{};
+        BufferParams _params{};
         VkBuffer _buffer{ VK_NULL_HANDLE };
         VmaAllocation _allocation{ VK_NULL_HANDLE };
         VmaAllocationInfo _allocInfo{};
@@ -66,10 +68,10 @@ namespace Divide {
     struct vkBufferImpl final : public VMABuffer, public LockableBuffer, private NonCopyable
     {
         explicit vkBufferImpl( const BufferParams& params,
-                            size_t alignedBufferSize,
-                            size_t ringQueueLength,
-                            std::pair<bufferPtr, size_t> initialData,
-                            const char* bufferName) noexcept;
+                               size_t alignedBufferSize,
+                               size_t ringQueueLength,
+                               std::pair<bufferPtr, size_t> initialData,
+                               const char* bufferName) noexcept;
         BufferLock writeBytes( BufferRange<> range,
                                VkAccessFlags2 dstAccessMask,
                                VkPipelineStageFlags2 dstStageMask,

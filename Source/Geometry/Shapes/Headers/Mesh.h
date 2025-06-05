@@ -92,7 +92,7 @@ DEFINE_3D_OBJECT_TYPE(Mesh, SceneNodeType::TYPE_MESH)
     bool postLoad() override;
     bool load( PlatformContext& context ) override;
     bool unload() override;
-    void setMaterialTpl(Handle<Material> material) override;
+    void setMaterialTemplate(Handle<Material> material, const AttributeMap& geometryAttributes) override;
 
     void setAnimationCount(size_t count, bool useDualQuaternions);
 
@@ -126,6 +126,11 @@ namespace Attorney
         static void addSubMesh(Mesh& parentMesh, const Handle<SubMesh> subMesh, const U32 index)
         {
             parentMesh.addSubMesh(subMesh, index);
+        }
+
+        static void geometryBuffer(Mesh& mesh, VertexBuffer_uptr& vb)
+        {
+            mesh._geometryBuffer.reset(vb.release());
         }
 
         friend class Divide::MeshImporter;

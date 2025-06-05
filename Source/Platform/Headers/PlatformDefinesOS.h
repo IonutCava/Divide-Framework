@@ -47,10 +47,16 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Unknow operating system!"
 #endif
 
+#define DIVIDE_USE_FALLBACK_ASSUME_MACRO 1
+
 // Everyone agreed on this one. Yay!
 #ifndef RESTRICT
 #define RESTRICT __restrict
 #endif //RESTRICT
+
+#if defined(__has_cpp_attribute) and __has_cpp_attribute(assume) >= 202207L
+#   define DIVIDE_ASSUME(...) [[assume(__VA_ARGS__)]]
+#endif //defined(__has_cpp_attribute) and __has_cpp_attribute(assume) >= 202207L
 
 #ifdef USING_MSVC
 
@@ -66,6 +72,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define NOINITVTABLE_CLASS(X) class __declspec(novtable) X
 #define NOINITVTABLE_STRUCT(X) struct __declspec(novtable) X
 #endif  //NOINITVTABLE
+
+#ifndef DIVIDE_ASSUME
+#define DIVIDE_ASSUME(...) do { __assume(__VA_ARGS__); } while(0)
+#endif //DIVIDE_ASSUME
 
 #else //USING_MSVC
 
@@ -84,6 +94,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define NOINITVTABLE_STRUCT(X) __declspec(novtable) struct X
 #endif  //NOINITVTABLE
 
+#ifndef DIVIDE_ASSUME
+#define DIVIDE_ASSUME(...) do {  __builtin_assume(__VA_ARGS__); } while(0)
+#endif //DIVIDE_ASSUME
+
 #else //USING_CLANG
 
 // GCC does not have this attribute
@@ -92,10 +106,26 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define NOINITVTABLE_STRUCT(X) struct X
 #endif  //NOINITVTABLE
 
+#ifndef DIVIDE_ASSUME
+#   if defined(__GNUC__) && __GNUC__ >= 13
+#       define DIVIDE_ASSUME(...) __attribute__((__assume__(__VA_ARGS__)))
+#   else
+#       define DIVIDE_ASSUME(...) __builtin_assume(__VA_ARGS__)
+#   endif
+#endif //DIVIDE_ASSUME
+
 #endif //USING_CLANG
 
 #endif //USING_MSVC
 
+#if !defined(DIVIDE_ASSUME)
+#   if DIVIDE_USE_FALLBACK_ASSUME_MACRO
+#       include <utility>
+#       define DIVIDE_ASSUME(...) do { if (!bool(__VA_ARGS__)) { ::std::unreachable(); } } while(0)
+#   else   
+#       define DIVIDE_ASSUME(...)
+#   endif
+#endif // !defined(DIVIDE_ASSUME)
 
 #ifndef STR_CAT
 #define STR_CAT(STR1, STR2) STR1 STR2
@@ -205,5 +235,17 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SDL_WINDOW_SURFACE_VSYNC_ENABLED
 #define SDL_WINDOW_SURFACE_VSYNC_ENABLED 1
 #endif //SDL_WINDOW_SURFACE_VSYNC_ENABLED
+
+//ref: https://stackoverflow.com/questions/77581378/with-c11-how-can-i-generate-a-warning-message-in-a-manner-that-works-in-gcc
+#define EMIT_COMPILER_WARNING_STRINGIFY0(x) #x
+#define EMIT_COMPILER_WARNING_STRINGIFY1(x) EMIT_COMPILER_WARNING_STRINGIFY0(x)
+#ifdef __GNUC__
+#define EMIT_COMPILER_WARNING_COMPOSE(x) GCC warning x
+#else
+#define EMIT_COMPILER_MESSAGE_PREFACE(type) \
+    __FILE__ "(" EMIT_COMPILER_WARNING_STRINGIFY1(__LINE__) "): " type ": "
+#define EMIT_COMPILER_WARNING_COMPOSE(x) message(EMIT_COMPILER_MESSAGE_PREFACE("warning C0000") x)
+#endif
+#define WARNING(x) _Pragma(EMIT_COMPILER_WARNING_STRINGIFY1(EMIT_COMPILER_WARNING_COMPOSE(x)))
 
 #endif //DVD_PLATFORM_DEFINES_OS_H_

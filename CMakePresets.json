@@ -193,6 +193,15 @@
             "inherits": [ "windows-msvc-instrumentation", "editor-build" ]
         },
         {
+            "name": "windows-msvc-editor-instrumentation-verbose",
+            "displayName": "Editor Build (MSVC) + Instrumentation",
+            "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "windows-msvc-instrumentation", "editor-build" ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
             "name": "windows-clang-editor",
             "displayName": "Editor Build (Win64 - CLANG)",
             "description": "Target Windows with the clang compiler. Editor build.",
@@ -209,6 +218,15 @@
             "displayName": "Editor Build (Win64 - CLANG) + Instrumentation",
             "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled.",
             "inherits": [ "windows-clang-instrumentation", "editor-build" ]
+        },
+        {
+            "name": "windows-clang-editor-instrumentation-verbose",
+            "displayName": "Editor Build (Win64 - CLANG) + Instrumentation",
+            "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "windows-clang-instrumentation", "editor-build" ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
         },
         {
             "name": "windows-clang-editor-asan-ubsan",
@@ -235,6 +253,15 @@
             "inherits": [ "linux-gcc-instrumentation", "editor-build" ]
         },
         {
+            "name": "linux-gcc-editor-instrumentation-verbose",
+            "displayName": "Editor Build (GCC) + Instrumentation",
+            "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "linux-gcc-instrumentation", "editor-build" ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
             "name": "linux-clang-editor",
             "displayName": "Editor Build (CLANG)",
             "description": "Target Linux OS with the clang compiler. Editor build.",
@@ -259,10 +286,28 @@
             "inherits": [ "linux-clang-instrumentation", "editor-build" ]
         },
         {
+            "name": "linux-clang-editor-instrumentation-verbose",
+            "displayName": "Editor Build (CLANG) + Instrumentation",
+            "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled.",
+            "inherits": [ "linux-clang-instrumentation", "editor-build" ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
             "name": "macos-clang-editor",
             "displayName": "Editor Build (MacOS - CLANG)",
             "description": "Target macOS with the clang compiler. Editor build.",
             "inherits": [ "macos-clang", "editor-build" ]
+        },
+        {
+            "name": "macos-clang-editor-verbose",
+            "displayName": "Editor Build (MacOS - CLANG)",
+            "description": "Target macOS with the clang compiler. Editor build.",
+            "inherits": [ "macos-clang", "editor-build" ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -280,6 +325,12 @@
             "name": "windows-msvc-release-editor",
             "configurePreset": "windows-msvc-editor",
             "configuration": "Release"
+        },
+        {
+            "name": "windows-msvc-debug-editor-instrumentation-verbose",
+            "configurePreset": "windows-msvc-editor-instrumentation-verbose",
+            "configuration": "Debug",
+            "verbose":  true
         },
         {
             "name": "windows-msvc-debug-editor-instrumentation",
@@ -347,6 +398,12 @@
             "configuration": "Release"
         },
         {
+            "name": "windows-clang-debug-editor-instrumentation-verbose",
+            "configurePreset": "windows-clang-editor-instrumentation-verbose",
+            "configuration": "Debug",
+            "verbose": true
+        },
+        {
             "name": "windows-clang-debug-editor-instrumentation",
             "configurePreset": "windows-clang-editor-instrumentation",
             "configuration": "Debug"
@@ -410,6 +467,12 @@
             "name": "linux-gcc-release-editor",
             "configurePreset": "linux-gcc-editor",
             "configuration": "Release"
+        },
+        {
+            "name": "linux-gcc-debug-editor-instrumentation-verbose",
+            "configurePreset": "linux-gcc-editor-instrumentation-verbose",
+            "configuration": "Debug",
+            "verbose": true
         },
         {
             "name": "linux-gcc-debug-editor-instrumentation",
@@ -477,6 +540,12 @@
             "configuration": "Release"
         },
         {
+            "name": "linux-clang-debug-editor-instrumentation-verbose",
+            "configurePreset": "linux-clang-editor-instrumentation-verbose",
+            "configuration": "Debug",
+            "verbose": true
+        },
+        {
             "name": "linux-clang-debug-editor-instrumentation",
             "configurePreset": "linux-clang-editor-instrumentation",
             "configuration": "Debug"
@@ -540,6 +609,12 @@
             "name": "macos-clang-debug-editor",
             "configurePreset": "macos-clang-editor",
             "configuration": "Debug"
+        },
+        {
+            "name": "macos-clang-debug-editor-verbose",
+            "configurePreset": "macos-clang-editor-verbose",
+            "configuration": "Debug",
+            "verbose": true
         }
     ],
     "testPresets": [

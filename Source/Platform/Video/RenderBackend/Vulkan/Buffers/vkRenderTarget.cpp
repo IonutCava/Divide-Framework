@@ -43,14 +43,14 @@ namespace Divide
 
     void vkRenderTarget::blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         if ( source == nullptr || !IsValid(params) )
         {
             return;
         }
 
-        VK_API::PushDebugMessage(cmdBuffer, "vkRrenderTarget::blitFrom");
+        VK_API::PushDebugMessage(_context.context().config(), cmdBuffer, "vkRrenderTarget::blitFrom");
 
         vkRenderTarget* output = this;
         [[maybe_unused]] const vec2<U16> outputDim = output->_descriptor._resolution;
@@ -205,12 +205,12 @@ namespace Divide
             }
         }
 
-        VK_API::PopDebugMessage( cmdBuffer );
+        VK_API::PopDebugMessage( _context.context().config(), cmdBuffer );
     }
 
     void vkRenderTarget::transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTTransitionMask& transitionMask, const bool toWrite )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         DIVIDE_ASSERT( descriptor._mipWriteLevel != INVALID_INDEX );
 
@@ -426,7 +426,7 @@ namespace Divide
 
     void vkRenderTarget::begin( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         static RTTransitionMask s_defaultTransitionMask = {true, true, true, true, true };
 

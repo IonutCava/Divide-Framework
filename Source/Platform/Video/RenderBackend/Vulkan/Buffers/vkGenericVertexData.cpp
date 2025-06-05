@@ -3,6 +3,7 @@
 #include "Headers/vkGenericVertexData.h"
 #include "Headers/vkBufferImpl.h"
 
+#include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/Headers/LockManager.h"
@@ -25,16 +26,18 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( params._bufferParams._usageType != BufferUsageType::COUNT );
+        DIVIDE_ASSERT( params._usageType != BufferUsageType::COUNT );
+
+        BufferLock ret = GPUBuffer::setBuffer( params );
 
         LockGuard<SharedMutex> w_lock(_bufferLock);
         if (_internalBuffer != nullptr)
         {
             const auto& existingParams = _internalBuffer->_params;
-            if (params._bufferParams._elementCount == 0u || // We don't need indices anymore
-                existingParams._elementCount < params._bufferParams._elementCount || // Buffer not big enough
-                existingParams._updateFrequency != params._bufferParams._updateFrequency || // Buffer update frequency changed
-                existingParams._elementSize != params._bufferParams._elementSize)  //Different element size
+            if (params._elementCount == 0u || // We don't need indices anymore
+                existingParams._elementCount < params._elementCount || // Buffer not big enough
+                existingParams._updateFrequency != params._updateFrequency || // Buffer update frequency changed
+                existingParams._elementSize != params._elementSize)  //Different element size
             {
                 _internalBuffer.reset();
             }
@@ -42,32 +45,32 @@ namespace Divide {
 
         firstIndexOffsetCount(0u);
 
-        if (params._bufferParams._usageType == BufferUsageType::INDEX_BUFFER &&
-            params._bufferParams._elementCount == 0u)
+        if (params._usageType == BufferUsageType::INDEX_BUFFER &&
+            params._elementCount == 0u)
         {
-            return BufferLock{};
+            return ret;
         }
 
         const size_t ringSizeFactor = queueLength();
-        const size_t bufferSizeInBytes = params._bufferParams._elementCount * params._bufferParams._elementSize;
+        const size_t bufferSizeInBytes = params._elementCount * params._elementSize;
         const bufferPtr data = params._initialData.first;
 
         if (_internalBuffer != nullptr &&
-            _internalBuffer->_params._elementSize == params._bufferParams._elementSize &&
-            _internalBuffer->_params._hostVisible == params._bufferParams._hostVisible &&
-            _internalBuffer->_params._updateFrequency == params._bufferParams._updateFrequency &&
-            _internalBuffer->_params._elementCount >= params._bufferParams._elementCount)
+            _internalBuffer->_params._elementSize == params._elementSize &&
+            _internalBuffer->_params._hostVisible == params._hostVisible &&
+            _internalBuffer->_params._updateFrequency == params._updateFrequency &&
+            _internalBuffer->_params._elementCount >= params._elementCount)
         {
-            return updateBuffer(0, params._bufferParams._elementCount, params._initialData.first);
+            return updateBuffer(0, params._elementCount, params._initialData.first);
         }
 
-        const bool isIndexBuffer = params._bufferParams._usageType == BufferUsageType::INDEX_BUFFER;
+        const bool isIndexBuffer = params._usageType == BufferUsageType::INDEX_BUFFER;
 
-        _internalBuffer = std::make_unique<vkBufferImpl>(params._bufferParams,
+        _internalBuffer = std::make_unique<vkBufferImpl>(params,
                                                          bufferSizeInBytes,
                                                          ringSizeFactor,
                                                          std::make_pair(data, data == nullptr ? 0u : bufferSizeInBytes),
-                                                          _name.empty() ? Util::StringFormat("Generic_VK_{}_buffer_{}", isIndexBuffer ? "IDX" : "VB", getGUID()).c_str() : _name.c_str());
+                                                         _name.empty() ? Util::StringFormat("Generic_VK_{}_buffer_{}", isIndexBuffer ? "IDX" : "VB", getGUID()).c_str() : _name.c_str());
 
         for (U32 i = 1u; i < ringSizeFactor; ++i)
         {
@@ -80,12 +83,10 @@ namespace Divide {
 
         _context.getPerformanceMetrics()._gpuBufferCount = TotalBufferCount();
 
-        return BufferLock
-        {
-            ._range = {0u, bufferSizeInBytes * ringSizeFactor},
-            ._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ,
-            ._buffer = _internalBuffer.get()
-        };
+        ret._range = {0u, bufferSizeInBytes * ringSizeFactor};
+        ret._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ;
+        ret._buffer = _internalBuffer.get();
+        return ret;
     }
 
     BufferLock vkGPUBuffer::updateBuffer( const U32 elementCountOffset,

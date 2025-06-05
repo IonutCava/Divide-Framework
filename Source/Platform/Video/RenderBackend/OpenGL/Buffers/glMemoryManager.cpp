@@ -12,41 +12,12 @@ namespace GLMemory {
 
 namespace
 {
-    namespace detail
-    {
-        constexpr size_t zeroDataBaseSize = Bytes::Mega(64u);
-    };
-
-    eastl::vector<Byte> g_zeroData( detail::zeroDataBaseSize, Byte_ZERO );
     std::atomic_uint g_bufferCount{0u};
 }
 
-Byte* GetZeroData( const size_t bufferSize )
+void OnFrameEnd([[maybe_unused]] const U64 frameCount )
 {
-    while ( g_zeroData.size() < bufferSize )
-    {
-        g_zeroData.resize( g_zeroData.size() + detail::zeroDataBaseSize, Byte_ZERO );
-    }
-
-    return g_zeroData.data();
-}
-
-void OnFrameEnd(const U64 frameCount )
-{
-    constexpr U64 memoryCleanInterval = 256u;
-
-    thread_local U64 lastSyncedFrame = 0u;
-
-    if ( frameCount - lastSyncedFrame > memoryCleanInterval )
-    {
-        // This may be quite large at this point, so clear it to claim back some RAM
-        if (g_zeroData.size() >= detail::zeroDataBaseSize * 4 )
-        {
-            g_zeroData.set_capacity( 0 );
-        }
-
-        lastSyncedFrame = frameCount;
-    }
+    NOP();
 }
 
 U32 TotalBufferCount()
@@ -332,7 +303,11 @@ void createAndAllocateBuffer( gl46core::GLuint& bufferIdOut,
 
     DIVIDE_ASSERT(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
     const bool hasAllSourceData = initialData.second == alignedSize && initialData.first != nullptr;
-    gl46core::glNamedBufferStorage(bufferIdOut, alignedSize, hasAllSourceData ? initialData.first : GLMemory::GetZeroData(alignedSize), storageMask);
+    gl46core::glNamedBufferStorage(bufferIdOut, alignedSize, hasAllSourceData ? initialData.first : nullptr, storageMask);
+    if ( !hasAllSourceData )
+    {   gl46core::GLuint zero = 0;
+        gl46core::glClearNamedBufferData(bufferIdOut, gl46core::GL_R8, gl46core::GL_RED, gl46core::GL_UNSIGNED_BYTE, &zero);
+    }
 }
 
 void createAndAllocateMappedBuffer( gl46core::GLuint& bufferIdOut,

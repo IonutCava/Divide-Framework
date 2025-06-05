@@ -114,17 +114,17 @@ struct DeviceInformation
         U8 _variant { 0u };
     };
 
-    U32 _maxWorgroupCount[3] = {65535u, 65535u, 65535u};
-    U32 _maxWorgroupSize[3] = {1024u, 1024u, 64u};
-    U32 _maxWorgroupInvocations = 1024u;
+    U32 _maxWorkgroupCount[3] = {65535u, 65535u, 65535u};
+    U32 _maxWorkgroupSize[3] = {1024u, 1024u, 64u};
+    U32 _maxWorkgroupInvocations = 1024u;
 
-    U32 _maxMeshWorgroupCount[3] = { 65535u, 65535u, 65535u };
-    U32 _maxMeshWorgroupSize[3] = { 1024u, 1024u, 64u };
-    U32 _maxMeshWorgroupInvocations = 1024u;
+    U32 _maxMeshWorkgroupCount[3] = { 65535u, 65535u, 65535u };
+    U32 _maxMeshWorkgroupSize[3] = { 1024u, 1024u, 64u };
+    U32 _maxMeshWorkgroupInvocations = 1024u;
 
-    U32 _maxTaskWorgroupCount[3] = { 65535u, 65535u, 65535u };
-    U32 _maxTaskWorgroupSize[3] = { 1024u, 1024u, 64u };
-    U32 _maxTaskWorgroupInvocations = 1024u;
+    U32 _maxTaskWorkgroupCount[3] = { 65535u, 65535u, 65535u };
+    U32 _maxTaskWorkgroupSize[3] = { 1024u, 1024u, 64u };
+    U32 _maxTaskWorkgroupInvocations = 1024u;
 
     size_t _maxSizeBytesUBO = 64 * 1024;
     size_t _maxSizeBytesSSBO = 1024 * 1024 * 1024u;
@@ -195,7 +195,7 @@ protected:
     virtual void initDescriptorSets() = 0;
     
     virtual RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor ) const = 0;
-    virtual GPUBuffer_ptr     newGPUBuffer( U32 ringBufferLength, std::string_view name ) const = 0;
+    virtual GPUBuffer_uptr    newGPUBuffer( U32 ringBufferLength, std::string_view name ) const = 0;
     virtual ShaderBuffer_uptr newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const = 0;
 };
 

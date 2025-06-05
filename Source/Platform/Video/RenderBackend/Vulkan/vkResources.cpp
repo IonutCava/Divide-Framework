@@ -184,7 +184,7 @@ namespace Divide
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_FAN )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
-            vkPrimitiveTypeTable[to_base( PrimitiveTopology::LINES_ADJANCENCY )] = VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+            vkPrimitiveTypeTable[to_base( PrimitiveTopology::LINES_ADJACENCY )] = VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::LINE_STRIP_ADJACENCY )] = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES_ADJACENCY )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
             vkPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY )] = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;

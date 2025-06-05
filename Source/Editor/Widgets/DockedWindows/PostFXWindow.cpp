@@ -34,7 +34,7 @@ namespace
         ImGui::PushID(4321234 + id++);
         if (readOnly)
         {
-            PushReadOnly();
+            ImGui::BeginDisabled();
         }
         if (ImGui::SmallButton("T"))
         {
@@ -46,7 +46,7 @@ namespace
         }
         if (readOnly)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
         ImGui::PopID();
         return ret;
@@ -248,7 +248,7 @@ namespace
             }
             if (!blur)
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             F32 blurThreshold = ssaoOp.blurThreshold();
             if (ImGui::SliderFloat("Blur threshold", &blurThreshold, 0.001f, 0.999f))
@@ -271,7 +271,7 @@ namespace
             }
             if (!blur)
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
             ImGui::Text("SSAO Sample Count: %d", ssaoOp.sampleCount());
         }
@@ -377,7 +377,7 @@ namespace
 
             if (autoFocus)
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             F32& focalDepth = params.focalDepth;
             if (ImGui::SliderFloat("Focal Depth (m)", &focalDepth, 0.0f, 100.0f))
@@ -395,7 +395,7 @@ namespace
             }
             if (autoFocus)
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
 
             bool& manualdof = params.manualdof;
@@ -405,7 +405,7 @@ namespace
             }
             if (!manualdof)
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             F32& ndofstart = params.ndofstart;
             if (ImGui::SliderFloat("Near dof blur start", &ndofstart, 0.0f, 100.0f))
@@ -429,7 +429,7 @@ namespace
             }
             if (!manualdof)
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
             bool& vignetting = params.vignetting;
             if (ImGui::Checkbox("Use optical lens vignetting", &vignetting))
@@ -438,7 +438,7 @@ namespace
             }
             if (!vignetting)
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             F32& vignout = params.vignout;
             if (ImGui::SliderFloat("Vignetting outer border", &vignout, 0.0f, 100.0f))
@@ -452,7 +452,7 @@ namespace
             }
             if (!vignetting)
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
           
             bool& debugFocus = params.debugFocus;
@@ -496,7 +496,7 @@ namespace
             }
             if (!useThreshold)
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             F32 threshold = bloomOp.threshold();
             if (ImGui::SliderFloat("Threshold", &threshold, 0.001f, 15.f))
@@ -510,7 +510,7 @@ namespace
             }
             if (!useThreshold)
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
         }
 
@@ -544,7 +544,7 @@ namespace
             ToneMapParams params = batch.toneMapParams();
             if (!adaptiveExposure)
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
 
             if (ImGui::SliderFloat("Min Log Luminance", &params._minLogLuminance, -16.0f, 0.0f))
@@ -576,7 +576,7 @@ namespace
             }
             if (!adaptiveExposure)
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
 
             if (ImGui::SliderFloat("Manual exposure", &params._manualExposureFactor, 0.01f, 100.0f))
