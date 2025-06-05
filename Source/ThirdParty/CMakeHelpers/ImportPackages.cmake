@@ -101,8 +101,8 @@ set(UNIT_TEST_LIGHT TRUE)
 set(BUILD_SAMPLES FALSE)
 FetchContent_Declare(
     chaiscript
-    GIT_REPOSITORY https://github.com/ChaiScript/ChaiScript.git
-    GIT_TAG        406a7ba1ef144d67021a68b1ba09224244a761ca
+    GIT_REPOSITORY https://github.com/IonutCava/ChaiScript.git
+    GIT_TAG        b9e65ee927e2c461cb197197f407a17488b7a3a3
     #GIT_PROGRESS   TRUE
     SYSTEM
 )
