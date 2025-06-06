@@ -59,39 +59,57 @@ class TaskPool final : public GUIDWrapper {
   public:
      constexpr static bool IsBlocking = true;
      using QueueType = std::conditional_t<IsBlocking, moodycamel::BlockingConcurrentQueue<PoolTask>, moodycamel::ConcurrentQueue<PoolTask>>;
-
+ 
   public:
-
     explicit TaskPool(std::string_view workerName);
     ~TaskPool();
 
-    bool init(size_t threadCount, DELEGATE<void, size_t, const std::thread::id&>&& onThreadCreate = {});
-    void shutdown();
-
+  public:
+    /// <summary>
+    /// Allocates a new Task and assigns it a delegate function to execute. A parent task can be optionally specified, which will be used to track dependencies between tasks.
+    /// </summary>
+    /// <param name="parentTask">A pointer to the parent Task, or nullptr if there is no parent.</param>
+    /// <param name="func">A delegate representing the function to be executed by the new Task. The delegate takes a reference to the Task as its parameter.</param>
+    /// <returns>A pointer to the newly allocated Task.</returns>
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept;
 
-    /// Returns the number of callbacks processed
-    size_t flushCallbackQueue();
-    void waitForAllTasks(bool flushCallbacks);
+    /// <summary>
+    /// Initializes the thread pool with a specified number of threads (must be >0) and an optional callback for thread creation.
+    /// If the pool is already initialized, this function will shutdown existing threads cleanly (finishing off any pending tasks) and recreate them.
+    /// </summary>
+    /// <param name="threadCount">The number of threads to create and initialize.</param>
+    /// <param name="onThreadCreate">An optional delegate that is called when a thread is created. Receives the thread index and the thread's ID as arguments.</param>
+    /// <returns>True if initialization succeeds; otherwise, false.</returns>
+    bool init(size_t threadCount, DELEGATE<void, size_t, const std::thread::id&>&& onThreadCreate = {});
 
+    /// <summary>
+    /// Shuts down the thread pool, waiting for all tasks to finish and cleaning up resources.
+    /// </summary>
+    void shutdown();
+
+
+    /// <summary>
+    /// Flushes the callback queue, executing all pending callbacks. Must be called from the main thread.
+    /// </summary>
+    /// <returns>Returns the number of callbacks processed</returns>
+    size_t flushCallbackQueue();
+
+    /// <summary>
     /// Called by a task that isn't doing anything (e.g. waiting on child tasks).
     /// Use this to run another task (if any) and return to the previous execution point
-    /// Returns true if a task was executed, false otherwise.
+    /// </summary>
+    /// <returns>Returns true if a task was executed, false otherwise.</returns>
     bool threadWaiting();
 
-    /// Reinitializes the thread pool (joins and closes out all existing threads first)
-    void init();
-    /// Join all of the threads and block until all running tasks have completed.
-    void join();
 
-    /// Wait for all running jobs to finish
-    void wait() const noexcept;
+    /// <summary>
+    /// Wait for all jobs to finish and optionally flush the callback queue.
+    /// </summary>
+    /// <param name="flushCallbacks">Optional parameter.  If flushCallbacks is true, this function MUST BE CALLED FROM THE MAIN THREAD as it will call flushCallbackQueue() internally</param>
+    void waitForAllTasks(bool flushCallbacks = false);
 
-    /// Returns false if there were no available tasks to run
-    bool executeOneTask( bool isIdleCall );
 
     PROPERTY_R( vector<std::thread>, threads );
-
 
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
@@ -103,9 +121,13 @@ class TaskPool final : public GUIDWrapper {
     void enqueue(Task& task, TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
     void runTask(Task& task, bool hasCompletionCallback);
 
+    /// Join all of the threads and block until all running tasks have completed.
+    void join();
     bool deque( bool isIdleCall, PoolTask& taskOut, TaskPriority& priorityOut );
     bool dequeInternal( const TaskPriority& priorityIn, bool isIdleCall, PoolTask& taskOut );
     void waitForTask(const Task& task);
+    /// Returns false if there were no available tasks to run
+    bool executeOneTask( bool isIdleCall );
 
     QueueType& getQueue(TaskPriority priority) noexcept;
 
