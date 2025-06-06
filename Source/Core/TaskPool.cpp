@@ -48,7 +48,6 @@ namespace Divide
                     const auto threadName = Util::StringFormat( "{}_{}", _threadNamePrefix, idx );
                     Profiler::OnThreadStart( threadName );
 
-                    _activeThreads.fetch_add( 1u ) ;
 
                     SetThreadName( threadName );
 
@@ -57,6 +56,7 @@ namespace Divide
                         onThreadCreateCbk( idx, std::this_thread::get_id() );
                     }
 
+                    _activeThreads.fetch_add( 1u ) ;
                     while ( _isRunning.load() )
                     {
                         if ( !executeOneTask( false ) )
@@ -65,29 +65,74 @@ namespace Divide
                         }
                     }
 
-                    _activeThreads.fetch_sub( 1u );
                     Profiler::OnThreadStop();
+                    _activeThreads.fetch_sub( 1u );
                 }
             );
         }
 
-        WAIT_FOR_CONDITION(_activeThreads.load() == threadCount);
+        WAIT_FOR_CONDITION(_activeThreads.load() == threadCount, false);
         
         return true;
     }
 
     void TaskPool::shutdown()
     {
-        wait();
         join();
-        waitForAllTasks( true );
         efficient_clear( _threads );
         _taskCallbacks.resize(0);
+    }
+
+    void TaskPool::waitForAllTasks(const bool flushCallbacks)
+    {
+        PROFILE_SCOPE_AUTO(Profiler::Category::Threading);
+
+        if (!_isRunning.load())
+        {
+            return;
+        }
+
+        if (_runningTaskCount.load() > 0u)
+        {
+            UniqueLock<Mutex> lock(_taskFinishedMutex);
+            _taskFinishedCV.wait(lock, [this]() noexcept
+            {
+                return _runningTaskCount.load() == 0u;
+            });
+        }
+
+        if (flushCallbacks)
+        {
+            DIVIDE_ASSERT(Runtime::isMainThread());
+            flushCallbackQueue();
+        }
+    }
+
+    void TaskPool::join()
+    {
+        waitForAllTasks( true );
+
+        _isRunning.store(false);
+
+        WAIT_FOR_CONDITION(_activeThreads.load() == 0u, false);
+
+        for (std::thread& thread : _threads)
+        {
+            if (thread.joinable())
+            {
+                thread.join();
+            }
+
+        }
+
+        WAIT_FOR_CONDITION(_activeThreads.load() == 0u, false);
     }
 
     void TaskPool::enqueue( Task& task, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
+
+        DIVIDE_ASSERT(_isRunning.load(), "TaskPool::enqueue error: Task pool is not running!");
 
         if (priority == TaskPriority::REALTIME ) [[unlikely]]
         {
@@ -251,26 +296,6 @@ namespace Divide
         return ret;
     }
 
-    void TaskPool::waitForAllTasks( const bool flushCallbacks )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
-        DIVIDE_ASSERT(Runtime::isMainThread());
-        
-        if ( _activeThreads.load() > 0u )
-        {
-            UniqueLock<Mutex> lock( _taskFinishedMutex );
-            _taskFinishedCV.wait( lock, [this]() noexcept
-                                    {
-                                        return _runningTaskCount.load() == 0u;
-                                    } );
-        }
-
-        if ( flushCallbacks )
-        {
-            flushCallbackQueue();
-        }
-    }
-
     Task* TaskPool::AllocateTask( Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
@@ -308,34 +333,6 @@ namespace Divide
     bool TaskPool::threadWaiting()
     {
         return executeOneTask( true );
-    }
-
-    void TaskPool::join()
-    {
-        _isRunning.store(false);
-
-        for ( std::thread& thread : _threads )
-        {
-            if (thread.joinable())
-            {
-                thread.join();
-            }
-
-        }
-
-        WAIT_FOR_CONDITION( _activeThreads.load() == 0u );
-    }
-
-    void TaskPool::wait() const noexcept
-    {
-        if ( _isRunning.load() )
-        {
-            while ( _runningTaskCount.load() > 0u )
-            {
-                // Busy wait
-                std::this_thread::yield();
-            }
-        }
     }
 
     bool TaskPool::executeOneTask( const bool isIdleCall )
