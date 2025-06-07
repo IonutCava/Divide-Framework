@@ -140,7 +140,7 @@ FetchContent_MakeAvailable(
     chaiscript
 )
 
-include(ThirdParty/CMakeHelpers/ImportCEGUI.cmake)
+include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
 
 if (BUILD_TESTING_INTERNAL)
     set(BUILD_TESTING ON)
@@ -160,7 +160,6 @@ include_directories(
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
     ${chaiscript_SOURCE_DIR}/include
-    ${JoltPhysics_SOURCE_DIR}/..
     ${SDL3_mixer_SOURCE_DIR}/include
 )
 
