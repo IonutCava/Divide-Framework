@@ -62,13 +62,6 @@
             "platform": "!osx & !linux"
         },
         {
-            "name": "joltphysics",
-            "features": [
-                "debugrenderer",
-                "profiler"
-            ]
-        },
-        {
             "name": "wayland",
             "platform": "linux"
         }

@@ -40,7 +40,6 @@ find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(Jolt CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
