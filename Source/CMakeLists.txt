@@ -36,6 +36,15 @@ set(THIRD_PARTY_COMPILE_OPTIONS "")
 
 if (MSVC_COMPILER)
 
+    if ( NOT RUN_ASAN AND RUN_UBSAN AND ENABLE_DYNAMIC_DEOPTIMALIZATION AND NOT IS_GITHUB_ACTIONS)
+        add_compile_options("$<${is_relwithdebinfo_c_or_cpp}:/dynamicdeopt>")
+        add_compile_options("$<${is_relwithdebinfo_c_or_cpp}:/GL->")
+        add_link_options("$<${is_relwithdebinfo_c_or_cpp}:/DYNAMICDEOPT>")
+        add_link_options("$<${is_relwithdebinfo_c_or_cpp}:/OPT:NOICF>")
+    else()
+        message(STATUS "Skipping /dynamicdeopt for current build")
+    endif()
+
     # Bit of a long one, but this is what happens when projects don't get built with /Wall.
     set(DIVIDE_COMPILE_OPTIONS /Wall
                                /wd4355 #'this' used in base member initializer list. Yup, I know ...
