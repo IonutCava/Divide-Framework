@@ -40,7 +40,7 @@ namespace Divide
 {
     template<typename Base, typename... Args>
     template<typename T, ComponentType C>
-    bool Factory<Base, Args...>::Register()
+    void Factory<Base, Args...>::Register()
     {
         ConstructData().emplace(C, 
             []( SceneGraphNode* node, Args... args ) -> void
@@ -53,8 +53,6 @@ namespace Divide
            {
                 node->template RemoveSGNComponent<T>();
            });
-
-        return true;
     }
 
     template<class T, class ...P> requires std::is_base_of_v<SGNComponent, T>
