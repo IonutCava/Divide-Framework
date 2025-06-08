@@ -11,7 +11,7 @@
 
 #if !defined(__APPLE__)
 #error "IS_MACOS_BUILD is defined, but __APPLE__ is not! Please check your build configuration."
-#endif /!__APPLE__
+#endif //!__APPLE__
 
 #include <Carbon/Carbon.h>
 #include <sys/sysctl.h>
@@ -30,6 +30,7 @@
 #include <malloc.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#include <X11/Xlib.h>
 
 #endif //IS_MACOS_BUILD
 
@@ -114,16 +115,12 @@ namespace Divide
 
     void GetWindowHandle(void* window, WindowHandle& handleOut) noexcept
     {
-        SDL_SysWMinfo wmInfo;
-        SDL_VERSION(&wmInfo.version);
-        SDL_GetWindowWMInfo(static_cast<SDL_Window*>(window), &wmInfo);
-
         handleOut = {};
 #if defined(IS_MACOS_BUILD)
-        NSWindow* nswindow = (__bridge NSWindow*)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+        NSWindow* nswindow = (/*__bridge*/ NSWindow*)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
         if (nswindow)
         {
-            handleOut._handle = wmInfo.info.cocoa.window;
+            handleOut._handle = nswindow;
         }
 #else //IS_MACOS_BUILD
         if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "x11") == 0)
@@ -132,8 +129,8 @@ namespace Divide
             Window xwindow = (Window)SDL_GetNumberProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
             if (xdisplay && xwindow)
             {
-                _displayX11 = xdisplay;
-                _handleX11 = xwindow;
+                handleOut._displayX11 = xdisplay;
+                handleOut._handleX11 = xwindow;
             }
         }
         else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0)
@@ -142,8 +139,8 @@ namespace Divide
             struct wl_surface* surface = (struct wl_surface*)SDL_GetPointerProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
             if (display && surface)
             {
-                _displayWL = display;
-                _surfaceWL = surface;
+                handleOut._displayWL = display;
+                handleOut._surfaceWL = surface;
             }
         }
 #endif //IS_MACOS_BUILD

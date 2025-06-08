@@ -70,9 +70,9 @@
 typedef struct _NSWindow NSWindow;
 #else //IS_MACOS_BUILD
 struct Display;
-struct Window;
 struct wl_display;
 struct wl_surface;
+using Window = unsigned long;
 #endif //IS_MACOS_BUILD
 
 namespace Divide
@@ -83,7 +83,7 @@ namespace Divide
         NSWindow* _handle{ nullptr };
 #else //IS_MACOS_BUILD
         Display* _displayX11{ nullptr };
-        Window* _handleX11{ nullptr };
+        Window _handleX11{ 0u };
 #if defined(HAS_WAYLAND_LIB)
         wl_display* _displayWL{nullptr};
         wl_surface* _surfaceWL{ nullptr };
