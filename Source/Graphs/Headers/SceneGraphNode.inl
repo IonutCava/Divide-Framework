@@ -38,21 +38,16 @@
 
 namespace Divide
 {
-    template<typename Base, typename... Args>
-    template<typename T, ComponentType C>
-    void Factory<Base, Args...>::Register()
+    template<typename T, typename... Args>
+    inline void AddComponentToNode(SceneGraphNode* node, Args... args)
     {
-        ConstructData().emplace(C, 
-            []( SceneGraphNode* node, Args... args ) -> void
-            {
-                node->template AddSGNComponent<T>(FWD(args)...);
-            });
+        node->template AddSGNComponent<T>(FWD(args)...);
+    }
 
-        DestructData().emplace(C,
-           []( SceneGraphNode* node ) -> void
-           {
-                node->template RemoveSGNComponent<T>();
-           });
+    template<typename T>
+    inline void RemoveComponentFromNode(SceneGraphNode* node)
+    {
+        node->template RemoveSGNComponent<T>();
     }
 
     template<class T, class ...P> requires std::is_base_of_v<SGNComponent, T>
