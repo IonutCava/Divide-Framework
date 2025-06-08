@@ -108,7 +108,7 @@ struct Factory
     }
 
     template<typename T, ComponentType C>
-    static bool Register();
+    static void Register();
 
     template <typename T, ComponentType C>
     struct Registrar : ECS::Component<T>,
@@ -122,9 +122,10 @@ struct Factory
 
         void OnData([[maybe_unused]] const ECS::CustomEvent& data) override {}
 
-        FORCE_INLINE static bool RegisterComponentType()
+        static bool RegisterComponentType()
         {
-            return Factory::Register<T, C>();
+            Factory<Base, Args...>::Register<T, C>();
+            return true;
         }
 
         static bool s_registered;
