@@ -87,6 +87,12 @@ namespace ECS
 namespace Divide
 {
 
+template<typename T, typename... Args>
+void AddComponentToNode(SceneGraphNode* node, Args... args);
+
+template<typename T>
+void RemoveComponentFromNode(SceneGraphNode* node);
+
 //ref: http://www.nirfriedman.com/2018/04/29/unforgettable-factory/
 template <typename Base, typename... Args>
 struct Factory
@@ -124,7 +130,17 @@ struct Factory
 
         static bool RegisterComponentType()
         {
-            Factory<Base, Args...>::Register<T, C>();
+            Factory<Base, Args...>::ConstructData().emplace(C,
+                [](SceneGraphNode* node, Args... args) -> void
+                {
+                    AddComponentToNode<T>(node, FWD(args)...);
+                });
+
+            Factory<Base, Args...>::DestructData().emplace(C,
+                [](SceneGraphNode* node) -> void
+                {
+                    RemoveComponentFromNode<T>(node);
+                });
             return true;
         }
 
