@@ -2,7 +2,6 @@
 
 #include "Headers/vkTexture.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"

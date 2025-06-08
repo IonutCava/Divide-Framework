@@ -3,7 +3,6 @@
 #include "Headers/CubeShadowMapGenerator.h"
 
 #include "Core/Headers/Kernel.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"

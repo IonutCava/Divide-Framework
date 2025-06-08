@@ -33,7 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_EDITOR_UTILS_INL_
 #define DVD_EDITOR_UTILS_INL_
 
-#include "Core/Headers/StringHelper.h"
 #include "Core/Math/Headers/MathHelper.h"
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Editor.h"

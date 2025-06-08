@@ -5,7 +5,6 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Editor/Headers/Editor.h"

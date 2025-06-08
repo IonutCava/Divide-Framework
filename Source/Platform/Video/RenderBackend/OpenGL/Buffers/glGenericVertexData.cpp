@@ -7,7 +7,6 @@
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide

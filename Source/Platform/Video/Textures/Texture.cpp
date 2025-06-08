@@ -6,7 +6,6 @@
 #include "Core/Headers/DisplayManager.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/Video/Headers/GFXDevice.h"

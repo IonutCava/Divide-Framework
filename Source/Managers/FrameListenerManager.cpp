@@ -2,7 +2,6 @@
 
 #include "Headers/FrameListenerManager.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 #include "Platform/Headers/PlatformRuntime.h"
 

@@ -38,7 +38,6 @@
 #include "vkInitializers.h"
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Headers/BlendingProperties.h"
-#include "Core/Headers/StringHelper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Vulkan-Descriptor-Allocator/descriptor_allocator.h"
 
 namespace vke

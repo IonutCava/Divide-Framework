@@ -33,7 +33,6 @@
 #define DVD_WAR_SCENE_AESOP_ACTION_INTERFACE_H_
 
 #include "AI/ActionInterface/Headers/GOAPInterface.h"
-#include "Core/Headers/StringHelper.h"
 
 namespace Divide {
 namespace AI {

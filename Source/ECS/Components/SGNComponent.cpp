@@ -2,7 +2,6 @@
 
 #include "Headers/SGNComponent.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"

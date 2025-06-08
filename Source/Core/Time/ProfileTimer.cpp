@@ -5,8 +5,6 @@
 #include "Headers/ProfileTimer.h"
 #include "Headers/ApplicationTimer.h"
 
-#include "Core/Headers/StringHelper.h"
-
 namespace Divide::Time {
 
 namespace {

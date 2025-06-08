@@ -1,28 +1,17 @@
-﻿set(APP_LIB_DIVIDE Divide-Framework-Lib)
-set(APP_EXE_DIVIDE Divide-Framework)
-set(APP_EXE_PROJECT_MANAGER Divide-Project-Manager)
+﻿set(APP_LIB_DIVIDE "Divide-Framework-Lib")
+set(APP_EXE_DIVIDE "Divide-Framework")
+set(APP_EXE_PROJECT_MANAGER "Divide-Project-Manager")
+
+set(APP_BUILD_EXES ${APP_EXE_DIVIDE} ${APP_EXE_PROJECT_MANAGER} )
 
 if(BUILD_TESTING_INTERNAL)
     set(APP_EXE_TEST_PLATFORM "Divide-Test-Platform")
     set(APP_EXE_TEST_ENGINE "Divide-Test-Engine")
 
-    set(APP_BUILD_EXES
-        ${APP_EXE_DIVIDE}
-        ${APP_EXE_TEST_PLATFORM}
-        ${APP_EXE_TEST_ENGINE}
-        ${APP_EXE_PROJECT_MANAGER}
-    )
-else()
-    set(APP_BUILD_EXES
-        ${APP_EXE_DIVIDE}
-        ${APP_EXE_PROJECT_MANAGER}
-    )
+    list(APPEND APP_BUILD_EXES ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE} )
 endif()
 
-set(APP_BUILD_TARGETS
-    ${APP_LIB_DIVIDE}
-    ${APP_BUILD_EXES}
-)
+set(APP_BUILD_TARGETS ${APP_LIB_DIVIDE} ${APP_BUILD_EXES} )
  
 include_directories( "${CMAKE_SOURCE_DIR}/Source" )
 include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
@@ -35,16 +24,6 @@ set(PCH_COMPILE_OPTIONS "")
 set(THIRD_PARTY_COMPILE_OPTIONS "")
 
 if (MSVC_COMPILER)
-
-    if ( NOT RUN_ASAN AND RUN_UBSAN AND ENABLE_DYNAMIC_DEOPTIMALIZATION AND NOT IS_GITHUB_ACTIONS)
-        add_compile_options("$<${is_relwithdebinfo_c_or_cpp}:/dynamicdeopt>")
-        add_compile_options("$<${is_relwithdebinfo_c_or_cpp}:/GL->")
-        add_link_options("$<${is_relwithdebinfo_c_or_cpp}:/DYNAMICDEOPT>")
-        add_link_options("$<${is_relwithdebinfo_c_or_cpp}:/OPT:NOICF>")
-    else()
-        message(STATUS "Skipping /dynamicdeopt for current build")
-    endif()
-
     # Bit of a long one, but this is what happens when projects don't get built with /Wall.
     set(DIVIDE_COMPILE_OPTIONS /Wall
                                /wd4355 #'this' used in base member initializer list. Yup, I know ...

@@ -7,7 +7,6 @@
 #include "Core/Headers/ByteBuffer.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 
 #include <assimp/anim.h>

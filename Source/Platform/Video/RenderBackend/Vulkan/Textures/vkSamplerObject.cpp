@@ -5,8 +5,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
-#include "Core/Headers/StringHelper.h"
-
 namespace Divide {
     VkSampler vkSamplerObject::Construct(const SamplerDescriptor& descriptor)
     {

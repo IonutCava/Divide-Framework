@@ -4,7 +4,6 @@
 #include "Headers/SubMesh.h"
 
 #include "Core/Headers/ByteBuffer.h"
-#include "Core/Headers/StringHelper.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/RenderingComponent.h"

@@ -7,14 +7,6 @@ add_compile_definitions(IMGUI_DISABLE_OBSOLETE_KEYIO)
 add_compile_definitions(IMGUI_USE_STB_SPRINTF)
 
 #Optick
-FetchContent_Declare(
-  optick
-  GIT_REPOSITORY https://github.com/bombomby/optick.git
-  GIT_TAG        8abd28dee1a4034c973a3d32cd1777118e72df7e
-  #GIT_PROGRESS   TRUE
-  EXCLUDE_FROM_ALL
-)
-
 set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE)
 set(OPTICK_BUILD_GUI_APP FALSE)
 set(OPTICK_ENABLED TRUE)
@@ -22,6 +14,13 @@ set(OPTICK_INSTALL_TARGETS FALSE)
 set(OPTICK_USE_D3D12 FALSE)
 set(OPTICK_USE_VULKAN TRUE)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+FetchContent_Declare(
+  optick
+  GIT_REPOSITORY https://github.com/bombomby/optick.git
+  GIT_TAG        8abd28dee1a4034c973a3d32cd1777118e72df7e
+  #GIT_PROGRESS   TRUE
+  EXCLUDE_FROM_ALL
+)
 
 #Skarupke hash maps
 FetchContent_Declare(
@@ -96,6 +95,7 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
+
 #chaiscript
 set(UNIT_TEST_LIGHT TRUE)
 set(BUILD_SAMPLES FALSE)
@@ -107,24 +107,6 @@ FetchContent_Declare(
     SYSTEM
 )
 
-#SDL3_mixer
-set(SDLMIXER_FLAC OFF)
-set(SDLMIXER_GME OFF)
-set(SDLMIXER_MOD OFF)
-set(SDLMIXER_MIDI OFF)
-set(SDLMIXER_OPUS OFF)
-if(NOT WINDOWS_OS_BUILD)
-    set(BUILD_SHARED_LIBS OFF)
-endif()
-#set(SDLMIXER_INSTALL OFF)
-FetchContent_Declare(
-    SDL3_mixer
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-    GIT_TAG        daf0503cea6d9a521f585d37e785d88c2f066cd0
-    #GIT_PROGRESS   TRUE
-    #SYSTEM
-    EXCLUDE_FROM_ALL
-)
 
 FetchContent_MakeAvailable(
     optick
@@ -136,9 +118,36 @@ FetchContent_MakeAvailable(
     fcpp
     imgui_club
     icon_font_cpp_headers
-    SDL3_mixer
     chaiscript
 )
+
+#SDL3_mixer
+set(SDLMIXER_FLAC OFF)
+set(SDLMIXER_GME OFF)
+set(SDLMIXER_MOD OFF)
+set(SDLMIXER_MIDI OFF)
+set(SDLMIXER_OPUS OFF)
+set(SDLMIXER_INSTALL OFF)
+
+if(NOT WINDOWS_OS_BUILD)
+    set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF)
+endif()
+
+FetchContent_Declare(
+    SDL3_mixer
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+    GIT_TAG        daf0503cea6d9a521f585d37e785d88c2f066cd0
+    #GIT_PROGRESS   TRUE
+    #SYSTEM
+    EXCLUDE_FROM_ALL
+)
+
+FetchContent_MakeAvailable( SDL3_mixer )
+
+if(NOT WINDOWS_OS_BUILD)
+    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
+endif()
 
 include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
 
@@ -189,7 +198,7 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
 )
 
 if (NOT MSVC_COMPILER)
-    set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic" )
+    set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic -Wno-format" )
 endif()
 
 set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}

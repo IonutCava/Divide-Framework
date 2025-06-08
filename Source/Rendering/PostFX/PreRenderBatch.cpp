@@ -7,7 +7,6 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GFXRTPool.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Core/Resources/Headers/ResourceCache.h"

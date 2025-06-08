@@ -2,8 +2,6 @@
 
 #include "Node.h"
 
-#include "Core/Headers/StringHelper.h"
-
 namespace Divide::goap
 {
 

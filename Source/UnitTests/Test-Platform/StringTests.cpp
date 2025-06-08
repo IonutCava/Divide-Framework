@@ -1,6 +1,5 @@
 #include "UnitTests/unitTestCommon.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Platform/File/Headers/FileManagement.h"
 
 namespace Divide

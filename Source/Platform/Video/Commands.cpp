@@ -3,7 +3,6 @@
 #include "Headers/Commands.h"
 #include "Headers/Pipeline.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"

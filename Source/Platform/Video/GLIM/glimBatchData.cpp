@@ -8,7 +8,6 @@
 
 #include "glimBatchData.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
 #include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"

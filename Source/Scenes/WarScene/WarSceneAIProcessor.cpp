@@ -10,7 +10,6 @@
 #include "AI/ActionInterface/Headers/AITeam.h"
 
 #include "Managers/Headers/ProjectManager.h"
-#include "Core/Headers/StringHelper.h"
 #include "Graphs/Headers/SceneGraph.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Dynamics/Entities/Units/Headers/NPC.h"

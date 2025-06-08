@@ -7,7 +7,6 @@
 
 #include "Graphs/Headers/SceneGraph.h"
 #include "Scenes/Headers/Scene.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Managers/Headers/RenderPassManager.h"
 #include "Managers/Headers/ProjectManager.h"

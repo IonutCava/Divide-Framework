@@ -6,9 +6,6 @@
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/GLIM/glim.h"
-
-#include "Core/Headers/StringHelper.h"
-
 #include "Utility/Headers/Localization.h"
 
 namespace Divide

@@ -32,8 +32,6 @@
 #ifndef DVD_CORE_CONSOLE_INL_
 #define DVD_CORE_CONSOLE_INL_
 
-#include "StringHelper.h"
-
 struct sink 
 { 
     template<typename ...Args> 

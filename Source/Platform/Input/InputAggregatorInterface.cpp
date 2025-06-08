@@ -2,7 +2,6 @@
 
 #include "Headers/InputAggregatorInterface.h"
 #include "Platform/Headers/DisplayWindow.h"
-#include "Core/Headers/StringHelper.h"
 
 namespace Divide {
 namespace Input {

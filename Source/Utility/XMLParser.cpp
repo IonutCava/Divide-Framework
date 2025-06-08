@@ -3,7 +3,6 @@
 #include "Headers/XMLParser.h"
 
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/StringHelper.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Platform/File/Headers/FileManagement.h"

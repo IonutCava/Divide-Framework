@@ -8,7 +8,6 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Application.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/ProjectManager.h"
 #include "Rendering/Camera/Headers/Camera.h"

@@ -2,7 +2,6 @@
 
 #include "Headers/Camera.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 #include "Scenes/Headers/SceneState.h"
 #include "Graphs/Headers/SceneGraphNode.h"
