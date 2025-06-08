@@ -1,7 +1,6 @@
 
 
 #include "Headers/OutputWindow.h"
-#include "Core/Headers/StringHelper.h"
 #include "Editor/Headers/Editor.h"
 #include "Editor/Headers/Utils.h"
 

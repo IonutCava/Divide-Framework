@@ -3,7 +3,6 @@
 #include "Headers/Script.h"
 #include "Headers/ScriptBindings.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
 #include "Platform/File/Headers/FileUpdateMonitor.h"

@@ -6,7 +6,6 @@
 #endif
 
 #include "Headers/PlatformDefinesWindows.h"
-#include "Core/Headers/StringHelper.h"
 #include <ShellScalingApi.h>
 #include <comdef.h>
 

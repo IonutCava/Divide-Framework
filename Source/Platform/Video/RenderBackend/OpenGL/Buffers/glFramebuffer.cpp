@@ -4,7 +4,6 @@
 
 #include "Headers/glFramebuffer.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"

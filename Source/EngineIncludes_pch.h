@@ -117,8 +117,11 @@ DISABLE_MSVC_WARNING_PUSH(4702) // unreachable code
 #include <chaiscript/utility/utility.hpp>
 DISABLE_MSVC_WARNING_POP()
 
+#include <Jolt/Jolt.h>
+
 #include "Platform/Threading/Headers/SharedMutex.h"
 
+#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Console.h"
 #include <EntityComponentSystem/include/ECS/ComponentManager.h>
 #include <EntityComponentSystem/include/ECS/Entity.h>

@@ -5,7 +5,6 @@
 #include "Graphs/Headers/SceneNode.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Rendering/Camera/Headers/Camera.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingBox.h"
 

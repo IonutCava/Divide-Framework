@@ -4,7 +4,6 @@
 
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Managers/Headers/ProjectManager.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"

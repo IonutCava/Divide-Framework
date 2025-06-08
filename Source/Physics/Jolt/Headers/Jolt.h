@@ -39,7 +39,6 @@
 
 #include "Physics/Headers/PhysicsAPIWrapper.h"
 
-#include <Jolt/Jolt.h>
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Core/JobSystemThreadPool.h>

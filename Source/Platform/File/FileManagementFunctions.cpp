@@ -1,6 +1,4 @@
 
-
-#include "Core/Headers/StringHelper.h"
 #include "Headers/FileManagement.h"
 #include "Headers/ResourcePath.h"
 

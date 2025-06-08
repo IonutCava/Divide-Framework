@@ -4,8 +4,6 @@
 
 #include "Utility/Headers/Localization.h"
 
-#include "Core/Headers/StringHelper.h"
-
 namespace Divide::Time
 {
 

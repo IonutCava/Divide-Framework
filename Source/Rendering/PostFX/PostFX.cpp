@@ -4,7 +4,6 @@
 #include "Headers/PreRenderOperator.h"
 
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 

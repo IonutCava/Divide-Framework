@@ -8,7 +8,6 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 
 #include "Utility/Headers/Localization.h"

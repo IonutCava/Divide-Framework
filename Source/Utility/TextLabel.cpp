@@ -1,7 +1,6 @@
 
 
 #include "Headers/TextLabel.h"
-#include "Core/Headers/StringHelper.h"
 
 namespace Divide {
 

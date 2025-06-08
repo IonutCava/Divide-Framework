@@ -6,7 +6,6 @@
 #include "Headers/MeshImporter.h"
 
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/StringHelper.h"
 #include "Geometry/Animations/Headers/AnimationUtils.h"
 #include "Geometry/Animations/Headers/SceneAnimator.h"
 #include "Geometry/Shapes/Headers/SubMesh.h"

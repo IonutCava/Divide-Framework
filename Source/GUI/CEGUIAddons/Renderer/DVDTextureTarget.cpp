@@ -33,7 +33,6 @@
 #include "CEGUI/RenderQueue.h"
 #include "CEGUI/PropertyHelper.h"
 
-#include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXRTPool.h"

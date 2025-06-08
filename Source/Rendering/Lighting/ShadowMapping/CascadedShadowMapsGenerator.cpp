@@ -13,7 +13,6 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Configuration.h"
 #include "Core/Headers/PlatformContext.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Graphs/Headers/SceneGraphNode.h"
 #include "Geometry/Shapes/Predefined/Headers/Quad3D.h"

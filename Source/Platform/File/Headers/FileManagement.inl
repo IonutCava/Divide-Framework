@@ -32,8 +32,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_FILE_FILE_MANAGEMENT_INL_
 #define DVD_PLATFORM_FILE_FILE_MANAGEMENT_INL_
 
-#include "Core/Headers/StringHelper.h"
-
 namespace Divide {
 
 inline FileError writeFile( const ResourcePath& filePath, const std::string_view fileName, const bufferPtr content, const size_t length, const FileType fileType )

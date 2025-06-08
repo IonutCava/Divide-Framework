@@ -7,7 +7,6 @@
 #include "Core/Debugging/Headers/DebugInterface.h"
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/Configuration.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Headers/Kernel.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Editor/Headers/Editor.h"

@@ -1,52 +1,45 @@
 #include "Headers/Jolt.h"
 
-#include "Core/Headers/Console.h"
-
 // Jolt includes
+// Disable common warnings triggered by Jolt, you can use JPH_SUPPRESS_WARNING_PUSH / JPH_SUPPRESS_WARNING_POP to store and restore the warning state
+JPH_SUPPRESS_WARNING_PUSH
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
+JPH_SUPPRESS_WARNING_POP
 
-// Disable common warnings triggered by Jolt, you can use JPH_SUPPRESS_WARNING_PUSH / JPH_SUPPRESS_WARNING_POP to store and restore the warning state
-JPH_SUPPRESS_WARNINGS
 
-// All Jolt symbols are in the JPH namespace
-using namespace JPH;
-
-// If you want your code to compile using single or double precision write 0.0_r to get a Real value that compiles to double or float depending if JPH_DOUBLE_PRECISION is set or not.
-using namespace JPH::literals;
-
-static void TraceImpl(const char* inFMT, ...)
+namespace JPH
 {
-    // Format the message
-    va_list list;
-    va_start(list, inFMT);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), inFMT, list);
-    va_end(list);
 
-    Divide::Console::printfn("JoltPhysics: {}", buffer);
+    void TraceImpl(const char* inFMT, ...)
+    {
+        // Format the message
+        va_list list;
+        va_start(list, inFMT);
+        char buffer[2048];
+        vsnprintf(buffer, sizeof(buffer) - 1, inFMT, list);
+        va_end(list);
+
+        Divide::Console::printfn("JoltPhysics: {}", buffer);
+    }
+
+    TraceFunction Trace = TraceImpl;
+
+    #ifdef JPH_ENABLE_ASSERTS
+
+    // Callback for asserts, connect this to your own assert handler if you have one
+    bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, uint inLine)
+    {
+        Divide::DIVIDE_UNEXPECTED_CALL_MSG(Divide::Util::StringFormat("[{}:{}] : ( {} ) - {}", inFile, inLine, inExpression, (inMessage != nullptr ? inMessage : "")).c_str());
+        return true;
+    };
+
+    AssertFailedFunction AssertFailed = AssertFailedImpl;
 }
-
-#ifdef JPH_ENABLE_ASSERTS
-
-// Callback for asserts, connect this to your own assert handler if you have one
-static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, uint inLine)
-{
-    std::stringstream ss;
-    // Print to the TTY
-    ss << inFile << ":" << inLine << ": (" << inExpression << ") " << (inMessage != nullptr ? inMessage : "") << std::endl;
-
-    Divide::DIVIDE_UNEXPECTED_CALL_MSG(ss.str());
-
-    // Breakpoint
-    Divide::DebugBreak();
-
-    return true;
-};
 
 #endif // JPH_ENABLE_ASSERTS
 namespace Divide
@@ -58,16 +51,16 @@ namespace Divide
     // but only if you do collision testing).
     namespace Layers
     {
-        static constexpr ObjectLayer NON_MOVING = 0;
-        static constexpr ObjectLayer MOVING = 1;
-        static constexpr ObjectLayer NUM_LAYERS = 2;
+        static constexpr JPH::ObjectLayer NON_MOVING = 0;
+        static constexpr JPH::ObjectLayer MOVING = 1;
+        static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
     };
 
     /// Class that determines if two object layers can collide
-    class ObjectLayerPairFilterImpl : public ObjectLayerPairFilter
+    class ObjectLayerPairFilterImpl : public JPH::ObjectLayerPairFilter
     {
     public:
-        virtual bool ShouldCollide(ObjectLayer inObject1, ObjectLayer inObject2) const override
+        virtual bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override
         {
             switch (inObject1)
             {
@@ -84,14 +77,14 @@ namespace Divide
 
     namespace BroadPhaseLayers
     {
-        static constexpr BroadPhaseLayer NON_MOVING(0);
-        static constexpr BroadPhaseLayer MOVING(1);
-        static constexpr uint NUM_LAYERS(2);
+        static constexpr JPH::BroadPhaseLayer NON_MOVING(0);
+        static constexpr JPH::BroadPhaseLayer MOVING(1);
+        static constexpr JPH::uint NUM_LAYERS(2);
     };
 
     // BroadPhaseLayerInterface implementation
     // This defines a mapping between object and broadphase layers.
-    class BPLayerInterfaceImpl final : public BroadPhaseLayerInterface
+    class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface
     {
     public:
         BPLayerInterfaceImpl()
@@ -101,38 +94,38 @@ namespace Divide
             mObjectToBroadPhase[Layers::MOVING] = BroadPhaseLayers::MOVING;
         }
 
-        virtual uint					GetNumBroadPhaseLayers() const override
+        virtual JPH::uint GetNumBroadPhaseLayers() const override
         {
             return BroadPhaseLayers::NUM_LAYERS;
         }
 
-        virtual BroadPhaseLayer			GetBroadPhaseLayer(ObjectLayer inLayer) const override
+        virtual JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override
         {
             JPH_ASSERT(inLayer < Layers::NUM_LAYERS);
             return mObjectToBroadPhase[inLayer];
         }
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-        virtual const char* GetBroadPhaseLayerName(BroadPhaseLayer inLayer) const override
+        virtual const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer inLayer) const override
         {
-            switch ((BroadPhaseLayer::Type)inLayer)
+            switch ((JPH::BroadPhaseLayer::Type)inLayer)
             {
-            case (BroadPhaseLayer::Type)BroadPhaseLayers::NON_MOVING:	return "NON_MOVING";
-            case (BroadPhaseLayer::Type)BroadPhaseLayers::MOVING:		return "MOVING";
+            case (JPH::BroadPhaseLayer::Type)BroadPhaseLayers::NON_MOVING:	return "NON_MOVING";
+            case (JPH::BroadPhaseLayer::Type)BroadPhaseLayers::MOVING:		return "MOVING";
             default:													JPH_ASSERT(false); return "INVALID";
             }
         }
 #endif // JPH_EXTERNAL_PROFILE || JPH_PROFILE_ENABLED
 
     private:
-        BroadPhaseLayer mObjectToBroadPhase[Layers::NUM_LAYERS];
+        JPH::BroadPhaseLayer mObjectToBroadPhase[Layers::NUM_LAYERS];
     };
 
     /// Class that determines if an object layer can collide with a broadphase layer
-    class ObjectVsBroadPhaseLayerFilterImpl : public ObjectVsBroadPhaseLayerFilter
+    class ObjectVsBroadPhaseLayerFilterImpl : public JPH::ObjectVsBroadPhaseLayerFilter
     {
     public:
-        virtual bool ShouldCollide(ObjectLayer inLayer1, BroadPhaseLayer inLayer2) const override
+        virtual bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override
         {
             switch (inLayer1)
             {
@@ -148,44 +141,44 @@ namespace Divide
     };
 
     // An example contact listener
-    class MyContactListener : public ContactListener
+    class MyContactListener : public JPH::ContactListener
     {
     public:
         // See: ContactListener
-        virtual ValidateResult	OnContactValidate(const Body& inBody1, const Body& inBody2, RVec3Arg inBaseOffset, const CollideShapeResult& inCollisionResult) override
+        virtual JPH::ValidateResult	OnContactValidate(const JPH::Body& inBody1, const JPH::Body& inBody2, JPH::RVec3Arg inBaseOffset, const JPH::CollideShapeResult& inCollisionResult) override
         {
             Console::printfn("Contact validate callback");
 
             // Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
-            return ValidateResult::AcceptAllContactsForThisBodyPair;
+            return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
         }
 
-        virtual void OnContactAdded(const Body& inBody1, const Body& inBody2, const ContactManifold& inManifold, ContactSettings& ioSettings) override
+        virtual void OnContactAdded(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override
         {
             Console::printfn("A contact was added");
         }
 
-        virtual void OnContactPersisted(const Body& inBody1, const Body& inBody2, const ContactManifold& inManifold, ContactSettings& ioSettings) override
+        virtual void OnContactPersisted(const JPH::Body& inBody1, const JPH::Body& inBody2, const JPH::ContactManifold& inManifold, JPH::ContactSettings& ioSettings) override
         {
             Console::printfn("A contact was persisted");
         }
 
-        virtual void OnContactRemoved(const SubShapeIDPair& inSubShapePair) override
+        virtual void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override
         {
             Console::printfn("A contact was removed");
         }
     };
 
     // An example activation listener
-    class MyBodyActivationListener : public BodyActivationListener
+    class MyBodyActivationListener : public JPH::BodyActivationListener
     {
     public:
-        virtual void OnBodyActivated(const BodyID& inBodyID, uint64 inBodyUserData) override
+        virtual void OnBodyActivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) override
         {
             Console::printfn("A body got activated");
         }
 
-        virtual void OnBodyDeactivated(const BodyID& inBodyID, uint64 inBodyUserData) override
+        virtual void OnBodyDeactivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) override
         {
             Console::printfn("A body went to sleep");
         }
@@ -193,10 +186,10 @@ namespace Divide
 
     namespace 
     {
-        constexpr uint cMaxBodies = 1024;
-        constexpr uint cNumBodyMutexes = 0;
-        constexpr uint cMaxBodyPairs = 1024;
-        constexpr uint cMaxContactConstraints = 1024;
+        constexpr JPH::uint cMaxBodies = 1024;
+        constexpr JPH::uint cNumBodyMutexes = 0;
+        constexpr JPH::uint cMaxBodyPairs = 1024;
+        constexpr JPH::uint cMaxContactConstraints = 1024;
         BPLayerInterfaceImpl broad_phase_layer_interface;
         ObjectVsBroadPhaseLayerFilterImpl object_vs_broadphase_layer_filter;
         ObjectLayerPairFilterImpl object_vs_object_layer_filter;
@@ -208,22 +201,20 @@ namespace Divide
     PhysicsJolt::PhysicsJolt( PlatformContext& context )
         : PhysicsAPIWrapper(context)
     {
-        Trace = TraceImpl;
-        JPH_IF_ENABLE_ASSERTS(AssertFailed = AssertFailedImpl;)
     }
 
     ErrorCode PhysicsJolt::initPhysicsAPI( [[maybe_unused]] const U8 targetFrameRate, [[maybe_unused]] const F32 simSpeed )
     {
         // Create a factory, this class is responsible for creating instances of classes based on their name or hash and is mainly used for deserialization of saved data.
            // It is not directly used in this example but still required.
-        _factory = std::make_unique<Factory>();
-        RegisterTypes();
+        _factory = std::make_unique<JPH::Factory>();
+        JPH::RegisterTypes();
 
-        _allocator = std::make_unique<TempAllocatorImpl>(Bytes::Mega(10u));
+        _allocator = std::make_unique<JPH::TempAllocatorImpl>(Bytes::Mega(10u));
 
-        _threadPool = std::make_unique<JobSystemThreadPool>(cMaxPhysicsJobs, cMaxPhysicsBarriers, thread::hardware_concurrency() - 1);
+        _threadPool = std::make_unique<JPH::JobSystemThreadPool>(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, std::thread::hardware_concurrency() - 1);
 
-        _physicsSystem = std::make_unique<PhysicsSystem>();
+        _physicsSystem = std::make_unique<JPH::PhysicsSystem>();
 
         _physicsSystem->Init(cMaxBodies, cNumBodyMutexes, cMaxBodyPairs, cMaxContactConstraints, broad_phase_layer_interface, object_vs_broadphase_layer_filter, object_vs_object_layer_filter);
 
@@ -239,7 +230,7 @@ namespace Divide
         _physicsSystem.reset();
         _threadPool.reset();
         _allocator.reset();
-        UnregisterTypes();
+        JPH::UnregisterTypes();
         _factory.reset();
 
         return true;

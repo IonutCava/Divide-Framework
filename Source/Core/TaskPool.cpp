@@ -2,7 +2,6 @@
 
 #include "Platform/Threading/Headers/Task.h"
 #include "Headers/TaskPool.h"
-#include "Core/Headers/StringHelper.h"
 #include "Platform/Headers/PlatformRuntime.h"
 
 #include <iostream>

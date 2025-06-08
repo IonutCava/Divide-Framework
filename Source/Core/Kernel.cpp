@@ -7,7 +7,6 @@
 #include "Headers/PlatformContext.h"
 
 #include "Core/Debugging/Headers/DebugInterface.h"
-#include "Core/Headers/StringHelper.h"
 #include "Core/Time/Headers/ApplicationTimer.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 #include "Editor/Headers/Editor.h"

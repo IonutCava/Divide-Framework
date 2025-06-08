@@ -3,7 +3,6 @@
 #include "Headers/ShaderDataUploader.h"
 
 #include "Core/Headers/ByteBuffer.h"
-#include "Core/Headers/StringHelper.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/File/Headers/FileManagement.h"
 namespace Divide
