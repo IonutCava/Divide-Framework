@@ -147,6 +147,7 @@ FetchContent_MakeAvailable( SDL3_mixer )
 
 if(NOT WINDOWS_OS_BUILD)
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
+    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 endif()
 
 include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
