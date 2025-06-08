@@ -1325,7 +1325,7 @@ namespace Divide
         /// return the vector's length
         [[nodiscard]] T length() const  noexcept
         {
-            return Sqrt( lengthSquared() );
+            return Sqrt<T>( lengthSquared() );
         }
         /// return the squared distance of the vector
         [[nodiscard]] T lengthSquared() const noexcept;
