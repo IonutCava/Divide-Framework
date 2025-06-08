@@ -69,7 +69,7 @@
 #if defined(IS_MACOS_BUILD)
 typedef struct _NSWindow NSWindow;
 #else //IS_MACOS_BUILD
-struct Display;
+typedef struct _XDisplay Display;
 struct wl_display;
 struct wl_surface;
 using Window = unsigned long;

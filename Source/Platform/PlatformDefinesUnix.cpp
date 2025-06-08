@@ -117,7 +117,7 @@ namespace Divide
     {
         handleOut = {};
 #if defined(IS_MACOS_BUILD)
-        NSWindow* nswindow = (/*__bridge*/ NSWindow*)SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+        NSWindow* nswindow = (/*__bridge*/ NSWindow*)SDL_GetPointerProperty(SDL_GetWindowProperties(static_cast<SDL_Window*>(window)), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
         if (nswindow)
         {
             handleOut._handle = nswindow;
