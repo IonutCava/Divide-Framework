@@ -46,7 +46,7 @@ enum class TaskPriority : U8
     COUNT
 };
 
-struct alignas(64) Task
+struct alignas(128) Task
 {
     static constexpr U32 INVALID_TASK_ID = Config::MAX_POOLED_TASKS;
 
