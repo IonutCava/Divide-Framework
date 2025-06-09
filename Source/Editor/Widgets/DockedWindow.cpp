@@ -8,7 +8,7 @@
 #include "Core/Headers/Profiler.h"
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "Graphs/Headers/SceneGraphNode.h"
-#include "Graphs/Headers/SceneNodeFwd.h"
+#include "Graphs/Headers/SceneNode.h"
 #include <IconsForkAwesome.h>
 #include <IEntity.h>
 #include <imgui.h>

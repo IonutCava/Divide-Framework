@@ -33,9 +33,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DVD_SGN_COMPONENT_H_
 
 #include "SGNComponentFactory.h"
-#include "Core/Headers/PlatformContextComponent.h"
 #include <ECS/ComponentManager.h>
-#include <ECS/Component.h>
 
 namespace ECS
 {
