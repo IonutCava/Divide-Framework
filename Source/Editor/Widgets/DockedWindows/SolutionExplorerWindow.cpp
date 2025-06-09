@@ -383,7 +383,7 @@ namespace Divide {
                                      cend(g_framerateBuffer));
         ImGui::PushItemWidth(-1);
         {
-            ImGui::PlotHistogram("",
+            ImGui::PlotHistogram("##FPSHistogram",
                                  g_framerateBufferCont.data(),
                                  to_I32(g_framerateBufferCont.size()),
                                  0,

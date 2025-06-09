@@ -153,7 +153,7 @@ set(EXTERNAL_LIBS
     fmt::fmt
     OptickCore
     EASTL
-    Jolt::Jolt
+    Jolt
     OpenAL::OpenAL
     expat::expat
     imgui::imgui

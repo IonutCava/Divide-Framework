@@ -55,6 +55,12 @@ ErrorCode DisplayWindow::init(const WindowDescriptor& descriptor)
 {
     _parentWindow = descriptor.parentWindow;
 
+    if (_parentWindow != nullptr )
+    {
+        userData(_parentWindow->userData());
+        userData()._ownsContext = false;
+    }
+
     SDL_PropertiesID props = SDL_CreateProperties();
     SDL_SetStringProperty( props, SDL_PROP_WINDOW_CREATE_TITLE_STRING,               descriptor.title.c_str());
     SDL_SetNumberProperty( props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER,               descriptor.dimensions.width);

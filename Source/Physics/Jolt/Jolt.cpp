@@ -11,37 +11,29 @@ JPH_SUPPRESS_WARNING_PUSH
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 JPH_SUPPRESS_WARNING_POP
 
-
-namespace JPH
+static void TraceImpl(const char* inFMT, ...)
 {
+    // Format the message
+    va_list list;
+    va_start(list, inFMT);
+    char buffer[2048];
+    vsnprintf(buffer, sizeof(buffer) - 1, inFMT, list);
+    va_end(list);
 
-    void TraceImpl(const char* inFMT, ...)
-    {
-        // Format the message
-        va_list list;
-        va_start(list, inFMT);
-        char buffer[2048];
-        vsnprintf(buffer, sizeof(buffer) - 1, inFMT, list);
-        va_end(list);
+    Divide::Console::printfn("JoltPhysics: {}", buffer);
+}
 
-        Divide::Console::printfn("JoltPhysics: {}", buffer);
-    }
+#ifdef JPH_ENABLE_ASSERTS
 
-    TraceFunction Trace = TraceImpl;
-
-    #ifdef JPH_ENABLE_ASSERTS
-
-    // Callback for asserts, connect this to your own assert handler if you have one
-    bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, uint inLine)
-    {
-        Divide::DIVIDE_UNEXPECTED_CALL_MSG(Divide::Util::StringFormat("[{}:{}] : ( {} ) - {}", inFile, inLine, inExpression, (inMessage != nullptr ? inMessage : "")).c_str());
-        return true;
-    };
-
-    AssertFailedFunction AssertFailed = AssertFailedImpl;
+// Callback for asserts, connect this to your own assert handler if you have one
+static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, JPH::uint inLine)
+{
+    Divide::DIVIDE_UNEXPECTED_CALL_MSG(Divide::Util::StringFormat("[{}:{}] : ( {} ) - {}", inFile, inLine, inExpression, (inMessage != nullptr ? inMessage : "")).c_str());
+    return true;
 }
 
 #endif // JPH_ENABLE_ASSERTS
+
 namespace Divide
 {
 
@@ -205,9 +197,16 @@ namespace Divide
 
     ErrorCode PhysicsJolt::initPhysicsAPI( [[maybe_unused]] const U8 targetFrameRate, [[maybe_unused]] const F32 simSpeed )
     {
+        JPH::Trace = TraceImpl;
+        JPH_IF_ENABLE_ASSERTS(JPH::AssertFailed = AssertFailedImpl);
+
+        JPH::RegisterDefaultAllocator();
+
         // Create a factory, this class is responsible for creating instances of classes based on their name or hash and is mainly used for deserialization of saved data.
-           // It is not directly used in this example but still required.
+        // It is not directly used in this example but still required.
         _factory = std::make_unique<JPH::Factory>();
+        JPH::Factory::sInstance = _factory.get();
+
         JPH::RegisterTypes();
 
         _allocator = std::make_unique<JPH::TempAllocatorImpl>(Bytes::Mega(10u));
@@ -232,6 +231,7 @@ namespace Divide
         _allocator.reset();
         JPH::UnregisterTypes();
         _factory.reset();
+        JPH::Factory::sInstance = nullptr;
 
         return true;
     }

@@ -24,6 +24,15 @@ set(PCH_COMPILE_OPTIONS "")
 set(THIRD_PARTY_COMPILE_OPTIONS "")
 
 if (MSVC_COMPILER)
+
+    list(APPEND EXTRA_DEFINITIONS "$<$<COMPILE_LANGUAGE:C,CXX>:_CRT_SECURE_NO_WARNINGS>")
+    list(APPEND EXTRA_LINK_FLAGS "$<$<CONFIG:Debug>:/OPT:NOREF>")
+    list(APPEND EXTRA_LINK_FLAGS "$<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/INCREMENTAL,/INCREMENTAL:NO>")
+    
+    if ( ENABLE_FUNCTION_PROFILING )
+        list(APPEND EXTRA_LINK_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/PROFILE>")
+    endif()
+
     # Bit of a long one, but this is what happens when projects don't get built with /Wall.
     set(DIVIDE_COMPILE_OPTIONS /Wall
                                /wd4355 #'this' used in base member initializer list. Yup, I know ...
@@ -31,6 +40,12 @@ if (MSVC_COMPILER)
                                /wd4605 #some defines don't really need to be in the PCH and command line at the same time. Some due, sure, but this causes more problems than it solves
                                /wd4668 #sometimes we don't actually define preoprocessor macros and want them to be interpreted as 0
                                $<$<CONFIG:Release>:/wd4711> # automatic inline expansion warning
+                               $<$<COMPILE_LANGUAGE:C,CXX>:/Zm256>
+                               $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>
+                               $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
+                               $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>:/d2Obforceinline>
+                               #$<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/ZI,/Zi>
+                               $<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/Zi,/Zi>
     )
 
     set(PCH_COMPILE_OPTIONS /bigobj
@@ -57,6 +72,8 @@ else()
 
     set(DIVIDE_COMPILE_OPTIONS -Wall
                                -pedantic
+                               $<$<COMPILE_LANGUAGE:C,CXX>:-pthread>
+                               $<$<COMPILE_LANGUAGE:CXX>:-Wno-c++17-extensions>
     )
 
     set(THIRD_PARTY_COMPILE_OPTIONS -Wno-unused-but-set-variable
@@ -74,7 +91,16 @@ else()
                                    -Wno-old-style-cast        -Wno-format-nonliteral         -Wno-c++98-compat
                                    -Wno-c++98-compat-pedantic -Wno-global-constructors #Really now?
                                    $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wno-cast-function-type-strict>
+                                   $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unknown-argument>
+                                   $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-undefined-func-template>
+                                   $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unused-command-line-argument>
+                                   $<$<COMPILE_LANGUAGE:C,CXX>:-fdeclspec>
         )
+
+        if(LINUX_OS_BUILD)
+            list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fuse-ld=lld>")
+        endif()
+
         set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}         -Wno-reserved-macro-identifier                -Wno-documentation
                                         -Wno-documentation-unknown-command     -Wno-ignored-attributes                       -Wno-undef
                                         -Wno-cast-qual                         -Wno-cast-align                               -Wno-cast-function-type
@@ -119,6 +145,8 @@ add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp"
                                      ${THIRD_PARTY_FETCH_SRC_FILES}
 )
 
+target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Jolt)
+
 if(WIN32)
     target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Shcore.lib Winmm.lib)
 endif()
@@ -132,6 +160,7 @@ target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC
 target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS} ${PCH_COMPILE_OPTIONS} ${THIRD_PARTY_COMPILE_OPTIONS})
 
 target_link_options(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_LINK_FLAGS})
+target_compile_definitions(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_DEFINITIONS})
 
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
@@ -232,6 +261,7 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS})
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
+    target_compile_definitions(${APP_EXE} PRIVATE ${EXTRA_DEFINITIONS})
 
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()
