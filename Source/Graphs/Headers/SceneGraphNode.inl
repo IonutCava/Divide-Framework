@@ -33,9 +33,6 @@
 #ifndef DVD_SCENE_GRAPH_NODE_INL_
 #define DVD_SCENE_GRAPH_NODE_INL_
 
-#include "SceneNode.h"
-#include "SceneGraph.h"
-
 namespace Divide
 {
     template<typename T, typename... Args>
@@ -127,82 +124,6 @@ namespace Divide
         ret._deleter = [handle]() { Handle<T> handleCpy = handle; DestroyResource( handleCpy ); };
 
         return ret;
-    }
-
-    template<bool checkInternalNode>
-    inline SceneGraphNode* SceneGraphNode::findChildInternal(const U64 nameHash, const bool recursive) const
-    {
-        if (nameHash != 0u)
-        {
-            SharedLock<SharedMutex> r_lock(_children._lock);
-
-            for (SceneGraphNode* child : _children._data)
-            {
-                if constexpr(checkInternalNode)
-                {
-                    const U64 cmpHash = _ID(child->getNode().resourceName().c_str());
-                    if (cmpHash == nameHash)
-                    {
-                        return child;
-                    }
-                }
-                else
-                {
-                    if (child->nameHash() == nameHash)
-                    {
-                        return child;
-                    }
-                }
-
-                if (recursive)
-                {
-                    SceneGraphNode* recChild = child->findChildInternal<checkInternalNode>(nameHash, recursive);
-
-                    if (recChild != nullptr)
-                    {
-                        return recChild;
-                    }
-                }
-            }
-        }
-
-        return nullptr;
-    }
-
-    template<bool checkInternalNode>
-    inline SceneGraphNode* SceneGraphNode::findChildInternal(const I64 GUID, const bool recursive) const
-    {
-        if (GUID != -1)
-        {
-            SharedLock<SharedMutex> r_lock(_children._lock);
-            for (SceneGraphNode* child : _children._data)
-            {
-                if constexpr(checkInternalNode)
-                {
-                    if (child->getNode().getGUID() == GUID)
-                    {
-                        return child;
-                    }
-                }
-                else
-                {
-                    if (child->getGUID() == GUID)
-                    {
-                        return child;
-                    }
-                }
-                if (recursive)
-                {
-                    SceneGraphNode* recChild = child->findChildInternal<checkInternalNode>(GUID, true);
-                    if (recChild != nullptr)
-                    {
-                        return recChild;
-                    }
-                }
-            }
-        }
-
-        return nullptr;
     }
 }; //namespace Divide
 

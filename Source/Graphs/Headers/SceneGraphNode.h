@@ -36,7 +36,6 @@
 #include "SceneNodeFwd.h"
 #include "SGNRelationshipCache.h"
 #include "IntersectionRecord.h"
-#include "Core/Resources/Headers/Resource.h"
 
 #include "ECS/Components/Headers/EditorComponent.h"
 #include "ECS/Components/Headers/SGNComponent.h"
@@ -268,7 +267,7 @@ namespace Divide
         /// Serialization: load from XML file (expressed as a boost property_tree)
         void loadFromXML( const boost::property_tree::ptree& pt );
 
-        protected:
+    protected:
         void updateCollisions( const SceneGraphNode& parentNode, IntersectionContainer& intersections, Mutex& intersectionsLock ) const;
 
       private:
@@ -313,12 +312,13 @@ namespace Divide
         void AddSGNComponentInternal( SGNComponent* comp );
         void RemoveSGNComponentInternal( SGNComponent* comp );
 
-        template<bool checkInternalNode = false>
-        SceneGraphNode* findChildInternal( U64 nameHash, bool recursive = false ) const;
-        template<bool checkInternalNode = false>
-        SceneGraphNode* findChildInternal( I64 GUID, bool recursive = false ) const;
+        SceneGraphNode* findChildBySceneNodeName( U64 nameHash, bool recursive = false ) const;
+        SceneGraphNode* findChildBySceneNodeGUID( I64 GUID, bool recursive = false ) const;
 
-        private:
+        SceneGraphNode* findChildByGraphNodeName(U64 nameHash, bool recursive = false) const;
+        SceneGraphNode* findChildByGraphNodeGUID(I64 GUID, bool recursive = false) const;
+
+     private:
         SGNRelationshipCache _relationshipCache;
         ChildContainer _children;
 

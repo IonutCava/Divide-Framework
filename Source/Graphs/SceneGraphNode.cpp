@@ -1,6 +1,7 @@
 
 
 #include "Headers/SceneGraphNode.h"
+#include "Headers/SceneGraph.h"
 
 #include "Core/Headers/PlatformContext.h"
 #include "Utility/Headers/Localization.h"
@@ -497,15 +498,125 @@ bool SceneGraphNode::isChild(const SceneGraphNode* target, const bool recursive)
 
 SceneGraphNode* SceneGraphNode::findChild(const U64 nameHash, const bool sceneNodeName, const bool recursive) const
 {
-    return sceneNodeName ? findChildInternal<true>(nameHash, recursive)
-                         : findChildInternal<false>(nameHash, recursive);
+    return sceneNodeName ? findChildBySceneNodeName(nameHash, recursive)
+                         : findChildByGraphNodeName(nameHash, recursive);
 }
 
 SceneGraphNode* SceneGraphNode::findChild(const I64 GUID, const bool sceneNodeGuid, const bool recursive) const
 {
-    return sceneNodeGuid ? findChildInternal<true>(GUID, recursive)
-                         : findChildInternal<false>(GUID, recursive);
+    return sceneNodeGuid ? findChildBySceneNodeName(GUID, recursive)
+                         : findChildByGraphNodeName(GUID, recursive);
 }
+
+SceneGraphNode* SceneGraphNode::findChildBySceneNodeName(const U64 nameHash, const bool recursive) const
+{
+    if (nameHash != 0u)
+    {
+        SharedLock<SharedMutex> r_lock(_children._lock);
+
+        for (SceneGraphNode* child : _children._data)
+        {
+            const U64 cmpHash = _ID(child->getNode().resourceName().c_str());
+            if (cmpHash == nameHash)
+            {
+                return child;
+            }
+
+            if (recursive)
+            {
+                SceneGraphNode* recChild = child->findChildBySceneNodeName(nameHash, true);
+
+                if (recChild != nullptr)
+                {
+                    return recChild;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+SceneGraphNode* SceneGraphNode::findChildBySceneNodeGUID(const I64 GUID, const bool recursive) const
+{
+    if (GUID != -1)
+    {
+        SharedLock<SharedMutex> r_lock(_children._lock);
+        for (SceneGraphNode* child : _children._data)
+        {
+            if (child->getNode().getGUID() == GUID)
+            {
+                return child;
+            }
+
+            if (recursive)
+            {
+                SceneGraphNode* recChild = child->findChildBySceneNodeGUID(GUID, true);
+                if (recChild != nullptr)
+                {
+                    return recChild;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+SceneGraphNode* SceneGraphNode::findChildByGraphNodeName(const U64 nameHash, const bool recursive) const
+{
+    if (nameHash != 0u)
+    {
+        SharedLock<SharedMutex> r_lock(_children._lock);
+
+        for (SceneGraphNode* child : _children._data)
+        {
+            if (child->nameHash() == nameHash)
+            {
+                return child;
+            }
+
+            if (recursive)
+            {
+                SceneGraphNode* recChild = child->findChildByGraphNodeName(nameHash, true);
+
+                if (recChild != nullptr)
+                {
+                    return recChild;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+SceneGraphNode* SceneGraphNode::findChildByGraphNodeGUID(const I64 GUID, const bool recursive) const
+{
+    if (GUID != -1)
+    {
+        SharedLock<SharedMutex> r_lock(_children._lock);
+        for (SceneGraphNode* child : _children._data)
+        {
+            if (child->getGUID() == GUID)
+            {
+                return child;
+            }
+
+            if (recursive)
+            {
+                SceneGraphNode* recChild = child->findChildByGraphNodeGUID(GUID, true);
+                if (recChild != nullptr)
+                {
+                    return recChild;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 
 bool SceneGraphNode::intersect(const IntersectionRay& ray, const float2 range, vector<SGNRayResult>& intersections) const
 {
