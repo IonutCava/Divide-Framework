@@ -2,6 +2,7 @@
 #include "Headers/Connection.h"
 
 #include "Utility/Headers/Localization.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "ECS/Components/Headers/NetworkingComponent.h"
 
 #include "Platform/File/Headers/FileManagement.h"

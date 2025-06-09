@@ -1,6 +1,7 @@
 
 
 #include "Headers/ScriptComponent.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
 

@@ -12,7 +12,7 @@
 #include "Core/Headers/Kernel.h"
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "ECS/Components/Headers/RenderingComponent.h"
-#include "Editor/Headers/Editor.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Rendering/RenderPass/Headers/NodeBufferedData.h"
 
 namespace Divide

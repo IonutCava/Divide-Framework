@@ -1,6 +1,9 @@
 
 
 #include "Headers/ECSManager.h"
+#include "Headers/EnvironmentProbeSystem.h"
+#include "Headers/NavigationSystem.h"
+#include "Headers/RigidBodySystem.h"
 
 #include "ECS/Systems/Headers/AnimationSystem.h"
 #include "ECS/Systems/Headers/BoundsSystem.h"
@@ -10,9 +13,6 @@
 #include "ECS/Systems/Headers/DirectionalLightSystem.h"
 #include "ECS/Systems/Headers/PointLightSystem.h"
 #include "ECS/Systems/Headers/SpotLightSystem.h"
-#include "Headers/EnvironmentProbeSystem.h"
-#include "Headers/NavigationSystem.h"
-#include "Headers/RigidBodySystem.h"
 
 #include "ECS/Components/Headers/IKComponent.h"
 #include "ECS/Components/Headers/NetworkingComponent.h"

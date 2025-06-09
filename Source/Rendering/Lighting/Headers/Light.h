@@ -33,7 +33,7 @@
 #ifndef DVD_LIGHT_COMPONENT_H_
 #define DVD_LIGHT_COMPONENT_H_
 
-#include "ECS/Components/Headers/SGNComponent.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Rendering/Lighting/ShadowMapping/Headers/ShadowMap.h"
 #include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 

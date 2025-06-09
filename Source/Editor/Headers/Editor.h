@@ -43,6 +43,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Camera/Headers/CameraSnapshot.h"
 #include "Editor/Widgets/Headers/Gizmo.h"
 #include "Editor/Widgets/Headers/DockedWindow.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 #include "Managers/Headers/ProjectManager.h"
 
 #include "Platform/Video/Headers/Pipeline.h"

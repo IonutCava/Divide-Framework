@@ -2,6 +2,8 @@
 
 #include "Headers/SelectionComponent.h"
 
+#include "Graphs/Headers/SceneGraphNode.h"
+
 namespace Divide
 {
     SelectionComponent::SelectionComponent(SceneGraphNode* parentSGN, PlatformContext& context)
