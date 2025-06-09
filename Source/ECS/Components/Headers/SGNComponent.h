@@ -32,21 +32,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SGN_COMPONENT_H_
 #define DVD_SGN_COMPONENT_H_
 
-#include "EditorComponent.h"
+#include "SGNComponentFactory.h"
 #include "Core/Headers/PlatformContextComponent.h"
 #include <ECS/ComponentManager.h>
 #include <ECS/Component.h>
-
-namespace Divide {
-
-/// A generic component for the SceneGraphNode class
-enum class RenderStage : U8;
-class SceneGraphNode;
-class SGNComponent;
-class SceneRenderState;
-struct RenderStagePass;
-
-} //namespace Divide 
 
 namespace ECS
 {
@@ -86,103 +75,6 @@ namespace ECS
 
 namespace Divide
 {
-
-template<typename T, typename... Args>
-void AddComponentToNode(SceneGraphNode* node, Args... args);
-
-template<typename T>
-void RemoveComponentFromNode(SceneGraphNode* node);
-
-//ref: http://www.nirfriedman.com/2018/04/29/unforgettable-factory/
-template <typename Base, typename... Args>
-struct Factory
-{
-    using ConstructFunc = DELEGATE_STD<void, SceneGraphNode*, Args...>;
-    using DestructFunc = DELEGATE_STD<void, SceneGraphNode*>;
-    using FactoryContainerConstruct = ska::bytell_hash_map<ComponentType, ConstructFunc>;
-    using FactoryContainerDestruct = ska::bytell_hash_map<ComponentType, DestructFunc>;
-
-    template <typename... ConstructArgs>
-    static void construct(ComponentType type, SceneGraphNode* node, ConstructArgs&&... args)
-    {
-        ConstructData().at(type)(node, FWD(args)...);
-    }
-
-    static void destruct(const ComponentType type, SceneGraphNode* node)
-    {
-        DestructData().at(type)(node);
-    }
-
-    template<typename T, ComponentType C>
-    static void Register();
-
-    template <typename T, ComponentType C>
-    struct Registrar : ECS::Component<T>,
-                       Base
-    {
-        template<typename... InnerArgs>
-        Registrar(InnerArgs&&... args)
-            : Base(Key{ s_registered }, C, FWD(args)...)
-        {
-        }
-
-        void OnData([[maybe_unused]] const ECS::CustomEvent& data) override {}
-
-        static bool RegisterComponentType()
-        {
-            Factory<Base, Args...>::ConstructData().emplace(C,
-                [](SceneGraphNode* node, Args... args) -> void
-                {
-                    AddComponentToNode<T>(node, FWD(args)...);
-                });
-
-            Factory<Base, Args...>::DestructData().emplace(C,
-                [](SceneGraphNode* node) -> void
-                {
-                    RemoveComponentFromNode<T>(node);
-                });
-            return true;
-        }
-
-        static bool s_registered;
-
-        friend T;
-    };
-
-    friend Base;
-
-private:
-    struct Key
-    {
-        Key(const bool registered) noexcept : _registered(registered) {}
-
-      private:
-        bool _registered = false;
-
-        template <typename T, ComponentType C>
-        friend struct Registrar;
-    };
-
-    Factory() = default;
-
-    static FactoryContainerConstruct& ConstructData()
-    {
-        NO_DESTROY static FactoryContainerConstruct container;
-        return container;
-    }
-
-    static FactoryContainerDestruct& DestructData()
-    {
-        NO_DESTROY static FactoryContainerDestruct container;
-        return container;
-    }
-};
-
-template <typename Base, typename... Args>
-template <typename T, ComponentType C>
-bool Factory<Base, Args...>::Registrar<T, C>::s_registered = RegisterComponentType();
-
-struct EntityOnUpdate;
 
 class SGNComponent : protected PlatformContextComponent,
                      public Factory<SGNComponent>
@@ -240,4 +132,3 @@ using BaseComponentType = SGNComponent::Registrar<T, C>;
 }  // namespace Divide
 #endif //DVD_SGN_COMPONENT_H_
 
-#include "SGNComponent.inl"

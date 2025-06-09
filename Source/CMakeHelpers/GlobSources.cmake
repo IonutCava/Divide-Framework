@@ -216,7 +216,7 @@ set( ECS_SOURCE_HEADERS ECS/Components/Headers/AnimationComponent.h
                         ECS/Components/Headers/ScriptComponent.h
                         ECS/Components/Headers/SelectionComponent.h
                         ECS/Components/Headers/SGNComponent.h
-                        ECS/Components/Headers/SGNComponent.inl
+                        ECS/Components/Headers/SGNComponentFactory.h
                         ECS/Components/Headers/SpotLightComponent.h
                         ECS/Components/Headers/TransformComponent.h
                         ECS/Components/Headers/UnitComponent.h

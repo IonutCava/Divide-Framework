@@ -39,13 +39,13 @@
 namespace Divide
 {
     template<typename T, typename... Args>
-    inline void AddComponentToNode(SceneGraphNode* node, Args... args)
+    void AddComponentToNode(SceneGraphNode* node, Args... args)
     {
         node->template AddSGNComponent<T>(FWD(args)...);
     }
 
     template<typename T>
-    inline void RemoveComponentFromNode(SceneGraphNode* node)
+    void RemoveComponentFromNode(SceneGraphNode* node)
     {
         node->template RemoveSGNComponent<T>();
     }

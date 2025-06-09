@@ -4,9 +4,9 @@
 
 #include "Core/Headers/ByteBuffer.h"
 #include "Core/Headers/PlatformContext.h"
+#include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 
 #include "Editor/Headers/Editor.h"
-#include "Core/Math/BoundingVolumes/Headers/BoundingSphere.h"
 #include "Geometry/Material/Headers/Material.h"
 #include "ECS/Components/Headers/TransformComponent.h"
 

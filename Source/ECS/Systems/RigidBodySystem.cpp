@@ -4,6 +4,7 @@
 
 #include "Core/Headers/PlatformContext.h"
 #include "Physics/Headers/PXDevice.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
     RigidBodySystem::RigidBodySystem(ECS::ECSEngine& parentEngine, PlatformContext& context)

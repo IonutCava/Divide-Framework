@@ -4,6 +4,7 @@
 
 #include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Graphs/Headers/SceneGraphNode.h"
 
 namespace Divide {
     EnvironmentProbeSystem::EnvironmentProbeSystem(ECS::ECSEngine& parentEngine, PlatformContext& context)

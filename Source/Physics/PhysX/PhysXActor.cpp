@@ -2,8 +2,9 @@
 
 #include "Headers/PhysXActor.h"
 
-#include "ECS/Components/Headers/RigidBodyComponent.h"
 #include "Physics/Headers/PXDevice.h"
+#include "Graphs/Headers/SceneGraphNode.h"
+#include "ECS/Components/Headers/RigidBodyComponent.h"
 
 namespace Divide {
 namespace Util {
