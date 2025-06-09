@@ -67,7 +67,10 @@ size_t Kernel::TotalThreadCount( const TaskPoolType type ) noexcept
             break;
     }
 
-    return g_totalWorkerCount;
+    return TotalThreadCount(TaskPoolType::ASSET_LOADER) +
+           TotalThreadCount(TaskPoolType::RENDERER) +
+           TotalThreadCount(TaskPoolType::LOW_PRIORITY) +
+           TotalThreadCount(TaskPoolType::HIGH_PRIORITY);
 }
 
 Kernel::Kernel(const I32 argc, char** argv, Application& parentApp)
@@ -751,7 +754,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     { // Start thread pools
-        std::atomic_size_t threadCounter = TotalThreadCount(TaskPoolType::COUNT) - g_renderThreadCount;
+        std::atomic_size_t threadCounter = TotalThreadCount(TaskPoolType::COUNT);
 
         for ( U8 i = 0u; i < to_base(TaskPoolType::COUNT); ++i)
         {

@@ -7,6 +7,7 @@ add_compile_definitions(IMGUI_DISABLE_OBSOLETE_KEYIO)
 add_compile_definitions(IMGUI_USE_STB_SPRINTF)
 
 #Optick
+message("Fetching Optick Lib")
 set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE)
 set(OPTICK_BUILD_GUI_APP FALSE)
 set(OPTICK_ENABLED TRUE)
@@ -21,8 +22,10 @@ FetchContent_Declare(
   #GIT_PROGRESS   TRUE
   EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( optick )
 
 #Skarupke hash maps
+message("Fetching Flat_hash_map Lib")
 FetchContent_Declare(
     skarupke
     GIT_REPOSITORY https://github.com/skarupke/flat_hash_map.git
@@ -30,8 +33,10 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( skarupke )
 
 #MemoryPool
+message("Fetching MemoryPool Lib")
 FetchContent_Declare(
     memory_pool
     GIT_REPOSITORY https://github.com/cacay/MemoryPool.git
@@ -39,8 +44,10 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( memory_pool )
 
 #TileableVolumeNoise
+message("Fetching TileableVolumeNoise Lib")
 FetchContent_Declare(
     tileable_volume_noise
     GIT_REPOSITORY https://github.com/IonutCava/TileableVolumeNoise.git
@@ -48,8 +55,10 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( tileable_volume_noise )
 
 #CurlNoise
+message("Fetching CurlNoise Lib")
 FetchContent_Declare(
     curl_noise
     GIT_REPOSITORY https://github.com/IonutCava/CurlNoise.git
@@ -57,8 +66,10 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( curl_noise )
 
 #SimpleFileWatcher
+message("Fetching SimpleFileWatcher Lib")
 FetchContent_Declare(
     simple_file_watcher
     GIT_REPOSITORY https://github.com/jameswynn/simplefilewatcher.git
@@ -67,8 +78,10 @@ FetchContent_Declare(
     #SYSTEM
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( simple_file_watcher )
 
 #fcpp
+message("Fetching fcpp Lib")
 FetchContent_Declare(
     fcpp
     GIT_REPOSITORY https://github.com/IonutCava/fcpp.git
@@ -77,8 +90,10 @@ FetchContent_Declare(
     #SYSTEM
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( fcpp )
 
 #imgui_club
+message("Fetching ImGui Club Lib")
 FetchContent_Declare(
     imgui_club
     GIT_REPOSITORY https://github.com/ocornut/imgui_club.git
@@ -86,8 +101,10 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( imgui_club )
 
 #IconFontCppHeaders
+message("Fetching IconFontCppHeaders Lib")
 FetchContent_Declare(
     icon_font_cpp_headers
     GIT_REPOSITORY https://github.com/juliettef/IconFontCppHeaders.git
@@ -95,8 +112,10 @@ FetchContent_Declare(
     #GIT_PROGRESS   TRUE
     EXCLUDE_FROM_ALL
 )
+FetchContent_MakeAvailable( icon_font_cpp_headers )
 
 #chaiscript
+message("Fetching Chaiscript Lib")
 set(UNIT_TEST_LIGHT TRUE)
 set(BUILD_SAMPLES FALSE)
 FetchContent_Declare(
@@ -107,21 +126,10 @@ FetchContent_Declare(
     SYSTEM
 )
 
-
-FetchContent_MakeAvailable(
-    optick
-    skarupke
-    memory_pool
-    tileable_volume_noise
-    curl_noise
-    simple_file_watcher
-    fcpp
-    imgui_club
-    icon_font_cpp_headers
-    chaiscript
-)
+FetchContent_MakeAvailable( chaiscript )
 
 #SDL3_mixer
+message("Fetching SDL3_Mixer Lib")
 set(SDLMIXER_FLAC OFF)
 set(SDLMIXER_GME OFF)
 set(SDLMIXER_MOD OFF)
@@ -143,6 +151,7 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL
 )
 
+message("Making SDL3_Mixer Lib Available")
 FetchContent_MakeAvailable( SDL3_mixer )
 
 if(NOT WINDOWS_OS_BUILD)

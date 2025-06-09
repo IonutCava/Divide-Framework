@@ -504,8 +504,8 @@ SceneGraphNode* SceneGraphNode::findChild(const U64 nameHash, const bool sceneNo
 
 SceneGraphNode* SceneGraphNode::findChild(const I64 GUID, const bool sceneNodeGuid, const bool recursive) const
 {
-    return sceneNodeGuid ? findChildBySceneNodeName(GUID, recursive)
-                         : findChildByGraphNodeName(GUID, recursive);
+    return sceneNodeGuid ? findChildBySceneNodeGUID(GUID, recursive)
+                         : findChildByGraphNodeGUID(GUID, recursive);
 }
 
 SceneGraphNode* SceneGraphNode::findChildBySceneNodeName(const U64 nameHash, const bool recursive) const

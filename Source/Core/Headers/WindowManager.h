@@ -138,9 +138,18 @@ protected:
     bool onResolutionChange(const SizeChangeParams& params);
 
 protected:
+    struct APISettings
+    {
+        bool _isolateGraphicsContext{ true }; //< If true, we'll try and isolate the graphics context from others on the GPU for extra robustness at a possible slight performance cost (See GL_ARB_robustness_isolation)
+        bool _createDebugContext{ !Config::Build::IS_RELEASE_BUILD && Config::ENABLE_GPU_VALIDATION };
+        bool _enableCompatibilityLayer{ false };
+        bool _requestRobustContext{ true };
+    };
     friend class DisplayWindow;
-    [[nodiscard]] static ErrorCode ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor, bool skipDebug = false );
-    [[nodiscard]] static ErrorCode ApplyAPISettings( const PlatformContext& context, RenderAPI api, DisplayWindow* targetWindow, DisplayWindow* activeWindow );
+    [[nodiscard]] ErrorCode findAndApplyAPISettings(const PlatformContext& context, const WindowDescriptor& descriptor);
+    [[nodiscard]] ErrorCode applyAPISettingsPreCreate(const PlatformContext& context, RenderAPI api);
+    [[nodiscard]] ErrorCode applyAPISettingsPostCreate( const PlatformContext& context, RenderAPI api, DisplayWindow* targetWindow );
+
     static void DestroyAPISettings(DisplayWindow* window) noexcept;
 
 protected:
@@ -152,6 +161,7 @@ protected:
     static const SDL_DisplayMode* s_mainDisplayMode;
     static std::array<SDL_Cursor*, to_base(CursorStyle::COUNT)> s_cursors;
     eastl::stack<DisplayWindow*> _activeWindows;
+    APISettings _apiSettings{};
     
 };
 

@@ -1,6 +1,7 @@
 include(FetchContent)
 
 #----------------------------------------------------------------------------- CEGUI ------------------------------------------------------------------
+message("Fetching CEGUI Lib")
 
 set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 
@@ -88,12 +89,14 @@ link_directories("${cegui_BINARY_DIR}/lib" )
 
 
 #----------------------------------------------------------------------------- JOLT Physics ------------------------------------------------------------------
+message("Fetching Jolt Physics Lib")
 FetchContent_Declare(
     JoltPhysics
     GIT_REPOSITORY  https://github.com/jrouwe/JoltPhysics.git
     GIT_TAG         v5.3.0
     GIT_SHALLOW     TRUE
     #GIT_PROGRESS    TRUE
+    SOURCE_SUBDIR   "Build"
     EXCLUDE_FROM_ALL
 )
 
@@ -116,17 +119,29 @@ set(USE_LZCNT  ${BMI2_OPT})
 set(USE_TZCNT  ${BMI2_OPT})
 set(USE_F16C ${F16C_OPT})
 set(USE_FMADD  ${FMA4_OPT})
-set(OBJECT_LAYER_BITS 32)
+
 set(OVERRIDE_CXX_FLAGS  OFF)
-set(CROSS_PLATFORM_DETERMINISTIC  ON)
 set(INTERPROCEDURAL_OPTIMIZATION OFF)
 set(ENABLE_INSTALL OFF)
+set(GENERATE_DEBUG_SYMBOLS ON)
+set(PROFILER_IN_DEBUG_AND_RELEASE OFF)
+set(PROFILER_IN_DISTRIBUTION OFF)
+
+list(APPEND EXTRA_DEFINITIONS JPH_OBJECT_STREAM)
+
+set(DEBUG_RENDERER_IN_DISTRIBUTION ON)
+list(APPEND EXTRA_DEFINITIONS JPH_DEBUG_RENDERER)
 
 set(USE_ASSERTS ON)
-add_compile_definitions(JPH_ENABLE_ASSERTS)
+list(APPEND EXTRA_DEFINITIONS JPH_ENABLE_ASSERTS)
 
 set(DISABLE_CUSTOM_ALLOCATOR ON)
-add_compile_definitions(JPH_DISABLE_CUSTOM_ALLOCATOR)
+list(APPEND EXTRA_DEFINITIONS JPH_DISABLE_CUSTOM_ALLOCATOR)
+
+set(CROSS_PLATFORM_DETERMINISTIC OFF)
+
+set(FLOATING_POINT_EXCEPTIONS_ENABLED ON)
+list(APPEND EXTRA_DEFINITIONS JPH_FLOATING_POINT_EXCEPTIONS_ENABLED)
 
 set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 
@@ -148,13 +163,7 @@ endif()
 
 message("END: Configuring JoltPhysics library")
 
-FetchContent_GetProperties(JoltPhysics)
-string(TOLOWER "JoltPhysics" lc_JoltPhysics)
-if (NOT ${lc_JoltPhysics}_POPULATED)
-    message("Fetching JoltPhysics library")
-    FetchContent_MakeAvailable(JoltPhysics)
-    add_subdirectory(${${lc_JoltPhysics}_SOURCE_DIR}/Build ${${lc_JoltPhysics}_BINARY_DIR})
-endif()
+FetchContent_MakeAvailable(JoltPhysics)
 
 include_directories(${JoltPhysics_SOURCE_DIR}/..)
 

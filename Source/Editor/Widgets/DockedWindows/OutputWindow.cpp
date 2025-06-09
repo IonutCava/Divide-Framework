@@ -84,12 +84,10 @@ namespace Divide
             ImGui::SameLine();
             ImGui::SetNextItemWidth( 100 );
             U16 logSize = g_logEntries;
-            if (ImGui::InputScalar( "##MaxLogEntries", ImGuiDataType_U16, &logSize, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue ))
+            ImGui::InputScalar( "##MaxLogEntries", ImGuiDataType_U16, &logSize, nullptr, nullptr, nullptr );
+            if ( ImGui::IsItemDeactivatedAfterEdit() && logSize != g_logEntries)
             {
-                if ( logSize != g_logEntries)
-                {
-                    g_logEntries = CLAMPED<U16>( logSize, 1u, g_maxLogEntries );
-                }
+                g_logEntries = CLAMPED<U16>( logSize, 1u, g_maxLogEntries );
             }
             ImGui::SameLine();
             if ( ImGui::Checkbox( "Info", &infoFlag ) )

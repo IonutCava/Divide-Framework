@@ -393,8 +393,9 @@ namespace Divide
         const WindowManager::MonitorData& mainMonitor = monitors[_mainWindow->initialDisplay()];
 
         ImGuiContext*& editorContext = _imguiContexts[to_base(ImGuiContextType::Editor)];
-        ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         editorContext = ImGui::CreateContext();
+
+        ImGuiPlatformIO& platform_io = editorContext->PlatformIO;
         ImGuiIO& io = _imguiContexts[to_base(ImGuiContextType::Editor)]->IO;
         createFontTexture(io, mainMonitor.dpi / PlatformDefaultDPI());
         initBasicImGUIState( io, platform_io, true, _imguiStringBuffers[to_base(ImGuiContextType::Editor)] );

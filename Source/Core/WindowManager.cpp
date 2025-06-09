@@ -182,7 +182,27 @@ ErrorCode WindowManager::init(PlatformContext& context,
         descriptor.flags &= ~to_base(WindowDescriptor::Flags::RESIZEABLE);
     }
 
+    if constexpr (Config::ENABLE_GPU_VALIDATION)
+    {
+        if (context.config().debug.renderer.enableRenderAPIDebugging)
+        {
+            _apiSettings._createDebugContext = true;
+        }
+    }
+    if (context.config().debug.renderer.enableRenderAPIBestPractices)
+    {
+        _apiSettings._isolateGraphicsContext = true;
+        _apiSettings._requestRobustContext = true;
+        _apiSettings._enableCompatibilityLayer = false;
+    }
+
     ErrorCode err = ErrorCode::NO_ERR;
+    err = findAndApplyAPISettings(context, descriptor);
+    if (err != ErrorCode::NO_ERR)
+    {
+        return err;
+    }
+
     DisplayWindow* window = createWindow(descriptor, err);
 
     if (err == ErrorCode::NO_ERR)
@@ -331,72 +351,41 @@ DisplayWindow* WindowManager::createWindow(const WindowDescriptor& descriptor, E
         return nullptr;
     }
 
-    std::unique_ptr<DisplayWindow> window = std::make_unique<DisplayWindow>(*this, *_context);
-    DIVIDE_ASSERT(window != nullptr);
-
-    if (err != ErrorCode::NO_ERR)
-    {
-        return nullptr;
-    }
-    else
-    {
-        err = ConfigureAPISettings( *_context, descriptor );
-    }
-
-    if (err != ErrorCode::NO_ERR)
-    {
-        return nullptr;
-    }
-
-    DisplayWindow* crtWindow = activeWindow();
-
-    bool contextChanged = false;
-    if ( descriptor.parentWindow != nullptr )
+    if (descriptor.targetAPI == RenderAPI::OpenGL && descriptor.parentWindow != nullptr )
     {
         Validate( SDL_GL_MakeCurrent( descriptor.parentWindow->getRawWindow(), descriptor.parentWindow->userData()._glContext ) );
-        contextChanged = true;
+    }
+
+    auto window = std::make_unique<DisplayWindow>(*this, *_context);
+    err = applyAPISettingsPreCreate(*_context, descriptor.targetAPI);
+    if (err != ErrorCode::NO_ERR)
+    {
+        Console::errorfn(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError());
+        Console::errorfn(LOCALE_STR("ERROR_SDL_OPENGL_CONTEXT"), GetLastErrorText());
+        Console::warnfn(LOCALE_STR("WARN_SWITCH_API"));
+        Console::warnfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
+
+        return nullptr;
     }
 
     err = window->init(descriptor);
-
     if (err != ErrorCode::NO_ERR)
     {
         return nullptr;
     }
 
-    if ( crtWindow != nullptr && contextChanged )
+    err = applyAPISettingsPostCreate(*_context, descriptor.targetAPI, window.get());
+    if (err != ErrorCode::NO_ERR)
     {
-        Validate( SDL_GL_MakeCurrent( crtWindow->getRawWindow(), nullptr ) );
+        return nullptr;
     }
 
-    const bool isMainWindow = _mainWindow == nullptr;
-    if ( isMainWindow )
+    if (_mainWindow == nullptr)
     {
         DIVIDE_ASSERT( descriptor.parentWindow == nullptr );
         _mainWindow = window.get();
     }
-
-    err = ApplyAPISettings( *_context, descriptor.targetAPI, window.get(), crtWindow != nullptr ? crtWindow : mainWindow() );
-
-    if ( err == ErrorCode::GL_OLD_HARDWARE)
-    {
-        err = ConfigureAPISettings(*_context, descriptor, true);
-        if ( err == ErrorCode::NO_ERR)
-        {
-            err = ApplyAPISettings(*_context, descriptor.targetAPI, window.get(), crtWindow != nullptr ? crtWindow : mainWindow());
-        }
-    }
-
-    if ( err != ErrorCode::NO_ERR )
-    {
-        if ( isMainWindow )
-        {
-            _mainWindow = nullptr;
-        }
-
-        return nullptr;
-    }
- 
+    
     window->addEventListener(WindowEvent::SIZE_CHANGED,
     {
         ._cbk = [&](const DisplayWindow::WindowEventArgs& args)
@@ -476,18 +465,70 @@ void WindowManager::DestroyAPISettings(DisplayWindow* window) noexcept
         return;
     }
 
-    if ( window->userData()._glContext  != nullptr)
+    if ( window->userData()._glContext != nullptr && window->userData()._ownsContext)
     {
-        if ( window->userData()._ownsContext)
-        {
-            SDL_GL_DestroyContext( window->userData()._glContext );
-        }
-
-        window->userData()._glContext = nullptr;
+        SDL_GL_DestroyContext( window->userData()._glContext );
     }
+
+    window->userData()._glContext = nullptr;
 }
 
-ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, const WindowDescriptor& descriptor, const bool skipDebug)
+ErrorCode WindowManager::applyAPISettingsPreCreate(const PlatformContext& context, const RenderAPI api)
+{
+    if ( api != RenderAPI::OpenGL)
+    {
+        return ErrorCode::NO_ERR;
+    }
+
+    Uint32 OpenGLFlags = 0u;
+    if (_apiSettings._enableCompatibilityLayer)
+    {
+        OpenGLFlags |= SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG;
+    }
+
+    if (_apiSettings._isolateGraphicsContext)
+    {
+        OpenGLFlags |= SDL_GL_CONTEXT_RESET_ISOLATION_FLAG;
+    }
+    if (_apiSettings._requestRobustContext)
+    {
+        OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
+    }
+    if (_apiSettings._createDebugContext)
+    {
+        OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
+    }
+    else
+    {
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
+    }
+
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, OpenGLFlags));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_RELEASE_BEHAVIOR, SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE));
+
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1));
+    // 32Bit RGBA (R8G8B8A8), 24bit Depth, 8bit Stencil
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, _apiSettings._enableCompatibilityLayer ? SDL_GL_CONTEXT_PROFILE_COMPATIBILITY : SDL_GL_CONTEXT_PROFILE_CORE));
+
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1));
+    if (context.config().rendering.MSAASamples > 0u)
+    {
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1));
+        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, std::min(context.config().rendering.MSAASamples, to_U8(4u)))); // Cap to 4xMSAA as we can't query HW support yet
+    }
+
+    return ErrorCode::NO_ERR;
+}
+
+ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context, const WindowDescriptor& descriptor)
 {
     const RenderAPI api = descriptor.targetAPI;
 
@@ -497,54 +538,59 @@ ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, c
     }
     else if (api == RenderAPI::OpenGL)
     {
-        Uint32 OpenGLFlags = SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_RESET_ISOLATION_FLAG;
-
-        bool useDebugContext = false;
-        if constexpr(Config::ENABLE_GPU_VALIDATION)
+        SDL_Window* testWindow = SDL_CreateWindow("OpenGL Settings Window", 320, 240, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+        if (!testWindow)
         {
-            if (!skipDebug)
+            return ErrorCode::SDL_WINDOW_INIT_ERROR;
+        }
+        SCOPE_EXIT
+        {
+            SDL_DestroyWindow(testWindow);
+        };
+
+        const auto applyCurrentSettings = [&]()
+        {
+            ErrorCode err = applyAPISettingsPreCreate(context, descriptor.targetAPI);
+            if ( err != ErrorCode::NO_ERR )
             {
-                // OpenGL error handling is available in any build configuration if the proper defines are in place.
-                // ToDo: Figure out why this leads to failed context creation! -Ionut
-                OpenGLFlags |= SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG;
-                if (context.config().debug.renderer.enableRenderAPIDebugging || context.config().debug.renderer.enableRenderAPIBestPractices)
+                return err;
+            }
+
+            SDL_GLContext context = SDL_GL_CreateContext(testWindow);
+            if (context == nullptr)
+            {
+                return ErrorCode::GL_OLD_HARDWARE;
+            }
+            SDL_GL_DestroyContext(context);
+            return ErrorCode::NO_ERR;
+        };
+
+        ErrorCode err = applyCurrentSettings();
+        if (err == ErrorCode::GL_OLD_HARDWARE)
+        {
+            Console::errorfn(LOCALE_STR("INVALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
+            _apiSettings._isolateGraphicsContext = false;
+            err = applyCurrentSettings();
+
+            if (err == ErrorCode::GL_OLD_HARDWARE)
+            {
+                Console::errorfn(LOCALE_STR("INVALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
+                _apiSettings._requestRobustContext = false;
+                _apiSettings._createDebugContext = false;
+                _apiSettings._enableCompatibilityLayer = true;
+                err = applyCurrentSettings();
+                if (err == ErrorCode::GL_OLD_HARDWARE)
                 {
-                    useDebugContext = true;
-                    // ToDo: Figure out why this leads to failed context creation! -Ionut
-                    OpenGLFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
+                    Console::errorfn(LOCALE_STR("INVALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
                 }
             }
         }
-        if (!useDebugContext)
+
+        if (err == ErrorCode::NO_ERR)
         {
-            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_NO_ERROR, 1));
+            Console::printfn(LOCALE_STR("VALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
         }
 
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, OpenGLFlags));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_RELEASE_BEHAVIOR, SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE));
-
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1));
-        // 32Bit RGBA (R8G8B8A8), 24bit Depth, 8bit Stencil
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24));
-
-
-        Validate(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE));
-        ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
-        if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6))
-        {
-            ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5));
-        }
-
-        if ( context.config().rendering.MSAASamples > 0u)
-        {
-            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_MULTISAMPLEBUFFERS, 1 ) );
-            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_MULTISAMPLESAMPLES, std::min( context.config().rendering.MSAASamples, to_U8(4u)) ) ); // Cap to 4xMSAA as we can't query HW support yet
-        }
     }
     else
     {
@@ -554,34 +600,29 @@ ErrorCode WindowManager::ConfigureAPISettings( const PlatformContext& context, c
     return ErrorCode::NO_ERR;
 }
 
-ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const RenderAPI api, DisplayWindow* targetWindow, DisplayWindow* activeWindow )
+ErrorCode WindowManager::applyAPISettingsPostCreate( const PlatformContext& context, const RenderAPI api, DisplayWindow* targetWindow )
 {
-    // Create a context and make it current
-    if ( targetWindow->parentWindow() != nullptr)
-    {
-        targetWindow->userData( targetWindow->parentWindow()->userData() );
-        targetWindow->userData()._ownsContext = false;
-    }
+    DestroyAPISettings(targetWindow);
 
     if (api == RenderAPI::OpenGL)
     {
-        if ( targetWindow->userData()._glContext == nullptr )
+       // Create a context and make it current
+        DIVIDE_ASSERT( targetWindow->userData()._glContext == nullptr );
+
+        if ( targetWindow->parentWindow() == nullptr )
         {
             targetWindow->userData()._glContext = SDL_GL_CreateContext( targetWindow->getRawWindow() );
-            targetWindow->userData()._ownsContext = true;
-        }
+            if ( targetWindow->userData()._glContext == nullptr)
+            {
+                return ErrorCode::GL_OLD_HARDWARE;
+            }
 
-        if ( targetWindow->userData()._glContext == nullptr)
-        {
-            Console::errorfn(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError());
-            Console::errorfn(LOCALE_STR("ERROR_SDL_OPENGL_CONTEXT"), GetLastErrorText());
-            Console::warnfn(LOCALE_STR("WARN_SWITCH_API"));
-            Console::warnfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
-            return ErrorCode::GL_OLD_HARDWARE;
+            targetWindow->userData()._ownsContext = true;
         }
         else
         {
-            ValidateAssert( SDL_GL_SetAttribute( SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1 ) );
+            targetWindow->userData()._glContext = targetWindow->parentWindow()->userData()._glContext;
+            targetWindow->userData()._ownsContext = false;
         }
 
         if ( targetWindow->flags() & to_base(WindowFlags::VSYNC))
@@ -589,7 +630,7 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
             // Vsync is toggled on or off via the external config file
             bool vsyncSet = false;
             // Late swap may fail
-            if (context.config().runtime.adaptiveSync)
+            if ( context.config().runtime.adaptiveSync )
             {
                 vsyncSet = SDL_GL_SetSwapInterval(SDL_WINDOW_SURFACE_VSYNC_ADAPTIVE);
                 if (!vsyncSet)
@@ -609,9 +650,6 @@ ErrorCode WindowManager::ApplyAPISettings( const PlatformContext& context, const
         {
             SDL_GL_SetSwapInterval(SDL_WINDOW_SURFACE_VSYNC_DISABLED);
         }
-
-        // Creating a context will also set it as current in SDL. So ... unset it here.
-        Validate(SDL_GL_MakeCurrent( activeWindow->getRawWindow(), nullptr));
     }
 
     return ErrorCode::NO_ERR;
