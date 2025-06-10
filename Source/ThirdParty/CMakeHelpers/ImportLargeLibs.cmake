@@ -101,24 +101,6 @@ FetchContent_Declare(
 )
 
 message("BEGIN: Configuring JoltPhysics library")
-message("Toggling SSE4.2 support:" ${SSE42_OPT})
-message("Toggling AVX support:" ${AVX_OPT})
-message("Toggling AVX2 support:" ${AVX2_OPT})
-message("Toggling AVX512 support:" ${AVX512_OPT})
-message("Toggling LZCNT support:" ${BMI2_OPT})
-message("Toggling TZCNT support:" ${BMI2_OPT})
-message("Toggling F16C support:" ${F16C_OPT})
-message("Toggling FMADD support:" ${FMA_OPT})
-
-set(USE_SSE4_1 ON)
-set(USE_SSE4_2 ${SSE42_OPT})
-set(USE_AVX ${AVX_OPT})
-set(USE_AVX2 ${AVX2_OPT})
-set(USE_AVX512 ${AVX512_OPT})
-set(USE_LZCNT ${BMI2_OPT})
-set(USE_TZCNT ${BMI2_OPT})
-set(USE_F16C ${F16C_OPT})
-set(USE_FMADD ${FMA_OPT})
 
 set(OVERRIDE_CXX_FLAGS OFF)
 set(INTERPROCEDURAL_OPTIMIZATION OFF)
@@ -143,10 +125,42 @@ set(CROSS_PLATFORM_DETERMINISTIC OFF)
 set(FLOATING_POINT_EXCEPTIONS_ENABLED ON)
 list(APPEND EXTRA_DEFINITIONS JPH_FLOATING_POINT_EXCEPTIONS_ENABLED)
 
+message("Toggling SSE4.1 support:" ${SSE41_OPT})
+set(USE_SSE4_1 ${SSE41_OPT})
+
+message("Toggling SSE4.2 support:" ${SSE42_OPT})
+set(USE_SSE4_2 ${SSE42_OPT})
+
+message("Toggling AVX support:" ${AVX_OPT})
+set(USE_AVX ${AVX_OPT})
+
+message("Toggling AVX2 support:" ${AVX2_OPT})
+set(USE_AVX2 ${AVX2_OPT})
+
+message("Toggling LZCNT support:" ${LZCNT_OPT})
+set(USE_LZCNT ${LZCNT_OPT})
+
+message("Toggling TZCNT support:" ${BMI1_OPT})
+set(USE_TZCNT ${BMI1_OPT})
+
+message("Toggling F16C support:" ${F16C_OPT})
+set(USE_F16C ${F16C_OPT})
+
+message("Toggling FMADD support:" ${FMA_OPT})
+set(USE_FMADD ${FMA_OPT})
+
+if ( AVX512F_OPT AND AVX512VL_OPT AND AVX512DQ_OPT )
+    message("Toggling AVX512 support: ON")
+    set(USE_AVX512 ON)
+else()
+    message("Toggling AVX512 support: OFF")
+    set(USE_AVX512 OFF)
+endif()
+
 set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 
 if (MSVC_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd5045")
+    add_compile_options("/wd5045") 
 elseif(CLANG_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
 elseif(GNU_COMPILER)
@@ -154,11 +168,6 @@ elseif(GNU_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-array-bounds")
 else()
     message(FATAL_ERROR "Unknown compiler type")
-endif()
-
-if (MSVC_COMPILER)
-    # Spectre mitigation warning
-    add_compile_options("/wd5045") 
 endif()
 
 message("END: Configuring JoltPhysics library")

@@ -404,7 +404,7 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       list(APPEND _march_flag_list "znver3")
       list(APPEND _march_flag_list "znver2")
       list(APPEND _march_flag_list "znver1")
-      list(APPEND _available_vector_units_list "sse" "sse2" "sse3" "ssse3" "sse4a" "sse4.1" "sse4.2" "avx" "avx2" "fma" "f16c" "bmi" "bmi2" "avx512f")
+      list(APPEND _available_vector_units_list "sse" "sse2" "sse3" "ssse3" "sse4a" "sse4.1" "sse4.2" "avx" "avx2" "fma" "f16c" "bmi" "bmi2" "avx512f" "avx512bw" "avx512cd" "avx512dq" "avx512vl")
    elseif(TARGET_ARCHITECTURE STREQUAL "zen3")
       list(APPEND _march_flag_list "znver3")
       list(APPEND _march_flag_list "znver2")

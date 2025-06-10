@@ -137,7 +137,7 @@ else()
     endif()
 endif()
 
-set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS} ${EXTRA_COMPILE_FLAGS})
+set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS} $<$<COMPILE_LANGUAGE:CXX,C>:${EXTRA_COMPILE_FLAGS}>)
 
 add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" 
                                      ${ENGINE_SOURCE_CODE}
