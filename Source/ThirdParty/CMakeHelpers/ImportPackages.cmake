@@ -22,7 +22,16 @@ FetchContent_Declare(
   #GIT_PROGRESS   TRUE
   EXCLUDE_FROM_ALL
 )
+
+if(CLANG_COMPILER)
+    set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
+endif()
+
 FetchContent_MakeAvailable( optick )
+if(CLANG_COMPILER)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
+endif()
 
 #Skarupke hash maps
 message("Fetching Flat_hash_map Lib")
