@@ -34,83 +34,81 @@
 namespace Divide
 {
 
-#if defined(HAS_SSE42)
-    namespace SSE
+namespace SSE
+{
+    //ref: http://stackoverflow.com/questions/6042399/how-to-compare-m128-types
+    inline bool Fneq128( const __m128 a, const __m128 b ) noexcept
     {
-        //ref: http://stackoverflow.com/questions/6042399/how-to-compare-m128-types
-        inline bool Fneq128( const __m128 a, const __m128 b ) noexcept
-        {
-            // returns true if at least one element in a is not equal to 
-            // the corresponding element in b
-            return _mm_movemask_ps( _mm_cmpeq_ps( a, b ) ) != 0xF;
-        }
+        // returns true if at least one element in a is not equal to 
+        // the corresponding element in b
+        return _mm_movemask_ps( _mm_cmpeq_ps( a, b ) ) != 0xF;
+    }
 
-        inline bool Fneq128( const __m128 a, const __m128 b, const F32 epsilon ) noexcept
-        {
-            // epsilon vector
-            const auto eps = _mm_set1_ps( epsilon );
-            // absolute of difference of a and b
-            const auto abd = _mm_andnot_ps( _mm_set1_ps( -0.0f ), _mm_sub_ps( a, b ) );
-            // compare abd to eps
-            // returns true if one of the elements in abd is not less than epsilon
-            return _mm_movemask_ps( _mm_cmplt_ps( abd, eps ) ) != 0xF;
-        }
+    inline bool Fneq128( const __m128 a, const __m128 b, const F32 epsilon ) noexcept
+    {
+        // epsilon vector
+        const auto eps = _mm_set1_ps( epsilon );
+        // absolute of difference of a and b
+        const auto abd = _mm_andnot_ps( _mm_set1_ps( -0.0f ), _mm_sub_ps( a, b ) );
+        // compare abd to eps
+        // returns true if one of the elements in abd is not less than epsilon
+        return _mm_movemask_ps( _mm_cmplt_ps( abd, eps ) ) != 0xF;
+    }
 
-        //ref: https://www.opengl.org/discussion_boards/showthread.php/159586-my-SSE-code-is-slower-than-normal-why
-        /*inline __m128 DotSimd( const __m128 a, const __m128 b ) noexcept
-        {
-            __m128 r = _mm_mul_ps( a, b );
-            r = _mm_add_ps( _mm_movehl_ps( r, r ), r );
-            r = _mm_add_ss( _mm_shuffle_ps( r, r, 1 ), r );
+    //ref: https://www.opengl.org/discussion_boards/showthread.php/159586-my-SSE-code-is-slower-than-normal-why
+    /*inline __m128 DotSimd( const __m128 a, const __m128 b ) noexcept
+    {
+        __m128 r = _mm_mul_ps( a, b );
+        r = _mm_add_ps( _mm_movehl_ps( r, r ), r );
+        r = _mm_add_ss( _mm_shuffle_ps( r, r, 1 ), r );
 
-            return r;
-        }
+        return r;
+    }
 
-        inline __m128 SimpleDot( const __m128 a, const __m128 b ) noexcept
-        {
-            a = _mm_mul_ps( a, b );
-            b = _mm_hadd_ps( a, a );
-            return _mm_hadd_ps( b, b );
-        }*/
+    inline __m128 SimpleDot( const __m128 a, const __m128 b ) noexcept
+    {
+        a = _mm_mul_ps( a, b );
+        b = _mm_hadd_ps( a, a );
+        return _mm_hadd_ps( b, b );
+    }*/
 
-        inline __m128 LoadFloat3(const vec3<Angle::DEGREES_F>& value)
-        {
-            __m128 x = _mm_load_ss(&value.x.value);
-            __m128 y = _mm_load_ss(&value.y.value);
-            __m128 z = _mm_load_ss(&value.z.value);
-            __m128 xy = _mm_movelh_ps(x, y);
-            return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
-        }
+    inline __m128 LoadFloat3(const vec3<Angle::DEGREES_F>& value)
+    {
+        __m128 x = _mm_load_ss(&value.x.value);
+        __m128 y = _mm_load_ss(&value.y.value);
+        __m128 z = _mm_load_ss(&value.z.value);
+        __m128 xy = _mm_movelh_ps(x, y);
+        return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
+    }
 
-        inline __m128 LoadFloat3(const vec3<Angle::RADIANS_F>& value)
-        {
-            __m128 x = _mm_load_ss(&value.x.value);
-            __m128 y = _mm_load_ss(&value.y.value);
-            __m128 z = _mm_load_ss(&value.z.value);
-            __m128 xy = _mm_movelh_ps(x, y);
-            return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
-        }
+    inline __m128 LoadFloat3(const vec3<Angle::RADIANS_F>& value)
+    {
+        __m128 x = _mm_load_ss(&value.x.value);
+        __m128 y = _mm_load_ss(&value.y.value);
+        __m128 z = _mm_load_ss(&value.z.value);
+        __m128 xy = _mm_movelh_ps(x, y);
+        return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
+    }
 
-        inline __m128 LoadFloat3(const float3& value)
-        {
-            __m128 x = _mm_load_ss(&value.x);
-            __m128 y = _mm_load_ss(&value.y);
-            __m128 z = _mm_load_ss(&value.z);
-            __m128 xy = _mm_movelh_ps(x, y);
-            return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
-        }
+    inline __m128 LoadFloat3(const float3& value)
+    {
+        __m128 x = _mm_load_ss(&value.x);
+        __m128 y = _mm_load_ss(&value.y);
+        __m128 z = _mm_load_ss(&value.z);
+        __m128 xy = _mm_movelh_ps(x, y);
+        return _mm_shuffle_ps(xy, z, _MM_SHUFFLE(2, 0, 2, 0));
+    }
 
-        inline F32 Dot(const __m128 a, const __m128 b)
-        {
-            return _mm_cvtss_f32(_mm_dp_ps(a, b, 0xFF));
-        }
+    inline F32 Dot(const __m128 a, const __m128 b)
+    {
+        return _mm_cvtss_f32(_mm_dp_ps(a, b, 0xFF));
+    }
 
-        inline F32 Length(const __m128 reg)
-        {
-            return Sqrt<F32>(_mm_dp_ps(reg, reg, 0xFF));
-        }
-    } //namespace SSE
-#endif //HAS_SSE42
+    inline F32 Length(const __m128 reg)
+    {
+        return Sqrt<F32>(_mm_dp_ps(reg, reg, 0xFF));
+    }
+} //namespace SSE
 
     /*
     *  useful vector functions
@@ -200,7 +198,6 @@ namespace Divide
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
-#if defined(HAS_SSE42)
     /*template <>
     FORCE_INLINE F32 Dot(const float3& a, const float3& b) noexcept
     {
@@ -235,7 +232,6 @@ namespace Divide
     {
         return Angle::RADIANS_F{ SSE::Length(SSE::LoadFloat3(*this)) };
     }*/
-#endif //HAS_SSE42
 
     /// general vec3 cross function
     template <ValidMathType T>
@@ -852,7 +848,6 @@ namespace Divide
     *  vec4 inline definitions
     */
 
-#if defined(HAS_SSE42)
     template<>
     template<>
     FORCE_INLINE float4 float4::operator-( const F32 _f ) const noexcept
@@ -988,8 +983,6 @@ namespace Divide
         return !SSE::Fneq128( this->_reg._reg, v._reg._reg, epsi );
     }
 
-#endif //HAS_SSE42
-
     /// compare 2 vectors
     template <typename T>
     template<ValidMathType U>
@@ -1049,8 +1042,6 @@ namespace Divide
         return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
 
-
-#if defined(HAS_SSE42)
     template <>
     FORCE_INLINE F32 Dot( const float4& a, const float4& b ) noexcept
     {
@@ -1086,8 +1077,6 @@ namespace Divide
     {
         return Angle::RADIANS_F{ SSE::Length(this->_reg._reg) };
     }
-
-#endif //HAS_SSE42
 
     /// calculate the dot product between this vector and the specified one
     template <typename T>
@@ -1125,7 +1114,6 @@ namespace Divide
         return *this;
     }
 
-#if defined(HAS_SSE42)
     FORCE_INLINE __m128 normalizeSIMD(__m128 reg)
     {
         return _mm_mul_ps(reg, _mm_rsqrt_ps(_mm_dp_ps(reg, reg, 0xFF)));
@@ -1151,7 +1139,6 @@ namespace Divide
         this->_reg._reg = normalizeSIMD(this->_reg._reg);
         return *this;
     }
-#endif //HAS_SSE42
 
     /// The current vector is perpendicular to the specified one within epsilon
     template <typename T>

@@ -34,7 +34,6 @@
 
 namespace Divide {
 
-#if defined(HAS_SSE42)
 namespace SSE
 {
     //ref: http://stackoverflow.com/questions/18542894/how-to-multiply-two-quaternions-with-minimal-instructions?lq=1
@@ -70,7 +69,6 @@ namespace SSE
         return _mm_shuffle_ps(XZWY, XZWY, _MM_SHUFFLE(2, 1, 3, 0));
     }
 } // namespace SSE
-#endif //HAS_SSE42
 
 template <typename T>
 Quaternion<T>::Quaternion() noexcept
@@ -210,13 +208,11 @@ Quaternion<T> Quaternion<T>::operator*(const Quaternion<T>& rq) const noexcept
                          W() * rq.W() - X() * rq.X() - Y() * rq.Y() - Z() * rq.Z());
 }
 
-#if defined(HAS_SSE42)
 template <>
 inline Quaternion<F32> Quaternion<F32>::operator*(const Quaternion<F32>& rq) const noexcept
 {
     return Quaternion<F32>(SSE::multiply(_elements._reg._reg, rq._elements._reg._reg));
 }
-#endif //HAS_SSE42
 
 template <typename T>
 Quaternion<T>& Quaternion<T>::operator*=(const Quaternion<T>& rq) noexcept
