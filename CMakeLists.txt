@@ -156,7 +156,7 @@ if (MSVC_COMPILER)
             list(APPEND EXTRA_COMPILE_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/GL->")
             list(APPEND EXTRA_LINK_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/OPT:NOICF>")
         else()
-            message(STATUS "Skipping /dynamicdeopt for current build")
+            message("Skipping /dynamicdeopt for current build")
         endif()
 
     endif() #RUN_ASAN OR RUN_UBSAN
