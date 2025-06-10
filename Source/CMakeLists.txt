@@ -25,119 +25,115 @@ set(THIRD_PARTY_COMPILE_OPTIONS "")
 
 if (MSVC_COMPILER)
 
-    list(APPEND EXTRA_DEFINITIONS "$<$<COMPILE_LANGUAGE:C,CXX>:_CRT_SECURE_NO_WARNINGS>")
-    list(APPEND EXTRA_LINK_FLAGS "$<$<CONFIG:Debug>:/OPT:NOREF>")
-    list(APPEND EXTRA_LINK_FLAGS "$<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/INCREMENTAL,/INCREMENTAL:NO>")
-    
-    if ( ENABLE_FUNCTION_PROFILING )
-        list(APPEND EXTRA_LINK_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/PROFILE>")
-    endif()
+   list(APPEND EXTRA_DEFINITIONS "$<$<COMPILE_LANGUAGE:C,CXX>:_CRT_SECURE_NO_WARNINGS>")
+   list(APPEND EXTRA_LINK_FLAGS "$<$<CONFIG:Debug>:/OPT:NOREF>")
+   list(APPEND EXTRA_LINK_FLAGS "$<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/INCREMENTAL,/INCREMENTAL:NO>")
+   
+   if ( ENABLE_FUNCTION_PROFILING )
+       list(APPEND EXTRA_LINK_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/PROFILE>")
+   endif()
 
-    # Bit of a long one, but this is what happens when projects don't get built with /Wall.
-    set(DIVIDE_COMPILE_OPTIONS /Wall
-                               /wd4355 #'this' used in base member initializer list. Yup, I know ...
-                               /wd4599 #pch mismatch ...
-                               /wd4605 #some defines don't really need to be in the PCH and command line at the same time. Some due, sure, but this causes more problems than it solves
-                               /wd4668 #sometimes we don't actually define preoprocessor macros and want them to be interpreted as 0
-                               $<$<CONFIG:Release>:/wd4711> # automatic inline expansion warning
-                               $<$<COMPILE_LANGUAGE:C,CXX>:/Zm256>
-                               $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>
-                               $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
-                               $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>:/d2Obforceinline>
-                               #$<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/ZI,/Zi>
-                               $<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/Zi,/Zi>
-    )
+   # Bit of a long one, but this is what happens when projects don't get built with /Wall.
+   list(APPEND DIVIDE_COMPILE_OPTIONS /Wall
+                                      /wd4355 #'this' used in base member initializer list. Yup, I know ...
+                                      /wd4599 #pch mismatch ...
+                                      /wd4605 #some defines don't really need to be in the PCH and command line at the same time. Some due, sure, but this causes more problems than it solves
+                                      /wd4668 #sometimes we don't actually define preoprocessor macros and want them to be interpreted as 0
+                                      $<$<CONFIG:Release>:/wd4711> # automatic inline expansion warning
+                                      $<$<COMPILE_LANGUAGE:C,CXX>:/Zm256>
+                                      $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>
+                                      $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
+                                      $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>:/d2Obforceinline>
+   )                                  
 
-    set(PCH_COMPILE_OPTIONS /bigobj
-                            /wd4005 #_WIN32_WINNT redefinition
-                            /wd4100 #unreferecend format parameter
-                            /wd4201 #nonstandard extension used: nameless struct/union
-                            /wd4310 #cast truncates constant value
-                            /wd4624 #destructor was implicitly defines as deleted
-                            /wd5031 #pragma push/pop mismatch triggering in some EASTL headers as they split push and pop in separate headers for some things
-                            /wd4996 
+   list(APPEND DIVIDE_COMPILE_OPTIONS "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
+
+   list(APPEND PCH_COMPILE_OPTIONS /bigobj
+                                   /wd4005 #_WIN32_WINNT redefinition
+                                   /wd4100 #unreferecend format parameter
+                                   /wd4201 #nonstandard extension used: nameless struct/union
+                                   /wd4310 #cast truncates constant value
+                                   /wd4624 #destructor was implicitly defines as deleted
+                                   /wd5031 #pragma push/pop mismatch triggering in some EASTL headers as they split push and pop in separate headers for some things
+                                   /wd4996 
     )
 
     # All of these (including the Clang/GCC equivalents) could just be avoided with /W0..3, but I want to be explicit about the warnings I encounter with external libs
-    set(THIRD_PARTY_COMPILE_OPTIONS /wd4061 /wd4062 /wd4127 /wd4191 /wd4242 /wd4244 /wd4255
-                                    /wd4265 /wd4266 /wd4305 /wd4312 /wd4365 /wd4371 /wd4388
-                                    /wd4100 /wd4267 /wd4435 /wd4456 /wd4457 /wd4458 /wd4464
-                                    /wd4477 /wd4505 /wd4582 /wd4583 /wd4619 /wd4623 /wd4625
-                                    /wd4626 /wd4701 /wd4706 /wd4710 /wd4774 /wd4777 /wd4800
-                                    /wd4820 /wd4868 /wd5026 /wd5027 /wd5039 /wd5045 /wd5204
-                                    /wd5219 /wd5220 /wd5262 /wd5267 /wd5045
+    list(APPEND THIRD_PARTY_COMPILE_OPTIONS /wd4061 /wd4062 /wd4127 /wd4191 /wd4242 /wd4244 /wd4255
+                                            /wd4265 /wd4266 /wd4305 /wd4312 /wd4365 /wd4371 /wd4388
+                                            /wd4100 /wd4267 /wd4435 /wd4456 /wd4457 /wd4458 /wd4464
+                                            /wd4477 /wd4505 /wd4582 /wd4583 /wd4619 /wd4623 /wd4625
+                                            /wd4626 /wd4701 /wd4706 /wd4710 /wd4774 /wd4777 /wd4800
+                                            /wd4820 /wd4868 /wd5026 /wd5027 /wd5039 /wd5045 /wd5204
+                                            /wd5219 /wd5220 /wd5262 /wd5267 /wd5045
     )
 
 else()
 
-    set(DIVIDE_COMPILE_OPTIONS -Wall
-                               -pedantic
-                               $<$<COMPILE_LANGUAGE:C,CXX>:-pthread>
-                               $<$<COMPILE_LANGUAGE:CXX>:-Wno-c++17-extensions>
+    list(APPEND DIVIDE_COMPILE_OPTIONS -Wall
+                                       -pedantic
+                                       $<$<COMPILE_LANGUAGE:C,CXX>:-pthread>
+                                       $<$<COMPILE_LANGUAGE:CXX>:-Wno-c++17-extensions>
     )
 
-    set(THIRD_PARTY_COMPILE_OPTIONS -Wno-unused-but-set-variable
-                                    -Wno-parentheses
-                                    -Wno-misleading-indentation
-                                    -Wno-unused-variable
-                                    -Wno-unused-function
-                                    -Wno-char-subscripts
-                                    $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
+    list(APPEND THIRD_PARTY_COMPILE_OPTIONS -Wno-unused-but-set-variable -Wno-parentheses
+                                            -Wno-misleading-indentation  -Wno-unused-variable
+                                            -Wno-unused-function         -Wno-char-subscripts
+                                            $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
     )
 
     if(CLANG_COMPILER)
 
-        set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS}  -Wno-macro-redefined           -Wno-clang-cl-pch
-                                   -Wno-old-style-cast        -Wno-format-nonliteral         -Wno-c++98-compat
-                                   -Wno-c++98-compat-pedantic -Wno-global-constructors #Really now?
-                                   $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wno-cast-function-type-strict>
-                                   $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unknown-argument>
-                                   $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-undefined-func-template>
-                                   $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unused-command-line-argument>
-                                   $<$<COMPILE_LANGUAGE:C,CXX>:-fdeclspec>
+        list(APPEND DIVIDE_COMPILE_OPTIONS -Wno-macro-redefined       -Wno-clang-cl-pch
+                                           -Wno-old-style-cast        -Wno-format-nonliteral
+                                           -Wno-c++98-compat          -Wno-c++98-compat-pedantic
+                                           -Wno-global-constructors #Really now?
+                                           $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wno-cast-function-type-strict>
+                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unknown-argument>
+                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-undefined-func-template>
+                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unused-command-line-argument>
+                                           $<$<COMPILE_LANGUAGE:C,CXX>:-fdeclspec>
         )
 
         if(LINUX_OS_BUILD)
             list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fuse-ld=lld>")
         endif()
 
-        set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}         -Wno-reserved-macro-identifier                -Wno-documentation
-                                        -Wno-documentation-unknown-command     -Wno-ignored-attributes                       -Wno-undef
-                                        -Wno-cast-qual                         -Wno-cast-align                               -Wno-cast-function-type
-                                        -Wno-sign-conversion                   -Wno-float-conversion                         -Wno-string-conversion
-                                        -Wno-string-plus-int                   -Wno-double-promotion                         -Wno-unused-member-function
-                                        -Wno-conditional-uninitialized         -Wno-implicit-int-conversion                  -Wno-implicit-float-conversion
-                                        -Wno-unsafe-buffer-usage               -Wno-covered-switch-default                   -Wno-unused-private-field
-                                        -Wno-missing-braces                    -Wno-gnu-zero-variadic-macro-arguments        -Wno-float-equal
-                                        -Wno-extra-semi                        -Wno-switch-enum -Wno-shadow-uncaptured-local -Wno-disabled-macro-expansion
-                                        -Wno-nullability-extension             -Wno-zero-as-null-pointer-constant            -Wno-suggest-override
-                                        -Wno-suggest-destructor-override       -Wno-reserved-identifier                      -Wno-implicit-int-float-conversion
-                                        -Wno-unknown-pragmas                   -Wno-strict-prototypes                        -Wno-unused-template
-                                        -Wno-unused-macros                     -Wno-shorten-64-to-32                         -Wno-missing-prototypes
-                                        -Wno-newline-eof                       -Wno-extra-semi-stmt                          -Wno-comma
-                                        -Wno-shadow                            -Wno-microsoft-enum-value                     -Wno-language-extension-token
-                                        -Wno-deprecated-dynamic-exception-spec -Wno-exit-time-destructors                    -Wno-shadow-field-in-constructor
-                                        -Wno-implicit-fallthrough              -Wno-inconsistent-missing-override            -Wno-inconsistent-missing-destructor-override
-                                        -Wno-deprecated-declarations           -Wno-deprecated-copy-with-dtor                -Wno-deprecated-copy-with-user-provided-dtor
-                                        -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
-                                        -Wno-nonportable-system-include-path
+        list(APPEND THIRD_PARTY_COMPILE_OPTIONS -Wno-reserved-macro-identifier         -Wno-documentation                            -Wno-nonportable-system-include-path
+                                                -Wno-documentation-unknown-command     -Wno-ignored-attributes                       -Wno-undef
+                                                -Wno-cast-qual                         -Wno-cast-align                               -Wno-cast-function-type
+                                                -Wno-sign-conversion                   -Wno-float-conversion                         -Wno-string-conversion
+                                                -Wno-string-plus-int                   -Wno-double-promotion                         -Wno-unused-member-function
+                                                -Wno-conditional-uninitialized         -Wno-implicit-int-conversion                  -Wno-implicit-float-conversion
+                                                -Wno-unsafe-buffer-usage               -Wno-covered-switch-default                   -Wno-unused-private-field
+                                                -Wno-missing-braces                    -Wno-gnu-zero-variadic-macro-arguments        -Wno-float-equal
+                                                -Wno-extra-semi                        -Wno-switch-enum -Wno-shadow-uncaptured-local -Wno-disabled-macro-expansion
+                                                -Wno-nullability-extension             -Wno-zero-as-null-pointer-constant            -Wno-suggest-override
+                                                -Wno-suggest-destructor-override       -Wno-reserved-identifier                      -Wno-implicit-int-float-conversion
+                                                -Wno-unknown-pragmas                   -Wno-strict-prototypes                        -Wno-unused-template
+                                                -Wno-unused-macros                     -Wno-shorten-64-to-32                         -Wno-missing-prototypes
+                                                -Wno-newline-eof                       -Wno-extra-semi-stmt                          -Wno-comma
+                                                -Wno-shadow                            -Wno-microsoft-enum-value                     -Wno-language-extension-token
+                                                -Wno-deprecated-dynamic-exception-spec -Wno-exit-time-destructors                    -Wno-shadow-field-in-constructor
+                                                -Wno-implicit-fallthrough              -Wno-inconsistent-missing-override            -Wno-inconsistent-missing-destructor-override
+                                                -Wno-deprecated-declarations           -Wno-deprecated-copy-with-dtor                -Wno-deprecated-copy-with-user-provided-dtor
+                                                -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
         )
 
     elseif(GNU_COMPILER)
-        set(THIRD_PARTY_COMPILE_OPTIONS ${THIRD_PARTY_COMPILE_OPTIONS}
-                                        -Wno-format-overflow
-                                        -Wno-unused-result
-                                        -Wno-stringop-truncation
+        list(APPEND THIRD_PARTY_COMPILE_OPTIONS -Wno-format-overflow
+                                                -Wno-unused-result
+                                                -Wno-stringop-truncation
         )
 
         #Sadly, with array-bounds set to default, anything that uses EASTL will spam the build log
-        set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS} -Warray-bounds=0)
+        list(APPEND DIVIDE_COMPILE_OPTIONS -Warray-bounds=0)
     else()
         message( FATAL_ERROR "Unknow compiler type")
     endif()
 endif()
 
-set(DIVIDE_COMPILE_OPTIONS ${DIVIDE_COMPILE_OPTIONS} $<$<COMPILE_LANGUAGE:CXX,C>:${EXTRA_COMPILE_FLAGS}>)
+list(APPEND DIVIDE_COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CXX,C>:${EXTRA_COMPILE_FLAGS}>")
 
 add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" 
                                      ${ENGINE_SOURCE_CODE}
@@ -151,16 +147,17 @@ if(WIN32)
     target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Shcore.lib Winmm.lib)
 endif()
 
-set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
-target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC 
-    "$<$<COMPILE_LANGUAGE:CXX>:EngineIncludes_pch.h>"
-    "$<$<COMPILE_LANGUAGE:CXX>:CEGUIIncludes_pch.h>"
-)
-
-target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS} ${PCH_COMPILE_OPTIONS} ${THIRD_PARTY_COMPILE_OPTIONS})
+target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS}
+                                                ${PCH_COMPILE_OPTIONS}
+                                                ${THIRD_PARTY_COMPILE_OPTIONS})
 
 target_link_options(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_LINK_FLAGS})
 target_compile_definitions(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_DEFINITIONS})
+
+set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
+    target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:EngineIncludes_pch.h>"
+                                                       "$<$<COMPILE_LANGUAGE:CXX>:CEGUIIncludes_pch.h>"
+)
 
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
@@ -174,9 +171,7 @@ set(COMMON_LIBS ${APP_LIB_DIVIDE}
 )
 
 if (ENABLE_MIMALLOC)
-    set(COMMON_LIBS ${COMMON_LIBS} 
-                    $<IF:$<TARGET_EXISTS:mimalloc>,mimalloc,mimalloc-static>
-    )
+    list(APPEND COMMON_LIBS $<IF:$<TARGET_EXISTS:mimalloc>,mimalloc,mimalloc-static>)
 endif()
 
 target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
@@ -200,7 +195,8 @@ if(WINDOWS_OS_BUILD)
         if(WIN32)
             add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
                                                                                             $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
-                                                                                            $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>)
+                                                                                            $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
+            )
         endif()
     else()
         message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
@@ -239,18 +235,17 @@ if(BUILD_TESTING_INTERNAL)
     endif()
 endif()
 
-add_executable (${APP_EXE_PROJECT_MANAGER}
-                "ProjectManager/ProjectManager.cpp"
-                "ProjectManager/ProjectManager.h"
-                "Platform/PlatformDataTypes.cpp")
+add_executable (${APP_EXE_PROJECT_MANAGER} "ProjectManager/ProjectManager.cpp"
+                                           "ProjectManager/ProjectManager.h"
+                                           "Platform/PlatformDataTypes.cpp"
+)
 
-target_link_libraries(${APP_EXE_PROJECT_MANAGER} PRIVATE
-                                                 ${COMMON_LIBS}
-                                                 PRIVATE 
-                                                 imgui::imgui
-                                                 fmt::fmt
-                                                 SDL3::SDL3
-                                                 SDL3_image::SDL3_image)
+target_link_libraries(${APP_EXE_PROJECT_MANAGER} PRIVATE ${COMMON_LIBS}
+                                                         imgui::imgui
+                                                         fmt::fmt
+                                                         SDL3::SDL3
+                                                         SDL3_image::SDL3_image
+)
 
 add_dependencies(${APP_EXE_PROJECT_MANAGER} ${APP_EXE_DIVIDE}BinGenerated)
 
