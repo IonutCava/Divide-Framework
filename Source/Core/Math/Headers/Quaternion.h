@@ -51,11 +51,9 @@ class Quaternion
     Quaternion(T x, T y, T z, T w) noexcept;
 
     explicit Quaternion(const vec4<T>& values) noexcept;
-    
-#if defined(HAS_SSE42)
+
     template<typename U = T> requires std::is_same_v<U, F32>
     explicit Quaternion(const __m128 reg) noexcept : _elements(reg) {}
-#endif //HAS_SSE42
 
     explicit Quaternion(const mat3<T>& rotationMatrix) noexcept;
     explicit Quaternion(const mat4<T>& rotationMatrix) noexcept;

@@ -44,6 +44,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Divide Framework requires C++20 support at a minimum!"
 #endif 
 
+#if !defined(HAS_SSE41)
+#   error "Divide Framework requires SSE4.1 at a minimum! (e.g. for _mm_dp_ps)"
+#endif //HAS_SSE41
+
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif //IMGUI_DEFINE_MATH_OPERATORS
