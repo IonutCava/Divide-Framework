@@ -10,8 +10,6 @@ ToDo List: [Trello.com/divide-todo](https://trello.com/b/mujYqtxR/divide-todo)
 
 Twitter: [Twitter.com/KIonutzR](https://twitter.com/KIonutzR)
 
-Mastodon: [peoplemaking.games/@KIonutzR](https://peoplemaking.games/@KIonutzR)
-
 ## The How and the Why
 Yup, YAGE. Yet Another Game Engine. A toy engine, mind you, never intended for general release or something people will ever require support with.
 It is something I use to experiment on, learn new things, practice, prototype and eventually, try and ship a game or two with.
