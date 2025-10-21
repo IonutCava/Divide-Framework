@@ -13,9 +13,12 @@ namespace {
 }
 
 void ParticleBasicColourUpdater::update( [[maybe_unused]] const U64 deltaTimeUS, ParticleData& p ) {
-    ParallelForDescriptor descriptor = {};
-    descriptor._iterCount = p.aliveCount();
-    descriptor._partitionSize = g_partitionSize;
+    ParallelForDescriptor descriptor 
+    {
+        ._iterCount = p.aliveCount(),
+        ._partitionSize = g_partitionSize
+    };
+
     Parallel_For( context().taskPool( TaskPoolType::HIGH_PRIORITY ), descriptor, [&p](const Task*, const U32 start, const U32 end)
     {
         for (U32 i = start; i < end; ++i)

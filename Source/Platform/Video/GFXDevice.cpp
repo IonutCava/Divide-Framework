@@ -37,6 +37,7 @@
 #include "Platform/Video/Textures/Headers/SamplerDescriptor.h"
 
 #include "Platform/Video/RenderBackend/None/Headers/NoneWrapper.h"
+#include "Platform/Video/RenderBackend/NRI/Headers/NRIWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 
@@ -353,6 +354,13 @@ namespace Divide
             case RenderAPI::None:
             {
                 _api = std::make_unique<NONE_API>( *this );
+            } break;
+            case RenderAPI::NRI_Vulkan:
+            case RenderAPI::NRI_D3D12:
+            case RenderAPI::NRI_D3D11:
+            case RenderAPI::NRI_None:
+            {
+                _api = std::make_unique<NVIDIA_RENDER_INTERFACE_API>( *this, API );
             } break;
             default:
                 err = ErrorCode::GFX_NON_SPECIFIED;

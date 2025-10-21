@@ -137,6 +137,39 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable( chaiscript )
 
+#cnri
+message("Fetching NVIDIA NRI Lib")
+option(NRI_STATIC_LIBRARY "" ON)
+option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON)
+option(NRI_ENABLE_VK_SUPPORT "" ON)
+option(NRI_ENABLE_NONE_SUPPORT "" ON)
+option(NRI_ENABLE_VALIDATION_SUPPORT "" ON)
+option(NRI_ENABLE_IMGUI_EXTENSION "" ON)
+option(NRI_ENABLE_FFX_SDK "" ON)
+option(NRI_ENABLE_XESS_SDK "" ON)
+
+if(WINDOWS_OS_BUILD)
+    option(NRI_ENABLE_D3D12_SUPPORT "" ON)
+    option(NRI_ENABLE_D3D11_SUPPORT "" ON)
+    option(NRI_ENABLE_NVTX_SUPPORT "" ON)
+elseif(MAC_OS_BUILD)
+    option(NRI_ENABLE_METAL_SUPPORT "" ON)
+else()
+    option(NRI_ENABLE_XLIB_SUPPORT "" ON)
+    if(WAYLAND_FOUND)
+        option(NRI_ENABLE_WAYLAND_SUPPORT "" ON)
+    endif()
+endif()
+FetchContent_Declare(
+    nri
+    GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
+    GIT_TAG        v175
+    #GIT_PROGRESS   TRUE
+    SYSTEM
+)
+
+FetchContent_MakeAvailable( nri )
+
 #SDL3_mixer
 message("Fetching SDL3_Mixer Lib")
 set(SDLMIXER_FLAC OFF)
@@ -189,6 +222,7 @@ include_directories(
     ${icon_font_cpp_headers_SOURCE_DIR}
     ${chaiscript_SOURCE_DIR}/include
     ${SDL3_mixer_SOURCE_DIR}/include
+    ${nri_SOURCE_DIR}/include
 )
 
 set( TILEABLE_VOLUME_NOISE_SRC_FILES ${tileable_volume_noise_SOURCE_DIR}/TileableVolumeNoise.cpp )

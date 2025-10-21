@@ -598,6 +598,8 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Headers/TextureData.h
                              Platform/Video/RenderBackend/None/Headers/NonePlaceholderObjects.h
                              Platform/Video/RenderBackend/None/Headers/NoneWrapper.h
+                             Platform/Video/RenderBackend/NRI/Headers/NRIPlaceholderObjects.h
+                             Platform/Video/RenderBackend/NRI/Headers/NRIWrapper.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glFramebuffer.h
                              Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glGenericVertexData.h
@@ -696,6 +698,7 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Video/GLIM/glimBatchAttributes.cpp
                      Platform/Video/GLIM/glimBatchData.cpp
                      Platform/Video/RenderBackend/None/NoneWrapper.cpp
+                     Platform/Video/RenderBackend/NRI/NRIWrapper.cpp
                      Platform/Video/RenderBackend/OpenGL/glHardwareQuery.cpp
                      Platform/Video/RenderBackend/OpenGL/glLockManager.cpp
                      Platform/Video/RenderBackend/OpenGL/glResources.cpp

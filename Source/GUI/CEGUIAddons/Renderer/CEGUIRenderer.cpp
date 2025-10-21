@@ -53,7 +53,7 @@ namespace CEGUI
 String CEGUIRenderer::s_rendererID("Divide CEGUI Renderer");
 
 CEGUIRenderer::CEGUIRenderer( Divide::GFXDevice& context, Divide::Handle<Divide::ShaderProgram> shader, const CEGUI::Sizef resolution )
-    : _flipClippingHeight(context.renderAPI() == Divide::RenderAPI::Vulkan)
+    : _flipClippingHeight(context.renderAPI() != Divide::RenderAPI::OpenGL)
     , _context(context)
     , _displaySize(resolution)
 {

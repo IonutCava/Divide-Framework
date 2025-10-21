@@ -51,15 +51,19 @@ enum class RTColourAttachmentSlot : U8
 };
 
 enum class RenderAPI : U8 {
-    None,      ///< No rendering. Used for testing or server code
-    OpenGL,    ///< 4.x+
-    Vulkan,    ///< not supported yet
+    None,       ///< No rendering. Used for testing or server code
+    OpenGL,     ///< 4.x+
+    Vulkan,     ///< not supported yet
+    NRI_Vulkan, ///< not supported yet
+    NRI_D3D12,  ///< not supported yet
+    NRI_D3D11,  ///< not supported yet
+    NRI_None,   ///< not supported yet
     COUNT
 };
 
 namespace Names {
     static const char* renderAPI[] = {
-        "None", "OpenGL", "Vulkan", "ERROR"
+        "None", "OpenGL", "Vulkan", "NRI_Vulkan", "NRI_D3D12", "NRI_D3D11", "NRI_None", "ERROR"
     };
 };
 

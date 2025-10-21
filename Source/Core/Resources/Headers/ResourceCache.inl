@@ -37,6 +37,7 @@
 
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/None/Headers/NonePlaceholderObjects.h"
+#include "Platform/Video/RenderBackend/NRI/Headers/NRIPlaceholderObjects.h"
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 #include "Platform/Video/RenderBackend/Vulkan/Shaders/Headers/vkShaderProgram.h"
 #include "Platform/Video/RenderBackend/OpenGL/Textures/Headers/glTexture.h"
@@ -246,6 +247,11 @@ namespace Divide
             case RenderAPI::None:   GetMemPool<noTexture>().deleteElement( static_cast<ResourcePtr<noTexture>>( ptr ) ); break;
             case RenderAPI::OpenGL: GetMemPool<glTexture>().deleteElement( static_cast<ResourcePtr<glTexture>>( ptr ) ); break;
             case RenderAPI::Vulkan: GetMemPool<vkTexture>().deleteElement( static_cast<ResourcePtr<vkTexture>>( ptr ) ); break;
+            case RenderAPI::NRI_Vulkan:
+            case RenderAPI::NRI_D3D12:
+            case RenderAPI::NRI_D3D11:
+            case RenderAPI::NRI_None:
+                GetMemPool<nriTexture>().deleteElement( static_cast<ResourcePtr<nriTexture>>( ptr ) ); break;
 
             default:
             case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
@@ -260,6 +266,11 @@ namespace Divide
             case RenderAPI::None:   GetMemPool<noShaderProgram>().deleteElement( static_cast<ResourcePtr<noShaderProgram>>( ptr) ); break;
             case RenderAPI::OpenGL: GetMemPool<glShaderProgram>().deleteElement( static_cast<ResourcePtr<glShaderProgram>>( ptr) ); break;
             case RenderAPI::Vulkan: GetMemPool<vkShaderProgram>().deleteElement( static_cast<ResourcePtr<vkShaderProgram>>( ptr) ); break;
+            case RenderAPI::NRI_Vulkan:
+            case RenderAPI::NRI_D3D12:
+            case RenderAPI::NRI_D3D11:
+            case RenderAPI::NRI_None:
+                GetMemPool<nriShaderProgram>().deleteElement(static_cast<ResourcePtr<nriShaderProgram>>(ptr)); break;
 
             default:
             case RenderAPI::COUNT:  DIVIDE_UNEXPECTED_CALL(); break;
@@ -453,6 +464,11 @@ namespace Divide
             case RenderAPI::None:   return GetMemPool<noShaderProgram>().newElement( *s_context, descriptor );
             case RenderAPI::OpenGL: return GetMemPool<glShaderProgram>().newElement( *s_context, descriptor );
             case RenderAPI::Vulkan: return GetMemPool<vkShaderProgram>().newElement( *s_context, descriptor );
+            case RenderAPI::NRI_Vulkan:
+            case RenderAPI::NRI_D3D12:
+            case RenderAPI::NRI_D3D11:
+            case RenderAPI::NRI_None:
+                return GetMemPool<nriShaderProgram>().newElement(*s_context, descriptor);
 
             default:
             case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
@@ -469,6 +485,11 @@ namespace Divide
             case RenderAPI::None:   return GetMemPool<noTexture>().newElement( *s_context, descriptor );
             case RenderAPI::OpenGL: return GetMemPool<glTexture>().newElement( *s_context, descriptor );
             case RenderAPI::Vulkan: return GetMemPool<vkTexture>().newElement( *s_context, descriptor );
+            case RenderAPI::NRI_Vulkan:
+            case RenderAPI::NRI_D3D12:
+            case RenderAPI::NRI_D3D11:
+            case RenderAPI::NRI_None:
+                return GetMemPool<nriTexture>().newElement(*s_context, descriptor);
 
             default:
             case RenderAPI::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
