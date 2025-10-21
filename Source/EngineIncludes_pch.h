@@ -111,8 +111,8 @@ DISABLE_GCC_WARNING_POP()
 #include <C-11/MemoryPool.h>
 #undef freeSlots
 
-#include <concurrentqueue/concurrentqueue.h>
-#include <concurrentqueue/blockingconcurrentqueue.h>
+#include <concurrentqueue/moodycamel/concurrentqueue.h>
+#include <concurrentqueue/moodycamel/blockingconcurrentqueue.h>
 
 #include <ctre.hpp>
 
