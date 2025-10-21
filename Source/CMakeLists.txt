@@ -178,7 +178,6 @@ endif()
 target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE ZLIB::ZLIB
                                          PRIVATE glm::glm
-                                         PRIVATE unofficial::concurrentqueue::concurrentqueue
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
 

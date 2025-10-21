@@ -19,7 +19,7 @@ find_package(PkgConfig REQUIRED)
 find_package(Stb REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(fmt CONFIG REQUIRED)
-find_package(unofficial-concurrentqueue CONFIG REQUIRED)
+find_package(concurrentqueue CONFIG REQUIRED)
 find_package(DevIL REQUIRED)
 find_package(EASTL CONFIG REQUIRED)
 find_package(glbinding CONFIG REQUIRED)
@@ -165,6 +165,7 @@ set(EXTERNAL_LIBS
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
     Freetype::Freetype
+    concurrentqueue::concurrentqueue
     Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
     RecastNavigation::Detour
     RecastNavigation::Recast
