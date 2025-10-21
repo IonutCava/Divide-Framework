@@ -2990,7 +2990,7 @@ namespace Divide
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos; // We can honor io.WantSetMousePos requests (optional, rarely used)
 
         io.BackendPlatformName = Config::ENGINE_NAME;
-        io.BackendRendererName = _context.gfx().renderAPI() == RenderAPI::Vulkan ? "Vulkan" : "OpenGL";
+        io.BackendRendererName = Names::renderAPI[to_base(_context.gfx().renderAPI())];
         io.ConfigWindowsMoveFromTitleBarOnly = true;
         io.DisplaySize.x = to_F32(_mainWindow->getDimensions().width);
         io.DisplaySize.y = to_F32(_mainWindow->getDimensions().height);

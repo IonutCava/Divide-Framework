@@ -536,6 +536,10 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
     {
         NOP();
     }
+    else if (api == RenderAPI::NRI_Vulkan || api == RenderAPI::NRI_D3D11 || api == RenderAPI::NRI_D3D12 || api == RenderAPI::NRI_None)
+    {
+        NOP();
+    }
     else if (api == RenderAPI::OpenGL)
     {
         SDL_Window* testWindow = SDL_CreateWindow("OpenGL Settings Window", 320, 240, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);

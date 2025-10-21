@@ -257,7 +257,7 @@ namespace Divide
     {
         U64 s_newestShaderAtomWriteTime = 0u; ///< Used to detect modified shader atoms to validate/invalidate shader cache
         bool s_useShaderCache = true;
-        bool s_targetVulkan = false;
+        bool s_targetOpenGL = false;
 
         U8 s_textureSlot = 0u;
         U8 s_imageSlot   = 0u;
@@ -273,7 +273,7 @@ namespace Divide
 
         [[nodiscard]] ResourcePath ShaderAPILocation()
         {
-            return (s_targetVulkan ? Paths::Shaders::g_cacheLocationVK : Paths::Shaders::g_cacheLocationGL);
+            return (s_targetOpenGL ? Paths::Shaders::g_cacheLocationGL : Paths::Shaders::g_cacheLocationVK);
         }
 
         [[nodiscard]] ResourcePath ShaderBuildCacheLocation()
@@ -1095,7 +1095,7 @@ namespace Divide
 
         const Configuration& config = context.config();
         s_useShaderCache = config.debug.cache.enabled && config.debug.cache.shaders;
-        s_targetVulkan = context.gfx().renderAPI() == RenderAPI::Vulkan;
+        s_targetOpenGL = context.gfx().renderAPI() == RenderAPI::OpenGL;
 
         FileList list{};
         if ( s_useShaderCache )
@@ -1850,7 +1850,7 @@ namespace Divide
 
         eastl::set<U64> atomIDs;
 
-        bool needGLSL = !s_targetVulkan;
+        bool needGLSL = s_targetOpenGL;
         if ( reloadExisting )
         {
             // Hot reloading will always reparse GLSL source files so the best way to achieve that is to delete cache files
@@ -1891,7 +1891,7 @@ namespace Divide
             {
                 // We are in situation B: we need SPIRV code, so convert our GLSL code over
                 DIVIDE_ASSERT( !loadDataInOut._sourceCodeGLSL.empty() );
-                if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetVulkan ) )
+                if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetOpenGL ) )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_SHADER_CONVERSION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
                     // We may fail here for WHATEVER reason so bail
@@ -1915,7 +1915,7 @@ namespace Divide
         if ( reloadExisting || !useShaderCache() || !LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
         {
             // Well, we failed. Time to build our reflection data again
-            if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_targetVulkan, loadDataInOut._reflectionData ) )
+            if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_targetOpenGL, loadDataInOut._reflectionData ) )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_SHADER_REFLECTION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
                 return false;

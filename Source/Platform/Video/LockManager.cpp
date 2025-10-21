@@ -43,6 +43,10 @@ namespace Divide
             {
                 case RenderAPI::None:
                 case RenderAPI::Vulkan:
+                case RenderAPI::NRI_Vulkan:
+                case RenderAPI::NRI_D3D12:
+                case RenderAPI::NRI_D3D11:
+                case RenderAPI::NRI_None:
                 {
                     reset = frameNumber - syncObject._ptr->_frameNumber >= Config::MAX_FRAMES_IN_FLIGHT;
                 } break;
@@ -74,6 +78,10 @@ namespace Divide
             case RenderAPI::OpenGL: return glLockManager::InitLockPoolEntry( entry, flag, frameIdx );
             case RenderAPI::Vulkan:
             case RenderAPI::None: 
+            case RenderAPI::NRI_Vulkan:
+            case RenderAPI::NRI_D3D12:
+            case RenderAPI::NRI_D3D11:
+            case RenderAPI::NRI_None:
             {
                 PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 

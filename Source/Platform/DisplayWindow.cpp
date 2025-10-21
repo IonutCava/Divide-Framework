@@ -65,7 +65,7 @@ ErrorCode DisplayWindow::init(const WindowDescriptor& descriptor)
     SDL_SetStringProperty( props, SDL_PROP_WINDOW_CREATE_TITLE_STRING,               descriptor.title.c_str());
     SDL_SetNumberProperty( props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER,               descriptor.dimensions.width);
     SDL_SetNumberProperty( props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER,              descriptor.dimensions.height);
-    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN,             descriptor.targetAPI == RenderAPI::Vulkan);
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN,             descriptor.targetAPI == RenderAPI::Vulkan || descriptor.targetAPI == RenderAPI::NRI_Vulkan);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN,             descriptor.targetAPI == RenderAPI::OpenGL);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN,          descriptor.flags & to_base(WindowDescriptor::Flags::RESIZEABLE));
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, descriptor.flags & to_base(WindowDescriptor::Flags::ALLOW_HIGH_DPI));

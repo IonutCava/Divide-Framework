@@ -142,6 +142,7 @@ add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp"
 )
 
 target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Jolt)
+target_link_libraries(${APP_LIB_DIVIDE} PUBLIC NRI)
 
 if(WIN32)
     target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Shcore.lib Winmm.lib)
