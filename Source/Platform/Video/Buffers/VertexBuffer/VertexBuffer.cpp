@@ -253,7 +253,6 @@ void VertexBuffer::addIndices(const vector<U32>& indices)
 
 void VertexBuffer::addRestartIndex()
 {
-    _internalGVB.primitiveRestartRequired(true);
     addIndex( _descriptor._smallIndices ? PRIMITIVE_RESTART_INDEX_S : PRIMITIVE_RESTART_INDEX_L );
 }
 
@@ -541,19 +540,6 @@ bool VertexBuffer::commitData( GFX::MemoryBarrierCommand& memCmdInOut )
         }
 
         memCmdInOut._bufferLocks.emplace_back( _internalGVB._indexBuffer->setBuffer(ibParams) );
-
-        if ( !_internalGVB.primitiveRestartRequired() )
-        {
-            const U32 restartIndex = _descriptor._smallIndices ? PRIMITIVE_RESTART_INDEX_S : PRIMITIVE_RESTART_INDEX_L;
-            for (const U32 index : _indices)
-            {
-                if ( index == restartIndex)
-                {
-                    _internalGVB.primitiveRestartRequired(true);
-                    break;
-                }
-            }
-        }
     }
 
     return true;
@@ -748,7 +734,6 @@ void VertexBuffer::computeTangents()
 
 void VertexBuffer::reset()
 {
-    _internalGVB.primitiveRestartRequired(false);
     _partitions.clear();
     _data.clear();
     _indices.clear();
