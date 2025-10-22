@@ -77,6 +77,9 @@ NOINITVTABLE_CLASS(GPUBuffer) : public GUIDWrapper, public GraphicsResource, pub
 
 FWD_DECLARE_MANAGED_CLASS(GPUBuffer);
 
+//ToDo: Completely remove this class and just use separate GPUBuffers directly.
+// Maybe use a thin wrapper to hold binding info if needed.
+// Move the pool to GPUBuffer instead.
 class GPUVertexBuffer final : public GUIDWrapper, public GraphicsResource
 {
 public:
@@ -92,9 +95,6 @@ public:
     GPUBuffer_ptr _indexBuffer = nullptr;
 
     GPUBufferBindConfig _vertexBufferBinding{};
-
-    PROPERTY_R(U32, firstIndex, 0u);
-    PROPERTY_RW(bool, primitiveRestartRequired, false);
 
     const Handle _handle{ INVALID_HANDLE };
 
