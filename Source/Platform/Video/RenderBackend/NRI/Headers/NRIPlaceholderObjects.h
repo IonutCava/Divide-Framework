@@ -35,7 +35,6 @@
 
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 #include "Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
@@ -48,24 +47,16 @@ namespace Divide {
         nriRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor) : RenderTarget(context, descriptor){}
     };
 
-    class nriGenericVertexData final : public GenericVertexData {
+    class nriGPUBuffer final : public GPUBuffer {
      public:
-        nriGenericVertexData(GFXDevice& context, const U16 ringBufferLength, const std::string_view name)
-            : GenericVertexData(context, ringBufferLength, name)
+         nriGPUBuffer(GFXDevice& context, const U16 ringBufferLength, const std::string_view name)
+            : GPUBuffer(context, ringBufferLength, name)
         {}
 
-        void reset() override {}
-        void draw([[maybe_unused]] const GenericDrawCommand& command, [[maybe_unused]] VDIUserData* data) noexcept override {}
-
-        [[nodiscard]] BufferLock setIndexBuffer([[maybe_unused]] const IndexBuffer& indices) override { return {}; }
         [[nodiscard]] BufferLock setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override { return {}; }
-        [[nodiscard]] BufferLock updateBuffer([[maybe_unused]] U32 buffer,
-                                              [[maybe_unused]] U32 elementCountOffset,
+        [[nodiscard]] BufferLock updateBuffer([[maybe_unused]] U32 elementCountOffset,
                                               [[maybe_unused]] U32 elementCountRange,
                                               [[maybe_unused]] bufferPtr data) noexcept override{ return {}; }
-        [[nodiscard]] BufferLock updateIndexBuffer([[maybe_unused]]U32 elementCountOffset,
-                                                   [[maybe_unused]]U32 elementCountRange,
-                                                   [[maybe_unused]]bufferPtr data) noexcept override { return {}; }
     };
 
     class nriTexture final : public Texture {

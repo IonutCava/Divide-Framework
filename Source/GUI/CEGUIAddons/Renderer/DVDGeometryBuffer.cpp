@@ -37,7 +37,7 @@
 
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Platform/Video/Headers/GFXDevice.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 #ifndef GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -55,10 +55,11 @@ namespace CEGUI
 DVDGeometryBuffer::DVDGeometryBuffer( CEGUIRenderer& owner)
     : _owner( &owner )
     , _bufferSize(1 << 8u)
+    , _gvd(std::make_unique<Divide::GPUVertexBuffer>(owner.context(), "CEGUI::DVDGeometryBuffer"))
 {
     thread_local size_t BUFFER_IDX = 0u;
 
-    _gvd = owner.context().newGVD(Divide::Config::MAX_FRAMES_IN_FLIGHT + 1u, Divide::Util::StringFormat("IMGUI_{}", BUFFER_IDX++).c_str());
+    _gvd->_vertexBuffer = owner.context().newGPUBuffer(Divide::Config::MAX_FRAMES_IN_FLIGHT + 1u, Divide::Util::StringFormat("CEGUI_VB_{}", BUFFER_IDX++).c_str());
 
     recreateBuffer(nullptr, 0u);
 
@@ -101,7 +102,8 @@ void DVDGeometryBuffer::draw() const
 
     Divide::U32 pos = 0u;
     Divide::GenericDrawCommand drawCmd{};
-    drawCmd._sourceBuffer = _gvd->handle();
+    drawCmd._sourceBuffers = &_gvd->_handle;
+    drawCmd._sourceBuffersCount = 1u;
 
     for (int pass = 0; pass < pass_count; ++pass)
     {
@@ -187,16 +189,16 @@ void DVDGeometryBuffer::recreateBuffer( Divide::Byte* initialData, const size_t 
 {
     using namespace Divide;
 
-    GenericVertexData::SetBufferParams params = {};
-    params._bindConfig = { 0u, 0u };
-    params._useRingBuffer = true;
+    GPUBuffer::SetBufferParams params = {};
     params._initialData = { initialData, intialDataSize };
 
     params._bufferParams._elementCount = _bufferSize;
     params._bufferParams._elementSize = sizeof( DVDVertex );
     params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+    params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
 
-    const BufferLock lock = _gvd->setBuffer( params );
+    const BufferLock lock = _gvd->_vertexBuffer->setBuffer( params );
+    _gvd->_vertexBufferBinding._bindIdx = 0u;
 
     if ( _owner->memCmd() )
     {
@@ -224,7 +226,7 @@ void DVDGeometryBuffer::updateBuffers()
         else
         {
             _gvd->incQueue();
-            _owner->memCmd()->_bufferLocks.push_back(_gvd->updateBuffer(0u, 0u, vertexCount, data));
+            _owner->memCmd()->_bufferLocks.push_back(_gvd->_vertexBuffer->updateBuffer(0u, vertexCount, data));
         }
     }
 }

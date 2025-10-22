@@ -16,7 +16,6 @@
 #include "Headers/TileRing.h"
 
 #include "Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 namespace Divide {
 

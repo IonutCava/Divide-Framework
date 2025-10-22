@@ -57,6 +57,13 @@ protected:
 
     bool load( PlatformContext& context ) override;
 
+    void prepareRender( SceneGraphNode* sgn,
+                        RenderingComponent& rComp,
+                        RenderPackage& pkg,
+                        GFX::MemoryBarrierCommand& postDrawMemCmd,
+                        RenderStagePass renderStagePass,
+                        const CameraSnapshot& cameraSnapshot,
+                        bool refreshData) override;
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
     void sceneUpdate(U64 deltaTimeUS, SceneGraphNode* sgn, SceneState& sceneState) override;
 

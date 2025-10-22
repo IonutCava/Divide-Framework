@@ -42,7 +42,7 @@
 namespace Divide {
 
 class Texture;
-FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
+FWD_DECLARE_MANAGED_CLASS(GPUVertexBuffer);
 
 /// A Particle emitter scene node. Nothing smarter to say, sorry :"> - Ionut
 DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
@@ -82,6 +82,10 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     [[nodiscard]] U32 getAliveParticleCount() const noexcept;
 
    protected:
+    static constexpr U8 s_MaxPlayerBuffers = 4;
+    using ParticleBuffers = std::array<GPUVertexBuffer_ptr, 3u>; // geometry, position, colour
+    using BuffersPerStage = std::array<ParticleBuffers, to_base(RenderStage::COUNT)>;
+    using BuffersPerPlayer = std::array<BuffersPerStage, s_MaxPlayerBuffers>;
 
     /// preprocess particles here
     void sceneUpdate(U64 deltaTimeUS,
@@ -90,11 +94,9 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
-    [[nodiscard]] GenericVertexData& getDataBuffer(RenderStage stage, PlayerIndex idx);
+    [[nodiscard]] ParticleBuffers& getDataBuffer(RenderStage stage, PlayerIndex idx);
 
    private:
-    static constexpr U8 s_MaxPlayerBuffers = 4;
-
     std::shared_ptr<ParticleData> _particles;
 
     vector<std::shared_ptr<ParticleSource>> _sources;
@@ -105,8 +107,6 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     /// draw the impostor?
     bool _drawImpostor = false;
 
-    using BuffersPerStage = std::array<GenericVertexData_ptr, to_base(RenderStage::COUNT)>;
-    using BuffersPerPlayer = std::array<BuffersPerStage, s_MaxPlayerBuffers>;
     BuffersPerPlayer _particleGPUBuffers{};
     std::array<bool, to_base(RenderStage::COUNT)> _buffersDirty{};
 

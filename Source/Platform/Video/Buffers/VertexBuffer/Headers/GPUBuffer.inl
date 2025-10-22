@@ -30,11 +30,11 @@
  */
 
 #pragma once
-#ifndef DVD_VERTEX_DATA_INTERFACE_INL_
-#define DVD_VERTEX_DATA_INTERFACE_INL_
+#ifndef DVD_GPU_BUFFER_INL_
+#define DVD_GPU_BUFFER_INL_
 
 namespace Divide {
 
-} //namespce Divide
+} //namespace Divide
 
-#endif //DVD_VERTEX_DATA_INTERFACE_INL_
+#endif //DVD_GPU_BUFFER_INL_

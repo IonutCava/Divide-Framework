@@ -40,9 +40,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Divide {
 
-struct BufferImplParams
+struct BufferImplParams : BufferParams
 {
-    BufferParams _bufferParams;
     gl46core::GLenum _target{ gl46core::GL_NONE };
     size_t _dataSize{0};
 
@@ -63,7 +62,6 @@ public:
     bufferPtr getDataPtr() const;
     gl46core::GLuint getBufferHandle() const;
 
-public:
     PROPERTY_R(BufferImplParams, params);
 
 protected:

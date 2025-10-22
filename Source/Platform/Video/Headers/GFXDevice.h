@@ -363,21 +363,21 @@ public:  // Accessors and Mutators
 
 public:
     /// Create and return a new framebuffer.
-    [[nodiscard]] RenderTarget_uptr newRT( const RenderTargetDescriptor& descriptor );
+    [[nodiscard]] RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor );
 
     /// Create and return a new immediate mode emulation primitive.
     [[nodiscard]] IMPrimitive*       newIMP( std::string_view name);
     [[nodiscard]] bool               destroyIMP(IMPrimitive*& primitive);
 
-    /// Create and return a new vertex array (VAO + VB + IB).
-    [[nodiscard]] VertexBuffer_ptr      newVB( const VertexBuffer::Descriptor& descriptor );
+    
+    [[nodiscard]] GPUBuffer_ptr newGPUBuffer(U32 ringBufferLength, std::string_view name);
 
-    [[nodiscard]] GenericVertexData_ptr newGVD(U32 ringBufferLength, std::string_view name);
+    [[nodiscard]] VertexBuffer_ptr newVB(const VertexBuffer::Descriptor& descriptor);
 
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
     /// or a 'Shader Storage Block Object' otherwise
-    [[nodiscard]] ShaderBuffer_uptr     newSB(const ShaderBufferDescriptor& descriptor);
+    [[nodiscard]] ShaderBuffer_uptr     newShaderBuffer(const ShaderBufferDescriptor& descriptor);
     /// Create and return a new graphics pipeline. This is only used for caching and doesn't use the object arena
     [[nodiscard]] Pipeline*             newPipeline(const PipelineDescriptor& descriptor);
 
@@ -651,9 +651,9 @@ namespace Attorney
 
     class GFXDeviceGFXRTPool
     {
-        static RenderTarget_uptr newRT(GFXDevice& device, const RenderTargetDescriptor& descriptor)
+        static RenderTarget_uptr newRenderTarget(GFXDevice& device, const RenderTargetDescriptor& descriptor)
         {
-            return device.newRT(descriptor);
+            return device.newRenderTarget(descriptor);
         }
 
         friend class Divide::GFXRTPool;

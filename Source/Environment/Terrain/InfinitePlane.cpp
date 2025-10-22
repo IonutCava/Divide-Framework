@@ -146,6 +146,19 @@ namespace Divide
             tComp->setPosition( newEye.x, tComp->getWorldPosition().y, newEye.z );
         }
     }
+    void InfinitePlane::prepareRender( SceneGraphNode* sgn,
+                                       RenderingComponent& rComp,
+                                       RenderPackage& pkg,
+                                       GFX::MemoryBarrierCommand& postDrawMemCmd,
+                                       RenderStagePass renderStagePass,
+                                       const CameraSnapshot& cameraSnapshot,
+                                       bool refreshData)
+    {
+        const VertexBuffer_ptr& planeBuffer = Get(_plane)->geometryBuffer();
+        planeBuffer->commitData(postDrawMemCmd);
+        rComp.setIndexBufferElementOffset(planeBuffer->firstIndexOffsetCount());
+        SceneNode::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
+    }
 
     void InfinitePlane::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
@@ -153,11 +166,12 @@ namespace Divide
         GenericDrawCommand& cmd = cmdsOut.emplace_back();
         toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
-        ResourcePtr<Quad3D> planePtr = Get( _plane );
+        const VertexBuffer_ptr& planeBuffer = Get(_plane)->geometryBuffer();
 
+        cmd._sourceBuffers = &planeBuffer->handle();
+        cmd._sourceBuffersCount = 1;
         cmd._cmd.firstIndex = 0u;
-        cmd._cmd.indexCount = to_U32(planePtr->geometryBuffer()->getIndexCount() );
-        cmd._sourceBuffer = planePtr->geometryBuffer()->handle();
+        cmd._cmd.indexCount = to_U32(planeBuffer->getIndexCount());
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );
     }

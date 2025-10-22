@@ -703,19 +703,20 @@ namespace Divide
         glShaderProgram::Idle( _context.context() );
     }
 
-    bool GL_API::Draw( const GenericDrawCommand& cmd )
+
+    bool GL_API::Draw(GenericDrawCommand cmd)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
         DIVIDE_ASSERT(cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount);
 
-        if ( cmd._sourceBuffer._id == 0u )
+        if ( cmd._sourceBuffersCount == 0u )
         {
             DIVIDE_ASSERT(cmd._cmd.indexCount == 0u);
 
-            if (cmd._cmd.vertexCount == 0u )
+            if (cmd._cmd.vertexCount == 0u)
             {
                 GenericDrawCommand drawCmd = cmd;
-                switch ( GL_API::s_stateTracker._activeTopology )
+                switch (GL_API::s_stateTracker._activeTopology)
                 {
                     case PrimitiveTopology::POINTS: drawCmd._cmd.vertexCount = 1u; break;
                     case PrimitiveTopology::LINES:
@@ -728,32 +729,108 @@ namespace Divide
                     case PrimitiveTopology::TRIANGLES_ADJACENCY:
                     case PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY: drawCmd._cmd.vertexCount = 3u; break;
                     case PrimitiveTopology::PATCH: drawCmd._cmd.vertexCount = 4u; break;
-                    default : return false;
+                    default: return false;
                 }
-                GLUtil::SubmitRenderCommand( drawCmd );
+                GLUtil::SubmitRenderCommand(drawCmd);
             }
             else
             {
-                GLUtil::SubmitRenderCommand( cmd );
+                GLUtil::SubmitRenderCommand(cmd);
             }
+
+            return true;
         }
-        else [[likely]]
+
+        assert(cmd._sourceBuffers != nullptr);
+
+        bool ret = true;
+        bool hasIndexBuffer = false;
+
+        gl46core::GLenum indexFormat = gl46core::GL_NONE;
+        U32 firstIndex = cmd._cmd.firstIndex;
+
+        for ( size_t i = 0u; i < cmd._sourceBuffersCount; ++i )
         {
             // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-            thread_local VertexDataInterface::Handle s_lastID = VertexDataInterface::INVALID_VDI_HANDLE;
-            thread_local VertexDataInterface* s_lastBuffer = nullptr;
+            thread_local GPUVertexBuffer::Handle s_lastID = GPUVertexBuffer::INVALID_HANDLE;
+            thread_local GPUVertexBuffer* s_lastBuffer = nullptr;
 
-            if ( s_lastID != cmd._sourceBuffer )
+            const PoolHandle handle = cmd._sourceBuffers[i];
+
+            if (s_lastID != handle)
             {
-                s_lastID = cmd._sourceBuffer;
-                s_lastBuffer = VertexDataInterface::s_VDIPool.find( s_lastID );
+                s_lastID = handle;
+                s_lastBuffer = GPUVertexBuffer::s_GVBPool.find(s_lastID);
             }
 
-            DIVIDE_ASSERT( s_lastBuffer != nullptr );
-            s_lastBuffer->draw( cmd, nullptr );
+            DIVIDE_ASSERT(s_lastBuffer != nullptr);
+
+            if (s_lastBuffer->_vertexBuffer) 
+            {
+                glGPUBuffer* buffer = static_cast<glGPUBuffer*>(s_lastBuffer->_vertexBuffer.get());
+                glBufferImpl* impl = buffer->_internalBuffer.get();
+
+                assert(impl != nullptr);
+
+                const auto& vbBindConfig = s_lastBuffer->_vertexBufferBinding;
+
+                size_t offsetInBytes = impl->getDataOffset();
+                if (buffer->queueLength() > 1) [[likely]]
+                {
+                    offsetInBytes += impl->params()._elementCount * impl->params()._elementSize * buffer->queueIndex();
+                }
+
+                const size_t elementStride = vbBindConfig._elementStride == GPUBufferBindConfig::INVALID_ELEMENT_STRIDE
+                                                                    ? impl->params()._elementSize
+                                                                    : vbBindConfig._elementStride;
+                DIVIDE_EXPECTED_CALL
+                (
+                    GetStateTracker().bindActiveBuffer(vbBindConfig._bindIdx,
+                                                       impl->getBufferHandle(),
+                                                       offsetInBytes,
+                                                       elementStride) != GLStateTracker::BindResult::FAILED
+                );
+            }
+
+            if ( s_lastBuffer->_indexBuffer && s_lastBuffer->_indexBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET)
+            {
+                DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+                hasIndexBuffer = true;
+
+                glGPUBuffer* buffer = static_cast<glGPUBuffer*>(s_lastBuffer->_indexBuffer.get());
+                glBufferImpl* impl = buffer->_internalBuffer.get();
+
+                DIVIDE_EXPECTED_CALL
+                (
+                    GL_API::GetStateTracker().setActiveBuffer(gl46core::GL_ELEMENT_ARRAY_BUFFER, impl->getBufferHandle()) != GLStateTracker::BindResult::FAILED
+                );
+
+                size_t offsetInBytes = 0u;
+
+                const size_t indexSizeInBytes = impl->params()._elementSize;
+
+                if (buffer->queueLength() > 1u) [[likely]]
+                {
+                    offsetInBytes += (impl->params()._elementCount * indexSizeInBytes) * buffer->queueIndex();
+                }
+
+                firstIndex += to_U32(offsetInBytes / indexSizeInBytes);
+                firstIndex += s_lastBuffer->_indexBuffer->firstIndexOffsetCount();
+                indexFormat = indexSizeInBytes == sizeof(U16) ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT;
+            }
         }
 
-        return true;
+        if ( indexFormat != gl46core::GL_NONE )
+        {
+            cmd._cmd.firstIndex = firstIndex;
+            GLUtil::SubmitRenderCommand(cmd, indexFormat);
+        }
+        else
+        {
+            GLUtil::SubmitRenderCommand(cmd);
+        }
+
+        return ret;
     }
 
     void GL_API::flushTextureBindQueue()
@@ -1272,7 +1349,7 @@ namespace Divide
                     }
 
                     glBufferImpl* buffer = static_cast<glBufferImpl*>(lock._buffer);
-                    const BufferParams& params = buffer->params()._bufferParams;
+                    const auto& params = buffer->params();
 
                     switch ( lock._type )
                     {
@@ -1991,17 +2068,17 @@ namespace Divide
         sync = nullptr;
     }
 
-    RenderTarget_uptr GL_API::newRT( const RenderTargetDescriptor& descriptor ) const
+    RenderTarget_uptr GL_API::newRenderTarget( const RenderTargetDescriptor& descriptor ) const
     {
         return std::make_unique<glFramebuffer>( _context, descriptor );
     }
 
-    GenericVertexData_ptr GL_API::newGVD( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_ptr GL_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<glGenericVertexData>( _context, ringBufferLength, name );
+        return std::make_shared<glGPUBuffer>( _context, ringBufferLength, name );
     }
 
-    ShaderBuffer_uptr GL_API::newSB( const ShaderBufferDescriptor& descriptor ) const
+    ShaderBuffer_uptr GL_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const
     {
         return std::make_unique<glShaderBuffer>( _context, descriptor );
     }

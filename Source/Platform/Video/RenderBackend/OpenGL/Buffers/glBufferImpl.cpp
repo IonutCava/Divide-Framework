@@ -16,7 +16,7 @@ namespace Divide
         : _params( params )
         , _context( context )
     {
-        DIVIDE_ASSERT(_params._bufferParams._updateFrequency != BufferUpdateFrequency::COUNT );
+        DIVIDE_ASSERT(_params._updateFrequency != BufferUpdateFrequency::COUNT );
 
         size_t alignment = GFXDevice::GetDeviceInformation()._offsetAlignmentBytesVBO;
         U32 flags = 0u;
@@ -34,7 +34,7 @@ namespace Divide
             case gl46core::GL_ELEMENT_ARRAY_BUFFER:
             {
                 alignment = GFXDevice::GetDeviceInformation()._offsetAlignmentBytesIBO;
-                flags = to_U32(params._bufferParams._elementSize);
+                flags = to_U32(params._elementSize);
             } break;
             default:
             break;
@@ -45,7 +45,7 @@ namespace Divide
         gl46core::BufferStorageMask storageMask = gl46core::GL_MAP_PERSISTENT_BIT | gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_COHERENT_BIT;
         gl46core::BufferAccessMask  accessMask  = gl46core::GL_MAP_PERSISTENT_BIT | gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_COHERENT_BIT;
 
-        switch ( _params._bufferParams._updateFrequency )
+        switch ( _params._updateFrequency )
         {
             case BufferUpdateFrequency::ONCE:
             {
@@ -61,7 +61,7 @@ namespace Divide
             } break;
         }
 
-        if (_params._bufferParams._hostVisible)
+        if (_params._hostVisible)
         {
             storageMask |= gl46core::GL_MAP_READ_BIT;
             accessMask  |= gl46core::GL_MAP_READ_BIT;
@@ -121,7 +121,7 @@ namespace Divide
             ._buffer = this,
         };
 
-        if ( _params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE) [[likely]]
+        if ( _params._updateFrequency != BufferUpdateFrequency::ONCE) [[likely]]
         {
             LockGuard<Mutex> w_lock(_dataLock);
         
@@ -148,13 +148,13 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT(_params._bufferParams._hostVisible);
+        DIVIDE_ASSERT(_params._hostVisible);
         DIVIDE_ASSERT(outData.second >= rangeInBytes && _memoryBlock._size >= offsetInBytes + rangeInBytes);
 
         DIVIDE_EXPECTED_CALL( waitForLockedRange( {offsetInBytes, rangeInBytes} ) );
 
         LockGuard<Mutex> w_lock(_dataLock);
-        if (_params._bufferParams._updateFrequency != BufferUpdateFrequency::ONCE) [[likely]]
+        if (_params._updateFrequency != BufferUpdateFrequency::ONCE) [[likely]]
         {
             DIVIDE_ASSERT(rangeInBytes + offsetInBytes <= _memoryBlock._size );
             memcpy( outData.first, _memoryBlock._ptr + offsetInBytes, rangeInBytes);

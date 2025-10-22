@@ -39,6 +39,7 @@
 #include "PushConstants.h"
 #include "Platform/Video/GLIM/glim.h"
 #include "Platform/Video/Headers/Commands.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 namespace NS_GLIM {
     FWD_DECLARE_MANAGED_CLASS(GLIM_BATCH);
@@ -52,8 +53,6 @@ namespace GFX {
 
 class GFXDevice;
 FWD_DECLARE_MANAGED_CLASS(IMPrimitive);
-FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
-
 /// IMPrimitive replaces immediate mode calls to VB based rendering
 class IMPrimitive final {
    public:
@@ -147,12 +146,11 @@ class IMPrimitive final {
     SamplerDescriptor _sampler{};
     std::array<bool, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _drawFlags;
     std::array<Pipeline*, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _pipelines;
-    GenericVertexData_ptr _dataBuffer = nullptr;
 
     vector<U32> _indices;
     std::array<BufferRange<U32>, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexRange;
-
-
+    vector<GPUVertexBuffer_uptr> _buffers;
+    vector<GPUVertexBuffer::Handle> _bufferHandles;
     GFX::MemoryBarrierCommand _memCmd{};
 };
 

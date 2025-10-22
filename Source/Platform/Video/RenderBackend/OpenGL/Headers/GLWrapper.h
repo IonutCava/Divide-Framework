@@ -66,11 +66,11 @@ class GL_API final : public RenderAPIWrapper
 {
     friend class glShader;
     friend class glTexture;
+    friend class glGPUBuffer;
     friend class glFramebuffer;
     friend class glVertexArray;
     friend class glShaderProgram;
     friend class glSamplerObject;
-    friend class glGenericVertexData;
 
     friend struct GLStateTracker;
 
@@ -126,9 +126,9 @@ private:
 
     void flushPushConstantsLocks();
 
-    [[nodiscard]] RenderTarget_uptr     newRT( const RenderTargetDescriptor& descriptor ) const override;
-    [[nodiscard]] GenericVertexData_ptr newGVD( U32 ringBufferLength, const std::string_view name ) const override;
-    [[nodiscard]] ShaderBuffer_uptr     newSB( const ShaderBufferDescriptor& descriptor ) const override;
+    [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
+    [[nodiscard]] GPUBuffer_ptr      newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
+    [[nodiscard]] ShaderBuffer_uptr  newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
 
 public:
     [[nodiscard]] static GLStateTracker& GetStateTracker() noexcept;
@@ -155,8 +155,7 @@ public:
 
 protected:
     static ShaderResult BindPipeline(GFXDevice& context, const Pipeline& pipeline);
-    static bool Draw( const GenericDrawCommand& cmd );
-
+    static bool Draw( GenericDrawCommand cmd );
 private:
 
     enum class GlobalQueryTypes : U8

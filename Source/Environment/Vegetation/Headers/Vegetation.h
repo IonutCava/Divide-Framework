@@ -71,7 +71,6 @@ class TerrainChunk;
 class ShaderProgram;
 class SceneGraphNode;
 class PlatformContext;
-class GenericVertexData;
 enum class RenderStage : U8;
 
 FWD_DECLARE_MANAGED_CLASS(VertexBuffer);
@@ -181,6 +180,7 @@ protected:
 
     U32 _instanceCountGrass = 0u;
     U32 _instanceCountTrees = 0u;
+
 private:
     const Handle<Vegetation> _parent = INVALID_HANDLE<Vegetation>;
     const TerrainChunk* _chunk = nullptr;

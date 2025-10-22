@@ -25,7 +25,7 @@
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 #define FONTSTASH_IMPLEMENTATION
 #include "Platform/Video/Headers/fontstash.h"
@@ -48,7 +48,7 @@ namespace Divide
         bool _bufferNeedsResize = false;
 
         GFXDevice* _parent{ nullptr };
-        GenericVertexData_ptr _fontRenderingBuffer{};
+        GPUVertexBuffer_uptr _fontRenderingBuffer{};
         Handle<Texture> _fontRenderingTexture{INVALID_HANDLE<Texture>};
         I32 _width{ 1u };
 
@@ -64,17 +64,17 @@ namespace Divide
 
         void RefreshBufferSize( DVDFONSContext* dvd )
         {
-            GenericVertexData::SetBufferParams params = {};
-            params._bindConfig = { 0u, 0u };
-            params._useRingBuffer = true;
+            GPUBuffer::SetBufferParams params = {};
             params._initialData = { nullptr, 0 };
 
             params._bufferParams._elementCount = FONS_VERTEX_COUNT * dvd->_bufferSizeFactor;
             params._bufferParams._elementSize = sizeof( FONSvert );
             params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+            params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
 
-            const auto lock = dvd->_fontRenderingBuffer->setBuffer( params ); //Pos, UV and Colour
+            const auto lock = dvd->_fontRenderingBuffer->_vertexBuffer->setBuffer( params ); //Pos, UV and Colour
             DIVIDE_UNUSED( lock );
+            dvd->_fontRenderingBuffer->_vertexBufferBinding._bindIdx = 0u;
         }
 
 
@@ -82,7 +82,8 @@ namespace Divide
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
-            dvd->_fontRenderingBuffer = dvd->_parent->newGVD( Config::MAX_FRAMES_IN_FLIGHT + 1u, "GUIFontBuffer" );
+            dvd->_fontRenderingBuffer = std::make_unique<GPUVertexBuffer>(*dvd->_parent, "GUIFontGPUBuffer");
+            dvd->_fontRenderingBuffer->_vertexBuffer = dvd->_parent->newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, "GUIFontVBBuffer" );
 
             RefreshBufferSize(dvd);
 
@@ -96,11 +97,6 @@ namespace Divide
             if ( dvd->_fontRenderingTexture != INVALID_HANDLE<Texture>)
             {
                 Get(dvd->_fontRenderingTexture)->createWithData( nullptr, 0u, vec2<U16>( width, height), {});
-
-                if ( dvd->_fontRenderingBuffer )
-                {
-                    return 1;
-                }
             }
 
             return 0;
@@ -380,9 +376,13 @@ namespace Divide
 
     bool GUI::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     {
-        if ( _fonsContext != nullptr )
+        if ( _fonsContext != nullptr)
         {
-            _fonsContext->_fontRenderingBuffer->incQueue();
+            if (_fonsContext->_fontRenderingBuffer)
+            {
+                _fonsContext->_fontRenderingBuffer->incQueue();
+            }
+
             _fonsContext->_writeOffset = 0u;
 
             if ( _fonsContext->_bufferNeedsResize )
@@ -481,7 +481,7 @@ namespace Divide
 
             const U32 elementOffset = dvd->_writeOffset * FONS_VERTEX_COUNT;
 
-            const BufferLock lock = dvd->_fontRenderingBuffer->updateBuffer( 0u, elementOffset, nverts, (Divide::bufferPtr)verts );
+            const BufferLock lock = dvd->_fontRenderingBuffer->_vertexBuffer->updateBuffer( elementOffset, nverts, (Divide::bufferPtr)verts );
             dvd->_memCmd->_bufferLocks.emplace_back( lock );
 
             GenericDrawCommand drawCmd
@@ -491,7 +491,8 @@ namespace Divide
                     .vertexCount = to_U32(nverts),
                     .baseVertex = elementOffset
                 },
-                ._sourceBuffer = dvd->_fontRenderingBuffer->handle()
+                ._sourceBuffers = &dvd->_fontRenderingBuffer->_handle,
+                ._sourceBuffersCount = 1u
             };
             GFX::EnqueueCommand(*dvd->_commandBuffer, GFX::DrawCommand{MOV(drawCmd)});
             

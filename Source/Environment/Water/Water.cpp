@@ -369,7 +369,9 @@ namespace Divide
         fastData.data[0]._vec[2].set( noiseTile(), noiseFactor() );
         fastData.data[0]._vec[3].xy = fogStartEnd();
 
-        rComp.setIndexBufferElementOffset(Get(_plane)->geometryBuffer()->firstIndexOffsetCount());
+        const VertexBuffer_ptr& waterBuffer = Get(_plane)->geometryBuffer();
+        waterBuffer->commitData(postDrawMemCmd);
+        rComp.setIndexBufferElementOffset(waterBuffer->firstIndexOffsetCount());
 
         SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
     }
@@ -384,8 +386,11 @@ namespace Divide
         GenericDrawCommand& cmd = cmdsOut.emplace_back();
         toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
-        cmd._cmd.indexCount = to_U32( Get(_plane)->geometryBuffer()->getIndexCount() );
-        cmd._sourceBuffer = Get(_plane)->geometryBuffer()->handle();
+        const VertexBuffer_ptr& waterBuffer = Get(_plane)->geometryBuffer();
+
+        cmd._sourceBuffers = &waterBuffer->handle();
+        cmd._sourceBuffersCount = 1;
+        cmd._cmd.indexCount = to_U32(waterBuffer->getIndexCount() );
 
         SceneNode::buildDrawCommands( sgn, cmdsOut );
     }

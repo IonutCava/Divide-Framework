@@ -953,7 +953,6 @@ void Sky::nightSkyColour( const FColour4 val )
     _atmosphereChanged = true;
 }
 
-
 void Sky::prepareRender( SceneGraphNode* sgn,
                          RenderingComponent& rComp,
                          RenderPackage& pkg,
@@ -966,6 +965,7 @@ void Sky::prepareRender( SceneGraphNode* sgn,
     setSkyShaderData( renderStagePass, pkg.pushConstantsCmd()._fastData );
 
     const VertexBuffer_ptr& skyBuffer = Get(_sky)->geometryBuffer();
+    skyBuffer->commitData(postDrawMemCmd);
     rComp.setIndexBufferElementOffset(skyBuffer->firstIndexOffsetCount());
     SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
 }
@@ -976,7 +976,9 @@ void Sky::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& c
     toggleOption(cmd, CmdRenderOptions::RENDER_INDIRECT);
 
     const VertexBuffer_ptr& skyBuffer = Get(_sky)->geometryBuffer();
-    cmd._sourceBuffer = skyBuffer->handle();
+
+    cmd._sourceBuffers = &skyBuffer->handle();
+    cmd._sourceBuffersCount = 1;
     cmd._cmd.indexCount = to_U32( skyBuffer->getIndexCount() );
 
     SceneEnvironmentProbePool::SkyLightNeedsRefresh( true );

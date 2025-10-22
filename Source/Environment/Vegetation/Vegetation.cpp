@@ -318,13 +318,13 @@ namespace Divide
         {
             bufferDescriptor._bufferParams._elementCount = to_U32( _maxTreeInstances * chunks.size() );
             bufferDescriptor._name = "Tree_data";
-            _treeData = context.gfx().newSB( bufferDescriptor );
+            _treeData = context.gfx().newShaderBuffer( bufferDescriptor );
         }
         if ( _maxGrassInstances > 0 )
         {
             bufferDescriptor._bufferParams._elementCount = to_U32( _maxGrassInstances * chunks.size() );
             bufferDescriptor._name = "Grass_data";
-            _grassData = context.gfx().newSB( bufferDescriptor );
+            _grassData = context.gfx().newShaderBuffer( bufferDescriptor );
         }
 
         std::atomic_uint loadTasks = 0u;
@@ -606,6 +606,8 @@ namespace Divide
         {
             return;
         }
+
+        _buffer->commitData(postDrawMemCmd);
         
         rComp.setIndexBufferElementOffset(_buffer->firstIndexOffsetCount());
 
@@ -795,7 +797,7 @@ namespace Divide
         GenericDrawCommand& cmd = cmdsOut.emplace_back();
         toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
-        cmd._sourceBuffer = _buffer->handle();
+        cmd._sourceBuffers = &_buffer->handle();
         cmd._cmd.instanceCount = instance->_instanceCountGrass;
         cmd._cmd.indexCount = to_U32( _buffer->getPartitionIndexCount(_lodPartitions[0]) );
         cmd._cmd.firstIndex = to_U32( _buffer->getPartitionOffset(_lodPartitions[0]) );

@@ -62,7 +62,7 @@ class TerrainChunk;
 class ShaderProgram;
 
 FWD_DECLARE_MANAGED_CLASS(Quad3D);
-FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
+FWD_DECLARE_MANAGED_CLASS(GPUBuffer);
 
 namespace Attorney
 {
@@ -178,7 +178,7 @@ DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
    protected:
     Quadtree _terrainQuadtree;
     vector<TerrainChunk*> _terrainChunks;
-    GenericVertexData_ptr _terrainBuffer = nullptr;
+    GPUVertexBuffer_uptr _terrainBuffer = nullptr;
     vector<TileRing> _tileRings;
 
     bool _initialSetupDone = false;

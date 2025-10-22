@@ -84,17 +84,18 @@ enum class CmdRenderOptions : U8
 };
 
 #pragma pack(push, 1)
-struct GenericDrawCommand {
-    IndirectIndexedDrawCommand _cmd{};                                     // 32 bytes
-    PoolHandle _sourceBuffer{};                                            // 12 bytes
-    U32 _commandOffset{ 0u };                                              // 8  bytes
-    U16 _drawCount{ 1u };                                                  // 4  bytes
-    U8  _renderOptions{ to_base(CmdRenderOptions::RENDER_GEOMETRY) };      // 2  bytes
-    U8  _padding__{ 0u };
+struct GenericDrawCommand
+{
+    IndirectIndexedDrawCommand _cmd{};
+    const PoolHandle* _sourceBuffers{nullptr};
+    U32 _commandOffset{ 0u };
+    U32 _drawCount{ 1u };
+    U16 _sourceBuffersCount{0u};
+    U16 _renderOptions{ to_base(CmdRenderOptions::RENDER_GEOMETRY) };
 };
 #pragma pack(pop)
 
-static_assert(sizeof(GenericDrawCommand) == 32, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
+static_assert(sizeof(GenericDrawCommand) == 40, "Wrong command size! May cause performance issues. Disable assert to continue anyway.");
 
 using GenericDrawCommandContainer = eastl::fixed_vector<GenericDrawCommand, 1, true>;
 

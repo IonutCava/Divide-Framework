@@ -422,7 +422,7 @@ namespace Divide
         bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
         bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
         bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
-        _buffer = _context.newSB( bufferDescriptor );
+        _buffer = _context.newShaderBuffer( bufferDescriptor );
         _uniformBlockDirty = true;
     }
 

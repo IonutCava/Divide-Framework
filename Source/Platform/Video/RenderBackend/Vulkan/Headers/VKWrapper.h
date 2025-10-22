@@ -40,7 +40,7 @@
 #include "Platform/Video/Headers/Commands.h"
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
-#include "Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 #include "vkDescriptors.h"
 
@@ -49,11 +49,6 @@ namespace Divide
 
 class Pipeline;
 enum class ShaderResult : U8;
-
-struct vkUserData : VDIUserData
-{
-    VkCommandBuffer* _cmdBuffer = nullptr;
-};
 
 class VK_API final : public RenderAPIWrapper {
 public:
@@ -98,9 +93,9 @@ protected:
     void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
     void initDescriptorSets() override;
 
-    [[nodiscard]] RenderTarget_uptr     newRT( const RenderTargetDescriptor& descriptor ) const override;
-    [[nodiscard]] GenericVertexData_ptr newGVD( U32 ringBufferLength, const std::string_view name ) const override;
-    [[nodiscard]] ShaderBuffer_uptr     newSB( const ShaderBufferDescriptor& descriptor ) const override;
+    [[nodiscard]] RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
+    [[nodiscard]] GPUBuffer_ptr     newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
+    [[nodiscard]] ShaderBuffer_uptr newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
 
 private:
     void initStatePerWindow( VKPerWindowState& windowState );
@@ -120,7 +115,7 @@ private:
 
 
 
-    static bool Draw(const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer);
+    static bool Draw(GenericDrawCommand cmd, VkCommandBuffer cmdBuffer);
 public:
     [[nodiscard]] static VKStateTracker& GetStateTracker() noexcept;
     [[nodiscard]] static VkSampler GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);

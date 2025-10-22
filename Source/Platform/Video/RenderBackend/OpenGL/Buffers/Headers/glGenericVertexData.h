@@ -34,58 +34,28 @@
 #define GL_GENERIC_VERTEX_DATA_H
 
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glBufferImpl.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
 namespace Divide {
 
-class glGenericVertexData final : public GenericVertexData
+class glGPUBuffer final : public GPUBuffer
 {
     struct GenericBufferImpl;
 
    public:
-    glGenericVertexData(GFXDevice& context, U16 ringBufferLength, const std::string_view name);
+    glGPUBuffer(GFXDevice& context, U16 ringBufferLength, const std::string_view name);
 
-    void reset() override;
-
-    [[nodiscard]] BufferLock setIndexBuffer(const IndexBuffer& indices) override;
     [[nodiscard]] BufferLock setBuffer(const SetBufferParams& params) override;
-    [[nodiscard]] BufferLock updateBuffer(U32 buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data) override;
-    [[nodiscard]] BufferLock updateIndexBuffer(U32 elementCountOffset, U32 elementCountRange, bufferPtr data) override;
-
-   protected:
-    friend class GFXDevice;
-    friend class glVertexArray;
-    void draw(const GenericDrawCommand& command, VDIUserData* data) override;
-
-   protected:
-    void bindBufferInternal(const SetBufferParams::BufferBindConfig& bindConfig);
-
-    [[nodiscard]] BufferLock updateBuffer(GenericBufferImpl& buffer, U32 elementCountOffset, U32 elementCountRange, bufferPtr data);
+    [[nodiscard]] BufferLock updateBuffer(U32 elementCountOffset,
+                                          U32 elementCountRange,
+                                          bufferPtr data) override;
 
    private:
-    struct GenericBufferImpl
-    {
-        glBufferImpl_uptr _buffer{ nullptr };
+    friend class GL_API;
+    glBufferImpl_uptr _internalBuffer{ nullptr };
 
-        size_t _ringSizeFactor{ 1u };
-        size_t _elementStride{ 0u };
-    };
-
-    struct GenericBindableBufferImpl : GenericBufferImpl
-    {
-        SetBufferParams::BufferBindConfig _bindConfig{};
-    };
-
-    struct GenericIndexBufferImpl : GenericBufferImpl
-    {
-        IndexBuffer _data;
-    };
-
-    eastl::fixed_vector<GenericBindableBufferImpl,1,true> _bufferObjects;
-    GenericIndexBufferImpl _indexBuffer;
-
-    SharedMutex _idxBufferLock;
+    SharedMutex _bufferLock;
 };
 
 };  // namespace Divide
