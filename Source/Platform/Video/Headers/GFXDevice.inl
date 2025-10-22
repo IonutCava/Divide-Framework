@@ -211,14 +211,14 @@ inline const GFXDevice::GFXDescriptorSet& GFXDevice::descriptorSet(const Descrip
     return _descriptorSets[to_base(usage)];
 }
 
-inline ShaderBuffer_uptr GFXDevice::newSB( const ShaderBufferDescriptor& descriptor )
+inline ShaderBuffer_uptr GFXDevice::newShaderBuffer( const ShaderBufferDescriptor& descriptor )
 {
-    return _api->newSB( descriptor );
+    return _api->newShaderBuffer( descriptor );
 }
 
-inline GenericVertexData_ptr GFXDevice::newGVD( const U32 ringBufferLength, const std::string_view name )
+inline GPUBuffer_ptr GFXDevice::newGPUBuffer( const U32 ringBufferLength, const std::string_view name )
 {
-    return _api->newGVD( ringBufferLength, name );
+    return _api->newGPUBuffer( ringBufferLength, name );
 }
 
 inline GFXDevice::GFXBuffers::PerFrameBuffers& GFXDevice::GFXBuffers::crtBuffers() noexcept

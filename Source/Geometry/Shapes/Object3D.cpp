@@ -63,6 +63,7 @@ void Object3D::prepareRender(SceneGraphNode* sgn,
 {
     if (geometryBuffer() != nullptr)
     {
+        geometryBuffer()->commitData(postDrawMemCmd);
         rComp.setIndexBufferElementOffset(geometryBuffer()->firstIndexOffsetCount());
     }
 
@@ -80,7 +81,8 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
             GenericDrawCommand& cmd = cmdsOut.emplace_back();
             toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
-            cmd._sourceBuffer = geometryBuffer()->handle();
+            cmd._sourceBuffers = &geometryBuffer()->handle();
+            cmd._sourceBuffersCount = 1u;
             cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(_geometryPartitionIDs[0]));
             cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(_geometryPartitionIDs[0]));
             cmd._cmd.instanceCount = sgn->instanceCount();

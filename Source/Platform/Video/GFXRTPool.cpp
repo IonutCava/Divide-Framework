@@ -20,13 +20,13 @@ RenderTargetHandle GFXRTPool::allocateRT(const RenderTargetDescriptor& descripto
     RenderTargetID uid = 0u;
     for (auto& target : _renderTargets) {
         if (target == nullptr) {
-            target = MOV(Attorney::GFXDeviceGFXRTPool::newRT(_parent, descriptor));
+            target = MOV(Attorney::GFXDeviceGFXRTPool::newRenderTarget(_parent, descriptor));
             return { target.get(), uid };
         }
         ++uid;
     }
 
-    RenderTarget* rt = _renderTargets.emplace_back(MOV(Attorney::GFXDeviceGFXRTPool::newRT(_parent, descriptor))).get();
+    RenderTarget* rt = _renderTargets.emplace_back(MOV(Attorney::GFXDeviceGFXRTPool::newRenderTarget(_parent, descriptor))).get();
     return { rt, _renderTargetIndex++ };
 }
 

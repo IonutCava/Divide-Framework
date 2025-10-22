@@ -49,6 +49,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Platform/Video/Headers/Pipeline.h"
 #include "Platform/Headers/DisplayWindow.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 #include "Platform/Video/Buffers/RenderTarget/Headers/RenderTarget.h"
 
 #include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
@@ -111,7 +112,6 @@ namespace Divide
     FWD_DECLARE_MANAGED_CLASS( Mesh );
     FWD_DECLARE_MANAGED_CLASS( MenuBar );
     FWD_DECLARE_MANAGED_CLASS( StatusBar );
-    FWD_DECLARE_MANAGED_CLASS( GenericVertexData );
     FWD_DECLARE_MANAGED_CLASS( EditorOptionsWindow );
 
     struct Selections;
@@ -352,7 +352,7 @@ namespace Divide
         [[nodiscard]] bool removeComponent( SceneGraphNode* selection, ComponentType newComponentType ) const;
         [[nodiscard]] bool removeComponent( const Selections& selections, ComponentType newComponentType ) const;
 
-        GenericVertexData* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, U32 maxIndices, GFX::MemoryBarrierCommand& memCmdInOut );
+        GPUVertexBuffer* getOrCreateIMGUIBuffer( I64 bufferGUID, U32 maxVertices, U32 maxIndices, GFX::MemoryBarrierCommand& memCmdInOut );
         void initBasicImGUIState(ImGuiIO& io, ImGuiPlatformIO& platform_io, bool enableViewportSupport, string& clipboardStringBuffer) noexcept;
 
     protected:
@@ -379,7 +379,7 @@ namespace Divide
         IMPrimitive* _axisGizmo = nullptr;
         Pipeline* _editorPipeline = nullptr;
 
-        eastl::fixed_vector<std::pair<I64, GenericVertexData_ptr>, 5, true> _imguiBuffers;
+        eastl::fixed_vector<std::pair<I64, GPUVertexBuffer_uptr>, 5, true> _imguiBuffers;
 
         std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};

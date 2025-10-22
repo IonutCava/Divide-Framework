@@ -6,7 +6,6 @@
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/LockManager.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide {
@@ -126,9 +125,9 @@ void FillSmallData(const vector<VertexBuffer::Vertex>& dataIn, Byte* dataOut, co
 } //namespace
 
 VertexBuffer::VertexBuffer(GFXDevice& context, const Descriptor& descriptor )
-    : VertexDataInterface(context, descriptor._name )
+    : GraphicsResource(context, Type::BUFFER, getGUID(), descriptor._name.empty() ? 0 : _ID(descriptor._name.c_str()))
     , _descriptor(descriptor)
-    , _internalGVD(context.newGVD(1u, descriptor._name))
+    , _internalGVB(context, descriptor._name)
 {
 }
 
@@ -231,7 +230,7 @@ const vector<U32>& VertexBuffer::getIndices() const noexcept
 
 void VertexBuffer::addIndex(const U32 index)
 {
-    DIVIDE_ASSERT(_descriptor._largeIndices || index <= U16_MAX);
+    DIVIDE_ASSERT( !_descriptor._smallIndices || index <= U16_MAX);
     _indices.push_back(index);
     _indicesChanged = true;
 }
@@ -254,8 +253,8 @@ void VertexBuffer::addIndices(const vector<U32>& indices)
 
 void VertexBuffer::addRestartIndex()
 {
-    primitiveRestartRequired(true);
-    addIndex( _descriptor._largeIndices ? PRIMITIVE_RESTART_INDEX_L : PRIMITIVE_RESTART_INDEX_S );
+    _internalGVB.primitiveRestartRequired(true);
+    addIndex( _descriptor._smallIndices ? PRIMITIVE_RESTART_INDEX_S : PRIMITIVE_RESTART_INDEX_L );
 }
 
 void VertexBuffer::modifyPositionValues(const U32 indexOffset, const vector<float3>& newValues)
@@ -453,7 +452,7 @@ bool VertexBuffer::getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, c
     return false;
 }
 
-bool VertexBuffer::refresh( size_t& indexOffsetCountOut, BufferLock& dataLockOut, BufferLock& indexLockOut )
+bool VertexBuffer::commitData( GFX::MemoryBarrierCommand& memCmdInOut )
 {
     if (!_refreshQueued)
     {
@@ -469,22 +468,33 @@ bool VertexBuffer::refresh( size_t& indexOffsetCountOut, BufferLock& dataLockOut
         vector<Byte> smallData(_data.size() * effectiveEntrySize);
         DIVIDE_EXPECTED_CALL( getMinimalData(_data, smallData.data(), smallData.size()) );
 
+        if ( !_internalGVB._vertexBuffer )
+        {
+            _internalGVB._vertexBuffer = _context.newGPUBuffer( 1u, _descriptor._name);
+        }
+        if (!_internalGVB._indexBuffer)
+        {
+            _internalGVB._indexBuffer = _context.newGPUBuffer(1u, _descriptor._name);
+        }
+
         if (_dataLayoutChanged)
         {
-            GenericVertexData::SetBufferParams setBufferParams{};
+            GPUBuffer::SetBufferParams setBufferParams{};
+            setBufferParams._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
             setBufferParams._bufferParams._elementSize = effectiveEntrySize;
             setBufferParams._bufferParams._elementCount = to_U32(_data.size());
             setBufferParams._bufferParams._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
             setBufferParams._initialData = { smallData.data(), smallData.size() };
-            setBufferParams._elementStride = setBufferParams._bufferParams._elementSize;
-            dataLockOut = _internalGVD->setBuffer(setBufferParams);
+            memCmdInOut._bufferLocks.emplace_back( _internalGVB._vertexBuffer->setBuffer(setBufferParams) );
         }
         else
         {
             DIVIDE_ASSERT( _descriptor._allowDynamicUpdates );
 
-            dataLockOut = _internalGVD->updateBuffer(0u, 0u, to_U32(_data.size()), smallData.data());
+            memCmdInOut._bufferLocks.emplace_back( _internalGVB._vertexBuffer->updateBuffer(0u, to_U32(_data.size()), smallData.data()) );
         }
+
+        _internalGVB._vertexBufferBinding._bindIdx = 0u;
 
         if (!_descriptor._keepCPUData && !_descriptor._allowDynamicUpdates)
         {
@@ -498,44 +508,60 @@ bool VertexBuffer::refresh( size_t& indexOffsetCountOut, BufferLock& dataLockOut
 
     if (_indicesChanged)
     {
-        // Check if we need to update the IBO (will be true for the first Refresh() call)
-        GenericVertexData::IndexBuffer idxBuffer{};
-        idxBuffer.count = _indices.size();
-        idxBuffer.smallIndices = !_descriptor._largeIndices;
-        idxBuffer.indicesNeedCast = idxBuffer.smallIndices;
-        idxBuffer.data = _indices.data();
-        idxBuffer.dynamic = _descriptor._allowDynamicUpdates;
-        indexLockOut = _internalGVD->setIndexBuffer(idxBuffer);
-        indexOffsetCountOut = _internalGVD->firstIndexOffsetCount();
-
         _indicesChanged = false;
+
+        GPUBuffer::SetBufferParams ibParams = {};
+        ibParams._bufferParams._usageType = BufferUsageType::INDEX_BUFFER;
+        ibParams._bufferParams._updateFrequency = _descriptor._allowDynamicUpdates ? BufferUpdateFrequency::OFTEN : BufferUpdateFrequency::ONCE;
+        ibParams._bufferParams._elementCount = to_U32(_indices.size());
+        ibParams._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+
+        if ( _indices.empty() )
+        {
+            ibParams._initialData = {nullptr, 0u };
+        }
+        else
+        {
+            if ( _descriptor._smallIndices )
+            {
+                _smallIndicesBuffer.resize(_indices.size());
+                for (size_t i = 0u; i < _indices.size(); ++i)
+                {
+                    _smallIndicesBuffer[i] = to_U16(_indices[i]);
+                }
+            
+                ibParams._bufferParams._elementSize =  sizeof(U16);
+                ibParams._initialData = { (bufferPtr)_smallIndicesBuffer.data(), _smallIndicesBuffer.size() * ibParams._bufferParams._elementSize };
+            }
+            else
+            {
+                ibParams._bufferParams._elementSize = sizeof(U32);
+                ibParams._initialData = { (bufferPtr)_indices.data(), _indices.size() * ibParams._bufferParams._elementSize };
+            }
+        }
+
+        memCmdInOut._bufferLocks.emplace_back( _internalGVB._indexBuffer->setBuffer(ibParams) );
+
+        if ( !_internalGVB.primitiveRestartRequired() )
+        {
+            const U32 restartIndex = _descriptor._smallIndices ? PRIMITIVE_RESTART_INDEX_S : PRIMITIVE_RESTART_INDEX_L;
+            for (const U32 index : _indices)
+            {
+                if ( index == restartIndex)
+                {
+                    _internalGVB.primitiveRestartRequired(true);
+                    break;
+                }
+            }
+        }
     }
 
     return true;
 }
 
-void VertexBuffer::draw(const GenericDrawCommand& command, VDIUserData* data)
+U32 VertexBuffer::firstIndexOffsetCount() const
 {
-    // Check if we have a refresh request queued up
-    BufferLock dataLock, indexLock{};
-    const bool refreshed = refresh(_firstIndexOffsetCount, dataLock, indexLock);
-
-    _internalGVD->primitiveRestartRequired(primitiveRestartRequired());
-    _internalGVD->draw(command, data);
-
-    if ( refreshed && dataLock._range._length > 0u  && indexLock._range._length > 0u )
-    {
-        auto sync = LockManager::CreateSyncObject( _context.renderAPI() );
-
-        if ( dataLock._range._length > 0u )
-        {
-            DIVIDE_EXPECTED_CALL( dataLock._buffer->lockRange( dataLock._range, sync ) );
-        }
-        if ( indexLock._range._length > 0u )
-        {
-            DIVIDE_EXPECTED_CALL ( indexLock._buffer->lockRange( indexLock._range, sync ) );
-        }
-    }
+    return _internalGVB._indexBuffer ? _internalGVB._indexBuffer->firstIndexOffsetCount() : 0u;
 }
 
 /// Activate and set all of the required vertex attributes.
@@ -722,7 +748,7 @@ void VertexBuffer::computeTangents()
 
 void VertexBuffer::reset()
 {
-    primitiveRestartRequired(false);
+    _internalGVB.primitiveRestartRequired(false);
     _partitions.clear();
     _data.clear();
     _indices.clear();
@@ -738,7 +764,6 @@ void VertexBuffer::fromBuffer(const VertexBuffer& other)
     _useAttribute = other._useAttribute;
     _refreshQueued = true;
 
-    primitiveRestartRequired(other.primitiveRestartRequired());
     {
         unchecked_copy(_indices, other._indices);
         _indicesChanged = true;
@@ -765,12 +790,11 @@ bool VertexBuffer::deserialize(ByteBuffer& dataIn)
             reset();
             dataIn >> _descriptor._allowDynamicUpdates;
             dataIn >> _descriptor._keepCPUData;
-            dataIn >> _descriptor._largeIndices;
+            dataIn >> _descriptor._smallIndices;
             dataIn >> _partitions;
             dataIn >> _indices;
             dataIn >> _data;
             dataIn >> _useAttribute;
-            dataIn >> _primitiveRestartRequired;
             _refreshQueued = _indicesChanged = _dataLayoutChanged = true;
             
             return true;
@@ -791,12 +815,11 @@ bool VertexBuffer::serialize(ByteBuffer& dataOut) const
     dataOut << _ID("VB");
     dataOut << _descriptor._allowDynamicUpdates;
     dataOut << _descriptor._keepCPUData;
-    dataOut << _descriptor._largeIndices;
+    dataOut << _descriptor._smallIndices;
     dataOut << _partitions;
     dataOut << _indices;
     dataOut << _data;
     dataOut << _useAttribute;
-    dataOut << _primitiveRestartRequired;
 
     return true;
 }

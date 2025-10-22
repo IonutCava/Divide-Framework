@@ -532,7 +532,7 @@ namespace Divide
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
                 Util::StringFormatTo( bufferDescriptor._name, "DVD_GPU_CAM_DATA_{}", i );
-                _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newSB( bufferDescriptor );
+                _gfxBuffers._perFrameBuffers[i]._camDataBuffer = newShaderBuffer( bufferDescriptor );
                 _gfxBuffers._perFrameBuffers[i]._camBufferWriteRange = {};
             }
         }
@@ -552,7 +552,7 @@ namespace Divide
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
                 Util::StringFormatTo( bufferDescriptor._name, "CULL_COUNTER_{}", i );
-                _gfxBuffers._perFrameBuffers[i]._cullCounter = newSB( bufferDescriptor );
+                _gfxBuffers._perFrameBuffers[i]._cullCounter = newShaderBuffer( bufferDescriptor );
             }
         }
         _gpuBlock._camNeedsUpload = true;
@@ -3099,9 +3099,9 @@ namespace Divide
 #pragma endregion
 
 #pragma region GPU Object instantiation
-    RenderTarget_uptr GFXDevice::newRT( const RenderTargetDescriptor& descriptor )
+    RenderTarget_uptr GFXDevice::newRenderTarget( const RenderTargetDescriptor& descriptor )
     {
-        RenderTarget_uptr ret = _api->newRT(descriptor);
+        RenderTarget_uptr ret = _api->newRenderTarget(descriptor);
 
         if ( ret != nullptr )
         {

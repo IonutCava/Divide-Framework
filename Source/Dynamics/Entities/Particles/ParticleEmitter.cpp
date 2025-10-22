@@ -18,7 +18,7 @@
 #include "ECS/Components/Headers/RenderingComponent.h"
 #include "ECS/Components/Headers/BoundsComponent.h"
 #include "ECS/Components/Headers/TransformComponent.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 namespace Divide
 {
@@ -55,16 +55,20 @@ bool ParticleEmitter::load( PlatformContext& context )
     {
         for ( U8 j = 0u; j < to_base( RenderStage::COUNT ); ++j )
         {
-            _particleGPUBuffers[i][j] = context.gfx().newGVD( g_particleBufferSizeFactor, Util::StringFormat( "{}_buffer_{}_{}", resourceName(), i, j ).c_str() );
+            ParticleBuffers& buffers = _particleGPUBuffers[i][j];
+            buffers[g_particleGeometryBuffer]->_indexBuffer = context.gfx().newGPUBuffer(1u, Util::StringFormat("{}_buffer_idx_{}_{}", resourceName(), i, j).c_str());
+            buffers[g_particleGeometryBuffer]->_vertexBuffer = context.gfx().newGPUBuffer(1u, Util::StringFormat("{}_buffer_vb_{}_{}", resourceName(), i, j).c_str());
+            buffers[g_particlePositionBuffer]->_vertexBuffer = context.gfx().newGPUBuffer(g_particleBufferSizeFactor, Util::StringFormat("{}_buffer_vb_{}_{}", resourceName(), i, j).c_str());
+            buffers[g_particleColourBuffer]->_vertexBuffer = context.gfx().newGPUBuffer(g_particleBufferSizeFactor, Util::StringFormat("{}_buffer_vb_{}_{}", resourceName(), i, j).c_str());
         }
     }
 
     return SceneNode::load( context );
 }
 
-GenericVertexData& ParticleEmitter::getDataBuffer(const RenderStage stage, const PlayerIndex idx)
+ParticleEmitter::ParticleBuffers& ParticleEmitter::getDataBuffer(const RenderStage stage, const PlayerIndex idx)
 {
-    return *_particleGPUBuffers[idx % s_MaxPlayerBuffers][to_U32(stage)];
+    return _particleGPUBuffers[idx % s_MaxPlayerBuffers][to_U32(stage)];
 }
 
 bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData)
@@ -79,30 +83,33 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     {
         for (U8 j = 0u; j < to_base(RenderStage::COUNT); ++j)
         {
-            GenericVertexData& buffer = getDataBuffer(static_cast<RenderStage>(j), i);
+            ParticleBuffers& buffers = getDataBuffer(static_cast<RenderStage>(j), i);
 
-            GenericVertexData::SetBufferParams params = {};
-            params._bindConfig = { g_particleGeometryBuffer, g_particleGeometryBuffer };
-            params._bufferParams._elementCount = to_U32(geometry.size());
-            params._bufferParams._elementSize = sizeof(float3);
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-            params._initialData = { (bufferPtr)geometry.data(), geometry.size() * params._bufferParams._elementSize};
-            params._useRingBuffer = false;
-
+            GPUVertexBuffer_ptr& positionBuffer = buffers[g_particleGeometryBuffer];
             {
-                const BufferLock lock = buffer.setBuffer(params);
+                GPUBuffer::SetBufferParams vbParams = {};
+                vbParams._bufferParams._elementCount = to_U32(geometry.size());
+                vbParams._bufferParams._elementSize = sizeof(float3);
+                vbParams._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+                vbParams._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
+                vbParams._initialData = { (bufferPtr)geometry.data(), geometry.size() * vbParams._bufferParams._elementSize};
+
+                const BufferLock lock = positionBuffer->_vertexBuffer->setBuffer(vbParams);
                 DIVIDE_UNUSED(lock);
+
+                positionBuffer->_vertexBufferBinding._bindIdx = g_particleGeometryBuffer;
             }
 
             if (!indices.empty())
             {
-                GenericVertexData::IndexBuffer idxBuff{};
-                idxBuff.smallIndices = false;
-                idxBuff.count = to_U32(indices.size());
-                idxBuff.data = (bufferPtr)indices.data();
-                idxBuff.dynamic = false;
+                GPUBuffer::SetBufferParams ibParams = {};
+                ibParams._bufferParams._elementCount = to_U32(indices.size());
+                ibParams._bufferParams._elementSize = sizeof(U32);
+                ibParams._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+                ibParams._bufferParams._usageType = BufferUsageType::INDEX_BUFFER;
+                ibParams._initialData = { (bufferPtr)indices.data(), indices.size() * ibParams._bufferParams._elementSize };
 
-                const BufferLock lock = buffer.setIndexBuffer(idxBuff);
+                const BufferLock lock = positionBuffer->_indexBuffer->setBuffer(ibParams);
                 DIVIDE_UNUSED(lock);
             }
         }
@@ -114,24 +121,27 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
     {
         for ( U8 j = 0; j < to_base( RenderStage::COUNT ); ++j )
         {
-            GenericVertexData& buffer = getDataBuffer( static_cast<RenderStage>(j), i );
+            ParticleBuffers& buffer = getDataBuffer( static_cast<RenderStage>(j), i );
 
-            GenericVertexData::SetBufferParams params = {};
-            params._bindConfig = { g_particlePositionBuffer, g_particlePositionBuffer };
-            params._useRingBuffer = true;
+            GPUVertexBuffer_ptr& positionBuffer = buffer[g_particlePositionBuffer];
+            GPUVertexBuffer_ptr& colourBuffer = buffer[g_particleColourBuffer];
 
-            params._bufferParams._elementCount = particleCount;
-            params._bufferParams._elementSize = sizeof( float4 );
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-            BufferLock lock = buffer.setBuffer( params );
+            GPUBuffer::SetBufferParams vbParams = {};
+            vbParams._bufferParams._elementCount = particleCount;
+            vbParams._bufferParams._elementSize = sizeof( float4 );
+            vbParams._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            BufferLock lock = positionBuffer->_vertexBuffer->setBuffer( vbParams );
             DIVIDE_UNUSED( lock );
 
-            params._bindConfig = { g_particleColourBuffer, g_particleColourBuffer };
-            params._bufferParams._elementCount = particleCount;
-            params._bufferParams._elementSize = sizeof( UColour4 );
+            positionBuffer->_vertexBufferBinding._bindIdx = g_particleColourBuffer;
 
-            lock = buffer.setBuffer( params );
+            vbParams._bufferParams._elementCount = particleCount;
+            vbParams._bufferParams._elementSize = sizeof( UColour4 );
+
+            lock = colourBuffer->_vertexBuffer->setBuffer(vbParams);
             DIVIDE_UNUSED( lock );
+
+            colourBuffer->_vertexBufferBinding._bindIdx = g_particlePositionBuffer;
         }
     }
 
@@ -275,29 +285,42 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                                     const CameraSnapshot& cameraSnapshot,
                                     const bool refreshData)
 {
+    thread_local std::array<PoolHandle, 3u> drawBuffers = {};
+
     if ( _enabled &&  getAliveParticleCount() > 0)
     {
         Wait(*_bufferUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
 
-        GenericVertexData& buffer = getDataBuffer(renderStagePass._stage, 0);
+        ParticleBuffers& buffers = getDataBuffer(renderStagePass._stage, 0);
 
-        rComp.setIndexBufferElementOffset(buffer.firstIndexOffsetCount());
+        rComp.setIndexBufferElementOffset(buffers[g_particleGeometryBuffer]->_indexBuffer->firstIndexOffsetCount());
 
         if (refreshData && _buffersDirty[to_U32(renderStagePass._stage)])
         {
-            postDrawMemCmd._bufferLocks.emplace_back(buffer.updateBuffer(g_particlePositionBuffer, 0u, to_U32(_particles->_renderingPositions.size()), _particles->_renderingPositions.data()));
-            postDrawMemCmd._bufferLocks.emplace_back(buffer.updateBuffer(g_particleColourBuffer, 0u, to_U32(_particles->_renderingColours.size()), _particles->_renderingColours.data()));
+            postDrawMemCmd._bufferLocks.emplace_back(buffers[g_particlePositionBuffer]->_vertexBuffer->updateBuffer(0u, to_U32(_particles->_renderingPositions.size()), _particles->_renderingPositions.data()));
+            postDrawMemCmd._bufferLocks.emplace_back(buffers[g_particleColourBuffer]->_vertexBuffer->updateBuffer(0u, to_U32(_particles->_renderingColours.size()), _particles->_renderingColours.data()));
+            for ( auto& buffer : buffers )
+            {
+                buffer->incQueue();
+            }
 
-            buffer.incQueue();
             _buffersDirty[to_U32(renderStagePass._stage)] = false;
         }
+ 
+        drawBuffers =
+        {
+            buffers[g_particleGeometryBuffer]->_handle,
+            buffers[g_particlePositionBuffer]->_handle,
+            buffers[g_particleColourBuffer]->_handle
+        };
 
         RenderingComponent::DrawCommands& cmds = rComp.drawCommands();
         {
             LockGuard<SharedMutex> w_lock(cmds._dataLock);
             GenericDrawCommand& cmd = cmds._data.front();
             cmd._cmd.instanceCount = to_U32(_particles->_renderingPositions.size());
-            cmd._sourceBuffer = buffer.handle();
+            cmd._sourceBuffersCount = to_U32(drawBuffers.size());
+            cmd._sourceBuffers = drawBuffers.data();
         }
 
         if (renderStagePass._passType == RenderPassType::PRE_PASS)

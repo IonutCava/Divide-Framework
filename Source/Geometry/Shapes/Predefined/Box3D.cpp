@@ -98,7 +98,7 @@ bool Box3D::load( PlatformContext& context )
     VertexBuffer::Descriptor vbDescriptor
     {
         ._name = resourceName(),
-        ._largeIndices = vertexCount + 1 > U16_MAX,
+        ._smallIndices = vertexCount < U16_MAX,
         ._keepCPUData = true,
         ._allowDynamicUpdates = true
     };

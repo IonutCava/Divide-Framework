@@ -82,7 +82,7 @@ namespace Divide {
     {
     public:
         static constexpr U8 DEFAULT_SYNC_FLAG_INTERNAL = 254u;
-        static constexpr U8 DEFAULT_SYNC_FLAG_GVD = 255u;
+        static constexpr U8 DEFAULT_SYNC_FLAG_BUFFER = 255u;
         static constexpr U8 DEFAULT_SYNC_FLAG_SSBO = 252u;
         static constexpr U8 DEFAULT_SYNC_FLAG_TEXTURE = 253u;
 

@@ -31,7 +31,11 @@ namespace Divide
         _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset( _alignedBufferSize, _alignmentRequirement ));
 
         BufferImplParams implParams;
-        implParams._bufferParams = _params;
+        implParams._elementCount = _params._elementCount;
+        implParams._elementSize = _params._elementSize;
+        implParams._usageType = _params._usageType;
+        implParams._updateFrequency = _params._updateFrequency;
+        implParams._hostVisible = _params._hostVisible;
         implParams._target = (getUsage() == BufferUsageType::UNBOUND_BUFFER || getUsage() == BufferUsageType::COMMAND_BUFFER)
                               ? gl46core::GL_SHADER_STORAGE_BUFFER
                               : gl46core::GL_UNIFORM_BUFFER;

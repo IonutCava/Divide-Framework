@@ -8,9 +8,9 @@
 
 #include "glimBatchData.h"
 
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 #include "Platform/Video/RenderBackend/OpenGL/Buffers/Headers/glMemoryManager.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
 
 #define BUFFER_OFFSET(i) ((char*)NULL + (i))
 

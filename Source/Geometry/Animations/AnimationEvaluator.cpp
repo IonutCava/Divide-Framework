@@ -104,7 +104,7 @@ bool AnimEvaluator::initBuffers( GFXDevice& context, const bool useDualQuaternio
             bufferDescriptor._bufferParams._elementSize = sizeof(DualQuaternion);
             bufferDescriptor._bufferParams._elementCount = to_U32(animationData.size());
             bufferDescriptor._initialData = { animationData.data(), animationData.size() * sizeof(DualQuaternion) };
-            _boneBuffer = context.newSB(bufferDescriptor);
+            _boneBuffer = context.newShaderBuffer(bufferDescriptor);
         }
         else
         {
@@ -118,7 +118,7 @@ bool AnimEvaluator::initBuffers( GFXDevice& context, const bool useDualQuaternio
             bufferDescriptor._bufferParams._elementSize = sizeof(mat4<F32>);
             bufferDescriptor._bufferParams._elementCount = to_U32(animationData.size());
             bufferDescriptor._initialData = { animationData.data(), animationData.size() * sizeof(mat4<F32>) };
-            _boneBuffer = context.newSB(bufferDescriptor);
+            _boneBuffer = context.newShaderBuffer(bufferDescriptor);
         }
 
         return _boneBuffer != nullptr;

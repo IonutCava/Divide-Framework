@@ -65,7 +65,7 @@ namespace Divide
             bufferDescriptor._bufferParams._elementCount = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME * (to_base( RenderStage::COUNT ) - 1); ///< no shadows
             bufferDescriptor._bufferParams._elementSize = sizeof( LightProperties );
             // Holds general info about the currently active lights: position, colour, etc.
-            s_lightBuffer = context.gfx().newSB( bufferDescriptor );
+            s_lightBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
         }
         {
             // Holds info about the currently active shadow casting lights:
@@ -73,7 +73,7 @@ namespace Divide
             bufferDescriptor._name = "LIGHT_SHADOW";
             bufferDescriptor._bufferParams._elementCount = 1;
             bufferDescriptor._bufferParams._elementSize = sizeof( ShadowProperties );
-            s_shadowBuffer = context.gfx().newSB( bufferDescriptor );
+            s_shadowBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
         }
         {
             bufferDescriptor._name = "LIGHT_SCENE";
@@ -81,7 +81,7 @@ namespace Divide
             bufferDescriptor._bufferParams._elementCount = to_base( RenderStage::COUNT ) - 1; ///< no shadows
             bufferDescriptor._bufferParams._elementSize = sizeof( SceneData );
             // Holds general info about the currently active scene: light count, ambient colour, etc.
-            s_sceneBuffer = context.gfx().newSB( bufferDescriptor );
+            s_sceneBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
         }
         ShaderModuleDescriptor vertModule = {};
         vertModule._moduleType = ShaderType::VERTEX;

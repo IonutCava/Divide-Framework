@@ -52,7 +52,7 @@ namespace Divide
         VertexBuffer::Descriptor vbDescriptor
         {
             ._name = resourceName(),
-            ._largeIndices = false,
+            ._smallIndices = true,
             ._keepCPUData = true,
             ._allowDynamicUpdates = true
         };

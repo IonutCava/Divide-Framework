@@ -33,18 +33,22 @@
 #ifndef DVD_VERTEX_BUFFER_OBJECT_H
 #define DVD_VERTEX_BUFFER_OBJECT_H
 
-#include "VertexDataInterface.h"
+#include "GPUBuffer.h"
 #include "Platform/Video/Headers/AttributeDescriptor.h"
 
 namespace Divide
 {
 
+namespace GFX {
+    struct MemoryBarrierCommand;
+} //namespace GFX
+
 class ByteBuffer;
-FWD_DECLARE_MANAGED_CLASS(GenericVertexData);
+FWD_DECLARE_MANAGED_CLASS(GPUBuffer);
 /// Vertex Buffer interface class to allow API-independent implementation of data
 /// This class does NOT represent an API-level VB, such as: GL_ARRAY_BUFFER / D3DVERTEXBUFFER
 /// It is only a "buffer" for "vertex info" abstract of implementation. (e.g.: OGL uses a vertex array object for this)
-class VertexBuffer final : public VertexDataInterface
+class VertexBuffer final : public GUIDWrapper, public GraphicsResource
 {
    public:
     constexpr static U32 PRIMITIVE_RESTART_INDEX_L = 0xFFFFFFFF;
@@ -65,7 +69,7 @@ class VertexBuffer final : public VertexDataInterface
     struct Descriptor
     {
         Str<256> _name;
-        bool     _largeIndices{false};
+        bool     _smallIndices{true};
         bool     _keepCPUData{false};
         bool     _allowDynamicUpdates{false};
     };
@@ -164,15 +168,14 @@ class VertexBuffer final : public VertexDataInterface
     void computeNormals();
     void computeTangents();
 
-    PROPERTY_R_IW(size_t, firstIndexOffsetCount, 0u);
+    [[nodiscard]] U32 firstIndexOffsetCount() const;
 
+    [[nodiscard]] inline const GPUVertexBuffer::Handle& handle() const noexcept { return _internalGVB._handle; }
+    
+    bool commitData(GFX::MemoryBarrierCommand& memCmdInOut);
    protected:
-    /// Returns true if data was updated
-    bool refresh(size_t& indexOffsetCountOut, BufferLock& dataLockOut, BufferLock& indexLockOut);
 
     bool getMinimalData(const vector<Vertex>& dataIn, Byte* dataOut, size_t dataOutBufferLength);
-    /// Calculates the appropriate attribute offsets and returns the total size of a vertex for this buffer
-    void draw(const GenericDrawCommand& command, VDIUserData* data) override;
 
     [[nodiscard]] static size_t GetTotalDataSize(const AttributeFlags& usedAttributes);
     [[nodiscard]] static AttributeOffsets GetAttributeOffsets(const AttributeFlags& usedAttributes, size_t& totalDataSizeOut);
@@ -184,8 +187,9 @@ class VertexBuffer final : public VertexDataInterface
     vector<Vertex> _data;
     /// Used for creating an "IB". If it's empty, then an outside source should provide the indices
     vector<U32> _indices;
+    vector<U16> _smallIndicesBuffer;
     AttributeFlags _useAttribute{};
-    GenericVertexData_ptr _internalGVD = nullptr;
+    GPUVertexBuffer _internalGVB;
     bool _refreshQueued = false;
     bool _dataLayoutChanged = false;
     bool _indicesChanged = true;

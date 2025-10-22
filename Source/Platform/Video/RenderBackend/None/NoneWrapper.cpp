@@ -170,17 +170,17 @@ namespace Divide
 
     }
 
-    RenderTarget_uptr NONE_API::newRT( const RenderTargetDescriptor& descriptor ) const
+    RenderTarget_uptr NONE_API::newRenderTarget( const RenderTargetDescriptor& descriptor ) const
     {
         return std::make_unique<noRenderTarget>( _context, descriptor );
     }
 
-    GenericVertexData_ptr NONE_API::newGVD( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_ptr NONE_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<noGenericVertexData>( _context, ringBufferLength, name );
+        return std::make_shared<noGPUBuffer>( _context, ringBufferLength, name );
     }
 
-    ShaderBuffer_uptr NONE_API::newSB( const ShaderBufferDescriptor& descriptor ) const
+    ShaderBuffer_uptr NONE_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const
     {
         return std::make_unique<noUniformBuffer>( _context, descriptor );
     }

@@ -139,7 +139,7 @@ FetchContent_MakeAvailable( chaiscript )
 
 #cnri
 message("Fetching NVIDIA NRI Lib")
-option(NRI_STATIC_LIBRARY "" ON)
+option(NRI_STATIC_LIBRARY "" OFF)
 option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON)
 option(NRI_ENABLE_VK_SUPPORT "" ON)
 option(NRI_ENABLE_NONE_SUPPORT "" ON)

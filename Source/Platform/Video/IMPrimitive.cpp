@@ -10,7 +10,7 @@
 #include "Platform/Video/Headers/RenderStateBlock.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
-#include "Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 namespace Divide
 {
@@ -75,8 +75,6 @@ IMPrimitive::IMPrimitive(GFXDevice& context, const Str<64>& name)
     , _context(context)
 {
     _imInterface = std::make_unique<NS_GLIM::GLIM_BATCH>();
-
-    _dataBuffer = context.newGVD(1, name.c_str());
 
     reset();
 }
@@ -203,25 +201,39 @@ void IMPrimitive::endBatch() noexcept
     _drawFlags[to_base(NS_GLIM::GLIM_BUFFER_TYPE::POINTS)] = !batchData.m_IndexBuffer_Points.empty();
     _memCmd._bufferLocks.resize(0);
 
-    GenericVertexData::SetBufferParams params{};
-    params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-    params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
+    if ((batchData.m_Attributes.size() + 1u) > _buffers.size())
+    {
+        _buffers.resize(batchData.m_Attributes.size() + 1u);
+        _bufferHandles.resize(batchData.m_Attributes.size() + 1u, GPUVertexBuffer::INVALID_HANDLE);
+    }
 
     efficient_clear(_basePipelineDescriptor._vertexFormat._vertexBindings);
 
     // Set positions
     {
-        params._bindConfig = { ._bufferIdx = 0u, ._bindIdx = 0u };
+        auto& posBuffer = _buffers[0u];
+        if ( !posBuffer )
+        {
+            posBuffer = std::make_unique<GPUVertexBuffer>(_context, _name + "_IMPrimitive_Positions");
+            posBuffer->_vertexBuffer = _context.newGPUBuffer(1u, _name + "_IMPrimitive_Positions_Buffer");
+            posBuffer->_indexBuffer = _context.newGPUBuffer(1u, _name + "_IMPrimitive_Indices_Buffer");
+        }
+
+        GPUBuffer::SetBufferParams params = {};
+        params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
+        params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
         params._bufferParams._elementCount = to_U32(batchData.m_PositionData.size());
         params._initialData = { batchData.m_PositionData.data(), batchData.m_PositionData.size() * sizeof(NS_GLIM::Glim4ByteData) };
-        params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * 3;
-        params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
-
-        _memCmd._bufferLocks.emplace_back(_dataBuffer->setBuffer(params));
+        _memCmd._bufferLocks.emplace_back(posBuffer->_vertexBuffer->setBuffer(params));
+        
+        posBuffer->_vertexBufferBinding._bindIdx = 0u;
+        posBuffer->_vertexBufferBinding._elementStride = sizeof(NS_GLIM::Glim4ByteData) * 3;
 
         auto& vertBinding = _basePipelineDescriptor._vertexFormat._vertexBindings.emplace_back();
-        vertBinding._bufferBindIndex = params._bindConfig._bindIdx;
-        vertBinding._strideInBytes = 3 * sizeof( F32 );
+        vertBinding._bufferBindIndex = posBuffer->_vertexBufferBinding._bindIdx;
+        vertBinding._strideInBytes = posBuffer->_vertexBufferBinding._elementStride;
+        _bufferHandles[0u] = posBuffer->_handle;
     }
 
     efficient_clear(batchData.m_PositionData);
@@ -231,18 +243,32 @@ void IMPrimitive::endBatch() noexcept
     for (auto& [index, data] : batchData.m_Attributes)
     {
         assert(index != 0u);
-        params._bindConfig = { ._bufferIdx = bufferIdx++, ._bindIdx = to_U16(index) };
+        auto& attribBuffer = _buffers[bufferIdx];
+        if (!attribBuffer)
+        {
+            attribBuffer = std::make_unique<GPUVertexBuffer>(_context, Util::StringFormat("{}_IMPrimitive_Atrrib_Buffer_{}", _name, bufferIdx).c_str());
+            attribBuffer->_vertexBuffer = _context.newGPUBuffer(1u, _name + Util::StringFormat("{}_IMPrimitive_Atrrib_VB_Buffer_{}", _name, bufferIdx).c_str());
+        }
+
+        GPUBuffer::SetBufferParams params = {};
+        params._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
+        params._bufferParams._elementSize = sizeof(NS_GLIM::Glim4ByteData);
         params._bufferParams._elementCount = to_U32(data.m_ArrayData.size());
         params._initialData = { data.m_ArrayData.data(), data.m_ArrayData.size() * sizeof(NS_GLIM::Glim4ByteData) };
-        params._elementStride = sizeof(NS_GLIM::Glim4ByteData) * GetSizeFactor(data.m_DataType);
-        _memCmd._bufferLocks.emplace_back(_dataBuffer->setBuffer(params));
+        _memCmd._bufferLocks.emplace_back(attribBuffer->_vertexBuffer->setBuffer(params));
+
+        attribBuffer->_vertexBufferBinding._bindIdx = to_U16(index);
+        attribBuffer->_vertexBufferBinding._elementStride = sizeof(NS_GLIM::Glim4ByteData) * GetSizeFactor(data.m_DataType);
 
         AttributeDescriptor& desc = _basePipelineDescriptor._vertexFormat._attributes[index];
-        desc._vertexBindingIndex = params._bindConfig._bindIdx;
+        desc._vertexBindingIndex = attribBuffer->_vertexBufferBinding._bindIdx;
 
         auto& vertBinding = _basePipelineDescriptor._vertexFormat._vertexBindings.emplace_back();
         vertBinding._bufferBindIndex = desc._vertexBindingIndex;
-        vertBinding._strideInBytes = params._elementStride;
+        vertBinding._strideInBytes = attribBuffer->_vertexBufferBinding._elementStride;
+        _bufferHandles[bufferIdx] = attribBuffer->_handle;
+        ++bufferIdx;
     }
 
     for (auto& [index, data] : batchData.m_Attributes)
@@ -315,12 +341,13 @@ void IMPrimitive::endBatch() noexcept
     efficient_clear(batchData.m_IndexBuffer_Lines);
     efficient_clear(batchData.m_IndexBuffer_Points);
 
-    GenericVertexData::IndexBuffer idxBuff{};
-    idxBuff.smallIndices = false;
-    idxBuff.dynamic = true;
-    idxBuff.data = _indices.data();
-    idxBuff.count = _indices.size();
-    _memCmd._bufferLocks.emplace_back(_dataBuffer->setIndexBuffer(idxBuff));
+    GPUBuffer::SetBufferParams ibParams = {};
+    ibParams._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+    ibParams._bufferParams._usageType = BufferUsageType::INDEX_BUFFER;
+    ibParams._bufferParams._elementSize = sizeof(U32);
+    ibParams._bufferParams._elementCount = to_U32(_indices.size());
+    ibParams._initialData = { _indices.data(), _indices.size() * sizeof(U32) };
+    _memCmd._bufferLocks.emplace_back(_buffers[0u]->_indexBuffer->setBuffer(ibParams));
 }
 
 void IMPrimitive::fromLines(const IM::LineDescriptor& lines)
@@ -749,7 +776,8 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
     GenericDrawCommand drawCmd{};
     drawCmd._drawCount = 1u;
     drawCmd._cmd.instanceCount = 1u;
-    drawCmd._sourceBuffer = _dataBuffer->handle();
+    drawCmd._sourceBuffers = _bufferHandles.data();
+    drawCmd._sourceBuffersCount = _bufferHandles.size();
 
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(commandBufferInOut)->_scopeName = _name.c_str();
     {

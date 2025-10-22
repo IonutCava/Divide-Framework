@@ -343,7 +343,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
     bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
     bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
 
-    _histogramBuffer = _context.newSB(bufferDescriptor);
+    _histogramBuffer = _context.newShaderBuffer(bufferDescriptor);
 
     WAIT_FOR_CONDITION(loadTasks.load() == 0);
     DIVIDE_ASSERT(operatorsReady()); // The previous loadTasks atomic should account for all threaded loads. If not, fix it.

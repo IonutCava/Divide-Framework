@@ -62,9 +62,9 @@ struct RenderTargetDescriptor;
 struct ShaderBufferDescriptor;
 
 FWD_DECLARE_MANAGED_CLASS( Renderer );
+FWD_DECLARE_MANAGED_CLASS( GPUBuffer );
 FWD_DECLARE_MANAGED_CLASS( RenderTarget );
 FWD_DECLARE_MANAGED_CLASS( ShaderBuffer );
-FWD_DECLARE_MANAGED_CLASS( GenericVertexData );
 
 struct VideoModes {
     // Video resolution
@@ -194,9 +194,9 @@ protected:
 
     virtual void initDescriptorSets() = 0;
     
-    virtual RenderTarget_uptr      newRT( const RenderTargetDescriptor& descriptor ) const = 0;
-    virtual GenericVertexData_ptr  newGVD( U32 ringBufferLength, std::string_view name ) const = 0;
-    virtual ShaderBuffer_uptr      newSB( const ShaderBufferDescriptor& descriptor ) const = 0;
+    virtual RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor ) const = 0;
+    virtual GPUBuffer_ptr     newGPUBuffer( U32 ringBufferLength, std::string_view name ) const = 0;
+    virtual ShaderBuffer_uptr newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const = 0;
 };
 
 FWD_DECLARE_MANAGED_CLASS(RenderAPIWrapper);

@@ -334,11 +334,11 @@ class RenderingCompRenderPass
     }
 
     [[nodiscard]] static bool prepareDrawPackage(RenderingComponent& renderable,
-                                                    const CameraSnapshot& cameraSnapshot,
-                                                    const SceneRenderState& sceneRenderState,
-                                                    RenderStagePass renderStagePass,
-                                                    GFX::MemoryBarrierCommand& postDrawMemCmd,
-                                                    const bool refreshData)
+                                                 const CameraSnapshot& cameraSnapshot,
+                                                 const SceneRenderState& sceneRenderState,
+                                                 RenderStagePass renderStagePass,
+                                                 GFX::MemoryBarrierCommand& postDrawMemCmd,
+                                                 const bool refreshData)
     {
         return renderable.prepareDrawPackage(cameraSnapshot, sceneRenderState, renderStagePass, postDrawMemCmd, refreshData);
     }

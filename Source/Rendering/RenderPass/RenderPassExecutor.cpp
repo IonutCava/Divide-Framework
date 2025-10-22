@@ -179,7 +179,7 @@ namespace Divide
         bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
-        _cmdBuffer = _context.newSB( bufferDescriptor );
+        _cmdBuffer = _context.newShaderBuffer( bufferDescriptor );
     }
 
     void RenderPassExecutor::OnStartup( GFXDevice& gfx )
@@ -265,7 +265,7 @@ namespace Divide
                 bufferDescriptor._initialData = { s_materialBuffer._data._gpuData.data(), s_materialBuffer._data._gpuData.size() };
             }
 
-            s_materialBuffer._gpuBuffer = context.newSB(bufferDescriptor);
+            s_materialBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
         }
         if (s_transformBuffer._gpuBuffer == nullptr || s_transformBuffer._gpuBuffer->getPrimitiveCount() != to_U32(transformCount))
         {
@@ -277,7 +277,7 @@ namespace Divide
                 bufferDescriptor._initialData = { s_transformBuffer._data._gpuData.data(), s_transformBuffer._data._gpuData.size() };
             }
 
-            s_transformBuffer._gpuBuffer = context.newSB(bufferDescriptor);
+            s_transformBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
         }
         if (s_indirectionBuffer._gpuBuffer == nullptr || s_indirectionBuffer._gpuBuffer->getPrimitiveCount() != to_U32(indirectionCount))
         {
@@ -288,7 +288,7 @@ namespace Divide
             {
                 bufferDescriptor._initialData = { s_indirectionBuffer._data._gpuData.data(), s_indirectionBuffer._data._gpuData.size() };
             }
-            s_indirectionBuffer._gpuBuffer = context.newSB(bufferDescriptor);
+            s_indirectionBuffer._gpuBuffer = context.newShaderBuffer(bufferDescriptor);
         }
     }
 

@@ -17,14 +17,14 @@ namespace Divide
             bufferDescriptor._bufferParams._elementSize = sizeof( SceneShaderBufferData );
             bufferDescriptor._initialData = { (Byte*)&_sceneBufferData, bufferDescriptor._bufferParams._elementSize };
             bufferDescriptor._name = "SCENE_SHADER_DATA";
-            _sceneShaderData = _context.newSB( bufferDescriptor );
+            _sceneShaderData = _context.newShaderBuffer( bufferDescriptor );
         }
         {
             bufferDescriptor._bufferParams._elementCount = GLOBAL_PROBE_COUNT;
             bufferDescriptor._bufferParams._elementSize = sizeof( ProbeData );
             bufferDescriptor._initialData = { (Byte*)_probeData.data(), bufferDescriptor._bufferParams._elementSize };
             bufferDescriptor._name = "SCENE_PROBE_DATA";
-            _probeShaderData = _context.newSB( bufferDescriptor );
+            _probeShaderData = _context.newShaderBuffer( bufferDescriptor );
         }
     }
 

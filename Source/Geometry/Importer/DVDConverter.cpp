@@ -372,7 +372,7 @@ void BuildGeometryBuffers(PlatformContext& context, Import::ImportData& target)
     VertexBuffer::Descriptor descriptor
     {
         ._name = target.modelName(),
-        ._largeIndices = vertexCount >= U16_MAX,
+        ._smallIndices = vertexCount < U16_MAX,
         ._keepCPUData = true
     };
 

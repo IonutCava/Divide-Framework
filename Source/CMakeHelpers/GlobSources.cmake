@@ -551,12 +551,11 @@ set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
                              Platform/Video/Buffers/RenderTarget/Headers/RTDrawDescriptor.h
                              Platform/Video/Buffers/RenderTarget/Headers/RTDrawDescriptor.inl
                              Platform/Video/Buffers/ShaderBuffer/Headers/ShaderBuffer.h
-                             Platform/Video/Buffers/VertexBuffer/GenericBuffer/Headers/GenericVertexData.h
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferLocks.h
                              Platform/Video/Buffers/VertexBuffer/Headers/BufferParams.h
                              Platform/Video/Buffers/VertexBuffer/Headers/VertexBuffer.h
-                             Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.h
-                             Platform/Video/Buffers/VertexBuffer/Headers/VertexDataInterface.inl
+                             Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h
+                             Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.inl
                              Platform/Video/GLIM/Declarations.h
                              Platform/Video/GLIM/glim.h
                              Platform/Video/GLIM/glimBatch.h
@@ -692,8 +691,7 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Video/Buffers/ShaderBuffer/ShaderBuffer.cpp
                      Platform/Video/Buffers/VertexBuffer/BufferLocks.cpp
                      Platform/Video/Buffers/VertexBuffer/VertexBuffer.cpp
-                     Platform/Video/Buffers/VertexBuffer/VertexDataInterface.cpp
-                     Platform/Video/Buffers/VertexBuffer/GenericBuffer/GenericVertexData.cpp
+                     Platform/Video/Buffers/VertexBuffer/GPUBuffer.cpp
                      Platform/Video/GLIM/glimBatch.cpp
                      Platform/Video/GLIM/glimBatchAttributes.cpp
                      Platform/Video/GLIM/glimBatchData.cpp

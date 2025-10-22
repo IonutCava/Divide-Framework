@@ -1280,13 +1280,13 @@ namespace Divide
     }
 
 
-    bool VK_API::Draw( const GenericDrawCommand& cmd, VkCommandBuffer cmdBuffer )
+    bool VK_API::Draw( GenericDrawCommand cmd, VkCommandBuffer cmdBuffer )
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
         DIVIDE_ASSERT( cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount );
 
-        if ( cmd._sourceBuffer._id == 0u )
+        if ( cmd._sourceBuffersCount == 0u )
         {
             DIVIDE_ASSERT( cmd._cmd.indexCount == 0u );
 
@@ -1314,27 +1314,83 @@ namespace Divide
             {
                 VKUtil::SubmitRenderCommand( cmd, cmdBuffer );
             }
+
+            return true;
         }
-        else
+        
+        bool ret = true;
+        bool hasIndexBuffer = false;
+        U32 firstIndex = cmd._cmd.firstIndex;
+
+        for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
             // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-            thread_local VertexDataInterface::Handle s_lastID = { U16_MAX, 0u };
-            thread_local VertexDataInterface* s_lastBuffer = nullptr;
+            thread_local GPUVertexBuffer::Handle s_lastID = { U16_MAX, 0u };
+            thread_local GPUVertexBuffer* s_lastBuffer = nullptr;
 
-            if ( s_lastID != cmd._sourceBuffer )
+            const PoolHandle handle = cmd._sourceBuffers[i];
+
+            if (s_lastID != handle)
             {
-                s_lastID = cmd._sourceBuffer;
-                s_lastBuffer = VertexDataInterface::s_VDIPool.find( s_lastID );
+                s_lastID = handle;
+                s_lastBuffer = GPUVertexBuffer::s_GVBPool.find(s_lastID);
             }
 
             DIVIDE_ASSERT( s_lastBuffer != nullptr );
-            vkUserData userData{};
-            userData._cmdBuffer = &cmdBuffer;
+            if (s_lastBuffer->_vertexBuffer)
+            {
+                vkGPUBuffer* buffer = static_cast<vkGPUBuffer*>(s_lastBuffer->_vertexBuffer.get());
+                vkBufferImpl* impl = buffer->_internalBuffer.get();
+                const BufferParams& bufferParams = impl->_params;
 
-            s_lastBuffer->draw( cmd, &userData );
+                assert(impl != nullptr);
+
+                const auto& vbBindConfig = s_lastBuffer->_vertexBufferBinding;
+
+                VkDeviceSize offsetInBytes = 0u;
+                if (s_lastBuffer->_vertexBuffer->queueLength() > 1)
+                {
+                    offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * buffer->queueIndex();
+                }
+
+                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vbBindConfig._bindIdx, 1, &impl->_buffer, &offsetInBytes);
+            }
+
+            if (s_lastBuffer->_indexBuffer && s_lastBuffer->_indexBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET)
+            {
+                DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+
+                vkGPUBuffer* buffer = static_cast<vkGPUBuffer*>(s_lastBuffer->_indexBuffer.get());
+                vkBufferImpl* impl = buffer->_internalBuffer.get();
+                if ( impl != nullptr )
+                {
+                    const BufferParams& bufferParams = impl->_params;
+
+                    VkDeviceSize offsetInBytes = 0u;
+                    const VkDeviceSize indexSizeInBytes = bufferParams._elementSize;
+
+                    if (buffer->queueLength() > 1u) [[likely]]
+                    {
+                        offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * buffer->queueIndex();
+                    }
+
+                    firstIndex += to_U32(offsetInBytes / indexSizeInBytes);
+                    firstIndex += s_lastBuffer->_indexBuffer->firstIndexOffsetCount();
+
+                    VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offsetInBytes, indexSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                    hasIndexBuffer = true;
+                }
+            }
+          
+        }
+        if (hasIndexBuffer)
+        {
+            cmd._cmd.firstIndex = firstIndex;
         }
 
-        return true;
+        VKUtil::SubmitRenderCommand(cmd, cmdBuffer, hasIndexBuffer);
+
+        return ret;
     }
 
     namespace
@@ -3232,17 +3288,17 @@ namespace Divide
         return cached_handle;
     }
 
-    RenderTarget_uptr VK_API::newRT( const RenderTargetDescriptor& descriptor ) const
+    RenderTarget_uptr VK_API::newRenderTarget( const RenderTargetDescriptor& descriptor ) const
     {
         return std::make_unique<vkRenderTarget>( _context, descriptor );
     }
 
-    GenericVertexData_ptr VK_API::newGVD( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_ptr VK_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<vkGenericVertexData>( _context, ringBufferLength, name );
+        return std::make_shared<vkGPUBuffer>( _context, ringBufferLength, name );
     }
 
-    ShaderBuffer_uptr VK_API::newSB( const ShaderBufferDescriptor& descriptor ) const
+    ShaderBuffer_uptr VK_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const
     {
         return std::make_unique<vkShaderBuffer>( _context, descriptor );
     }
