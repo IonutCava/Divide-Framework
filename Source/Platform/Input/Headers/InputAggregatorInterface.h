@@ -59,10 +59,11 @@ namespace Attorney
 
 struct InputEvent 
 {
-    explicit InputEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
+    explicit InputEvent(DisplayWindow* sourceWindow, Input::InputDeviceType deviceType, U8 deviceIndex) noexcept;
 
     DisplayWindow* _sourceWindow = nullptr;
-    U8 _deviceIndex = 0;
+    Input::InputDeviceType _deviceType = Input::InputDeviceType::COUNT;
+    U8 _deviceIndex = 0u;
     bool _simulationPaused = false;
 };
 

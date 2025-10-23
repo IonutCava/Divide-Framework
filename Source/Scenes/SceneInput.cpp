@@ -63,8 +63,13 @@ namespace Divide
         _mouseBtnLog.find( index )->second.clear();
     }
 
-    U8 SceneInput::getPlayerIndexForDevice( const U8 deviceIndex ) const
+    U8 SceneInput::getPlayerIndexForDevice( const Input::InputDeviceType deviceType, const U8 deviceIndex ) const
     {
+        STUBBED("ToDo: Map device index to player index -Ionut");
+
+        DIVIDE_ASSERT(deviceIndex < Config::MAX_LOCAL_PLAYER_COUNT);
+        DIVIDE_ASSERT(deviceType  != Input::InputDeviceType::COUNT);
+
         return deviceIndex;
     }
 
@@ -121,7 +126,8 @@ namespace Divide
         if ( getKeyMapping(argInOut._key, cbks ) )
         {
             return handleCallbacks( cbks,
-                                    InputParams(argInOut._deviceIndex,
+                                    InputParams(argInOut._deviceType,
+                                                argInOut._deviceIndex,
                                                  to_base(argInOut._key),
                                                  {{
                                                     argInOut._modMask,
@@ -153,7 +159,8 @@ namespace Divide
         if ( getKeyMapping(argInOut._key, cbks ) )
         {
             return handleCallbacks( cbks,
-                                    InputParams(argInOut._deviceIndex,
+                                    InputParams(argInOut._deviceType,
+                                                argInOut._deviceIndex,
                                                  to_base(argInOut._key ),
                                                  {{
                                                      argInOut._modMask,
@@ -177,7 +184,7 @@ namespace Divide
 
         if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
         {
-            return handleCallbacks( cbks, InputParams(argInOut._deviceIndex, argInOut._element._elementIndex), true );
+            return handleCallbacks( cbks, InputParams(argInOut._deviceType, argInOut._deviceIndex, argInOut._element._elementIndex), true );
         }
 
         return false;
@@ -190,7 +197,7 @@ namespace Divide
         PressReleaseActionCbks cbks;
         if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
         {
-            return handleCallbacks( cbks, InputParams(argInOut._deviceIndex, argInOut._element._elementIndex ), false );
+            return handleCallbacks( cbks, InputParams(argInOut._deviceType, argInOut._deviceIndex, argInOut._element._elementIndex ), false );
         }
 
         return false;
@@ -203,7 +210,8 @@ namespace Divide
         PressReleaseActionCbks cbks;
         if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
         {
-            const InputParams params( argInOut._deviceIndex,
+            const InputParams params( argInOut._deviceType, 
+                                      argInOut._deviceIndex,
                                       argInOut._element._elementIndex, // axis index
                                       {{
                                         argInOut._element._data._gamePad ? 1 : 0, // is gamepad
@@ -226,7 +234,8 @@ namespace Divide
         PressReleaseActionCbks cbks;
         if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
         {
-            const InputParams params( argInOut._deviceIndex,
+            const InputParams params( argInOut._deviceType,
+                                      argInOut._deviceIndex,
                                       argInOut._element._elementIndex,
                                       {{
                                           to_I32(argInOut._element._data._data), //explicit cast for reference
@@ -249,7 +258,8 @@ namespace Divide
         PressReleaseActionCbks cbks;
         if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
         {
-            const InputParams params( argInOut._deviceIndex,
+            const InputParams params( argInOut._deviceType,
+                                      argInOut._deviceIndex,
                                       argInOut._element._elementIndex,
                                       {{
                                           argInOut._element._data._gamePad ? 1 : 0,
@@ -277,7 +287,7 @@ namespace Divide
 
     bool SceneInput::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
     {
-        const PlayerIndex idx = getPlayerIndexForDevice(argInOut._deviceIndex );
+        const PlayerIndex idx = getPlayerIndexForDevice( argInOut._deviceType, argInOut._deviceIndex );
         SceneStatePerPlayer& state = _parentScene.state()->playerState( idx );
 
         if (argInOut._wheelEvent )
@@ -338,7 +348,8 @@ namespace Divide
         PressReleaseActionCbks cbks = {};
         if ( getMouseMapping(argInOut.button(), cbks ) )
         {
-            InputParams params( argInOut._deviceIndex,
+            InputParams params( argInOut._deviceType,
+                                argInOut._deviceIndex,
                                 to_base(argInOut.button() ),
                                 {{
                                     argInOut.state().X.abs,
@@ -371,7 +382,8 @@ namespace Divide
         PressReleaseActionCbks cbks = {};
         if ( getMouseMapping( argInOut.button(), cbks ) )
         {
-            InputParams params( argInOut._deviceIndex, 
+            InputParams params( argInOut._deviceType,
+                                argInOut._deviceIndex,
                                 to_base(argInOut.button() ),
                                 {{
                                     argInOut.state().X.abs,

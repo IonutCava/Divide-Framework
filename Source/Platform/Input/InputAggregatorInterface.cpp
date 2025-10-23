@@ -71,14 +71,15 @@ JoystickElement joystickElementByName(const string& elementName) {
     return ret;
 }
 
-InputEvent::InputEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
+InputEvent::InputEvent(DisplayWindow* sourceWindow, const Input::InputDeviceType deviceType, const U8 deviceIndex) noexcept
     : _sourceWindow(sourceWindow)
+    , _deviceType(deviceType)
     , _deviceIndex(deviceIndex)
 {
 }
 
 MouseEvent::MouseEvent( DisplayWindow* sourceWindow, U8 deviceIndex ) noexcept
-    : InputEvent(sourceWindow, deviceIndex)
+    : InputEvent(sourceWindow, Input::InputDeviceType::MOUSE, deviceIndex)
 {
 }
 
@@ -94,23 +95,23 @@ MouseMoveEvent::MouseMoveEvent(DisplayWindow* sourceWindow, const U8 deviceIndex
 }
 
 JoystickEvent::JoystickEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
-    : InputEvent(sourceWindow, deviceIndex)
+    : InputEvent(sourceWindow, Input::InputDeviceType::JOYSTICK, deviceIndex)
 {
 }
 
 KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
-    : InputEvent(sourceWindow, deviceIndex)
+    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, deviceIndex)
 {
 }
 
 TextInputEvent::TextInputEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* utf8Text) noexcept
-    : InputEvent(sourceWindow, deviceIndex)
+    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, deviceIndex)
     , _utf8Text(utf8Text)
 {
 }
 
 TextEditEvent::TextEditEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* utf8Text, I32 startPos, I32 length) noexcept
-    : InputEvent(sourceWindow, deviceIndex)
+    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, deviceIndex)
     , _utf8Text(utf8Text)
     , _startPos(startPos)
     , _length(length)

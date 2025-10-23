@@ -291,6 +291,14 @@ namespace Input {
         COUNT
     };
 
+    enum class InputDeviceType : U8
+    {
+        MOUSE = 0,
+        KEYBOARD,
+        JOYSTICK,
+        COUNT
+    };
+
     SDL_Keycode SDLKeyCodeFromKey(KeyCode code) noexcept;
     KeyCode KeyCodeFromSDLKey(SDL_Keycode code) noexcept;
 

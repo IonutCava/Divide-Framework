@@ -42,19 +42,22 @@ struct InputParams
     static constexpr U8 MAX_PARAMS = 6u;
     using Params = std::array<I32, MAX_PARAMS>;
 
-    explicit InputParams(const U8 deviceIndex, const U8 elementIndex) noexcept
-        : _deviceIndex( deviceIndex )
+    explicit InputParams(const Input::InputDeviceType deviceType, const U8 deviceIndex, const U8 elementIndex) noexcept
+        : _deviceType( deviceType )
+        , _deviceIndex( deviceIndex )
         , _elementIndex(elementIndex )
     {
     }
 
-    explicit InputParams(const U8 deviceIndex, const U8 elementIndex, const Params args) noexcept
-        : _deviceIndex( deviceIndex )
+    explicit InputParams(const Input::InputDeviceType deviceType, const U8 deviceIndex, const U8 elementIndex, const Params args) noexcept
+        : _deviceType(deviceType)
+        , _deviceIndex( deviceIndex )
         , _elementIndex( elementIndex )
         , _var(args)
     {
     }
 
+    Input::InputDeviceType _deviceType{Input::InputDeviceType::COUNT};
     U8  _deviceIndex{0u};
     U8  _elementIndex{0u};
     Params _var = create_array<MAX_PARAMS, I32>(-1);

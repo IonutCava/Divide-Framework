@@ -148,7 +148,7 @@ namespace Divide
 
         InputActionList& actionList() noexcept;
 
-        U8 getPlayerIndexForDevice( U8 deviceIndex ) const;
+        U8 getPlayerIndexForDevice( Input::InputDeviceType deviceType, U8 deviceIndex ) const;
 
         void flushCache();
 

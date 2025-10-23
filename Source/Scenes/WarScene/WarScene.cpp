@@ -553,7 +553,7 @@ void WarScene::toggleCamera(const InputParams param) {
         tpsCamera = Camera::FindCamera(_ID("tpsCamera"));
     }
 
-    const PlayerIndex idx = getPlayerIndexForDevice(param._deviceIndex);
+    const PlayerIndex idx = getPlayerIndexForDevice(param._deviceType, param._deviceIndex);
     if (_currentSelection[idx]._selectionCount > 0u) {
         SceneGraphNode* node = sceneGraph()->findNode(_currentSelection[idx]._selections[0]);
         if (node != nullptr) {

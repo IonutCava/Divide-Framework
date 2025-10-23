@@ -302,7 +302,7 @@ class Scene : public Resource, public PlatformContextComponent {
 
         [[nodiscard]] U8      getSceneIndexForPlayer(PlayerIndex idx) const;
         [[nodiscard]] Player* getPlayerForIndex(PlayerIndex idx) const;
-        [[nodiscard]] U8      getPlayerIndexForDevice(U8 deviceIndex) const;
+        [[nodiscard]] U8      getPlayerIndexForDevice(Input::InputDeviceType deviceType, U8 deviceIndex) const;
 #pragma endregion
 
         void addGuiTimer( TimerClass intervalClass, U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk);
@@ -431,7 +431,7 @@ class SceneProjectManager
     }
 
     static void clearHoverTarget(Scene* scene, const Input::MouseMoveEvent& arg) {
-        scene->clearHoverTarget(scene->input()->getPlayerIndexForDevice(arg._deviceIndex));
+        scene->clearHoverTarget(scene->input()->getPlayerIndexForDevice(arg._deviceType, arg._deviceIndex));
     }
 
     static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept {
