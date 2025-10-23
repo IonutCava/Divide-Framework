@@ -66,9 +66,9 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 
     void setMaterialTpl( Handle<Material> material) override;
 
-    [[nodiscard]] const VertexBuffer_ptr& geometryBuffer();
+    [[nodiscard]] VertexBuffer* geometryBuffer();
 
-    inline void geometryBuffer(const VertexBuffer_ptr& vb) noexcept { _geometryBuffer = vb; }
+    VertexBuffer* geometryBuffer(GFXDevice& context, const VertexBuffer::Descriptor& descriptor) noexcept;
 
     [[nodiscard]] U8 getGeometryPartitionCount() const noexcept {
         U8 ret = 0;
@@ -141,7 +141,7 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     /// used, for example, for cooking collision meshes
     /// We keep separate triangle lists per partition
     vector<vector<uint3>> _geometryTriangles;
-    VertexBuffer_ptr _geometryBuffer = nullptr;
+    VertexBuffer_uptr _geometryBuffer = nullptr;
 };
 
 TYPEDEF_SMART_POINTERS_FOR_TYPE(Object3D);

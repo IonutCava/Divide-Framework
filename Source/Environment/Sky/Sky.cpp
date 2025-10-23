@@ -964,7 +964,7 @@ void Sky::prepareRender( SceneGraphNode* sgn,
 
     setSkyShaderData( renderStagePass, pkg.pushConstantsCmd()._fastData );
 
-    const VertexBuffer_ptr& skyBuffer = Get(_sky)->geometryBuffer();
+    VertexBuffer* skyBuffer = Get(_sky)->geometryBuffer();
     skyBuffer->commitData(postDrawMemCmd);
     rComp.setIndexBufferElementOffset(skyBuffer->firstIndexOffsetCount());
     SceneNode::prepareRender( sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData );
@@ -972,13 +972,12 @@ void Sky::prepareRender( SceneGraphNode* sgn,
 
 void Sky::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
 {
+    const VertexBuffer* skyBuffer = Get(_sky)->geometryBuffer();
+
     GenericDrawCommand& cmd = cmdsOut.emplace_back();
     toggleOption(cmd, CmdRenderOptions::RENDER_INDIRECT);
-
-    const VertexBuffer_ptr& skyBuffer = Get(_sky)->geometryBuffer();
-
-    cmd._sourceBuffers = &skyBuffer->handle();
-    cmd._sourceBuffersCount = 1;
+    cmd._sourceBuffers = skyBuffer->handles().data();
+    cmd._sourceBuffersCount = skyBuffer->handles().size();
     cmd._cmd.indexCount = to_U32( skyBuffer->getIndexCount() );
 
     SceneEnvironmentProbePool::SkyLightNeedsRefresh( true );

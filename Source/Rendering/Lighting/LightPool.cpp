@@ -57,13 +57,13 @@ namespace Divide
     {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
 
         {
             bufferDescriptor._name = "LIGHT_DATA";
-            bufferDescriptor._bufferParams._elementCount = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME * (to_base( RenderStage::COUNT ) - 1); ///< no shadows
-            bufferDescriptor._bufferParams._elementSize = sizeof( LightProperties );
+            bufferDescriptor._elementCount = Config::Lighting::MAX_ACTIVE_LIGHTS_PER_FRAME * (to_base( RenderStage::COUNT ) - 1); ///< no shadows
+            bufferDescriptor._elementSize = sizeof( LightProperties );
             // Holds general info about the currently active lights: position, colour, etc.
             s_lightBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
         }
@@ -71,15 +71,15 @@ namespace Divide
             // Holds info about the currently active shadow casting lights:
             // ViewProjection Matrices, View Space Position, etc
             bufferDescriptor._name = "LIGHT_SHADOW";
-            bufferDescriptor._bufferParams._elementCount = 1;
-            bufferDescriptor._bufferParams._elementSize = sizeof( ShadowProperties );
+            bufferDescriptor._elementCount = 1;
+            bufferDescriptor._elementSize = sizeof( ShadowProperties );
             s_shadowBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
         }
         {
             bufferDescriptor._name = "LIGHT_SCENE";
-            bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
-            bufferDescriptor._bufferParams._elementCount = to_base( RenderStage::COUNT ) - 1; ///< no shadows
-            bufferDescriptor._bufferParams._elementSize = sizeof( SceneData );
+            bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
+            bufferDescriptor._elementCount = to_base( RenderStage::COUNT ) - 1; ///< no shadows
+            bufferDescriptor._elementSize = sizeof( SceneData );
             // Holds general info about the currently active scene: light count, ambient colour, etc.
             s_sceneBuffer = context.gfx().newShaderBuffer( bufferDescriptor );
         }

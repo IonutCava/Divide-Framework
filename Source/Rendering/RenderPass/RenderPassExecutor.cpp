@@ -173,10 +173,10 @@ namespace Divide
         _renderQueue = std::make_unique<RenderQueue>( parent.parent(), stage );
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::COMMAND_BUFFER;
-        bufferDescriptor._bufferParams._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
-        bufferDescriptor._bufferParams._elementSize = sizeof( IndirectIndexedDrawCommand );
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._usageType = BufferUsageType::COMMAND_BUFFER;
+        bufferDescriptor._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
+        bufferDescriptor._elementSize = sizeof( IndirectIndexedDrawCommand );
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         Util::StringFormatTo( bufferDescriptor._name, "CMD_DATA_{}", TypeUtil::RenderStageToString( stage ) );
         _cmdBuffer = _context.newShaderBuffer( bufferDescriptor );
@@ -251,14 +251,14 @@ namespace Divide
     void RenderPassExecutor::ResizeGPUBuffers(GFXDevice& context, const size_t indirectionCount, const size_t transformCount, const size_t materialCount)
     {
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
 
         if (s_materialBuffer._gpuBuffer == nullptr || s_materialBuffer._gpuBuffer->getPrimitiveCount() != to_U32(materialCount))
         {
-            bufferDescriptor._bufferParams._elementCount = to_U32(materialCount);
-            bufferDescriptor._bufferParams._elementSize = sizeof(NodeMaterialData);
+            bufferDescriptor._elementCount = to_U32(materialCount);
+            bufferDescriptor._elementSize = sizeof(NodeMaterialData);
             bufferDescriptor._name = "NODE_MATERIAL_DATA";
             if (!s_materialBuffer._data._gpuData.empty())
             {
@@ -269,8 +269,8 @@ namespace Divide
         }
         if (s_transformBuffer._gpuBuffer == nullptr || s_transformBuffer._gpuBuffer->getPrimitiveCount() != to_U32(transformCount))
         {
-            bufferDescriptor._bufferParams._elementCount = to_U32(transformCount);
-            bufferDescriptor._bufferParams._elementSize = sizeof(NodeTransformData);
+            bufferDescriptor._elementCount = to_U32(transformCount);
+            bufferDescriptor._elementSize = sizeof(NodeTransformData);
             bufferDescriptor._name = "NODE_TRANSFORM_DATA";
             if (!s_transformBuffer._data._gpuData.empty())
             {
@@ -281,8 +281,8 @@ namespace Divide
         }
         if (s_indirectionBuffer._gpuBuffer == nullptr || s_indirectionBuffer._gpuBuffer->getPrimitiveCount() != to_U32(indirectionCount))
         {
-            bufferDescriptor._bufferParams._elementCount = to_U32(indirectionCount);
-            bufferDescriptor._bufferParams._elementSize = sizeof(NodeIndirectionData);
+            bufferDescriptor._elementCount = to_U32(indirectionCount);
+            bufferDescriptor._elementSize = sizeof(NodeIndirectionData);
             bufferDescriptor._name = "NODE_INDIRECTION_DATA";
             if (!s_indirectionBuffer._data._gpuData.empty())
             {

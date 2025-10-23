@@ -69,7 +69,7 @@ class NVIDIA_RENDER_INTERFACE_API final : public RenderAPIWrapper {
       [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
       [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
-      [[nodiscard]] GPUBuffer_ptr      newGPUBuffer( U32 ringBufferLength, std::string_view name ) const override;
+      [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, std::string_view name ) const override;
       [[nodiscard]] ShaderBuffer_uptr  newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
 
 private:

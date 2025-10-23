@@ -195,7 +195,7 @@ protected:
     virtual void initDescriptorSets() = 0;
     
     virtual RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor ) const = 0;
-    virtual GPUBuffer_ptr     newGPUBuffer( U32 ringBufferLength, std::string_view name ) const = 0;
+    virtual GPUBuffer_uptr    newGPUBuffer( U32 ringBufferLength, std::string_view name ) const = 0;
     virtual ShaderBuffer_uptr newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const = 0;
 };
 

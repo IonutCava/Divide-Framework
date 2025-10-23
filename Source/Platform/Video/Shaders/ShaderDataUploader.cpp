@@ -418,10 +418,10 @@ namespace Divide
         bufferDescriptor._ringBufferLength = increaseSize ? newSize : RingBufferLength;
         bufferDescriptor._name.append( "_" );
         bufferDescriptor._name.append( _parentShaderName.c_str() );
-        bufferDescriptor._bufferParams._elementCount = 1;
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-        bufferDescriptor._bufferParams._elementSize = _uniformBlockSizeAligned;
+        bufferDescriptor._elementCount = 1;
+        bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._elementSize = _uniformBlockSizeAligned;
         _buffer = _context.newShaderBuffer( bufferDescriptor );
         _uniformBlockDirty = true;
     }

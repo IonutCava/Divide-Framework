@@ -6,8 +6,6 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
 
-#include "Platform/Video/Headers/GFXDevice.h"
-
 namespace Divide
 {
     Quad3D::Quad3D( const ResourceDescriptor<Quad3D>& descriptor )
@@ -57,7 +55,7 @@ namespace Divide
             ._allowDynamicUpdates = true
         };
 
-        auto vb = context.gfx().newVB( vbDescriptor );
+        VertexBuffer* vb = geometryBuffer(context.gfx(), vbDescriptor );
 
         vb->setVertexCount( 4 );
         vb->modifyPositionValue( 0, -halfExtentX, halfExtentY, -halfExtentZ ); // TOP LEFT
@@ -87,7 +85,6 @@ namespace Divide
         }
 
         vb->computeTangents();
-        geometryBuffer( vb );
 
         recomputeBounds();
 

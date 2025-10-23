@@ -53,7 +53,7 @@ namespace Divide {
         explicit VMABuffer( BufferParams params );
         ~VMABuffer();
 
-        const BufferParams _params{};
+        BufferParams _params{};
         VkBuffer _buffer{ VK_NULL_HANDLE };
         VmaAllocation _allocation{ VK_NULL_HANDLE };
         VmaAllocationInfo _allocInfo{};

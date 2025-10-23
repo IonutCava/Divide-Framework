@@ -375,7 +375,7 @@ bool Parse(const BoundingBox& box, NavModelData& outData, SceneGraphNode* sgn)
                 obj = Get(sgn->getNode<WaterPlane>().getQuad());
             }
             assert(obj != nullptr);
-            geometry = obj->geometryBuffer().get();
+            geometry = obj->geometryBuffer();
             assert(geometry != nullptr);
 
             const auto& vertices = geometry->getVertices();

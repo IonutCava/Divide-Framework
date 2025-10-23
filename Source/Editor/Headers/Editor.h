@@ -135,6 +135,14 @@ namespace Divide
         bool _srgb = false;
     };
 
+    struct GPUVertexBuffer
+    {
+        GPUBuffer_uptr _vertexBuffer;
+        GPUBuffer_uptr _indexBuffer;
+
+        std::array<GPUBuffer::Handle, 2> _handles;
+    };
+
     PushConstantsStruct IMGUICallbackToPushConstants(const IMGUICallbackData& data, bool isArrayTexture);
 
     ImGui::ImTextureID to_TexID(Handle<Texture> handle);
@@ -379,7 +387,7 @@ namespace Divide
         IMPrimitive* _axisGizmo = nullptr;
         Pipeline* _editorPipeline = nullptr;
 
-        eastl::fixed_vector<std::pair<I64, GPUVertexBuffer_uptr>, 5, true> _imguiBuffers;
+        eastl::fixed_vector<std::pair<I64, GPUVertexBuffer>, 5, true> _imguiBuffers;
 
         std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};

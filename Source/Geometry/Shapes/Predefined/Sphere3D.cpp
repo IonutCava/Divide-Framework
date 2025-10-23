@@ -6,8 +6,6 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
 
-#include "Platform/Video/Headers/GFXDevice.h"
-
 namespace Divide
 {
 namespace
@@ -33,12 +31,10 @@ bool Sphere3D::load( PlatformContext& context )
         ._smallIndices = vertexCount < U16_MAX,
         ._keepCPUData = true
     };
-    auto vb = context.gfx().newVB( vbDescriptor );
+    
+    VertexBuffer* vb = geometryBuffer(context.gfx(), vbDescriptor );
     vb->setVertexCount( vertexCount );
     vb->reserveIndexCount( vertexCount );
-    geometryBuffer( vb );
-
-    geometryDirty( true );
 
     if ( !_descriptor.flag() )
     {

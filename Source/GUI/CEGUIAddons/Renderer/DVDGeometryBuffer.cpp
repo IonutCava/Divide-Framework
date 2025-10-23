@@ -55,11 +55,10 @@ namespace CEGUI
 DVDGeometryBuffer::DVDGeometryBuffer( CEGUIRenderer& owner)
     : _owner( &owner )
     , _bufferSize(1 << 8u)
-    , _gvd(std::make_unique<Divide::GPUVertexBuffer>(owner.context(), "CEGUI::DVDGeometryBuffer"))
 {
     thread_local size_t BUFFER_IDX = 0u;
 
-    _gvd->_vertexBuffer = owner.context().newGPUBuffer(Divide::Config::MAX_FRAMES_IN_FLIGHT + 1u, Divide::Util::StringFormat("CEGUI_VB_{}", BUFFER_IDX++).c_str());
+    _gvd = owner.context().newGPUBuffer(Divide::Config::MAX_FRAMES_IN_FLIGHT + 1u, Divide::Util::StringFormat("CEGUI_VB_{}", BUFFER_IDX++).c_str());
 
     recreateBuffer(nullptr, 0u);
 
@@ -192,13 +191,13 @@ void DVDGeometryBuffer::recreateBuffer( Divide::Byte* initialData, const size_t 
     GPUBuffer::SetBufferParams params = {};
     params._initialData = { initialData, intialDataSize };
 
-    params._bufferParams._elementCount = _bufferSize;
-    params._bufferParams._elementSize = sizeof( DVDVertex );
-    params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-    params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
+    params._elementCount = _bufferSize;
+    params._elementSize = sizeof( DVDVertex );
+    params._updateFrequency = BufferUpdateFrequency::OFTEN;
+    params._usageType = BufferUsageType::VERTEX_BUFFER;
+    params._bindIdx = 0u;
 
-    const BufferLock lock = _gvd->_vertexBuffer->setBuffer( params );
-    _gvd->_vertexBufferBinding._bindIdx = 0u;
+    const BufferLock lock = _gvd->setBuffer( params );
 
     if ( _owner->memCmd() )
     {
@@ -226,7 +225,7 @@ void DVDGeometryBuffer::updateBuffers()
         else
         {
             _gvd->incQueue();
-            _owner->memCmd()->_bufferLocks.push_back(_gvd->_vertexBuffer->updateBuffer(0u, vertexCount, data));
+            _owner->memCmd()->_bufferLocks.push_back(_gvd->updateBuffer(0u, vertexCount, data));
         }
     }
 }

@@ -148,7 +148,7 @@ DEFINE_NODE_TYPE(Vegetation, SceneNodeType::TYPE_VEGETATION)
     SharedMutex _treeMeshLock;
 
     std::array<U16, 3> _lodPartitions;
-    VertexBuffer_ptr _buffer;
+    VertexBuffer_uptr _buffer;
     ShaderBuffer_uptr _treeData;
     ShaderBuffer_uptr _grassData;
     vector<Handle<Mesh>> _treeMeshes;

@@ -128,6 +128,12 @@ namespace Attorney
             parentMesh.addSubMesh(subMesh, index);
         }
 
+        static void geometryBuffer(Mesh& mesh, VertexBuffer_uptr& vb)
+        {
+            mesh._geometryBuffer.reset(vb.release());
+            mesh._geometryDirty = true;
+        }
+
         friend class Divide::MeshImporter;
     };
 } //namespace Attorney

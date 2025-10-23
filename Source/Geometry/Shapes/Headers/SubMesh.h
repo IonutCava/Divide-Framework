@@ -121,7 +121,6 @@ class SubMeshMesh
     static void setParentMesh(SubMesh& subMesh, ResourcePtr<Mesh> parentMesh)
     {
         subMesh.parentMesh(parentMesh);
-        subMesh.geometryBuffer(parentMesh->geometryBuffer());
     }
 
     friend class Divide::Mesh;

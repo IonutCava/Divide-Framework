@@ -89,7 +89,7 @@ namespace Divide
             const size_t offset = bufferImpl()->getDataOffset() + range._startOffset + (readIndex * _alignedBufferSize);
             // If we bind the entire buffer, offset == 0u and range == 0u is a hack to bind the entire thing instead of a subrange
             const size_t bindRange = Util::GetAlignmentCorrected( (offset == 0u && to_size( range._length ) == bufferImpl()->getDataSize()) ? 0u : range._length, _alignmentRequirement );
-            result = GL_API::GetStateTracker().setActiveBufferIndexRange( bufferImpl()->params()._target,
+            result = GL_API::GetStateTracker().setActiveBufferIndexRange( bufferImpl()->_params._target,
                                                                           bufferImpl()->getBufferHandle(),
                                                                           bindIndex,
                                                                           offset,

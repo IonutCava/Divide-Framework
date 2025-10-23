@@ -6,8 +6,6 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 #include "Geometry/Material/Headers/Material.h"
 
-#include "Platform/Video/Headers/GFXDevice.h"
-
 namespace Divide {
 
 namespace
@@ -103,7 +101,7 @@ bool Box3D::load( PlatformContext& context )
         ._allowDynamicUpdates = true
     };
 
-    auto vb = context.gfx().newVB( vbDescriptor );
+    VertexBuffer* vb = geometryBuffer(context.gfx(), vbDescriptor );
     vb->setVertexCount( vertexCount );
     vb->reserveIndexCount( vertexCount );
 
@@ -119,7 +117,6 @@ bool Box3D::load( PlatformContext& context )
         vb->modifyNormalValue(i, normals[i / 4]);
     }
 
-    geometryBuffer(vb);
     setBounds(BoundingBox(-_halfExtent, _halfExtent));
 
     if ( !_descriptor.flag() )

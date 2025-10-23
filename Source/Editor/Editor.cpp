@@ -1384,38 +1384,38 @@ namespace Divide
         {
             if (id == bufferGUID)
             {
-                GPUVertexBuffer* bufferPtr = buffer.get();
-                bufferPtr->incQueue();
-                return bufferPtr;
+                buffer._vertexBuffer->incQueue();
+                buffer._indexBuffer->incQueue();
+                return &buffer;
             }
         }
 
-        auto& [_, newBuffer] = _imguiBuffers.emplace_back(std::make_pair(bufferGUID, nullptr));
+        GPUVertexBuffer& newBuffer = _imguiBuffers.emplace_back(std::make_pair(bufferGUID, GPUVertexBuffer{})).second;
 
-        newBuffer = std::make_unique<GPUVertexBuffer>(_context.gfx(), Util::StringFormat("IMGUI_{}", bufferGUID).c_str());
-        newBuffer->_vertexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_VB_{}", bufferGUID).c_str() );
-        newBuffer->_indexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_IB_{}", bufferGUID).c_str() );
+        newBuffer._vertexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_VB_{}", bufferGUID).c_str() );
+        newBuffer._indexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_IB_{}", bufferGUID).c_str() );
+        newBuffer._handles[0] = newBuffer._vertexBuffer->_handle;
+        newBuffer._handles[1] = newBuffer._indexBuffer->_handle;
 
         GPUBuffer::SetBufferParams vbParams = {};
         vbParams._initialData = { nullptr, 0 };
-        vbParams._bufferParams._elementCount = maxVertices;
-        vbParams._bufferParams._elementSize = sizeof( ImDrawVert );
-        vbParams._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-        vbParams._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
-
-        memCmdInOut._bufferLocks.push_back( newBuffer->_vertexBuffer->setBuffer( vbParams )); //Pos, UV and Colour
-        newBuffer->_vertexBufferBinding._bindIdx = 0u;
+        vbParams._elementCount = maxVertices;
+        vbParams._elementSize = sizeof( ImDrawVert );
+        vbParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        vbParams._usageType = BufferUsageType::VERTEX_BUFFER;
+        vbParams._bindIdx = 0u;
+        memCmdInOut._bufferLocks.push_back( newBuffer._vertexBuffer->setBuffer( vbParams )); //Pos, UV and Colour
 
         GPUBuffer::SetBufferParams ibParams = {};
         ibParams._initialData = { nullptr, 0 };
-        ibParams._bufferParams._elementCount = maxIndices;
-        ibParams._bufferParams._elementSize = sizeof(ImDrawIdx);
-        ibParams._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-        ibParams._bufferParams._usageType = BufferUsageType::INDEX_BUFFER;
+        ibParams._elementCount = maxIndices;
+        ibParams._elementSize = sizeof(ImDrawIdx);
+        ibParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+        ibParams._usageType = BufferUsageType::INDEX_BUFFER;
 
-        memCmdInOut._bufferLocks.push_back( newBuffer->_indexBuffer->setBuffer( ibParams ));
+        memCmdInOut._bufferLocks.push_back( newBuffer._indexBuffer->setBuffer( ibParams ));
 
-        return newBuffer.get();
+        return &newBuffer;
     }
 
     // Needs to be rendered immediately. *IM*GUI. IMGUI::NewFrame invalidates this data
@@ -1602,8 +1602,8 @@ namespace Divide
 
                     auto drawCmd = &drawCommand->_drawCommands.emplace_back();
 
-                    drawCmd->_sourceBuffers = &buffer->_handle;
-                    drawCmd->_sourceBuffersCount = 1u;
+                    drawCmd->_sourceBuffers = buffer->_handles.data();
+                    drawCmd->_sourceBuffersCount = to_U32(buffer->_handles.size());
                     drawCmd->_cmd.indexCount = pcmd.ElemCount;
                     drawCmd->_cmd.firstIndex = indexOffset + pcmd.IdxOffset;
                     drawCmd->_cmd.baseVertex = baseVertex + pcmd.VtxOffset;

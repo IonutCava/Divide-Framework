@@ -1322,70 +1322,56 @@ namespace Divide
         bool hasIndexBuffer = false;
         U32 firstIndex = cmd._cmd.firstIndex;
 
+        // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
+        thread_local GPUBufferActiveBindConfiguration s_lastVB = {};
+        thread_local GPUBufferActiveBindConfiguration s_lastIB = {};
+
         for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
-            // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-            thread_local GPUVertexBuffer::Handle s_lastID = { U16_MAX, 0u };
-            thread_local GPUVertexBuffer* s_lastBuffer = nullptr;
+            GPUBufferActiveBindConfiguration activeConfig{};
+            activeConfig._handle = cmd._sourceBuffers[i];
+            activeConfig._buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
+            
+            DIVIDE_ASSERT(activeConfig._buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+            vkGPUBuffer* vkBuffer = static_cast<vkGPUBuffer*>(activeConfig._buffer);
+            vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
+            DIVIDE_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
-            const PoolHandle handle = cmd._sourceBuffers[i];
-
-            if (s_lastID != handle)
+            const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
+            activeConfig._bindIdx = vkBuffer->_bindConfig._bindIdx;
+            activeConfig._offset = 0u;
+            if (vkBuffer->queueLength() > 1)
             {
-                s_lastID = handle;
-                s_lastBuffer = GPUVertexBuffer::s_GVBPool.find(s_lastID);
+                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
             }
 
-            DIVIDE_ASSERT( s_lastBuffer != nullptr );
-            if (s_lastBuffer->_vertexBuffer)
+            if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
             {
-                vkGPUBuffer* buffer = static_cast<vkGPUBuffer*>(s_lastBuffer->_vertexBuffer.get());
-                vkBufferImpl* impl = buffer->_internalBuffer.get();
-                const BufferParams& bufferParams = impl->_params;
-
-                assert(impl != nullptr);
-
-                const auto& vbBindConfig = s_lastBuffer->_vertexBufferBinding;
-
-                VkDeviceSize offsetInBytes = 0u;
-                if (s_lastBuffer->_vertexBuffer->queueLength() > 1)
+                if ( s_lastVB != activeConfig )
                 {
-                    offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * buffer->queueIndex();
+                    s_lastVB = activeConfig;
                 }
 
-                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vbBindConfig._bindIdx, 1, &impl->_buffer, &offsetInBytes);
+                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &activeConfig._offset);
             }
-
-            if (s_lastBuffer->_indexBuffer && s_lastBuffer->_indexBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET)
+            else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
             {
+                if (s_lastIB != activeConfig)
+                {
+                    s_lastIB = activeConfig;
+                }
+
+                DIVIDE_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+                
                 DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+                hasIndexBuffer = true;
 
-                vkGPUBuffer* buffer = static_cast<vkGPUBuffer*>(s_lastBuffer->_indexBuffer.get());
-                vkBufferImpl* impl = buffer->_internalBuffer.get();
-                if ( impl != nullptr )
-                {
-                    const BufferParams& bufferParams = impl->_params;
+                firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
+                firstIndex += vkBuffer->firstIndexOffsetCount();
 
-                    VkDeviceSize offsetInBytes = 0u;
-                    const VkDeviceSize indexSizeInBytes = bufferParams._elementSize;
-
-                    if (buffer->queueLength() > 1u) [[likely]]
-                    {
-                        offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * buffer->queueIndex();
-                    }
-
-                    firstIndex += to_U32(offsetInBytes / indexSizeInBytes);
-                    firstIndex += s_lastBuffer->_indexBuffer->firstIndexOffsetCount();
-
-                    VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offsetInBytes, indexSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
-                    hasIndexBuffer = true;
-                }
+                VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, activeConfig._offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                cmd._cmd.firstIndex = firstIndex;
             }
-          
-        }
-        if (hasIndexBuffer)
-        {
-            cmd._cmd.firstIndex = firstIndex;
         }
 
         VKUtil::SubmitRenderCommand(cmd, cmdBuffer, hasIndexBuffer);
@@ -3293,9 +3279,9 @@ namespace Divide
         return std::make_unique<vkRenderTarget>( _context, descriptor );
     }
 
-    GPUBuffer_ptr VK_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_uptr VK_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<vkGPUBuffer>( _context, ringBufferLength, name );
+        return std::make_unique<vkGPUBuffer>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr VK_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const

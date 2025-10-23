@@ -127,7 +127,7 @@ private:
     void flushPushConstantsLocks();
 
     [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
-    [[nodiscard]] GPUBuffer_ptr      newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
+    [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const override;
     [[nodiscard]] ShaderBuffer_uptr  newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
 
 public:
@@ -229,8 +229,9 @@ private:
     bool _runQueries{false};
 
     bool _uniformsNeedLock{false};
+    bool _supportsParallelShaderCompilation{false};
+    bool _meshShadersSupported{false};
     GFX::MemoryBarrierCommand _uniformsMemCommand{};
-
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
 
 private:

@@ -351,10 +351,11 @@ namespace Import
             return false;
         }
 
-        mesh->renderState().drawState(true);
-        mesh->geometryBuffer( tempMeshData._vertexBuffer );
-        mesh->setAnimationCount(tempMeshData._animationCount, tempMeshData._useDualQuatAnimation);
+        Attorney::MeshImporter::geometryBuffer(*mesh, tempMeshData._vertexBuffer);
+        DIVIDE_ASSERT(mesh->geometryBuffer() != nullptr && tempMeshData._vertexBuffer == nullptr);
 
+        mesh->renderState().drawState(true);
+        mesh->setAnimationCount(tempMeshData._animationCount, tempMeshData._useDualQuatAnimation);
         std::atomic_uint taskCounter(0u);
 
         for (const Import::SubMeshData& subMeshData : tempMeshData._subMeshData)

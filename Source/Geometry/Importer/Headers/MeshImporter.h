@@ -157,7 +157,7 @@ namespace Divide {
             // Was it loaded from file, or just created?
             PROPERTY_RW(bool, loadedFromFile, false);
             // Geometry
-            VertexBuffer_ptr _vertexBuffer = nullptr;
+            VertexBuffer_uptr _vertexBuffer = nullptr;
 
             // Name and path
             PROPERTY_RW(Str<256>, modelName);

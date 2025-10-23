@@ -30,7 +30,7 @@ void Object3D::rebuildInternal()
     NOP();
 }
 
-const VertexBuffer_ptr& Object3D::geometryBuffer()
+VertexBuffer* Object3D::geometryBuffer()
 {
     DIVIDE_ASSERT(_geometryBuffer != nullptr);
 
@@ -40,7 +40,15 @@ const VertexBuffer_ptr& Object3D::geometryBuffer()
         rebuildInternal();
     }
 
-    return _geometryBuffer;
+    return _geometryBuffer.get();
+}
+
+VertexBuffer* Object3D::geometryBuffer(GFXDevice& context, const VertexBuffer::Descriptor& descriptor) noexcept
+{
+    _geometryBuffer = context.newVB(descriptor);
+    geometryDirty(true);
+    return _geometryBuffer.get();
+
 }
 
 void Object3D::setMaterialTpl(const Handle<Material> material)
@@ -81,8 +89,8 @@ void Object3D::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContaine
             GenericDrawCommand& cmd = cmdsOut.emplace_back();
             toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
-            cmd._sourceBuffers = &geometryBuffer()->handle();
-            cmd._sourceBuffersCount = 1u;
+            cmd._sourceBuffers = geometryBuffer()->handles().data();
+            cmd._sourceBuffersCount = geometryBuffer()->handles().size();
             cmd._cmd.indexCount = to_U32(geometryBuffer()->getPartitionIndexCount(_geometryPartitionIDs[0]));
             cmd._cmd.firstIndex = to_U32(geometryBuffer()->getPartitionOffset(_geometryPartitionIDs[0]));
             cmd._cmd.instanceCount = sgn->instanceCount();

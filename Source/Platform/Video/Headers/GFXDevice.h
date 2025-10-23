@@ -370,9 +370,9 @@ public:
     [[nodiscard]] bool               destroyIMP(IMPrimitive*& primitive);
 
     
-    [[nodiscard]] GPUBuffer_ptr newGPUBuffer(U32 ringBufferLength, std::string_view name);
+    [[nodiscard]] GPUBuffer_uptr newGPUBuffer(U32 ringBufferLength, std::string_view name);
 
-    [[nodiscard]] VertexBuffer_ptr newVB(const VertexBuffer::Descriptor& descriptor);
+    [[nodiscard]] VertexBuffer_uptr newVB(const VertexBuffer::Descriptor& descriptor);
 
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false

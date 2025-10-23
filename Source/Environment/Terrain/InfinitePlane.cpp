@@ -154,7 +154,7 @@ namespace Divide
                                        const CameraSnapshot& cameraSnapshot,
                                        bool refreshData)
     {
-        const VertexBuffer_ptr& planeBuffer = Get(_plane)->geometryBuffer();
+        VertexBuffer* planeBuffer = Get(_plane)->geometryBuffer();
         planeBuffer->commitData(postDrawMemCmd);
         rComp.setIndexBufferElementOffset(planeBuffer->firstIndexOffsetCount());
         SceneNode::prepareRender(sgn, rComp, pkg, postDrawMemCmd, renderStagePass, cameraSnapshot, refreshData);
@@ -163,13 +163,12 @@ namespace Divide
     void InfinitePlane::buildDrawCommands( SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut )
     {
         //infinite plane
+        VertexBuffer* planeBuffer = Get(_plane)->geometryBuffer();
+
         GenericDrawCommand& cmd = cmdsOut.emplace_back();
         toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
-
-        const VertexBuffer_ptr& planeBuffer = Get(_plane)->geometryBuffer();
-
-        cmd._sourceBuffers = &planeBuffer->handle();
-        cmd._sourceBuffersCount = 1;
+        cmd._sourceBuffers = planeBuffer->handles().data();
+        cmd._sourceBuffersCount = planeBuffer->handles().size();
         cmd._cmd.firstIndex = 0u;
         cmd._cmd.indexCount = to_U32(planeBuffer->getIndexCount());
 

@@ -522,12 +522,12 @@ namespace Divide
         if ( resizeCamBuffer )
         {
             ShaderBufferDescriptor bufferDescriptor = {};
-            bufferDescriptor._bufferParams._elementCount = 1;
-            bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+            bufferDescriptor._elementCount = 1;
+            bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
+            bufferDescriptor._updateFrequency = BufferUpdateFrequency::OFTEN;
             bufferDescriptor._ringBufferLength = to_U16( targetSizeCam );
-            bufferDescriptor._bufferParams._elementSize = sizeof( GFXShaderData::CamData );
-            bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
+            bufferDescriptor._elementSize = sizeof( GFXShaderData::CamData );
+            bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._elementSize };
 
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
@@ -541,12 +541,12 @@ namespace Divide
         {
             // Atomic counter for occlusion culling
             ShaderBufferDescriptor bufferDescriptor = {};
-            bufferDescriptor._bufferParams._elementCount = 1;
+            bufferDescriptor._elementCount = 1;
             bufferDescriptor._ringBufferLength = to_U16( targetSizeCullCounter );
-            bufferDescriptor._bufferParams._elementSize = 4 * sizeof( U32 );
-            bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-            bufferDescriptor._bufferParams._hostVisible = true;
+            bufferDescriptor._elementSize = 4 * sizeof( U32 );
+            bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+            bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            bufferDescriptor._hostVisible = true;
             bufferDescriptor._separateReadWrite = true;
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
@@ -3159,9 +3159,9 @@ namespace Divide
         primitive = nullptr;
     }
 
-    VertexBuffer_ptr GFXDevice::newVB( const VertexBuffer::Descriptor& descriptor )
+    VertexBuffer_uptr GFXDevice::newVB( const VertexBuffer::Descriptor& descriptor )
     {
-        return std::make_shared<VertexBuffer>( *this, descriptor );
+        return std::make_unique<VertexBuffer>( *this, descriptor );
     }
 #pragma endregion
 
