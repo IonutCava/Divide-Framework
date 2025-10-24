@@ -347,7 +347,7 @@ namespace Divide
         }
         else
         {
-            Attorney::ProjectManagerProject::idle( *activeProject() );
+            Attorney::ProjectManagerProject::idle( activeProject() );
         }
     }
 

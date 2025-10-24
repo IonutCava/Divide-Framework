@@ -28,6 +28,7 @@ constexpr U32 DEFAULT_FLAGS = to_base( Console::Flags::DECORATE_TIMESTAMP ) |
 
 U32 Console::s_flags = DEFAULT_FLAGS;
 std::atomic_bool Console::s_running = false;
+std::array<bool, to_base(Console::StreamType::COUNT)> Console::s_streamDirty;
 
 //Use moodycamel's implementation of a concurrent queue due to its "Knock-your-socks-off blazing fast performance."
 //https://github.com/cameron314/concurrentqueue
@@ -121,8 +122,9 @@ void Console::PrintToFile(const OutputEntry& entry)
             assert(entry._text.length() < 4096);
             ::printf("%s", entry._text.c_str());
         }
+        const bool toErr = entry._type == EntryType::ERR && s_flags & to_base(Flags::ENABLE_ERROR_STREAM);
 
-        std::ofstream& outStream = (entry._type == EntryType::ERR && s_flags & to_base( Flags::ENABLE_ERROR_STREAM ) ? s_errorStream : s_logStream );
+        std::ofstream& outStream = (toErr ? s_errorStream : s_logStream );
         outStream << entry._text.c_str();
 
         SharedLock<SharedMutex> lock( s_callbackLock );
@@ -135,15 +137,27 @@ void Console::PrintToFile(const OutputEntry& entry)
 
             it._cbk(entry);
         }
+
+        s_streamDirty[to_base(toErr ? StreamType::ERR_FILE : StreamType::STD_FILE)] = true;
     }
 }
 
 void Console::FlushOutputStreams()
 {
-    s_logStream.flush();
-    s_errorStream.flush();
-    std::cerr << std::flush;
-    std::cout << std::flush;
+    for ( U8 i = 0u ; i < to_base( StreamType::COUNT ) ; ++i )
+    {
+        if ( s_streamDirty[i] )
+        {
+            switch ( static_cast<StreamType>( i ) )
+            {
+                case StreamType::STD_FILE:  std::cout.flush();       break;
+                case StreamType::ERR_FILE:  std::cerr.flush();       break;
+                default:                   DIVIDE_UNEXPECTED_CALL(); break;
+            }
+        }
+    }
+
+    s_streamDirty.fill(false);
 }
 
 void Console::Flush()
@@ -199,6 +213,8 @@ void Console::Start(const ResourcePath& parentPath, const std::string_view logFi
                     << "E-mail: ionut.cava@divide-studio.com | Website: \n http://wwww.divide-studio.com\n"
                     << "-------------------------------------------------------------------------------\n\n";
     }
+
+    s_streamDirty.fill( true );
 }
 
 void Console::Stop() 

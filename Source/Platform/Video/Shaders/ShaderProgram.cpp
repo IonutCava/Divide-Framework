@@ -1258,7 +1258,7 @@ namespace Divide
 
     void ShaderProgram::OnBeginFrame([[maybe_unused]] GFXDevice& gfx )
     {
-        efficient_clear(s_usedShaderPrograms);
+        s_usedShaderPrograms.resize(0);
     }
 
     void ShaderProgram::OnEndFrame( GFXDevice& gfx )

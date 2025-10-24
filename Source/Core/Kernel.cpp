@@ -289,7 +289,7 @@ void Kernel::onLoop()
             }
 
 #           if ENABLE_FUNCTION_PROFILING
-                if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 8) == 0u)
+                if (GFXDevice::FrameCount() % (Config::TARGET_FRAME_RATE / 2) == 0u)
                 {
                     _platformContext.gui().modifyText("ProfileData", platformContext().debug().output(), true);
                 }
@@ -307,7 +307,7 @@ void Kernel::onLoop()
                 _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
                 const Str<256>& activeSceneName = _projectManager->activeProject()->getActiveScene()->resourceName();
                 constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
-                constexpr const char* titleString = "[{} - {}] - {} - {} - {:5.2f} FPS - {:3.2f} ms - FrameIndex: {} - Update Calls : {} - Alpha : {:1.2f}";
+                constexpr const char* titleString = "[{} - {}] - {} - {} - {:5.2f} FPS - {:3.2f} ms - FrameIndex: {} - Update Calls : {} - Alpha : {:1.2f} - Runime (sec): {}";
                 window.title(titleString,
                              buildType,
                              Names::renderAPI[to_base(_platformContext.gfx().renderAPI())],
@@ -317,7 +317,8 @@ void Kernel::onLoop()
                              frameTime,
                              GFXDevice::FrameCount(),
                              _timingData.updateLoops(),
-                             _timingData.alpha());
+                             _timingData.alpha(),
+                             Time::App::ElapsedSeconds());
             }
         }
 
@@ -396,7 +397,7 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
                 // Flush any pending threaded callbacks
                 for (U8 i = 0u; i < to_U8(TaskPoolType::COUNT); ++i)
                 {
-                    _platformContext.taskPool(static_cast<TaskPoolType>(i)).flushCallbackQueue();
+                    Attorney::MainThreadTaskPool::flushCallbackQueue(_platformContext.taskPool(static_cast<TaskPoolType>(i)));
                 }
 
                 // Update scene based on input

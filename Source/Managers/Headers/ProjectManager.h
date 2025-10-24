@@ -382,9 +382,9 @@ namespace Divide
                 mgr.waitForSaveTask();
             }
 
-            static void idle( Divide::Project& project )
+            static void idle( const Divide::Project_uptr& project )
             {
-                project.idle();
+                project->idle();
             }
 
             [[nodiscard]] static bool onFrameStart( Divide::Project& project )

@@ -140,9 +140,10 @@ namespace Divide
 
     bool Scene::idle()
     {  
-        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         if ( !_tasks.empty() )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
             // Check again to avoid race conditions
             {
                 SharedLock<SharedMutex> r_lock( _tasksMutex );
