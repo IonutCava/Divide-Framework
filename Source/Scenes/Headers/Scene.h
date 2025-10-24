@@ -300,9 +300,9 @@ class Scene : public Resource, public PlatformContextComponent {
         void onPlayerRemove(const Player_ptr& player);
         void currentPlayerPass( PlayerIndex idx);
 
-        [[nodiscard]] U8      getSceneIndexForPlayer(PlayerIndex idx) const;
-        [[nodiscard]] Player* getPlayerForIndex(PlayerIndex idx) const;
-        [[nodiscard]] U8      getPlayerIndexForDevice(Input::InputDeviceType deviceType, U8 deviceIndex) const;
+        [[nodiscard]] U8          getSceneIndexForPlayer(PlayerIndex idx) const;
+        [[nodiscard]] Player*     getPlayerForIndex(PlayerIndex idx) const;
+        [[nodiscard]] PlayerIndex getPlayerIndexForDevice(Input::InputDeviceType deviceType, U32 deviceIndex) const;
 #pragma endregion
 
         void addGuiTimer( TimerClass intervalClass, U64 intervalUS, DELEGATE<void, U64/*elapsed time*/> cbk);

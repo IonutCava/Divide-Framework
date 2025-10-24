@@ -73,7 +73,8 @@ namespace Divide
 
     class SceneInput final : public Input::InputAggregatorInterface
     {
-        public:
+      public:
+
         using KeyMapCache = hashMap<Input::KeyCode, PressReleaseActionCbks>;
         using MouseMapCache = hashMap<Input::MouseButton, PressReleaseActionCbks>;
         using JoystickMapCacheEntry = ska::bytell_hash_map<JoystickMapKey, PressReleaseActionCbks, JoystickMapKeyHash>;
@@ -102,23 +103,18 @@ namespace Divide
 
         explicit SceneInput( Scene& parentScene );
 
-        //Keyboard: return true if input was consumed
-        bool onKeyDownInternal( Input::KeyEvent& argInOut) override;
-        bool onKeyUpInternal( Input::KeyEvent& argInOut) override;
-        /// Joystick or Gamepad: return true if input was consumed
-        bool joystickButtonPressedInternal( Input::JoystickEvent& argInOut) override;
-        bool joystickButtonReleasedInternal( Input::JoystickEvent& argInOut) override;
-        bool joystickAxisMovedInternal( Input::JoystickEvent& argInOut) override;
-        bool joystickPovMovedInternal( Input::JoystickEvent& argInOut) override;
-        bool joystickBallMovedInternal( Input::JoystickEvent& argInOut) override;
-        bool joystickAddRemoveInternal( Input::JoystickEvent& argInOut) override;
-        bool joystickRemapInternal( Input::JoystickEvent& argInOut) override;
-        /// Mouse: return true if input was consumed
-        bool mouseMovedInternal( Input::MouseMoveEvent& argInOut) override;
-        bool mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut) override;
-        bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
-        bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
-        bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
+        [[nodiscard]] bool onKeyInternal(Input::KeyEvent& argInOut) override;
+        [[nodiscard]] bool onMouseMovedInternal(Input::MouseMoveEvent& argInOut) override;
+        [[nodiscard]] bool onMouseButtonInternal(Input::MouseButtonEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickButtonInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickAxisMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickPovMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickBallMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickRemapInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+        [[nodiscard]] bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
+        [[nodiscard]] bool onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut) override;
+
         /// Returns false if the key is already assigned and couldn't be merged
         /// Call removeKeyMapping for the specified key first
         bool addKeyMapping( Input::KeyCode key, const PressReleaseActions::Entry& keyCbks );
@@ -146,9 +142,10 @@ namespace Divide
         /// output to the mapping's function
         bool getJoystickMapping( Input::Joystick device, Input::JoystickElementType elementType, U32 id, PressReleaseActionCbks& btnCbksOut );
 
+
         InputActionList& actionList() noexcept;
 
-        U8 getPlayerIndexForDevice( Input::InputDeviceType deviceType, U8 deviceIndex ) const;
+        U8 getPlayerIndexForDevice( Input::InputDeviceType deviceType, U32 deviceIndex ) const;
 
         void flushCache();
 
@@ -163,7 +160,10 @@ namespace Divide
                               const InputParams& params,
                               bool onPress );
 
-        private:
+        void onInputEvent(const Input::InputEvent& event);
+        bool onDeviceAddOrRemoveInternal(const Input::InputEvent& argInOut, bool force);
+
+      private:
         Scene& _parentScene;
 
         KeyMap _keyMap;
@@ -178,6 +178,10 @@ namespace Divide
 
         hashMap<U8, KeyLog> _keyLog;
         hashMap<U8, MouseBtnLog> _mouseBtnLog;
+
+        using PlayerIdMap = std::array<U32, Config::MAX_LOCAL_PLAYER_COUNT>;
+        using DeviceIdMap = std::array<PlayerIdMap, to_base(Input::InputDeviceType::COUNT)>;
+        DeviceIdMap _playerDeviceMap;
 
     };  // SceneInput
 

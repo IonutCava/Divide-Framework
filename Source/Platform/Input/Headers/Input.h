@@ -57,7 +57,6 @@ namespace Input {
         AXIS_MOVE,
         BALL_MOVE,
         BUTTON_PRESS,
-        JOY_ADD_REMOVE,
         JOY_REMAP,
         COUNT
     };
@@ -71,38 +70,25 @@ namespace Input {
         CENTERED = toBit(5)
     };
 
-    struct JoystickData
-    {
-        bool _gamePad = false;
-        I32 _deadZone = 8000;
-        I32 _max = 0;
-        union
-        {
-            U32 _data = 0;
-            U16 _smallData[2];
-            I32 _dataSigned;
-            I16 _smallDataSigned[2];
-        };
-    };
-
-    struct JoystickElement
-    {
-        JoystickElementType _type = JoystickElementType::COUNT;
-        JoystickData _data; //values
-        U8 _elementIndex = 0u; //item index on device
-    };
-
     struct MouseAxis
     {
-        I32 abs = 0;
-        I32 rel = 0;
+        F32 abs{0};
+        F32 rel{0};
+    };
+
+    struct MouseWheel
+    {
+        F32 xAmount{0.f};
+        F32 yAmount{0.f};
+        I32 xTicks{0};
+        I32 yTicks{0};
     };
 
     struct MouseState
     {
-        MouseAxis X, Y;
-        I32 VWheel = -1;
-        I32 HWheel = -1;
+        MouseAxis X{};
+        MouseAxis Y{};
+        MouseWheel Wheel{};
     };
 
     enum class MouseButton : U8
@@ -296,6 +282,15 @@ namespace Input {
         MOUSE = 0,
         KEYBOARD,
         JOYSTICK,
+        GAMEPAD,
+        COUNT
+    };
+
+    enum class InputEventType : U8
+    {
+        DEVICE_ADDED = 0,
+        DEVICE_REMOVED,
+        DEVICE_INPUT,
         COUNT
     };
 
@@ -304,11 +299,10 @@ namespace Input {
 
     KeyCode KeyCodeByName(const char* keyName) noexcept;
     MouseButton mouseButtonByName(const string& buttonName);
-    JoystickElement joystickElementByName(const string& elementName);
+    std::pair<JoystickElementType, U8> joystickElementByName(const string& elementName);
 
-    InputState GetKeyState(U8 deviceIndex, KeyCode key) noexcept;
-    InputState GetMouseButtonState(U8 deviceIndex, MouseButton button) noexcept;
-    InputState GetJoystickElementState(Joystick deviceIndex, JoystickElement element) noexcept;
+    InputState GetKeyState(U32 deviceIndex, KeyCode key) noexcept;
+    InputState GetMouseButtonState(U32 deviceIndex, MouseButton button) noexcept;
 
     }; //namespace Input
 }; //namespace Divide

@@ -990,25 +990,23 @@ namespace Divide
 
         const auto povNavigation = [this]( const InputParams params )
         {
-            const U32 povMask = to_U32(params._var[0]); // cast back
-
-            if ( povMask & to_base( Input::JoystickPovDirection::UP ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::UP ) )
             {  // Going up
                 state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::POSITIVE} );
             }
-            if ( povMask & to_base( Input::JoystickPovDirection::DOWN ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::DOWN ) )
             {  // Going down
                 state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NEGATIVE} );
             }
-            if ( povMask & to_base( Input::JoystickPovDirection::RIGHT ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::RIGHT ) )
             {  // Going right
                 state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::POSITIVE} );
             }
-            if ( povMask & to_base( Input::JoystickPovDirection::LEFT ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::LEFT ) )
             {  // Going left
                 state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NEGATIVE} );
             }
-            if ( povMask == to_base( Input::JoystickPovDirection::CENTERED ) )
+            if ( params._povMask == to_base( Input::JoystickPovDirection::CENTERED ) )
             {  // stopped/centered out
                 state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE } );
                 state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NONE } );
@@ -1019,10 +1017,8 @@ namespace Divide
         {
             const U8 axis = params._elementIndex;
 
-            [[maybe_unused]] const bool isGamePad = params._var[0] == 1;
-
-            const I32 deadZone = params._var[1];
-            const I32 axisABS = params._var[2];
+            const I16 axisABS  = params._signedData[0];
+            const I16 deadZone = params._signedData[1];
 
             const U8 axisPercentage = to_U8((axisABS / to_F32(I16_MAX)) * 255.f);
 
@@ -1093,6 +1089,13 @@ namespace Divide
             }
         };
 
+        const auto ballNavigation = []( const InputParams params )
+        {
+            const U8 axis = params._elementIndex;
+            const I16 relX = params._signedData[0];
+            const I16 relY = params._signedData[1];
+            Console::d_printfn("Joystick ball moved Axis: [ {} ] X: [ {} ] Y: [ {} ]", axis, relX, relY ); 
+        };
         const auto toggleDebugInterface = [this]( [[maybe_unused]] const InputParams params ) noexcept
         {
             _context.debug().enabled( !_context.debug().enabled() );
@@ -1116,7 +1119,7 @@ namespace Divide
 
         const auto dragSelectBegin = [this]( const InputParams params )
         {
-            beginDragSelection( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ), int2( params._var[0], params._var[1] ) );
+            beginDragSelection( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ), int2( params._coords.x, params._coords.y ) );
         };
         const auto dragSelectEnd = [this]( const InputParams params )
         {
@@ -1156,11 +1159,12 @@ namespace Divide
         ret = actions.registerInputAction( actionID++, shutdown ) && ret;               // 27
         ret = actions.registerInputAction( actionID++, povNavigation ) && ret;          // 28
         ret = actions.registerInputAction( actionID++, axisNavigation ) && ret;         // 29
-        ret = actions.registerInputAction( actionID++, toggleDebugInterface ) && ret;   // 30
-        ret = actions.registerInputAction( actionID++, toggleEditor ) && ret;           // 31
-        ret = actions.registerInputAction( actionID++, toggleConsole ) && ret;          // 32
-        ret = actions.registerInputAction( actionID++, dragSelectBegin ) && ret;        // 33
-        ret = actions.registerInputAction( actionID++, dragSelectEnd ) && ret;          // 34
+        ret = actions.registerInputAction( actionID++, ballNavigation ) && ret;         // 30
+        ret = actions.registerInputAction( actionID++, toggleDebugInterface ) && ret;   // 31
+        ret = actions.registerInputAction( actionID++, toggleEditor ) && ret;           // 32
+        ret = actions.registerInputAction( actionID++, toggleConsole ) && ret;          // 33
+        ret = actions.registerInputAction( actionID++, dragSelectBegin ) && ret;        // 34
+        ret = actions.registerInputAction( actionID++, dragSelectEnd ) && ret;          // 35
 
         DIVIDE_ASSERT( ret );
 
@@ -1506,7 +1510,7 @@ namespace Divide
         return _scenePlayers[getSceneIndexForPlayer( idx )].get();
     }
 
-    U8 Scene::getPlayerIndexForDevice( const Input::InputDeviceType deviceType, const U8 deviceIndex ) const
+    U8 Scene::getPlayerIndexForDevice( const Input::InputDeviceType deviceType, const U32 deviceIndex ) const
     {
         return input()->getPlayerIndexForDevice( deviceType, deviceIndex );
     }

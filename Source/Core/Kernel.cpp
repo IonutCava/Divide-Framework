@@ -1017,11 +1017,11 @@ bool Kernel::onResolutionChange(const SizeChangeParams& params)
 
 #pragma region Input Management
 
-bool Kernel::mouseMovedInternal( Input::MouseMoveEvent& argInOut )
+bool Kernel::onKeyInternal( Input::KeyEvent& argInOut )
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->mouseMoved(argInOut))
+        if (inputConsumer._ptr->onKey(argInOut))
         {
             return true;
         }
@@ -1030,11 +1030,11 @@ bool Kernel::mouseMovedInternal( Input::MouseMoveEvent& argInOut )
     return false;
 }
 
-bool Kernel::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut )
+bool Kernel::onMouseMovedInternal( Input::MouseMoveEvent& argInOut )
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->mouseButtonPressed(argInOut))
+        if (inputConsumer._ptr->onMouseMoved(argInOut))
         {
             return true;
         }
@@ -1043,11 +1043,11 @@ bool Kernel::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut )
     return false;
 }
 
-bool Kernel::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut )
+bool Kernel::onMouseButtonInternal( Input::MouseButtonEvent& argInOut )
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->mouseButtonReleased(argInOut))
+        if (inputConsumer._ptr->onMouseButton(argInOut))
         {
             return true;
         }
@@ -1056,11 +1056,11 @@ bool Kernel::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut )
     return false;
 }
 
-bool Kernel::onKeyDownInternal(Input::KeyEvent& argInOut)
+bool Kernel::onJoystickButtonInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onKeyDown(argInOut))
+        if (inputConsumer._ptr->onJoystickButton(argInOut))
         {
             return true;
         }
@@ -1069,11 +1069,11 @@ bool Kernel::onKeyDownInternal(Input::KeyEvent& argInOut)
     return false;
 }
 
-bool Kernel::onKeyUpInternal(Input::KeyEvent& argInOut)
+bool Kernel::onJoystickAxisMovedInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onKeyUp(argInOut))
+        if (inputConsumer._ptr->onJoystickAxisMoved(argInOut))
         {
             return true;
         }
@@ -1082,11 +1082,11 @@ bool Kernel::onKeyUpInternal(Input::KeyEvent& argInOut)
     return false;
 }
 
-bool Kernel::joystickAxisMovedInternal(Input::JoystickEvent& argInOut)
+bool Kernel::onJoystickPovMovedInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->joystickAxisMoved(argInOut))
+        if (inputConsumer._ptr->onJoystickPovMoved(argInOut))
         {
             return true;
         }
@@ -1095,11 +1095,11 @@ bool Kernel::joystickAxisMovedInternal(Input::JoystickEvent& argInOut)
     return false;
 }
 
-bool Kernel::joystickPovMovedInternal(Input::JoystickEvent& argInOut)
+bool Kernel::onJoystickBallMovedInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->joystickPovMoved(argInOut))
+        if (inputConsumer._ptr->onJoystickBallMoved(argInOut))
         {
             return true;
         }
@@ -1108,63 +1108,11 @@ bool Kernel::joystickPovMovedInternal(Input::JoystickEvent& argInOut)
     return false;
 }
 
-bool Kernel::joystickButtonPressedInternal(Input::JoystickEvent& argInOut)
+bool Kernel::onJoystickRemapInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->joystickButtonPressed(argInOut))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool Kernel::joystickButtonReleasedInternal(Input::JoystickEvent& argInOut)
-{
-    for (auto& inputConsumer : _inputConsumers)
-    {
-        if (inputConsumer._ptr->joystickButtonReleased(argInOut))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool Kernel::joystickBallMovedInternal(Input::JoystickEvent& argInOut)
-{
-    for (auto& inputConsumer : _inputConsumers)
-    {
-        if (inputConsumer._ptr->joystickBallMoved(argInOut))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool Kernel::joystickAddRemoveInternal(Input::JoystickEvent& argInOut)
-{
-    for (auto& inputConsumer : _inputConsumers)
-    {
-        if (inputConsumer._ptr->joystickAddRemove(argInOut))
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool Kernel::joystickRemapInternal(Input::JoystickEvent & argInOut)
-{
-    for (auto& inputConsumer : _inputConsumers)
-    {
-        if (inputConsumer._ptr->joystickRemap(argInOut))
+        if (inputConsumer._ptr->onJoystickRemap(argInOut))
         {
             return true;
         }
@@ -1191,6 +1139,19 @@ bool Kernel::onTextEditInternal(Input::TextEditEvent& argInOut)
     for (auto& inputConsumer : _inputConsumers)
     {
         if (inputConsumer._ptr->onTextEdit(argInOut))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Kernel::onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut)
+{
+    for (auto& inputConsumer : _inputConsumers)
+    {
+        if (inputConsumer._ptr->onDeviceAddOrRemove(argInOut))
         {
             return true;
         }

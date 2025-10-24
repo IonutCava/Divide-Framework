@@ -135,31 +135,17 @@ class GUI final : public GUIInterface,
     protected:
          bool frameStarted( const FrameEvent& evt ) override;
 
-        /// Key pressed: return true if input was consumed
-        [[nodiscard]] bool onKeyDownInternal( Input::KeyEvent& argInOut) override;
-        /// Key released: return true if input was consumed
-        [[nodiscard]] bool onKeyUpInternal( Input::KeyEvent& argInOut) override;
-        /// Joystick axis change: return true if input was consumed
-        [[nodiscard]] bool joystickAxisMovedInternal( Input::JoystickEvent& argInOut) override;
-        /// Joystick direction change: return true if input was consumed
-        [[nodiscard]] bool joystickPovMovedInternal( Input::JoystickEvent& argInOut) override;
-        /// Joystick button pressed: return true if input was consumed
-        [[nodiscard]] bool joystickButtonPressedInternal( Input::JoystickEvent& argInOut) override;
-        /// Joystick button released: return true if input was consumed
-        [[nodiscard]] bool joystickButtonReleasedInternal( Input::JoystickEvent& argInOut) override;
-        [[nodiscard]] bool joystickBallMovedInternal( Input::JoystickEvent& argInOut) override;
-        [[nodiscard]] bool joystickAddRemoveInternal( Input::JoystickEvent& argInOut) override;
-        [[nodiscard]] bool joystickRemapInternal( Input::JoystickEvent& argInOut) override;
-        /// Mouse moved: return true if input was consumed
-        [[nodiscard]] bool mouseMovedInternal( Input::MouseMoveEvent& argInOut) override;
-        /// Mouse button pressed: return true if input was consumed
-        [[nodiscard]] bool mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut) override;
-        /// Mouse button released: return true if input was consumed
-        [[nodiscard]] bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
-        /// Called when text input was detected
-        bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
-        /// Called when text edit was detected
-        bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
+         [[nodiscard]] bool onKeyInternal(Input::KeyEvent& argInOut) override;
+         [[nodiscard]] bool onMouseMovedInternal(Input::MouseMoveEvent& argInOut) override;
+         [[nodiscard]] bool onMouseButtonInternal(Input::MouseButtonEvent& argInOut) override;
+         [[nodiscard]] bool onJoystickButtonInternal(Input::JoystickEvent& argInOut) override;
+         [[nodiscard]] bool onJoystickAxisMovedInternal(Input::JoystickEvent& argInOut) override;
+         [[nodiscard]] bool onJoystickPovMovedInternal(Input::JoystickEvent& argInOut) override;
+         [[nodiscard]] bool onJoystickBallMovedInternal(Input::JoystickEvent& argInOut) override;
+         [[nodiscard]] bool onJoystickRemapInternal(Input::JoystickEvent& argInOut) override;
+         [[nodiscard]] bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+         [[nodiscard]] bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
+         [[nodiscard]] bool onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut) override;
 
     private:
         //// Try to find the requested FontStash font in the font cache. Load on cache miss.

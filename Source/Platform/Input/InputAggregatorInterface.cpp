@@ -45,194 +45,149 @@ namespace
     }
 }
 
-JoystickElement joystickElementByName(const string& elementName) {
-    JoystickElement ret = {};
 
-    if (Util::CompareIgnoreCase(elementName, "POV")) {
-        ret._type = JoystickElementType::POV_MOVE;
-    } else if (Util::CompareIgnoreCase(elementName, "AXIS")) {
-        ret._type = JoystickElementType::AXIS_MOVE;
-    } else if (Util::CompareIgnoreCase(elementName, "BALL")) {
-        ret._type = JoystickElementType::BALL_MOVE;
-    }
+std::pair<JoystickElementType, U8> joystickElementByName(const string& elementName) {
+    std::pair<JoystickElementType, U8> ret = {};
+
+         if (Util::CompareIgnoreCase(elementName, "POV"))  return { JoystickElementType::POV_MOVE,  0u };
+    else if (Util::CompareIgnoreCase(elementName, "AXIS")) return { JoystickElementType::AXIS_MOVE, 0u };
+    else if (Util::CompareIgnoreCase(elementName, "BALL")) return { JoystickElementType::BALL_MOVE, 0u };
     
-    if (ret._type != JoystickElementType::COUNT) {
-        return ret;
-    }
 
     // Else, we have a button
-    ret._type = JoystickElementType::BUTTON_PRESS;
+    ret.first = JoystickElementType::BUTTON_PRESS;
 
     vector<string> buttonElements = Util::Split<vector<string>, string>(elementName.c_str(), '_');
     assert(buttonElements.size() == 2 && "Invalid joystick element name!");
     assert(Util::CompareIgnoreCase(buttonElements[0], "BUTTON"));
-    ret._elementIndex = to_U8(charToInt(buttonElements[1].c_str(), 0));
+    ret.second = to_U8(charToInt(buttonElements[1].c_str(), 0));
 
     return ret;
 }
 
-InputEvent::InputEvent(DisplayWindow* sourceWindow, const Input::InputDeviceType deviceType, const U8 deviceIndex) noexcept
+InputEvent::InputEvent(DisplayWindow* sourceWindow, const Input::InputDeviceType deviceType, const Input::InputEventType eventType, const U32 deviceIndex) noexcept
     : _sourceWindow(sourceWindow)
-    , _deviceType(deviceType)
     , _deviceIndex(deviceIndex)
+    , _deviceType(deviceType)
+    , _eventType(eventType)
 {
 }
 
-MouseEvent::MouseEvent( DisplayWindow* sourceWindow, U8 deviceIndex ) noexcept
-    : InputEvent(sourceWindow, Input::InputDeviceType::MOUSE, deviceIndex)
+MouseEvent::MouseEvent( DisplayWindow* sourceWindow, const U32 deviceIndex, const Input::InputEventType eventType) noexcept
+    : InputEvent(sourceWindow, Input::InputDeviceType::MOUSE, eventType, deviceIndex)
 {
 }
 
-MouseButtonEvent::MouseButtonEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
-   : MouseEvent(sourceWindow, deviceIndex)
+MouseButtonEvent::MouseButtonEvent(DisplayWindow* sourceWindow, const U32 deviceIndex) noexcept
+   : MouseEvent(sourceWindow, deviceIndex, Input::InputEventType::DEVICE_INPUT )
 {
 }
 
-MouseMoveEvent::MouseMoveEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const bool wheelEvent) noexcept
-    : MouseEvent( sourceWindow, deviceIndex )
+MouseMoveEvent::MouseMoveEvent(DisplayWindow* sourceWindow, const U32 deviceIndex, const bool wheelEvent) noexcept
+    : MouseEvent( sourceWindow, deviceIndex, Input::InputEventType::DEVICE_INPUT )
     ,  _wheelEvent(wheelEvent)
 {
 }
 
-JoystickEvent::JoystickEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
-    : InputEvent(sourceWindow, Input::InputDeviceType::JOYSTICK, deviceIndex)
+JoystickEvent::JoystickEvent(DisplayWindow* sourceWindow, const U32 deviceIndex, const bool isJoystick) noexcept
+    : InputEvent(sourceWindow, isJoystick ? Input::InputDeviceType::JOYSTICK : Input::InputDeviceType::GAMEPAD, Input::InputEventType::DEVICE_INPUT, deviceIndex)
 {
 }
 
-KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U8 deviceIndex) noexcept
-    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, deviceIndex)
+KeyEvent::KeyEvent(DisplayWindow* sourceWindow, const U32 deviceIndex) noexcept
+    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, Input::InputEventType::DEVICE_INPUT, deviceIndex)
 {
 }
 
-TextInputEvent::TextInputEvent(DisplayWindow* sourceWindow, const U8 deviceIndex, const char* utf8Text) noexcept
-    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, deviceIndex)
+TextInputEvent::TextInputEvent(DisplayWindow* sourceWindow, const U32 deviceIndex, const char* utf8Text) noexcept
+    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, Input::InputEventType::DEVICE_INPUT, deviceIndex)
     , _utf8Text(utf8Text)
 {
 }
 
-TextEditEvent::TextEditEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* utf8Text, I32 startPos, I32 length) noexcept
-    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, deviceIndex)
+TextEditEvent::TextEditEvent(DisplayWindow* sourceWindow, U32 deviceIndex, const char* utf8Text, I32 startPos, I32 length) noexcept
+    : InputEvent(sourceWindow, Input::InputDeviceType::KEYBOARD, Input::InputEventType::DEVICE_INPUT, deviceIndex)
     , _utf8Text(utf8Text)
     , _startPos(startPos)
     , _length(length)
 {
 }
 
-bool InputAggregatorInterface::onKeyDown(KeyEvent& argInOut)
+bool InputAggregatorInterface::onKey(KeyEvent& argInOut)
 {
     if ( processInput() )
     {
-        return onKeyDownInternal(argInOut);
+        return onKeyInternal(argInOut);
     }
 
     return false;
 }
 
-bool InputAggregatorInterface::onKeyUp(KeyEvent& argInOut)
+bool InputAggregatorInterface::onMouseMoved(MouseMoveEvent& argInOut)
 {
     if (processInput())
     {
-        return onKeyUpInternal(argInOut);
+        return onMouseMovedInternal(argInOut);
     }
 
     return false;
 }
 
-bool InputAggregatorInterface::mouseMoved(MouseMoveEvent& argInOut)
+bool InputAggregatorInterface::onMouseButton(MouseButtonEvent& argInOut)
 {
     if (processInput())
     {
-        return mouseMovedInternal(argInOut);
+        return onMouseButtonInternal(argInOut);
     }
 
     return false;
 }
 
-bool InputAggregatorInterface::mouseButtonPressed(MouseButtonEvent& argInOut)
+bool InputAggregatorInterface::onJoystickButton(JoystickEvent& argInOut)
 {
     if (processInput())
     {
-        return mouseButtonPressedInternal(argInOut);
+        return onJoystickButtonInternal(argInOut);
     }
 
     return false;
 }
 
-bool InputAggregatorInterface::mouseButtonReleased(MouseButtonEvent& argInOut)
+bool InputAggregatorInterface::onJoystickAxisMoved(JoystickEvent& argInOut)
 {
     if (processInput())
     {
-        return mouseButtonReleasedInternal(argInOut);
+        return onJoystickAxisMovedInternal(argInOut);
     }
 
     return false;
 }
 
-bool InputAggregatorInterface::joystickButtonPressed(JoystickEvent& argInOut)
+bool InputAggregatorInterface::onJoystickPovMoved(JoystickEvent& argInOut)
 {
     if (processInput())
     {
-        return joystickButtonPressedInternal(argInOut);
+        return onJoystickPovMovedInternal(argInOut);
     }
 
     return false;
 }
 
-bool InputAggregatorInterface::joystickButtonReleased(JoystickEvent& argInOut)
+bool InputAggregatorInterface::onJoystickBallMoved(JoystickEvent& argInOut)
 {
     if (processInput())
     {
-        return joystickButtonReleasedInternal(argInOut);
+        return onJoystickBallMovedInternal(argInOut);
     }
 
     return false;
 }
 
-bool InputAggregatorInterface::joystickAxisMoved(JoystickEvent& argInOut)
+bool InputAggregatorInterface::onJoystickRemap(JoystickEvent& argInOut)
 {
     if (processInput())
     {
-        return joystickAxisMovedInternal(argInOut);
-    }
-
-    return false;
-}
-
-bool InputAggregatorInterface::joystickPovMoved(JoystickEvent& argInOut)
-{
-    if (processInput())
-    {
-        return joystickPovMovedInternal(argInOut);
-    }
-
-    return false;
-}
-
-bool InputAggregatorInterface::joystickBallMoved(JoystickEvent& argInOut)
-{
-    if (processInput())
-    {
-        return joystickBallMovedInternal(argInOut);
-    }
-
-    return false;
-}
-
-bool InputAggregatorInterface::joystickAddRemove(JoystickEvent& argInOut)
-{
-    if (processInput())
-    {
-        return joystickAddRemoveInternal(argInOut);
-    }
-
-    return false;
-}
-
-bool InputAggregatorInterface::joystickRemap(JoystickEvent& argInOut)
-{
-    if (processInput())
-    {
-        return joystickRemapInternal(argInOut);
+        return onJoystickRemapInternal(argInOut);
     }
 
     return false;
@@ -253,6 +208,16 @@ bool InputAggregatorInterface::onTextEdit(TextEditEvent& argInOut)
     if (processInput())
     {
         return onTextEditInternal(argInOut);
+    }
+
+    return false;
+}
+
+bool InputAggregatorInterface::onDeviceAddOrRemove(InputEvent& argInOut)
+{
+    if (processInput())
+    {
+        return onDeviceAddOrRemoveInternal(argInOut);
     }
 
     return false;

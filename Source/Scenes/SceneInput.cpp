@@ -38,17 +38,57 @@ namespace Divide
     SceneInput::SceneInput( Scene& parentScene )
         : _parentScene( parentScene )
     {
+        int nMice = 0, nKeyboards = 0, nGamepads = 0, nJoysticks = 0;
+
+        if (SDL_MouseID* mice = SDL_GetMice(&nMice); mice != nullptr && nMice > 0)
+        {
+            for ( int i = 0; i < nMice && i < Config::MAX_LOCAL_PLAYER_COUNT; ++i )
+            {
+                //_playerDeviceMap[to_base(Input::InputDeviceType::MOUSE)][i] = mice[i];
+            }
+            SDL_free(mice);
+        }
+        if (SDL_KeyboardID* keyboards = SDL_GetKeyboards(&nKeyboards); keyboards != nullptr && nKeyboards > 0)
+        {
+            for (int i = 0; i < nKeyboards && i < Config::MAX_LOCAL_PLAYER_COUNT; ++i)
+            {
+                //_playerDeviceMap[to_base(Input::InputDeviceType::KEYBOARD)][i] = keyboards[i];
+            }
+            SDL_free(keyboards);
+        }
+
+        if (SDL_JoystickID* gamepads = SDL_GetGamepads(&nGamepads); gamepads != nullptr && nGamepads > 0)
+        {
+            for (int i = 0; i < nGamepads && i < Config::MAX_LOCAL_PLAYER_COUNT; ++i)
+            {
+                //_playerDeviceMap[to_base(Input::InputDeviceType::GAMEPAD)][i] = gamepads[i];
+            }
+            SDL_free(gamepads);
+        }
+        if (SDL_JoystickID* joysticks = SDL_GetJoysticks(&nJoysticks); joysticks != nullptr && nJoysticks > 0)
+        {
+            for (int i = 0; i < nJoysticks && i < Config::MAX_LOCAL_PLAYER_COUNT; ++i)
+            {
+                //_playerDeviceMap[to_base(Input::InputDeviceType::JOYSTICK)][i] = joysticks[i];
+            }
+            SDL_free(joysticks);
+        }
+
+        for ( auto& players : _playerDeviceMap )
+        {
+            players.fill(Input::InputEvent::INVALID_DEVICE_INDEX);
+        }
     }
 
 
     void SceneInput::onSetActive()
     {
-
+        processInput(true);
     }
 
     void SceneInput::onRemoveActive()
     {
-
+        processInput(false);
     }
 
     void SceneInput::onPlayerAdd( const U8 index )
@@ -63,14 +103,23 @@ namespace Divide
         _mouseBtnLog.find( index )->second.clear();
     }
 
-    U8 SceneInput::getPlayerIndexForDevice( const Input::InputDeviceType deviceType, const U8 deviceIndex ) const
+    PlayerIndex SceneInput::getPlayerIndexForDevice( const Input::InputDeviceType deviceType, const U32 deviceIndex ) const
     {
-        STUBBED("ToDo: Map device index to player index -Ionut");
+        if (deviceIndex != 0 && deviceIndex != Input::InputEvent::INVALID_DEVICE_INDEX)
+        {
+            DIVIDE_ASSERT(deviceType != Input::InputDeviceType::COUNT);
+            const PlayerIdMap& idMap = _playerDeviceMap[to_base(deviceType)];
 
-        DIVIDE_ASSERT(deviceIndex < Config::MAX_LOCAL_PLAYER_COUNT);
-        DIVIDE_ASSERT(deviceType  != Input::InputDeviceType::COUNT);
+            for (U8 playerIdx = 0u; playerIdx < Config::MAX_LOCAL_PLAYER_COUNT; ++playerIdx)
+            {
+                if (idMap[playerIdx] == deviceIndex)
+                {
+                    return static_cast<PlayerIndex>(playerIdx);
+                }
+            }
+        }
 
-        return deviceIndex;
+        return static_cast<PlayerIndex>(0);
     }
 
     bool SceneInput::handleCallbacks( const PressReleaseActionCbks& cbks,
@@ -110,14 +159,16 @@ namespace Divide
         return false;
     }
 
-    bool SceneInput::onKeyDownInternal( Input::KeyEvent& argInOut)
+    bool SceneInput::onKeyInternal( Input::KeyEvent& argInOut)
     {
+        onInputEvent(argInOut);
+
         if ( g_recordInput )
         {
             _keyLog[argInOut._deviceIndex].emplace_back(
                 KeyLogState{
                     argInOut._key,
-                    Input::InputState::PRESSED
+                    argInOut._state
                 }
             );
         }
@@ -125,174 +176,27 @@ namespace Divide
         PressReleaseActionCbks cbks;
         if ( getKeyMapping(argInOut._key, cbks ) )
         {
-            return handleCallbacks( cbks,
-                                    InputParams(argInOut._deviceType,
-                                                argInOut._deviceIndex,
-                                                 to_base(argInOut._key),
-                                                 {{
-                                                    argInOut._modMask,
-                                                    -1,
-                                                    -1,
-                                                    -1,
-                                                    -1,
-                                                    -1
-                                                }}),
-                                    true );
+            InputParams params(argInOut._deviceType,
+                               argInOut._deviceIndex,
+                               to_base(argInOut._key));
+            params._modMask = argInOut._modMask;
+
+            return handleCallbacks( cbks, params, argInOut._state == Input::InputState::PRESSED );
         }
 
         return false;
     }
 
-    bool SceneInput::onKeyUpInternal( Input::KeyEvent& argInOut)
+    bool SceneInput::onMouseMovedInternal( Input::MouseMoveEvent& argInOut)
     {
-        if ( g_recordInput )
-        {
-            _keyLog[argInOut._deviceIndex].emplace_back(
-                KeyLogState{
-                    argInOut._key,
-                    Input::InputState::RELEASED
-                }
-            );
-        }
+        onInputEvent(argInOut);
 
-        PressReleaseActionCbks cbks;
-        if ( getKeyMapping(argInOut._key, cbks ) )
-        {
-            return handleCallbacks( cbks,
-                                    InputParams(argInOut._deviceType,
-                                                argInOut._deviceIndex,
-                                                 to_base(argInOut._key ),
-                                                 {{
-                                                     argInOut._modMask,
-                                                     -1,
-                                                     -1,
-                                                     -1,
-                                                     -1,
-                                                     -1
-                                                }}),
-                                    false );
-        }
-
-        return false;
-    }
-
-    bool SceneInput::joystickButtonPressedInternal( Input::JoystickEvent& argInOut)
-    {
-        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
-        PressReleaseActionCbks cbks;
-
-
-        if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
-        {
-            return handleCallbacks( cbks, InputParams(argInOut._deviceType, argInOut._deviceIndex, argInOut._element._elementIndex), true );
-        }
-
-        return false;
-    }
-
-    bool SceneInput::joystickButtonReleasedInternal( Input::JoystickEvent& argInOut)
-    {
-        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
-
-        PressReleaseActionCbks cbks;
-        if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
-        {
-            return handleCallbacks( cbks, InputParams(argInOut._deviceType, argInOut._deviceIndex, argInOut._element._elementIndex ), false );
-        }
-
-        return false;
-    }
-
-    bool SceneInput::joystickAxisMovedInternal( Input::JoystickEvent& argInOut)
-    {
-        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
-
-        PressReleaseActionCbks cbks;
-        if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
-        {
-            const InputParams params( argInOut._deviceType, 
-                                      argInOut._deviceIndex,
-                                      argInOut._element._elementIndex, // axis index
-                                      {{
-                                        argInOut._element._data._gamePad ? 1 : 0, // is gamepad
-                                        argInOut._element._data._deadZone, // dead zone
-                                        argInOut._element._data._dataSigned, // move value
-                                        -1, // not used
-                                        -1, // not used
-                                        -1 // not used
-                                      }});
-            return handleCallbacks( cbks, params, true );
-        }
-
-        return false;
-    }
-
-    bool SceneInput::joystickPovMovedInternal( Input::JoystickEvent& argInOut)
-    {
-        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
-
-        PressReleaseActionCbks cbks;
-        if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
-        {
-            const InputParams params( argInOut._deviceType,
-                                      argInOut._deviceIndex,
-                                      argInOut._element._elementIndex,
-                                      {{
-                                          to_I32(argInOut._element._data._data), //explicit cast for reference
-                                          -1,
-                                          -1,
-                                          -1,
-                                          -1,
-                                          -1
-                                      }});
-            return handleCallbacks( cbks, params, true );
-        }
-
-        return false;
-    }
-
-    bool SceneInput::joystickBallMovedInternal( Input::JoystickEvent& argInOut)
-    {
-        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
-
-        PressReleaseActionCbks cbks;
-        if ( getJoystickMapping( joy, argInOut._element._type, argInOut._element._elementIndex, cbks ) )
-        {
-            const InputParams params( argInOut._deviceType,
-                                      argInOut._deviceIndex,
-                                      argInOut._element._elementIndex,
-                                      {{
-                                          argInOut._element._data._gamePad ? 1 : 0,
-                                          argInOut._element._data._smallDataSigned[0],
-                                          argInOut._element._data._smallDataSigned[1],
-                                          -1,
-                                          -1,
-                                          -1
-                                      }});
-            return handleCallbacks( cbks, params, true );
-        }
-
-        return false;
-    }
-
-    bool SceneInput::joystickAddRemoveInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
-    {
-        return false;
-    }
-
-    bool SceneInput::joystickRemapInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
-    {
-        return false;
-    }
-
-    bool SceneInput::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
-    {
         const PlayerIndex idx = getPlayerIndexForDevice( argInOut._deviceType, argInOut._deviceIndex );
         SceneStatePerPlayer& state = _parentScene.state()->playerState( idx );
 
         if (argInOut._wheelEvent )
         {
-            const I32 wheel = argInOut.state().VWheel;
+            const I32 wheel = argInOut.state().Wheel.yTicks;
             if ( wheel == 0 )
             {
                 state._zoom.reset();
@@ -332,15 +236,17 @@ namespace Divide
         return Attorney::SceneInput::mouseMoved( &_parentScene, argInOut);
     }
 
-    bool SceneInput::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
+    bool SceneInput::onMouseButtonInternal( Input::MouseButtonEvent& argInOut)
     {
+        onInputEvent(argInOut);
+
         if ( g_recordInput )
         {
             _mouseBtnLog[argInOut._deviceIndex].emplace_back(
                 MouseLogState{
                     ._position = {argInOut.state().X.abs, argInOut.state().Y.abs},
                     ._button = argInOut.button(),
-                    ._state = Input::InputState::PRESSED
+                    ._state = argInOut.pressedState()
                 }
             );
         }
@@ -348,59 +254,109 @@ namespace Divide
         PressReleaseActionCbks cbks = {};
         if ( getMouseMapping(argInOut.button(), cbks ) )
         {
-            InputParams params( argInOut._deviceType,
-                                argInOut._deviceIndex,
-                                to_base(argInOut.button() ),
-                                {{
-                                    argInOut.state().X.abs,
-                                    argInOut.state().Y.abs,
-                                    -1,
-                                    -1,
-                                    -1,
-                                    -1
-                                }});
+            InputParams params(argInOut._deviceType,
+                               argInOut._deviceIndex,
+                               to_base(argInOut.button()));
 
-            return handleCallbacks( cbks, params, true );
+            params._coords =
+            {
+                argInOut.state().X.abs,
+                argInOut.state().Y.abs
+            };
+
+            return handleCallbacks( cbks, params, argInOut.pressedState() == Input::InputState::PRESSED );
         }
 
         return false;
     }
 
-    bool SceneInput::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
+    bool SceneInput::onJoystickButtonInternal(Input::JoystickEvent& argInOut)
     {
-        if ( g_recordInput )
-        {
-            _mouseBtnLog[argInOut._deviceIndex].emplace_back(
-                MouseLogState{
-                    ._position = {argInOut.state().X.abs, argInOut.state().Y.abs},
-                    ._button = argInOut.button(),
-                    ._state = Input::InputState::RELEASED
-                }
-            );
-        }
+        onInputEvent(argInOut);
 
-        PressReleaseActionCbks cbks = {};
-        if ( getMouseMapping( argInOut.button(), cbks ) )
+        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
+        PressReleaseActionCbks cbks;
+
+        if (getJoystickMapping(joy, argInOut._type, argInOut._elementIndex, cbks))
         {
-            InputParams params( argInOut._deviceType,
-                                argInOut._deviceIndex,
-                                to_base(argInOut.button() ),
-                                {{
-                                    argInOut.state().X.abs,
-                                    argInOut.state().Y.abs,
-                                    -1,
-                                    -1,
-                                    -1,
-                                    -1
-                                }});
-            return handleCallbacks( cbks, params, false );
+            return handleCallbacks(cbks, InputParams(argInOut._deviceType, argInOut._deviceIndex, argInOut._elementIndex), argInOut._state == Input::InputState::PRESSED);
         }
 
         return false;
     }
 
-    bool SceneInput::onTextInputInternal( [[maybe_unused]] Input::TextInputEvent& argInOut)
+    bool SceneInput::onJoystickAxisMovedInternal(Input::JoystickEvent& argInOut)
     {
+        onInputEvent(argInOut);
+
+        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
+
+        PressReleaseActionCbks cbks;
+        if (getJoystickMapping(joy, argInOut._type, argInOut._elementIndex, cbks))
+        {
+            InputParams params(argInOut._deviceType,
+                               argInOut._deviceIndex,
+                               argInOut._elementIndex);
+
+            params._signedData[0] = argInOut._axisMovement[0]; // value
+            params._signedData[1] = argInOut._axisMovement[1]; // deadzone
+
+            return handleCallbacks(cbks, params, true);
+        }
+
+        return false;
+    }
+
+    bool SceneInput::onJoystickPovMovedInternal(Input::JoystickEvent& argInOut)
+    {
+        onInputEvent(argInOut);
+
+        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
+
+        PressReleaseActionCbks cbks;
+        if (getJoystickMapping(joy, argInOut._type, argInOut._elementIndex, cbks))
+        {
+            InputParams params(argInOut._deviceType,
+                               argInOut._deviceIndex,
+                               argInOut._elementIndex);
+            params._povMask = argInOut._povMask;
+            return handleCallbacks(cbks, params, true);
+        }
+
+        return false;
+    }
+
+    bool SceneInput::onJoystickBallMovedInternal( Input::JoystickEvent& argInOut )
+    {
+        onInputEvent(argInOut);
+
+        const Input::Joystick joy = static_cast<Input::Joystick>(argInOut._deviceIndex);
+
+        PressReleaseActionCbks cbks;
+        if (getJoystickMapping(joy, argInOut._type, argInOut._elementIndex, cbks))
+        {
+            InputParams params(argInOut._deviceType,
+                               argInOut._deviceIndex,
+                               argInOut._elementIndex);
+            params._signedData[0] = argInOut._ballRelMovement[0]; //xRel
+            params._signedData[1] = argInOut._ballRelMovement[1]; //yRel
+
+            return handleCallbacks(cbks, params, true);
+        }
+
+        return false;
+    }
+
+    bool SceneInput::onJoystickRemapInternal( Input::JoystickEvent& argInOut )
+    {
+        onInputEvent(argInOut);
+        return false;
+    }
+
+    bool SceneInput::onTextInputInternal( Input::TextInputEvent& argInOut )
+    {
+        onInputEvent(argInOut);
+
         if ( g_recordInput )
         {
            NOP();
@@ -409,14 +365,59 @@ namespace Divide
         return false;
     }
 
-    bool SceneInput::onTextEditInternal( [[maybe_unused]] Input::TextEditEvent& argInOut )
+    bool SceneInput::onTextEditInternal( Input::TextEditEvent& argInOut )
     {
+        onInputEvent(argInOut);
+
         if (g_recordInput)
         {
             NOP();
         }
 
         return false;
+    }
+
+    bool SceneInput::onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut)
+    {
+        return onDeviceAddOrRemoveInternal(argInOut, false);
+    }
+
+    bool SceneInput::onDeviceAddOrRemoveInternal(const Input::InputEvent& argInOut, bool force)
+    {
+        PlayerIdMap& idMap = _playerDeviceMap[to_base(argInOut._deviceType)];
+
+        if ( force || argInOut._eventType == Input::InputEventType::DEVICE_ADDED)
+        {
+            for (U8 playerIdx = 0u; playerIdx < Config::MAX_LOCAL_PLAYER_COUNT; ++playerIdx)
+            {
+                if (idMap[playerIdx] == Input::InputEvent::INVALID_DEVICE_INDEX)
+                {
+                    idMap[playerIdx] = argInOut._deviceIndex;
+                    return true;
+                }
+            }
+        }
+        else if (argInOut._eventType == Input::InputEventType::DEVICE_REMOVED)
+        {
+            for (U8 playerIdx = 0u; playerIdx < Config::MAX_LOCAL_PLAYER_COUNT; ++playerIdx)
+            {
+                if (idMap[playerIdx] == argInOut._deviceIndex )
+                {
+                    idMap[playerIdx] = Input::InputEvent::INVALID_DEVICE_INDEX;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    void SceneInput::onInputEvent(const Input::InputEvent& event)
+    {
+        if ( event._deviceType != Input::InputDeviceType::MOUSE || event._deviceIndex > 0 )
+        {
+            onDeviceAddOrRemoveInternal(event, true);
+        }
     }
 
     bool SceneInput::addKeyMapping( const Input::KeyCode key, const PressReleaseActions::Entry& keyCbks )

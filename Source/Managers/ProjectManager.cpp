@@ -1199,64 +1199,44 @@ namespace Divide
 
     ///--------------------------Input Management-------------------------------------///
 
-    bool ProjectManager::onKeyDownInternal( Input::KeyEvent& argInOut)
+    bool ProjectManager::onKeyInternal( Input::KeyEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->onKeyDown(argInOut);
+        return activeProject()->getActiveScene()->input()->onKey(argInOut);
     }
 
-    bool ProjectManager::onKeyUpInternal( Input::KeyEvent& argInOut)
+    bool ProjectManager::onMouseMovedInternal( Input::MouseMoveEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->onKeyUp(argInOut);
+        return activeProject()->getActiveScene()->input()->onMouseMoved(argInOut);
     }
 
-    bool ProjectManager::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
+    bool ProjectManager::onMouseButtonInternal( Input::MouseButtonEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->mouseMoved(argInOut);
+        return activeProject()->getActiveScene()->input()->onMouseButton(argInOut);
     }
 
-    bool ProjectManager::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
+    bool ProjectManager::onJoystickButtonInternal( Input::JoystickEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->mouseButtonPressed(argInOut);
+        return activeProject()->getActiveScene()->input()->onJoystickButton(argInOut);
     }
 
-    bool ProjectManager::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
+    bool ProjectManager::onJoystickAxisMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->mouseButtonReleased(argInOut);
+        return activeProject()->getActiveScene()->input()->onJoystickAxisMoved(argInOut);
     }
 
-    bool ProjectManager::joystickAxisMovedInternal( Input::JoystickEvent& argInOut)
+    bool ProjectManager::onJoystickPovMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->joystickAxisMoved(argInOut);
+        return activeProject()->getActiveScene()->input()->onJoystickPovMoved(argInOut);
     }
 
-    bool ProjectManager::joystickPovMovedInternal( Input::JoystickEvent& argInOut)
+    bool ProjectManager::onJoystickBallMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->joystickPovMoved(argInOut);
+        return activeProject()->getActiveScene()->input()->onJoystickBallMoved(argInOut);
     }
 
-    bool ProjectManager::joystickButtonPressedInternal( Input::JoystickEvent& argInOut)
+    bool ProjectManager::onJoystickRemapInternal( Input::JoystickEvent& argInOut)
     {
-        return activeProject()->getActiveScene()->input()->joystickButtonPressed(argInOut);
-    }
-
-    bool ProjectManager::joystickButtonReleasedInternal( Input::JoystickEvent& argInOut)
-    {
-        return activeProject()->getActiveScene()->input()->joystickButtonReleased(argInOut);
-    }
-
-    bool ProjectManager::joystickBallMovedInternal( Input::JoystickEvent& argInOut)
-    {
-        return activeProject()->getActiveScene()->input()->joystickBallMoved(argInOut);
-    }
-
-    bool ProjectManager::joystickAddRemoveInternal( Input::JoystickEvent& argInOut)
-    {
-        return activeProject()->getActiveScene()->input()->joystickAddRemove(argInOut);
-    }
-
-    bool ProjectManager::joystickRemapInternal( Input::JoystickEvent& argInOut)
-    {
-        return activeProject()->getActiveScene()->input()->joystickRemap(argInOut);
+        return activeProject()->getActiveScene()->input()->onJoystickRemap(argInOut);
     }
 
     bool ProjectManager::onTextInputInternal( Input::TextInputEvent& argInOut)
@@ -1267,6 +1247,11 @@ namespace Divide
     bool ProjectManager::onTextEditInternal( Input::TextEditEvent& argInOut)
     {
         return activeProject()->getActiveScene()->input()->onTextEdit(argInOut);
+    }
+
+    bool ProjectManager::onDeviceAddOrRemoveInternal( Input::InputEvent& argInOut)
+    {
+        return activeProject()->getActiveScene()->input()->onDeviceAddOrRemove(argInOut);
     }
 
     PlatformContext& ProjectManager::platformContext() noexcept

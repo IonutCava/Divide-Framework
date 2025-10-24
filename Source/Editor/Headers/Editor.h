@@ -250,32 +250,19 @@ namespace Divide
         [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
 
     public: // input
-            /// Key pressed: return true if input was consumed
-        [[nodiscard]] bool onKeyDownInternal( Input::KeyEvent& argInOut) override;
-        /// Key released: return true if input was consumed
-        [[nodiscard]] bool onKeyUpInternal( Input::KeyEvent& argInOut) override;
-        /// Mouse moved: return true if input was consumed
-        [[nodiscard]] bool mouseMoved( Input::MouseMoveEvent& argInOut) override;
-        /// Mouse button pressed: return true if input was consumed
-        [[nodiscard]] bool mouseButtonPressed( Input::MouseButtonEvent& argInOut) override;
-        /// Mouse button released: return true if input was consumed
-        [[nodiscard]] bool mouseButtonReleased( Input::MouseButtonEvent& argInOut) override;
-        /// Mouse moved: return true if input was consumed
-        [[nodiscard]] bool mouseMovedInternal( Input::MouseMoveEvent& argInOut) override;
-        /// Mouse button pressed: return true if input was consumed
-        [[nodiscard]] bool mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut) override;
-        /// Mouse button released: return true if input was consumed
-        [[nodiscard]] bool mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut) override;
-
-        [[nodiscard]] bool joystickButtonPressedInternal( Input::JoystickEvent& argInOut) noexcept override;
-        [[nodiscard]] bool joystickButtonReleasedInternal( Input::JoystickEvent& argInOut) noexcept override;
-        [[nodiscard]] bool joystickAxisMovedInternal( Input::JoystickEvent& argInOut) noexcept override;
-        [[nodiscard]] bool joystickPovMovedInternal( Input::JoystickEvent& argInOut) noexcept override;
-        [[nodiscard]] bool joystickBallMovedInternal( Input::JoystickEvent& argInOut) noexcept override;
-        [[nodiscard]] bool joystickAddRemoveInternal( Input::JoystickEvent& argInOut) noexcept override;
-        [[nodiscard]] bool joystickRemapInternal( Input::JoystickEvent& argInOut) noexcept override;
+        [[nodiscard]] bool onKeyInternal(Input::KeyEvent& argInOut) override;
+        [[nodiscard]] bool onMouseMoved(Input::MouseMoveEvent& argInOut) override;
+        [[nodiscard]] bool onMouseMovedInternal(Input::MouseMoveEvent& argInOut) override;
+        [[nodiscard]] bool onMouseButton(Input::MouseButtonEvent& argInOut) override;
+        [[nodiscard]] bool onMouseButtonInternal(Input::MouseButtonEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickButtonInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickAxisMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickPovMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickBallMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickRemapInternal(Input::JoystickEvent& argInOut) override;
         [[nodiscard]] bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
         [[nodiscard]] bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
+        [[nodiscard]] bool onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut) override;
 
         [[nodiscard]] bool wantsMouse() const;
         [[nodiscard]] bool wantsKeyboard() const noexcept;
