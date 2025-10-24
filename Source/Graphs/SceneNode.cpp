@@ -69,19 +69,38 @@ void SceneNode::setBounds(const BoundingBox& aabb)
     _boundingBox.set(aabb);
 }
 
-Handle<Material> SceneNode::getMaterialTpl() const
+Handle<Material> SceneNode::getMaterialTemplate() const
 {
     return _materialTemplate;
 }
 
-void SceneNode::setMaterialTpl(const Handle<Material> material)
+PrimitiveTopology SceneNode::GetGeometryTopology() const noexcept
 {
-    if (_materialTemplate == material)
+    if (!Is3DObject(_type)) [[unlikely]]
+    {
+        return PrimitiveTopology::COUNT;
+    }
+    if (_type == SceneNodeType::TYPE_BOX_3D ||
+        _type == SceneNodeType::TYPE_MESH ||
+        _type == SceneNodeType::TYPE_SUBMESH)
+    {
+        return PrimitiveTopology::TRIANGLES;
+    }
+
+    return PrimitiveTopology::TRIANGLE_STRIP;
+}
+
+void SceneNode::setMaterialTemplate(const Handle<Material> material, const AttributeMap& geometryAttributes )
+{
+    const bool materialChanged = _materialTemplate != material;
+    const bool geometryChanged = _geometryAttributes != geometryAttributes;
+
+    if ( !materialChanged && !geometryChanged)
     {
         return;
     }
 
-    if ( _materialTemplate != INVALID_HANDLE<Material> )
+    if ( materialChanged && _materialTemplate != INVALID_HANDLE<Material> )
     {
         if ( material != INVALID_HANDLE<Material> )
         {
@@ -92,6 +111,20 @@ void SceneNode::setMaterialTpl(const Handle<Material> material)
     }
 
     _materialTemplate = material;
+    _geometryAttributes = geometryAttributes;
+
+    if (_materialTemplate != INVALID_HANDLE<Material>)
+    {
+        Material* mat = Get<Material>(_materialTemplate);
+        PrimitiveTopology topology = mat->topology();
+        if ( topology == PrimitiveTopology::COUNT )
+        {
+            topology = GetGeometryTopology();
+        }
+
+        DIVIDE_ASSERT(topology != PrimitiveTopology::COUNT);
+        Get<Material>(_materialTemplate)->setPipelineLayout( topology, _geometryAttributes);
+    }
 }
 
 bool SceneNode::load( PlatformContext& context )
@@ -106,7 +139,7 @@ bool SceneNode::postLoad()
 
 bool SceneNode::unload()
 {
-    setMaterialTpl(INVALID_HANDLE<Material>);
+    setMaterialTemplate( INVALID_HANDLE<Material> );
     _editorComponent.reset();
     return CachedResource::unload();
 }

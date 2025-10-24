@@ -42,8 +42,9 @@ bool Sphere3D::load( PlatformContext& context )
         matDesc.waitForReady( true );
         Handle<Material> matTemp = CreateResource( matDesc );
         Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
-        setMaterialTpl( matTemp );
+        setMaterialTemplate( matTemp, vb->generateAttributeMap() );
     }
+    rebuildInternal();
 
     return Object3D::load(context);
 }
@@ -51,13 +52,16 @@ bool Sphere3D::load( PlatformContext& context )
 void Sphere3D::setRadius(const F32 radius) noexcept
 {
     _radius = radius;
-    geometryDirty(true);
+    rebuildInternal();
 }
 
 void Sphere3D::setResolution(const U32 resolution) noexcept
 {
-    _resolution = resolution;
-    geometryDirty(true);
+    if (_resolution != resolution )
+    {
+        _resolution = resolution;
+        rebuildInternal();
+    }
 }
 
 // SuperBible stuff
@@ -118,8 +122,6 @@ void Sphere3D::rebuildInternal()
 
     // ToDo: add some depth padding for collision and nav meshes
     setBounds(BoundingBox(float3(-_radius), float3(_radius)));
-
-    Object3D::rebuildInternal();
 }
 
 void Sphere3D::saveToXML(boost::property_tree::ptree& pt) const {

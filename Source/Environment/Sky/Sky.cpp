@@ -405,10 +405,12 @@ bool Sky::load( PlatformContext& context )
     Handle<Material> skyMat = CreateResource( skyMaterial );
     ResourcePtr<Material> skyMatPtr = Get(skyMat);
 
+    const AttributeMap attributes = skyPtr->geometryBuffer()->generateAttributeMap();
+
     skyMatPtr->updatePriorirty( Material::UpdatePriority::High );
     skyMatPtr->properties().shadingMode( ShadingMode::BLINN_PHONG );
     skyMatPtr->properties().roughness( 0.01f );
-    skyMatPtr->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, skyPtr->geometryBuffer()->generateAttributeMap() );
+    skyMatPtr->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, attributes);
     skyMatPtr->computeRenderStateCBK( []( [[maybe_unused]] Material* material, const RenderStagePass stagePass, RenderStateBlock& blockInOut)
     {
         const bool planarReflection = stagePass._stage == RenderStage::REFLECTION && stagePass._variant == static_cast<RenderStagePass::VariantType>(ReflectorType::PLANAR);
@@ -496,7 +498,7 @@ bool Sky::load( PlatformContext& context )
     skyMatPtr->setTexture( TextureSlot::SPECULAR, _worlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE );
     skyMatPtr->setTexture( TextureSlot::NORMALMAP, _perlWorlNoiseTex, noiseSamplerMipMap, TextureOperation::NONE );
 
-    setMaterialTpl( skyMat );
+    setMaterialTemplate( skyMat, attributes );
 
     setBounds( BoundingBox( float3( -radius ), float3( radius ) ) );
 

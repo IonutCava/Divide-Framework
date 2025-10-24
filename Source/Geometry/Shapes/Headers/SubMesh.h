@@ -85,7 +85,7 @@ DEFINE_3D_OBJECT_TYPE(SubMesh, SceneNodeType::TYPE_SUBMESH)
     explicit SubMesh( const ResourceDescriptor<SubMesh>& descriptor );
 
     void postLoad(SceneGraphNode* sgn) override;
-    bool postLoad() override;
+    using Object3D::postLoad;
 
     PROPERTY_R_IW(ResourcePtr<Mesh>, parentMesh, nullptr);
     PROPERTY_R(U32, id, 0u);
@@ -100,6 +100,7 @@ private:
 protected:
     void onAnimationChange(SceneGraphNode* sgn, U32 newIndex, bool applyToAllSiblings, bool playInReverse);
     void onAnimationSync(SceneGraphNode* sgn, U32 animIndex, bool playInReverse);
+    VertexBuffer* geometryBuffer() override;
 
 private:
     /// Build status of bounding boxes for each animation

@@ -125,7 +125,7 @@ bool Box3D::load( PlatformContext& context )
         matDesc.waitForReady( true );
         Handle<Material> matTemp = CreateResource( matDesc );
         Get( matTemp )->properties().shadingMode( ShadingMode::PBR_MR );
-        setMaterialTpl( matTemp );
+        setMaterialTemplate( matTemp, vb->generateAttributeMap() );
     }
 
     return Object3D::load( context );

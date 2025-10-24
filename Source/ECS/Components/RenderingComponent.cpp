@@ -53,7 +53,7 @@ namespace Divide
         _renderRange.min = 0.f;
         _renderRange.max = g_renderRangeLimit;
 
-        instantiateMaterial( parentSGN->getNode().getMaterialTpl() );
+        instantiateMaterial( parentSGN->getNode().getMaterialTemplate() );
 
         toggleRenderOption( RenderOptions::RENDER_GEOMETRY, true );
         toggleRenderOption( RenderOptions::CAST_SHADOWS, true );

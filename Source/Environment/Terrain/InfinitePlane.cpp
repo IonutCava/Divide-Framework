@@ -100,9 +100,11 @@ namespace Divide
             return shaderDescriptor;
         } );
 
-        planeMaterialPtr->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, Get(_plane)->geometryBuffer()->generateAttributeMap() );
+        const AttributeMap attributes = Get(_plane)->geometryBuffer()->generateAttributeMap();
 
-        setMaterialTpl( planeMaterial );
+        planeMaterialPtr->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, attributes);
+
+        setMaterialTemplate( planeMaterial, attributes );
 
         _boundingBox.set( float3( -(_dimensions.x * 1.5f), -0.5f, -(_dimensions.y * 1.5f) ),
                          float3( _dimensions.x * 1.5f, 0.5f, _dimensions.y * 1.5f ) );

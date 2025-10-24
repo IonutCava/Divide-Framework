@@ -511,7 +511,7 @@ namespace Divide
                         model.waitForReady( true );
                         model.assetName( meshName );
                         Handle<Mesh> meshPtr = CreateResource( model );
-                        Get(meshPtr)->setMaterialTpl( _treeMaterial );
+                        Get(meshPtr)->setMaterialTemplate( _treeMaterial, Get(meshPtr)->geometryBuffer()->generateAttributeMap() );
                         // CSM last split should probably avoid rendering trees since it would cover most of the scene :/
                         Get(meshPtr)->renderState().addToDrawExclusionMask( RenderStage::SHADOW,
                                                                             RenderPassType::MAIN_PASS,

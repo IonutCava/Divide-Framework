@@ -154,10 +154,12 @@ namespace Divide
             return shaderDescriptor;
         } );
 
-        waterMat->properties().roughness( 0.01f );
-        waterMat->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, Get(_plane)->geometryBuffer()->generateAttributeMap() );
+        const AttributeMap attributes = Get(_plane)->geometryBuffer()->generateAttributeMap();
 
-        setMaterialTpl( waterMatHandle );
+        waterMat->properties().roughness( 0.01f );
+        waterMat->setPipelineLayout( PrimitiveTopology::TRIANGLE_STRIP, attributes );
+
+        setMaterialTemplate( waterMatHandle, attributes );
 
         const F32 halfWidth = _dimensions.width * 0.5f;
         const F32 halfLength = _dimensions.height * 0.5f;

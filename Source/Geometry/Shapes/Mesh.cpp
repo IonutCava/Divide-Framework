@@ -30,13 +30,13 @@ void Mesh::setNodeData(const MeshNodeData& nodeStructure)
     _nodeStructure = nodeStructure;
 }
 
-void Mesh::setMaterialTpl( const Handle<Material> material)
+void Mesh::setMaterialTemplate( const Handle<Material> material, const AttributeMap& geometryAttributes )
 {
-    Object3D::setMaterialTpl(material);
+    Object3D::setMaterialTemplate( material, geometryAttributes );
 
     for (const Mesh::MeshData& subMesh : _subMeshList)
     {
-        Get(subMesh._mesh)->setMaterialTpl(material);
+        Get(subMesh._mesh)->setMaterialTemplate( material, geometryAttributes );
     }
 }
 

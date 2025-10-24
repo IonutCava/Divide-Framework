@@ -257,7 +257,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
         mat->setTexture(TextureSlot::UNIT0, texture, {}, TextureOperation::NONE);
     }
 
-    setMaterialTpl(matHandle);
+    setMaterialTemplate( matHandle, vertexFormat );
 
     return true;
 }

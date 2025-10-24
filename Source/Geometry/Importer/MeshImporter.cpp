@@ -351,6 +351,8 @@ namespace Import
             return false;
         }
 
+        const AttributeMap attributes = tempMeshData._vertexBuffer->generateAttributeMap();
+
         Attorney::MeshImporter::geometryBuffer(*mesh, tempMeshData._vertexBuffer);
         DIVIDE_ASSERT(mesh->geometryBuffer() != nullptr && tempMeshData._vertexBuffer == nullptr);
 
@@ -397,9 +399,9 @@ namespace Import
 
                 Attorney::SubMeshMeshImporter::setBoundingBox(*tempSubMesh, subMeshData._minPos, subMeshData._maxPos);
 
-                if (tempSubMesh->getMaterialTpl() == INVALID_HANDLE<Material>)
+                if (tempSubMesh->getMaterialTemplate() == INVALID_HANDLE<Material>)
                 {
-                    tempSubMesh->setMaterialTpl(loadSubMeshMaterial(subMeshData._material, tempMeshData.fromFile(), skinningMode, taskCounter));
+                    tempSubMesh->setMaterialTemplate(loadSubMeshMaterial(subMeshData._material, tempMeshData.fromFile(), skinningMode, taskCounter), attributes );
                 }
             }
         }

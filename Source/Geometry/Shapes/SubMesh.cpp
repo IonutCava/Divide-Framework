@@ -37,9 +37,9 @@ void SubMesh::postLoad(SceneGraphNode* sgn)
     Object3D::postLoad(sgn);
 }
 
-bool SubMesh::postLoad()
+VertexBuffer* SubMesh::geometryBuffer()
 {
-    return Object3D::postLoad();
+    return _parentMesh->geometryBuffer();
 }
 
 void ChangeAnimationForAllChildren(SceneGraphNode* parentNode, const U32 animationIndex, const bool playInReverse)

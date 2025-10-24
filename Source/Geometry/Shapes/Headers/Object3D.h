@@ -42,31 +42,15 @@ namespace Divide {
 class BoundingBox;
 enum class RigidBodyShape : U8;
 
-[[nodiscard]] FORCE_INLINE constexpr PrimitiveTopology GetGeometryBufferType(const SceneNodeType type) noexcept
-{
-    if ( !Is3DObject( type ) ) [[unlikely]]
-    {
-        return PrimitiveTopology::COUNT;
-    }
-    if (type == SceneNodeType::TYPE_BOX_3D ||
-        type == SceneNodeType::TYPE_MESH ||
-        type == SceneNodeType::TYPE_SUBMESH)
-    {
-        return PrimitiveTopology::TRIANGLES;
-    }
-
-    return PrimitiveTopology::TRIANGLE_STRIP;
-}
-
 DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
 {
    public:
 
     explicit Object3D( const ResourceDescriptorBase& descriptor, SceneNodeType type);
 
-    void setMaterialTpl( Handle<Material> material) override;
+    void setMaterialTemplate( Handle<Material> material, const AttributeMap & geometryAttributes ) override;
 
-    [[nodiscard]] VertexBuffer* geometryBuffer();
+    [[nodiscard]] virtual VertexBuffer* geometryBuffer();
 
     VertexBuffer* geometryBuffer(GFXDevice& context, const VertexBuffer::Descriptor& descriptor) noexcept;
 
@@ -116,14 +100,11 @@ DEFINE_NODE_BASE_TYPE(Object3D, SceneNodeType::COUNT)
     void saveToXML(boost::property_tree::ptree& pt) const override;
     void loadFromXML(const boost::property_tree::ptree& pt)  override;
 
-    PROPERTY_RW(bool, geometryDirty, true);
     PROPERTY_R_IW(bool, playAnimationsOverride, false);
 
    protected:
     // Create a list of triangles from the vertices + indices lists based on primitive type
     [[nodiscard]] bool computeTriangleList(U16 partitionID, bool force = false);
-
-    virtual void rebuildInternal();
 
     void prepareRender(SceneGraphNode* sgn,
                     RenderingComponent& rComp,

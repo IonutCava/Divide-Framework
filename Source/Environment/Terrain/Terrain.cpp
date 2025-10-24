@@ -577,7 +577,7 @@ bool Terrain::load( PlatformContext& context )
     }
     terrainMaterial->setPipelineLayout(PrimitiveTopology::PATCH, vertexFormat);
 
-    setMaterialTpl(terrainMaterialHandle);
+    setMaterialTemplate( terrainMaterialHandle, vertexFormat );
 
     if (!loadResources(context))
     {

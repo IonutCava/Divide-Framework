@@ -460,7 +460,7 @@ namespace Divide
                 normalMask |= to_base( ComponentType::RENDERING ) |
                               to_base( ComponentType::RIGID_BODY );
 
-                SceneNode* ret = nullptr;
+                Object3D* ret = nullptr;
                 if ( !modelName.empty() )
                 {
                     if ( Util::CompareIgnoreCase( modelName, "BOX_3D" ) )
@@ -468,7 +468,7 @@ namespace Divide
                         ResourceDescriptor<Box3D> item( sceneNode.name.c_str() );
                         item.assetName( modelName.c_str() );
                         const Handle<Box3D> handle = CreateResource( item, _loadingTasks );
-                        ret = Get(handle);
+                        ret = Get<Box3D>(handle);
 
                         crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
@@ -477,7 +477,7 @@ namespace Divide
                         ResourceDescriptor<Sphere3D> item( sceneNode.name.c_str() );
                         item.assetName( modelName.c_str() );
                         const Handle<Sphere3D> handle = CreateResource( item, _loadingTasks );
-                        ret = Get(handle);
+                        ret = Get<Sphere3D>(handle);
 
                         crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
@@ -491,7 +491,7 @@ namespace Divide
                         quadMask.b[0] = 1;
                         item.mask( quadMask );
                         Handle<Quad3D> handle = CreateResource( item, _loadingTasks );
-                        ret = Get(handle);
+                        ret = Get<Quad3D>(handle);
 
                         Quad3D* quad = static_cast<Quad3D*>(ret);
                         quad->setCorner( Quad3D::CornerLocation::TOP_LEFT, float3( 0, 1, 0 ) );
@@ -511,7 +511,7 @@ namespace Divide
                     ResourceDescriptor<Material> materialDescriptor( (sceneNode.name + "_material").c_str() );
                     Handle<Material> tempMaterial = CreateResource( materialDescriptor, _loadingTasks );
                     Get(tempMaterial)->properties().shadingMode( ShadingMode::PBR_MR );
-                    ret->setMaterialTpl( tempMaterial );
+                    ret->setMaterialTemplate( tempMaterial, ret->geometryBuffer()->generateAttributeMap() );
                     ret->loadFromXML( nodeTree );
                 }
             }

@@ -231,7 +231,7 @@ bool WarScene::load() {
     for (U8 i = 0; i < 5; ++i) {
         RenderingComponent* const renderable = cylinder[i]->getChild(0).get<RenderingComponent>();
         renderable->getMaterialInstance()->setDoubleSided(true);
-        cylinder[i]->getChild(0).getNode().getMaterialTpl()->setDoubleSided(true);
+        cylinder[i]->getChild(0).getNode().getMaterialTemplate()->setDoubleSided(true);
     }
 
     // Make the center cylinder reflective
@@ -346,7 +346,7 @@ bool WarScene::load() {
     flag = _sceneGraph->findNode("flag");
     RenderingComponent* const renderable = flag->getChild(0).get<RenderingComponent>();
     renderable->getMaterialInstance()->setDoubleSided(true);
-    const Material_ptr& mat = flag->getChild(0).getNode()->getMaterialTpl();
+    const Material_ptr& mat = flag->getChild(0).getNode()->getMaterialTemplate();
     mat->setDoubleSided(true);
     flag->setActive(false);
     SceneNode_ptr flagNode = flag->getNode();
