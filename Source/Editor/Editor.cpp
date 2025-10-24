@@ -163,7 +163,6 @@ namespace Divide
         , _editorRenderTimer( Time::ADD_TIMER( "Editor Render Timer" ) )
         , _currentTheme( theme )
     {
-
 #if defined(ENABLE_MIMALLOC)
         ImGui::SetAllocatorFunctions( ImGuiCustom::g_ImAllocatorAllocFunc,
                                       ImGuiCustom::g_ImAllocatorFreeFunc,
@@ -771,12 +770,20 @@ namespace Divide
 
         PushImGuiContext(editorContext);
         ImGui::ResetStyle(_currentTheme);
+        
+        if ( loadFromXML() )
+        {
+            processInput(true);
+            return true;
+        }
 
-        return loadFromXML();
+        return false;
     }
 
     void Editor::close()
     {
+        processInput(false);
+
         if ( saveToXML() )
         {
             _context.config().save();
@@ -1133,7 +1140,7 @@ namespace Divide
 
         if (readOnly)
         {
-            PushReadOnly(true);
+            ImGui::BeginDisabled();
         }
 
         if ( _showMemoryEditor && !_showOptionsWindow )
@@ -1162,7 +1169,7 @@ namespace Divide
 
         if (readOnly)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
 
         ImGui::End();
@@ -2949,18 +2956,6 @@ namespace Divide
     {
         static std::stack<ImGuiContext*> g_imguiContexts;
     }; // namespace Util::detail
-
-    void PushReadOnly( const bool fade, const F32 fadedAlpha)
-    {
-        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, fade ? CLAMPED_01(fadedAlpha) : 1.f);
-        ImGui::BeginDisabled();
-    }
-
-    void PopReadOnly()
-    {
-        ImGui::EndDisabled();
-        ImGui::PopStyleVar();
-    }
 
     void PushImGuiContext(ImGuiContext* ctx)
     {

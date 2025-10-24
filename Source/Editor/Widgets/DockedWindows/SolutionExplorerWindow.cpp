@@ -96,14 +96,14 @@ namespace Divide {
             ImGui::Text(Util::StringFormat("{} [{}]", getIconForNode(sgn), sgn->name()).c_str());
             ImGui::Separator();
             if (isSubMesh) {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             if (ImGui::Selectable(ICON_FK_USERS" Change Parent")) {
                 _childNode = sgn;
                 _reparentSelectRequested = true;
             }
             if (isSubMesh) {
-                PopReadOnly();
+                ImGui::EndDisabled();
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Can't re-parent sub-meshes!");
                 }
@@ -134,13 +134,13 @@ namespace Divide {
             ImGui::NewLine();
             ImGui::Separator();
             if (isRoot) {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             if (ImGui::Selectable(ICON_FK_TRASH"  Remove")) {
                 _nodeToRemove = sgn->getGUID();
             }
             if (isRoot) {
-                PopReadOnly();
+                ImGui::EndDisabled();
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Can't remove the root node!");
                 }
@@ -310,7 +310,7 @@ namespace Divide {
         const bool modifierPressed = imguiContext.IO.KeyShift;
         if (lockExplorer)
         {
-            PushReadOnly();
+            ImGui::BeginDisabled();
         }
         ImGui::AlignTextToFramePadding();
         ImGui::Text(ICON_FK_SEARCH" Find node: ");
@@ -352,7 +352,7 @@ namespace Divide {
         ImGui::EndChild();
         if (lockExplorer)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
         ImGui::Separator();
 
@@ -407,7 +407,7 @@ namespace Divide {
             }
             if (!limit)
             {
-                PushReadOnly();
+                ImGui::BeginDisabled();
             }
             if (ImGui::SliderInt("FPS limit", &fpsLimit, 10, 320))
             {
@@ -416,7 +416,7 @@ namespace Divide {
             }
             if (!limit)
             {
-                PopReadOnly();
+                ImGui::EndDisabled();
             }
             PROFILE_SCOPE("Get/Print Performance Stats", Profiler::Category::GUI);
             performanceStatsWereEnabled = context().gfx().queryPerformanceStats();
@@ -824,7 +824,7 @@ namespace Divide {
                                      componentBit == to_U32(ComponentType::RAGDOLL);
                 if (required || invalid)
                 {
-                    PushReadOnly();
+                    ImGui::BeginDisabled();
                 }
 
                 bool componentEnabled = componentMask & componentBit;
@@ -846,7 +846,7 @@ namespace Divide {
                 }
                 if (required || invalid)
                 {
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
             }
 
@@ -934,10 +934,10 @@ namespace Divide {
                 g_particleSource->addGenerator(timeGenerator);
             }
 
-            PushReadOnly();
+            ImGui::BeginDisabled();
             ImGui::Text( "Texture File Name:" ); ImGui::SameLine();
             ImGui::InputText("##Texture File Name:", g_particleEmitterData->_textureFileName.data(), 128);
-            PopReadOnly();
+            ImGui::EndDisabled();
 
             U32 componentMask = g_particleEmitterData->optionsMask();
             U32 particleCount = g_particleEmitterData->totalCount();

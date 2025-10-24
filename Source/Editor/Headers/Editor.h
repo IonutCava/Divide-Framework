@@ -776,18 +776,17 @@ namespace Divide
         };
     } //namespace Attorney
 
-    void PushReadOnly( bool fade = true, F32 fadedAlpha = 0.4f );
-    void PopReadOnly();
+    void ImGui::EndDisabled();
 
     struct ScopedReadOnly final : NonCopyable
     {
-        ScopedReadOnly( const bool fade = false, const F32 fadedAlpha = 0.4f)
+        ScopedReadOnly()
         {
-            PushReadOnly( fade, fadedAlpha);
+            ImGui::BeginDisabled();
         }
         ~ScopedReadOnly()
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
     };
 

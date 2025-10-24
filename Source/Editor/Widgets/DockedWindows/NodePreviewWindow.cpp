@@ -52,12 +52,12 @@ namespace Divide
     {
         if ( !enabled )
         {
-            PushReadOnly();
+            ImGui::BeginDisabled();
         }
         const bool ret = small ? ImGui::SmallButton( label ) : ImGui::Button( label );
         if ( !enabled )
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
 
         if ( ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
