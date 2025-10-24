@@ -2576,7 +2576,7 @@ namespace Divide
                 PROFILE_SCOPE( "ADD_DEBUG_MESSAGE", Profiler::Category::Graphics );
 
                 const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
-                InsertDebugMessage( cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId );
+                AddDebugMessage( cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId );
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
@@ -3169,7 +3169,7 @@ namespace Divide
         return s_stateTracker;
     }
 
-    void VK_API::InsertDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )
+    void VK_API::AddDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )
     {
         if ( s_hasDebugMarkerSupport )
         {
@@ -3185,7 +3185,7 @@ namespace Divide
             Debug::vkCmdInsertDebugUtilsLabelEXT( cmdBuffer, &labelInfo );
         }
 
-        GetStateTracker()._lastInsertedDebugMessage = { message, id };
+        GFXDevice::AddDebugMessage(message, id);
     }
 
     void VK_API::PushDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )
@@ -3203,8 +3203,7 @@ namespace Divide
             Debug::vkCmdBeginDebugUtilsLabelEXT( cmdBuffer, &labelInfo );
         }
 
-        assert( GetStateTracker()._debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH );
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth++] = { message, id };
+        GFXDevice::PushDebugMessage(message, id);
     }
 
     void VK_API::PopDebugMessage( VkCommandBuffer cmdBuffer )
@@ -3216,8 +3215,7 @@ namespace Divide
             Debug::vkCmdEndDebugUtilsLabelEXT( cmdBuffer );
         }
 
-        DIVIDE_ASSERT( s_stateTracker._debugScopeDepth > 0u );
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = {};
+        GFXDevice::PopDebugMessage();
     }
 
     /// Return the Vulkan sampler object's handle for the given hash value

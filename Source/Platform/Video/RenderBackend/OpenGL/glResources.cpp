@@ -3,9 +3,8 @@
 #include "Headers/glResources.h"
 #include "Headers/glHardwareQuery.h"
 
-#include "Platform/Video/Headers/GenericDrawCommand.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
-#include "Platform/Video/GLIM/glim.h"
 #include "Utility/Headers/Localization.h"
 
 namespace Divide
@@ -868,10 +867,10 @@ namespace Divide
             }
 
             std::string fullScope = "GL";
-            for ( U8 i = 0u; i < GL_API::GetStateTracker()._debugScopeDepth; ++i )
+            for ( U8 i = 0u; i < GFXDevice::s_debugScopeDepth; ++i )
             {
                 fullScope.append( "::" );
-                fullScope.append( GL_API::GetStateTracker()._debugScope[i]._name );
+                fullScope.append( GFXDevice::s_debugScope[i]._name );
             }
             // Print the message and the details
             const gl46core::GLuint activeProgram = GL_API::GetStateTracker()._activeShaderProgramHandle;

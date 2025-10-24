@@ -139,6 +139,10 @@ namespace Divide
     DeviceInformation GFXDevice::s_deviceInformation{};
     GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 
+    DebugScope GFXDevice::s_debugScope[Config::MAX_DEBUG_SCOPE_DEPTH]{};
+    DebugScope GFXDevice::s_lastInsertedDebugMessage{};
+    U8         GFXDevice::s_debugScopeDepth{0u};
+
     PerPassUtils RenderTargetNames::UTILS = {};
     PerPassUtils RenderTargetNames::REFLECT::UTILS = {};
     PerPassUtils RenderTargetNames::REFRACT::UTILS = {};
@@ -377,6 +381,8 @@ namespace Divide
     /// primitives needed for frame rendering
     ErrorCode GFXDevice::initRenderingAPI( const I32 argc, char** argv, const RenderAPI API )
     {
+        ClearDebugMessages();
+
         ErrorCode hardwareState = createAPIInstance( API );
         Configuration& config = context().config();
         
@@ -1316,7 +1322,7 @@ namespace Divide
         // Close the rendering API
         _api->closeRenderingAPI();
         _api.reset();
-
+        ClearDebugMessages();
         LockGuard<Mutex> lock( _graphicsResourceMutex );
         if ( !_graphicResources.empty() )
         {
@@ -2313,6 +2319,32 @@ namespace Divide
             set.dirty( true );
         }
         descriptorSet( DescriptorSetUsage::PER_DRAW ).clear();
+    }
+
+    void GFXDevice::AddDebugMessage(const char* message, const U32 id)
+    {
+        s_lastInsertedDebugMessage = { message, id };
+    }
+
+    void GFXDevice::PushDebugMessage(const char* message, const U32 id)
+    {
+        assert(s_debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH);
+        s_debugScope[s_debugScopeDepth++] = { message, id };
+    }
+
+    void GFXDevice::PopDebugMessage()
+    {
+        s_debugScope[s_debugScopeDepth--] = {};
+    }
+
+    void GFXDevice::ClearDebugMessages()
+    {
+        s_lastInsertedDebugMessage = {};
+        for (auto& scope : s_debugScope)
+        {
+            scope = {};
+        }
+        s_debugScopeDepth = 0u;
     }
 
     /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)

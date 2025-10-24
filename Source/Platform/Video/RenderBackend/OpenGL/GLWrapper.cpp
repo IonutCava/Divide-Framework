@@ -1887,7 +1887,7 @@ namespace Divide
             gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
             gl46core::glPopDebugGroup();
         }
-        s_stateTracker._lastInsertedDebugMessage = {message, id};
+        GFXDevice::AddDebugMessage(message, id);
     }
 
     void GL_API::PushDebugMessage( const char* message, const U32 id )
@@ -1898,8 +1898,7 @@ namespace Divide
         {
             gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
         }
-        assert( s_stateTracker._debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH );
-        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth++] = { message, id };
+        GFXDevice::PushDebugMessage(message, id);
     }
 
     void GL_API::PopDebugMessage()
@@ -1910,7 +1909,7 @@ namespace Divide
         {
             gl46core::glPopDebugGroup();
         }
-        s_stateTracker._debugScope[s_stateTracker._debugScopeDepth--] = {};
+        GFXDevice::PopDebugMessage();
     }
 
     bool GL_API::DeleteShaderPrograms( const gl46core::GLuint count, gl46core::GLuint* programs )

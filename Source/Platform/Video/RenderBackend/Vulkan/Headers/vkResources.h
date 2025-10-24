@@ -229,11 +229,6 @@ struct VKStateTracker
     size_t _renderTargetFormatHash{0u};
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
-    DebugScope _debugScope[Config::MAX_DEBUG_SCOPE_DEPTH];
-    DebugScope _lastInsertedDebugMessage;
-
-    U8 _debugScopeDepth{ 0u };
-
     U8 _activeMSAASamples{ 1u };
     bool _pushConstantsValid{ false };
 

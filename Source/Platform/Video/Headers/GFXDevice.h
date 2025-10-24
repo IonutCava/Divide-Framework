@@ -361,6 +361,11 @@ public:  // Accessors and Mutators
 
     [[nodiscard]] static bool IsSubmitCommand(GFX::CommandType type) noexcept;
 
+    static void AddDebugMessage(const char* message, U32 id = U32_MAX);
+    static void PushDebugMessage(const char* message, U32 id = U32_MAX);
+    static void PopDebugMessage();
+    static void ClearDebugMessages();
+
 public:
     /// Create and return a new framebuffer.
     [[nodiscard]] RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor );
@@ -414,6 +419,10 @@ public:
    [[nodiscard]] bool framePreRender( const FrameEvent& evt ) override;
    [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
    [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
+
+   static DebugScope s_debugScope[Config::MAX_DEBUG_SCOPE_DEPTH];
+   static DebugScope s_lastInsertedDebugMessage;
+   static U8         s_debugScopeDepth;
 
 protected:
 

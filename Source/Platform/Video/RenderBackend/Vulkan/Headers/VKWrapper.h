@@ -126,7 +126,7 @@ public:
     static void FlushBufferTransferRequests( );
     static void SubmitTransferRequest(const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd);
 
-    static void InsertDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
+    static void AddDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PopDebugMessage(VkCommandBuffer cmdBuffer);
 
