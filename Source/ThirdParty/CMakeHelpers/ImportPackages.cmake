@@ -137,39 +137,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable( chaiscript )
 
-#cnri
-message("Fetching NVIDIA NRI Lib")
-option(NRI_STATIC_LIBRARY "" OFF)
-option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON)
-option(NRI_ENABLE_VK_SUPPORT "" ON)
-option(NRI_ENABLE_NONE_SUPPORT "" ON)
-option(NRI_ENABLE_VALIDATION_SUPPORT "" ON)
-option(NRI_ENABLE_IMGUI_EXTENSION "" ON)
-option(NRI_ENABLE_FFX_SDK "" ON)
-option(NRI_ENABLE_XESS_SDK "" ON)
-
-if(WINDOWS_OS_BUILD)
-    option(NRI_ENABLE_D3D12_SUPPORT "" ON)
-    option(NRI_ENABLE_D3D11_SUPPORT "" ON)
-    option(NRI_ENABLE_NVTX_SUPPORT "" ON)
-elseif(MAC_OS_BUILD)
-    option(NRI_ENABLE_METAL_SUPPORT "" ON)
-else()
-    option(NRI_ENABLE_XLIB_SUPPORT "" ON)
-    if(WAYLAND_FOUND)
-        option(NRI_ENABLE_WAYLAND_SUPPORT "" ON)
-    endif()
-endif()
-FetchContent_Declare(
-    nri
-    GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
-    GIT_TAG        v175
-    #GIT_PROGRESS   TRUE
-    SYSTEM
-)
-
-FetchContent_MakeAvailable( nri )
-
 #SDL3_mixer
 message("Fetching SDL3_Mixer Lib")
 set(SDLMIXER_FLAC OFF)
@@ -198,10 +165,10 @@ FetchContent_MakeAvailable( SDL3_mixer )
 
 if(NOT WINDOWS_OS_BUILD)
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
-    set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 endif()
 
 include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
+
 
 if (BUILD_TESTING_INTERNAL)
     set(BUILD_TESTING ON)

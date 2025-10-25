@@ -10,7 +10,7 @@
 
 #include <Extensions/NRIDeviceCreation.h>
 #include <Extensions/NRIHelper.h>
-#include <Extensions/NRIResourceAllocator.h>
+#include <Extensions/NRIRayTracing.h>
 #include <Extensions/NRISwapChain.h>
 #include <Extensions/NRIWrapperVK.h>
 #if defined(WINDOWS_OS_BUILD)

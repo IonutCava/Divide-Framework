@@ -776,8 +776,6 @@ namespace Divide
         };
     } //namespace Attorney
 
-    void ImGui::EndDisabled();
-
     struct ScopedReadOnly final : NonCopyable
     {
         ScopedReadOnly()
