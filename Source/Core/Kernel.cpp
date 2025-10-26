@@ -1022,7 +1022,7 @@ bool Kernel::onKeyInternal( Input::KeyEvent& argInOut )
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onKey(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onKey(argInOut))
         {
             return true;
         }
@@ -1035,7 +1035,7 @@ bool Kernel::onMouseMovedInternal( Input::MouseMoveEvent& argInOut )
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onMouseMoved(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onMouseMoved(argInOut))
         {
             return true;
         }
@@ -1048,7 +1048,7 @@ bool Kernel::onMouseButtonInternal( Input::MouseButtonEvent& argInOut )
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onMouseButton(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onMouseButton(argInOut))
         {
             return true;
         }
@@ -1061,7 +1061,7 @@ bool Kernel::onJoystickButtonInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onJoystickButton(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onJoystickButton(argInOut))
         {
             return true;
         }
@@ -1074,7 +1074,7 @@ bool Kernel::onJoystickAxisMovedInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onJoystickAxisMoved(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onJoystickAxisMoved(argInOut))
         {
             return true;
         }
@@ -1087,7 +1087,7 @@ bool Kernel::onJoystickPovMovedInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onJoystickPovMoved(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onJoystickPovMoved(argInOut))
         {
             return true;
         }
@@ -1100,7 +1100,7 @@ bool Kernel::onJoystickBallMovedInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onJoystickBallMoved(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onJoystickBallMoved(argInOut))
         {
             return true;
         }
@@ -1113,7 +1113,7 @@ bool Kernel::onJoystickRemapInternal(Input::JoystickEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onJoystickRemap(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onJoystickRemap(argInOut))
         {
             return true;
         }
@@ -1126,7 +1126,7 @@ bool Kernel::onTextInputInternal(Input::TextInputEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onTextInput(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onTextInput(argInOut))
         {
             return true;
         }
@@ -1139,7 +1139,7 @@ bool Kernel::onTextEditInternal(Input::TextEditEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onTextEdit(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onTextEdit(argInOut))
         {
             return true;
         }
@@ -1152,7 +1152,7 @@ bool Kernel::onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
-        if (inputConsumer._ptr->onDeviceAddOrRemove(argInOut))
+        if (inputConsumer._ptr->processInput() && inputConsumer._ptr->onDeviceAddOrRemove(argInOut))
         {
             return true;
         }
@@ -1165,6 +1165,11 @@ void Kernel::lockInputToConsumer(const InputConsumerType type)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
+        if ( !inputConsumer._ptr->processInput() )
+        {
+            continue;
+        }
+
         if ( type == InputConsumerType::COUNT || inputConsumer._type != type )
         {
             inputConsumer._ptr->processInput(false);
@@ -1176,6 +1181,11 @@ void Kernel::unlockInputFromConsumer(const InputConsumerType type)
 {
     for (auto& inputConsumer : _inputConsumers)
     {
+        if ( !inputConsumer._ptr->processInput() )
+        {
+            continue;
+        }
+
         if (type == InputConsumerType::COUNT || inputConsumer._type != type)
         {
             inputConsumer._ptr->processInput(true);
