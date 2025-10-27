@@ -157,7 +157,7 @@ namespace Divide
         bool unload() override;
 
         void clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept;
-        void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage);
+        void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage );
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
         PROPERTY_R_IW( VkImageType, vkType, VK_IMAGE_TYPE_MAX_ENUM );

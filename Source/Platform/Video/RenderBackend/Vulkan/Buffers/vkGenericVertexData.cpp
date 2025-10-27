@@ -3,6 +3,7 @@
 #include "Headers/vkGenericVertexData.h"
 #include "Headers/vkBufferImpl.h"
 
+#include "Core/Headers/PlatformContext.h"
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/Headers/GenericDrawCommand.h"
 #include "Platform/Video/Headers/LockManager.h"
@@ -69,7 +70,7 @@ namespace Divide {
                                                          bufferSizeInBytes,
                                                          ringSizeFactor,
                                                          std::make_pair(data, data == nullptr ? 0u : bufferSizeInBytes),
-                                                          _name.empty() ? Util::StringFormat("Generic_VK_{}_buffer_{}", isIndexBuffer ? "IDX" : "VB", getGUID()).c_str() : _name.c_str());
+                                                         _name.empty() ? Util::StringFormat("Generic_VK_{}_buffer_{}", isIndexBuffer ? "IDX" : "VB", getGUID()).c_str() : _name.c_str());
 
         for (U32 i = 1u; i < ringSizeFactor; ++i)
         {

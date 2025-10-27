@@ -318,7 +318,7 @@ void Kernel::onLoop()
                              GFXDevice::FrameCount(),
                              _timingData.updateLoops(),
                              _timingData.alpha(),
-                             Time::App::ElapsedSeconds());
+                             to_U32(std::round(Time::App::ElapsedSeconds())));
             }
         }
 

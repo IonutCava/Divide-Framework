@@ -103,7 +103,7 @@ private:
 
     void flushCommand( GFX::CommandBase* cmd ) override;
 
-    void postFlushCommandBuffer(Handle<GFX::CommandBuffer> commandBuffer) override;
+    void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) override;
 
     void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) override;
 
@@ -137,9 +137,9 @@ public:
 
     static void QueueFlush() noexcept;
 
-    static void AddDebugMessage( const char* message, U32 id = U32_MAX );
-    static void PushDebugMessage( const char* message, U32 id = U32_MAX );
-    static void PopDebugMessage();
+    static void AddDebugMessage( const Configuration& config, const char* message, U32 id = U32_MAX );
+    static void PushDebugMessage( const Configuration& config, const char* message, U32 id = U32_MAX );
+    static void PopDebugMessage( const Configuration& config );
 
     [[nodiscard]] static bool DeleteShaderPrograms( gl46core::GLuint count, gl46core::GLuint * programs);
     [[nodiscard]] static bool DeleteSamplers( gl46core::GLuint count, gl46core::GLuint* samplers);

@@ -4,6 +4,8 @@
 
 #include "Utility/Headers/Localization.h"
 
+#include "Core/Headers/PlatformContext.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h" //For staging buffers
 
@@ -218,7 +220,9 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
-        VK_API::PushDebugMessage(cmdBuffer, "vkTexture::generateMipmaps");
+        const Configuration& config = _context.context().config();
+
+        VK_API::PushDebugMessage( config, cmdBuffer, "vkTexture::generateMipmaps");
 
         VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
@@ -341,7 +345,7 @@ namespace Divide
                 default: DIVIDE_UNEXPECTED_CALL_MSG( "To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!" ); break;
             }
         }
-        VK_API::PopDebugMessage(cmdBuffer);
+        VK_API::PopDebugMessage( config, cmdBuffer );
     }
 
     void vkTexture::prepareTextureData( const U16 width, const U16 height, const U16 depth, const bool emptyAllocation )

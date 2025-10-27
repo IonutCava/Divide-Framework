@@ -50,7 +50,7 @@ namespace Divide
             return;
         }
 
-        VK_API::PushDebugMessage(cmdBuffer, "vkRrenderTarget::blitFrom");
+        VK_API::PushDebugMessage(_context.context().config(), cmdBuffer, "vkRrenderTarget::blitFrom");
 
         vkRenderTarget* output = this;
         [[maybe_unused]] const vec2<U16> outputDim = output->_descriptor._resolution;
@@ -205,7 +205,7 @@ namespace Divide
             }
         }
 
-        VK_API::PopDebugMessage( cmdBuffer );
+        VK_API::PopDebugMessage( _context.context().config(), cmdBuffer );
     }
 
     void vkRenderTarget::transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTTransitionMask& transitionMask, const bool toWrite )

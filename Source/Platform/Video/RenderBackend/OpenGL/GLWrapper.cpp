@@ -1044,7 +1044,7 @@ namespace Divide
                         }
                         gl46core::glClear( mask );
                     }
-                    PushDebugMessage( crtCmd->_name.c_str(), SCREEN_TARGET_ID );
+                    PushDebugMessage( _context.context().config(), crtCmd->_name.c_str(), SCREEN_TARGET_ID );
                 }
                 else
                 {
@@ -1058,15 +1058,17 @@ namespace Divide
                     Attorney::GLAPIRenderTarget::begin( *rt, crtCmd->_descriptor, crtCmd->_clearDescriptor );
                     s_stateTracker._activeRenderTarget = rt;
                     s_stateTracker._activeRenderTargetDimensions = { rt->getWidth(), rt->getHeight() };
-                    PushDebugMessage(crtCmd->_name.c_str(), crtCmd->_target);
-                    AddDebugMessage(rt->debugMessage().c_str(), crtCmd->_target );
+
+                    const Configuration& config = _context.context().config();
+                    PushDebugMessage(config, crtCmd->_name.c_str(), crtCmd->_target);
+                    AddDebugMessage(config, rt->debugMessage().c_str(), crtCmd->_target );
                 }
             }break;
             case GFX::CommandType::END_RENDER_PASS:
             {
                 PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
 
-                PopDebugMessage();
+                PopDebugMessage(_context.context().config());
 
                 if ( GL_API::s_stateTracker._activeRenderTarget == nullptr )
                 {
@@ -1227,20 +1229,20 @@ namespace Divide
                 PROFILE_SCOPE( "BEGIN_DEBUG_SCOPE", Profiler::Category::Graphics );
 
                 const auto& crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
-                PushDebugMessage( crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
+                PushDebugMessage( _context.context().config(), crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE:
             {
                 PROFILE_SCOPE( "END_DEBUG_SCOPE", Profiler::Category::Graphics );
 
-                PopDebugMessage();
+                PopDebugMessage( _context.context().config() );
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE:
             {
                 PROFILE_SCOPE( "ADD_DEBUG_MESSAGE", Profiler::Category::Graphics );
 
                 const auto& crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
-                AddDebugMessage( crtCmd->_msg.c_str(), crtCmd->_msgId );
+                AddDebugMessage( _context.context().config(),crtCmd->_msg.c_str(), crtCmd->_msgId );
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
@@ -1879,35 +1881,44 @@ namespace Divide
         }
     }
 
-    void GL_API::AddDebugMessage( const char* message, const U32 id )
+    void GL_API::AddDebugMessage( const Configuration& config, const char* message, const U32 id )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
-            gl46core::glPopDebugGroup();
+            if ( config.debug.renderer.enableRenderAPIDebugGrouping)
+            {
+                gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+                gl46core::glPopDebugGroup();
+            }
         }
         GFXDevice::AddDebugMessage(message, id);
     }
 
-    void GL_API::PushDebugMessage( const char* message, const U32 id )
+    void GL_API::PushDebugMessage( const Configuration& config, const char* message, const U32 id )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+            if ( config.debug.renderer.enableRenderAPIDebugGrouping)
+            {
+                gl46core::glPushDebugGroup( gl46core::GL_DEBUG_SOURCE_APPLICATION, id, -1, message );
+            }
         }
         GFXDevice::PushDebugMessage(message, id);
     }
 
-    void GL_API::PopDebugMessage()
+    void GL_API::PopDebugMessage( const Configuration& config )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         if constexpr( Config::ENABLE_GPU_VALIDATION )
         {
-            gl46core::glPopDebugGroup();
+            if ( config.debug.renderer.enableRenderAPIDebugGrouping)
+            {
+                gl46core::glPopDebugGroup();
+            }
         }
         GFXDevice::PopDebugMessage();
     }

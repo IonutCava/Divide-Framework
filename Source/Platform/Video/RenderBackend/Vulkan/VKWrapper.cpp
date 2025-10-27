@@ -431,8 +431,9 @@ namespace Divide
         return _deletionQueue.empty();
     }
 
-    VKImmediateCmdContext::VKImmediateCmdContext( VKDevice& context, const QueueType type )
+    VKImmediateCmdContext::VKImmediateCmdContext( const Configuration& config, VKDevice& context, const QueueType type )
         : _context( context )
+        , _config(config)
         , _type(type)
         , _queueIndex(context.getQueue(type)._index)
     {
@@ -459,7 +460,7 @@ namespace Divide
         }
     }
 
-    void VKImmediateCmdContext::flushCommandBuffer( FlushCallback&& function, const char* scopeName )
+    void VKImmediateCmdContext::flushCommandBuffer(FlushCallback&& function, const char* scopeName )
     {
         LockGuard<Mutex> w_lock( _submitLock );
 
@@ -477,12 +478,12 @@ namespace Divide
         VK_CHECK( vkBeginCommandBuffer( cmd, &cmdBeginInfo ) );
         PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
 
-        VK_API::PushDebugMessage( cmd, scopeName );
+        VK_API::PushDebugMessage( _config, cmd, scopeName );
 
         // Execute the function
         function( cmd, _type, _queueIndex );
 
-        VK_API::PopDebugMessage( cmd ) ;
+        VK_API::PopDebugMessage( _config, cmd ) ;
         VK_CHECK( vkEndCommandBuffer( cmd ) );
 
         VkSubmitInfo submitInfo = vk::submitInfo();
@@ -498,7 +499,7 @@ namespace Divide
         }
     }
 
-    void VKStateTracker::init( VKDevice* device, VKPerWindowState* mainWindow )
+    void VKStateTracker::init( const Configuration& config, VKDevice* device, VKPerWindowState* mainWindow )
     {
         DIVIDE_ASSERT(device != nullptr && mainWindow != nullptr);
         setDefaultState();
@@ -506,7 +507,7 @@ namespace Divide
         _activeWindow = mainWindow;
         for ( U8 t = 0u; t < to_base(QueueType::COUNT); ++t )
         {
-            _cmdContexts[t] = std::make_unique<VKImmediateCmdContext>( *device, static_cast<QueueType>(t) );
+            _cmdContexts[t] = std::make_unique<VKImmediateCmdContext>( config, *device, static_cast<QueueType>(t) );
         }
 
     }
@@ -1155,7 +1156,7 @@ namespace Divide
 
         initStatePerWindow( perWindowContext );
 
-        s_stateTracker.init(_device.get(), &perWindowContext);
+        s_stateTracker.init( _context.context().config(), _device.get(), &perWindowContext);
         s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
         s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
 
@@ -2262,7 +2263,7 @@ namespace Divide
 
         if ( s_transferQueue._dirty.load() )
         {
-            VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer([](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
+            VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
             {
                 VK_API::FlushBufferTransferRequests( cmd );
             }, "Deferred Buffer Uploads" );
@@ -2339,7 +2340,7 @@ namespace Divide
                 thread_local vector<VkFormat> swapChainImageFormat( to_base( RTColourAttachmentSlot::COUNT ), VK_FORMAT_UNDEFINED);
 
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
-                PushDebugMessage( cmdBuffer, crtCmd->_name.c_str() );
+                PushDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_name.c_str() );
 
                 stateTracker._activeRenderTargetID = crtCmd->_target;
 
@@ -2465,7 +2466,7 @@ namespace Divide
                     stateTracker._activeRenderTargetID = SCREEN_TARGET_ID;
                 }
 
-                PopDebugMessage( cmdBuffer );
+                PopDebugMessage( _context.context().config(), cmdBuffer );
                 stateTracker._renderTargetFormatHash = 0u;
                 stateTracker._activeMSAASamples = _context.context().config().rendering.MSAASamples;
                 stateTracker._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
@@ -2563,20 +2564,20 @@ namespace Divide
                 PROFILE_SCOPE( "BEGIN_DEBUG_SCOPE", Profiler::Category::Graphics );
 
                 const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
-                PushDebugMessage( cmdBuffer, crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
+                PushDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE:
             {
                 PROFILE_SCOPE( "END_DEBUG_SCOPE", Profiler::Category::Graphics );
 
-                PopDebugMessage( cmdBuffer );
+                PopDebugMessage( _context.context().config(), cmdBuffer );
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE:
             {
                 PROFILE_SCOPE( "ADD_DEBUG_MESSAGE", Profiler::Category::Graphics );
 
                 const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
-                AddDebugMessage( cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId );
+                AddDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId );
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
@@ -3169,9 +3170,9 @@ namespace Divide
         return s_stateTracker;
     }
 
-    void VK_API::AddDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )
+    void VK_API::AddDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, const U32 id )
     {
-        if ( s_hasDebugMarkerSupport )
+        if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping  )
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
@@ -3188,9 +3189,9 @@ namespace Divide
         GFXDevice::AddDebugMessage(message, id);
     }
 
-    void VK_API::PushDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )
+    void VK_API::PushDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, const U32 id )
     {
-        if ( s_hasDebugMarkerSupport )
+        if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping  )
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 
@@ -3206,9 +3207,9 @@ namespace Divide
         GFXDevice::PushDebugMessage(message, id);
     }
 
-    void VK_API::PopDebugMessage( VkCommandBuffer cmdBuffer )
+    void VK_API::PopDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer )
     {
-        if ( s_hasDebugMarkerSupport )
+        if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping )
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
 

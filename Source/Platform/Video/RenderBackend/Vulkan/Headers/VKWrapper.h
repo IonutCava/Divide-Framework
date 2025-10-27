@@ -86,7 +86,7 @@ protected:
     void closeRenderingAPI() override;
     void preFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) override;
     void flushCommand( GFX::CommandBase* cmd ) noexcept override;
-    void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) noexcept override;
+    void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
     bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
     bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
 
@@ -126,9 +126,9 @@ public:
     static void FlushBufferTransferRequests( );
     static void SubmitTransferRequest(const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd);
 
-    static void AddDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
-    static void PushDebugMessage(VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
-    static void PopDebugMessage(VkCommandBuffer cmdBuffer);
+    static void AddDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
+    static void PushDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
+    static void PopDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer);
 
     static void OnShaderReloaded( vkShaderProgram* program);
 private:
