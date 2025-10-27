@@ -133,7 +133,7 @@ bool ParticleEmitter::initData(const std::shared_ptr<ParticleData>& particleData
             GPUBuffer::SetBufferParams vbParams = {};
             vbParams._elementCount = particleCount;
             vbParams._usageType = BufferUsageType::VERTEX_BUFFER;
-            vbParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+            vbParams._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
 
             
             GPUBuffer_ptr& positionBuffer = buffer._buffers[g_particlePositionBuffer];

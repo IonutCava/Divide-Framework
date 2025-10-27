@@ -415,7 +415,7 @@ namespace Divide
                                                        : to_U16( WindowDescriptor::Flags::DECORATED );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_NoDecoration
                                                        ? 0
-                                                       : to_U16( WindowDescriptor::Flags::RESIZEABLE );
+                                                       : to_U16( WindowDescriptor::Flags::RESIZABLE );
                 winDescriptor.flags |= viewport->Flags & ImGuiViewportFlags_TopMost
                                                        ? to_U16( WindowDescriptor::Flags::ALWAYS_ON_TOP )
                                                        : 0;

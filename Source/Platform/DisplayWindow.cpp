@@ -67,7 +67,7 @@ ErrorCode DisplayWindow::init(const WindowDescriptor& descriptor)
     SDL_SetNumberProperty( props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER,              descriptor.dimensions.height);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN,             descriptor.targetAPI == RenderAPI::Vulkan || descriptor.targetAPI == RenderAPI::NRI_Vulkan);
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN,             descriptor.targetAPI == RenderAPI::OpenGL);
-    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN,          descriptor.flags & to_base(WindowDescriptor::Flags::RESIZEABLE));
+    SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN,          descriptor.flags & to_base(WindowDescriptor::Flags::RESIZABLE));
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, descriptor.flags & to_base(WindowDescriptor::Flags::ALLOW_HIGH_DPI));
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN,             descriptor.flags & to_base(WindowDescriptor::Flags::HIDDEN));
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN,      descriptor.flags & to_base(WindowDescriptor::Flags::ALWAYS_ON_TOP));

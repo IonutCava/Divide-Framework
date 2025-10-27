@@ -476,7 +476,7 @@ namespace Divide
 
         VkCommandBuffer cmd = _commandBuffers[_bufferIndex];
         VK_CHECK( vkBeginCommandBuffer( cmd, &cmdBeginInfo ) );
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
         VK_API::PushDebugMessage( _config, cmd, scopeName );
 
@@ -1043,22 +1043,22 @@ namespace Divide
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
         {
-            deviceInformation._maxWorgroupCount[i] = deviceProperties.limits.maxComputeWorkGroupCount[i];
-            deviceInformation._maxWorgroupSize[i] = deviceProperties.limits.maxComputeWorkGroupSize[i];
+            deviceInformation._maxWorkgroupCount[i] = deviceProperties.limits.maxComputeWorkGroupCount[i];
+            deviceInformation._maxWorkgroupSize[i] = deviceProperties.limits.maxComputeWorkGroupSize[i];
 
-            deviceInformation._maxMeshWorgroupCount[i] = meshProperties.maxMeshWorkGroupCount[i];
-            deviceInformation._maxMeshWorgroupSize[i] = meshProperties.maxMeshWorkGroupSize[i];
+            deviceInformation._maxMeshWorkgroupCount[i] = meshProperties.maxMeshWorkGroupCount[i];
+            deviceInformation._maxMeshWorkgroupSize[i] = meshProperties.maxMeshWorkGroupSize[i];
 
-            deviceInformation._maxTaskWorgroupCount[i] = meshProperties.maxTaskWorkGroupCount[i];
-            deviceInformation._maxTaskWorgroupSize[i] = meshProperties.maxTaskWorkGroupSize[i];
+            deviceInformation._maxTaskWorkgroupCount[i] = meshProperties.maxTaskWorkGroupCount[i];
+            deviceInformation._maxTaskWorkgroupSize[i] = meshProperties.maxTaskWorkGroupSize[i];
         }
 
-        deviceInformation._maxWorgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
+        deviceInformation._maxWorkgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
         deviceInformation._maxComputeSharedMemoryBytes = deviceProperties.limits.maxComputeSharedMemorySize;
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ),
-                          deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
-                          deviceInformation._maxWorgroupSize[0], deviceInformation._maxWorgroupSize[1], deviceInformation._maxWorgroupSize[2],
-                          deviceInformation._maxWorgroupInvocations );
+                          deviceInformation._maxWorkgroupCount[0], deviceInformation._maxWorkgroupCount[1], deviceInformation._maxWorkgroupCount[2],
+                          deviceInformation._maxWorkgroupSize[0], deviceInformation._maxWorkgroupSize[1], deviceInformation._maxWorkgroupSize[2],
+                          deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
         // Maximum number of varying components supported as outputs in the vertex shader
@@ -1067,21 +1067,21 @@ namespace Divide
 
         deviceInformation._maxMeshShaderOutputVertices = meshProperties.maxMeshOutputVertices;
         deviceInformation._maxMeshShaderOutputPrimitives = meshProperties.maxMeshOutputPrimitives;
-        deviceInformation._maxMeshWorgroupInvocations = meshProperties.maxMeshWorkGroupInvocations;
-        deviceInformation._maxTaskWorgroupInvocations = meshProperties.maxTaskWorkGroupInvocations;
+        deviceInformation._maxMeshWorkgroupInvocations = meshProperties.maxMeshWorkGroupInvocations;
+        deviceInformation._maxTaskWorkgroupInvocations = meshProperties.maxTaskWorkGroupInvocations;
 
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
         
-        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxMeshWorgroupCount[0], deviceInformation._maxMeshWorgroupCount[1], deviceInformation._maxMeshWorgroupCount[2],
-                                    deviceInformation._maxMeshWorgroupSize[0], deviceInformation._maxMeshWorgroupSize[1], deviceInformation._maxMeshWorgroupSize[2],
-                                    deviceInformation._maxMeshWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxMeshWorkgroupCount[0], deviceInformation._maxMeshWorkgroupCount[1], deviceInformation._maxMeshWorkgroupCount[2],
+                                    deviceInformation._maxMeshWorkgroupSize[0], deviceInformation._maxMeshWorkgroupSize[1], deviceInformation._maxMeshWorkgroupSize[2],
+                                    deviceInformation._maxMeshWorkgroupInvocations);
                                     
-        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxTaskWorgroupCount[0], deviceInformation._maxTaskWorgroupCount[1], deviceInformation._maxTaskWorgroupCount[2],
-                                    deviceInformation._maxTaskWorgroupSize[0], deviceInformation._maxTaskWorgroupSize[1], deviceInformation._maxTaskWorgroupSize[2],
-                                    deviceInformation._maxTaskWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxTaskWorkgroupCount[0], deviceInformation._maxTaskWorkgroupCount[1], deviceInformation._maxTaskWorkgroupCount[2],
+                                    deviceInformation._maxTaskWorkgroupSize[0], deviceInformation._maxTaskWorkgroupSize[1], deviceInformation._maxTaskWorkgroupSize[2],
+                                    deviceInformation._maxTaskWorkgroupInvocations);
 
         deviceInformation._offsetAlignmentBytesUBO = deviceProperties.limits.minUniformBufferOffsetAlignment;
         deviceInformation._maxSizeBytesUBO = deviceProperties.limits.maxUniformBufferRange;
@@ -1283,7 +1283,7 @@ namespace Divide
 
     bool VK_API::Draw( GenericDrawCommand cmd, VkCommandBuffer cmdBuffer )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         DIVIDE_ASSERT( cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount );
 
@@ -1300,7 +1300,7 @@ namespace Divide
                     case PrimitiveTopology::LINES:
                     case PrimitiveTopology::LINE_STRIP:
                     case PrimitiveTopology::LINE_STRIP_ADJACENCY:
-                    case PrimitiveTopology::LINES_ADJANCENCY: drawCmd._cmd.vertexCount = 2u; break;
+                    case PrimitiveTopology::LINES_ADJACENCY: drawCmd._cmd.vertexCount = 2u; break;
                     case PrimitiveTopology::TRIANGLES:
                     case PrimitiveTopology::TRIANGLE_STRIP:
                     case PrimitiveTopology::TRIANGLE_FAN:
@@ -1398,7 +1398,7 @@ namespace Divide
 
     bool VK_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( getCurrentCommandBuffer() );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( getCurrentCommandBuffer() );
 
         auto& program = GetStateTracker()._pipeline._program;
         DIVIDE_ASSERT( program != nullptr );
@@ -1687,7 +1687,7 @@ namespace Divide
 
     void VK_API::bindDynamicState( const RenderStateBlock& currentState, const RTBlendStates& blendStates, VkCommandBuffer cmdBuffer ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         bool ret = false;
 
@@ -1853,7 +1853,7 @@ namespace Divide
 
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         size_t stateHash = pipeline.stateHash();
         Util::Hash_combine(stateHash, GetStateTracker()._renderTargetFormatHash );
@@ -2115,7 +2115,7 @@ namespace Divide
 
         void FlushBarriers( BarrierContainer& barriers, BatchedTransferQueue& transferQueueBatched, VkCommandBuffer cmd, bool toWrite )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
             for ( const auto& request : transferQueueBatched )
             {
@@ -2135,7 +2135,7 @@ namespace Divide
 
         void FlushCopyRequests( CopyContainer& copyRequests, VkCommandBuffer cmd )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
             for ( const PerBufferCopies& request : copyRequests )
             {
@@ -2209,7 +2209,7 @@ namespace Divide
 
         void FlushTransferQueue( VkCommandBuffer cmdBuffer, VKTransferQueue& transferQueue )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             thread_local vector<PerBufferCopies> s_copyRequests;
             thread_local BarrierContainer s_barriers{};
@@ -2228,7 +2228,7 @@ namespace Divide
 
     void VK_API::SubmitTransferRequest( const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
         VkBufferMemoryBarrier2 barriers[2] = {};
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
@@ -2272,7 +2272,7 @@ namespace Divide
 
     void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         if ( s_transferQueue._dirty.load() )
         {
@@ -2298,7 +2298,7 @@ namespace Divide
         auto& stateTracker = GetStateTracker();
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
@@ -3023,7 +3023,7 @@ namespace Divide
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         VkViewport targetViewport{};
         targetViewport.width = to_F32( newViewport.sizeX );
@@ -3052,7 +3052,7 @@ namespace Divide
 
     bool VK_API::setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         const VkOffset2D offset{ std::max( 0, newScissor.offsetX ), std::max( 0, newScissor.offsetY ) };
         const VkExtent2D extent{ to_U32( newScissor.sizeX ),to_U32( newScissor.sizeY ) };
@@ -3174,7 +3174,7 @@ namespace Divide
     {
         if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping  )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             constexpr F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
 
@@ -3193,7 +3193,7 @@ namespace Divide
     {
         if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping  )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             constexpr F32 color[4] = { 0.5f, 0.5f, 0.5f, 1.f };
 
@@ -3211,7 +3211,7 @@ namespace Divide
     {
         if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             Debug::vkCmdEndDebugUtilsLabelEXT( cmdBuffer );
         }

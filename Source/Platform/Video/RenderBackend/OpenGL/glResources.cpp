@@ -153,7 +153,7 @@ namespace Divide
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES )] = gl46core::GL_TRIANGLES;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP )] = gl46core::GL_TRIANGLE_STRIP;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_FAN )] = gl46core::GL_TRIANGLE_FAN;
-            glPrimitiveTypeTable[to_base( PrimitiveTopology::LINES_ADJANCENCY )] = gl46core::GL_LINES_ADJACENCY;
+            glPrimitiveTypeTable[to_base( PrimitiveTopology::LINES_ADJACENCY )] = gl46core::GL_LINES_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::LINE_STRIP_ADJACENCY )] = gl46core::GL_LINE_STRIP_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLES_ADJACENCY )] = gl46core::GL_TRIANGLES_ADJACENCY;
             glPrimitiveTypeTable[to_base( PrimitiveTopology::TRIANGLE_STRIP_ADJACENCY )] = gl46core::GL_TRIANGLE_STRIP_ADJACENCY;

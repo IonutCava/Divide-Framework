@@ -219,7 +219,7 @@ void IMPrimitive::endBatch() noexcept
         }
 
         GPUBuffer::SetBufferParams params = {};
-        params._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        params._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         params._usageType = BufferUsageType::VERTEX_BUFFER;
         params._elementSize = sizeof(NS_GLIM::Glim4ByteData);
         params._elementCount = to_U32(batchData.m_PositionData.size());
@@ -248,7 +248,7 @@ void IMPrimitive::endBatch() noexcept
         }
 
         GPUBuffer::SetBufferParams params = {};
-        params._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        params._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         params._usageType = BufferUsageType::VERTEX_BUFFER;
         params._elementSize = sizeof(NS_GLIM::Glim4ByteData);
         params._elementCount = to_U32(data.m_ArrayData.size());
@@ -340,7 +340,7 @@ void IMPrimitive::endBatch() noexcept
     efficient_clear(batchData.m_IndexBuffer_Points);
 
     GPUBuffer::SetBufferParams ibParams = {};
-    ibParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+    ibParams._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
     ibParams._usageType = BufferUsageType::INDEX_BUFFER;
     ibParams._elementSize = sizeof(U32);
     ibParams._elementCount = to_U32(_indices.size());

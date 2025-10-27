@@ -420,7 +420,7 @@ namespace Divide
         bufferDescriptor._name.append( _parentShaderName.c_str() );
         bufferDescriptor._elementCount = 1;
         bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         bufferDescriptor._elementSize = _uniformBlockSizeAligned;
         _buffer = _context.newShaderBuffer( bufferDescriptor );
         _uniformBlockDirty = true;

@@ -58,7 +58,7 @@ namespace Divide
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
 
         {
             bufferDescriptor._name = "LIGHT_DATA";

@@ -360,61 +360,61 @@ namespace Divide
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3u; ++i )
         {
-            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorgroupCount[i], i );
-            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorgroupSize[i], i );
+            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorkgroupCount[i], i );
+            GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorkgroupSize[i], i );
 
             if ( _meshShadersSupported )
             {
-                GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorgroupSize[i], i);
-                GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorgroupSize[i], i);
+                GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorkgroupSize[i], i);
+                GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorkgroupSize[i], i);
 
                 // ToDo: This is wrong so needs fixing once mesh shaders in GL reach EXT status! -Ionut
-                deviceInformation._maxMeshWorgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
-                deviceInformation._maxTaskWorgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
+                deviceInformation._maxMeshWorkgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
+                deviceInformation._maxTaskWorkgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
             }
             else
             {
-                deviceInformation._maxMeshWorgroupSize[i] = deviceInformation._maxTaskWorgroupSize[i] =
-                deviceInformation._maxMeshWorgroupCount[i] =  deviceInformation._maxTaskWorgroupCount[i] = 0u;
+                deviceInformation._maxMeshWorkgroupSize[i] = deviceInformation._maxTaskWorkgroupSize[i] =
+                deviceInformation._maxMeshWorkgroupCount[i] =  deviceInformation._maxTaskWorkgroupCount[i] = 0u;
             }
         }
 
-        deviceInformation._maxWorgroupInvocations = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
+        deviceInformation._maxWorkgroupInvocations = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
         deviceInformation._maxComputeSharedMemoryBytes = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_SHARED_MEMORY_SIZE );
 
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ) ,
-                          deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
-                          deviceInformation._maxWorgroupSize[0], deviceInformation._maxWorgroupSize[1], deviceInformation._maxWorgroupSize[2],
-                          deviceInformation._maxWorgroupInvocations );
+                          deviceInformation._maxWorkgroupCount[0], deviceInformation._maxWorkgroupCount[1], deviceInformation._maxWorkgroupCount[2],
+                          deviceInformation._maxWorkgroupSize[0], deviceInformation._maxWorkgroupSize[1], deviceInformation._maxWorkgroupSize[2],
+                          deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
         if ( _meshShadersSupported )
         {
             deviceInformation._maxMeshShaderOutputVertices = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_VERTICES_NV);
             deviceInformation._maxMeshShaderOutputPrimitives = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_PRIMITIVES_NV);
-            deviceInformation._maxMeshWorgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_INVOCATIONS_NV);
+            deviceInformation._maxMeshWorkgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_INVOCATIONS_NV);
         }
         else
         {
             deviceInformation._maxMeshShaderOutputVertices = 0u;
             deviceInformation._maxMeshShaderOutputPrimitives = 0u;
-            deviceInformation._maxMeshWorgroupInvocations = 0u;
+            deviceInformation._maxMeshWorkgroupInvocations = 0u;
         }
         
-        deviceInformation._maxTaskWorgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
+        deviceInformation._maxTaskWorkgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
 
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
 
-        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxMeshWorgroupCount[0], deviceInformation._maxMeshWorgroupCount[1], deviceInformation._maxMeshWorgroupCount[2],
-                                    deviceInformation._maxMeshWorgroupSize[0], deviceInformation._maxMeshWorgroupSize[1], deviceInformation._maxMeshWorgroupSize[2],
-                                    deviceInformation._maxMeshWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxMeshWorkgroupCount[0], deviceInformation._maxMeshWorkgroupCount[1], deviceInformation._maxMeshWorkgroupCount[2],
+                                    deviceInformation._maxMeshWorkgroupSize[0], deviceInformation._maxMeshWorkgroupSize[1], deviceInformation._maxMeshWorkgroupSize[2],
+                                    deviceInformation._maxMeshWorkgroupInvocations);
                                     
-        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxTaskWorgroupCount[0], deviceInformation._maxTaskWorgroupCount[1], deviceInformation._maxTaskWorgroupCount[2],
-                                    deviceInformation._maxTaskWorgroupSize[0], deviceInformation._maxTaskWorgroupSize[1], deviceInformation._maxTaskWorgroupSize[2],
-                                    deviceInformation._maxTaskWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxTaskWorkgroupCount[0], deviceInformation._maxTaskWorkgroupCount[1], deviceInformation._maxTaskWorkgroupCount[2],
+                                    deviceInformation._maxTaskWorkgroupSize[0], deviceInformation._maxTaskWorkgroupSize[1], deviceInformation._maxTaskWorkgroupSize[2],
+                                    deviceInformation._maxTaskWorkgroupInvocations);
 
         // Maximum number of texture units we can address in shaders
         Console::printfn( LOCALE_STR( "GL_MAX_TEX_UNITS" ),
@@ -746,7 +746,7 @@ namespace Divide
                     case PrimitiveTopology::LINES:
                     case PrimitiveTopology::LINE_STRIP:
                     case PrimitiveTopology::LINE_STRIP_ADJACENCY:
-                    case PrimitiveTopology::LINES_ADJANCENCY: drawCmd._cmd.vertexCount = 2u; break;
+                    case PrimitiveTopology::LINES_ADJACENCY: drawCmd._cmd.vertexCount = 2u; break;
                     case PrimitiveTopology::TRIANGLES:
                     case PrimitiveTopology::TRIANGLE_STRIP:
                     case PrimitiveTopology::TRIANGLE_FAN:

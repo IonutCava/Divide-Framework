@@ -54,7 +54,7 @@ namespace Divide
 
             default: DebugBreak();
             case BufferUpdateFrequency::OFTEN:
-            case BufferUpdateFrequency::OCASSIONAL:
+            case BufferUpdateFrequency::OCCASIONAL:
             {
                 // We will also need to be careful to not step on our own toes here
                 _lockManager = std::make_unique<glLockManager>();

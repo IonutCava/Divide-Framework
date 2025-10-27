@@ -173,7 +173,7 @@ namespace Divide
         _renderQueue = std::make_unique<RenderQueue>( parent.parent(), stage );
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         bufferDescriptor._usageType = BufferUsageType::COMMAND_BUFFER;
         bufferDescriptor._elementCount = Config::MAX_VISIBLE_NODES * TotalPassCountForStage( stage );
         bufferDescriptor._elementSize = sizeof( IndirectIndexedDrawCommand );
@@ -251,7 +251,7 @@ namespace Divide
     void RenderPassExecutor::ResizeGPUBuffers(GFXDevice& context, const size_t indirectionCount, const size_t transformCount, const size_t materialCount)
     {
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
 

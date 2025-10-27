@@ -11,7 +11,7 @@ namespace Divide
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
         bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
-        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         {
             bufferDescriptor._elementCount = 1u;
             bufferDescriptor._elementSize = sizeof( SceneShaderBufferData );
