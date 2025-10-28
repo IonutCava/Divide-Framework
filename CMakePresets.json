@@ -11,6 +11,9 @@
             "warnings": { "dev": false },
             "environment": {
                 "MIMALLOC_DISABLE_REDIRECT": "1"
+            },
+            "cacheVariables" : {
+                "CMAKE_POLICY_VERSION_MINIMUM" : "3.5"
             }
         },
         {
