@@ -33,24 +33,34 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PCH_
 #define DVD_PCH_
 
+// As of October 2022
+#if __cplusplus < 201704L
+#error "Divide Framework requires C++20 support at a minimum!"
+#endif 
+
+#if !defined(HAS_SSE41) && !defined(HAS_NEON)
+#   error "Divide Framework requires SSE4.1 or Neon at a minimum! (e.g. for _mm_dp_ps)"
+#endif //HAS_SSE41
+
+#if defined(IS_WINDOWS_BUILD) && defined(HAS_NEON)
+#define _DISABLE_SOFTINTRIN_ 1
+#endif //IS_WINDOWS_BUILD && HAS_NEON
+
 #if defined(ENABLE_MIMALLOC)
 #include <mimalloc.h>
 #endif //ENABLE_MIMALLOC
 
 #include "Platform/Headers/PlatformDefinesOS.h"
 
-// As of October 2022
-#if __cplusplus < 201704L
-#error "Divide Framework requires C++20 support at a minimum!"
-#endif 
-
-#if !defined(HAS_SSE41)
-#   error "Divide Framework requires SSE4.1 at a minimum! (e.g. for _mm_dp_ps)"
-#endif //HAS_SSE41
-
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif //IMGUI_DEFINE_MATH_OPERATORS
+
+#if defined(HAS_NEON)
+#include "sse2neon/sse2neon.h"
+#else //HAS_NEON
+#include <xmmintrin.h>
+#endif //HAS_NEON
 
 #include <stdexcept>
 #include <bytell_hash_map.hpp>
@@ -71,7 +81,6 @@ DISABLE_GCC_WARNING_PUSH(nonnull)
 DISABLE_GCC_WARNING_POP()
 
 #include <climits>
-#include <xmmintrin.h>
 #include <cstring>
 #include <iomanip>
 #include <random>

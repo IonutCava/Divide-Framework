@@ -58,6 +58,10 @@
             "platform": "osx"
         },
         {
+            "name": "sse2neon",
+            "platform": "osx"
+        },
+        {
             "name": "physx",
             "platform": "!osx & !linux"
         },
