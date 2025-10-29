@@ -148,10 +148,6 @@ namespace Divide {
 
         RenderStateBlock _activeState{};
 
-        DebugScope _debugScope[Config::MAX_DEBUG_SCOPE_DEPTH];
-        DebugScope _lastInsertedDebugMessage;
-        U8 _debugScopeDepth{ 0u };
-
         AttributeSettings _currentAttributes;
 
 

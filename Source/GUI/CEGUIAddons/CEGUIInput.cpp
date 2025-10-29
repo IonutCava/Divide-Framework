@@ -223,20 +223,13 @@ void CEGUIInput::repeatKey(const Input::KeyEvent& evt)
     _parent.getCEGUIContext()->injectKeyDown(CEGUIKey);
 }
 
-// Return true if input was consumed
-bool CEGUIInput::onKeyDownInternal(Input::KeyEvent& argInOut)
+bool CEGUIInput::onKeyInternal(Input::KeyEvent& argInOut)
 {
-    return injectKey(true, argInOut);
+    return injectKey(argInOut._state == Input::InputState::PRESSED, argInOut);
 }
 
 // Return true if input was consumed
-bool CEGUIInput::onKeyUpInternal(Input::KeyEvent& argInOut)
-{
-    return injectKey(false, argInOut);
-}
-
-// Return true if input was consumed
-bool CEGUIInput::mouseMovedInternal(Input::MouseMoveEvent& argInOut)
+bool CEGUIInput::onMouseMovedInternal(Input::MouseMoveEvent& argInOut)
 {
     if (!_enabled)
     {
@@ -245,147 +238,77 @@ bool CEGUIInput::mouseMovedInternal(Input::MouseMoveEvent& argInOut)
 
     if (argInOut._wheelEvent)
     {
-        return _parent.getCEGUIContext()->injectMouseWheelChange(to_F32(argInOut.state().VWheel ));
+        return _parent.getCEGUIContext()->injectMouseWheelChange(to_F32(argInOut.state().Wheel.yTicks ));
     }
 
     return _parent.getCEGUIContext()->injectMousePosition( to_F32(argInOut.state().X.abs ), to_F32(argInOut.state().Y.abs ) );
 }
 
-// Return true if input was consumed
-bool CEGUIInput::mouseButtonPressedInternal(Input::MouseButtonEvent& argInOut)
+bool CEGUIInput::onMouseButtonInternal(Input::MouseButtonEvent& argInOut)
 {
     if (!_enabled)
     {
         return false;
     }
+    const bool pressed = argInOut.pressedState() == Input::InputState::PRESSED;
 
-    bool consumed = false;
+    CEGUI::MouseButton button = CEGUI::NoButton;
+
     switch (argInOut.button())
     {
-        case Input::MouseButton::MB_Left:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonDown(CEGUI::LeftButton);
-        } break;
-        case Input::MouseButton::MB_Middle:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonDown(CEGUI::MiddleButton);
-        } break;
-        case Input::MouseButton::MB_Right:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonDown(CEGUI::RightButton);
-        } break;
-        case Input::MouseButton::MB_Button3:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonDown(CEGUI::X1Button);
-        } break;
-        case Input::MouseButton::MB_Button4:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonDown(CEGUI::X2Button);
-        } break;
+        case Input::MouseButton::MB_Left:    button = CEGUI::LeftButton;   break;
+        case Input::MouseButton::MB_Middle:  button = CEGUI::MiddleButton; break;
+        case Input::MouseButton::MB_Right:   button = CEGUI::RightButton;  break;
+        case Input::MouseButton::MB_Button3: button = CEGUI::X1Button;     break;
+        case Input::MouseButton::MB_Button4: button = CEGUI::X2Button;     break;
 
-        default:
         case Input::MouseButton::MB_Button5:
         case Input::MouseButton::MB_Button6:
         case Input::MouseButton::MB_Button7:
-        case Input::MouseButton::COUNT: break;
+        case Input::MouseButton::COUNT:
+        default: break;
     };
 
-    return consumed;
-}
-
-// Return true if input was consumed
-bool CEGUIInput::mouseButtonReleasedInternal(Input::MouseButtonEvent& argInOut)
-{
-    if (!_enabled)
+    if (button != CEGUI::NoButton)
     {
-        return false;
+    
+        return pressed ? _parent.getCEGUIContext()->injectMouseButtonDown(button)
+                       : _parent.getCEGUIContext()->injectMouseButtonUp(button);
     }
 
-    bool consumed = false;
-
-    switch (argInOut.button())
-    {
-        case Input::MouseButton::MB_Left:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonUp(CEGUI::LeftButton);
-        } break;
-        case Input::MouseButton::MB_Middle:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonUp(CEGUI::MiddleButton);
-        } break;
-        case Input::MouseButton::MB_Right:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonUp(CEGUI::RightButton);
-        } break;
-        case Input::MouseButton::MB_Button3:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonUp(CEGUI::X1Button);
-        } break;
-        case Input::MouseButton::MB_Button4:
-        {
-            consumed = _parent.getCEGUIContext()->injectMouseButtonUp(CEGUI::X2Button);
-        } break;
-
-        case Input::MouseButton::MB_Button5: 
-        case Input::MouseButton::MB_Button6: 
-        case Input::MouseButton::MB_Button7: NOP(); break;
-
-        case Input::MouseButton::COUNT:
-        default: DIVIDE_UNEXPECTED_CALL(); break;
-    };
-
-    return consumed;
+    return false;
 }
 
-// Return true if input was consumed
-bool CEGUIInput::joystickAxisMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
+bool CEGUIInput::onJoystickButtonInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
 {
     const bool consumed = false;
 
     return consumed;
 }
 
-// Return true if input was consumed
-bool CEGUIInput::joystickPovMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
+
+bool CEGUIInput::onJoystickAxisMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
 {
     const bool consumed = false;
 
     return consumed;
 }
 
-// Return true if input was consumed
-bool CEGUIInput::joystickButtonPressedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
+bool CEGUIInput::onJoystickPovMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
 {
     const bool consumed = false;
 
     return consumed;
 }
 
-// Return true if input was consumed
-bool CEGUIInput::joystickButtonReleasedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
+bool CEGUIInput::onJoystickBallMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
 {
     const bool consumed = false;
 
     return consumed;
 }
 
-// Return true if input was consumed
-bool CEGUIInput::joystickBallMovedInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
-{
-    const bool consumed = false;
-
-    return consumed;
-}
-
-// Return true if input was consumed
-bool CEGUIInput::joystickAddRemoveInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
-{
-    const bool consumed = false;
-
-    return consumed;
-}
-
-bool CEGUIInput::joystickRemapInternal( [[maybe_unused]] Input::JoystickEvent & argInOut)
+bool CEGUIInput::onJoystickRemapInternal( [[maybe_unused]] Input::JoystickEvent& argInOut)
 {
     const bool consumed = false;
 
@@ -417,12 +340,13 @@ bool CEGUIInput::onTextInputInternal(Input::TextInputEvent& argInOut)
 
 bool CEGUIInput::onTextEditInternal([[maybe_unused]] Input::TextEditEvent& argInOut)
 {
-    if (!_enabled)
-    {
-        return false;
-    }
+    return _enabled;
+}
 
-    return true;
+bool CEGUIInput::onDeviceAddOrRemoveInternal([[maybe_unused]] Input::InputEvent& argInOut)
+{
+    const bool consumed = false;
+    return consumed;
 }
 
 } //namespace Divide

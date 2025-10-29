@@ -54,7 +54,7 @@ namespace Divide
 
             default: DebugBreak();
             case BufferUpdateFrequency::OFTEN:
-            case BufferUpdateFrequency::OCASSIONAL:
+            case BufferUpdateFrequency::OCCASIONAL:
             {
                 // We will also need to be careful to not step on our own toes here
                 _lockManager = std::make_unique<glLockManager>();
@@ -137,8 +137,9 @@ namespace Divide
         }
         else
         {
+            gl46core::GLuint zero = 0;
             gl46core::glInvalidateBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes);
-            gl46core::glNamedBufferSubData(_memoryBlock._bufferHandle, _memoryBlock._offset + offsetInBytes, rangeInBytes, data == nullptr ? GLUtil::GLMemory::GetZeroData(rangeInBytes) : data);
+            gl46core::glClearNamedBufferSubData(_memoryBlock._bufferHandle, gl46core::GL_R8,  _memoryBlock._offset + offsetInBytes, rangeInBytes, gl46core::GL_RED, gl46core::GL_UNSIGNED_BYTE, &zero);
         }
 
         return ret;

@@ -310,19 +310,19 @@ namespace Divide
         const auto& chunks = _descriptor.parentTerrain->terrainChunks();
 
         ShaderBufferDescriptor bufferDescriptor = {};
-        bufferDescriptor._bufferParams._elementSize = sizeof( VegetationData );
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+        bufferDescriptor._elementSize = sizeof( VegetationData );
+        bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
 
         if ( _maxTreeInstances > 0 )
         {
-            bufferDescriptor._bufferParams._elementCount = to_U32( _maxTreeInstances * chunks.size() );
+            bufferDescriptor._elementCount = to_U32( _maxTreeInstances * chunks.size() );
             bufferDescriptor._name = "Tree_data";
             _treeData = context.gfx().newShaderBuffer( bufferDescriptor );
         }
         if ( _maxGrassInstances > 0 )
         {
-            bufferDescriptor._bufferParams._elementCount = to_U32( _maxGrassInstances * chunks.size() );
+            bufferDescriptor._elementCount = to_U32( _maxGrassInstances * chunks.size() );
             bufferDescriptor._name = "Grass_data";
             _grassData = context.gfx().newShaderBuffer( bufferDescriptor );
         }
@@ -511,7 +511,7 @@ namespace Divide
                         model.waitForReady( true );
                         model.assetName( meshName );
                         Handle<Mesh> meshPtr = CreateResource( model );
-                        Get(meshPtr)->setMaterialTpl( _treeMaterial );
+                        Get(meshPtr)->setMaterialTemplate( _treeMaterial, Get(meshPtr)->geometryBuffer()->generateAttributeMap() );
                         // CSM last split should probably avoid rendering trees since it would cover most of the scene :/
                         Get(meshPtr)->renderState().addToDrawExclusionMask( RenderStage::SHADOW,
                                                                             RenderPassType::MAIN_PASS,
@@ -796,8 +796,8 @@ namespace Divide
 
         GenericDrawCommand& cmd = cmdsOut.emplace_back();
         toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
-
-        cmd._sourceBuffers = &_buffer->handle();
+        cmd._sourceBuffers = _buffer->handles().data();
+        cmd._sourceBuffersCount = _buffer->handles().size();
         cmd._cmd.instanceCount = instance->_instanceCountGrass;
         cmd._cmd.indexCount = to_U32( _buffer->getPartitionIndexCount(_lodPartitions[0]) );
         cmd._cmd.firstIndex = to_U32( _buffer->getPartitionOffset(_lodPartitions[0]) );

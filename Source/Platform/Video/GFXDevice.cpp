@@ -139,6 +139,10 @@ namespace Divide
     DeviceInformation GFXDevice::s_deviceInformation{};
     GFXDevice::IMPrimitivePool GFXDevice::s_IMPrimitivePool{};
 
+    DebugScope GFXDevice::s_debugScope[Config::MAX_DEBUG_SCOPE_DEPTH]{};
+    DebugScope GFXDevice::s_lastInsertedDebugMessage{};
+    U8         GFXDevice::s_debugScopeDepth{0u};
+
     PerPassUtils RenderTargetNames::UTILS = {};
     PerPassUtils RenderTargetNames::REFLECT::UTILS = {};
     PerPassUtils RenderTargetNames::REFRACT::UTILS = {};
@@ -254,7 +258,7 @@ namespace Divide
 
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 0,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // SCENE_NORMALS;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 1,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // DEPTH;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 2,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // TRANSMITANCE;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 2,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // TRANSMITTANCE;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 3,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // SSR_SAMPLE;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 4,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // SSAO_SAMPLE;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 5,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // TREE_DATA;
@@ -377,6 +381,8 @@ namespace Divide
     /// primitives needed for frame rendering
     ErrorCode GFXDevice::initRenderingAPI( const I32 argc, char** argv, const RenderAPI API )
     {
+        ClearDebugMessages();
+
         ErrorCode hardwareState = createAPIInstance( API );
         Configuration& config = context().config();
         
@@ -406,13 +412,13 @@ namespace Divide
         DIVIDE_ASSERT( Config::MAX_CULL_DISTANCES <= s_deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
         DIVIDE_ASSERT( Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
 
-        DIVIDE_ASSERT( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < s_deviceInformation._maxWorgroupSize[0] &&
-                       Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < s_deviceInformation._maxWorgroupSize[1] &&
-                       Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorgroupSize[2] );
+        DIVIDE_ASSERT( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < s_deviceInformation._maxWorkgroupSize[0] &&
+                       Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < s_deviceInformation._maxWorkgroupSize[1] &&
+                       Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupSize[2] );
 
         DIVIDE_ASSERT( to_U32( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS ) *
                        Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
-                       Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorgroupInvocations );
+                       Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupInvocations );
 
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
@@ -522,12 +528,12 @@ namespace Divide
         if ( resizeCamBuffer )
         {
             ShaderBufferDescriptor bufferDescriptor = {};
-            bufferDescriptor._bufferParams._elementCount = 1;
-            bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
+            bufferDescriptor._elementCount = 1;
+            bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
+            bufferDescriptor._updateFrequency = BufferUpdateFrequency::OFTEN;
             bufferDescriptor._ringBufferLength = to_U16( targetSizeCam );
-            bufferDescriptor._bufferParams._elementSize = sizeof( GFXShaderData::CamData );
-            bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._bufferParams._elementSize };
+            bufferDescriptor._elementSize = sizeof( GFXShaderData::CamData );
+            bufferDescriptor._initialData = { (Byte*)&_gpuBlock._camData, bufferDescriptor._elementSize };
 
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
@@ -541,12 +547,12 @@ namespace Divide
         {
             // Atomic counter for occlusion culling
             ShaderBufferDescriptor bufferDescriptor = {};
-            bufferDescriptor._bufferParams._elementCount = 1;
+            bufferDescriptor._elementCount = 1;
             bufferDescriptor._ringBufferLength = to_U16( targetSizeCullCounter );
-            bufferDescriptor._bufferParams._elementSize = 4 * sizeof( U32 );
-            bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-            bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
-            bufferDescriptor._bufferParams._hostVisible = true;
+            bufferDescriptor._elementSize = 4 * sizeof( U32 );
+            bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+            bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
+            bufferDescriptor._hostVisible = true;
             bufferDescriptor._separateReadWrite = true;
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
@@ -1316,7 +1322,7 @@ namespace Divide
         // Close the rendering API
         _api->closeRenderingAPI();
         _api.reset();
-
+        ClearDebugMessages();
         LockGuard<Mutex> lock( _graphicsResourceMutex );
         if ( !_graphicResources.empty() )
         {
@@ -2315,6 +2321,32 @@ namespace Divide
         descriptorSet( DescriptorSetUsage::PER_DRAW ).clear();
     }
 
+    void GFXDevice::AddDebugMessage(const char* message, const U32 id)
+    {
+        s_lastInsertedDebugMessage = { message, id };
+    }
+
+    void GFXDevice::PushDebugMessage(const char* message, const U32 id)
+    {
+        assert(s_debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH);
+        s_debugScope[s_debugScopeDepth++] = { message, id };
+    }
+
+    void GFXDevice::PopDebugMessage()
+    {
+        s_debugScope[s_debugScopeDepth--] = {};
+    }
+
+    void GFXDevice::ClearDebugMessages()
+    {
+        s_lastInsertedDebugMessage = {};
+        for (auto& scope : s_debugScope)
+        {
+            scope = {};
+        }
+        s_debugScopeDepth = 0u;
+    }
+
     /// Transform our depth buffer to a HierarchicalZ buffer (for occlusion queries and screen space reflections)
     /// Based on RasterGrid implementation: http://rastergrid.com/blog/2010/10/hierarchical-z-map-based-occlusion-culling/
     /// Modified with nVidia sample code: https://github.com/nvpro-samples/gl_occlusion_culling
@@ -3159,9 +3191,9 @@ namespace Divide
         primitive = nullptr;
     }
 
-    VertexBuffer_ptr GFXDevice::newVB( const VertexBuffer::Descriptor& descriptor )
+    VertexBuffer_uptr GFXDevice::newVB( const VertexBuffer::Descriptor& descriptor )
     {
-        return std::make_shared<VertexBuffer>( *this, descriptor );
+        return std::make_unique<VertexBuffer>( *this, descriptor );
     }
 #pragma endregion
 

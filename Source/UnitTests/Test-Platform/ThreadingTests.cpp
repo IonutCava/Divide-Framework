@@ -7,6 +7,13 @@
 
 namespace Divide
 {
+    struct TaskUTWrapper
+    {
+        static size_t flushCallbackQueue(TaskPool& pool)
+        {
+            return Attorney::MainThreadTaskPool::flushCallbackQueue(pool);
+        }
+    };
 
 namespace
 {
@@ -135,7 +142,7 @@ TEST_CASE( "Task Callback Test", "[threading_tests]" )
     CHECK_FALSE( testValue );
 
     PrintLine( "TaskCallbackTest: flushing queue!" );
-    const size_t callbackCount = test.flushCallbackQueue();
+    const size_t callbackCount = TaskUTWrapper::flushCallbackQueue(test);
     CHECK_EQUAL( callbackCount, 1u );
     PrintLine( "TaskCallbackTest: flushing test! Value: " + std::string( testValue ? "true" : "false" ) );
     CHECK_TRUE( testValue );
@@ -202,7 +209,7 @@ TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_t
 
     CHECK_TRUE( getTestValue() );
 
-    const size_t callbackCount = test.flushCallbackQueue();
+    const size_t callbackCount = TaskUTWrapper::flushCallbackQueue(test);
     CHECK_EQUAL( callbackCount, 1u );
 
     const bool finalValue = getTestValue();
@@ -312,7 +319,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
 
     CHECK_EQUAL( callbackValue, 1u );
 
-    size_t callbackCount = test.flushCallbackQueue();
+    size_t callbackCount = TaskUTWrapper::flushCallbackQueue(test);
     CHECK_EQUAL( callbackCount, 1u );
     CHECK_EQUAL( callbackValue, 2u );
 
@@ -332,7 +339,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
     StartAndWait(*job, test, TaskPriority::HIGH);
     CHECK_EQUAL(callbackValue, 4u);
 
-    callbackCount = test.flushCallbackQueue();
+    callbackCount = TaskUTWrapper::flushCallbackQueue(test);
     CHECK_EQUAL( callbackCount, 0u );
     CHECK_EQUAL( callbackValue, 4u );
 

@@ -148,7 +148,7 @@ struct VKImmediateCmdContext
     static constexpr U8 BUFFER_COUNT = 4u;
 
     using FlushCallback = std::function<void( VkCommandBuffer cmd, QueueType queue, U32 queueIndex )>;
-    explicit VKImmediateCmdContext( VKDevice& context, QueueType type );
+    explicit VKImmediateCmdContext( const Configuration& config, VKDevice& context, QueueType type );
     ~VKImmediateCmdContext();
 
     void flushCommandBuffer( FlushCallback&& function, const char* scopeName );
@@ -156,6 +156,7 @@ struct VKImmediateCmdContext
     private:
 
     VKDevice& _context;
+    const Configuration& _config;
     const QueueType _type;
     const U32 _queueIndex;
 
@@ -204,7 +205,7 @@ struct VKPerWindowState
 
 struct VKStateTracker
 {
-    void init( VKDevice* device, VKPerWindowState* mainWindow );
+    void init( const Configuration& config, VKDevice* device, VKPerWindowState* mainWindow );
     void reset();
     void setDefaultState();
 
@@ -228,11 +229,6 @@ struct VKStateTracker
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     size_t _renderTargetFormatHash{0u};
     vec2<U16> _activeRenderTargetDimensions{ 1u };
-
-    DebugScope _debugScope[Config::MAX_DEBUG_SCOPE_DEPTH];
-    DebugScope _lastInsertedDebugMessage;
-
-    U8 _debugScopeDepth{ 0u };
 
     U8 _activeMSAASamples{ 1u };
     bool _pushConstantsValid{ false };

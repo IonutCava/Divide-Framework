@@ -89,8 +89,8 @@ bool AnimEvaluator::initBuffers( GFXDevice& context, const bool useDualQuaternio
         ShaderBufferDescriptor bufferDescriptor{};
         bufferDescriptor._ringBufferLength = 1;
         Util::StringFormatTo(bufferDescriptor._name, "BONE_BUFFER_{}", name());
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+        bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
 
         if ( useDualQuaternions )
         {
@@ -101,8 +101,8 @@ bool AnimEvaluator::initBuffers( GFXDevice& context, const bool useDualQuaternio
                 animationData.insert(eastl::end(animationData), eastl::begin(boneTransforms), eastl::end(boneTransforms));
             }
 
-            bufferDescriptor._bufferParams._elementSize = sizeof(DualQuaternion);
-            bufferDescriptor._bufferParams._elementCount = to_U32(animationData.size());
+            bufferDescriptor._elementSize = sizeof(DualQuaternion);
+            bufferDescriptor._elementCount = to_U32(animationData.size());
             bufferDescriptor._initialData = { animationData.data(), animationData.size() * sizeof(DualQuaternion) };
             _boneBuffer = context.newShaderBuffer(bufferDescriptor);
         }
@@ -115,8 +115,8 @@ bool AnimEvaluator::initBuffers( GFXDevice& context, const bool useDualQuaternio
                 animationData.insert(eastl::end(animationData), eastl::begin(boneTransforms), eastl::end(boneTransforms));
             }
 
-            bufferDescriptor._bufferParams._elementSize = sizeof(mat4<F32>);
-            bufferDescriptor._bufferParams._elementCount = to_U32(animationData.size());
+            bufferDescriptor._elementSize = sizeof(mat4<F32>);
+            bufferDescriptor._elementCount = to_U32(animationData.size());
             bufferDescriptor._initialData = { animationData.data(), animationData.size() * sizeof(mat4<F32>) };
             _boneBuffer = context.newShaderBuffer(bufferDescriptor);
         }

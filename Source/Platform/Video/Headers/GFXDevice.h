@@ -361,6 +361,11 @@ public:  // Accessors and Mutators
 
     [[nodiscard]] static bool IsSubmitCommand(GFX::CommandType type) noexcept;
 
+    static void AddDebugMessage(const char* message, U32 id = U32_MAX);
+    static void PushDebugMessage(const char* message, U32 id = U32_MAX);
+    static void PopDebugMessage();
+    static void ClearDebugMessages();
+
 public:
     /// Create and return a new framebuffer.
     [[nodiscard]] RenderTarget_uptr newRenderTarget( const RenderTargetDescriptor& descriptor );
@@ -370,9 +375,9 @@ public:
     [[nodiscard]] bool               destroyIMP(IMPrimitive*& primitive);
 
     
-    [[nodiscard]] GPUBuffer_ptr newGPUBuffer(U32 ringBufferLength, std::string_view name);
+    [[nodiscard]] GPUBuffer_uptr newGPUBuffer(U32 ringBufferLength, std::string_view name);
 
-    [[nodiscard]] VertexBuffer_ptr newVB(const VertexBuffer::Descriptor& descriptor);
+    [[nodiscard]] VertexBuffer_uptr newVB(const VertexBuffer::Descriptor& descriptor);
 
     /// Create and return a new shader buffer. 
     /// The OpenGL implementation creates either an 'Uniform Buffer Object' if unbound is false
@@ -414,6 +419,10 @@ public:
    [[nodiscard]] bool framePreRender( const FrameEvent& evt ) override;
    [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
    [[nodiscard]] bool frameEnded( const FrameEvent& evt ) noexcept override;
+
+   static DebugScope s_debugScope[Config::MAX_DEBUG_SCOPE_DEPTH];
+   static DebugScope s_lastInsertedDebugMessage;
+   static U8         s_debugScopeDepth;
 
 protected:
 

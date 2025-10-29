@@ -48,7 +48,7 @@ namespace Divide
         bool _bufferNeedsResize = false;
 
         GFXDevice* _parent{ nullptr };
-        GPUVertexBuffer_uptr _fontRenderingBuffer{};
+        GPUBuffer_uptr _fontRenderingBuffer{};
         Handle<Texture> _fontRenderingTexture{INVALID_HANDLE<Texture>};
         I32 _width{ 1u };
 
@@ -67,14 +67,14 @@ namespace Divide
             GPUBuffer::SetBufferParams params = {};
             params._initialData = { nullptr, 0 };
 
-            params._bufferParams._elementCount = FONS_VERTEX_COUNT * dvd->_bufferSizeFactor;
-            params._bufferParams._elementSize = sizeof( FONSvert );
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::OFTEN;
-            params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
-
-            const auto lock = dvd->_fontRenderingBuffer->_vertexBuffer->setBuffer( params ); //Pos, UV and Colour
+            params._elementCount = FONS_VERTEX_COUNT * dvd->_bufferSizeFactor;
+            params._elementSize = sizeof( FONSvert );
+            params._updateFrequency = BufferUpdateFrequency::OFTEN;
+            params._usageType = BufferUsageType::VERTEX_BUFFER;
+            params._bindIdx = 0u;
+            
+            const auto lock = dvd->_fontRenderingBuffer->setBuffer( params ); //Pos, UV and Colour
             DIVIDE_UNUSED( lock );
-            dvd->_fontRenderingBuffer->_vertexBufferBinding._bindIdx = 0u;
         }
 
 
@@ -82,8 +82,7 @@ namespace Divide
         {
             DVDFONSContext* dvd = (DVDFONSContext*)userPtr;
 
-            dvd->_fontRenderingBuffer = std::make_unique<GPUVertexBuffer>(*dvd->_parent, "GUIFontGPUBuffer");
-            dvd->_fontRenderingBuffer->_vertexBuffer = dvd->_parent->newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, "GUIFontVBBuffer" );
+            dvd->_fontRenderingBuffer = dvd->_parent->newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, "GUIFontVBBuffer" );
 
             RefreshBufferSize(dvd);
 
@@ -481,7 +480,7 @@ namespace Divide
 
             const U32 elementOffset = dvd->_writeOffset * FONS_VERTEX_COUNT;
 
-            const BufferLock lock = dvd->_fontRenderingBuffer->_vertexBuffer->updateBuffer( elementOffset, nverts, (Divide::bufferPtr)verts );
+            const BufferLock lock = dvd->_fontRenderingBuffer->updateBuffer( elementOffset, nverts, (Divide::bufferPtr)verts );
             dvd->_memCmd->_bufferLocks.emplace_back( lock );
 
             GenericDrawCommand drawCmd
@@ -758,75 +757,44 @@ namespace Divide
         }
     }
 
-    // Return true if input was consumed
-    bool GUI::onKeyDownInternal( Input::KeyEvent& argInOut)
+    bool GUI::onKeyInternal( Input::KeyEvent& argInOut)
     {
-        return _ceguiInput.onKeyDown(argInOut);
+        return _ceguiInput.onKey(argInOut);
     }
 
-    // Return true if input was consumed
-    bool GUI::onKeyUpInternal( Input::KeyEvent& argInOut)
+    bool GUI::onMouseMovedInternal( Input::MouseMoveEvent& argInOut)
     {
-        return _ceguiInput.onKeyUp(argInOut);
+        return _ceguiInput.onMouseMoved(argInOut);
     }
 
-    // Return true if input was consumed
-    bool GUI::mouseMovedInternal( Input::MouseMoveEvent& argInOut)
+    bool GUI::onMouseButtonInternal( Input::MouseButtonEvent& argInOut)
     {
-        return _ceguiInput.mouseMoved(argInOut);
+        return _ceguiInput.onMouseButton(argInOut);
     }
 
-    // Return true if input was consumed
-    bool GUI::mouseButtonPressedInternal( Input::MouseButtonEvent& argInOut)
+    bool GUI::onJoystickButtonInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.mouseButtonPressed(argInOut);
+        return _ceguiInput.onJoystickButton(argInOut);
     }
 
-    // Return true if input was consumed
-    bool GUI::mouseButtonReleasedInternal( Input::MouseButtonEvent& argInOut)
+    bool GUI::onJoystickAxisMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.mouseButtonReleased(argInOut);
+        return _ceguiInput.onJoystickAxisMoved(argInOut);
     }
 
-    // Return true if input was consumed
-    bool GUI::joystickAxisMovedInternal( Input::JoystickEvent& argInOut)
+    bool GUI::onJoystickPovMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickAxisMoved(argInOut);
+        return _ceguiInput.onJoystickPovMoved(argInOut);
     }
 
-    // Return true if input was consumed
-    bool GUI::joystickPovMovedInternal( Input::JoystickEvent& argInOut)
+    bool GUI::onJoystickBallMovedInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickPovMoved(argInOut);
+        return _ceguiInput.onJoystickBallMoved(argInOut);
     }
 
-    // Return true if input was consumed
-    bool GUI::joystickButtonPressedInternal( Input::JoystickEvent& argInOut)
+    bool GUI::onJoystickRemapInternal( Input::JoystickEvent& argInOut)
     {
-        return _ceguiInput.joystickButtonPressed(argInOut);
-    }
-
-    // Return true if input was consumed
-    bool GUI::joystickButtonReleasedInternal( Input::JoystickEvent& argInOut)
-    {
-        return _ceguiInput.joystickButtonReleased(argInOut);
-    }
-
-    // Return true if input was consumed
-    bool GUI::joystickBallMovedInternal( Input::JoystickEvent& argInOut)
-    {
-        return _ceguiInput.joystickBallMoved(argInOut);
-    }
-
-    // Return true if input was consumed
-    bool GUI::joystickAddRemoveInternal( Input::JoystickEvent& argInOut)
-    {
-        return _ceguiInput.joystickAddRemove(argInOut);
-    }
-
-    bool GUI::joystickRemapInternal( Input::JoystickEvent& argInOut)
-    {
-        return _ceguiInput.joystickRemap(argInOut);
+        return _ceguiInput.onJoystickRemap(argInOut);
     }
 
     bool GUI::onTextInputInternal( [[maybe_unused]] Input::TextInputEvent& argInOut)
@@ -835,6 +803,11 @@ namespace Divide
     }
 
     bool GUI::onTextEditInternal( [[maybe_unused]] Input::TextEditEvent& argInOut)
+    {
+        return false;
+    }
+
+    bool GUI::onDeviceAddOrRemoveInternal( [[maybe_unused]] Input::InputEvent& argInOut)
     {
         return false;
     }

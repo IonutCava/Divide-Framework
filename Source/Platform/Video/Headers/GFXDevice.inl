@@ -216,7 +216,7 @@ inline ShaderBuffer_uptr GFXDevice::newShaderBuffer( const ShaderBufferDescripto
     return _api->newShaderBuffer( descriptor );
 }
 
-inline GPUBuffer_ptr GFXDevice::newGPUBuffer( const U32 ringBufferLength, const std::string_view name )
+inline GPUBuffer_uptr GFXDevice::newGPUBuffer( const U32 ringBufferLength, const std::string_view name )
 {
     return _api->newGPUBuffer( ringBufferLength, name );
 }

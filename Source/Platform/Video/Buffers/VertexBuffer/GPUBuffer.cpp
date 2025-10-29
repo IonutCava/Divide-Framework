@@ -4,31 +4,31 @@
 
 namespace Divide {
 
-GPUVertexBuffer::GVBPool GPUVertexBuffer::s_GVBPool;
+GPUBuffer::GPUBufferPool GPUBuffer::s_BufferPool;
 
 GPUBuffer::GPUBuffer(GFXDevice& context, const U16 ringBufferLength, const std::string_view name)
     : GraphicsResource(context, Type::BUFFER, getGUID(), name.empty() ? 0 : _ID_VIEW(name.data(), name.size()))
     , RingBuffer(ringBufferLength)
     , _name(name.data(), name.size())
+    , _handle(s_BufferPool.registerExisting(*this))
 {
 }
 
-GPUVertexBuffer::GPUVertexBuffer(GFXDevice& context, const std::string_view name)
-  : GraphicsResource(context, Type::BUFFER, getGUID(), name.empty() ? 0 : _ID_VIEW(name.data(), name.size()))
-  , _handle(s_GVBPool.registerExisting(*this))
+GPUBuffer::~GPUBuffer()
 {
+    s_BufferPool.unregisterExisting(_handle);
 }
 
-GPUVertexBuffer::~GPUVertexBuffer()
+BufferLock GPUBuffer::setBuffer(const SetBufferParams& params)
 {
-    s_GVBPool.unregisterExisting(_handle);
-}
+    DIVIDE_ASSERT(params._usageType != BufferUsageType::COUNT);
 
+    BufferLock lock{};
 
-void GPUVertexBuffer::incQueue()
-{
-    if (_vertexBuffer) _vertexBuffer->incQueue();
-    if (_indexBuffer)  _indexBuffer->incQueue();
+    _bindConfig._bindIdx = params._bindIdx;
+    _bindConfig._elementStride = params._elementStride;
+
+    return lock;
 }
 
 

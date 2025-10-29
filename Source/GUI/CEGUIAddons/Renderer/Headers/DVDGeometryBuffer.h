@@ -38,7 +38,7 @@
 namespace Divide
 {
     class Texture;
-    FWD_DECLARE_MANAGED_CLASS( GPUVertexBuffer );
+    FWD_DECLARE_MANAGED_CLASS( GPUBuffer );
 }
 
 namespace CEGUI
@@ -132,7 +132,7 @@ protected:
     //! Sampler hash to use if the current batch needs a texture bound
     Divide::SamplerDescriptor _sampler{};
     //! Divide specific geometry buffer
-    Divide::GPUVertexBuffer_uptr _gvd;
+    Divide::GPUBuffer_uptr _gvd;
     //! model matrix cache - we use double because gluUnproject takes double
     mutable glm::mat4 _matrix;
     //! true when d_matrix is valid and up to date

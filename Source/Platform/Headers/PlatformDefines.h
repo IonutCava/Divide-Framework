@@ -47,6 +47,7 @@
 
 #if defined(_DEBUG)
 #define STUBBED(x)                                    \
+WARNING(x);                                           \
 do {                                                  \
     static bool seen_this = false;                    \
     if (!seen_this) {                                 \

@@ -59,6 +59,7 @@ bool ResourceLoadLock::SetLoadingFinished(const size_t hash)
 PlatformContext* ResourceCache::s_context = nullptr;
 RenderAPI ResourceCache::s_renderAPI = RenderAPI::COUNT;
 bool ResourceCache::s_enabled = false;
+std::atomic_bool ResourceCache::s_deletionQueueDirty{ false };
 
 ResourcePoolBase::ResourcePoolBase(const RenderAPI api)
    : _api(api)
@@ -106,9 +107,13 @@ void ResourceCache::PrintLeakedResources()
 
 void ResourceCache::OnFrameStart()
 {
-    for ( ResourcePoolBase* pool : s_resourcePools )
+    bool expected = true;
+    if (s_deletionQueueDirty.compare_exchange_strong(expected, false))
     {
-        pool->processDeletionQueue();
+        for ( ResourcePoolBase* pool : s_resourcePools )
+        {
+            pool->processDeletionQueue();
+        }
     }
 }
 
