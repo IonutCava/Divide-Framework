@@ -188,18 +188,6 @@ static void HelpMarker( const char* desc )
     }
 }
 
-static void PushReadOnly( const bool fade )
-{
-    ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, fade ? 0.5f : 1.f);
-    ImGui::BeginDisabled();
-}
-
-static void PopReadOnly()
-{
-    ImGui::EndDisabled();
-    ImGui::PopStyleVar();
-}
-
 static void SetTooltip( const char* text )
 {
     if ( ImGui::IsItemHovered() )
@@ -585,7 +573,7 @@ int main( int, char** )
                     ImGui::SameLine();
                     if ( showNameInput && InputLen == 0 )
                     {
-                        PushReadOnly( true );
+                        ImGui::BeginDisabled();
                     }
                     if ( ImGui::Button( MODEL_YES_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
                     {
@@ -594,7 +582,7 @@ int main( int, char** )
                     }
                     if ( showNameInput && InputLen == 0 )
                     {
-                        PopReadOnly();
+                        ImGui::EndDisabled();
                     }
 
                     ImGui::EndPopup();
@@ -629,9 +617,9 @@ int main( int, char** )
                     ImGui::Text( LAUNCH_CONFIG ); ImGui::SameLine();
 
                     { // Launch mode: VS, Editor, Game
-                        if constexpr ( !WINDOWS_BUILD ) { PushReadOnly( true ); }
+                        if constexpr ( !WINDOWS_BUILD ) { ImGui::BeginDisabled(); }
                         ImGui::RadioButton( g_ideName.c_str(), &mode, 0 );
-                        if constexpr ( !WINDOWS_BUILD ) { PopReadOnly( ); }
+                        if constexpr ( !WINDOWS_BUILD ) { ImGui::EndDisabled(); }
 
                         ImGui::SameLine();
 
@@ -733,7 +721,7 @@ int main( int, char** )
                     ImGui::SameLine();
                     if ( g_ideLaunchCommand.empty() || g_ideName.empty() )
                     {
-                        PushReadOnly( true );
+                        ImGui::BeginDisabled();
                     }
                     if ( ImGui::Button( MODEL_SAVE_BUTTON_LABEL, ImVec2( 120, 0 ) ) )
                     {
@@ -742,7 +730,7 @@ int main( int, char** )
                     }
                     if ( g_ideLaunchCommand.empty() || g_ideName.empty() )
                     {
-                        PopReadOnly();
+                        ImGui::EndDisabled();
                     }
 
                     ImGui::EndPopup();
@@ -752,7 +740,7 @@ int main( int, char** )
                 
                 if (launch_mode == 0)
                 {
-                    PushReadOnly(true);
+                    ImGui::BeginDisabled();
                 }
                 static float button_size = 120.f, button_distance = 15.f;
                 ImGui::SetNextWindowPos( center, ImGuiCond_Always, ImVec2( 0.51f, 0.45f ) );
@@ -826,7 +814,7 @@ int main( int, char** )
                         ImGui::BeginGroup();
                         if ( sceneListEmpty )
                         {
-                            PushReadOnly(true);
+                            ImGui::BeginDisabled();
                         }
 
                         const bool isSelected = &project == selectedProject;
@@ -861,7 +849,7 @@ int main( int, char** )
                         CenteredText( project._name.c_str());
                         if ( sceneListEmpty )
                         {
-                            PopReadOnly();
+                            ImGui::EndDisabled();
                         }
                         if ( sceneListEmpty )
                         {
@@ -875,7 +863,7 @@ int main( int, char** )
                 }
                 if ( launch_mode == 0 )
                 {
-                    PopReadOnly();
+                    ImGui::EndDisabled();
                 }
                 ImGui::SameLine();
 
@@ -888,7 +876,7 @@ int main( int, char** )
                     const bool isReadOnly = selectedProject == nullptr || selectedProject->_isDefault;
                     if ( isReadOnly )
                     {
-                        PushReadOnly( true );
+                        ImGui::BeginDisabled();
                     }
 
                     if ( ImGui::ImageButton( "##deleteProject", (ImTextureID)(intptr_t)deleteIcon->_texture, iconSize ) )
@@ -929,7 +917,7 @@ int main( int, char** )
 
                     if ( isReadOnly )
                     {
-                        PopReadOnly();
+                        ImGui::EndDisabled();
                     }
 
                     ImGui::SameLine();

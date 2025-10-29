@@ -1,25 +1,24 @@
 include(FetchContent)
 
-#----------------------------------------------------------------------------- CEGUI ------------------------------------------------------------------
-message("Fetching CEGUI Lib")
-
 set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 
 if (MSVC_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4312 /wd4477 /wd4996")
 elseif(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int")
     if(APPLE)
          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla-extension")
     else()
          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla-cxx-extension")
     endif()
 elseif(GNU_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-deprecated-declarations -Wno-deprecated-copy -Wno-misleading-indentation -Wno-unused-but-set-variable")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-deprecated-copy -Wno-misleading-indentation -Wno-unused-but-set-variable")
 else()
     message(FATAL_ERROR "Unknown compiler type")
 endif()
 
+#----------------------------------------------------------------------------- CEGUI ------------------------------------------------------------------
+message("Fetching CEGUI Lib")
 
 FetchContent_Declare(
   Cegui
@@ -123,8 +122,10 @@ list(APPEND EXTRA_DEFINITIONS JPH_DISABLE_CUSTOM_ALLOCATOR)
 
 set(CROSS_PLATFORM_DETERMINISTIC OFF)
 
-set(FLOATING_POINT_EXCEPTIONS_ENABLED ON)
-list(APPEND EXTRA_DEFINITIONS JPH_FLOATING_POINT_EXCEPTIONS_ENABLED)
+if (MSVC_COMPILER)
+    set(FLOATING_POINT_EXCEPTIONS_ENABLED ON)
+    list(APPEND EXTRA_DEFINITIONS JPH_FLOATING_POINT_EXCEPTIONS_ENABLED)
+endif()
 
 message("Toggling SSE4.1 support:" ${SSE41_OPT})
 set(USE_SSE4_1 ${SSE41_OPT})
@@ -176,5 +177,55 @@ message("END: Configuring JoltPhysics library")
 FetchContent_MakeAvailable(JoltPhysics)
 
 include_directories(${JoltPhysics_SOURCE_DIR}/..)
+
+#----------------------------------------------------------------------------- NRI Physics ------------------------------------------------------------------
+message("Fetching NVIDIA NRI Lib")
+option(NRI_STATIC_LIBRARY "" OFF)
+option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON)
+option(NRI_ENABLE_VK_SUPPORT "" ON)
+option(NRI_ENABLE_NONE_SUPPORT "" ON)
+option(NRI_ENABLE_VALIDATION_SUPPORT "" ON)
+option(NRI_ENABLE_IMGUI_EXTENSION "" ON)
+option(NRI_ENABLE_FFX_SDK "" ON)
+option(NRI_ENABLE_XESS_SDK "" ON)
+
+if(WINDOWS_OS_BUILD)
+    option(NRI_ENABLE_D3D12_SUPPORT "" ON)
+    option(NRI_ENABLE_D3D11_SUPPORT "" ON)
+    option(NRI_ENABLE_NVTX_SUPPORT "" ON)
+elseif(MAC_OS_BUILD)
+    option(NRI_ENABLE_METAL_SUPPORT "" ON)
+else()
+    option(NRI_ENABLE_XLIB_SUPPORT "" ON)
+    if(WAYLAND_FOUND)
+        option(NRI_ENABLE_WAYLAND_SUPPORT "" ON)
+    endif()
+endif()
+FetchContent_Declare(
+    nri
+    GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
+    GIT_TAG        v176
+    #GIT_PROGRESS   TRUE
+    SYSTEM
+)
+
+FetchContent_MakeAvailable( nri )
+
+set(NRI_TARGETS
+    NRI
+    NRI_NONE
+    NRI_D3D11
+    NRI_D3D12
+    NRI_VK
+    NRI_Validation
+)
+
+target_compile_options(NRI_Shared PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>: -Wno-missing-field-initializers -Wno-error=missing-field-initializers >)
+foreach(nri_target IN LISTS NRI_TARGETS)
+    if(TARGET ${nri_target})
+        set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        target_compile_options(${nri_target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>: -Wno-missing-field-initializers -Wno-error=missing-field-initializers >)
+    endif()
+endforeach()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")

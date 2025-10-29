@@ -53,7 +53,6 @@ namespace Divide {
             : GPUBuffer(context, ringBufferLength, name)
         {}
 
-        [[nodiscard]] BufferLock setBuffer([[maybe_unused]] const SetBufferParams& params) noexcept override { return {}; }
         [[nodiscard]] BufferLock updateBuffer([[maybe_unused]] U32 elementCountOffset,
                                               [[maybe_unused]] U32 elementCountRange,
                                               [[maybe_unused]] bufferPtr data) noexcept override{ return {}; }

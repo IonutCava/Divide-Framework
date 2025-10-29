@@ -563,9 +563,9 @@ namespace
 
                     if (activeTopology == PrimitiveTopology::COMPUTE )
                     {
-                        if (workGroupCount.x > GFXDevice::GetDeviceInformation()._maxWorgroupCount[0] ||
-                            workGroupCount.y > GFXDevice::GetDeviceInformation()._maxWorgroupCount[1] ||
-                            workGroupCount.z > GFXDevice::GetDeviceInformation()._maxWorgroupCount[2])
+                        if (workGroupCount.x > GFXDevice::GetDeviceInformation()._maxWorkgroupCount[0] ||
+                            workGroupCount.y > GFXDevice::GetDeviceInformation()._maxWorkgroupCount[1] ||
+                            workGroupCount.z > GFXDevice::GetDeviceInformation()._maxWorkgroupCount[2])
                         {
                             return { ErrorType::INVALID_DISPATCH_COUNT, cmdIndex, Names::commandType[to_base(cmd->_type)] };
                         }
@@ -589,7 +589,7 @@ namespace
                             }
                         }
 
-                        const U32* const limits = hasMeshTaskShader ? GFXDevice::GetDeviceInformation()._maxTaskWorgroupCount : GFXDevice::GetDeviceInformation()._maxMeshWorgroupCount;
+                        const U32* const limits = hasMeshTaskShader ? GFXDevice::GetDeviceInformation()._maxTaskWorkgroupCount : GFXDevice::GetDeviceInformation()._maxMeshWorkgroupCount;
 
                         if (workGroupCount.x > limits[0] || workGroupCount.y > limits[1] || workGroupCount.z > limits[2])
                         {

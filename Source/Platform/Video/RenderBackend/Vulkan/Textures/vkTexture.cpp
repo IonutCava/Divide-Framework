@@ -4,6 +4,8 @@
 
 #include "Utility/Headers/Localization.h"
 
+#include "Core/Headers/PlatformContext.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h" //For staging buffers
 
@@ -63,7 +65,7 @@ namespace Divide
 
         void CopyInternal( VkCommandBuffer cmdBuffer, VkImage source, const VkImageAspectFlags sourceAspect, const CopyTextureType sourceType, VkImage destination, const VkImageAspectFlags destinationAspect, const CopyTextureType destinationType, const CopyTexParams& params, const U16 depth )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             VkDependencyInfo dependencyInfo = vk::dependencyInfo();
             dependencyInfo.imageMemoryBarrierCount = 2u;
@@ -216,9 +218,11 @@ namespace Divide
 
     void vkTexture::generateMipmaps( VkCommandBuffer cmdBuffer, const U16 baseLevel, U16 baseLayer, U16 layerCount, const ImageUsage crtUsage )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        VK_API::PushDebugMessage(cmdBuffer, "vkTexture::generateMipmaps");
+        const Configuration& config = _context.context().config();
+
+        VK_API::PushDebugMessage( config, cmdBuffer, "vkTexture::generateMipmaps");
 
         VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
@@ -341,7 +345,7 @@ namespace Divide
                 default: DIVIDE_UNEXPECTED_CALL_MSG( "To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!" ); break;
             }
         }
-        VK_API::PopDebugMessage(cmdBuffer);
+        VK_API::PopDebugMessage( config, cmdBuffer );
     }
 
     void vkTexture::prepareTextureData( const U16 width, const U16 height, const U16 depth, const bool emptyAllocation )
@@ -538,7 +542,7 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
             VkImageSubresourceRange range;
             range.aspectMask = GetAspectFlags( _descriptor );
@@ -637,7 +641,7 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
             VkImageSubresourceRange range;
             range.aspectMask = GetAspectFlags( _descriptor );
@@ -720,7 +724,7 @@ namespace Divide
 
     void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         if ( mipLevel == U8_MAX )
         {
@@ -773,7 +777,7 @@ namespace Divide
         ImageReadbackData ret{};
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
             ret = readData(cmd, mipLevel, pixelPackAlignment );
         }, "vkTexture::readData()" );
@@ -782,7 +786,7 @@ namespace Divide
 
     ImageReadbackData vkTexture::readData( VkCommandBuffer cmdBuffer, U8 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         ImageReadbackData grabData{};
         grabData._numComponents = numChannels();
@@ -967,7 +971,7 @@ namespace Divide
 
     /*static*/ void vkTexture::Copy(VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params)
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         // We could handle this with a custom shader pass and temp render targets, so leaving the option i
         DIVIDE_ASSERT( sourceSamples == destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );

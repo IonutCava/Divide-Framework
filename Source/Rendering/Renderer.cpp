@@ -78,29 +78,29 @@ Renderer::Renderer(PlatformContext& context)
   
     ShaderBufferDescriptor bufferDescriptor = {};
     bufferDescriptor._ringBufferLength = 1;
-    bufferDescriptor._bufferParams._usageType = BufferUsageType::UNBOUND_BUFFER;
-    bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+    bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
+    bufferDescriptor._updateFrequency = BufferUpdateFrequency::ONCE;
 
     { //Light Index Buffer
         const U32 totalLights = numClusters * to_U32(config.rendering.numLightsPerCluster);
-        bufferDescriptor._bufferParams._elementCount = totalLights;
-        bufferDescriptor._bufferParams._elementSize = sizeof(U32);
+        bufferDescriptor._elementCount = totalLights;
+        bufferDescriptor._elementSize = sizeof(U32);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
             Util::StringFormatTo( bufferDescriptor._name, "LIGHT_INDEX_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightIndexBuffer = _context.gfx().newShaderBuffer(bufferDescriptor);
         }
     }
     { // Cluster AABBs
-        bufferDescriptor._bufferParams._elementCount = numClusters;
-        bufferDescriptor._bufferParams._elementSize = 2 * (4 * sizeof(F32));
+        bufferDescriptor._elementCount = numClusters;
+        bufferDescriptor._elementSize = 2 * (4 * sizeof(F32));
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
             Util::StringFormatTo( bufferDescriptor._name, "GLOBAL_CLUSTER_AABB_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightClusterAABBsBuffer = _context.gfx().newShaderBuffer(bufferDescriptor);
         }
     }
     { // Light Grid Buffer
-        bufferDescriptor._bufferParams._elementCount = numClusters;
-        bufferDescriptor._bufferParams._elementSize = sizeof(uint4);
+        bufferDescriptor._elementCount = numClusters;
+        bufferDescriptor._elementSize = sizeof(uint4);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
             Util::StringFormatTo( bufferDescriptor._name, "LIGHT_GRID_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._lightGridBuffer = _context.gfx().newShaderBuffer(bufferDescriptor);
@@ -108,8 +108,8 @@ Renderer::Renderer(PlatformContext& context)
     }
 
     { // Global Index Count
-        bufferDescriptor._bufferParams._elementCount = 1u;
-        bufferDescriptor._bufferParams._elementSize =  sizeof(uint4);
+        bufferDescriptor._elementCount = 1u;
+        bufferDescriptor._elementSize =  sizeof(uint4);
         for (U8 i = 0u; i < to_base(RenderStage::COUNT) - 1; ++i) {
             Util::StringFormatTo( bufferDescriptor._name, "GLOBAL_INDEX_COUNT_SSBO_{}", TypeUtil::RenderStageToString(static_cast<RenderStage>(i)));
             _lightDataPerStage[i]._globalIndexCountBuffer = _context.gfx().newShaderBuffer(bufferDescriptor);

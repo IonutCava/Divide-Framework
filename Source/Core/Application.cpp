@@ -74,6 +74,7 @@ bool Application::onProfilerStateChanged( const Profiler::State state )
     PlatformContext& context = _kernel->platformContext();
     static bool assertOnAPIError = context.config().debug.renderer.assertOnRenderAPIError;
     static bool apiDebugging = context.config().debug.renderer.enableRenderAPIDebugging;
+    static bool apiDebugGroups = context.config().debug.renderer.enableRenderAPIDebugGrouping;
 
     switch ( state )
     {
@@ -81,11 +82,13 @@ bool Application::onProfilerStateChanged( const Profiler::State state )
         {
             context.config().debug.renderer.assertOnRenderAPIError = false;
             context.config().debug.renderer.enableRenderAPIDebugging = false;
+            context.config().debug.renderer.enableRenderAPIDebugGrouping = false;
         } break;
         case Profiler::State::STOPPED:
         {
             context.config().debug.renderer.assertOnRenderAPIError = assertOnAPIError;
             context.config().debug.renderer.enableRenderAPIDebugging = apiDebugging;
+            context.config().debug.renderer.enableRenderAPIDebugGrouping = apiDebugGroups;
         } break;
 
         default:

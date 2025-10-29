@@ -47,7 +47,6 @@ namespace GLMemory{
         COUNT
     };
 
-    Byte* GetZeroData(const size_t bufferSize);
     void OnFrameEnd(U64 frameCount);
     U32  TotalBufferCount();
 

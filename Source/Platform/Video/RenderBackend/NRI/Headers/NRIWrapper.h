@@ -60,7 +60,7 @@ class NVIDIA_RENDER_INTERFACE_API final : public RenderAPIWrapper {
       void closeRenderingAPI() noexcept override;
       void preFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) override;
       void flushCommand( GFX::CommandBase* cmd ) noexcept override;
-      void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) noexcept override;
+      void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
       bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
       bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
       void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
@@ -69,7 +69,7 @@ class NVIDIA_RENDER_INTERFACE_API final : public RenderAPIWrapper {
       [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
       [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
-      [[nodiscard]] GPUBuffer_ptr      newGPUBuffer( U32 ringBufferLength, std::string_view name ) const override;
+      [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, std::string_view name ) const override;
       [[nodiscard]] ShaderBuffer_uptr  newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
 
 private:

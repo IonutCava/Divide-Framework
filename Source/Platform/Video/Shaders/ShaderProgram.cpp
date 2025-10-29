@@ -262,13 +262,16 @@ namespace Divide
         U8 s_textureSlot = 0u;
         U8 s_imageSlot   = 0u;
         U8 s_bufferSlot =  0u;
-        U8 s_uboStartOffset = 14u;
+        U8 s_computeBufferSlot =  0u;
+
+        constexpr U8 s_uniformsStartOffset = 14u;
 
         void RefreshBindingSlots()
         {
-            s_textureSlot    = 0u;
-            s_imageSlot      = 0u;
-            s_bufferSlot     = 0u;
+            s_textureSlot = 0u;
+            s_imageSlot   = 0u;
+            s_bufferSlot  = 0u;
+            s_computeBufferSlot  = 0u;
         }
 
         [[nodiscard]] ResourcePath ShaderAPILocation()
@@ -1210,7 +1213,8 @@ namespace Divide
                 }
                 else
                 {
-                    bindingData._glBinding = s_bufferSlot++;
+                    bindingData._glBinding = visibility == ShaderStageVisibility::COMPUTE ? s_computeBufferSlot++ : s_bufferSlot++;
+                    DIVIDE_ASSERT(bindingData._glBinding < GFXDevice::GetDeviceInformation()._maxSSBOBufferBindings, "Exceeded maximum number of buffer bindings available in the min spec!" );
                 }
                 break;
 
@@ -1254,7 +1258,7 @@ namespace Divide
 
     void ShaderProgram::OnBeginFrame([[maybe_unused]] GFXDevice& gfx )
     {
-        efficient_clear(s_usedShaderPrograms);
+        s_usedShaderPrograms.resize(0);
     }
 
     void ShaderProgram::OnEndFrame( GFXDevice& gfx )
@@ -1925,7 +1929,7 @@ namespace Divide
         }
         else if ( loadDataInOut._reflectionData._uniformBlockBindingIndex != Reflection::INVALID_BINDING_INDEX )
         {
-            blockIndexInOut = loadDataInOut._reflectionData._uniformBlockBindingIndex - s_uboStartOffset;
+            blockIndexInOut = loadDataInOut._reflectionData._uniformBlockBindingIndex - s_uniformsStartOffset;
         }
 
         if ( !loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty() )
@@ -2006,7 +2010,7 @@ namespace Divide
             }
 
             loadDataInOut._reflectionData._uniformBlockBindingSet = to_base( DescriptorSetUsage::PER_DRAW );
-            loadDataInOut._reflectionData._uniformBlockBindingIndex = s_uboStartOffset + blockIndexInOut;
+            loadDataInOut._reflectionData._uniformBlockBindingIndex = blockIndexInOut + s_uniformsStartOffset;
 
             string& uniformBlock = loadDataInOut._uniformBlock;
             uniformBlock = "layout( ";

@@ -2,7 +2,6 @@
 
 #include "Headers/PlatformContext.h"
 #include "Headers/Configuration.h"
-
 #include "Core/Headers/Kernel.h"
 #include "Utility/Headers/Localization.h"
 
@@ -12,6 +11,7 @@
 #include "Editor/Headers/Editor.h"
 #include "GUI/Headers/GUI.h"
 #include "Physics/Headers/PXDevice.h"
+#include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Audio/Headers/SFXDevice.h"
 #include "Platform/Input/Headers/InputHandler.h"
 #include "Platform/Video/Headers/GFXDevice.h"
@@ -76,6 +76,8 @@ void PlatformContext::terminate()
 
 void PlatformContext::idle(const bool fast, const U64 deltaTimeUSGame, const U64 deltaTimeUSApp )
 {
+    DIVIDE_ASSERT(Runtime::isMainThread());
+
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
     if (componentMask() & to_base(SystemComponentType::GFXDevice))
@@ -108,7 +110,7 @@ void PlatformContext::idle(const bool fast, const U64 deltaTimeUSGame, const U64
 
     for (U8 i = 0u; i < to_U8( TaskPoolType::COUNT ); ++i)
     {
-        _taskPool[i]->flushCallbackQueue();
+        Attorney::MainThreadTaskPool::flushCallbackQueue(*_taskPool[i]);
     }
 
     if ( !fast )

@@ -71,10 +71,13 @@ void main()
 
             sharedLights[gl_LocalInvocationIndex] = light;
         }
+    }
 
-        // wait for all threads to finish copying
-        barrier();
+    // wait for all threads to finish copying
+    barrier();
 
+    for ( uint batch = 0u; batch < numBatches; ++batch )
+    {
         //Iterating within the current batch of lights
         for ( uint light = 0; light < threadCount; ++light )
         {

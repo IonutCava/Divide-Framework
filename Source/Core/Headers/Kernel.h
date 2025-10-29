@@ -125,29 +125,18 @@ class Kernel final : public Input::InputAggregatorInterface,
         static size_t TotalThreadCount(TaskPoolType type) noexcept;
 
     protected:
-        /// Key pressed
-        bool onKeyDownInternal(Input::KeyEvent& argInOut) override;
-        /// Key released
-        bool onKeyUpInternal(Input::KeyEvent& argInOut) override;
-        /// Joystick axis change
-        bool joystickAxisMovedInternal(Input::JoystickEvent& argInOut) override;
-        /// Joystick direction change
-        bool joystickPovMovedInternal(Input::JoystickEvent& argInOut) override;
-        /// Joystick button pressed
-        bool joystickButtonPressedInternal(Input::JoystickEvent& argInOut) override;
-        /// Joystick button released
-        bool joystickButtonReleasedInternal(Input::JoystickEvent& argInOut) override;
-        bool joystickBallMovedInternal(Input::JoystickEvent& argInOut) override;
-        bool joystickAddRemoveInternal(Input::JoystickEvent& argInOut) override;
-        bool joystickRemapInternal(Input::JoystickEvent & argInOut) override;
-        /// Mouse moved
-        bool mouseMovedInternal(Input::MouseMoveEvent& argInOut) override;
-        /// Mouse button pressed
-        bool mouseButtonPressedInternal(Input::MouseButtonEvent& argInOut) override;
-        /// Mouse button released
-        bool mouseButtonReleasedInternal(Input::MouseButtonEvent& argInOut) override;
-        bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
-        bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
+        [[nodiscard]] bool onKeyInternal(Input::KeyEvent& argInOut) override;
+        [[nodiscard]] bool onMouseMovedInternal(Input::MouseMoveEvent& argInOut) override;
+        [[nodiscard]] bool onMouseButtonInternal(Input::MouseButtonEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickButtonInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickAxisMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickPovMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickBallMovedInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onJoystickRemapInternal(Input::JoystickEvent& argInOut) override;
+        [[nodiscard]] bool onTextInputInternal(Input::TextInputEvent& argInOut) override;
+        [[nodiscard]] bool onTextEditInternal(Input::TextEditEvent& argInOut) override;
+        [[nodiscard]] bool onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut) override;
+
      private:
         ErrorCode initialize(const string& entryPoint);
         void warmup();

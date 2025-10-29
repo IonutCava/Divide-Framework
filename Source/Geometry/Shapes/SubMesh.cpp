@@ -37,9 +37,9 @@ void SubMesh::postLoad(SceneGraphNode* sgn)
     Object3D::postLoad(sgn);
 }
 
-bool SubMesh::postLoad()
+VertexBuffer* SubMesh::geometryBuffer()
 {
-    return Object3D::postLoad();
+    return _parentMesh->geometryBuffer();
 }
 
 void ChangeAnimationForAllChildren(SceneGraphNode* parentNode, const U32 animationIndex, const bool playInReverse)
@@ -132,7 +132,7 @@ void SubMesh::buildBoundingBoxesForAnim([[maybe_unused]] const Task& parentTask,
 
     const vector<BoneMatrices>& currentAnimation = animComp->getAnimationByIndex(animationIndex).transformMatrices();
 
-    auto& parentVB = _parentMesh->geometryBuffer();
+    VertexBuffer* parentVB = _parentMesh->geometryBuffer();
     const size_t partitionOffset = parentVB->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = parentVB->getPartitionIndexCount(_geometryPartitionIDs[0]);
 

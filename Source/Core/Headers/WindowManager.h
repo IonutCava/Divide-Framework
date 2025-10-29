@@ -172,7 +172,7 @@ struct WindowDescriptor
         FULLSCREEN = toBit( 1 ),
         FULLSCREEN_DESKTOP = toBit( 2 ),
         DECORATED = toBit( 3 ),
-        RESIZEABLE = toBit( 4 ),
+        RESIZABLE = toBit( 4 ),
         HIDDEN = toBit( 5 ),
         ALLOW_HIGH_DPI = toBit( 6 ),
         ALWAYS_ON_TOP = toBit( 7 ),
@@ -186,7 +186,7 @@ struct WindowDescriptor
     vec2<U16> dimensions = {};
     U32 targetDisplay = 0u;
     U16 flags = to_U16( to_base( Flags::DECORATED ) |
-                        to_base( Flags::RESIZEABLE ) |
+                        to_base( Flags::RESIZABLE ) |
                         to_base( Flags::ALLOW_HIGH_DPI ) );
     RenderAPI targetAPI;
     bool externalClose{ false };

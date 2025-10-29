@@ -149,14 +149,14 @@ namespace Input {
         return KeyCodeFromSDLKey(SDL_GetKeyFromName(keyName));
     }
 
-    InputState GetKeyState([[maybe_unused]] const U8 deviceIndex, const KeyCode key) noexcept
+    InputState GetKeyState([[maybe_unused]] const U32 deviceIndex, const KeyCode key) noexcept
     {
         const bool *state = SDL_GetKeyboardState(nullptr);
 
         return state[SDL_GetScancodeFromKey(SDLKeyCodeFromKey(key), nullptr)] ? InputState::PRESSED : InputState::RELEASED;
     }
 
-    InputState GetMouseButtonState([[maybe_unused]] const U8 deviceIndex, const MouseButton button) noexcept {
+    InputState GetMouseButtonState([[maybe_unused]] const U32 deviceIndex, const MouseButton button) noexcept {
         F32 x = -1, y = -1;
         const U32 state = SDL_GetMouseState(&x, &y);
 
@@ -187,12 +187,6 @@ namespace Input {
         }
 
         return (state & SDL_BUTTON_MASK(sdlButton)) != 0 ? InputState::PRESSED : InputState::RELEASED;
-    }
-
-    InputState GetJoystickElementState([[maybe_unused]] Joystick deviceIndex, [[maybe_unused]] JoystickElement element) noexcept {
-        assert(false && "implement me!");
-
-        return InputState::RELEASED;
     }
 }; //namespace Input
 }; //namespace Divide

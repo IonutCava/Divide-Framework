@@ -296,7 +296,7 @@ enum class PrimitiveTopology : U8 {
     //QUADS, //Deprecated and No Vulkan support
     //QUAD_STRIP, //No Vulkan support
     //POLYGON,//No Vulkan support
-    LINES_ADJANCENCY,
+    LINES_ADJACENCY,
     LINE_STRIP_ADJACENCY,
     TRIANGLES_ADJACENCY,
     TRIANGLE_STRIP_ADJACENCY,
@@ -309,7 +309,7 @@ enum class PrimitiveTopology : U8 {
 namespace Names {
     static constexpr const char* primitiveType[] = {
         "POINTS", "LINES", "LINE_STRIP", "TRIANGLES", "TRIANGLE_STRIP",
-        "TRIANGLE_FAN", "LINES_ADJANCENCY", "LINE_STRIP_ADJACENCY",
+        "TRIANGLE_FAN", "LINES_ADJACENCY", "LINE_STRIP_ADJACENCY",
         "TRIANGLES_ADJACENCY", "TRIANGLE_STRIP_ADJACENCY", "PATCH", 
         "COMPUTE", "MESHLET", "NONE"
     };
@@ -793,14 +793,14 @@ static_assert(std::size( Names::bufferSyncUsage ) == to_base( BufferSyncUsage::C
 
 enum class BufferUpdateFrequency : U8 {
     ONCE = 0,   //STATIC
-    OCASSIONAL, //DYNAMIC
+    OCCASIONAL, //DYNAMIC
     OFTEN,      //STREAM
     COUNT
 };
 
 namespace Names {
     static constexpr const char* bufferUpdateFrequency[] = {
-        "ONCE", "OCASSIONAL", "OFTEN", "NONE"
+        "ONCE", "OCCASIONAL", "OFTEN", "NONE"
     };
 };
 

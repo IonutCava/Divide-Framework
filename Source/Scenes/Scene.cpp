@@ -140,9 +140,10 @@ namespace Divide
 
     bool Scene::idle()
     {  
-        PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
         if ( !_tasks.empty() )
         {
+            PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
+
             // Check again to avoid race conditions
             {
                 SharedLock<SharedMutex> r_lock( _tasksMutex );
@@ -460,7 +461,7 @@ namespace Divide
                 normalMask |= to_base( ComponentType::RENDERING ) |
                               to_base( ComponentType::RIGID_BODY );
 
-                SceneNode* ret = nullptr;
+                Object3D* ret = nullptr;
                 if ( !modelName.empty() )
                 {
                     if ( Util::CompareIgnoreCase( modelName, "BOX_3D" ) )
@@ -468,7 +469,7 @@ namespace Divide
                         ResourceDescriptor<Box3D> item( sceneNode.name.c_str() );
                         item.assetName( modelName.c_str() );
                         const Handle<Box3D> handle = CreateResource( item, _loadingTasks );
-                        ret = Get(handle);
+                        ret = Get<Box3D>(handle);
 
                         crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
@@ -477,7 +478,7 @@ namespace Divide
                         ResourceDescriptor<Sphere3D> item( sceneNode.name.c_str() );
                         item.assetName( modelName.c_str() );
                         const Handle<Sphere3D> handle = CreateResource( item, _loadingTasks );
-                        ret = Get(handle);
+                        ret = Get<Sphere3D>(handle);
 
                         crtNode = addSGN( parent, sceneNode.name, normalMask, handle, nodeStatic, nodeTree );
                     }
@@ -491,7 +492,7 @@ namespace Divide
                         quadMask.b[0] = 1;
                         item.mask( quadMask );
                         Handle<Quad3D> handle = CreateResource( item, _loadingTasks );
-                        ret = Get(handle);
+                        ret = Get<Quad3D>(handle);
 
                         Quad3D* quad = static_cast<Quad3D*>(ret);
                         quad->setCorner( Quad3D::CornerLocation::TOP_LEFT, float3( 0, 1, 0 ) );
@@ -511,7 +512,7 @@ namespace Divide
                     ResourceDescriptor<Material> materialDescriptor( (sceneNode.name + "_material").c_str() );
                     Handle<Material> tempMaterial = CreateResource( materialDescriptor, _loadingTasks );
                     Get(tempMaterial)->properties().shadingMode( ShadingMode::PBR_MR );
-                    ret->setMaterialTpl( tempMaterial );
+                    ret->setMaterialTemplate( tempMaterial, ret->geometryBuffer()->generateAttributeMap() );
                     ret->loadFromXML( nodeTree );
                 }
             }
@@ -820,7 +821,7 @@ namespace Divide
 
         const auto deleteSelection = [this]( const InputParams params )
         {
-            const PlayerIndex idx = getPlayerIndexForDevice( params._deviceIndex );
+            const PlayerIndex idx = getPlayerIndexForDevice( params._deviceType, params._deviceIndex );
             Selections& playerSelections = _currentSelection[idx];
             for ( U8 i = 0u; i < playerSelections._selectionCount; ++i )
             {
@@ -832,7 +833,7 @@ namespace Divide
 
         const auto increaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice( params._deviceIndex ) );
+            Camera* cam = playerCamera( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                 cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -849,7 +850,7 @@ namespace Divide
 
         const auto decreaseCameraSpeed = [this]( const InputParams params )
         {
-            Camera* cam = playerCamera( getPlayerIndexForDevice( params._deviceIndex ) );
+            Camera* cam = playerCamera( getPlayerIndexForDevice(params._deviceType, params._deviceIndex ) );
             if ( cam->mode() != Camera::Mode::STATIC &&
                  cam->mode() != Camera::Mode::SCRIPTED )
             {
@@ -875,77 +876,77 @@ namespace Divide
 
         const auto moveForward = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::POSITIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::POSITIVE} );
         };
 
         const auto moveBackwards = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::NEGATIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::NEGATIVE} );
         };
 
         const auto stopMoveFWDBCK = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::NONE});
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::NONE});
         };
 
         const auto strafeLeft = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::NEGATIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::NEGATIVE} );
         };
 
         const auto strafeRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::POSITIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::POSITIVE} );
         };
 
         const auto stopStrafeLeftRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::NONE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( {255u, MoveDirection::NONE} );
         };
 
         const auto rollCCW = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._roll.push( {255u, MoveDirection::NEGATIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._roll.push( {255u, MoveDirection::NEGATIVE} );
         };
 
         const auto rollCW = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._roll.push( {255u, MoveDirection::POSITIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._roll.push( {255u, MoveDirection::POSITIVE} );
         };
 
         const auto stopRollCCWCW = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._roll.push( {255u, MoveDirection::NONE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._roll.push( {255u, MoveDirection::NONE} );
         };
 
         const auto turnLeft = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::NEGATIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::NEGATIVE} );
         };
 
         const auto turnRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::POSITIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::POSITIVE} );
         };
 
         const auto stopTurnLeftRight = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::NONE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleLR.push( {255u, MoveDirection::NONE} );
         };
 
         const auto turnUp = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::NEGATIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::NEGATIVE} );
         };
 
         const auto turnDown = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::POSITIVE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::POSITIVE} );
         };
 
         const auto stopTurnUpDown = [this]( const InputParams params )
         {
-            state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::NONE} );
+            state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleUD.push( {255u, MoveDirection::NONE} );
         };
 
         const auto togglePauseState = [this]( [[maybe_unused]] const InputParams params ) noexcept
@@ -965,19 +966,19 @@ namespace Divide
 
         const auto toggleFlashLight = [this]( const InputParams params )
         {
-            toggleFlashlight( getPlayerIndexForDevice( params._deviceIndex ) );
+            toggleFlashlight( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) );
         };
 
         const auto lockCameraToMouse = [this]( const InputParams  params )
         {
-            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( params._deviceIndex ), true ) )
+            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ), true ) )
             {
                 NOP();
             }
         };
         const auto releaseCameraFromMouse = [this]( const InputParams  params )
         {
-            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( params._deviceIndex ), false ) )
+            if ( !lockCameraToPlayerMouse( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ), false ) )
             {
                 NOP();
             }
@@ -990,28 +991,26 @@ namespace Divide
 
         const auto povNavigation = [this]( const InputParams params )
         {
-            const U32 povMask = to_U32(params._var[0]); // cast back
-
-            if ( povMask & to_base( Input::JoystickPovDirection::UP ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::UP ) )
             {  // Going up
-                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::POSITIVE} );
+                state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( {255u, MoveDirection::POSITIVE} );
             }
-            if ( povMask & to_base( Input::JoystickPovDirection::DOWN ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::DOWN ) )
             {  // Going down
-                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NEGATIVE} );
+                state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NEGATIVE} );
             }
-            if ( povMask & to_base( Input::JoystickPovDirection::RIGHT ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::RIGHT ) )
             {  // Going right
-                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::POSITIVE} );
+                state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::POSITIVE} );
             }
-            if ( povMask & to_base( Input::JoystickPovDirection::LEFT ) )
+            if ( params._povMask & to_base( Input::JoystickPovDirection::LEFT ) )
             {  // Going left
-                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NEGATIVE} );
+                state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NEGATIVE} );
             }
-            if ( povMask == to_base( Input::JoystickPovDirection::CENTERED ) )
+            if ( params._povMask == to_base( Input::JoystickPovDirection::CENTERED ) )
             {  // stopped/centered out
-                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE } );
-                state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NONE } );
+                state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE } );
+                state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NONE } );
             }
         };
 
@@ -1019,10 +1018,8 @@ namespace Divide
         {
             const U8 axis = params._elementIndex;
 
-            [[maybe_unused]] const bool isGamePad = params._var[0] == 1;
-
-            const I32 deadZone = params._var[1];
-            const I32 axisABS = params._var[2];
+            const I16 axisABS  = params._signedData[0];
+            const I16 deadZone = params._signedData[1];
 
             const U8 axisPercentage = to_U8((axisABS / to_F32(I16_MAX)) * 255.f);
 
@@ -1032,30 +1029,30 @@ namespace Divide
                 {
                     if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( { axisPercentage, MoveDirection::POSITIVE } );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleUD.push( { axisPercentage, MoveDirection::POSITIVE } );
                     }
                     else if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( { axisPercentage, MoveDirection::NEGATIVE } );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleUD.push( { axisPercentage, MoveDirection::NEGATIVE } );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleUD.push( { 255u, MoveDirection::NONE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleUD.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
                 case 1:
                 {
                     if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( { axisPercentage, MoveDirection::POSITIVE } );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleLR.push( { axisPercentage, MoveDirection::POSITIVE } );
                     }
                     else if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( { axisPercentage, MoveDirection::NEGATIVE } );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleLR.push( { axisPercentage, MoveDirection::NEGATIVE } );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._angleLR.push( { 255u, MoveDirection::NONE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._angleLR.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
 
@@ -1063,36 +1060,43 @@ namespace Divide
                 {
                     if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { axisPercentage, MoveDirection::POSITIVE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( { axisPercentage, MoveDirection::POSITIVE} );
                     }
                     else if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { axisPercentage, MoveDirection::NEGATIVE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( { axisPercentage, MoveDirection::NEGATIVE} );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NONE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveFB.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
                 case 3:
                 {
                     if ( axisABS < -deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { axisPercentage, MoveDirection::NEGATIVE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { axisPercentage, MoveDirection::NEGATIVE} );
                     }
                     else if ( axisABS > deadZone )
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { axisPercentage, MoveDirection::POSITIVE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { axisPercentage, MoveDirection::POSITIVE} );
                     }
                     else
                     {
-                        state()->playerState( getPlayerIndexForDevice( params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE} );
+                        state()->playerState( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ) )._moveLR.push( { 255u, MoveDirection::NONE} );
                     }
                 } break;
                 default: DIVIDE_UNEXPECTED_CALL(); break;
             }
         };
 
+        const auto ballNavigation = []( const InputParams params )
+        {
+            const U8 axis = params._elementIndex;
+            const I16 relX = params._signedData[0];
+            const I16 relY = params._signedData[1];
+            Console::d_printfn("Joystick ball moved Axis: [ {} ] X: [ {} ] Y: [ {} ]", axis, relX, relY ); 
+        };
         const auto toggleDebugInterface = [this]( [[maybe_unused]] const InputParams params ) noexcept
         {
             _context.debug().enabled( !_context.debug().enabled() );
@@ -1116,11 +1120,11 @@ namespace Divide
 
         const auto dragSelectBegin = [this]( const InputParams params )
         {
-            beginDragSelection( getPlayerIndexForDevice( params._deviceIndex ), int2( params._var[0], params._var[1] ) );
+            beginDragSelection( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ), int2( params._coords.x, params._coords.y ) );
         };
         const auto dragSelectEnd = [this]( const InputParams params )
         {
-            endDragSelection( getPlayerIndexForDevice( params._deviceIndex ), true );
+            endDragSelection( getPlayerIndexForDevice( params._deviceType, params._deviceIndex ), true );
         };
 
         InputActionList& actions = _input->actionList();
@@ -1156,11 +1160,12 @@ namespace Divide
         ret = actions.registerInputAction( actionID++, shutdown ) && ret;               // 27
         ret = actions.registerInputAction( actionID++, povNavigation ) && ret;          // 28
         ret = actions.registerInputAction( actionID++, axisNavigation ) && ret;         // 29
-        ret = actions.registerInputAction( actionID++, toggleDebugInterface ) && ret;   // 30
-        ret = actions.registerInputAction( actionID++, toggleEditor ) && ret;           // 31
-        ret = actions.registerInputAction( actionID++, toggleConsole ) && ret;          // 32
-        ret = actions.registerInputAction( actionID++, dragSelectBegin ) && ret;        // 33
-        ret = actions.registerInputAction( actionID++, dragSelectEnd ) && ret;          // 34
+        ret = actions.registerInputAction( actionID++, ballNavigation ) && ret;         // 30
+        ret = actions.registerInputAction( actionID++, toggleDebugInterface ) && ret;   // 31
+        ret = actions.registerInputAction( actionID++, toggleEditor ) && ret;           // 32
+        ret = actions.registerInputAction( actionID++, toggleConsole ) && ret;          // 33
+        ret = actions.registerInputAction( actionID++, dragSelectBegin ) && ret;        // 34
+        ret = actions.registerInputAction( actionID++, dragSelectEnd ) && ret;          // 35
 
         DIVIDE_ASSERT( ret );
 
@@ -1506,16 +1511,16 @@ namespace Divide
         return _scenePlayers[getSceneIndexForPlayer( idx )].get();
     }
 
-    U8 Scene::getPlayerIndexForDevice( const U8 deviceIndex ) const
+    U8 Scene::getPlayerIndexForDevice( const Input::InputDeviceType deviceType, const U32 deviceIndex ) const
     {
-        return input()->getPlayerIndexForDevice( deviceIndex );
+        return input()->getPlayerIndexForDevice( deviceType, deviceIndex );
     }
 
     bool Scene::mouseMoved( const Input::MouseMoveEvent& arg )
     {
         if ( !arg._wheelEvent )
         {
-            const PlayerIndex idx = getPlayerIndexForDevice( arg._deviceIndex );
+            const PlayerIndex idx = getPlayerIndexForDevice( arg._deviceType, arg._deviceIndex );
             DragSelectData& data = _dragSelectData[idx];
             if ( data._isDragging )
             {

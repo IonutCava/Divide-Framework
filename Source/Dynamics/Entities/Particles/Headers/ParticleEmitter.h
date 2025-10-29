@@ -36,13 +36,13 @@
 #include "ParticleSource.h"
 #include "ParticleUpdater.h"
 #include "Graphs/Headers/SceneNode.h"
+#include "Platform/Video/Buffers/VertexBuffer/Headers/GPUBuffer.h"
 
 /// original source code:
 /// https://github.com/fenbf/particles/blob/public/particlesCode
 namespace Divide {
 
 class Texture;
-FWD_DECLARE_MANAGED_CLASS(GPUVertexBuffer);
 
 /// A Particle emitter scene node. Nothing smarter to say, sorry :"> - Ionut
 DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
@@ -83,9 +83,18 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 
    protected:
     static constexpr U8 s_MaxPlayerBuffers = 4;
-    using ParticleBuffers = std::array<GPUVertexBuffer_ptr, 3u>; // geometry, position, colour
+    using ParticleBufferHandles = std::array<GPUBuffer::Handle, 4u>; // index, geometry, position, colour
+    using ParticleBuffers = std::array<GPUBuffer_ptr, 4u>; // index, geometry, position, colour
     using BuffersPerStage = std::array<ParticleBuffers, to_base(RenderStage::COUNT)>;
     using BuffersPerPlayer = std::array<BuffersPerStage, s_MaxPlayerBuffers>;
+    using HandlesPerStage = std::array<ParticleBufferHandles, to_base(RenderStage::COUNT)>;
+    using HandlesPerPlayer = std::array<HandlesPerStage, s_MaxPlayerBuffers>;
+
+    struct ParticleBufferRet
+    {
+        GPUBuffer_ptr* _buffers{nullptr};
+        GPUBuffer::Handle* _handles{nullptr};
+    };
 
     /// preprocess particles here
     void sceneUpdate(U64 deltaTimeUS,
@@ -94,7 +103,7 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
 
     void buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer& cmdsOut) override;
 
-    [[nodiscard]] ParticleBuffers& getDataBuffer(RenderStage stage, PlayerIndex idx);
+    [[nodiscard]] ParticleBufferRet getDataBuffer(RenderStage stage, PlayerIndex idx);
 
    private:
     std::shared_ptr<ParticleData> _particles;
@@ -108,6 +117,7 @@ DEFINE_NODE_TYPE( ParticleEmitter, SceneNodeType::TYPE_PARTICLE_EMITTER )
     bool _drawImpostor = false;
 
     BuffersPerPlayer _particleGPUBuffers{};
+    HandlesPerPlayer _particleGPUBufferHandles{};
     std::array<bool, to_base(RenderStage::COUNT)> _buffersDirty{};
 
     Task* _bufferUpdate = nullptr;

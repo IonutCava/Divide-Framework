@@ -577,7 +577,7 @@ bool Terrain::load( PlatformContext& context )
     }
     terrainMaterial->setPipelineLayout(PrimitiveTopology::PATCH, vertexFormat);
 
-    setMaterialTpl(terrainMaterialHandle);
+    setMaterialTemplate( terrainMaterialHandle, vertexFormat );
 
     if (!loadResources(context))
     {
@@ -1034,44 +1034,43 @@ void Terrain::postBuild( PlatformContext& context )
         vector<U16> indices = CreateTileQuadListIB();
 
         // Create a single buffer to hold the data for all of our tile rings
-        _terrainBuffer = std::make_unique<GPUVertexBuffer>(context.gfx(), Util::StringFormat("{}_buffer", resourceName()).c_str() );
-        _terrainBuffer->_vertexBuffer = context.gfx().newGPUBuffer(1, Util::StringFormat("{}_buffer_vb", resourceName()).c_str());
-        _terrainBuffer->_indexBuffer = context.gfx().newGPUBuffer(1, Util::StringFormat("{}_buffer_ib", resourceName()).c_str());
-
+        _terrainVBBuffer = context.gfx().newGPUBuffer(1u, Util::StringFormat("{}_buffer_vb", resourceName()).c_str() );
+        _terrainIBBuffer = context.gfx().newGPUBuffer(1u, Util::StringFormat("{}_buffer_ib", resourceName()).c_str() );
         { 
             GPUBuffer::SetBufferParams ibParams = {};
-            ibParams._bufferParams._usageType = BufferUsageType::INDEX_BUFFER;
-            ibParams._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
-            ibParams._bufferParams._elementCount = indices.size();
-            ibParams._bufferParams._elementSize = sizeof(U16);
-            ibParams._initialData = { (bufferPtr)indices.data(), indices.size() * ibParams._bufferParams._elementSize };
+            ibParams._usageType = BufferUsageType::INDEX_BUFFER;
+            ibParams._updateFrequency = BufferUpdateFrequency::ONCE;
+            ibParams._elementCount = indices.size();
+            ibParams._elementSize = sizeof(U16);
+            ibParams._initialData = { (bufferPtr)indices.data(), indices.size() * ibParams._elementSize };
 
             {
-                const BufferLock lock = _terrainBuffer->_indexBuffer->setBuffer(ibParams);
+                const BufferLock lock = _terrainIBBuffer->setBuffer(ibParams);
                 DIVIDE_UNUSED(lock);
             }
             vector<TileRing::InstanceData> vbData;
             vbData.reserve(TessellationParams::QUAD_LIST_INDEX_COUNT * ringCount);
 
             GPUBuffer::SetBufferParams params = {};
-            params._bufferParams._elementSize = sizeof(TileRing::InstanceData);
-            params._bufferParams._usageType = BufferUsageType::VERTEX_BUFFER;
-            params._bufferParams._updateFrequency = BufferUpdateFrequency::ONCE;
+            params._elementSize = sizeof(TileRing::InstanceData);
+            params._usageType = BufferUsageType::VERTEX_BUFFER;
+            params._updateFrequency = BufferUpdateFrequency::ONCE;
+            params._bindIdx = 0u;
 
             for (size_t i = 0u; i < ringCount; ++i)
             {
                 vector<TileRing::InstanceData> ringData = _tileRings[i].createInstanceDataVB(to_I32(i));
                 vbData.insert(cend(vbData), cbegin(ringData), cend(ringData));
-                params._bufferParams._elementCount += to_U32(ringData.size());
+                params._elementCount += to_U32(ringData.size());
             }
 
             params._initialData = { (Byte*)vbData.data(), vbData.size() * sizeof(TileRing::InstanceData) };
             {
-                const BufferLock lock = _terrainBuffer->_vertexBuffer->setBuffer(params);
+                const BufferLock lock = _terrainVBBuffer->setBuffer(params);
                 DIVIDE_UNUSED(lock);
             }
-            _terrainBuffer->_vertexBufferBinding._bindIdx = 0u;
         }
+        _bufferHandles = {_terrainVBBuffer->_handle, _terrainIBBuffer->_handle};
     }
 }
 
@@ -1094,7 +1093,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
         _terrainQuadtree.drawBBox(sgn->context().gfx());
     }
 
-    rComp.setIndexBufferElementOffset(_terrainBuffer->_indexBuffer->firstIndexOffsetCount());
+    rComp.setIndexBufferElementOffset(_terrainIBBuffer->firstIndexOffsetCount());
 
     const F32 triangleWidth = to_F32(tessParams().tessellatedTriangleWidth());
     if (renderStagePass._stage == RenderStage::REFLECTION ||
@@ -1147,8 +1146,8 @@ void Terrain::buildDrawCommands(SceneGraphNode* sgn, GenericDrawCommandContainer
     GenericDrawCommand& cmd = cmdsOut.emplace_back();
     toggleOption( cmd, CmdRenderOptions::RENDER_INDIRECT );
 
-    cmd._sourceBuffers = &_terrainBuffer->_handle;
-    cmd._sourceBuffersCount = 1u;
+    cmd._sourceBuffers =_bufferHandles.data();
+    cmd._sourceBuffersCount = to_U32(_bufferHandles.size());
     cmd._cmd.indexCount = to_U32(TessellationParams::QUAD_LIST_INDEX_COUNT);
     for (const auto& tileRing : _tileRings)
     {

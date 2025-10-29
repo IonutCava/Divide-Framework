@@ -45,6 +45,7 @@ struct Configuration final : XML::IXMLSerializable {
         {
             bool enableRenderAPIDebugging = false;
             bool enableRenderAPIBestPractices = false;
+            bool enableRenderAPIDebugGrouping = false;
             bool assertOnRenderAPIError = false;
             bool useExtensions = true;
         } renderer = {};

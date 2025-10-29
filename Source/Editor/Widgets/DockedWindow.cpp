@@ -38,7 +38,7 @@ namespace Divide {
 
         if ( readOnly )
         {
-            PushReadOnly(true);
+            ImGui::BeginDisabled();
         }
 
         if (ImGui::Begin(_descriptor.name.c_str(), nullptr, windowFlags() | _descriptor.flags)) [[likely]]
@@ -62,7 +62,7 @@ namespace Divide {
 
         if (readOnly)
         {
-            PopReadOnly();
+            ImGui::EndDisabled();
         }
     }
 

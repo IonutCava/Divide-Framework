@@ -801,7 +801,7 @@ namespace Divide
             case PrimitiveTopology::POINTS:                   shaderDescriptor._globalDefines.emplace_back( "GEOMETRY_POINTS", true );    break;
             case PrimitiveTopology::LINES:                                                                                                break;
             case PrimitiveTopology::LINE_STRIP:                                                                                           break;
-            case PrimitiveTopology::LINES_ADJANCENCY:                                                                                     break;
+            case PrimitiveTopology::LINES_ADJACENCY:                                                                                     break;
             case PrimitiveTopology::LINE_STRIP_ADJACENCY:     shaderDescriptor._globalDefines.emplace_back( "GEOMETRY_LINES", true );     break;
             case PrimitiveTopology::TRIANGLES:                                                                                            break;
             case PrimitiveTopology::TRIANGLE_STRIP:                                                                                       break;

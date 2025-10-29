@@ -59,10 +59,15 @@ namespace Attorney
 
 struct InputEvent 
 {
-    explicit InputEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
+    constexpr static U32 INVALID_DEVICE_INDEX = U32_MAX;
+
+    explicit InputEvent(DisplayWindow* sourceWindow, Input::InputDeviceType deviceType, Input::InputEventType eventType, U32 deviceIndex) noexcept;
 
     DisplayWindow* _sourceWindow = nullptr;
-    U8 _deviceIndex = 0;
+    U32 _deviceIndex = INVALID_DEVICE_INDEX;
+    Input::InputDeviceType _deviceType = Input::InputDeviceType::COUNT;
+    Input::InputEventType _eventType = Input::InputEventType::COUNT;
+
     bool _simulationPaused = false;
 };
 
@@ -71,8 +76,7 @@ struct MouseEvent : public InputEvent
     friend class Attorney::MouseEventConsumer;
     friend class Attorney::MouseEventInputHandler;
 
-
-    explicit MouseEvent( DisplayWindow* sourceWindow, U8 deviceIndex ) noexcept;
+    explicit MouseEvent( DisplayWindow* sourceWindow, U32 deviceIndex, Input::InputEventType eventType) noexcept;
 
     [[nodiscard]] inline const MouseState& state() const noexcept { return _state; }
 
@@ -84,18 +88,21 @@ struct MouseButtonEvent final : MouseEvent
 {
     friend class Attorney::MouseEventConsumer;
 
-    explicit MouseButtonEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
+    explicit MouseButtonEvent(DisplayWindow* sourceWindow, U32 deviceIndex) noexcept;
 
-    PROPERTY_RW(bool, pressed, false);
+    PROPERTY_RW(InputState, pressedState, InputState::COUNT);
     PROPERTY_RW(MouseButton, button, MouseButton::MB_Left);
     PROPERTY_RW(U8, numCliks, 0u);
+
+    MouseAxis X{};
+    MouseAxis Y{};
 };
 
 struct MouseMoveEvent final : MouseEvent
 {
     friend class Attorney::MouseEventConsumer;
 
-    explicit MouseMoveEvent(DisplayWindow* sourceWindow, U8 deviceIndex, bool wheelEvent) noexcept;
+    explicit MouseMoveEvent(DisplayWindow* sourceWindow, U32 deviceIndex, bool wheelEvent) noexcept;
 
     const bool _wheelEvent { false };
 };
@@ -129,21 +136,30 @@ namespace Attorney
 
 struct JoystickEvent final : InputEvent
 {
-    explicit JoystickEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
+    explicit JoystickEvent(DisplayWindow* sourceWindow, U32 deviceIndex, bool isJoystick) noexcept;
 
-    JoystickElement _element;
+    JoystickElementType _type{ JoystickElementType::COUNT };
+    InputState _state{ InputState::COUNT };
+    U8 _elementIndex{ 0u };
+    I32 _max{ 0 };
+    union
+    {
+        U32 _povMask{ 0u };
+        I16 _axisMovement[2];
+        I16 _ballRelMovement[2];
+    };
 };
 
 struct TextInputEvent final : InputEvent
 {
-    explicit TextInputEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* utf8Text) noexcept;
+    explicit TextInputEvent(DisplayWindow* sourceWindow, U32 deviceIndex, const char* utf8Text) noexcept;
 
     const char* _utf8Text{nullptr};   /**< The input text, UTF-8 encoded */
 };
 
 struct TextEditEvent final : InputEvent
 {
-    explicit TextEditEvent(DisplayWindow* sourceWindow, U8 deviceIndex, const char* utf8Text, I32 startPos, I32 length) noexcept;
+    explicit TextEditEvent(DisplayWindow* sourceWindow, U32 deviceIndex, const char* utf8Text, I32 startPos, I32 length) noexcept;
 
     const char* _utf8Text{nullptr};   /**< The input text, UTF-8 encoded */
     I32 _startPos{0}, _length{0};
@@ -151,10 +167,10 @@ struct TextEditEvent final : InputEvent
 
 struct KeyEvent final : InputEvent
 {
-    explicit KeyEvent(DisplayWindow* sourceWindow, U8 deviceIndex) noexcept;
+    explicit KeyEvent(DisplayWindow* sourceWindow, U32 deviceIndex) noexcept;
 
     KeyCode _key{ KeyCode::KC_UNASSIGNED };
-    bool _pressed{ false };
+    InputState _state{ InputState::COUNT };
     bool _isRepeat{ false };
     U16 _modMask{0u};
     //Native data:
@@ -170,45 +186,41 @@ struct InputAggregatorInterface
     ///       or add a key modifier if one is enforced by some setting
     
     /// Keyboard: return true if input was consumed
-    virtual bool onKeyDown(KeyEvent& argInOut);
-    virtual bool onKeyUp(KeyEvent& argInOut);
+    virtual bool onKey(KeyEvent& argInOut);
 
     /// Mouse: return true if input was consumed. 
-    virtual bool mouseMoved(MouseMoveEvent& argInOut);
-    virtual bool mouseButtonPressed(MouseButtonEvent& argInOut);
-    virtual bool mouseButtonReleased(MouseButtonEvent& argInOut);
+    virtual bool onMouseMoved(MouseMoveEvent& argInOut);
+    virtual bool onMouseButton(MouseButtonEvent& argInOut);
 
     /// Joystick or Gamepad: return true if input was consumed
-    virtual bool joystickButtonPressed(JoystickEvent& argInOut);
-    virtual bool joystickButtonReleased(JoystickEvent& argInOut);
-    virtual bool joystickAxisMoved(JoystickEvent& argInOut);
-    virtual bool joystickPovMoved(JoystickEvent& argInOut);
-    virtual bool joystickBallMoved(JoystickEvent& argInOut);
-    virtual bool joystickAddRemove(JoystickEvent& argInOut);
-    virtual bool joystickRemap(JoystickEvent& argInOut);
+    virtual bool onJoystickButton(JoystickEvent& argInOut);
+    virtual bool onJoystickAxisMoved(JoystickEvent& argInOut);
+    virtual bool onJoystickPovMoved(JoystickEvent& argInOut);
+    virtual bool onJoystickBallMoved(JoystickEvent& argInOut);
+    virtual bool onJoystickRemap(JoystickEvent& argInOut);
     virtual bool onTextInput(TextInputEvent& argInOut);
     virtual bool onTextEdit(TextEditEvent& argInOut);
+    virtual bool onDeviceAddOrRemove(InputEvent& argInOut);
 
 protected:
     /// Keyboard: return true if input was consumed
-    virtual bool onKeyDownInternal(KeyEvent &argInOut) = 0;
-    virtual bool onKeyUpInternal(KeyEvent &argInOut) = 0;
+    virtual bool onKeyInternal(KeyEvent &argInOut) = 0;
 
     /// Mouse: return true if input was consumed. 
-    virtual bool mouseMovedInternal(MouseMoveEvent &argInOut) = 0;
-    virtual bool mouseButtonPressedInternal(MouseButtonEvent& argInOut) = 0;
-    virtual bool mouseButtonReleasedInternal(MouseButtonEvent& argInOut) = 0;
+    virtual bool onMouseMovedInternal(MouseMoveEvent &argInOut) = 0;
+    virtual bool onMouseButtonInternal(MouseButtonEvent& argInOut) = 0;
 
     /// Joystick or Gamepad: return true if input was consumed
-    virtual bool joystickButtonPressedInternal(JoystickEvent &argInOut) = 0;
-    virtual bool joystickButtonReleasedInternal(JoystickEvent &argInOut) = 0;
-    virtual bool joystickAxisMovedInternal(JoystickEvent &argInOut) = 0;
-    virtual bool joystickPovMovedInternal(JoystickEvent &argInOut) = 0;
-    virtual bool joystickBallMovedInternal(JoystickEvent &argInOut) = 0;
-    virtual bool joystickAddRemoveInternal(JoystickEvent &argInOut) = 0;
-    virtual bool joystickRemapInternal(JoystickEvent &argInOut) = 0;
+    virtual bool onJoystickButtonInternal(JoystickEvent &argInOut) = 0;
+    virtual bool onJoystickAxisMovedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool onJoystickPovMovedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool onJoystickBallMovedInternal(JoystickEvent &argInOut) = 0;
+    virtual bool onJoystickRemapInternal(JoystickEvent &argInOut) = 0;
     virtual bool onTextInputInternal(TextInputEvent& argInOut) = 0;
     virtual bool onTextEditInternal(TextEditEvent& argInOut) = 0;
+
+    /// Global add or remove device
+    virtual bool onDeviceAddOrRemoveInternal(InputEvent& argInOut) = 0;
 
     PROPERTY_RW(bool, processInput, true);
 };

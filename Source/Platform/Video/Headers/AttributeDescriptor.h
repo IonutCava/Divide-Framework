@@ -67,6 +67,8 @@ namespace Divide {
         bool operator==(const AttributeMap&) const = default;
     };
 
+    static const AttributeMap g_emptyAttributeMap{};
+
     size_t GetHash(const AttributeDescriptor& descriptor);
     size_t GetHash(const VertexBinding& vertexBinding);
     size_t GetHash(const AttributeMap& attributes);

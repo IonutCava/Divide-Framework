@@ -431,8 +431,9 @@ namespace Divide
         return _deletionQueue.empty();
     }
 
-    VKImmediateCmdContext::VKImmediateCmdContext( VKDevice& context, const QueueType type )
+    VKImmediateCmdContext::VKImmediateCmdContext( const Configuration& config, VKDevice& context, const QueueType type )
         : _context( context )
+        , _config(config)
         , _type(type)
         , _queueIndex(context.getQueue(type)._index)
     {
@@ -459,7 +460,7 @@ namespace Divide
         }
     }
 
-    void VKImmediateCmdContext::flushCommandBuffer( FlushCallback&& function, const char* scopeName )
+    void VKImmediateCmdContext::flushCommandBuffer(FlushCallback&& function, const char* scopeName )
     {
         LockGuard<Mutex> w_lock( _submitLock );
 
@@ -475,14 +476,14 @@ namespace Divide
 
         VkCommandBuffer cmd = _commandBuffers[_bufferIndex];
         VK_CHECK( vkBeginCommandBuffer( cmd, &cmdBeginInfo ) );
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
-        VK_API::PushDebugMessage( cmd, scopeName );
+        VK_API::PushDebugMessage( _config, cmd, scopeName );
 
         // Execute the function
         function( cmd, _type, _queueIndex );
 
-        VK_API::PopDebugMessage( cmd ) ;
+        VK_API::PopDebugMessage( _config, cmd ) ;
         VK_CHECK( vkEndCommandBuffer( cmd ) );
 
         VkSubmitInfo submitInfo = vk::submitInfo();
@@ -498,7 +499,7 @@ namespace Divide
         }
     }
 
-    void VKStateTracker::init( VKDevice* device, VKPerWindowState* mainWindow )
+    void VKStateTracker::init( const Configuration& config, VKDevice* device, VKPerWindowState* mainWindow )
     {
         DIVIDE_ASSERT(device != nullptr && mainWindow != nullptr);
         setDefaultState();
@@ -506,7 +507,7 @@ namespace Divide
         _activeWindow = mainWindow;
         for ( U8 t = 0u; t < to_base(QueueType::COUNT); ++t )
         {
-            _cmdContexts[t] = std::make_unique<VKImmediateCmdContext>( *device, static_cast<QueueType>(t) );
+            _cmdContexts[t] = std::make_unique<VKImmediateCmdContext>( config, *device, static_cast<QueueType>(t) );
         }
 
     }
@@ -1042,22 +1043,22 @@ namespace Divide
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
         {
-            deviceInformation._maxWorgroupCount[i] = deviceProperties.limits.maxComputeWorkGroupCount[i];
-            deviceInformation._maxWorgroupSize[i] = deviceProperties.limits.maxComputeWorkGroupSize[i];
+            deviceInformation._maxWorkgroupCount[i] = deviceProperties.limits.maxComputeWorkGroupCount[i];
+            deviceInformation._maxWorkgroupSize[i] = deviceProperties.limits.maxComputeWorkGroupSize[i];
 
-            deviceInformation._maxMeshWorgroupCount[i] = meshProperties.maxMeshWorkGroupCount[i];
-            deviceInformation._maxMeshWorgroupSize[i] = meshProperties.maxMeshWorkGroupSize[i];
+            deviceInformation._maxMeshWorkgroupCount[i] = meshProperties.maxMeshWorkGroupCount[i];
+            deviceInformation._maxMeshWorkgroupSize[i] = meshProperties.maxMeshWorkGroupSize[i];
 
-            deviceInformation._maxTaskWorgroupCount[i] = meshProperties.maxTaskWorkGroupCount[i];
-            deviceInformation._maxTaskWorgroupSize[i] = meshProperties.maxTaskWorkGroupSize[i];
+            deviceInformation._maxTaskWorkgroupCount[i] = meshProperties.maxTaskWorkGroupCount[i];
+            deviceInformation._maxTaskWorkgroupSize[i] = meshProperties.maxTaskWorkGroupSize[i];
         }
 
-        deviceInformation._maxWorgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
+        deviceInformation._maxWorkgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
         deviceInformation._maxComputeSharedMemoryBytes = deviceProperties.limits.maxComputeSharedMemorySize;
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ),
-                          deviceInformation._maxWorgroupCount[0], deviceInformation._maxWorgroupCount[1], deviceInformation._maxWorgroupCount[2],
-                          deviceInformation._maxWorgroupSize[0], deviceInformation._maxWorgroupSize[1], deviceInformation._maxWorgroupSize[2],
-                          deviceInformation._maxWorgroupInvocations );
+                          deviceInformation._maxWorkgroupCount[0], deviceInformation._maxWorkgroupCount[1], deviceInformation._maxWorkgroupCount[2],
+                          deviceInformation._maxWorkgroupSize[0], deviceInformation._maxWorkgroupSize[1], deviceInformation._maxWorkgroupSize[2],
+                          deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
         // Maximum number of varying components supported as outputs in the vertex shader
@@ -1066,21 +1067,21 @@ namespace Divide
 
         deviceInformation._maxMeshShaderOutputVertices = meshProperties.maxMeshOutputVertices;
         deviceInformation._maxMeshShaderOutputPrimitives = meshProperties.maxMeshOutputPrimitives;
-        deviceInformation._maxMeshWorgroupInvocations = meshProperties.maxMeshWorkGroupInvocations;
-        deviceInformation._maxTaskWorgroupInvocations = meshProperties.maxTaskWorkGroupInvocations;
+        deviceInformation._maxMeshWorkgroupInvocations = meshProperties.maxMeshWorkGroupInvocations;
+        deviceInformation._maxTaskWorkgroupInvocations = meshProperties.maxTaskWorkGroupInvocations;
 
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
         
-        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxMeshWorgroupCount[0], deviceInformation._maxMeshWorgroupCount[1], deviceInformation._maxMeshWorgroupCount[2],
-                                    deviceInformation._maxMeshWorgroupSize[0], deviceInformation._maxMeshWorgroupSize[1], deviceInformation._maxMeshWorgroupSize[2],
-                                    deviceInformation._maxMeshWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxMeshWorkgroupCount[0], deviceInformation._maxMeshWorkgroupCount[1], deviceInformation._maxMeshWorkgroupCount[2],
+                                    deviceInformation._maxMeshWorkgroupSize[0], deviceInformation._maxMeshWorkgroupSize[1], deviceInformation._maxMeshWorkgroupSize[2],
+                                    deviceInformation._maxMeshWorkgroupInvocations);
                                     
-        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORGROUP_INFO"),
-                                    deviceInformation._maxTaskWorgroupCount[0], deviceInformation._maxTaskWorgroupCount[1], deviceInformation._maxTaskWorgroupCount[2],
-                                    deviceInformation._maxTaskWorgroupSize[0], deviceInformation._maxTaskWorgroupSize[1], deviceInformation._maxTaskWorgroupSize[2],
-                                    deviceInformation._maxTaskWorgroupInvocations);
+        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
+                                    deviceInformation._maxTaskWorkgroupCount[0], deviceInformation._maxTaskWorkgroupCount[1], deviceInformation._maxTaskWorkgroupCount[2],
+                                    deviceInformation._maxTaskWorkgroupSize[0], deviceInformation._maxTaskWorkgroupSize[1], deviceInformation._maxTaskWorkgroupSize[2],
+                                    deviceInformation._maxTaskWorkgroupInvocations);
 
         deviceInformation._offsetAlignmentBytesUBO = deviceProperties.limits.minUniformBufferOffsetAlignment;
         deviceInformation._maxSizeBytesUBO = deviceProperties.limits.maxUniformBufferRange;
@@ -1155,7 +1156,7 @@ namespace Divide
 
         initStatePerWindow( perWindowContext );
 
-        s_stateTracker.init(_device.get(), &perWindowContext);
+        s_stateTracker.init( _context.context().config(), _device.get(), &perWindowContext);
         s_stateTracker._assertOnAPIError = &config.debug.renderer.assertOnRenderAPIError;
         s_stateTracker._enabledAPIDebugging = &config.debug.renderer.enableRenderAPIDebugging;
 
@@ -1282,7 +1283,7 @@ namespace Divide
 
     bool VK_API::Draw( GenericDrawCommand cmd, VkCommandBuffer cmdBuffer )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         DIVIDE_ASSERT( cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount );
 
@@ -1299,7 +1300,7 @@ namespace Divide
                     case PrimitiveTopology::LINES:
                     case PrimitiveTopology::LINE_STRIP:
                     case PrimitiveTopology::LINE_STRIP_ADJACENCY:
-                    case PrimitiveTopology::LINES_ADJANCENCY: drawCmd._cmd.vertexCount = 2u; break;
+                    case PrimitiveTopology::LINES_ADJACENCY: drawCmd._cmd.vertexCount = 2u; break;
                     case PrimitiveTopology::TRIANGLES:
                     case PrimitiveTopology::TRIANGLE_STRIP:
                     case PrimitiveTopology::TRIANGLE_FAN:
@@ -1322,70 +1323,56 @@ namespace Divide
         bool hasIndexBuffer = false;
         U32 firstIndex = cmd._cmd.firstIndex;
 
+        // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
+        thread_local GPUBufferActiveBindConfiguration s_lastVB = {};
+        thread_local GPUBufferActiveBindConfiguration s_lastIB = {};
+
         for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
-            // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-            thread_local GPUVertexBuffer::Handle s_lastID = { U16_MAX, 0u };
-            thread_local GPUVertexBuffer* s_lastBuffer = nullptr;
+            GPUBufferActiveBindConfiguration activeConfig{};
+            activeConfig._handle = cmd._sourceBuffers[i];
+            activeConfig._buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
+            
+            DIVIDE_ASSERT(activeConfig._buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+            vkGPUBuffer* vkBuffer = static_cast<vkGPUBuffer*>(activeConfig._buffer);
+            vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
+            DIVIDE_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
-            const PoolHandle handle = cmd._sourceBuffers[i];
-
-            if (s_lastID != handle)
+            const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
+            activeConfig._bindIdx = vkBuffer->_bindConfig._bindIdx;
+            activeConfig._offset = 0u;
+            if (vkBuffer->queueLength() > 1)
             {
-                s_lastID = handle;
-                s_lastBuffer = GPUVertexBuffer::s_GVBPool.find(s_lastID);
+                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
             }
 
-            DIVIDE_ASSERT( s_lastBuffer != nullptr );
-            if (s_lastBuffer->_vertexBuffer)
+            if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
             {
-                vkGPUBuffer* buffer = static_cast<vkGPUBuffer*>(s_lastBuffer->_vertexBuffer.get());
-                vkBufferImpl* impl = buffer->_internalBuffer.get();
-                const BufferParams& bufferParams = impl->_params;
-
-                assert(impl != nullptr);
-
-                const auto& vbBindConfig = s_lastBuffer->_vertexBufferBinding;
-
-                VkDeviceSize offsetInBytes = 0u;
-                if (s_lastBuffer->_vertexBuffer->queueLength() > 1)
+                if ( s_lastVB != activeConfig )
                 {
-                    offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * buffer->queueIndex();
+                    s_lastVB = activeConfig;
                 }
 
-                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vbBindConfig._bindIdx, 1, &impl->_buffer, &offsetInBytes);
+                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &activeConfig._offset);
             }
-
-            if (s_lastBuffer->_indexBuffer && s_lastBuffer->_indexBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET)
+            else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
             {
+                if (s_lastIB != activeConfig)
+                {
+                    s_lastIB = activeConfig;
+                }
+
+                DIVIDE_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+                
                 DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+                hasIndexBuffer = true;
 
-                vkGPUBuffer* buffer = static_cast<vkGPUBuffer*>(s_lastBuffer->_indexBuffer.get());
-                vkBufferImpl* impl = buffer->_internalBuffer.get();
-                if ( impl != nullptr )
-                {
-                    const BufferParams& bufferParams = impl->_params;
+                firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
+                firstIndex += vkBuffer->firstIndexOffsetCount();
 
-                    VkDeviceSize offsetInBytes = 0u;
-                    const VkDeviceSize indexSizeInBytes = bufferParams._elementSize;
-
-                    if (buffer->queueLength() > 1u) [[likely]]
-                    {
-                        offsetInBytes += bufferParams._elementCount * bufferParams._elementSize * buffer->queueIndex();
-                    }
-
-                    firstIndex += to_U32(offsetInBytes / indexSizeInBytes);
-                    firstIndex += s_lastBuffer->_indexBuffer->firstIndexOffsetCount();
-
-                    VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offsetInBytes, indexSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
-                    hasIndexBuffer = true;
-                }
+                VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, activeConfig._offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                cmd._cmd.firstIndex = firstIndex;
             }
-          
-        }
-        if (hasIndexBuffer)
-        {
-            cmd._cmd.firstIndex = firstIndex;
         }
 
         VKUtil::SubmitRenderCommand(cmd, cmdBuffer, hasIndexBuffer);
@@ -1411,7 +1398,7 @@ namespace Divide
 
     bool VK_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( getCurrentCommandBuffer() );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( getCurrentCommandBuffer() );
 
         auto& program = GetStateTracker()._pipeline._program;
         DIVIDE_ASSERT( program != nullptr );
@@ -1700,7 +1687,7 @@ namespace Divide
 
     void VK_API::bindDynamicState( const RenderStateBlock& currentState, const RTBlendStates& blendStates, VkCommandBuffer cmdBuffer ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         bool ret = false;
 
@@ -1866,7 +1853,7 @@ namespace Divide
 
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         size_t stateHash = pipeline.stateHash();
         Util::Hash_combine(stateHash, GetStateTracker()._renderTargetFormatHash );
@@ -2128,7 +2115,7 @@ namespace Divide
 
         void FlushBarriers( BarrierContainer& barriers, BatchedTransferQueue& transferQueueBatched, VkCommandBuffer cmd, bool toWrite )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
             for ( const auto& request : transferQueueBatched )
             {
@@ -2148,7 +2135,7 @@ namespace Divide
 
         void FlushCopyRequests( CopyContainer& copyRequests, VkCommandBuffer cmd )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
             for ( const PerBufferCopies& request : copyRequests )
             {
@@ -2222,7 +2209,7 @@ namespace Divide
 
         void FlushTransferQueue( VkCommandBuffer cmdBuffer, VKTransferQueue& transferQueue )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             thread_local vector<PerBufferCopies> s_copyRequests;
             thread_local BarrierContainer s_barriers{};
@@ -2241,7 +2228,7 @@ namespace Divide
 
     void VK_API::SubmitTransferRequest( const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmd );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
         VkBufferMemoryBarrier2 barriers[2] = {};
         VkDependencyInfo dependencyInfo = vk::dependencyInfo();
@@ -2276,7 +2263,7 @@ namespace Divide
 
         if ( s_transferQueue._dirty.load() )
         {
-            VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer([](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
+            VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
             {
                 VK_API::FlushBufferTransferRequests( cmd );
             }, "Deferred Buffer Uploads" );
@@ -2285,7 +2272,7 @@ namespace Divide
 
     void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         if ( s_transferQueue._dirty.load() )
         {
@@ -2311,7 +2298,7 @@ namespace Divide
         auto& stateTracker = GetStateTracker();
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
@@ -2353,7 +2340,7 @@ namespace Divide
                 thread_local vector<VkFormat> swapChainImageFormat( to_base( RTColourAttachmentSlot::COUNT ), VK_FORMAT_UNDEFINED);
 
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
-                PushDebugMessage( cmdBuffer, crtCmd->_name.c_str() );
+                PushDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_name.c_str() );
 
                 stateTracker._activeRenderTargetID = crtCmd->_target;
 
@@ -2479,7 +2466,7 @@ namespace Divide
                     stateTracker._activeRenderTargetID = SCREEN_TARGET_ID;
                 }
 
-                PopDebugMessage( cmdBuffer );
+                PopDebugMessage( _context.context().config(), cmdBuffer );
                 stateTracker._renderTargetFormatHash = 0u;
                 stateTracker._activeMSAASamples = _context.context().config().rendering.MSAASamples;
                 stateTracker._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
@@ -2577,20 +2564,20 @@ namespace Divide
                 PROFILE_SCOPE( "BEGIN_DEBUG_SCOPE", Profiler::Category::Graphics );
 
                 const GFX::BeginDebugScopeCommand* crtCmd = cmd->As<GFX::BeginDebugScopeCommand>();
-                PushDebugMessage( cmdBuffer, crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
+                PushDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_scopeName.c_str(), crtCmd->_scopeId );
             } break;
             case GFX::CommandType::END_DEBUG_SCOPE:
             {
                 PROFILE_SCOPE( "END_DEBUG_SCOPE", Profiler::Category::Graphics );
 
-                PopDebugMessage( cmdBuffer );
+                PopDebugMessage( _context.context().config(), cmdBuffer );
             } break;
             case GFX::CommandType::ADD_DEBUG_MESSAGE:
             {
                 PROFILE_SCOPE( "ADD_DEBUG_MESSAGE", Profiler::Category::Graphics );
 
                 const GFX::AddDebugMessageCommand* crtCmd = cmd->As<GFX::AddDebugMessageCommand>();
-                InsertDebugMessage( cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId );
+                AddDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_msg.c_str(), crtCmd->_msgId );
             }break;
             case GFX::CommandType::COMPUTE_MIPMAPS:
             {
@@ -3036,7 +3023,7 @@ namespace Divide
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         VkViewport targetViewport{};
         targetViewport.width = to_F32( newViewport.sizeX );
@@ -3065,7 +3052,7 @@ namespace Divide
 
     bool VK_API::setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         const VkOffset2D offset{ std::max( 0, newScissor.offsetX ), std::max( 0, newScissor.offsetY ) };
         const VkExtent2D extent{ to_U32( newScissor.sizeX ),to_U32( newScissor.sizeY ) };
@@ -3183,11 +3170,11 @@ namespace Divide
         return s_stateTracker;
     }
 
-    void VK_API::InsertDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )
+    void VK_API::AddDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, const U32 id )
     {
-        if ( s_hasDebugMarkerSupport )
+        if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping  )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             constexpr F32 color[4] = { 0.0f, 1.0f, 0.0f, 1.f };
 
@@ -3199,14 +3186,14 @@ namespace Divide
             Debug::vkCmdInsertDebugUtilsLabelEXT( cmdBuffer, &labelInfo );
         }
 
-        GetStateTracker()._lastInsertedDebugMessage = { message, id };
+        GFXDevice::AddDebugMessage(message, id);
     }
 
-    void VK_API::PushDebugMessage( VkCommandBuffer cmdBuffer, const char* message, const U32 id )
+    void VK_API::PushDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, const U32 id )
     {
-        if ( s_hasDebugMarkerSupport )
+        if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping  )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             constexpr F32 color[4] = { 0.5f, 0.5f, 0.5f, 1.f };
 
@@ -3217,21 +3204,19 @@ namespace Divide
             Debug::vkCmdBeginDebugUtilsLabelEXT( cmdBuffer, &labelInfo );
         }
 
-        assert( GetStateTracker()._debugScopeDepth < Config::MAX_DEBUG_SCOPE_DEPTH );
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth++] = { message, id };
+        GFXDevice::PushDebugMessage(message, id);
     }
 
-    void VK_API::PopDebugMessage( VkCommandBuffer cmdBuffer )
+    void VK_API::PopDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer )
     {
-        if ( s_hasDebugMarkerSupport )
+        if ( s_hasDebugMarkerSupport && config.debug.renderer.enableRenderAPIDebugGrouping )
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEX( cmdBuffer );
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
             Debug::vkCmdEndDebugUtilsLabelEXT( cmdBuffer );
         }
 
-        DIVIDE_ASSERT( s_stateTracker._debugScopeDepth > 0u );
-        GetStateTracker()._debugScope[GetStateTracker()._debugScopeDepth--] = {};
+        GFXDevice::PopDebugMessage();
     }
 
     /// Return the Vulkan sampler object's handle for the given hash value
@@ -3293,9 +3278,9 @@ namespace Divide
         return std::make_unique<vkRenderTarget>( _context, descriptor );
     }
 
-    GPUBuffer_ptr VK_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
+    GPUBuffer_uptr VK_API::newGPUBuffer( U32 ringBufferLength, const std::string_view name ) const
     {
-        return std::make_shared<vkGPUBuffer>( _context, ringBufferLength, name );
+        return std::make_unique<vkGPUBuffer>( _context, ringBufferLength, name );
     }
 
     ShaderBuffer_uptr VK_API::newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const

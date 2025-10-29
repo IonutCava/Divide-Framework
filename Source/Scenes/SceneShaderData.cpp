@@ -10,19 +10,19 @@ namespace Divide
     {
         ShaderBufferDescriptor bufferDescriptor = {};
         bufferDescriptor._ringBufferLength = Config::MAX_FRAMES_IN_FLIGHT + 1u;
-        bufferDescriptor._bufferParams._usageType = BufferUsageType::CONSTANT_BUFFER;
-        bufferDescriptor._bufferParams._updateFrequency = BufferUpdateFrequency::OCASSIONAL;
+        bufferDescriptor._usageType = BufferUsageType::CONSTANT_BUFFER;
+        bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
         {
-            bufferDescriptor._bufferParams._elementCount = 1u;
-            bufferDescriptor._bufferParams._elementSize = sizeof( SceneShaderBufferData );
-            bufferDescriptor._initialData = { (Byte*)&_sceneBufferData, bufferDescriptor._bufferParams._elementSize };
+            bufferDescriptor._elementCount = 1u;
+            bufferDescriptor._elementSize = sizeof( SceneShaderBufferData );
+            bufferDescriptor._initialData = { (Byte*)&_sceneBufferData, bufferDescriptor._elementSize };
             bufferDescriptor._name = "SCENE_SHADER_DATA";
             _sceneShaderData = _context.newShaderBuffer( bufferDescriptor );
         }
         {
-            bufferDescriptor._bufferParams._elementCount = GLOBAL_PROBE_COUNT;
-            bufferDescriptor._bufferParams._elementSize = sizeof( ProbeData );
-            bufferDescriptor._initialData = { (Byte*)_probeData.data(), bufferDescriptor._bufferParams._elementSize };
+            bufferDescriptor._elementCount = GLOBAL_PROBE_COUNT;
+            bufferDescriptor._elementSize = sizeof( ProbeData );
+            bufferDescriptor._initialData = { (Byte*)_probeData.data(), bufferDescriptor._elementSize };
             bufferDescriptor._name = "SCENE_PROBE_DATA";
             _probeShaderData = _context.newShaderBuffer( bufferDescriptor );
         }

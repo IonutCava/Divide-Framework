@@ -178,7 +178,9 @@ DEFINE_3D_OBJECT_TYPE(Terrain, SceneNodeType::TYPE_TERRAIN)
    protected:
     Quadtree _terrainQuadtree;
     vector<TerrainChunk*> _terrainChunks;
-    GPUVertexBuffer_uptr _terrainBuffer = nullptr;
+    GPUBuffer_uptr _terrainVBBuffer = nullptr;
+    GPUBuffer_uptr _terrainIBBuffer = nullptr;
+    std::array<GPUBuffer::Handle, 2> _bufferHandles;
     vector<TileRing> _tileRings;
 
     bool _initialSetupDone = false;
