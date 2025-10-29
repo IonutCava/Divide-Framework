@@ -4,7 +4,7 @@ description: 'Shared configuration for all platforms'
 outputs:
   cmake-version:
     description: "CMake version to use"
-    value: '3.31.6'
+    value: latest
   ninja-version:
     description: "Ninja version to use"
     value: '1.12.1'
