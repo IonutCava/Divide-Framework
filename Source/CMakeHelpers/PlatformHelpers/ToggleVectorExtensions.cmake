@@ -13,6 +13,7 @@ set(BMI2_OPT OFF)
 set(POPCNT_OPT OFF)
 set(LZCNT_OPT OFF)
 set(F16C_OPT OFF)
+set(NEON_OPT OFF)
 set(EXTENSIONS "")
 
 function (Toggle_Available_Vector_Extensions)
