@@ -29,6 +29,7 @@ if(CLANG_COMPILER)
 endif()
 
 FetchContent_MakeAvailable( optick )
+
 if(CLANG_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
 endif()
@@ -126,7 +127,8 @@ FetchContent_MakeAvailable( icon_font_cpp_headers )
 
 #SDL3_mixer
 message("Fetching SDL3_Mixer Lib")
-set(SDLMIXER_FLAC OFF)
+set(SDLMIXER_FLAC_LIBFLAC ON)
+set(SDLMIXER_FLAC_DRFLAC OFF)
 set(SDLMIXER_GME OFF)
 set(SDLMIXER_MOD OFF)
 set(SDLMIXER_MIDI OFF)
@@ -147,7 +149,6 @@ message("Making SDL3_Mixer Lib Available")
 FetchContent_MakeAvailable( SDL3_mixer )
 
 include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
-
 
 if (BUILD_TESTING_INTERNAL)
     set(BUILD_TESTING ON)
