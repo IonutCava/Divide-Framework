@@ -25,7 +25,7 @@ FetchContent_Declare(
 
 if(CLANG_COMPILER)
     set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes -Wno-unsafe-buffer-usage")
 endif()
 
 FetchContent_MakeAvailable( optick )

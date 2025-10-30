@@ -74,8 +74,7 @@
                 "rhs": "Darwin"
             },
             "cacheVariables": {
-                "MAC_OS_BUILD": true,
-                "CMAKE_OSX_ARCHITECTURES": "x86_64"
+                "MAC_OS_BUILD": true
             }
         },
         {
