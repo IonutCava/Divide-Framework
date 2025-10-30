@@ -81,7 +81,7 @@ function (Toggle_Available_Vector_Extensions)
     endif()
 
     if (NOT SSE41_OPT AND NOT NEON_OPT)
-        message(FATAL_ERROR "SSE4.1 or NEONE was not detected. SSE4.1 or NEON is a minimum requirement in order for the build to proceed!")
+        message(FATAL_ERROR "SSE4.1 or NEON was not detected. SSE4.1 or NEON is a minimum requirement in order for the build to proceed!")
     endif()
 
     if ( WINDOWS_OS_BUILD )
@@ -95,6 +95,10 @@ function (Toggle_Available_Vector_Extensions)
         endif()
 
     else() #WINDOWS_OS_BUILD
+
+        if ( NEON_OPT )
+            list(APPEND EXTRA_COMPILE_FLAGS " -march==armv8-a+fp+simd")
+        endif()
 
         if ( AVX512F_OPT )
             list(APPEND EXTRA_COMPILE_FLAGS " -mavx512f")
