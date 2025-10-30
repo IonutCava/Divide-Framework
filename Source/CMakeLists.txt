@@ -135,7 +135,7 @@ endif()
 
 list(APPEND DIVIDE_COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CXX,C>:${EXTRA_COMPILE_FLAGS}>")
 
-add_library(${APP_LIB_DIVIDE} STATIC "engineMain.cpp" 
+add_library(${APP_LIB_DIVIDE} STATIC "EngineMain.cpp" 
                                      ${ENGINE_SOURCE_CODE}
                                      ${THIRD_PARTY_LOCAL_SRC_FILES}
                                      ${THIRD_PARTY_FETCH_SRC_FILES}
