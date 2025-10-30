@@ -97,7 +97,7 @@ function (Toggle_Available_Vector_Extensions)
     else() #WINDOWS_OS_BUILD
 
         if ( NEON_OPT )
-            list(APPEND EXTRA_COMPILE_FLAGS " -march==armv8-a+fp+simd")
+            list(APPEND EXTRA_COMPILE_FLAGS " -march=armv8-a+fp+simd")
         endif()
 
         if ( AVX512F_OPT )
