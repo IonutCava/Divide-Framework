@@ -25,9 +25,7 @@
 #include "Environment/Vegetation/Headers/Vegetation.h"
 #include "Networking/Headers/Common.h"
 
-#include <cassert>
 #include <common/PxBase.h>
-#include <config.h>
 #include <cooking/PxCooking.h>
 #include <cooking/PxTriangleMeshDesc.h>
 #include <extensions/PxDefaultAllocator.h>

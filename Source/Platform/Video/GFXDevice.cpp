@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/GFXDevice.h"
 #include "Headers/GFXRTPool.h"
 #include "Editor/Headers/Editor.h"

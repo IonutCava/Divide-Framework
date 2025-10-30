@@ -33,8 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_H_
 #define DVD_HARDWARE_VIDEO_GFX_SHADER_DATA_H_
 
-#include "config.h"
-
 namespace Divide {
 
 enum class RenderStage : U8;

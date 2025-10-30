@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/AnimationEvaluator.h"
 #include "Headers/AnimationUtils.h"
 #include "Core/Headers/ByteBuffer.h"

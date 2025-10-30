@@ -62,6 +62,7 @@ public:
     void playMusic( Handle<AudioDescriptor> music ) override;
 
     void pauseMusic() override;
+    void resumeMusic() override;
     void stopMusic() override;
     void stopAllSounds() override;
     void setMusicVolume(I8 value) override;
@@ -76,8 +77,8 @@ public:
     PROPERTY_RW(AudioAPI, apiID, AudioAPI::COUNT);
 
 protected:
-    friend void musicFinishedHook() noexcept;
-    void musicFinished() noexcept override;
+    friend class SDL_API;
+    void trackFinished(const TrackDetails& details) noexcept override;
 
     [[nodiscard]] bool frameStarted( const FrameEvent& evt ) override;
 

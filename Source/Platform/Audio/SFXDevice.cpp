@@ -67,11 +67,14 @@ bool SFXDevice::frameStarted( [[maybe_unused]] const FrameEvent& evt )
     PROFILE_SCOPE_AUTO( Divide::Profiler::Category::Sound );
 
     if (_playNextInPlaylist) {
-        _api->musicFinished();
-
-        if (!_currentPlaylist.second.empty()) {
+        if (!_currentPlaylist.second.empty())
+        {
             _currentPlaylist.first = (_currentPlaylist.first + 1u) % _currentPlaylist.second.size();
             _api->playMusic(_currentPlaylist.second[_currentPlaylist.first]);
+        }
+        else
+        {
+            _api->stopMusic();
         }
         _playNextInPlaylist = false;
     }
@@ -126,6 +129,12 @@ void SFXDevice::pauseMusic() {
     _api->pauseMusic();
 }
 
+void SFXDevice::resumeMusic() {
+    DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: pauseMusic called without init!");
+
+    _api->resumeMusic();
+}
+
 void SFXDevice::stopMusic() {
     DIVIDE_ASSERT(_api != nullptr, "SFXDevice error: stopMusic called without init!");
 
@@ -150,8 +159,11 @@ void SFXDevice::setSoundVolume(const I8 value) {
     _api->setSoundVolume(value);
 }
 
-void SFXDevice::musicFinished() noexcept {
-    _playNextInPlaylist = true;
+void SFXDevice::trackFinished(const TrackDetails& details) noexcept
+{
+    if (details._isMusic) {
+        _playNextInPlaylist = true;
+    }
 }
 
 void SFXDevice::dumpPlaylists() {

@@ -1,6 +1,6 @@
 #include "Headers/PlatformDataTypes.h"
 
-#include "config.h"
+#include "EngineConfig.h"
 #include <cassert> //assert
 #include <cstring> //std::memcpy
 

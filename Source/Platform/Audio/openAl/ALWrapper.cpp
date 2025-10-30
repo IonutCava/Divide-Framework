@@ -41,6 +41,8 @@ void OpenAL_API::playMusic([[maybe_unused]] const Handle<AudioDescriptor> music)
 
 void OpenAL_API::pauseMusic() noexcept {}
 
+void OpenAL_API::resumeMusic() noexcept {}
+
 void OpenAL_API::stopMusic() noexcept {}
 
 void OpenAL_API::stopAllSounds() noexcept {}
@@ -49,6 +51,6 @@ void OpenAL_API::setMusicVolume([[maybe_unused]] I8 value) noexcept {}
 
 void OpenAL_API::setSoundVolume([[maybe_unused]] I8 value) noexcept {}
 
-void OpenAL_API::musicFinished() noexcept {}
+void OpenAL_API::trackFinished([[maybe_unused]] const TrackDetails& details) noexcept {}
 
 }; //namespace Divide

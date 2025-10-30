@@ -1,8 +1,6 @@
 
-
-#include "config.h"
-
-#include "engineMain.h"
+#include "EngineMain.h"
+#include "EngineConfig.h"
 
 #include "Platform/File/Headers/FileManagement.h"
 #include "Utility/Headers/Localization.h"

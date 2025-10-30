@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/RenderingComponent.h"
 #include "Headers/AnimationComponent.h"
 #include "Headers/BoundsComponent.h"

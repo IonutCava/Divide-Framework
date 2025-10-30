@@ -66,6 +66,13 @@ NOINITVTABLE_CLASS(AudioAPIWrapper) : public PlatformContextComponent, public Fr
 
    protected:
     friend class SFXDevice;
+    struct TrackDetails
+    {
+        SFXDevice* _sfx{ nullptr };
+        U32 _trackID{0u};
+        bool _isMusic{false};
+    };
+
     virtual ErrorCode initAudioAPI() = 0;
     virtual void closeAudioAPI() = 0;
 
@@ -75,13 +82,13 @@ NOINITVTABLE_CLASS(AudioAPIWrapper) : public PlatformContextComponent, public Fr
     virtual void playMusic( Handle<AudioDescriptor> music ) = 0;
 
     virtual void pauseMusic() = 0;
+    virtual void resumeMusic() = 0;
     virtual void stopMusic() = 0;
     virtual void stopAllSounds() = 0;
-
     virtual void setMusicVolume(I8 value) = 0;
     virtual void setSoundVolume(I8 value) = 0;
 
-    virtual void musicFinished() = 0;
+    virtual void trackFinished(const TrackDetails& details) = 0;
 };
 
 FWD_DECLARE_MANAGED_CLASS(AudioAPIWrapper);

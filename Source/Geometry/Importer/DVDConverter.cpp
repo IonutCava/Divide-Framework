@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/DVDConverter.h"
 #include "Headers/MeshImporter.h"
 

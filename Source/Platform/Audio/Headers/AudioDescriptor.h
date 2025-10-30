@@ -60,9 +60,10 @@ class AudioDescriptor final : public CachedResource {
     void clean() noexcept { dirty(false); }
 
     PROPERTY_RW(F32, frequency, 44.2f);
+    PROPERTY_RW(U8, volume, 100);
     PROPERTY_RW(I8, bitDepth, 16);
-    PROPERTY_RW(I8, volume, 100);
-    PROPERTY_RW(I8, channelID, -1);
+    PROPERTY_RW(float3, position, VECTOR3_ZERO); //< overrides stereo gains. World position.
+    PROPERTY_RW(F32, stereoGain, 0.f); //< -1 = left, 0 = center, 1 = right, clamped.
     PROPERTY_R_IW(bool, dirty, true);
     PROPERTY_RW(bool, isLooping, false);
     PROPERTY_RW(bool, is3D, false);

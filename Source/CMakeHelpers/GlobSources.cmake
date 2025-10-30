@@ -890,7 +890,7 @@ set( ENGINE_SOURCE_CODE_HEADERS ${AI_SOURCE_HEADERS}
                                 ${SCENES_SOURCE_HEADERS}
                                 ${SCRIPTING_SOURCE_HEADERS}
                                 ${UTILITY_SOURCE_HEADERS}
-                                "engineMain.h"
+                                "EngineMain.h"
 )
 set_source_files_properties(${ENGINE_SOURCE_CODE_HEADERS} PROPERTIES HEADER_FILE_ONLY ON)
 

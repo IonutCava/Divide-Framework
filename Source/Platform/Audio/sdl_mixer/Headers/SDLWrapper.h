@@ -34,9 +34,7 @@
 #define DVD_WRAPPER_SDL_H_
 
 #include "Platform/Audio/Headers/AudioAPIWrapper.h"
-
-typedef struct Mix_Music Mix_Music;
-struct Mix_Chunk;
+#include <SDL3_mixer/SDL_mixer.h>
 
 namespace Divide {
 
@@ -51,21 +49,58 @@ public:
     void playMusic(const Handle<AudioDescriptor> music) override;
 
     void stopMusic() noexcept override;
-    void stopAllSounds() noexcept override {}
-    void pauseMusic() noexcept override {}
+    void stopAllSounds() noexcept override;
+    void pauseMusic() noexcept override;
+    void resumeMusic() noexcept override;
 
-    void setMusicVolume(I8) noexcept override {}
-    void setSoundVolume(I8) noexcept override {}
+    void setMusicVolume(I8 gain) noexcept override;
+    void setSoundVolume(I8 gain) noexcept override;
+
+    PROPERTY_R(bool, paused, false);
 
 protected:
-    void musicFinished() noexcept override;
+    struct AudioPlaybackProperties
+    {
+        TrackDetails* _details;
+        MIX_Mixer* _mixer{nullptr};
+        MIX_Audio* _audio{ nullptr };
+        MIX_Track* _track{ nullptr };
+        MIX_Point3D _position{};
+        MIX_StereoGains _stereoGains{};
+        SDL_PropertiesID _properties{0};
+        F32 _volume{ 1.f };
+        bool _loop{ false };
+        bool _is3D{ false };
+    };
 
+    void trackFinished(const TrackDetails& details) noexcept override;
+
+    bool playAudio(const AudioPlaybackProperties& playback) const;
 private:
-    using MusicMap = hashMap<U32, Mix_Music*>;
-    using SoundMap = hashMap<U32, Mix_Chunk*>;
 
+    struct SoundEntry
+    {
+        MIX_Audio* _audio = nullptr;
+        MIX_Track* _track = nullptr;
+        TrackDetails _details{};
+        SDL_PropertiesID _properties{ 0 };
+        MIX_Point3D _position{};
+        MIX_StereoGains _stereoGains{};
+    };
+
+    using MusicMap = hashMap<U32, MIX_Audio*>;
+    using SoundMap = hashMap<U32, SoundEntry>;
+
+    F32 _musicGain = 1.f;
+    F32 _soundGain = 1.f;
     MusicMap _musicMap;
     SoundMap _soundMap;
+    MIX_Mixer* _musicMixer = nullptr;
+    MIX_Mixer* _soundMixer = nullptr;
+    MIX_Track* _activeSong = nullptr; 
+    std::array<SoundEntry*, MAX_SOUND_BUFFERS> _activeSoundChannels{};
+    SDL_PropertiesID _activeSongProperties{0};
+    TrackDetails _activeSongDetails{};
 };
 
 };  // namespace Divide

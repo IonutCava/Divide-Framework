@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/ProfileTimer.h"
 #include "Headers/ApplicationTimer.h"
 

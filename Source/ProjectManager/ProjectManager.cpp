@@ -1,7 +1,6 @@
 ﻿// ProjectManager.cpp : Defines the entry point for the application.
 
 #include "ProjectManager.h"
-#include "config.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
