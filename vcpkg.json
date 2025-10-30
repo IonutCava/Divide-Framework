@@ -2,73 +2,80 @@
     "name": "divide-framework",
     "version-string": "latest",
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-    "dependencies": [
-        "pkgconf",
-        "boost-property-tree",
-        "boost-asio",
-        "stb",
-        "freetype",
-        "fmt",
-        "concurrentqueue",
-        "devil",
-        "eastl",
-        "simpleini",
-        "glbinding",
-        "glm",
-        "openal-soft",
-        "expat",
-        "recastnavigation",
-        "imgui-node-editor",
-        "vulkan",
-        "vulkan-memory-allocator",
-        "vk-bootstrap",
-        "glslang",
-        "ctre",
-        "catch2",
-        "fribidi",
-        "assimp",
-        "mimalloc",
-        "imguizmo",
-        "meshoptimizer",
-        "spirv-reflect",
-        "sdl3",
-        "chaiscript",
-        {
-            "name": "sdl3-image",
-            "features": [
-                "jpeg",
-                "png"
-            ]
-        },
-        {
-            "name": "imgui",
-            "features": [
-                "docking-experimental",
-                "no-obsolete-keyio",
-                "no-obsolete-functions",
-                "sdl3-binding",
-                "sdl3-renderer-binding"
-            ]
-        },
-        {
-            "name": "nvtt",
-            "platform": "!osx"
-        },
-        {
-            "name": "date",
-            "platform": "osx"
-        },
-        {
-            "name": "sse2neon",
-            "platform": "osx"
-        },
-        {
-            "name": "physx",
-            "platform": "!osx & !linux"
-        },
-        {
-            "name": "wayland",
-            "platform": "linux"
-        }
-    ]
+  "dependencies": [
+    "pkgconf",
+    "boost-property-tree",
+    "boost-asio",
+    "stb",
+    "freetype",
+    "fmt",
+    "concurrentqueue",
+    "devil",
+    "eastl",
+    "simpleini",
+    "glbinding",
+    "glm",
+    "openal-soft",
+    "expat",
+    "recastnavigation",
+    "imgui-node-editor",
+    "vulkan",
+    "vulkan-memory-allocator",
+    "vk-bootstrap",
+    "glslang",
+    "ctre",
+    "catch2",
+    "fribidi",
+    "assimp",
+    "mimalloc",
+    "imguizmo",
+    "meshoptimizer",
+    "spirv-reflect",
+    "sdl3",
+    "chaiscript",
+    "wavpack",
+    "libvorbis",
+    "libflac",
+    "libxmp",
+    "mpg123",
+    "opusfile",
+    "fluidsynth",
+    {
+      "name": "sdl3-image",
+      "features": [
+        "jpeg",
+        "png"
+      ]
+    },
+    {
+      "name": "imgui",
+      "features": [
+        "docking-experimental",
+        "no-obsolete-keyio",
+        "no-obsolete-functions",
+        "sdl3-binding",
+        "sdl3-renderer-binding"
+      ]
+    },
+    {
+      "name": "nvtt",
+      "platform": "!osx"
+    },
+    {
+      "name": "date",
+      "platform": "osx"
+    },
+    {
+      "name": "sse2neon",
+      "platform": "osx"
+    },
+    {
+      "name": "physx",
+      "platform": "!osx & !linux"
+    },
+    {
+      "name": "wayland",
+      "platform": "linux"
+    }
+  ]
 }
