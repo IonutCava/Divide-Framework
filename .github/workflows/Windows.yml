@@ -67,20 +67,15 @@ jobs:
         set /p CLANG_VERSION=<clang_version.txt
         echo "clang_version=%CLANG_VERSION%" >> %GITHUB_OUTPUT%
 
-  build_job:
+  build_msvc:
     needs: info_job
-    name: Windows - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
+    name: Windows - msvc ${{ matrix.build-type }} ${{ matrix.configuration }}
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
     strategy:
       fail-fast: true
       matrix:
-        compiler: [msvc, clang]
         build-type: [editor, game]
         configuration: [debug, release, profile]
-        exclude:
-          - compiler: clang
-            build-type: editor
-            configuration: profile
 
     timeout-minutes: 180
 
@@ -93,12 +88,37 @@ jobs:
 
       - uses: ./.github/actions/cmake-build/windows
         with:
-          compiler: ${{ matrix.compiler }}
+          compiler: msvc
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
+
+  build_clang:
+    needs: info_job
+    name: Windows - clang ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        build-type: [editor, game]
+        configuration: [debug, release]
+
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - uses: ./.github/actions/build-setup/windows
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+
+      - uses: ./.github/actions/cmake-build/windows
+        with:
+          compiler: clang
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
   output_job:
-    needs: [info_job, build_job]
+    needs: [info_job, build_msvc, build_clang]
     if: always()
     runs-on: windows-latest
     steps:
@@ -106,11 +126,13 @@ jobs:
         id: results
         shell: pwsh
         run: |
-          $buildResult = "${{ needs.build_job.result }}"
+          $msvcResult = "${{ needs.build_msvc.result }}"
+          $clangResult = "${{ needs.build_clang.result }}"
           $infoResult = "${{ needs.info_job.result }}"
-          if ($buildResult -eq "failure" -or $infoResult -eq "failure") {
+
+          if ($msvcResult -eq "failure" -or $clangResult -eq "failure" -or $infoResult -eq "failure") {
             $status = "Build or Info job failed"
-          } elseif ($buildResult -eq "cancelled" -or $infoResult -eq "cancelled") {
+          } elseif ($msvcResult -eq "cancelled" -or $clangResult -eq "cancelled" -or $infoResult -eq "cancelled") {
             $status = "Build or Info job cancelled"
           } else {
             $status = "Success"

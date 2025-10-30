@@ -44,29 +44,16 @@ jobs:
     - name: Print CLANG version
       run: clang --version 
 
-  build_job:
+  build_gcc:
     needs: info_job
-    name: Ubuntu latest - ${{ matrix.compiler }} ${{ matrix.build-type }} ${{ matrix.configuration }}
+    name: Ubuntu latest - gcc ${{ matrix.build-type }} ${{ matrix.configuration }}
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
     strategy:
       fail-fast: true
       matrix:
-        compiler: [gcc, clang]
         build-type: [editor, game]
-        configuration: [debug, release]
-        exclude:
-          - compiler: clang
-            configuration: profile
-        include:
-          - compiler: gcc
-            build-type: editor
-            configuration: profile
-          - compiler: gcc
-            build-type: game
-            configuration: profile
-
+        configuration: [debug, release, profile]
     timeout-minutes: 180
-
     steps:
       - uses: actions/checkout@v4
 
@@ -76,21 +63,44 @@ jobs:
 
       - uses: ./.github/actions/cmake-build/linux
         with:
-          compiler: ${{ matrix.compiler }}
+          compiler: gcc
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
+
+  build_clang:
+    needs: info_job
+    name: Ubuntu latest - clang ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        build-type: [editor, game]
+        configuration: [debug, release]
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-setup/linux
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+
+      - uses: ./.github/actions/cmake-build/linux
+        with:
+          compiler: clang
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
   output_job:
-    needs: build_job
+    needs: [build_gcc, build_clang]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve results
         id: results
         run: |
-          if [[ "${{ needs.build_job.result }}" == "failure" ]]; then
+          if [[ "${{ needs.build_gcc.result }}" == "failure" || "${{ needs.build_clang.result }}" == "failure" ]]; then
             echo "status=Build failed" >> $GITHUB_OUTPUT
-          elif [[ "${{ needs.build_job.result }}" == "cancelled" ]]; then
+          elif [[ "${{ needs.build_gcc.result }}" == "cancelled" || "${{ needs.build_clang.result }}" == "cancelled" ]]; then
             echo "status=Builds cancelled" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT
