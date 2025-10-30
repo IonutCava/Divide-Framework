@@ -135,7 +135,10 @@ set(SDLMIXER_MIDI OFF)
 set(SDLMIXER_OPUS OFF)
 set(SDLMIXER_INSTALL OFF)
 set(SDLMIXER_SAMPLES OFF)
-
+if(NOT WINDOWS_OS_BUILD)
+    set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF)
+endif()
 FetchContent_Declare(
     SDL3_mixer
     GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
@@ -144,9 +147,11 @@ FetchContent_Declare(
     #SYSTEM
     EXCLUDE_FROM_ALL
 )
-
 message("Making SDL3_Mixer Lib Available")
 FetchContent_MakeAvailable( SDL3_mixer )
+if(NOT WINDOWS_OS_BUILD)
+    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
+endif()
 
 include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
 
