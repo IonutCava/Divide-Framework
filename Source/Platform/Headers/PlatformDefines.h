@@ -33,7 +33,7 @@
 #ifndef DVD_PLATFORM_DEFINES_H_
 #define DVD_PLATFORM_DEFINES_H_
 
-#include "config.h"
+#include "EngineConfig.h"
 #include "Core/Headers/ErrorCodes.h"
 #include "Core/Headers/NonMovable.h"
 #include "Platform/File/Headers/ResourcePath.h"

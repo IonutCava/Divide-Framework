@@ -54,6 +54,7 @@ endif()
 
 find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
 find_path(expat_INCLUDE_DIR "expat.h")
+find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 
 set(NVTT_LIBRARIES "")
 
@@ -134,6 +135,7 @@ include_directories(
     ${expat_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}/vma
     ${SSE2NEON_INCLUDE_DIRS}
+    ${CHAISCRIPT_INCLUDE_DIRS}
 )
 
 include_directories(

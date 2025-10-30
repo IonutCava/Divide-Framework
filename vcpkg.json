@@ -32,6 +32,7 @@
         "meshoptimizer",
         "spirv-reflect",
         "sdl3",
+        "chaiscript",
         {
             "name": "sdl3-image",
             "features": [

@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/glFramebuffer.h"
 
 #include "Core/Resources/Headers/ResourceCache.h"

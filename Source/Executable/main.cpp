@@ -1,7 +1,6 @@
 
 
-#include "engineMain.h"
-
+#include "EngineMain.h"
 #include <SDL3/SDL_main.h>
 
 #if !defined(SHOW_CONSOLE_WINDOW)

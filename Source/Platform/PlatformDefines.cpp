@@ -1,8 +1,3 @@
-
-
-
-#include "config.h"
-
 #include "Headers/PlatformDefines.h"
 #include "Headers/PlatformRuntime.h"
 

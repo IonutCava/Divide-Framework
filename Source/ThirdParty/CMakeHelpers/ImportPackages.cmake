@@ -123,19 +123,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable( icon_font_cpp_headers )
 
-#chaiscript
-message("Fetching Chaiscript Lib")
-set(UNIT_TEST_LIGHT TRUE)
-set(BUILD_SAMPLES FALSE)
-FetchContent_Declare(
-    chaiscript
-    GIT_REPOSITORY https://github.com/IonutCava/ChaiScript.git
-    GIT_TAG        b9e65ee927e2c461cb197197f407a17488b7a3a3
-    #GIT_PROGRESS   TRUE
-    SYSTEM
-)
-
-FetchContent_MakeAvailable( chaiscript )
 
 #SDL3_mixer
 message("Fetching SDL3_Mixer Lib")
@@ -145,16 +132,12 @@ set(SDLMIXER_MOD OFF)
 set(SDLMIXER_MIDI OFF)
 set(SDLMIXER_OPUS OFF)
 set(SDLMIXER_INSTALL OFF)
-
-if(NOT WINDOWS_OS_BUILD)
-    set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
-    set(BUILD_SHARED_LIBS OFF)
-endif()
+set(SDLMIXER_SAMPLES OFF)
 
 FetchContent_Declare(
     SDL3_mixer
     GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-    GIT_TAG        daf0503cea6d9a521f585d37e785d88c2f066cd0
+    GIT_TAG        86c6b096f864b8eaed8ba1c58eab1ce716df934f
     #GIT_PROGRESS   TRUE
     #SYSTEM
     EXCLUDE_FROM_ALL
@@ -162,10 +145,6 @@ FetchContent_Declare(
 
 message("Making SDL3_Mixer Lib Available")
 FetchContent_MakeAvailable( SDL3_mixer )
-
-if(NOT WINDOWS_OS_BUILD)
-    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
-endif()
 
 include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
 
@@ -187,7 +166,6 @@ include_directories(
     ${fcpp_SOURCE_DIR}
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
-    ${chaiscript_SOURCE_DIR}/include
     ${SDL3_mixer_SOURCE_DIR}/include
     ${nri_SOURCE_DIR}/include
 )

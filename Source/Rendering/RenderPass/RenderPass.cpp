@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/RenderPass.h"
 #include "Headers/NodeBufferedData.h"
 

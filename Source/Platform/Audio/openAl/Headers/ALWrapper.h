@@ -48,6 +48,7 @@ public:
     void playMusic(const Handle<AudioDescriptor> music) noexcept override;
 
     void pauseMusic() noexcept override;
+    void resumeMusic() noexcept override;
     void stopMusic() noexcept override;
     void stopAllSounds() noexcept override;
 
@@ -55,7 +56,7 @@ public:
     void setSoundVolume(I8 value) noexcept override;
 
 protected:
-    void musicFinished() noexcept override;
+    void trackFinished(const TrackDetails& details) noexcept override;
 
 private:
     U32 buffers[MAX_SOUND_BUFFERS] = {};

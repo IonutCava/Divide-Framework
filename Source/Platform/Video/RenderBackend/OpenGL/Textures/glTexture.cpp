@@ -1,7 +1,3 @@
-
-
-#include "config.h"
-
 #include "Headers/glTexture.h"
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/GFXDevice.h"

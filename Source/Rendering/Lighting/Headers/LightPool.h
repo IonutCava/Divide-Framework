@@ -33,8 +33,6 @@
 #ifndef DVD_LIGHT_POOL_H_
 #define DVD_LIGHT_POOL_H_
 
-#include "config.h"
-
 #include "Light.h"
 
 #include "Scenes/Headers/SceneComponent.h"

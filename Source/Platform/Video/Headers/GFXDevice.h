@@ -33,8 +33,6 @@
 #ifndef DVD_HARDWARE_VIDEO_GFX_DEVICE_H_
 #define DVD_HARDWARE_VIDEO_GFX_DEVICE_H_
 
-#include "config.h"
-
 #include "ClipPlanes.h"
 #include "GFXShaderData.h"
 #include "Pipeline.h"
