@@ -14,7 +14,7 @@ set(OPTICK_ENABLED TRUE)
 set(OPTICK_INSTALL_TARGETS FALSE)
 set(OPTICK_USE_D3D12 FALSE)
 set(OPTICK_USE_VULKAN TRUE)
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
 FetchContent_Declare(
   optick
   GIT_REPOSITORY https://github.com/bombomby/optick.git
