@@ -136,8 +136,8 @@ set(SDLMIXER_SAMPLES OFF)
 set(SDLMIXER_STRICT ON)
 
 if(NOT WINDOWS_OS_BUILD)
-    #set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
-    #set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF)
 endif()
 
 FetchContent_Declare(
@@ -153,7 +153,7 @@ message("Making SDL3_Mixer Lib Available")
 FetchContent_MakeAvailable( SDL3_mixer )
 
 if(NOT WINDOWS_OS_BUILD)
-    #set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
+    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
 endif()
 
 include(ThirdParty/CMakeHelpers/ImportLargeLibs.cmake)
