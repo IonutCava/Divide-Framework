@@ -25,7 +25,7 @@ FetchContent_Declare(
 
 if(CLANG_COMPILER)
     set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes -Wno-unsafe-buffer-usage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes -Wno-unsafe-buffer-usage -Wno-missing-field-initializers -Wno-static-in-inline")
 endif()
 
 FetchContent_MakeAvailable( optick )
@@ -130,6 +130,7 @@ message("Fetching SDL3_Mixer Lib")
 set(SDLMIXER_VENDORED OFF)
 set(SDLMIXER_GME OFF)
 set(SDLMIXER_OPUS_SHARED OFF)
+set(SDLMIXER_FLAC_DRFLAC OFF)
 set(SDLMIXER_INSTALL OFF)
 set(SDLMIXER_SAMPLES OFF)
 set(SDLMIXER_STRICT ON)

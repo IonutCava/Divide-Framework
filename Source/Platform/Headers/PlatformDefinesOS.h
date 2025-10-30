@@ -33,11 +33,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_DEFINES_OS_H_
 #define DVD_PLATFORM_DEFINES_OS_H_
 
-#ifdef USING_MSVC
-#include <intrin.h>
-#else // USING_MSVC
-#include <x86intrin.h>
-#endif // USING_MSVC
+#if !defined(HAS_NEON)
+#   ifdef USING_MSVC
+#       include <intrin.h>
+#   else // USING_MSVC
+#       include <x86intrin.h>
+#   endif // USING_MSVC
+#endif // !HAS_NEON
 
 #if defined(IS_WINDOWS_BUILD)
 #include "PlatformDefinesWindows.h"
