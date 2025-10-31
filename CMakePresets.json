@@ -129,7 +129,8 @@
             "inherits": "conf-windows-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl"
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_RC_COMPILER": "rc"
             },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
