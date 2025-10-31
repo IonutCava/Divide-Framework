@@ -39,7 +39,7 @@
 
 namespace Divide {
 
-class SFXDevice
+class SFXDevice;
 class PlatformContext;
 
 class AudioState {
