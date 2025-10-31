@@ -294,7 +294,7 @@ namespace Divide {
                                 {
                                     if (!_textureLoadQueueLocked)
                                     {
-                                        _textureLoadQueue.emplace_back(_selectedDir->_path, file);
+                                        _textureLoadQueue.push(EditorFileEntry(_selectedDir->_path, file));
                                         lockTextureQueue = true;
                                     }
                                 }

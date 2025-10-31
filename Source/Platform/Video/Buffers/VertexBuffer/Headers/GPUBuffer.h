@@ -87,15 +87,6 @@ NOINITVTABLE_CLASS(GPUBuffer) : public GUIDWrapper, public GraphicsResource, pub
 
 FWD_DECLARE_MANAGED_CLASS(GPUBuffer);
 
-struct GPUBufferActiveBindConfiguration : BufferBindConfig
-{
-  GPUBuffer::Handle _handle{ GPUBuffer::INVALID_HANDLE };
-  GPUBuffer* _buffer{nullptr};
-  size_t _offset{0u};
-
-  bool operator==(const GPUBufferActiveBindConfiguration& rhs) const noexcept;
-};
-
 
 };  // namespace Divide
 

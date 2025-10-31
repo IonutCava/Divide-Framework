@@ -115,6 +115,23 @@ namespace Divide
 
             vector<SDLContextEntry> _contexts;
         } g_ContextPool;
+
+        struct GLBufferActiveBindConfiguration : BufferBindConfig
+        {
+            GPUBuffer::Handle _handle{ GPUBuffer::INVALID_HANDLE };
+            glGPUBuffer* _buffer{ nullptr };
+            size_t _offset{ 0u };
+
+            bool operator==(const GLBufferActiveBindConfiguration& rhs) const noexcept;
+        };
+
+        FORCE_INLINE bool GLBufferActiveBindConfiguration::operator==(const GLBufferActiveBindConfiguration& rhs) const noexcept
+        {
+            return BufferBindConfig::operator==(rhs) &&
+                   _handle == rhs._handle &&
+                   _offset == rhs._offset;
+                   //&& _buffer == rhs._buffer; //Same handle results in same buffer
+        }
     }
 
     GL_API::GL_API( GFXDevice& context )
@@ -774,30 +791,30 @@ namespace Divide
         U32 firstIndex = cmd._cmd.firstIndex;
 
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-        thread_local GPUBufferActiveBindConfiguration s_lastVB = {};
-        thread_local GPUBufferActiveBindConfiguration s_lastIB = {};
+        thread_local GLBufferActiveBindConfiguration s_lastVB = {};
+        thread_local GLBufferActiveBindConfiguration s_lastIB = {};
 
         for ( size_t i = 0u; i < cmd._sourceBuffersCount; ++i )
         {
-            GPUBufferActiveBindConfiguration activeConfig{};
+            GLBufferActiveBindConfiguration activeConfig{};
             activeConfig._handle = cmd._sourceBuffers[i];
-            activeConfig._buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
+            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
 
-            DIVIDE_ASSERT(activeConfig._buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
-            glGPUBuffer* glBuffer = static_cast<glGPUBuffer*>(activeConfig._buffer);
-            glBufferImpl* impl = glBuffer->_internalBuffer.get();
+            DIVIDE_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+            activeConfig._buffer = static_cast<glGPUBuffer*>(buffer);
+            glBufferImpl* impl = activeConfig._buffer->_internalBuffer.get();
             DIVIDE_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
             const size_t elementSizeInBytes = impl->_params._elementSize;
-            activeConfig._bindIdx = glBuffer->_bindConfig._bindIdx;
+            activeConfig._bindIdx = activeConfig._buffer->_bindConfig._bindIdx;
             activeConfig._offset = impl->getDataOffset();
-            if (glBuffer->queueLength() > 1)
+            if (activeConfig._buffer->queueLength() > 1)
             {
-                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * glBuffer->queueIndex();
+                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * activeConfig._buffer->queueIndex();
             }
-            activeConfig._elementStride = glBuffer->_bindConfig._elementStride == BufferBindConfig::INVALID_ELEMENT_STRIDE
-                                                                               ? elementSizeInBytes
-                                                                               : glBuffer->_bindConfig._elementStride;
+            activeConfig._elementStride = activeConfig._buffer->_bindConfig._elementStride == BufferBindConfig::INVALID_ELEMENT_STRIDE
+                                                                                            ? elementSizeInBytes
+                                                                                            : activeConfig._buffer->_bindConfig._elementStride;
             
             if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
             {
@@ -815,7 +832,7 @@ namespace Divide
             }
             else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
             {
-                DIVIDE_ASSERT(glBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+                DIVIDE_ASSERT(activeConfig._buffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
 
                 if (s_lastIB != activeConfig)
                 {
@@ -826,7 +843,7 @@ namespace Divide
                 hasIndexBuffer = true;
 
                 firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
-                firstIndex += glBuffer->firstIndexOffsetCount();
+                firstIndex += activeConfig._buffer->firstIndexOffsetCount();
                 indexFormat = elementSizeInBytes == sizeof(U16) ? gl46core::GL_UNSIGNED_SHORT : gl46core::GL_UNSIGNED_INT;
 
                 DIVIDE_EXPECTED_CALL

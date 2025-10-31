@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 if (MSVC_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4312 /wd4477 /wd4996")
 elseif(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int -Wno-nullability-completeness")
     if(APPLE)
          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla-extension")
     else()
@@ -204,7 +204,7 @@ endif()
 FetchContent_Declare(
     nri
     GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
-    GIT_TAG        v176
+    GIT_TAG        922588d8e1a01c0a4d61b1eb98506c02ffd0333f
     #GIT_PROGRESS   TRUE
     SYSTEM
 )

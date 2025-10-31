@@ -49,7 +49,7 @@ jobs:
     - name: Print dev cmd info
       uses: ilammy/msvc-dev-cmd@v1
       with:
-          arch: amd64_x86
+          arch: amd64
       
     - name: Print MSVC version
       id: msvc

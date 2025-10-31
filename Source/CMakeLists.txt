@@ -92,6 +92,7 @@ else()
                                            $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unknown-argument>
                                            $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-undefined-func-template>
                                            $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unused-command-line-argument>
+                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-nullability-completeness>
                                            $<$<COMPILE_LANGUAGE:C,CXX>:-fdeclspec>
         )
 
