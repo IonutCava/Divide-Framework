@@ -114,7 +114,7 @@
         },
         {
             "name": "windows-msvc",
-            "displayName": "Game Build (MSVC)",
+            "displayName": "Windows Build (MSVC)",
             "description": "Target Windows with the msvc compiler.",
             "inherits": "conf-windows-common",
             "cacheVariables": {
@@ -124,12 +124,14 @@
         },
         {
             "name": "windows-clang",
-            "displayName": "Game Build (Win64 - CLANG)",
+            "displayName": "Windows Build (Win64 - CLANG)",
             "description": "Target Windows with the clang compiler.",
             "inherits": "conf-windows-common",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl"
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_RC_COMPILER": "llvm-rc",
+                "CMAKE_RC_FLAGS": ""
             },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -139,7 +141,7 @@
         },
         {
             "name": "linux-gcc",
-            "displayName": "Game Build (GCC)",
+            "displayName": "Linux Build (GCC)",
             "description": "Target Linux OS with the gcc compiler.",
             "inherits": "conf-linux-common",
             "cacheVariables": {
@@ -149,7 +151,7 @@
         },
         {
             "name": "linux-clang",
-            "displayName": "Game Build (CLANG)",
+            "displayName": "Linux Build (CLANG)",
             "description": "Target Linux OS with the clang compiler",
             "inherits": "conf-linux-common",
             "cacheVariables": {
@@ -159,7 +161,7 @@
         },
         {
             "name": "macos-clang",
-            "displayName": "Game Build (macOS - CLANG)",
+            "displayName": "MacOS Build (macOS - CLANG)",
             "description": "Target macOS with the clang compiler",
             "inherits": "conf-macos-common",
             "cacheVariables": {
@@ -169,32 +171,32 @@
         },
         {
             "name": "windows-msvc-instrumentation",
-            "displayName": "Game Build (MSVC) + Instrumentation",
+            "displayName": "Windows Build (MSVC) + Instrumentation",
             "description": "Target Windows with the msvc compiler. Instrumentation enabled.",
             "inherits": [ "windows-msvc", "optick-build", "function-profiling-build" ]
         },
         {
             "name": "windows-msvc-editor",
-            "displayName": "Editor Build (MSVC)",
+            "displayName": "Windows Editor Build (MSVC)",
             "description": "Target Windows with the msvc compiler. Editor build.",
             "inherits": [ "windows-msvc", "editor-build" ]
         },
         {
             "name": "windows-msvc-editor-asan-ubsan",
-            "displayName": "Editor Build (MSVC) + ASAN + UBSAN",
+            "displayName": "Windows Editor Build (MSVC) + ASAN + UBSAN",
             "description": "Target Windows with the msvc compiler. Editor build. ASAN enabled.",
             "inherits": [ "windows-msvc-editor", "asan-build", "ubsan-build" ]
         },
         {
             "name": "windows-msvc-editor-instrumentation",
-            "displayName": "Editor Build (MSVC) + Instrumentation",
+            "displayName": "Windows Editor Build (MSVC) + Instrumentation",
             "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled.",
             "inherits": [ "windows-msvc-instrumentation", "editor-build" ]
         },
         {
             "name": "windows-msvc-editor-instrumentation-verbose",
-            "displayName": "Editor Build (MSVC) + Instrumentation",
-            "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled.",
+            "displayName": "Windows Editor Build (MSVC) + Instrumentation + Verbose",
+            "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled. Verbose build",
             "inherits": [ "windows-msvc-instrumentation", "editor-build" ],
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -202,26 +204,26 @@
         },
         {
             "name": "windows-clang-editor",
-            "displayName": "Editor Build (Win64 - CLANG)",
+            "displayName": "Windows Editor Build (Win64 - CLANG)",
             "description": "Target Windows with the clang compiler. Editor build.",
             "inherits": [ "windows-clang", "editor-build" ]
         },
         {
             "name": "windows-clang-instrumentation",
-            "displayName": "Game Build (Win64 - CLANG) + Instrumentation",
+            "displayName": "Windows Build (Win64 - CLANG) + Instrumentation",
             "description": "Target Windows with the clang compiler. Instrumentation enabled.",
             "inherits": [ "windows-clang", "optick-build", "function-profiling-build" ]
         },
         {
             "name": "windows-clang-editor-instrumentation",
-            "displayName": "Editor Build (Win64 - CLANG) + Instrumentation",
+            "displayName": "Windows Editor Build (Win64 - CLANG) + Instrumentation",
             "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled.",
             "inherits": [ "windows-clang-instrumentation", "editor-build" ]
         },
         {
             "name": "windows-clang-editor-instrumentation-verbose",
-            "displayName": "Editor Build (Win64 - CLANG) + Instrumentation",
-            "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled.",
+            "displayName": "Windows Editor Build (Win64 - CLANG) + Instrumentation + Verbose",
+            "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled. Verbose build.",
             "inherits": [ "windows-clang-instrumentation", "editor-build" ],
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -229,32 +231,32 @@
         },
         {
             "name": "windows-clang-editor-asan-ubsan",
-            "displayName": "Editor Build (Win64 - CLANG) + ASAN + UBSAN",
+            "displayName": "Windows Editor Build (Win64 - CLANG) + ASAN + UBSAN",
             "description": "Target Windows with the clang compiler. Editor build. ASAN enabled.",
             "inherits": [ "windows-clang-editor", "asan-build", "ubsan-build" ]
         },
         {
             "name": "linux-gcc-editor",
-            "displayName": "Editor Build (GCC)",
+            "displayName": "Linux Editor Build (GCC)",
             "description": "Target Linux OS with the gcc compiler. Editor build.",
             "inherits": [ "linux-gcc", "editor-build" ]
         },
         {
             "name": "linux-gcc-instrumentation",
-            "displayName": "Game Build (GCC) + Instrumentation",
+            "displayName": "Linux Game Build (GCC) + Instrumentation",
             "description": "Target Linux OS with the gcc compiler. Instrumentation enabled.",
             "inherits": [ "linux-gcc", "function-profiling-build" ]
         },
         {
             "name": "linux-gcc-editor-instrumentation",
-            "displayName": "Editor Build (GCC) + Instrumentation",
+            "displayName": "Linux Editor Build (GCC) + Instrumentation",
             "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled.",
             "inherits": [ "linux-gcc-instrumentation", "editor-build" ]
         },
         {
             "name": "linux-gcc-editor-instrumentation-verbose",
-            "displayName": "Editor Build (GCC) + Instrumentation",
-            "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled.",
+            "displayName": "Linux Editor Build (GCC) + Instrumentation + Verbose",
+            "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled. Verbose build.",
             "inherits": [ "linux-gcc-instrumentation", "editor-build" ],
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -262,32 +264,32 @@
         },
         {
             "name": "linux-clang-editor",
-            "displayName": "Editor Build (CLANG)",
+            "displayName": "Linux Editor Build (CLANG)",
             "description": "Target Linux OS with the clang compiler. Editor build.",
             "inherits": [ "linux-clang", "editor-build" ]
         },
         {
             "name": "linux-clang-editor-asan-ubsan",
-            "displayName": "Editor Build (CLANG) + ASAN + UBSAN",
+            "displayName": "Linux Editor Build (CLANG) + ASAN + UBSAN",
             "description": "Target Linux OS with the clang compiler. Editor build.",
             "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ]
         },
         {
             "name": "linux-clang-instrumentation",
-            "displayName": "Game Build (CLANG) + Instrumentation",
+            "displayName": "Linux Game Build (CLANG) + Instrumentation",
             "description": "Target Linux OS with the clang compiler. Instrumentation enabled.",
             "inherits": [ "linux-clang", "function-profiling-build" ]
         },
         {
             "name": "linux-clang-editor-instrumentation",
-            "displayName": "Editor Build (CLANG) + Instrumentation",
+            "displayName": "Linux Editor Build (CLANG) + Instrumentation",
             "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled.",
             "inherits": [ "linux-clang-instrumentation", "editor-build" ]
         },
         {
             "name": "linux-clang-editor-instrumentation-verbose",
-            "displayName": "Editor Build (CLANG) + Instrumentation",
-            "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled.",
+            "displayName": "Linux Editor Build (CLANG) + Instrumentation + Verbose",
+            "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled. Verbose build.",
             "inherits": [ "linux-clang-instrumentation", "editor-build" ],
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
@@ -295,14 +297,14 @@
         },
         {
             "name": "macos-clang-editor",
-            "displayName": "Editor Build (MacOS - CLANG)",
+            "displayName": "MacOS Editor Build (MacOS - CLANG)",
             "description": "Target macOS with the clang compiler. Editor build.",
             "inherits": [ "macos-clang", "editor-build" ]
         },
         {
             "name": "macos-clang-editor-verbose",
-            "displayName": "Editor Build (MacOS - CLANG)",
-            "description": "Target macOS with the clang compiler. Editor build.",
+            "displayName": "MacOS Editor Build (MacOS - CLANG) + Verbose",
+            "description": "Target macOS with the clang compiler. Editor build. Verbose build",
             "inherits": [ "macos-clang", "editor-build" ],
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"

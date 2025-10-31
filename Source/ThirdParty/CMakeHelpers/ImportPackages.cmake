@@ -139,7 +139,7 @@ if(WINDOWS_OS_BUILD)
 else()
     set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
     set(BUILD_SHARED_LIBS OFF)
-    set(SDLMIXER_DEPS_SHARED ON)
+    set(SDLMIXER_DEPS_SHARED OFF)
 endif()
 
 FetchContent_Declare(
