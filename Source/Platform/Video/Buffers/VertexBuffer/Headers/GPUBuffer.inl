@@ -34,13 +34,7 @@
 #define DVD_GPU_BUFFER_INL_
 
 namespace Divide {
-  FORCE_INLINE bool GPUBufferActiveBindConfiguration::operator==(const GPUBufferActiveBindConfiguration& rhs) const noexcept
-  {
-    return BufferBindConfig::operator==(rhs) &&
-           _handle == rhs._handle &&
-           _offset == rhs._offset &&
-           _buffer != rhs._buffer;
-  }
+
 } //namespace Divide
 
 #endif //DVD_GPU_BUFFER_INL_

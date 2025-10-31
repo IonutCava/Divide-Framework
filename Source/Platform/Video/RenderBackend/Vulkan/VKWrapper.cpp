@@ -254,6 +254,23 @@ namespace Divide
             }
             s_pipelineReset = true;
         }
+
+        struct VKBufferActiveBindConfiguration : BufferBindConfig
+        {
+            GPUBuffer::Handle _handle{ GPUBuffer::INVALID_HANDLE };
+            vkGPUBuffer* _buffer{ nullptr };
+            VkDeviceSize _offset{ 0u };
+
+            bool operator==(const VKBufferActiveBindConfiguration& rhs) const noexcept;
+        };
+
+        FORCE_INLINE bool VKBufferActiveBindConfiguration::operator==(const VKBufferActiveBindConfiguration& rhs) const noexcept
+        {
+            return BufferBindConfig::operator==(rhs) &&
+                   _handle == rhs._handle &&
+                   _offset == rhs._offset &&
+                   _buffer != rhs._buffer;
+        }
     }
 
     constexpr U32 VK_VENDOR_ID_AMD = 0x1002;
@@ -1324,26 +1341,26 @@ namespace Divide
         U32 firstIndex = cmd._cmd.firstIndex;
 
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-        thread_local GPUBufferActiveBindConfiguration s_lastVB = {};
-        thread_local GPUBufferActiveBindConfiguration s_lastIB = {};
+        thread_local VKBufferActiveBindConfiguration s_lastVB = {};
+        thread_local VKBufferActiveBindConfiguration s_lastIB = {};
 
         for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
-            GPUBufferActiveBindConfiguration activeConfig{};
+            VKBufferActiveBindConfiguration activeConfig{};
             activeConfig._handle = cmd._sourceBuffers[i];
-            activeConfig._buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
+            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
             
-            DIVIDE_ASSERT(activeConfig._buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
-            vkGPUBuffer* vkBuffer = static_cast<vkGPUBuffer*>(activeConfig._buffer);
-            vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
+            DIVIDE_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+            activeConfig._buffer = static_cast<vkGPUBuffer*>(buffer);
+            vkBufferImpl* impl = activeConfig._buffer->_internalBuffer.get();
             DIVIDE_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
             const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
-            activeConfig._bindIdx = vkBuffer->_bindConfig._bindIdx;
+            activeConfig._bindIdx = activeConfig._buffer->_bindConfig._bindIdx;
             activeConfig._offset = 0u;
-            if (vkBuffer->queueLength() > 1)
+            if (activeConfig._buffer->queueLength() > 1)
             {
-                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
+                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * activeConfig._buffer->queueIndex();
             }
 
             if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
@@ -1353,7 +1370,7 @@ namespace Divide
                     s_lastVB = activeConfig;
                 }
 
-                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &activeConfig._offset);
+                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, activeConfig._buffer->_bindConfig._bindIdx, 1, &impl->_buffer, &activeConfig._offset);
             }
             else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
             {
@@ -1362,13 +1379,13 @@ namespace Divide
                     s_lastIB = activeConfig;
                 }
 
-                DIVIDE_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+                DIVIDE_ASSERT(activeConfig._buffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
                 
                 DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
                 hasIndexBuffer = true;
 
                 firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
-                firstIndex += vkBuffer->firstIndexOffsetCount();
+                firstIndex += activeConfig._buffer->firstIndexOffsetCount();
 
                 VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, activeConfig._offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
                 cmd._cmd.firstIndex = firstIndex;
