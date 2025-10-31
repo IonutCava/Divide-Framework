@@ -129,8 +129,8 @@ namespace Divide
         {
             return BufferBindConfig::operator==(rhs) &&
                    _handle == rhs._handle &&
-                   _offset == rhs._offset &&
-                   _buffer != rhs._buffer;
+                   _offset == rhs._offset;
+                   //&& _buffer == rhs._buffer; //Same handle results in same buffer
         }
     }
 
