@@ -198,17 +198,6 @@
             }
         },
         {
-            "name": "macos-clang",
-            "displayName": "MacOS Build (macOS - CLANG)",
-            "description": "Target macOS with the clang compiler (universal binary)",
-            "inherits": "conf-macos-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
-                "CMAKE_OSX_ARCHITECTURES": "x86_64;arm64"
-            }
-        },
-        {
             "name": "windows-msvc-instrumentation",
             "displayName": "Windows Build (MSVC) + Instrumentation",
             "description": "Target Windows with the msvc compiler. Instrumentation enabled.",
@@ -347,12 +336,6 @@
             "inherits": [ "macos-clang-arm64", "editor-build" ]
         },
         {
-            "name": "macos-clang-editor",
-            "displayName": "MacOS Editor Build (MacOS - CLANG)",
-            "description": "Target macOS with the clang compiler. Editor build.",
-            "inherits": [ "macos-clang", "editor-build" ]
-        },
-        {
             "name": "macos-clang-x86_64-editor-verbose",
             "displayName": "MacOS Editor Build (x86_64 - CLANG) + Verbose",
             "description": "Target macOS x86_64 with the clang compiler. Editor build. Verbose build",
@@ -366,15 +349,6 @@
             "displayName": "MacOS Editor Build (arm64 - CLANG) + Verbose",
             "description": "Target macOS arm64 with the clang compiler. Editor build. Verbose build",
             "inherits": [ "macos-clang-arm64", "editor-build" ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "macos-clang-editor-verbose",
-            "displayName": "MacOS Editor Build (MacOS - CLANG) + Verbose",
-            "description": "Target macOS with the clang compiler. Editor build. Verbose build",
-            "inherits": [ "macos-clang", "editor-build" ],
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
@@ -731,42 +705,6 @@
             "configurePreset": "macos-clang-arm64-editor-verbose",
             "configuration": "Debug",
             "verbose": true
-        },
-        {
-            "name": "macos-clang-release",
-            "configurePreset": "macos-clang",
-            "configuration": "Release"
-        },
-        {
-            "name": "macos-clang-debug",
-            "configurePreset": "macos-clang",
-            "configuration": "Debug"
-        },
-        {
-            "name": "macos-clang-profile",
-            "configurePreset": "macos-clang",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "macos-clang-release-editor",
-            "configurePreset": "macos-clang-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "macos-clang-debug-editor",
-            "configurePreset": "macos-clang-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "macos-clang-profile-editor",
-            "configurePreset": "macos-clang-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "macos-clang-debug-editor-verbose",
-            "configurePreset": "macos-clang-editor-verbose",
-            "configuration": "Debug",
-            "verbose": true
         }
     ],
     "testPresets": [
@@ -1084,54 +1022,6 @@
             "description": "Enable output and stop on failure",
             "inherits": "test-common",
             "configurePreset": "macos-clang-arm64-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-macos-clang-release-editor",
-            "displayName": "Test-macOS-Clang-Release-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-macos-clang-release",
-            "displayName": "Test-macOS-Clang-Release",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-macos-clang-debug-editor",
-            "displayName": "Test-macOS-Clang-Debug-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-macos-clang-debug",
-            "displayName": "Test-macOS-Clang-Debug",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-macos-clang-profile",
-            "displayName": "Test-macOS-Clang-Profile",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-macos-clang-profile-editor",
-            "displayName": "Test-macOS-Clang-Profile-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-editor",
             "configuration": "RelWithDebInfo"
         }
     ]
