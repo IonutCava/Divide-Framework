@@ -45,7 +45,10 @@ find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
 if(MAC_OS_BUILD)
     find_package(date CONFIG REQUIRED)
-    find_path(SSE2NEON_INCLUDE_DIRS "sse2neon/sse2neon.h")
+    if (HAS_NEON)
+        find_path(SSE2NEON_INCLUDE_DIRS "sse2neon/sse2neon.h")
+        include_directories( SYSTEM ${SSE2NEON_INCLUDE_DIRS})
+    endif()
 endif()
 
 if(LINUX_OS_BUILD)
@@ -134,7 +137,6 @@ include_directories(
     ${Boost_INCLUDE_DIR}
     ${expat_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}/vma
-    ${SSE2NEON_INCLUDE_DIRS}
     ${CHAISCRIPT_INCLUDE_DIRS}
 )
 
