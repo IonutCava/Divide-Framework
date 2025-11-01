@@ -42,11 +42,12 @@ jobs:
 
   build_job:
     needs: info_job
-    name: macOS - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
+    name: macOS - Clang ${{ matrix.architecture }} ${{ matrix.build-type }} ${{ matrix.configuration }}
     runs-on: macos-latest
     strategy:
       fail-fast: true
       matrix:
+        architecture: [x86_64, arm64]
         build-type: [editor, game]
         configuration: [debug, release]
 
@@ -58,6 +59,7 @@ jobs:
 
       - uses: ./.github/actions/cmake-build/macos
         with:
+          architecture: ${{ matrix.architecture }}
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
