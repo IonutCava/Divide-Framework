@@ -67,7 +67,7 @@
     },
     {
       "name": "sse2neon",
-      "platform": "arm64"
+      "platform": "osx"
     },
     {
       "name": "physx",
