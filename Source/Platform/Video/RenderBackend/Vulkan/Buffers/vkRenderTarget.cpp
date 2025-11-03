@@ -84,7 +84,7 @@ namespace Divide
             const bool isDepthTextureOut = IsDepthTexture( vkTexOut->descriptor()._packing );
 
             U16 layerCount = entry._layerCount;
-            DIVIDE_ASSERT(layerCount != U16_MAX && entry._mipCount != U16_MAX );
+            DIVIDE_GPU_ASSERT(layerCount != U16_MAX && entry._mipCount != U16_MAX );
             if ( IsCubeTexture( vkTexIn->descriptor()._texType ) )
             {
                 layerCount *= 6u;
@@ -212,7 +212,7 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        DIVIDE_ASSERT( descriptor._mipWriteLevel != INVALID_INDEX );
+        DIVIDE_GPU_ASSERT( descriptor._mipWriteLevel != INVALID_INDEX );
 
         // Double the number of barriers needed in case we have an MSAA RenderTarget (we need to transition the resolve targets as well)
         thread_local std::array<VkImageMemoryBarrier2, RT_MAX_ATTACHMENT_COUNT * 2> memBarriers{};
@@ -313,7 +313,7 @@ namespace Divide
                         if ( resolveMSAA )
                         {
                             vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(_attachments[i]->resolvedTexture()));
-                            DIVIDE_ASSERT( vkTexRender->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT && vkTexResolve->sampleFlagBits() == VK_SAMPLE_COUNT_1_BIT );
+                            DIVIDE_GPU_ASSERT( vkTexRender->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT && vkTexResolve->sampleFlagBits() == VK_SAMPLE_COUNT_1_BIT );
 
                             PROFILE_SCOPE( "Colour Resolve", Profiler::Category::Graphics );
                             vkTexture::TransitionTexture( targetTransition, _subresourceRange[i], vkTexResolve->image()->_image, memBarriers[memBarrierCount++] );
@@ -400,7 +400,7 @@ namespace Divide
                     if ( resolveMSAA )
                     {
                         vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(att->resolvedTexture()));
-                        DIVIDE_ASSERT(vkTexRender->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT && vkTexResolve->sampleFlagBits() == VK_SAMPLE_COUNT_1_BIT );
+                        DIVIDE_GPU_ASSERT(vkTexRender->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT && vkTexResolve->sampleFlagBits() == VK_SAMPLE_COUNT_1_BIT );
 
                         PROFILE_SCOPE( "Depth Resolve", Profiler::Category::Graphics );
                         vkTexture::TransitionTexture( targetTransition, _subresourceRange[RT_DEPTH_ATTACHMENT_IDX], vkTexResolve->image()->_image, memBarriers[memBarrierCount++] );

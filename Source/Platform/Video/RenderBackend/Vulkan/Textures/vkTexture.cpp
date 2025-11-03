@@ -15,7 +15,7 @@ namespace Divide
     {
         VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
         {
-            DIVIDE_ASSERT(usage != ImageUsage::COUNT);
+            DIVIDE_GPU_ASSERT(usage != ImageUsage::COUNT);
 
             const bool multisampled = descriptor._msaaSamples > 0u;
             const bool compressed = IsCompressed( descriptor._baseFormat );
@@ -28,7 +28,7 @@ namespace Divide
             switch ( usage )
             {
                 case ImageUsage::SHADER_READ_WRITE:
-                case ImageUsage::SHADER_WRITE: DIVIDE_ASSERT( supportsStorageBit );  break;
+                case ImageUsage::SHADER_WRITE: DIVIDE_GPU_ASSERT( supportsStorageBit );  break;
 
                 case ImageUsage::RT_COLOUR_ATTACHMENT: 
                 case ImageUsage::RT_DEPTH_ATTACHMENT:
@@ -457,7 +457,7 @@ namespace Divide
 
     void vkTexture::loadDataInternal( const Byte* data, const size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
-        DIVIDE_ASSERT( _descriptor._allowRegionUpdates);
+        DIVIDE_GPU_ASSERT( _descriptor._allowRegionUpdates);
         loadDataInternal(data, size, targetMip, offset, dimensions, pixelUnpackAlignment, false);
     }
 
@@ -480,7 +480,7 @@ namespace Divide
         const U16 bottomRightX = dimensions.x + offset.x;
         const U16 bottomRightY = dimensions.y + offset.y;
 
-        DIVIDE_ASSERT( offset.z == 0u && dimensions.z == 1u, "vkTexture::loadDataInternal: 3D textures not supported for sub-image updates!");
+        DIVIDE_GPU_ASSERT( offset.z == 0u && dimensions.z == 1u, "vkTexture::loadDataInternal: 3D textures not supported for sub-image updates!");
 
         const U8 bpp_dest = GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing );
         const size_t rowOffset_dest = (bpp_dest * pixelUnpackAlignment._alignment) * _width;
@@ -615,7 +615,7 @@ namespace Divide
                 maxDepth = std::max( maxDepth, mip->_dimensions.depth );
             }
         }
-        DIVIDE_ASSERT( _depth >= maxDepth );
+        DIVIDE_GPU_ASSERT( _depth >= maxDepth );
 
         if ( _stagingBuffer == nullptr )
         {
@@ -798,7 +798,7 @@ namespace Divide
         grabData._sourceIsBGR = IsBGRTexture( desiredImageFormat );
         grabData._bpp = GetBytesPerPixel( desiredDataFormat, desiredImageFormat, desiredPacking );
 
-        DIVIDE_ASSERT( (grabData._bpp == 3 || grabData._bpp == 4) && _depth == 1u && !IsCubeTexture( _descriptor._texType ), "vkTexture:readData: unsupported image for readback. Support is very limited!" );
+        DIVIDE_GPU_ASSERT( (grabData._bpp == 3 || grabData._bpp == 4) && _depth == 1u && !IsCubeTexture( _descriptor._texType ), "vkTexture:readData: unsupported image for readback. Support is very limited!" );
         grabData._width = _width >> mipLevel;
         grabData._height = _height >> mipLevel;
 
@@ -928,7 +928,7 @@ namespace Divide
         {
             PROFILE_SCOPE( "Cache miss", Profiler::Category::Graphics );
 
-            DIVIDE_ASSERT( viewDescriptor._usage != ImageUsage::COUNT );
+            DIVIDE_GPU_ASSERT( viewDescriptor._usage != ImageUsage::COUNT );
 
             CachedImageView newView{};
             newView._descriptor = viewDescriptor;
@@ -974,8 +974,8 @@ namespace Divide
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         // We could handle this with a custom shader pass and temp render targets, so leaving the option i
-        DIVIDE_ASSERT( sourceSamples == destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );
-        DIVIDE_ASSERT( source != nullptr && destination != nullptr, "vkTexture::copy Invalid source and/or destination textures specified!" );
+        DIVIDE_GPU_ASSERT( sourceSamples == destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );
+        DIVIDE_GPU_ASSERT( source != nullptr && destination != nullptr, "vkTexture::copy Invalid source and/or destination textures specified!" );
 
         const TextureType srcType = source->_descriptor._texType;
         const TextureType dstType = destination->_descriptor._texType;

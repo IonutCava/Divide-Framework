@@ -504,7 +504,7 @@ namespace Divide
         if (glswState == -1) 
         {
             glswState = glswInit();
-            DIVIDE_ASSERT( glswState == 1 );
+            DIVIDE_GPU_ASSERT( glswState == 1 );
         }
 
         const U16 reflectionProbeRes = to_U16( nextPOW2( CLAMPED( to_U32( config.rendering.reflectionProbeResolution ), 16u, 4096u ) - 1u ) );
@@ -1191,7 +1191,7 @@ namespace Divide
 
     void ShaderProgram::RegisterSetLayoutBinding( const DescriptorSetUsage usage, const U8 slot, const DescriptorSetBindingType type, const ShaderStageVisibility visibility )
     {
-        DIVIDE_ASSERT( slot < MAX_BINDINGS_PER_DESCRIPTOR_SET );
+        DIVIDE_GPU_ASSERT( slot < MAX_BINDINGS_PER_DESCRIPTOR_SET );
 
         BindingsPerSet& bindingData = s_bindingsPerSet[to_base( usage )][slot];
         bindingData._type = type;
@@ -1214,7 +1214,7 @@ namespace Divide
                 else
                 {
                     bindingData._glBinding = visibility == ShaderStageVisibility::COMPUTE ? s_computeBufferSlot++ : s_bufferSlot++;
-                    DIVIDE_ASSERT(bindingData._glBinding < GFXDevice::GetDeviceInformation()._maxSSBOBufferBindings, "Exceeded maximum number of buffer bindings available in the min spec!" );
+                    DIVIDE_GPU_ASSERT(bindingData._glBinding < GFXDevice::GetDeviceInformation()._maxSSBOBufferBindings, "Exceeded maximum number of buffer bindings available in the min spec!" );
                 }
                 break;
 
@@ -1416,7 +1416,7 @@ namespace Divide
                         }
                     }
 
-                    DIVIDE_ASSERT( found, "Invalid shader include type" );
+                    DIVIDE_GPU_ASSERT( found, "Invalid shader include type" );
                     bool wasParsed = false;
                     if ( lock )
                     {
@@ -1753,12 +1753,12 @@ namespace Divide
 
                 if ( image._combinedImageSampler )
                 {
-                    DIVIDE_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER);
+                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER);
                     binding._type = DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER;
                 }
                 else
                 {
-                    DIVIDE_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::IMAGE );
+                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::IMAGE );
                     binding._type = DescriptorSetBindingType::IMAGE;
                 }
             }
@@ -1777,12 +1777,12 @@ namespace Divide
 
                 if ( buffer._uniformBuffer )
                 {
-                    DIVIDE_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::UNIFORM_BUFFER );
+                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::UNIFORM_BUFFER );
                     binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
                 }
                 else
                 {
-                    DIVIDE_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER );
+                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER );
                     binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
                 }
             }
@@ -1894,7 +1894,7 @@ namespace Divide
             if ( loadDataInOut._sourceCodeSpirV.empty() )
             {
                 // We are in situation B: we need SPIRV code, so convert our GLSL code over
-                DIVIDE_ASSERT( !loadDataInOut._sourceCodeGLSL.empty() );
+                DIVIDE_GPU_ASSERT( !loadDataInOut._sourceCodeGLSL.empty() );
                 if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetOpenGL ) )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_SHADER_CONVERSION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
@@ -1914,7 +1914,7 @@ namespace Divide
         }
 
         // Whatever the process to get here was, we need SPIRV to proceed
-        DIVIDE_ASSERT( !loadDataInOut._sourceCodeSpirV.empty() );
+        DIVIDE_GPU_ASSERT( !loadDataInOut._sourceCodeSpirV.empty() );
         // Time to see if we have any cached reflection data, and, if not, build it
         if ( reloadExisting || !useShaderCache() || !LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
         {
@@ -2006,7 +2006,7 @@ namespace Divide
             {
                 ++blockIndexInOut;
 
-                DIVIDE_ASSERT(blockIndexInOut < 2, "ShaderProgram::load: We only support 2 uniform blocks per shader program at the moment. Batch uniforms from different stages together to reduce usage!");
+                DIVIDE_GPU_ASSERT(blockIndexInOut < 2, "ShaderProgram::load: We only support 2 uniform blocks per shader program at the moment. Batch uniforms from different stages together to reduce usage!");
             }
 
             loadDataInOut._reflectionData._uniformBlockBindingSet = to_base( DescriptorSetUsage::PER_DRAW );
@@ -2105,7 +2105,7 @@ namespace Divide
 
     void ShaderProgram::OnAtomChange( const std::string_view atomName, const FileUpdateEvent evt )
     {
-        DIVIDE_ASSERT( evt != FileUpdateEvent::COUNT );
+        DIVIDE_GPU_ASSERT( evt != FileUpdateEvent::COUNT );
 
         // Do nothing if the specified file is "deleted". We do not want to break running programs
         // ADD and MODIFY events should get processed as usual
@@ -2121,7 +2121,7 @@ namespace Divide
         SharedLock<SharedMutex> lock( s_programLock );
         for ( ShaderProgram* program : s_shaderPrograms )
         {
-            DIVIDE_ASSERT( program != nullptr );
+            DIVIDE_GPU_ASSERT( program != nullptr );
 
             for ( const U64 atomID : program->_usedAtomIDs )
             {

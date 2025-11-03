@@ -26,7 +26,7 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( params._usageType != BufferUsageType::COUNT );
+        DIVIDE_GPU_ASSERT( params._usageType != BufferUsageType::COUNT );
 
         BufferLock ret = GPUBuffer::setBuffer( params );
 
@@ -93,7 +93,7 @@ namespace Divide {
                                           const U32 elementCountRange,
                                           bufferPtr data) noexcept
     {
-        DIVIDE_ASSERT(_internalBuffer != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
+        DIVIDE_GPU_ASSERT(_internalBuffer != nullptr, "vkGenericVertexData error: set buffer called for invalid buffer index!");
 
         const BufferParams& bufferParams = _internalBuffer->_params;
         const bool isIndexBuffer = bufferParams._usageType == BufferUsageType::INDEX_BUFFER;
@@ -104,7 +104,7 @@ namespace Divide {
         // Calculate the offset in the buffer in bytes from which to start writing
         size_t offsetInBytes = elementCountOffset * bufferParams._elementSize;
         const size_t bufferSizeInBytes = bufferParams._elementCount * bufferParams._elementSize;
-        DIVIDE_ASSERT(offsetInBytes + dataCurrentSizeInBytes <= bufferSizeInBytes);
+        DIVIDE_GPU_ASSERT(offsetInBytes + dataCurrentSizeInBytes <= bufferSizeInBytes);
 
         if (queueLength() > 1u)
         {

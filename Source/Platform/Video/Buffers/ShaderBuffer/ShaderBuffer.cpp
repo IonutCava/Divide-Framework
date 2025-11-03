@@ -26,7 +26,7 @@ size_t ShaderBuffer::AlignmentRequirement(const BufferUsageType usage) noexcept 
 ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
       : GUIDWrapper()
       , GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str()))
-      , RingBufferSeparateWrite(descriptor._ringBufferLength, descriptor._separateReadWrite)
+      , RingBuffer(descriptor._ringBufferLength)
       , _alignmentRequirement(AlignmentRequirement(descriptor._usageType))
       , _name(descriptor._name)
       , _params(descriptor)
@@ -70,10 +70,9 @@ void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> o
                   getUsage() == BufferUsageType::UNBOUND_BUFFER &&
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
-    range._startOffset += getStartOffset(true);
+    range._startOffset += to_size(std::max(0, queueIndex()))* _alignedBufferSize;
 
     readBytesInternal(range, outData);
-    _lastReadFrame = GFXDevice::FrameCount();
 }
 
 BufferLock ShaderBuffer::clearBytes(const BufferRange<> range) {
@@ -87,8 +86,7 @@ BufferLock ShaderBuffer::writeBytes(BufferRange<> range, const bufferPtr data) {
                   getUpdateFrequency() != BufferUpdateFrequency::ONCE &&
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
-    range._startOffset += getStartOffset(false);
-    _lastWriteFrameNumber = GFXDevice::FrameCount();
+    range._startOffset += to_size(std::max(0, queueIndex())) * _alignedBufferSize;
 
     return writeBytesInternal(range, data);
 }

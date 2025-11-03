@@ -64,7 +64,7 @@ namespace NS_GLIM
 
     //! Assert Macro used internally.
     inline void GLIM_CHECK (bool bCondition, const char* szErrorMsg) noexcept {
-        Divide::DIVIDE_ASSERT(bCondition, szErrorMsg);
+        DIVIDE_ASSERT(bCondition, szErrorMsg);
     }
 
 }

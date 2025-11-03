@@ -62,7 +62,7 @@ namespace Divide
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, const BufferRange<> range ) noexcept
     {
         assert( buffer != nullptr );
-        dataInOut._buffer = { buffer, range, buffer->queueReadIndex() };
+        dataInOut._buffer = { buffer, range, buffer->queueIndex() };
         dataInOut._type = buffer->getUsage() == BufferUsageType::CONSTANT_BUFFER ? DescriptorSetBindingType::UNIFORM_BUFFER
                                                                                  : DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
     }

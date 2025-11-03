@@ -141,13 +141,13 @@ void SDL_API::playMusic(const Handle<AudioDescriptor> music)
     }
 
     ResourcePtr<AudioDescriptor> musicPtr = Get(music);
-    const char* musicPath = (musicPtr->assetLocation() / musicPtr->assetName()).string().c_str();
+    const string musicPath = (musicPtr->assetLocation() / musicPtr->assetName()).string();
 
     MIX_Audio* mixMusicPtr = nullptr;
     const MusicMap::iterator it = _musicMap.find(music._data);
     if (it == std::cend(_musicMap))
     {
-        mixMusicPtr = load_audio(_musicMixer, musicPath, false);
+        mixMusicPtr = load_audio(_musicMixer, musicPath.c_str(), false);
         insert(_musicMap, music._data, mixMusicPtr);
     }
     else
@@ -155,7 +155,7 @@ void SDL_API::playMusic(const Handle<AudioDescriptor> music)
         if ( musicPtr->dirty())
         {
             MIX_DestroyAudio(it->second);
-            it->second = load_audio(_musicMixer, musicPath, false);
+            it->second = load_audio(_musicMixer, musicPath.c_str(), false);
             musicPtr->clean();
         }
         else
@@ -224,13 +224,13 @@ void SDL_API::playSound(const Handle<AudioDescriptor> sound)
     }
 
     ResourcePtr<AudioDescriptor> soundPtr = Get( sound );
-    const char* soundPath = (soundPtr->assetLocation() / soundPtr->assetName()).string().c_str();
+    const string soundPath = (soundPtr->assetLocation() / soundPtr->assetName()).string();
 
     SoundEntry soundEntry;
     const SoundMap::iterator it = _soundMap.find(sound._data);
     if (it == std::cend(_soundMap))
     {
-        soundEntry._audio = load_audio(_soundMixer, soundPath, true);
+        soundEntry._audio = load_audio(_soundMixer, soundPath.c_str(), true);
         soundEntry._details._sfx = &_context.sfx();
         soundEntry._details._trackID = sound._data;
         soundEntry._properties = SDL_CreateProperties();
@@ -246,7 +246,7 @@ void SDL_API::playSound(const Handle<AudioDescriptor> sound)
         if ( soundPtr->dirty())
         {
             MIX_DestroyAudio(it->second._audio);
-            soundEntry._audio = load_audio(_soundMixer, soundPath, true);
+            soundEntry._audio = load_audio(_soundMixer, soundPath.c_str(), true);
             soundPtr->clean();
         }
         else 

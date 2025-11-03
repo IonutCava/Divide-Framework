@@ -308,7 +308,7 @@ namespace Divide
         // If we got here, let's figure out what capabilities we have available
         // Maximum addressable texture image units in the fragment shader
         deviceInformation._maxTextureUnits = CLAMPED( GLUtil::getGLValue( gl46core::GL_MAX_TEXTURE_IMAGE_UNITS ), 16, 255 );
-        DIVIDE_ASSERT( deviceInformation._maxTextureUnits >= GLStateTracker::MAX_BOUND_TEXTURE_UNITS );
+        DIVIDE_GPU_ASSERT( deviceInformation._maxTextureUnits >= GLStateTracker::MAX_BOUND_TEXTURE_UNITS );
 
         GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings );
 
@@ -529,7 +529,7 @@ namespace Divide
                                 DefaultColours::BLACK.a );
 
         gl46core::glCreateVertexArrays( 1, &_dummyVAO );
-        DIVIDE_ASSERT( _dummyVAO != GL_NULL_HANDLE, LOCALE_STR( "ERROR_VAO_INIT" ) );
+        DIVIDE_GPU_ASSERT( _dummyVAO != GL_NULL_HANDLE, LOCALE_STR( "ERROR_VAO_INIT" ) );
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
@@ -669,7 +669,7 @@ namespace Divide
         {
             auto& sync = s_stateTracker._endFrameFences.front();
             const gl46core::GLenum waitRet = gl46core::glClientWaitSync( sync.first, gl46core::SyncObjectMask::GL_NONE_BIT, 0u );
-            DIVIDE_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something." );
+            DIVIDE_GPU_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "GL_API::beginFrame error: Not sure what to do here. Probably raise an exception or something." );
             if ( waitRet == gl46core::GL_ALREADY_SIGNALED || waitRet == gl46core::GL_CONDITION_SATISFIED )
             {
                 s_stateTracker._lastSyncedFrameNumber = sync.second;
@@ -748,11 +748,11 @@ namespace Divide
     bool GL_API::Draw(GenericDrawCommand cmd)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-        DIVIDE_ASSERT(cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount);
+        DIVIDE_GPU_ASSERT(cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount);
 
         if ( cmd._sourceBuffersCount == 0u )
         {
-            DIVIDE_ASSERT(cmd._cmd.indexCount == 0u);
+            DIVIDE_GPU_ASSERT(cmd._cmd.indexCount == 0u);
 
             if (cmd._cmd.vertexCount == 0u)
             {
@@ -800,10 +800,10 @@ namespace Divide
             activeConfig._handle = cmd._sourceBuffers[i];
             GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
 
-            DIVIDE_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+            DIVIDE_GPU_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
             activeConfig._buffer = static_cast<glGPUBuffer*>(buffer);
             glBufferImpl* impl = activeConfig._buffer->_internalBuffer.get();
-            DIVIDE_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
+            DIVIDE_GPU_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
             const size_t elementSizeInBytes = impl->_params._elementSize;
             activeConfig._bindIdx = activeConfig._buffer->_bindConfig._bindIdx;
@@ -832,14 +832,14 @@ namespace Divide
             }
             else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
             {
-                DIVIDE_ASSERT(activeConfig._buffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+                DIVIDE_GPU_ASSERT(activeConfig._buffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
 
                 if (s_lastIB != activeConfig)
                 {
                     s_lastIB = activeConfig;
                 }
 
-                DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+                DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
                 hasIndexBuffer = true;
 
                 firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
@@ -1145,7 +1145,7 @@ namespace Divide
                 {
                     const GFX::EndGPUQueryCommand* crtCmd = cmd->As<GFX::EndGPUQueryCommand>();
 
-                    DIVIDE_ASSERT( crtCmd->_resultContainer != nullptr );
+                    DIVIDE_GPU_ASSERT( crtCmd->_resultContainer != nullptr );
 
                     for ( glHardwareQueryEntry& queryEntry : _queryContext.top() )
                     {
@@ -1279,14 +1279,14 @@ namespace Divide
                 else
                 {
                     PROFILE_SCOPE( "GL: View-based computation", Profiler::Category::Graphics );
-                    DIVIDE_ASSERT( crtCmd->_mipRange._count != 0u );
+                    DIVIDE_GPU_ASSERT( crtCmd->_mipRange._count != 0u );
 
                     ImageView view = tex->getView();
                     view._subRange._layerRange = crtCmd->_layerRange;
                     view._subRange._mipLevels =  crtCmd->_mipRange;
 
                     const TextureType targetType = TargetType( view );
-                    DIVIDE_ASSERT( targetType != TextureType::COUNT );
+                    DIVIDE_GPU_ASSERT( targetType != TextureType::COUNT );
 
                     if ( IsArrayTexture( targetType ) && view._subRange._layerRange._count == 1 )
                     {
@@ -1563,7 +1563,7 @@ namespace Divide
         // This also makes the context current
         assert( GLUtil::s_glSecondaryContext == nullptr && "GL_API::syncToThread: double init context for current thread!" );
         const bool ctxFound = g_ContextPool.getAvailableContext( GLUtil::s_glSecondaryContext );
-        DIVIDE_ASSERT( ctxFound, "GL_API::syncToThread: context not found for current thread!" );
+        DIVIDE_GPU_ASSERT( ctxFound, "GL_API::syncToThread: context not found for current thread!" );
 
         GLUtil::ValidateSDL( SDL_GL_MakeCurrent( GLUtil::s_glMainRenderWindow->getRawWindow(), GLUtil::s_glSecondaryContext ) );
         glbinding::Binding::initialize( []( const char* proc ) noexcept
@@ -1679,8 +1679,8 @@ namespace Divide
                     case DescriptorSetBindingType::IMAGE:
                     {
                         const DescriptorImageView& imageView = srcBinding._data._imageView;
-                        DIVIDE_ASSERT( TargetType( imageView._image ) != TextureType::COUNT );
-                        DIVIDE_ASSERT( imageView._image._subRange._layerRange._count > 0u );
+                        DIVIDE_GPU_ASSERT( TargetType( imageView._image ) != TextureType::COUNT );
+                        DIVIDE_GPU_ASSERT( imageView._image._subRange._layerRange._count > 0u );
 
                         gl46core::GLenum access = gl46core::GL_NONE;
                         switch ( imageView._usage )
@@ -1699,7 +1699,7 @@ namespace Divide
                             case ImageUsage::COUNT: DIVIDE_UNEXPECTED_CALL();  break;
                         }
 
-                        DIVIDE_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
+                        DIVIDE_GPU_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
 
                         const gl46core::GLenum glInternalFormat = GLUtil::InternalFormatAndDataType( imageView._image._descriptor._baseFormat,
                                                                                                      imageView._image._descriptor._dataType,
@@ -2050,7 +2050,7 @@ namespace Divide
         {
             samplerHashInOut = GetHash(sampler);
         }
-        DIVIDE_ASSERT( samplerHashInOut != 0u );
+        DIVIDE_GPU_ASSERT( samplerHashInOut != 0u );
 
         if ( cached_hash == samplerHashInOut )
         {
@@ -2100,7 +2100,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
+        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
 
         ++s_fenceSyncCounter[s_LockFrameLifetime - 1u];
         return gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, gl46core::UnusedMask::GL_UNUSED_BIT );
@@ -2110,7 +2110,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u );
+        DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] > 0u );
 
         --s_fenceSyncCounter[s_LockFrameLifetime - 1u];
         gl46core::glDeleteSync( sync );

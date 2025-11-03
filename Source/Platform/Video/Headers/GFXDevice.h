@@ -649,7 +649,7 @@ namespace Attorney
                                                 DIVIDE_ASSERT(std::get<0>(crtEntry) == type && std::get<2>(crtEntry) == nameHash);
                                                 return true;
                                              });
-           DIVIDE_ASSERT(success);
+           DIVIDE_GPU_ASSERT(success);
    
        }
 
