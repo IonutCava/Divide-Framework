@@ -54,7 +54,7 @@ namespace Divide
         bufferImpl()->readBytes( range._startOffset, range._length, outData );
     }
 
-    bool glShaderBuffer::bindByteRange( const U8 bindIndex, BufferRange<> range, I32 readIndex )
+    bool glShaderBuffer::bindByteRange( const U8 bindIndex, BufferRange<> range, const U16 readIndex )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -62,10 +62,6 @@ namespace Divide
 
         DIVIDE_GPU_ASSERT( to_size( range._length ) <= _maxSize && "glShaderBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform" );
         DIVIDE_GPU_ASSERT( range._startOffset == Util::GetAlignmentCorrected( range._startOffset, _alignmentRequirement ) );
-        if ( readIndex == -1 )
-        {
-            readIndex = queueIndex();
-        }
 
         if ( bindIndex == ShaderProgram::k_commandBufferID )
         {

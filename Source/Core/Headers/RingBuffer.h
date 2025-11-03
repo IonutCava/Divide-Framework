@@ -48,16 +48,16 @@ public:
         return _queueLength;
     }
 
-    [[nodiscard]] I32 queueIndex() const noexcept
+    [[nodiscard]] U16 queueIndex() const noexcept
     {
-        return _queueIndex;
+        return _queueIndex.load();
     }
 
     I32 incQueue() noexcept
     {
         if (queueLength() > 1)
         {
-            _queueIndex = (_queueIndex + 1) % to_I32(_queueLength);
+            _queueIndex = (_queueIndex + 1) % _queueLength;
         }
 
         return queueIndex();
@@ -69,10 +69,10 @@ public:
         {
             if (_queueIndex == 0)
             {
-                _queueIndex = to_I32(_queueLength);
+                _queueIndex.store(_queueLength);
             }
 
-            _queueIndex = (_queueIndex - 1) % to_I32(_queueLength);
+            _queueIndex = (_queueIndex - 1) % _queueLength;
         }
 
         return queueIndex();
@@ -80,7 +80,7 @@ public:
 
 protected:
     U16 _queueLength = 1u;
-    std::atomic_int _queueIndex;
+    std::atomic<U16> _queueIndex;
 };
 
 class RingBufferSeparateWrite : public RingBuffer {
@@ -89,9 +89,9 @@ public:
     explicit RingBufferSeparateWrite(U16 queueLength, bool separateReadWrite, bool writeAhead = true) noexcept;
     virtual ~RingBufferSeparateWrite() = default;
 
-    [[nodiscard]] I32 queueWriteIndex() const noexcept
+    [[nodiscard]] U16 queueWriteIndex() const noexcept
     {
-        const I32 ret = queueIndex();
+        const U16 ret = queueIndex();
         const U16 length = queueLength();
 
         // Prevent division by zero and clarify behavior for small buffer sizes
@@ -100,13 +100,13 @@ public:
         }
         if (_separateReadWrite)
         {
-            return (ret + (_writeAhead ? 1 : to_I32(length) - 1)) % length;
+            return (ret + (_writeAhead ? 1 : (length - 1)) % length;
         }
         
         return ret;
     }
 
-    [[nodiscard]] I32 queueReadIndex() const noexcept
+    [[nodiscard]] U16 queueReadIndex() const noexcept
     {
         return queueIndex();
     }
