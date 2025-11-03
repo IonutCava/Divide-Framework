@@ -94,6 +94,10 @@ public:
         const I32 ret = queueIndex();
         const U16 length = queueLength();
 
+        // Prevent division by zero and clarify behavior for small buffer sizes
+        if (length <= 1) {
+            return ret;
+        }
         if (_separateReadWrite)
         {
             return (ret + (_writeAhead ? 1 : to_I32(length) - 1)) % length;
