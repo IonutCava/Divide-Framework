@@ -221,18 +221,6 @@ set(NRI_TARGETS
 target_compile_options(NRI_Shared PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>: -Wno-missing-field-initializers -Wno-error=missing-field-initializers >)
 foreach(nri_target IN LISTS NRI_TARGETS)
     if(TARGET ${nri_target})
-           # For clang/gcc style compilers (clang, gcc)
-    set_property(TARGET ${nri_target} APPEND PROPERTY COMPILE_OPTIONS
-      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-missing-field-initializers>
-      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=missing-field-initializers>
-    )
-
-    # For clang-cl (MSVC driver) explicitly forward to clang frontend so MSVC flags like /W4 don't re-enable it.
-    # clang-cl accepts /clang:<flag> to forward flags to clang frontend.
-    set_property(TARGET ${nri_target} APPEND PROPERTY COMPILE_OPTIONS
-      $<$<CXX_COMPILER_ID:Clang>:/clang:-Wno-missing-field-initializers>
-      $<$<CXX_COMPILER_ID:Clang>:/clang:-Wno-error=missing-field-initializers>
-    )
         set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 endforeach()
