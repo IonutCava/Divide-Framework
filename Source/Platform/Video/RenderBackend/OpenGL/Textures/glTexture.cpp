@@ -366,7 +366,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     // We could handle this with a custom shader pass and temp render targets, so leaving the option i
-    DIVIDE_GPU_ASSERT(sourceSamples == destinationSamples == 0u, "glTexture::copy Multisampled textures is not supported yet!");
+    DIVIDE_GPU_ASSERT(sourceSamples == 0u && destinationSamples == 0u, "glTexture::copy Multisampled textures is not supported yet!");
     DIVIDE_GPU_ASSERT(source != nullptr && destination != nullptr, "glTexture::copy Invalid source and/or destination textures specified!");
 
     const TextureType srcType = source->_descriptor._texType;

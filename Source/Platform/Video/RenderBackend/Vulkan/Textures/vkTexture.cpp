@@ -974,7 +974,7 @@ namespace Divide
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         // We could handle this with a custom shader pass and temp render targets, so leaving the option i
-        DIVIDE_GPU_ASSERT( sourceSamples == destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );
+        DIVIDE_GPU_ASSERT( sourceSamples == 0u && destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );
         DIVIDE_GPU_ASSERT( source != nullptr && destination != nullptr, "vkTexture::copy Invalid source and/or destination textures specified!" );
 
         const TextureType srcType = source->_descriptor._texType;
