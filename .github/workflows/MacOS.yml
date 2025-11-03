@@ -40,16 +40,15 @@ jobs:
           version=$(clang --version | head -n 1)
           echo "version=$version" >> $GITHUB_OUTPUT
 
-  build_job:
+  build_job_x86_64:
     needs: info_job
-    name: macOS - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
+    name: macOS x86_64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
     runs-on: macos-latest
     strategy:
       fail-fast: true
       matrix:
         build-type: [editor, game]
         configuration: [debug, release]
-
 
     steps:
       - uses: actions/checkout@v4
@@ -58,21 +57,55 @@ jobs:
 
       - uses: ./.github/actions/cmake-build/macos
         with:
+          architecture: x86_64
+          build-type: ${{ matrix.build-type }}
+          configuration: ${{ matrix.configuration }}
+
+  build_job_arm64:
+    needs: info_job
+    name: macOS arm64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        build-type: [editor, game]
+        configuration: [debug, release]
+
+    steps:
+      - uses: actions/checkout@v4
+  
+      - uses: ./.github/actions/build-setup/macos
+
+      - uses: ./.github/actions/cmake-build/macos
+        with:
+          architecture: arm64
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
   output_job:
-    needs: [info_job, build_job]
+    needs: [info_job, build_job_x86_64, build_job_arm64]
     if: always()
     runs-on: macos-latest
     steps:
       - name: Retrieve results
         id: results
         run: |
-          if [[ "${{ needs.build_job.result }}" == "failure" || "${{ needs.info_job.result }}" == "failure" ]]; then
-            echo "status=Build or Info job failed" >> $GITHUB_OUTPUT
-          elif [[ "${{ needs.build_job.result }}" == "cancelled" || "${{ needs.info_job.result }}" == "cancelled" ]]; then
-            echo "status=Build or Info job cancelled" >> $GITHUB_OUTPUT
+          x86_64_status="${{ needs.build_job_x86_64.result }}"
+          arm64_status="${{ needs.build_job_arm64.result }}"
+          info_status="${{ needs.info_job.result }}"
+          
+          if [[ "$info_status" == "failure" ]]; then
+            echo "status=Info job failed" >> $GITHUB_OUTPUT
+          elif [[ "$info_status" == "cancelled" ]]; then
+            echo "status=Info job cancelled" >> $GITHUB_OUTPUT
+          elif [[ "$x86_64_status" == "failure" && "$arm64_status" == "failure" ]]; then
+            echo "status=Both x86_64 and arm64 builds failed" >> $GITHUB_OUTPUT
+          elif [[ "$x86_64_status" == "failure" ]]; then
+            echo "status=x86_64 build failed, arm64 build: $arm64_status" >> $GITHUB_OUTPUT
+          elif [[ "$arm64_status" == "failure" ]]; then
+            echo "status=arm64 build failed, x86_64 build: $x86_64_status" >> $GITHUB_OUTPUT
+          elif [[ "$x86_64_status" == "cancelled" || "$arm64_status" == "cancelled" ]]; then
+            echo "status=One or more builds cancelled" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT
           fi
@@ -82,3 +115,5 @@ jobs:
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "Status: ${{ steps.results.outputs.status }}" >> $GITHUB_STEP_SUMMARY
           echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "x86_64 Builds: ${{ needs.build_job_x86_64.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "arm64 Builds: ${{ needs.build_job_arm64.result }}" >> $GITHUB_STEP_SUMMARY
