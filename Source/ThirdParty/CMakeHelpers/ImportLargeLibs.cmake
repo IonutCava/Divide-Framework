@@ -65,8 +65,6 @@ set(CEGUI_BUILD_XMLPARSER_EXPAT TRUE)
 
 FetchContent_MakeAvailable(Cegui)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
-
 set(CEGUI_LIBRARY_NAMES "CEGUIBase-0_Static;CEGUICommonDialogs-0_Static;CEGUICoreWindowRendererSet_Static;${CEGUI_IMAGE_CODEC_LIB}_Static;${CEGUI_XML_PARSER_LIB}_Static")
 
 set(CEGUI_LIBRARIES "")
@@ -86,13 +84,25 @@ include_directories(
 )
 link_directories("${cegui_BINARY_DIR}/lib" )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
 
 #----------------------------------------------------------------------------- JOLT Physics ------------------------------------------------------------------
+
+set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
+
+if (MSVC_COMPILER)
+    add_compile_options("/wd5045") 
+elseif(CLANG_COMPILER OR GNU_COMPILER)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+else()
+    message(FATAL_ERROR "Unknown compiler type")
+endif()
+
 message("Fetching Jolt Physics Lib")
 FetchContent_Declare(
     JoltPhysics
     GIT_REPOSITORY  https://github.com/jrouwe/JoltPhysics.git
-    GIT_TAG         v5.3.0
+    GIT_TAG         v5.4.0
     GIT_SHALLOW     TRUE
     #GIT_PROGRESS    TRUE
     SOURCE_SUBDIR   "Build"
@@ -159,19 +169,6 @@ else()
     set(USE_AVX512 OFF)
 endif()
 
-set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
-
-if (MSVC_COMPILER)
-    add_compile_options("/wd5045") 
-elseif(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
-elseif(GNU_COMPILER)
-    # false positives with array-bounds in Float3::operator[] and Float4::operator[] in JoltPhysics 5.3.0
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-array-bounds")
-else()
-    message(FATAL_ERROR "Unknown compiler type")
-endif()
-
 message("END: Configuring JoltPhysics library")
 
 FetchContent_MakeAvailable(JoltPhysics)
@@ -201,6 +198,7 @@ else()
         option(NRI_ENABLE_WAYLAND_SUPPORT "" ON)
     endif()
 endif()
+
 FetchContent_Declare(
     nri
     GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
@@ -223,8 +221,19 @@ set(NRI_TARGETS
 target_compile_options(NRI_Shared PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>: -Wno-missing-field-initializers -Wno-error=missing-field-initializers >)
 foreach(nri_target IN LISTS NRI_TARGETS)
     if(TARGET ${nri_target})
+           # For clang/gcc style compilers (clang, gcc)
+    set_property(TARGET ${nri_target} APPEND PROPERTY COMPILE_OPTIONS
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-missing-field-initializers>
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=missing-field-initializers>
+    )
+
+    # For clang-cl (MSVC driver) explicitly forward to clang frontend so MSVC flags like /W4 don't re-enable it.
+    # clang-cl accepts /clang:<flag> to forward flags to clang frontend.
+    set_property(TARGET ${nri_target} APPEND PROPERTY COMPILE_OPTIONS
+      $<$<CXX_COMPILER_ID:Clang>:/clang:-Wno-missing-field-initializers>
+      $<$<CXX_COMPILER_ID:Clang>:/clang:-Wno-error=missing-field-initializers>
+    )
         set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-        target_compile_options(${nri_target} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>: -Wno-missing-field-initializers -Wno-error=missing-field-initializers >)
     endif()
 endforeach()
 
