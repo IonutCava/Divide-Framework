@@ -55,11 +55,11 @@ NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
    public:
     explicit ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
-                  void       readData(BufferRange<> range, std::pair<bufferPtr, size_t> outData);
+                  void       readData(ElementRange<> range, std::pair<bufferPtr, size_t> outData);
                   void       readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData);
-    [[nodiscard]] BufferLock clearData(BufferRange<> range);
+    [[nodiscard]] BufferLock clearData(ElementRange<> range);
     [[nodiscard]] BufferLock clearBytes(BufferRange<> range);
-    [[nodiscard]] BufferLock writeData(BufferRange<> range, const bufferPtr data);
+    [[nodiscard]] BufferLock writeData(ElementRange<> range, const bufferPtr data);
     [[nodiscard]] BufferLock writeBytes(BufferRange<> range, const bufferPtr data);
 
     

@@ -276,7 +276,7 @@ void IMPrimitive::endBatch() noexcept
 
     // Gather all the required sizes and offsets to allocate needed memory upfront.
     size_t requiredSize = 0u;
-    const auto updateRange = [&requiredSize](const vector<U32>& indices, BufferRange<U32>& rangeInOut)
+    const auto updateRange = [&requiredSize](const vector<U32>& indices, ElementRange<U32>& rangeInOut)
     {
         const size_t count = indices.size();
 
@@ -294,7 +294,7 @@ void IMPrimitive::endBatch() noexcept
 
         const NS_GLIM::GLIM_BUFFER_TYPE glimType = static_cast<NS_GLIM::GLIM_BUFFER_TYPE>(i);
 
-        BufferRange<U32>& range = _indexRange[i];
+        ElementRange<U32>& range = _indexRange[i];
 
         switch (glimType)
         { 
@@ -809,7 +809,7 @@ void IMPrimitive::getCommandBuffer(const mat4<F32>& worldMatrix, GFX::CommandBuf
                 pushConstantsCmd->_uniformData = &_additionalUniforms;
                 pushConstantsCmd->_fastData = _fastData;
 
-                const BufferRange<U32>& idxRange = _indexRange[i];
+                const ElementRange<U32>& idxRange = _indexRange[i];
                 drawCmd._cmd.indexCount = idxRange._length;
                 drawCmd._cmd.firstIndex = idxRange._startOffset;
                 GFX::EnqueueCommand(commandBufferInOut, GFX::DrawCommand{ drawCmd });
