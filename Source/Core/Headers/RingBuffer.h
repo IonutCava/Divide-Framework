@@ -100,7 +100,7 @@ public:
         }
         if (_separateReadWrite)
         {
-            return (ret + (_writeAhead ? 1 : (length - 1)) % length;
+            return (ret + (_writeAhead ? 1 : (length - 1)) % length);
         }
         
         return ret;

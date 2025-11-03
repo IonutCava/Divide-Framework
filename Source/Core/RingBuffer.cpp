@@ -22,7 +22,7 @@ void RingBuffer::resize(const U16 queueLength)
     if (_queueLength != std::max(queueLength, U16_ONE))
     {
         _queueLength = std::max(queueLength, U16_ONE);
-        _queueIndex = std::min(_queueIndex.load(), _queueLength - 1u);
+        _queueIndex = std::min<U16>(_queueIndex.load(), _queueLength - 1u);
     }
 }
 

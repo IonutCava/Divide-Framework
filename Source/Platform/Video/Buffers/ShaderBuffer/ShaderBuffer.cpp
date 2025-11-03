@@ -70,7 +70,7 @@ void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> o
                   getUsage() == BufferUsageType::UNBOUND_BUFFER &&
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
-    range._startOffset += to_size(std::max(0, queueIndex()))* _alignedBufferSize;
+    range._startOffset += to_size(std::max<U16>(0u, queueIndex()))* _alignedBufferSize;
 
     readBytesInternal(range, outData);
 }
@@ -86,7 +86,7 @@ BufferLock ShaderBuffer::writeBytes(BufferRange<> range, const bufferPtr data) {
                   getUpdateFrequency() != BufferUpdateFrequency::ONCE &&
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
-    range._startOffset += to_size(std::max(0, queueIndex())) * _alignedBufferSize;
+    range._startOffset += to_size(std::max<U16>(0u, queueIndex())) * _alignedBufferSize;
 
     return writeBytesInternal(range, data);
 }
