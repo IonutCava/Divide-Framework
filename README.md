@@ -134,6 +134,7 @@ I did try to comply with all of them, but I may have missed something.
     * VMA: https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
     * vk-bootstrap: https://github.com/charles-lunarg/vk-bootstrap
     * Vulkan-Descriptor-Allocator: https://github.com/vblanco20-1/Vulkan-Descriptor-Allocator
+* NRI: https://github.com/NVIDIA-RTX/NRI
 * Memory Management:
     * Fixed Block Allocator: https://www.codeproject.com/Articles/1083210/An-efficient-Cplusplus-fixed-block-memory-allocato
     * Arena Allocator: https://www.codeproject.com/Articles/44850/Arena-Allocator-DTOR-and-Embedded-Preallocated-Buf
