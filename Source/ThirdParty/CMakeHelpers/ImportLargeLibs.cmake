@@ -178,6 +178,11 @@ FetchContent_MakeAvailable(JoltPhysics)
 include_directories(${JoltPhysics_SOURCE_DIR}/..)
 
 #----------------------------------------------------------------------------- NRI Physics ------------------------------------------------------------------
+
+if (NOT MSVC_COMPILER)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-unused-parameter -Wno-array-bounds")
+endif()
+
 message("Fetching NVIDIA NRI Lib")
 option(NRI_STATIC_LIBRARY "" ON)
 option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON)
