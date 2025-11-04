@@ -70,7 +70,6 @@ runs:
           libibus-1.0-dev \
           bison \
           autoconf-archive \
-          libtoolize \
           libltdl-dev \
           lld
 
