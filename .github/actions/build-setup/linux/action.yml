@@ -71,6 +71,7 @@ runs:
           bison \
           autoconf-archive \
           libtoolize \
+          libltdl-dev \
           lld
 
     - name: Setup vcpkg
