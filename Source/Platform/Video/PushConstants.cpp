@@ -12,7 +12,7 @@ const UniformData::UniformDataContainer& UniformData::entries() const noexcept
 
 const Byte* UniformData::data( const size_t offset ) const noexcept
 {
-    DIVIDE_ASSERT(offset < _buffer.size());
+    DIVIDE_GPU_ASSERT(offset < _buffer.size());
     return &_buffer[offset];
 }
 

@@ -103,7 +103,7 @@ namespace Divide
         // Calculate the offset in the buffer in bytes from which to start writing
         size_t offsetInBytes = elementCountOffset * _internalBuffer->_params._elementSize;
 
-        DIVIDE_ASSERT(offsetInBytes + dataCurrentSizeInBytes <= _internalBuffer->_params._elementCount * _internalBuffer->_params._elementSize);
+        DIVIDE_GPU_ASSERT(offsetInBytes + dataCurrentSizeInBytes <= _internalBuffer->_params._elementCount * _internalBuffer->_params._elementSize);
 
         if (queueLength() > 1u)
         {

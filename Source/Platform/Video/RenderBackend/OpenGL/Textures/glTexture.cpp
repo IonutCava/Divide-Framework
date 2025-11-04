@@ -71,7 +71,7 @@ void glTexture::reserveStorage()
         case TextureType::TEXTURE_CUBE_MAP:
         case TextureType::TEXTURE_2D:
         {
-            DIVIDE_ASSERT(_descriptor._texType == TextureType::TEXTURE_1D_ARRAY || _depth == 1u);
+            DIVIDE_GPU_ASSERT(_descriptor._texType == TextureType::TEXTURE_1D_ARRAY || _depth == 1u);
             if (msaaSamples == 0u) {
                 gl46core::glTextureStorage2D( _loadingHandle,
                                               mipCount(),
@@ -212,7 +212,7 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
-    DIVIDE_ASSERT( _descriptor._msaaSamples == 0u || data == nullptr);
+    DIVIDE_GPU_ASSERT( _descriptor._msaaSamples == 0u || data == nullptr);
 
     if ( _descriptor._packing == GFXImagePacking::RGBA_4444 )
     {
@@ -325,7 +325,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
         mipLevel = to_U8(mipCount() - 1u);
     }
 
-    DIVIDE_ASSERT(!IsCompressed( _descriptor._baseFormat ), "glTexture::clearData: compressed textures are not supported!");
+    DIVIDE_GPU_ASSERT(!IsCompressed( _descriptor._baseFormat ), "glTexture::clearData: compressed textures are not supported!");
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
@@ -366,8 +366,8 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     // We could handle this with a custom shader pass and temp render targets, so leaving the option i
-    DIVIDE_ASSERT(sourceSamples == destinationSamples == 0u, "glTexture::copy Multisampled textures is not supported yet!");
-    DIVIDE_ASSERT(source != nullptr && destination != nullptr, "glTexture::copy Invalid source and/or destination textures specified!");
+    DIVIDE_GPU_ASSERT(sourceSamples == 0u && destinationSamples == 0u, "glTexture::copy Multisampled textures is not supported yet!");
+    DIVIDE_GPU_ASSERT(source != nullptr && destination != nullptr, "glTexture::copy Invalid source and/or destination textures specified!");
 
     const TextureType srcType = source->_descriptor._texType;
     const TextureType dstType = destination->_descriptor._texType;
@@ -413,7 +413,7 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
     grabData._numComponents = numChannels();
     grabData._sourceIsBGR = IsBGRTexture( _descriptor._baseFormat );
 
-    DIVIDE_ASSERT(_depth == 1u && !IsCubeTexture( _descriptor._texType ), "glTexture:readData: unsupported image for readback. Support is very limited!");
+    DIVIDE_GPU_ASSERT(_depth == 1u && !IsCubeTexture( _descriptor._texType ), "glTexture:readData: unsupported image for readback. Support is very limited!");
 
     mipLevel = std::min(mipLevel, to_U8(mipCount() - 1u));
     if ( IsCompressed( _descriptor._baseFormat ) )

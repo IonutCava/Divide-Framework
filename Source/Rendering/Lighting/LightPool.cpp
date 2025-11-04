@@ -540,24 +540,27 @@ namespace Divide
 
         constexpr U16 k_parallelSortThreshold = 16u;
 
-        const auto lightUpdateFunc = [playerCamera]( const LightList& lightList )
-        {
-            for ( Light* light : lightList )
-            {
-                light->updateBoundingVolume( playerCamera );
-            }
-        };
-
         SharedLock<SharedMutex> r_lock( _lightLock );
         if ( _lights.size() > k_parallelSortThreshold )
         {
-            UNSEQ_STD_FOR_EACH( std::cbegin( _lights ), std::cend( _lights ), lightUpdateFunc );
+            UNSEQ_STD_FOR_EACH( std::cbegin( _lights ),
+                                std::cend( _lights ),
+                                [playerCamera](const LightList& lightList)
+                                {
+                                    for (Light* light : lightList)
+                                    {
+                                        light->updateBoundingVolume(playerCamera);
+                                    }
+                                });
         }
         else
         {
             for ( const LightList& list : _lights )
             {
-                lightUpdateFunc(list);
+                for (Light* light : list)
+                {
+                    light->updateBoundingVolume(playerCamera);
+                }
             }
         }
 

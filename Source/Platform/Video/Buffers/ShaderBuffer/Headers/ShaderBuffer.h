@@ -47,7 +47,7 @@ namespace Attorney {
 class ShaderProgram;
 NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
                                    public GraphicsResource,
-                                   public RingBufferSeparateWrite
+                                   public RingBuffer
                                   
 {
     friend class Attorney::ShaderBufferBind;
@@ -55,16 +55,13 @@ NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
    public:
     explicit ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
-                  void       readData(BufferRange<> range, std::pair<bufferPtr, size_t> outData);
+                  void       readData(ElementRange<> range, std::pair<bufferPtr, size_t> outData);
                   void       readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> outData);
-    [[nodiscard]] BufferLock clearData(BufferRange<> range);
+    [[nodiscard]] BufferLock clearData(ElementRange<> range);
     [[nodiscard]] BufferLock clearBytes(BufferRange<> range);
-    [[nodiscard]] BufferLock writeData(BufferRange<> range, const bufferPtr data);
+    [[nodiscard]] BufferLock writeData(ElementRange<> range, const bufferPtr data);
     [[nodiscard]] BufferLock writeBytes(BufferRange<> range, const bufferPtr data);
 
-    
-    [[nodiscard]] FORCE_INLINE I32                   getStartIndex(const bool read)  const noexcept { return (read ? queueReadIndex() : queueWriteIndex()); }
-    [[nodiscard]] FORCE_INLINE size_t                getStartOffset(const bool read) const noexcept { return to_size(std::max(0, getStartIndex(read))) * _alignedBufferSize; }
     [[nodiscard]] FORCE_INLINE U32                   getPrimitiveCount()             const noexcept { return _params._elementCount; }
     [[nodiscard]] FORCE_INLINE size_t                getPrimitiveSize()              const noexcept { return _params._elementSize; }
     [[nodiscard]] FORCE_INLINE BufferUsageType       getUsage()                      const noexcept { return _params._usageType;  }
@@ -82,8 +79,6 @@ NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
     PROPERTY_R(size_t, alignmentRequirement, sizeof(U32));
 
     PROPERTY_R(string, name);
-    PROPERTY_R(U64, lastWrittenFrame, 0u);
-    PROPERTY_R(U64, lastReadFrame, 0u);
    protected:
      virtual void       readBytesInternal(BufferRange<> range, std::pair<bufferPtr, size_t> outData) = 0;
      virtual BufferLock writeBytesInternal(BufferRange<> range, const bufferPtr data) = 0;
@@ -91,7 +86,6 @@ NOINITVTABLE_CLASS(ShaderBuffer) : public GUIDWrapper,
    protected:
     BufferParams _params;
     size_t _maxSize{ 0u };
-    U64 _lastWriteFrameNumber{ 0u };
 };
 
 /// If initialData is NULL, the buffer contents are undefined (good for CPU -> GPU transfers),
@@ -103,7 +97,6 @@ struct ShaderBufferDescriptor : BufferParams
     std::pair<bufferPtr, size_t> _initialData{nullptr, 0u};
     string _name{ "" };
     U16 _ringBufferLength{ 1u };
-    bool _separateReadWrite{ false }; ///< Use a separate read/write index based on queue length
 };
 
 FWD_DECLARE_MANAGED_CLASS(ShaderBuffer);

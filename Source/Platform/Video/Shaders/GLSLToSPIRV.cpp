@@ -25,7 +25,7 @@ namespace
             case Divide::ShaderType::COMPUTE: return EShLangCompute;
             case Divide::ShaderType::MESH_NV: return EShLangMesh;
             case Divide::ShaderType::TASK_NV: return EShLangTask;
-            default: Divide::DIVIDE_UNEXPECTED_CALL(); break;
+            default: DIVIDE_UNEXPECTED_CALL(); break;
         }
 
         return EShLangVertex;
@@ -301,7 +301,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
                 const SpvReflectInterfaceVariable* refvar = output_vars[i];
                 if ( refvar != nullptr && refvar->built_in != SpvBuiltInFragDepth)
                 {
-                    DIVIDE_ASSERT( refvar->location < to_base( RTColourAttachmentSlot::COUNT ) );
+                    DIVIDE_GPU_ASSERT( refvar->location < to_base( RTColourAttachmentSlot::COUNT ) );
                     reflectionDataInOut._fragmentOutputs[refvar->location] = true;
                 }
             }
@@ -346,7 +346,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         }
         else
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
     };
     std::function<void( Divide::Reflection::BufferMember&, const SpvReflectBlockVariable& )> fillBufferMemberData;
@@ -366,7 +366,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             if ( binding.array.dims_count > 2 )
             {
                 // We only support 2D arrays max
-                Divide::DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_UNEXPECTED_CALL();
             }
         }
         target._vectorDimensions = binding.numeric.vector.component_count;
@@ -378,7 +378,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         }
         else
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
 
         const uint32_t typeFlags = binding.type_description->type_flags;
@@ -395,7 +395,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         }
         else if ( typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_FLOAT )
         {
-            Divide::DIVIDE_ASSERT( binding.numeric.scalar.signedness == 0 );
+            DIVIDE_GPU_ASSERT( binding.numeric.scalar.signedness == 0 );
             if ( binding.numeric.scalar.width == 32 )
             {
                 target._type = Divide::PushConstantType::FLOAT;
@@ -406,20 +406,20 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             }
             else
             {
-                Divide::DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_UNEXPECTED_CALL();
             }
         }
         else if ( typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_VECTOR )
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
         else if ( typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_MATRIX )
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
         else if ( typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_BOOL )
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
         else if ( typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_STRUCT )
         {
@@ -432,7 +432,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         }
         else if ( typeFlags & SpvReflectTypeFlagBits::SPV_REFLECT_TYPE_FLAG_ARRAY )
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
     };
 
@@ -454,7 +454,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         }
         else
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
         target._members.resize( target._memberCount );
         for ( uint32_t i = 0u; i < target._memberCount; ++i )
@@ -493,7 +493,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             }
             else if ( refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER )
             {
-                Divide::DIVIDE_UNEXPECTED_CALL(); //Not yet supported!
+                DIVIDE_UNEXPECTED_CALL(); //Not yet supported!
             }
             else if ( refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE )
             {
@@ -537,7 +537,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             }
             else
             {
-                Divide::DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_UNEXPECTED_CALL();
             }
         }
     }
