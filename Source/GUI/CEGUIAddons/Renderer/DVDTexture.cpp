@@ -92,19 +92,19 @@ void DVDTexture::loadFromFile(const String& filename, const String& resourceGrou
 
     // get and check existence of CEGUI::System (needed to access ImageCodec)
     System* sys = System::getSingletonPtr();
-    Divide::DIVIDE_ASSERT(sys, "CEGUI::System object has not been created: unable to access ImageCodec.");
+    DIVIDE_ASSERT(sys, "CEGUI::System object has not been created: unable to access ImageCodec.");
 
     Texture* res = sys->getImageCodec().load(texFile, this);
 
     // unload file data buffer
     System::getSingleton().getResourceProvider()->unloadRawDataContainer(texFile);
 
-    Divide::DIVIDE_ASSERT(res, (sys->getImageCodec().getIdentifierString() + " failed to load image '" + filename + "'.").c_str());
+    DIVIDE_ASSERT(res, (sys->getImageCodec().getIdentifierString() + " failed to load image '" + filename + "'.").c_str());
 }
 
 void DVDTexture::loadFromMemory(const void* buffer, const Sizef& buffer_size, PixelFormat pixel_format)
 {
-    Divide::DIVIDE_ASSERT(isPixelFormatSupported(pixel_format), "Data was supplied in an unsupported pixel format.");
+    DIVIDE_ASSERT(isPixelFormatSupported(pixel_format), "Data was supplied in an unsupported pixel format.");
 
     setTextureSize_impl(buffer_size, pixel_format);
 
@@ -163,7 +163,7 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
         maxSize = float(GFXDevice::GetDeviceInformation()._maxTextureSize);
     }
 
-    Divide::DIVIDE_ASSERT(!( _size.d_width > maxSize || _size.d_height > maxSize), "DVDTexture:: size too big");
+    DIVIDE_ASSERT(!( _size.d_width > maxSize || _size.d_height > maxSize), "DVDTexture:: size too big");
 
     Get(_texture)->createWithData( nullptr, 0u, vec2<U16>( _size.d_width, _size.d_height), {} );
 }

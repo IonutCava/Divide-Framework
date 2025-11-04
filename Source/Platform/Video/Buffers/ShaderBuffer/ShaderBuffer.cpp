@@ -26,7 +26,7 @@ size_t ShaderBuffer::AlignmentRequirement(const BufferUsageType usage) noexcept 
 ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
       : GUIDWrapper()
       , GraphicsResource(context, Type::SHADER_BUFFER, getGUID(), _ID(descriptor._name.c_str()))
-      , RingBufferSeparateWrite(descriptor._ringBufferLength, descriptor._separateReadWrite)
+      , RingBuffer(descriptor._ringBufferLength)
       , _alignmentRequirement(AlignmentRequirement(descriptor._usageType))
       , _name(descriptor._name)
       , _params(descriptor)
@@ -36,7 +36,7 @@ ShaderBuffer::ShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& des
     _maxSize = descriptor._usageType == BufferUsageType::CONSTANT_BUFFER ? GFXDevice::GetDeviceInformation()._maxSizeBytesUBO : GFXDevice::GetDeviceInformation()._maxSizeBytesSSBO;
 }
 
-BufferLock ShaderBuffer::clearData(const BufferRange<> range) {
+BufferLock ShaderBuffer::clearData(const ElementRange<> range) {
     return clearBytes(
                {
                    range._startOffset * _params._elementSize,
@@ -44,7 +44,7 @@ BufferLock ShaderBuffer::clearData(const BufferRange<> range) {
                });
 }
 
-BufferLock ShaderBuffer::writeData(const BufferRange<> range, const bufferPtr data) {
+BufferLock ShaderBuffer::writeData(const ElementRange<> range, const bufferPtr data) {
     return writeBytes(
                {
                    range._startOffset * _params._elementSize,
@@ -53,7 +53,7 @@ BufferLock ShaderBuffer::writeData(const BufferRange<> range, const bufferPtr da
                data);
 }
 
-void ShaderBuffer::readData(const BufferRange<> range, const std::pair<bufferPtr, size_t> outData) {
+void ShaderBuffer::readData(const ElementRange<> range, const std::pair<bufferPtr, size_t> outData) {
     readBytes(
         {
             range._startOffset * _params._elementSize,
@@ -70,10 +70,9 @@ void ShaderBuffer::readBytes(BufferRange<> range, std::pair<bufferPtr, size_t> o
                   getUsage() == BufferUsageType::UNBOUND_BUFFER &&
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
-    range._startOffset += getStartOffset(true);
+    range._startOffset += to_size(std::max<U16>(0u, queueIndex()))* _alignedBufferSize;
 
     readBytesInternal(range, outData);
-    _lastReadFrame = GFXDevice::FrameCount();
 }
 
 BufferLock ShaderBuffer::clearBytes(const BufferRange<> range) {
@@ -87,8 +86,7 @@ BufferLock ShaderBuffer::writeBytes(BufferRange<> range, const bufferPtr data) {
                   getUpdateFrequency() != BufferUpdateFrequency::ONCE &&
                   range._startOffset == Util::GetAlignmentCorrected(range._startOffset, _alignmentRequirement));
 
-    range._startOffset += getStartOffset(false);
-    _lastWriteFrameNumber = GFXDevice::FrameCount();
+    range._startOffset += to_size(std::max<U16>(0u, queueIndex())) * _alignedBufferSize;
 
     return writeBytesInternal(range, data);
 }

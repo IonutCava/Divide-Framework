@@ -35,7 +35,13 @@ Chunk::Chunk(const std::string_view chunkName,
       _flags(flags)
 {
     gl::GLuint bufferHandle = GL_NULL_HANDLE;
-    createAndAllocateMappedBuffer(bufferHandle, chunkName, storageMask, alignedSize, { nullptr, 0u }, accessMask, _memory);
+    _memory = createAndAllocateMappedBuffer( bufferHandle,
+                                             chunkName,
+                                             storageMask,
+                                             alignedSize,
+                                             { nullptr, 0u },
+                                             accessMask,
+                                             true );
 
     const Block firstBlock = 
     {
@@ -52,11 +58,11 @@ Chunk::Chunk(const std::string_view chunkName,
 
 Chunk::~Chunk()
 {
-    DIVIDE_ASSERT( _blocks.front()._bufferHandle > 0u && _blocks.front()._ptr != nullptr );
+    DIVIDE_GPU_ASSERT( _blocks.front()._bufferHandle > 0u && _blocks.front()._ptr != nullptr );
     
     const gl46core::GLboolean result = gl46core::glUnmapNamedBuffer(_blocks.front()._bufferHandle);
 
-    DIVIDE_ASSERT(result != gl46core::GL_FALSE && "GLUtil::freeBuffer error: buffer unmapping failed");
+    DIVIDE_GPU_ASSERT(result != gl46core::GL_FALSE && "GLUtil::freeBuffer error: buffer unmapping failed");
     freeBuffer(_blocks.front()._bufferHandle);
 }
 
@@ -65,7 +71,7 @@ void Chunk::deallocate(const Block &block)
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     auto it = eastl::find(begin(_blocks), end(_blocks), block);
-    DIVIDE_ASSERT(it != cend(_blocks));
+    DIVIDE_GPU_ASSERT(it != cend(_blocks));
 
     Block& crt = *it;
     crt._free = true;
@@ -162,10 +168,10 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
                                 const gl46core::BufferStorageMask storageMask,
                                 const gl46core::BufferAccessMask accessMask,
                                 const U32 flags,
-                                const std::pair<bufferPtr, size_t> initialData)
+                                const std::pair<bufferPtr, size_t> initialData,
+                                const bool zeroRemainingData)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
 
     if ( poolAllocations )
     {
@@ -203,13 +209,13 @@ Block DeviceAllocator::allocate(const bool poolAllocations,
     block._free = false;
     block._pooled = false;
     block._size = alignedSize;
-    createAndAllocateMappedBuffer( block._bufferHandle,
-                                    Util::StringFormat("DVD_BUFFER_STATIC_{}", g_bufferIndex++),
-                                    storageMask,
-                                    block._size,
-                                    initialData,
-                                    accessMask,
-                                    block._ptr );
+    block._ptr = createAndAllocateMappedBuffer( block._bufferHandle,
+                                                Util::StringFormat("DVD_BUFFER_STATIC_{}", g_bufferIndex++),
+                                                storageMask,
+                                                block._size,
+                                                initialData,
+                                                accessMask,
+                                                zeroRemainingData );
     return block;
 }
 
@@ -231,21 +237,21 @@ void DeviceAllocator::deallocate(Block &block)
                 break;
             }
         }
-        DIVIDE_ASSERT(found, "DeviceAllocator::deallocate error: unable to deallocate the block");
+        DIVIDE_GPU_ASSERT(found, "DeviceAllocator::deallocate error: unable to deallocate the block");
     }
     else
     {
         {
             LockGuard<Mutex> w_lock(_blockAllocatorLock);
             auto it = eastl::find(begin(_blocks), end(_blocks), block);
-            DIVIDE_ASSERT ( it != cend(_blocks) );
+            DIVIDE_GPU_ASSERT( it != cend(_blocks) );
             _blocks.erase(it);
         }
 
         if ( block._ptr != nullptr)
         {
             const gl46core::GLboolean result = gl46core::glUnmapNamedBuffer(block._bufferHandle);
-            DIVIDE_ASSERT(result != gl46core::GL_FALSE && "GLUtil::freeBuffer error: buffer unmapping failed");
+            DIVIDE_GPU_ASSERT(result != gl46core::GL_FALSE && "GLUtil::freeBuffer error: buffer unmapping failed");
         }
 
         GLUtil::freeBuffer(block._bufferHandle);
@@ -295,41 +301,47 @@ void createAndAllocateBuffer( gl46core::GLuint& bufferIdOut,
                               const std::string_view name,
                               const gl46core::BufferStorageMask storageMask,
                               const size_t alignedSize,
-                              const std::pair<bufferPtr, size_t> initialData )
+                              const std::pair<bufferPtr, size_t> initialData,
+                              const bool zeroRemainingData)
 {
     PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
     createBuffer(bufferIdOut, name);
 
-    DIVIDE_ASSERT(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
-    const bool hasAllSourceData = initialData.second == alignedSize && initialData.first != nullptr;
-    gl46core::glNamedBufferStorage(bufferIdOut, alignedSize, hasAllSourceData ? initialData.first : nullptr, storageMask);
-    if ( !hasAllSourceData )
-    {   gl46core::GLuint zero = 0;
-        gl46core::glClearNamedBufferData(bufferIdOut, gl46core::GL_R8, gl46core::GL_RED, gl46core::GL_UNSIGNED_BYTE, &zero);
+    DIVIDE_GPU_ASSERT(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
+    
+    gl46core::glNamedBufferStorage(bufferIdOut, alignedSize, initialData.second == alignedSize ? initialData.first : nullptr, storageMask);
+    if (initialData.second != alignedSize)
+    {
+        DIVIDE_GPU_ASSERT(initialData.second < alignedSize);
+        gl46core::glNamedBufferSubData(bufferIdOut, 0u, initialData.second, initialData.first);
+        if ( zeroRemainingData )
+        {
+            gl46core::GLuint zero = 0;
+            gl46core::glClearNamedBufferSubData(bufferIdOut, gl46core::GL_R8, initialData.second, alignedSize - initialData.second, gl46core::GL_RED, gl46core::GL_UNSIGNED_BYTE, &zero);
+        }
     }
 }
 
-void createAndAllocateMappedBuffer( gl46core::GLuint& bufferIdOut,
-                                    const std::string_view name,
-                                    const gl46core::BufferStorageMask storageMask,
-                                    const size_t alignedSize,
-                                    const std::pair<bufferPtr, size_t> initialData,
-                                    const gl46core::BufferAccessMask accessMask,
-                                    Byte*& ptrOut)
+Byte* createAndAllocateMappedBuffer( gl46core::GLuint& bufferIdOut,
+                                     const std::string_view name,
+                                     const gl46core::BufferStorageMask storageMask,
+                                     const size_t alignedSize,
+                                     const std::pair<bufferPtr, size_t> initialData,
+                                     const gl46core::BufferAccessMask accessMask,
+                                     const bool zeroRemainingData )
 {
     PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
+    createAndAllocateBuffer(bufferIdOut,
+                            name,
+                            storageMask,
+                            alignedSize,
+                            initialData,
+                            zeroRemainingData);
 
-    createAndAllocateBuffer(bufferIdOut, name, storageMask, alignedSize, initialData);
-
-    ptrOut = (Byte*)gl46core::glMapNamedBufferRange(bufferIdOut, 0, alignedSize, accessMask);
-    DIVIDE_ASSERT(ptrOut != nullptr);
-
-    const bool hasAllSourceData = initialData.second == alignedSize && initialData.first != nullptr;
-    if (!hasAllSourceData && initialData.second > 0 && initialData.first != nullptr)
-    {
-        memcpy(ptrOut, initialData.first, initialData.second);
-    }
+    Byte* ptrOut = (Byte*)gl46core::glMapNamedBufferRange(bufferIdOut, 0, alignedSize, accessMask);
+    DIVIDE_GPU_ASSERT(ptrOut != nullptr);
+    return ptrOut;
 }
 }  // namespace GLUtil
 }  // namespace Divide

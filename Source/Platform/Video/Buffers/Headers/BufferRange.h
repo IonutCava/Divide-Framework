@@ -53,6 +53,9 @@ namespace Divide {
         bool operator==(const BufferRange&) const = default;
     };
 
+    template<typename T = size_t>
+    using ElementRange = BufferRange<T>;
+
     template<typename T>
     bool Overlaps(const BufferRange<T>& lhs, const BufferRange<T>& rhs) noexcept;
 

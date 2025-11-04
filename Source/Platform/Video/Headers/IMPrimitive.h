@@ -148,7 +148,7 @@ class IMPrimitive final {
     std::array<Pipeline*, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _pipelines;
 
     vector<U32> _indices;
-    std::array<BufferRange<U32>, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexRange;
+    std::array<ElementRange<U32>, to_base(NS_GLIM::GLIM_BUFFER_TYPE::COUNT)> _indexRange;
     GPUBuffer_uptr _indexBuffer;
     vector<GPUBuffer_uptr> _vertexBuffers;
     vector<GPUBuffer::Handle> _bufferHandles;

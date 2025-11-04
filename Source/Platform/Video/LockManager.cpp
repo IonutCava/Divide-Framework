@@ -123,14 +123,14 @@ namespace Divide
 
         for ( const BufferLockInstance& lock : _bufferLocks )
         {
-            DIVIDE_ASSERT( lock._syncObjHandle._id != SyncObjectHandle::INVALID_SYNC_ID );
+            DIVIDE_GPU_ASSERT( lock._syncObjHandle._id != SyncObjectHandle::INVALID_SYNC_ID );
 
             LockGuard<Mutex> r_lock( s_bufferLockLock );
             const BufferLockPoolEntry& syncLockInstance = s_bufferLockPool[lock._syncObjHandle._id];
             if ( syncLockInstance._generation != lock._syncObjHandle._generation )
             {
                 error = !(syncLockInstance._generation > lock._syncObjHandle._generation);
-                DIVIDE_ASSERT( !error );
+                DIVIDE_GPU_ASSERT( !error );
                 continue;
             }
 
@@ -156,7 +156,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( syncObj._id != SyncObjectHandle::INVALID_SYNC_ID && lockLength > 0u, "LockManager::lockRange error: Invalid lock range!" );
+        DIVIDE_GPU_ASSERT( syncObj._id != SyncObjectHandle::INVALID_SYNC_ID && lockLength > 0u, "LockManager::lockRange error: Invalid lock range!" );
 
         const BufferRange<> testRange{ lockBeginBytes, lockLength };
 

@@ -66,7 +66,7 @@ DVDTextureTarget::~DVDTextureTarget()
     {
         if ( !_owner.context().renderTargetPool().deallocateRT( _renderTarget ) )
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
     }
 }
@@ -109,7 +109,7 @@ void DVDTextureTarget::initialiseRenderTexture()
     {
         if ( !_owner.context().renderTargetPool().deallocateRT(_renderTarget) )
         {
-            Divide::DIVIDE_UNEXPECTED_CALL();
+            DIVIDE_UNEXPECTED_CALL();
         }
     }
 

@@ -227,45 +227,45 @@ namespace Divide
 
             if ( isDepth )
             {
-                DIVIDE_ASSERT( baseFormat == GFXImageFormat::RED );
+                DIVIDE_GPU_ASSERT( baseFormat == GFXImageFormat::RED );
             }
 
             if ( isSRGB )
             {
-                DIVIDE_ASSERT( dataType == GFXDataFormat::UNSIGNED_BYTE &&
-                               baseFormat == GFXImageFormat::RGB ||
-                               baseFormat == GFXImageFormat::BGR ||
-                               baseFormat == GFXImageFormat::RGBA ||
-                               baseFormat == GFXImageFormat::BGRA ||
-                               baseFormat == GFXImageFormat::DXT1_RGB ||
-                               baseFormat == GFXImageFormat::DXT1_RGBA ||
-                               baseFormat == GFXImageFormat::DXT3_RGBA ||
-                               baseFormat == GFXImageFormat::DXT5_RGBA ||
-                               baseFormat == GFXImageFormat::BC7,
-                               "VKUtil::InternalFormat: Vulkan supports VK_FORMAT_R8(G8)_SRGB and BC1/2/3/7, but OpenGL doesn't, so for now we completely ignore these formats!" );
+                DIVIDE_GPU_ASSERT( dataType == GFXDataFormat::UNSIGNED_BYTE &&
+                                   baseFormat == GFXImageFormat::RGB ||
+                                   baseFormat == GFXImageFormat::BGR ||
+                                   baseFormat == GFXImageFormat::RGBA ||
+                                   baseFormat == GFXImageFormat::BGRA ||
+                                   baseFormat == GFXImageFormat::DXT1_RGB ||
+                                   baseFormat == GFXImageFormat::DXT1_RGBA ||
+                                   baseFormat == GFXImageFormat::DXT3_RGBA ||
+                                   baseFormat == GFXImageFormat::DXT5_RGBA ||
+                                   baseFormat == GFXImageFormat::BC7,
+                                   "VKUtil::InternalFormat: Vulkan supports VK_FORMAT_R8(G8)_SRGB and BC1/2/3/7, but OpenGL doesn't, so for now we completely ignore these formats!" );
             }
 
             if ( isNormalized && !isDepth )
             {
-                DIVIDE_ASSERT( dataType == GFXDataFormat::SIGNED_BYTE ||
-                               dataType == GFXDataFormat::UNSIGNED_BYTE ||
-                               dataType == GFXDataFormat::SIGNED_SHORT ||
-                               dataType == GFXDataFormat::UNSIGNED_SHORT );
+                DIVIDE_GPU_ASSERT( dataType == GFXDataFormat::SIGNED_BYTE ||
+                                   dataType == GFXDataFormat::UNSIGNED_BYTE ||
+                                   dataType == GFXDataFormat::SIGNED_SHORT ||
+                                   dataType == GFXDataFormat::UNSIGNED_SHORT );
             }
 
             if ( isPacked )
             {
-                DIVIDE_ASSERT( baseFormat == GFXImageFormat::RGB ||
-                               baseFormat == GFXImageFormat::BGR ||
-                               baseFormat == GFXImageFormat::RGBA ||
-                               baseFormat == GFXImageFormat::BGRA );
+                DIVIDE_GPU_ASSERT( baseFormat == GFXImageFormat::RGB ||
+                                   baseFormat == GFXImageFormat::BGR ||
+                                   baseFormat == GFXImageFormat::RGBA ||
+                                   baseFormat == GFXImageFormat::BGRA );
             }
 
             if ( baseFormat == GFXImageFormat::BGR || baseFormat == GFXImageFormat::BGRA )
             {
-                DIVIDE_ASSERT(dataType == GFXDataFormat::UNSIGNED_BYTE ||
-                              dataType == GFXDataFormat::SIGNED_BYTE,
-                              "VKUtil::InternalFormat: Vulkan only supports 8Bpp for BGR(A) formats.");
+                DIVIDE_GPU_ASSERT( dataType == GFXDataFormat::UNSIGNED_BYTE ||
+                                   dataType == GFXDataFormat::SIGNED_BYTE,
+                                   "VKUtil::InternalFormat: Vulkan only supports 8Bpp for BGR(A) formats.");
             }
 
             switch ( baseFormat )

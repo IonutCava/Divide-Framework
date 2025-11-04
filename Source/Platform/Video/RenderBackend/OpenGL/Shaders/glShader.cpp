@@ -119,7 +119,7 @@ ShaderResult glShader::uploadToGPU()
             }
 
             gl46core::GLuint shader = GL_NULL_HANDLE;
-            DIVIDE_ASSERT(shader != 0u && !data._sourceCodeSpirV.empty() && !data._sourceCodeGLSL.empty());
+            DIVIDE_GPU_ASSERT(shader != 0u && !data._sourceCodeSpirV.empty() && !data._sourceCodeGLSL.empty());
 
             if constexpr(g_useSPIRVBinaryCode)
             {

@@ -17,7 +17,7 @@ namespace Divide
     {
         gl46core::glCreateFramebuffers( 1, &_framebufferHandle );
 
-        DIVIDE_ASSERT( (_framebufferHandle != 0 && _framebufferHandle != GL_NULL_HANDLE), "glFramebuffer error: Tried to bind an invalid framebuffer!" );
+        DIVIDE_GPU_ASSERT( (_framebufferHandle != 0 && _framebufferHandle != GL_NULL_HANDLE), "glFramebuffer error: Tried to bind an invalid framebuffer!" );
 
         if constexpr ( Config::ENABLE_GPU_VALIDATION )
         {
@@ -86,7 +86,7 @@ namespace Divide
 
         if ( texPtr->depth() == 1u )
         {
-            DIVIDE_ASSERT(targetLayers._layer._offset == 0u );
+            DIVIDE_GPU_ASSERT(targetLayers._layer._offset == 0u );
             if ( !IsCubeTexture( texPtr->descriptor()._texType ) || targetLayers._cubeFace == 0u )
             {
                 targetLayers._layer._count = U16_MAX;
@@ -115,7 +115,7 @@ namespace Divide
             }
             else
             {
-                DIVIDE_ASSERT( bState._layers._layer._offset < texPtr->depth() && bState._levelOffset < texPtr->mipCount());
+                DIVIDE_GPU_ASSERT( bState._layers._layer._offset < texPtr->depth() && bState._levelOffset < texPtr->mipCount());
 
                 ResourcePtr<Texture> resolvedTexPtr = Get( attachment->resolvedTexture() );
 
@@ -275,7 +275,7 @@ namespace Divide
             {
                 PROFILE_SCOPE( "Prepare RW Buffers", Profiler::Category::Graphics );
 
-                DIVIDE_ASSERT( entry._output._index != RT_DEPTH_ATTACHMENT_IDX );
+                DIVIDE_GPU_ASSERT( entry._output._index != RT_DEPTH_ATTACHMENT_IDX );
                 if ( readBuffer != input->_activeReadBuffer )
                 {
                     input->_activeReadBuffer = readBuffer;
@@ -295,7 +295,7 @@ namespace Divide
 
             bool blitted = false, inputDirty = false, outputDirty = false;;
             U16 layerCount = entry._layerCount;
-            DIVIDE_ASSERT( layerCount != U16_MAX && entry._mipCount != U16_MAX);
+            DIVIDE_GPU_ASSERT( layerCount != U16_MAX && entry._mipCount != U16_MAX);
             if ( IsCubeTexture( Get(inAtt->resolvedTexture())->descriptor()._texType ) )
             {
                 layerCount *= 6u;
@@ -345,13 +345,13 @@ namespace Divide
             if ( inputDirty )
             {
                 PROFILE_SCOPE( "Reset Input Attachments", Profiler::Category::Graphics );
-                DIVIDE_ASSERT( input->_attachmentsUsed[entry._input._index] );
+                DIVIDE_GPU_ASSERT( input->_attachmentsUsed[entry._input._index] );
                 input->toggleAttachment( entry._input._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = {0u, U16_MAX}, ._cubeFace = 0u } );
             }
             if ( outputDirty )
             {
                 PROFILE_SCOPE( "Reset Output Attachments", Profiler::Category::Graphics );
-                DIVIDE_ASSERT( output->_attachmentsUsed[entry._output._index] );
+                DIVIDE_GPU_ASSERT( output->_attachmentsUsed[entry._output._index] );
                 output->toggleAttachment( entry._output._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = {0u, U16_MAX}, ._cubeFace = 0u } );
             }
             if ( blitted )
@@ -557,7 +557,7 @@ namespace Divide
                 }
 
                 RTAttachment* att = getAttachment( RTAttachmentType::COLOUR, static_cast<RTColourAttachmentSlot>(i) );
-                DIVIDE_ASSERT( att != nullptr, "glFramebuffer::error: Invalid clear target specified!" );
+                DIVIDE_GPU_ASSERT( att != nullptr, "glFramebuffer::error: Invalid clear target specified!" );
 
                 const U32 binding = att->binding();
                 if ( static_cast<gl46core::GLenum>(binding) != gl46core::GL_NONE )
@@ -746,7 +746,7 @@ namespace Divide
                 } break;
             }
 
-            DIVIDE_ASSERT( !(*GL_API::GetStateTracker()._assertOnAPIError));
+            DIVIDE_GPU_ASSERT( !(*GL_API::GetStateTracker()._assertOnAPIError));
 
             return false;
         }

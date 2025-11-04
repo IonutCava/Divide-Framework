@@ -77,9 +77,7 @@ namespace Divide
 
             if (crtRange.range() > 0u)
             {
-                const size_t bufferAlignmentRequirement = ShaderBuffer::AlignmentRequirement(executorBuffer._gpuBuffer->getUsage());
-                const size_t bufferPrimitiveSize = executorBuffer._gpuBuffer->getPrimitiveSize();
-                if (bufferPrimitiveSize < bufferAlignmentRequirement)
+                if (executorBuffer._gpuBuffer->getPrimitiveSize() < executorBuffer._gpuBuffer->alignmentRequirement())
                 {
                     // We need this due to alignment concerns
                     if (crtRange._firstIDX % 2u != 0)

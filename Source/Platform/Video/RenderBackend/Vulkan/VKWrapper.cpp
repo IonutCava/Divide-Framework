@@ -141,7 +141,7 @@ namespace
         else
         {
             Console::errorfn( outputError.c_str() );
-            DIVIDE_ASSERT( VK_API::GetStateTracker()._assertOnAPIError && !(*VK_API::GetStateTracker()._assertOnAPIError), outputError.c_str() );
+            DIVIDE_GPU_ASSERT( VK_API::GetStateTracker()._assertOnAPIError && !(*VK_API::GetStateTracker()._assertOnAPIError), outputError.c_str() );
         }
 
         Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
@@ -518,7 +518,7 @@ namespace Divide
 
     void VKStateTracker::init( const Configuration& config, VKDevice* device, VKPerWindowState* mainWindow )
     {
-        DIVIDE_ASSERT(device != nullptr && mainWindow != nullptr);
+        DIVIDE_GPU_ASSERT(device != nullptr && mainWindow != nullptr);
         setDefaultState();
 
         _activeWindow = mainWindow;
@@ -752,18 +752,18 @@ namespace Divide
                                                               _context.context().config().runtime.adaptiveSync,
                                                               windowState._surface );
 
-        DIVIDE_ASSERT( err == ErrorCode::NO_ERR );
+        DIVIDE_GPU_ASSERT( err == ErrorCode::NO_ERR );
         // Clear ALL sync objects as they are all invalid after recreating the swapchain. vkDeviceWaitIdle should resolve potential sync issues.
         LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, U64_MAX);
     }
 
     void VK_API::initStatePerWindow( VKPerWindowState& windowState)
     {
-        DIVIDE_ASSERT(windowState._window != nullptr);
+        DIVIDE_GPU_ASSERT(windowState._window != nullptr);
         if (windowState._surface == nullptr )
         {
             SDL_Vulkan_CreateSurface( windowState._window->getRawWindow(), _vkbInstance.instance, nullptr, &windowState._surface );
-            DIVIDE_ASSERT(windowState._surface != nullptr);
+            DIVIDE_GPU_ASSERT(windowState._surface != nullptr);
         }
 
         windowState._swapChain = std::make_unique<VKSwapChain>( *this, *_device, *windowState._window );
@@ -932,14 +932,14 @@ namespace Divide
         s_depthFormatInformation._d24s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D32_SFLOAT_S8_UINT, &properties );
         s_depthFormatInformation._d32s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        DIVIDE_ASSERT( s_depthFormatInformation._d24s8Supported || s_depthFormatInformation._d32s8Supported );
+        DIVIDE_GPU_ASSERT( s_depthFormatInformation._d24s8Supported || s_depthFormatInformation._d32s8Supported );
 
 
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_X8_D24_UNORM_PACK32, &properties );
         s_depthFormatInformation._d24x8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D32_SFLOAT, &properties );
         s_depthFormatInformation._d32FSupported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        DIVIDE_ASSERT( s_depthFormatInformation._d24x8Supported || s_depthFormatInformation._d32FSupported );
+        DIVIDE_GPU_ASSERT( s_depthFormatInformation._d24x8Supported || s_depthFormatInformation._d32FSupported );
 
         VkPhysicalDeviceProperties deviceProperties{};
         vkGetPhysicalDeviceProperties( physicalDevice, &deviceProperties );
@@ -1023,7 +1023,7 @@ namespace Divide
                to_U8( deviceProperties.limits.maxSamplerAnisotropy ) );
         deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
 
-        DIVIDE_ASSERT( PushConstantsStruct::Size() <= deviceProperties.limits.maxPushConstantsSize );
+        DIVIDE_GPU_ASSERT( PushConstantsStruct::Size() <= deviceProperties.limits.maxPushConstantsSize );
 
         const VkSampleCountFlags counts = deviceProperties.limits.framebufferColorSampleCounts & deviceProperties.limits.framebufferDepthSampleCounts;
         U8 maxMSAASamples = 0u;
@@ -1127,7 +1127,7 @@ namespace Divide
         VK_API::s_stateTracker._device = _device.get();
 
 
-        DIVIDE_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION > 2 );
+        DIVIDE_GPU_ASSERT( Config::MINIMUM_VULKAN_MINOR_VERSION > 2 );
 
         VmaAllocatorCreateInfo allocatorInfo = {};
         allocatorInfo.physicalDevice = physicalDevice;
@@ -1185,14 +1185,14 @@ namespace Divide
         if ( !pipeline._isValid )
         {
             // This should be the only place where this flag is set, and, as such, we already handled the destruction of the pipeline
-            DIVIDE_ASSERT( pipeline._vkPipelineLayout == VK_NULL_HANDLE );
-            DIVIDE_ASSERT( pipeline._vkPipeline == VK_NULL_HANDLE );
-            DIVIDE_ASSERT( pipeline._vkPipelineWireframe == VK_NULL_HANDLE );
+            DIVIDE_GPU_ASSERT( pipeline._vkPipelineLayout == VK_NULL_HANDLE );
+            DIVIDE_GPU_ASSERT( pipeline._vkPipeline == VK_NULL_HANDLE );
+            DIVIDE_GPU_ASSERT( pipeline._vkPipelineWireframe == VK_NULL_HANDLE );
             return;
         }
 
-        DIVIDE_ASSERT( pipeline._vkPipelineLayout != VK_NULL_HANDLE );
-        DIVIDE_ASSERT( pipeline._vkPipeline != VK_NULL_HANDLE );
+        DIVIDE_GPU_ASSERT( pipeline._vkPipelineLayout != VK_NULL_HANDLE );
+        DIVIDE_GPU_ASSERT( pipeline._vkPipeline != VK_NULL_HANDLE );
 
         const auto deletePipeline = [layout = pipeline._vkPipelineLayout, pipeline = pipeline._vkPipeline, wireframePipeline = pipeline._vkPipelineWireframe]( VkDevice device )
         {
@@ -1302,11 +1302,11 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        DIVIDE_ASSERT( cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount );
+        DIVIDE_GPU_ASSERT( cmd._drawCount < GFXDevice::GetDeviceInformation()._maxDrawIndirectCount );
 
         if ( cmd._sourceBuffersCount == 0u )
         {
-            DIVIDE_ASSERT( cmd._cmd.indexCount == 0u );
+            DIVIDE_GPU_ASSERT( cmd._cmd.indexCount == 0u );
 
             if ( cmd._cmd.vertexCount == 0u )
             {
@@ -1350,10 +1350,10 @@ namespace Divide
             activeConfig._handle = cmd._sourceBuffers[i];
             GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
             
-            DIVIDE_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
+            DIVIDE_GPU_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
             activeConfig._buffer = static_cast<vkGPUBuffer*>(buffer);
             vkBufferImpl* impl = activeConfig._buffer->_internalBuffer.get();
-            DIVIDE_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
+            DIVIDE_GPU_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
             const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
             activeConfig._bindIdx = activeConfig._buffer->_bindConfig._bindIdx;
@@ -1379,9 +1379,9 @@ namespace Divide
                     s_lastIB = activeConfig;
                 }
 
-                DIVIDE_ASSERT(activeConfig._buffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+                DIVIDE_GPU_ASSERT(activeConfig._buffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
                 
-                DIVIDE_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
+                DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
                 hasIndexBuffer = true;
 
                 firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
@@ -1418,7 +1418,7 @@ namespace Divide
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( getCurrentCommandBuffer() );
 
         auto& program = GetStateTracker()._pipeline._program;
-        DIVIDE_ASSERT( program != nullptr );
+        DIVIDE_GPU_ASSERT( program != nullptr );
         auto& drawDescriptor = program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
         const auto& setUsageData = program->setUsage();
@@ -1465,7 +1465,7 @@ namespace Divide
 
                         const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
 
-                        DIVIDE_ASSERT( bufferEntry._buffer != nullptr );
+                        DIVIDE_GPU_ASSERT( bufferEntry._buffer != nullptr );
 
                         VkBuffer buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
 
@@ -1474,14 +1474,14 @@ namespace Divide
                         if ( entry._usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0 )
                         {
                             // Draw indirect buffer!
-                            DIVIDE_ASSERT( bufferEntry._buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
+                            DIVIDE_GPU_ASSERT( bufferEntry._buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
                             GetStateTracker()._drawIndirectBuffer = buffer;
                             GetStateTracker()._drawIndirectBufferOffset = readOffset;
                         }
                         else
                         {
                             const VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize() + readOffset;
-                            DIVIDE_ASSERT( bufferEntry._range._length > 0u );
+                            DIVIDE_GPU_ASSERT( bufferEntry._range._length > 0u );
                             const size_t boundRange = bufferEntry._range._length* bufferEntry._buffer->getPrimitiveSize();
 
                             DynamicEntry& crtBufferInfo = s_dynamicBindings[usageIdx][srcBinding._slot];
@@ -1513,7 +1513,7 @@ namespace Divide
                                         break;
                                     }
                                 }
-                                DIVIDE_ASSERT( needsBind );
+                                DIVIDE_GPU_ASSERT( needsBind );
                             }
                         }
                     } break;
@@ -1533,7 +1533,7 @@ namespace Divide
                         }
                         else
                         {
-                            DIVIDE_ASSERT( TargetType( imageSampler._image ) != TextureType::COUNT );
+                            DIVIDE_GPU_ASSERT( TargetType( imageSampler._image ) != TextureType::COUNT );
 
                             const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
 
@@ -1572,11 +1572,11 @@ namespace Divide
                             continue;
                         }
 
-                        DIVIDE_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels._count == 1u );
+                        DIVIDE_GPU_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels._count == 1u );
 
                         const vkTexture* vkTex = static_cast<const vkTexture*>(imageView._image._srcTexture);
 
-                        DIVIDE_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
+                        DIVIDE_GPU_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
 
                         vkTexture::CachedImageView::Descriptor descriptor{};
                         descriptor._usage = imageView._usage;
@@ -1585,7 +1585,7 @@ namespace Divide
                         descriptor._subRange = imageView._image._subRange;
 
                         // Should use TextureType::TEXTURE_CUBE_ARRAY
-                        DIVIDE_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange._count == 1u );
+                        DIVIDE_GPU_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange._count == 1u );
 
                         const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
                         VkDescriptorImageInfo& imageInfo = imageInfoArray[imageInfoIndex++];
@@ -2294,7 +2294,7 @@ namespace Divide
         if ( s_transferQueue._dirty.load() )
         {
             LockGuard<Mutex> w_lock( s_transferQueue._lock );
-            DIVIDE_ASSERT(!s_transferQueue._requests.empty() );
+            DIVIDE_GPU_ASSERT(!s_transferQueue._requests.empty() );
         
             if ( s_transferQueue._requests.size() == 1 )
             {
@@ -2627,7 +2627,7 @@ namespace Divide
                     U32 drawCount = 0u;
                     for ( const GenericDrawCommand& currentDrawCommand : drawCommands )
                     {
-                        DIVIDE_ASSERT( currentDrawCommand._drawCount < _context.GetDeviceInformation()._maxDrawIndirectCount );
+                        DIVIDE_GPU_ASSERT( currentDrawCommand._drawCount < _context.GetDeviceInformation()._maxDrawIndirectCount );
 
                         if ( isEnabledOption( currentDrawCommand, CmdRenderOptions::RENDER_GEOMETRY ) )
                         {
@@ -2824,7 +2824,7 @@ namespace Divide
                     {
                         continue;
                     }
-                    DIVIDE_ASSERT( it._targetLayout != ImageUsage::UNDEFINED);
+                    DIVIDE_GPU_ASSERT( it._targetLayout != ImageUsage::UNDEFINED);
 
                     const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
@@ -3248,7 +3248,7 @@ namespace Divide
         {
             samplerHashInOut = GetHash( sampler );
         }
-        DIVIDE_ASSERT( samplerHashInOut != 0u );
+        DIVIDE_GPU_ASSERT( samplerHashInOut != 0u );
 
         if ( cached_hash == samplerHashInOut )
         {

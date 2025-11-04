@@ -34,7 +34,7 @@
 #endif //VMA_HEAVY_ASSERT
 
 #ifndef VMA_ASSERT
-#define VMA_ASSERT(expr) Divide::DIVIDE_ASSERT(expr)
+#define VMA_ASSERT(expr) DIVIDE_GPU_ASSERT(expr)
 #endif //VMA_ASSERT
 
 #define VMA_DEBUG_LOG(format, ...) do { Divide::Console::printfn(format, ##__VA_ARGS__); } while(false)

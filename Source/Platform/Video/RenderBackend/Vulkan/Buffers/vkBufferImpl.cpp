@@ -232,7 +232,7 @@ namespace Divide
         size_t mappedOffset = 0u;
         if ( !_isMemoryMappable )
         {
-            DIVIDE_ASSERT(_stagingBuffer != nullptr && _stagingBuffer->_params._elementSize >= range._length);
+            DIVIDE_GPU_ASSERT(_stagingBuffer != nullptr && _stagingBuffer->_params._elementSize >= range._length);
             mappedRange = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
         }
         else

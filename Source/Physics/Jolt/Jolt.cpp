@@ -28,7 +28,7 @@ static void TraceImpl(const char* inFMT, ...)
 // Callback for asserts, connect this to your own assert handler if you have one
 static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, JPH::uint inLine)
 {
-    Divide::DIVIDE_UNEXPECTED_CALL_MSG(Divide::Util::StringFormat("[{}:{}] : ( {} ) - {}", inFile, inLine, inExpression, (inMessage != nullptr ? inMessage : "")).c_str());
+    DIVIDE_UNEXPECTED_CALL_MSG(Divide::Util::StringFormat("[{}:{}] : ( {} ) - {}", inFile, inLine, inExpression, (inMessage != nullptr ? inMessage : "")).c_str());
     return true;
 }
 

@@ -571,7 +571,7 @@ namespace Divide
                 default: DIVIDE_UNEXPECTED_CALL(); break;
             }
 
-            DIVIDE_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );
+            DIVIDE_GPU_ASSERT(valid, "SRGB textures are only supported for RGB/BGR(A) normalized formats!" );
         }
         else if ( IsDepthTexture( _descriptor._packing) )
         {

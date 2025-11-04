@@ -96,7 +96,7 @@ namespace Divide
     {
         ShaderBuffer* _buffer{ nullptr };
         BufferRange<> _range{};
-        I32 _queueReadIndex{0u};
+        U16 _queueReadIndex{0u};
     };
 
     struct DescriptorSetBindingData

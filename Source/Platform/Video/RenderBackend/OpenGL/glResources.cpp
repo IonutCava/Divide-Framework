@@ -30,11 +30,11 @@ namespace Divide
         const size_t count = _bindings.second.size();
         if ( count > 0 )
         {
-            DIVIDE_ASSERT( index <= count );
+            DIVIDE_GPU_ASSERT( index <= count );
             return _bindings.second[index];
         }
 
-        DIVIDE_ASSERT( _maxBindings != 0 );
+        DIVIDE_GPU_ASSERT( _maxBindings != 0 );
         _bindings.second.resize( _maxBindings );
         return _bindings.second.front();
     }
@@ -42,7 +42,7 @@ namespace Divide
     void VAOBindings::instanceDivisorFlag( const gl46core::GLuint index, const bool divisorFlag )
     {
         const size_t count = _bindings.second.size();
-        DIVIDE_ASSERT( count > 0 && count > index );
+        DIVIDE_GPU_ASSERT( count > 0 && count > index );
 
         _bindings.second[index] = divisorFlag;
     }
@@ -52,11 +52,11 @@ namespace Divide
         const size_t count = _bindings.first.size();
         if ( count > 0 )
         {
-            DIVIDE_ASSERT( index <= count );
+            DIVIDE_GPU_ASSERT( index <= count );
             return _bindings.first[index];
         }
 
-        DIVIDE_ASSERT( _maxBindings != 0 );
+        DIVIDE_GPU_ASSERT( _maxBindings != 0 );
         _bindings.first.resize( _maxBindings );
         return _bindings.first.front();
     }
@@ -64,7 +64,7 @@ namespace Divide
     void VAOBindings::bindingParams(  const gl46core::GLuint index, const BufferBindingParams& newParams )
     {
         const size_t count = _bindings.first.size();
-        DIVIDE_ASSERT( count > 0 && count > index );
+        DIVIDE_GPU_ASSERT( count > 0 && count > index );
 
         _bindings.first[index] = newParams;
     }
@@ -207,47 +207,47 @@ namespace Divide
 
             if ( isDepth )
             {
-                DIVIDE_ASSERT( baseFormat == GFXImageFormat::RED );
+                DIVIDE_GPU_ASSERT( baseFormat == GFXImageFormat::RED );
             }
 
             if ( isSRGB )
             {
-                DIVIDE_ASSERT(dataType == GFXDataFormat::UNSIGNED_BYTE &&
-                              baseFormat == GFXImageFormat::RGB ||
-                              baseFormat == GFXImageFormat::BGR ||
-                              baseFormat == GFXImageFormat::RGBA ||
-                              baseFormat == GFXImageFormat::BGRA ||
-                              baseFormat == GFXImageFormat::DXT1_RGB ||
-                              baseFormat == GFXImageFormat::DXT1_RGBA ||
-                              baseFormat == GFXImageFormat::DXT3_RGBA ||
-                              baseFormat == GFXImageFormat::DXT5_RGBA ||
-                              baseFormat == GFXImageFormat::BC7,
-                              "GLUtil::InternalFormatAndDataType: OpenGL only supports RGB(A)8 and BC1/2/3/7 for SRGB!" );
+                DIVIDE_GPU_ASSERT( dataType == GFXDataFormat::UNSIGNED_BYTE &&
+                                   baseFormat == GFXImageFormat::RGB ||
+                                   baseFormat == GFXImageFormat::BGR ||
+                                   baseFormat == GFXImageFormat::RGBA ||
+                                   baseFormat == GFXImageFormat::BGRA ||
+                                   baseFormat == GFXImageFormat::DXT1_RGB ||
+                                   baseFormat == GFXImageFormat::DXT1_RGBA ||
+                                   baseFormat == GFXImageFormat::DXT3_RGBA ||
+                                   baseFormat == GFXImageFormat::DXT5_RGBA ||
+                                   baseFormat == GFXImageFormat::BC7,
+                                   "GLUtil::InternalFormatAndDataType: OpenGL only supports RGB(A)8 and BC1/2/3/7 for SRGB!" );
             }
 
             if ( isNormalized && !isDepth )
             {
-                DIVIDE_ASSERT(dataType == GFXDataFormat::SIGNED_BYTE ||
-                              dataType == GFXDataFormat::UNSIGNED_BYTE ||
-                              dataType == GFXDataFormat::SIGNED_SHORT ||
-                              dataType == GFXDataFormat::UNSIGNED_SHORT ||
-                              dataType == GFXDataFormat::FLOAT_16 ||
-                              dataType == GFXDataFormat::FLOAT_32 );
+                DIVIDE_GPU_ASSERT( dataType == GFXDataFormat::SIGNED_BYTE ||
+                                   dataType == GFXDataFormat::UNSIGNED_BYTE ||
+                                   dataType == GFXDataFormat::SIGNED_SHORT ||
+                                   dataType == GFXDataFormat::UNSIGNED_SHORT ||
+                                   dataType == GFXDataFormat::FLOAT_16 ||
+                                   dataType == GFXDataFormat::FLOAT_32 );
             }
 
             if ( isPacked )
             {
-                DIVIDE_ASSERT(baseFormat == GFXImageFormat::RGB ||
-                              baseFormat == GFXImageFormat::BGR ||
-                              baseFormat == GFXImageFormat::RGBA ||
-                              baseFormat == GFXImageFormat::BGRA);
+                DIVIDE_GPU_ASSERT( baseFormat == GFXImageFormat::RGB ||
+                                   baseFormat == GFXImageFormat::BGR ||
+                                   baseFormat == GFXImageFormat::RGBA ||
+                                   baseFormat == GFXImageFormat::BGRA );
             }
 
             if ( baseFormat == GFXImageFormat::BGR || baseFormat == GFXImageFormat::BGRA )
             {
-                DIVIDE_ASSERT( dataType == GFXDataFormat::UNSIGNED_BYTE ||
-                               dataType == GFXDataFormat::SIGNED_BYTE,
-                               "GLUtil::InternalFormat: Vulkan only supports 8Bpp for BGR(A) format, so for now we completely ignore other data types." );
+                DIVIDE_GPU_ASSERT( dataType == GFXDataFormat::UNSIGNED_BYTE ||
+                                   dataType == GFXDataFormat::SIGNED_BYTE,
+                                   "GLUtil::InternalFormat: Vulkan only supports 8Bpp for BGR(A) format, so for now we completely ignore other data types." );
             }
 
             FormatAndDataType ret{};
@@ -313,8 +313,8 @@ namespace Divide
                             case GFXDataFormat::UNSIGNED_SHORT:  ret._format = isNormalized ? gl46core::GL_R16       : gl46core::GL_R16UI;                                       break;
                             case GFXDataFormat::SIGNED_BYTE:     ret._format = isNormalized ? gl46core::GL_R8_SNORM  : gl46core::GL_R8I;                                         break;
                             case GFXDataFormat::SIGNED_SHORT:    ret._format = isNormalized ? gl46core::GL_R16_SNORM : gl46core::GL_R16I;                                        break;
-                            case GFXDataFormat::UNSIGNED_INT:    ret._format = gl46core::GL_R32UI; ret._internalFormat = gl46core::GL_RED_INTEGER; DIVIDE_ASSERT(!isNormalized); break;
-                            case GFXDataFormat::SIGNED_INT:      ret._format = gl46core::GL_R32I;  ret._internalFormat = gl46core::GL_RED_INTEGER; DIVIDE_ASSERT(!isNormalized); break;
+                            case GFXDataFormat::UNSIGNED_INT:    ret._format = gl46core::GL_R32UI; ret._internalFormat = gl46core::GL_RED_INTEGER; DIVIDE_GPU_ASSERT(!isNormalized); break;
+                            case GFXDataFormat::SIGNED_INT:      ret._format = gl46core::GL_R32I;  ret._internalFormat = gl46core::GL_RED_INTEGER; DIVIDE_GPU_ASSERT(!isNormalized); break;
                             case GFXDataFormat::FLOAT_16:        ret._format = gl46core::GL_R16F;  ret._internalFormat = gl46core::GL_RED;                                       break;
                             case GFXDataFormat::FLOAT_32:        ret._format = gl46core::GL_R32F;  ret._internalFormat = gl46core::GL_RED;                                       break;
                             default: break;
@@ -331,8 +331,8 @@ namespace Divide
                         case GFXDataFormat::UNSIGNED_SHORT:  ret._format = isNormalized ? gl46core::GL_RG16       : gl46core::GL_RG16UI;                                     break;
                         case GFXDataFormat::SIGNED_BYTE:     ret._format = isNormalized ? gl46core::GL_RG8_SNORM  : gl46core::GL_RG8I;                                       break;
                         case GFXDataFormat::SIGNED_SHORT:    ret._format = isNormalized ? gl46core::GL_RG16_SNORM : gl46core::GL_RG16I;                                      break;
-                        case GFXDataFormat::UNSIGNED_INT:    ret._format = gl46core::GL_RG32UI; ret._internalFormat = gl46core::GL_RG_INTEGER; DIVIDE_ASSERT(!isNormalized); break;
-                        case GFXDataFormat::SIGNED_INT:      ret._format = gl46core::GL_RG32I;  ret._internalFormat = gl46core::GL_RG_INTEGER; DIVIDE_ASSERT(!isNormalized); break;
+                        case GFXDataFormat::UNSIGNED_INT:    ret._format = gl46core::GL_RG32UI; ret._internalFormat = gl46core::GL_RG_INTEGER; DIVIDE_GPU_ASSERT(!isNormalized); break;
+                        case GFXDataFormat::SIGNED_INT:      ret._format = gl46core::GL_RG32I;  ret._internalFormat = gl46core::GL_RG_INTEGER; DIVIDE_GPU_ASSERT(!isNormalized); break;
                         case GFXDataFormat::FLOAT_16:        ret._format = gl46core::GL_RG16F;  ret._internalFormat = gl46core::GL_RG;                                       break;
                         case GFXDataFormat::FLOAT_32:        ret._format = gl46core::GL_RG32F;  ret._internalFormat = gl46core::GL_RG;                                       break;
                         default: break;
@@ -344,13 +344,13 @@ namespace Divide
                     ret._internalFormat = baseFormat == GFXImageFormat::RGB ? (isNormalized ? gl46core::GL_RGB : gl46core::GL_RGB_INTEGER) : (isNormalized ? gl46core::GL_BGR : gl46core::GL_BGR_INTEGER);
                     if ( packing == GFXImagePacking::RGB_565 )
                     {
-                        DIVIDE_ASSERT( isNormalized );
+                        DIVIDE_GPU_ASSERT( isNormalized );
 
                         ret._format = gl46core::GL_RGB565;
                     }
                     else if ( packing == GFXImagePacking::RGB_111110F )
                     {
-                        DIVIDE_ASSERT(isNormalized);
+                        DIVIDE_GPU_ASSERT(isNormalized);
 
                         ret._format = gl46core::GL_R11F_G11F_B10F;
                     }
@@ -362,8 +362,8 @@ namespace Divide
                             case GFXDataFormat::UNSIGNED_SHORT:  ret._format = isNormalized ? gl46core::GL_RGB16                      : gl46core::GL_RGB16UI;                        break;
                             case GFXDataFormat::SIGNED_BYTE:     ret._format = isNormalized ? gl46core::GL_RGB8_SNORM                 : gl46core::GL_RGB8I;                          break;
                             case GFXDataFormat::SIGNED_SHORT:    ret._format = isNormalized ? gl46core::GL_RGB16_SNORM                : gl46core::GL_RGB16I;                         break;
-                            case GFXDataFormat::UNSIGNED_INT:    ret._format = gl46core::GL_RGB32UI; ret._internalFormat = gl46core::GL_RGB_INTEGER; DIVIDE_ASSERT( !isNormalized ); break;
-                            case GFXDataFormat::SIGNED_INT:      ret._format = gl46core::GL_RGB32I;  ret._internalFormat = gl46core::GL_RGB_INTEGER; DIVIDE_ASSERT( !isNormalized ); break;
+                            case GFXDataFormat::UNSIGNED_INT:    ret._format = gl46core::GL_RGB32UI; ret._internalFormat = gl46core::GL_RGB_INTEGER; DIVIDE_GPU_ASSERT( !isNormalized ); break;
+                            case GFXDataFormat::SIGNED_INT:      ret._format = gl46core::GL_RGB32I;  ret._internalFormat = gl46core::GL_RGB_INTEGER; DIVIDE_GPU_ASSERT( !isNormalized ); break;
                             case GFXDataFormat::FLOAT_16:        ret._format = gl46core::GL_RGB16F;  ret._internalFormat = gl46core::GL_RGB;                                         break;
                             case GFXDataFormat::FLOAT_32:        ret._format = gl46core::GL_RGB32F;  ret._internalFormat = gl46core::GL_RGB;                                         break;
                             default: break;                                                                                                                                         
@@ -386,8 +386,8 @@ namespace Divide
                             case GFXDataFormat::UNSIGNED_SHORT: ret._format = isNormalized ? gl46core::GL_RGBA16                             : gl46core::GL_RGBA16UI;                 break;
                             case GFXDataFormat::SIGNED_BYTE:    ret._format = isNormalized ? gl46core::GL_RGBA8_SNORM                        : gl46core::GL_RGBA8I;                   break;
                             case GFXDataFormat::SIGNED_SHORT:   ret._format = isNormalized ? gl46core::GL_RGBA16_SNORM                       : gl46core::GL_RGBA16I;                  break;
-                            case GFXDataFormat::UNSIGNED_INT:   ret._format = gl46core::GL_RGBA32UI; ret._internalFormat = gl46core::GL_RGBA_INTEGER; DIVIDE_ASSERT( !isNormalized ); break;
-                            case GFXDataFormat::SIGNED_INT:     ret._format = gl46core::GL_RGBA32I;  ret._internalFormat = gl46core::GL_RGBA_INTEGER; DIVIDE_ASSERT( !isNormalized ); break;
+                            case GFXDataFormat::UNSIGNED_INT:   ret._format = gl46core::GL_RGBA32UI; ret._internalFormat = gl46core::GL_RGBA_INTEGER; DIVIDE_GPU_ASSERT( !isNormalized ); break;
+                            case GFXDataFormat::SIGNED_INT:     ret._format = gl46core::GL_RGBA32I;  ret._internalFormat = gl46core::GL_RGBA_INTEGER; DIVIDE_GPU_ASSERT( !isNormalized ); break;
                             case GFXDataFormat::FLOAT_16:       ret._format = gl46core::GL_RGBA16F;  ret._internalFormat = gl46core::GL_RGBA;                                         break;
                             case GFXDataFormat::FLOAT_32:       ret._format = gl46core::GL_RGBA32F;  ret._internalFormat = gl46core::GL_RGBA;                                         break;
                             default: break;
@@ -412,7 +412,7 @@ namespace Divide
                 default: break;
             }
 
-            DIVIDE_ASSERT(ret._format != gl46core::GL_NONE && ret._dataType != gl46core::GL_NONE, "GLUtil::internalFormat: Unsupported texture and format combination!");
+            DIVIDE_GPU_ASSERT(ret._format != gl46core::GL_NONE && ret._dataType != gl46core::GL_NONE, "GLUtil::internalFormat: Unsupported texture and format combination!");
             return ret;
         }
 
@@ -465,7 +465,7 @@ namespace Divide
 
         void SubmitRenderCommand( const GenericDrawCommand& drawCommand, const gl46core::GLenum internalFormat)
         {
-            DIVIDE_ASSERT ( GL_API::GetStateTracker()._activeTopology != PrimitiveTopology::MESHLET, "GLUtil::SubmitRenderCommand: We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.");
+            DIVIDE_GPU_ASSERT( GL_API::GetStateTracker()._activeTopology != PrimitiveTopology::MESHLET, "GLUtil::SubmitRenderCommand: We dispatch mesh shading calls sthe same as we do compute dispatches, so we should NEVER end up here.");
 
             if ( drawCommand._drawCount == 0u || drawCommand._cmd.instanceCount == 0u)
             {
@@ -905,7 +905,7 @@ namespace Divide
             else
             {
                 Console::errorfn( outputError.c_str() );
-                DIVIDE_ASSERT( GL_API::GetStateTracker()._assertOnAPIError && !(*GL_API::GetStateTracker()._assertOnAPIError), outputError.c_str());
+                DIVIDE_GPU_ASSERT( GL_API::GetStateTracker()._assertOnAPIError && !(*GL_API::GetStateTracker()._assertOnAPIError), outputError.c_str());
             }
             Console::ToggleFlag( Console::Flags::DECORATE_SEVERITY, severityDecoration );
             Console::ToggleFlag( Console::Flags::PRINT_IMMEDIATE, isConsoleImmediate );

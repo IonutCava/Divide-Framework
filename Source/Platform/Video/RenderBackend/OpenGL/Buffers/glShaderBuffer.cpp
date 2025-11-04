@@ -19,13 +19,11 @@ namespace Divide
         const size_t targetElementSize = Util::GetAlignmentCorrected( _params._elementSize, _alignmentRequirement );
         if ( targetElementSize > _params._elementSize )
         {
-            DIVIDE_ASSERT( (_params._elementSize * _params._elementCount) % _alignmentRequirement == 0u,
-                           "ERROR: glShaderBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit" );
+            DIVIDE_GPU_ASSERT( (_params._elementSize * _params._elementCount) % _alignmentRequirement == 0u, "ERROR: glShaderBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit" );
         }
         else
         {
-            DIVIDE_ASSERT( _params._elementSize == targetElementSize,
-                           "ERROR: glShaderBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit" );
+            DIVIDE_GPU_ASSERT( _params._elementSize == targetElementSize, "ERROR: glShaderBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit" );
         }
         _alignedBufferSize = _params._elementCount * _params._elementSize;
         _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset( _alignedBufferSize, _alignmentRequirement ));
@@ -43,16 +41,6 @@ namespace Divide
         implParams._dataSize = _alignedBufferSize * queueLength();
 
         _bufferImpl = std::make_unique<glBufferImpl>( context, implParams, descriptor._initialData, _name.empty() ? nullptr : _name.c_str() );
-
-        // Just to avoid issues with reading undefined or zero-initialised memory.
-        // This is quite fast so far so worth it for now.
-        if ( descriptor._separateReadWrite && descriptor._initialData.second > 0 )
-        {
-            for ( U32 i = 1u; i < descriptor._ringBufferLength; ++i )
-            {
-                bufferImpl()->writeOrClearBytes( _alignedBufferSize * i, descriptor._initialData.second, descriptor._initialData.first );
-            }
-        }
     }
 
     BufferLock glShaderBuffer::writeBytesInternal( const BufferRange<> range, const bufferPtr data )
@@ -66,18 +54,14 @@ namespace Divide
         bufferImpl()->readBytes( range._startOffset, range._length, outData );
     }
 
-    bool glShaderBuffer::bindByteRange( const U8 bindIndex, BufferRange<> range, I32 readIndex )
+    bool glShaderBuffer::bindByteRange( const U8 bindIndex, BufferRange<> range, const U16 readIndex )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         GLStateTracker::BindResult result = GLStateTracker::BindResult::FAILED;
 
-        DIVIDE_ASSERT( to_size( range._length ) <= _maxSize && "glShaderBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform" );
-        DIVIDE_ASSERT( range._startOffset == Util::GetAlignmentCorrected( range._startOffset, _alignmentRequirement ) );
-        if ( readIndex == -1 )
-        {
-            readIndex = queueReadIndex();
-        }
+        DIVIDE_GPU_ASSERT( to_size( range._length ) <= _maxSize && "glShaderBuffer::bindByteRange: attempted to bind a larger shader block than is allowed on the current platform" );
+        DIVIDE_GPU_ASSERT( range._startOffset == Util::GetAlignmentCorrected( range._startOffset, _alignmentRequirement ) );
 
         if ( bindIndex == ShaderProgram::k_commandBufferID )
         {

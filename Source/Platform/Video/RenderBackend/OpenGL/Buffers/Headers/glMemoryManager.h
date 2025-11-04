@@ -111,7 +111,8 @@ namespace GLMemory{
                                      gl46core::BufferStorageMask storageMask,
                                      gl46core::BufferAccessMask accessMask,
                                      U32 flags,
-                                     std::pair<bufferPtr, size_t> initialData);
+                                     std::pair<bufferPtr, size_t> initialData,
+                                     bool zeroRemainingData);
         void deallocate(Block &block);
         void deallocate();
 
@@ -138,15 +139,16 @@ void createAndAllocateBuffer( gl46core::GLuint& bufferIdOut,
                               std::string_view name,
                               gl46core::BufferStorageMask storageMask,
                               size_t alignedSize,
-                              std::pair<bufferPtr, size_t> initialData );
+                              std::pair<bufferPtr, size_t> initialData,
+                              bool zeroRemainingData);
 
-void createAndAllocateMappedBuffer( gl46core::GLuint& bufferIdOut,
-                                    std::string_view name,
-                                    gl46core::BufferStorageMask storageMask,
-                                    size_t alignedSize,
-                                    std::pair<bufferPtr, size_t> initialData,
-                                    gl46core::BufferAccessMask accessMask,
-                                    Byte*& ptrOut );
+[[nodiscard]] Byte* createAndAllocateMappedBuffer( gl46core::GLuint& bufferIdOut,
+                                                   std::string_view name,
+                                                   gl46core::BufferStorageMask storageMask,
+                                                   size_t alignedSize,
+                                                   std::pair<bufferPtr, size_t> initialData,
+                                                   gl46core::BufferAccessMask accessMask,
+                                                   bool zeroRemainingData );
 
 
 }; //namespace GLUtil

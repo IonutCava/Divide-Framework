@@ -345,7 +345,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // Fail if we specified an invalid unit. Assert instead of returning false because this might be related to a bad algorithm
-        DIVIDE_ASSERT( unit < GFXDevice::GetDeviceInformation()._maxTextureUnits, "GLStates error: invalid texture unit specified as a texture binding slot!" );
+        DIVIDE_GPU_ASSERT( unit < GFXDevice::GetDeviceInformation()._maxTextureUnits, "GLStates error: invalid texture unit specified as a texture binding slot!" );
 
         BindResult result = BindResult::ALREADY_BOUND;
 
@@ -426,7 +426,7 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        DIVIDE_ASSERT( handle != GL_NULL_HANDLE );
+        DIVIDE_GPU_ASSERT( handle != GL_NULL_HANDLE );
 
         const ImageBindSettings tempSettings = 
         {
@@ -605,7 +605,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         BindConfig& crtConfig = _currentBindConfig[GetBufferTargetIndex( target )];
-        DIVIDE_ASSERT( bindIndex < crtConfig.size() );
+        DIVIDE_GPU_ASSERT( bindIndex < crtConfig.size() );
 
         BindConfigEntry& entry = crtConfig[bindIndex];
 

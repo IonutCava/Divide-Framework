@@ -214,7 +214,7 @@ void CEGUIRenderer::destroyAllTextureTargets()
 
 Texture& CEGUIRenderer::createTexture(const String& name)
 {
-    Divide::DIVIDE_ASSERT(_textures.find(name) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
+    DIVIDE_ASSERT(_textures.find(name) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
 
     DVDTexture* tex = CEGUI_NEW_AO DVDTexture(*this, name);
     _textures[name] = tex;
@@ -228,7 +228,7 @@ Texture& CEGUIRenderer::createTexture(const String& name,
                                       const String& filename,
                                       const String& resourceGroup)
 {
-    Divide::DIVIDE_ASSERT(_textures.find(name) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
+    DIVIDE_ASSERT(_textures.find(name) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
     
     DVDTexture* tex = CEGUI_NEW_AO DVDTexture(*this, name, filename, resourceGroup);
     _textures[name] = tex;
@@ -240,7 +240,7 @@ Texture& CEGUIRenderer::createTexture(const String& name,
 
 Texture& CEGUIRenderer::createTexture(const String& name, const Sizef& size)
 {
-    Divide::DIVIDE_ASSERT( _textures.find( name ) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
+    DIVIDE_ASSERT( _textures.find( name ) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
 
     DVDTexture* tex = CEGUI_NEW_AO DVDTexture(*this, name, size);
     _textures[name] = tex;
@@ -296,7 +296,7 @@ void CEGUIRenderer::destroyAllTextures()
 Texture& CEGUIRenderer::getTexture(const String& name) const
 {
     const TextureMap::const_iterator i = _textures.find(name);
-    Divide::DIVIDE_ASSERT(i != _textures.end(), ("No texture named '" + name + "' is available.").c_str());
+    DIVIDE_ASSERT(i != _textures.end(), ("No texture named '" + name + "' is available.").c_str());
 
     return *i->second;
 }
@@ -313,7 +313,7 @@ uint CEGUIRenderer::getMaxTextureSize() const
 
 Texture& CEGUIRenderer::createTexture(const String& name, const Divide::Handle<Divide::Texture> tex, const Sizef& sz)
 {
-    Divide::DIVIDE_ASSERT(_textures.find(name) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
+    DIVIDE_ASSERT(_textures.find(name) == _textures.end(), ("A texture named '" + name + "' already exists.").c_str());
 
     DVDTexture* t = CEGUI_NEW_AO DVDTexture(*this, name, tex, sz);
     _textures[name] = t;

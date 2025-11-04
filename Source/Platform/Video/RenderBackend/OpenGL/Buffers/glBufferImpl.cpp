@@ -74,8 +74,9 @@ namespace Divide
                                              storageMask,
                                              accessMask,
                                              flags,
-                                             initialData);
-        DIVIDE_ASSERT( _memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!" );
+                                             initialData,
+                                             true);
+        DIVIDE_GPU_ASSERT( _memoryBlock._ptr != nullptr && _memoryBlock._size >= _params._dataSize && "PersistentBuffer::Create error: Can't mapped persistent buffer!" );
 
         if ( !Runtime::isMainThread() && _lockManager != nullptr )
         {
@@ -102,7 +103,7 @@ namespace Divide
 
     BufferLock glBufferImpl::writeOrClearBytes( const size_t offsetInBytes, const size_t rangeInBytes, const bufferPtr data )
     {
-        DIVIDE_ASSERT(_memoryBlock._ptr != nullptr);
+        DIVIDE_GPU_ASSERT(_memoryBlock._ptr != nullptr);
         DIVIDE_ASSERT( rangeInBytes > 0u && offsetInBytes + rangeInBytes <= _memoryBlock._size );
 
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -150,14 +151,14 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         DIVIDE_ASSERT(_params._hostVisible);
-        DIVIDE_ASSERT(outData.second >= rangeInBytes && _memoryBlock._size >= offsetInBytes + rangeInBytes);
+        DIVIDE_GPU_ASSERT(outData.second >= rangeInBytes && _memoryBlock._size >= offsetInBytes + rangeInBytes);
 
         DIVIDE_EXPECTED_CALL( waitForLockedRange( {offsetInBytes, rangeInBytes} ) );
 
         LockGuard<Mutex> w_lock(_dataLock);
         if (_params._updateFrequency != BufferUpdateFrequency::ONCE) [[likely]]
         {
-            DIVIDE_ASSERT(rangeInBytes + offsetInBytes <= _memoryBlock._size );
+            DIVIDE_GPU_ASSERT(rangeInBytes + offsetInBytes <= _memoryBlock._size );
             memcpy( outData.first, _memoryBlock._ptr + offsetInBytes, rangeInBytes);
         }
         else
@@ -168,7 +169,8 @@ namespace Divide
                                                 Util::StringFormat("COPY_BUFFER_{}", _memoryBlock._bufferHandle).c_str(),
                                                 gl46core::GL_DYNAMIC_STORAGE_BIT,
                                                 rangeInBytes,
-                                                {nullptr, 0u});
+                                                {nullptr, 0u},
+                                                false);
 
                 _context.getPerformanceMetrics()._bufferVRAMUsage += (rangeInBytes - _copyBufferSize);
                 _copyBufferSize = rangeInBytes;
