@@ -69,6 +69,8 @@ runs:
           libegl1-mesa-dev \
           libibus-1.0-dev \
           bison \
+          build-essential \
+          ninja-build \
           lld
 
     - name: Setup vcpkg
