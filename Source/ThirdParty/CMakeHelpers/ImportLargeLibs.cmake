@@ -209,7 +209,7 @@ endif()
 FetchContent_Declare(
     nri
     GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
-    GIT_TAG        922588d8e1a01c0a4d61b1eb98506c02ffd0333f
+    GIT_TAG        v176
     #GIT_PROGRESS   TRUE
     SYSTEM
 )
