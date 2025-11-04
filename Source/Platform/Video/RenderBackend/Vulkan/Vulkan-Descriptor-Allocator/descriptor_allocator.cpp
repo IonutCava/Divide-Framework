@@ -108,14 +108,14 @@
                 newHandle.poolIdx = -1;
                 newHandle.ownerPool = nullptr;
 
-                Divide::DIVIDE_ASSERT( retryCount < (Divide::U8_MAX - 1u), "DescriptorAllocatorHandle::Allocate failed to allocate descriptor sets: memory error!");
+                DIVIDE_GPU_ASSERT( retryCount < (Divide::U8_MAX - 1u), "DescriptorAllocatorHandle::Allocate failed to allocate descriptor sets: memory error!");
                 //could be good idea to avoid infinite loop here
                 return Allocate(layout, builtSet, retryCount + 1);
             }
             else
             {
                 //stuff is truly broken
-                Divide::DIVIDE_UNEXPECTED_CALL();
+                DIVIDE_UNEXPECTED_CALL();
                 return false;
             }
         }

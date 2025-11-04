@@ -46,16 +46,23 @@
 #define GET_6TH_ARG(arg1, arg2, arg3, arg4, arg5, arg6, ...) arg6
 
 #if defined(_DEBUG)
-#define STUBBED(x)                                    \
-WARNING(x);                                           \
-do {                                                  \
-    static bool seen_this = false;                    \
-    if (!seen_this) {                                 \
-        seen_this = true;                             \
-        Console::errorfn("[ STUBBED ] {} ({} : {})\n",\
-                         x, __FILE__, __LINE__);      \
-    }                                                 \
-} while (0)
+
+#if defined(USING_MSVC)
+#define STUB_WARNING(X) WARNING(X)
+#else //_MSC_VER
+#define STUB_WARNING(X)
+#endif //_MSC_VER
+
+#define STUBBED(x)                                        \
+    STUB_WARNING(x);                                      \
+    do {                                                  \
+        static bool seen_this = false;                    \
+        if (!seen_this) {                                 \
+            seen_this = true;                             \
+            Console::errorfn("[ STUBBED ] {} ({} : {})\n",\
+                             x, __FILE__, __LINE__);      \
+        }                                                 \
+    } while (0)
 
 #else
 #define STUBBED(x) static_assert(true, "")
@@ -884,7 +891,7 @@ namespace Assert
     bool Callback(bool expression, std::string_view expressionStr, std::string_view file, int line, std::string_view failMessage) noexcept;
 }
 
-#define DIVIDE_ASSERT_2_ARGS(expression, msg) Assert::Callback(expression, #expression, __FILE__, __LINE__, msg)
+#define DIVIDE_ASSERT_2_ARGS(expression, msg) Divide::Assert::Callback(expression, #expression, __FILE__, __LINE__, msg)
 #define DIVIDE_ASSERT_1_ARGS(expression) DIVIDE_ASSERT_2_ARGS(expression, "UNEXPECTED CALL")
 
 #define ___DETAIL_DIVIDE_ASSERT(...) EXP(GET_3RD_ARG(__VA_ARGS__, DIVIDE_ASSERT_2_ARGS, DIVIDE_ASSERT_1_ARGS, ))
@@ -895,6 +902,8 @@ namespace Assert
 
 #define DIVIDE_EXPECTED_CALL( X ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG("Expected call failed: " #X); }
 #define DIVIDE_EXPECTED_CALL_MSG( X, MSG ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG( MSG ); }
+
+#define DIVIDE_GPU_ASSERT(...) do { if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) { DIVIDE_ASSERT(__VA_ARGS__); } } while(0)
 
 template <typename Ret, typename... Args >
 using DELEGATE_EASTL = eastl::function< Ret(Args...) >;

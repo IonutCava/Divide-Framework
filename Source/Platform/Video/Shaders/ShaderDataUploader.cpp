@@ -339,7 +339,7 @@ namespace Divide
         {
             BlockMember& bMember = _blockMembers[member];
             const Reflection::BufferMember& srcMember = _uniformBlock._members[member];
-            DIVIDE_ASSERT( srcMember._memberCount == 0u, "UniformBlockUploader error: Custom structs in uniform declarations not supported!" );
+            DIVIDE_GPU_ASSERT( srcMember._memberCount == 0u, "UniformBlockUploader error: Custom structs in uniform declarations not supported!" );
 
             bMember._name = srcMember._name;
             bMember._nameHash = _ID( bMember._name.c_str() );
@@ -441,7 +441,7 @@ namespace Divide
                 {
                     if ( member._nameHash == uniform._bindingHash )
                     {
-                        DIVIDE_ASSERT( uniform._range._length <= member._size );
+                        DIVIDE_GPU_ASSERT( uniform._range._length <= member._size );
 
                         Byte* dst = &_localDataCopy.data()[member._offset];
                         const Byte* src = uniforms.data(uniform._range._startOffset);
@@ -464,7 +464,7 @@ namespace Divide
     {
         if ( _uniformBlockDirty )
         {
-            DIVIDE_ASSERT( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr );
+            DIVIDE_GPU_ASSERT( _uniformBlock._bindingSlot != Reflection::INVALID_BINDING_INDEX && _buffer != nullptr );
 
             if ( _needsResize )
             {

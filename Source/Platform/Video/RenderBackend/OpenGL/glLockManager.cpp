@@ -18,7 +18,7 @@ namespace Divide
 
     glSyncObject::~glSyncObject()
     {
-        DIVIDE_ASSERT( _syncObject == nullptr);
+        DIVIDE_GPU_ASSERT( _syncObject == nullptr);
     }
 
     void glSyncObject::reset()
@@ -48,7 +48,7 @@ namespace Divide
         else if ( entry._ptr->_frameNumber == SyncObject::INVALID_FRAME_NUMBER )
         {
             glSyncObject* glSync = static_cast<glSyncObject*>(entry._ptr.get());
-            DIVIDE_ASSERT( glSync->_syncObject == nullptr );
+            DIVIDE_GPU_ASSERT( glSync->_syncObject == nullptr );
             glSync->_frameNumber = frameIdx;
             glSync->_flag = flag;
             ret = true;
@@ -78,7 +78,7 @@ namespace Divide
             {
                 return true;
             }
-            DIVIDE_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "glLockManager::wait error: Not sure what to do here. Probably raise an exception or something." );
+            DIVIDE_GPU_ASSERT( waitRet != gl46core::GL_WAIT_FAILED, "glLockManager::wait error: Not sure what to do here. Probably raise an exception or something." );
 
             if ( retryCount == 1 )
             {

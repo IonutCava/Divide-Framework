@@ -404,17 +404,17 @@ namespace Divide
             Console::errorfn( LOCALE_STR( "ERROR_INSUFFICIENT_ATTRIB_BINDS" ) );
             return ErrorCode::GFX_OLD_HARDWARE;
         }
-        DIVIDE_ASSERT( Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
-        DIVIDE_ASSERT( Config::MAX_CULL_DISTANCES <= s_deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
-        DIVIDE_ASSERT( Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
+        DIVIDE_GPU_ASSERT( Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
+        DIVIDE_GPU_ASSERT( Config::MAX_CULL_DISTANCES <= s_deviceInformation._maxCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
+        DIVIDE_GPU_ASSERT( Config::MAX_CULL_DISTANCES + Config::MAX_CLIP_DISTANCES <= s_deviceInformation._maxClipAndCullDistances, "SDLWindowWrapper error: incorrect combination of clip and cull distance counts" );
 
-        DIVIDE_ASSERT( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < s_deviceInformation._maxWorkgroupSize[0] &&
-                       Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < s_deviceInformation._maxWorkgroupSize[1] &&
-                       Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupSize[2] );
+        DIVIDE_GPU_ASSERT( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS < s_deviceInformation._maxWorkgroupSize[0] &&
+                           Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS < s_deviceInformation._maxWorkgroupSize[1] &&
+                           Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupSize[2] );
 
-        DIVIDE_ASSERT( to_U32( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS ) *
-                       Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
-                       Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupInvocations );
+        DIVIDE_GPU_ASSERT( to_U32( Config::Lighting::ClusteredForward::CLUSTERS_X_THREADS ) *
+                           Config::Lighting::ClusteredForward::CLUSTERS_Y_THREADS *
+                           Config::Lighting::ClusteredForward::CLUSTERS_Z_THREADS < s_deviceInformation._maxWorkgroupInvocations );
 
         _rtPool = std::make_unique<GFXRTPool>( *this );
 
@@ -517,7 +517,7 @@ namespace Divide
             return;
         }
 
-        DIVIDE_ASSERT( ValidateGPUDataStructure(), "GFXDevice::resizeBlock: GPUBlock does not meet alignment requirements!");
+        DIVIDE_GPU_ASSERT( ValidateGPUDataStructure(), "GFXDevice::resizeBlock: GPUBlock does not meet alignment requirements!");
 
         _gfxBuffers.reset( resizeCamBuffer, resizeCullCounter );
 
@@ -549,7 +549,6 @@ namespace Divide
             bufferDescriptor._usageType = BufferUsageType::UNBOUND_BUFFER;
             bufferDescriptor._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
             bufferDescriptor._hostVisible = true;
-            bufferDescriptor._separateReadWrite = true;
             bufferDescriptor._initialData = { (bufferPtr)&VECTOR4_ZERO._v[0], 4 * sizeof( U32 ) };
             for ( U8 i = 0u; i < GFXBuffers::PER_FRAME_BUFFER_COUNT; ++i )
             {
@@ -3134,7 +3133,7 @@ namespace Divide
         if ( ret != nullptr )
         {
             const bool valid = ret->create();
-            DIVIDE_ASSERT( valid );
+            DIVIDE_GPU_ASSERT( valid );
             return ret;
         }
 

@@ -895,7 +895,7 @@ namespace Divide
             vector<VegetationData> data = computeTransforms( false );
             _instanceCountGrass = to_U32(data.size());
 
-            const BufferLock lock = parentPtr->_grassData->writeData(BufferRange<>{_chunk->id() * parentPtr->_maxGrassInstances, _instanceCountGrass}, data.data());
+            const BufferLock lock = parentPtr->_grassData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxGrassInstances, _instanceCountGrass}, data.data());
             DIVIDE_UNUSED(lock);
         }
 
@@ -903,7 +903,7 @@ namespace Divide
         {
             vector<VegetationData> data = computeTransforms( true );
             _instanceCountTrees = to_U32(data.size());
-            const BufferLock lock = parentPtr->_treeData->writeData( BufferRange<>{_chunk->id() * parentPtr->_maxTreeInstances, _instanceCountTrees }, data.data() );
+            const BufferLock lock = parentPtr->_treeData->writeData(ElementRange<>{_chunk->id() * parentPtr->_maxTreeInstances, _instanceCountTrees }, data.data() );
             DIVIDE_UNUSED( lock );
         }
     }

@@ -19,13 +19,11 @@ namespace Divide
         const size_t targetElementSize = Util::GetAlignmentCorrected( _params._elementSize, _alignmentRequirement );
         if ( targetElementSize > _params._elementSize )
         {
-            DIVIDE_ASSERT( (_params._elementSize * _params._elementCount) % _alignmentRequirement == 0u,
-                           "ERROR: vkShaderBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit" );
+            DIVIDE_GPU_ASSERT( (_params._elementSize * _params._elementCount) % _alignmentRequirement == 0u, "ERROR: vkShaderBuffer - element size and count combo is less than the minimum alignment requirement for current hardware! Pad the element size and or count a bit" );
         }
         else
         {
-            DIVIDE_ASSERT( _params._elementSize == targetElementSize,
-                           "ERROR: vkShaderBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit" );
+            DIVIDE_GPU_ASSERT( _params._elementSize == targetElementSize, "ERROR: vkShaderBuffer - element size is less than the minimum alignment requirement for current hardware! Pad the element size a bit" );
         }
 
         _alignedBufferSize = static_cast<ptrdiff_t>(realign_offset( _params._elementCount * _params._elementSize, _alignmentRequirement ));

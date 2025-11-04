@@ -89,7 +89,7 @@ namespace Divide
 
     ErrorCode NONE_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, [[maybe_unused]] Configuration& config ) noexcept
     {
-        DIVIDE_ASSERT( _renderer == nullptr );
+        DIVIDE_GPU_ASSERT( _renderer == nullptr );
 
         const DisplayWindow& window = *_context.context().app().windowManager().mainWindow();
         _renderer = SDL_CreateRenderer( window.getRawWindow(), nullptr );
@@ -124,7 +124,7 @@ namespace Divide
 
     void NONE_API::closeRenderingAPI() noexcept
     {
-        DIVIDE_ASSERT( _renderer != nullptr );
+        DIVIDE_GPU_ASSERT( _renderer != nullptr );
 
         SDL_DestroyTexture( _texture );
         SDL_DestroySurface( _background );
