@@ -112,10 +112,10 @@ void ParticleData::sort() {
     
     TaskPool& pool = _context.context().taskPool(TaskPoolType::HIGH_PRIORITY);
     Task* updateTask = CreateTask(TASK_NOP);
-    pool.enqueue(*CreateTask(updateTask, parsePositions));
-    pool.enqueue(*CreateTask(updateTask, parseColours));
-    pool.enqueue(*updateTask);
-    pool.wait(*updateTask);
+    pool.enqueue( *CreateTask(updateTask, parsePositions) );
+    pool.enqueue( *CreateTask(updateTask, parseColours) );
+    pool.enqueue( *updateTask );
+    pool.wait( *updateTask );
 }
 
 void ParticleData::swapData(const U32 indexA, const U32 indexB) {
