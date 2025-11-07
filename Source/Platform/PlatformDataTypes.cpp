@@ -6,22 +6,6 @@
 
 namespace Divide
 {
-    namespace detail
-    {
-        void internal_assert( const bool condition )
-        {
-            if constexpr (Config::Build::IS_DEBUG_BUILD)
-            {
-                assert( condition );
-            }
-            else
-            {
-                DIVIDE_UNUSED(condition);
-            }
-        }
-
-    } //namespace detail
-
     P32::P32( const U32 val ) noexcept : i( val )
     {
     }

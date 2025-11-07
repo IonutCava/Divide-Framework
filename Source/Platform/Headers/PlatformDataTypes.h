@@ -45,6 +45,8 @@ inline constexpr bool conversion_checks_enabled_v = (DIVIDE_ENABLE_CONVERSION_CH
 
 #include <type_traits> //std::underlying_type_t
 #include <cstddef> //std::byte
+#include <cmath> // std::isfinite / std::signbit
+#include <cassert>
 #include <limits>
 
 namespace Divide
@@ -225,7 +227,21 @@ namespace Divide
 
     namespace detail
     {
-        void internal_assert(const bool condition);
+        #if defined(_MSC_VER)
+        #define internal_assert(expr)                                                     \
+            do {                                                                          \
+                assert((expr) && "conversion validation failed (runtime)");               \
+            } while(0)
+        #else //_MSC_VER
+        #define internal_assert(expr)                                                     \
+            do {                                                                          \
+                if (std::is_constant_evaluated()) {                                       \
+                    static_assert((expr), "conversion validation failed (compile-time)"); \
+                } else {                                                                  \
+                    assert((expr) && "conversion validation failed (runtime)");           \
+                }                                                                         \
+            } while(0)
+        #endif //_MSC_VER
 
         template<typename Target, typename Source>
         struct is_trivial_conversion
@@ -264,8 +280,22 @@ namespace Divide
             else if constexpr (std::is_floating_point_v<Source>)
             {
                 // Floating point source -> Target (usually integral): check finite, non-negative and fits max
-                internal_assert(std::isfinite(value) && !std::signbit(value));
-                internal_assert(value <= static_cast<Source>(std::numeric_limits<Target>::max()));
+                if (std::is_constant_evaluated())
+                {
+                    // NaN check: NaN is the only floating value for which value == value is false
+                    internal_assert(value == value);
+
+                    // Range checks: use numeric_limits of Target so signed/unsigned targets are both handled
+                    internal_assert(value >= static_cast<Source>(std::numeric_limits<Target>::min()));
+                    internal_assert(value <= static_cast<Source>(std::numeric_limits<Target>::max()));
+                }
+                else
+                {
+                    // runtime checks: prefer std::isfinite for clarity where available
+                    internal_assert(std::isfinite(value));
+                    internal_assert(value >= static_cast<Source>(std::numeric_limits<Target>::min()));
+                    internal_assert(value <= static_cast<Source>(std::numeric_limits<Target>::max()));
+                }
             }
             else if constexpr (std::is_signed_v<Source> && std::is_integral_v<Target> && std::is_unsigned_v<Target>)
             {
