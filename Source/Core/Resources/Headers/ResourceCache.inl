@@ -610,37 +610,37 @@ namespace Divide
 
         if ( ptr != nullptr )
         {
-            Start( *CreateTask( [ptr, descriptor]( const Task& )
-                    {
-                        ResourceCache::Build<T>( ptr, descriptor );
-                    }),
-                    s_context->taskPool( TaskPoolType::ASSET_LOADER ), 
-                    descriptor.waitForReady() ? TaskPriority::REALTIME : TaskPriority::HIGH,
-                    [ptr, ret, &taskCounter, resName = descriptor.resourceName()]()
-                    {
-                        DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);
-
-                        if ( ptr->getState() == ResourceState::RES_THREAD_LOADED) [[likely]]
-                        {
-                            if (ptr->postLoad())
+            s_context->taskPool(TaskPoolType::ASSET_LOADER).enqueue(
+                *CreateTask([ptr, descriptor]( const Task& )
                             {
-                                ptr->setState( ResourceState::RES_LOADED );
-                            }
-                            else
+                                ResourceCache::Build<T>( ptr, descriptor );
+                            }),
+                            descriptor.waitForReady() ? TaskPriority::REALTIME : TaskPriority::HIGH,
+                            [ptr, ret, &taskCounter, resName = descriptor.resourceName()]()
                             {
-                                ptr->setState(ResourceState::RES_LOAD_FAILED);
+                                DIVIDE_ASSERT(ret != INVALID_HANDLE<T>);
+
+                                if ( ptr->getState() == ResourceState::RES_THREAD_LOADED) [[likely]]
+                                {
+                                    if (ptr->postLoad())
+                                    {
+                                        ptr->setState( ResourceState::RES_LOADED );
+                                    }
+                                    else
+                                    {
+                                        ptr->setState(ResourceState::RES_LOAD_FAILED);
+                                    }
+                                }
+
+                                if ( ptr->getState() != ResourceState::RES_LOADED)
+                                {
+                                    Console::printfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ), resName.c_str() );
+                                    Handle<T> retCpy = ret;
+                                    GetPool<T>(s_renderAPI).deallocate( retCpy );
+                                }
+
+                                taskCounter.fetch_sub( 1u );
                             }
-                        }
-
-                        if ( ptr->getState() != ResourceState::RES_LOADED)
-                        {
-                            Console::printfn( LOCALE_STR( "ERROR_RESOURCE_CACHE_LOAD_RES_NAME" ), resName.c_str() );
-                            Handle<T> retCpy = ret;
-                            GetPool<T>(s_renderAPI).deallocate( retCpy );
-                        }
-
-                        taskCounter.fetch_sub( 1u );
-                    }
                 );
         }
 

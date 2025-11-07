@@ -640,8 +640,8 @@ namespace Divide
 
         TaskPool& pool = _context.taskPool( TaskPoolType::ASSET_LOADER );
         Task* initTask = CreateTask( TASK_NOP );
-        Start( *initTask, pool, TaskPriority::DONT_CARE, initData);
-        Wait( *initTask, pool);
+        pool.enqueue( *initTask, TaskPriority::DONT_CARE, initData);
+        pool.wait( *initTask );
 
         SceneGraphNodeDescriptor particleNodeDescriptor;
         particleNodeDescriptor._nodeHandle = FromHandle(emitter);
@@ -1615,7 +1615,7 @@ namespace Divide
         }
         if ( start )
         {
-            Start( taskItem, _context.taskPool( TaskPoolType::HIGH_PRIORITY ), priority );
+            _context.taskPool(TaskPoolType::HIGH_PRIORITY).enqueue( taskItem, priority );
         }
     }
 
@@ -1626,7 +1626,7 @@ namespace Divide
         LockGuard<SharedMutex> w_lock( _tasksMutex );
         for ( const Task* task : _tasks )
         {
-            Wait( *task, _context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
+            _context.taskPool(TaskPoolType::HIGH_PRIORITY).wait( *task );
         }
 
         _tasks.clear();
@@ -1639,7 +1639,7 @@ namespace Divide
         {
             if ( (*it)->_globalId == task._globalId)
             {
-                Wait( **it, _context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
+                _context.taskPool(TaskPoolType::HIGH_PRIORITY).wait( **it );
                 _tasks.erase( it );
                 return;
             }

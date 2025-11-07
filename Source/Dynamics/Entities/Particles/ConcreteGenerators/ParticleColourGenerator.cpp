@@ -19,15 +19,14 @@ void ParticleColourGenerator::generate(Task& packagedTasksParent,
                                     ParticleData::g_threadPartitionSize,
                                     [&](iter_t_start from, iter_t_start to)
     {
-        Start(*CreateTask(
+        parentPool.enqueue(*CreateTask(
                    &packagedTasksParent,
                    [this, from, to](const Task&) {
                        std::for_each(from, to, [&](FColour4& colour)
                        {
                            colour.set(Random(_minStartCol, _maxStartCol));
                        });
-                   }),
-            parentPool);
+                   }));
     });
 
     using iter_t_end = decltype(std::begin(p._endColour));
@@ -36,15 +35,14 @@ void ParticleColourGenerator::generate(Task& packagedTasksParent,
                                   ParticleData::g_threadPartitionSize,
                                   [&](iter_t_end from, iter_t_end to)
     {
-        Start(*CreateTask(
+        parentPool.enqueue(*CreateTask(
                    &packagedTasksParent,
                    [this, from, to](const Task&) {
                        std::for_each(from, to, [&](FColour4& colour)
                        {
                            colour.set(Random(_minEndCol, _maxEndCol));
                        });
-                   }),
-            parentPool);
+                   }));
     });
 }
 }

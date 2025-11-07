@@ -205,7 +205,8 @@ namespace Divide
         }
 
         // We use our rendering task pool for scene changes because we might be creating / loading GPU assets (shaders, textures, buffers, etc)
-        Start( *CreateTask([this, unloadPrevious, &scene, &sceneToUnload]( const Task& /*parentTask*/ )
+        parent().platformContext().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue(
+            *CreateTask([this, unloadPrevious, &scene, &sceneToUnload]( const Task& /*parentTask*/ )
             {
                 // Load first, unload after to make sure we don't reload common resources
                 if ( loadScene( scene ) != nullptr )
@@ -217,7 +218,6 @@ namespace Divide
                     }
                 }
             }),
-             parent().platformContext().taskPool( TaskPoolType::HIGH_PRIORITY ),
              threaded ? TaskPriority::DONT_CARE : TaskPriority::REALTIME,
              [this, scene, unloadPrevious, &sceneToUnload]()
              {
@@ -459,7 +459,7 @@ namespace Divide
             return;
         }
 
-        Wait( *_saveTask, parent().platformContext().taskPool( TaskPoolType::LOW_PRIORITY ) );
+        parent().platformContext().taskPool(TaskPoolType::LOW_PRIORITY).wait( *_saveTask );
     }
 
     void ProjectManager::initPostLoadState() noexcept
@@ -1389,7 +1389,7 @@ namespace Divide
                 }
                 DIVIDE_UNEXPECTED_CALL();
             }
-            Wait( *_saveTask, pool );
+            pool.wait( *_saveTask );
         }
 
         _saveTask = CreateTask( nullptr,
@@ -1397,7 +1397,7 @@ namespace Divide
         {
             LoadSave::saveScene( activeScene, toCache, msgCallback, finishCallback );
         });
-        Start( *_saveTask, pool, deferred ? TaskPriority::DONT_CARE_NO_IDLE : TaskPriority::REALTIME );
+        pool.enqueue( *_saveTask, deferred ? TaskPriority::DONT_CARE_NO_IDLE : TaskPriority::REALTIME );
 
         return true;
     }

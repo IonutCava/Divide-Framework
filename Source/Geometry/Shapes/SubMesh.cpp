@@ -190,8 +190,8 @@ void SubMesh::computeBBForAnimation(SceneGraphNode* const sgn, const U32 animInd
         buildBoundingBoxesForAnim(parentTask, animIndex, animComp);
     });
 
-    Start(*computeBBTask,
-        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY),
+    sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue(
+        *computeBBTask,
         TaskPriority::DONT_CARE,
         [this, animIndex, animComp]()
         {

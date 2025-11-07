@@ -296,7 +296,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
 
     if ( _enabled &&  getAliveParticleCount() > 0)
     {
-        Wait(*_bufferUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
+        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).wait(*_bufferUpdate);
 
         ParticleBufferRet buffers = getDataBuffer(renderStagePass._stage, 0);
 
@@ -351,7 +351,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                     _buffersDirty[to_U32(renderStagePass._stage)] = true;
                 });
 
-            Start(*_bufferUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
+            sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue(*_bufferUpdate);
         }
     }
 
@@ -406,7 +406,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             up->update(g_updateInterval, data);
         }
 
-        Wait(*_bbUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
+        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).wait(*_bbUpdate);
 
         _bbUpdate = CreateTask([this, aliveCount, averageEmitRate](const Task&)
         {
@@ -417,7 +417,7 @@ void ParticleEmitter::sceneUpdate(const U64 deltaTimeUS,
             }
             setBounds(aabb);
         });
-        Start(*_bbUpdate, sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY));
+        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue(*_bbUpdate);
     }
 
     SceneNode::sceneUpdate(deltaTimeUS, sgn, sceneState);
