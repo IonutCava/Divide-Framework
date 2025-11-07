@@ -90,7 +90,6 @@ jobs:
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
-  # ASAN+UBSAN Clang job using presets from CMakePresets.json
   build_clang_asan_ubsan:
     needs: info_job
     name: Ubuntu - clang ASAN+UBSAN (release/editor)
@@ -103,14 +102,14 @@ jobs:
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
-      - name: Configure (CLANG ASAN+UBSAN)
-        run: |
-          cmake --version
-          cmake --preset linux-clang-editor-asan-ubsan
-
-      - name: Build (CLANG ASAN+UBSAN)
-        run: |
-          cmake --build --preset linux-clang-release-editor-asan-ubsan -- -j
+      - uses: ./.github/actions/cmake-build/linux
+        with:
+          compiler: clang
+          build-type: editor
+          configuration: release
+          configure-preset: linux-clang-editor-asan-ubsan
+          build-preset: linux-clang-release-editor-asan-ubsan
+          test-preset: test-linux-clang-release-editor-asan-ubsan
 
   output_job:
     needs: [build_gcc, build_clang, build_clang_asan_ubsan]

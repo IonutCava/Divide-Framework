@@ -11,17 +11,52 @@ inputs:
   configuration:
     required: true
     description: 'Build configuration (debug, release, or profile)'
+  configure-preset:
+    required: false
+    description: 'Optional: explicit CMake configure preset to use (overrides auto-built one)'
+  build-preset:
+    required: false
+    description: 'Optional: explicit CMake build preset to use (overrides auto-built one)'
+  test-preset:
+    required: false
+    description: 'Optional: explicit CMake test preset to use (overrides auto-built one)'
 
 runs:
   using: "composite"
   steps:
-    - name: Build ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
+    - name: Configure (preset override)
+      if: ${{ inputs.configure-preset != '' }}
+      uses: lukka/run-cmake@v10
+      with:
+        configurePreset: ${{ inputs.configure-preset }}
+
+    - name: Configure (default)
+      if: ${{ inputs.configure-preset == '' }}
       uses: lukka/run-cmake@v10
       with:
         configurePreset: windows-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+
+    - name: Build (preset override)
+      if: ${{ inputs.build-preset != '' }}
+      uses: lukka/run-cmake@v10
+      with:
+        buildPreset: ${{ inputs.build-preset }}
+
+    - name: Build ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
+      if: ${{ inputs.build-preset == '' }}
+      uses: lukka/run-cmake@v10
+      with:
         buildPreset: windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
 
+    - name: Test (preset override)
+      if: ${{ inputs.test-preset != '' }}
+      continue-on-error: true
+      uses: lukka/run-cmake@v10
+      with:
+        testPreset: ${{ inputs.test-preset }}
+
     - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
+      if: ${{ inputs.test-preset == '' }}
       continue-on-error: true
       uses: lukka/run-cmake@v10
       with:

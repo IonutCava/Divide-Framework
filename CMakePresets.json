@@ -905,6 +905,14 @@
             "configuration": "Release"
         },
         {
+            "name": "test-linux-clang-release-editor-asan-ubsan",
+            "displayName": "Test-Clang-Linux-Release-Editor-asan-ubsan",
+            "description": "Enable output and stop on failure",
+            "inherits": "test-common",
+            "configurePreset": "linux-clang-editor-asan-ubsan",
+            "configuration": "Release"
+        },
+        {
             "name": "test-linux-clang-debug",
             "displayName": "Test-Clang-Linux-Debug",
             "description": "Enable output and stop on failure",

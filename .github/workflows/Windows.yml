@@ -117,7 +117,6 @@ jobs:
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
-  # ASAN+UBSAN MSVC (uses presets defined in CMakePresets.json)
   build_msvc_asan_ubsan:
     needs: info_job
     name: Windows - msvc ASAN+UBSAN (profile/editor)
@@ -130,18 +129,16 @@ jobs:
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
-      - name: Configure (MSVC ASAN+UBSAN)
-        shell: cmd
-        run: |
-          cmake --version
-          cmake --preset windows-msvc-editor-asan-ubsan
+      - name: ASAN+UBSAN build (via cmake-build/windows action)
+        uses: ./.github/actions/cmake-build/windows
+        with:
+          compiler: msvc
+          build-type: editor
+          configuration: profile
+          configure-preset: windows-msvc-editor-asan-ubsan
+          build-preset: windows-msvc-profile-editor-asan-ubsan
+          test-preset: test-windows-msvc-profile-editor-asan-ubsan
 
-      - name: Build (MSVC ASAN+UBSAN)
-        shell: cmd
-        run: |
-          cmake --build --preset windows-msvc-profile-editor-asan-ubsan -- -j
-
-  # ASAN+UBSAN CLANG (uses presets defined in CMakePresets.json)
   build_clang_asan_ubsan:
     needs: info_job
     name: Windows - clang ASAN+UBSAN (profile/editor)
@@ -154,16 +151,15 @@ jobs:
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
 
-      - name: Configure (CLANG ASAN+UBSAN)
-        shell: cmd
-        run: |
-          cmake --version
-          cmake --preset windows-clang-editor-asan-ubsan
-
-      - name: Build (CLANG ASAN+UBSAN)
-        shell: cmd
-        run: |
-          cmake --build --preset windows-clang-profile-editor-asan-ubsan -- -j
+      - name: ASAN+UBSAN build (via cmake-build/windows action)
+        uses: ./.github/actions/cmake-build/windows
+        with:
+          compiler: clang
+          build-type: editor
+          configuration: profile
+          configure-preset: windows-clang-editor-asan-ubsan
+          build-preset: windows-clang-profile-editor-asan-ubsan
+          test-preset: test-windows-clang-profile-editor-asan-ubsan
 
   output_job:
     needs: [info_job, build_msvc, build_clang, build_msvc_asan_ubsan, build_clang_asan_ubsan]
