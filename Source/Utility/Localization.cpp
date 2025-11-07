@@ -9,11 +9,6 @@
 
 #include <SimpleIni.h>
 
-namespace FW
-{
-    FWD_DECLARE_MANAGED_CLASS(FileWatcher);
-};
-
 namespace Divide::Locale
 {
 
@@ -28,7 +23,7 @@ namespace detail
     static LanguageData_uptr g_data = nullptr;
 
     /// External modification monitoring system
-    static FW::FileWatcher_uptr g_LanguageFileWatcher = nullptr;
+    static std::unique_ptr<FW::FileWatcher> g_LanguageFileWatcher = nullptr;
 
     /// Callback for external file changes. 
     static UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt)

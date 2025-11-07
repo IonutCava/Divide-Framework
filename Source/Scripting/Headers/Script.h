@@ -33,10 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SCRIPTING_SCRIPT_H_
 #define DVD_SCRIPTING_SCRIPT_H_
 
-namespace FW {
-    FWD_DECLARE_MANAGED_CLASS(FileWatcher);
-}
-
 namespace chaiscript {
     FWD_DECLARE_MANAGED_CLASS(ChaiScript);
 }
