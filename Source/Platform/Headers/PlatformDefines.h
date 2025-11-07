@@ -735,14 +735,6 @@ template<>
     return (input >= 0.0 ? f : (COMPARE(input, f) ? input : f - 1.0));
 }
 
-template<>
-[[nodiscard]] constexpr D128 FLOOR(const D128 input)
-{
-    const long long int i = static_cast<long long int>(input);
-    const D128 f = to_D128(i);
-    return (input >= 0.0 ? f : (COMPARE(input, f) ? input : f - 1.0));
-}
-
 template<typename T>
 constexpr T CEIL(const T input)
 {
@@ -761,13 +753,6 @@ constexpr D64 CEIL(const D64 input)
 {
     const I64 i = to_I64(input);
     return to_D64(input > i ? i + 1 : i);
-}
-
-template<>
-constexpr D128 CEIL(const D128 input)
-{
-    const long long int i = static_cast<long long int>(input);
-    return to_D128(input > i ? i + 1 : i);
 }
 
 template <typename T, typename U = T>
