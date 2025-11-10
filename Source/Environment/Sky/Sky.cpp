@@ -75,7 +75,7 @@ namespace Divide
                     const float3 curl = Normalized( float3{res.val[0], res.val[1], res.val[2]} );
                     const F32 cellFBM0 = curl.r * 0.5f + curl.g * 0.35f + curl.b * 0.15f;
 
-                    data[i + pass] = to_byte( std::ceilf(cellFBM0 * 128.f + 127.f) );
+                    data[i + pass] = to_byte( CEIL(cellFBM0 * 128.f + 127.f) );
                 }
             }
 
@@ -109,9 +109,9 @@ namespace Divide
                 F32 perlinNoise3 = Tileable3dNoise::PerlinNoise( pos + offset2, 2, 3 );
                 //F32 perlinNoise4 = Tileable3dNoise::PerlinNoise(pos + offset3, 4, 3);
                 perlinNoise3 = std::min( 1.f, (smoothstep( 0.45f, 0.8f, perlinNoise3 ) + smoothstep( 0.25f, 0.45f, perlinNoise3 ) * 0.5f) );
-                data[i + 0] = to_byte( std::ceilf(perlinNoise * 128.f + 127.f ));
-                data[i + 1] = to_byte( std::ceilf(smoothstep( 0.5f, 0.7f, perlinNoise2 ) * 255.f ));
-                data[i + 2] = to_byte( std::ceilf(perlinNoise3 * 255.f ));
+                data[i + 0] = to_byte( CEIL(perlinNoise * 128.f + 127.f ));
+                data[i + 1] = to_byte( CEIL(smoothstep( 0.5f, 0.7f, perlinNoise2 ) * 255.f ));
+                data[i + 2] = to_byte( CEIL(perlinNoise3 * 255.f ));
             }
             stbi_write_bmp( fileName, width, height, 4, data );
             delete[] data;
@@ -135,9 +135,9 @@ namespace Divide
                 const F32 cellFBM0 = cell0 * 0.5f + cell1 * 0.35f + cell2 * 0.15f;
                 const F32 cellFBM1 = cell1 * 0.5f + cell2 * 0.35f + cell3 * 0.15f;
                 const F32 cellFBM2 = cell2 * 0.75f + cell3 * 0.25f; // cellCount=4 -> worleyNoise4 is just noise due to sampling frequency=texel freque. So only take into account 2 frequenciM
-                worlNoiseArray[i + 0] = to_byte( std::ceilf(cellFBM0 * 255) );
-                worlNoiseArray[i + 1] = to_byte( std::ceilf(cellFBM1 * 255) );
-                worlNoiseArray[i + 2] = to_byte( std::ceilf(cellFBM2 * 255) );
+                worlNoiseArray[i + 0] = to_byte( CEIL(cellFBM0 * 255) );
+                worlNoiseArray[i + 1] = to_byte( CEIL(cellFBM1 * 255) );
+                worlNoiseArray[i + 2] = to_byte( CEIL(cellFBM2 * 255) );
             }
             stbi_write_bmp( fileName, width * slices, height, 4, worlNoiseArray );
             delete[] worlNoiseArray;
@@ -176,10 +176,10 @@ namespace Divide
                 const F32 worleyFBM0 = worleyNoise00 * 0.625f + worleyNoise12 * 0.25f + worleyNoise01 * 0.125f;
                 const F32 worleyFBM1 = worleyNoise12 * 0.625f + worleyNoise01 * 0.25f + worleyNoise14 * 0.125f;
                 const F32 worleyFBM2 = worleyNoise01 * 0.750f + worleyNoise14 * 0.25f; // cellCount=4 -> worleyNoise5 is just noise due to sampling frequency=texel frequency. So only take into account 2 frequencies for FBM
-                perlWorlNoiseArray[i + 0] = to_byte( std::ceilf(PerlWorlNoise * 255 ));
-                perlWorlNoiseArray[i + 1] = to_byte( std::ceilf(worleyFBM0 * 255 ));
-                perlWorlNoiseArray[i + 2] = to_byte( std::ceilf(worleyFBM1 * 255 ));
-                perlWorlNoiseArray[i + 3] = to_byte( std::ceilf(worleyFBM2 * 255 ));
+                perlWorlNoiseArray[i + 0] = to_byte( CEIL(PerlWorlNoise * 255 ));
+                perlWorlNoiseArray[i + 1] = to_byte( CEIL(worleyFBM0 * 255 ));
+                perlWorlNoiseArray[i + 2] = to_byte( CEIL(worleyFBM1 * 255 ));
+                perlWorlNoiseArray[i + 3] = to_byte( CEIL(worleyFBM2 * 255 ));
             };
 
             if constexpr ( s_parallelBuild )
