@@ -227,21 +227,10 @@ namespace Divide
 
     namespace detail
     {
-        #if defined(_MSC_VER)
-        #define internal_assert(expr)                                                     \
-            do {                                                                          \
-                assert((expr) && "conversion validation failed (runtime)");               \
-            } while(0)
-        #else //_MSC_VER
-        #define internal_assert(expr)                                                     \
-            do {                                                                          \
-                if (std::is_constant_evaluated()) {                                       \
-                    static_assert((expr), "conversion validation failed (compile-time)"); \
-                } else {                                                                  \
-                    assert((expr) && "conversion validation failed (runtime)");           \
-                }                                                                         \
-            } while(0)
-        #endif //_MSC_VER
+        FORCE_INLINE void internal_assert(const bool expr)
+        {
+            assert(expr && "conversion validation failed (runtime)");
+        }
 
         template<typename Target, typename Source>
         struct is_trivial_conversion
@@ -266,82 +255,99 @@ namespace Divide
 
         // No-op overload for trivial conversions
         template<typename Target, typename Source> requires skip_validation_v<Target, Source>
-        constexpr void validate_conversion(const Source /*value*/) noexcept { };
+        void validate_conversion(const Source /*value*/) noexcept { };
 
         // Checked overload for non-trivial conversions
         template<typename Target, typename Source> requires (!skip_validation_v<Target, Source>)
-        constexpr void validate_conversion(const Source value)
+        void validate_conversion(const Source value)
         {
-            if constexpr (std::is_enum_v<Source>)
+            if constexpr (std::is_enum_v<Source> || std::is_enum_v<Target> )
             {
-                using U = BaseType<Source>;
-                validate_conversion<Target, U>(static_cast<U>(value));
-            }
-            else if constexpr (std::is_floating_point_v<Source>)
-            {
-                // Floating point source -> Target (usually integral): check finite, non-negative and fits max
-                if (std::is_constant_evaluated())
+                if constexpr (std::is_enum_v<Source> && !std::is_enum_v<Target> )
                 {
-                    // NaN check: NaN is the only floating value for which value == value is false
-                    internal_assert(value == value);
-
-                    // Range checks: use numeric_limits of Target so signed/unsigned targets are both handled
-                    internal_assert(value >= static_cast<Source>(std::numeric_limits<Target>::min()));
-                    internal_assert(value <= static_cast<Source>(std::numeric_limits<Target>::max()));
+                    validate_conversion<Target, BaseType<Source>>(static_cast<BaseType<Source>>(value));
+                }
+                else if constexpr (!std::is_enum_v<Source> && std::is_enum_v<Target>)
+                {
+                    validate_conversion<BaseType<Target>, Source>(value);
                 }
                 else
                 {
-                    // runtime checks: prefer std::isfinite for clarity where available
-                    internal_assert(std::isfinite(value));
-                    internal_assert(value >= static_cast<Source>(std::numeric_limits<Target>::min()));
-                    internal_assert(value <= static_cast<Source>(std::numeric_limits<Target>::max()));
+                    validate_conversion<BaseType<Target>, BaseType<Source>>(static_cast<BaseType<Source>>(value));
                 }
+            }
+            else if constexpr (std::is_same_v<Target, Byte>)
+            {
+                validate_conversion<U8, Source>(value);
+            }
+            else if constexpr (std::is_floating_point_v<Source>)
+            {
+                internal_assert( std::isfinite(value) );
+
+                const long double v = static_cast<long double>(value);
+
+                internal_assert
+                (
+                    v >= static_cast<long double>(std::numeric_limits<Target>::lowest()) &&
+                    v <= static_cast<long double>(std::numeric_limits<Target>::max())
+                );
             }
             else if constexpr (std::is_signed_v<Source> && std::is_integral_v<Target> && std::is_unsigned_v<Target>)
             {
                 // Signed integral source -> unsigned/smaller integral target: check non-negative and fits
-                internal_assert(value >= 0);
-                internal_assert(static_cast<std::make_unsigned_t<Source>>(value) <= std::numeric_limits<Target>::max());
+                internal_assert
+                (
+                    value >= 0 &&
+                    value <= std::numeric_limits<Target>::max()
+                );
             }
             else if constexpr (std::is_integral_v<Source> && std::is_integral_v<Target>)
             {
                 // Integral source (signed or unsigned) -> smaller unsigned/signed target: check fit
-                internal_assert(static_cast<std::make_unsigned_t<Source>>(value) <= std::numeric_limits<std::make_unsigned_t<Target>>::max());
+                internal_assert
+                (
+                    value <= std::numeric_limits<Target>::max()
+                );
             }
             else
             {
                 //NOP
             }
         }
+
+        template<typename Target, typename Source>
+        constexpr void runtime_validate_conversion(const Source value)
+        {
+            if consteval
+            {
+                //NOP
+            }
+            else
+            {
+                validate_conversion<Target, Source>(value);
+            }
+        }
+
     } //namespace detail
 
-    template <typename From, typename To>
-    struct static_caster
-    {
-        To operator()( From p ) noexcept
-        {
-            return static_cast<To>(p);
-        }
-    };
-
-    template <typename T> constexpr size_t to_size( const T value ) { detail::validate_conversion<size_t, T>(value); return static_cast<size_t>(value); }
-    template <typename T> constexpr U64    to_U64 ( const T value ) { detail::validate_conversion<U64,    T>(value); return static_cast<U64>(value);    }
-    template <typename T> constexpr U32    to_U32 ( const T value ) { detail::validate_conversion<U32,    T>(value); return static_cast<U32>(value);    }
-    template <typename T> constexpr U16    to_U16 ( const T value ) { detail::validate_conversion<U16,    T>(value); return static_cast<U16>(value);    }
-    template <typename T> constexpr U8     to_U8  ( const T value ) { detail::validate_conversion<U8,     T>(value); return static_cast<U8>(value);     }
-    template <typename T> constexpr I64    to_I64 ( const T value ) { detail::validate_conversion<I64,    T>(value); return static_cast<I64>(value);    }
-    template <typename T> constexpr I32    to_I32 ( const T value ) { detail::validate_conversion<I32,    T>(value); return static_cast<I32>(value);    }
-    template <typename T> constexpr I16    to_I16 ( const T value ) { detail::validate_conversion<I16,    T>(value); return static_cast<I16>(value);    }
-    template <typename T> constexpr I8     to_I8  ( const T value ) { detail::validate_conversion<I8,     T>(value); return static_cast<I8>(value);     }
-    template <typename T> constexpr S64    to_S64 ( const T value ) { detail::validate_conversion<S64,    T>(value); return static_cast<S64>(value);    }
-    template <typename T> constexpr S32    to_S32 ( const T value ) { detail::validate_conversion<S32,    T>(value); return static_cast<S32>(value);    }
-    template <typename T> constexpr S16    to_S16 ( const T value ) { detail::validate_conversion<S16,    T>(value); return static_cast<S16>(value);    }
-    template <typename T> constexpr S8     to_S8  ( const T value ) { detail::validate_conversion<S8,     T>(value); return static_cast<S8>(value);     }
-    template <typename T> constexpr F32    to_F32 ( const T value ) { detail::validate_conversion<F32,    T>(value); return static_cast<F32>(value);    }
-    template <typename T> constexpr R32    to_R32 ( const T value ) { detail::validate_conversion<R32,    T>(value); return static_cast<R32>(value);    }
-    template <typename T> constexpr D64    to_D64 ( const T value ) { detail::validate_conversion<D64,    T>(value); return static_cast<D64>(value);    }
-    template <typename T> constexpr R64    to_R64 ( const T value ) { detail::validate_conversion<R64,    T>(value); return static_cast<R64>(value);    }
-    template <typename T> constexpr Byte   to_byte( const T value ) { detail::validate_conversion<Byte,   T>(value); return static_cast<Byte>(value);   }
+    template <typename T> constexpr size_t to_size( const T value ) { detail::runtime_validate_conversion<size_t, T>(value); return static_cast<size_t>(value); }
+    template <typename T> constexpr U64    to_U64 ( const T value ) { detail::runtime_validate_conversion<U64,    T>(value); return static_cast<U64>(value);    }
+    template <typename T> constexpr U32    to_U32 ( const T value ) { detail::runtime_validate_conversion<U32,    T>(value); return static_cast<U32>(value);    }
+    template <typename T> constexpr U16    to_U16 ( const T value ) { detail::runtime_validate_conversion<U16,    T>(value); return static_cast<U16>(value);    }
+    template <typename T> constexpr U8     to_U8  ( const T value ) { detail::runtime_validate_conversion<U8,     T>(value); return static_cast<U8>(value);     }
+    template <typename T> constexpr I64    to_I64 ( const T value ) { detail::runtime_validate_conversion<I64,    T>(value); return static_cast<I64>(value);    }
+    template <typename T> constexpr I32    to_I32 ( const T value ) { detail::runtime_validate_conversion<I32,    T>(value); return static_cast<I32>(value);    }
+    template <typename T> constexpr I16    to_I16 ( const T value ) { detail::runtime_validate_conversion<I16,    T>(value); return static_cast<I16>(value);    }
+    template <typename T> constexpr I8     to_I8  ( const T value ) { detail::runtime_validate_conversion<I8,     T>(value); return static_cast<I8>(value);     }
+    template <typename T> constexpr S64    to_S64 ( const T value ) { detail::runtime_validate_conversion<S64,    T>(value); return static_cast<S64>(value);    }
+    template <typename T> constexpr S32    to_S32 ( const T value ) { detail::runtime_validate_conversion<S32,    T>(value); return static_cast<S32>(value);    }
+    template <typename T> constexpr S16    to_S16 ( const T value ) { detail::runtime_validate_conversion<S16,    T>(value); return static_cast<S16>(value);    }
+    template <typename T> constexpr S8     to_S8  ( const T value ) { detail::runtime_validate_conversion<S8,     T>(value); return static_cast<S8>(value);     }
+    template <typename T> constexpr F32    to_F32 ( const T value ) { detail::runtime_validate_conversion<F32,    T>(value); return static_cast<F32>(value);    }
+    template <typename T> constexpr R32    to_R32 ( const T value ) { detail::runtime_validate_conversion<R32,    T>(value); return static_cast<R32>(value);    }
+    template <typename T> constexpr D64    to_D64 ( const T value ) { detail::runtime_validate_conversion<D64,    T>(value); return static_cast<D64>(value);    }
+    template <typename T> constexpr R64    to_R64 ( const T value ) { detail::runtime_validate_conversion<R64,    T>(value); return static_cast<R64>(value);    }
+    template <typename T> constexpr Byte   to_byte( const T value ) { detail::runtime_validate_conversion<Byte,   T>(value); return static_cast<Byte>(value);   }
                                                                                                                 
     //ref: http://codereview.stackexchange.com/questions/51235/udp-network-server-client-for-gaming-using-boost-asio
     struct counter

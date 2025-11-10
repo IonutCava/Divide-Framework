@@ -119,7 +119,7 @@ jobs:
 
   build_msvc_asan_ubsan:
     needs: info_job
-    name: Windows - msvc ASAN+UBSAN (profile/editor)
+    name: Windows - msvc ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
     timeout-minutes: 90
     steps:
@@ -134,10 +134,10 @@ jobs:
         with:
           compiler: msvc
           build-type: editor
-          configuration: profile
+          configuration: debug
           configure-preset: windows-msvc-editor-asan-ubsan
-          build-preset: windows-msvc-profile-editor-asan-ubsan
-          test-preset: test-windows-msvc-profile-editor-asan-ubsan
+          build-preset: windows-msvc-debug-editor-asan-ubsan
+          test-preset: test-windows-msvc-debug-editor-asan-ubsan
 
   build_clang_asan_ubsan:
     needs: info_job

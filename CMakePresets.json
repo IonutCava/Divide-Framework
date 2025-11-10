@@ -1,1036 +1,1055 @@
 ﻿{
     "version": 8,
-    "configurePresets": [
-        {
-            "name": "conf-common",
-            "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations.",
-            "hidden": true,
-            "generator": "Ninja Multi-Config",
-            "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "installDir": "${sourceDir}/out/install/${presetName}",
-            "warnings": { "dev": false },
-            "environment": {
-                "MIMALLOC_DISABLE_REDIRECT": "1"
-            },
+  "configurePresets": [
+    {
+      "name": "conf-common",
+      "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations.",
+      "hidden": true,
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "warnings": { "dev": false },
+      "environment": {
+        "MIMALLOC_DISABLE_REDIRECT": "1"
+      },
             "cacheVariables" : {
                 "CMAKE_POLICY_VERSION_MINIMUM" : "3.5"
-            }
-        },
-        {
-            "name": "conf-windows-common",
-            "description": "Windows settings for MSBuild toolchain that apply to msvc and clang.",
-            "hidden": true,
-            "inherits": "conf-common",
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Windows"
-            },
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            },
-            "cacheVariables": {
-                "WINDOWS_OS_BUILD": true,
-                "CMAKE_MAKE_PROGRAM": "ninja.exe",
-                "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
-            },
-            "vendor": {
-                "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "hostOS": [ "Windows" ]
-                }
-            }
-        },
-        {
-            "name": "conf-linux-common",
-            "description": "Linux OS settings for gcc and clang toolchains.",
-            "hidden": true,
-            "inherits": "conf-common",
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Linux"
-            },
-            "cacheVariables": {
-                "LINUX_OS_BUILD": true
-            },
-            "vendor": {
-                "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "hostOS": [ "Linux" ]
-                },
-                "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
-                    "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
-                }
-            }
-        },
-        {
-            "name": "conf-macos-common",
-            "description": "macOS builds",
-            "hidden": true,
-            "inherits": "conf-common",
-            "condition": {
-                "type": "equals",
-                "lhs": "${hostSystemName}",
-                "rhs": "Darwin"
-            },
-            "cacheVariables": {
-                "MAC_OS_BUILD": true
-            }
-        },
-        {
-            "name": "conf-macos-x86_64",
-            "description": "macOS x86_64 builds",
-            "hidden": true,
-            "inherits": "conf-macos-common",
-            "cacheVariables": {
-                "CMAKE_OSX_ARCHITECTURES": "x86_64"
-            }
-        },
-        {
-            "name": "conf-macos-arm64",
-            "description": "macOS arm64 builds",
-            "hidden": true,
-            "inherits": "conf-macos-common",
-            "cacheVariables": {
-                "CMAKE_OSX_ARCHITECTURES": "arm64"
-            }
-        },
-        {
-            "name": "editor-build",
-            "hidden": true,
-            "cacheVariables": {
-                "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
-            }
-        },
-        {
-            "name": "asan-build",
-            "hidden": true,
-            "cacheVariables": {
-                "RUN_ASAN": true
-            }
-        },
-        {
-            "name": "ubsan-build",
-            "hidden": true,
-            "cacheVariables": {
-                "RUN_UBSAN": true
-            }
-        },
-        {
-            "name": "optick-build",
-            "hidden": true,
-            "cacheVariables": {
-                "ENABLE_OPTICK_PROFILER": true
-            }
-        },
-        {
-            "name": "function-profiling-build",
-            "hidden": true,
-            "cacheVariables": {
-                "ENABLE_FUNCTION_PROFILING": true
-            }
-        },
-        {
-            "name": "windows-msvc",
-            "displayName": "Windows Build (MSVC)",
-            "description": "Target Windows with the msvc compiler.",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "cl",
-                "CMAKE_CXX_COMPILER": "cl"
-            }
-        },
-        {
-            "name": "windows-clang",
-            "displayName": "Windows Build (Win64 - CLANG)",
-            "description": "Target Windows with the clang compiler.",
-            "inherits": "conf-windows-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang-cl",
-                "CMAKE_CXX_COMPILER": "clang-cl",
-                "CMAKE_RC_COMPILER": "llvm-rc",
-                "CMAKE_RC_FLAGS": ""
-            },
-            "vendor": {
-                "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "intelliSenseMode": "windows-clang-x64"
-                }
-            }
-        },
-        {
-            "name": "linux-gcc",
-            "displayName": "Linux Build (GCC)",
-            "description": "Target Linux OS with the gcc compiler.",
-            "inherits": "conf-linux-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "gcc",
-                "CMAKE_CXX_COMPILER": "g++"
-            }
-        },
-        {
-            "name": "linux-clang",
-            "displayName": "Linux Build (CLANG)",
-            "description": "Target Linux OS with the clang compiler",
-            "inherits": "conf-linux-common",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++"
-            }
-        },
-        {
-            "name": "macos-clang-x86_64",
-            "displayName": "MacOS Build (x86_64 - CLANG)",
-            "description": "Target macOS x86_64 with the clang compiler",
-            "inherits": "conf-macos-x86_64",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++"
-            }
-        },
-        {
-            "name": "macos-clang-arm64",
-            "displayName": "MacOS Build (arm64 - CLANG)",
-            "description": "Target macOS arm64 with the clang compiler",
-            "inherits": "conf-macos-arm64",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++"
-            }
-        },
-        {
-            "name": "windows-msvc-instrumentation",
-            "displayName": "Windows Build (MSVC) + Instrumentation",
-            "description": "Target Windows with the msvc compiler. Instrumentation enabled.",
-            "inherits": [ "windows-msvc", "optick-build", "function-profiling-build" ]
-        },
-        {
-            "name": "windows-msvc-editor",
-            "displayName": "Windows Editor Build (MSVC)",
-            "description": "Target Windows with the msvc compiler. Editor build.",
-            "inherits": [ "windows-msvc", "editor-build" ]
-        },
-        {
-            "name": "windows-msvc-editor-asan-ubsan",
-            "displayName": "Windows Editor Build (MSVC) + ASAN + UBSAN",
-            "description": "Target Windows with the msvc compiler. Editor build. ASAN enabled.",
-            "inherits": [ "windows-msvc-editor", "asan-build", "ubsan-build" ]
-        },
-        {
-            "name": "windows-msvc-editor-instrumentation",
-            "displayName": "Windows Editor Build (MSVC) + Instrumentation",
-            "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled.",
-            "inherits": [ "windows-msvc-instrumentation", "editor-build" ]
-        },
-        {
-            "name": "windows-msvc-editor-instrumentation-verbose",
-            "displayName": "Windows Editor Build (MSVC) + Instrumentation + Verbose",
-            "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled. Verbose build",
-            "inherits": [ "windows-msvc-instrumentation", "editor-build" ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "windows-clang-editor",
-            "displayName": "Windows Editor Build (Win64 - CLANG)",
-            "description": "Target Windows with the clang compiler. Editor build.",
-            "inherits": [ "windows-clang", "editor-build" ]
-        },
-        {
-            "name": "windows-clang-instrumentation",
-            "displayName": "Windows Build (Win64 - CLANG) + Instrumentation",
-            "description": "Target Windows with the clang compiler. Instrumentation enabled.",
-            "inherits": [ "windows-clang", "optick-build", "function-profiling-build" ]
-        },
-        {
-            "name": "windows-clang-editor-instrumentation",
-            "displayName": "Windows Editor Build (Win64 - CLANG) + Instrumentation",
-            "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled.",
-            "inherits": [ "windows-clang-instrumentation", "editor-build" ]
-        },
-        {
-            "name": "windows-clang-editor-instrumentation-verbose",
-            "displayName": "Windows Editor Build (Win64 - CLANG) + Instrumentation + Verbose",
-            "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled. Verbose build.",
-            "inherits": [ "windows-clang-instrumentation", "editor-build" ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "windows-clang-editor-asan-ubsan",
-            "displayName": "Windows Editor Build (Win64 - CLANG) + ASAN + UBSAN",
-            "description": "Target Windows with the clang compiler. Editor build. ASAN enabled.",
-            "inherits": [ "windows-clang-editor", "asan-build", "ubsan-build" ]
-        },
-        {
-            "name": "linux-gcc-editor",
-            "displayName": "Linux Editor Build (GCC)",
-            "description": "Target Linux OS with the gcc compiler. Editor build.",
-            "inherits": [ "linux-gcc", "editor-build" ]
-        },
-        {
-            "name": "linux-gcc-instrumentation",
-            "displayName": "Linux Game Build (GCC) + Instrumentation",
-            "description": "Target Linux OS with the gcc compiler. Instrumentation enabled.",
-            "inherits": [ "linux-gcc", "function-profiling-build" ]
-        },
-        {
-            "name": "linux-gcc-editor-instrumentation",
-            "displayName": "Linux Editor Build (GCC) + Instrumentation",
-            "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled.",
-            "inherits": [ "linux-gcc-instrumentation", "editor-build" ]
-        },
-        {
-            "name": "linux-gcc-editor-instrumentation-verbose",
-            "displayName": "Linux Editor Build (GCC) + Instrumentation + Verbose",
-            "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled. Verbose build.",
-            "inherits": [ "linux-gcc-instrumentation", "editor-build" ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "linux-clang-editor",
-            "displayName": "Linux Editor Build (CLANG)",
-            "description": "Target Linux OS with the clang compiler. Editor build.",
-            "inherits": [ "linux-clang", "editor-build" ]
-        },
-        {
-            "name": "linux-clang-editor-asan-ubsan",
-            "displayName": "Linux Editor Build (CLANG) + ASAN + UBSAN",
-            "description": "Target Linux OS with the clang compiler. Editor build.",
-            "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ]
-        },
-        {
-            "name": "linux-clang-instrumentation",
-            "displayName": "Linux Game Build (CLANG) + Instrumentation",
-            "description": "Target Linux OS with the clang compiler. Instrumentation enabled.",
-            "inherits": [ "linux-clang", "function-profiling-build" ]
-        },
-        {
-            "name": "linux-clang-editor-instrumentation",
-            "displayName": "Linux Editor Build (CLANG) + Instrumentation",
-            "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled.",
-            "inherits": [ "linux-clang-instrumentation", "editor-build" ]
-        },
-        {
-            "name": "linux-clang-editor-instrumentation-verbose",
-            "displayName": "Linux Editor Build (CLANG) + Instrumentation + Verbose",
-            "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled. Verbose build.",
-            "inherits": [ "linux-clang-instrumentation", "editor-build" ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "macos-clang-x86_64-editor",
-            "displayName": "MacOS Editor Build (x86_64 - CLANG)",
-            "description": "Target macOS x86_64 with the clang compiler. Editor build.",
-            "inherits": [ "macos-clang-x86_64", "editor-build" ]
-        },
-        {
-            "name": "macos-clang-arm64-editor",
-            "displayName": "MacOS Editor Build (arm64 - CLANG)",
-            "description": "Target macOS arm64 with the clang compiler. Editor build.",
-            "inherits": [ "macos-clang-arm64", "editor-build" ]
-        },
-        {
-            "name": "macos-clang-x86_64-editor-verbose",
-            "displayName": "MacOS Editor Build (x86_64 - CLANG) + Verbose",
-            "description": "Target macOS x86_64 with the clang compiler. Editor build. Verbose build",
-            "inherits": [ "macos-clang-x86_64", "editor-build" ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "macos-clang-arm64-editor-verbose",
-            "displayName": "MacOS Editor Build (arm64 - CLANG) + Verbose",
-            "description": "Target macOS arm64 with the clang compiler. Editor build. Verbose build",
-            "inherits": [ "macos-clang-arm64", "editor-build" ],
-            "cacheVariables": {
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
+      }
+    },
+    {
+      "name": "conf-windows-common",
+      "description": "Windows settings for MSBuild toolchain that apply to msvc and clang.",
+      "hidden": true,
+      "inherits": "conf-common",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "WINDOWS_OS_BUILD": true,
+        "CMAKE_MAKE_PROGRAM": "ninja.exe",
+        "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ]
         }
-    ],
-    "buildPresets": [
-        {
-            "name": "windows-msvc-debug-editor",
-            "configurePreset": "windows-msvc-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-msvc-profile-editor",
-            "configurePreset": "windows-msvc-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-msvc-release-editor",
-            "configurePreset": "windows-msvc-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "windows-msvc-debug-editor-instrumentation-verbose",
-            "configurePreset": "windows-msvc-editor-instrumentation-verbose",
-            "configuration": "Debug",
-            "verbose":  true
-        },
-        {
-            "name": "windows-msvc-debug-editor-instrumentation",
-            "configurePreset": "windows-msvc-editor-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-msvc-profile-editor-instrumentation",
-            "configurePreset": "windows-msvc-editor-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-msvc-release-editor-instrumentation",
-            "configurePreset": "windows-msvc-editor-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "windows-msvc-profile-editor-asan-ubsan",
-            "configurePreset": "windows-msvc-editor-asan-ubsan",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-msvc-debug",
-            "configurePreset": "windows-msvc",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-msvc-profile",
-            "configurePreset": "windows-msvc",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-msvc-release",
-            "configurePreset": "windows-msvc",
-            "configuration": "Release"
-        },
-        {
-            "name": "windows-msvc-debug-instrumentation",
-            "configurePreset": "windows-msvc-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-msvc-profile-instrumentation",
-            "configurePreset": "windows-msvc-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-msvc-release-instrumentation",
-            "configurePreset": "windows-msvc-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "windows-clang-debug-editor",
-            "configurePreset": "windows-clang-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-clang-profile-editor",
-            "configurePreset": "windows-clang-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-clang-release-editor",
-            "configurePreset": "windows-clang-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "windows-clang-debug-editor-instrumentation-verbose",
-            "configurePreset": "windows-clang-editor-instrumentation-verbose",
-            "configuration": "Debug",
-            "verbose": true
-        },
-        {
-            "name": "windows-clang-debug-editor-instrumentation",
-            "configurePreset": "windows-clang-editor-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-clang-profile-editor-instrumentation",
-            "configurePreset": "windows-clang-editor-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-clang-release-editor-instrumentation",
-            "configurePreset": "windows-clang-editor-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "windows-clang-profile-editor-asan-ubsan",
-            "configurePreset": "windows-clang-editor-asan-ubsan",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-clang-debug",
-            "configurePreset": "windows-clang",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-clang-profile",
-            "configurePreset": "windows-clang",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-clang-release",
-            "configurePreset": "windows-clang",
-            "configuration": "Release"
-        },
-        {
-            "name": "windows-clang-debug-instrumentation",
-            "configurePreset": "windows-clang-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-clang-profile-instrumentation",
-            "configurePreset": "windows-clang-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "windows-clang-release-instrumentation",
-            "configurePreset": "windows-clang-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-gcc-debug-editor",
-            "configurePreset": "linux-gcc-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-gcc-profile-editor",
-            "configurePreset": "linux-gcc-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-gcc-release-editor",
-            "configurePreset": "linux-gcc-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-gcc-debug-editor-instrumentation-verbose",
-            "configurePreset": "linux-gcc-editor-instrumentation-verbose",
-            "configuration": "Debug",
-            "verbose": true
-        },
-        {
-            "name": "linux-gcc-debug-editor-instrumentation",
-            "configurePreset": "linux-gcc-editor-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-gcc-profile-editor-instrumentation",
-            "configurePreset": "linux-gcc-editor-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-gcc-release-editor-instrumentation",
-            "configurePreset": "linux-gcc-editor-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-gcc-debug",
-            "configurePreset": "linux-gcc",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-gcc-profile",
-            "configurePreset": "linux-gcc",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-gcc-release",
-            "configurePreset": "linux-gcc",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-gcc-debug-instrumentation",
-            "configurePreset": "linux-gcc-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-gcc-profile-instrumentation",
-            "configurePreset": "linux-gcc-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-gcc-release-instrumentation",
-            "configurePreset": "linux-gcc-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-clang-debug-editor",
-            "configurePreset": "linux-clang-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-clang-profile-editor",
-            "configurePreset": "linux-clang-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-clang-release-editor",
-            "configurePreset": "linux-clang-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-clang-release-editor-asan-ubsan",
-            "configurePreset": "linux-clang-editor-asan-ubsan",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-clang-debug-editor-instrumentation-verbose",
-            "configurePreset": "linux-clang-editor-instrumentation-verbose",
-            "configuration": "Debug",
-            "verbose": true
-        },
-        {
-            "name": "linux-clang-debug-editor-instrumentation",
-            "configurePreset": "linux-clang-editor-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-clang-profile-editor-instrumentation",
-            "configurePreset": "linux-clang-editor-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-clang-release-editor-instrumentation",
-            "configurePreset": "linux-clang-editor-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-clang-debug",
-            "configurePreset": "linux-clang",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-clang-profile",
-            "configurePreset": "linux-clang",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-clang-release",
-            "configurePreset": "linux-clang",
-            "configuration": "Release"
-        },
-        {
-            "name": "linux-clang-debug-instrumentation",
-            "configurePreset": "linux-clang-instrumentation",
-            "configuration": "Debug"
-        },
-        {
-            "name": "linux-clang-profile-instrumentation",
-            "configurePreset": "linux-clang-instrumentation",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "linux-clang-release-instrumentation",
-            "configurePreset": "linux-clang-instrumentation",
-            "configuration": "Release"
-        },
-        {
-            "name": "macos-clang-x86_64-release",
-            "configurePreset": "macos-clang-x86_64",
-            "configuration": "Release"
-        },
-        {
-            "name": "macos-clang-x86_64-debug",
-            "configurePreset": "macos-clang-x86_64",
-            "configuration": "Debug"
-        },
-        {
-            "name": "macos-clang-x86_64-profile",
-            "configurePreset": "macos-clang-x86_64",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "macos-clang-x86_64-release-editor",
-            "configurePreset": "macos-clang-x86_64-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "macos-clang-x86_64-debug-editor",
-            "configurePreset": "macos-clang-x86_64-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "macos-clang-x86_64-profile-editor",
-            "configurePreset": "macos-clang-x86_64-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "macos-clang-x86_64-debug-editor-verbose",
-            "configurePreset": "macos-clang-x86_64-editor-verbose",
-            "configuration": "Debug",
-            "verbose": true
-        },
-        {
-            "name": "macos-clang-arm64-release",
-            "configurePreset": "macos-clang-arm64",
-            "configuration": "Release"
-        },
-        {
-            "name": "macos-clang-arm64-debug",
-            "configurePreset": "macos-clang-arm64",
-            "configuration": "Debug"
-        },
-        {
-            "name": "macos-clang-arm64-profile",
-            "configurePreset": "macos-clang-arm64",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "macos-clang-arm64-release-editor",
-            "configurePreset": "macos-clang-arm64-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "macos-clang-arm64-debug-editor",
-            "configurePreset": "macos-clang-arm64-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "macos-clang-arm64-profile-editor",
-            "configurePreset": "macos-clang-arm64-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "macos-clang-arm64-debug-editor-verbose",
-            "configurePreset": "macos-clang-arm64-editor-verbose",
-            "configuration": "Debug",
-            "verbose": true
+      }
+    },
+    {
+      "name": "conf-linux-common",
+      "description": "Linux OS settings for gcc and clang toolchains.",
+      "hidden": true,
+      "inherits": "conf-common",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "LINUX_OS_BUILD": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Linux" ]
+        },
+        "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+          "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
         }
-    ],
-    "testPresets": [
-        {
-            "name": "test-common",
-            "description": "Test CMake settings that apply to all configurations",
-            "hidden": true,
-            "output": {
-                "outputOnFailure": true
-            },
-            "execution": {
-                "noTestsAction": "error",
-                "stopOnFailure": true
-            }
-        },
-        {
-            "name": "test-windows-msvc-profile-editor-asan-ubsan",
-            "displayName": "Test-MSVC-Profile-Editor + ASAN + UBSAN",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-msvc-editor-asan-ubsan",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-windows-msvc-debug-editor",
-            "displayName": "Test-MSVC-Debug-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-msvc-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-windows-msvc-profile-editor",
-            "displayName": "Test-MSVC-Profile-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-msvc-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-windows-msvc-release-editor",
-            "displayName": "Test-MSVC-Release-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-msvc-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-windows-msvc-debug",
-            "displayName": "Test-MSVC-Debug",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-msvc",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-windows-msvc-profile",
-            "displayName": "Test-MSVC-Profile",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-msvc",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-windows-msvc-release",
-            "displayName": "Test-MSVC-Release",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-msvc",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-windows-clang-debug",
-            "displayName": "Test-Clang-Win64-Debug",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-clang",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-windows-clang-profile",
-            "displayName": "Test-Clang-Win64-Profile",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-clang",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-windows-clang-release",
-            "displayName": "Test-Clang-Win64-Release",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-clang",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-windows-clang-profile-editor-asan-ubsan",
-            "displayName": "Test-Clang-Win64-Profile-Editor-Asan-Ubsan",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-clang-editor-asan-ubsan",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-windows-clang-debug-editor",
-            "displayName": "Test-Clang-Win64-Debug-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-clang-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-windows-clang-profile-editor",
-            "displayName": "Test-Clang-Win64-Profile-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-clang-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-windows-clang-release-editor",
-            "displayName": "Test-Clang-Win64-Release-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "windows-clang-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-linux-gcc-debug",
-            "displayName": "Test-GCC-Debug",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-gcc",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-linux-gcc-profile",
-            "displayName": "Test-GCC-Profile",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-gcc",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-linux-gcc-release",
-            "displayName": "Test-GCC-Release",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-gcc",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-linux-gcc-debug-editor",
-            "displayName": "Test-GCC-Debug-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-gcc-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-linux-gcc-profile-editor",
-            "displayName": "Test-GCC-Profile-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-gcc-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-linux-gcc-release-editor",
-            "displayName": "Test-GCC-Release-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-gcc-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-linux-clang-debug-editor",
-            "displayName": "Test-Clang-Linux-Debug-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-clang-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-linux-clang-profile-editor",
-            "displayName": "Test-Clang-Linux-Profile-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-clang-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-linux-clang-release-editor",
-            "displayName": "Test-Clang-Linux-Release-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-clang-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-linux-clang-release-editor-asan-ubsan",
-            "displayName": "Test-Clang-Linux-Release-Editor-asan-ubsan",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-clang-editor-asan-ubsan",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-linux-clang-debug",
-            "displayName": "Test-Clang-Linux-Debug",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-clang",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-linux-clang-profile",
-            "displayName": "Test-Clang-Linux-Profile",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-clang",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-linux-clang-release",
-            "displayName": "Test-Clang-Linux-Release",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "linux-clang",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-macos-clang-x86_64-release",
-            "displayName": "Test-macOS-x86_64-Clang-Release",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-x86_64",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-macos-clang-x86_64-debug",
-            "displayName": "Test-macOS-x86_64-Clang-Debug",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-x86_64",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-macos-clang-x86_64-profile",
-            "displayName": "Test-macOS-x86_64-Clang-Profile",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-x86_64",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-macos-clang-x86_64-release-editor",
-            "displayName": "Test-macOS-x86_64-Clang-Release-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-x86_64-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-macos-clang-x86_64-debug-editor",
-            "displayName": "Test-macOS-x86_64-Clang-Debug-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-x86_64-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-macos-clang-x86_64-profile-editor",
-            "displayName": "Test-macOS-x86_64-Clang-Profile-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-x86_64-editor",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-macos-clang-arm64-release",
-            "displayName": "Test-macOS-arm64-Clang-Release",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-arm64",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-macos-clang-arm64-debug",
-            "displayName": "Test-macOS-arm64-Clang-Debug",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-arm64",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-macos-clang-arm64-profile",
-            "displayName": "Test-macOS-arm64-Clang-Profile",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-arm64",
-            "configuration": "RelWithDebInfo"
-        },
-        {
-            "name": "test-macos-clang-arm64-release-editor",
-            "displayName": "Test-macOS-arm64-Clang-Release-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-arm64-editor",
-            "configuration": "Release"
-        },
-        {
-            "name": "test-macos-clang-arm64-debug-editor",
-            "displayName": "Test-macOS-arm64-Clang-Debug-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-arm64-editor",
-            "configuration": "Debug"
-        },
-        {
-            "name": "test-macos-clang-arm64-profile-editor",
-            "displayName": "Test-macOS-arm64-Clang-Profile-Editor",
-            "description": "Enable output and stop on failure",
-            "inherits": "test-common",
-            "configurePreset": "macos-clang-arm64-editor",
-            "configuration": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "conf-macos-common",
+      "description": "macOS builds",
+      "hidden": true,
+      "inherits": "conf-common",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "MAC_OS_BUILD": true
+      }
+    },
+    {
+      "name": "conf-macos-x86_64",
+      "description": "macOS x86_64 builds",
+      "hidden": true,
+      "inherits": "conf-macos-common",
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "x86_64"
+      }
+    },
+    {
+      "name": "conf-macos-arm64",
+      "description": "macOS arm64 builds",
+      "hidden": true,
+      "inherits": "conf-macos-common",
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64"
+      }
+    },
+    {
+      "name": "editor-build",
+      "hidden": true,
+      "cacheVariables": {
+        "DIVIDE_STARTUP_TYPE": "IN_EDITOR"
+      }
+    },
+    {
+      "name": "asan-build",
+      "hidden": true,
+      "cacheVariables": {
+        "RUN_ASAN": true
+      }
+    },
+    {
+      "name": "ubsan-build",
+      "hidden": true,
+      "cacheVariables": {
+        "RUN_UBSAN": true
+      }
+    },
+    {
+      "name": "optick-build",
+      "hidden": true,
+      "cacheVariables": {
+        "ENABLE_OPTICK_PROFILER": true
+      }
+    },
+    {
+      "name": "function-profiling-build",
+      "hidden": true,
+      "cacheVariables": {
+        "ENABLE_FUNCTION_PROFILING": true
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows Build (MSVC)",
+      "description": "Target Windows with the msvc compiler.",
+      "inherits": "conf-windows-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    },
+    {
+      "name": "windows-clang",
+      "displayName": "Windows Build (Win64 - CLANG)",
+      "description": "Target Windows with the clang compiler.",
+      "inherits": "conf-windows-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_RC_COMPILER": "llvm-rc",
+        "CMAKE_RC_FLAGS": ""
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "intelliSenseMode": "windows-clang-x64"
         }
-    ]
+      }
+    },
+    {
+      "name": "linux-gcc",
+      "displayName": "Linux Build (GCC)",
+      "description": "Target Linux OS with the gcc compiler.",
+      "inherits": "conf-linux-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "linux-clang",
+      "displayName": "Linux Build (CLANG)",
+      "description": "Target Linux OS with the clang compiler",
+      "inherits": "conf-linux-common",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "macos-clang-x86_64",
+      "displayName": "MacOS Build (x86_64 - CLANG)",
+      "description": "Target macOS x86_64 with the clang compiler",
+      "inherits": "conf-macos-x86_64",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "macos-clang-arm64",
+      "displayName": "MacOS Build (arm64 - CLANG)",
+      "description": "Target macOS arm64 with the clang compiler",
+      "inherits": "conf-macos-arm64",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "windows-msvc-instrumentation",
+      "displayName": "Windows Build (MSVC) + Instrumentation",
+      "description": "Target Windows with the msvc compiler. Instrumentation enabled.",
+      "inherits": [ "windows-msvc", "optick-build", "function-profiling-build" ]
+    },
+    {
+      "name": "windows-msvc-editor",
+      "displayName": "Windows Editor Build (MSVC)",
+      "description": "Target Windows with the msvc compiler. Editor build.",
+      "inherits": [ "windows-msvc", "editor-build" ]
+    },
+    {
+      "name": "windows-msvc-editor-asan-ubsan",
+      "displayName": "Windows Editor Build (MSVC) + ASAN + UBSAN",
+      "description": "Target Windows with the msvc compiler. Editor build. ASAN enabled.",
+      "inherits": [ "windows-msvc-editor", "asan-build", "ubsan-build" ]
+    },
+    {
+      "name": "windows-msvc-editor-instrumentation",
+      "displayName": "Windows Editor Build (MSVC) + Instrumentation",
+      "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled.",
+      "inherits": [ "windows-msvc-instrumentation", "editor-build" ]
+    },
+    {
+      "name": "windows-msvc-editor-instrumentation-verbose",
+      "displayName": "Windows Editor Build (MSVC) + Instrumentation + Verbose",
+      "description": "Target Windows with the msvc compiler. Editor build. Instrumentation enabled. Verbose build",
+      "inherits": [ "windows-msvc-instrumentation", "editor-build" ],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "windows-clang-editor",
+      "displayName": "Windows Editor Build (Win64 - CLANG)",
+      "description": "Target Windows with the clang compiler. Editor build.",
+      "inherits": [ "windows-clang", "editor-build" ]
+    },
+    {
+      "name": "windows-clang-instrumentation",
+      "displayName": "Windows Build (Win64 - CLANG) + Instrumentation",
+      "description": "Target Windows with the clang compiler. Instrumentation enabled.",
+      "inherits": [ "windows-clang", "optick-build", "function-profiling-build" ]
+    },
+    {
+      "name": "windows-clang-editor-instrumentation",
+      "displayName": "Windows Editor Build (Win64 - CLANG) + Instrumentation",
+      "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled.",
+      "inherits": [ "windows-clang-instrumentation", "editor-build" ]
+    },
+    {
+      "name": "windows-clang-editor-instrumentation-verbose",
+      "displayName": "Windows Editor Build (Win64 - CLANG) + Instrumentation + Verbose",
+      "description": "Target Windows with the clang compiler. Editor build. Instrumentation enabled. Verbose build.",
+      "inherits": [ "windows-clang-instrumentation", "editor-build" ],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "windows-clang-editor-asan-ubsan",
+      "displayName": "Windows Editor Build (Win64 - CLANG) + ASAN + UBSAN",
+      "description": "Target Windows with the clang compiler. Editor build. ASAN enabled.",
+      "inherits": [ "windows-clang-editor", "asan-build", "ubsan-build" ]
+    },
+    {
+      "name": "linux-gcc-editor",
+      "displayName": "Linux Editor Build (GCC)",
+      "description": "Target Linux OS with the gcc compiler. Editor build.",
+      "inherits": [ "linux-gcc", "editor-build" ]
+    },
+    {
+      "name": "linux-gcc-editor-asan-ubsan",
+      "displayName": "Linux Editor Build (GCC) + ASAN + UBSAN",
+      "description": "Target Linux OS with the gcc compiler. Editor build.",
+      "inherits": [ "linux-gcc", "editor-build", "asan-build", "ubsan-build" ]
+    },
+    {
+      "name": "linux-gcc-instrumentation",
+      "displayName": "Linux Game Build (GCC) + Instrumentation",
+      "description": "Target Linux OS with the gcc compiler. Instrumentation enabled.",
+      "inherits": [ "linux-gcc", "function-profiling-build" ]
+    },
+    {
+      "name": "linux-gcc-editor-instrumentation",
+      "displayName": "Linux Editor Build (GCC) + Instrumentation",
+      "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled.",
+      "inherits": [ "linux-gcc-instrumentation", "editor-build" ]
+    },
+    {
+      "name": "linux-gcc-editor-instrumentation-verbose",
+      "displayName": "Linux Editor Build (GCC) + Instrumentation + Verbose",
+      "description": "Target Linux OS with the gcc compiler. Editor build. Instrumentation enabled. Verbose build.",
+      "inherits": [ "linux-gcc-instrumentation", "editor-build" ],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "linux-clang-editor",
+      "displayName": "Linux Editor Build (CLANG)",
+      "description": "Target Linux OS with the clang compiler. Editor build.",
+      "inherits": [ "linux-clang", "editor-build" ]
+    },
+    {
+      "name": "linux-clang-editor-asan-ubsan",
+      "displayName": "Linux Editor Build (CLANG) + ASAN + UBSAN",
+      "description": "Target Linux OS with the clang compiler. Editor build.",
+      "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ]
+    },
+    {
+      "name": "linux-clang-instrumentation",
+      "displayName": "Linux Game Build (CLANG) + Instrumentation",
+      "description": "Target Linux OS with the clang compiler. Instrumentation enabled.",
+      "inherits": [ "linux-clang", "function-profiling-build" ]
+    },
+    {
+      "name": "linux-clang-editor-instrumentation",
+      "displayName": "Linux Editor Build (CLANG) + Instrumentation",
+      "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled.",
+      "inherits": [ "linux-clang-instrumentation", "editor-build" ]
+    },
+    {
+      "name": "linux-clang-editor-instrumentation-verbose",
+      "displayName": "Linux Editor Build (CLANG) + Instrumentation + Verbose",
+      "description": "Target Linux OS with the clang compiler. Editor build. Instrumentation enabled. Verbose build.",
+      "inherits": [ "linux-clang-instrumentation", "editor-build" ],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "macos-clang-x86_64-editor",
+      "displayName": "MacOS Editor Build (x86_64 - CLANG)",
+      "description": "Target macOS x86_64 with the clang compiler. Editor build.",
+      "inherits": [ "macos-clang-x86_64", "editor-build" ]
+    },
+    {
+      "name": "macos-clang-arm64-editor",
+      "displayName": "MacOS Editor Build (arm64 - CLANG)",
+      "description": "Target macOS arm64 with the clang compiler. Editor build.",
+      "inherits": [ "macos-clang-arm64", "editor-build" ]
+    },
+    {
+      "name": "macos-clang-x86_64-editor-verbose",
+      "displayName": "MacOS Editor Build (x86_64 - CLANG) + Verbose",
+      "description": "Target macOS x86_64 with the clang compiler. Editor build. Verbose build",
+      "inherits": [ "macos-clang-x86_64", "editor-build" ],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "macos-clang-arm64-editor-verbose",
+      "displayName": "MacOS Editor Build (arm64 - CLANG) + Verbose",
+      "description": "Target macOS arm64 with the clang compiler. Editor build. Verbose build",
+      "inherits": [ "macos-clang-arm64", "editor-build" ],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-msvc-debug-editor",
+      "configurePreset": "windows-msvc-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-profile-editor",
+      "configurePreset": "windows-msvc-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-msvc-release-editor",
+      "configurePreset": "windows-msvc-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-debug-editor-asan-ubsan",
+      "configurePreset": "windows-msvc-editor-asan-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-debug-editor-instrumentation-verbose",
+      "configurePreset": "windows-msvc-editor-instrumentation-verbose",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "windows-msvc-debug-editor-instrumentation",
+      "configurePreset": "windows-msvc-editor-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-profile-editor-instrumentation",
+      "configurePreset": "windows-msvc-editor-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-msvc-release-editor-instrumentation",
+      "configurePreset": "windows-msvc-editor-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-debug",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-profile",
+      "configurePreset": "windows-msvc",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-msvc-release",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-debug-instrumentation",
+      "configurePreset": "windows-msvc-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-msvc-profile-instrumentation",
+      "configurePreset": "windows-msvc-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-msvc-release-instrumentation",
+      "configurePreset": "windows-msvc-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-clang-debug-editor",
+      "configurePreset": "windows-clang-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-clang-profile-editor",
+      "configurePreset": "windows-clang-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-clang-release-editor",
+      "configurePreset": "windows-clang-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-clang-debug-editor-instrumentation-verbose",
+      "configurePreset": "windows-clang-editor-instrumentation-verbose",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "windows-clang-debug-editor-instrumentation",
+      "configurePreset": "windows-clang-editor-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-clang-profile-editor-instrumentation",
+      "configurePreset": "windows-clang-editor-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-clang-release-editor-instrumentation",
+      "configurePreset": "windows-clang-editor-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-clang-profile-editor-asan-ubsan",
+      "configurePreset": "windows-clang-editor-asan-ubsan",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-clang-debug",
+      "configurePreset": "windows-clang",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-clang-profile",
+      "configurePreset": "windows-clang",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-clang-release",
+      "configurePreset": "windows-clang",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-clang-debug-instrumentation",
+      "configurePreset": "windows-clang-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-clang-profile-instrumentation",
+      "configurePreset": "windows-clang-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "windows-clang-release-instrumentation",
+      "configurePreset": "windows-clang-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-gcc-debug-editor",
+      "configurePreset": "linux-gcc-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-profile-editor",
+      "configurePreset": "linux-gcc-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-gcc-release-editor",
+      "configurePreset": "linux-gcc-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-gcc-debug-editor-instrumentation-verbose",
+      "configurePreset": "linux-gcc-editor-instrumentation-verbose",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "linux-gcc-debug-editor-instrumentation",
+      "configurePreset": "linux-gcc-editor-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-profile-editor-instrumentation",
+      "configurePreset": "linux-gcc-editor-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-gcc-release-editor-instrumentation",
+      "configurePreset": "linux-gcc-editor-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-gcc-debug",
+      "configurePreset": "linux-gcc",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-profile",
+      "configurePreset": "linux-gcc",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-gcc-release",
+      "configurePreset": "linux-gcc",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-gcc-debug-editor-asan-ubsan",
+      "configurePreset": "linux-gcc-editor-asan-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-debug-instrumentation",
+      "configurePreset": "linux-gcc-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-profile-instrumentation",
+      "configurePreset": "linux-gcc-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-gcc-release-instrumentation",
+      "configurePreset": "linux-gcc-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-clang-debug-editor",
+      "configurePreset": "linux-clang-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-clang-profile-editor",
+      "configurePreset": "linux-clang-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-clang-release-editor",
+      "configurePreset": "linux-clang-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-clang-debug-editor-asan-ubsan",
+      "configurePreset": "linux-clang-editor-asan-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-clang-debug-editor-instrumentation-verbose",
+      "configurePreset": "linux-clang-editor-instrumentation-verbose",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "linux-clang-debug-editor-instrumentation",
+      "configurePreset": "linux-clang-editor-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-clang-profile-editor-instrumentation",
+      "configurePreset": "linux-clang-editor-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-clang-release-editor-instrumentation",
+      "configurePreset": "linux-clang-editor-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-clang-debug",
+      "configurePreset": "linux-clang",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-clang-profile",
+      "configurePreset": "linux-clang",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-clang-release",
+      "configurePreset": "linux-clang",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-clang-debug-instrumentation",
+      "configurePreset": "linux-clang-instrumentation",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-clang-profile-instrumentation",
+      "configurePreset": "linux-clang-instrumentation",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "linux-clang-release-instrumentation",
+      "configurePreset": "linux-clang-instrumentation",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-clang-x86_64-release",
+      "configurePreset": "macos-clang-x86_64",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-clang-x86_64-debug",
+      "configurePreset": "macos-clang-x86_64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-clang-x86_64-profile",
+      "configurePreset": "macos-clang-x86_64",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "macos-clang-x86_64-release-editor",
+      "configurePreset": "macos-clang-x86_64-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-clang-x86_64-debug-editor",
+      "configurePreset": "macos-clang-x86_64-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-clang-x86_64-profile-editor",
+      "configurePreset": "macos-clang-x86_64-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "macos-clang-x86_64-debug-editor-verbose",
+      "configurePreset": "macos-clang-x86_64-editor-verbose",
+      "configuration": "Debug",
+      "verbose": true
+    },
+    {
+      "name": "macos-clang-arm64-release",
+      "configurePreset": "macos-clang-arm64",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-clang-arm64-debug",
+      "configurePreset": "macos-clang-arm64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-clang-arm64-profile",
+      "configurePreset": "macos-clang-arm64",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "macos-clang-arm64-release-editor",
+      "configurePreset": "macos-clang-arm64-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-clang-arm64-debug-editor",
+      "configurePreset": "macos-clang-arm64-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-clang-arm64-profile-editor",
+      "configurePreset": "macos-clang-arm64-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "macos-clang-arm64-debug-editor-verbose",
+      "configurePreset": "macos-clang-arm64-editor-verbose",
+      "configuration": "Debug",
+      "verbose": true
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "test-common",
+      "description": "Test CMake settings that apply to all configurations",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "test-windows-msvc-debug-editor-asan-ubsan",
+      "displayName": "Test-MSVC-Debug-Editor + ASAN + UBSAN",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc-editor-asan-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-windows-msvc-debug-editor",
+      "displayName": "Test-MSVC-Debug-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-windows-msvc-profile-editor",
+      "displayName": "Test-MSVC-Profile-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-windows-msvc-release-editor",
+      "displayName": "Test-MSVC-Release-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-windows-msvc-debug",
+      "displayName": "Test-MSVC-Debug",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-windows-msvc-profile",
+      "displayName": "Test-MSVC-Profile",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-windows-msvc-release",
+      "displayName": "Test-MSVC-Release",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-windows-clang-debug",
+      "displayName": "Test-Clang-Win64-Debug",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-clang",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-windows-clang-profile",
+      "displayName": "Test-Clang-Win64-Profile",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-clang",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-windows-clang-release",
+      "displayName": "Test-Clang-Win64-Release",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-clang",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-windows-clang-profile-editor-asan-ubsan",
+      "displayName": "Test-Clang-Win64-profile-Editor-Asan-Ubsan",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-clang-editor-asan-ubsan",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-windows-clang-debug-editor",
+      "displayName": "Test-Clang-Win64-Debug-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-clang-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-windows-clang-profile-editor",
+      "displayName": "Test-Clang-Win64-Profile-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-clang-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-windows-clang-release-editor",
+      "displayName": "Test-Clang-Win64-Release-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "windows-clang-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-linux-gcc-debug",
+      "displayName": "Test-GCC-Debug",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-gcc",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-linux-gcc-profile",
+      "displayName": "Test-GCC-Profile",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-gcc",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-linux-gcc-release",
+      "displayName": "Test-GCC-Release",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-gcc",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-linux-gcc-debug-editor",
+      "displayName": "Test-GCC-Debug-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-gcc-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-linux-gcc-profile-editor",
+      "displayName": "Test-GCC-Profile-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-gcc-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-linux-gcc-release-editor",
+      "displayName": "Test-GCC-Release-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-gcc-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-linux-gcc-debug-editor-asan-ubsan",
+      "displayName": "Test-GCC-Linux-Debug-Editor-asan-ubsan",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-gcc-editor-asan-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-linux-clang-debug-editor",
+      "displayName": "Test-Clang-Linux-Debug-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-clang-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-linux-clang-profile-editor",
+      "displayName": "Test-Clang-Linux-Profile-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-clang-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-linux-clang-release-editor",
+      "displayName": "Test-Clang-Linux-Release-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-clang-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-linux-clang-debug-editor-asan-ubsan",
+      "displayName": "Test-Clang-Linux-Debug-Editor-asan-ubsan",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-clang-editor-asan-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-linux-clang-debug",
+      "displayName": "Test-Clang-Linux-Debug",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-clang",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-linux-clang-profile",
+      "displayName": "Test-Clang-Linux-Profile",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-clang",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-linux-clang-release",
+      "displayName": "Test-Clang-Linux-Release",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "linux-clang",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-macos-clang-x86_64-release",
+      "displayName": "Test-macOS-x86_64-Clang-Release",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-x86_64",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-macos-clang-x86_64-debug",
+      "displayName": "Test-macOS-x86_64-Clang-Debug",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-x86_64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-macos-clang-x86_64-profile",
+      "displayName": "Test-macOS-x86_64-Clang-Profile",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-x86_64",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-macos-clang-x86_64-release-editor",
+      "displayName": "Test-macOS-x86_64-Clang-Release-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-x86_64-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-macos-clang-x86_64-debug-editor",
+      "displayName": "Test-macOS-x86_64-Clang-Debug-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-x86_64-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-macos-clang-x86_64-profile-editor",
+      "displayName": "Test-macOS-x86_64-Clang-Profile-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-x86_64-editor",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-macos-clang-arm64-release",
+      "displayName": "Test-macOS-arm64-Clang-Release",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-arm64",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-macos-clang-arm64-debug",
+      "displayName": "Test-macOS-arm64-Clang-Debug",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-arm64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-macos-clang-arm64-profile",
+      "displayName": "Test-macOS-arm64-Clang-Profile",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-arm64",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "test-macos-clang-arm64-release-editor",
+      "displayName": "Test-macOS-arm64-Clang-Release-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-arm64-editor",
+      "configuration": "Release"
+    },
+    {
+      "name": "test-macos-clang-arm64-debug-editor",
+      "displayName": "Test-macOS-arm64-Clang-Debug-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-arm64-editor",
+      "configuration": "Debug"
+    },
+    {
+      "name": "test-macos-clang-arm64-profile-editor",
+      "displayName": "Test-macOS-arm64-Clang-Profile-Editor",
+      "description": "Enable output and stop on failure",
+      "inherits": "test-common",
+      "configurePreset": "macos-clang-arm64-editor",
+      "configuration": "RelWithDebInfo"
+    }
+  ]
 }

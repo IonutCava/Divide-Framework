@@ -92,7 +92,7 @@ jobs:
 
   build_clang_asan_ubsan:
     needs: info_job
-    name: Ubuntu - clang ASAN+UBSAN (release/editor)
+    name: Ubuntu - clang ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
     timeout-minutes: 90
     steps:
@@ -106,10 +106,31 @@ jobs:
         with:
           compiler: clang
           build-type: editor
-          configuration: release
+          configuration: debug
           configure-preset: linux-clang-editor-asan-ubsan
-          build-preset: linux-clang-release-editor-asan-ubsan
-          test-preset: test-linux-clang-release-editor-asan-ubsan
+          build-preset: linux-clang-debug-editor-asan-ubsan
+          test-preset: test-linux-clang-debug-editor-asan-ubsan
+
+  build_gcc_asan_ubsan:
+    needs: info_job
+    name: Ubuntu - gcc ASAN+UBSAN (debug/editor)
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-setup/linux
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+
+      - uses: ./.github/actions/cmake-build/linux
+        with:
+          compiler: gcc
+          build-type: editor
+          configuration: debug
+          configure-preset: linux-gcc-editor-asan-ubsan
+          build-preset: linux-gcc-debug-editor-asan-ubsan
+          test-preset: test-linux-gcc-debug-editor-asan-ubsan
 
   output_job:
     needs: [build_gcc, build_clang, build_clang_asan_ubsan]

@@ -139,11 +139,6 @@ else()
 endif()
 
 if ( RUN_ASAN OR RUN_UBSAN )
-    if ( WINDOWS_OS_BUILD )
-        list(APPEND EXTRA_DEFINITIONS _DISABLE_STRING_ANNOTATION)
-        list(APPEND EXTRA_DEFINITIONS _DISABLE_VECTOR_ANNOTATION)
-    endif()
-
     list(APPEND EXTRA_DEFINITIONS DIVIDE_ENABLE_CONVERSION_CHECKS=1)
 else()
     list(APPEND EXTRA_DEFINITIONS DIVIDE_ENABLE_CONVERSION_CHECKS=0)
@@ -151,13 +146,18 @@ endif()
 
 if (MSVC_COMPILER OR CLANG_MSVC_FRONTEND)
     set(CMAKE_DEBUG_PREFIX /D)
+    list(APPEND EXTRA_DEFINITIONS _DISABLE_STRING_ANNOTATION)
+    list(APPEND EXTRA_DEFINITIONS _DISABLE_VECTOR_ANNOTATION)
 
     set( CMAKE_VS_JUST_MY_CODE_DEBUGGING $<IF:$<AND:$<CONFIG:Debug>,$<BOOL:${ENABLE_JUST_MY_CODE}>>,ON,OFF> )
     if ( RUN_ASAN OR RUN_UBSAN )
         if ( RUN_ASAN )
             message("ASAN enabled!")
 
-            if (CLANG_MSVC_FRONTEND)
+            if (MSVC_COMPILER)
+                list(APPEND EXTRA_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:/fsanitize=address>")
+                list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:/fsanitize=address>")
+            else() #MSVC_COMPILER
                 list(APPEND EXTRA_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fsanitize=address>")
 
                 set(_CLANG_ASAN_LIB "")
@@ -187,20 +187,17 @@ if (MSVC_COMPILER OR CLANG_MSVC_FRONTEND)
                             ERROR_QUIET
                     )
                     if(_CLANG_ASAN_THUNK AND EXISTS "${_CLANG_ASAN_THUNK}")
-                      list(APPEND _ASAN_LINK_LIBS "${_CLANG_ASAN_THUNK}")
+                        list(APPEND _ASAN_LINK_LIBS "${_CLANG_ASAN_THUNK}")
                     endif()
 
                     if(_ASAN_LINK_LIBS)
-                      message(STATUS "Linking ASan runtimes: ${_ASAN_LINK_LIBS}")
-                      list(APPEND EXTRA_LINK_FLAGS "${_ASAN_LINK_LIBS}")
+                        message(STATUS "Linking ASan runtimes: ${_ASAN_LINK_LIBS}")
+                        list(APPEND EXTRA_LINK_FLAGS "${_ASAN_LINK_LIBS}")
                     endif()
                 else()
                     message(WARNING "Clang ASan runtime not found. Link may fail. Consider using the clang driver for linking or install LLVM with sanitizer runtimes.")
                 endif()
-            else() #CLANG_MSVC_FRONTEND
-                list(APPEND EXTRA_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:/fsanitize=address>")
-                list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:/fsanitize=address>")
-            endif() #CLANG_MSVC_FRONTEND
+            endif() #MSVC_COMPILER
         else() #RUN_ASAN
             message("ASAN disabled!")
         endif() #RUN_ASAN
@@ -212,6 +209,7 @@ if (MSVC_COMPILER OR CLANG_MSVC_FRONTEND)
                 message("Enabling UBSan for clang-cl frontend.")
                 # clang-cl expects '-fsanitize=undefined'
                 list(APPEND EXTRA_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fsanitize=undefined>")
+                list(APPEND EXTRA_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize-recover=undefined>")
 
                 # Candidate UBSan runtime names (static import libs shipped with clang)
                 set(_UBSAN_CANDIDATES
@@ -262,7 +260,9 @@ if (MSVC_COMPILER OR CLANG_MSVC_FRONTEND)
                     message(WARNING "UBSan requested but native MSVC does not support UBSan instrumentation. Use clang-cl or a Clang toolchain on Windows to enable UBSan.")
                 else()
                     list(APPEND EXTRA_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fsanitize=undefined>")
+                    list(APPEND EXTRA_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize-recover=undefined>")
                     list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fsanitize=undefined>")
+                    list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize-recover=undefined>")
                 endif()
             endif() #CLANG_MSVC_FRONTEND
         else() #RUN_UBSAN

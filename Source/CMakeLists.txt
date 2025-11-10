@@ -210,7 +210,28 @@ target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
 
+
 if(WINDOWS_OS_BUILD)
+    if ( RUN_ASAN OR RUN_UBSAN )
+        include(CMakeHelpers/PlatformHelpers/FindASANDLLs.cmake)
+        if (SANITIZER_DLLS)
+            message(STATUS "Sanitizer DLLs found and will be copied to executables: ${SANITIZER_DLLS}")
+
+            foreach(APP_EXE IN LISTS APP_BUILD_EXES)
+                if (TARGET ${APP_EXE})
+                    foreach(DLL IN LISTS SANITIZER_DLLS)
+                        add_custom_command(TARGET ${APP_EXE} POST_BUILD
+                            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLL}" "$<TARGET_FILE_DIR:${APP_EXE}>"
+                            COMMENT "Copy sanitizer runtime ${DLL} -> $<TARGET_FILE_DIR:${APP_EXE}>"
+                        )
+                    endforeach()
+                endif()
+            endforeach()
+        else()
+            message(WARNING "Sanitizer runtimes not found — executables built with ASAN/UBSAN may fail to start.")
+        endif()
+    endif()
+
     if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
         if(UNIX)
             # Add rpath setting to find .so libraries on unix based systems
@@ -231,6 +252,7 @@ if(WINDOWS_OS_BUILD)
         message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
     endif()
 
+
 endif()
 
 add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
@@ -243,18 +265,12 @@ if(BUILD_TESTING_INTERNAL)
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
     add_dependencies(${APP_EXE_TEST_PLATFORM} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_PLATFORM} REUSE_FROM ${APP_LIB_DIVIDE})
-    if ( RUN_ASAN OR RUN_UBSAN )
-        target_link_libraries(${APP_EXE_TEST_PLATFORM} PRIVATE -static-libasan)
-    endif()
 
     add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
     target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
     add_dependencies(${APP_EXE_TEST_ENGINE} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_ENGINE} REUSE_FROM ${APP_LIB_DIVIDE})
-    if ( RUN_ASAN OR RUN_UBSAN )
-        target_link_libraries(${APP_EXE_TEST_PLATFORM} PRIVATE -static-libasan)
-    endif()
 
     if(RUN_TESTING_INTERNAL)
         include(CTest)
@@ -294,4 +310,3 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
 
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()
-
