@@ -133,7 +133,7 @@ jobs:
           test-preset: test-linux-gcc-debug-editor-asan-ubsan
 
   output_job:
-    needs: [build_gcc, build_clang, build_clang_asan_ubsan]
+    needs: [build_gcc, build_clang, build_clang_asan_ubsan, build_gcc_asan_ubsan]
     if: always()
     runs-on: ubuntu-latest
     steps:
