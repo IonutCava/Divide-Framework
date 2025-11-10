@@ -176,13 +176,13 @@ namespace Divide
     constexpr I16 I16_ZERO = I16(0);
     constexpr I32 I32_ZERO = 0;
     constexpr I64 I64_ZERO = 0;
-    constexpr I8  S8_ZERO  = S8(0);
-    constexpr I16 S16_ZERO = S16(0);
+    constexpr S8  S8_ZERO  = S8(0);
+    constexpr S16 S16_ZERO = S16(0);
     constexpr I32 S32_ZERO = 0;
     constexpr I64 S64_ZERO = 0;
     constexpr F32 F32_ZERO = 0.f;
     constexpr R32 R32_ZERO = 0.f;
-    constexpr R64 R64_ZERO = 0.f;
+    constexpr R64 R64_ZERO = 0.0;
     constexpr D64 D64_ZERO = 0.0;
 
     //ref: https://foonathan.net/2020/09/move-forward/

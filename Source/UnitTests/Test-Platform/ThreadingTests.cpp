@@ -238,7 +238,7 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
         }
 
         test.enqueue( *job, TaskPriority::DONT_CARE);
-        test.wait(*job);
+        test.wait( *job );
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
         PrintLine( "Threading speed test: " + std::to_string( loopCountA ) + " tasks completed in: " + std::to_string( durationMS ) + " ms." );
@@ -323,7 +323,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                         } );
 
     test.enqueue( *job, TaskPriority::DONT_CARE);
-    test.wait(*job);
+    test.wait( *job );
     CHECK_EQUAL( callbackValue, 3u );
 
     job = CreateTask([&callbackValue]([[maybe_unused]] const Task& parentTask)
@@ -331,8 +331,8 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                                          ++callbackValue;
                                      });
 
-    test.enqueue(*job, TaskPriority::HIGH);
-    test.wait(*job);
+    test.enqueue( *job, TaskPriority::HIGH);
+    test.wait( *job );
     CHECK_EQUAL(callbackValue, 4u);
 
     callbackCount = TaskUTWrapper::flushCallbackQueue(test);
@@ -347,7 +347,7 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                     {
                         ++callbackValue;
                     } );
-    test.wait(*job);
+    test.wait( *job );
     CHECK_EQUAL( callbackValue, 6u );
 
     test.shutdown();

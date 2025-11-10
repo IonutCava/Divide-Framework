@@ -296,7 +296,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
 
     if ( _enabled &&  getAliveParticleCount() > 0)
     {
-        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).wait(*_bufferUpdate);
+        sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).wait( *_bufferUpdate );
 
         ParticleBufferRet buffers = getDataBuffer(renderStagePass._stage, 0);
 
@@ -351,7 +351,7 @@ void ParticleEmitter::prepareRender(SceneGraphNode* sgn,
                     _buffersDirty[to_U32(renderStagePass._stage)] = true;
                 });
 
-            sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue(*_bufferUpdate);
+            sgn->context().taskPool(TaskPoolType::HIGH_PRIORITY).enqueue( *_bufferUpdate );
         }
     }
 

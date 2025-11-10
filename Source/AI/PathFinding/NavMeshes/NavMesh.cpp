@@ -78,7 +78,7 @@ namespace Divide::AI::Navigation
         {
             _buildJobGUID = -1;
             assert( _buildTask );
-            _context.taskPool(TaskPoolType::HIGH_PRIORITY).wait(*_buildTask);
+            _context.taskPool(TaskPoolType::HIGH_PRIORITY).wait( *_buildTask );
         }
     }
 
