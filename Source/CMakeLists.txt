@@ -16,6 +16,34 @@ set(APP_BUILD_TARGETS ${APP_LIB_DIVIDE} ${APP_BUILD_EXES} )
 include_directories( "${CMAKE_SOURCE_DIR}/Source" )
 include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
 
+set(DIVIDE_CXX_STANDARD 0)
+set(DIVIDE_HAS_CXX20 0)
+set(DIVIDE_HAS_CXX23 0)
+set(DIVIDE_HAS_CXX26 0)
+
+if(DEFINED CMAKE_CXX_STANDARD)
+  set(DIVIDE_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+endif()
+
+if(DIVIDE_CXX_STANDARD GREATER_EQUAL 20)
+  set(DIVIDE_HAS_CXX20 1)
+endif()
+
+if(DIVIDE_CXX_STANDARD GREATER_EQUAL 23)
+  set(DIVIDE_HAS_CXX23 1)
+endif()
+
+if(DIVIDE_CXX_STANDARD GREATER_EQUAL 26)
+  set(DIVIDE_HAS_CXX26 1)
+endif()
+
+configure_file(
+  "${CMAKE_CURRENT_LIST_DIR}/CMakeHelpers/CXXConfig.h.in"
+  "${CMAKE_BINARY_DIR}/generated/CXXConfig.h"
+  @ONLY
+)
+include_directories("${CMAKE_BINARY_DIR}/generated")
+
 include(CMakeHelpers/ImportPackages.cmake)
 include(CMakeHelpers/GlobSources.cmake)
 
@@ -215,13 +243,18 @@ if(BUILD_TESTING_INTERNAL)
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
     add_dependencies(${APP_EXE_TEST_PLATFORM} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_PLATFORM} REUSE_FROM ${APP_LIB_DIVIDE})
+    if ( RUN_ASAN OR RUN_UBSAN )
+        target_link_libraries(${APP_EXE_TEST_PLATFORM} PRIVATE -static-libasan)
+    endif()
 
-    
     add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
     target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
     add_dependencies(${APP_EXE_TEST_ENGINE} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_ENGINE} REUSE_FROM ${APP_LIB_DIVIDE})
+    if ( RUN_ASAN OR RUN_UBSAN )
+        target_link_libraries(${APP_EXE_TEST_PLATFORM} PRIVATE -static-libasan)
+    endif()
 
     if(RUN_TESTING_INTERNAL)
         include(CTest)

@@ -33,8 +33,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PCH_
 #define DVD_PCH_
 
+#include "CXXConfig.h"
+
 // As of November 2025
-#if __cplusplus < 202302
+#if !DIVIDE_HAS_CXX23
 #error "Divide Framework requires C++23 support at a minimum!"
 #endif 
 
