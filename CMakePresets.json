@@ -813,7 +813,7 @@
     },
     {
       "name": "test-windows-clang-profile-editor-asan-ubsan",
-      "displayName": "Test-Clang-Win64-profile-Editor-Asan-Ubsan",
+      "displayName": "Test-Clang-Win64-Profile-Editor-Asan-Ubsan",
       "description": "Enable output and stop on failure",
       "inherits": "test-common",
       "configurePreset": "windows-clang-editor-asan-ubsan",
