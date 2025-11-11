@@ -35,7 +35,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Divide {
 
 template<typename T>
-void Script::addGlobal(const T& var, const char* name, const bool asConst, const bool overwrite) {
+void Script::addGlobal(const T& var, const std::string& name, const bool asConst, const bool overwrite) {
     if (overwrite) {
         _script->set_global(chaiscript::var(var), name); // verwrites existing object
     } else {
@@ -48,12 +48,12 @@ void Script::addGlobal(const T& var, const char* name, const bool asConst, const
 }
 
 template <typename T>
-void Script::registerType(const char* typeName) {
+void Script::registerType(const std::string& typeName) {
     _script->add(chaiscript::user_type<T>(), typeName);
 }
 
 template <typename Func >
-void Script::registerFunction(const Func& function, const char* functionName) {
+void Script::registerFunction(const Func& function, const std::string& functionName) {
     _script->add(chaiscript::fun(function), functionName);
 }
 
@@ -72,9 +72,8 @@ T Script::eval() {
 template<>
 inline void Script::eval() {
     assert(!_scriptSource.empty());
-    [[maybe_unused]] chaiscript::Boxed_Value ret = {};
     try {
-        ret = _script->eval(_scriptSource);
+        _script->eval(_scriptSource);
     } catch (const chaiscript::exception::eval_error &e) {
         caughtException(e.pretty_print().c_str(), true);
     }

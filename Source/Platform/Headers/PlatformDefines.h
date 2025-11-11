@@ -115,6 +115,14 @@
 #endif //USING_CLANG
 #endif //NO_DESTROY
 
+#ifndef NO_UBSAN
+#if defined(USING_CLANG)
+#define NO_UBSAN __attribute__((no_sanitize("undefined")))
+#else //USING_CLANG
+#define NO_UBSAN
+#endif //USING_CLANG
+#endif //NO_UBSAN
+
 #define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF)                         \
 template<typename... Args>                                                     \
 constexpr auto highLevelF(Args&&... args) -> decltype(lowLevelF(FWD(args)...)) \
