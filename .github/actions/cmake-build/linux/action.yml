@@ -29,6 +29,49 @@ runs:
       shell: bash
       run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
 
+    - name: Free disk space (best-effort)
+      shell: bash
+      continue-on-error: true
+      run: |
+        set -euo pipefail || true
+        echo "=== Freeing disk space (best-effort) ==="
+
+        # apt caches and lists
+        sudo apt-get clean -y || true
+        sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* || true
+
+        # Docker cleanup (if runner has docker)
+        if command -v docker >/dev/null 2>&1; then
+          docker system prune -af || true
+          docker image prune -af || true
+        fi
+
+        # Remove common user caches
+        rm -rf "${HOME}/.cache/"* "${HOME}/.npm" "${HOME}/.npm-packages" "${HOME}/.cache/pip" 2>/dev/null || true
+        rm -rf "${HOME}/.ccache"/* 2>/dev/null || true
+        rm -rf "${HOME}/.local/share/Trash" 2>/dev/null || true
+
+        # Remove temp files
+        sudo rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+
+        # Project-local large cache folders (only if you accept re-download)
+        # adjust paths if vcpkg or build dir live elsewhere
+        if [ -d "${GITHUB_WORKSPACE}/vcpkg" ]; then
+          rm -rf "${GITHUB_WORKSPACE}/vcpkg/buildtrees" "${GITHUB_WORKSPACE}/vcpkg/packages" "${GITHUB_WORKSPACE}/vcpkg/archives" 2>/dev/null || true
+        fi
+        rm -rf "${GITHUB_WORKSPACE}/build" 2>/dev/null || true
+        rm -rf "${GITHUB_WORKSPACE}/.cache" 2>/dev/null || true
+
+        # Node/Python caches inside repo (if present)
+        rm -rf "${GITHUB_WORKSPACE}/node_modules" "${GITHUB_WORKSPACE}/.venv" 2>/dev/null || true
+
+        # Run sync to flush FS
+        sudo sync || true
+
+        echo "=== Disk usage after cleanup ==="
+        df -h || true
+        du -sh "${GITHUB_WORKSPACE}" || true
+
     - name: Configure (preset override)
       if: ${{ inputs.configure-preset != '' }}
       uses: lukka/run-cmake@v10
@@ -78,46 +121,3 @@ runs:
         echo "## Build Metrics" >> $GITHUB_STEP_SUMMARY
         echo "* Duration: ${duration} minutes" >> $GITHUB_STEP_SUMMARY
         echo "* Configuration: ${{ inputs.configuration }}" >> $GITHUB_STEP_SUMMARY
-
-    - name: Free disk space (best-effort)
-      shell: bash
-      continue-on-error: true
-      run: |
-        set -euo pipefail || true
-        echo "=== Freeing disk space (best-effort) ==="
-
-        # apt caches and lists
-        sudo apt-get clean -y || true
-        sudo rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* || true
-
-        # Docker cleanup (if runner has docker)
-        if command -v docker >/dev/null 2>&1; then
-          docker system prune -af || true
-          docker image prune -af || true
-        fi
-
-        # Remove common user caches
-        rm -rf "${HOME}/.cache/"* "${HOME}/.npm" "${HOME}/.npm-packages" "${HOME}/.cache/pip" 2>/dev/null || true
-        rm -rf "${HOME}/.ccache"/* 2>/dev/null || true
-        rm -rf "${HOME}/.local/share/Trash" 2>/dev/null || true
-
-        # Remove temp files
-        sudo rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
-
-        # Project-local large cache folders (only if you accept re-download)
-        # adjust paths if vcpkg or build dir live elsewhere
-        if [ -d "${GITHUB_WORKSPACE}/vcpkg" ]; then
-          rm -rf "${GITHUB_WORKSPACE}/vcpkg/buildtrees" "${GITHUB_WORKSPACE}/vcpkg/packages" "${GITHUB_WORKSPACE}/vcpkg/archives" 2>/dev/null || true
-        fi
-        rm -rf "${GITHUB_WORKSPACE}/build" 2>/dev/null || true
-        rm -rf "${GITHUB_WORKSPACE}/.cache" 2>/dev/null || true
-
-        # Node/Python caches inside repo (if present)
-        rm -rf "${GITHUB_WORKSPACE}/node_modules" "${GITHUB_WORKSPACE}/.venv" 2>/dev/null || true
-
-        # Run sync to flush FS
-        sudo sync || true
-
-        echo "=== Disk usage after cleanup ==="
-        df -h || true
-        du -sh "${GITHUB_WORKSPACE}" || true
