@@ -140,7 +140,7 @@ jobs:
       - name: Retrieve results
         id: results
         run: |
-          if [[ "${{ needs.build_gcc.result }}" == "failure" || "${{ needs.build_clang.result }}" == "failure" || "${{ needs.build_clang_asan_ubsan.result }}" == "failure" || "${{ needs.build_gcc_asan_ubsan.result }}" == "failure"]]; then
+          if [[ "${{ needs.build_gcc.result }}" == "failure" || "${{ needs.build_clang.result }}" == "failure" || "${{ needs.build_clang_asan_ubsan.result }}" == "failure" || "${{ needs.build_gcc_asan_ubsan.result }}" == "failure" ]]; then
             echo "status=Build failed" >> $GITHUB_OUTPUT
           elif [[ "${{ needs.build_gcc.result }}" == "cancelled" || "${{ needs.build_clang.result }}" == "cancelled" || "${{ needs.build_clang_asan_ubsan.result }}" == "cancelled" || "${{ needs.build_gcc_asan_ubsan.result }}" == "cancelled" ]]; then
             echo "status=Builds cancelled" >> $GITHUB_OUTPUT
