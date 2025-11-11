@@ -20,6 +20,10 @@ inputs:
   test-preset:
     required: false
     description: 'Optional: explicit CMake test preset to use (overrides auto-built one)'
+  run-tests:
+    required: false
+    description: 'Whether to run tests (true/false). Use "false" to skip tests in this job.'
+    default: 'true'
 
 runs:
   using: "composite"
@@ -49,14 +53,14 @@ runs:
         buildPreset: windows-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
 
     - name: Test (preset override)
-      if: ${{ inputs.test-preset != '' }}
+      if: ${{ inputs.run-tests == 'true' && inputs.test-preset != '' }}
       continue-on-error: true
       uses: lukka/run-cmake@v10
       with:
         testPreset: ${{ inputs.test-preset }}
 
     - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
-      if: ${{ inputs.test-preset == '' }}
+      if: ${{ inputs.run-tests == 'true' && inputs.test-preset == '' }}
       continue-on-error: true
       uses: lukka/run-cmake@v10
       with:

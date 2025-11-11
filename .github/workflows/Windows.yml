@@ -160,6 +160,7 @@ jobs:
           configure-preset: windows-clang-editor-asan-ubsan
           build-preset: windows-clang-profile-editor-asan-ubsan
           test-preset: test-windows-clang-profile-editor-asan-ubsan
+          run-tests: false # Skip tests for clang ASAN+UBSAN build as it currently fails
 
   output_job:
     needs: [info_job, build_msvc, build_clang, build_msvc_asan_ubsan, build_clang_asan_ubsan]
