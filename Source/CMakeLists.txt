@@ -3,12 +3,14 @@ set(APP_EXE_DIVIDE "Divide-Framework")
 set(APP_EXE_PROJECT_MANAGER "Divide-Project-Manager")
 
 set(APP_BUILD_EXES ${APP_EXE_DIVIDE} ${APP_EXE_PROJECT_MANAGER} )
+set(APP_TEST_EXES "")
 
 if(BUILD_TESTING_INTERNAL)
     set(APP_EXE_TEST_PLATFORM "Divide-Test-Platform")
     set(APP_EXE_TEST_ENGINE "Divide-Test-Engine")
 
-    list(APPEND APP_BUILD_EXES ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE} )
+    list(APPEND APP_TEST_EXES ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE} )
+    list(APPEND APP_BUILD_EXES ${APP_TEST_EXES} )
 endif()
 
 set(APP_BUILD_TARGETS ${APP_LIB_DIVIDE} ${APP_BUILD_EXES} )
@@ -258,37 +260,41 @@ endif()
 add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
 
 if(BUILD_TESTING_INTERNAL)
+    message("Unit test build enabled!")
+
     include(Catch)
 
     add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE})
-    target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
-
-
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
-    add_dependencies(${APP_EXE_TEST_PLATFORM} ${APP_EXE_DIVIDE}BinGenerated)
-    target_precompile_headers(${APP_EXE_TEST_PLATFORM} REUSE_FROM ${APP_LIB_DIVIDE})
 
     add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
-    target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
-    add_dependencies(${APP_EXE_TEST_ENGINE} ${APP_EXE_DIVIDE}BinGenerated)
-    target_precompile_headers(${APP_EXE_TEST_ENGINE} REUSE_FROM ${APP_LIB_DIVIDE})
 
-    if ( RUN_ASAN OR RUN_UBSAN )
-        target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE -static-libasan)
-        target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE -static-libasan)
-    endif()
+    list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
+    include(CTest)
+    enable_testing()
 
-    if(RUN_TESTING_INTERNAL)
-        include(CTest)
+    foreach( APP_TEST_EXE ${APP_TEST_EXES} )
+        add_dependencies(${APP_TEST_EXE} ${APP_EXE_DIVIDE}BinGenerated)
+        target_link_libraries( ${APP_TEST_EXE} PRIVATE ${COMMON_LIBS} Catch2::Catch2 )
+        target_precompile_headers(${APP_TEST_EXE} REUSE_FROM ${APP_LIB_DIVIDE})
+        if (MSVC_COMPILER)
+            target_compile_options(${APP_TEST_EXE} PRIVATE /wd4866 /wd4868)
+        endif()
+        catch_discover_tests( ${APP_TEST_EXE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+    endforeach()
 
-        catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
-        catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
-    endif()
-
-    if (MSVC_COMPILER)
-        target_compile_options(${APP_EXE_TEST_PLATFORM} PRIVATE /wd4866 /wd4868)
-        target_compile_options(${APP_EXE_TEST_ENGINE} PRIVATE /wd4866 /wd4868)
+    if( RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS )
+        message("Auto unit testing after build enabled!")
+        add_custom_target(RUN_UTS
+            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIGURATION>
+            DEPENDS ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE}
+            COMMENT "Run unit tests via CTest"
+        )
+        add_custom_target(RUN_UTS_POST_BUILD ALL
+            DEPENDS RUN_UTS
+            COMMENT "Run unit tests after build (local only)"
+        )
     endif()
 endif()
 
@@ -314,6 +320,8 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
     target_compile_definitions(${APP_EXE} PRIVATE ${EXTRA_DEFINITIONS})
-
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+    if ( GNU_COMPILER AND RUN_ASAN )
+        target_link_options(${APP_EXE} PUBLIC "-static-libasan")
+    endif()
 endforeach()

@@ -1,8 +1,11 @@
 # CMakeList.txt : Top-level CMake project file, do global configuration and include sub-projects here.
 cmake_minimum_required (VERSION 3.29.2)
 
+include(CMakeDependentOption)
+
 option(BUILD_TESTING_INTERNAL "Build unit test executables" ON)
-option(RUN_TESTING_INTERNAL "Run unit test after every build" ON)
+cmake_dependent_option(RUN_TESTING_INTERNAL "Run unit test after every build" ON BUILD_TESTING_INTERNAL OFF)
+
 option(ENABLE_JUST_MY_CODE "Enable just my code debugging in MSVC in debug builds (/JMC)" OFF)
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
 option(SHOW_CONSOLE_WINDOW "Show the console window and Win32 builds and direct all log output to it" OFF)
@@ -308,13 +311,6 @@ endif () #MSVC_COMPILER
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${CMAKE_DEBUG_PREFIX}_DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${CMAKE_DEBUG_PREFIX}_RELEASE")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CMAKE_DEBUG_PREFIX}_PROFILE")
-
-
-if (RUN_TESTING_INTERNAL)
-    message("Unit testing enabled!")
-    list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
-    enable_testing()
-endif()
 
 add_subdirectory(Source)
 
