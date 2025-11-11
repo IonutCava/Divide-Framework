@@ -262,6 +262,8 @@ if(BUILD_TESTING_INTERNAL)
 
     add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE})
     target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
+
+
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
     add_dependencies(${APP_EXE_TEST_PLATFORM} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_PLATFORM} REUSE_FROM ${APP_LIB_DIVIDE})
@@ -271,6 +273,11 @@ if(BUILD_TESTING_INTERNAL)
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
     add_dependencies(${APP_EXE_TEST_ENGINE} ${APP_EXE_DIVIDE}BinGenerated)
     target_precompile_headers(${APP_EXE_TEST_ENGINE} REUSE_FROM ${APP_LIB_DIVIDE})
+
+    if ( RUN_ASAN OR RUN_UBSAN )
+        target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE -static-libasan)
+        target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE -static-libasan)
+    endif()
 
     if(RUN_TESTING_INTERNAL)
         include(CTest)
