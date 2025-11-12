@@ -531,11 +531,7 @@ namespace Divide
 
     void VKStateTracker::reset()
     {
-        for ( auto& cmdContext : _cmdContexts )
-        {
-            cmdContext.reset();
-        }
-
+        _cmdContexts = {};
         setDefaultState();
     }
 

@@ -37,7 +37,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // As of November 2025
 #if !DIVIDE_HAS_CXX23
-#error "Divide Framework requires C++23 support at a minimum!"
+#error "Divide Framework requires C++23 support as a minimum!"
 #endif 
 
 #if !defined(HAS_SSE41) && !defined(HAS_NEON)

@@ -237,7 +237,7 @@ struct VKStateTracker
     bool* _assertOnAPIError;
 
 
-    private:
+   private:
     std::array<VKImmediateCmdContext_uptr, to_base( QueueType::COUNT )> _cmdContexts;
 };
 
