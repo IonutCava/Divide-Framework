@@ -263,12 +263,14 @@ if( BUILD_TESTING_INTERNAL )
     include(Catch)
 
     # Disable automatic Catch2 test discovery when building with sanitizers on Windows with clang-cl
-    if (CLANG_MSVC_FRONTEND AND (RUN_ASAN OR RUN_UBSAN))
+    if( CLANG_MSVC_FRONTEND AND (RUN_ASAN OR RUN_UBSAN) )
         message(WARNING "Skipping Catch2 test discovery on Windows with clang-cl and sanitizers enabled (RUN_ASAN/RUN_UBSAN). Tests must be run explicitly in CI or locally.")
         set(CATCH_DISCOVER_TESTS_ENABLED OFF)
     else()
         set(CATCH_DISCOVER_TESTS_ENABLED ON)
     endif()
+
+    message(STATUS "CATCH_DISCOVER_TESTS_ENABLED=${CATCH_DISCOVER_TESTS_ENABLED}")
 
     add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE})
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
