@@ -1,6 +1,7 @@
 
 
 #include "Headers/Scene.h"
+#include "Headers/SceneInput.h"
 #include "Headers/SceneEnvironmentProbePool.h"
 
 #include "Graphs/Headers/SceneGraph.h"
@@ -2419,6 +2420,11 @@ namespace Divide
         DIVIDE_ASSERT( scene->_envProbePool != nullptr );
 
         scene->_envProbePool->unregisterProbe( probe );
+    }
+
+    void Attorney::SceneProjectManager::clearHoverTarget(Scene* scene, const Input::MouseMoveEvent& arg)
+    {
+        scene->clearHoverTarget(scene->input()->getPlayerIndexForDevice(arg._deviceType, arg._deviceIndex));
     }
 
 } //namespace Divide

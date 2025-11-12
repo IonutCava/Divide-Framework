@@ -3,7 +3,6 @@
 #include "Headers/ProjectManager.h"
 #include "Headers/FrameListenerManager.h"
 #include "Headers/RenderPassManager.h"
-
 #include "Core/Headers/Kernel.h"
 #include "Core/Headers/Application.h"
 #include "Core/Headers/ByteBuffer.h"
@@ -25,6 +24,7 @@
 #include "Rendering/Lighting/Headers/LightPool.h"
 
 #include "Scenes/Headers/ScenePool.h"
+#include "Scenes/Headers/SceneInput.h"
 #include "Scenes/Headers/SceneShaderData.h"
 #include "Graphs/Headers/SceneGraph.h"
 
