@@ -178,8 +178,8 @@ namespace Divide
     constexpr I64 I64_ZERO = 0;
     constexpr S8  S8_ZERO  = S8(0);
     constexpr S16 S16_ZERO = S16(0);
-    constexpr I32 S32_ZERO = 0;
-    constexpr I64 S64_ZERO = 0;
+    constexpr S32 S32_ZERO = 0;
+    constexpr S64 S64_ZERO = 0;
     constexpr F32 F32_ZERO = 0.f;
     constexpr R32 R32_ZERO = 0.f;
     constexpr R64 R64_ZERO = 0.0;
