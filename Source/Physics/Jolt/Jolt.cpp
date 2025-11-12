@@ -240,7 +240,7 @@ namespace Divide
     void PhysicsJolt::frameStartedInternal(const U64 deltaTimeGameUS )
     {
         // If you take larger steps than 1 / 60th of a second you need to do multiple collision steps in order to keep the simulation stable. Do 1 collision step per 1 / 60th of a second (round up).
-        const I32 cCollisionSteps = to_I32(CEIL(std::max(60.f / _simulationFrameRate, 1.f)));
+        const I32 cCollisionSteps = to_I32(std::ceil(std::max(60.f / _simulationFrameRate, 1.f)));
 
         _physicsSystem->OptimizeBroadPhase();
         _physicsSystem->Update(Time::MicrosecondsToSeconds<F32>(deltaTimeGameUS), cCollisionSteps, _allocator.get(), _threadPool.get());

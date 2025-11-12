@@ -741,7 +741,7 @@ namespace Divide
         //skyDescriptor.ID(2);
 
         //ToDo: Double check that this diameter is correct, otherwise fall back to default of "2"
-        skyDescriptor.ID( to_U32( FLOOR( Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->snapshot()._zPlanes.max * 2 ) ) );
+        skyDescriptor.ID( to_U32( std::floor( Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->snapshot()._zPlanes.max * 2 ) ) );
 
         const Handle<Sky> handle = CreateResource( skyDescriptor, _loadingTasks );
         ResourcePtr<Sky> skyItem = Get(handle);

@@ -495,24 +495,83 @@ inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
 constexpr F32 EPSILON_F32 = std::numeric_limits<F32>::epsilon();
 constexpr D64 EPSILON_D64 = std::numeric_limits<D64>::epsilon();
 
+template<typename T, typename U = T>
+constexpr bool COMPARE(const T X, const U Y) noexcept;
 
 template<std::floating_point T>
-[[nodiscard]] constexpr T ABS(const T input)
+[[nodiscard]] constexpr T ABS_CONSTEXPR(const T input)
 {
-    // mostly for floats
-    return input >= T{ 0 } ? input : (input < T{ 0 } ? -input : T{ 0 });
+    if consteval
+    {
+        // mostly for floats
+        return input >= T{ 0 } ? input : (input < T{ 0 } ? -input : T{ 0 });
+    }
+
+    return std::abs(input);
 }
 
 template<std::signed_integral T>
-[[nodiscard]] constexpr T ABS(const T input)
+[[nodiscard]] constexpr T ABS_CONSTEXPR(const T input)
 {
     return input >= T{ 0 } ? input : -input;
 }
 
 template<std::unsigned_integral T>
-[[nodiscard]] constexpr T ABS(const T input)
+[[nodiscard]] constexpr T ABS_CONSTEXPR(const T input)
 {
     return input;
+}
+
+template<typename T>
+[[nodiscard]] constexpr T FLOOR_CONSTEXPR(const T input)
+{
+    return input;
+}
+
+template<>
+[[nodiscard]] constexpr F32 FLOOR_CONSTEXPR(const F32 input)
+{
+    const I32 i = to_I32(input);
+    const F32 f = to_F32(i);
+    return (input >= 0.f ? f : (COMPARE(input, f) ? input : f - 1.f));
+}
+
+template<>
+[[nodiscard]] constexpr D64 FLOOR_CONSTEXPR(const D64 input)
+{
+    const I64 i = to_I64(input);
+    const D64 f = to_D64(i);
+    return (input >= 0.0 ? f : (COMPARE(input, f) ? input : f - 1.0));
+}
+
+template<typename T>
+constexpr T CEIL_CONSTEXPR(const T input)
+{
+    return input;
+}
+
+template<>
+constexpr F32 CEIL_CONSTEXPR(const F32 input)
+{
+    if consteval
+    {
+        const I32 i = to_I32(input);
+        return to_F32(input > i ? i + 1 : i);
+    }
+
+    return std::ceil(input);
+}
+
+template<>
+constexpr D64 CEIL_CONSTEXPR(const D64 input)
+{
+    if consteval
+    {
+        const I64 i = to_I64(input);
+        return to_D64(input > i ? i + 1 : i);
+    }
+
+    return std::ceil(input);
 }
 
 template <typename T>
@@ -524,19 +583,19 @@ template <typename T>
 template <>
 [[nodiscard]] constexpr bool IS_ZERO(const F32 X) noexcept
 {
-    return ABS(X) < EPSILON_F32;
+    return ABS_CONSTEXPR(X) < EPSILON_F32;
 }
 
 template <>
 [[nodiscard]] constexpr bool IS_ZERO(const D64 X) noexcept
 {
-    return ABS(X) < EPSILON_D64;
+    return ABS_CONSTEXPR(X) < EPSILON_D64;
 }
 
 template <typename T, typename U = T>
 [[nodiscard]] constexpr bool COMPARE_TOLERANCE(const T X, const U TOLERANCE) noexcept
 {
-    return ABS(X) <= TOLERANCE;
+    return ABS_CONSTEXPR(X) <= TOLERANCE;
 }
 
 template<typename T, typename U = T, typename W = T>
@@ -550,7 +609,7 @@ template<typename T, typename U = T, typename W = T>
     return COMPARE_TOLERANCE(subtract(X, Y), TOLERANCE);
 }
 
-template<typename T, typename U  = T>
+template<typename T, typename U>
 [[nodiscard]] constexpr bool COMPARE(const T X, const U Y) noexcept
 {
     return X == Y;
@@ -575,9 +634,9 @@ template<>
 }
 
 template<typename T, typename tagType>
-[[nodiscard]] constexpr primitiveWrapper<T, tagType> ABS(const primitiveWrapper<T, tagType> input)
+[[nodiscard]] constexpr primitiveWrapper<T, tagType> ABS_CONSTEXPR(const primitiveWrapper<T, tagType> input)
 {
-    return ABS<T>(input.value);
+    return ABS_CONSTEXPR<T>(input.value);
 }
 
 template<typename T, typename tagType>
@@ -626,7 +685,7 @@ union Double_t
 constexpr bool ALMOST_EQUAL_ULPS_AND_ABS(const F32 A, const F32 B, const F32 maxDiff, const I32 maxUlpsDiff) noexcept
 {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const F32 absDiff = ABS(A - B);
+    const F32 absDiff = ABS_CONSTEXPR(A - B);
     if (absDiff <= maxDiff)
     {
         return true;
@@ -642,14 +701,14 @@ constexpr bool ALMOST_EQUAL_ULPS_AND_ABS(const F32 A, const F32 B, const F32 max
     }
 
     // Find the difference in ULPs.
-    return ABS(uA.i - uB.i) <= maxUlpsDiff;
+    return ABS_CONSTEXPR(uA.i - uB.i) <= maxUlpsDiff;
 }
 
 [[nodiscard]]
 constexpr bool ALMOST_EQUAL_ULPS_AND_ABS(const D64 A, const D64 B, const D64 maxDiff, const I32 maxUlpsDiff) noexcept
 {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const D64 absDiff = ABS(A - B);
+    const D64 absDiff = ABS_CONSTEXPR(A - B);
     if (absDiff <= maxDiff)
     {
         return true;
@@ -665,20 +724,20 @@ constexpr bool ALMOST_EQUAL_ULPS_AND_ABS(const D64 A, const D64 B, const D64 max
     }
 
     // Find the difference in ULPs.
-    return ABS(uA.i - uB.i) <= maxUlpsDiff;
+    return ABS_CONSTEXPR(uA.i - uB.i) <= maxUlpsDiff;
 }
 
 [[nodiscard]]
 constexpr bool ALMOST_EQUAL_RELATIVE_AND_ABS(const F32 A, const F32 B, const F32 maxDiff, const F32 maxRelDiff) noexcept
 {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const F32 diff = ABS(A - B);
+    const F32 diff = ABS_CONSTEXPR(A - B);
     if (diff <= maxDiff)
     {
         return true;
     }
 
-    const F32 largest = std::max(ABS(A), ABS(B));
+    const F32 largest = std::max(ABS_CONSTEXPR(A), ABS_CONSTEXPR(B));
     return diff <= largest * maxRelDiff;
 }
 
@@ -686,14 +745,14 @@ constexpr bool ALMOST_EQUAL_RELATIVE_AND_ABS(const F32 A, const F32 B, const F32
 constexpr bool ALMOST_EQUAL_RELATIVE_AND_ABS(D64 A, D64 B, const D64 maxDiff, const D64 maxRelDiff) noexcept
 {
     // Check if the numbers are really close -- needed when comparing numbers near zero.
-    const D64 diff = ABS(A - B);
+    const D64 diff = ABS_CONSTEXPR(A - B);
     if (diff <= maxDiff)
     {
         return true;
     }
 
-    A = ABS(A);
-    B = ABS(B);
+    A = ABS_CONSTEXPR(A);
+    B = ABS_CONSTEXPR(B);
     const D64 largest = B > A ? B : A;
 
     return diff <= largest * maxRelDiff;
@@ -719,48 +778,6 @@ template <typename T>
 [[nodiscard]] constexpr bool IS_LEQUAL(const T X, const T Y) noexcept
 {
     return X < Y || COMPARE(X, Y);
-}
-
-template<typename T>
-[[nodiscard]] constexpr T FLOOR(const T input)
-{
-    return input;
-}
-
-template<>
-[[nodiscard]] constexpr F32 FLOOR(const F32 input)
-{
-    const I32 i = to_I32(input);
-    const F32 f = to_F32(i);
-    return (input >= 0.f ? f : (COMPARE(input, f) ? input : f - 1.f));
-}
-
-template<>
-[[nodiscard]] constexpr D64 FLOOR(const D64 input)
-{
-    const I64 i = to_I64(input);
-    const D64 f = to_D64(i);
-    return (input >= 0.0 ? f : (COMPARE(input, f) ? input : f - 1.0));
-}
-
-template<typename T>
-constexpr T CEIL(const T input)
-{
-    return input;
-}
-
-template<>
-constexpr F32 CEIL(const F32 input)
-{
-    const I32 i = to_I32(input);
-    return to_F32(input > i ? i + 1 : i);
-}
-
-template<>
-constexpr D64 CEIL(const D64 input)
-{
-    const I64 i = to_I64(input);
-    return to_D64(input > i ? i + 1 : i);
 }
 
 template <typename T, typename U = T>

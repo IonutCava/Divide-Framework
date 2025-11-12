@@ -184,8 +184,8 @@ void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
             blocksize = 8;
         }
 
-        image_size = size_t(CEIL( area.getSize().d_width / 4 ) *
-                            CEIL( area.getSize().d_height / 4 ) *
+        image_size = size_t(std::ceil( area.getSize().d_width / 4 ) *
+                            std::ceil( area.getSize().d_height / 4 ) *
                             blocksize);
     }
     else

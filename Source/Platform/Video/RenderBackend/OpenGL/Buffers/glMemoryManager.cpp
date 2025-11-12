@@ -147,7 +147,7 @@ std::unique_ptr<Chunk> ChunkAllocator::allocate(const size_t alignedSize,
 
     static U32 g_bufferIndex = 0u;
 
-    const size_t overflowSize = to_size(1) << to_size(std::floor(std::log2(alignedSize) + 1));
+    const size_t overflowSize = to_size(1) << to_size(std::log2(alignedSize) + 1);
 
     return std::make_unique<Chunk>(Util::StringFormat("DVD_BUFFER_CHUNK_{}", g_bufferIndex++), (alignedSize > _size ? overflowSize : _size), storageMask, accessMask, flags );
 }
