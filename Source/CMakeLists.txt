@@ -262,6 +262,14 @@ if( BUILD_TESTING_INTERNAL )
 
     include(Catch)
 
+    # Disable automatic Catch2 test discovery when building with sanitizers on Windows with clang-cl
+    if (CLANG_MSVC_FRONTEND AND (RUN_ASAN OR RUN_UBSAN))
+        message(WARNING "Skipping Catch2 test discovery on Windows with clang-cl and sanitizers enabled (RUN_ASAN/RUN_UBSAN). Tests must be run explicitly in CI or locally.")
+        set(CATCH_DISCOVER_TESTS_ENABLED OFF)
+    else()
+        set(CATCH_DISCOVER_TESTS_ENABLED ON)
+    endif()
+
     add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE})
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
 
@@ -269,7 +277,6 @@ if( BUILD_TESTING_INTERNAL )
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
 
     list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
-
     include(CTest)
     enable_testing()
 
@@ -280,7 +287,9 @@ if( BUILD_TESTING_INTERNAL )
         if (MSVC_COMPILER)
             target_compile_options(${APP_TEST_EXE} PRIVATE /wd4866 /wd4868)
         endif()
-        catch_discover_tests( ${APP_TEST_EXE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+        if (CATCH_DISCOVER_TESTS_ENABLED)
+            catch_discover_tests( ${APP_TEST_EXE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+        endif()
     endforeach()
 
     if( RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS )
