@@ -569,8 +569,7 @@ namespace Divide
 
     void VK_API::RegisterTransferRequest( const VKTransferQueue::TransferRequest& request )
     {
-        LockGuard<Mutex> w_lock( s_transferQueue._lock );
-        s_transferQueue._requests.push_back( request );
+        s_transferQueue._requests.enqueue( request );
         s_transferQueue._dirty.store(true);
     }
 
@@ -2150,22 +2149,6 @@ namespace Divide
             }
         }
 
-        void FlushCopyRequests( CopyContainer& copyRequests, VkCommandBuffer cmd )
-        {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
-
-            for ( const PerBufferCopies& request : copyRequests )
-            {
-                VkCopyBufferInfo2 copyInfo = { .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-                copyInfo.dstBuffer = request._dstBuffer;
-                copyInfo.srcBuffer = request._srcBuffer;
-                copyInfo.regionCount = to_U32( request._copiesPerBuffer.size() );
-                copyInfo.pRegions = request._copiesPerBuffer.data();
-
-                VK_PROFILE( vkCmdCopyBuffer2, cmd, &copyInfo );
-            }
-        }
-
         void PrepareBufferCopyBarriers( CopyContainer& copyRequests, BatchedTransferQueue& transferQueueBatched )
         {
             PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -2200,46 +2183,6 @@ namespace Divide
                     cRequest._copiesPerBuffer.emplace_back( copy );
                 }
             }
-        }
-
-        void BatchTransferQueue(BarrierContainer& barriers, BatchedTransferQueue& transferQueueBatched, VKTransferQueue& transferQueue )
-        {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-            transferQueueBatched.clear();
-
-            while ( !transferQueue._requests.empty() )
-            {
-                const VKTransferQueue::TransferRequest& request = transferQueue._requests.front();
-                if ( request.srcBuffer != VK_NULL_HANDLE )
-                {
-                    transferQueueBatched.push_back( request );
-                }
-                else
-                {
-                    PrepareTransferRequest( request, false, barriers.emplace_back() );
-                }
-
-                transferQueue._requests.pop_front();
-            }
-        }
-
-        void FlushTransferQueue( VkCommandBuffer cmdBuffer, VKTransferQueue& transferQueue )
-        {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
-
-            thread_local vector<PerBufferCopies> s_copyRequests;
-            thread_local BarrierContainer s_barriers{};
-            thread_local BatchedTransferQueue s_transferQueueBatched;
-
-            BatchTransferQueue(s_barriers, s_transferQueueBatched, transferQueue );
-            FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, true );
-            PrepareBufferCopyBarriers( s_copyRequests, s_transferQueueBatched );
-            FlushCopyRequests( s_copyRequests, cmdBuffer );
-            FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, false );
-
-            s_transferQueueBatched.clear();
-            transferQueue._dirty.store(false);
         }
     };
 
@@ -2293,19 +2236,59 @@ namespace Divide
 
         if ( s_transferQueue._dirty.load() )
         {
-            LockGuard<Mutex> w_lock( s_transferQueue._lock );
-            DIVIDE_GPU_ASSERT(!s_transferQueue._requests.empty() );
-        
-            if ( s_transferQueue._requests.size() == 1 )
+            thread_local vector<PerBufferCopies> s_copyRequests;
+            thread_local BarrierContainer s_barriers{};
+            thread_local BatchedTransferQueue s_transferQueueBatched;
+            thread_local VKTransferQueue::TransferRequest request;
+
+            s_transferQueueBatched.clear();
+            s_barriers.clear();
+
+            bool hasTransfers = false;
+            bool hasBarriers = false;
+            while (s_transferQueue._requests.try_dequeue(request))
             {
-                SubmitTransferRequest( s_transferQueue._requests.front(), cmdBuffer );
-                s_transferQueue._requests.pop_front();
-                s_transferQueue._dirty.store(false);
+                if (request.srcBuffer != VK_NULL_HANDLE)
+                {
+                    s_transferQueueBatched.push_back(request);
+                    hasTransfers = true;
+                }
+                else
+                {
+                    PrepareTransferRequest(request, false, s_barriers.emplace_back());
+                    hasBarriers = true;
+                }
             }
-            else
+
+            if ( hasBarriers )
             {
-                FlushTransferQueue( cmdBuffer, s_transferQueue );
+                FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, true);
             }
+
+            if ( hasTransfers )
+            {
+                PrepareBufferCopyBarriers(s_copyRequests, s_transferQueueBatched);
+
+                for (const PerBufferCopies& request : s_copyRequests)
+                {
+                    VkCopyBufferInfo2 copyInfo = 
+                    {
+                        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                        .srcBuffer = request._srcBuffer,
+                        .dstBuffer = request._dstBuffer,
+                        .regionCount = to_U32(request._copiesPerBuffer.size()),
+                        .pRegions = request._copiesPerBuffer.data()
+                    };
+
+                    VK_PROFILE(vkCmdCopyBuffer2, cmdBuffer, &copyInfo);
+                }
+            }
+
+            if (hasBarriers)
+            {
+                FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, false);
+            }
+            s_transferQueue._dirty.store(false);
         }
     }
 
@@ -2353,7 +2336,7 @@ namespace Divide
                 };
 
                 thread_local VkRenderingInfo renderingInfo{};
-                thread_local vector<VkRenderingAttachmentInfo> attachmentInfo{ to_base( RTColourAttachmentSlot::COUNT ), dummyAttachment };
+                thread_local VkRenderingAttachmentInfo attachmentInfo;
                 thread_local vector<VkFormat> swapChainImageFormat( to_base( RTColourAttachmentSlot::COUNT ), VK_FORMAT_UNDEFINED);
 
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
@@ -2370,7 +2353,7 @@ namespace Divide
 
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
-                    attachmentInfo[0].imageView = swapChain->getCurrentImageView();
+                    attachmentInfo.imageView = swapChain->getCurrentImageView();
                     swapChainImageFormat[0] = swapChain->getSwapChain().image_format;
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = to_U32(swapChainImageFormat.size());
                     stateTracker._pipelineRenderInfo.pColorAttachmentFormats = swapChainImageFormat.data();
@@ -2382,8 +2365,8 @@ namespace Divide
                             .extent = swapChain->surfaceExtent()
                         },
                         .layerCount = 1u,
-                        .colorAttachmentCount = to_U32( attachmentInfo.size() ),
-                        .pColorAttachments = attachmentInfo.data(),
+                        .colorAttachmentCount = 1u,
+                        .pColorAttachments = &attachmentInfo,
                     };
 
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();

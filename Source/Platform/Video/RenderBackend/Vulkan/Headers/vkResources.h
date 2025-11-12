@@ -279,8 +279,7 @@ struct VKTransferQueue
         VkPipelineStageFlags2 dstStageMask{ VK_PIPELINE_STAGE_2_NONE };
     };
 
-    mutable Mutex _lock;
-    std::deque<TransferRequest> _requests;
+    moodycamel::ConcurrentQueue<TransferRequest> _requests;
     std::atomic_bool _dirty;
 };
 
