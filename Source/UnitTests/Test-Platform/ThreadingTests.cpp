@@ -24,12 +24,6 @@ namespace
         std::cout << line << std::endl;
     };
 
-    void StartAndWait( Task& task, TaskPool& pool, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction = {})
-    {
-        Start( task, pool, priority, MOV(onCompletionFunction) );
-        Wait( task, pool );
-    }
-
     void SleepThread(const D64 milliseconds )
     {
         const D64 start = Time::App::ElapsedMilliseconds();
@@ -127,7 +121,7 @@ TEST_CASE( "Task Callback Test", "[threading_tests]" )
                                 PrintLine( "TaskCallbackTest: Thread waking up (" + std::to_string( durationMS ) + "ms )" );
                             } );
 
-    Start( *job, test, TaskPriority::DONT_CARE, [&testValue]()
+    test.enqueue( *job, TaskPriority::DONT_CARE, [&testValue]()
             {
                 PrintLine( "TaskCallbackTest: Callback called!" );
                 testValue = true;
@@ -136,7 +130,7 @@ TEST_CASE( "Task Callback Test", "[threading_tests]" )
 
     CHECK_FALSE( testValue );
     PrintLine( "TaskCallbackTest: waiting for task!" );
-    Wait( *job, test );
+    test.wait( *job );
 
     CHECK_TRUE( Finished( *job ) );
     CHECK_FALSE( testValue );
@@ -198,14 +192,14 @@ TEST_CASE_METHOD( ThreadedTest, "Task Class Member Callback Test", "[threading_t
 
     CHECK_FALSE( getTestValue() );
 
-    Start( *job, test, TaskPriority::DONT_CARE, [&]() noexcept
+    test.enqueue( *job, TaskPriority::DONT_CARE, [&]() noexcept
             {
                 setTestValue( false );
             } );
 
     CHECK_FALSE( getTestValue() );
 
-    Wait( *job, test );
+    test.wait( *job );
 
     CHECK_TRUE( getTestValue() );
 
@@ -240,11 +234,11 @@ TEST_CASE( "Task Speed Test", "[threading_tests]" )
 
         for ( size_t i = 0u; i < loopCountA; ++i )
         {
-            Start( *CreateTask( job, TASK_NOP ), test );
+            test.enqueue( *CreateTask( job, TASK_NOP ) );
         }
 
-        StartAndWait( *job, test, TaskPriority::DONT_CARE);
-
+        test.enqueue( *job, TaskPriority::DONT_CARE);
+        test.wait( *job );
         timer.stop();
         const F32 durationMS = Time::MicrosecondsToMilliseconds<F32>( timer.get() - timerOverhead );
         PrintLine( "Threading speed test: " + std::to_string( loopCountA ) + " tasks completed in: " + std::to_string( durationMS ) + " ms." );
@@ -312,11 +306,11 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                                 ++callbackValue;
                             } );
 
-    StartAndWait( *job, test, TaskPriority::DONT_CARE, [&callbackValue]()
+    test.enqueue( *job, TaskPriority::DONT_CARE, [&callbackValue]()
                     {
                         ++callbackValue;
                     });
-
+    test.wait( *job );
     CHECK_EQUAL( callbackValue, 1u );
 
     size_t callbackCount = TaskUTWrapper::flushCallbackQueue(test);
@@ -328,7 +322,8 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                             ++callbackValue;
                         } );
 
-    StartAndWait( *job, test, TaskPriority::DONT_CARE);
+    test.enqueue( *job, TaskPriority::DONT_CARE);
+    test.wait( *job );
     CHECK_EQUAL( callbackValue, 3u );
 
     job = CreateTask([&callbackValue]([[maybe_unused]] const Task& parentTask)
@@ -336,7 +331,8 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                                          ++callbackValue;
                                      });
 
-    StartAndWait(*job, test, TaskPriority::HIGH);
+    test.enqueue( *job, TaskPriority::HIGH);
+    test.wait( *job );
     CHECK_EQUAL(callbackValue, 4u);
 
     callbackCount = TaskUTWrapper::flushCallbackQueue(test);
@@ -347,11 +343,11 @@ TEST_CASE( "Task Priority Test", "[threading_tests]" )
                         {
                             ++callbackValue;
                         } );
-    StartAndWait( *job, test, TaskPriority::REALTIME, [&callbackValue]()
+    test.enqueue( *job, TaskPriority::REALTIME, [&callbackValue]()
                     {
                         ++callbackValue;
                     } );
-
+    test.wait( *job );
     CHECK_EQUAL( callbackValue, 6u );
 
     test.shutdown();

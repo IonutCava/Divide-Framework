@@ -65,7 +65,7 @@ BEGIN_SCENE(WarScene)
    private:
     void onSetActive() override;
     void startSimulation(I64 btnGUID);
-    void toggleCamera(InputParams param);
+    void toggleCamera(const InputParams& param);
     bool removeUnits();
     bool addUnits();
     bool resetUnits();

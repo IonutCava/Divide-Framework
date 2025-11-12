@@ -3,33 +3,64 @@ set(APP_EXE_DIVIDE "Divide-Framework")
 set(APP_EXE_PROJECT_MANAGER "Divide-Project-Manager")
 
 set(APP_BUILD_EXES ${APP_EXE_DIVIDE} ${APP_EXE_PROJECT_MANAGER} )
+set(APP_TEST_EXES "")
 
-if(BUILD_TESTING_INTERNAL)
+set(DIVIDE_COMPILE_OPTIONS "")
+set(PCH_COMPILE_OPTIONS "")
+set(THIRD_PARTY_COMPILE_OPTIONS "")
+
+if( BUILD_TESTING_INTERNAL )
     set(APP_EXE_TEST_PLATFORM "Divide-Test-Platform")
     set(APP_EXE_TEST_ENGINE "Divide-Test-Engine")
 
-    list(APPEND APP_BUILD_EXES ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE} )
-endif()
+    list(APPEND APP_TEST_EXES ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE} )
+    list(APPEND APP_BUILD_EXES ${APP_TEST_EXES} )
+endif() #BUILD_TESTING_INTERNAL
 
 set(APP_BUILD_TARGETS ${APP_LIB_DIVIDE} ${APP_BUILD_EXES} )
  
 include_directories( "${CMAKE_SOURCE_DIR}/Source" )
 include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
 
+set(DIVIDE_CXX_STANDARD 0)
+set(DIVIDE_HAS_CXX20 0)
+set(DIVIDE_HAS_CXX23 0)
+set(DIVIDE_HAS_CXX26 0)
+
+if( DEFINED CMAKE_CXX_STANDARD )
+  set(DIVIDE_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+endif()
+
+if( DIVIDE_CXX_STANDARD GREATER_EQUAL 20 )
+  set(DIVIDE_HAS_CXX20 1)
+endif()
+
+if( DIVIDE_CXX_STANDARD GREATER_EQUAL 23 )
+  set(DIVIDE_HAS_CXX23 1)
+endif()
+
+if( DIVIDE_CXX_STANDARD GREATER_EQUAL 26 )
+  set(DIVIDE_HAS_CXX26 1)
+endif()
+
+configure_file(
+  "${CMAKE_CURRENT_LIST_DIR}/CMakeHelpers/CXXConfig.h.in"
+  "${CMAKE_BINARY_DIR}/generated/CXXConfig.h"
+  @ONLY
+)
+include_directories("${CMAKE_BINARY_DIR}/generated")
+
+include(CMakeHelpers/ConfigureSanitizers.cmake)
 include(CMakeHelpers/ImportPackages.cmake)
 include(CMakeHelpers/GlobSources.cmake)
 
-set(DIVIDE_COMPILE_OPTIONS "")
-set(PCH_COMPILE_OPTIONS "")
-set(THIRD_PARTY_COMPILE_OPTIONS "")
-
-if (MSVC_COMPILER)
+if( MSVC_COMPILER )
 
    list(APPEND EXTRA_DEFINITIONS "$<$<COMPILE_LANGUAGE:C,CXX>:_CRT_SECURE_NO_WARNINGS>")
    list(APPEND EXTRA_LINK_FLAGS "$<$<CONFIG:Debug>:/OPT:NOREF>")
    list(APPEND EXTRA_LINK_FLAGS "$<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/INCREMENTAL,/INCREMENTAL:NO>")
-   
-   if ( ENABLE_FUNCTION_PROFILING )
+
+   if( ENABLE_FUNCTION_PROFILING )
        list(APPEND EXTRA_LINK_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/PROFILE>")
    endif()
 
@@ -68,7 +99,7 @@ if (MSVC_COMPILER)
                                             /wd5219 /wd5220 /wd5262 /wd5267 /wd5045
     )
 
-else()
+else() #MSVC_COMPILER
 
     list(APPEND DIVIDE_COMPILE_OPTIONS -Wall
                                        -pedantic
@@ -82,7 +113,7 @@ else()
                                             $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
     )
 
-    if(CLANG_COMPILER)
+    if( CLANG_COMPILER )
 
         list(APPEND DIVIDE_COMPILE_OPTIONS -Wno-macro-redefined       -Wno-clang-cl-pch
                                            -Wno-old-style-cast        -Wno-format-nonliteral
@@ -96,7 +127,7 @@ else()
                                            $<$<COMPILE_LANGUAGE:C,CXX>:-fdeclspec>
         )
 
-        if(LINUX_OS_BUILD)
+        if( LINUX_OS_BUILD )
             list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fuse-ld=lld>")
         endif()
 
@@ -121,7 +152,7 @@ else()
                                                 -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
         )
 
-    elseif(GNU_COMPILER)
+    elseif( GNU_COMPILER )
         list(APPEND THIRD_PARTY_COMPILE_OPTIONS -Wno-format-overflow
                                                 -Wno-unused-result
                                                 -Wno-stringop-truncation
@@ -132,7 +163,7 @@ else()
     else()
         message( FATAL_ERROR "Unknow compiler type")
     endif()
-endif()
+endif() #MSVC_COMPILER
 
 list(APPEND DIVIDE_COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CXX,C>:${EXTRA_COMPILE_FLAGS}>")
 
@@ -145,7 +176,7 @@ add_library(${APP_LIB_DIVIDE} STATIC "EngineMain.cpp"
 target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Jolt)
 target_link_libraries(${APP_LIB_DIVIDE} PUBLIC NRI)
 
-if(WIN32)
+if( WINDOWS_OS_BUILD )
     target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Shcore.lib Winmm.lib)
 endif()
 
@@ -157,22 +188,21 @@ target_link_options(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_LINK_FLAGS})
 target_compile_definitions(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_DEFINITIONS})
 
 set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
-    target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:EngineIncludes_pch.h>"
-                                                       "$<$<COMPILE_LANGUAGE:CXX>:CEGUIIncludes_pch.h>"
+
+target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:EngineIncludes_pch.h>"
+                                                    "$<$<COMPILE_LANGUAGE:CXX>:CEGUIIncludes_pch.h>"
 )
 
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
 
-if (ENABLE_MIMALLOC)
+if( ENABLE_MIMALLOC )
     target_compile_definitions( ${APP_EXE_DIVIDE} PUBLIC MIMALLOC_OVERRIDE_NEW_DELETE)
 endif()
 
-set(COMMON_LIBS ${APP_LIB_DIVIDE} 
-                ${EXTERNAL_LIBS}
-)
+set(COMMON_LIBS ${APP_LIB_DIVIDE} ${EXTERNAL_LIBS} )
 
-if (ENABLE_MIMALLOC)
+if( ENABLE_MIMALLOC )
     list(APPEND COMMON_LIBS $<IF:$<TARGET_EXISTS:mimalloc>,mimalloc,mimalloc-static>)
 endif()
 
@@ -182,9 +212,36 @@ target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
 
-if(WINDOWS_OS_BUILD)
-    if(TARGET unofficial::omniverse-physx-sdk::gpu-library)
-        if(UNIX)
+
+if( WINDOWS_OS_BUILD )
+    if ( RUN_ASAN OR RUN_UBSAN )
+        include(CMakeHelpers/PlatformHelpers/FindASANDLLs.cmake)
+        if( SANITIZER_DLLS )
+            message(STATUS "Sanitizer DLLs found and will be copied to executables: ${SANITIZER_DLLS}")
+
+            foreach(APP_EXE IN LISTS APP_BUILD_EXES)
+                if( TARGET ${APP_EXE} )
+                    foreach(DLL IN LISTS SANITIZER_DLLS)
+                        add_custom_command(TARGET ${APP_EXE} POST_BUILD
+                            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLL}" "$<TARGET_FILE_DIR:${APP_EXE}>"
+                            COMMENT "Copy sanitizer runtime ${DLL} -> $<TARGET_FILE_DIR:${APP_EXE}>"
+                        )
+                    endforeach()
+                endif()
+            endforeach()
+
+        else() #SANITIZER_DLLS
+            message(WARNING "Sanitizer runtimes not found — executables built with ASAN/UBSAN may fail to start.")
+        endif() #SANITIZER_DLLS
+    endif() #RUN_ASAN || RUN_UBSAN
+
+    if( TARGET unofficial::omniverse-physx-sdk::gpu-library )
+        if( WINDOWS_OS_BUILD )
+         add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                                                                            $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
+                                                                                            $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
+            )
+        else() #WINDOWS_OS_BUILD
             # Add rpath setting to find .so libraries on unix based systems
             set_target_properties( ${APP_EXE_DIVIDE} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN" )
         endif()
@@ -193,48 +250,60 @@ if(WINDOWS_OS_BUILD)
                                                                                           $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-library>
                                                                                           $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
         )
-        if(WIN32)
-            add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                                                                                            $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
-                                                                                            $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
-            )
-        endif()
     else()
         message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
     endif()
-
-endif()
+endif() #WINDOWS_OS_BUILD
 
 add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
 
-if(BUILD_TESTING_INTERNAL)
+if( BUILD_TESTING_INTERNAL )
+    message("Unit test build enabled!")
+
     include(Catch)
 
+    # Disable automatic Catch2 test discovery when building with sanitizers on Windows with clang-cl
+    if( CLANG_MSVC_FRONTEND AND (RUN_ASAN OR RUN_UBSAN) )
+        message(WARNING "Skipping Catch2 test discovery on Windows with clang-cl and sanitizers enabled (RUN_ASAN/RUN_UBSAN). Tests must be run explicitly in CI or locally.")
+        set(CATCH_DISCOVER_TESTS_ENABLED OFF)
+    else()
+        set(CATCH_DISCOVER_TESTS_ENABLED ON)
+    endif()
+
+    message(STATUS "CATCH_DISCOVER_TESTS_ENABLED=${CATCH_DISCOVER_TESTS_ENABLED}")
+
     add_executable( ${APP_EXE_TEST_PLATFORM} "UnitTests/main.cpp" ${TEST_PLATFORM_SOURCE})
-    target_link_libraries( ${APP_EXE_TEST_PLATFORM} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_PLATFORM} PRIVATE PLATFORM_TESTS )
-    add_dependencies(${APP_EXE_TEST_PLATFORM} ${APP_EXE_DIVIDE}BinGenerated)
-    target_precompile_headers(${APP_EXE_TEST_PLATFORM} REUSE_FROM ${APP_LIB_DIVIDE})
 
-    
     add_executable( ${APP_EXE_TEST_ENGINE} "UnitTests/main.cpp" ${TEST_ENGINE_SOURCE})
-    target_link_libraries( ${APP_EXE_TEST_ENGINE} PRIVATE ${COMMON_LIBS} PRIVATE Catch2::Catch2 )
     target_compile_definitions( ${APP_EXE_TEST_ENGINE} PRIVATE ENGINE_TESTS )
-    add_dependencies(${APP_EXE_TEST_ENGINE} ${APP_EXE_DIVIDE}BinGenerated)
-    target_precompile_headers(${APP_EXE_TEST_ENGINE} REUSE_FROM ${APP_LIB_DIVIDE})
 
-    if(RUN_TESTING_INTERNAL)
-        include(CTest)
+    foreach( APP_TEST_EXE ${APP_TEST_EXES} )
+        add_dependencies(${APP_TEST_EXE} ${APP_EXE_DIVIDE}BinGenerated)
+        target_link_libraries( ${APP_TEST_EXE} PRIVATE ${COMMON_LIBS} Catch2::Catch2 )
+        target_precompile_headers(${APP_TEST_EXE} REUSE_FROM ${APP_LIB_DIVIDE})
+        if (MSVC_COMPILER)
+            target_compile_options(${APP_TEST_EXE} PRIVATE /wd4866 /wd4868)
+        endif()
+        if (CATCH_DISCOVER_TESTS_ENABLED)
+            catch_discover_tests( ${APP_TEST_EXE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
+        endif()
+    endforeach()
 
-        catch_discover_tests( ${APP_EXE_TEST_PLATFORM} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
-        catch_discover_tests( ${APP_EXE_TEST_ENGINE} WORKING_DIRECTORY  "${CMAKE_SOURCE_DIR}" )
-    endif()
+    if( RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS )
+        message("Auto unit testing after build enabled!")
+        add_custom_target(RUN_UTS
+            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIGURATION>
+            DEPENDS ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE}
+            COMMENT "Run unit tests via CTest"
+        )
+        add_custom_target(RUN_UTS_POST_BUILD ALL
+            DEPENDS RUN_UTS
+            COMMENT "Run unit tests after build (local only)"
+        )
+    endif() #RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS
 
-    if (MSVC_COMPILER)
-        target_compile_options(${APP_EXE_TEST_PLATFORM} PRIVATE /wd4866 /wd4868)
-        target_compile_options(${APP_EXE_TEST_ENGINE} PRIVATE /wd4866 /wd4868)
-    endif()
-endif()
+endif() #BUILD_TESTING_INTERNAL
 
 add_executable (${APP_EXE_PROJECT_MANAGER} "ProjectManager/ProjectManager.cpp"
                                            "ProjectManager/ProjectManager.h"
@@ -258,7 +327,5 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
     target_compile_definitions(${APP_EXE} PRIVATE ${EXTRA_DEFINITIONS})
-
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()
-

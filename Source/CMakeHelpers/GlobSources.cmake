@@ -666,7 +666,6 @@ set( PLATFORM_SOURCE Platform/ConditionalWait.cpp
                      Platform/Input/Input.cpp
                      Platform/Input/InputAggregatorInterface.cpp
                      Platform/Input/InputHandler.cpp
-                     Platform/Threading/Task.cpp
                      Platform/Video/AttributeDescriptor.cpp
                      Platform/Video/BlendingProperties.cpp
                      Platform/Video/CommandBuffer.cpp

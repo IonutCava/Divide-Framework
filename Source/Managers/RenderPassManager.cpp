@@ -156,7 +156,7 @@ void RenderPassManager::startRenderTasks(const RenderParams& params, TaskPool& p
                                            _waitForDependencies.notify_all();
                                        });
 
-        Start(*passData._workTask, pool, TaskPriority::DONT_CARE_NO_IDLE);
+        pool.enqueue(*passData._workTask, TaskPriority::DONT_CARE_NO_IDLE);
     }
 }
 
@@ -267,7 +267,7 @@ void RenderPassManager::render(const RenderParams& params)
     TaskPool& pool = context.taskPool(TaskPoolType::RENDERER);
     Task* renderTask = CreateTask( TASK_NOP );
     startRenderTasks(params, pool, renderTask);
-    Start( *renderTask, pool );
+    pool.enqueue( *renderTask );
     
     GFX::MemoryBarrierCommand flushMemCmd{};
     {

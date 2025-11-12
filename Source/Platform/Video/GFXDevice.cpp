@@ -1909,8 +1909,8 @@ namespace Divide
         if ( _gpuBlock._camData.dvd_ViewPort != tempViewport )
         {
             _gpuBlock._camData.dvd_ViewPort.set( tempViewport );
-            const U32 clustersX = to_U32( CEIL( to_F32( tempViewport.sizeX ) / Config::Lighting::ClusteredForward::CLUSTERS_X ) );
-            const U32 clustersY = to_U32( CEIL( to_F32( tempViewport.sizeY ) / Config::Lighting::ClusteredForward::CLUSTERS_Y ) );
+            const U32 clustersX = to_U32( std::ceil( to_F32( tempViewport.sizeX ) / Config::Lighting::ClusteredForward::CLUSTERS_X ) );
+            const U32 clustersY = to_U32( std::ceil( to_F32( tempViewport.sizeY ) / Config::Lighting::ClusteredForward::CLUSTERS_Y ) );
             if ( clustersX != to_U32( _gpuBlock._camData.dvd_renderTargetInfo.z ) ||
                  clustersY != to_U32( _gpuBlock._camData.dvd_renderTargetInfo.w ) )
             {
@@ -2757,7 +2757,7 @@ namespace Divide
 
         Pipeline* crtPipeline = nullptr;
         U16 idx = 0u;
-        const I32 mipTimer = to_I32( CEIL( Time::App::ElapsedMilliseconds() / 750.0f ) );
+        const I32 mipTimer = to_I32( std::ceil( Time::App::ElapsedMilliseconds() / 750.0f ) );
         for ( U16 i = 0; i < to_U16( _debugViews.size() ); ++i )
         {
             if ( !_debugViews[i]->_enabled )

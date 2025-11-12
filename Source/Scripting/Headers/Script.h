@@ -33,10 +33,6 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_SCRIPTING_SCRIPT_H_
 #define DVD_SCRIPTING_SCRIPT_H_
 
-namespace FW {
-    FWD_DECLARE_MANAGED_CLASS(FileWatcher);
-}
-
 namespace chaiscript {
     FWD_DECLARE_MANAGED_CLASS(ChaiScript);
 }
@@ -55,13 +51,13 @@ public:
     static bool OnShutdown();
 
     template<typename T>
-    void addGlobal(const T& var, const char* name, bool asConst, bool overwrite);
+    void addGlobal(const T& var, const std::string& name, bool asConst, bool overwrite);
 
     template <typename T>
-    void registerType(const char* typeName);
+    void registerType(const std::string& typeName);
 
     template <typename Func>
-    void registerFunction(const Func& function, const char* functionName);
+    void registerFunction(const Func& function, const std::string& functionName);
 
     template<typename T = void>
     T eval();
@@ -73,7 +69,7 @@ protected:
     void bootstrap();
     void extractAtoms();
     void preprocessIncludes(const std::string& source, I32 level /*= 0 */);
-    void caughtException(const char* message, bool isEvalException) const;
+    void caughtException(const std::string_view message, bool isEvalException) const;
 
 protected:
     static void handleOutput(std::string_view msg);

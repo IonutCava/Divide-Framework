@@ -734,10 +734,9 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                 }
             });
 
-            Start
+            context.taskPool(TaskPoolType::HIGH_PRIORITY).enqueue
             (
-                *ddsConversionTask, 
-                context.taskPool( TaskPoolType::HIGH_PRIORITY ),
+                *ddsConversionTask,
                 options._waitForDDSConversion ? TaskPriority::REALTIME
                                               : TaskPriority::DONT_CARE 
             );
@@ -752,7 +751,7 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
                 // ... in which case, see if we need to wait for it
                 if (options._waitForDDSConversion || _loadingData._loadedDDSData) 
                 {
-                    Wait(*ddsConversionTask, context.taskPool( TaskPoolType::HIGH_PRIORITY ));
+                    context.taskPool(TaskPoolType::HIGH_PRIORITY).wait( *ddsConversionTask );
                     ddsConversionTask = nullptr;
                 }
             }

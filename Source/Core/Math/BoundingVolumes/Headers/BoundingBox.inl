@@ -102,9 +102,9 @@ inline bool BoundingBox::collision(const float3& center, const float3& halfExten
     const float3& localCenter = this->getCenter();
     const float3& localHalfExtent = this->getHalfExtent();
 
-    return ABS(localCenter.x - center.x) <= localHalfExtent.x + halfExtent.x &&
-           ABS(localCenter.y - center.y) <= localHalfExtent.y + halfExtent.y &&
-           ABS(localCenter.z - center.z) <= localHalfExtent.z + halfExtent.z;
+    return std::abs(localCenter.x - center.x) <= localHalfExtent.x + halfExtent.x &&
+           std::abs(localCenter.y - center.y) <= localHalfExtent.y + halfExtent.y &&
+           std::abs(localCenter.z - center.z) <= localHalfExtent.z + halfExtent.z;
 }
 
 inline bool BoundingBox::collision(const float3& center, const F32 radius) const noexcept

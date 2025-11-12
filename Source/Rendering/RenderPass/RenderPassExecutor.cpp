@@ -665,14 +665,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    Start( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint]( const Task& )
+                    pool.enqueue( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint]( const Task& )
                                         {
                                             parseTransformRange( queue, 0u, midPoint, index, interpFactor );
-                                        } ), pool );
-                    Start( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
+                                        } ) );
+                    pool.enqueue( *CreateTask( updateTask, [this, index, interpFactor, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseTransformRange(queue, midPoint, queueSize, index, interpFactor );
-                                        } ), pool );
+                                        } ) );
                     updateTaskDirty = true;
                 }
                 else
@@ -691,14 +691,14 @@ namespace Divide
                 if ( queueSize > g_nodesPerPrepareDrawPartition )
                 {
                     const U32 midPoint = queueSize / 2;
-                    Start( *CreateTask( updateTask, [this, &queue, midPoint]( const Task& )
+                    pool.enqueue( *CreateTask( updateTask, [this, &queue, midPoint]( const Task& )
                                         {
                                             parseMaterialRange( queue, 0u, midPoint );
-                                        } ), pool );
-                    Start( *CreateTask( updateTask, [this, &queue, midPoint, queueSize]( const Task& )
+                                        } ) );
+                    pool.enqueue( *CreateTask( updateTask, [this, &queue, midPoint, queueSize]( const Task& )
                                         {
                                             parseMaterialRange( queue, midPoint, queueSize );
-                                        } ), pool );
+                                        } ) );
                     updateTaskDirty = true;
                 }
                 else
@@ -710,8 +710,8 @@ namespace Divide
         if (updateTaskDirty) 
         {
             PROFILE_SCOPE( "buildDrawCommands - process nodes: Waiting for tasks to finish", Profiler::Category::Scene );
-            Start( *updateTask, pool );
-            Wait( *updateTask, pool );
+            pool.enqueue( *updateTask );
+            pool.wait( *updateTask );
         }
 
         RenderStagePass stagePass = params._stagePass;

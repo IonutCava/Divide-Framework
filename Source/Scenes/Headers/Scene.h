@@ -34,7 +34,6 @@
 #define DVD_SCENE_H_
 
 #include "SceneState.h"
-#include "SceneInput.h"
 
 #include "Core/Resources/Headers/Resource.h"
 #include "Core/Headers/PlatformContextComponent.h"
@@ -43,6 +42,14 @@
 #include "Utility/Headers/XMLParser.h"
 
 namespace Divide {
+
+class Camera;
+struct Task;
+
+namespace Input {
+    struct MouseMoveEvent;
+    enum class InputDeviceType : U8;
+}
 
 class Sky;
 class GUI;
@@ -63,12 +70,14 @@ class DirectionalLightComponent;
 class EnvironmentProbeComponent;
 
 struct SceneEntry;
+struct InputParams;
 struct ResourceDescriptorBase;
 
 FWD_DECLARE_MANAGED_CLASS(Mesh);
 FWD_DECLARE_MANAGED_CLASS(Player);
-FWD_DECLARE_MANAGED_CLASS(SceneGraph);
 FWD_DECLARE_MANAGED_CLASS(LightPool);
+FWD_DECLARE_MANAGED_CLASS(SceneGraph);
+FWD_DECLARE_MANAGED_CLASS(SceneInput);
 FWD_DECLARE_MANAGED_CLASS(SceneGUIElements);
 FWD_DECLARE_MANAGED_CLASS(SceneEnvironmentProbePool);
 
@@ -430,9 +439,7 @@ class SceneProjectManager
         scene->setSelected(idx, sgns, recursive);
     }
 
-    static void clearHoverTarget(Scene* scene, const Input::MouseMoveEvent& arg) {
-        scene->clearHoverTarget(scene->input()->getPlayerIndexForDevice(arg._deviceType, arg._deviceIndex));
-    }
+    static void clearHoverTarget(Scene* scene, const Input::MouseMoveEvent& arg);
 
     static SceneEnvironmentProbePool* getEnvProbes(Scene* scene) noexcept {
         return scene->_envProbePool.get();

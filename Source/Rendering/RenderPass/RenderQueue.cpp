@@ -192,19 +192,18 @@ namespace Divide
                 if ( renderBin.getBinSize() > k_threadBias )
                 {
                     const RenderingOrder sortOrder = renderOrder == RenderingOrder::COUNT ? getSortOrder( stagePass, rbType ) : renderOrder;
-                    Start( *CreateTask( sortTask,
+                    pool.enqueue( *CreateTask( sortTask,
                                         [&renderBin, rbType, sortOrder]( const Task& )
                                         {
                                             renderBin.sort( rbType, sortOrder );
-                                        } ),
-                           pool );
+                                        } ) );
                     sortTaskDirty = true;
                 }
             }
 
             if ( sortTaskDirty )
             {
-                Start( *sortTask, pool );
+                pool.enqueue( *sortTask );
             }
 
             for ( U8 i = 0u; i < to_base( RenderBinType::COUNT ); ++i )
@@ -220,7 +219,7 @@ namespace Divide
 
             if ( sortTaskDirty )
             {
-                Wait( *sortTask, pool );
+                pool.wait( *sortTask );
             }
         }
     }

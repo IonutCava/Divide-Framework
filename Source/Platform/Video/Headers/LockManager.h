@@ -121,6 +121,7 @@ namespace Divide {
         static BufferLockPool s_bufferLockPool;
     };
 
+    FWD_DECLARE_MANAGED_CLASS( LockManager );
 }; //namespace Divide
 
 #endif //DVD_LOCK_MANAGER_H_

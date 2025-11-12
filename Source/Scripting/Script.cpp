@@ -210,7 +210,7 @@ void Script::onScriptModify(const std::string_view script, FileUpdateEvent& /*ev
     }
 }
 
-void Script::caughtException(const char* message, const bool isEvalException) const
+void Script::caughtException(const std::string_view message, const bool isEvalException) const
 {
     Console::printfn(Locale::Get(isEvalException ? _ID("SCRIPT_EVAL_EXCEPTION")
                                                  : _ID("SCRIPT_OTHER_EXCEPTION")),

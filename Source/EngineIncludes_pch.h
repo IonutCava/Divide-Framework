@@ -33,9 +33,11 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PCH_
 #define DVD_PCH_
 
-// As of October 2022
-#if __cplusplus < 201704L
-#error "Divide Framework requires C++20 support at a minimum!"
+#include "CXXConfig.h"
+
+// As of November 2025
+#if !DIVIDE_HAS_CXX23
+#error "Divide Framework requires C++23 support as a minimum!"
 #endif 
 
 #if !defined(HAS_SSE41) && !defined(HAS_NEON)

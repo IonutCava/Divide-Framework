@@ -90,17 +90,75 @@ jobs:
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
+  build_clang_asan_ubsan:
+    needs: info_job
+    name: Ubuntu - clang ASAN+UBSAN (debug/editor)
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-setup/linux
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+
+      - uses: ./.github/actions/cmake-build/linux
+        with:
+          compiler: clang
+          build-type: editor
+          configuration: debug
+          configure-preset: linux-clang-editor-asan-ubsan
+          build-preset: linux-clang-debug-editor-asan-ubsan
+          test-preset: test-linux-clang-debug-editor-asan-ubsan
+
+  build_gcc_asan_ubsan:
+    needs: info_job
+    name: Ubuntu - gcc ASAN+UBSAN (debug/editor)
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    timeout-minutes: 90
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          # this might remove tools that are actually needed,
+          # if set to "true" but frees about 6 GB
+          tool-cache: false
+          
+          # all of these default to true, but feel free to set to
+          # "false" if necessary for your workflow
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+        
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-setup/linux
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+
+      - uses: ./.github/actions/cmake-build/linux
+        with:
+          compiler: gcc
+          build-type: editor
+          configuration: debug
+          configure-preset: linux-gcc-editor-asan-ubsan
+          build-preset: linux-gcc-debug-editor-asan-ubsan
+          test-preset: test-linux-gcc-debug-editor-asan-ubsan
+
   output_job:
-    needs: [build_gcc, build_clang]
+    needs: [build_gcc, build_clang, build_clang_asan_ubsan, build_gcc_asan_ubsan]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Retrieve results
         id: results
         run: |
-          if [[ "${{ needs.build_gcc.result }}" == "failure" || "${{ needs.build_clang.result }}" == "failure" ]]; then
+          if [[ "${{ needs.build_gcc.result }}" == "failure" || "${{ needs.build_clang.result }}" == "failure" || "${{ needs.build_clang_asan_ubsan.result }}" == "failure" || "${{ needs.build_gcc_asan_ubsan.result }}" == "failure" ]]; then
             echo "status=Build failed" >> $GITHUB_OUTPUT
-          elif [[ "${{ needs.build_gcc.result }}" == "cancelled" || "${{ needs.build_clang.result }}" == "cancelled" ]]; then
+          elif [[ "${{ needs.build_gcc.result }}" == "cancelled" || "${{ needs.build_clang.result }}" == "cancelled" || "${{ needs.build_clang_asan_ubsan.result }}" == "cancelled" || "${{ needs.build_gcc_asan_ubsan.result }}" == "cancelled" ]]; then
             echo "status=Builds cancelled" >> $GITHUB_OUTPUT
           else
             echo "status=Success" >> $GITHUB_OUTPUT

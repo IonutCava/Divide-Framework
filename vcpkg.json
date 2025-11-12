@@ -22,7 +22,6 @@
     "vulkan",
     "vulkan-memory-allocator",
     "vk-bootstrap",
-    "glslang",
     "ctre",
     "catch2",
     "fribidi",
@@ -55,6 +54,12 @@
         "no-obsolete-functions",
         "sdl3-binding",
         "sdl3-renderer-binding"
+      ]
+    },
+    {
+      "name": "glslang",
+      "features": [
+        "rtti"
       ]
     },
     {

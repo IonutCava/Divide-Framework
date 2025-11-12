@@ -294,7 +294,7 @@ namespace Divide
                 const F32 distance = (corner - frustumCenter).lengthSquared();
                 radius = std::max( radius, distance );
             }
-            radius = CEIL( Sqrt<F32>( radius ) * 16.0f ) / 16.0f;
+            radius = std::ceil( Sqrt<F32>( radius ) * 16.0f ) / 16.0f;
             radius += appliedDiff;
 
             float3 maxExtents( radius, radius, radius );

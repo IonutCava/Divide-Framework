@@ -3,6 +3,8 @@
 #include "Headers/WarScene.h"
 #include "Headers/WarSceneAIProcessor.h"
 
+#include "Scenes/Headers/SceneInput.h"
+
 #include "GUI/Headers/GUIButton.h"
 #include "GUI/Headers/GUIMessageBox.h"
 #include "GUI/Headers/SceneGUIElements.h"
@@ -543,7 +545,7 @@ U16 WarScene::registerInputActions() {
     return actionID++;
 }
 
-void WarScene::toggleCamera(const InputParams param) {
+void WarScene::toggleCamera(const InputParams& param) {
     // None of this works with multiple players
     static bool tpsCameraActive = false;
     static bool flyCameraActive = true;

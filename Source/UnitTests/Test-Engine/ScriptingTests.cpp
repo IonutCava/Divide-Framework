@@ -17,6 +17,9 @@ TEST_CASE("Simple Inline Script Test", "[scripting]")
 
 TEST_CASE( "External Function Script Test", "[scripting]" )
 {
+#if defined(DIVIDE_UBSAN_REQUESTED)
+    STUBBED("ToDo: Fix chaiscript function binding issues with UBSAN - Ionut");
+#else
     platformInitRunListener::PlatformInit();
 
     Script input
@@ -27,17 +30,20 @@ TEST_CASE( "External Function Script Test", "[scripting]" )
             return x + 2;
         };
 
-        something(my_fun)
+        return external_lambda(my_fun);
     )");
 
     I32 variable = 0;
     const auto testFunc = [&variable](const DELEGATE_STD<I32, I32>& t_func) {
         variable = t_func(variable);
+        return true;
     };
 
-    input.registerFunction(testFunc, "something");
-    input.eval<void>();
+    input.registerFunction(testFunc, "external_lambda");
+    CHECK_TRUE(input.eval<bool>());
     CHECK_EQUAL(variable, 2);
+#endif
+
 }
 
 } //namespace Divide

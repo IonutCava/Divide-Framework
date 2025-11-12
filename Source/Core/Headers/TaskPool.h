@@ -82,6 +82,9 @@ class TaskPool final : public GUIDWrapper {
     /// <returns>A pointer to the newly allocated Task.</returns>
     static Task* AllocateTask(Task* parentTask, DELEGATE<void, Task&>&& func ) noexcept;
 
+    void enqueue(Task& task, TaskPriority priority = TaskPriority::DONT_CARE, DELEGATE<void>&& onCompletionFunction = {});
+    void wait(const Task& task);
+
     /// <summary>
     /// Initializes the thread pool with a specified number of threads (must be >0) and an optional callback for thread creation.
     /// If the pool is already initialized, this function will shutdown existing threads cleanly (finishing off any pending tasks) and recreate them.
@@ -103,13 +106,11 @@ class TaskPool final : public GUIDWrapper {
     /// <returns>Returns true if a task was executed, false otherwise.</returns>
     bool threadWaiting();
 
-
     /// <summary>
     /// Wait for all jobs to finish and optionally flush the callback queue.
     /// </summary>
     /// <param name="flushCallbacks">Optional parameter.  If flushCallbacks is true, this function MUST BE CALLED FROM THE MAIN THREAD as it will call flushCallbackQueue() internally</param>
     void waitForAllTasks(bool flushCallbacks = false);
-
 
     PROPERTY_R( vector<std::thread>, threads );
 
@@ -124,18 +125,14 @@ class TaskPool final : public GUIDWrapper {
   private:
     //ToDo: replace all friend class declarations with attorneys -Ionut;
     friend struct Task;
-    friend void Start(Task& task, TaskPool& pool, const TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
-    friend void Wait(const Task& task, TaskPool& pool);
     friend void Parallel_For(TaskPool& pool, const ParallelForDescriptor& descriptor);
 
-    void enqueue(Task& task, TaskPriority priority, DELEGATE<void>&& onCompletionFunction);
     void runTask(Task& task, bool hasCompletionCallback);
 
     /// Join all of the threads and block until all running tasks have completed.
     void join();
     bool deque( bool isIdleCall, PoolTask& taskOut, TaskPriority& priorityOut );
     bool dequeInternal( const TaskPriority& priorityIn, bool isIdleCall, PoolTask& taskOut );
-    void waitForTask(const Task& task);
     /// Returns false if there were no available tasks to run
     bool executeOneTask( bool isIdleCall );
 

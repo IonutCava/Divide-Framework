@@ -236,7 +236,7 @@ namespace Divide
         _taskFinishedCV.notify_one();
     }
 
-    void TaskPool::waitForTask( const Task& task )
+    void TaskPool::wait( const Task& task )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Threading );
 
@@ -432,7 +432,7 @@ namespace Divide
                 }
             );
 
-            Start( *parallelJob, pool, descriptor._priority );
+            pool.enqueue( *parallelJob, descriptor._priority );
         }
         if ( remainder > 0u )
         {
@@ -447,7 +447,7 @@ namespace Divide
                 }
             );
 
-            Start( *parallelJob, pool, descriptor._priority );
+            pool.enqueue( *parallelJob, descriptor._priority );
         }
 
         if ( descriptor._useCurrentThread )

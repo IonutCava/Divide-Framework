@@ -331,7 +331,7 @@ void Kernel::onLoop()
     if (frameLimit > 0)
     {
         const F32 elapsedMS = Time::MicrosecondsToMilliseconds<F32>(_appLoopTimerMain.get());
-        const F32 deltaMilliseconds = FLOOR(elapsedMS - (elapsedMS * 0.015f));
+        const F32 deltaMilliseconds = std::floor(elapsedMS - (elapsedMS * 0.015f));
         const F32 targetFrameTime = 1000.0f / frameLimit;
 
         if (deltaMilliseconds < targetFrameTime)

@@ -233,7 +233,7 @@ void Sky::OnStartup( PlatformContext& context )
                                {
                                    GenerateCurlNoise( fileName.c_str(), 128, 128 );
                                } );
-        Start( *tasks[0], context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
+        context.taskPool(TaskPoolType::HIGH_PRIORITY).enqueue( *tasks[0] );
         Console::printfn( "Done!" );
     }
     
@@ -245,7 +245,7 @@ void Sky::OnStartup( PlatformContext& context )
                                {
                                    GeneratePerlinNoise( fileName.c_str(), 512, 512 );
                                } );
-        Start( *tasks[1], context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
+        context.taskPool(TaskPoolType::HIGH_PRIORITY).enqueue( *tasks[1] );
         Console::printfn( "Done!" );
     }
 
@@ -258,7 +258,7 @@ void Sky::OnStartup( PlatformContext& context )
                                {
                                    GenerateWorleyNoise( fileName.c_str(), 32, 32, 32 );
                                } );
-        Start( *tasks[2], context.taskPool( TaskPoolType::HIGH_PRIORITY ) );
+        context.taskPool(TaskPoolType::HIGH_PRIORITY).enqueue( *tasks[2] );
         Console::printfn( "Done!" );
     }
 

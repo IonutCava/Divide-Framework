@@ -19,7 +19,7 @@ void ParticleBoxGenerator::generate(Task& packagedTasksParent,
                               ParticleData::g_threadPartitionSize,
                               [&](iter_t from, iter_t to)
     {
-        Start(*CreateTask(
+        parentPool.enqueue(*CreateTask(
             &packagedTasksParent,
             [from, to, min, max](const Task&) mutable
             {
@@ -27,8 +27,7 @@ void ParticleBoxGenerator::generate(Task& packagedTasksParent,
                 {
                     position.xyz = Random(min, max);
                 });
-            }),
-            parentPool);
+            }));
     });
 }
 
