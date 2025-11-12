@@ -237,8 +237,8 @@ struct VKStateTracker
     bool* _assertOnAPIError;
 
 
-    private:
-    std::array<VKImmediateCmdContext_uptr, to_base( QueueType::COUNT )> _cmdContexts{ nullptr };
+   private:
+    std::array<VKImmediateCmdContext_uptr, to_base( QueueType::COUNT )> _cmdContexts;
 };
 
 FWD_DECLARE_MANAGED_STRUCT( VKStateTracker );

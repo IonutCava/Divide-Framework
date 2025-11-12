@@ -33,149 +33,169 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_DATA_TYPES_H_
 #define DVD_PLATFORM_DATA_TYPES_H_
 
+#if !defined(DIVIDE_ENABLE_CONVERSION_CHECKS)
+# if defined(NDEBUG)
+inline constexpr bool conversion_checks_enabled_v = false;
+# else
+inline constexpr bool conversion_checks_enabled_v = true;
+# endif
+#else //DIVIDE_ENABLE_CONVERSION_CHECKS
+inline constexpr bool conversion_checks_enabled_v = (DIVIDE_ENABLE_CONVERSION_CHECKS != 0);
+#endif //DIVIDE_ENABLE_CONVERSION_CHECKS
+
 #include <type_traits> //std::underlying_type_t
 #include <cstddef> //std::byte
+#include <cmath> // std::isfinite / std::signbit
+#include <cassert>
 #include <limits>
 
 namespace Divide
 {
-
-    // "Exact" number of bits
-    using U8 = uint8_t;
-    using U16 = uint16_t;
-    using U32 = uint32_t;
-    using U64 = uint64_t;
-    using I8 = int8_t;
-    using I16 = int16_t;
-    using I32 = int32_t;
-    using I64 = int64_t;
-
-    using u8 = U8;
-    using u16 = U16;
-    using u32 = U32;
-    using u64 = U64;
-    using s8 = I8;
-    using s16 = I16;
-    using s32 = I32;
-    using s64 = I64;
-
-    // "At least" number of bits
-    using U8x = uint_least8_t;
-    using U16x = uint_least16_t;
-    using U32x = uint_least32_t;
-    using U64x = uint_least64_t;
-    using I8x = int_least8_t;
-    using I16x = int_least16_t;
-    using I32x = int_least32_t;
-    using I64x = int_least64_t;
-
-    using u8x = U8x;
-    using u16x = U16x;
-    using u32x = U32x;
-    using u64x = U64x;
-    using s8x = I8x;
-    using s16x = I16x;
-    using s32x = I32x;
-    using s64x = I64x;
-
-    //double is 8 bytes with Microsoft's compiler)
-    using F32  = float;
-    using D64  = double;
-    using D128 = long double;
-
-    using r32 = F32;
-    using r64 = D64;
-    using r128 = D128;
-
-    // Just a name to use as a reminder that these values shoul be be in the 0.0f to 1.0f range
-    using F32_NORM = F32;
-    // Just a name to use as a reminder that these values shoul be be in the -1.0f to 1.0f range
-    using F32_SNORM = F32;
-
     using bufferPtr = void*;
-
     using Byte = std::byte;
 
-constexpr Byte Byte_ZERO = Byte{0u};
+    /// Alias the stdint types into smaller names.
+    /// Provide both upper and lower case versions and 'x' variants for least types.
+    using U8   = uint8_t;        using u8   = U8;
+    using U16  = uint16_t;       using u16  = U16;
+    using U32  = uint32_t;       using u32  = U32;
+    using U64  = uint64_t;       using u64  = U64;
+    using U8x  = uint_least8_t;  using u8x  = U8x;
+    using U16x = uint_least16_t; using u16x = U16x;
+    using U32x = uint_least32_t; using u32x = U32x;
+    using U64x = uint_least64_t; using u64x = U64x;
+    using I8   = int8_t;         using i8   = I8;
+    using I16  = int16_t;        using i16  = I16;
+    using I32  = int32_t;        using i32  = I32;
+    using I64  = int64_t;        using i64  = I64;
+    using I8x  = int_least8_t;   using i8x  = I8x;
+    using I16x = int_least16_t;  using i16x = I16x;
+    using I32x = int_least32_t;  using i32x = I32x;
+    using I64x = int_least64_t;  using i64x = I64x;
+    using F32  = float;          using f32  = F32;
+    using D64  = double;         using d64  = D64;
 
-constexpr U8  U8_MAX  = std::numeric_limits<U8>::max();
-constexpr U16 U16_MAX = std::numeric_limits<U16>::max();
-constexpr U32 U24_MAX = (1 << 24u) - 1u;
-constexpr U32 U32_MAX = std::numeric_limits<U32>::max();
-constexpr U64 U64_MAX = std::numeric_limits<U64>::max();
-constexpr I8  I8_MAX  = std::numeric_limits<I8>::max();
-constexpr I16 I16_MAX = std::numeric_limits<I16>::max();
-constexpr I32 I24_MAX = (1 << 23) - 1;
-constexpr I32 I32_MAX = std::numeric_limits<I32>::max();
-constexpr I64 I64_MAX = std::numeric_limits<I64>::max();
-constexpr F32 F32_MAX = std::numeric_limits<F32>::max();
-constexpr D64 D64_MAX = std::numeric_limits<D64>::max();
+    static_assert(sizeof(F32) == 4, "F32 is not at least 32 bits!");
+    static_assert(sizeof(D64) == 8, "D64 is not at least 64 bits!");
 
-constexpr U8x  U8x_MAX  = std::numeric_limits<U8x>::max();
-constexpr U16x U16x_MAX = std::numeric_limits<U16x>::max();
-constexpr U32x U32x_MAX = std::numeric_limits<U32x>::max();
-constexpr U64x U64x_MAX = std::numeric_limits<U64x>::max();
-constexpr I8x  I8x_MAX  = std::numeric_limits<I8x>::max();
-constexpr I16x I16x_MAX = std::numeric_limits<I16x>::max();
-constexpr I32x I32x_MAX = std::numeric_limits<I32x>::max();
-constexpr I64x I64x_MAX = std::numeric_limits<I64x>::max();
+    /// Since "In" variant is short for intN_t, we default to it, but some(most) people prefer "Sn" variant
+    using S8   = I8;   using s8   = S8;
+    using S16  = I16;  using s16  = S16;
+    using S32  = I32;  using s32  = S32;
+    using S64  = I64;  using s64  = S64;
+    using S8x  = I8x;  using s8x  = S8x;
+    using S16x = I16x; using s16x = S16x;
+    using S32x = I32x; using s32x = S32x;
+    using S64x = I64x; using s64x = S64x;
+    using R32  = F32;  using r32  = R32;
+    using R64  = D64;  using r64  = R64;
 
-constexpr u8  u8_MAX  = U8_MAX;
-constexpr u16 u16_MAX = U16_MAX;
-constexpr u32 u32_MAX = U32_MAX;
-constexpr u64 u64_MAX = U64_MAX;
-constexpr s8  s8_MAX  = I8_MAX;
-constexpr s16 s16_MAX = I16_MAX;
-constexpr s32 s32_MAX = I32_MAX;
-constexpr s64 s64_MAX = I64_MAX;
+    /// Type name to indicate the range for these values should be [0.0f, 1.0f]
+    using F32_NORM = F32; using R32_NORM = F32_NORM;
+    using D64_NORM = R64; using R64_NORM = D64_NORM;
 
-constexpr u8x  u8x_MAX  = U8x_MAX;
-constexpr u16x u16x_MAX =U16x_MAX;
-constexpr u32x u32x_MAX =U32x_MAX;
-constexpr u64x u64x_MAX =U64x_MAX;
-constexpr s8x s8x_MAX  = I8x_MAX;
-constexpr s16x s16x_MAX =I16x_MAX;
-constexpr s32x s32x_MAX =I32x_MAX;
-constexpr s64x s64x_MAX =I64x_MAX;
+    /// Type name to indicate the range for these values should be [-1.0f, 1.0f]
+    using F32_SNORM = F32; using R32_SNORM = F32_SNORM;
+    using D64_SNORM = R64; using R64_SNORM = D64_SNORM;
 
-constexpr F32 F32_INFINITY = std::numeric_limits<F32>::infinity();
+    constexpr Byte Byte_ZERO = Byte{0u};
 
-constexpr F32 F32_LOWEST = std::numeric_limits<F32>::lowest();
-constexpr I64 I64_LOWEST = std::numeric_limits<I64>::lowest();
+    constexpr U8  U8_MAX  = std::numeric_limits<U8>::max();
+    constexpr U16 U16_MAX = std::numeric_limits<U16>::max();
+    constexpr U32 U24_MAX = (1 << 24u) - 1u;
+    constexpr U32 U32_MAX = std::numeric_limits<U32>::max();
+    constexpr U64 U64_MAX = std::numeric_limits<U64>::max();
+    constexpr I8  I8_MAX  = std::numeric_limits<I8>::max();
+    constexpr I16 I16_MAX = std::numeric_limits<I16>::max();
+    constexpr I32 I24_MAX = (1 << 23) - 1;
+    constexpr I32 I32_MAX = std::numeric_limits<I32>::max();
+    constexpr I64 I64_MAX = std::numeric_limits<I64>::max();
+    constexpr S8  S8_MAX  = std::numeric_limits<S8>::max();
+    constexpr S16 S16_MAX = std::numeric_limits<S16>::max();
+    constexpr S32 S24_MAX = (1 << 23) - 1;
+    constexpr S32 S32_MAX = std::numeric_limits<S32>::max();
+    constexpr S64 S64_MAX = std::numeric_limits<S64>::max();
 
-constexpr U8  U8_ONE  = U8(1u);
-constexpr U16 U16_ONE = U16(1u);
-constexpr U32 U32_ONE = 1u;
-constexpr U64 U64_ONE = 1u;
-constexpr I8  I8_ONE  = I8(1);
-constexpr I16 I16_ONE = I16(1);
-constexpr I32 I32_ONE = 1;
-constexpr I64 I64_ONE = 1;
-constexpr F32 F32_ONE = 1.f;
-constexpr D64 D64_ONE = 1.0;
+    constexpr U8x  U8x_MAX  = std::numeric_limits<U8x>::max();
+    constexpr U16x U16x_MAX = std::numeric_limits<U16x>::max();
+    constexpr U32x U32x_MAX = std::numeric_limits<U32x>::max();
+    constexpr U64x U64x_MAX = std::numeric_limits<U64x>::max();
+    constexpr I8x  I8x_MAX  = std::numeric_limits<I8x>::max();
+    constexpr I16x I16x_MAX = std::numeric_limits<I16x>::max();
+    constexpr I32x I32x_MAX = std::numeric_limits<I32x>::max();
+    constexpr I64x I64x_MAX = std::numeric_limits<I64x>::max();
+    constexpr S8x  S8x_MAX  = std::numeric_limits<S8x>::max();
+    constexpr S16x S16x_MAX = std::numeric_limits<S16x>::max();
+    constexpr S32x S32x_MAX = std::numeric_limits<S32x>::max();
+    constexpr S64x S64x_MAX = std::numeric_limits<S64x>::max();
 
-constexpr U8  U8_ZERO  = U8(0u);
-constexpr U16 U16_ZERO = U16(0u);
-constexpr U32 U32_ZERO = 0u;
-constexpr U64 U64_ZERO = 0u;
-constexpr I8  I8_ZERO  = I8(0);
-constexpr I16 I16_ZERO = I16(0);
-constexpr I32 I32_ZERO = 0;
-constexpr I64 I64_ZERO = 0;
-constexpr F32 F32_ZERO = 0.f;
-constexpr D64 D64_ZERO = 0.0;
+    //Ref: https://stackoverflow.com/questions/7416699/how-to-define-24bit-data-type-in-c
+    constexpr I32 INT24_MAX  = 8388607;
+    constexpr U32 UINT24_MAX = U32(INT24_MAX) * 2u;
+    constexpr I32 INT24_MIN  = -8388608;
+    constexpr U32 UINT24_MIN = 0u;
+    constexpr F32 F32_MAX = std::numeric_limits<F32>::max();
+    constexpr R32 R32_MAX = std::numeric_limits<R32>::max();
+    constexpr D64 D64_MAX = std::numeric_limits<D64>::max();
+    constexpr R64 R64_MAX = std::numeric_limits<R64>::max();
 
-//ref: https://foonathan.net/2020/09/move-forward/
-// static_cast to rvalue reference
-#define MOV(...) static_cast<std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
+    constexpr F32 F32_INFINITY = std::numeric_limits<F32>::infinity();
+    constexpr R32 R32_INFINITY = std::numeric_limits<R32>::infinity();
+    constexpr D64 D64_INFINITY = std::numeric_limits<D64>::infinity();
+    constexpr R64 R64_INFINITY = std::numeric_limits<R64>::infinity();
 
-// static_cast to identity
-// The extra && aren't necessary as discussed above, but make it more robust in case it's used with a non-reference.
-#define FWD(...) static_cast<decltype(__VA_ARGS__)&&>(__VA_ARGS__)
+    constexpr F32 F32_LOWEST = std::numeric_limits<F32>::lowest();
+    constexpr R32 R32_LOWEST = std::numeric_limits<R32>::lowest();
+    constexpr R64 R64_LOWEST = std::numeric_limits<R64>::lowest();
+    constexpr D64 D64_LOWEST = std::numeric_limits<D64>::lowest();
+    constexpr I64 I64_LOWEST = std::numeric_limits<I64>::lowest();
+    constexpr S64 S64_LOWEST = std::numeric_limits<S64>::lowest();
+
+    constexpr U8  U8_ONE  = U8(1u);
+    constexpr U16 U16_ONE = U16(1u);
+    constexpr U32 U32_ONE = 1u;
+    constexpr U64 U64_ONE = 1u;
+    constexpr I8  I8_ONE  = I8(1);
+    constexpr I16 I16_ONE = I16(1);
+    constexpr I32 I32_ONE = 1;
+    constexpr I64 I64_ONE = 1;
+    constexpr S8  S8_ONE  = S8(1);
+    constexpr S16 S16_ONE = S16(1);
+    constexpr S32 S32_ONE = 1;
+    constexpr S64 S64_ONE = 1;
+    constexpr F32 F32_ONE = 1.f;
+    constexpr R32 R32_ONE = 1.f;
+    constexpr R64 R64_ONE = 1.0;
+    constexpr D64 D64_ONE = 1.0;
+
+    constexpr U8  U8_ZERO  = U8(0u);
+    constexpr U16 U16_ZERO = U16(0u);
+    constexpr U32 U32_ZERO = 0u;
+    constexpr U64 U64_ZERO = 0u;
+    constexpr I8  I8_ZERO  = I8(0);
+    constexpr I16 I16_ZERO = I16(0);
+    constexpr I32 I32_ZERO = 0;
+    constexpr I64 I64_ZERO = 0;
+    constexpr S8  S8_ZERO  = S8(0);
+    constexpr S16 S16_ZERO = S16(0);
+    constexpr S32 S32_ZERO = 0;
+    constexpr S64 S64_ZERO = 0;
+    constexpr F32 F32_ZERO = 0.f;
+    constexpr R32 R32_ZERO = 0.f;
+    constexpr R64 R64_ZERO = 0.0;
+    constexpr D64 D64_ZERO = 0.0;
+
+    //ref: https://foonathan.net/2020/09/move-forward/
+    // static_cast to rvalue reference
+    #define MOV(...) static_cast<std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
+
+    // static_cast to identity
+    // The extra && aren't necessary as discussed above, but make it more robust in case it's used with a non-reference.
+    #define FWD(...) static_cast<decltype(__VA_ARGS__)&&>(__VA_ARGS__)
 
     union P32
     {
-        U32 i = 0u;
+        U32 i{ 0u };
         U8  b[4];
 
         P32() = default;
@@ -196,159 +216,139 @@ constexpr D64 D64_ZERO = 0.0;
         return lhs.i != rhs.i;
     }
 
-    namespace detail
-    {
-        void internal_assert(const bool condition);
-    } //namespace detail
-
-    template <typename From, typename To>
-    struct static_caster
-    {
-        To operator()( From p ) noexcept
-        {
-            return static_cast<To>(p);
-        }
-    };
-
-    /*
-    template<typename Enum>
-    constexpr U32 operator"" _u32 ( Enum value )
-    {
-    return static_cast<U32>(value);
-    }*/
-
     template<typename Type>
     using BaseType = std::underlying_type_t<Type>;
 
     template <typename Type> requires std::is_integral_v<Type>
-    constexpr auto to_base( const Type value ) -> Type
-    {
-        return value;
-    }
-
-    template<typename T> requires std::is_floating_point_v<T>
-    constexpr bool isNonNegative(const T value)
-    {
-        return !std::signbit(value);
-    }
+    constexpr Type to_base(const Type value) { return value; }
 
     template <typename Type> requires std::is_enum_v<Type>
-    constexpr auto to_base( const Type value ) -> BaseType<Type>
-    {
-        return static_cast<BaseType<Type>>(value);
-    }
+    constexpr BaseType<Type> to_base(const Type value) { return static_cast<BaseType<Type>>(value); }
 
-    template <typename T>
-    constexpr size_t to_size( const T value )
+    namespace detail
     {
-        if constexpr ( std::is_floating_point_v<T> )
+        FORCE_INLINE void internal_assert(const bool expr)
         {
-            detail::internal_assert(isNonNegative(value));
+            assert(expr && "conversion validation failed (runtime)");
         }
 
-        return static_cast<size_t>(value);
-    }
-
-    template <typename T>
-    constexpr U64 to_U64( const T value )
-    {
-        if constexpr ( std::is_floating_point_v<T> )
+        template<typename Target, typename Source>
+        struct is_trivial_conversion
         {
-            detail::internal_assert(isNonNegative(value));
+            static constexpr bool value = std::is_same_v<Target, Source> || //< identical types are trivial
+                                          ( std::is_integral_v<Source> && std::is_integral_v<Target> && 
+                                           (std::is_signed_v<Source> == std::is_signed_v<Target>) && 
+                                           (sizeof(Source) <= sizeof(Target))); //< both integral, same signedness and source fits target size
+        };
+
+        template<typename Target, typename Enum> requires std::is_enum_v<Enum>
+        struct is_trivial_conversion<Target, Enum>
+        {
+            static constexpr bool value = is_trivial_conversion<Target, BaseType<Enum>>::value;
+        };
+
+        template<typename Target, typename Source>
+        inline constexpr bool is_trivial_conversion_v = is_trivial_conversion<Target, Source>::value;
+
+        template<typename Target, typename Source>
+        inline constexpr bool skip_validation_v = !conversion_checks_enabled_v || is_trivial_conversion_v<Target, Source>;
+
+        // No-op overload for trivial conversions
+        template<typename Target, typename Source> requires skip_validation_v<Target, Source>
+        void validate_conversion(const Source /*value*/) noexcept { };
+
+        // Checked overload for non-trivial conversions
+        template<typename Target, typename Source> requires (!skip_validation_v<Target, Source>)
+        void validate_conversion(const Source value)
+        {
+            if constexpr (std::is_enum_v<Source> || std::is_enum_v<Target> )
+            {
+                if constexpr (std::is_enum_v<Source> && !std::is_enum_v<Target> )
+                {
+                    validate_conversion<Target, BaseType<Source>>(static_cast<BaseType<Source>>(value));
+                }
+                else if constexpr (!std::is_enum_v<Source> && std::is_enum_v<Target>)
+                {
+                    validate_conversion<BaseType<Target>, Source>(value);
+                }
+                else
+                {
+                    validate_conversion<BaseType<Target>, BaseType<Source>>(static_cast<BaseType<Source>>(value));
+                }
+            }
+            else if constexpr (std::is_same_v<Target, Byte>)
+            {
+                validate_conversion<U8, Source>(value);
+            }
+            else if constexpr (std::is_floating_point_v<Source>)
+            {
+                internal_assert( std::isfinite(value) );
+
+                const long double v = static_cast<long double>(value);
+
+                internal_assert
+                (
+                    v >= static_cast<long double>(std::numeric_limits<Target>::lowest()) &&
+                    v <= static_cast<long double>(std::numeric_limits<Target>::max())
+                );
+            }
+            else if constexpr (std::is_signed_v<Source> && std::is_integral_v<Target> && std::is_unsigned_v<Target>)
+            {
+                // Signed integral source -> unsigned/smaller integral target: check non-negative and fits
+                internal_assert
+                (
+                    value >= 0 &&
+                    value <= std::numeric_limits<Target>::max()
+                );
+            }
+            else if constexpr (std::is_integral_v<Source> && std::is_integral_v<Target>)
+            {
+                // Integral source (signed or unsigned) -> smaller unsigned/signed target: check fit
+                internal_assert
+                (
+                    value <= std::numeric_limits<Target>::max()
+                );
+            }
+            else
+            {
+                //NOP
+            }
         }
 
-        return static_cast<U64>(value);
-    }
-
-    template <typename T>
-    constexpr U32 to_U32( const T value )
-    {
-        if constexpr ( std::is_floating_point_v<T> )
+        template<typename Target, typename Source>
+        constexpr void runtime_validate_conversion(const Source value)
         {
-            detail::internal_assert(isNonNegative(value));
+            if consteval
+            {
+                //NOP
+            }
+            else
+            {
+                validate_conversion<Target, Source>(value);
+            }
         }
 
-        return static_cast<U32>(value);
-    }
+    } //namespace detail
 
-    template <typename T>
-    constexpr U16 to_U16( const T value )
-    {
-        if constexpr ( std::is_floating_point_v<T> )
-        {
-            detail::internal_assert(isNonNegative(value));
-        }
-
-        return static_cast<U16>(value);
-    }
-
-    template<typename T>
-    constexpr U8 to_U8( const T value )
-    {
-        if constexpr ( std::is_floating_point_v<T> )
-        {
-            detail::internal_assert(isNonNegative(value));
-        }
-
-        return static_cast<U8>(value);
-    }
-
-    template <typename T>
-    constexpr I64 to_I64( const T value )
-    {
-        return static_cast<I64>(value);
-    }
-
-    template <typename T>
-    constexpr I32 to_I32( const T value )
-    {
-        return static_cast<I32>(value);
-    }
-
-    template <typename T>
-    constexpr I16 to_I16( const T value )
-    {
-        return static_cast<I16>(value);
-    }
-
-    template <typename T>
-    constexpr I8 to_I8( const T value )
-    {
-        return static_cast<I8>(value);
-    }
-    template <typename T>
-    constexpr F32 to_F32( const T value )
-    {
-        return static_cast<F32>(value);
-    }
-
-    template <typename T>
-    constexpr D64 to_D64( const T value )
-    {
-        return static_cast<D64>(value);
-    }
-
-    template<typename T>
-    constexpr D128 to_D128( const T value )
-    {
-        return static_cast<D128>(value);
-    }
-
-    template<typename T>
-    constexpr Byte to_byte( const T value )
-    {
-        if constexpr ( std::is_floating_point_v<T> )
-        {
-            detail::internal_assert(isNonNegative(value));
-        }
-
-        return static_cast<Byte>(value);
-    }
-
-    //Ref: https://stackoverflow.com/questions/7416699/how-to-define-24bit-data-type-in-c
-    constexpr I32 INT24_MAX = 8388607;
-    constexpr U32 UINT24_MAX = to_U32(INT24_MAX * 2);
-
+    template <typename T> constexpr size_t to_size( const T value ) { detail::runtime_validate_conversion<size_t, T>(value); return static_cast<size_t>(value); }
+    template <typename T> constexpr U64    to_U64 ( const T value ) { detail::runtime_validate_conversion<U64,    T>(value); return static_cast<U64>(value);    }
+    template <typename T> constexpr U32    to_U32 ( const T value ) { detail::runtime_validate_conversion<U32,    T>(value); return static_cast<U32>(value);    }
+    template <typename T> constexpr U16    to_U16 ( const T value ) { detail::runtime_validate_conversion<U16,    T>(value); return static_cast<U16>(value);    }
+    template <typename T> constexpr U8     to_U8  ( const T value ) { detail::runtime_validate_conversion<U8,     T>(value); return static_cast<U8>(value);     }
+    template <typename T> constexpr I64    to_I64 ( const T value ) { detail::runtime_validate_conversion<I64,    T>(value); return static_cast<I64>(value);    }
+    template <typename T> constexpr I32    to_I32 ( const T value ) { detail::runtime_validate_conversion<I32,    T>(value); return static_cast<I32>(value);    }
+    template <typename T> constexpr I16    to_I16 ( const T value ) { detail::runtime_validate_conversion<I16,    T>(value); return static_cast<I16>(value);    }
+    template <typename T> constexpr I8     to_I8  ( const T value ) { detail::runtime_validate_conversion<I8,     T>(value); return static_cast<I8>(value);     }
+    template <typename T> constexpr S64    to_S64 ( const T value ) { detail::runtime_validate_conversion<S64,    T>(value); return static_cast<S64>(value);    }
+    template <typename T> constexpr S32    to_S32 ( const T value ) { detail::runtime_validate_conversion<S32,    T>(value); return static_cast<S32>(value);    }
+    template <typename T> constexpr S16    to_S16 ( const T value ) { detail::runtime_validate_conversion<S16,    T>(value); return static_cast<S16>(value);    }
+    template <typename T> constexpr S8     to_S8  ( const T value ) { detail::runtime_validate_conversion<S8,     T>(value); return static_cast<S8>(value);     }
+    template <typename T> constexpr F32    to_F32 ( const T value ) { detail::runtime_validate_conversion<F32,    T>(value); return static_cast<F32>(value);    }
+    template <typename T> constexpr R32    to_R32 ( const T value ) { detail::runtime_validate_conversion<R32,    T>(value); return static_cast<R32>(value);    }
+    template <typename T> constexpr D64    to_D64 ( const T value ) { detail::runtime_validate_conversion<D64,    T>(value); return static_cast<D64>(value);    }
+    template <typename T> constexpr R64    to_R64 ( const T value ) { detail::runtime_validate_conversion<R64,    T>(value); return static_cast<R64>(value);    }
+    template <typename T> constexpr Byte   to_byte( const T value ) { detail::runtime_validate_conversion<Byte,   T>(value); return static_cast<Byte>(value);   }
+                                                                                                                
     //ref: http://codereview.stackexchange.com/questions/51235/udp-network-server-client-for-gaming-using-boost-asio
     struct counter
     {
@@ -402,7 +402,6 @@ constexpr D64 D64_ZERO = 0.0;
     template <> struct type_rank<U64, std::is_same_v<U64, unsigned long>> { static constexpr I32 rank = 10; };
     template <> struct type_rank<F32>                                     { static constexpr I32 rank = 11; };
     template <> struct type_rank<D64>                                     { static constexpr I32 rank = 12; };
-    template <> struct type_rank<D128>                                    { static constexpr I32 rank = 13; };
 
     template <typename A, typename B>
     struct resolve_uac2

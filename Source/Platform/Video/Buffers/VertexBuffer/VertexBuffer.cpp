@@ -243,7 +243,7 @@ void VertexBuffer::addIndices(const vector<U16>& indices)
     eastl::transform(eastl::cbegin(indices),
                      eastl::cend(indices),
                      back_inserter(_indices),
-                     static_caster<U16, U32>());
+                     [](const U16 val) noexcept { return static_cast<U32>(val); });
 
     _indicesChanged = true;
 }

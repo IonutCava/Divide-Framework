@@ -33,14 +33,12 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DVD_PLATFORM_FILE_FILE_WATCHER_MANAGER_H_
 #define DVD_PLATFORM_FILE_FILE_WATCHER_MANAGER_H_
 
-namespace FW {
-    FWD_DECLARE_MANAGED_CLASS(FileWatcher);
-}
+#include <FileWatcher/FileWatcher.h>
 
 namespace Divide {
     struct FileWatcher final : GUIDWrapper {
        FORCE_INLINE FW::FileWatcher& operator()() noexcept { return *_impl; }
-       FW::FileWatcher_uptr _impl;
+       std::unique_ptr<FW::FileWatcher> _impl;
     };
 
     FWD_DECLARE_MANAGED_STRUCT(FileWatcher);

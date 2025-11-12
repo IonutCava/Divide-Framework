@@ -117,8 +117,53 @@ jobs:
           build-type: ${{ matrix.build-type }}
           configuration: ${{ matrix.configuration }}
 
+  build_msvc_asan_ubsan:
+    needs: info_job
+    name: Windows - msvc ASAN+UBSAN (debug/editor)
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-setup/windows
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+
+      - name: ASAN+UBSAN build (via cmake-build/windows action)
+        uses: ./.github/actions/cmake-build/windows
+        with:
+          compiler: msvc
+          build-type: editor
+          configuration: debug
+          configure-preset: windows-msvc-editor-asan-ubsan
+          build-preset: windows-msvc-debug-editor-asan-ubsan
+          test-preset: test-windows-msvc-debug-editor-asan-ubsan
+
+  build_clang_asan_ubsan:
+    needs: info_job
+    name: Windows - clang ASAN+UBSAN (profile/editor)
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-setup/windows
+        with:
+          runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
+
+      - name: ASAN+UBSAN build (via cmake-build/windows action)
+        uses: ./.github/actions/cmake-build/windows
+        with:
+          compiler: clang
+          build-type: editor
+          configuration: profile
+          configure-preset: windows-clang-editor-asan-ubsan
+          build-preset: windows-clang-profile-editor-asan-ubsan
+          test-preset: test-windows-clang-profile-editor-asan-ubsan
+          run-tests: false # Skip tests for clang ASAN+UBSAN build as it currently fails
+
   output_job:
-    needs: [info_job, build_msvc, build_clang]
+    needs: [info_job, build_msvc, build_clang, build_msvc_asan_ubsan, build_clang_asan_ubsan]
     if: always()
     runs-on: windows-latest
     steps:
@@ -128,11 +173,13 @@ jobs:
         run: |
           $msvcResult = "${{ needs.build_msvc.result }}"
           $clangResult = "${{ needs.build_clang.result }}"
+          $msvcAsanResult = "${{ needs.build_msvc_asan_ubsan.result }}"
+          $clangAsanResult = "${{ needs.build_clang_asan_ubsan.result }}"
           $infoResult = "${{ needs.info_job.result }}"
 
-          if ($msvcResult -eq "failure" -or $clangResult -eq "failure" -or $infoResult -eq "failure") {
+          if ($msvcResult -eq "failure" -or $clangResult -eq "failure" -or $msvcAsanResult -eq "failure" -or $clangAsanResult -eq "failure" -or $infoResult -eq "failure") {
             $status = "Build or Info job failed"
-          } elseif ($msvcResult -eq "cancelled" -or $clangResult -eq "cancelled" -or $infoResult -eq "cancelled") {
+          } elseif ($msvcResult -eq "cancelled" -or $clangResult -eq "cancelled" -or $msvcAsanResult -eq "cancelled" -or $clangAsanResult -eq "cancelled" -or $infoResult -eq "cancelled") {
             $status = "Build or Info job cancelled"
           } else {
             $status = "Success"

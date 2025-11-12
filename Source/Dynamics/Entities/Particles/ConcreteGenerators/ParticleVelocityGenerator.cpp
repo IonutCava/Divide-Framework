@@ -20,7 +20,7 @@ void ParticleVelocityGenerator::generate(Task& packagedTasksParent,
                               ParticleData::g_threadPartitionSize,
                               [&](iter_t from, iter_t to)
     {
-        Start(*CreateTask(
+        parentPool.enqueue(*CreateTask(
             &packagedTasksParent,
             [from, to, min, max](const Task&) mutable
             {
@@ -28,8 +28,7 @@ void ParticleVelocityGenerator::generate(Task& packagedTasksParent,
                 {
                     velocity.set(Random(min, max));
                 });
-            }),
-            parentPool);
+            }));
         });
 }
 

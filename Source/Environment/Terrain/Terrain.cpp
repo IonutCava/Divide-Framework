@@ -763,13 +763,13 @@ bool Terrain::loadResources( PlatformContext& context )
     Task* buildTask = CreateTask(TASK_NOP);
     for ( TerrainChunk* chunk : terrainChunks() )
     {
-        Start( *CreateTask( buildTask, [&](const Task&)
+        pool.enqueue( *CreateTask( buildTask, [&](const Task&)
         {
             Attorney::TerrainChunkVegetation::initVegetation( *chunk, context, _vegetation );
-        }), pool);
+        }));
     }
-    Start(*buildTask, pool);
-    Wait( *buildTask, pool );
+    pool.enqueue( *buildTask );
+    pool.wait( *buildTask );
 
     Console::printfn( LOCALE_STR( "TERRAIN_LOAD_END" ), resourceName() );
     return load( context );
@@ -1112,7 +1112,7 @@ void Terrain::prepareRender(SceneGraphNode* sgn,
     float2 snappedXZ = eyeXZ;
     for (U8 i = 0; i < 2; ++i) {
         if (SNAP_GRID_SIZE[i] > 0.f) {
-            snappedXZ[i] = FLOOR(snappedXZ[i] / SNAP_GRID_SIZE[i]) * SNAP_GRID_SIZE[i];
+            snappedXZ[i] = std::floor(snappedXZ[i] / SNAP_GRID_SIZE[i]) * SNAP_GRID_SIZE[i];
         }
     }
 

@@ -230,7 +230,7 @@ namespace Divide
     {
         if ( width >= T{1} && height >= T{1} )
         {
-            return static_cast<T>(FLOOR(std::log2f(std::fmaxf(to_F32(width), to_F32(height))))) + T{1};
+            return static_cast<T>(std::floor(std::log2f(std::fmaxf(to_F32(width), to_F32(height))))) + T{1};
         }
 
         return T{1};
@@ -272,7 +272,7 @@ namespace Divide
     constexpr I8 FLOAT_TO_CHAR_SNORM( const F32_SNORM value ) noexcept
     {
         assert( value >= -1.f && value <= 1.f );
-        return to_I8( (value >= 1.0f ? 127 : (value <= -1.0f ? -127 : to_I32( SIGN( value ) * FLOOR(ABS( value ) * 128.0f ) ))) );
+        return to_I8( (value >= 1.0f ? 127 : (value <= -1.0f ? -127 : to_I32( SIGN( value ) * FLOOR_CONSTEXPR(ABS_CONSTEXPR( value ) * 128.0f ) ))) );
     }
 
     constexpr F32_SNORM SNORM_CHAR_TO_FLOAT( const I8 value ) noexcept
@@ -303,7 +303,7 @@ namespace Divide
     constexpr U8 FLOAT_TO_CHAR_UNORM( const F32_NORM value ) noexcept
     {
         assert( value >= 0.f && value <= 1.f );
-        return to_U8( (value >= 1.0f ? 255 : (value <= 0.0f ? 0 : to_I32(FLOOR( value * 256.0f ) ))) );
+        return to_U8( (value >= 1.0f ? 255 : (value <= 0.0f ? 0 : to_I32(FLOOR_CONSTEXPR( value * 256.0f ) ))) );
     }
 
     namespace Util
