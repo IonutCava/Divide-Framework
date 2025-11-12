@@ -483,7 +483,6 @@ struct Handle
     }
 };
 
-
 template<typename T>
 inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
                           
@@ -494,9 +493,6 @@ inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
 
 constexpr F32 EPSILON_F32 = std::numeric_limits<F32>::epsilon();
 constexpr D64 EPSILON_D64 = std::numeric_limits<D64>::epsilon();
-
-template<typename T, typename U = T>
-constexpr bool COMPARE(const T X, const U Y) noexcept;
 
 template<std::floating_point T>
 [[nodiscard]] constexpr T ABS_CONSTEXPR(const T input)
@@ -522,6 +518,47 @@ template<std::unsigned_integral T>
     return input;
 }
 
+template <typename T, typename U = T>
+[[nodiscard]] constexpr bool COMPARE_TOLERANCE(const T X, const U TOLERANCE) noexcept
+{
+    return ABS_CONSTEXPR(X) <= TOLERANCE;
+}
+
+template<typename T, typename U = T, typename W = T>
+[[nodiscard]] constexpr bool COMPARE_TOLERANCE(const T X, const U Y, const W TOLERANCE) noexcept
+{
+    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U>)
+    {
+        return COMPARE_TOLERANCE((X >= Y ? subtract(X, Y) : subtract(Y, X)), TOLERANCE);
+    }
+
+    return COMPARE_TOLERANCE(subtract(X, Y), TOLERANCE);
+}
+
+template<typename T, typename U = T>
+[[nodiscard]] constexpr bool COMPARE(const T X, const U Y) noexcept
+{
+    return X == Y;
+}
+
+template<is_pod T, is_pod U = T>
+requires (!std::floating_point<T> && !std::floating_point<U>)
+[[nodiscard]] constexpr bool COMPARE(const T X, const U Y) noexcept
+{
+    return X == static_cast<resolve_uac<T, U>::return_type>(Y);
+}
+
+template<>
+[[nodiscard]] constexpr bool COMPARE(const F32 X, const F32 Y) noexcept
+{
+    return COMPARE_TOLERANCE(X, Y, EPSILON_F32);
+}
+
+template<>
+[[nodiscard]] constexpr bool COMPARE(const D64 X, const D64 Y) noexcept
+{
+    return COMPARE_TOLERANCE(X, Y, EPSILON_D64);
+}
 template<typename T>
 [[nodiscard]] constexpr T FLOOR_CONSTEXPR(const T input)
 {
@@ -590,47 +627,6 @@ template <>
 [[nodiscard]] constexpr bool IS_ZERO(const D64 X) noexcept
 {
     return ABS_CONSTEXPR(X) < EPSILON_D64;
-}
-
-template <typename T, typename U = T>
-[[nodiscard]] constexpr bool COMPARE_TOLERANCE(const T X, const U TOLERANCE) noexcept
-{
-    return ABS_CONSTEXPR(X) <= TOLERANCE;
-}
-
-template<typename T, typename U = T, typename W = T>
-[[nodiscard]] constexpr bool COMPARE_TOLERANCE(const T X, const U Y, const W TOLERANCE) noexcept
-{
-    if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U>)
-    {
-        return COMPARE_TOLERANCE((X >= Y ? subtract(X, Y) : subtract(Y, X)), TOLERANCE);
-    }
-
-    return COMPARE_TOLERANCE(subtract(X, Y), TOLERANCE);
-}
-
-template<typename T, typename U>
-[[nodiscard]] constexpr bool COMPARE(const T X, const U Y) noexcept
-{
-    return X == Y;
-}
-
-template<is_pod T, is_pod U = T>
-[[nodiscard]] constexpr bool COMPARE(const T X, const U Y) noexcept
-{
-    return X == static_cast<resolve_uac<T, U>::return_type>(Y);
-}
-
-template<>
-[[nodiscard]] constexpr bool COMPARE(const F32 X, const F32 Y) noexcept
-{
-    return COMPARE_TOLERANCE(X, Y, EPSILON_F32);
-}
-
-template<>
-[[nodiscard]] constexpr  bool COMPARE(const D64 X, const D64 Y) noexcept
-{
-    return COMPARE_TOLERANCE(X, Y, EPSILON_D64);
 }
 
 template<typename T, typename tagType>

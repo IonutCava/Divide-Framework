@@ -150,12 +150,12 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
     endif()
 
     if( NOT RUN_ASAN AND NOT RUN_UBSAN )
-        if ( ENABLE_DYNAMIC_DEOPTIMISATION AND NOT IS_GITHUB_ACTIONS)
+        if ( MSVC_COMPILER AND ENABLE_DYNAMIC_DEOPTIMISATION AND NOT IS_GITHUB_ACTIONS)
             set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /dynamicdeopt" )
             list(APPEND EXTRA_COMPILE_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/GL->")
             list(APPEND EXTRA_LINK_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/OPT:NOICF>")
         else()
-            message("Skipping /dynamicdeopt for current build")
+            message("Skipping /dynamicdeopt for current build (only supported on MSVC)")
         endif()
     endif() #!RUN_ASAN AND !RUN_UBSAN
 else() #MSVC_COMPILER
