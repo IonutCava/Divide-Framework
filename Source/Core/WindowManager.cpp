@@ -112,7 +112,6 @@ ErrorCode WindowManager::init(PlatformContext& context,
 
     Console::printfn(LOCALE_STR("SDL_CURRENT_VIDEO_DRIVER"), videoDriver != nullptr ? videoDriver : "UNKNOWN");
 
-    efficient_clear( _monitors );
     I32 displayCount = 0;
     SDL_DisplayID* displays = SDL_GetDisplays(&displayCount);
     if ( displays && displayCount > 0)

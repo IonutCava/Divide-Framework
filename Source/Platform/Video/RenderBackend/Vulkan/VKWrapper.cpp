@@ -569,8 +569,8 @@ namespace Divide
 
     void VK_API::RegisterTransferRequest( const VKTransferQueue::TransferRequest& request )
     {
-        s_transferQueue._requests.enqueue( request );
-        s_transferQueue._dirty.store(true);
+        s_transferQueue._requests.enqueue(request);
+        s_transferQueue._dirty.store(true, std::memory_order_release);
     }
 
     VK_API::VK_API( GFXDevice& context ) noexcept
@@ -656,8 +656,8 @@ namespace Divide
             return;
         }
 
-        VkCommandBuffer cmd = windowState._swapChain->getFrameData()._commandBuffer;
-        FlushBufferTransferRequests( cmd );
+        FlushBufferTransferRequests( windowState._swapChain->getFrameData()._commandBuffer );
+
         windowState._activeState = {};
         s_dynamicOffsets.clear();
 
@@ -2101,7 +2101,7 @@ namespace Divide
 
         using CopyContainer = vector<PerBufferCopies>;
         using BarrierContainer = eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true>;
-        using BatchedTransferQueue = eastl::fixed_vector<VKTransferQueue::TransferRequest, 64, false>;
+        using BatchedTransferQueue = eastl::fixed_vector<VKTransferQueue::TransferRequest, 64, true>;
 
         void PrepareTransferRequest( const VKTransferQueue::TransferRequest& request, bool toWrite, VkBufferMemoryBarrier2& memBarrierOut )
         {
@@ -2127,62 +2127,6 @@ namespace Divide
             memBarrierOut.offset = request.dstOffset;
             memBarrierOut.size = request.size;
             memBarrierOut.buffer = request.dstBuffer;
-        }
-
-        void FlushBarriers( BarrierContainer& barriers, BatchedTransferQueue& transferQueueBatched, VkCommandBuffer cmd, bool toWrite )
-        {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
-
-            for ( const auto& request : transferQueueBatched )
-            {
-                PrepareTransferRequest( request, toWrite, barriers.emplace_back() );
-            }
-
-            if ( !barriers.empty() )
-            {
-                VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                dependencyInfo.bufferMemoryBarrierCount = to_U32( barriers.size() );
-                dependencyInfo.pBufferMemoryBarriers = barriers.data();
-
-                VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
-                efficient_clear( barriers );
-            }
-        }
-
-        void PrepareBufferCopyBarriers( CopyContainer& copyRequests, BatchedTransferQueue& transferQueueBatched )
-        {
-            PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-            copyRequests.clear();
-            copyRequests.reserve( transferQueueBatched.size() );
-
-            VkBufferCopy2 copy{ .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
-
-            for ( const auto& request : transferQueueBatched )
-            {
-                copy.dstOffset = request.dstOffset;
-                copy.srcOffset = request.srcOffset;
-                copy.size = request.size;
-
-                bool found = false;
-                for ( PerBufferCopies& entry : copyRequests )
-                {
-                    if ( entry._srcBuffer == request.srcBuffer && entry._dstBuffer == request.dstBuffer )
-                    {
-                        entry._copiesPerBuffer.emplace_back( copy );
-                        found = true;
-                        break;
-                    }
-                }
-
-                if ( !found )
-                {
-                    PerBufferCopies& cRequest = copyRequests.emplace_back();
-                    cRequest._srcBuffer = request.srcBuffer;
-                    cRequest._dstBuffer = request.dstBuffer;
-                    cRequest._copiesPerBuffer.emplace_back( copy );
-                }
-            }
         }
     };
 
@@ -2217,37 +2161,52 @@ namespace Divide
         VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
     }
 
-    void VK_API::FlushBufferTransferRequests()
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        if ( s_transferQueue._dirty.load() )
-        {
-            VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
-            {
-                VK_API::FlushBufferTransferRequests( cmd );
-            }, "Deferred Buffer Uploads" );
-        }
-    }
-
     void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        if ( s_transferQueue._dirty.load() )
+        thread_local vector<PerBufferCopies> s_copyRequests;
+        thread_local BarrierContainer s_barriers{};
+        thread_local BatchedTransferQueue s_transferQueueBatched;
+        thread_local vector<VKTransferQueue::TransferRequest> s_requests;
+
+        if (!s_transferQueue._dirty.load(std::memory_order_acquire))
         {
-            thread_local vector<PerBufferCopies> s_copyRequests;
-            thread_local BarrierContainer s_barriers{};
-            thread_local BatchedTransferQueue s_transferQueueBatched;
-            thread_local VKTransferQueue::TransferRequest request;
+            return; // common, cheap path
+        }
+        if (!s_transferQueue._dirty.exchange(false, std::memory_order_acq_rel))
+        {
+            return;
+        }
 
-            s_transferQueueBatched.clear();
-            s_barriers.clear();
+        const size_t approxCount = s_transferQueue._requests.size_approx();
+        if (approxCount > 0)
+        {
+            s_copyRequests.reserve(approxCount);
 
-            bool hasTransfers = false;
-            bool hasBarriers = false;
-            while (s_transferQueue._requests.try_dequeue(request))
+            if (approxCount > s_requests.size())
             {
+                s_requests.resize(approxCount);
+            }
+        }
+
+        s_transferQueueBatched.clear();
+        s_barriers.clear();
+        s_copyRequests.clear();
+
+        bool hasTransfers = false;
+        while (true)
+        {
+            const size_t dequeued = s_transferQueue._requests.try_dequeue_bulk(s_requests.data(), s_requests.size());
+            if ( 0u == dequeued )
+            {
+                break;
+            }
+
+            for (size_t i = 0u; i < dequeued; ++i)
+            {
+                const VKTransferQueue::TransferRequest& request = s_requests[i];
+
                 if (request.srcBuffer != VK_NULL_HANDLE)
                 {
                     s_transferQueueBatched.push_back(request);
@@ -2256,39 +2215,95 @@ namespace Divide
                 else
                 {
                     PrepareTransferRequest(request, false, s_barriers.emplace_back());
-                    hasBarriers = true;
+                }
+            }
+        }
+
+        for (const auto& request : s_transferQueueBatched)
+        {
+            PrepareTransferRequest(request, true, s_barriers.emplace_back());
+        }
+
+        if (!s_barriers.empty())
+        {
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            dependencyInfo.bufferMemoryBarrierCount = to_U32(s_barriers.size());
+            dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
+
+            VK_UT_IF_CHECK( cmdBuffer != VK_NULL_HANDLE )
+            {
+                VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+            }
+
+            s_barriers.clear();
+        }
+
+        if ( !s_transferQueueBatched.empty() )
+        {
+            s_copyRequests.reserve(s_transferQueueBatched.size());
+
+            VkBufferCopy2 copy{ .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+
+            for (const auto& request : s_transferQueueBatched)
+            {
+                copy.dstOffset = request.dstOffset;
+                copy.srcOffset = request.srcOffset;
+                copy.size = request.size;
+
+                bool found = false;
+                for (PerBufferCopies& entry : s_copyRequests)
+                {
+                    if (entry._srcBuffer == request.srcBuffer && entry._dstBuffer == request.dstBuffer)
+                    {
+                        entry._copiesPerBuffer.emplace_back(copy);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    PerBufferCopies& cRequest = s_copyRequests.emplace_back();
+                    cRequest._srcBuffer = request.srcBuffer;
+                    cRequest._dstBuffer = request.dstBuffer;
+                    cRequest._copiesPerBuffer.emplace_back(copy);
                 }
             }
 
-            if ( hasBarriers )
+            for (const PerBufferCopies& request : s_copyRequests)
             {
-                FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, true);
-            }
-
-            if ( hasTransfers )
-            {
-                PrepareBufferCopyBarriers(s_copyRequests, s_transferQueueBatched);
-
-                for (const PerBufferCopies& request : s_copyRequests)
+                VkCopyBufferInfo2 copyInfo = 
                 {
-                    VkCopyBufferInfo2 copyInfo = 
-                    {
-                        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-                        .srcBuffer = request._srcBuffer,
-                        .dstBuffer = request._dstBuffer,
-                        .regionCount = to_U32(request._copiesPerBuffer.size()),
-                        .pRegions = request._copiesPerBuffer.data()
-                    };
+                    .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                    .srcBuffer = request._srcBuffer,
+                    .dstBuffer = request._dstBuffer,
+                    .regionCount = to_U32(request._copiesPerBuffer.size()),
+                    .pRegions = request._copiesPerBuffer.data()
+                };
 
+                VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
+                {
                     VK_PROFILE(vkCmdCopyBuffer2, cmdBuffer, &copyInfo);
                 }
             }
 
-            if (hasBarriers)
+            for (const auto& request : s_transferQueueBatched)
             {
-                FlushBarriers(s_barriers, s_transferQueueBatched, cmdBuffer, false);
+                PrepareTransferRequest(request, false, s_barriers.emplace_back());
             }
-            s_transferQueue._dirty.store(false);
+        }
+
+        if (!s_barriers.empty())
+        {
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            dependencyInfo.bufferMemoryBarrierCount = to_U32(s_barriers.size());
+            dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
+
+            VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
+            {
+                VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+            }
+            s_barriers.clear();
         }
     }
 
@@ -2302,7 +2317,7 @@ namespace Divide
 
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
-            FlushBufferTransferRequests();
+            FlushBufferTransferRequests( cmdBuffer );
         }
 
         if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
@@ -2316,7 +2331,9 @@ namespace Divide
             {
                 PROFILE_SCOPE( "BEGIN_RENDER_PASS", Profiler::Category::Graphics );
 
-                thread_local VkRenderingAttachmentInfo dummyAttachment
+                thread_local VkRenderingInfo renderingInfo{};
+                thread_local vector<VkFormat> swapChainImageFormat( to_base( RTColourAttachmentSlot::COUNT ), VK_FORMAT_UNDEFINED);
+                thread_local VkRenderingAttachmentInfo attachmentInfo
                 {
                     .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                     .imageView = VK_NULL_HANDLE,
@@ -2335,17 +2352,13 @@ namespace Divide
                     }
                 };
 
-                thread_local VkRenderingInfo renderingInfo{};
-                thread_local VkRenderingAttachmentInfo attachmentInfo;
-                thread_local vector<VkFormat> swapChainImageFormat( to_base( RTColourAttachmentSlot::COUNT ), VK_FORMAT_UNDEFINED);
-
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 PushDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_name.c_str() );
 
                 stateTracker._activeRenderTargetID = crtCmd->_target;
 
                 // We can do this outside of a renderpass
-                FlushBufferTransferRequests(cmdBuffer);
+                FlushBufferTransferRequests( cmdBuffer );
 
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {

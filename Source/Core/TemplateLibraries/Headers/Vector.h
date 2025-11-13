@@ -48,25 +48,6 @@ namespace Divide
     template<typename T, typename... Ts>
     concept is_vector = is_non_fixed_vector<T, std::tuple_element_t<0, std::tuple<Ts...>>> || is_fixed_vector<T, Ts...>;
 
-    template <typename T, size_t nodeCount, bool bEnableOverflow = true, typename OverflowAllocator = typename eastl::type_select<bEnableOverflow, EASTLAllocatorType, EASTLDummyAllocatorType>::type>
-    inline void efficient_clear(eastl::fixed_vector<T, nodeCount, bEnableOverflow, OverflowAllocator> & fixed_vector)
-    {
-        if constexpr (bEnableOverflow)
-        {
-            fixed_vector.clear();
-        }
-        else
-        {
-            fixed_vector.reset_lose_memory();
-        }
-    }
-
-    template< typename T, typename A>
-    inline void efficient_clear( eastl::vector<T, A>& vec )
-    {
-        vec.resize(0);
-    }
-
     template< typename T, typename Pred, typename A>
     typename eastl::vector<T, A>::iterator insert_sorted( eastl::vector<T, A>& vec, T const& item, Pred&& pred )
     {

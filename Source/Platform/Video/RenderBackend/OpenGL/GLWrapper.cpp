@@ -958,7 +958,7 @@ namespace Divide
             }
         }
 
-        efficient_clear(s_TexBindQueue);
+        s_TexBindQueue.clear();
     }
 
     gl46core::GLuint GL_API::getGLTextureView( const ImageView srcView, const size_t srcViewHash, const U8 lifetimeInFrames ) const

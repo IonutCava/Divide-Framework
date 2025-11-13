@@ -99,7 +99,7 @@ class SceneGraph final : NonCopyable,
 
     void getNodesByType(std::initializer_list<SceneNodeType> types, vector<SceneGraphNode*>& nodesOut) const
     {
-        efficient_clear( nodesOut );
+        nodesOut.clear();
         for (const SceneNodeType type : types)
         {
             const vector<SceneGraphNode*>& nodes = getNodesByType(type);

@@ -280,7 +280,7 @@ struct VKTransferQueue
     };
 
     moodycamel::ConcurrentQueue<TransferRequest> _requests;
-    std::atomic_bool _dirty;
+    std::atomic_bool _dirty{ false };
 };
 
 //ref:  SaschaWillems / Vulkan / VulkanTools
@@ -339,6 +339,14 @@ do                                \
 } while ( 0 )
 
 #endif //VK_PROFILE
+
+#ifndef VK_UT_CHECK
+#   if defined(ENABLE_UNIT_TESTING)
+#       define VK_UT_IF_CHECK( X ) if ( (X) )
+#   else //ENABLE_UNIT_TESTING
+#       define VK_UT_IF_CHECK( X ) 
+#   endif //ENABLE_UNIT_TESTING
+#endif //VK_UT_CHECK
     struct VulkanQueryType
     {
         VkQueryType _queryType { VK_QUERY_TYPE_MAX_ENUM };

@@ -86,7 +86,7 @@ namespace Divide {
                           }
                       });
 
-        efficient_clear( dirtyComponents );
+        dirtyComponents.clear();
     }
 
     void TransformSystem::PostUpdate(const F32 dt)

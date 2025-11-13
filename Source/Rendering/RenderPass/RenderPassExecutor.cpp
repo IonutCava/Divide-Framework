@@ -628,7 +628,7 @@ namespace Divide
 
         RenderPass::PassData passData = _parent.getPassForStage( _stage ).getPassData();
 
-        efficient_clear( _drawCommands );
+        _drawCommands.clear();
 
         for ( RenderBin::SortedQueue& sQueue : _sortedQueues )
         {
@@ -859,7 +859,7 @@ namespace Divide
             _renderQueue->sort( stagePass );
         }
 
-        efficient_clear( _renderQueuePackages );
+        _renderQueuePackages.clear();
 
         RenderQueue::PopulateQueueParams queueParams{};
         queueParams._stagePass = stagePass;
@@ -922,7 +922,7 @@ namespace Divide
         // Sort all bins
         _renderQueue->sort( stagePass, targetBin, renderOrder );
 
-        efficient_clear( _renderQueuePackages );
+        _renderQueuePackages.clear();
 
         // Draw everything in the depth pass but only draw stuff from the translucent bin in the OIT Pass and everything else in the colour pass
         RenderQueue::PopulateQueueParams queueParams{};

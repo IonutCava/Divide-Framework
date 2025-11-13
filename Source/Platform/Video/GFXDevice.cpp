@@ -185,7 +185,7 @@ namespace Divide
             _imShaderNoTexture = CreateResource( immediateModeShader );
         }
         {
-            efficient_clear( shaderDescriptor._globalDefines );
+            shaderDescriptor._globalDefines.clear();
             shaderDescriptor._modules.back()._defines.emplace_back( "WORLD_PASS" );
             ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation-World", shaderDescriptor );
             immediateModeShader.waitForReady( true );
@@ -200,7 +200,7 @@ namespace Divide
 
 
         {
-            efficient_clear( shaderDescriptor._globalDefines );
+            shaderDescriptor._globalDefines.clear();
             shaderDescriptor._modules.back()._defines.emplace_back( "OIT_PASS" );
             ResourceDescriptor<ShaderProgram> immediateModeShader( "ImmediateModeEmulation-OIT", shaderDescriptor );
             immediateModeShader.waitForReady( true );

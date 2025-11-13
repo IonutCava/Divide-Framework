@@ -314,9 +314,9 @@ namespace Divide
 
         const GUIMap& elements = _guiElements[to_base( GUIType::GUI_TEXT )];
 
-        efficient_clear(textBatch.data());
-
+        textBatch.data().clear();
         textBatch.data().reserve( elements.size() );
+
         for ( const GUIMap::value_type& guiStackIterator : elements )
         {
             const GUIText& textLabel = static_cast<GUIText&>(*guiStackIterator.second.first);

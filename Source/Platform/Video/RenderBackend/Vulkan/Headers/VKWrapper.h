@@ -48,9 +48,16 @@ namespace Divide
 {
 
 class Pipeline;
+struct VKAPITestAccessor;
 enum class ShaderResult : U8;
 
-class VK_API final : public RenderAPIWrapper {
+class VK_API final : public RenderAPIWrapper
+{
+
+#if defined(ENABLE_UNIT_TESTING)
+    friend struct VKAPITestAccessor;
+#endif //ENABLE_UNIT_TESTING
+
 public:
     static constexpr VkPipelineStageFlagBits2 ALL_SHADER_STAGES = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
                                                                   VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
@@ -123,7 +130,6 @@ public:
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
     static void RegisterTransferRequest(const VKTransferQueue::TransferRequest& request);
     static void FlushBufferTransferRequests( VkCommandBuffer cmdBuffer );
-    static void FlushBufferTransferRequests( );
     static void SubmitTransferRequest(const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd);
 
     static void AddDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);

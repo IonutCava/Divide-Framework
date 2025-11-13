@@ -1140,7 +1140,8 @@ namespace Divide
         {
             s_recompileQueue.pop();
         }
-        efficient_clear(s_shaderPrograms);
+
+        s_shaderPrograms.clear();
         s_lastRequestedShaderProgram = {};
 
         FileWatcherManager::deallocateWatcher( s_shaderFileWatcherID );
