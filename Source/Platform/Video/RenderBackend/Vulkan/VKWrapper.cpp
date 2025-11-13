@@ -2186,7 +2186,7 @@ namespace Divide
 
             if (approxCount > s_requests.size())
             {
-                s_requests.resize(approxCount);
+                s_requests.reserve(approxCount);
             }
         }
 
