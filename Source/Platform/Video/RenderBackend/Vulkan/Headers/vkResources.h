@@ -340,13 +340,13 @@ do                                \
 
 #endif //VK_PROFILE
 
-#ifndef VK_UT_CHECK
+#ifndef VK_UT_IF_CHECK
 #   if defined(ENABLE_UNIT_TESTING)
 #       define VK_UT_IF_CHECK( X ) if ( (X) )
 #   else //ENABLE_UNIT_TESTING
 #       define VK_UT_IF_CHECK( X ) /* nothing */
 #   endif //ENABLE_UNIT_TESTING
-#endif //VK_UT_CHECK
+#endif //VK_UT_IF_CHECK
     struct VulkanQueryType
     {
         VkQueryType _queryType { VK_QUERY_TYPE_MAX_ENUM };
