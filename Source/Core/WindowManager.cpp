@@ -325,6 +325,7 @@ void WindowManager::close()
     }
 
     _windows.clear();
+    _monitors.clear();
 
     for (SDL_Cursor* it : s_cursors)
     {
