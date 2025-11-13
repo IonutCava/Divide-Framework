@@ -343,8 +343,10 @@ do                                \
 #ifndef VK_UT_IF_CHECK
 #   if defined(ENABLE_UNIT_TESTING)
 #       define VK_UT_IF_CHECK( X ) if ( (X) )
+#       define VK_NON_UT_ASSERT( X )
 #   else //ENABLE_UNIT_TESTING
 #       define VK_UT_IF_CHECK( X ) /* nothing */
+#       define VK_NON_UT_ASSERT( X ) DIVIDE_ASSERT( (X) )
 #   endif //ENABLE_UNIT_TESTING
 #endif //VK_UT_IF_CHECK
     struct VulkanQueryType

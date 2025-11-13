@@ -119,7 +119,7 @@ ErrorCode DisplayWindow::init(const WindowDescriptor& descriptor)
     // Check if we have a valid window
     if (_sdlWindow == nullptr)
     {
-        Console::errorfn(LOCALE_STR("ERROR_GFX_DEVICE"), Util::StringFormat(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError()));
+        Console::errorfn(LOCALE_STR("ERROR_SDL_WINDOW"), SDL_GetError());
         Console::printfn(LOCALE_STR("WARN_APPLICATION_CLOSE"));
 
         return ErrorCode::SDL_WINDOW_INIT_ERROR;

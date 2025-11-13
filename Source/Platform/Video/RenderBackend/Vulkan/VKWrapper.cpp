@@ -118,6 +118,7 @@ namespace
                 }
             }
         }
+
         const string outputError = Util::StringFormat("[ {} ] {} : {}\n",
                                                       to_string_message_severity( messageSeverity ),
                                                       to_string_message_type( messageType ).c_str(),
@@ -2099,9 +2100,12 @@ namespace Divide
             vector<VkBufferCopy2> _copiesPerBuffer;
         };
 
-        using CopyContainer = vector<PerBufferCopies>;
-        using BarrierContainer = eastl::fixed_vector<VkBufferMemoryBarrier2, 32, true>;
-        using BatchedTransferQueue = eastl::fixed_vector<VKTransferQueue::TransferRequest, 64, true>;
+        constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
+
+        using CopyContainer = std::array<PerBufferCopies, MAX_BUFFER_COPIES_PER_FLUSH>;
+        using BarrierContainer = std::array<VkBufferMemoryBarrier2, MAX_BUFFER_COPIES_PER_FLUSH>;
+        using BatchedTransferQueue = std::array<VKTransferQueue::TransferRequest, MAX_BUFFER_COPIES_PER_FLUSH>;
+        using TransferQueueRequestsContainer = std::array<VKTransferQueue::TransferRequest, MAX_BUFFER_COPIES_PER_FLUSH>;
 
         void PrepareTransferRequest( const VKTransferQueue::TransferRequest& request, bool toWrite, VkBufferMemoryBarrier2& memBarrierOut )
         {
@@ -2161,96 +2165,100 @@ namespace Divide
         VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
     }
 
-    void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
+    struct BufferTransferProccesor
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
-
-        thread_local vector<PerBufferCopies> s_copyRequests;
-        thread_local BarrierContainer s_barriers{};
-        thread_local BatchedTransferQueue s_transferQueueBatched;
-        thread_local vector<VKTransferQueue::TransferRequest> s_requests;
-
-        if (!s_transferQueue._dirty.load(std::memory_order_acquire))
+        void flushBarriers(VkCommandBuffer cmdBuffer) noexcept
         {
-            return; // common, cheap path
-        }
-        if (!s_transferQueue._dirty.exchange(false, std::memory_order_acq_rel))
-        {
-            return;
-        }
-
-        // Dirty flag set means we have at least one item in the queue (even if it hasn't stabilised yet)
-        const size_t approxCount = std::max(s_transferQueue._requests.size_approx(), to_size(1u));
-
-        s_copyRequests.reserve(approxCount);
-
-        if (approxCount > s_requests.size())
-        {
-            s_requests.resize(approxCount);
-        }
-
-        s_transferQueueBatched.clear();
-        s_barriers.clear();
-        s_copyRequests.clear();
-
-        while (true)
-        {
-            const size_t dequeued = s_transferQueue._requests.try_dequeue_bulk(s_requests.data(), s_requests.size());
-            if ( 0u == dequeued )
+            if (0u == _barrierCount)
             {
-                break;
+                return;
             }
 
-            for (size_t i = 0u; i < dequeued; ++i)
-            {
-                const VKTransferQueue::TransferRequest& request = s_requests[i];
-
-                if (request.srcBuffer != VK_NULL_HANDLE)
-                {
-                    s_transferQueueBatched.push_back(request);
-                }
-                else
-                {
-                    PrepareTransferRequest(request, false, s_barriers.emplace_back());
-                }
-            }
-        }
-
-        for (const auto& request : s_transferQueueBatched)
-        {
-            PrepareTransferRequest(request, true, s_barriers.emplace_back());
-        }
-
-        if (!s_barriers.empty())
-        {
             VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-            dependencyInfo.bufferMemoryBarrierCount = to_U32(s_barriers.size());
-            dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
+            dependencyInfo.bufferMemoryBarrierCount = to_U32(_barrierCount);
+            dependencyInfo.pBufferMemoryBarriers = _barriers.data();
 
-            VK_UT_IF_CHECK( cmdBuffer != VK_NULL_HANDLE )
+            VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
             {
                 VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
             }
 
-            s_barriers.clear();
-        }
+            _barrierCount = 0u;
+        };
 
-        if ( !s_transferQueueBatched.empty() )
+        void flushCopies(VkCommandBuffer cmdBuffer) noexcept
         {
-            s_copyRequests.reserve(s_transferQueueBatched.size());
-
-            VkBufferCopy2 copy{ .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
-
-            for (const auto& request : s_transferQueueBatched)
+            if (0u == _copyRequestsCount)
             {
-                copy.dstOffset = request.dstOffset;
-                copy.srcOffset = request.srcOffset;
-                copy.size = request.size;
+                return;
+            }
+
+            for (size_t k = 0u; k < _copyRequestsCount; ++k)
+            {
+                PerBufferCopies& entry = _copyRequests[k];
+
+                if (entry._copiesPerBuffer.empty())
+                {
+                    continue;
+                }
+
+                VkCopyBufferInfo2 copyInfo
+                {
+                    .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                    .srcBuffer = entry._srcBuffer,
+                    .dstBuffer = entry._dstBuffer,
+                    .regionCount = to_U32(entry._copiesPerBuffer.size()),
+                    .pRegions = entry._copiesPerBuffer.data()
+                };
+
+                VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
+                {
+                    VK_PROFILE(vkCmdCopyBuffer2, cmdBuffer, &copyInfo);
+                }
+
+                entry._srcBuffer = VK_NULL_HANDLE;
+                entry._dstBuffer = VK_NULL_HANDLE;
+                entry._copiesPerBuffer.clear();
+            }
+
+            _copyRequestsCount = 0u;
+        };
+
+        void processCurrentBatch( VkCommandBuffer cmdBuffer) noexcept
+        {
+            if (0u == _transferBatchedCount)
+            {
+                return;
+            }
+
+            // prepare pre-copy barriers
+            for (size_t i = 0u; i < _transferBatchedCount; ++i)
+            {
+                VkBufferMemoryBarrier2 b = vk::bufferMemoryBarrier2();
+                PrepareTransferRequest(_transferQueueBatched[i], true, b);
+                addBarrier(b, cmdBuffer);
+            }
+
+            flushBarriers(cmdBuffer);
+
+            _copyRequestsCount = 0u;
+            for (size_t i = 0u; i < _transferBatchedCount; ++i)
+            {
+                const auto& tr = _transferQueueBatched[i];
+                VkBufferCopy2 copy
+                {
+                    .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+                    .srcOffset = tr.srcOffset,
+                    .dstOffset = tr.dstOffset,
+                    .size = tr.size
+                };
 
                 bool found = false;
-                for (PerBufferCopies& entry : s_copyRequests)
+                for (size_t j = 0u; j < _copyRequestsCount; ++j)
                 {
-                    if (entry._srcBuffer == request.srcBuffer && entry._dstBuffer == request.dstBuffer)
+                    PerBufferCopies& entry = _copyRequests[j];
+
+                    if (entry._srcBuffer == tr.srcBuffer && entry._dstBuffer == tr.dstBuffer)
                     {
                         entry._copiesPerBuffer.emplace_back(copy);
                         found = true;
@@ -2260,55 +2268,123 @@ namespace Divide
 
                 if (!found)
                 {
-                    PerBufferCopies& cRequest = s_copyRequests.emplace_back();
-                    cRequest._srcBuffer = request.srcBuffer;
-                    cRequest._dstBuffer = request.dstBuffer;
-                    cRequest._copiesPerBuffer.emplace_back(copy);
+                    // initialize new slot
+                    PerBufferCopies& entry = _copyRequests[_copyRequestsCount++];
+                    entry._srcBuffer = tr.srcBuffer;
+                    entry._dstBuffer = tr.dstBuffer;
+                    entry._copiesPerBuffer.clear();
+                    entry._copiesPerBuffer.emplace_back(copy);
+
+                    if (MAX_BUFFER_COPIES_PER_FLUSH == _copyRequestsCount)
+                    {
+                        flushCopies(cmdBuffer);
+                    }
                 }
             }
 
-            for (const PerBufferCopies& request : s_copyRequests)
-            {
-                VkCopyBufferInfo2 copyInfo = 
-                {
-                    .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
-                    .srcBuffer = request._srcBuffer,
-                    .dstBuffer = request._dstBuffer,
-                    .regionCount = to_U32(request._copiesPerBuffer.size()),
-                    .pRegions = request._copiesPerBuffer.data()
-                };
+            flushCopies(cmdBuffer);
 
-                VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
-                {
-                    VK_PROFILE(vkCmdCopyBuffer2, cmdBuffer, &copyInfo);
-                }
+            for (size_t i = 0u; i < _transferBatchedCount; ++i)
+            {
+                VkBufferMemoryBarrier2 b = vk::bufferMemoryBarrier2();
+                PrepareTransferRequest(_transferQueueBatched[i], false, b);
+                addBarrier(b, cmdBuffer);
             }
 
-            for (const auto& request : s_transferQueueBatched)
-            {
-                PrepareTransferRequest(request, false, s_barriers.emplace_back());
-            }
-        }
+            _transferBatchedCount = 0u;
+        };
 
-        if (!s_barriers.empty())
+        void addBarrier(const VkBufferMemoryBarrier2& barrier, VkCommandBuffer cmdBuffer) noexcept
         {
-            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-            dependencyInfo.bufferMemoryBarrierCount = to_U32(s_barriers.size());
-            dependencyInfo.pBufferMemoryBarriers = s_barriers.data();
-
-            VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
+            _barriers[_barrierCount++] = barrier;
+            if (MAX_BUFFER_COPIES_PER_FLUSH == _barrierCount)
             {
-                VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+                flushBarriers(cmdBuffer);
             }
-            s_barriers.clear();
         }
+
+        void reset() noexcept
+        {
+            _transferBatchedCount = 0u;
+            _barrierCount = 0u;
+            _copyRequestsCount = 0u;
+        }
+
+        size_t _transferBatchedCount{0u};
+        size_t _barrierCount{0u};
+        size_t _copyRequestsCount{0u};
+        CopyContainer _copyRequests{};
+        BarrierContainer _barriers{};
+        BatchedTransferQueue _transferQueueBatched{};
+        
+    };
+
+    void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
+    {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
+
+        // Atomic load is way cheaper than an atomic exchange, so try this first as it will early-out most often
+        if (!s_transferQueue._dirty.load(std::memory_order_acquire))
+        {
+            return;
+        }
+
+        if (!s_transferQueue._dirty.exchange(false, std::memory_order_acq_rel))
+        {
+            return;
+        }
+
+        VK_NON_UT_ASSERT( cmdBuffer != VK_NULL_HANDLE );
+
+        thread_local BufferTransferProccesor s_processor{};
+        thread_local TransferQueueRequestsContainer s_requests{};
+        thread_local moodycamel::ConsumerToken s_transferConsumerToken( s_transferQueue._requests );
+
+        s_processor.reset();
+
+        while (true)
+        {
+            const size_t dequeued = s_transferQueue._requests.try_dequeue_bulk(s_transferConsumerToken, s_requests.data(), MAX_BUFFER_COPIES_PER_FLUSH);
+            if ( 0u == dequeued )
+            {
+                break;
+            }
+
+            for ( size_t i = 0u; i < dequeued; ++i )
+            {
+                const VKTransferQueue::TransferRequest& request = s_requests[i];
+
+                if ( VK_NULL_HANDLE == request.srcBuffer )
+                {
+                    // no copy required — just a post-copy (or standalone) barrier
+                    VkBufferMemoryBarrier2 b = vk::bufferMemoryBarrier2();
+                    PrepareTransferRequest(request, false, b);
+                    s_processor.addBarrier(b, cmdBuffer);
+                    continue;
+                }
+                
+                s_processor._transferQueueBatched[s_processor._transferBatchedCount++] = request;
+                if ( MAX_BUFFER_COPIES_PER_FLUSH == s_processor._transferBatchedCount )
+                {
+                    s_processor.processCurrentBatch( cmdBuffer );
+                    // flush any barriers produced by the batch (processCurrentBatch leaves barriers in s_barriers)
+                    s_processor.flushBarriers( cmdBuffer);
+                }
+            }
+        }
+
+        // process any remaining batched transfers
+        s_processor.processCurrentBatch( cmdBuffer );
+
+        // final barrier flush (if any)
+        s_processor.flushBarriers( cmdBuffer );
     }
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
         thread_local VkRenderingInfo renderingInfo{};
-        thread_local vector<VkFormat> swapChainImageFormat(to_base(RTColourAttachmentSlot::COUNT), VK_FORMAT_UNDEFINED);
+        thread_local VkFormat swapChainImageFormat{ VK_FORMAT_UNDEFINED };
         thread_local VkRenderingAttachmentInfo attachmentInfo
         {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -2363,9 +2439,9 @@ namespace Divide
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
                     attachmentInfo.imageView = swapChain->getCurrentImageView();
-                    swapChainImageFormat[0] = swapChain->getSwapChain().image_format;
-                    stateTracker._pipelineRenderInfo.colorAttachmentCount = to_U32(swapChainImageFormat.size());
-                    stateTracker._pipelineRenderInfo.pColorAttachmentFormats = swapChainImageFormat.data();
+                    swapChainImageFormat = swapChain->getSwapChain().image_format;
+                    stateTracker._pipelineRenderInfo.colorAttachmentCount = 1u;
+                    stateTracker._pipelineRenderInfo.pColorAttachmentFormats = &swapChainImageFormat;
 
                     renderingInfo = {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
