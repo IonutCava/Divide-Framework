@@ -2180,21 +2180,19 @@ namespace Divide
         }
 
         const size_t approxCount = s_transferQueue._requests.size_approx();
-        if (approxCount > 0)
-        {
-            s_copyRequests.reserve(approxCount);
+        DIVIDE_ASSERT(approxCount > 0u); //< Otherwise _dirty would've been false
 
-            if (approxCount > s_requests.size())
-            {
-                s_requests.reserve(approxCount);
-            }
+        s_copyRequests.reserve(approxCount);
+
+        if (approxCount > s_requests.size())
+        {
+            s_requests.resize(approxCount);
         }
 
         s_transferQueueBatched.clear();
         s_barriers.clear();
         s_copyRequests.clear();
 
-        bool hasTransfers = false;
         while (true)
         {
             const size_t dequeued = s_transferQueue._requests.try_dequeue_bulk(s_requests.data(), s_requests.size());
@@ -2210,7 +2208,6 @@ namespace Divide
                 if (request.srcBuffer != VK_NULL_HANDLE)
                 {
                     s_transferQueueBatched.push_back(request);
-                    hasTransfers = true;
                 }
                 else
                 {
@@ -2310,6 +2307,27 @@ namespace Divide
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
+        thread_local VkRenderingInfo renderingInfo{};
+        thread_local vector<VkFormat> swapChainImageFormat(to_base(RTColourAttachmentSlot::COUNT), VK_FORMAT_UNDEFINED);
+        thread_local VkRenderingAttachmentInfo attachmentInfo
+        {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = VK_NULL_HANDLE,
+            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue =
+            {
+                .color =
+                {
+                    DefaultColours::DIVIDE_BLUE.r,
+                    DefaultColours::DIVIDE_BLUE.g,
+                    DefaultColours::DIVIDE_BLUE.b,
+                    DefaultColours::DIVIDE_BLUE.a
+                }
+            }
+        };
+
         auto& stateTracker = GetStateTracker();
 
         VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
@@ -2330,28 +2348,6 @@ namespace Divide
             case GFX::CommandType::BEGIN_RENDER_PASS:
             {
                 PROFILE_SCOPE( "BEGIN_RENDER_PASS", Profiler::Category::Graphics );
-
-                thread_local VkRenderingInfo renderingInfo{};
-                thread_local vector<VkFormat> swapChainImageFormat( to_base( RTColourAttachmentSlot::COUNT ), VK_FORMAT_UNDEFINED);
-                thread_local VkRenderingAttachmentInfo attachmentInfo
-                {
-                    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-                    .imageView = VK_NULL_HANDLE,
-                    .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                    .clearValue = 
-                    {
-                        .color = 
-                        {
-                            DefaultColours::DIVIDE_BLUE.r,
-                            DefaultColours::DIVIDE_BLUE.g,
-                            DefaultColours::DIVIDE_BLUE.b,
-                            DefaultColours::DIVIDE_BLUE.a
-                        }
-                    }
-                };
-
                 const GFX::BeginRenderPassCommand* crtCmd = cmd->As<GFX::BeginRenderPassCommand>();
                 PushDebugMessage( _context.context().config(), cmdBuffer, crtCmd->_name.c_str() );
 
