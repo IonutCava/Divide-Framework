@@ -2179,8 +2179,8 @@ namespace Divide
             return;
         }
 
-        const size_t approxCount = s_transferQueue._requests.size_approx();
-        DIVIDE_ASSERT(approxCount > 0u); //< Otherwise _dirty would've been false
+        // Dirty flag set means we have at least one item in the queue (even if it hasn't stabilised yet)
+        const size_t approxCount = std::max(s_transferQueue._requests.size_approx(), to_size(1u));
 
         s_copyRequests.reserve(approxCount);
 
