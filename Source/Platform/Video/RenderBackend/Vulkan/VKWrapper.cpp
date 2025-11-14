@@ -2165,7 +2165,7 @@ namespace Divide
         VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
     }
 
-    struct BufferTransferProccesor
+    struct BufferTransferProccessor
     {
         void flushBarriers(VkCommandBuffer cmdBuffer) noexcept
         {
@@ -2220,8 +2220,6 @@ namespace Divide
                 entry._dstBuffer = VK_NULL_HANDLE;
                 entry._copiesPerBuffer.clear();
             }
-        // Move dirty flag clear here to ensure all requests are processed
-        s_transferQueue._dirty = false;
             _copyRequestsCount = 0u;
         };
 
@@ -2317,7 +2315,6 @@ namespace Divide
         CopyContainer _copyRequests{};
         BarrierContainer _barriers{};
         BatchedTransferQueue _transferQueueBatched{};
-        
     };
 
     void VK_API::FlushBufferTransferRequests( VkCommandBuffer cmdBuffer  )
@@ -2337,7 +2334,7 @@ namespace Divide
 
         VK_NON_UT_ASSERT( cmdBuffer != VK_NULL_HANDLE );
 
-        thread_local BufferTransferProccesor s_processor{};
+        thread_local BufferTransferProccessor s_processor{};
         thread_local TransferQueueRequestsContainer s_requests{};
         thread_local moodycamel::ConsumerToken s_transferConsumerToken( s_transferQueue._requests );
 
@@ -2413,8 +2410,29 @@ namespace Divide
                 // We can do this outside of a renderpass
                 FlushBufferTransferRequests( cmdBuffer );
 
+                thread_local VkRenderingInfo renderingInfo{};
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
+                    thread_local VkFormat swapChainImageFormat{ VK_FORMAT_UNDEFINED };
+                    thread_local VkRenderingAttachmentInfo attachmentInfo
+                    {
+                        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                        .imageView = VK_NULL_HANDLE,
+                        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+                        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                        .clearValue =
+                        {
+                            .color =
+                            {
+                                DefaultColours::DIVIDE_BLUE.r,
+                                DefaultColours::DIVIDE_BLUE.g,
+                                DefaultColours::DIVIDE_BLUE.b,
+                                DefaultColours::DIVIDE_BLUE.a
+                            }
+                        }
+                    };
+
                     PROFILE_SCOPE( "Draw to screen", Profiler::Category::Graphics);
 
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();

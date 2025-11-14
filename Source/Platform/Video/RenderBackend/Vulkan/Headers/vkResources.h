@@ -340,6 +340,7 @@ do                                \
 
 #endif //VK_PROFILE
 
+// Conditionally executes code only when unit testing is enabled, allowing tests to pass VK_NULL_HANDLE
 #ifndef VK_UT_IF_CHECK
 #   if defined(ENABLE_UNIT_TESTING)
 #       define VK_UT_IF_CHECK( X ) if ( (X) )
