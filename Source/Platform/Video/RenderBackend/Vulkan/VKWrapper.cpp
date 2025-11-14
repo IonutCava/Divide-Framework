@@ -2220,7 +2220,8 @@ namespace Divide
                 entry._dstBuffer = VK_NULL_HANDLE;
                 entry._copiesPerBuffer.clear();
             }
-
+        // Move dirty flag clear here to ensure all requests are processed
+        s_transferQueue._dirty = false;
             _copyRequestsCount = 0u;
         };
 
