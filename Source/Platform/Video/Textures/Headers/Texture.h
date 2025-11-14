@@ -74,7 +74,7 @@ struct TextureLayoutChange
     ImageUsage _targetLayout{ ImageUsage::COUNT };
 };
 
-using TextureLayoutChanges = eastl::fixed_vector<TextureLayoutChange, 6, true>;
+using TextureLayoutChanges = fixed_vector<TextureLayoutChange, 6, true>;
 
 [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
 

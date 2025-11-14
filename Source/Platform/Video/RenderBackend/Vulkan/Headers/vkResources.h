@@ -110,13 +110,13 @@ struct CompiledPipeline
 
 struct PipelineBuilder
 {
-    std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+    fixed_vector<VkPipelineShaderStageCreateInfo, to_base(ShaderType::COUNT)> _shaderStages;
     VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
     VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
     VkViewport _viewport;
     VkRect2D _scissor;
     VkPipelineRasterizationStateCreateInfo _rasterizer;
-    eastl::fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT ), false> _colorBlendAttachments;
+    fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT )> _colorBlendAttachments;
     VkPipelineMultisampleStateCreateInfo _multisampling;
     VkPipelineLayout _pipelineLayout;
     VkPipelineDepthStencilStateCreateInfo _depthStencil;
@@ -141,7 +141,7 @@ struct DynamicBinding
     U8 _slot{ U8_MAX };
 };
 
-using DynamicBindings = eastl::fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false>;
+using DynamicBindings = fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
 
 struct VKImmediateCmdContext
 {

@@ -107,7 +107,7 @@ struct CommandBufferQueue
         bool _owning{false};
     };
 
-    eastl::fixed_vector<Entry, COMMAND_BUFFER_INIT_SIZE, true> _commandBuffers;
+    fixed_vector<Entry, COMMAND_BUFFER_INIT_SIZE, true> _commandBuffers;
 };
 
 void ResetCommandBufferQueue( CommandBufferQueue& queue );
@@ -118,7 +118,7 @@ class CommandBuffer : private NonCopyable
 {
   public:
     static constexpr U32 COMMAND_BUFFER_INIT_SIZE = 32u;
-    using CommandList = eastl::fixed_vector<CommandBase*, COMMAND_BUFFER_INIT_SIZE, true>;
+    using CommandList = fixed_vector<CommandBase*, COMMAND_BUFFER_INIT_SIZE, true>;
 
   public:
     ~CommandBuffer();

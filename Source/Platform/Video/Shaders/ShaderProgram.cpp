@@ -68,7 +68,7 @@ namespace Divide
     NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
     NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileFailedQueue;
     ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
-    eastl::fixed_vector<ShaderProgram*, U16_MAX, false> ShaderProgram::s_usedShaderPrograms;
+    fixed_vector<ShaderProgram*, U16_MAX> ShaderProgram::s_usedShaderPrograms;
     ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
     U8 ShaderProgram::k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
 
@@ -2078,7 +2078,7 @@ namespace Divide
 
     void ShaderProgram::EraseAtomLocked( const U64 atomHash )
     {
-        eastl::fixed_vector<U64, 128, true> queuedDeletion;
+        fixed_vector<U64, 128, true> queuedDeletion;
 
         s_atoms.erase( atomHash );
 

@@ -74,7 +74,7 @@ struct RTBlitEntry
     U16 _mipCount{1u};
 };
 
-using RTBlitParams = eastl::fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES, false>;
+using RTBlitParams = fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES>;
 using RTClearDescriptor = std::array<RTClearEntry, RT_MAX_ATTACHMENT_COUNT>;
 using RTTransitionMask = bool[RT_MAX_ATTACHMENT_COUNT];
 using RTDrawMask = bool[to_base( RTColourAttachmentSlot::COUNT )];

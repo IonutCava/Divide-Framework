@@ -244,7 +244,7 @@ namespace Divide
 
         using DynamicBufferEntry = std::array<DynamicEntry, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
         thread_local std::array<DynamicBufferEntry, to_base(DescriptorSetUsage::COUNT)> s_dynamicBindings;
-        thread_local eastl::fixed_vector<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET * to_base(DescriptorSetUsage::COUNT), false> s_dynamicOffsets;
+        thread_local fixed_vector<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET * to_base(DescriptorSetUsage::COUNT)> s_dynamicOffsets;
         thread_local bool s_pipelineReset = true;
 
         void ResetDescriptorDynamicOffsets()
@@ -1341,8 +1341,8 @@ namespace Divide
         U32 firstIndex = cmd._cmd.firstIndex;
 
         // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-        thread_local VKBufferActiveBindConfiguration s_lastVB = {};
-        thread_local VKBufferActiveBindConfiguration s_lastIB = {};
+        static VKBufferActiveBindConfiguration s_lastVB = {};
+        static VKBufferActiveBindConfiguration s_lastIB = {};
 
         for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
@@ -1424,7 +1424,7 @@ namespace Divide
         const auto& setUsageData = program->setUsage();
 
         thread_local VkDescriptorImageInfo imageInfoArray[MAX_BINDINGS_PER_DESCRIPTOR_SET];
-        thread_local eastl::fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
+        thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
         U8 imageInfoIndex = 0u;
 
         bool needsBind = false;
@@ -1814,7 +1814,7 @@ namespace Divide
             const U8 count = to_base(RTColourAttachmentSlot::COUNT);
             if ( !activeState._isSet || activeState._block._colourWrite != currentState._colourWrite )
             {
-                thread_local std::array<VkColorComponentFlags, to_base( RTColourAttachmentSlot::COUNT )> writeMask;
+                std::array<VkColorComponentFlags, to_base( RTColourAttachmentSlot::COUNT )> writeMask;
                 const VkColorComponentFlags colourFlags = (currentState._colourWrite.b[0] == 1 ? VK_COLOR_COMPONENT_R_BIT : 0) |
                                                           (currentState._colourWrite.b[1] == 1 ? VK_COLOR_COMPONENT_G_BIT : 0) |
                                                           (currentState._colourWrite.b[2] == 1 ? VK_COLOR_COMPONENT_B_BIT : 0) |
@@ -1826,8 +1826,8 @@ namespace Divide
 
             if ( !activeState._isSet || activeState._blendStates != blendStates )
             {
-                thread_local std::array<VkBool32, to_base( RTColourAttachmentSlot::COUNT )> blendEnabled;
-                thread_local std::array<VkColorBlendEquationEXT, to_base( RTColourAttachmentSlot::COUNT )> blendEquations;
+                std::array<VkBool32, to_base( RTColourAttachmentSlot::COUNT )> blendEnabled;
+                std::array<VkColorBlendEquationEXT, to_base( RTColourAttachmentSlot::COUNT )> blendEquations;
 
                 for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
                 {
@@ -1884,8 +1884,8 @@ namespace Divide
         {
             PROFILE_SCOPE( "Compile PSO", Profiler::Category::Graphics);
 
-            thread_local RenderStateBlock defaultState{};
-            thread_local VkDescriptorSetLayout dummyLayout = VK_NULL_HANDLE;
+            static RenderStateBlock defaultState{};
+            static VkDescriptorSetLayout dummyLayout = VK_NULL_HANDLE;
 
             if ( dummyLayout == VK_NULL_HANDLE )
             {
@@ -2093,14 +2093,15 @@ namespace Divide
 
     namespace
     {
+        constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
+
         struct PerBufferCopies
         {
             VkBuffer _srcBuffer{ VK_NULL_HANDLE };
             VkBuffer _dstBuffer{ VK_NULL_HANDLE };
-            vector<VkBufferCopy2> _copiesPerBuffer;
+            fixed_vector<VkBufferCopy2, MAX_BUFFER_COPIES_PER_FLUSH> _copiesPerBuffer;
         };
 
-        constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
 
         using CopyContainer = std::array<PerBufferCopies, MAX_BUFFER_COPIES_PER_FLUSH>;
         using BarrierContainer = std::array<VkBufferMemoryBarrier2, MAX_BUFFER_COPIES_PER_FLUSH>;
@@ -2334,15 +2335,17 @@ namespace Divide
 
         VK_NON_UT_ASSERT( cmdBuffer != VK_NULL_HANDLE );
 
+        TransferQueueRequestsContainer requests{};
+        // Keep processor thread-local to preserve internal vector capacities and avoid reallocations.
         thread_local BufferTransferProccessor s_processor{};
-        thread_local TransferQueueRequestsContainer s_requests{};
+        // ConsumerToken must be per-consumer-thread
         thread_local moodycamel::ConsumerToken s_transferConsumerToken( s_transferQueue._requests );
 
         s_processor.reset();
 
         while (true)
         {
-            const size_t dequeued = s_transferQueue._requests.try_dequeue_bulk(s_transferConsumerToken, s_requests.data(), MAX_BUFFER_COPIES_PER_FLUSH);
+            const size_t dequeued = s_transferQueue._requests.try_dequeue_bulk(s_transferConsumerToken, requests.data(), MAX_BUFFER_COPIES_PER_FLUSH);
             if ( 0u == dequeued )
             {
                 break;
@@ -2350,7 +2353,7 @@ namespace Divide
 
             for ( size_t i = 0u; i < dequeued; ++i )
             {
-                const VKTransferQueue::TransferRequest& request = s_requests[i];
+                const VKTransferQueue::TransferRequest& request = requests[i];
 
                 if ( VK_NULL_HANDLE == request.srcBuffer )
                 {
@@ -2410,11 +2413,10 @@ namespace Divide
                 // We can do this outside of a renderpass
                 FlushBufferTransferRequests( cmdBuffer );
 
-                thread_local VkRenderingInfo renderingInfo{};
+                VkRenderingInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_RENDERING_INFO };
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
-                    thread_local VkFormat swapChainImageFormat{ VK_FORMAT_UNDEFINED };
-                    thread_local VkRenderingAttachmentInfo attachmentInfo
+                    VkRenderingAttachmentInfo attachmentInfo
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
@@ -2438,20 +2440,17 @@ namespace Divide
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
                     attachmentInfo.imageView = swapChain->getCurrentImageView();
-                    swapChainImageFormat = swapChain->getSwapChain().image_format;
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = 1u;
-                    stateTracker._pipelineRenderInfo.pColorAttachmentFormats = &swapChainImageFormat;
+                    stateTracker._pipelineRenderInfo.pColorAttachmentFormats = &swapChain->getSwapChain().image_format;
 
-                    renderingInfo = {
-                        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-                        .renderArea = {
-                            .offset = {0, 0},
-                            .extent = swapChain->surfaceExtent()
-                        },
-                        .layerCount = 1u,
-                        .colorAttachmentCount = 1u,
-                        .pColorAttachments = &attachmentInfo,
+                    renderingInfo.renderArea = 
+                    {
+                        .offset = {0, 0},
+                        .extent = swapChain->surfaceExtent()
                     };
+                    renderingInfo.layerCount = 1u;
+                    renderingInfo.colorAttachmentCount = 1u;
+                    renderingInfo.pColorAttachments = &attachmentInfo;
 
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
                     imageBarrier.image = swapChain->getCurrentImage();
@@ -2497,7 +2496,8 @@ namespace Divide
                         Util::Hash_combine( stateTracker._renderTargetFormatHash, stateTracker._pipelineRenderInfo.pColorAttachmentFormats[i]);
                     }
                 
-                    const Rect<I32> renderArea = { 
+                    const Rect<I32> renderArea
+                    { 
                          renderingInfo.renderArea.offset.x,
                          renderingInfo.renderArea.offset.y,
                          to_I32(renderingInfo.renderArea.extent.width),
@@ -3149,9 +3149,8 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        thread_local eastl::fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false> layoutBinding{};
+        fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET> layoutBinding{};
 
-        layoutBinding.clear();
         dynamicBindings.clear();
 
         const bool isPushDescriptor = s_hasPushDescriptorSupport && usage == DescriptorSetUsage::PER_DRAW;

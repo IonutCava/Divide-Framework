@@ -89,8 +89,8 @@ namespace Divide
         void printResources( bool error ) final;
 
         SharedMutex _lock;
-        eastl::fixed_vector<std::pair<bool, U8>, ResourcePoolSize, true> _freeList;
-        eastl::fixed_vector<Entry, ResourcePoolSize, true> _resPool;
+        fixed_vector<std::pair<bool, U8>, ResourcePoolSize, true> _freeList;
+        fixed_vector<Entry, ResourcePoolSize, true> _resPool;
 
         void deallocateInternal( ResourcePtr<T> ptr );
         [[nodiscard]] Handle<T> allocateLocked( size_t descriptorHash );

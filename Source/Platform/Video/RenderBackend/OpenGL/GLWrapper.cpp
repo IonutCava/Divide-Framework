@@ -42,7 +42,7 @@ namespace Divide
     SharedMutex GL_API::s_samplerMapLock;
     NO_DESTROY GL_API::SamplerObjectMap GL_API::s_samplerMap{};
     std::unique_ptr<glHardwareQueryPool> GL_API::s_hardwareQueryPool = nullptr;
-    NO_DESTROY eastl::fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS, false> GL_API::s_TexBindQueue;
+    NO_DESTROY fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> GL_API::s_TexBindQueue;
 
     NO_DESTROY std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = 
     {

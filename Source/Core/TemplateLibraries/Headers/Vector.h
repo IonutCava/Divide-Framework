@@ -41,6 +41,9 @@ namespace Divide
     template<typename Type>
     using vector = eastl::vector<Type>;
 
+    template<typename Type, size_t MaxSize, bool EnableOverflow = false>
+    using fixed_vector = eastl::fixed_vector<Type, MaxSize, EnableOverflow>;
+
     template<typename T, typename Type>
     concept is_non_fixed_vector = std::is_same_v<T, vector<Type>>;
     template<typename T, typename... Ts>

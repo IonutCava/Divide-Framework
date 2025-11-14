@@ -57,7 +57,7 @@ namespace Divide {
         LockableBuffer* _buffer{nullptr};
     };
 
-    using BufferLocks = eastl::fixed_vector<BufferLock, 6, true>;
+    using BufferLocks = fixed_vector<BufferLock, 6, true>;
 
     bool IsEmpty(const BufferLocks& locks) noexcept;
 

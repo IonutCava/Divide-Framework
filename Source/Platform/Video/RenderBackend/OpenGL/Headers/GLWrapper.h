@@ -198,7 +198,7 @@ private:
         gl46core::GLubyte _slot{ INVALID_TEXTURE_BINDING };
     };
 
-    static eastl::fixed_vector<TexBindEntry, 32, false> s_TexBindQueue;
+    static fixed_vector<TexBindEntry, 32> s_TexBindQueue;
 
     using HardwareQueryContext = std::array<glHardwareQueryEntry, to_base(QueryType::COUNT)>;
     static constexpr size_t InitialSamplerMapSize = 64u;
@@ -215,7 +215,7 @@ private:
         size_t _hash = SIZE_MAX;
         gl46core::GLuint _glHandle = GL_NULL_HANDLE;
     };
-    using SamplerObjectMap = eastl::fixed_vector<CachedSamplerEntry, InitialSamplerMapSize, true>;
+    using SamplerObjectMap = fixed_vector<CachedSamplerEntry, InitialSamplerMapSize, true>;
 
 private:
     GFXDevice& _context;
