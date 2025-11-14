@@ -2383,26 +2383,6 @@ namespace Divide
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
-        thread_local VkRenderingInfo renderingInfo{};
-        thread_local VkFormat swapChainImageFormat{ VK_FORMAT_UNDEFINED };
-        thread_local VkRenderingAttachmentInfo attachmentInfo
-        {
-            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-            .imageView = VK_NULL_HANDLE,
-            .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-            .clearValue =
-            {
-                .color =
-                {
-                    DefaultColours::DIVIDE_BLUE.r,
-                    DefaultColours::DIVIDE_BLUE.g,
-                    DefaultColours::DIVIDE_BLUE.b,
-                    DefaultColours::DIVIDE_BLUE.a
-                }
-            }
-        };
 
         auto& stateTracker = GetStateTracker();
 
