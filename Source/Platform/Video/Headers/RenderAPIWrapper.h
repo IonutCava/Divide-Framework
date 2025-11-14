@@ -151,6 +151,7 @@ struct DeviceInformation
     VersionInformation _versionInfo = { 4u, 6u };
     GPUVendor _vendor = GPUVendor::COUNT;
     GPURenderer _renderer = GPURenderer::COUNT;
+    bool _meshShadingSupported = false;
 };
 
 struct DebugScope

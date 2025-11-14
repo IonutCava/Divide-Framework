@@ -372,7 +372,7 @@ namespace Divide
         deviceInformation._maxVertAttributes = GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIBS );
         Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
-        _meshShadersSupported = SDL_GL_ExtensionSupported( "GL_NV_mesh_shader" );
+        deviceInformation._meshShadingSupported = SDL_GL_ExtensionSupported( "GL_NV_mesh_shader" );
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3u; ++i )
@@ -380,7 +380,7 @@ namespace Divide
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorkgroupCount[i], i );
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorkgroupSize[i], i );
 
-            if ( _meshShadersSupported )
+            if ( deviceInformation._meshShadingSupported )
             {
                 GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorkgroupSize[i], i);
                 GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorkgroupSize[i], i);
@@ -405,7 +405,7 @@ namespace Divide
                           deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
-        if ( _meshShadersSupported )
+        if ( deviceInformation._meshShadingSupported )
         {
             deviceInformation._maxMeshShaderOutputVertices = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_VERTICES_NV);
             deviceInformation._maxMeshShaderOutputPrimitives = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_PRIMITIVES_NV);

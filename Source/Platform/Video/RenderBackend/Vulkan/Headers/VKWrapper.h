@@ -180,10 +180,8 @@ public:
     };
 
     static bool s_hasDebugMarkerSupport;
-    static bool s_hasPushDescriptorSupport;
     static bool s_hasDescriptorBufferSupport;
     static bool s_hasDynamicBlendStateSupport;
-    static bool s_hasValidationFeaturesSupport;
     static DepthFormatInformation s_depthFormatInformation;
 };
 

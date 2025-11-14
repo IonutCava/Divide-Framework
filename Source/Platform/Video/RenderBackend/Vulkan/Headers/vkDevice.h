@@ -56,9 +56,10 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] U32     getPresentQueueIndex() const noexcept;
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
 
+        PROPERTY_R_IW(size_t, vulkanMinorVersion, 0u);
         PROPERTY_R_IW(bool, supportsDynamicExtension3, false);
-        PROPERTY_R_IW(bool, supportsPushDescriptors, false);
         PROPERTY_R_IW(bool, supportsDescriptorBuffers, false);
+        PROPERTY_R_IW(bool, suportsMeshShaders, false);
 
     private:
         [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;

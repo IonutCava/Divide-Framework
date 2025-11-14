@@ -282,10 +282,8 @@ namespace Divide
     constexpr U32 VK_VENDOR_ID_INTEL = 0x8086;
 
     bool VK_API::s_hasDebugMarkerSupport = false;
-    bool VK_API::s_hasPushDescriptorSupport = false;
     bool VK_API::s_hasDescriptorBufferSupport = false;
     bool VK_API::s_hasDynamicBlendStateSupport = false;
-    bool VK_API::s_hasValidationFeaturesSupport = false;
 
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
@@ -803,24 +801,16 @@ namespace Divide
         builder.set_app_name( window->title() )
             .set_engine_name( Config::ENGINE_NAME )
             .set_engine_version( Config::ENGINE_VERSION_MAJOR, Config::ENGINE_VERSION_MINOR, Config::ENGINE_VERSION_PATCH )
-            .require_api_version( 1, Config::DESIRED_VULKAN_MINOR_VERSION, 0 )
-            .request_validation_layers( Config::ENABLE_GPU_VALIDATION && config.debug.renderer.enableRenderAPIDebugging )
+            .require_api_version( 1, Config::MINIMUM_VULKAN_MINOR_VERSION, 0 )
+            .enable_validation_layers( Config::ENABLE_GPU_VALIDATION && config.debug.renderer.enableRenderAPIDebugging )
             .set_debug_callback( divide_debug_callback )
             .set_debug_callback_user_data_pointer( this );
 
         vkb::SystemInfo& systemInfo = systemInfoRet.value();
 
-        s_hasValidationFeaturesSupport = false;
         s_hasDebugMarkerSupport = false;
         if ( Config::ENABLE_GPU_VALIDATION && (config.debug.renderer.enableRenderAPIDebugging || config.debug.renderer.enableRenderAPIBestPractices) )
         {
-            if (systemInfo.is_extension_available( VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME ) )
-            {
-                builder.enable_extension( VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME );
-                // Don't count config.debug.renderer.useExtensions against this as validation is basically a core part of the Vulkan dev environment
-                s_hasValidationFeaturesSupport = true;
-            }
-
             if ( systemInfo.is_extension_available( VK_EXT_DEBUG_UTILS_EXTENSION_NAME ) )
             {
                 builder.enable_extension( VK_EXT_DEBUG_UTILS_EXTENSION_NAME );
@@ -829,8 +819,7 @@ namespace Divide
                 {
                     builder.add_validation_feature_enable( VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT );
                 }
-
-                s_hasDebugMarkerSupport = config.debug.renderer.useExtensions;
+                s_hasDebugMarkerSupport = true;
             }
 
             if ( systemInfo.validation_layers_available )
@@ -890,7 +879,7 @@ namespace Divide
             Debug::vkSetDebugUtilsObjectTagEXT   = (PFN_vkSetDebugUtilsObjectTagEXT)vkGetDeviceProcAddr(   vkDevice, "vkSetDebugUtilsObjectTagEXT"   );
         }
 
-        s_hasDynamicBlendStateSupport = config.debug.renderer.useExtensions && _device->supportsDynamicExtension3();
+        s_hasDynamicBlendStateSupport = _device->supportsDynamicExtension3();
         if ( s_hasDynamicBlendStateSupport )
         {
             vkCmdSetColorBlendEnableEXT   = (PFN_vkCmdSetColorBlendEnableEXT)vkGetDeviceProcAddr(   vkDevice, "vkCmdSetColorBlendEnableEXT"   );
@@ -898,13 +887,9 @@ namespace Divide
             vkCmdSetColorWriteMaskEXT     = (PFN_vkCmdSetColorWriteMaskEXT)vkGetDeviceProcAddr(     vkDevice, "vkCmdSetColorWriteMaskEXT"     );
         }
 
-        s_hasPushDescriptorSupport = config.debug.renderer.useExtensions && _device->supportsPushDescriptors();
-        if ( s_hasPushDescriptorSupport )
-        {
-            vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr( vkDevice, "vkCmdPushDescriptorSetKHR" );
-        }
+        vkCmdPushDescriptorSetKHR = (PFN_vkCmdPushDescriptorSetKHR)vkGetDeviceProcAddr( vkDevice, "vkCmdPushDescriptorSetKHR" );
 
-        s_hasDescriptorBufferSupport = config.debug.renderer.useExtensions && _device->supportsDescriptorBuffers();
+        s_hasDescriptorBufferSupport = _device->supportsDescriptorBuffers();
         if ( s_hasDescriptorBufferSupport )
         {
              vkGetDescriptorSetLayoutSizeEXT              = (PFN_vkGetDescriptorSetLayoutSizeEXT)vkGetDeviceProcAddr(              vkDevice, "vkGetDescriptorSetLayoutSizeEXT"             );
@@ -1056,6 +1041,8 @@ namespace Divide
         config.rendering.shadowMapping.csm.MSAASamples = std::min( config.rendering.shadowMapping.csm.MSAASamples, maxMSAASamples );
         config.rendering.shadowMapping.spot.MSAASamples = std::min( config.rendering.shadowMapping.spot.MSAASamples, maxMSAASamples );
         Attorney::DisplayManagerRenderingAPI::MaxMSAASamples( maxMSAASamples );
+
+        deviceInformation._meshShadingSupported = _device->suportsMeshShaders();
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
@@ -1442,7 +1429,7 @@ namespace Divide
                 continue;
             }
 
-            const bool isPushDescriptor = s_hasPushDescriptorSupport && entry._usage == DescriptorSetUsage::PER_DRAW;
+            const bool isPushDescriptor = entry._usage == DescriptorSetUsage::PER_DRAW;
 
             for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
@@ -1669,7 +1656,7 @@ namespace Divide
             VkDescriptorSet tempSets[to_base(DescriptorSetUsage::COUNT)];
             s_dynamicOffsets.clear();
 
-            const U8 offset = s_hasPushDescriptorSupport ? 1u : 0u;
+            const U8 offset = 1u;
             U8 setCount = 0u;
             for ( U8 i = 0; i < to_base( DescriptorSetUsage::COUNT ) - offset; ++i )
             {
@@ -2072,10 +2059,7 @@ namespace Divide
 
         const U8 stageIdx = to_base( DescriptorSetUsage::PER_DRAW );
         _descriptorSetLayouts[stageIdx] = compiledPipeline._program->descriptorSetLayout();
-        if (!s_hasPushDescriptorSupport )
-        {
-            _descriptorDynamicBindings[stageIdx] = compiledPipeline._program->dynamicBindings();
-        }
+
         return compiledPipeline._program->validatePreBind(false);
     }
 
@@ -3153,7 +3137,7 @@ namespace Divide
 
         dynamicBindings.clear();
 
-        const bool isPushDescriptor = s_hasPushDescriptorSupport && usage == DescriptorSetUsage::PER_DRAW;
+        const bool isPushDescriptor = usage == DescriptorSetUsage::PER_DRAW;
 
         for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
         {
@@ -3215,7 +3199,7 @@ namespace Divide
 
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ShaderProgram::GetBindingCount(static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER) * 1.f);
             pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::IMAGE ) * 1.f );
-            if ( s_hasPushDescriptorSupport && i == to_base( DescriptorSetUsage::PER_DRAW ) )
+            if ( i == to_base( DescriptorSetUsage::PER_DRAW ) )
             {
                 pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::UNIFORM_BUFFER ) * 1.f );
                 pool._allocatorPool->SetPoolSizeMultiplier( VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, ShaderProgram::GetBindingCount( static_cast<DescriptorSetUsage>(i), DescriptorSetBindingType::SHADER_STORAGE_BUFFER ) * 1.f );
