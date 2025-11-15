@@ -142,14 +142,14 @@ DEFINE_COMMAND_BEGIN(ClearTextureCommand, CommandType::CLEAR_TEXTURE);
     Handle<Texture> _texture{ INVALID_HANDLE<Texture> };
     /// r = depth, g = stencil if target is a depth(+stencil) attachment
     UColour4 _clearColour;
-    SubRange _layerRange{0u, U16_MAX};
+    SubRange _layerRange{ 0u, ALL_LAYERS };
     U8 _mipLevel{ 0u };
 DEFINE_COMMAND_END(ClearTextureCommand);
 
 DEFINE_COMMAND_BEGIN(ComputeMipMapsCommand, CommandType::COMPUTE_MIPMAPS);
     Handle<Texture> _texture{ INVALID_HANDLE<Texture> };
     SubRange _layerRange{ 0u, 1u };
-    SubRange _mipRange{ 0u, U16_MAX };
+    SubRange _mipRange{ 0u, ALL_MIPS };
     ImageUsage _usage{ ImageUsage::COUNT };
 DEFINE_COMMAND_END(ComputeMipMapsCommand);
 

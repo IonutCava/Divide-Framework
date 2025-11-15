@@ -1406,7 +1406,7 @@ namespace Divide
                 DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
                 hasIndexBuffer = true;
 
-                firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
+                //firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
                 firstIndex += activeConfig._buffer->firstIndexOffsetCount();
 
                 VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, activeConfig._offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
@@ -2920,6 +2920,7 @@ namespace Divide
                     const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
                     const bool isDepthTexture = IsDepthTexture( vkTex->descriptor()._packing );
+                    const bool isCube = IsCubeTexture( vkTex->descriptor()._texType);
 
                     vkTexture::TransitionType transitionType = vkTexture::TransitionType::COUNT;
 
@@ -3064,12 +3065,12 @@ namespace Divide
                         const VkImageSubresourceRange subResourceRange = {
                             .aspectMask = vkTexture::GetAspectFlags( vkTex->descriptor() ),
                             .baseMipLevel = subRange._mipLevels._offset,
-                            .levelCount = subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count,
+                            .levelCount = subRange._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : subRange._mipLevels._count,
                             .baseArrayLayer = subRange._layerRange._offset,
-                            .layerCount = subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count,
+                            .layerCount = subRange._layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : subRange._layerRange._count * (isCube ? 6u : 1u),
                         };
 
-                        vkTexture::TransitionTexture( transitionType, subResourceRange, vkTex->image()->_image, imageBarriers[imageBarrierCount++] );
+                        vkTexture::TransitionTexture( transitionType, subResourceRange, { vkTex->image()->_image, vkTex->resourceName().c_str() }, imageBarriers[imageBarrierCount++] );
                     }
                 }
 

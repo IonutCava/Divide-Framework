@@ -336,7 +336,7 @@ namespace Divide
     bool ShadowMap::freeShadowMapOffsetLocked( const Light& light )
     {
         const U16 layerOffset = light.getShadowArrayOffset();
-        if ( layerOffset == U16_MAX )
+        if ( layerOffset == ALL_LAYERS )
         {
             return true;
         }
@@ -368,7 +368,7 @@ namespace Divide
 
         LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
         LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32( shadowType )];
-        if ( crtArrayOffset != U16_MAX ) [[likely]]
+        if ( crtArrayOffset != ALL_LAYERS) [[likely]]
         {
             bool valid = true;
             for ( U16 i = 0u; i < layerCount; ++i )

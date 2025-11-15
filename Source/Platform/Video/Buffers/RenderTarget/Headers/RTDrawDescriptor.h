@@ -85,7 +85,7 @@ struct RTDrawDescriptor
 {
     std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT> _writeLayers{};
     RTDrawMask _drawMask = {false, false, false, false};
-    U16 _mipWriteLevel{ 0u };
+    U16 _mipWriteLevel{ ALL_MIPS };
     bool _autoResolveMSAA{true};
     bool _keepMSAADataAfterResolve{ false };
 };

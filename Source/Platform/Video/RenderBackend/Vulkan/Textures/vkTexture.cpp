@@ -64,7 +64,7 @@ namespace Divide
             GENERAL
         };
 
-        void CopyInternal( VkCommandBuffer cmdBuffer, VkImage source, const VkImageAspectFlags sourceAspect, const CopyTextureType sourceType, VkImage destination, const VkImageAspectFlags destinationAspect, const CopyTextureType destinationType, const CopyTexParams& params, const U16 depth )
+        void CopyInternal( VkCommandBuffer cmdBuffer, vkTexture::NamedVKImage source, const VkImageAspectFlags sourceAspect, const CopyTextureType sourceType, vkTexture::NamedVKImage destination, const VkImageAspectFlags destinationAspect, const CopyTextureType destinationType, const CopyTexParams& params, const U16 depth )
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
@@ -79,14 +79,14 @@ namespace Divide
                 .baseMipLevel = params._sourceMipLevel,
                 .levelCount = 1u,
                 .baseArrayLayer = params._layerRange.offset,
-                .layerCount = params._layerRange.count
+                .layerCount = params._layerRange.count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : params._layerRange.count
             };
             const VkImageSubresourceRange subResourceRangeDst = {
                 .aspectMask = destinationAspect,
                 .baseMipLevel = params._targetMipLevel,
                 .levelCount = 1u,
                 .baseArrayLayer = params._layerRange.offset,
-                .layerCount = params._layerRange.count
+                .layerCount = params._layerRange.count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : params._layerRange.count
             };
 
             {
@@ -128,9 +128,9 @@ namespace Divide
             region.extent.depth = depth;
 
             VK_PROFILE( vkCmdCopyImage, cmdBuffer,
-                                        source,
+                                        source._image,
                                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                        destination,
+                                        destination._image,
                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                         1,
                                         &region );
@@ -233,7 +233,7 @@ namespace Divide
         if ( IsCubeTexture( _descriptor._texType ) )
         {
             baseLayer *= 6u;
-            if ( layerCount != U16_MAX )
+            if ( layerCount != ALL_LAYERS )
             {
                 layerCount *= 6u;
             }
@@ -244,7 +244,7 @@ namespace Divide
             .baseMipLevel = baseLevel,
             .levelCount = 1u,
             .baseArrayLayer = baseLayer,
-            .layerCount = layerCount == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerCount
+            .layerCount = layerCount == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : layerCount
         };
 
         {
@@ -256,17 +256,17 @@ namespace Divide
                 } break;
                 case ImageUsage::SHADER_READ:
                 {
-                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::SHADER_READ_TO_COPY_READ_DEPTH : TransitionType::SHADER_READ_TO_COPY_READ_COLOUR, subResourceRange, image()->_image, memBarrier);
+                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::SHADER_READ_TO_COPY_READ_DEPTH : TransitionType::SHADER_READ_TO_COPY_READ_COLOUR, subResourceRange, { image()->_image, resourceName().c_str() }, memBarrier);
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 } break;
                 case ImageUsage::SHADER_WRITE:
                 {
-                    TransitionTexture( TransitionType::GENERAL_TO_COPY_READ, subResourceRange, image()->_image, memBarrier );
+                    TransitionTexture( TransitionType::GENERAL_TO_COPY_READ, subResourceRange, {image()->_image, resourceName().c_str()}, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 } break;
                 case ImageUsage::SHADER_READ_WRITE:
                 {
-                    TransitionTexture( TransitionType::SHADER_READ_WRITE_TO_COPY_READ, subResourceRange, image()->_image, memBarrier );
+                    TransitionTexture( TransitionType::SHADER_READ_WRITE_TO_COPY_READ, subResourceRange, { image()->_image, resourceName().c_str() }, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 } break;
                 default: DIVIDE_UNEXPECTED_CALL_MSG("To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!"); break;
@@ -277,10 +277,10 @@ namespace Divide
         VkImageBlit image_blit{};
         image_blit.srcSubresource.aspectMask = GetAspectFlags( _descriptor );
         image_blit.srcSubresource.baseArrayLayer = baseLayer;
-        image_blit.srcSubresource.layerCount = layerCount == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerCount;
+        image_blit.srcSubresource.layerCount = layerCount == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : layerCount;
         image_blit.dstSubresource.aspectMask = image_blit.srcSubresource.aspectMask;
         image_blit.dstSubresource.baseArrayLayer = baseLayer;
-        image_blit.dstSubresource.layerCount = layerCount == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerCount;
+        image_blit.dstSubresource.layerCount = layerCount == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : layerCount;
         image_blit.srcOffsets[1].z = 1;
         image_blit.dstOffsets[1].z = 1;
 
@@ -306,7 +306,7 @@ namespace Divide
 
             subResourceRange.baseMipLevel = m;
             {// Prepare current mip level as image blit destination
-                TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, subResourceRange, image()->_image, memBarrier );
+                TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, subResourceRange, { image()->_image, resourceName().c_str() }, memBarrier );
                 VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
             }
             {
@@ -322,7 +322,7 @@ namespace Divide
             }
             // Prepare current mip level as image blit source for next level
             {
-                TransitionTexture( TransitionType::COPY_WRITE_TO_COPY_READ, subResourceRange, image()->_image, memBarrier );
+                TransitionTexture( TransitionType::COPY_WRITE_TO_COPY_READ, subResourceRange, { image()->_image, resourceName().c_str() }, memBarrier );
                 VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
             }
         }
@@ -337,13 +337,13 @@ namespace Divide
                 case ImageUsage::UNDEFINED:
                 case ImageUsage::SHADER_READ:
                 {
-                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_READ_TO_SHADER_READ_DEPTH : TransitionType::COPY_READ_TO_SHADER_READ_COLOUR, subResourceRange, image()->_image, memBarrier );
+                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_READ_TO_SHADER_READ_DEPTH : TransitionType::COPY_READ_TO_SHADER_READ_COLOUR, subResourceRange, { image()->_image, resourceName().c_str() }, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 } break;
                 case ImageUsage::SHADER_WRITE:
                 case ImageUsage::SHADER_READ_WRITE:
                 {
-                    TransitionTexture( TransitionType::COPY_READ_TO_GENERAL, subResourceRange, image()->_image, memBarrier );
+                    TransitionTexture( TransitionType::COPY_READ_TO_GENERAL, subResourceRange, { image()->_image, resourceName().c_str() }, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
                 } break;
                 default: DIVIDE_UNEXPECTED_CALL_MSG( "To compute mipmaps image must be in either LAYOUT_GENERAL or LAYOUT_READ_ONLY_OPTIMAL!" ); break;
@@ -569,7 +569,7 @@ namespace Divide
                         range.baseMipLevel = m;
                         range.baseArrayLayer = layerIndexForCopies;
 
-                        TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, range, _image->_image, memBarrier );
+                        TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, range, { image()->_image, resourceName().c_str() }, memBarrier );
                         VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
 
                         VkBufferImageCopy copyRegion = {};
@@ -587,7 +587,7 @@ namespace Divide
 
                         VK_PROFILE( vkCmdCopyBufferToImage, cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
 
-                        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
+                        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, { image()->_image, resourceName().c_str() }, memBarrier );
                         VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
 
                         dataOffset += _mipData[m]._size;
@@ -673,7 +673,7 @@ namespace Divide
                     }
 
                     // Transition + copy this single mip-layer
-                    TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, range, _image->_image, memBarrier );
+                    TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, range, { image()->_image, resourceName().c_str() }, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
 
                     VkBufferImageCopy copyRegion{};
@@ -701,7 +701,7 @@ namespace Divide
 
                     VK_PROFILE( vkCmdCopyBufferToImage, cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
 
-                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
+                    TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, { image()->_image, resourceName().c_str() }, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
                 }
             }
@@ -772,7 +772,7 @@ namespace Divide
                 .layerCount = VK_REMAINING_ARRAY_LAYERS
             };
 
-            TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, fullRange, _image->_image, memBarrier);
+            TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, fullRange, { image()->_image, resourceName().c_str() }, memBarrier);
             VK_PROFILE(vkCmdPipelineBarrier2, cmd, &dependencyInfo);
 
             size_t dataOffset = 0u;
@@ -807,14 +807,14 @@ namespace Divide
 
             if (needsMipMaps)
             {
-                TransitionTexture(TransitionType::COPY_WRITE_TO_COPY_READ, fullRange, _image->_image, memBarrier);
+                TransitionTexture(TransitionType::COPY_WRITE_TO_COPY_READ, fullRange, { image()->_image, resourceName().c_str() }, memBarrier);
                 VK_PROFILE(vkCmdPipelineBarrier2, cmd, &dependencyInfo);
 
-                generateMipmaps(cmd, 0u, 0u, U16_MAX, ImageUsage::UNDEFINED);
+                generateMipmaps(cmd, 0u, 0u, ALL_LAYERS, ImageUsage::UNDEFINED);
             }
             else
             {
-                TransitionTexture(IsDepthTexture(_descriptor._packing) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, fullRange, _image->_image, memBarrier);
+                TransitionTexture(IsDepthTexture(_descriptor._packing) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, fullRange, { image()->_image, resourceName().c_str() }, memBarrier);
                 VK_PROFILE(vkCmdPipelineBarrier2, cmd, &dependencyInfo);
             }
 
@@ -839,7 +839,7 @@ namespace Divide
         VkImageSubresourceRange range;
         range.aspectMask = GetAspectFlags( _descriptor );
         range.baseArrayLayer = layerRange._offset;
-        range.layerCount = layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerRange._count;
+        range.layerCount = layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : layerRange._count;
         range.baseMipLevel = mipLevel;
         range.levelCount = 1u;
 
@@ -848,7 +848,7 @@ namespace Divide
         dependencyInfo.imageMemoryBarrierCount = 1u;
         dependencyInfo.pImageMemoryBarriers = &memBarrier;
 
-        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::SHADER_READ_TO_BLIT_WRITE_DEPTH : TransitionType::SHADER_READ_TO_BLIT_WRITE_COLOUR, range, _image->_image, memBarrier );
+        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::SHADER_READ_TO_BLIT_WRITE_DEPTH : TransitionType::SHADER_READ_TO_BLIT_WRITE_COLOUR, range, { image()->_image, resourceName().c_str() }, memBarrier );
         VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
 
         if ( IsDepthTexture( _descriptor._packing ) )
@@ -870,7 +870,7 @@ namespace Divide
             VK_PROFILE( vkCmdClearColorImage, cmdBuffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearValue, 1, &range);
         }
 
-        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::BLIT_WRITE_TO_SHADER_READ_DEPTH : TransitionType::BLIT_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
+        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::BLIT_WRITE_TO_SHADER_READ_DEPTH : TransitionType::BLIT_WRITE_TO_SHADER_READ_COLOUR, range, { image()->_image, resourceName().c_str() }, memBarrier );
         VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo );
     }
 
@@ -957,10 +957,10 @@ namespace Divide
         VkImageAspectFlags aspectFlags = GetAspectFlags( _descriptor );
 
         CopyInternal(cmdBuffer,
-                     image()->_image,
+                     { image()->_image, resourceName().c_str() },
                      aspectFlags,
                      IsDepthTexture( _descriptor._packing ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
-                     dstImage,
+                     { dstImage, "STAGING_BUFFER_READ_TEXTURE" } ,
                      aspectFlags,
                      CopyTextureType::GENERAL,
                      copyParams,
@@ -1048,11 +1048,11 @@ namespace Divide
             }
 
             range.baseMipLevel = newView._descriptor._subRange._mipLevels._offset;
-            range.levelCount = newView._descriptor._subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : newView._descriptor._subRange._mipLevels._count;
+            range.levelCount = newView._descriptor._subRange._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : newView._descriptor._subRange._mipLevels._count;
             range.baseArrayLayer = newView._descriptor._subRange._layerRange._offset;
 
             const U16 layerCountIn = newView._descriptor._subRange._layerRange._count;
-            if (layerCountIn == U16_MAX ) 
+            if ( layerCountIn == ALL_LAYERS )
             {
                 range.layerCount = VK_REMAINING_ARRAY_LAYERS;
             }
@@ -1095,7 +1095,7 @@ namespace Divide
         assert( srcType != TextureType::COUNT && dstType != TextureType::COUNT );
 
         U32 layerOffset = params._layerRange.offset;
-        U32 layerCount = params._layerRange.count == U16_MAX ? source->_depth : params._layerRange.count;
+        U32 layerCount = params._layerRange.count == ALL_LAYERS ? source->_depth : params._layerRange.count;
         if ( IsCubeTexture( srcType ) )
         {
             layerOffset *= 6;
@@ -1113,10 +1113,10 @@ namespace Divide
             }
 
             CopyInternal( cmdBuffer, 
-                          source->_image->_image,
+                          { source->_image->_image, source->resourceName().c_str() },
                           GetAspectFlags( source->_descriptor ),
                           IsDepthTexture( source->_descriptor._packing ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
-                          destination->_image->_image,
+                          { destination->_image->_image, destination->resourceName().c_str() },
                           GetAspectFlags( destination->_descriptor ),
                           IsDepthTexture( destination->_descriptor._packing ) ? CopyTextureType::DEPTH : CopyTextureType::COLOUR,
                           params,
@@ -1124,12 +1124,16 @@ namespace Divide
         }
     }
 
-    /*static*/ void vkTexture::TransitionTexture(const TransitionType type, const VkImageSubresourceRange & subresourceRange, VkImage image, VkImageMemoryBarrier2 & memBarrier)
+    /*static*/ void vkTexture::TransitionTexture(const TransitionType type, const VkImageSubresourceRange & subresourceRange, const NamedVKImage namedImage, VkImageMemoryBarrier2 & memBarrier)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+#       if 0
+            Console::d_errorfn("TransitionTexture [ {} ] to [ {} ]. Layer [ {} - {} ]. Mip [ {} - {} ].", namedImage._name, Names::transitionType[to_base(type)], subresourceRange.baseArrayLayer, subresourceRange.layerCount, subresourceRange.baseMipLevel, subresourceRange.levelCount);
+#       endif
+
         memBarrier = vk::imageMemoryBarrier2();
-        memBarrier.image = image;
+        memBarrier.image = namedImage._image;
         memBarrier.subresourceRange = subresourceRange;
 
         constexpr auto SHADER_READ_WRITE_BIT = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
@@ -1198,8 +1202,8 @@ namespace Divide
             } [[fallthrough]];
             case TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT:
             {
-                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
+                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                 memBarrier.dstAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
@@ -1209,14 +1213,14 @@ namespace Divide
             case TransitionType::SHADER_READ_TO_DEPTH_RESOLVE_ATTACHMENT:
             case TransitionType::SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT:
             {
-                memBarrier.dstAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                 memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             } [[fallthrough]];
             case TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT:
             case TransitionType::SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT:
             {
-                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
 
                 memBarrier.dstAccessMask |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
@@ -1224,6 +1228,7 @@ namespace Divide
                 if ( type == TransitionType::SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT || type == TransitionType::SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT )
                 {
                     memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
                 }
                 else
                 {
@@ -1238,8 +1243,8 @@ namespace Divide
             } [[fallthrough]];
             case TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ:
             {
-                memBarrier.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.dstStageMask = SHADER_SAMPLE_STAGE_MASK;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.dstStageMask |= SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 memBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
                 memBarrier.srcAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;

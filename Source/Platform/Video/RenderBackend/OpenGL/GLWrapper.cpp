@@ -974,7 +974,9 @@ namespace Divide
 
         if ( !cacheHit )
         {
-            const gl46core::GLuint srcHandle = static_cast<const glTexture*>(srcView._srcTexture)->textureHandle();
+            const glTexture* srcTexture = static_cast<const glTexture*>(srcView._srcTexture);
+
+            const gl46core::GLuint srcHandle = srcTexture->textureHandle();
             
             if ( srcHandle == GL_NULL_HANDLE )
             {
@@ -985,7 +987,11 @@ namespace Divide
                                                                                          srcView._descriptor._dataType,
                                                                                          srcView._descriptor._packing )._format;
 
-            const bool isCube = IsCubeTexture( TargetType( srcView ) );
+            DIVIDE_ASSERT(srcView._subRange._layerRange._count != ALL_LAYERS);
+            
+            const bool isCube = IsCubeTexture(srcTexture->descriptor()._texType);
+            const U16 texLayers = isCube ? srcTexture->depth() * 6u : srcTexture->depth();
+            const U16 layerCount = srcView._subRange._layerRange._count == ALL_LAYERS ? texLayers : srcView._subRange._layerRange._count;
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
             gl46core::glTextureView( handle,
@@ -995,7 +1001,7 @@ namespace Divide
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._offset),
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._count),
                                      srcView._subRange._layerRange._offset * (isCube ? 6 : 1),
-                                     srcView._subRange._layerRange._count * (isCube ? 6 : 1));
+                                     layerCount);
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );
@@ -1274,7 +1280,7 @@ namespace Divide
 
                 ResourcePtr<Texture> tex = Get(crtCmd->_texture);
                 const U16 texLayers = IsCubeTexture( tex->descriptor()._texType ) ? tex->depth() * 6u : tex->depth();
-                const U16 layerCount = crtCmd->_layerRange._count == U16_MAX ? texLayers : crtCmd->_layerRange._count;
+                const U16 layerCount = crtCmd->_layerRange._count == ALL_LAYERS ? texLayers : crtCmd->_layerRange._count;
 
                 if ( crtCmd->_layerRange._offset == 0 && layerCount >= texLayers )
                 {
@@ -1685,7 +1691,7 @@ namespace Divide
                     {
                         const DescriptorImageView& imageView = srcBinding._data._imageView;
                         DIVIDE_GPU_ASSERT( TargetType( imageView._image ) != TextureType::COUNT );
-                        DIVIDE_GPU_ASSERT( imageView._image._subRange._layerRange._count > 0u );
+                        DIVIDE_GPU_ASSERT( imageView._image._subRange._layerRange._count != ALL_LAYERS );
 
                         gl46core::GLenum access = gl46core::GL_NONE;
                         switch ( imageView._usage )
@@ -1715,7 +1721,7 @@ namespace Divide
                              GL_API::s_stateTracker.bindTextureImage( glBindingSlot,
                                                                       handle,
                                                                       imageView._image._subRange._mipLevels._offset,
-                                                                      imageView._image._subRange._layerRange._count > 1u,
+                                                                      imageView._image._subRange._layerRange._count != ALL_LAYERS,
                                                                       imageView._image._subRange._layerRange._offset,
                                                                       access,
                                                                       glInternalFormat ) == GLStateTracker::BindResult::FAILED )

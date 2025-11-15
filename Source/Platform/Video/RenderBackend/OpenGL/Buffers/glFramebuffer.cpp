@@ -89,7 +89,7 @@ namespace Divide
             DIVIDE_GPU_ASSERT(targetLayers._layer._offset == 0u );
             if ( !IsCubeTexture( texPtr->descriptor()._texType ) || targetLayers._cubeFace == 0u )
             {
-                targetLayers._layer._count = U16_MAX;
+                targetLayers._layer._count = ALL_LAYERS;
             }
         }
 
@@ -120,7 +120,7 @@ namespace Divide
                 ResourcePtr<Texture> resolvedTexPtr = Get( attachment->resolvedTexture() );
 
                 const gl46core::GLuint handle = static_cast<glTexture*>(texPtr)->textureHandle();
-                if ( bState._layers._layer._offset == 0u && bState._layers._cubeFace == 0u && bState._layers._layer._count == U16_MAX )
+                if ( bState._layers._layer._offset == 0u && bState._layers._cubeFace == 0u && bState._layers._layer._count == ALL_LAYERS )
                 {
                     gl46core::glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
                     if ( _attachmentsAutoResolve[attachmentIdx] )
@@ -190,7 +190,7 @@ namespace Divide
             _framebufferResolveHandle = GL_NULL_HANDLE;
         }
 
-        const SubRange latyeredSubRange{ 0u , U16_MAX};
+        const SubRange latyeredSubRange{ 0u , ALL_LAYERS };
         for ( U8 i = 0u; i < RT_MAX_ATTACHMENT_COUNT; ++i )
         {
             if ( !_attachmentsUsed[i] )
@@ -295,7 +295,7 @@ namespace Divide
 
             bool blitted = false, inputDirty = false, outputDirty = false;;
             U16 layerCount = entry._layerCount;
-            DIVIDE_GPU_ASSERT( layerCount != U16_MAX && entry._mipCount != U16_MAX);
+            DIVIDE_GPU_ASSERT( layerCount != ALL_LAYERS && entry._mipCount != ALL_MIPS );
             if ( IsCubeTexture( Get(inAtt->resolvedTexture())->descriptor()._texType ) )
             {
                 layerCount *= 6u;
@@ -346,13 +346,13 @@ namespace Divide
             {
                 PROFILE_SCOPE( "Reset Input Attachments", Profiler::Category::Graphics );
                 DIVIDE_GPU_ASSERT( input->_attachmentsUsed[entry._input._index] );
-                input->toggleAttachment( entry._input._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = {0u, U16_MAX}, ._cubeFace = 0u } );
+                input->toggleAttachment( entry._input._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = { 0u, ALL_LAYERS }, ._cubeFace = 0u } );
             }
             if ( outputDirty )
             {
                 PROFILE_SCOPE( "Reset Output Attachments", Profiler::Category::Graphics );
                 DIVIDE_GPU_ASSERT( output->_attachmentsUsed[entry._output._index] );
-                output->toggleAttachment( entry._output._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = {0u, U16_MAX}, ._cubeFace = 0u } );
+                output->toggleAttachment( entry._output._index, AttachmentState::STATE_ENABLED, 0u, { ._layer = { 0u, ALL_LAYERS }, ._cubeFace = 0u } );
             }
             if ( blitted )
             {
@@ -441,7 +441,7 @@ namespace Divide
             if ( _attachmentsUsed[i] )
             {
                 _previousDrawLayers[i] = drawPolicy._writeLayers[i]._layer._offset == INVALID_INDEX ? targetDepthLayer : drawPolicy._writeLayers[i];
-                toggleAttachment( i, AttachmentState::STATE_ENABLED, drawPolicy._mipWriteLevel, _previousDrawLayers[i]);
+                toggleAttachment( i, AttachmentState::STATE_ENABLED, drawPolicy._mipWriteLevel == ALL_MIPS ? 0u : drawPolicy._mipWriteLevel, _previousDrawLayers[i]);
             }
         }
 
@@ -492,7 +492,7 @@ namespace Divide
 
             if ( _previousPolicy._drawMask[i] && mask[i] )
             {
-                toggleAttachment( i, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[i] );
+                toggleAttachment( i, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel == ALL_MIPS ? 0u : _previousPolicy._mipWriteLevel, _previousDrawLayers[i] );
 
                 const gl46core::GLenum rwBuffer = static_cast<gl46core::GLenum>(_attachments[i]->binding());
                 gl46core::glNamedFramebufferReadBuffer( _framebufferHandle, rwBuffer );
@@ -511,7 +511,7 @@ namespace Divide
 
         if ( _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX] && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX] && mask[RT_DEPTH_ATTACHMENT_IDX] )
         {
-            toggleAttachment( RT_DEPTH_ATTACHMENT_IDX, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel, _previousDrawLayers[RT_DEPTH_ATTACHMENT_IDX] );
+            toggleAttachment( RT_DEPTH_ATTACHMENT_IDX, AttachmentState::STATE_ENABLED, _previousPolicy._mipWriteLevel == ALL_MIPS ? 0u : _previousPolicy._mipWriteLevel, _previousDrawLayers[RT_DEPTH_ATTACHMENT_IDX] );
 
             gl46core::glBlitNamedFramebuffer( _framebufferHandle,
                                               _framebufferResolveHandle,
@@ -644,11 +644,6 @@ namespace Divide
 
     void glFramebuffer::setMipLevel( const U16 writeLevel )
     {
-        if ( writeLevel == U16_MAX )
-        {
-            return;
-        }
-
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         bool changedMip = false;
