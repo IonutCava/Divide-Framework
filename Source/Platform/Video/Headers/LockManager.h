@@ -92,7 +92,7 @@ namespace Divide {
             size_t _generation{ 0u };
         };
 
-        using BufferLockPool = eastl::fixed_vector<BufferLockPoolEntry, 1024, true>;
+        using BufferLockPool = fixed_vector<BufferLockPoolEntry, 1024, true>;
 
         static void CleanExpiredSyncObjects( RenderAPI api, U64 frameNumber );
         static void Clear();
@@ -114,8 +114,8 @@ namespace Divide {
 
     protected:
         mutable Mutex _bufferLockslock; // :D
-        eastl::fixed_vector<BufferLockInstance, 64, true> _bufferLocks;
-        eastl::fixed_vector<BufferLockInstance, 64, true> _swapLocks;
+        fixed_vector<BufferLockInstance, 64, true> _bufferLocks;
+        fixed_vector<BufferLockInstance, 64, true> _swapLocks;
 
         static Mutex s_bufferLockLock; // :D
         static BufferLockPool s_bufferLockPool;

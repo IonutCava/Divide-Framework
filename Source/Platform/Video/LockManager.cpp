@@ -119,7 +119,7 @@ namespace Divide
         bool error = false;
 
         LockGuard<Mutex> w_lock_global( _bufferLockslock );
-        efficient_clear(_swapLocks);
+        _swapLocks.clear();
 
         for ( const BufferLockInstance& lock : _bufferLocks )
         {

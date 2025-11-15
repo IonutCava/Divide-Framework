@@ -110,13 +110,13 @@ struct CompiledPipeline
 
 struct PipelineBuilder
 {
-    std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+    fixed_vector<VkPipelineShaderStageCreateInfo, to_base(ShaderType::COUNT)> _shaderStages;
     VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
     VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
     VkViewport _viewport;
     VkRect2D _scissor;
     VkPipelineRasterizationStateCreateInfo _rasterizer;
-    eastl::fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT ), false> _colorBlendAttachments;
+    fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT )> _colorBlendAttachments;
     VkPipelineMultisampleStateCreateInfo _multisampling;
     VkPipelineLayout _pipelineLayout;
     VkPipelineDepthStencilStateCreateInfo _depthStencil;
@@ -141,7 +141,7 @@ struct DynamicBinding
     U8 _slot{ U8_MAX };
 };
 
-using DynamicBindings = eastl::fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false>;
+using DynamicBindings = fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
 
 struct VKImmediateCmdContext
 {
@@ -228,6 +228,7 @@ struct VKStateTracker
 
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     size_t _renderTargetFormatHash{0u};
+    size_t _activeRenderTargetColourAttachmentCount{ 0u };
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
     U8 _activeMSAASamples{ 1u };
@@ -279,9 +280,8 @@ struct VKTransferQueue
         VkPipelineStageFlags2 dstStageMask{ VK_PIPELINE_STAGE_2_NONE };
     };
 
-    mutable Mutex _lock;
-    std::deque<TransferRequest> _requests;
-    std::atomic_bool _dirty;
+    moodycamel::ConcurrentQueue<TransferRequest> _requests;
+    std::atomic_bool _dirty{ false };
 };
 
 //ref:  SaschaWillems / Vulkan / VulkanTools
@@ -340,6 +340,17 @@ do                                \
 } while ( 0 )
 
 #endif //VK_PROFILE
+
+// Conditionally executes code only when unit testing is enabled, allowing tests to pass VK_NULL_HANDLE
+#ifndef VK_UT_IF_CHECK
+#   if defined(ENABLE_UNIT_TESTING)
+#       define VK_UT_IF_CHECK( X ) if ( (X) )
+#       define VK_NON_UT_ASSERT( X )
+#   else //ENABLE_UNIT_TESTING
+#       define VK_UT_IF_CHECK( X ) /* nothing */
+#       define VK_NON_UT_ASSERT( X ) DIVIDE_ASSERT( (X) )
+#   endif //ENABLE_UNIT_TESTING
+#endif //VK_UT_IF_CHECK
     struct VulkanQueryType
     {
         VkQueryType _queryType { VK_QUERY_TYPE_MAX_ENUM };

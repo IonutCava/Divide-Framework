@@ -57,9 +57,9 @@ protected:
 
 protected:
     mutable SharedMutex _poolLock;
-    
-    eastl::fixed_vector<PoolHandle, N, allowResize> _ids{};
-    eastl::fixed_vector<T*, N, allowResize> _pool{};
+
+    fixed_vector<PoolHandle, N, allowResize> _ids{};
+    fixed_vector<T*, N, allowResize> _pool{};
 };
 
 } //namespace Divide

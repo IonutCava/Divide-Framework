@@ -64,7 +64,7 @@ namespace Divide
     inline void Light::setShadowArrayOffset( const U16 offset ) noexcept {
         if ( getShadowArrayOffset() != offset )
         {
-            _shadowProperties._lightDetails.y = offset == U16_MAX ? -1.f : to_F32( offset );
+            _shadowProperties._lightDetails.y = offset == ALL_LAYERS ? -1.f : to_F32( offset );
             _shadowProperties._dirty = true;
         }
     }
@@ -80,7 +80,7 @@ namespace Divide
     {
         if ( _shadowProperties._lightDetails.y < 0.f )
         {
-            return U16_MAX;
+            return ALL_LAYERS;
         }
 
         return to_U16( _shadowProperties._lightDetails.y );

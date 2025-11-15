@@ -87,11 +87,11 @@ public:
     template<typename T, size_t COUNT, typename FREE_LIST_TYPE>
     struct PerNodeData
     {
-        using DataContainer = eastl::fixed_vector<T, COUNT, true>;
+        using DataContainer = fixed_vector<T, COUNT, true>;
         DataContainer _gpuData{};
 
         SharedMutex _freeListLock;
-        eastl::fixed_vector<FREE_LIST_TYPE, COUNT, true> _freeList{};
+        fixed_vector<FREE_LIST_TYPE, COUNT, true> _freeList{};
     };
 
     using BufferTransformData = PerNodeData<NodeTransformData, Config::MAX_VISIBLE_NODES, bool>;

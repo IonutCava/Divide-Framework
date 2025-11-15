@@ -235,7 +235,7 @@ namespace Divide
         if ( _nodeListChanged )
         {
             // Very rarely called
-            efficient_clear( _nodeList );
+            _nodeList.clear();
             Attorney::SceneGraphNodeSceneGraph::getAllNodes( _root, _nodeList );
             _nodeListChanged = false;
         }
@@ -262,7 +262,7 @@ namespace Divide
             {
                 Attorney::SceneGraphNodeSceneGraph::changeParent( node );
             }
-            efficient_clear( _nodeParentChangeQueue );
+            _nodeParentChangeQueue.clear();
         }
         {
             LockGuard<SharedMutex> lock( _pendingDeletionLock );
@@ -341,7 +341,7 @@ namespace Divide
                 }
             );
 
-            efficient_clear( _nodeEventQueue );
+            _nodeEventQueue.clear();
         }
 
         {
@@ -386,7 +386,7 @@ namespace Divide
 
     bool SceneGraph::intersect( const SGNIntersectionParams& params, vector<SGNRayResult>& intersectionsOut ) const
     {
-        efficient_clear( intersectionsOut );
+        intersectionsOut.clear();
 
         // Try to leverage our physics system as it will always be way more faster and accurate
         if ( !parentScene().context().pfx().intersect( params._ray, params._range, intersectionsOut ) )

@@ -101,8 +101,8 @@ public:
     bool buildSetAndLayout(VkDescriptorSet& set, VkDescriptorSetLayout& layoutOut, VkDevice device );
 private:
 
-    eastl::fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET, false> writes;
-    eastl::fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false> bindings;
+    fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> writes;
+    fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET> bindings;
 
     DescriptorLayoutCache* cache{ nullptr };
     vke::DescriptorAllocatorHandle* alloc{ nullptr };

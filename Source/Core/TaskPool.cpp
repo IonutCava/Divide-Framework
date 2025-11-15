@@ -78,8 +78,8 @@ namespace Divide
     void TaskPool::shutdown()
     {
         join();
-        efficient_clear( _threads );
-        _taskCallbacks.resize(0);
+        _threads.clear();
+        _taskCallbacks.clear();
     }
 
     void TaskPool::waitForAllTasks(const bool flushCallbacks)

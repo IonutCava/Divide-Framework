@@ -99,8 +99,8 @@ struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor
     TextureDescriptor _texDescriptor;
 };
 
-using InternalRTAttachmentDescriptors = eastl::fixed_vector<InternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT, false>;
-using ExternalRTAttachmentDescriptors = eastl::fixed_vector<ExternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT, false>;
+using InternalRTAttachmentDescriptors = fixed_vector<InternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT>;
+using ExternalRTAttachmentDescriptors = fixed_vector<ExternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT>;
 
 class RenderTarget;
 class RTAttachment final

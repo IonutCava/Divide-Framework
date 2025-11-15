@@ -42,7 +42,7 @@ namespace Divide
     SharedMutex GL_API::s_samplerMapLock;
     NO_DESTROY GL_API::SamplerObjectMap GL_API::s_samplerMap{};
     std::unique_ptr<glHardwareQueryPool> GL_API::s_hardwareQueryPool = nullptr;
-    NO_DESTROY eastl::fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS, false> GL_API::s_TexBindQueue;
+    NO_DESTROY fixed_vector<GL_API::TexBindEntry, GLStateTracker::MAX_BOUND_TEXTURE_UNITS> GL_API::s_TexBindQueue;
 
     NO_DESTROY std::array<GLUtil::GLMemory::DeviceAllocator, to_base( GLUtil::GLMemory::GLMemoryType::COUNT )> GL_API::s_memoryAllocators = 
     {
@@ -372,7 +372,7 @@ namespace Divide
         deviceInformation._maxVertAttributes = GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIBS );
         Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
-        _meshShadersSupported = SDL_GL_ExtensionSupported( "GL_NV_mesh_shader" );
+        deviceInformation._meshShadingSupported = SDL_GL_ExtensionSupported( "GL_NV_mesh_shader" );
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3u; ++i )
@@ -380,7 +380,7 @@ namespace Divide
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorkgroupCount[i], i );
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorkgroupSize[i], i );
 
-            if ( _meshShadersSupported )
+            if ( deviceInformation._meshShadingSupported )
             {
                 GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorkgroupSize[i], i);
                 GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorkgroupSize[i], i);
@@ -405,7 +405,7 @@ namespace Divide
                           deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
-        if ( _meshShadersSupported )
+        if ( deviceInformation._meshShadingSupported )
         {
             deviceInformation._maxMeshShaderOutputVertices = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_VERTICES_NV);
             deviceInformation._maxMeshShaderOutputPrimitives = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_PRIMITIVES_NV);
@@ -481,9 +481,14 @@ namespace Divide
         const I32 clipDistanceCount = std::max( GLUtil::getGLValue( gl46core::GL_MAX_CLIP_DISTANCES ), 0 );
         const I32 cullDistanceCount = std::max( GLUtil::getGLValue( gl46core::GL_MAX_CULL_DISTANCES ), 0 );
 
+        deviceInformation._maxBufferSizeBytes = std::max( deviceInformation._maxSizeBytesUBO, deviceInformation._maxSizeBytesSSBO );
         deviceInformation._maxClipAndCullDistances = GLUtil::getGLValue( gl46core::GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES );
         deviceInformation._maxClipDistances = to_U32( clipDistanceCount );
         deviceInformation._maxCullDistances = to_U32( cullDistanceCount );
+
+        DIVIDE_GPU_ASSERT(deviceInformation._maxBufferSizeBytes > 0u);
+
+        Console::printfn( LOCALE_STR( "GL_VK_BUFFER_MAX_SIZE" ), deviceInformation._maxBufferSizeBytes / 1024 / 1024);
 
         GFXDevice::OverrideDeviceInformation( deviceInformation );
         // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
@@ -958,7 +963,7 @@ namespace Divide
             }
         }
 
-        efficient_clear(s_TexBindQueue);
+        s_TexBindQueue.clear();
     }
 
     gl46core::GLuint GL_API::getGLTextureView( const ImageView srcView, const size_t srcViewHash, const U8 lifetimeInFrames ) const
@@ -969,7 +974,9 @@ namespace Divide
 
         if ( !cacheHit )
         {
-            const gl46core::GLuint srcHandle = static_cast<const glTexture*>(srcView._srcTexture)->textureHandle();
+            const glTexture* srcTexture = static_cast<const glTexture*>(srcView._srcTexture);
+
+            const gl46core::GLuint srcHandle = srcTexture->textureHandle();
             
             if ( srcHandle == GL_NULL_HANDLE )
             {
@@ -980,7 +987,11 @@ namespace Divide
                                                                                          srcView._descriptor._dataType,
                                                                                          srcView._descriptor._packing )._format;
 
-            const bool isCube = IsCubeTexture( TargetType( srcView ) );
+            DIVIDE_ASSERT(srcView._subRange._layerRange._count != ALL_LAYERS);
+            
+            const bool isCube = IsCubeTexture(srcTexture->descriptor()._texType);
+            const U16 texLayers = isCube ? srcTexture->depth() * 6u : srcTexture->depth();
+            const U16 layerCount = srcView._subRange._layerRange._count == ALL_LAYERS ? texLayers : srcView._subRange._layerRange._count;
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
             gl46core::glTextureView( handle,
@@ -990,7 +1001,7 @@ namespace Divide
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._offset),
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._count),
                                      srcView._subRange._layerRange._offset * (isCube ? 6 : 1),
-                                     srcView._subRange._layerRange._count * (isCube ? 6 : 1));
+                                     layerCount);
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );
@@ -1269,7 +1280,7 @@ namespace Divide
 
                 ResourcePtr<Texture> tex = Get(crtCmd->_texture);
                 const U16 texLayers = IsCubeTexture( tex->descriptor()._texType ) ? tex->depth() * 6u : tex->depth();
-                const U16 layerCount = crtCmd->_layerRange._count == U16_MAX ? texLayers : crtCmd->_layerRange._count;
+                const U16 layerCount = crtCmd->_layerRange._count == ALL_LAYERS ? texLayers : crtCmd->_layerRange._count;
 
                 if ( crtCmd->_layerRange._offset == 0 && layerCount >= texLayers )
                 {
@@ -1680,7 +1691,7 @@ namespace Divide
                     {
                         const DescriptorImageView& imageView = srcBinding._data._imageView;
                         DIVIDE_GPU_ASSERT( TargetType( imageView._image ) != TextureType::COUNT );
-                        DIVIDE_GPU_ASSERT( imageView._image._subRange._layerRange._count > 0u );
+                        DIVIDE_GPU_ASSERT( imageView._image._subRange._layerRange._count != ALL_LAYERS );
 
                         gl46core::GLenum access = gl46core::GL_NONE;
                         switch ( imageView._usage )
@@ -1710,7 +1721,7 @@ namespace Divide
                              GL_API::s_stateTracker.bindTextureImage( glBindingSlot,
                                                                       handle,
                                                                       imageView._image._subRange._mipLevels._offset,
-                                                                      imageView._image._subRange._layerRange._count > 1u,
+                                                                      imageView._image._subRange._layerRange._count != ALL_LAYERS,
                                                                       imageView._image._subRange._layerRange._offset,
                                                                       access,
                                                                       glInternalFormat ) == GLStateTracker::BindResult::FAILED )

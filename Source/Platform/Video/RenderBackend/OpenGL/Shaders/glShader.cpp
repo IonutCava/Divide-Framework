@@ -355,7 +355,7 @@ void glShader::onParentValidation()
         }
     }
 
-    efficient_clear( _shaderIDs );
+    _shaderIDs.clear();
 }
 
 void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)

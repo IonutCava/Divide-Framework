@@ -76,7 +76,7 @@ namespace Assert {
     constexpr bool SHOW_MESSAGE_BOX = LOG_ASSERTS;
 
     /// Do not call the platform "assert" function in order to continue application execution
-    constexpr bool CONTINUE_ON_ASSERT = false;
+    constexpr bool CONTINUE_ON_ASSERT = !Build::IS_RELEASE_BUILD;
 } // namespace Assert
 
 namespace Profile
@@ -88,7 +88,7 @@ namespace Profile
 constexpr float ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
 
 constexpr unsigned char MINIMUM_VULKAN_MINOR_VERSION = 3u;
-constexpr unsigned char DESIRED_VULKAN_MINOR_VERSION = 3u;
+constexpr unsigned char DESIRED_VULKAN_MINOR_VERSION = 4u;
 
 /// Application desired framerate for physics and input simulations
 constexpr U16 TARGET_FRAME_RATE = 60;

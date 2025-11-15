@@ -89,9 +89,8 @@ ErrorCode WindowManager::init(PlatformContext& context,
                               const WindowMode windowMode,
                               const I32 targetDisplayIndex)
 {
-    if (!_monitors.empty())
+    if (!_monitors.empty()) // Double init
     {
-        // Double init
         return ErrorCode::WINDOW_INIT_ERROR;
     }
 
@@ -112,16 +111,16 @@ ErrorCode WindowManager::init(PlatformContext& context,
 
     Console::printfn(LOCALE_STR("SDL_CURRENT_VIDEO_DRIVER"), videoDriver != nullptr ? videoDriver : "UNKNOWN");
 
-    efficient_clear( _monitors );
     I32 displayCount = 0;
     SDL_DisplayID* displays = SDL_GetDisplays(&displayCount);
     if ( displays && displayCount > 0)
     {
+        _monitors.reserve(displayCount);    
         for (I32 i = 0; i < displayCount; ++i)
         {
             SDL_DisplayID instance_id = displays[i];
 
-            MonitorData data = {};
+            MonitorData& data = _monitors.emplace_back();
 
             SDL_Rect r;
             SDL_GetDisplayBounds(instance_id, &r);
@@ -132,8 +131,6 @@ ErrorCode WindowManager::init(PlatformContext& context,
             data.drawableArea.xy = { to_I16(r.x), to_I16(r.y) };
             data.drawableArea.zw = { to_I16(r.w), to_I16(r.h) };
             data.dpi = PlatformDefaultDPI();
-
-            _monitors.push_back(data);
         }
     }
     else
@@ -145,8 +142,6 @@ ErrorCode WindowManager::init(PlatformContext& context,
     const I32 displayIndex = std::max(std::min(targetDisplayIndex, displayCount - 1), 0);
     s_mainDisplayMode = SDL_GetCurrentDisplayMode(displays[displayIndex]);
     SDL_free(displays);
-
-
 
     for ( U8 i = 0; i < to_U8( CursorStyle::COUNT ); ++i )
     {
@@ -331,6 +326,7 @@ void WindowManager::close()
     }
 
     _windows.clear();
+    _monitors.clear();
 
     for (SDL_Cursor* it : s_cursors)
     {

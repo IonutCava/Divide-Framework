@@ -58,7 +58,7 @@ namespace Attorney {
 class glShaderProgram final : public ShaderProgram {
     friend class Attorney::GLAPIShaderProgram;
    public:
-     using glShaders = eastl::fixed_vector<glShaderEntry, to_base( ShaderType::COUNT ), false>;
+     using glShaders = fixed_vector<glShaderEntry, to_base( ShaderType::COUNT )>;
 
    public:
     explicit glShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor );

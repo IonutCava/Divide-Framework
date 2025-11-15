@@ -329,7 +329,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
-    if ( layerRange._offset == 0u && (layerRange._count == U16_MAX || layerRange._count == _depth))
+    if ( layerRange._offset == 0u && (layerRange._count == ALL_LAYERS || layerRange._count == _depth))
     {
         gl46core::glClearTexImage( _textureHandle, mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor._dataType ) );
     }
@@ -376,7 +376,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     if (srcType != TextureType::COUNT && dstType != TextureType::COUNT)
     {
         U32 layerOffset = params._layerRange.offset;
-        U32 layerCount = params._layerRange.count == U16_MAX ? source->_depth : params._layerRange.count;
+        U32 layerCount = params._layerRange.count == ALL_LAYERS ? source->_depth : params._layerRange.count;
         if (IsCubeTexture(srcType))
         {
             layerOffset *= 6;

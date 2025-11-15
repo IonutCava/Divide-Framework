@@ -135,6 +135,71 @@ namespace Divide
 
             COUNT
         };
+
+        struct Names {
+            inline static const char* transitionType[] = {
+                "UNDEFINED_TO_COLOUR_ATTACHMENT",
+                "UNDEFINED_TO_COLOUR_RESOLVE_ATTACHMENT",
+                "UNDEFINED_TO_DEPTH_ATTACHMENT",
+                "UNDEFINED_TO_DEPTH_RESOLVE_ATTACHMENT",
+                "UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT",
+                "UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT",
+                "SHADER_READ_TO_COLOUR_ATTACHMENT",
+                "SHADER_READ_TO_COLOUR_RESOLVE_ATTACHMENT",
+                "SHADER_READ_TO_DEPTH_ATTACHMENT",
+                "SHADER_READ_TO_DEPTH_RESOLVE_ATTACHMENT",
+                "SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT",
+                "SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT",
+                "COLOUR_ATTACHMENT_TO_SHADER_READ",
+                "COLOUR_RESOLVE_ATTACHMENT_TO_SHADER_READ",
+                "DEPTH_ATTACHMENT_TO_SHADER_READ",
+                "DEPTH_RESOLVE_ATTACHMENT_TO_SHADER_READ",
+                "DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ",
+                "DEPTH_STENCIL_RESOLVE_ATTACHMENT_TO_SHADER_READ",
+                "COLOUR_ATTACHMENT_TO_SHADER_WRITE",
+                "DEPTH_ATTACHMENT_TO_SHADER_WRITE",
+                "DEPTH_STENCIL_ATTACHMENT_TO_SHADER_WRITE",
+                "COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE",
+                "DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE",
+                "DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ_WRITE",
+                "UNDEFINED_TO_SHADER_READ_COLOUR",
+                "UNDEFINED_TO_SHADER_READ_DEPTH",
+                "UNDEFINED_TO_SHADER_READ_WRITE",
+                "GENERAL_TO_SHADER_READ_COLOUR",
+                "GENERAL_TO_SHADER_READ_DEPTH",
+                "UNDEFINED_TO_GENERAL",
+                "SHADER_READ_COLOUR_TO_GENERAL",
+                "SHADER_READ_DEPTH_TO_GENERAL",
+                "SHADER_READ_COLOUR_TO_SHADER_READ_WRITE",
+                "SHADER_READ_DEPTH_TO_SHADER_READ_WRITE",
+                "SHADER_READ_WRITE_TO_SHADER_READ_COLOUR",
+                "SHADER_READ_WRITE_TO_SHADER_READ_DEPTH",
+                "SHADER_READ_TO_BLIT_READ_COLOUR",
+                "SHADER_READ_TO_BLIT_WRITE_COLOUR",
+                "BLIT_READ_TO_SHADER_READ_COLOUR",
+                "BLIT_WRITE_TO_SHADER_READ_COLOUR",
+                "SHADER_READ_TO_BLIT_READ_DEPTH",
+                "SHADER_READ_TO_BLIT_WRITE_DEPTH",
+                "BLIT_READ_TO_SHADER_READ_DEPTH",
+                "BLIT_WRITE_TO_SHADER_READ_DEPTH",
+                "SHADER_READ_TO_COPY_WRITE_COLOUR",
+                "SHADER_READ_TO_COPY_WRITE_DEPTH",
+                "SHADER_READ_TO_COPY_READ_COLOUR",
+                "SHADER_READ_TO_COPY_READ_DEPTH",
+                "COPY_READ_TO_SHADER_READ_COLOUR",
+                "COPY_READ_TO_SHADER_READ_DEPTH",
+                "COPY_WRITE_TO_SHADER_READ_COLOUR",
+                "COPY_WRITE_TO_SHADER_READ_DEPTH",
+                "SHADER_READ_WRITE_TO_COPY_READ",
+                "GENERAL_TO_COPY_READ",
+                "GENERAL_TO_COPY_WRITE",
+                "COPY_READ_TO_GENERAL",
+                "COPY_WRITE_TO_GENERAL",
+                "COPY_WRITE_TO_COPY_READ",
+                "UNKNOWN"
+            };
+        };
+
         struct CachedImageView
         {
             struct Descriptor final : Hashable
@@ -172,7 +237,13 @@ namespace Divide
 
         static void Copy( VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params );
 
-        static void TransitionTexture( TransitionType type, const VkImageSubresourceRange& subresourceRange, VkImage image,  VkImageMemoryBarrier2& memBarrier );
+        struct NamedVKImage
+        {
+            VkImage _image{VK_NULL_HANDLE};
+            std::string_view _name{};
+        };
+
+        static void TransitionTexture( TransitionType type, const VkImageSubresourceRange& subresourceRange, NamedVKImage image, VkImageMemoryBarrier2& memBarrier );
 
     private:
         void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;

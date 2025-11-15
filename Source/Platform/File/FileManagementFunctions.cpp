@@ -18,7 +18,7 @@ ResourcePath getWorkingDirectory()
 
 FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::ifstream& sreamOut)
 {
-    if (filePath.empty() || fileName.empty() || !pathExists(filePath))
+    if (filePath.empty() || fileName.empty() || !pathExists(filePath) || !fileExists(filePath, fileName))
     {
         return FileError::FILE_NOT_FOUND;
     }
