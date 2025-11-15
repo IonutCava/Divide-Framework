@@ -909,7 +909,8 @@ namespace Divide
         VKUtil::OnStartup( vkDevice );
 
         VkFormatProperties2 properties{.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-        VkPhysicalDeviceProperties2	properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+        VkPhysicalDeviceMaintenance4Properties maintenance4{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES };
+        VkPhysicalDeviceProperties2	properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,.pNext = &maintenance4 };
 
         VkPhysicalDeviceMeshShaderPropertiesEXT meshProperties { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
 
@@ -919,6 +920,8 @@ namespace Divide
         }
 
         vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
+        const size_t deviceMaxBufferSize = static_cast<size_t>(maintenance4.maxBufferSize);
+
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D24_UNORM_S8_UINT, &properties );
         s_depthFormatInformation._d24s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D32_SFLOAT_S8_UINT, &properties );
@@ -1001,12 +1004,16 @@ namespace Divide
         deviceInformation._versionInfo._major = 1u;
         deviceInformation._versionInfo._minor = to_U8( VK_API_VERSION_MINOR( deviceProperties.apiVersion ) );
 
+        deviceInformation._maxBufferSizeBytes = to_size( maintenance4.maxBufferSize );
         deviceInformation._maxTextureUnits = deviceProperties.limits.maxDescriptorSetSampledImages;
         deviceInformation._maxVertAttributeBindings = deviceProperties.limits.maxVertexInputBindings;
         deviceInformation._maxVertAttributes = deviceProperties.limits.maxVertexInputAttributes;
         deviceInformation._maxRTColourAttachments = deviceProperties.limits.maxColorAttachments;
         deviceInformation._maxDrawIndirectCount = deviceProperties.limits.maxDrawIndirectCount;
         deviceInformation._maxTextureSize = deviceProperties.limits.maxImageDimension2D;
+
+        DIVIDE_GPU_ASSERT( deviceInformation._maxBufferSizeBytes > 0u );
+        Console::printfn(LOCALE_STR("GL_VK_BUFFER_MAX_SIZE"), deviceInformation._maxBufferSizeBytes / 1024 / 1024);
 
         deviceInformation._shaderCompilerThreads = 0xFFFFFFFF;
         CLAMP( config.rendering.maxAnisotropicFilteringLevel,

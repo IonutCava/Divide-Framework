@@ -126,6 +126,7 @@ struct DeviceInformation
     U32 _maxTaskWorkgroupSize[3] = { 1024u, 1024u, 64u };
     U32 _maxTaskWorkgroupInvocations = 1024u;
 
+    size_t _maxBufferSizeBytes = 0u;
     size_t _maxSizeBytesUBO = 64 * 1024;
     size_t _maxSizeBytesSSBO = 1024 * 1024 * 1024u;
     size_t _maxComputeSharedMemoryBytes = 1024 * 1024 * 1024;

@@ -481,9 +481,14 @@ namespace Divide
         const I32 clipDistanceCount = std::max( GLUtil::getGLValue( gl46core::GL_MAX_CLIP_DISTANCES ), 0 );
         const I32 cullDistanceCount = std::max( GLUtil::getGLValue( gl46core::GL_MAX_CULL_DISTANCES ), 0 );
 
+        deviceInformation._maxBufferSizeBytes = std::max( deviceInformation._maxSizeBytesUBO, deviceInformation._maxSizeBytesSSBO );
         deviceInformation._maxClipAndCullDistances = GLUtil::getGLValue( gl46core::GL_MAX_COMBINED_CLIP_AND_CULL_DISTANCES );
         deviceInformation._maxClipDistances = to_U32( clipDistanceCount );
         deviceInformation._maxCullDistances = to_U32( cullDistanceCount );
+
+        DIVIDE_GPU_ASSERT(deviceInformation._maxBufferSizeBytes > 0u);
+
+        Console::printfn( LOCALE_STR( "GL_VK_BUFFER_MAX_SIZE" ), deviceInformation._maxBufferSizeBytes / 1024 / 1024);
 
         GFXDevice::OverrideDeviceInformation( deviceInformation );
         // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
