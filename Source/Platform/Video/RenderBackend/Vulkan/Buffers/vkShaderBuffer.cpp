@@ -50,7 +50,7 @@ namespace Divide
 
         const bool isCommandBuffer = getUsage() == BufferUsageType::COMMAND_BUFFER;
         const VkAccessFlags2 dstAccessMask = VK_ACCESS_SHADER_READ_BIT | (isCommandBuffer ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : VK_ACCESS_NONE);
-        const VkPipelineStageFlags2 dstStageMask = VK_API::ALL_SHADER_STAGES | VK_PIPELINE_STAGE_TRANSFER_BIT | (isCommandBuffer ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : VK_PIPELINE_STAGE_NONE);
+        const VkPipelineStageFlags2 dstStageMask = VK_API::AllShaderStages() | VK_PIPELINE_STAGE_TRANSFER_BIT | (isCommandBuffer ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : VK_PIPELINE_STAGE_NONE);
 
         LockGuard<Mutex> w_lock( _implLock );
         return _bufferImpl->writeBytes(range, dstAccessMask, dstStageMask, data);

@@ -364,6 +364,8 @@ namespace Divide
 
         _image = std::make_unique<AllocatedImage>();
         _vkType = vkTextureTypeTable[to_base( _descriptor._texType )];
+        const bool isCubeMap = IsCubeTexture(_descriptor._texType);
+        DIVIDE_ASSERT(!(isCubeMap && _width != _height) && "vkTexture::prepareTextureData error: width and height for cube map texture do not match!");
 
         sampleFlagBits( VK_SAMPLE_COUNT_1_BIT );
         if ( _descriptor._msaaSamples > 0u )
@@ -391,7 +393,7 @@ namespace Divide
         else
         {
             imageInfo.extent.depth = 1;
-            imageInfo.arrayLayers = to_U32(_depth);
+            imageInfo.arrayLayers = isCubeMap ? to_U32(_depth) * 6u : to_U32(_depth) * 1u;
         }
 
         if ( !emptyAllocation || imageInfo.mipLevels > 1u)
@@ -418,7 +420,7 @@ namespace Divide
         {
             imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
         }
-        if ( IsCubeTexture( _descriptor._texType ) )
+        if ( isCubeMap )
         {
             imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
@@ -1020,14 +1022,23 @@ namespace Divide
         memBarrier.subresourceRange = subresourceRange;
 
         constexpr auto SHADER_READ_WRITE_BIT = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-        constexpr auto SHADER_SAMPLE_STAGE_MASK = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                                  VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
-                                                  VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT |
+
+        constexpr auto SHADER_SAMPLE_STAGE_MASK_NO_MESH_SHADERS = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
                                                   VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
                                                   VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
                                                   VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
                                                   VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
                                                   VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+
+        constexpr auto SHADER_SAMPLE_STAGE_MASK_WITH_MESH_SHADERS = SHADER_SAMPLE_STAGE_MASK_NO_MESH_SHADERS |
+                                                                    VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                                                                    VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+
+        static bool meshShaderSupported = GFXDevice::GetDeviceInformation()._meshShadingSupported;
+        static auto SHADER_SAMPLE_STAGE_MASK = meshShaderSupported
+                                                    ? SHADER_SAMPLE_STAGE_MASK_WITH_MESH_SHADERS
+                                                    : SHADER_SAMPLE_STAGE_MASK_NO_MESH_SHADERS;
+
         switch ( type )
         {
             case TransitionType::UNDEFINED_TO_COLOUR_RESOLVE_ATTACHMENT:
@@ -1492,7 +1503,7 @@ namespace Divide
             case TransitionType::SHADER_READ_WRITE_TO_COPY_READ:
             {
                 memBarrier.srcAccessMask = SHADER_READ_WRITE_BIT;
-                memBarrier.srcStageMask = VK_API::ALL_SHADER_STAGES;
+                memBarrier.srcStageMask = VK_API::AllShaderStages();
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;

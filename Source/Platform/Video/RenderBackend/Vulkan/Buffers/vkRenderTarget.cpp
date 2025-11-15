@@ -553,6 +553,7 @@ namespace Divide
                 ++stagingIndex;
             }
         }
+
         pipelineRenderingCreateInfoOut.colorAttachmentCount = stagingIndex;
         pipelineRenderingCreateInfoOut.pColorAttachmentFormats = _colourAttachmentFormats.data();
 

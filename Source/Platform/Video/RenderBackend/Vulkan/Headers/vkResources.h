@@ -228,6 +228,7 @@ struct VKStateTracker
 
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     size_t _renderTargetFormatHash{0u};
+    size_t _activeRenderTargetColourAttachmentCount{ 0u };
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
     U8 _activeMSAASamples{ 1u };

@@ -10,10 +10,6 @@ namespace Divide
     {
         supportsDescriptorBuffers(true);
 
-        VkPhysicalDevicePushDescriptorPropertiesKHR pushDescriptorProperties{};
-        pushDescriptorProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR;
-        pushDescriptorProperties.maxPushDescriptors = 32u;
-            
         VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptorBufferFeatures{};
         descriptorBufferFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
         descriptorBufferFeatures.descriptorBuffer = VK_TRUE;
@@ -24,6 +20,11 @@ namespace Divide
         bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
         bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
         bufferDeviceAddressFeatures.pNext = &descriptorBufferFeatures;
+
+        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties{};
+        pushDescriptorProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES;
+        pushDescriptorProperties.maxPushDescriptors = 32u;
+        pushDescriptorProperties.pNext = &bufferDeviceAddressFeatures;
 
         VkPhysicalDeviceVulkan14Features vk14features{};
         vk14features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
@@ -37,6 +38,7 @@ namespace Divide
         vk13features.dynamicRendering = VK_TRUE;
         vk13features.inlineUniformBlock = VK_TRUE;
         vk13features.maintenance4 = VK_TRUE;
+        vk13features.pNext = &pushDescriptorProperties;
 
         VkPhysicalDeviceVulkan12Features vk12features{};
         vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
@@ -84,29 +86,23 @@ namespace Divide
                         .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
                         .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
                         .add_required_extension( VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME )
+                        .add_required_extension( VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME ) //< Core in VK 1.4 but throws validation errors if missing
                         .set_required_features( vk10features )
                         .set_required_features( vk10features )
                         .set_required_features( vk10features )
                         .set_required_features_11( vk11features )
-                        .set_required_features_12( vk12features );
+                        .set_required_features_12( vk12features )
+                        .set_required_features_13( vk13features );
             if (minor >= 4)
             {
-                vk14features.pNext = &bufferDeviceAddressFeatures;
                 selector.set_required_features_14( vk14features );
-            }
-            else
-            {
-                pushDescriptorProperties.pNext = &bufferDeviceAddressFeatures;
-                vk13features.pNext = &pushDescriptorProperties;
-                selector.set_required_features_13(vk13features);
-                selector.add_required_extension( VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME );
             }
 
             vulkanMinorVersion(minor);
             return selector.select();
         };
 
-        vkb::Result<vkb::PhysicalDevice> physicalDeviceSelection = selectDevice(Config::DESIRED_VULKAN_MINOR_VERSION);
+        vkb::Result<vkb::PhysicalDevice> physicalDeviceSelection = selectDevice( Config::DESIRED_VULKAN_MINOR_VERSION );
         if ( !physicalDeviceSelection )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), physicalDeviceSelection.error().message().c_str() );
@@ -122,7 +118,7 @@ namespace Divide
         _physicalDevice.enable_extensions_if_present(
             {
                 VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-                VK_EXT_MESH_SHADER_EXTENSION_NAME
+                //VK_EXT_MESH_SHADER_EXTENSION_NAME
             }
         );
 
@@ -145,7 +141,7 @@ namespace Divide
             }
             else if ( extension == VK_EXT_MESH_SHADER_EXTENSION_NAME )
             {
-                suportsMeshShaders(true);
+                /*suportsMeshShaders(true);
 
                 VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
                 meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
@@ -155,7 +151,7 @@ namespace Divide
                 meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
                 meshShaderFeatures.meshShaderQueries = VK_TRUE;
 
-                deviceBuilder.add_pNext(&meshShaderFeatures);
+                deviceBuilder.add_pNext(&meshShaderFeatures);*/
             }
         }
 

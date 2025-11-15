@@ -250,7 +250,9 @@ namespace Divide
                 DIVIDE_GPU_ASSERT( dataType == GFXDataFormat::SIGNED_BYTE ||
                                    dataType == GFXDataFormat::UNSIGNED_BYTE ||
                                    dataType == GFXDataFormat::SIGNED_SHORT ||
-                                   dataType == GFXDataFormat::UNSIGNED_SHORT );
+                                   dataType == GFXDataFormat::UNSIGNED_SHORT ||
+                                   dataType == GFXDataFormat::FLOAT_16 ||
+                                   dataType == GFXDataFormat::FLOAT_32);
             }
 
             if ( isPacked )
@@ -365,7 +367,7 @@ namespace Divide
                             case GFXDataFormat::SIGNED_SHORT:   return isNormalized ? VK_FORMAT_R16G16B16_SNORM                                 : VK_FORMAT_R16G16B16_SINT;
                             case GFXDataFormat::UNSIGNED_INT:   return VK_FORMAT_R32G32B32_UINT;
                             case GFXDataFormat::SIGNED_INT:     return VK_FORMAT_R32G32B32_SINT;
-                            case GFXDataFormat::FLOAT_16:       return VK_FORMAT_R16G16B16_SFLOAT;
+                            case GFXDataFormat::FLOAT_16:       return packing == GFXImagePacking::RGB_111110F ? VK_FORMAT_B10G11R11_UFLOAT_PACK32 : VK_FORMAT_R16G16B16_SFLOAT;
                             case GFXDataFormat::FLOAT_32:       return VK_FORMAT_R32G32B32_SFLOAT;
                             default: break;
                         };

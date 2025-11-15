@@ -329,7 +329,10 @@ namespace Divide
         viewportState.pViewports = &_viewport;
         viewportState.pScissors = &_scissor;
 
-        const VkPipelineColorBlendStateCreateInfo colorBlending = vk::pipelineColorBlendStateCreateInfo( to_U32( _colorBlendAttachments.size() ), _colorBlendAttachments.data() );
+        const VkPipelineColorBlendStateCreateInfo colorBlending = vk::pipelineColorBlendStateCreateInfo(
+            to_U32( _colorBlendAttachments.size() ),
+            _colorBlendAttachments.data()
+        );
 
         constexpr VkDynamicState dynamicStates[] = {
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -541,6 +544,7 @@ namespace Divide
         _activeMSAASamples = 0u;
         _activeRenderTargetID = INVALID_RENDER_TARGET_ID;
         _activeRenderTargetDimensions = { 1u, 1u };
+        _activeRenderTargetColourAttachmentCount = { 1u };
         _drawIndirectBuffer = VK_NULL_HANDLE;
         _drawIndirectBufferOffset = 0u;
         _pipelineStageMask = VK_FLAGS_NONE;
@@ -904,15 +908,17 @@ namespace Divide
 
         VKUtil::OnStartup( vkDevice );
 
-        VkPhysicalDeviceProperties2	properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-        VkPhysicalDeviceMeshShaderPropertiesEXT meshProperties { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
-        properties2.pNext = &meshProperties;
-
         VkFormatProperties2 properties{.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-        properties.pNext = &meshProperties;
+        VkPhysicalDeviceProperties2	properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+
+        VkPhysicalDeviceMeshShaderPropertiesEXT meshProperties { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
+
+        if ( _device->suportsMeshShaders() )
+        {
+            properties2.pNext = &meshProperties;
+        }
 
         vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
-
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D24_UNORM_S8_UINT, &properties );
         s_depthFormatInformation._d24s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D32_SFLOAT_S8_UINT, &properties );
@@ -1142,6 +1148,10 @@ namespace Divide
 
             pipelineCacheCreateInfo.initialDataSize = fileSize;
             pipelineCacheCreateInfo.pInitialData = pipeline_data.data();
+        }
+        else if ( errCache == FileError::FILE_NOT_FOUND )
+        {
+            Console::warnfn(LOCALE_STR("WARN_VK_PIPELINE_CACHE_LOAD"), Names::fileError[to_base(errCache)]);
         }
         else
         {
@@ -2001,7 +2011,8 @@ namespace Divide
                     (cWrite.b[3] == 1 ? VK_COLOR_COMPONENT_A_BIT : 0),
                     VK_FALSE );
 
-                for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
+                const size_t attCount = std::min<size_t>(GetStateTracker()._activeRenderTargetColourAttachmentCount, to_base(RTColourAttachmentSlot::COUNT));
+                for ( U8 i = 0u; i < attCount; ++i )
                 {
                     const BlendingSettings& blendState = pipelineDescriptor._blendStates._settings[i];
 
@@ -2021,6 +2032,7 @@ namespace Divide
                         blend.dstAlphaBlendFactor = blend.dstColorBlendFactor;
                         blend.alphaBlendOp = blend.colorBlendOp;
                     }
+
                     pipelineBuilder._colorBlendAttachments.emplace_back( blend );
                 }
             }
@@ -2451,7 +2463,7 @@ namespace Divide
                     imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
                     imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
                     imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
@@ -2489,6 +2501,7 @@ namespace Divide
                     };
 
                     stateTracker._activeRenderTargetDimensions = { renderArea.sizeX, renderArea.sizeY};
+                    stateTracker._activeRenderTargetColourAttachmentCount = renderingInfo.colorAttachmentCount;
 
                     _context.setViewport( renderArea );
                     _context.setScissor( renderArea );
@@ -2538,6 +2551,7 @@ namespace Divide
                 stateTracker._renderTargetFormatHash = 0u;
                 stateTracker._activeMSAASamples = _context.context().config().rendering.MSAASamples;
                 stateTracker._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
+                stateTracker._activeRenderTargetColourAttachmentCount = 1u;
                 // We can do this outside of a renderpass
                 FlushBufferTransferRequests( cmdBuffer );
             }break;
@@ -2779,7 +2793,7 @@ namespace Divide
 
                             memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
                             memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | ALL_SHADER_STAGES;
+                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT | AllShaderStages();
                             memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
                             if ( isCommandBuffer )
                             {
@@ -2801,7 +2815,7 @@ namespace Divide
                         {
                             memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
                             memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-                            memoryBarrier.dstStageMask = ALL_SHADER_STAGES;
+                            memoryBarrier.dstStageMask = AllShaderStages();
                             memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
                             if ( isCommandBuffer )
                             {
@@ -2811,7 +2825,7 @@ namespace Divide
                         } break;
                         case BufferSyncUsage::GPU_READ_TO_GPU_WRITE:
                         {
-                            memoryBarrier.srcStageMask = ALL_SHADER_STAGES;
+                            memoryBarrier.srcStageMask = AllShaderStages();
                             memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
                             if ( isCommandBuffer )
                             {
@@ -3067,6 +3081,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
+        GetStateTracker()._activeRenderTargetColourAttachmentCount = 1u;
         GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
         // We don't really know what happened before this state and at worst this is going to end up into an 
         // extra vkCmdPushConstants call with default data, so better safe.
@@ -3081,6 +3096,7 @@ namespace Divide
         flushPushConstantsLocks();
         s_transientDeleteQueue.flush( _device->getDevice() );
         GetStateTracker()._activeRenderTargetID = INVALID_RENDER_TARGET_ID;
+        GetStateTracker()._activeRenderTargetColourAttachmentCount = 1u;
         GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
     }
 
@@ -3167,7 +3183,7 @@ namespace Divide
         VkDescriptorSetLayoutCreateInfo layoutCreateInfo = vk::descriptorSetLayoutCreateInfo( layoutBinding.data(), to_U32( layoutBinding.size() ) );
         if ( isPushDescriptor )
         {
-            layoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+            layoutCreateInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT;
         }
         return _descriptorLayoutCache->createDescriptorLayout( &layoutCreateInfo );
     }
@@ -3340,6 +3356,12 @@ namespace Divide
         return cached_handle;
     }
 
+    VkPipelineStageFlagBits2 VK_API::AllShaderStages() noexcept
+    {
+        static bool meshShadersSupported = GFXDevice::GetDeviceInformation()._meshShadingSupported;
+        return meshShadersSupported ? VK_API::ALL_SHADER_STAGES_WITH_MESH : VK_API::ALL_SHADER_STAGES_NO_MESH;
+    }
+
     RenderTarget_uptr VK_API::newRenderTarget( const RenderTargetDescriptor& descriptor ) const
     {
         return std::make_unique<vkRenderTarget>( _context, descriptor );
@@ -3354,4 +3376,5 @@ namespace Divide
     {
         return std::make_unique<vkShaderBuffer>( _context, descriptor );
     }
+
 }; //namespace Divide
