@@ -40,6 +40,8 @@ namespace Divide
 {
 
 constexpr U8 INVALID_INDEX = U8_MAX;
+constexpr U16 ALL_MIPS = U16_MAX;
+constexpr U16 ALL_LAYERS = U16_MAX;
 constexpr U16 MAX_BLIT_ENTRIES = 8u;
 
 struct BlitEntry

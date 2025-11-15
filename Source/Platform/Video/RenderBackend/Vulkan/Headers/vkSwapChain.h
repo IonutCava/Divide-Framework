@@ -50,7 +50,6 @@ namespace Divide {
     struct FrameData
     {
         VkSemaphore _presentSemaphore{VK_NULL_HANDLE};
-        VkSemaphore _renderSemaphore{VK_NULL_HANDLE};
         VkCommandBuffer _commandBuffer{VK_NULL_HANDLE};
         Fence _renderFence;
     };
@@ -66,11 +65,11 @@ namespace Divide {
         [[nodiscard]] VkResult beginFrame();
         [[nodiscard]] VkResult endFrame();
 
-        [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
-        [[nodiscard]] VkImage         getCurrentImage() const noexcept;
-        [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;
+        [[nodiscard]] vkb::Swapchain&  getSwapChain() noexcept;
+        [[nodiscard]] VkImage          getCurrentImage() const noexcept;
+        [[nodiscard]] VkImageView      getCurrentImageView() const noexcept;
 
-        [[nodiscard]] FrameData&      getFrameData() noexcept;
+        [[nodiscard]] const FrameData& getFrameData() const noexcept;
 
         PROPERTY_R_IW(VkExtent2D, surfaceExtent);
         
@@ -79,13 +78,14 @@ namespace Divide {
         const VKDevice& _device;
         const DisplayWindow& _window;
 
-        std::array<FrameData, Config::MAX_FRAMES_IN_FLIGHT> _frames;
+        FrameData* _activeFrame{ nullptr };
+        vector<FrameData> _frames;
         vkb::Swapchain _swapChain{};
 
 
         std::vector<VkImage> _swapchainImages;
         std::vector<VkImageView> _swapchainImageViews;
-
+        vector<VkSemaphore> _renderSemaphores;
         U32 _swapchainImageIndex{ 0u };
     };
 

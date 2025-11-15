@@ -35,15 +35,22 @@ namespace Divide {
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
             const VkDevice device = _device.getVKDevice();
-            for (U8 i = 0u; i < Config::MAX_FRAMES_IN_FLIGHT; ++i)
+            for (FrameData& frameData : _frames)
             {
-               
-                vkDestroySemaphore(device, _frames[i]._presentSemaphore, nullptr);
-                vkDestroySemaphore(device, _frames[i]._renderSemaphore,  nullptr);
-                vkDestroyFence(device,     _frames[i]._renderFence._handle, nullptr);
-                _frames[i]._renderFence._tag = U8_MAX;
+                vkDestroySemaphore(device, frameData._presentSemaphore, nullptr);
+                vkDestroyFence(device, frameData._renderFence._handle, nullptr);
             }
+            _frames.clear();
             _swapChain.swapchain = VK_NULL_HANDLE;
+
+            for (VkSemaphore& semaphore : _renderSemaphores)
+            {
+                if ( semaphore != VK_NULL_HANDLE )
+                {
+                    vkDestroySemaphore(device, semaphore, nullptr);
+                }
+            }
+            _renderSemaphores.clear();
         }
     }
 
@@ -86,25 +93,30 @@ namespace Divide {
         _swapChain = vkbSwapchain.value();
         _swapchainImages = _swapChain.get_images().value();
         _swapchainImageViews = _swapChain.get_image_views().value();
+        _frames.resize(_swapchainImages.size());
+        _renderSemaphores.resize(_swapchainImages.size());
 
         if ( _swapChain.image_format == VK_FORMAT_UNDEFINED )
         {
             return ErrorCode::VK_SURFACE_CREATE;
         }
 
-
         const VkSemaphoreCreateInfo semaphoreCreateInfo = vk::semaphoreCreateInfo();
         const VkFenceCreateInfo fenceCreateInfo = vk::fenceCreateInfo( VK_FENCE_CREATE_SIGNALED_BIT );
         const VkCommandBufferAllocateInfo cmdAllocInfo = vk::commandBufferAllocateInfo( _device.getQueue( QueueType::GRAPHICS)._pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1u );
 
         const VkDevice device = _device.getVKDevice();
-        for ( U8 i = 0u; i < Config::MAX_FRAMES_IN_FLIGHT; ++i )
+        for ( size_t i = 0u; i < _frames.size(); ++i )
         {
             VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &_frames[i]._presentSemaphore ) );
-            VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &_frames[i]._renderSemaphore ) );
             VK_CHECK( vkCreateFence( device,     &fenceCreateInfo,     nullptr, &_frames[i]._renderFence._handle ) );
             VK_CHECK( vkAllocateCommandBuffers( device, &cmdAllocInfo, &_frames[i]._commandBuffer ) );
             _frames[i]._renderFence._tag = i;
+        }
+
+        for (VkSemaphore& semaphore : _renderSemaphores)
+        {
+            VK_CHECK( vkCreateSemaphore( device, &semaphoreCreateInfo, nullptr, &semaphore) );
         }
 
         const auto& windowDimensions = _window.getDrawableSize();
@@ -117,23 +129,23 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        FrameData& crtFrame = getFrameData();
+        _activeFrame = &_frames[GFXDevice::FrameCount() % _frames.size()];
 
         //wait until the GPU has finished rendering the last frame.
         {
             PROFILE_SCOPE( "Wait for fences", Profiler::Category::Graphics);
-            VK_CHECK( vkWaitForFences( _device.getVKDevice(), 1, &crtFrame._renderFence._handle, VK_TRUE, U64_MAX ) );
+            VK_CHECK( vkWaitForFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle, VK_TRUE, U64_MAX ) );
         }
         {
             PROFILE_SCOPE( "Reset fences", Profiler::Category::Graphics );
-            VK_CHECK( vkResetFences( _device.getVKDevice(), 1, &crtFrame._renderFence._handle ) );
+            VK_CHECK( vkResetFences( _device.getVKDevice(), 1, &_activeFrame->_renderFence._handle ) );
         }
 
         //request image from the swapchain, one second timeout
         VkResult ret = VK_ERROR_UNKNOWN;
         {
             PROFILE_SCOPE( "Aquire Next Image", Profiler::Category::Graphics );
-            ret = vkAcquireNextImageKHR(_device.getVKDevice(), _swapChain.swapchain, U64_MAX, crtFrame._presentSemaphore, nullptr, &_swapchainImageIndex);
+            ret = vkAcquireNextImageKHR(_device.getVKDevice(), _swapChain.swapchain, U64_MAX, _activeFrame->_presentSemaphore, nullptr, &_swapchainImageIndex);
         }
 
         if ( ret == VK_SUCCESS )
@@ -141,7 +153,7 @@ namespace Divide {
             PROFILE_SCOPE( "Begin Command Buffer", Profiler::Category::Graphics );
             //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
             VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
-            VK_CHECK( vkBeginCommandBuffer( crtFrame._commandBuffer, &cmdBeginInfo ) );
+            VK_CHECK( vkBeginCommandBuffer(_activeFrame->_commandBuffer, &cmdBeginInfo ) );
         }
 
         return ret;
@@ -151,25 +163,26 @@ namespace Divide {
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        FrameData& crtFrame = getFrameData();
-        VK_CHECK( vkEndCommandBuffer( crtFrame._commandBuffer ) );
+        VK_CHECK( vkEndCommandBuffer(_activeFrame->_commandBuffer ) );
 
         // prepare the submission to the queue.
         // we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
         // we will signal the _renderSemaphore, to signal that rendering has finished
         constexpr VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
+        VkSemaphore imageRenderSemaphore = _renderSemaphores[_swapchainImageIndex];
+
         VkSubmitInfo submit = vk::submitInfo();
         submit.pWaitDstStageMask = waitStages;
         submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &crtFrame._presentSemaphore;
+        submit.pWaitSemaphores = &_activeFrame->_presentSemaphore;
         submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = &crtFrame._renderSemaphore;
+        submit.pSignalSemaphores = &imageRenderSemaphore;
         submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &crtFrame._commandBuffer;
+        submit.pCommandBuffers = &_activeFrame->_commandBuffer;
 
         // submit command buffer to the queue and execute it. _renderFence will now block until the graphic commands finish execution
-        _device.submitToQueue(QueueType::GRAPHICS, submit, crtFrame._renderFence._handle);
+        _device.submitToQueue(QueueType::GRAPHICS, submit, _activeFrame->_renderFence._handle);
         PROFILE_VK_PRESENT( &_swapChain.swapchain );
 
         // this will put the image we just rendered into the visible window.
@@ -178,7 +191,7 @@ namespace Divide {
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pSwapchains = &_swapChain.swapchain;
         presentInfo.swapchainCount = 1;
-        presentInfo.pWaitSemaphores = &crtFrame._renderSemaphore;
+        presentInfo.pWaitSemaphores = &imageRenderSemaphore;
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
@@ -202,8 +215,8 @@ namespace Divide {
         return _swapchainImageViews[_swapchainImageIndex];
     }
 
-    FrameData& VKSwapChain::getFrameData() noexcept
+    const FrameData& VKSwapChain::getFrameData() const noexcept
     {
-        return _frames[GFXDevice::FrameCount() % Config::MAX_FRAMES_IN_FLIGHT];
+        return *_activeFrame;
     }
 }; //namespace Divide
