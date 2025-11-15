@@ -59,7 +59,7 @@ class VKDevice final : NonCopyable, NonMovable
         PROPERTY_R_IW(size_t, vulkanMinorVersion, 0u);
         PROPERTY_R_IW(bool, supportsDynamicExtension3, false);
         PROPERTY_R_IW(bool, supportsDescriptorBuffers, false);
-        PROPERTY_R_IW(bool, suportsMeshShaders, false);
+        PROPERTY_R_IW(bool, supportsMeshShaders, false);
 
     private:
         [[nodiscard]] VKQueue getQueueInternal( QueueType type, bool dedicated) const noexcept;

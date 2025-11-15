@@ -141,7 +141,7 @@ namespace Divide
             }
             else if ( extension == VK_EXT_MESH_SHADER_EXTENSION_NAME )
             {
-                /*suportsMeshShaders(true);
+                /*supportsMeshShaders(true);
 
                 VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
                 meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;

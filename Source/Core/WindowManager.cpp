@@ -115,6 +115,7 @@ ErrorCode WindowManager::init(PlatformContext& context,
     SDL_DisplayID* displays = SDL_GetDisplays(&displayCount);
     if ( displays && displayCount > 0)
     {
+        _monitors.reserve(displayCount);    
         for (I32 i = 0; i < displayCount; ++i)
         {
             SDL_DisplayID instance_id = displays[i];

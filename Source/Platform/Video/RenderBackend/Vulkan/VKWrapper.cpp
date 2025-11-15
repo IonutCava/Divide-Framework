@@ -34,6 +34,8 @@
 #define VMA_IMPLEMENTATION
 #include "Headers/vkMemAllocatorInclude.h"
 
+constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
+
 namespace
 {
     inline VKAPI_ATTR VkBool32 VKAPI_CALL divide_debug_callback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -256,23 +258,6 @@ namespace Divide
                 bindings.fill( {} );
             }
             s_pipelineReset = true;
-        }
-
-        struct VKBufferActiveBindConfiguration : BufferBindConfig
-        {
-            GPUBuffer::Handle _handle{ GPUBuffer::INVALID_HANDLE };
-            vkGPUBuffer* _buffer{ nullptr };
-            VkDeviceSize _offset{ 0u };
-
-            bool operator==(const VKBufferActiveBindConfiguration& rhs) const noexcept;
-        };
-
-        FORCE_INLINE bool VKBufferActiveBindConfiguration::operator==(const VKBufferActiveBindConfiguration& rhs) const noexcept
-        {
-            return BufferBindConfig::operator==(rhs) &&
-                   _handle == rhs._handle &&
-                   _offset == rhs._offset;
-                   //&& _buffer == rhs._buffer; //Same handle results in same buffer
         }
     }
 
@@ -665,7 +650,7 @@ namespace Divide
         FlushBufferTransferRequests( windowState._swapChain->getFrameData()._commandBuffer );
 
         windowState._activeState = {};
-        s_dynamicOffsets.clear();
+        s_dynamicOffsets.reset_lose_memory();
 
         const VkResult result = windowState._swapChain->endFrame();
 
@@ -921,7 +906,7 @@ namespace Divide
         VkPhysicalDeviceDepthStencilResolveProperties depthResolve{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES, .pNext = nullptr };
 
         // Chain extras into properties2.pNext preserving order. If mesh shaders are supported include them in the chain.
-        if ( _device->suportsMeshShaders() )
+        if ( _device->supportsMeshShaders() )
         {
             // chain: depthResolve -> meshProperties -> maintenance4
             meshProperties.pNext = properties2.pNext;
@@ -1073,7 +1058,7 @@ namespace Divide
         config.rendering.shadowMapping.spot.MSAASamples = std::min( config.rendering.shadowMapping.spot.MSAASamples, maxMSAASamples );
         Attorney::DisplayManagerRenderingAPI::MaxMSAASamples( maxMSAASamples );
 
-        deviceInformation._meshShadingSupported = _device->suportsMeshShaders();
+        deviceInformation._meshShadingSupported = _device->supportsMeshShaders();
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
@@ -1362,54 +1347,38 @@ namespace Divide
         bool hasIndexBuffer = false;
         U32 firstIndex = cmd._cmd.firstIndex;
 
-        // Because this can only happen on the main thread, try and avoid costly lookups for hot-loop drawing
-        static VKBufferActiveBindConfiguration s_lastVB = {};
-        static VKBufferActiveBindConfiguration s_lastIB = {};
-
         for (size_t i = 0u; i < cmd._sourceBuffersCount; ++i)
         {
-            VKBufferActiveBindConfiguration activeConfig{};
-            activeConfig._handle = cmd._sourceBuffers[i];
-            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(activeConfig._handle);
+            GPUBuffer* buffer = GPUBuffer::s_BufferPool.find(cmd._sourceBuffers[i]);
             
             DIVIDE_GPU_ASSERT(buffer != nullptr, "GL_API::Draw - Invalid GPU buffer handle!");
-            activeConfig._buffer = static_cast<vkGPUBuffer*>(buffer);
-            vkBufferImpl* impl = activeConfig._buffer->_internalBuffer.get();
+            auto vkBuffer = static_cast<vkGPUBuffer*>(buffer);
+            vkBufferImpl* impl = vkBuffer->_internalBuffer.get();
             DIVIDE_GPU_ASSERT(impl != nullptr, "GL_API::Draw - GPU buffer has no internal implementation!");
 
             const VkDeviceSize elementSizeInBytes = impl->_params._elementSize;
-            activeConfig._bindIdx = activeConfig._buffer->_bindConfig._bindIdx;
-            activeConfig._offset = 0u;
-            if (activeConfig._buffer->queueLength() > 1)
+            VkDeviceSize offset = 0u;
+
+            if (vkBuffer->queueLength() > 1)
             {
-                activeConfig._offset += impl->_params._elementCount * elementSizeInBytes * activeConfig._buffer->queueIndex();
+                offset += impl->_params._elementCount * elementSizeInBytes * vkBuffer->queueIndex();
             }
 
             if ( impl->_params._usageType == BufferUsageType::VERTEX_BUFFER )
             {
-                if ( s_lastVB != activeConfig )
-                {
-                    s_lastVB = activeConfig;
-                }
-
-                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, activeConfig._buffer->_bindConfig._bindIdx, 1, &impl->_buffer, &activeConfig._offset);
+                VK_PROFILE(vkCmdBindVertexBuffers, cmdBuffer, vkBuffer->_bindConfig._bindIdx, 1, &impl->_buffer, &offset);
             }
             else if ( impl->_params._usageType == BufferUsageType::INDEX_BUFFER )
             {
-                if (s_lastIB != activeConfig)
-                {
-                    s_lastIB = activeConfig;
-                }
-
-                DIVIDE_GPU_ASSERT(activeConfig._buffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
+                DIVIDE_GPU_ASSERT(vkBuffer->firstIndexOffsetCount() != GPUBuffer::INVALID_INDEX_OFFSET);
                 
                 DIVIDE_GPU_ASSERT(!hasIndexBuffer, "GL_API::Draw - Multiple index buffers bound!");
                 hasIndexBuffer = true;
 
                 //firstIndex += to_U32(activeConfig._offset / elementSizeInBytes);
-                firstIndex += activeConfig._buffer->firstIndexOffsetCount();
+                firstIndex += vkBuffer->firstIndexOffsetCount();
 
-                VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, activeConfig._offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                VK_PROFILE(vkCmdBindIndexBuffer, cmdBuffer, impl->_buffer, offset, elementSizeInBytes == sizeof(U16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
                 cmd._cmd.firstIndex = firstIndex;
             }
         }
@@ -1662,7 +1631,7 @@ namespace Divide
                                                            to_U32(descriptorWrites.size()),
                                                            descriptorWrites.data());
                 }
-                descriptorWrites.clear();
+                descriptorWrites.reset_lose_memory();
                 s_dynamicBindings[usageIdx] = {};
             }
         }
@@ -1690,7 +1659,7 @@ namespace Divide
             }
 
             VkDescriptorSet tempSets[to_base(DescriptorSetUsage::COUNT)];
-            s_dynamicOffsets.clear();
+            s_dynamicOffsets.reset_lose_memory();
 
             const U8 offset = 1u;
             U8 setCount = 0u;
@@ -1834,25 +1803,25 @@ namespace Divide
 
         if ( s_hasDynamicBlendStateSupport )
         {
-            const U8 count = to_base(RTColourAttachmentSlot::COUNT);
+            constexpr U8 attCcount = to_base(RTColourAttachmentSlot::COUNT);
             if ( !activeState._isSet || activeState._block._colourWrite != currentState._colourWrite )
             {
-                std::array<VkColorComponentFlags, to_base( RTColourAttachmentSlot::COUNT )> writeMask;
+                static std::array<VkColorComponentFlags, attCcount> writeMask;
                 const VkColorComponentFlags colourFlags = (currentState._colourWrite.b[0] == 1 ? VK_COLOR_COMPONENT_R_BIT : 0) |
                                                           (currentState._colourWrite.b[1] == 1 ? VK_COLOR_COMPONENT_G_BIT : 0) |
                                                           (currentState._colourWrite.b[2] == 1 ? VK_COLOR_COMPONENT_B_BIT : 0) |
                                                           (currentState._colourWrite.b[3] == 1 ? VK_COLOR_COMPONENT_A_BIT : 0);
                 writeMask.fill(colourFlags);
-                vkCmdSetColorWriteMaskEXT( cmdBuffer, 0, count, writeMask.data() );
+                vkCmdSetColorWriteMaskEXT( cmdBuffer, 0, attCcount, writeMask.data() );
                 ret = true;
             }
 
             if ( !activeState._isSet || activeState._blendStates != blendStates )
             {
-                std::array<VkBool32, to_base( RTColourAttachmentSlot::COUNT )> blendEnabled;
-                std::array<VkColorBlendEquationEXT, to_base( RTColourAttachmentSlot::COUNT )> blendEquations;
+                static std::array<VkBool32, attCcount> blendEnabled;
+                static std::array<VkColorBlendEquationEXT, attCcount> blendEquations;
 
-                for ( U8 i = 0u; i < to_base( RTColourAttachmentSlot::COUNT ); ++i )
+                for ( U8 i = 0u; i < attCcount; ++i )
                 {
                     const BlendingSettings& blendState = blendStates._settings[i];
 
@@ -1876,8 +1845,8 @@ namespace Divide
                     }
                 }
 
-                vkCmdSetColorBlendEnableEXT(cmdBuffer, 0, count, blendEnabled.data());
-                vkCmdSetColorBlendEquationEXT(cmdBuffer, 0, count, blendEquations.data());
+                vkCmdSetColorBlendEnableEXT(cmdBuffer, 0, attCcount, blendEnabled.data());
+                vkCmdSetColorBlendEquationEXT(cmdBuffer, 0, attCcount, blendEquations.data());
 
                 activeState._blendStates = blendStates;
                 ret = true;
@@ -1907,8 +1876,8 @@ namespace Divide
         {
             PROFILE_SCOPE( "Compile PSO", Profiler::Category::Graphics);
 
-            static RenderStateBlock defaultState{};
-            static VkDescriptorSetLayout dummyLayout = VK_NULL_HANDLE;
+            thread_local RenderStateBlock defaultState{};
+            thread_local VkDescriptorSetLayout dummyLayout = VK_NULL_HANDLE;
 
             if ( dummyLayout == VK_NULL_HANDLE )
             {
@@ -2115,8 +2084,6 @@ namespace Divide
 
     namespace
     {
-        constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
-
         struct PerBufferCopies
         {
             VkBuffer _srcBuffer{ VK_NULL_HANDLE };
@@ -2188,7 +2155,7 @@ namespace Divide
         VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
     }
 
-    struct BufferTransferProccessor
+    struct BufferTransferProcessor
     {
         void flushBarriers(VkCommandBuffer cmdBuffer) noexcept
         {
@@ -2241,7 +2208,7 @@ namespace Divide
 
                 entry._srcBuffer = VK_NULL_HANDLE;
                 entry._dstBuffer = VK_NULL_HANDLE;
-                entry._copiesPerBuffer.clear();
+                entry._copiesPerBuffer.reset_lose_memory();
             }
             _copyRequestsCount = 0u;
         };
@@ -2280,9 +2247,11 @@ namespace Divide
                 {
                     PerBufferCopies& entry = _copyRequests[j];
 
-                    if (entry._srcBuffer == tr.srcBuffer && entry._dstBuffer == tr.dstBuffer)
+                    if (entry._srcBuffer == tr.srcBuffer &&
+                        entry._dstBuffer == tr.dstBuffer &&
+                        entry._copiesPerBuffer.size() < MAX_BUFFER_COPIES_PER_FLUSH)
                     {
-                        entry._copiesPerBuffer.emplace_back(copy);
+                        entry._copiesPerBuffer.emplace_back( copy );
                         found = true;
                         break;
                     }
@@ -2294,12 +2263,13 @@ namespace Divide
                     PerBufferCopies& entry = _copyRequests[_copyRequestsCount++];
                     entry._srcBuffer = tr.srcBuffer;
                     entry._dstBuffer = tr.dstBuffer;
-                    entry._copiesPerBuffer.clear();
+                    entry._copiesPerBuffer.reset_lose_memory();
                     entry._copiesPerBuffer.emplace_back(copy);
 
                     if (MAX_BUFFER_COPIES_PER_FLUSH == _copyRequestsCount)
                     {
                         flushCopies(cmdBuffer);
+                        _copyRequestsCount = 0u;
                     }
                 }
             }
@@ -2322,6 +2292,7 @@ namespace Divide
             if (MAX_BUFFER_COPIES_PER_FLUSH == _barrierCount)
             {
                 flushBarriers(cmdBuffer);
+                _barrierCount = 0u;
             }
         }
 
@@ -2359,7 +2330,7 @@ namespace Divide
 
         TransferQueueRequestsContainer requests{};
         // Keep processor thread-local to preserve internal vector capacities and avoid reallocations.
-        thread_local BufferTransferProccessor s_processor{};
+        thread_local BufferTransferProcessor s_processor{};
         // ConsumerToken must be per-consumer-thread
         thread_local moodycamel::ConsumerToken s_transferConsumerToken( s_transferQueue._requests );
 
@@ -3176,9 +3147,10 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET> layoutBinding{};
+        thread_local fixed_vector<VkDescriptorSetLayoutBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET> layoutBinding{};
 
-        dynamicBindings.clear();
+        dynamicBindings.reset_lose_memory();
+        layoutBinding.reset_lose_memory();
 
         const bool isPushDescriptor = usage == DescriptorSetUsage::PER_DRAW;
 
