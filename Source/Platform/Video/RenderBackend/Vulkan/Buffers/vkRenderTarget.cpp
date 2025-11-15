@@ -357,17 +357,13 @@ namespace Divide
                 }
             
                 const bool hasStencil = att->_descriptor._type == RTAttachmentType::DEPTH_STENCIL;
-                vkTexture::TransitionType targetTransition = toWrite 
-                                                                ? hasStencil ? vkTexture::TransitionType::SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT : vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT
-                                                                : hasStencil ? vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ : vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
+                const bool wasUndefined = usage == RTAttachment::Layout::UNDEFINED;
 
                 if ( toWrite )
                 {
                     _subresourceRange[RT_DEPTH_ATTACHMENT_IDX].aspectMask = vkTexture::GetAspectFlags( vkTexRender->descriptor() );
-                    if ( usage == RTAttachment::Layout::UNDEFINED )
+                    if ( wasUndefined )
                     {
-                        targetTransition = (hasStencil ? vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT : vkTexture::TransitionType::UNDEFINED_TO_DEPTH_ATTACHMENT);
-
                         _subresourceRange[RT_DEPTH_ATTACHMENT_IDX].baseMipLevel = 0u;
                         _subresourceRange[RT_DEPTH_ATTACHMENT_IDX].levelCount = VK_REMAINING_MIP_LEVELS;
                         _subresourceRange[RT_DEPTH_ATTACHMENT_IDX].baseArrayLayer = 0u;
@@ -394,6 +390,18 @@ namespace Divide
                     const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX];
                     if ( !resolveMSAA || descriptor._keepMSAADataAfterResolve )
                     {
+                        vkTexture::TransitionType targetTransition = vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT;
+                        if (wasUndefined)
+                        {
+                            targetTransition = (hasStencil ? vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT : vkTexture::TransitionType::UNDEFINED_TO_DEPTH_ATTACHMENT);
+                        }
+                        else
+                        {
+                            targetTransition = toWrite
+                                                ? hasStencil ? vkTexture::TransitionType::SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT : vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT
+                                                : hasStencil ? vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ : vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
+                        }
+
                         vkTexture::TransitionTexture( targetTransition, _subresourceRange[RT_DEPTH_ATTACHMENT_IDX], vkTexRender->image()->_image, memBarriers[memBarrierCount++] );
                     }
 
@@ -401,6 +409,18 @@ namespace Divide
                     {
                         vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(att->resolvedTexture()));
                         DIVIDE_GPU_ASSERT(vkTexRender->sampleFlagBits() != VK_SAMPLE_COUNT_1_BIT && vkTexResolve->sampleFlagBits() == VK_SAMPLE_COUNT_1_BIT );
+
+                        vkTexture::TransitionType targetTransition = vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT;
+                        if (wasUndefined)
+                        {
+                            targetTransition = (hasStencil ? vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT : vkTexture::TransitionType::UNDEFINED_TO_DEPTH_RESOLVE_ATTACHMENT);
+                        }
+                        else
+                        {
+                            targetTransition = toWrite
+                                ? hasStencil ? vkTexture::TransitionType::SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT : vkTexture::TransitionType::SHADER_READ_TO_DEPTH_RESOLVE_ATTACHMENT
+                                : hasStencil ? vkTexture::TransitionType::DEPTH_STENCIL_RESOLVE_ATTACHMENT_TO_SHADER_READ : vkTexture::TransitionType::DEPTH_RESOLVE_ATTACHMENT_TO_SHADER_READ;
+                        }
 
                         PROFILE_SCOPE( "Depth Resolve", Profiler::Category::Graphics );
                         vkTexture::TransitionTexture( targetTransition, _subresourceRange[RT_DEPTH_ATTACHMENT_IDX], vkTexResolve->image()->_image, memBarriers[memBarrierCount++] );
@@ -626,7 +646,26 @@ namespace Divide
                     _depthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
                 }
 
-                _depthAttachmentInfo.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+                VkResolveModeFlagBits chosenDepthResolve = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+                const VkResolveModeFlags supported = VK_API::s_supportedDepthResolveModes;
+                if ( supported & VK_RESOLVE_MODE_AVERAGE_BIT )
+                {
+                    chosenDepthResolve = VK_RESOLVE_MODE_AVERAGE_BIT;
+                }
+                else if ( supported & VK_RESOLVE_MODE_MIN_BIT )
+                {
+                    chosenDepthResolve = VK_RESOLVE_MODE_MIN_BIT;
+                }
+                else if ( supported & VK_RESOLVE_MODE_MAX_BIT )
+                {
+                    chosenDepthResolve = VK_RESOLVE_MODE_MAX_BIT;
+                }
+                else if ( supported & VK_RESOLVE_MODE_SAMPLE_ZERO_BIT )
+                {
+                    chosenDepthResolve = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+                }
+
+                _depthAttachmentInfo.resolveMode = chosenDepthResolve;
                 _depthAttachmentInfo.resolveImageLayout = hasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
                 _depthAttachmentInfo.resolveImageView = static_cast<vkTexture*>(Get(att->resolvedTexture()))->getImageView( imageViewDescriptor );
             }

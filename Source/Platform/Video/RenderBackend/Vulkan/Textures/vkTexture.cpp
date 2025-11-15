@@ -1,5 +1,3 @@
-
-
 #include "Headers/vkTexture.h"
 
 #include "Utility/Headers/Localization.h"
@@ -8,6 +6,9 @@
 #include "Platform/Video/Headers/GFXDevice.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Buffers/Headers/vkBufferImpl.h" //For staging buffers
+
+#include <numeric>
+#include <vector>
 
 namespace Divide
 {
@@ -232,7 +233,10 @@ namespace Divide
         if ( IsCubeTexture( _descriptor._texType ) )
         {
             baseLayer *= 6u;
-            layerCount *= 6u;
+            if ( layerCount != U16_MAX )
+            {
+                layerCount *= 6u;
+            }
         }
 
         VkImageSubresourceRange subResourceRange = {
@@ -240,7 +244,7 @@ namespace Divide
             .baseMipLevel = baseLevel,
             .levelCount = 1u,
             .baseArrayLayer = baseLayer,
-            .layerCount = layerCount
+            .layerCount = layerCount == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerCount
         };
 
         {
@@ -273,10 +277,10 @@ namespace Divide
         VkImageBlit image_blit{};
         image_blit.srcSubresource.aspectMask = GetAspectFlags( _descriptor );
         image_blit.srcSubresource.baseArrayLayer = baseLayer;
-        image_blit.srcSubresource.layerCount = layerCount;
+        image_blit.srcSubresource.layerCount = layerCount == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerCount;
         image_blit.dstSubresource.aspectMask = image_blit.srcSubresource.aspectMask;
         image_blit.dstSubresource.baseArrayLayer = baseLayer;
-        image_blit.dstSubresource.layerCount = layerCount;
+        image_blit.dstSubresource.layerCount = layerCount == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : layerCount;
         image_blit.srcOffsets[1].z = 1;
         image_blit.dstOffsets[1].z = 1;
 
@@ -472,11 +476,6 @@ namespace Divide
             return;
         }
 
-        VkImageSubresource  range;
-        range.aspectMask = GetAspectFlags( _descriptor );
-        range.mipLevel = to_I32(targetMip);
-        range.arrayLayer = to_I32(offset.depth);
-
         const U16 topLeftX = offset.x;
         const U16 topLeftY = offset.y;
         const U16 bottomRightX = dimensions.x + offset.x;
@@ -485,68 +484,136 @@ namespace Divide
         DIVIDE_GPU_ASSERT( offset.z == 0u && dimensions.z == 1u, "vkTexture::loadDataInternal: 3D textures not supported for sub-image updates!");
 
         const U8 bpp_dest = GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing );
-        const size_t rowOffset_dest = (bpp_dest * pixelUnpackAlignment._alignment) * _width;
-        const U16 subHeight = bottomRightY - topLeftY;
-        const U16 subWidth = bottomRightX - topLeftX;
-        const size_t subRowSize = subWidth * (pixelUnpackAlignment._alignment * bpp_dest);
-        const size_t pitch = pixelUnpackAlignment._rowLength == 0u ? rowOffset_dest : pixelUnpackAlignment._rowLength;
+        const U16 subHeightBase = bottomRightY - topLeftY;
+        const U16 subWidthBase = bottomRightX - topLeftX;
 
-        size_t totalSize = 0u;
-        U16 mipWidth = _width;
-        U16 mipHeight = _height;
+        const bool isCubeMap = IsCubeTexture(_descriptor._texType);
+        const bool is3D = (_descriptor._texType == TextureType::TEXTURE_3D);
 
         _mipData.resize( mipCount() );
 
-        for ( U32 l = 0u; l < _depth; ++l )
+        // Compute per-mip sizes including alignment
+        size_t totalSize = 0u;
+        size_t maxMipLayerSize = 0u;
+        std::vector<size_t> perMipLayerSize(mipCount());
+        for ( U8 m = 0u; m < mipCount(); ++m )
         {
-            for ( U8 m = 0u; m < mipCount(); ++m )
+            const U16 mipW = std::max<U16>(1u, _width >> m);
+            const U16 mipH = std::max<U16>(1u, _height >> m);
+            const size_t mipLayerSize = to_size(mipW) * to_size(mipH) * to_size(bpp_dest) * pixelUnpackAlignment._alignment;
+
+            U16 layersForMip = 1;
+            if ( is3D )
             {
-                mipWidth = _width >> m;
-                mipHeight = _height >> m;
-
-                _mipData[m]._dimensions = {mipWidth, mipHeight, _depth};
-                _mipData[m]._size = mipWidth * mipHeight * _depth * bpp_dest;
-                totalSize += _mipData[m]._size;
-
+                layersForMip = std::max<U16>(1u, _depth >> m);
             }
-        }
-
-        if ( _stagingBuffer == nullptr || _stagingBuffer->_allocInfo.size < totalSize)
-        {
-            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName().c_str(), false );
-        }
-
-        const size_t dstOffset = topLeftY * rowOffset_dest + topLeftX * (pixelUnpackAlignment._alignment * bpp_dest);
-
-        Byte* mappedData = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
-        Byte* dstData = &mappedData[dstOffset];
-
-        if ( data != nullptr )
-        {
-            const size_t srcOffset = pixelUnpackAlignment._skipPixels + (pixelUnpackAlignment._skipRows * _width);
-            const Byte* srcData = &data[srcOffset];
-
-            for ( U16 i = 0u; i < subHeight; i++ )
+            else
             {
-                memcpy( dstData, srcData, subRowSize );
-                dstData += rowOffset_dest;
-                srcData += pitch;
+                layersForMip = _depth * (isCubeMap ? 6u : 1u);
             }
+
+            _mipData[m]._dimensions = { mipW, mipH, layersForMip };
+            _mipData[m]._size = mipLayerSize * layersForMip;
+
+            perMipLayerSize[m] = mipLayerSize;
+            totalSize += _mipData[m]._size;
+            maxMipLayerSize = std::max(maxMipLayerSize, mipLayerSize);
         }
-        else
+
+        const size_t deviceMaxBufferSize = GFXDevice::GetDeviceInformation()._maxBufferSizeBytes;
+        const bool haveFullMipData = (data != nullptr && size >= totalSize);
+
+        // If we have full data and it fits the device, use contiguous path
+        if ( haveFullMipData && totalSize <= deviceMaxBufferSize )
         {
-            for ( U16 i = 0u; i < subHeight; i++ )
+            if ( _stagingBuffer == nullptr || _stagingBuffer->_allocInfo.size < totalSize )
             {
-                memset( dstData, 0u, subRowSize );
-                dstData += rowOffset_dest;
+                _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName().c_str(), false );
             }
+
+            // Copy full source into staging buffer (assume layer-major ordering)
+            Byte* mappedData = reinterpret_cast<Byte*>( _stagingBuffer->_allocInfo.pMappedData );
+            memcpy( mappedData, data, totalSize );
+
+            // Flush mapped memory
+            {
+                LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+                if ( VK_API::GetStateTracker()._allocatorInstance._allocator != nullptr )
+                {
+                    vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator, _stagingBuffer->_allocation, 0u, totalSize );
+                }
+            }
+
+            // Upload all mips/layers from staging buffer
+            VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
+            {
+                PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
+
+                VkImageSubresourceRange range{};
+                range.aspectMask = GetAspectFlags( _descriptor );
+                range.levelCount = 1;
+                range.layerCount = 1;
+
+                VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                dependencyInfo.imageMemoryBarrierCount = 1;
+
+                VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
+                dependencyInfo.pImageMemoryBarriers = &memBarrier;
+
+                size_t dataOffset = 0u;
+                for ( U32 layer = 0u; layer < _depth; ++layer )
+                {
+                    const U32 layerIndexForCopies = isCubeMap ? layer * 6u : layer;
+                    for ( U8 m = 0u; m < mipCount(); ++m )
+                    {
+                        range.baseMipLevel = m;
+                        range.baseArrayLayer = layerIndexForCopies;
+
+                        TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, range, _image->_image, memBarrier );
+                        VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
+
+                        VkBufferImageCopy copyRegion = {};
+                        copyRegion.bufferOffset = dataOffset;
+                        copyRegion.bufferRowLength = 0u;
+                        copyRegion.bufferImageHeight = 0u;
+                        copyRegion.imageSubresource.aspectMask = range.aspectMask;
+                        copyRegion.imageSubresource.mipLevel = m;
+                        copyRegion.imageSubresource.baseArrayLayer = range.baseArrayLayer;
+                        copyRegion.imageSubresource.layerCount = 1;
+                        copyRegion.imageOffset = { 0, 0, 0 };
+                        copyRegion.imageExtent.width = _mipData[m]._dimensions.width;
+                        copyRegion.imageExtent.height = _mipData[m]._dimensions.height;
+                        copyRegion.imageExtent.depth = 1u;
+
+                        VK_PROFILE( vkCmdCopyBufferToImage, cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
+
+                        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
+                        VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
+
+                        dataOffset += _mipData[m]._size;
+                    }
+                }
+            }, "vkTexture::loadDataInternal");
+
+            return;
         }
+
+        // Otherwise per-mip-per-layer: size staging to max single layer mip size (including alignment)
+        const size_t stagingSize = std::min(maxMipLayerSize, deviceMaxBufferSize);
+        if ( _stagingBuffer == nullptr || _stagingBuffer->_allocInfo.size < stagingSize )
+        {
+            _stagingBuffer = VKUtil::createStagingBuffer( stagingSize, resourceName().c_str(), false );
+        }
+        Byte* stagingMapped = reinterpret_cast<Byte*>( _stagingBuffer->_allocInfo.pMappedData );
+
+        // Precompute per-layer totals for source offsets (layer-major: mips per layer)
+        size_t totalBytesPerLayer = std::accumulate(perMipLayerSize.begin(), perMipLayerSize.end(), static_cast<size_t>(0));
 
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
 
-            VkImageSubresourceRange range;
+            VkImageSubresourceRange range{};
             range.aspectMask = GetAspectFlags( _descriptor );
             range.levelCount = 1;
             range.layerCount = 1;
@@ -557,47 +624,93 @@ namespace Divide
             VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
             dependencyInfo.pImageMemoryBarriers = &memBarrier;
 
-            size_t dataOffset = 0u;
-            for ( U32 l = 0u; l < _depth; ++l )
+            for ( U32 layer = 0u; layer < _depth; ++layer )
             {
+                const U32 layerIndexForCopies = isCubeMap ? layer * 6u : layer;
+                const size_t layerDataBase = haveFullMipData ? (layer * totalBytesPerLayer) : 0u;
+
                 for ( U8 m = 0u; m < mipCount(); ++m )
                 {
                     range.baseMipLevel = m;
-                    range.baseArrayLayer = l;
+                    range.baseArrayLayer = layerIndexForCopies;
 
-                    TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, range, _image->_image, memBarrier);
+                    const size_t mipLayerSize = perMipLayerSize[m];
+                    const Byte* srcPtr = nullptr;
+                    if ( haveFullMipData )
+                    {
+                        srcPtr = data + layerDataBase + std::accumulate(perMipLayerSize.begin(), perMipLayerSize.begin() + m, static_cast<size_t>(0));
+                    }
+
+                    // Populate staging mapped memory for this mip-layer honoring row stride
+                    if ( srcPtr != nullptr )
+                    {
+                        const U16 mipW = _mipData[m]._dimensions.width;
+                        const U16 mipH = _mipData[m]._dimensions.height;
+                        const size_t srcRowBytes = to_size(bpp_dest) * to_size(mipW) * pixelUnpackAlignment._alignment;
+                        const size_t srcRowStride = pixelUnpackAlignment._rowLength == 0u ? srcRowBytes : pixelUnpackAlignment._rowLength;
+                        Byte* dst = stagingMapped;
+                        const Byte* s = srcPtr;
+                        for ( U16 row = 0; row < mipH; ++row )
+                        {
+                            memcpy( dst, s, srcRowBytes );
+                            dst += srcRowBytes;
+                            s += srcRowStride;
+                        }
+                    }
+                    else
+                    {
+                        // clear only the used region (mipLayerSize)
+                        memset( stagingMapped, 0, mipLayerSize );
+                    }
+
+                    // Flush the range we just wrote
+                    {
+                        LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+                        if ( VK_API::GetStateTracker()._allocatorInstance._allocator != nullptr )
+                        {
+                            vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator, _stagingBuffer->_allocation, 0u, mipLayerSize );
+                        }
+                    }
+
+                    // Transition + copy this single mip-layer
+                    TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, range, _image->_image, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
-                    
-                    VkBufferImageCopy copyRegion = {};
-                    copyRegion.bufferOffset = dataOffset;
+
+                    VkBufferImageCopy copyRegion{};
+                    copyRegion.bufferOffset = 0u;
                     copyRegion.bufferRowLength = 0u;
                     copyRegion.bufferImageHeight = 0u;
                     copyRegion.imageSubresource.aspectMask = range.aspectMask;
                     copyRegion.imageSubresource.mipLevel = m;
-                    copyRegion.imageSubresource.baseArrayLayer = l;
+                    copyRegion.imageSubresource.baseArrayLayer = range.baseArrayLayer;
                     copyRegion.imageSubresource.layerCount = 1;
-                    copyRegion.imageOffset.x = 0u;
-                    copyRegion.imageOffset.y = 0u;
-                    copyRegion.imageOffset.z = 0u;
-                    copyRegion.imageExtent.width = _mipData[m]._dimensions.width;
-                    copyRegion.imageExtent.height = _mipData[m]._dimensions.height;
-                    copyRegion.imageExtent.depth = 1u;//_mipData[m]._dimensions.depth;
 
-                    //copy the buffer into the image
+                    const U16 mipW = _mipData[m]._dimensions.width;
+                    const U16 mipH = _mipData[m]._dimensions.height;
+                    const U32 mipTopLeftX = std::min<U32>( to_U32(topLeftX) >> m, mipW - 1u );
+                    const U32 mipTopLeftY = std::min<U32>( to_U32(topLeftY) >> m, mipH - 1u );
+                    const U32 mipSubW = std::min<U32>( std::max<U32>(1u, to_U32(subWidthBase) >> m), mipW - mipTopLeftX );
+                    const U32 mipSubH = std::min<U32>( std::max<U32>(1u, to_U32(subHeightBase) >> m), mipH - mipTopLeftY );
+
+                    copyRegion.imageOffset.x = static_cast<I32>( mipTopLeftX );
+                    copyRegion.imageOffset.y = static_cast<I32>( mipTopLeftY );
+                    copyRegion.imageOffset.z = 0u;
+                    copyRegion.imageExtent.width = mipSubW;
+                    copyRegion.imageExtent.height = mipSubH;
+                    copyRegion.imageExtent.depth = 1u;
+
                     VK_PROFILE( vkCmdCopyBufferToImage, cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
 
                     TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
                     VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
-
-                    dataOffset += _mipData[m]._size;
                 }
             }
         }, "vkTexture::loadDataInternal" );
     }
 
-    void vkTexture::loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )
+    void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment)
     {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
         const U16 numLayers = imageData.layerCount();
         const U8 numMips = imageData.mipCount();
@@ -605,56 +718,44 @@ namespace Divide
 
         U16 maxDepth = 0u;
         size_t totalSize = 0u;
-        for ( U32 l = 0u; l < numLayers; ++l )
+        for (U32 l = 0u; l < numLayers; ++l)
         {
             const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for ( U8 m = 0u; m < numMips; ++m )
+            for (U8 m = 0u; m < numMips; ++m)
             {
-                const ImageTools::LayerData* mip = layer.getMip( m );
+                const ImageTools::LayerData* mip = layer.getMip(m);
                 totalSize += mip->_size;
                 _mipData[m]._size = mip->_size;
                 _mipData[m]._dimensions = mip->_dimensions;
-                maxDepth = std::max( maxDepth, mip->_dimensions.depth );
+                maxDepth = std::max(maxDepth, mip->_dimensions.depth);
             }
         }
-        DIVIDE_GPU_ASSERT( _depth >= maxDepth );
+        DIVIDE_GPU_ASSERT(_depth >= maxDepth);
 
-        if ( _stagingBuffer == nullptr )
+        if (_stagingBuffer == nullptr)
         {
-            _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName().c_str(), false);
+            _stagingBuffer = VKUtil::createStagingBuffer(totalSize, resourceName().c_str(), false);
         }
-        
+
         Byte* target = (Byte*)_stagingBuffer->_allocInfo.pMappedData;
 
         size_t dataOffset = 0u;
-        for ( U32 l = 0u; l < numLayers; ++l )
+        for (U32 l = 0u; l < numLayers; ++l)
         {
             const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for ( U8 m = 0u; m < numMips; ++m )
+            for (U8 m = 0u; m < numMips; ++m)
             {
-                const ImageTools::LayerData* mip = layer.getMip( m );
-                memcpy( &target[dataOffset], mip->data(), mip->_size );
+                const ImageTools::LayerData* mip = layer.getMip(m);
+                memcpy(&target[dataOffset], mip->data(), mip->_size);
                 dataOffset += mip->_size;
             }
         }
 
         const bool needsMipMaps = _descriptor._mipMappingState == MipMappingState::AUTO && numMips < mipCount();
-        const bool hasMipMaps = mipCount() > 1u;
 
-        VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
+        VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&](VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue)
         {
-            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmd );
-
-            VkImageSubresourceRange range;
-            range.aspectMask = GetAspectFlags( _descriptor );
-            range.levelCount = 1;
-            range.layerCount = 1;
-
-
-            if ( hasMipMaps && !needsMipMaps )
-            {
-                range.levelCount = VK_REMAINING_MIP_LEVELS;
-            }
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmd);
 
             VkDependencyInfo dependencyInfo = vk::dependencyInfo();
             dependencyInfo.imageMemoryBarrierCount = 1;
@@ -662,20 +763,26 @@ namespace Divide
             VkImageMemoryBarrier2 memBarrier = vk::imageMemoryBarrier2();
             dependencyInfo.pImageMemoryBarriers = &memBarrier;
 
+            VkImageSubresourceRange fullRange
+            {
+                .aspectMask = GetAspectFlags(_descriptor),
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS
+            };
+
+            TransitionTexture( TransitionType::GENERAL_TO_COPY_WRITE, fullRange, _image->_image, memBarrier);
+            VK_PROFILE(vkCmdPipelineBarrier2, cmd, &dependencyInfo);
+
             size_t dataOffset = 0u;
-            for ( U32 l = 0u; l < numLayers; ++l )
+            for (U32 l = 0u; l < numLayers; ++l)
             {
                 const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
 
-                for ( U8 m = 0u; m < numMips; ++m )
+                for (U8 m = 0u; m < numMips; ++m)
                 {
-                    range.baseMipLevel = m;
-                    range.baseArrayLayer = l;
-
-                    TransitionTexture(TransitionType::GENERAL_TO_COPY_WRITE, range, _image->_image, memBarrier);
-                    VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
-                    
-                    const ImageTools::LayerData* mip = layer.getMip( m );
+                    const ImageTools::LayerData* mip = layer.getMip(m);
 
                     VkBufferImageCopy copyRegion = {};
                     copyRegion.bufferOffset = dataOffset;
@@ -693,35 +800,30 @@ namespace Divide
                     copyRegion.imageExtent.depth = mip->_dimensions.depth;
 
                     //copy the buffer into the image
-                    VK_PROFILE( vkCmdCopyBufferToImage, cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion );
-
-                    if ( needsMipMaps && m + 1u == numMips )
-                    {
-                        TransitionTexture( TransitionType::COPY_WRITE_TO_COPY_READ, range, _image->_image, memBarrier );
-                    }
-                    else
-                    {
-                        TransitionTexture( IsDepthTexture( _descriptor._packing ) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, range, _image->_image, memBarrier );
-                    }
-
-                    //barrier the image into the shader readable layout
-                    VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
-
+                    VK_PROFILE(vkCmdCopyBufferToImage, cmd, _stagingBuffer->_buffer, _image->_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
                     dataOffset += mip->_size;
                 }
             }
 
-            if ( needsMipMaps )
+            if (needsMipMaps)
             {
-                generateMipmaps( cmd, 0u, 0u, numLayers, ImageUsage::UNDEFINED );
+                TransitionTexture(TransitionType::COPY_WRITE_TO_COPY_READ, fullRange, _image->_image, memBarrier);
+                VK_PROFILE(vkCmdPipelineBarrier2, cmd, &dependencyInfo);
+
+                generateMipmaps(cmd, 0u, 0u, U16_MAX, ImageUsage::UNDEFINED);
+            }
+            else
+            {
+                TransitionTexture(IsDepthTexture(_descriptor._packing) ? TransitionType::COPY_WRITE_TO_SHADER_READ_DEPTH : TransitionType::COPY_WRITE_TO_SHADER_READ_COLOUR, fullRange, _image->_image, memBarrier);
+                VK_PROFILE(vkCmdPipelineBarrier2, cmd, &dependencyInfo);
             }
 
-            if ( !_descriptor._allowRegionUpdates )
+            if (!_descriptor._allowRegionUpdates)
             {
                 _stagingBuffer.reset();
             }
 
-        }, "vkTexture::loadDataInternal" );
+        }, "vkTexture::loadDataInternal");
     }
 
     void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept
@@ -948,7 +1050,16 @@ namespace Divide
             range.baseMipLevel = newView._descriptor._subRange._mipLevels._offset;
             range.levelCount = newView._descriptor._subRange._mipLevels._count == U16_MAX ? VK_REMAINING_MIP_LEVELS : newView._descriptor._subRange._mipLevels._count;
             range.baseArrayLayer = newView._descriptor._subRange._layerRange._offset;
-            range.layerCount = newView._descriptor._subRange._layerRange._count == U16_MAX ? VK_REMAINING_ARRAY_LAYERS : newView._descriptor._subRange._layerRange._count;
+
+            const U16 layerCountIn = newView._descriptor._subRange._layerRange._count;
+            if (layerCountIn == U16_MAX ) 
+            {
+                range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+            }
+            else
+            {
+                range.layerCount = layerCountIn * (IsCubeTexture(newView._descriptor._type) ? 6u : 1u);
+            }
 
             VkImageViewCreateInfo imageInfo = vk::imageViewCreateInfo();
             imageInfo.image = _image->_image;
@@ -1024,20 +1135,20 @@ namespace Divide
         constexpr auto SHADER_READ_WRITE_BIT = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
 
         constexpr auto SHADER_SAMPLE_STAGE_MASK_NO_MESH_SHADERS = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                                  VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
-                                                  VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
-                                                  VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
-                                                  VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
-                                                  VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                                              VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                                              VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                                              VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                                              VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                                              VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 
         constexpr auto SHADER_SAMPLE_STAGE_MASK_WITH_MESH_SHADERS = SHADER_SAMPLE_STAGE_MASK_NO_MESH_SHADERS |
-                                                                    VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
-                                                                    VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+                                                                VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                                                                VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
 
         static bool meshShaderSupported = GFXDevice::GetDeviceInformation()._meshShadingSupported;
         static auto SHADER_SAMPLE_STAGE_MASK = meshShaderSupported
-                                                    ? SHADER_SAMPLE_STAGE_MASK_WITH_MESH_SHADERS
-                                                    : SHADER_SAMPLE_STAGE_MASK_NO_MESH_SHADERS;
+                                                ? SHADER_SAMPLE_STAGE_MASK_WITH_MESH_SHADERS
+                                                : SHADER_SAMPLE_STAGE_MASK_NO_MESH_SHADERS;
 
         switch ( type )
         {
@@ -1051,15 +1162,16 @@ namespace Divide
                 memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
             } break;
             case TransitionType::UNDEFINED_TO_DEPTH_RESOLVE_ATTACHMENT :
             case TransitionType::UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT :
             {
-                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             } [[fallthrough]];
             case TransitionType::UNDEFINED_TO_DEPTH_ATTACHMENT :
             case TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT :
@@ -1068,8 +1180,8 @@ namespace Divide
                 memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
                 if ( type == TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT  || type == TransitionType::UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT )
                 {
                     memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1090,24 +1202,25 @@ namespace Divide
                 memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-                memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 memBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             } break;
             case TransitionType::SHADER_READ_TO_DEPTH_RESOLVE_ATTACHMENT:
             case TransitionType::SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT:
             {
-                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             } [[fallthrough]];
             case TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT:
             case TransitionType::SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT:
             {
-                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
+                memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
 
-                memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
                 if ( type == TransitionType::SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT || type == TransitionType::SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT )
                 {
                     memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1119,37 +1232,38 @@ namespace Divide
             } break;
             case TransitionType::COLOUR_RESOLVE_ATTACHMENT_TO_SHADER_READ:
             {
+                memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                 memBarrier.srcStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
             } [[fallthrough]];
             case TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ:
             {
-                memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT;
                 memBarrier.dstStageMask = SHADER_SAMPLE_STAGE_MASK;
                 memBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-                memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                memBarrier.srcAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask |= VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 memBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-                if ( type == TransitionType::COLOUR_RESOLVE_ATTACHMENT_TO_SHADER_READ )
-                {
-                    
-                }
             } break;
             case TransitionType::DEPTH_RESOLVE_ATTACHMENT_TO_SHADER_READ:
             case TransitionType::DEPTH_STENCIL_RESOLVE_ATTACHMENT_TO_SHADER_READ:
             {
-                memBarrier.srcStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             } [[fallthrough]];
             case TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ:
             case TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ:
             {
-                memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                memBarrier.dstStageMask = SHADER_SAMPLE_STAGE_MASK;
+                memBarrier.dstAccessMask |= VK_ACCESS_2_SHADER_READ_BIT;
+                memBarrier.dstStageMask |= SHADER_SAMPLE_STAGE_MASK;
                 memBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
 
-                memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                memBarrier.srcAccessMask |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                memBarrier.srcStageMask |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
 
                 if ( type == TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ || type == TransitionType::DEPTH_STENCIL_RESOLVE_ATTACHMENT_TO_SHADER_READ )
                 {
@@ -1563,6 +1677,12 @@ namespace Divide
             }break;
             default: DIVIDE_UNEXPECTED_CALL(); break;
         };
+
+        if ( memBarrier.newLayout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL )
+        {
+            memBarrier.dstAccessMask |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
+        }
     } 
 
 }; //namespace Divide

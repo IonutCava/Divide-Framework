@@ -90,10 +90,12 @@ namespace
 
         constexpr const char* kSkippedMessages[] = {
             "UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging",
+            "BestPractices-specialuse-extension",
             "UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-d3demulation",
             "UNASSIGNED-BestPractices-vkCreateDevice-specialuse-extension-glemulation",
             "UNASSIGNED-BestPractices-vkBindMemory-small-dedicated-allocation",
             "UNASSIGNED-BestPractices-vkAllocateMemory-small-allocation",
+            "BestPractices-vkBindImageMemory-small-dedicated-allocation",
             "UNASSIGNED-BestPractices-SpirvDeprecated_WorkgroupSize"
         };
 
@@ -284,6 +286,7 @@ namespace Divide
     bool VK_API::s_hasDebugMarkerSupport = false;
     bool VK_API::s_hasDescriptorBufferSupport = false;
     bool VK_API::s_hasDynamicBlendStateSupport = false;
+    VkResolveModeFlags VK_API::s_supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
@@ -910,17 +913,32 @@ namespace Divide
 
         VkFormatProperties2 properties{.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
         VkPhysicalDeviceMaintenance4Properties maintenance4{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES };
-        VkPhysicalDeviceProperties2	properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,.pNext = &maintenance4 };
+        VkPhysicalDeviceProperties2 properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,.pNext = &maintenance4 };
 
         VkPhysicalDeviceMeshShaderPropertiesEXT meshProperties { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
 
+        // Depth/stencil resolve support struct — query and store supported depth resolve modes
+        VkPhysicalDeviceDepthStencilResolveProperties depthResolve{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES, .pNext = nullptr };
+
+        // Chain extras into properties2.pNext preserving order. If mesh shaders are supported include them in the chain.
         if ( _device->suportsMeshShaders() )
         {
-            properties2.pNext = &meshProperties;
+            // chain: depthResolve -> meshProperties -> maintenance4
+            meshProperties.pNext = properties2.pNext;
+            depthResolve.pNext = &meshProperties;
+            properties2.pNext = &depthResolve;
+        }
+        else
+        {
+            // chain: depthResolve -> maintenance4
+            depthResolve.pNext = properties2.pNext;
+            properties2.pNext = &depthResolve;
         }
 
         vkGetPhysicalDeviceProperties2(physicalDevice, &properties2);
-        const size_t deviceMaxBufferSize = static_cast<size_t>(maintenance4.maxBufferSize);
+
+        // Store supported depth resolve modes for runtime decisions
+        VK_API::s_supportedDepthResolveModes = depthResolve.supportedDepthResolveModes;
 
         vkGetPhysicalDeviceFormatProperties2( physicalDevice, VK_FORMAT_D24_UNORM_S8_UINT, &properties );
         s_depthFormatInformation._d24s8Supported = properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -1659,11 +1677,12 @@ namespace Divide
             {
                 if ( tempLayout == VK_NULL_HANDLE )
                 {
-                    VkDescriptorSetLayoutCreateInfo layoutInfo{
-                            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                            .bindingCount = 0u
+                    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo
+                    {
+                        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                        .bindingCount = 0u
                     };
-                    tempLayout = _descriptorLayoutCache->createDescriptorLayout( &layoutInfo );
+                    tempLayout = _descriptorLayoutCache->createDescriptorLayout( &descriptorSetLayoutCreateInfo );
                 }
 
                 DescriptorAllocator& pool = s_stateTracker._descriptorAllocators[to_base( DescriptorSetUsage::PER_FRAME )];

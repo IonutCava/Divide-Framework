@@ -188,6 +188,7 @@ public:
     static bool s_hasDescriptorBufferSupport;
     static bool s_hasDynamicBlendStateSupport;
     static DepthFormatInformation s_depthFormatInformation;
+    static VkResolveModeFlags s_supportedDepthResolveModes;
 };
 
 };  // namespace Divide
