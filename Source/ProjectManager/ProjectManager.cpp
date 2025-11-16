@@ -12,7 +12,6 @@
 
 #include <exception>
 #include <optional>
-#include <stdio.h>
 #include <cassert>
 #include <memory>
 #include <string.h>

@@ -35,6 +35,7 @@
 
 #include <EASTL/sort.h>
 #include <EASTL/vector.h>
+#include <EASTL/fixed_vector.h>
 
 namespace Divide
 {
