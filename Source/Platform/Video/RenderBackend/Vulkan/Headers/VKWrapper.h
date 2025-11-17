@@ -187,6 +187,8 @@ public:
     static bool s_hasDebugMarkerSupport;
     static bool s_hasDescriptorBufferSupport;
     static bool s_hasDynamicBlendStateSupport;
+    static U32  s_maxDescriptorSetStorageBuffersDynamic;
+    static U32  s_maxDescriptorSetUniformBuffersDynamic;
     static DepthFormatInformation s_depthFormatInformation;
     static VkResolveModeFlags s_supportedDepthResolveModes;
 };

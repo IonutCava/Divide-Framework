@@ -1651,8 +1651,10 @@ namespace Divide
 
                 switch ( srcBinding._data._type )
                 {
-                    case DescriptorSetBindingType::UNIFORM_BUFFER:
-                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
+                    case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
+                    case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
+                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
+                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
                     {
                         const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
                         if ( bufferEntry._buffer == nullptr || 
@@ -1660,6 +1662,8 @@ namespace Divide
                         {
                             continue;
                         }
+
+                        DIVIDE_ASSERT(IsDescriptorSetBindingTypeDynamic(srcBinding._data._type) || bufferEntry._range._startOffset == 0u);
 
                         glShaderBuffer* glBuffer = static_cast<glShaderBuffer*>(bufferEntry._buffer);
 

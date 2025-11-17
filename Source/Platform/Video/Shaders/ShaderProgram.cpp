@@ -1206,8 +1206,10 @@ namespace Divide
             case DescriptorSetBindingType::IMAGE:
                 bindingData._glBinding = s_imageSlot++;
                 break;
-            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
-            case DescriptorSetBindingType::UNIFORM_BUFFER:
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+            case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
+            case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
                 if ( usage == DescriptorSetUsage::PER_BATCH && slot == 0 )
                 {
                     bindingData._glBinding = k_commandBufferID;
@@ -1231,29 +1233,14 @@ namespace Divide
         DIVIDE_ASSERT( usage != DescriptorSetUsage::COUNT );
 
         U32 count = 0u;
-        if ( usage == DescriptorSetUsage::PER_DRAW )
+        for ( const BindingsPerSet& binding : s_bindingsPerSet[to_base( usage )] )
         {
-            switch ( type )
+            if ( binding._type == type )
             {
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: count = to_base( TextureSlot::COUNT ) + 2u; /*{Reflection + Refraction}*/ break;
-                case DescriptorSetBindingType::IMAGE: count = 2u; break;
-                case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: count = 4u; break;
-                default:
-                case DescriptorSetBindingType::COUNT: break;
+                ++count;
             }
         }
-        else
-        {
-            for ( const BindingsPerSet& binding : s_bindingsPerSet[to_base( usage )] )
-            {
-                if ( binding._type == type )
-                {
-                    ++count;
-                }
-            }
-        }
-        
+
         return count;
     }
 
@@ -1776,16 +1763,11 @@ namespace Divide
                 BindingsPerSet& binding = _perDrawDescriptorSetLayout[buffer._bindingSlot];
                 SetVisibility( binding, buffer );
 
-                if ( buffer._uniformBuffer )
-                {
-                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::UNIFORM_BUFFER );
-                    binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-                }
-                else
-                {
-                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER );
-                    binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                }
+                const DescriptorSetBindingType target = buffer._uniformBuffer
+                                                                ? (buffer._dynamic ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC : DescriptorSetBindingType::UNIFORM_BUFFER_STATIC)
+                                                                : (buffer._dynamic ? DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC : DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC);
+                DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == target);
+                binding._type = target;
             }
         }
     }

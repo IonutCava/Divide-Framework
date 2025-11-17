@@ -531,16 +531,23 @@ namespace Divide
             return VK_FORMAT_MAX_ENUM;
         }
 
-        VkDescriptorType vkDescriptorType( const DescriptorSetBindingType type, const bool isPushDescriptor ) noexcept
+        VkDescriptorType vkDescriptorType( const DescriptorSetBindingType type ) noexcept
         {
             switch ( type )
             {
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 case DescriptorSetBindingType::IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                case DescriptorSetBindingType::UNIFORM_BUFFER: return isPushDescriptor ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: return isPushDescriptor ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+                case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+
+                case DescriptorSetBindingType::COUNT:
                 default:
-                case DescriptorSetBindingType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                    DIVIDE_UNEXPECTED_CALL();
+                    break;
             }
 
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;

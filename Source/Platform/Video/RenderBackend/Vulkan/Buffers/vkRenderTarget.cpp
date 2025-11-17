@@ -1,5 +1,4 @@
 
-
 #include "Headers/vkRenderTarget.h"
 
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
@@ -108,8 +107,27 @@ namespace Divide
                 const vkTexture::TransitionType sourceTransition = isDepthTextureIn ? vkTexture::TransitionType::SHADER_READ_TO_BLIT_READ_DEPTH : vkTexture::TransitionType::SHADER_READ_TO_BLIT_READ_COLOUR;
                 const vkTexture::TransitionType targetTransition = isDepthTextureOut ? vkTexture::TransitionType::SHADER_READ_TO_BLIT_WRITE_DEPTH : vkTexture::TransitionType::SHADER_READ_TO_BLIT_WRITE_COLOUR;
 
-                vkTexture::TransitionTexture( sourceTransition, subResourceIn,  { vkTexIn->image()->_image, vkTexIn->resourceName().c_str() }, imageBarriers[imageBarrierCount++] );
-                vkTexture::TransitionTexture( targetTransition, subResourceOut, { vkTexOut->image()->_image, vkTexOut->resourceName().c_str() }, imageBarriers[imageBarrierCount++] );
+                vkTexture::TransitionTexture(
+                    sourceTransition,
+                    subResourceIn, 
+                    {
+                        ._image = vkTexIn->image()->_image,
+                        ._name = vkTexIn->resourceName().c_str(),
+                        ._isResolveImage = HasUsageFlagSet(vkTexIn->descriptor(), ImageUsage::RT_RESOLVE_TARGET)
+                    },
+                    imageBarriers[imageBarrierCount++] 
+                );
+
+                vkTexture::TransitionTexture(
+                    targetTransition,
+                    subResourceOut,
+                    {
+                        ._image = vkTexOut->image()->_image,
+                        ._name = vkTexOut->resourceName().c_str(),
+                        ._isResolveImage = HasUsageFlagSet(vkTexOut->descriptor(), ImageUsage::RT_RESOLVE_TARGET )
+                    },
+                    imageBarriers[imageBarrierCount++] 
+                );
             }
 
             const U16 srcDepth = vkTexIn->descriptor()._texType == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
@@ -191,8 +209,26 @@ namespace Divide
                 const vkTexture::TransitionType sourceTransition = isDepthTextureIn ? vkTexture::TransitionType::BLIT_READ_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::BLIT_READ_TO_SHADER_READ_COLOUR;
                 const vkTexture::TransitionType targetTransition = isDepthTextureOut ? vkTexture::TransitionType::BLIT_WRITE_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::BLIT_WRITE_TO_SHADER_READ_COLOUR;
 
-                vkTexture::TransitionTexture( sourceTransition, subResourceIn, { vkTexIn->image()->_image, vkTexIn->resourceName().c_str() }, imageBarriers[imageBarrierCount++] );
-                vkTexture::TransitionTexture( targetTransition, subResourceOut, { vkTexOut->image()->_image, vkTexOut->resourceName().c_str() }, imageBarriers[imageBarrierCount++] );
+                vkTexture::TransitionTexture(
+                    sourceTransition,
+                    subResourceIn,
+                    {
+                      ._image = vkTexIn->image()->_image,
+                      ._name = vkTexIn->resourceName().c_str(),
+                      ._isResolveImage = HasUsageFlagSet(vkTexIn->descriptor(), ImageUsage::RT_RESOLVE_TARGET)
+                    }, 
+                    imageBarriers[imageBarrierCount++]
+                );
+                vkTexture::TransitionTexture(
+                    targetTransition,
+                    subResourceOut,
+                    {
+                      ._image = vkTexOut->image()->_image,
+                      ._name = vkTexOut->resourceName().c_str(),
+                      ._isResolveImage = HasUsageFlagSet(vkTexOut->descriptor(), ImageUsage::RT_RESOLVE_TARGET)
+                    }, 
+                    imageBarriers[imageBarrierCount++]
+                );
             }
 
             if ( imageBarrierCount > 0u )
@@ -405,7 +441,16 @@ namespace Divide
                                                 : hasStencil ? vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ : vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
                         }
 
-                        vkTexture::TransitionTexture( targetTransition, _subresourceRange[RT_DEPTH_ATTACHMENT_IDX], { vkTexRender->image()->_image, vkTexRender->resourceName().c_str() }, memBarriers[memBarrierCount++] );
+                        vkTexture::TransitionTexture(
+                            targetTransition,
+                            _subresourceRange[RT_DEPTH_ATTACHMENT_IDX],
+                            {
+                                ._image = vkTexRender->image()->_image,
+                                ._name = vkTexRender->resourceName().c_str(),
+                                ._isResolveImage = false
+                            },
+                            memBarriers[memBarrierCount++]
+                        );
                     }
 
                     if ( resolveMSAA )

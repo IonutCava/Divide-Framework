@@ -173,7 +173,7 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     shader.setStrings( shaderStrings, 1 );
     shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientOpenGL, 100 );
     shader.setEnvClient( glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450 );
-    shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_4 );
+    shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_6);
 
     const auto PrintError = [&shader, &pshader]()
     {
@@ -509,7 +509,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
                 buffer._uniformBuffer = true;
                 buffer._dynamic = false;
                 fillBufferData( buffer, refl_binding );
-                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::UNIFORM_BUFFER );
+                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::UNIFORM_BUFFER_STATIC );
             }
             else if ( refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC )
             {
@@ -517,7 +517,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
                 buffer._uniformBuffer = true;
                 buffer._dynamic = true;
                 fillBufferData( buffer, refl_binding );
-                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::UNIFORM_BUFFER );
+                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC );
             }
             else if ( refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER )
             {
@@ -525,7 +525,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
                 buffer._uniformBuffer = false;
                 buffer._dynamic = false;
                 fillBufferData( buffer, refl_binding );
-                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::SHADER_STORAGE_BUFFER );
+                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC );
             }
             else if ( refl_binding.descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC )
             {
@@ -533,7 +533,7 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
                 buffer._uniformBuffer = false;
                 buffer._dynamic = true;
                 fillBufferData( buffer, refl_binding );
-                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::SHADER_STORAGE_BUFFER );
+                setResourceBinding( buffer, Divide::to_U8( refl_binding.set ), Divide::to_U8( refl_binding.binding ), Divide::DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC );
             }
             else
             {

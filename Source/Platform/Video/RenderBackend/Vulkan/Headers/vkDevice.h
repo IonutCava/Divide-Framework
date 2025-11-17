@@ -57,6 +57,7 @@ class VKDevice final : NonCopyable, NonMovable
         [[nodiscard]] VKQueue getQueue( QueueType type ) const noexcept;
 
         PROPERTY_R_IW(size_t, vulkanMinorVersion, 0u);
+        PROPERTY_R_IW(bool, suppportesMaintenance7, false);
         PROPERTY_R_IW(bool, supportsDynamicExtension3, false);
         PROPERTY_R_IW(bool, supportsDescriptorBuffers, false);
         PROPERTY_R_IW(bool, supportsMeshShaders, false);

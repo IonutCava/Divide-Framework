@@ -228,55 +228,55 @@ namespace Divide
 
     ErrorCode GFXDevice::initDescriptorSets()
     {
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: diffuse0
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: opacity
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  2,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: normalMap
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  3,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: height
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  4,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: specular
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: metalness
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: roughness
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  7,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: occlusion
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  8,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: emissive
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  9,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: diffuse1
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 10,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: reflect
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 11,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::ALL );                  // Textures: refract
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 12,  DescriptorSetBindingType::IMAGE,                  ShaderStageVisibility::ALL );                  // Image
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY);  // SSBO (e.g. bone buffer or histogram buffer)
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 14,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 15,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: diffuse0
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: opacity
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  2,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: normalMap
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  3,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: height
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  4,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: specular
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: metalness
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: roughness
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  7,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: occlusion
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  8,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: emissive
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW,  9,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: diffuse1
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 10,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: reflect
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 11,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,       ShaderStageVisibility::ALL );                  // Textures: refract
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 12,  DescriptorSetBindingType::IMAGE,                        ShaderStageVisibility::ALL );                  // Image
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC, ShaderStageVisibility::COMPUTE_AND_GEOMETRY);  // SSBO (e.g. bone buffer or histogram buffer)
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 14,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 15,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
 
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::NONE );                  // CMD_BUFFER
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 1,  DescriptorSetBindingType::UNIFORM_BUFFER,        ShaderStageVisibility::ALL );                   // CAM_BLOCK;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 2,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::COMPUTE );               // GPU_COMMANDS;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 3,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::ALL );                   // NODE_TRANSFORM_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 4,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::COMPUTE_AND_GEOMETRY );  // NODE_INDIRECTION_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 5,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER, ShaderStageVisibility::FRAGMENT );              // NODE_MATERIAL_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::NONE );                  // CMD_BUFFER
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 1,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                   // CAM_BLOCK;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 2,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE );               // GPU_COMMANDS;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 3,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::ALL );                   // NODE_TRANSFORM_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 4,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE_AND_GEOMETRY );  // NODE_INDIRECTION_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 5,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::FRAGMENT );              // NODE_MATERIAL_DATA;
 
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 0,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // SCENE_NORMALS;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 1,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // DEPTH;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 2,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // TRANSMITTANCE;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 3,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // SSR_SAMPLE;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 4,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // SSAO_SAMPLE;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 5,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // TREE_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 6,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // GRASS_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 7,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE );              // ATOMIC_COUNTER;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 8,   DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_SCENE;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 9,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_NORMAL;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 10,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_INDICES;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_GRID;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 12,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE );              // LIGHT_CLUSTER_AABB;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::COMPUTE );              // LIGHT_GLOBAL_INDEX_COUNT;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 0,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // SCENE_NORMALS;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 1,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // DEPTH;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 2,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // TRANSMITTANCE;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 3,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // SSR_SAMPLE;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 4,   DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // SSAO_SAMPLE;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 5,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // TREE_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 6,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_GEOMETRY ); // GRASS_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 7,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // ATOMIC_COUNTER;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 8,   DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_SCENE;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 9,   DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_NORMAL;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 10,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_INDICES;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 11,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE_AND_DRAW );     // LIGHT_GRID;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 12,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_CLUSTER_AABB;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_PASS, 13,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC,  ShaderStageVisibility::COMPUTE );              // LIGHT_GLOBAL_INDEX_COUNT;
         
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // ENV Prefiltered
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // ENV Irradiance
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 2,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // BRDF Lut
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 3,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // UNUSED;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 4,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // Shadow Array
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // Shadow Cube
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER, ShaderStageVisibility::FRAGMENT );             // Shadow Single
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 7,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::FRAGMENT );             // PROBE_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER,         ShaderStageVisibility::ALL_DRAW );             // SCENE_DATA;
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 9,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER,  ShaderStageVisibility::FRAGMENT );             // LIGHT_SHADOW;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 0,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // ENV Prefiltered
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 1,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // ENV Irradiance
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 2,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // BRDF Lut
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 3,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // UNUSED;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 4,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Array
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 5,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Cube
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 6,  DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER,        ShaderStageVisibility::FRAGMENT );             // Shadow Single
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 7,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::FRAGMENT );             // PROBE_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 8,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL_DRAW );             // SCENE_DATA;
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_FRAME, 9,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::FRAGMENT );             // LIGHT_SHADOW;
 
         _api->initDescriptorSets();
 

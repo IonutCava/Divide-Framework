@@ -384,7 +384,7 @@ namespace VKUtil {
 
     [[nodiscard]] VkFormat InternalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, GFXImagePacking packing) noexcept;
     [[nodiscard]] VkFormat InternalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;
-    [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type, bool isPushDescriptor) noexcept;
+    [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type ) noexcept;
 }; //namespace VKUtil
 }; //namespace Divide
 

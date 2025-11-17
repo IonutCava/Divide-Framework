@@ -126,6 +126,7 @@ bool RenderTarget::create()
         if ( needsMSAAResolve )
         {
             AddImageUsageFlag( attDesc._texDescriptor, ImageUsage::SHADER_READ );
+            AddImageUsageFlag( attDesc._texDescriptor, ImageUsage::RT_RESOLVE_TARGET);
             attDesc._texDescriptor._mipMappingState = mipMapState;
             attDesc._texDescriptor._msaaSamples = 0u;
 

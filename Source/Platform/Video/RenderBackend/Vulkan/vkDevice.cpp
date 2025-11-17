@@ -118,7 +118,8 @@ namespace Divide
         _physicalDevice.enable_extensions_if_present(
             {
                 VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-                //VK_EXT_MESH_SHADER_EXTENSION_NAME
+                VK_KHR_MAINTENANCE_7_EXTENSION_NAME
+                VK_EXT_MESH_SHADER_EXTENSION_NAME,
             }
         );
 
@@ -138,6 +139,15 @@ namespace Divide
                 extendedDynamicState3Features.extendedDynamicState3ColorBlendEquation = VK_TRUE;
                 extendedDynamicState3Features.extendedDynamicState3ColorWriteMask = VK_TRUE;
                 deviceBuilder.add_pNext(&extendedDynamicState3Features);
+            }
+            else if ( extension == VK_KHR_MAINTENANCE_7_EXTENSION_NAME )
+            {
+                suppportesMaintenance7(true);
+
+                VkPhysicalDeviceMaintenance7FeaturesKHR maintenance7Features{};
+                maintenance7Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
+                maintenance7Features.maintenance7 = VK_TRUE;
+                deviceBuilder.add_pNext(&maintenance7Features);
             }
             else if ( extension == VK_EXT_MESH_SHADER_EXTENSION_NAME )
             {
