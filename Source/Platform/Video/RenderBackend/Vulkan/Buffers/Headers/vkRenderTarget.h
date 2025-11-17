@@ -59,11 +59,12 @@ namespace Divide
 
         PROPERTY_R_IW(VkRenderingInfo, renderingInfo);
 
-    private:
+    protected:
         void begin(VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTClearDescriptor& clearPolicy, VkPipelineRenderingCreateInfo& pipelineRenderingCreateInfoOut);
         void end(VkCommandBuffer cmdBuffer, const RTTransitionMask& mask );
         void blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept;
         void transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTTransitionMask& transitionMask, bool toWrite );
+        bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot) override;
 
     private:
         std::array<VkRenderingAttachmentInfo, to_base(RTColourAttachmentSlot::COUNT)> _colourAttachmentInfo{};
@@ -72,9 +73,8 @@ namespace Divide
         std::array<VkFormat, to_base( RTColourAttachmentSlot::COUNT )> _colourAttachmentFormats{};
 
         std::array<VkRenderingAttachmentInfo, to_base( RTColourAttachmentSlot::COUNT )> _stagingColourAttachmentInfo{};
-        RTDrawDescriptor _previousPolicy;
 
-        std::array<VkImageSubresourceRange, RT_MAX_ATTACHMENT_COUNT> _subresourceRange{};
+        RTDrawDescriptor _previousPolicy;
 
         bool _keptMSAAData{false};
     };

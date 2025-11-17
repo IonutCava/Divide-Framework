@@ -2955,12 +2955,9 @@ namespace Divide
                                     transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ;
                                 } break;
                                 case ImageUsage::RT_DEPTH_ATTACHMENT:
-                                {
-                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
-                                } break;
                                 case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
                                 {
-                                    transitionType = vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ;
+                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
                                 } break;
                                 default:
                                 {
@@ -2993,12 +2990,9 @@ namespace Divide
                                     transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_WRITE;
                                 } break;
                                 case ImageUsage::RT_DEPTH_ATTACHMENT:
-                                {
-                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_WRITE;
-                                } break;
                                 case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
                                 {
-                                    transitionType = vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_WRITE;
+                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_WRITE;
                                 } break;
                                 default:
                                 {
@@ -3032,11 +3026,8 @@ namespace Divide
                                 } break;
                                 case ImageUsage::RT_DEPTH_ATTACHMENT:
                                 {
-                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE;
-                                } break;
                                 case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
-                                {
-                                    transitionType = vkTexture::TransitionType::DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ_WRITE;
+                                    transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE;
                                 } break;
                                 default:
                                 {
@@ -3046,15 +3037,26 @@ namespace Divide
                         } break;
                         case ImageUsage::RT_COLOUR_ATTACHMENT:
                         {
-                            transitionType = vkTexture::TransitionType::UNDEFINED_TO_COLOUR_ATTACHMENT;
+                            switch (it._sourceLayout)
+                            {
+                                case ImageUsage::SHADER_READ:
+                                {
+                                    transitionType = vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT;
+                                } break;
+                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                            }
                         } break;
                         case ImageUsage::RT_DEPTH_ATTACHMENT:
-                        {
-                            transitionType = vkTexture::TransitionType::UNDEFINED_TO_DEPTH_ATTACHMENT;
-                        } break;
                         case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
                         {
-                            transitionType = vkTexture::TransitionType::UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT;
+                            switch (it._sourceLayout)
+                            {
+                                case ImageUsage::SHADER_READ:
+                                {
+                                    transitionType = vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT;
+                                } break;
+                                default: DIVIDE_UNEXPECTED_CALL(); break;
+                            }
                         } break;
                         default: DIVIDE_UNEXPECTED_CALL();
                     };
@@ -3076,7 +3078,8 @@ namespace Divide
                             {
                                 ._image = vkTex->image()->_image,
                                 ._name = vkTex->resourceName().c_str(),
-                                ._isResolveImage = HasUsageFlagSet(vkTex->descriptor(), ImageUsage::RT_RESOLVE_TARGET)
+                                ._isResolveImage = HasUsageFlagSet(vkTex->descriptor(), ImageUsage::RT_RESOLVE_TARGET),
+                                ._hasStencilMask = it._targetLayout == ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT
                             },
                             imageBarriers[imageBarrierCount++] );
                     }

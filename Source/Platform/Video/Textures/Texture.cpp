@@ -597,16 +597,28 @@ namespace Divide
     {
         const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u : _depth;
 
-        ImageView view{};
-        view._srcTexture = this;
-        view._descriptor._msaaSamples = _descriptor._msaaSamples;
-        view._descriptor._dataType = _descriptor._dataType;
-        view._descriptor._baseFormat = _descriptor._baseFormat;
-        view._descriptor._packing = _descriptor._packing;
-        view._subRange._layerRange._count = layerCount;
-        view._subRange._mipLevels._count = _mipCount;
-
-        return view;
+        return ImageView
+        {
+            ._descriptor = 
+            {
+                ._msaaSamples = _descriptor._msaaSamples,
+                ._dataType    = _descriptor._dataType,
+                ._baseFormat  = _descriptor._baseFormat,
+                ._packing     = _descriptor._packing,
+            },
+            ._srcTexture = this,
+            ._subRange = 
+            {
+                ._mipLevels = 
+                {
+                    ._count = _mipCount
+                },
+                ._layerRange = 
+                {
+                    ._count = layerCount
+                }
+            }
+        };
     }
 
     ImageView Texture::getView( const TextureType targetType ) const noexcept

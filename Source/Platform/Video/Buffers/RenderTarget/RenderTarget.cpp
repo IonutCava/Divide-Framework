@@ -145,6 +145,8 @@ bool RenderTarget::create()
         att->setTexture(renderTexture, resolveTexture);
 
         DIVIDE_EXPECTED_CALL( initAttachment( att, attDesc._type, attDesc._slot ) );
+
+        att->_attachmentUsage = RTAttachment::Layout::ATTACHMENT;
     }
 
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )

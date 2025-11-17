@@ -527,18 +527,6 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
 
     ImageView destinationImage = Get(destinationAtt->texture())->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, ALL_MIPS }, { 0u , ALL_LAYERS });
 
-    static bool firstPass = true;
-    if ( firstPass )
-    {
-        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
-        {
-            ._targetView = destinationImage,
-            ._sourceLayout = ImageUsage::UNDEFINED,
-            ._targetLayout = ImageUsage::SHADER_READ
-        });
-        firstPass = false;
-    }
-
     const F32 fWidth = to_F32(width);
 
     PushConstantsStruct fastData{};
@@ -597,18 +585,6 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
     Util::StringFormatTo( scopeCmd->_scopeName, "Compute Irradiance #{}", layerID);
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = s_pipelineCalcIrradiance;
-
-    static bool firstPass = true;
-    if (firstPass)
-    {
-        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
-        {
-            ._targetView = Get(destinationAtt->texture())->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, ALL_MIPS }, { 0u , ALL_LAYERS }),
-            ._sourceLayout = ImageUsage::UNDEFINED,
-            ._targetLayout = ImageUsage::SHADER_READ
-        });
-        firstPass = false;
-    }
 
     ImageView destinationView = Get(destinationAtt->texture())->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , ALL_LAYERS });
 

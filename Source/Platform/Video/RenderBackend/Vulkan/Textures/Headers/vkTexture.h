@@ -55,35 +55,14 @@ namespace Divide
     public:
         enum class TransitionType : U8
         {
-            UNDEFINED_TO_COLOUR_ATTACHMENT = 0u,
-            UNDEFINED_TO_COLOUR_RESOLVE_ATTACHMENT,
-            UNDEFINED_TO_DEPTH_ATTACHMENT,
-            UNDEFINED_TO_DEPTH_RESOLVE_ATTACHMENT,
-            UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT,
-            UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT,
-
-            SHADER_READ_TO_COLOUR_ATTACHMENT,
-            SHADER_READ_TO_COLOUR_RESOLVE_ATTACHMENT,
+            SHADER_READ_TO_COLOUR_ATTACHMENT = 0,
             SHADER_READ_TO_DEPTH_ATTACHMENT,
-            SHADER_READ_TO_DEPTH_RESOLVE_ATTACHMENT,
-            SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT,
-            SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT,
-
             COLOUR_ATTACHMENT_TO_SHADER_READ,
-            COLOUR_RESOLVE_ATTACHMENT_TO_SHADER_READ,
             DEPTH_ATTACHMENT_TO_SHADER_READ,
-            DEPTH_RESOLVE_ATTACHMENT_TO_SHADER_READ,
-            DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ,
-            DEPTH_STENCIL_RESOLVE_ATTACHMENT_TO_SHADER_READ,
-
             COLOUR_ATTACHMENT_TO_SHADER_WRITE,
             DEPTH_ATTACHMENT_TO_SHADER_WRITE,
-            DEPTH_STENCIL_ATTACHMENT_TO_SHADER_WRITE,
-
             COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE,
             DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE,
-            DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ_WRITE,
-
             UNDEFINED_TO_SHADER_READ_COLOUR,
             UNDEFINED_TO_SHADER_READ_DEPTH,
             UNDEFINED_TO_SHADER_READ_WRITE,
@@ -123,6 +102,14 @@ namespace Divide
 
         struct Names {
             inline static const char* transitionType[] = {
+                "SHADER_READ_TO_COLOUR_ATTACHMENT",
+                "SHADER_READ_TO_DEPTH_ATTACHMENT",
+                "COLOUR_ATTACHMENT_TO_SHADER_READ",
+                "DEPTH_ATTACHMENT_TO_SHADER_READ",
+                "COLOUR_ATTACHMENT_TO_SHADER_WRITE",
+                "DEPTH_ATTACHMENT_TO_SHADER_WRITE",
+                "COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE",
+                "DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE",
                 "UNDEFINED_TO_SHADER_READ_COLOUR",
                 "UNDEFINED_TO_SHADER_READ_DEPTH",
                 "UNDEFINED_TO_SHADER_READ_WRITE",
@@ -159,6 +146,8 @@ namespace Divide
                 "COPY_WRITE_TO_COPY_READ",
                 "UNKNOWN"
             };
+
+            static_assert(std::size(transitionType) == to_base(TransitionType::COUNT) + 1u, "TransitionType name array out of sync!");
         };
 
         struct CachedImageView
@@ -202,6 +191,7 @@ namespace Divide
             VkImage _image{VK_NULL_HANDLE};
             std::string_view _name{};
             const bool _isResolveImage{false};
+            const bool _hasStencilMask{false};
         };
 
         static void TransitionTexture( TransitionType type, const VkImageSubresourceRange& subresourceRange, NamedVKImage image, VkImageMemoryBarrier2& memBarrier );
