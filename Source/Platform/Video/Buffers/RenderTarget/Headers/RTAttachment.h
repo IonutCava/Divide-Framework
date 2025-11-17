@@ -108,11 +108,19 @@ class RTAttachment final
     public:
         enum class Layout : U8
         {
-            UNDEFINED = 0u,
-            ATTACHMENT,
-            SHADER_READ
+            ATTACHMENT = 0,
+            SHADER_READ,
+            COUNT
         };
+        struct Names {
+            inline static const char* layout[] = {
+                "ATTACHMENT",
+                "SHADER_READ",
+                "COUNT"
+            };
 
+            static_assert(std::size(layout) == to_base(Layout::COUNT) + 1u, "Layout name array out of sync!");
+        };
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
         ~RTAttachment();
@@ -125,7 +133,8 @@ class RTAttachment final
         [[nodiscard]] const RenderTarget& parent() const noexcept;
 
         RTAttachmentDescriptor _descriptor;
-        Layout _attachmentUsage{ Layout::UNDEFINED };
+        Layout _renderUsage = Layout::COUNT;  // state for render (MSAA) image
+        Layout _resolveUsage = Layout::COUNT;  // state for resolve image (single-sample target)
 
         PROPERTY_R_IW(Handle<Texture>, renderTexture, INVALID_HANDLE<Texture> );
         PROPERTY_R_IW(Handle<Texture>, resolvedTexture, INVALID_HANDLE<Texture> );

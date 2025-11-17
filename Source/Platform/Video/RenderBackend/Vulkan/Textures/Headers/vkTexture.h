@@ -97,6 +97,24 @@ namespace Divide
             COPY_READ_TO_GENERAL,
             COPY_WRITE_TO_GENERAL,
             COPY_WRITE_TO_COPY_READ,
+            ATTACHMENT_TO_ATTACHMENT_COLOUR,
+            ATTACHMENT_TO_ATTACHMENT_DEPTH,
+            ATTACHMENT_TO_BLIT_READ_COLOUR,
+            ATTACHMENT_TO_BLIT_WRITE_COLOUR,
+            BLIT_READ_TO_ATTACHMENT_COLOUR,
+            BLIT_WRITE_TO_ATTACHMENT_COLOUR,
+            ATTACHMENT_TO_BLIT_READ_DEPTH,
+            ATTACHMENT_TO_BLIT_WRITE_DEPTH,
+            BLIT_READ_TO_ATTACHMENT_DEPTH,
+            BLIT_WRITE_TO_ATTACHMENT_DEPTH,
+            ATTACHMENT_TO_COPY_READ_COLOUR,
+            ATTACHMENT_TO_COPY_WRITE_COLOUR,
+            COPY_READ_TO_ATTACHMENT_COLOUR,
+            COPY_WRITE_TO_ATTACHMENT_COLOUR,
+            ATTACHMENT_TO_COPY_READ_DEPTH,
+            ATTACHMENT_TO_COPY_WRITE_DEPTH,
+            COPY_READ_TO_ATTACHMENT_DEPTH,
+            COPY_WRITE_TO_ATTACHMENT_DEPTH,
             COUNT
         };
 
@@ -144,6 +162,24 @@ namespace Divide
                 "COPY_READ_TO_GENERAL",
                 "COPY_WRITE_TO_GENERAL",
                 "COPY_WRITE_TO_COPY_READ",
+                "ATTACHMENT_TO_ATTACHMENT_COLOUR",
+                "ATTACHMENT_TO_ATTACHMENT_DEPTH",
+                "ATTACHMENT_TO_BLIT_READ_COLOUR",
+                "ATTACHMENT_TO_BLIT_WRITE_COLOUR",
+                "BLIT_READ_TO_ATTACHMENT_COLOUR",
+                "BLIT_WRITE_TO_ATTACHMENT_COLOUR",
+                "ATTACHMENT_TO_BLIT_READ_DEPTH",
+                "ATTACHMENT_TO_BLIT_WRITE_DEPTH",
+                "BLIT_READ_TO_ATTACHMENT_DEPTH",
+                "BLIT_WRITE_TO_ATTACHMENT_DEPTH",
+                "ATTACHMENT_TO_COPY_READ_COLOUR",
+                "ATTACHMENT_TO_COPY_WRITE_COLOUR",
+                "COPY_READ_TO_ATTACHMENT_COLOUR",
+                "COPY_WRITE_TO_ATTACHMENT_COLOUR",
+                "ATTACHMENT_TO_COPY_READ_DEPTH",
+                "ATTACHMENT_TO_COPY_WRITE_DEPTH",
+                "COPY_READ_TO_ATTACHMENT_DEPTH",
+                "COPY_WRITE_TO_ATTACHMENT_DEPTH",
                 "UNKNOWN"
             };
 
@@ -191,7 +227,6 @@ namespace Divide
             VkImage _image{VK_NULL_HANDLE};
             std::string_view _name{};
             const bool _isResolveImage{false};
-            const bool _hasStencilMask{false};
         };
 
         static void TransitionTexture( TransitionType type, const VkImageSubresourceRange& subresourceRange, NamedVKImage image, VkImageMemoryBarrier2& memBarrier );

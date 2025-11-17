@@ -1458,7 +1458,6 @@ namespace Divide
                         {
                             mask |= gl46core::GL_SHADER_STORAGE_BARRIER_BIT;
                         } break;
-                        case BufferSyncUsage::CPU_WRITE_TO_CPU_READ:
                         case BufferSyncUsage::CPU_READ_TO_CPU_WRITE:
                         case BufferSyncUsage::CPU_WRITE_TO_CPU_WRITE:
                         {

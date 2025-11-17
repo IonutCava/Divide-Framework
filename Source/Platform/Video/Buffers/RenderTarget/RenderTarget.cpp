@@ -122,6 +122,7 @@ bool RenderTarget::create()
 
             Get(renderTexture)->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
         }
+        att->_renderUsage = RTAttachment::Layout::ATTACHMENT;
 
         if ( needsMSAAResolve )
         {
@@ -136,6 +137,7 @@ bool RenderTarget::create()
             resolveTexture = CreateResource( textureAttachment );
 
             Get(resolveTexture)->createWithData( nullptr, 0u, vec2<U16>( getWidth(), getHeight() ), {} );
+            att->_resolveUsage = RTAttachment::Layout::ATTACHMENT;
         }
         else
         {
@@ -143,10 +145,8 @@ bool RenderTarget::create()
         }
 
         att->setTexture(renderTexture, resolveTexture);
-
+        
         DIVIDE_EXPECTED_CALL( initAttachment( att, attDesc._type, attDesc._slot ) );
-
-        att->_attachmentUsage = RTAttachment::Layout::ATTACHMENT;
     }
 
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )

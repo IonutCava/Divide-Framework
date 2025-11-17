@@ -1561,7 +1561,7 @@ namespace Divide
                             descriptor._type = TargetType( imageSampler._image );
                             descriptor._subRange = imageSampler._image._subRange;
 
-                            const VkImageLayout targetLayout = IsDepthTexture( vkTex->descriptor()._packing ) ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                            const VkImageLayout targetLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
 
                             size_t samplerHash = imageSampler._samplerHash;
                             const VkSampler samplerHandle = GetSamplerHandle( imageSampler._sampler, samplerHash );
@@ -1605,7 +1605,7 @@ namespace Divide
                         // Should use TextureType::TEXTURE_CUBE_ARRAY
                         DIVIDE_GPU_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange._count == 1u );
 
-                        const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                        const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
                         VkDescriptorImageInfo& imageInfo = imageInfoArray[imageInfoIndex++];
                         imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), targetLayout );
 
@@ -2484,7 +2484,7 @@ namespace Divide
                         .layerCount = 1,
                     };
 
-                    imageBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                     imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                     imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
@@ -2532,6 +2532,7 @@ namespace Divide
                     _context.setViewport( renderArea );
                     _context.setScissor( renderArea );
                     VK_PROFILE( vkCmdBeginRendering, cmdBuffer, &renderingInfo);
+                    Console::d_errorfn("vkCmdBeginRendering");
                 }
             } break;
             case GFX::CommandType::END_RENDER_PASS:
@@ -2539,6 +2540,7 @@ namespace Divide
                 PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
 
                 VK_PROFILE( vkCmdEndRendering, cmdBuffer );
+                Console::d_errorfn("vkCmdEndRendering");
                 if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
                 {
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();
@@ -2873,13 +2875,6 @@ namespace Divide
                                 memoryBarrier.dstAccessMask |= VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
                             }
                         } break;
-                        case BufferSyncUsage::CPU_WRITE_TO_CPU_READ:
-                        {
-                            memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-                            memoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
-                            memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                            memoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
-                        }break;
                         case BufferSyncUsage::CPU_READ_TO_CPU_WRITE:
                         {
                             memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT; 
@@ -3025,8 +3020,8 @@ namespace Divide
                                     transitionType = vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE;
                                 } break;
                                 case ImageUsage::RT_DEPTH_ATTACHMENT:
-                                {
                                 case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
+                                {
                                     transitionType = vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE;
                                 } break;
                                 default:
@@ -3078,8 +3073,7 @@ namespace Divide
                             {
                                 ._image = vkTex->image()->_image,
                                 ._name = vkTex->resourceName().c_str(),
-                                ._isResolveImage = HasUsageFlagSet(vkTex->descriptor(), ImageUsage::RT_RESOLVE_TARGET),
-                                ._hasStencilMask = it._targetLayout == ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT
+                                ._isResolveImage = HasUsageFlagSet(vkTex->descriptor(), ImageUsage::RT_RESOLVE_TARGET)
                             },
                             imageBarriers[imageBarrierCount++] );
                     }
