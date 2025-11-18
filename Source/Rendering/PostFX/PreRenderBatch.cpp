@@ -90,6 +90,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
     desc._resolution = _screenRTs._hdr._screenRef._rt->getResolution();
 
     TextureDescriptor outputDescriptor = Get(_screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture())->descriptor();
+    RemoveImageUsageFlag(outputDescriptor, ImageUsage::RT_RESOLVE_TARGET);
 
     outputDescriptor._mipMappingState = MipMappingState::OFF;
     {

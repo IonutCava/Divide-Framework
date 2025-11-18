@@ -49,79 +49,77 @@ namespace Divide
 
         VK_API::GetStateTracker().IMCmdContext(QueueType::GRAPHICS)->flushCommandBuffer([&](VkCommandBuffer cmdBuffer, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue)
         {
-                vkTexture* vkTexRender = static_cast<vkTexture*>(Get(att->texture()));
+            vkTexture* vkTexRender = static_cast<vkTexture*>(Get(att->texture()));
 
-                std::array<VkImageMemoryBarrier2, 2> barriers{};
-                U32 barrierCount = 0u;
+            std::array<VkImageMemoryBarrier2, 2> barriers{};
+            U32 barrierCount = 0u;
 
-                auto prepareBarrier = [&](vkTexture* tex, bool isDepth, bool hasStencil, bool isResolve) -> VkImageMemoryBarrier2&
-                    {
-                        VkImageMemoryBarrier2& memBarrier = barriers[barrierCount++];
-                        memBarrier = vk::imageMemoryBarrier2();
-                        memBarrier.image = tex->image()->_image;
-                        memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                        memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                        memBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
+            auto prepareBarrier = [&](vkTexture* tex, bool isDepth, bool hasStencil, bool isResolve) -> VkImageMemoryBarrier2&
+            {
+                VkImageMemoryBarrier2& memBarrier = barriers[barrierCount++];
+                memBarrier = vk::imageMemoryBarrier2();
+                memBarrier.image = tex->image()->_image;
+                memBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                memBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
+                memBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                        if (!isDepth)
-                        {
-                            // Colour render or resolve target
-                            memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
-                                                       (isResolve ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
-                            memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                        }
-                        else
-                        {
-                            memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT
-                                                     | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
-                                                     | (isResolve ? (VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) : 0);
-                            // Only depth/stencil domain accesses; for resolve also advertise color attachment write to satisfy inline resolve ordering
-                            memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                                                     | (hasStencil ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT : 0)
-                                                     | (isResolve ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : 0);
-
-                            memBarrier.newLayout  = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-                        }
-
-                        memBarrier.newLayout  = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-                        memBarrier.subresourceRange.aspectMask     = vkTexture::GetAspectFlags(tex->descriptor());
-                        memBarrier.subresourceRange.baseMipLevel   = 0;
-                        memBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-                        memBarrier.subresourceRange.baseArrayLayer = 0;
-                        memBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-                        return memBarrier;
-                    };
-
-                const bool isDepthAttachment = (type == RTAttachmentType::DEPTH || type == RTAttachmentType::DEPTH_STENCIL);
-                const bool hasStencilAttachment = (type == RTAttachmentType::DEPTH_STENCIL);
-
-                // Render (MSAA) image
-                prepareBarrier(vkTexRender, isDepthAttachment, hasStencilAttachment, false);
-
-                // Resolve image (single-sample) if present
-                if (att->_resolveUsage != RTAttachment::Layout::COUNT)
+                if (!isDepth)
                 {
-                    vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(att->resolvedTexture()));
-                    // For depth resolve, infer stencil from resolve descriptor (may differ from render descriptor)
-                    const bool resIsDepth = IsDepthTexture(vkTexResolve->descriptor()._packing);
-                    const bool resHasStencil = HasUsageFlagSet(vkTexResolve->descriptor(), ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT);
-                    prepareBarrier(vkTexResolve, resIsDepth, resHasStencil, true);
-
-                    // Initialize usage tracking
-                    att->_resolveUsage = RTAttachment::Layout::ATTACHMENT;
+                    // Colour render or resolve target
+                    memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+                                                (isResolve ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
+                    memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                }
+                else
+                {
+                    memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT
+                                                | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
+                                                | (isResolve ? (VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT) : 0);
+                    // Only depth/stencil domain accesses; for resolve also advertise color attachment write to satisfy inline resolve ordering
+                    memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                                                | (hasStencil ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT : 0)
+                                                | (isResolve ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : 0);
                 }
 
-                att->_renderUsage = RTAttachment::Layout::ATTACHMENT;
+                memBarrier.newLayout  = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                memBarrier.subresourceRange.aspectMask     = vkTexture::GetAspectFlags(tex->descriptor());
+                memBarrier.subresourceRange.baseMipLevel   = 0;
+                memBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+                memBarrier.subresourceRange.baseArrayLayer = 0;
+                memBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+                return memBarrier;
+            };
 
-                VkDependencyInfo dependencyInfo = vk::dependencyInfo();
-                dependencyInfo.imageMemoryBarrierCount = barrierCount;
-                dependencyInfo.pImageMemoryBarriers = barriers.data();
+            const bool isDepthAttachment = (type == RTAttachmentType::DEPTH || type == RTAttachmentType::DEPTH_STENCIL);
+            const bool hasStencilAttachment = (type == RTAttachmentType::DEPTH_STENCIL);
 
-                VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+            // Render (MSAA) image
+            prepareBarrier(vkTexRender, isDepthAttachment, hasStencilAttachment, false);
 
-            }, "vkTexture::postPrepareTransition");
+            // Resolve image (single-sample) if present
+            if (att->_resolveUsage != RTAttachment::Layout::COUNT)
+            {
+                vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(att->resolvedTexture()));
+                // For depth resolve, infer stencil from resolve descriptor (may differ from render descriptor)
+                const bool resIsDepth = IsDepthTexture(vkTexResolve->descriptor()._packing);
+                const bool resHasStencil = HasUsageFlagSet(vkTexResolve->descriptor(), ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT);
+                prepareBarrier(vkTexResolve, resIsDepth, resHasStencil, true);
+
+                // Initialize usage tracking
+                att->_resolveUsage = RTAttachment::Layout::ATTACHMENT;
+            }
+
+            att->_renderUsage = RTAttachment::Layout::ATTACHMENT;
+
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            dependencyInfo.imageMemoryBarrierCount = barrierCount;
+            dependencyInfo.pImageMemoryBarriers = barriers.data();
+
+            VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+
+        }, "vkTexture::postPrepareTransition");
 
         return true;
     }

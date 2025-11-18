@@ -151,7 +151,7 @@ struct VKImmediateCmdContext
     explicit VKImmediateCmdContext( const Configuration& config, VKDevice& context, QueueType type );
     ~VKImmediateCmdContext();
 
-    void flushCommandBuffer( FlushCallback&& function, const char* scopeName );
+    void flushCommandBuffer( FlushCallback&& function, const char* scopeName, bool waitForFinish = false );
 
     private:
 

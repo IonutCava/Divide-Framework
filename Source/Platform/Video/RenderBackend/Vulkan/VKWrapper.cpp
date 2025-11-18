@@ -469,7 +469,7 @@ namespace Divide
         }
     }
 
-    void VKImmediateCmdContext::flushCommandBuffer(FlushCallback&& function, const char* scopeName )
+    void VKImmediateCmdContext::flushCommandBuffer(FlushCallback&& function, const char* scopeName, const bool waitForFinish )
     {
         LockGuard<Mutex> w_lock( _submitLock );
 
@@ -505,6 +505,12 @@ namespace Divide
         if ( _bufferIndex == 0u )
         {
             ++_wrapCounter;
+        }
+
+        if ( waitForFinish )
+        {
+            vkWaitForFences(_context.getVKDevice(), 1, &fence, true, UINT64_MAX);
+            vkResetFences(_context.getVKDevice(), 1, &fence);
         }
     }
 

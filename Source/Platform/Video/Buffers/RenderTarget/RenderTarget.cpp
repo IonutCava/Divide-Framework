@@ -114,6 +114,10 @@ bool RenderTarget::create()
                 attDesc._texDescriptor._mipMappingState = MipMappingState::OFF;
                 attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
             }
+            else
+            {
+                RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::RT_RESOLVE_TARGET);
+            }
 
             ResourceDescriptor<Texture> textureAttachment(texName + "_RENDER", attDesc._texDescriptor );
             textureAttachment.waitForReady(true);
@@ -122,7 +126,6 @@ bool RenderTarget::create()
 
             Get(renderTexture)->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
         }
-        att->_renderUsage = RTAttachment::Layout::ATTACHMENT;
 
         if ( needsMSAAResolve )
         {
@@ -145,8 +148,10 @@ bool RenderTarget::create()
         }
 
         att->setTexture(renderTexture, resolveTexture);
-        
         DIVIDE_EXPECTED_CALL( initAttachment( att, attDesc._type, attDesc._slot ) );
+
+        DIVIDE_ASSERT(att->_renderUsage == RTAttachment::Layout::ATTACHMENT);
+        DIVIDE_ASSERT(!needsMSAAResolve || att->_resolveUsage == RTAttachment::Layout::ATTACHMENT);
     }
 
     for ( const ExternalRTAttachmentDescriptor& attDesc : _descriptor._externalAttachments )
