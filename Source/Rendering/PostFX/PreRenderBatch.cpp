@@ -593,7 +593,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
-            Set(binding._data, _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()});
+            Set(binding._data, _histogramBuffer.get());
         }
 
         PushConstantsStruct& params = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
