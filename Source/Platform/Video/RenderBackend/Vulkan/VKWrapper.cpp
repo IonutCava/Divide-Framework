@@ -2532,7 +2532,6 @@ namespace Divide
                     _context.setViewport( renderArea );
                     _context.setScissor( renderArea );
                     VK_PROFILE( vkCmdBeginRendering, cmdBuffer, &renderingInfo);
-                    Console::d_errorfn("vkCmdBeginRendering");
                 }
             } break;
             case GFX::CommandType::END_RENDER_PASS:
@@ -2540,7 +2539,6 @@ namespace Divide
                 PROFILE_SCOPE( "END_RENDER_PASS", Profiler::Category::Graphics );
 
                 VK_PROFILE( vkCmdEndRendering, cmdBuffer );
-                Console::d_errorfn("vkCmdEndRendering");
                 if ( stateTracker._activeRenderTargetID == SCREEN_TARGET_ID )
                 {
                     VkImageMemoryBarrier2 imageBarrier = vk::imageMemoryBarrier2();

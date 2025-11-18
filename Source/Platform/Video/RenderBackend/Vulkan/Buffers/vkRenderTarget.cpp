@@ -879,44 +879,6 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
         Console::d_errorfn("vkRenderTarget::end [ {} ]", name().c_str());
-
-        // Ordering barrier for resolve depth image before layout change to shader read
-        const bool depthUsed = _attachmentsUsed[RT_DEPTH_ATTACHMENT_IDX];
-        if ( depthUsed && mask[RT_DEPTH_ATTACHMENT_IDX] )
-        {
-            RTAttachment_uptr& depthAtt = _attachments[RT_DEPTH_ATTACHMENT_IDX];
-            const bool hasResolve = depthAtt->_resolveUsage != RTAttachment::Layout::COUNT;
-            const bool needShaderRead = hasResolve && _previousPolicy._keepMSAADataAfterResolve;
-
-            if (needShaderRead)
-            {
-                vkTexture* vkResolveTex = static_cast<vkTexture*>(Get(depthAtt->resolvedTexture()));
-
-                VkImageMemoryBarrier2 acquireBarrier = vk::imageMemoryBarrier2();
-                acquireBarrier.image = vkResolveTex->image()->_image;
-                acquireBarrier.subresourceRange = {
-                    .aspectMask = vkTexture::GetAspectFlags(vkResolveTex->descriptor()),
-                    .baseMipLevel = 0,
-                    .levelCount = VK_REMAINING_MIP_LEVELS,
-                    .baseArrayLayer = 0,
-                    .layerCount = VK_REMAINING_ARRAY_LAYERS
-                };
-                // Convert COLOR_ATTACHMENT_WRITE domain to depth/stencil domain (no layout change)
-                acquireBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                acquireBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                acquireBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-                acquireBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
-                                               VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-                acquireBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-                acquireBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
-
-                VkDependencyInfo depInfo = vk::dependencyInfo();
-                depInfo.imageMemoryBarrierCount = 1u;
-                depInfo.pImageMemoryBarriers = &acquireBarrier;
-
-                VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &depInfo);
-            }
-        }
         transitionAttachments( cmdBuffer, _previousPolicy, mask, false );
     }
 }; //namespace Divide
