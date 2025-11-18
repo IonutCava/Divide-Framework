@@ -1,5 +1,4 @@
-﻿
-#include "Headers/vkRenderTarget.h"
+﻿#include "Headers/vkRenderTarget.h"
 
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
@@ -341,10 +340,8 @@ namespace Divide
 
     void vkRenderTarget::transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTTransitionMask& transitionMask, const bool toWrite )
     {
-
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        // Double the number of barriers needed in case we have an MSAA RenderTarget (we need to transition the resolve targets as well)
         thread_local fixed_vector<VkImageMemoryBarrier2, RT_MAX_ATTACHMENT_COUNT * 2, false> memBarriers{};
 
         DrawLayerEntry targetDepthLayer{};
@@ -355,7 +352,6 @@ namespace Divide
                 continue;
             }
 
-            // Writing to a specific layer or cube face of a colour attachment, so use the same for depth
             if ( descriptor._writeLayers[i]._layer._offset > 0u ||
                  descriptor._writeLayers[i]._cubeFace > 0u )
             {
@@ -365,6 +361,20 @@ namespace Divide
         }
 
         VkImageSubresourceRange subresourceRange { .aspectMask = VK_IMAGE_ASPECT_NONE };
+
+        // Helper to get the actual current usage, accounting for external attachments
+        auto getCurrentUsage = [](RTAttachment* att, bool isResolve) -> RTAttachment::Layout
+        {
+            if (att->_descriptor._externalAttachment != nullptr)
+            {
+                // External attachment: use the source attachment's state
+                return isResolve 
+                    ? att->_descriptor._externalAttachment->_resolveUsage 
+                    : att->_descriptor._externalAttachment->_renderUsage;
+            }
+            // Local attachment: use our own state
+            return isResolve ? att->_resolveUsage : att->_renderUsage;
+        };
 
         {
             PROFILE_SCOPE( "Colour Attachments", Profiler::Category::Graphics);
@@ -380,11 +390,12 @@ namespace Divide
                 DIVIDE_GPU_ASSERT(attachment->_renderUsage != RTAttachment::Layout::COUNT);
 
                 const RTAttachment::Layout targetRenderUsage = toWrite ? RTAttachment::Layout::ATTACHMENT : RTAttachment::Layout::SHADER_READ;
+                const RTAttachment::Layout currentRenderUsage = getCurrentUsage(attachment.get(), false);
 
                 Console::d_errorfn("vkRenderTarget::transitionAttachments [{}][Colour : {}][ render={} resolve={} ] -> [ {} ]",
                                     name().c_str(),
                                     i,
-                                    RTAttachment::Names::layout[to_base(attachment->_renderUsage)],
+                                    RTAttachment::Names::layout[to_base(currentRenderUsage)],
                                     RTAttachment::Names::layout[to_base(attachment->_resolveUsage)],
                                     RTAttachment::Names::layout[to_base(targetRenderUsage)]);
 
@@ -416,17 +427,16 @@ namespace Divide
                 }
 
                 subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTexRender->descriptor() );
-
                 subresourceRange.baseMipLevel   = viewRender._subRange._mipLevels._offset;
                 subresourceRange.levelCount     = viewRender._subRange._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : viewRender._subRange._mipLevels._count;
                 subresourceRange.baseArrayLayer = viewRender._subRange._layerRange._offset;
                 subresourceRange.layerCount     = viewRender._subRange._layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : viewRender._subRange._layerRange._count;
 
-
                 const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[i];
+                const bool sharedTexture = Get(attachment->renderTexture()) == Get(attachment->resolvedTexture());
 
-               // Render image transition (colour)
-                if ( attachment->_renderUsage != targetRenderUsage )
+                // Render image transition (colour)
+                if ( currentRenderUsage != targetRenderUsage )
                 {
                     const vkTexture::TransitionType targetTransition = toWrite ? vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT
                                                                                : vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ;
@@ -447,25 +457,33 @@ namespace Divide
                     {
                         attachment->_descriptor._externalAttachment->_renderUsage = targetRenderUsage;
                     }
+
+                    if (sharedTexture)
+                    {
+                        attachment->_resolveUsage = targetRenderUsage;
+                        if (attachment->_descriptor._externalAttachment != nullptr)
+                        {
+                            attachment->_descriptor._externalAttachment->_resolveUsage = targetRenderUsage;
+                        }
+                    }
                 }
 
-                // Resolve image transition (colour) � handle separately, and only when needed
-                if (resolveMSAA)
+                // Resolve image transition (colour)
+                if (resolveMSAA && !sharedTexture)
                 {
                     vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(_attachments[i]->resolvedTexture()));
 
-                    // When writing, target resolve usage is ATTACHMENT (dynamic rendering inline resolve).
-                    // When reading after resolve: only transition to SHADER_READ if content must be preserved.
                     const RTAttachment::Layout targetResolveUsage = toWrite ? RTAttachment::Layout::ATTACHMENT
                                                                             : (descriptor._keepMSAADataAfterResolve
                                                                                         ? RTAttachment::Layout::SHADER_READ
                                                                                         : RTAttachment::Layout::ATTACHMENT);
 
-                    if (attachment->_resolveUsage != targetResolveUsage)
+                    const RTAttachment::Layout currentResolveUsage = getCurrentUsage(attachment.get(), true);
+
+                    if (currentResolveUsage != targetResolveUsage)
                     {
                         if (toWrite)
                         {
-                            // Move resolve image to attachment layout if not already
                             vkTexture::TransitionTexture(
                                 vkTexture::TransitionType::SHADER_READ_TO_COLOUR_ATTACHMENT,
                                 subresourceRange,
@@ -479,7 +497,6 @@ namespace Divide
                         }
                         else if (descriptor._keepMSAADataAfterResolve)
                         {
-                            // Make resolve image shader-readable for post-pass sampling
                             vkTexture::TransitionTexture(
                                 vkTexture::TransitionType::COLOUR_ATTACHMENT_TO_SHADER_READ,
                                 subresourceRange,
@@ -515,9 +532,11 @@ namespace Divide
             RTAttachment_uptr& attachment = _attachments[RT_DEPTH_ATTACHMENT_IDX];
             DIVIDE_GPU_ASSERT(attachment->_renderUsage != RTAttachment::Layout::COUNT);
 
+            const RTAttachment::Layout currentDepthRenderUsage = getCurrentUsage(attachment.get(), false);
+
             Console::d_errorfn("vkRenderTarget::transitionAttachments [ {} ][Depth][ render={} resolve={} ] -> [ {} ]",
                                 name().c_str(),
-                                RTAttachment::Names::layout[to_base(attachment->_renderUsage)],
+                                RTAttachment::Names::layout[to_base(currentDepthRenderUsage)],
                                 RTAttachment::Names::layout[to_base(attachment->_resolveUsage)],
                                 RTAttachment::Names::layout[to_base(targetDepthRenderUsage)]);
 
@@ -546,16 +565,16 @@ namespace Divide
                 };
             }
             subresourceRange.aspectMask = vkTexture::GetAspectFlags( vkTexRender->descriptor() );
-
             subresourceRange.baseMipLevel   = viewRender._subRange._mipLevels._offset;
             subresourceRange.levelCount     = viewRender._subRange._mipLevels._count == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : viewRender._subRange._mipLevels._count;
             subresourceRange.baseArrayLayer = viewRender._subRange._layerRange._offset;
             subresourceRange.layerCount     = viewRender._subRange._layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : viewRender._subRange._layerRange._count;
 
             const bool resolveMSAA = descriptor._autoResolveMSAA && _attachmentsAutoResolve[RT_DEPTH_ATTACHMENT_IDX];
+            const bool sharedTexture = Get(attachment->renderTexture()) == Get(attachment->resolvedTexture());
 
             // Render image transition (depth)
-            if ( attachment->_renderUsage != targetDepthRenderUsage )
+            if ( currentDepthRenderUsage != targetDepthRenderUsage )
             {
                 const vkTexture::TransitionType targetTransition = toWrite ? vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT
                                                                            : vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ;
@@ -576,10 +595,19 @@ namespace Divide
                 {
                     attachment->_descriptor._externalAttachment->_renderUsage = targetDepthRenderUsage;
                 }
+
+                if (sharedTexture)
+                {
+                    attachment->_resolveUsage = targetDepthRenderUsage;
+                    if (attachment->_descriptor._externalAttachment != nullptr)
+                    {
+                        attachment->_descriptor._externalAttachment->_resolveUsage = targetDepthRenderUsage;
+                    }
+                }
             }
 
-            // Resolve image transition (depth) � separate policy
-            if ( resolveMSAA )
+            // Resolve image transition (depth)
+            if ( resolveMSAA && !sharedTexture )
             {
                 vkTexture* vkTexResolve = static_cast<vkTexture*>(Get(attachment->resolvedTexture()));
                 const RTAttachment::Layout targetDepthResolveUsage = toWrite ? RTAttachment::Layout::ATTACHMENT
@@ -587,11 +615,12 @@ namespace Divide
                                                                                     ? RTAttachment::Layout::SHADER_READ
                                                                                     : RTAttachment::Layout::ATTACHMENT);
 
-                if ( attachment->_resolveUsage != targetDepthResolveUsage )
+                const RTAttachment::Layout currentDepthResolveUsage = getCurrentUsage(attachment.get(), true);
+
+                if ( currentDepthResolveUsage != targetDepthResolveUsage )
                 {
                     if (toWrite)
                     {
-                        // Move resolve depth to attachment layout if not already
                         vkTexture::TransitionTexture(
                             vkTexture::TransitionType::SHADER_READ_TO_DEPTH_ATTACHMENT,
                             subresourceRange,
@@ -605,7 +634,6 @@ namespace Divide
                     }
                     else if (descriptor._keepMSAADataAfterResolve)
                     {
-                        // Make resolve depth shader-readable
                         vkTexture::TransitionTexture(
                             vkTexture::TransitionType::DEPTH_ATTACHMENT_TO_SHADER_READ,
                             subresourceRange,
