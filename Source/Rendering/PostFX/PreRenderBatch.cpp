@@ -719,6 +719,19 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
     Handle<Texture> prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
 
+    static bool firstPass = true;
+    if ( firstPass )
+    {
+        firstPass = false;
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = Get(prevScreenTex)->getView(),
+            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._targetLayout = ImageUsage::RT_COLOUR_ATTACHMENT
+        });
+
+    }
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;

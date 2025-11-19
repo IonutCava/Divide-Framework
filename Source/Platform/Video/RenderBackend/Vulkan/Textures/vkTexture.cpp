@@ -12,6 +12,8 @@
 
 namespace Divide
 {
+    constexpr bool ENABLED_DEBUG_PRINTING = false;
+
     namespace
     {
         std::once_flag transition_once_flag;
@@ -233,7 +235,10 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        Console::d_errorfn("vkTexture::generateMipmaps [ {} ]!", resourceName().c_str());
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
+            Console::d_errorfn("vkTexture::generateMipmaps [ {} ]!", resourceName().c_str());
+        }
 
         const Configuration& config = _context.context().config();
 
@@ -358,7 +363,10 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        Console::d_errorfn("vkTexture::prepareTextureData [ {} ] Immutable [ {} ]!", resourceName().c_str(), makeImmutable );
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
+            Console::d_errorfn("vkTexture::prepareTextureData [ {} ] Immutable [ {} ]!", resourceName().c_str(), makeImmutable );
+        }
 
         ImageUsage ret = Texture::prepareTextureData( dimensions, layers, makeImmutable );
         DIVIDE_ASSERT(ret == ImageUsage::UNDEFINED);
@@ -479,7 +487,10 @@ namespace Divide
             return;
         }
 
-        Console::d_errorfn("vkTexture::loadDataInternal: [ {} ]!", resourceName().c_str());
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
+            Console::d_errorfn("vkTexture::loadDataInternal: [ {} ]!", resourceName().c_str());
+        }
 
         const U16 topLeftX = offset.x;
         const U16 topLeftY = offset.y;
@@ -582,7 +593,10 @@ namespace Divide
 
                 const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), HasUsageFlagSet(descriptor(), ImageUsage::RT_RESOLVE_TARGET) };
 
-                Console::d_errorfn("vkTexture::loadDataInternal: IMCmdContext flush upload [ {} ]!", resourceName().c_str());
+                if constexpr (ENABLED_DEBUG_PRINTING)
+                {
+                    Console::d_errorfn("vkTexture::loadDataInternal: IMCmdContext flush upload [ {} ]!", resourceName().c_str());
+                }
 
                 VkImageSubresourceRange range{};
                 range.aspectMask = GetAspectFlags( _descriptor );
@@ -646,7 +660,10 @@ namespace Divide
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmdBuffer);
 
-            Console::d_errorfn("vkTexture::loadDataInternal: IMCmdContext flush fallback [ {} ]!", resourceName().c_str());
+            if constexpr (ENABLED_DEBUG_PRINTING)
+            {
+                Console::d_errorfn("vkTexture::loadDataInternal: IMCmdContext flush fallback [ {} ]!", resourceName().c_str());
+            }
 
             const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), false };
 
@@ -761,7 +778,10 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        Console::d_errorfn("vkTexture::loadDataInternal image tools [ {} ]!", resourceName().c_str());
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
+            Console::d_errorfn("vkTexture::loadDataInternal image tools [ {} ]!", resourceName().c_str());
+        }
 
         const U16 numLayers = imageData.layerCount();
         const U8 numMips = imageData.mipCount();
@@ -809,7 +829,10 @@ namespace Divide
         {
             PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmdBuffer);
 
-            Console::d_errorfn("vkTexture::loadDataInternal: IMCmdContext flush upload file data [ {} ]!", resourceName().c_str());
+            if constexpr (ENABLED_DEBUG_PRINTING)
+            {
+                Console::d_errorfn("vkTexture::loadDataInternal: IMCmdContext flush upload file data [ {} ]!", resourceName().c_str());
+            }
 
             const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), HasUsageFlagSet(descriptor(), ImageUsage::RT_RESOLVE_TARGET) };
 
@@ -962,7 +985,10 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        Console::d_errorfn("vkTexture::clearData: [ {} ]!", resourceName().c_str());
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
+            Console::d_errorfn("vkTexture::clearData: [ {} ]!", resourceName().c_str());
+        }
 
         const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), HasUsageFlagSet(descriptor(), ImageUsage::RT_RESOLVE_TARGET) };
 
@@ -1217,7 +1243,10 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        Console::d_errorfn("vkTexture::Copy: [ {} ] -> [ {} ]", source->resourceName().c_str(), destination->resourceName().c_str());
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
+            Console::d_errorfn("vkTexture::Copy: [ {} ] -> [ {} ]", source->resourceName().c_str(), destination->resourceName().c_str());
+        }
 
         // We could handle this with a custom shader pass and temp render targets, so leaving the option i
         DIVIDE_GPU_ASSERT( sourceSamples == 0u && destinationSamples == 0u, "vkTexture::copy Multisampled textures is not supported yet!" );
@@ -1271,9 +1300,10 @@ namespace Divide
 
     /*static*/ void vkTexture::FlushPipelineBarriers(VkCommandBuffer cmdBuffer, VkDependencyInfo& pDependencyInfo)
     {
-#       if 1
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
             Console::d_errorfn("FlushPipelineBarriers: [ {} ] barriers", pDependencyInfo.imageMemoryBarrierCount); 
-#       endif
+        }
 
         VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &pDependencyInfo);
     }
@@ -1282,9 +1312,10 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-#       if 1
+        if constexpr (ENABLED_DEBUG_PRINTING)
+        {
             Console::d_errorfn("TransitionTexture [ {} ] to [ {} ]. IsResolve [ {} ] Layer [ {} - {} ]. Mip [ {} - {} ].", namedImage._name, Names::transitionType[to_base(type)], namedImage._isResolveImage, subresourceRange.baseArrayLayer, subresourceRange.layerCount, subresourceRange.baseMipLevel, subresourceRange.levelCount);
-#       endif
+        }
 
         memBarrier = vk::imageMemoryBarrier2();
         memBarrier.image = namedImage._image;

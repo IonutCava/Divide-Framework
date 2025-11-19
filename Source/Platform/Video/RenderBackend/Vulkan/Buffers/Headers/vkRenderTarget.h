@@ -65,7 +65,7 @@ namespace Divide
         void blitFrom( VkCommandBuffer cmdBuffer, vkRenderTarget* source, const RTBlitParams& params ) noexcept;
         void transitionAttachments( VkCommandBuffer cmdBuffer, const RTDrawDescriptor& descriptor, const RTTransitionMask& transitionMask, bool toWrite );
         bool initAttachment(RTAttachment* att, RTAttachmentType type, RTColourAttachmentSlot slot) override;
-
+        VkImageSubresourceRange computeAttachmentSubresourceRange( const U8 slotIndex, bool resolve ) const noexcept;
     private:
         std::array<VkRenderingAttachmentInfo, to_base(RTColourAttachmentSlot::COUNT)> _colourAttachmentInfo{};
         VkRenderingAttachmentInfo _depthAttachmentInfo{};
@@ -76,7 +76,21 @@ namespace Divide
 
         RTDrawDescriptor _previousPolicy;
 
-        bool _keptMSAAData{false};
+        struct RenderInfoState
+        {
+            struct LayeredRenderingInfo
+            {
+                struct Ranges
+                {
+                    SubRange _layerRange{ 0u, ALL_LAYERS };
+                    U16 _mipLevel{ ALL_MIPS };
+                    bool _enabled{false};
+                };
+                std::array<Ranges, to_base(RTColourAttachmentSlot::COUNT) + 1u> _layeredRendering;
+            } _layeredInfo;
+
+            bool _keptMSAAData{false};
+        } _renderInfoState;
     };
 
     namespace Attorney
