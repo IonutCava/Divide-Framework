@@ -95,7 +95,7 @@ namespace Divide
             dvd->_fontRenderingTexture = CreateResource( resDescriptor );
             if ( dvd->_fontRenderingTexture != INVALID_HANDLE<Texture>)
             {
-                Get(dvd->_fontRenderingTexture)->createWithData( nullptr, 0u, vec2<U16>( width, height), {});
+                Get(dvd->_fontRenderingTexture)->createWithData( {}, vec3<U16>( width, height, 1u), {});
             }
 
             return 0;
@@ -429,7 +429,7 @@ namespace Divide
 
             if ( dvd->_fontRenderingTexture != INVALID_HANDLE<Texture>)
             {
-                Get(dvd->_fontRenderingTexture)->createWithData( nullptr, 0u, vec2<U16>( width, height), {} );
+                Get(dvd->_fontRenderingTexture)->createWithData( {}, vec3<U16>( width, height, 1u), {} );
                 return 1;
             }
 
@@ -455,7 +455,7 @@ namespace Divide
                 ._skipRows = to_size( rect[1] )
             };
 
-            Get(dvd->_fontRenderingTexture)->replaceData( (const Divide::Byte*)data, sizeof( U8 ) * w * h, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, pixelUnpackAlignment );
+            Get(dvd->_fontRenderingTexture)->replaceData( {reinterpret_cast<const Divide::Byte*>(data), sizeof( U8 ) * w * h}, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, pixelUnpackAlignment );
         };
         params.renderDraw = []( void* userPtr, const FONSvert* verts, int nverts )
         {

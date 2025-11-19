@@ -63,13 +63,12 @@ namespace Divide {
         void destroy();
 
         [[nodiscard]] VkResult beginFrame();
-        [[nodiscard]] VkResult endFrame();
+        [[nodiscard]] VkResult endFrame( const VKSubmitSempahore::Container& semaphores );
 
-        [[nodiscard]] vkb::Swapchain&  getSwapChain() noexcept;
-        [[nodiscard]] VkImage          getCurrentImage() const noexcept;
-        [[nodiscard]] VkImageView      getCurrentImageView() const noexcept;
-
-        [[nodiscard]] const FrameData& getFrameData() const noexcept;
+        [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
+        [[nodiscard]] VkImage         getCurrentImage() const noexcept;
+        [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;
+        [[nodiscard]] bool            getFrameData(FrameData*& dataOut) const noexcept;
 
         PROPERTY_R_IW(VkExtent2D, surfaceExtent);
         

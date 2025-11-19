@@ -159,23 +159,40 @@ namespace Divide {
         return ret;
     }
 
-    VkResult VKSwapChain::endFrame( ) 
+    VkResult VKSwapChain::endFrame( const VKSubmitSempahore::Container& semaphores )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        static fixed_vector<VkPipelineStageFlags, 8, true> s_waitStages;
+        static VKSubmitSempahore::Container s_waitSempahores;
+
+        s_waitSempahores.reset_lose_memory();
+        s_waitSempahores.reserve(semaphores.size() + 1u);
+
+        s_waitStages.reset_lose_memory();
+        s_waitStages.reserve(semaphores.size() + 1u);
+
+        s_waitSempahores.push_back( _activeFrame->_presentSemaphore );
+        s_waitStages.push_back( VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT );
+
+        for ( VkSemaphore s : semaphores )
+        {
+            s_waitSempahores.push_back(s);
+            s_waitStages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+        }
+
         VK_CHECK( vkEndCommandBuffer(_activeFrame->_commandBuffer ) );
+
+        VkSemaphore imageRenderSemaphore = _renderSemaphores[_swapchainImageIndex];
 
         // prepare the submission to the queue.
         // we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is ready
         // we will signal the _renderSemaphore, to signal that rendering has finished
-        constexpr VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-        VkSemaphore imageRenderSemaphore = _renderSemaphores[_swapchainImageIndex];
-
+       
         VkSubmitInfo submit = vk::submitInfo();
-        submit.pWaitDstStageMask = waitStages;
-        submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &_activeFrame->_presentSemaphore;
+        submit.pWaitDstStageMask = s_waitStages.data();
+        submit.waitSemaphoreCount = to_U32(s_waitSempahores.size());
+        submit.pWaitSemaphores = s_waitSempahores.data();
         submit.signalSemaphoreCount = 1;
         submit.pSignalSemaphores = &imageRenderSemaphore;
         submit.commandBufferCount = 1;
@@ -195,9 +212,7 @@ namespace Divide {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
-        const VkResult ret = _device.queuePresent( QueueType::GRAPHICS, presentInfo);
-
-        return ret;
+        return _device.queuePresent( QueueType::GRAPHICS, presentInfo);
     }
 
     vkb::Swapchain& VKSwapChain::getSwapChain() noexcept
@@ -215,8 +230,9 @@ namespace Divide {
         return _swapchainImageViews[_swapchainImageIndex];
     }
 
-    const FrameData& VKSwapChain::getFrameData() const noexcept
+    bool VKSwapChain::getFrameData(FrameData*& dataOut) const noexcept
     {
-        return *_activeFrame;
+        dataOut = _activeFrame;
+        return dataOut != nullptr;
     }
 }; //namespace Divide

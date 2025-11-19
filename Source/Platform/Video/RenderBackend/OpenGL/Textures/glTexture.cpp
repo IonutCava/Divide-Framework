@@ -20,7 +20,7 @@ glTexture::~glTexture()
 
 bool glTexture::unload()
 {
-    if (_textureHandle > 0u)
+    if ( _textureHandle > 0u && _textureHandle != GL_NULL_HANDLE )
     {
         if (GL_API::GetStateTracker().unbindTexture(_descriptor._texType, _textureHandle))
         {
@@ -47,8 +47,10 @@ bool glTexture::postLoad()
     return Texture::postLoad();
 }
 
-void glTexture::reserveStorage()
+void glTexture::reserveStorage( const bool makeImmutable )
 {
+    DIVIDE_UNUSED(makeImmutable);
+
     DIVIDE_ASSERT(!_hasStorage && "glTexture::reserveStorage error: double call detected!");
 
     const GLUtil::FormatAndDataType glInternalFormat = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
@@ -60,7 +62,7 @@ void glTexture::reserveStorage()
     {
         case TextureType::TEXTURE_1D:
         {
-            assert(_depth == 1u);
+            assert(_depth == 1u && _layerCount == 1u);
             gl46core::glTextureStorage1D( _loadingHandle,
                                           mipCount(),
                                           glInternalFormat._format,
@@ -71,24 +73,28 @@ void glTexture::reserveStorage()
         case TextureType::TEXTURE_CUBE_MAP:
         case TextureType::TEXTURE_2D:
         {
-            DIVIDE_GPU_ASSERT(_descriptor._texType == TextureType::TEXTURE_1D_ARRAY || _depth == 1u);
+            DIVIDE_GPU_ASSERT( _depth == 1u );
+            DIVIDE_GPU_ASSERT(_descriptor._texType == TextureType::TEXTURE_1D_ARRAY || _layerCount == 1u);
+
             if (msaaSamples == 0u) {
                 gl46core::glTextureStorage2D( _loadingHandle,
                                               mipCount(),
                                               glInternalFormat._format,
                                               _width,
-                                              _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? _depth : _height );
+                                              _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? _layerCount : _height );
             } else {
                 gl46core::glTextureStorage2DMultisample( _loadingHandle,
                                                          msaaSamples,
                                                          glInternalFormat._format,
                                                          _width,
-                                                         _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? _depth : _height,
+                                                         _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? _layerCount : _height,
                                                          gl46core::GL_TRUE );
             }
         } break;
         case TextureType::TEXTURE_3D:
         {
+            DIVIDE_GPU_ASSERT( _layerCount == 1u );
+
             if (msaaSamples == 0u)
             {
                 gl46core::glTextureStorage3D( _loadingHandle,
@@ -112,7 +118,7 @@ void glTexture::reserveStorage()
         case TextureType::TEXTURE_2D_ARRAY:
         case TextureType::TEXTURE_CUBE_ARRAY:
         {
-            const U32 layerCount = isCubeMap ? _depth * 6 : _depth;
+            DIVIDE_GPU_ASSERT( _depth == 1u );
 
             if (msaaSamples == 0u)
             {
@@ -121,7 +127,7 @@ void glTexture::reserveStorage()
                                               glInternalFormat._format,
                                               _width,
                                               _height,
-                                              layerCount );
+                                              _layerCount * (isCubeMap ? 6u : 1u) );
             }
             else
             {
@@ -130,7 +136,7 @@ void glTexture::reserveStorage()
                                                          glInternalFormat._format,
                                                          _width,
                                                          _height,
-                                                         layerCount,
+                                                         _layerCount * (isCubeMap ? 6u : 1u),
                                                          gl46core::GL_TRUE );
             }
         } break;
@@ -140,9 +146,10 @@ void glTexture::reserveStorage()
     _hasStorage = true;
 }
 
-void glTexture::prepareTextureData(const U16 width, const U16 height, const U16 depth, [[maybe_unused]] const bool emptyAllocation)
+ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 layers, bool makeImmutable)
 {
-    Texture::prepareTextureData(width, height, depth, emptyAllocation);
+    const ImageUsage ret = Texture::prepareTextureData(dimensions, layers, makeImmutable);
+    DIVIDE_UNUSED(ret);
 
     _type = GLUtil::internalTextureType( _descriptor._texType, _descriptor._msaaSamples );
 
@@ -155,10 +162,12 @@ void glTexture::prepareTextureData(const U16 width, const U16 height, const U16 
         gl46core::glObjectLabel( gl46core::GL_TEXTURE, _loadingHandle, -1, resourceName().c_str());
     }
 
-    reserveStorage();
+    reserveStorage(makeImmutable);
+
+    return ImageUsage::SHADER_READ;
 }
 
-void glTexture::submitTextureData()
+void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
 {
     gl46core::glTextureParameteri(_loadingHandle, gl46core::GL_TEXTURE_BASE_LEVEL, _descriptor._mipBaseLevel );
     gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, mipCount());
@@ -168,7 +177,7 @@ void glTexture::submitTextureData()
         gl46core::glGenerateTextureMipmap(_loadingHandle);
     }
 
-    if (_textureHandle > 0u)
+    if ( _textureHandle > 0u && _textureHandle != GL_NULL_HANDLE )
     {
         // Immutable storage requires us to create a new texture object 
         gl46core::glDeleteTextures(1, &_textureHandle);
@@ -185,7 +194,7 @@ void glTexture::submitTextureData()
         gl46core::glFlush();
     }
 
-    Texture::submitTextureData();
+    Texture::submitTextureData(crtUsageInOut);
 }
 
 void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )
@@ -201,18 +210,18 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const v
             const ImageTools::LayerData* mip = layer.getMip( m );
             assert( mip->_size > 0u );
 
-            loadDataInternal((Byte*)mip->data(), mip->_size, m, vec3<U16>{offset.x, offset.y, offset.z + l}, mip->_dimensions, pixelUnpackAlignment);
+            loadDataInternal( {(const Byte*)mip->data(), mip->_size}, m, vec3<U16>{offset.x, offset.y, offset.z + l}, mip->_dimensions, pixelUnpackAlignment);
         }
     }
 }
 
-void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+void glTexture::loadDataInternal( const std::span<const Byte> data, const U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
 {
     const bool isCompressed = IsCompressed( _descriptor._baseFormat );
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
-    DIVIDE_GPU_ASSERT( _descriptor._msaaSamples == 0u || data == nullptr);
+    DIVIDE_GPU_ASSERT( _descriptor._msaaSamples == 0u || data.empty() );
 
     if ( _descriptor._packing == GFXImagePacking::RGBA_4444 )
     {
@@ -232,11 +241,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
             if (isCompressed)
             {
-                gl46core::glCompressedTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(size), data);
+                gl46core::glCompressedTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(data.size()), data.data());
             }
             else
             {
-                gl46core::glTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, formatAndType._dataType, data);
+                gl46core::glTextureSubImage1D(_loadingHandle, targetMip, offset.x, dimensions.width, formatAndType._internalFormat, formatAndType._dataType, data.data());
             }
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
@@ -246,11 +255,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
 
             if (isCompressed)
             {
-                gl46core::glCompressedTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(size), data);
+                gl46core::glCompressedTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(data.size()), data.data());
             }
             else
             {
-                gl46core::glTextureSubImage2D(_loadingHandle, targetMip, offset.x, _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? offset.z : offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, formatAndType._dataType, data);
+                gl46core::glTextureSubImage2D(_loadingHandle, targetMip, offset.x, _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? offset.z : offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, formatAndType._dataType, data.data());
             }
         } break;
         case TextureType::TEXTURE_3D:
@@ -260,11 +269,11 @@ void glTexture::loadDataInternal( const Byte* data, const size_t size, const U8 
         {
             if (isCompressed)
             {
-                gl46core::glCompressedTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(size), data);
+                gl46core::glCompressedTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(data.size()), data.data());
             }
             else
             {
-                gl46core::glTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, formatAndType._dataType, data);
+                gl46core::glTextureSubImage3D(_loadingHandle, targetMip, offset.x, offset.y, offset.z, dimensions.width, dimensions.height, dimensions.depth, formatAndType._internalFormat, formatAndType._dataType, data.data());
             }
         } break;
         default: break;
@@ -329,20 +338,19 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
-    if ( layerRange._offset == 0u && (layerRange._count == ALL_LAYERS || layerRange._count == _depth))
+    if ( layerRange._offset == 0u && (layerRange._count == ALL_LAYERS || layerRange._count == _layerCount ))
     {
         gl46core::glClearTexImage( _textureHandle, mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor._dataType ) );
     }
     else
     {
-        if ( layerRange._count >= _depth )
+        if ( layerRange._count >= _layerCount )
         {
-            layerRange._count = _depth;
+            layerRange._count = _layerCount;
         }
 
         const bool isCubeMap = IsCubeTexture( _descriptor._texType );
         const U32 layerOffset = isCubeMap ? layerRange._offset * 6 : layerRange._offset;
-        const U32 depth = isCubeMap ? layerRange._count * 6 : layerRange._count;
         const U16 mipWidth = _width >> mipLevel;
         const U16 mipHeight = _height >> mipLevel;
 
@@ -353,7 +361,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
                                       layerOffset,
                                       mipWidth,
                                       _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? layerRange._count : mipHeight,
-                                      depth,
+                                      isCubeMap ? layerRange._count * 6 : layerRange._count,
                                       formatAndType._internalFormat,
                                       formatAndType._dataType,
                                       GetClearData( _descriptor._dataType) );
@@ -376,7 +384,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     if (srcType != TextureType::COUNT && dstType != TextureType::COUNT)
     {
         U32 layerOffset = params._layerRange.offset;
-        U32 layerCount = params._layerRange.count == ALL_LAYERS ? source->_depth : params._layerRange.count;
+        U32 layerCount  = params._layerRange.count == ALL_LAYERS ? source->_layerCount : params._layerRange.count;
         if (IsCubeTexture(srcType))
         {
             layerOffset *= 6;
@@ -413,8 +421,6 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
     grabData._numComponents = numChannels();
     grabData._sourceIsBGR = IsBGRTexture( _descriptor._baseFormat );
 
-    DIVIDE_GPU_ASSERT(_depth == 1u && !IsCubeTexture( _descriptor._texType ), "glTexture:readData: unsupported image for readback. Support is very limited!");
-
     mipLevel = std::min(mipLevel, to_U8(mipCount() - 1u));
     if ( IsCompressed( _descriptor._baseFormat ) )
     {
@@ -423,22 +429,26 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
         if ( compressedSize > 0 )
         {
             grabData._data.resize(compressedSize);
+            grabData._sourceIsCompressed = true;
             gl46core::glGetCompressedTextureImage( _textureHandle, mipLevel, compressedSize, (bufferPtr)grabData._data.data() );
         }
     }
     else
     {
+        grabData._sourceIsCompressed = false;
         grabData._numComponents = 4; //glGetTextureImage pads the data to RGBA
         {
-            gl46core::GLint width = _width, height = _height;
+            gl46core::GLint width = _width, height = _height, depth = _depth;
             gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_WIDTH,  &width );
             gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_HEIGHT, &height );
-            grabData._width = to_U16(width);
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_DEPTH,  &depth );
+            grabData._width  = to_U16(width);
             grabData._height = to_U16(height);
+            grabData._depth  = to_U16(depth);
         }
 
         const U8 storagePerComponent = grabData._bpp / numChannels();
-        grabData._data.resize( to_size( grabData._width ) * grabData._height * _depth * storagePerComponent * 4 );
+        grabData._data.resize( to_size( grabData._width ) * grabData._height * grabData._depth * _descriptor._layerCount * storagePerComponent * 4 );
 
         GL_API::GetStateTracker().setPixelPackAlignment(pixelPackAlignment);
 

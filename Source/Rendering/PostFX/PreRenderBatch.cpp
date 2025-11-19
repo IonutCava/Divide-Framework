@@ -146,7 +146,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         _currentLuminance = CreateResource(texture);
 
         F32 val = 1.f;
-        Get(_currentLuminance)->createWithData((Byte*)&val, 1u * sizeof(F32), vec2<U16>(1u), {});
+        Get(_currentLuminance)->createWithData( {(Byte*)&val, 1u * sizeof(F32)}, vec3<U16>(1u), {});
     }
     {
         const SamplerDescriptor defaultSampler

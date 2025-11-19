@@ -82,7 +82,7 @@ public:
     [[nodiscard]] const GFXDevice& context() const noexcept { return _context; }
 
 protected:
-    [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const noexcept;
+    [[nodiscard]] static VkCommandBuffer GetCurrentCommandBuffer() noexcept;
 
     void idle(bool fast) noexcept override;
 
@@ -129,13 +129,18 @@ private:
 
     static bool Draw(GenericDrawCommand cmd, VkCommandBuffer cmdBuffer);
 public:
+    friend struct VKImmediateCmdContext;
+
     [[nodiscard]] static VKStateTracker& GetStateTracker() noexcept;
     [[nodiscard]] static VkSampler GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
 
+    static void EnqueueImageBarriers( std::span<VkImageMemoryBarrier2> barriers );
+    static void RecordOrEnqueueImageBarriers( std::span<VkImageMemoryBarrier2> barriers );
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
     static void RegisterTransferRequest(const VKTransferQueue::TransferRequest& request);
     static void FlushBufferTransferRequests( VkCommandBuffer cmdBuffer );
     static void SubmitTransferRequest(const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd);
+    static void PushPendingSubmitSemaphore(VkSemaphore semaphore);
 
     static void AddDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PushDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
@@ -160,9 +165,8 @@ private:
     std::array<DynamicBindings, to_base( DescriptorSetUsage::COUNT )> _descriptorDynamicBindings;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
-
     bool _uniformsNeedLock{ false };
-    
+
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
 
@@ -172,6 +176,8 @@ private:
     static VKDeletionQueue s_transientDeleteQueue;
     static VKDeletionQueue s_deviceDeleteQueue;
     static VKTransferQueue s_transferQueue;
+    static VKImageBarrierQueue s_imageBarrierQueue;
+    static VKSubmitSempahore s_submitSemaphores;
 
     static eastl::stack<vkShaderProgram*> s_reloadedShaders;
 

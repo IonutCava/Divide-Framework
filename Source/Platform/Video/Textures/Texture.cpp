@@ -59,7 +59,7 @@ namespace Divide
         defaultTexData[3] = to_byte( 1u ); //Alpha: 1
 
         ImageTools::ImageData imgDataDefault = {};
-        DIVIDE_EXPECTED_CALL( imgDataDefault.loadFromMemory( defaultTexData, 4, 1u, 1u, 1u, 4 ) );
+        DIVIDE_EXPECTED_CALL( imgDataDefault.loadFromMemory( {defaultTexData, 4}, vec3<U16>(1u), 1u, 4 ) );
 
         Get(s_defaultTexture2D)->createWithData( imgDataDefault, {});
         Get(s_defaultTexture2DArray)->createWithData( imgDataDefault, {});
@@ -186,7 +186,6 @@ namespace Divide
         {
             _descriptor._layerCount = 1u;
         }
-
     }
 
     Texture::~Texture()
@@ -261,9 +260,12 @@ namespace Divide
                 _descriptor._baseFormat = dataStorage.format();
                 _descriptor._dataType = dataStorage.dataType();
                 // Uploading to the GPU dependents on the rendering API
-                createWithData( dataStorage, {});
+                if (createWithData( dataStorage, {}) != ImageUsage::SHADER_READ )
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                }
 
-                if ( IsCubeTexture( _descriptor._texType ) && ( dataStorage.layerCount() % 6 != 0 || dataStorage.layerCount() / 6 != depth()) )
+                if ( IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() % 6 != 0  )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ), resourceName().c_str() );
                 }
@@ -295,7 +297,6 @@ namespace Divide
     {
         const bool srgb = _descriptor._packing == GFXImagePacking::NORMALIZED_SRGB;
 
-
         if ( !fileExists( path / name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor._textureOptions ) )
         {
             if ( fileData.layerCount() > 0 )
@@ -316,65 +317,84 @@ namespace Divide
         return true;
     }
 
-    void Texture::prepareTextureData( const U16 width, const U16 height, const U16 depth, [[maybe_unused]] const bool emptyAllocation )
+    ImageUsage Texture::prepareTextureData( const vec3<U16>& dimensions, const U16 layers, const bool makeImmutable)
     {
-        _width = width;
-        _height = height;
-        _depth = depth;
-        DIVIDE_ASSERT( _width > 0 && _height > 0 && _depth > 0, "Texture error: Invalid texture dimensions!" );
+        _width  = dimensions.x;
+        _height = dimensions.y;
+        _depth  = dimensions.z;
+        _layerCount = layers;
 
-        validateDescriptor();
+        DIVIDE_ASSERT( _width > 0u && _height > 0u && _depth > 0u && _layerCount > 0u, "Texture error: Invalid texture dimensions!" );
+
+        validateDescriptor(makeImmutable);
+        return ImageUsage::UNDEFINED;
     }
 
-    void Texture::createWithData( const Byte* data, size_t dataSize, const vec2<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    void Texture::submitTextureData(ImageUsage& crtUsageInOut)
     {
-        createWithData(data, dataSize, vec3<U16>{dimensions.width, dimensions.height, _descriptor._layerCount}, pixelUnpackAlignment);
+        DIVIDE_ASSERT(crtUsageInOut != ImageUsage::UNDEFINED);
     }
 
-    void Texture::submitTextureData()
+    ImageUsage Texture::createWithData(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment)
     {
-        NOP();
+        PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
+
+        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u), imageData.layerCount(), true);
+        DIVIDE_UNUSED(ret);
+
+        if ( !IsRenderTargetAttachment(descriptor()) )
+        {
+            if (IsCompressed(_descriptor._baseFormat) && _descriptor._mipMappingState == MipMappingState::AUTO)
+            {
+                _descriptor._mipMappingState = MipMappingState::MANUAL;
+            }
+
+            loadDataInternal(imageData, vec3<U16>(0u), pixelUnpackAlignment);
+
+            ret = ImageUsage::SHADER_READ;
+        }
+
+        submitTextureData(ret);
+
+        return ret;
     }
 
-    void Texture::createWithData( const Byte* data, const size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    ImageUsage Texture::createWithData( const std::span<const Byte> data, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         // This should never be called for compressed textures
         DIVIDE_ASSERT( !IsCompressed( _descriptor._baseFormat ) );
-
-        const U16 slices = IsCubeTexture( _descriptor._texType ) ? dimensions.depth * 6u : dimensions.depth;
-
-        const bool emptyAllocation = dataSize == 0u || data == nullptr;
-        prepareTextureData( dimensions.width, dimensions.height, slices, emptyAllocation );
-
         // We can't manually specify data for msaa textures.
-        DIVIDE_ASSERT( _descriptor._msaaSamples == 0u || data == nullptr );
-        
-        if ( !emptyAllocation )
+        DIVIDE_ASSERT( _descriptor._msaaSamples == 0u || data.empty());
+        // We need a depth of at least 1 and at least 1 layer
+        DIVIDE_ASSERT(dimensions.depth > 0u && _descriptor._layerCount > 0u);
+
+        // ImageData uses a layer per cube face so we need to adjust the layer count accordingly
+        const U16 faces = _descriptor._layerCount * (IsCubeTexture(_descriptor._texType) ? 6u : 1u);
+
+        ImageTools::ImageData imgData{};
+        if ( imgData.loadFromMemory(data, vec3<U16>(dimensions.width, dimensions.height, dimensions.depth), faces, GetBytesPerPixel(_descriptor._dataType, _descriptor._baseFormat, _descriptor._packing)))
         {
-            ImageTools::ImageData imgData{};
-            if ( imgData.loadFromMemory( data, dataSize, dimensions.width, dimensions.height, 1, GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing ) ) )
-            {
-                loadDataInternal( imgData, vec3<U16>(0u), pixelUnpackAlignment);
-            }
+            return createWithData(imgData, pixelUnpackAlignment);
         }
 
-        submitTextureData();
+        return ImageUsage::UNDEFINED;
     }
 
-    void Texture::replaceData( const Byte* data, const size_t dataSize, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment )
+    void Texture::replaceData( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        if ( data == nullptr || dataSize == 0u )
+        if ( data.empty() )
         {
             return;
         }
 
         if ( offset.x == 0u && offset.y == 0u && offset.z == 0u && (range.x > _width || range.y > _height || range.z > _depth) )
         {
-            createWithData(data, dataSize, range, pixelUnpackAlignment);
+            _descriptor._layerCount = range.z;
+            createWithData(data, range, pixelUnpackAlignment);
         }
         else
         {
@@ -382,36 +402,8 @@ namespace Divide
                            offset.height + range.height <= _height &&
                            offset.depth  + range.depth  <= _depth);
 
-            loadDataInternal( data, dataSize, 0u, offset, range, pixelUnpackAlignment );
+            loadDataInternal( data, 0u, offset, range, pixelUnpackAlignment );
         }
-    }
-
-    void Texture::createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-
-        U16 slices = imageData.layerCount();
-        if ( IsCubeTexture( _descriptor._texType ) )
-        {
-            DIVIDE_ASSERT(slices >= 6u && slices % 6u == 0u);
-            slices = slices / 6u;
-        }
-        else if ( Is3DTexture( _descriptor._texType ) )
-        {
-            slices = imageData.dimensions( 0u, 0u ).depth;
-        }
-
-        prepareTextureData( imageData.dimensions( 0u, 0u ).width, imageData.dimensions( 0u, 0u ).height, slices, false );
-
-        if ( IsCompressed( _descriptor._baseFormat ) &&
-             _descriptor._mipMappingState == MipMappingState::AUTO )
-        {
-            _descriptor._mipMappingState = MipMappingState::MANUAL;
-        }
-
-        loadDataInternal( imageData, vec3<U16>(0u), pixelUnpackAlignment);
-
-        submitTextureData();
     }
 
     bool Texture::checkTransparency( const ResourcePath& path, const std::string_view name, ImageTools::ImageData& fileData )
@@ -533,12 +525,14 @@ namespace Divide
         if ( _descriptor._msaaSamples != newSampleCount )
         {
             _descriptor._msaaSamples = newSampleCount;
-            createWithData( nullptr, 0u, { width(), height(), depth() }, {});
+            createWithData( {}, { width(), height(), depth() }, {});
         }
     }
 
-    void Texture::validateDescriptor()
+    void Texture::validateDescriptor(const bool makeImmutable)
     {
+        DIVIDE_UNUSED(makeImmutable);
+
         if ( _descriptor._packing == GFXImagePacking::NORMALIZED_SRGB )
         {
             bool valid = false;

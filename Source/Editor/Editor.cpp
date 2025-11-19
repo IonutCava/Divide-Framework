@@ -250,7 +250,7 @@ namespace Divide
         io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
         io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
-        Get(_fontTexture)->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>( iWidth, iHeight ), {});
+        Get(_fontTexture)->createWithData( { reinterpret_cast<Byte*>(pPixels), iWidth * iHeight * 4u}, vec3<U16>( iWidth, iHeight, 1u ), {});
         // Store our identifier as reloading data may change the handle!
         io.Fonts->SetTexID( to_TexID(_fontTexture) );
     }

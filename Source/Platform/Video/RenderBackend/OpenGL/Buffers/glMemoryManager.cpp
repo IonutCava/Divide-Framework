@@ -311,7 +311,7 @@ void createAndAllocateBuffer( gl46core::GLuint& bufferIdOut,
     DIVIDE_GPU_ASSERT(bufferIdOut != 0 && "GLUtil::allocPersistentBuffer error: buffer creation failed");
     
     gl46core::glNamedBufferStorage(bufferIdOut, alignedSize, initialData.second == alignedSize ? initialData.first : nullptr, storageMask);
-    if (initialData.second != alignedSize)
+    if (initialData.second > 0u && initialData.first != nullptr && initialData.second != alignedSize)
     {
         DIVIDE_GPU_ASSERT(initialData.second < alignedSize);
         gl46core::glNamedBufferSubData(bufferIdOut, 0u, initialData.second, initialData.first);

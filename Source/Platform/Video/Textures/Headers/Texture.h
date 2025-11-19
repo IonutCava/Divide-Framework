@@ -101,11 +101,10 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
 
         /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
-        void createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
-        void createWithData( const Byte* data, size_t dataSize, const vec2<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
-        void createWithData( const Byte* data, size_t dataSize, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
+        ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
+        ImageUsage createWithData( std::span<const Byte> data, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment);
 
-        void replaceData(const Byte* data, size_t dataSize, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment );
+        void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment );
 
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );
@@ -126,8 +125,10 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         PROPERTY_R( U16, width, 0u );
         /// Texture height as returned by STB/DDS loader
         PROPERTY_R( U16, height, 0u );
-        /// Depth for TEXTURE_3D, layer count for TEXTURE_1/2D/CUBE_ARRAY. For cube arrays, numSlices = depth * 6u
+        /// Depth for TEXTURE_3D
         PROPERTY_R( U16, depth, 1u );
+        /// Layer count for array textures and cubemaps
+        PROPERTY_R( U16, layerCount, 1u );
         /// If the texture has an alpha channel and at least one pixel is translucent, return true
         PROPERTY_R( bool, hasTranslucency, false );
         /// If the texture has an alpha channel and at least on pixel is fully transparent and no pixels are partially transparent, return true
@@ -144,12 +145,12 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         /// Load texture data using the specified file name
         bool loadInternal();
 
-        void validateDescriptor();
+        void validateDescriptor(bool makeImmutable);
 
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) = 0;
-        virtual void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
-        virtual void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation );
-        virtual void submitTextureData();
+        virtual void loadDataInternal( std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
+        virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable );
+        virtual void submitTextureData(ImageUsage& crtUsageInOut);
 
     protected:
         static bool s_useDDSCache;

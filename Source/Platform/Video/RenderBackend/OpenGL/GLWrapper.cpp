@@ -313,6 +313,7 @@ namespace Divide
         GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIB_BINDINGS, deviceInformation._maxVertAttributeBindings );
 
         GLUtil::getGLValue( gl46core::GL_MAX_TEXTURE_SIZE, deviceInformation._maxTextureSize );
+        GLUtil::getGLValue( gl46core::GL_MAX_3D_TEXTURE_SIZE, deviceInformation._max3DTextureSize);
 
         deviceInformation._versionInfo._major = to_U8( GLUtil::getGLValue( gl46core::GL_MAJOR_VERSION ) );
         deviceInformation._versionInfo._minor = to_U8( GLUtil::getGLValue( gl46core::GL_MINOR_VERSION ) );
@@ -987,11 +988,9 @@ namespace Divide
                                                                                          srcView._descriptor._dataType,
                                                                                          srcView._descriptor._packing )._format;
 
-            DIVIDE_ASSERT(srcView._subRange._layerRange._count != ALL_LAYERS);
-            
             const bool isCube = IsCubeTexture(srcTexture->descriptor()._texType);
             const U16 texLayers = isCube ? srcTexture->depth() * 6u : srcTexture->depth();
-            const U16 layerCount = srcView._subRange._layerRange._count == ALL_LAYERS ? texLayers : srcView._subRange._layerRange._count;
+            const U16 layerCount = srcView._subRange._layerRange._count;
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
             gl46core::glTextureView( handle,
@@ -1001,7 +1000,7 @@ namespace Divide
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._offset),
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._count),
                                      srcView._subRange._layerRange._offset * (isCube ? 6 : 1),
-                                     layerCount);
+                                     layerCount == ALL_LAYERS ? ALL_LAYERS : layerCount * (isCube ? 6 : 1));
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );

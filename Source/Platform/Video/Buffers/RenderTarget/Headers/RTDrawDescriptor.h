@@ -56,7 +56,6 @@ struct BlitEntry
 struct DrawLayerEntry
 {
     SubRange _layer{0u, 1u};
-    /// Ignored for non cube textures
     U8 _cubeFace{0u}; 
 
     bool operator==(const DrawLayerEntry&) const = default;

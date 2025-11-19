@@ -278,6 +278,9 @@ namespace Divide
     VKDeletionQueue VK_API::s_transientDeleteQueue;
     VKDeletionQueue VK_API::s_deviceDeleteQueue;
     VKTransferQueue VK_API::s_transferQueue;
+    VKImageBarrierQueue VK_API::s_imageBarrierQueue;
+    VKSubmitSempahore VK_API::s_submitSemaphores;
+
     VKStateTracker VK_API::s_stateTracker;
     eastl::stack<vkShaderProgram*> VK_API::s_reloadedShaders;
     SharedMutex VK_API::s_samplerMapLock;
@@ -499,7 +502,46 @@ namespace Divide
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &cmd;
 
+        thread_local VKSubmitSempahore::Container waitSems;
+        thread_local fixed_vector<VkPipelineStageFlags, 8, true > waitStages;
+
+        {
+            LockGuard<Mutex> submitLock(VK_API::s_submitSemaphores._lock);
+            // copy current pending semaphores (do not remove; frame will still consume them later)
+            waitSems = VK_API::s_submitSemaphores._pendingSubmitSemaphores;
+            VK_API::s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
+        }
+
+        for (VkSemaphore semaphore : waitSems)
+        {
+            VK_API::RegisterCustomAPIDelete([semaphore](VkDevice device)
+            {
+                vkDestroySemaphore(device, semaphore, nullptr);
+            }, true);
+        }
+
+        // Create a transient semaphore to signal completion of this immediate submit.
+        VkSemaphoreCreateInfo semCreate = vk::semaphoreCreateInfo();
+        VkSemaphore submitSemaphore = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateSemaphore(_context.getVKDevice(), &semCreate, nullptr, &submitSemaphore));
+
+        if ( !waitSems.empty() )
+        {
+            waitStages.resize(waitSems.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+
+            submitInfo.waitSemaphoreCount = to_U32(waitSems.size());
+            submitInfo.pWaitSemaphores = waitSems.data();
+            submitInfo.pWaitDstStageMask = waitStages.data();
+        }
+
+        // Signal our transient semaphore when done so the frame submit can wait on it.
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &submitSemaphore;
+
         _context.submitToQueue( _type, submitInfo, fence );
+
+        VK_API::PushPendingSubmitSemaphore(submitSemaphore);
+
         _bufferIndex = (_bufferIndex + 1u) % BUFFER_COUNT;
 
         if ( _bufferIndex == 0u )
@@ -554,6 +596,40 @@ namespace Divide
         return _cmdContexts[to_base( type )].get();
     }
 
+    void VK_API::EnqueueImageBarriers( const std::span<VkImageMemoryBarrier2> barriers )
+    {
+        if (barriers.empty())
+        {
+            return;
+        }
+
+        UniqueLock<Mutex> w_lock(s_imageBarrierQueue._lock);
+        for (const VkImageMemoryBarrier2& barrier : barriers)
+        {
+            s_imageBarrierQueue._imageBarriers.push_back(barrier);
+        }
+    }
+
+    void VK_API::RecordOrEnqueueImageBarriers(const std::span<VkImageMemoryBarrier2> barriers)
+    {
+        if ( barriers.empty() )
+        {
+            return;
+        }
+
+        VkCommandBuffer cmdBuffer = VK_API::GetCurrentCommandBuffer();
+        if (cmdBuffer != VK_NULL_HANDLE )
+        {
+            VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+            dependencyInfo.imageMemoryBarrierCount = to_U32(barriers.size());
+            dependencyInfo.pImageMemoryBarriers = barriers.data();
+            vkTexture::FlushPipelineBarriers(cmdBuffer, dependencyInfo );
+            return;
+        }
+
+        EnqueueImageBarriers( barriers );
+    }
+
     void VK_API::RegisterCustomAPIDelete( DELEGATE<void, VkDevice>&& cbk, const bool isResourceTransient )
     {
         if ( isResourceTransient )
@@ -577,9 +653,16 @@ namespace Divide
     {
     }
 
-    VkCommandBuffer VK_API::getCurrentCommandBuffer() const noexcept
+    VkCommandBuffer VK_API::GetCurrentCommandBuffer() noexcept
     {
-        return s_stateTracker._activeWindow->_swapChain->getFrameData()._commandBuffer;
+        if (FrameData* frameData = nullptr;
+            s_stateTracker._activeWindow != nullptr &&
+            s_stateTracker._activeWindow->_swapChain->getFrameData(frameData))
+        {
+            return frameData->_commandBuffer;
+        }
+
+        return VK_NULL_HANDLE;
     }
 
     void VK_API::idle( [[maybe_unused]] const bool fast ) noexcept
@@ -655,12 +738,29 @@ namespace Divide
             return;
         }
 
-        FlushBufferTransferRequests( windowState._swapChain->getFrameData()._commandBuffer );
+        FlushBufferTransferRequests( GetCurrentCommandBuffer() );
 
         windowState._activeState = {};
         s_dynamicOffsets.reset_lose_memory();
 
-        const VkResult result = windowState._swapChain->endFrame();
+        thread_local VKSubmitSempahore::Container s_localPendingSems;
+        {
+            LockGuard<Mutex> w_lock(s_submitSemaphores._lock);
+            s_localPendingSems = s_submitSemaphores._pendingSubmitSemaphores;
+            s_submitSemaphores._pendingSubmitSemaphores.reset_lose_memory();
+        }
+
+        const VkResult result = windowState._swapChain->endFrame( s_submitSemaphores._pendingSubmitSemaphores );
+
+        for (VkSemaphore semaphore : s_localPendingSems)
+        {
+            VK_API::RegisterCustomAPIDelete([semaphore](VkDevice device)
+            {
+                vkDestroySemaphore(device, semaphore, nullptr);
+            }, true);
+        }
+
+        s_localPendingSems.reset_lose_memory();
 
         if ( result != VK_SUCCESS )
         {
@@ -1043,6 +1143,7 @@ namespace Divide
         deviceInformation._maxRTColourAttachments = deviceProperties.limits.maxColorAttachments;
         deviceInformation._maxDrawIndirectCount = deviceProperties.limits.maxDrawIndirectCount;
         deviceInformation._maxTextureSize = deviceProperties.limits.maxImageDimension2D;
+        deviceInformation._max3DTextureSize = deviceProperties.limits.maxImageDimension3D;
 
         DIVIDE_GPU_ASSERT( deviceInformation._maxBufferSizeBytes > 0u );
         Console::printfn(LOCALE_STR("GL_VK_BUFFER_MAX_SIZE"), deviceInformation._maxBufferSizeBytes / 1024 / 1024);
@@ -1435,7 +1536,7 @@ namespace Divide
 
     bool VK_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( getCurrentCommandBuffer() );
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( GetCurrentCommandBuffer() );
 
         auto& program = GetStateTracker()._pipeline._program;
         DIVIDE_GPU_ASSERT( program != nullptr );
@@ -1657,11 +1758,11 @@ namespace Divide
                 else
                 {
                     const auto& pipeline = GetStateTracker()._pipeline;
-                    VK_PROFILE( vkCmdPushDescriptorSetKHR, getCurrentCommandBuffer(),
-                                                            pipeline._bindPoint,
-                                                            pipeline._vkPipelineLayout,
-                                                            0,
-                                                            to_U32(descriptorWrites.size()),
+                    VK_PROFILE( vkCmdPushDescriptorSetKHR, GetCurrentCommandBuffer(),
+                                                           pipeline._bindPoint,
+                                                           pipeline._vkPipelineLayout,
+                                                           0,
+                                                           to_U32(descriptorWrites.size()),
                         descriptorWrites.data());
                 }
 
@@ -1715,7 +1816,7 @@ namespace Divide
             }
 
             const auto& pipeline = GetStateTracker()._pipeline;
-            VK_PROFILE( vkCmdBindDescriptorSets, getCurrentCommandBuffer(),
+            VK_PROFILE( vkCmdBindDescriptorSets, GetCurrentCommandBuffer(),
                                                  pipeline._bindPoint,
                                                  pipeline._vkPipelineLayout,
                                                  offset,
@@ -2190,6 +2291,12 @@ namespace Divide
         VK_PROFILE( vkCmdPipelineBarrier2, cmd, &dependencyInfo );
     }
 
+    /*static*/ void VK_API::PushPendingSubmitSemaphore(VkSemaphore semaphore)
+    {
+        LockGuard<Mutex> lock(s_submitSemaphores._lock);
+        s_submitSemaphores._pendingSubmitSemaphores.push_back(semaphore);
+    }
+
     struct BufferTransferProcessor
     {
         void flushBarriers(VkCommandBuffer cmdBuffer) noexcept
@@ -2411,12 +2518,13 @@ namespace Divide
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
+
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
 
         auto& stateTracker = GetStateTracker();
 
-        VkCommandBuffer cmdBuffer = getCurrentCommandBuffer();
-        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
+        VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
 
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
@@ -2918,7 +3026,6 @@ namespace Divide
 
                     const vkTexture* vkTex = static_cast<const vkTexture*>(it._targetView._srcTexture);
 
-                    const bool isDepthTexture = IsDepthTexture( vkTex->descriptor()._packing );
                     const bool isCube = IsCubeTexture( vkTex->descriptor()._texType);
 
                     vkTexture::TransitionType transitionType = vkTexture::TransitionType::COUNT;
@@ -2935,7 +3042,7 @@ namespace Divide
                             {
                                 case ImageUsage::UNDEFINED:
                                 {
-                                    transitionType = isDepthTexture ? vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_COLOUR;
+                                    transitionType = vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ;
                                 } break;
                                 case ImageUsage::SHADER_READ:
                                 {
@@ -2943,11 +3050,11 @@ namespace Divide
                                 } break;
                                 case ImageUsage::SHADER_WRITE:
                                 {
-                                    transitionType = isDepthTexture ? vkTexture::TransitionType::GENERAL_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::GENERAL_TO_SHADER_READ_COLOUR;
+                                    transitionType = vkTexture::TransitionType::SHADER_WRITE_TO_SHADER_READ;
                                 }break;
                                 case ImageUsage::SHADER_READ_WRITE:
                                 {
-                                    transitionType = isDepthTexture ? vkTexture::TransitionType::SHADER_READ_WRITE_TO_SHADER_READ_DEPTH : vkTexture::TransitionType::SHADER_READ_WRITE_TO_SHADER_READ_COLOUR;
+                                    transitionType = vkTexture::TransitionType::SHADER_READ_WRITE_TO_SHADER_READ;
                                 } break;
                                 case ImageUsage::RT_COLOUR_ATTACHMENT:
                                 {
@@ -2970,11 +3077,11 @@ namespace Divide
                             {
                                 case ImageUsage::UNDEFINED:
                                 {
-                                    transitionType = vkTexture::TransitionType::UNDEFINED_TO_GENERAL;
+                                    transitionType = vkTexture::TransitionType::UNDEFINED_TO_SHADER_WRITE;
                                 } break;
                                 case ImageUsage::SHADER_READ:
                                 {
-                                    transitionType = isDepthTexture ? vkTexture::TransitionType::SHADER_READ_DEPTH_TO_GENERAL : vkTexture::TransitionType::SHADER_READ_COLOUR_TO_GENERAL;
+                                    transitionType = vkTexture::TransitionType::SHADER_READ_TO_SHADER_WRITE;
                                 } break;
                                 case ImageUsage::SHADER_WRITE:
                                 {
@@ -3009,7 +3116,7 @@ namespace Divide
                                 } break;
                                 case ImageUsage::SHADER_READ:
                                 {
-                                    transitionType = isDepthTexture ? vkTexture::TransitionType::SHADER_READ_DEPTH_TO_SHADER_READ_WRITE : vkTexture::TransitionType::SHADER_READ_COLOUR_TO_SHADER_READ_WRITE;
+                                    transitionType = vkTexture::TransitionType::SHADER_READ_TO_SHADER_READ_WRITE;
                                 } break;
                                 case ImageUsage::SHADER_WRITE:
                                 {
@@ -3116,13 +3223,30 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
+
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
         GetStateTracker()._activeRenderTargetColourAttachmentCount = 1u;
         GetStateTracker()._activeRenderTargetDimensions = s_stateTracker._activeWindow->_window->getDrawableSize();
         // We don't really know what happened before this state and at worst this is going to end up into an 
         // extra vkCmdPushConstants call with default data, so better safe.
         GetStateTracker()._pushConstantsValid = false;
-        FlushBufferTransferRequests( getCurrentCommandBuffer() );
+        FlushBufferTransferRequests( cmdBuffer );
+
+        if ( !s_imageBarrierQueue._imageBarriers.empty() )
+        {
+            UniqueLock<Mutex> w_lock(s_imageBarrierQueue._lock);
+            if (!s_imageBarrierQueue._imageBarriers.empty())
+            {
+                VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+                dependencyInfo.imageMemoryBarrierCount = to_U32(s_imageBarrierQueue._imageBarriers.size());
+                dependencyInfo.pImageMemoryBarriers = s_imageBarrierQueue._imageBarriers.data();
+
+                vkTexture::FlushPipelineBarriers( cmdBuffer, dependencyInfo );
+
+                s_imageBarrierQueue._imageBarriers.reset_lose_memory();
+            }
+        }
     }
 
     void VK_API::postFlushCommandBuffer( [[maybe_unused]] const Handle<GFX::CommandBuffer> commandBuffer ) noexcept
@@ -3138,7 +3262,7 @@ namespace Divide
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport ) noexcept
     {
-        return setViewportInternal( newViewport, getCurrentCommandBuffer() );
+        return setViewportInternal( newViewport, GetCurrentCommandBuffer() );
     }
 
     bool VK_API::setViewportInternal( const Rect<I32>& newViewport, VkCommandBuffer cmdBuffer ) noexcept
@@ -3167,7 +3291,7 @@ namespace Divide
 
     bool VK_API::setScissorInternal( const Rect<I32>& newScissor ) noexcept
     {
-        return setScissorInternal( newScissor, getCurrentCommandBuffer() );
+        return setScissorInternal( newScissor, GetCurrentCommandBuffer() );
     }
 
     bool VK_API::setScissorInternal( const Rect<I32>& newScissor, VkCommandBuffer cmdBuffer ) noexcept

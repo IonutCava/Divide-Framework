@@ -153,7 +153,7 @@ struct VKImmediateCmdContext
 
     void flushCommandBuffer( FlushCallback&& function, const char* scopeName, bool waitForFinish = false );
 
-    private:
+  private:
 
     VKDevice& _context;
     const Configuration& _config;
@@ -284,6 +284,19 @@ struct VKTransferQueue
     std::atomic_bool _dirty{ false };
 };
 
+struct VKImageBarrierQueue
+{
+    Mutex _lock;
+    fixed_vector<VkImageMemoryBarrier2, 16, true> _imageBarriers;
+};
+
+struct VKSubmitSempahore
+{
+    using Container = fixed_vector<VkSemaphore, 16, true>;
+
+    Mutex _lock;
+    Container _pendingSubmitSemaphores;
+};
 //ref:  SaschaWillems / Vulkan / VulkanTools
 inline std::string VKErrorString(VkResult errorCode)
 {

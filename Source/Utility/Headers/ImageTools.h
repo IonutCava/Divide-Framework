@@ -58,16 +58,13 @@ struct ImageMip final : LayerData {
 
         _data.resize(actualSize, T{ 0u });
 
-        if (len > 0u)
+        if ( data != nullptr )
         {
-            if ( data != nullptr )
-            {
-                std::memcpy( _data.data(), data, len == 0u ? totalSizeTest : len * sizeof( T ) );
-            }
-            else
-            {
-                std::memset(_data.data(), 0u, len == 0u ? totalSizeTest : len * sizeof ( T ));
-            }
+            std::memcpy( _data.data(), data, len == 0u ? totalSizeTest : len * sizeof( T ) );
+        }
+        else
+        {
+            std::memset(_data.data(), 0u, len == 0u ? totalSizeTest : len * sizeof ( T ));
         }
 
         _size = actualSize;
@@ -124,8 +121,10 @@ struct ImageData final : NonCopyable
     void requestedFormat(const GFXDataFormat format) noexcept { _requestedDataFormat = format; }
 
     /// set and get the image's actual data 
-    [[nodiscard]] bufferPtr data(const U32 layer, const U8 mipLevel) const {
-        if (layer < _layers.size() &&  mipLevel < mipCount()) {
+    [[nodiscard]] bufferPtr data(const U32 layer, const U8 mipLevel) const
+    {
+        if (layer < _layers.size() &&  mipLevel < mipCount())
+        {
             // triple data-ception
             return _layers[layer].data(mipLevel);
         }
@@ -133,12 +132,14 @@ struct ImageData final : NonCopyable
         return nullptr;
     }
 
-    [[nodiscard]] const vector<ImageLayer>& imageLayers() const noexcept {
+    [[nodiscard]] const vector<ImageLayer>& imageLayers() const noexcept
+    {
         return _layers;
     }
 
     /// image width, height and depth
-    [[nodiscard]] const vec3<U16>& dimensions(const U32 layer, const U8 mipLevel = 0u) const {
+    [[nodiscard]] const vec3<U16>& dimensions(const U32 layer, const U8 mipLevel = 0u) const
+    {
         assert(mipLevel < mipCount());
         assert(layer < _layers.size());
 
@@ -167,11 +168,10 @@ struct ImageData final : NonCopyable
     FORCE_INLINE void getBlue(const I32 x, const I32 y, U8& b, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 2, b, layer, mipLevel); }
     FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
 
-    [[nodiscard]] bool loadFromMemory(const Byte* data, size_t size, U16 width, U16 height, U16 depth, U8 numComponents);
+    [[nodiscard]] bool loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, U16 layerCount, U8 numComponents);
     /// creates this image instance from the specified data
     [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
-
 
     [[nodiscard]] FORCE_INLINE ResourcePath fullPath() const noexcept { return _path / _name; }
 
@@ -179,6 +179,8 @@ struct ImageData final : NonCopyable
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
     /// If true, then the source image was probably RGB and we loaded it as RGBA
     PROPERTY_R(bool, hasDummyAlphaChannel, false);
+    /// If true, the initial passed in data was either null or the size was 0
+    PROPERTY_R(bool, hasDummyData, false);
 
   protected:
     friend class ImageDataInterface;

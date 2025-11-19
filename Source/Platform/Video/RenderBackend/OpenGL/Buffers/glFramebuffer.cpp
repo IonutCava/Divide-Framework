@@ -83,13 +83,27 @@ namespace Divide
         }
 
         ResourcePtr<Texture> texPtr = Get(tex);
+        const auto& desc = texPtr->descriptor();
+        const TextureType texType = desc._texType;
+        const bool isCube = IsCubeTexture(texType);
+        const bool is3D = (texType == TextureType::TEXTURE_3D);
 
-        if ( texPtr->depth() == 1u )
+        if (targetLayers._layer._offset == 0u &&
+            targetLayers._cubeFace == 0u &&
+            (targetLayers._layer._count >= desc._layerCount ))
         {
-            DIVIDE_GPU_ASSERT(targetLayers._layer._offset == 0u );
-            if ( !IsCubeTexture( texPtr->descriptor()._texType ) || targetLayers._cubeFace == 0u )
+            targetLayers._layer._count = ALL_LAYERS;
+        }
+        else
+        {
+            DIVIDE_ASSERT( is3D   || texPtr->depth() == 1u );
+            DIVIDE_ASSERT( isCube || targetLayers._cubeFace == 0u);
+
+            if (desc._layerCount <= 1u && !isCube)
             {
+                targetLayers._layer._offset = 0u;
                 targetLayers._layer._count = ALL_LAYERS;
+                targetLayers._cubeFace = 0u;
             }
         }
 
@@ -115,34 +129,43 @@ namespace Divide
             }
             else
             {
-                DIVIDE_GPU_ASSERT( bState._layers._layer._offset < texPtr->depth() && bState._levelOffset < texPtr->mipCount());
+                const size_t maxLayers = is3D ? texPtr->depth() : to_size(desc._layerCount) * (isCube ? 6u : 1u);
+                DIVIDE_GPU_ASSERT( bState._layers._layer._offset < maxLayers && bState._levelOffset < texPtr->mipCount());
 
                 ResourcePtr<Texture> resolvedTexPtr = Get( attachment->resolvedTexture() );
 
                 const gl46core::GLuint handle = static_cast<glTexture*>(texPtr)->textureHandle();
-                if ( bState._layers._layer._offset == 0u && bState._layers._cubeFace == 0u && bState._layers._layer._count == ALL_LAYERS )
+
+                // Fast path: full texture bind (no per-layer / per-face)
+                const bool bindWholeTexture = bState._layers._layer._offset == 0u &&
+                                              bState._layers._cubeFace == 0u &&
+                                              (bState._layers._layer._count == ALL_LAYERS);
+                if ( bindWholeTexture )
                 {
-                    gl46core::glNamedFramebufferTexture( _framebufferHandle, binding, handle, bState._levelOffset);
+                    gl46core::glNamedFramebufferTexture( _framebufferHandle, binding, handle, static_cast<gl46core::GLint>(bState._levelOffset));
                     if ( _attachmentsAutoResolve[attachmentIdx] )
                     {
-                        gl46core::glNamedFramebufferTexture( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset );
-                    }
-                }
-                else if ( IsCubeTexture( texPtr->descriptor()._texType ) )
-                {
-                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layers._cubeFace + (bState._layers._layer._offset * 6u) );
-                    if ( _attachmentsAutoResolve[attachmentIdx] )
-                    {
-                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layers._cubeFace + (bState._layers._layer._offset * 6u) );
+                        gl46core::glNamedFramebufferTexture( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), static_cast<gl46core::GLint>(bState._levelOffset) );
                     }
                 }
                 else
                 {
-                    assert(bState._layers._cubeFace == 0u);
-                    gl46core::glNamedFramebufferTextureLayer( _framebufferHandle, binding, handle, bState._levelOffset, bState._layers._layer._offset );
-                    if ( _attachmentsAutoResolve[attachmentIdx] )
+                    // Per-layer / per-face binding -> use TextureLayer attach
+                    // Compute layer index for GL:
+                    // - For 3D: layer selects the z-slice (0 .. depth-1)
+                    // - For cubemap-array or cubemap: index = cubeFace + layerOffset * 6
+                    // - For 2D array: index = layerOffset
+
+                    const U32 layerIndex = is3D 
+                                            ? bState._layers._layer._offset // z slice
+                                            : isCube 
+                                                ? bState._layers._cubeFace + (bState._layers._layer._offset * 6u)
+                                                : bState._layers._layer._offset; // array index
+
+                    gl46core::glNamedFramebufferTextureLayer(_framebufferHandle, binding, handle, bState._levelOffset, static_cast<gl46core::GLint>(layerIndex));
+                    if (_attachmentsAutoResolve[attachmentIdx])
                     {
-                        gl46core::glNamedFramebufferTextureLayer( _framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, bState._layers._layer._offset );
+                        gl46core::glNamedFramebufferTextureLayer(_framebufferResolveHandle, binding, static_cast<glTexture*>(resolvedTexPtr)->textureHandle(), bState._levelOffset, static_cast<gl46core::GLint>(layerIndex));
                     }
                 }
             }
@@ -752,3 +775,4 @@ namespace Divide
     }
 
 };  // namespace Divide
+
