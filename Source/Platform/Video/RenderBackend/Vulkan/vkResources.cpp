@@ -553,4 +553,176 @@ namespace Divide
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
     }; //namespace VKUtil
+
+    void PrepareTransferRequest(const VKTransferQueue::TransferRequest& request, bool toWrite, VkBufferMemoryBarrier2& memBarrierOut)
+    {
+        memBarrierOut = vk::bufferMemoryBarrier2();
+
+        if (toWrite)
+        {
+            memBarrierOut.srcStageMask = request.dstStageMask;
+            memBarrierOut.srcAccessMask = request.dstAccessMask;
+
+            memBarrierOut.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memBarrierOut.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+        }
+        else
+        {
+            memBarrierOut.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memBarrierOut.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+
+            memBarrierOut.dstStageMask = request.dstStageMask;
+            memBarrierOut.dstAccessMask = request.dstAccessMask;
+        }
+
+        memBarrierOut.offset = request.dstOffset;
+        memBarrierOut.size = request.size;
+        memBarrierOut.buffer = request.dstBuffer;
+    }
+
+    void VkBufferTransferProcessor::flushBarriers(VkCommandBuffer cmdBuffer) noexcept
+    {
+        if (0u == _barrierCount)
+        {
+            return;
+        }
+
+        VkDependencyInfo dependencyInfo = vk::dependencyInfo();
+        dependencyInfo.bufferMemoryBarrierCount = to_U32(_barrierCount);
+        dependencyInfo.pBufferMemoryBarriers = _barriers.data();
+
+        VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
+        {
+            VK_PROFILE(vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+        }
+
+        _barrierCount = 0u;
+    };
+
+    void VkBufferTransferProcessor::flushCopies(VkCommandBuffer cmdBuffer) noexcept
+    {
+        if (0u == _copyRequestsCount)
+        {
+            return;
+        }
+
+        for (size_t k = 0u; k < _copyRequestsCount; ++k)
+        {
+            PerBufferCopies& entry = _copyRequests[k];
+
+            if (entry._copiesPerBuffer.empty())
+            {
+                continue;
+            }
+
+            VkCopyBufferInfo2 copyInfo
+            {
+                .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+                .srcBuffer = entry._srcBuffer,
+                .dstBuffer = entry._dstBuffer,
+                .regionCount = to_U32(entry._copiesPerBuffer.size()),
+                .pRegions = entry._copiesPerBuffer.data()
+            };
+
+            VK_UT_IF_CHECK(cmdBuffer != VK_NULL_HANDLE)
+            {
+                VK_PROFILE(vkCmdCopyBuffer2, cmdBuffer, &copyInfo);
+            }
+
+            entry._srcBuffer = VK_NULL_HANDLE;
+            entry._dstBuffer = VK_NULL_HANDLE;
+            entry._copiesPerBuffer.reset_lose_memory();
+        }
+        _copyRequestsCount = 0u;
+    };
+
+    void VkBufferTransferProcessor::processCurrentBatch( VkCommandBuffer cmdBuffer) noexcept
+    {
+        if (0u == _transferBatchedCount)
+        {
+            return;
+        }
+
+        // prepare pre-copy barriers
+        for (size_t i = 0u; i < _transferBatchedCount; ++i)
+        {
+            VkBufferMemoryBarrier2 b = vk::bufferMemoryBarrier2();
+            PrepareTransferRequest(_transferQueueBatched[i], true, b);
+            addBarrier(b, cmdBuffer);
+        }
+
+        flushBarriers(cmdBuffer);
+
+        _copyRequestsCount = 0u;
+        for (size_t i = 0u; i < _transferBatchedCount; ++i)
+        {
+            const auto& tr = _transferQueueBatched[i];
+            VkBufferCopy2 copy
+            {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+                .srcOffset = tr.srcOffset,
+                .dstOffset = tr.dstOffset,
+                .size = tr.size
+            };
+
+            bool found = false;
+            for (size_t j = 0u; j < _copyRequestsCount; ++j)
+            {
+                PerBufferCopies& entry = _copyRequests[j];
+
+                if (entry._srcBuffer == tr.srcBuffer &&
+                    entry._dstBuffer == tr.dstBuffer &&
+                    entry._copiesPerBuffer.size() < MAX_BUFFER_COPIES_PER_FLUSH)
+                {
+                    entry._copiesPerBuffer.emplace_back( copy );
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                // initialize new slot
+                PerBufferCopies& entry = _copyRequests[_copyRequestsCount++];
+                entry._srcBuffer = tr.srcBuffer;
+                entry._dstBuffer = tr.dstBuffer;
+                entry._copiesPerBuffer.reset_lose_memory();
+                entry._copiesPerBuffer.emplace_back(copy);
+
+                if (MAX_BUFFER_COPIES_PER_FLUSH == _copyRequestsCount)
+                {
+                    flushCopies(cmdBuffer);
+                    _copyRequestsCount = 0u;
+                }
+            }
+        }
+
+        flushCopies(cmdBuffer);
+
+        for (size_t i = 0u; i < _transferBatchedCount; ++i)
+        {
+            VkBufferMemoryBarrier2 b = vk::bufferMemoryBarrier2();
+            PrepareTransferRequest(_transferQueueBatched[i], false, b);
+            addBarrier(b, cmdBuffer);
+        }
+
+        _transferBatchedCount = 0u;
+    };
+
+    void VkBufferTransferProcessor::addBarrier(const VkBufferMemoryBarrier2& barrier, VkCommandBuffer cmdBuffer) noexcept
+    {
+        _barriers[_barrierCount++] = barrier;
+        if (MAX_BUFFER_COPIES_PER_FLUSH == _barrierCount)
+        {
+            flushBarriers(cmdBuffer);
+            _barrierCount = 0u;
+        }
+    }
+
+    void VkBufferTransferProcessor::reset() noexcept
+    {
+        _transferBatchedCount = 0u;
+        _barrierCount = 0u;
+        _copyRequestsCount = 0u;
+    }
 }; //namespace Divide

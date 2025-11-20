@@ -16,8 +16,6 @@ namespace Divide
 
     namespace
     {
-        std::once_flag transition_once_flag;
-
         VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
         {
             DIVIDE_GPU_ASSERT(usage != ImageUsage::COUNT);
@@ -1323,37 +1321,18 @@ namespace Divide
 
         constexpr auto SHADER_READ_WRITE_BIT = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
 
-        static auto SHADER_SAMPLE_STAGE_MASK = 0u;
-
-        std::call_once(
-            transition_once_flag,
-            []()
-            {
-                SHADER_SAMPLE_STAGE_MASK = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-
-                if ( GFXDevice::GetDeviceInformation()._meshShadingSupported )
-                {
-                    SHADER_SAMPLE_STAGE_MASK |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
-                                                VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
-                }
-            }
-        );
+        static auto SHADER_SAMPLE_STAGE_MASK = VK_API::AllShaderStages();
 
         switch ( type )
         {
             case TransitionType::UNDEFINED_TO_COLOUR_ATTACHMENT:
             {
                 memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                memBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT;
@@ -1363,16 +1342,16 @@ namespace Divide
             case TransitionType::UNDEFINED_TO_DEPTH_ATTACHMENT:
             {
                 memBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                memBarrier.oldLayout     = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
                 memBarrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
                 if (namedImage._isResolveImage)
                 {
                     // Resolve images may also be written by color/resolve domains; include those stages/accesses conservatively.
-                    memBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    memBarrier.dstStageMask  |= VK_PIPELINE_STAGE_2_RESOLVE_BIT | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                     memBarrier.dstAccessMask |= VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                 }
 
@@ -1383,14 +1362,14 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
@@ -1403,13 +1382,13 @@ namespace Divide
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
                     memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK | VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT  | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
@@ -1454,7 +1433,7 @@ namespace Divide
             case TransitionType::DEPTH_ATTACHMENT_TO_SHADER_WRITE:
             {
                 memBarrier.srcAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                             | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                                         | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                 memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
                 memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 
@@ -1527,14 +1506,14 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
@@ -1546,14 +1525,14 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstAccessMask = SHADER_READ_WRITE_BIT;
@@ -1575,14 +1554,14 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -1594,14 +1573,14 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
@@ -1617,8 +1596,8 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-                    memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.newLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
@@ -1636,8 +1615,8 @@ namespace Divide
                 if ( namedImage._isResolveImage )
                 {
                     memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
-                    memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.newLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
@@ -1661,14 +1640,14 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
@@ -1690,14 +1669,14 @@ namespace Divide
                 if (namedImage._isResolveImage)
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                    memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                    memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_RESOLVE_BIT;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
                 }
                 else
                 {
                     memBarrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-                    memBarrier.srcStageMask = SHADER_SAMPLE_STAGE_MASK;
-                    memBarrier.oldLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+                    memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                    memBarrier.oldLayout     = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
                 }
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -1721,8 +1700,8 @@ namespace Divide
                 memBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
                 memBarrier.dstAccessMask = SHADER_READ_WRITE_BIT;
-                memBarrier.dstStageMask = SHADER_SAMPLE_STAGE_MASK;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                memBarrier.dstStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                memBarrier.newLayout     = VK_IMAGE_LAYOUT_GENERAL;
             } break;
             case TransitionType::COPY_WRITE_TO_SHADER_READ:
             {
@@ -1741,8 +1720,8 @@ namespace Divide
                 memBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
                 
                 memBarrier.dstAccessMask = SHADER_READ_WRITE_BIT;
-                memBarrier.dstStageMask = SHADER_SAMPLE_STAGE_MASK;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                memBarrier.dstStageMask  = SHADER_SAMPLE_STAGE_MASK;
+                memBarrier.newLayout     = VK_IMAGE_LAYOUT_GENERAL;
             } break;
             case TransitionType::SHADER_READ_WRITE_TO_COPY_READ:
             {
@@ -1797,12 +1776,12 @@ namespace Divide
             case TransitionType::ATTACHMENT_TO_BLIT_WRITE_COLOUR:
             {
                 memBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | (namedImage._isResolveImage ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | (namedImage._isResolveImage ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
+                memBarrier.oldLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
+                memBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
             } break;
             case TransitionType::ATTACHMENT_TO_BLIT_WRITE_DEPTH:
             {
@@ -1817,12 +1796,12 @@ namespace Divide
             case TransitionType::BLIT_READ_TO_ATTACHMENT_COLOUR:
             {
                 memBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
+                memBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | (namedImage._isResolveImage ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | (namedImage._isResolveImage ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
+                memBarrier.newLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
             } break;
             case TransitionType::BLIT_READ_TO_ATTACHMENT_DEPTH:
             {
@@ -1838,12 +1817,12 @@ namespace Divide
             case TransitionType::BLIT_WRITE_TO_ATTACHMENT_COLOUR:
             {
                 memBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-                memBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
-                memBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                memBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BLIT_BIT;
+                memBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-                memBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | (namedImage._isResolveImage ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
-                memBarrier.newLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
+                memBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | (namedImage._isResolveImage ? VK_PIPELINE_STAGE_2_RESOLVE_BIT : 0);
+                memBarrier.newLayout     = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL;
             } break;
             case TransitionType::BLIT_WRITE_TO_ATTACHMENT_DEPTH:
             {
@@ -1861,6 +1840,5 @@ namespace Divide
                 DIVIDE_UNEXPECTED_CALL();
             } break;
         }
-    } 
-
+    }
 }; //namespace Divide

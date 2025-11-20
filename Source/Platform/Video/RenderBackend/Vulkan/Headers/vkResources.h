@@ -297,6 +297,46 @@ struct VKSubmitSempahore
     Mutex _lock;
     Container _pendingSubmitSemaphores;
 };
+
+struct VkBufferTransferProcessor
+{
+    /// Arbitrarily selected "good enough" flush point
+    static constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
+    using BarrierContainer = std::array<VkBufferMemoryBarrier2, MAX_BUFFER_COPIES_PER_FLUSH>;
+    using BatchedTransferQueue = std::array<VKTransferQueue::TransferRequest, MAX_BUFFER_COPIES_PER_FLUSH>;
+
+    void flushBarriers(VkCommandBuffer cmdBuffer) noexcept;
+    void processCurrentBatch(VkCommandBuffer cmdBuffer) noexcept;
+    void addBarrier(const VkBufferMemoryBarrier2& barrier, VkCommandBuffer cmdBuffer) noexcept;
+    void reset() noexcept;
+
+    size_t _transferBatchedCount{ 0u };
+    BatchedTransferQueue _transferQueueBatched{};
+
+private:
+    void flushCopies(VkCommandBuffer cmdBuffer) noexcept;
+
+private:
+
+    struct PerBufferCopies
+    {
+        VkBuffer _srcBuffer{ VK_NULL_HANDLE };
+        VkBuffer _dstBuffer{ VK_NULL_HANDLE };
+        fixed_vector<VkBufferCopy2, MAX_BUFFER_COPIES_PER_FLUSH> _copiesPerBuffer;
+    };
+
+    using CopyContainer = std::array<PerBufferCopies, MAX_BUFFER_COPIES_PER_FLUSH>;
+
+    size_t _barrierCount{ 0u };
+    size_t _copyRequestsCount{ 0u };
+    CopyContainer _copyRequests{};
+    BarrierContainer _barriers{};
+};
+
+using TransferQueueRequestsContainer = std::array<VKTransferQueue::TransferRequest, VkBufferTransferProcessor::MAX_BUFFER_COPIES_PER_FLUSH>;
+
+void PrepareTransferRequest(const VKTransferQueue::TransferRequest& request, bool toWrite, VkBufferMemoryBarrier2& memBarrierOut);
+
 //ref:  SaschaWillems / Vulkan / VulkanTools
 inline std::string VKErrorString(VkResult errorCode)
 {

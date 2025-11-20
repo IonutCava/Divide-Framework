@@ -88,8 +88,6 @@ namespace Divide
                         .add_required_extension( VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME )
                         .add_required_extension( VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME ) //< Core in VK 1.4 but throws validation errors if missing
                         .set_required_features( vk10features )
-                        .set_required_features( vk10features )
-                        .set_required_features( vk10features )
                         .set_required_features_11( vk11features )
                         .set_required_features_12( vk12features )
                         .set_required_features_13( vk13features );

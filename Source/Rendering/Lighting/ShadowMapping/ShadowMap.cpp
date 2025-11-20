@@ -368,7 +368,7 @@ namespace Divide
 
         LockGuard<Mutex> w_lock( s_shadowMapUsageLock );
         LayerLifetimeMask& lifetimeMask = s_shadowMapLifetime[to_U32( shadowType )];
-        if ( crtArrayOffset != ALL_LAYERS) [[likely]]
+        if ( crtArrayOffset != ALL_LAYERS ) [[likely]]
         {
             bool valid = true;
             for ( U16 i = 0u; i < layerCount; ++i )
