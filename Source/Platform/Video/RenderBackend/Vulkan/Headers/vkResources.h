@@ -284,6 +284,28 @@ struct VKTransferQueue
     std::atomic_bool _dirty{ false };
 };
 
+struct VkBufferTransferProcessor
+{
+    /// Arbitrarily selected "good enough" flush point
+    constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
+
+    void flushBarriers(VkCommandBuffer cmdBuffer) noexcept;
+    void processCurrentBatch( VkCommandBuffer cmdBuffer) noexcept;
+    void addBarrier(const VkBufferMemoryBarrier2& barrier, VkCommandBuffer cmdBuffer) noexcept;
+    void reset() noexcept;
+
+private:
+    void flushCopies(VkCommandBuffer cmdBuffer) noexcept;
+
+private:
+    size_t _transferBatchedCount{0u};
+    size_t _barrierCount{0u};
+    size_t _copyRequestsCount{0u};
+    CopyContainer _copyRequests{};
+    BarrierContainer _barriers{};
+    BatchedTransferQueue _transferQueueBatched{};
+};
+
 //ref:  SaschaWillems / Vulkan / VulkanTools
 inline std::string VKErrorString(VkResult errorCode)
 {

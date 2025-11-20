@@ -14,8 +14,6 @@ namespace Divide
 {
     namespace
     {
-        std::once_flag transition_once_flag;
-
         VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
         {
             DIVIDE_GPU_ASSERT(usage != ImageUsage::COUNT);
@@ -1149,26 +1147,7 @@ namespace Divide
 
         constexpr auto SHADER_READ_WRITE_BIT = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
 
-        static auto SHADER_SAMPLE_STAGE_MASK = 0u;
-
-        std::call_once(
-            transition_once_flag,
-            []()
-            {
-                SHADER_SAMPLE_STAGE_MASK = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-
-                if ( GFXDevice::GetDeviceInformation()._meshShadingSupported )
-                {
-                    SHADER_SAMPLE_STAGE_MASK |= VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
-                                                VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
-                }
-            }
-        );
+        static auto SHADER_SAMPLE_STAGE_MASK = Vk_API::AllShaderStages();
 
         switch ( type )
         {
@@ -1683,7 +1662,7 @@ namespace Divide
             case TransitionType::SHADER_READ_WRITE_TO_COPY_READ:
             {
                 memBarrier.srcAccessMask = SHADER_READ_WRITE_BIT;
-                memBarrier.srcStageMask  = VK_API::AllShaderStages();
+                memBarrier.srcStageMask  = SHADER_SAMPLE_STAGE_MASK;
                 memBarrier.oldLayout     = VK_IMAGE_LAYOUT_GENERAL;
 
                 memBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
