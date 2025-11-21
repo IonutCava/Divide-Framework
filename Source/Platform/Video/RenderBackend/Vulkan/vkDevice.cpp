@@ -116,7 +116,7 @@ namespace Divide
         _physicalDevice.enable_extensions_if_present(
             {
                 VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-                VK_KHR_MAINTENANCE_7_EXTENSION_NAME
+                VK_KHR_MAINTENANCE_7_EXTENSION_NAME,
                 VK_EXT_MESH_SHADER_EXTENSION_NAME,
             }
         );

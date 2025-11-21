@@ -109,7 +109,7 @@ namespace Divide
             return;
         }
 
-        VK_API::PushDebugMessage(_context.context().config(), cmdBuffer, "vkRrenderTarget::blitFrom");
+        VK_API::PushDebugMessage(_context.context().config(), cmdBuffer, "vkRenderTarget::blitFrom");
 
         vkRenderTarget* output = this;
         [[maybe_unused]] const vec2<U16> outputDim = output->_descriptor._resolution;
