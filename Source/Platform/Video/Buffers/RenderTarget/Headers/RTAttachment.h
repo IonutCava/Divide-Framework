@@ -67,6 +67,31 @@ struct RTAttachmentDescriptor
     bool _autoResolve{true};
 };
 
+struct RTUsageTracker
+{
+    enum class Layout : U8
+    {
+        ATTACHMENT = 0,
+        SHADER_READ,
+        COPY_READ,
+        COPY_WRITE,
+        COUNT
+    };
+    struct Names {
+        inline static const char* layout[] = {
+            "ATTACHMENT",
+            "SHADER_READ",
+            "COPY_READ",
+            "COPY_WRITE",
+            "COUNT"
+        };
+
+        static_assert(std::size(layout) == to_base(Layout::COUNT) + 1u, "Layout name array out of sync!");
+    };
+
+    Layout _usage = Layout::COUNT;
+};
+
 constexpr static U32 RT_DEPTH_ATTACHMENT_IDX = to_base( RTColourAttachmentSlot::COUNT );
 constexpr static U8 RT_MAX_ATTACHMENT_COUNT = to_base( RTColourAttachmentSlot::COUNT ) + 1;
 
@@ -99,20 +124,12 @@ struct InternalRTAttachmentDescriptor final : public RTAttachmentDescriptor
     TextureDescriptor _texDescriptor;
 };
 
-using InternalRTAttachmentDescriptors = eastl::fixed_vector<InternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT, false>;
-using ExternalRTAttachmentDescriptors = eastl::fixed_vector<ExternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT, false>;
+using InternalRTAttachmentDescriptors = fixed_vector<InternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT>;
+using ExternalRTAttachmentDescriptors = fixed_vector<ExternalRTAttachmentDescriptor, RT_MAX_ATTACHMENT_COUNT>;
 
 class RenderTarget;
 class RTAttachment final
 {
-    public:
-        enum class Layout : U8
-        {
-            UNDEFINED = 0u,
-            ATTACHMENT,
-            SHADER_READ
-        };
-
     public:
         explicit RTAttachment(RenderTarget& parent, const RTAttachmentDescriptor& descriptor) noexcept;
         ~RTAttachment();
@@ -125,7 +142,8 @@ class RTAttachment final
         [[nodiscard]] const RenderTarget& parent() const noexcept;
 
         RTAttachmentDescriptor _descriptor;
-        Layout _attachmentUsage{ Layout::UNDEFINED };
+        RTUsageTracker _renderUsage{};  // state for render (MSAA) image
+        RTUsageTracker _resolveUsage{};  // state for resolve image (single-sample target)
 
         PROPERTY_R_IW(Handle<Texture>, renderTexture, INVALID_HANDLE<Texture> );
         PROPERTY_R_IW(Handle<Texture>, resolvedTexture, INVALID_HANDLE<Texture> );
@@ -138,6 +156,7 @@ class RTAttachment final
 };
 
 FWD_DECLARE_MANAGED_CLASS(RTAttachment);
+
 
 }; //namespace Divide
 

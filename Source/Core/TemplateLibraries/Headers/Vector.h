@@ -35,11 +35,15 @@
 
 #include <EASTL/sort.h>
 #include <EASTL/vector.h>
+#include <EASTL/fixed_vector.h>
 
 namespace Divide
 {
     template<typename Type>
     using vector = eastl::vector<Type>;
+
+    template<typename Type, size_t MaxSize, bool EnableOverflow = false>
+    using fixed_vector = eastl::fixed_vector<Type, MaxSize, EnableOverflow>;
 
     template<typename T, typename Type>
     concept is_non_fixed_vector = std::is_same_v<T, vector<Type>>;
@@ -47,25 +51,6 @@ namespace Divide
     concept is_fixed_vector = std::is_same_v<T, eastl::fixed_vector<Ts...>>;
     template<typename T, typename... Ts>
     concept is_vector = is_non_fixed_vector<T, std::tuple_element_t<0, std::tuple<Ts...>>> || is_fixed_vector<T, Ts...>;
-
-    template <typename T, size_t nodeCount, bool bEnableOverflow = true, typename OverflowAllocator = typename eastl::type_select<bEnableOverflow, EASTLAllocatorType, EASTLDummyAllocatorType>::type>
-    inline void efficient_clear(eastl::fixed_vector<T, nodeCount, bEnableOverflow, OverflowAllocator> & fixed_vector)
-    {
-        if constexpr (bEnableOverflow)
-        {
-            fixed_vector.clear();
-        }
-        else
-        {
-            fixed_vector.reset_lose_memory();
-        }
-    }
-
-    template< typename T, typename A>
-    inline void efficient_clear( eastl::vector<T, A>& vec )
-    {
-        vec.resize(0);
-    }
 
     template< typename T, typename Pred, typename A>
     typename eastl::vector<T, A>::iterator insert_sorted( eastl::vector<T, A>& vec, T const& item, Pred&& pred )

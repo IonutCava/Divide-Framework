@@ -65,6 +65,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif //HAS_NEON
 
 #include <stdexcept>
+#include <stdio.h>
 #include <bytell_hash_map.hpp>
 
 DISABLE_GCC_WARNING_PUSH(nonnull)
@@ -73,27 +74,15 @@ DISABLE_GCC_WARNING_PUSH(nonnull)
 #include <EASTL/stack.h>
 #include <EASTL/queue.h>
 #include <EASTL/set.h>
-#include <EASTL/string.h>
 #include <EASTL/fixed_set.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/map.h>
-#include <EASTL/fixed_vector.h>
 #include <EASTL/fixed_string.h>
 #include <EASTL/unordered_set.h>
 DISABLE_GCC_WARNING_POP()
 
-#include <climits>
-#include <cstring>
-#include <iomanip>
-#include <random>
 #include <stack>
 #include <span>
-#include <any>
-#include <list>
-#include <limits>
-#include <execution>
-#include <fstream>
-#include <condition_variable>
 
 #include <fmt/printf.h>
 
@@ -104,9 +93,6 @@ DISABLE_GCC_WARNING_POP()
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/functional/factory.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/deadline_timer.hpp>
 
 #include <SDL3/SDL.h>
 

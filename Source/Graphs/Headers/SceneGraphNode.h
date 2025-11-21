@@ -133,7 +133,7 @@ namespace Divide
         struct ChildContainer
         {
             mutable SharedMutex _lock;
-            eastl::fixed_vector<SceneGraphNode*, 32, true> _data;
+            fixed_vector<SceneGraphNode*, 32, true> _data;
             U32 _count{ 0u };
 
             /// Return a specific child by index. Does not recurse.

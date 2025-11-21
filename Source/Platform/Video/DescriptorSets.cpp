@@ -59,12 +59,21 @@ namespace Divide
                !Compare(lhs._buffer, rhs._buffer);
     }
 
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer) noexcept
+    {
+        assert( buffer != nullptr );
+
+        dataInOut._buffer = { buffer, {0u, buffer->getPrimitiveCount()}, buffer->queueIndex() };
+        dataInOut._type = buffer->getUsage() == BufferUsageType::CONSTANT_BUFFER ? DescriptorSetBindingType::UNIFORM_BUFFER_STATIC
+                                                                                 : DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC;
+    }
+
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, const BufferRange<> range ) noexcept
     {
         assert( buffer != nullptr );
         dataInOut._buffer = { buffer, range, buffer->queueIndex() };
-        dataInOut._type = buffer->getUsage() == BufferUsageType::CONSTANT_BUFFER ? DescriptorSetBindingType::UNIFORM_BUFFER
-                                                                                 : DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
+        dataInOut._type = buffer->getUsage() == BufferUsageType::CONSTANT_BUFFER ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC
+                                                                                 : DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
     }
 
     void Set( DescriptorSetBindingData& dataInOut, const Handle<Texture> defaultTextureView, const SamplerDescriptor sampler ) noexcept

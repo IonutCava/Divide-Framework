@@ -320,7 +320,6 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
 
     if (s_lutTextureDirty)
     {
-
         PROFILE_SCOPE("Upadate LUT", Profiler::Category::Graphics);
 
         PipelineDescriptor pipelineDescriptor{};
@@ -526,7 +525,7 @@ void SceneEnvironmentProbePool::PrefilterEnvMap(const U16 layerID, GFX::CommandB
         Set( binding._data, sourceTex->getView(), sourceAtt->_descriptor._sampler );
     }
 
-    ImageView destinationImage = Get(destinationAtt->texture())->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
+    ImageView destinationImage = Get(destinationAtt->texture())->getView(TextureType::TEXTURE_CUBE_ARRAY, { 0u, ALL_MIPS }, { 0u , ALL_LAYERS });
 
     const F32 fWidth = to_F32(width);
 
@@ -587,7 +586,7 @@ void SceneEnvironmentProbePool::ComputeIrradianceMap( const U16 layerID, GFX::Co
 
     GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = s_pipelineCalcIrradiance;
 
-    ImageView destinationView = Get(destinationAtt->texture())->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , U16_MAX });
+    ImageView destinationView = Get(destinationAtt->texture())->getView( TextureType::TEXTURE_CUBE_ARRAY, { 0u, 1u }, { 0u , ALL_LAYERS });
 
     GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back( TextureLayoutChange
     {

@@ -48,18 +48,30 @@ namespace Divide
 {
 
 class Pipeline;
+struct VKAPITestAccessor;
 enum class ShaderResult : U8;
 
-class VK_API final : public RenderAPIWrapper {
+class VK_API final : public RenderAPIWrapper
+{
+
+#if defined(ENABLE_UNIT_TESTING)
+    friend struct VKAPITestAccessor;
+#endif //ENABLE_UNIT_TESTING
+
 public:
-    static constexpr VkPipelineStageFlagBits2 ALL_SHADER_STAGES = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
-                                                                  VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
-                                                                  VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
-                                                                  VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
-                                                                  VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-                                                                  VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                                                  VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
-                                                                  VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+    static constexpr VkPipelineStageFlagBits2 ALL_SHADER_STAGES_NO_MESH = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                                                                          VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
+                                                                          VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT |
+                                                                          VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                                                                          VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                                                                          VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+
+    static constexpr VkPipelineStageFlagBits2 ALL_SHADER_STAGES_WITH_MESH = ALL_SHADER_STAGES_NO_MESH |
+                                                                            VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_EXT |
+                                                                            VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_EXT;
+
+    static VkPipelineStageFlagBits2 AllShaderStages() noexcept;
+
 public:
  
     VK_API(GFXDevice& context) noexcept;
@@ -70,7 +82,7 @@ public:
     [[nodiscard]] const GFXDevice& context() const noexcept { return _context; }
 
 protected:
-    [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const noexcept;
+    [[nodiscard]] static VkCommandBuffer GetCurrentCommandBuffer() noexcept;
 
     void idle(bool fast) noexcept override;
 
@@ -117,14 +129,18 @@ private:
 
     static bool Draw(GenericDrawCommand cmd, VkCommandBuffer cmdBuffer);
 public:
+    friend struct VKImmediateCmdContext;
+
     [[nodiscard]] static VKStateTracker& GetStateTracker() noexcept;
     [[nodiscard]] static VkSampler GetSamplerHandle(SamplerDescriptor sampler, size_t& samplerHashInOut);
 
+    static void EnqueueImageBarriers( std::span<VkImageMemoryBarrier2> barriers );
+    static void RecordOrEnqueueImageBarriers( std::span<VkImageMemoryBarrier2> barriers );
     static void RegisterCustomAPIDelete(DELEGATE<void, VkDevice>&& cbk, bool isResourceTransient);
     static void RegisterTransferRequest(const VKTransferQueue::TransferRequest& request);
     static void FlushBufferTransferRequests( VkCommandBuffer cmdBuffer );
-    static void FlushBufferTransferRequests( );
     static void SubmitTransferRequest(const VKTransferQueue::TransferRequest& request, VkCommandBuffer cmd);
+    static void PushPendingSubmitSemaphore(VkSemaphore semaphore);
 
     static void AddDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
     static void PushDebugMessage( const Configuration& config, VkCommandBuffer cmdBuffer, const char* message, U32 id = U32_MAX);
@@ -149,9 +165,8 @@ private:
     std::array<DynamicBindings, to_base( DescriptorSetUsage::COUNT )> _descriptorDynamicBindings;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
-
     bool _uniformsNeedLock{ false };
-    
+
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;
 
@@ -161,6 +176,8 @@ private:
     static VKDeletionQueue s_transientDeleteQueue;
     static VKDeletionQueue s_deviceDeleteQueue;
     static VKTransferQueue s_transferQueue;
+    static VKImageBarrierQueue s_imageBarrierQueue;
+    static VKSubmitSempahore s_submitSemaphores;
 
     static eastl::stack<vkShaderProgram*> s_reloadedShaders;
 
@@ -174,11 +191,12 @@ public:
     };
 
     static bool s_hasDebugMarkerSupport;
-    static bool s_hasPushDescriptorSupport;
     static bool s_hasDescriptorBufferSupport;
     static bool s_hasDynamicBlendStateSupport;
-    static bool s_hasValidationFeaturesSupport;
+    static U32  s_maxDescriptorSetStorageBuffersDynamic;
+    static U32  s_maxDescriptorSetUniformBuffersDynamic;
     static DepthFormatInformation s_depthFormatInformation;
+    static VkResolveModeFlags s_supportedDepthResolveModes;
 };
 
 };  // namespace Divide

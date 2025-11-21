@@ -55,86 +55,97 @@ namespace Divide
     public:
         enum class TransitionType : U8
         {
-            UNDEFINED_TO_COLOUR_ATTACHMENT = 0u,
-            UNDEFINED_TO_COLOUR_RESOLVE_ATTACHMENT,
+            UNDEFINED_TO_COLOUR_ATTACHMENT = 0,
             UNDEFINED_TO_DEPTH_ATTACHMENT,
-            UNDEFINED_TO_DEPTH_RESOLVE_ATTACHMENT,
-            UNDEFINED_TO_DEPTH_STENCIL_ATTACHMENT,
-            UNDEFINED_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT,
-
             SHADER_READ_TO_COLOUR_ATTACHMENT,
-            SHADER_READ_TO_COLOUR_RESOLVE_ATTACHMENT,
             SHADER_READ_TO_DEPTH_ATTACHMENT,
-            SHADER_READ_TO_DEPTH_RESOLVE_ATTACHMENT,
-            SHADER_READ_TO_DEPTH_STENCIL_ATTACHMENT,
-            SHADER_READ_TO_DEPTH_STENCIL_RESOLVE_ATTACHMENT,
-
             COLOUR_ATTACHMENT_TO_SHADER_READ,
-            COLOUR_RESOLVE_ATTACHMENT_TO_SHADER_READ,
             DEPTH_ATTACHMENT_TO_SHADER_READ,
-            DEPTH_RESOLVE_ATTACHMENT_TO_SHADER_READ,
-            DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ,
-            DEPTH_STENCIL_RESOLVE_ATTACHMENT_TO_SHADER_READ,
-
             COLOUR_ATTACHMENT_TO_SHADER_WRITE,
             DEPTH_ATTACHMENT_TO_SHADER_WRITE,
-            DEPTH_STENCIL_ATTACHMENT_TO_SHADER_WRITE,
-
             COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE,
             DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE,
-            DEPTH_STENCIL_ATTACHMENT_TO_SHADER_READ_WRITE,
-
-            UNDEFINED_TO_SHADER_READ_COLOUR,
-            UNDEFINED_TO_SHADER_READ_DEPTH,
-
+            UNDEFINED_TO_SHADER_READ,
             UNDEFINED_TO_SHADER_READ_WRITE,
-
-            GENERAL_TO_SHADER_READ_COLOUR,
-            GENERAL_TO_SHADER_READ_DEPTH,
-
-            UNDEFINED_TO_GENERAL,
-            SHADER_READ_COLOUR_TO_GENERAL,
-            SHADER_READ_DEPTH_TO_GENERAL,
-
-            SHADER_READ_COLOUR_TO_SHADER_READ_WRITE,
-            SHADER_READ_DEPTH_TO_SHADER_READ_WRITE,
-
-            SHADER_READ_WRITE_TO_SHADER_READ_COLOUR,
-            SHADER_READ_WRITE_TO_SHADER_READ_DEPTH,
-
-            SHADER_READ_TO_BLIT_READ_COLOUR,
-            SHADER_READ_TO_BLIT_WRITE_COLOUR,
-            BLIT_READ_TO_SHADER_READ_COLOUR,
-            BLIT_WRITE_TO_SHADER_READ_COLOUR,
-
-            SHADER_READ_TO_BLIT_READ_DEPTH,
-            SHADER_READ_TO_BLIT_WRITE_DEPTH,
-            BLIT_READ_TO_SHADER_READ_DEPTH,
-            BLIT_WRITE_TO_SHADER_READ_DEPTH,
-
-            SHADER_READ_TO_COPY_WRITE_COLOUR,
-            SHADER_READ_TO_COPY_WRITE_DEPTH,
-
-            SHADER_READ_TO_COPY_READ_COLOUR,
-            SHADER_READ_TO_COPY_READ_DEPTH,
-
-            COPY_READ_TO_SHADER_READ_COLOUR,
-            COPY_READ_TO_SHADER_READ_DEPTH,
-
-            COPY_WRITE_TO_SHADER_READ_COLOUR,
-            COPY_WRITE_TO_SHADER_READ_DEPTH,
-
+            SHADER_WRITE_TO_SHADER_READ,
+            UNDEFINED_TO_SHADER_WRITE,
+            SHADER_READ_TO_SHADER_WRITE,
+            SHADER_READ_TO_SHADER_READ_WRITE,
+            SHADER_READ_WRITE_TO_SHADER_READ,
+            SHADER_READ_TO_BLIT_READ,
+            SHADER_READ_TO_BLIT_WRITE,
+            BLIT_READ_TO_SHADER_READ,
+            BLIT_WRITE_TO_SHADER_READ,
+            UNDEFINED_TO_COPY_WRITE,
+            SHADER_READ_TO_COPY_WRITE,
+            SHADER_READ_WRITE_TO_COPY_WRITE,
+            SHADER_READ_TO_COPY_READ,
+            COPY_READ_TO_SHADER_READ,
+            COPY_READ_TO_SHADER_READ_WRITE,
+            COPY_WRITE_TO_SHADER_READ,
+            COPY_WRITE_TO_SHADER_READ_WRITE,
             SHADER_READ_WRITE_TO_COPY_READ,
-
-            GENERAL_TO_COPY_READ,
-            GENERAL_TO_COPY_WRITE,
-            COPY_READ_TO_GENERAL,
-            COPY_WRITE_TO_GENERAL,
-
             COPY_WRITE_TO_COPY_READ,
-
+            COPY_READ_TO_COPY_WRITE,
+            ATTACHMENT_TO_BLIT_READ_COLOUR,
+            ATTACHMENT_TO_BLIT_READ_DEPTH,
+            ATTACHMENT_TO_BLIT_WRITE_COLOUR,
+            ATTACHMENT_TO_BLIT_WRITE_DEPTH,
+            BLIT_READ_TO_ATTACHMENT_COLOUR,
+            BLIT_READ_TO_ATTACHMENT_DEPTH,
+            BLIT_WRITE_TO_ATTACHMENT_COLOUR,
+            BLIT_WRITE_TO_ATTACHMENT_DEPTH,
             COUNT
         };
+
+        struct Names {
+            inline static const char* transitionType[] = {
+                "UNDEFINED_TO_COLOUR_ATTACHMENT",
+                "UNDEFINED_TO_DEPTH_ATTACHMENT",
+                "SHADER_READ_TO_COLOUR_ATTACHMENT",
+                "SHADER_READ_TO_DEPTH_ATTACHMENT",
+                "COLOUR_ATTACHMENT_TO_SHADER_READ",
+                "DEPTH_ATTACHMENT_TO_SHADER_READ",
+                "COLOUR_ATTACHMENT_TO_SHADER_WRITE",
+                "DEPTH_ATTACHMENT_TO_SHADER_WRITE",
+                "COLOUR_ATTACHMENT_TO_SHADER_READ_WRITE",
+                "DEPTH_ATTACHMENT_TO_SHADER_READ_WRITE",
+                "UNDEFINED_TO_SHADER_READ",
+                "UNDEFINED_TO_SHADER_READ_WRITE",
+                "SHADER_WRITE_TO_SHADER_READ",
+                "UNDEFINED_TO_SHADER_WRITE",
+                "SHADER_READ_TO_SHADER_WRITE",
+                "SHADER_READ_TO_SHADER_READ_WRITE",
+                "SHADER_READ_WRITE_TO_SHADER_READ",
+                "SHADER_READ_TO_BLIT_READ",
+                "SHADER_READ_TO_BLIT_WRITE",
+                "BLIT_READ_TO_SHADER_READ",
+                "BLIT_WRITE_TO_SHADER_READ",
+                "UNDEFINED_TO_COPY_WRITE",
+                "SHADER_READ_TO_COPY_WRITE",
+                "SHADER_READ_WRITE_TO_COPY_WRITE",
+                "SHADER_READ_TO_COPY_READ",
+                "COPY_READ_TO_SHADER_READ",
+                "COPY_READ_TO_SHADER_READ_WRITE",
+                "COPY_WRITE_TO_SHADER_READ",
+                "COPY_WRITE_TO_SHADER_READ_WRITE",
+                "SHADER_READ_WRITE_TO_COPY_READ",
+                "COPY_WRITE_TO_COPY_READ",
+                "COPY_READ_TO_COPY_WRITE",
+                "ATTACHMENT_TO_BLIT_READ_COLOUR",
+                "ATTACHMENT_TO_BLIT_READ_DEPTH",
+                "ATTACHMENT_TO_BLIT_WRITE_COLOUR",
+                "ATTACHMENT_TO_BLIT_WRITE_DEPTH",
+                "BLIT_READ_TO_ATTACHMENT_COLOUR",
+                "BLIT_READ_TO_ATTACHMENT_DEPTH",
+                "BLIT_WRITE_TO_ATTACHMENT_COLOUR",
+                "BLIT_WRITE_TO_ATTACHMENT_DEPTH",
+                "UNKNOWN"
+            };
+
+            static_assert(std::size(transitionType) == to_base(TransitionType::COUNT) + 1u, "TransitionType name array out of sync!");
+        };
+
         struct CachedImageView
         {
             struct Descriptor final : Hashable
@@ -151,7 +162,6 @@ namespace Divide
         };
 
         vkTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor );
-
         virtual ~vkTexture() override;
 
         bool unload() override;
@@ -172,16 +182,26 @@ namespace Divide
 
         static void Copy( VkCommandBuffer cmdBuffer, const vkTexture* source, const U8 sourceSamples, const vkTexture* destination, const U8 destinationSamples, CopyTexParams params );
 
-        static void TransitionTexture( TransitionType type, const VkImageSubresourceRange& subresourceRange, VkImage image,  VkImageMemoryBarrier2& memBarrier );
+        struct NamedVKImage
+        {
+            VkImage _image{VK_NULL_HANDLE};
+            std::string_view _name{};
+            const bool _isResolveImage{false};
+        };
+
+        static void TransitionTexture( TransitionType type, const VkImageSubresourceRange& subresourceRange, NamedVKImage image, VkImageMemoryBarrier2& memBarrier );
+        static void FlushPipelineBarrier(VkCommandBuffer cmdBuffer, TransitionType type, const VkImageSubresourceRange& subresourceRange, NamedVKImage image );
+        static void FlushPipelineBarriers(VkCommandBuffer cmdBuffer, VkDependencyInfo& pDependencyInfo);
 
     private:
         void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
-        void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
-        void prepareTextureData( U16 width, U16 height, U16 depth, bool emptyAllocation ) override;
+        void loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
+        ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable ) override;
         void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const int4& rectToClear, int2 depthRange ) const;
         void clearImageViewCache();
+        void submitTextureData(ImageUsage& crtUsageInOut) override;
 
-        void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment, bool emptyAllocation );
+        void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
     private:
         struct Mip
         {
@@ -192,7 +212,7 @@ namespace Divide
         mutable hashMap<size_t, CachedImageView> _imageViewCache;
         VMABuffer_uptr _stagingBuffer;
         VkDeviceSize _stagingBufferSize{ 0u };
-        vector<Mip> _mipData;
+        vector<vector<Mip>> _mipData;
         U8 _testRefreshCounter { 0u };
     };
 

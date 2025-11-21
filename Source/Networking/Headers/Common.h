@@ -91,6 +91,8 @@
 #define DVD_NETWORKING_COMMON_H_	
 
 #include "NetworkPacket.h"
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 namespace Divide
 {
@@ -196,7 +198,6 @@ namespace Networking
 
     using PacketQueue = tsqueue<NetworkPacket>;
     using OwnedPacketQueue = tsqueue<OwnedNetworkPacket>;
-
 
     static constexpr char LocalHostAddress[] = "127.0.0.1";
     static constexpr U16 NetworkingPort = 3443u;

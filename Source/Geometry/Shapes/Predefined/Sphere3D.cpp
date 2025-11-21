@@ -118,7 +118,7 @@ void Sphere3D::rebuildInternal()
         t -= dt;
     }
 
-    efficient_clear( _geometryTriangles );
+    _geometryTriangles.clear();
 
     // ToDo: add some depth padding for collision and nav meshes
     setBounds(BoundingBox(float3(-_radius), float3(_radius)));

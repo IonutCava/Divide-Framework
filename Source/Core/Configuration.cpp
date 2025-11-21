@@ -15,7 +15,6 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(debug.renderer.enableRenderAPIBestPractices);
         GET_PARAM(debug.renderer.enableRenderAPIDebugGrouping);
         GET_PARAM(debug.renderer.assertOnRenderAPIError);
-        GET_PARAM(debug.renderer.useExtensions);
         GET_PARAM(debug.cache.enabled);
         GET_PARAM(debug.cache.geometry);
         GET_PARAM(debug.cache.vegetation);
@@ -182,7 +181,6 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(debug.renderer.enableRenderAPIBestPractices);
     PUT_PARAM(debug.renderer.enableRenderAPIDebugGrouping);
     PUT_PARAM(debug.renderer.assertOnRenderAPIError);
-    PUT_PARAM(debug.renderer.useExtensions);
     PUT_PARAM(debug.cache.enabled);
     PUT_PARAM(debug.cache.geometry);
     PUT_PARAM(debug.cache.vegetation);

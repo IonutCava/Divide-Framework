@@ -18,7 +18,7 @@ ResourcePath getWorkingDirectory()
 
 FileError readFile(const ResourcePath& filePath, std::string_view fileName, FileType fileType, std::ifstream& sreamOut)
 {
-    if (filePath.empty() || fileName.empty() || !pathExists(filePath))
+    if (filePath.empty() || fileName.empty() || !fileExists(filePath, fileName))
     {
         return FileError::FILE_NOT_FOUND;
     }
@@ -147,7 +147,8 @@ FileNameAndPath splitPathToNameAndLocation(const ResourcePath& input)
 bool pathExists(const ResourcePath& filePath)
 {
     std::error_code ec;
-    const bool ret = is_directory(filePath.fileSystemPath(), ec);
+    const auto path = filePath.fileSystemPath();
+    const bool ret = exists(path, ec) && is_directory(path, ec);
     return ec ? false : ret;
 }
 
@@ -222,14 +223,16 @@ FileError removeDirectory(const ResourcePath& path)
 bool fileExists(const ResourcePath& filePathAndName)
 {
     std::error_code ec;
-    const bool result = is_regular_file(filePathAndName.fileSystemPath(), ec);
+    const auto path = filePathAndName.fileSystemPath();
+    const bool result = exists(path, ec) && is_regular_file(path, ec);
     return ec ? false : result;
 }
 
 bool fileIsEmpty(const ResourcePath& filePathAndName)
 {
     std::error_code ec;
-    const bool result = std::filesystem::is_empty(filePathAndName.fileSystemPath(), ec);
+    const auto path = filePathAndName.fileSystemPath();
+    const bool result = exists(path, ec) && std::filesystem::is_empty(path, ec);
     return ec ? false : result;
 }
 
@@ -241,7 +244,8 @@ FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec
     }
 
     std::error_code ec;
-    const auto timeStamp = std::filesystem::last_write_time(filePathAndName.fileSystemPath(), ec).time_since_epoch();
+    const auto path = filePathAndName.fileSystemPath();
+    const auto timeStamp = std::filesystem::last_write_time(path, ec).time_since_epoch();
     if (ec)
     {
         return FileError::FILE_READ_ERROR;
@@ -255,8 +259,8 @@ FileError fileLastWriteTime(const ResourcePath& filePathAndName, U64& timeOutSec
 size_t numberOfFilesInDirectory( const ResourcePath& path )
 {
      return std::count_if( std::filesystem::directory_iterator( path.fileSystemPath() ),
-                          std::filesystem::directory_iterator{},
-                          [](const std::filesystem::path& p){ return std::filesystem::is_regular_file( p ); });
+                           std::filesystem::directory_iterator{},
+                           [](const std::filesystem::path& p){ return std::filesystem::is_regular_file( p ); });
 }
 
 bool createFileInternal(const ResourcePath& filePathAndName, const bool overwriteExisting)

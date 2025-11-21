@@ -110,13 +110,13 @@ struct CompiledPipeline
 
 struct PipelineBuilder
 {
-    std::vector<VkPipelineShaderStageCreateInfo> _shaderStages;
+    fixed_vector<VkPipelineShaderStageCreateInfo, to_base(ShaderType::COUNT)> _shaderStages;
     VkPipelineVertexInputStateCreateInfo _vertexInputInfo;
     VkPipelineInputAssemblyStateCreateInfo _inputAssembly;
     VkViewport _viewport;
     VkRect2D _scissor;
     VkPipelineRasterizationStateCreateInfo _rasterizer;
-    eastl::fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT ), false> _colorBlendAttachments;
+    fixed_vector<VkPipelineColorBlendAttachmentState, to_base( RTColourAttachmentSlot::COUNT )> _colorBlendAttachments;
     VkPipelineMultisampleStateCreateInfo _multisampling;
     VkPipelineLayout _pipelineLayout;
     VkPipelineDepthStencilStateCreateInfo _depthStencil;
@@ -141,7 +141,7 @@ struct DynamicBinding
     U8 _slot{ U8_MAX };
 };
 
-using DynamicBindings = eastl::fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET, false>;
+using DynamicBindings = fixed_vector<DynamicBinding, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
 
 struct VKImmediateCmdContext
 {
@@ -151,9 +151,9 @@ struct VKImmediateCmdContext
     explicit VKImmediateCmdContext( const Configuration& config, VKDevice& context, QueueType type );
     ~VKImmediateCmdContext();
 
-    void flushCommandBuffer( FlushCallback&& function, const char* scopeName );
+    void flushCommandBuffer( FlushCallback&& function, const char* scopeName, bool waitForFinish = false );
 
-    private:
+  private:
 
     VKDevice& _context;
     const Configuration& _config;
@@ -228,6 +228,7 @@ struct VKStateTracker
 
     RenderTargetID _activeRenderTargetID{ INVALID_RENDER_TARGET_ID };
     size_t _renderTargetFormatHash{0u};
+    size_t _activeRenderTargetColourAttachmentCount{ 0u };
     vec2<U16> _activeRenderTargetDimensions{ 1u };
 
     U8 _activeMSAASamples{ 1u };
@@ -279,10 +280,62 @@ struct VKTransferQueue
         VkPipelineStageFlags2 dstStageMask{ VK_PIPELINE_STAGE_2_NONE };
     };
 
-    mutable Mutex _lock;
-    std::deque<TransferRequest> _requests;
-    std::atomic_bool _dirty;
+    moodycamel::ConcurrentQueue<TransferRequest> _requests;
+    std::atomic_bool _dirty{ false };
 };
+
+struct VKImageBarrierQueue
+{
+    Mutex _lock;
+    fixed_vector<VkImageMemoryBarrier2, 16, true> _imageBarriers;
+};
+
+struct VKSubmitSempahore
+{
+    using Container = fixed_vector<VkSemaphore, 16, true>;
+
+    Mutex _lock;
+    Container _pendingSubmitSemaphores;
+};
+
+struct VkBufferTransferProcessor
+{
+    /// Arbitrarily selected "good enough" flush point
+    static constexpr size_t MAX_BUFFER_COPIES_PER_FLUSH = 32u;
+    using BarrierContainer = std::array<VkBufferMemoryBarrier2, MAX_BUFFER_COPIES_PER_FLUSH>;
+    using BatchedTransferQueue = std::array<VKTransferQueue::TransferRequest, MAX_BUFFER_COPIES_PER_FLUSH>;
+
+    void flushBarriers(VkCommandBuffer cmdBuffer) noexcept;
+    void processCurrentBatch(VkCommandBuffer cmdBuffer) noexcept;
+    void addBarrier(const VkBufferMemoryBarrier2& barrier, VkCommandBuffer cmdBuffer) noexcept;
+    void reset() noexcept;
+
+    size_t _transferBatchedCount{ 0u };
+    BatchedTransferQueue _transferQueueBatched{};
+
+private:
+    void flushCopies(VkCommandBuffer cmdBuffer) noexcept;
+
+private:
+
+    struct PerBufferCopies
+    {
+        VkBuffer _srcBuffer{ VK_NULL_HANDLE };
+        VkBuffer _dstBuffer{ VK_NULL_HANDLE };
+        fixed_vector<VkBufferCopy2, MAX_BUFFER_COPIES_PER_FLUSH> _copiesPerBuffer;
+    };
+
+    using CopyContainer = std::array<PerBufferCopies, MAX_BUFFER_COPIES_PER_FLUSH>;
+
+    size_t _barrierCount{ 0u };
+    size_t _copyRequestsCount{ 0u };
+    CopyContainer _copyRequests{};
+    BarrierContainer _barriers{};
+};
+
+using TransferQueueRequestsContainer = std::array<VKTransferQueue::TransferRequest, VkBufferTransferProcessor::MAX_BUFFER_COPIES_PER_FLUSH>;
+
+void PrepareTransferRequest(const VKTransferQueue::TransferRequest& request, bool toWrite, VkBufferMemoryBarrier2& memBarrierOut);
 
 //ref:  SaschaWillems / Vulkan / VulkanTools
 inline std::string VKErrorString(VkResult errorCode)
@@ -340,6 +393,17 @@ do                                \
 } while ( 0 )
 
 #endif //VK_PROFILE
+
+// Conditionally executes code only when unit testing is enabled, allowing tests to pass VK_NULL_HANDLE
+#ifndef VK_UT_IF_CHECK
+#   if defined(ENABLE_UNIT_TESTING)
+#       define VK_UT_IF_CHECK( X ) if ( (X) )
+#       define VK_NON_UT_ASSERT( X )
+#   else //ENABLE_UNIT_TESTING
+#       define VK_UT_IF_CHECK( X ) /* nothing */
+#       define VK_NON_UT_ASSERT( X ) DIVIDE_ASSERT( (X) )
+#   endif //ENABLE_UNIT_TESTING
+#endif //VK_UT_IF_CHECK
     struct VulkanQueryType
     {
         VkQueryType _queryType { VK_QUERY_TYPE_MAX_ENUM };
@@ -373,7 +437,7 @@ namespace VKUtil {
 
     [[nodiscard]] VkFormat InternalFormat(GFXImageFormat baseFormat, GFXDataFormat dataType, GFXImagePacking packing) noexcept;
     [[nodiscard]] VkFormat InternalFormat(GFXDataFormat format, U8 componentCount, bool normalized) noexcept;
-    [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type, bool isPushDescriptor) noexcept;
+    [[nodiscard]] VkDescriptorType vkDescriptorType(DescriptorSetBindingType type ) noexcept;
 }; //namespace VKUtil
 }; //namespace Divide
 

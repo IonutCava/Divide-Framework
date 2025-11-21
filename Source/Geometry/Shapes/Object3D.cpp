@@ -127,7 +127,7 @@ bool Object3D::computeTriangleList(const U16 partitionID, const bool force) {
         return true;
     }
 
-    efficient_clear( triangles );
+    triangles.clear();
 
     const size_t partitionOffset = _geometryBuffer->getPartitionOffset(_geometryPartitionIDs[0]);
     const size_t partitionCount = _geometryBuffer->getPartitionIndexCount(_geometryPartitionIDs[0]);

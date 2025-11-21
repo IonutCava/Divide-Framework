@@ -38,6 +38,7 @@ namespace Divide {
 struct CopyTexParams 
 {
     vec2<U16> _layerRange{0u, 1u};
+    vec2<U16> _depthRange{0u, 1u};
     uint2 _sourceCoords;
     uint2 _targetCoords;
     vec2<U16> _dimensions; //width, height
@@ -57,9 +58,11 @@ struct ImageReadbackData
     vector<Byte> _data;
     U16 _width{0u};
     U16 _height{0u};
+    U16 _depth{0u};
     U8  _bpp{0u};
     U8  _numComponents{0u};
     bool _sourceIsBGR{false};
+    bool _sourceIsCompressed{ false };
 };
 
 }; //namespace Divide

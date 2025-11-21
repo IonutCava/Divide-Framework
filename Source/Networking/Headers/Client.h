@@ -35,6 +35,7 @@
 #define DVD_NETWORKING_CLIENT_H_	
 
 #include "Common.h"
+#include <boost/asio/deadline_timer.hpp>
 
 namespace Divide
 {

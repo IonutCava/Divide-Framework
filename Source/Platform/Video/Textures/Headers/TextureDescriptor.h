@@ -98,8 +98,8 @@ inline size_t GetHash( const PropertyDescriptor<Texture>& descriptor ) noexcept;
 [[nodiscard]] bool IsDepthTexture(GFXImagePacking packing) noexcept;
 [[nodiscard]] bool SupportsZOffsetTexture(TextureType texType) noexcept;
 [[nodiscard]] bool IsBGRTexture(GFXImageFormat format) noexcept;
+[[nodiscard]] bool IsRenderTargetAttachment(const PropertyDescriptor<Texture>& descriptor) noexcept;
 [[nodiscard]] U8   NumChannels(GFXImageFormat format) noexcept;
-
 }  // namespace Divide
 
 #endif //DVD_TEXTURE_DESCRIPTOR_H_

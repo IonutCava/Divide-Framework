@@ -40,6 +40,8 @@ namespace Divide
 {
 
 constexpr U8 INVALID_INDEX = U8_MAX;
+constexpr U16 ALL_MIPS = U16_MAX;
+constexpr U16 ALL_LAYERS = U16_MAX;
 constexpr U16 MAX_BLIT_ENTRIES = 8u;
 
 struct BlitEntry
@@ -54,7 +56,6 @@ struct BlitEntry
 struct DrawLayerEntry
 {
     SubRange _layer{0u, 1u};
-    /// Ignored for non cube textures
     U8 _cubeFace{0u}; 
 
     bool operator==(const DrawLayerEntry&) const = default;
@@ -74,7 +75,7 @@ struct RTBlitEntry
     U16 _mipCount{1u};
 };
 
-using RTBlitParams = eastl::fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES, false>;
+using RTBlitParams = fixed_vector<RTBlitEntry, MAX_BLIT_ENTRIES>;
 using RTClearDescriptor = std::array<RTClearEntry, RT_MAX_ATTACHMENT_COUNT>;
 using RTTransitionMask = bool[RT_MAX_ATTACHMENT_COUNT];
 using RTDrawMask = bool[to_base( RTColourAttachmentSlot::COUNT )];
@@ -83,7 +84,7 @@ struct RTDrawDescriptor
 {
     std::array<DrawLayerEntry, RT_MAX_ATTACHMENT_COUNT> _writeLayers{};
     RTDrawMask _drawMask = {false, false, false, false};
-    U16 _mipWriteLevel{ 0u };
+    U16 _mipWriteLevel{ ALL_MIPS };
     bool _autoResolveMSAA{true};
     bool _keepMSAADataAfterResolve{ false };
 };

@@ -93,14 +93,21 @@ using quatf = Quaternion<F32>;
 
     constexpr F32 INV_RAND_MAX = 0.0000305185094f;
 
-// SubRange instead of vec2<U16> to keep things trivial
-struct SubRange
+// SubRange instead of vec2<T> to keep things trivial
+template<typename T = U16>
+struct SubRange_t
 {
-    U16 _offset{ 0u };
-    U16 _count{ U16_MAX };
+    static_assert(std::is_unsigned_v<T>, "SubRange type must be an integral type");
 
-    bool operator==(const SubRange&) const = default;
+    constexpr static T COUNT_MAX = std::numeric_limits<T>::max();
+
+    T _offset{ 0u };
+    T _count{ COUNT_MAX };
+
+    bool operator==(const SubRange_t&) const = default;
 };
+
+using SubRange = SubRange_t<>;
 
 template<typename T>
 using base_type = typename std::remove_cv_t<typename std::remove_reference_t<T>>;
