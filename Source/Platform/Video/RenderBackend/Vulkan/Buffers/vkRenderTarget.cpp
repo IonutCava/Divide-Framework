@@ -231,7 +231,7 @@ namespace Divide
             destinationUsage._usage = RTUsageTracker::Layout::COPY_WRITE;
 
             const U16 srcDepth = vkTexIn->descriptor()._texType == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
-            const U16 dstDepth = vkTexOut->descriptor()._texType == TextureType::TEXTURE_3D ? vkTexIn->depth() : 1u;
+            const U16 dstDepth = vkTexOut->descriptor()._texType == TextureType::TEXTURE_3D ? vkTexOut->depth() : 1u;
 
             VkImageBlit2 blitRegions[MAX_BLIT_ENTRIES] = {};
             U8 blitRegionCount = 0u;

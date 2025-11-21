@@ -2318,13 +2318,12 @@ namespace Divide
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
-
         static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
 
-        auto& stateTracker = GetStateTracker();
-
         VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmdBuffer);
+
+        auto& stateTracker = GetStateTracker();
 
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
