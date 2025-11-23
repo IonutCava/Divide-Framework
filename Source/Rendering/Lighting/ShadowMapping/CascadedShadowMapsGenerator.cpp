@@ -534,7 +534,7 @@ namespace Divide
         GFX::BeginRenderPassCommand beginRenderPassCmd{};
         beginRenderPassCmd._clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
         beginRenderPassCmd._descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
-        beginRenderPassCmd._descriptor._writeLayers[to_base(RTColourAttachmentSlot::SLOT_0)]._layer._count = U16_MAX;
+        beginRenderPassCmd._descriptor._writeLayers[to_base(RTColourAttachmentSlot::SLOT_0)]._layer._count = ALL_LAYERS;
 
         // Blur horizontally
         beginRenderPassCmd._target = _blurBuffer._targetID;

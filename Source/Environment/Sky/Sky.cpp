@@ -53,6 +53,8 @@ namespace Divide
         const string worlTexName{ "worlnoise.bmp" };
         const string perlWorlTexName{ "perlworlnoise.tga" };
 
+        constexpr I32 worleySlices = 32, perlinWorleySlices = 128;
+
         void GenerateCurlNoise( const char* fileName, const I32 width, const I32 height )
         {
             Byte* data = new Byte[width * height * 4];
@@ -145,7 +147,7 @@ namespace Divide
 
         void GeneratePerlinWorleyNoise( PlatformContext& context, const char* fileName, const I32 width, const I32 height, const I32 slices )
         {
-            constexpr bool s_parallelBuild = false;
+            constexpr bool s_parallelBuild = true;
 
             Byte* perlWorlNoiseArray = new Byte[slices * width * height * 4];
 
@@ -253,10 +255,10 @@ void Sky::OnStartup( PlatformContext& context )
     {
         //worley and perlin-worley are from github/sebh/TileableVolumeNoise
         //which is in turn based on noise described in 'real time rendering of volumetric cloudscapes for horizon zero dawn'
-        Console::printfn( "Generating Worley Noise 32x32x32 RGB" );
+        Console::printfn( "Generating Worley Noise {}x{}x{} RGB", worleySlices, worleySlices, worleySlices );
         tasks[2] = CreateTask( [fileName = worlNoise.string()]( const Task& )
                                {
-                                   GenerateWorleyNoise( fileName.c_str(), 32, 32, 32 );
+                                   GenerateWorleyNoise( fileName.c_str(), worleySlices, worleySlices, worleySlices );
                                } );
         context.taskPool(TaskPoolType::HIGH_PRIORITY).enqueue( *tasks[2] );
         Console::printfn( "Done!" );
@@ -264,8 +266,8 @@ void Sky::OnStartup( PlatformContext& context )
 
     if ( g_alwaysGenerateWeatherTextures || !fileExists( perWordNoise ) )
     {
-        Console::printfn( "Generating Perlin-Worley Noise 128x128x128 RGBA" );
-        GeneratePerlinWorleyNoise( context, perWordNoise.string().c_str(), 128, 128, 128 );
+        Console::printfn( "Generating Perlin-Worley Noise {}x{}x{} RGBA", perlinWorleySlices, perlinWorleySlices, perlinWorleySlices);
+        GeneratePerlinWorleyNoise( context, perWordNoise.string().c_str(), perlinWorleySlices, perlinWorleySlices, perlinWorleySlices );
         Console::printfn( "Done!" );
     }
 
@@ -312,14 +314,14 @@ bool Sky::load( PlatformContext& context )
     const string perlWolFile = (procLocation() / perlWorlTexName).string();
     Byte* perlWorlData = (Byte*)stbi_load( perlWolFile.c_str(), &x, &y, &n, STBI_rgb_alpha );
     ImageTools::ImageData imgDataPerl = {};
-    DIVIDE_EXPECTED_CALL( imgDataPerl.loadFromMemory( perlWorlData, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) );
+    DIVIDE_EXPECTED_CALL( imgDataPerl.loadFromMemory( {perlWorlData, to_size( x * y * n )}, vec3<U16>( x / perlinWorleySlices, y, perlinWorleySlices), 1u, to_U8( STBI_rgb_alpha ) ) );
 
     stbi_image_free( perlWorlData );
 
     const string worlFile = (procLocation() / worlTexName).string();
     Byte* worlNoise = (Byte*)stbi_load( worlFile.c_str(), &x, &y, &n, STBI_rgb_alpha );
     ImageTools::ImageData imgDataWorl = {};
-    DIVIDE_EXPECTED_CALL( imgDataWorl.loadFromMemory( worlNoise, to_size( x * y * n ), to_U16( y ), to_U16( y ), to_U16( x / y ), to_U8( STBI_rgb_alpha ) ) );
+    DIVIDE_EXPECTED_CALL( imgDataWorl.loadFromMemory( {worlNoise, to_size( x * y * n )}, vec3<U16>(x / worleySlices, y, worleySlices), 1u, to_U8( STBI_rgb_alpha ) ) );
 
     stbi_image_free( worlNoise );
 

@@ -68,7 +68,7 @@ namespace Divide
     NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileQueue;
     NO_DESTROY ShaderProgram::ShaderQueue ShaderProgram::s_recompileFailedQueue;
     ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
-    eastl::fixed_vector<ShaderProgram*, U16_MAX, false> ShaderProgram::s_usedShaderPrograms;
+    fixed_vector<ShaderProgram*, U16_MAX> ShaderProgram::s_usedShaderPrograms;
     ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
     U8 ShaderProgram::k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
 
@@ -1140,7 +1140,8 @@ namespace Divide
         {
             s_recompileQueue.pop();
         }
-        efficient_clear(s_shaderPrograms);
+
+        s_shaderPrograms.clear();
         s_lastRequestedShaderProgram = {};
 
         FileWatcherManager::deallocateWatcher( s_shaderFileWatcherID );
@@ -1205,8 +1206,10 @@ namespace Divide
             case DescriptorSetBindingType::IMAGE:
                 bindingData._glBinding = s_imageSlot++;
                 break;
-            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER:
-            case DescriptorSetBindingType::UNIFORM_BUFFER:
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+            case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
+            case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
                 if ( usage == DescriptorSetUsage::PER_BATCH && slot == 0 )
                 {
                     bindingData._glBinding = k_commandBufferID;
@@ -1230,29 +1233,14 @@ namespace Divide
         DIVIDE_ASSERT( usage != DescriptorSetUsage::COUNT );
 
         U32 count = 0u;
-        if ( usage == DescriptorSetUsage::PER_DRAW )
+        for ( const BindingsPerSet& binding : s_bindingsPerSet[to_base( usage )] )
         {
-            switch ( type )
+            if ( binding._type == type )
             {
-                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: count = to_base( TextureSlot::COUNT ) + 2u; /*{Reflection + Refraction}*/ break;
-                case DescriptorSetBindingType::IMAGE: count = 2u; break;
-                case DescriptorSetBindingType::UNIFORM_BUFFER:
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER: count = 4u; break;
-                default:
-                case DescriptorSetBindingType::COUNT: break;
+                ++count;
             }
         }
-        else
-        {
-            for ( const BindingsPerSet& binding : s_bindingsPerSet[to_base( usage )] )
-            {
-                if ( binding._type == type )
-                {
-                    ++count;
-                }
-            }
-        }
-        
+
         return count;
     }
 
@@ -1775,16 +1763,11 @@ namespace Divide
                 BindingsPerSet& binding = _perDrawDescriptorSetLayout[buffer._bindingSlot];
                 SetVisibility( binding, buffer );
 
-                if ( buffer._uniformBuffer )
-                {
-                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::UNIFORM_BUFFER );
-                    binding._type = DescriptorSetBindingType::UNIFORM_BUFFER;
-                }
-                else
-                {
-                    DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER );
-                    binding._type = DescriptorSetBindingType::SHADER_STORAGE_BUFFER;
-                }
+                const DescriptorSetBindingType target = buffer._uniformBuffer
+                                                                ? (buffer._dynamic ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC : DescriptorSetBindingType::UNIFORM_BUFFER_STATIC)
+                                                                : (buffer._dynamic ? DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC : DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC);
+                DIVIDE_GPU_ASSERT( binding._type == DescriptorSetBindingType::COUNT || binding._type == target);
+                binding._type = target;
             }
         }
     }
@@ -2077,7 +2060,7 @@ namespace Divide
 
     void ShaderProgram::EraseAtomLocked( const U64 atomHash )
     {
-        eastl::fixed_vector<U64, 128, true> queuedDeletion;
+        fixed_vector<U64, 128, true> queuedDeletion;
 
         s_atoms.erase( atomHash );
 

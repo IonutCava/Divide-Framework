@@ -88,7 +88,7 @@ private:
     friend bool Merge( UniformData& lhs, UniformData& rhs, bool& partial );
 
     UniformDataContainer _data;
-    eastl::fixed_vector<Byte, 32, true> _buffer;
+    fixed_vector<Byte, 32, true> _buffer;
 };
 
 }; //namespace Divide

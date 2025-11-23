@@ -121,7 +121,7 @@ struct RenderCbkParams
 
 using RenderCallback = DELEGATE<bool, RenderCbkParams&, GFX::CommandBuffer&, GFX::MemoryBarrierCommand&>;
 
-using DrawCommandContainer = eastl::fixed_vector<IndirectIndexedDrawCommand, Config::MAX_VISIBLE_NODES, false>;
+using DrawCommandContainer = fixed_vector<IndirectIndexedDrawCommand, Config::MAX_VISIBLE_NODES>;
 
 BEGIN_COMPONENT(Rendering, ComponentType::RENDERING)
     friend class Attorney::RenderingCompRenderPass;

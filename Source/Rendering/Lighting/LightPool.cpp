@@ -175,7 +175,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );
 
         LockGuard<SharedMutex> w_lock( _movedSceneVolumesLock );
-        efficient_clear(_movedSceneVolumes);
+        _movedSceneVolumes.clear();
         return true;
     }
 

@@ -290,18 +290,22 @@ if( BUILD_TESTING_INTERNAL )
         endif()
     endforeach()
 
-    if( RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS )
-        message("Auto unit testing after build enabled!")
-        add_custom_target(RUN_UTS
-            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIGURATION>
-            DEPENDS ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE}
-            COMMENT "Run unit tests via CTest"
-        )
-        add_custom_target(RUN_UTS_POST_BUILD ALL
-            DEPENDS RUN_UTS
-            COMMENT "Run unit tests after build (local only)"
-        )
-    endif() #RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS
+    if (CATCH_DISCOVER_TESTS_ENABLED)
+        if( RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS )
+            message("Auto unit testing after build enabled!")
+            add_custom_target(RUN_UTS
+                COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIGURATION>
+                DEPENDS ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE}
+                COMMENT "Run unit tests via CTest"
+            )
+            add_custom_target(RUN_UTS_POST_BUILD ALL
+                DEPENDS RUN_UTS
+                COMMENT "Run unit tests after build (local only)"
+            )
+        endif() #RUN_TESTING_INTERNAL AND NOT IS_GITHUB_ACTIONS
+    else()
+        message(WARNING "Catch2 test discovery disabled - unit tests will NOT be run automatically!")
+    endif() #CATCH_DISCOVER_TESTS_ENABLED
 
 endif() #BUILD_TESTING_INTERNAL
 

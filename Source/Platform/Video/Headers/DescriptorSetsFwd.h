@@ -48,11 +48,18 @@ namespace Divide
     {
         COMBINED_IMAGE_SAMPLER,
         IMAGE,
-        UNIFORM_BUFFER,
-        SHADER_STORAGE_BUFFER,
+        UNIFORM_BUFFER_STATIC,
+        SHADER_STORAGE_BUFFER_STATIC,
+        UNIFORM_BUFFER_DYNAMIC,
+        SHADER_STORAGE_BUFFER_DYNAMIC,
         COUNT
     };
 
+    FORCE_INLINE bool IsDescriptorSetBindingTypeDynamic( const DescriptorSetBindingType type ) noexcept
+    {
+        return type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
+               type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+    }
 
     struct DescriptorSetEntry
     {

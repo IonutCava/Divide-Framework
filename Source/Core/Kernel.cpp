@@ -685,10 +685,6 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         config.debug.renderer.assertOnRenderAPIError = false;
     }
-    if (Util::FindCommandLineArgument(_argc, _argv, "disableAPIExtensions"))
-    {
-        config.debug.renderer.useExtensions = false;
-    }
     if (Util::FindCommandLineArgument(_argc, _argv, "disableEditor"))
     {
         config.runtime.enableEditor = false;

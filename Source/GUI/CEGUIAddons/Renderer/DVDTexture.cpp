@@ -165,7 +165,7 @@ void DVDTexture::setTextureSize_impl(const Sizef& sz, PixelFormat format)
 
     DIVIDE_ASSERT(!( _size.d_width > maxSize || _size.d_height > maxSize), "DVDTexture:: size too big");
 
-    Get(_texture)->createWithData( nullptr, 0u, vec2<U16>( _size.d_width, _size.d_height), {} );
+    Get(_texture)->createWithData( {}, vec3<U16>( _size.d_width, _size.d_height, 1u), {} );
 }
 
 void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
@@ -219,7 +219,7 @@ void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
     dimensions.width = to_U16(area.getWidth());
     dimensions.height = to_U16(area.getHeight());
     dimensions.depth = 1u;
-    Get(_texture)->replaceData( (const Byte*)sourceData, image_size, offset, dimensions, pixelUnpackAlignment );
+    Get(_texture)->replaceData( {(const Byte*)sourceData, image_size}, offset, dimensions, pixelUnpackAlignment );
 }
 
 void DVDTexture::blitToMemory(void* targetData) {

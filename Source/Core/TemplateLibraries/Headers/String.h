@@ -34,6 +34,7 @@
 #define DVD_STRING_H_
 
 #include "STLString.h"
+#include <EASTL/string.h>
 
 namespace Divide
 {

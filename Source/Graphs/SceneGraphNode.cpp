@@ -219,7 +219,7 @@ SceneGraphNode::~SceneGraphNode()
         {
             _sceneGraph->destroySceneGraphNode( _children._data[i] );
         }
-        efficient_clear( _children._data );
+        _children._data.clear();
         //_children._count.store(0u);
     }
 

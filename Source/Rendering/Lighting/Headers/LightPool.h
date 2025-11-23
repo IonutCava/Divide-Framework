@@ -112,7 +112,7 @@ class LightPool final : public FrameListener,
         BoundingSphere _volume;
         bool _staticSource = false;
     };
-    using LightList = eastl::fixed_vector<Light*, 32u, true>;
+    using LightList = fixed_vector<Light*, 32u, true>;
 
     static void InitStaticData( PlatformContext& context );
     static void DestroyStaticData();
@@ -227,7 +227,7 @@ class LightPool final : public FrameListener,
     ShadowProperties _shadowBufferData;
 
     mutable SharedMutex _movedSceneVolumesLock;
-    eastl::fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true> _movedSceneVolumes;
+    fixed_vector<MovingVolume, Config::MAX_VISIBLE_NODES, true> _movedSceneVolumes;
 
     mutable SharedMutex _lightLock{};
     Time::ProfileTimer& _shadowPassTimer;

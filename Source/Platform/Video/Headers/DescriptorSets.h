@@ -131,6 +131,7 @@ namespace Divide
         bool operator==( const DescriptorSet& ) const = default;
     };
 
+    void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange<> range ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, ImageUsage usage) noexcept;

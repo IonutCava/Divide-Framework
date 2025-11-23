@@ -51,6 +51,8 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DIVIDE_USE_FALLBACK_ASSUME_MACRO 1
 
+#include <execution>
+
 // Everyone agreed on this one. Yay!
 #ifndef RESTRICT
 #define RESTRICT __restrict

@@ -499,16 +499,16 @@ namespace Divide
                 DescriptorSetBinding& it = set._bindings[i];
                 if ( it._slot == targetBlock )
                 {
-                    assert( it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER );
+                    DIVIDE_GPU_ASSERT(it._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC);
 
                     it._shaderStageVisibility = _shaderStageVisibilityMask;
-                    Set( it._data, _buffer.get(), { 0u, _buffer->getPrimitiveCount() } );
+                    Set( it._data, _buffer.get() );
                     return true;
                 }
             }
 
             DescriptorSetBinding& binding = AddBinding( set, targetBlock, _shaderStageVisibilityMask );
-            Set( binding._data, _buffer.get(), { 0u, _buffer->getPrimitiveCount() } );
+            Set( binding._data, _buffer.get() );
             return true;
         }
 

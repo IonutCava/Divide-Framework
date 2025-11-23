@@ -126,6 +126,7 @@ struct DeviceInformation
     U32 _maxTaskWorkgroupSize[3] = { 1024u, 1024u, 64u };
     U32 _maxTaskWorkgroupInvocations = 1024u;
 
+    size_t _maxBufferSizeBytes = 0u;
     size_t _maxSizeBytesUBO = 64 * 1024;
     size_t _maxSizeBytesSSBO = 1024 * 1024 * 1024u;
     size_t _maxComputeSharedMemoryBytes = 1024 * 1024 * 1024;
@@ -142,6 +143,7 @@ struct DeviceInformation
     U32 _shaderCompilerThreads = 1u;
     U32 _maxTextureUnits = 32u;
     U32 _maxTextureSize = 4096u;
+    U32 _max3DTextureSize = 4096u;
     U32 _maxRTColourAttachments = 4u;
     U32 _maxAnisotropy = 0u;
     U32 _maxClipDistances = Config::MAX_CLIP_DISTANCES;
@@ -151,6 +153,7 @@ struct DeviceInformation
     VersionInformation _versionInfo = { 4u, 6u };
     GPUVendor _vendor = GPUVendor::COUNT;
     GPURenderer _renderer = GPURenderer::COUNT;
+    bool _meshShadingSupported = false;
 };
 
 struct DebugScope

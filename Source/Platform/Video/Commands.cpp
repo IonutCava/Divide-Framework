@@ -293,8 +293,10 @@ static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
     {
         const DescriptorSetBinding& binding = cmd._set._bindings[i];
 
-        if ( binding._data._type  == DescriptorSetBindingType::UNIFORM_BUFFER ||
-             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER )
+        if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
+             binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
+             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC ||
+             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC )
         {
             ++bufferCount;
         }
@@ -311,8 +313,10 @@ static string ToString(const BindShaderResourcesCommand& cmd, const U16 indent)
     {
         const DescriptorSetBinding& binding = cmd._set._bindings[i];
 
-        if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER ||
-             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER )
+        if ( binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
+             binding._data._type == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC ||
+             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC ||
+             binding._data._type == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC )
         {
             ret.append( "    " );
             for (U16 j = 0; j < indent; ++j)

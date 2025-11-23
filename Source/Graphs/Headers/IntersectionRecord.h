@@ -78,7 +78,7 @@ class IntersectionRecord
     }
 };
 
-using IntersectionContainer = eastl::fixed_vector<IntersectionRecord, 32u, true>;
+using IntersectionContainer = fixed_vector<IntersectionRecord, 32u, true>;
 
 }; //namespace Divide
 

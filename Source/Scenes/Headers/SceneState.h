@@ -199,7 +199,7 @@ struct SceneStatePerPlayer {
     const F32 _headHeight = DEFAULT_PLAYER_HEIGHT;
 };
 
-using WaterBodyDataContainer = eastl::fixed_vector<WaterBodyData, 5, true>;
+using WaterBodyDataContainer = fixed_vector<WaterBodyData, 5, true>;
 
 class SceneState : public SceneComponent {
    public:

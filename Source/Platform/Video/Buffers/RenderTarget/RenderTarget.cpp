@@ -107,25 +107,43 @@ bool RenderTarget::create()
         Handle<Texture> renderTexture = INVALID_HANDLE<Texture>;
         Handle<Texture> resolveTexture = INVALID_HANDLE<Texture>;
         const MipMappingState mipMapState = attDesc._texDescriptor._mipMappingState;
+        
+        if ( needsMSAAResolve )
         {
-            if ( needsMSAAResolve )
-            {
-                RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::SHADER_READ );
-                attDesc._texDescriptor._mipMappingState = MipMappingState::OFF;
-                attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
-            }
+            RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::SHADER_READ );
+            attDesc._texDescriptor._mipMappingState = MipMappingState::OFF;
+            attDesc._texDescriptor._msaaSamples = _descriptor._msaaSamples;
+        }
+        else
+        {
+            RemoveImageUsageFlag(attDesc._texDescriptor, ImageUsage::RT_RESOLVE_TARGET);
+        }
 
-            ResourceDescriptor<Texture> textureAttachment(texName + "_RENDER", attDesc._texDescriptor );
-            textureAttachment.waitForReady(true);
+        ResourceDescriptor<Texture> textureAttachment(texName + "_RENDER", attDesc._texDescriptor );
+        textureAttachment.waitForReady(true);
 
-            renderTexture = CreateResource(textureAttachment);
+        renderTexture = CreateResource(textureAttachment);
 
-            Get(renderTexture)->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
+        const ImageUsage loadUsage = Get(renderTexture)->createWithData({}, vec3<U16>(getWidth(), getHeight(), 1u), {});
+        if ( loadUsage == ImageUsage::SHADER_READ )
+        {
+            att->_renderUsage._usage = RTUsageTracker::Layout::SHADER_READ;
+        }
+        else if ( loadUsage == ImageUsage::RT_COLOUR_ATTACHMENT ||
+                  loadUsage == ImageUsage::RT_DEPTH_ATTACHMENT ||
+                  loadUsage == ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT)
+        {
+            att->_renderUsage._usage = RTUsageTracker::Layout::ATTACHMENT;
+        }
+        else
+        {
+            DIVIDE_UNEXPECTED_CALL();
         }
 
         if ( needsMSAAResolve )
         {
             AddImageUsageFlag( attDesc._texDescriptor, ImageUsage::SHADER_READ );
+            AddImageUsageFlag( attDesc._texDescriptor, ImageUsage::RT_RESOLVE_TARGET);
             attDesc._texDescriptor._mipMappingState = mipMapState;
             attDesc._texDescriptor._msaaSamples = 0u;
 
@@ -134,15 +152,27 @@ bool RenderTarget::create()
 
             resolveTexture = CreateResource( textureAttachment );
 
-            Get(resolveTexture)->createWithData( nullptr, 0u, vec2<U16>( getWidth(), getHeight() ), {} );
+            const ImageUsage loadUsage = Get(resolveTexture)->createWithData( {}, vec3<U16>( getWidth(), getHeight(), 1u ), {} );
+            if (loadUsage == ImageUsage::SHADER_READ)
+            {
+                att->_resolveUsage._usage = RTUsageTracker::Layout::SHADER_READ;
+            }
+            else if (loadUsage == ImageUsage::RT_RESOLVE_TARGET)
+            {
+                att->_resolveUsage._usage = RTUsageTracker::Layout::ATTACHMENT;
+            }
+            else
+            {
+                DIVIDE_UNEXPECTED_CALL();
+            }
         }
         else
         {
             resolveTexture = GetResourceRef(renderTexture);
+            att->_resolveUsage._usage = RTUsageTracker::Layout::COUNT;
         }
 
         att->setTexture(renderTexture, resolveTexture);
-
         DIVIDE_EXPECTED_CALL( initAttachment( att, attDesc._type, attDesc._slot ) );
     }
 
@@ -278,7 +308,7 @@ bool RenderTarget::initAttachment(RTAttachment* att, const RTAttachmentType type
         const bool shouldResize = attTex->width() != getWidth() || attTex->height() != getHeight();
         if (shouldResize)
         {
-            attTex->createWithData(nullptr, 0u, vec2<U16>(getWidth(), getHeight()), {});
+            attTex->createWithData( {}, vec2<U16>(getWidth(), getHeight()), {});
         }
 
         ResourcePtr<Texture> attRenderTex = Get( att->renderTexture() );

@@ -121,7 +121,7 @@ class glFramebuffer final : public RenderTarget {
     
     gl46core::GLenum _activeReadBuffer = gl46core::GL_NONE;
 
-    eastl::fixed_vector<BindingState, 8 + 2, true> _attachmentState;
+    fixed_vector<BindingState, 8 + 2, true> _attachmentState;
 
     bool _isLayeredDepth = false;
     bool _statusCheckQueued = false;

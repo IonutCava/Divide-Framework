@@ -207,7 +207,7 @@ void IMPrimitive::endBatch() noexcept
         _bufferHandles.resize(batchData.m_Attributes.size() + 2u, GPUBuffer::INVALID_HANDLE);
     }
 
-    efficient_clear(_basePipelineDescriptor._vertexFormat._vertexBindings);
+    _basePipelineDescriptor._vertexFormat._vertexBindings.clear();
 
     // Set positions
     {
@@ -234,7 +234,7 @@ void IMPrimitive::endBatch() noexcept
         _bufferHandles[0u] = posBuffer->_handle;
     }
 
-    efficient_clear(batchData.m_PositionData);
+    batchData.m_PositionData.clear();
 
     U8 bufferIdx = 1u;
     // now upload each attribute array one after another
@@ -271,7 +271,7 @@ void IMPrimitive::endBatch() noexcept
 
     for (auto& [index, data] : batchData.m_Attributes)
     {
-        efficient_clear(data.m_ArrayData);
+        data.m_ArrayData.clear();
     }
 
     // Gather all the required sizes and offsets to allocate needed memory upfront.
@@ -334,10 +334,10 @@ void IMPrimitive::endBatch() noexcept
         }
     }
 
-    efficient_clear(batchData.m_IndexBuffer_Wireframe);
-    efficient_clear(batchData.m_IndexBuffer_Triangles);
-    efficient_clear(batchData.m_IndexBuffer_Lines);
-    efficient_clear(batchData.m_IndexBuffer_Points);
+    batchData.m_IndexBuffer_Wireframe.clear();
+    batchData.m_IndexBuffer_Triangles.clear();
+    batchData.m_IndexBuffer_Lines.clear();
+    batchData.m_IndexBuffer_Points.clear();
 
     GPUBuffer::SetBufferParams ibParams = {};
     ibParams._updateFrequency = BufferUpdateFrequency::OCCASIONAL;
