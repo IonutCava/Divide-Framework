@@ -105,7 +105,7 @@ namespace Divide
 
     protected:
         Mutex _parentLock;
-        eastl::fixed_vector<ShaderProgram*, 4, true> _parents;
+        fixed_vector<ShaderProgram*, 4, true> _parents;
 
     protected:
         /// Shader cache
@@ -163,7 +163,7 @@ namespace Divide
         using RenderTargets = std::array<bool, to_base( RTColourAttachmentSlot::COUNT )>;
         using ShaderLoadData = std::array<LoadData, to_base( ShaderType::COUNT )>;
 
-        using ShaderProgramMap = eastl::fixed_vector<ShaderProgram*, U16_MAX, true>;
+        using ShaderProgramMap = fixed_vector<ShaderProgram*, U16_MAX, true>;
 
         using AtomMap = hashMap<U64 /*name hash*/, string>;
         using AtomInclusionMap = hashMap<U64 /*name hash*/, eastl::set<U64>>;
@@ -260,7 +260,7 @@ namespace Divide
         static ShaderQueue s_recompileFailedQueue;
         /// Shader program cache
         static ShaderProgramMap s_shaderPrograms;
-        static eastl::fixed_vector<ShaderProgram*, U16_MAX, false> s_usedShaderPrograms;
+        static fixed_vector<ShaderProgram*, U16_MAX> s_usedShaderPrograms;
 
         struct LastRequestedShader
         {

@@ -154,7 +154,7 @@ class TaskPool final : public GUIDWrapper {
      };
 
      SharedMutex _taskCallbacksLock;
-     eastl::fixed_vector<CallbackEntry, 1 << 9, true> _taskCallbacks;
+     fixed_vector<CallbackEntry, 1 << 9, true> _taskCallbacks;
 
      moodycamel::ConcurrentQueue<U32> _threadedCallbackBuffer{};
 

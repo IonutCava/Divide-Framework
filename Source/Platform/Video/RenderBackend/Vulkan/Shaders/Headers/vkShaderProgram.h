@@ -74,7 +74,7 @@ namespace Divide {
 
     class vkShaderProgram final : public ShaderProgram {
     public:
-        using vkShaders = eastl::fixed_vector<vkShaderEntry, to_base( ShaderType::COUNT ), false>;
+        using vkShaders = fixed_vector<vkShaderEntry, to_base( ShaderType::COUNT )>;
     public:
         vkShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor );
         ~vkShaderProgram() override;

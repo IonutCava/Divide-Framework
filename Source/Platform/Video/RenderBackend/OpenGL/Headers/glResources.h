@@ -144,7 +144,7 @@ private:
         size_t _hash = 0u;
         U32    _idx = U32_MAX;
     };
-    eastl::fixed_vector<CacheEntry, InitialCacheSize, true> _cache;
+    fixed_vector<CacheEntry, InitialCacheSize, true> _cache;
 
     //Heavy-handed general purpose lock
     SharedMutex _lock;

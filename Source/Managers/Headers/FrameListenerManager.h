@@ -41,7 +41,7 @@ namespace Divide {
 
 class FrameListenerManager {
 
-    using EventTimeMap = eastl::fixed_vector<U64, 16, false>;
+    using EventTimeMap = fixed_vector<U64, 16>;
 
   public:
 

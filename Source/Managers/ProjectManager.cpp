@@ -369,7 +369,7 @@ namespace Divide
             LightPool::InitStaticData( parent().platformContext() );
         }
 
-        efficient_clear(_availableProjects);
+        _availableProjects.clear();
         const std::filesystem::directory_iterator end;
         for ( std::filesystem::directory_iterator iter{ Paths::g_projectsLocation.fileSystemPath() }; iter != end; ++iter )
         {

@@ -163,7 +163,7 @@ class Kernel final : public Input::InputAggregatorInterface,
             InputConsumerType _type{ InputConsumerType::COUNT };
         };
 
-        eastl::fixed_vector<InputInterfacePair, to_base(InputConsumerType::COUNT), true> _inputConsumers{};
+        fixed_vector<InputInterfacePair, to_base(InputConsumerType::COUNT), true> _inputConsumers{};
 
         vector<Rect<I32>> _targetViewports{};
 

@@ -170,8 +170,8 @@ struct DebugPrimitiveHandler
     void addLocked(const I64 ID, const Descriptor& data) noexcept;
 
     Mutex _dataLock;
-    eastl::fixed_vector<IMPrimitive*, N, true>  _debugPrimitives;
-    eastl::fixed_vector<DataEntry, N, true> _debugData;
+    fixed_vector<IMPrimitive*, N, true>  _debugPrimitives;
+    fixed_vector<DataEntry, N, true> _debugData;
 };
 
 struct ImShaders
@@ -587,7 +587,7 @@ private:
     hashMap<size_t, Pipeline, NoHash<size_t>> _pipelineCache;
 
     static constexpr U8 MAX_CAMERA_SNAPSHOTS = 32u;
-    std::stack<CameraSnapshot, eastl::fixed_vector<CameraSnapshot, MAX_CAMERA_SNAPSHOTS, false>> _cameraSnapshots;
+    std::stack<CameraSnapshot, fixed_vector<CameraSnapshot, MAX_CAMERA_SNAPSHOTS>> _cameraSnapshots;
 
     std::array<CameraSnapshot, Config::MAX_LOCAL_PLAYER_COUNT> _cameraSnapshotHistory;
 

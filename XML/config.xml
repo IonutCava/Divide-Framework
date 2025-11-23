@@ -7,7 +7,6 @@
 			<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
 			<enableRenderAPIDebugGrouping>false</enableRenderAPIDebugGrouping>
 			<assertOnRenderAPIError>false</assertOnRenderAPIError>
-			<useExtensions>true</useExtensions>
 		</renderer>
 		<cache>
 			<enabled>true</enabled>

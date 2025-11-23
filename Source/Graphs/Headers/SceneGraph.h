@@ -99,7 +99,7 @@ class SceneGraph final : NonCopyable,
 
     void getNodesByType(std::initializer_list<SceneNodeType> types, vector<SceneGraphNode*>& nodesOut) const
     {
-        efficient_clear( nodesOut );
+        nodesOut.clear();
         for (const SceneNodeType type : types)
         {
             const vector<SceneGraphNode*>& nodes = getNodesByType(type);
@@ -169,10 +169,10 @@ class SceneGraph final : NonCopyable,
     hashMap<SceneGraphNode*, vector<size_t>> _pendingDeletion;
 
     mutable Mutex _nodeEventLock;
-    eastl::fixed_vector<SceneGraphNode*, 1024, true> _nodeEventQueue;
+    fixed_vector<SceneGraphNode*, 1024, true> _nodeEventQueue;
 
     mutable Mutex _nodeParentChangeLock;
-    eastl::fixed_vector<SceneGraphNode*, 256, true> _nodeParentChangeQueue;
+    fixed_vector<SceneGraphNode*, 256, true> _nodeParentChangeQueue;
 };
 
 FWD_DECLARE_MANAGED_CLASS(SceneGraph);

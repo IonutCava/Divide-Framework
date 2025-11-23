@@ -374,7 +374,7 @@ namespace Divide
         IMPrimitive* _axisGizmo = nullptr;
         Pipeline* _editorPipeline = nullptr;
 
-        eastl::fixed_vector<std::pair<I64, GPUVertexBuffer>, 5, true> _imguiBuffers;
+        fixed_vector<std::pair<I64, GPUVertexBuffer>, 5, true> _imguiBuffers;
 
         std::pair<bufferPtr, size_t> _memoryEditorData = { nullptr, 0 };
         std::array<ImGuiContext*, to_base( ImGuiContextType::COUNT )> _imguiContexts = {};

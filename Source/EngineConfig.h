@@ -39,6 +39,9 @@ namespace Divide {
 namespace Config {
 
 namespace Build {
+    // Set IS_SHIPPING_BUILD to true to disable non-required functionality for shipped games: editors, debug code, etc
+    constexpr bool IS_SHIPPING_BUILD = false;
+
 #if defined(_DEBUG)
     constexpr bool IS_DEBUG_BUILD   = true;
 
@@ -56,8 +59,6 @@ namespace Build {
     constexpr bool IS_PROFILE_BUILD = false;
 #endif
 
-    // Set IS_SHIPPING_BUILD to true to disable non-required functionality for shipped games: editors, debug code, etc
-    constexpr bool IS_SHIPPING_BUILD = IS_RELEASE_BUILD && false;
 #if defined(_START_IN_EDITOR)
     constexpr bool IS_EDITOR_BUILD = true;
     constexpr bool ENABLE_EDITOR = true;
@@ -65,6 +66,8 @@ namespace Build {
     constexpr bool IS_EDITOR_BUILD = false;
     constexpr bool ENABLE_EDITOR = !IS_SHIPPING_BUILD;
 #endif //_START_IN_EDITOR
+
+    static_assert( !IS_SHIPPING_BUILD || IS_RELEASE_BUILD, "A shipping build must be a release build!" );
 
 } //namespace Build
 
@@ -76,7 +79,8 @@ namespace Assert {
     constexpr bool SHOW_MESSAGE_BOX = LOG_ASSERTS;
 
     /// Do not call the platform "assert" function in order to continue application execution
-    constexpr bool CONTINUE_ON_ASSERT = false;
+    /// In a debug build we break the debugger and log all these failures (loudly)
+    constexpr bool CONTINUE_ON_ASSERT = Build::IS_DEBUG_BUILD;
 } // namespace Assert
 
 namespace Profile
@@ -88,7 +92,7 @@ namespace Profile
 constexpr float ALPHA_DISCARD_THRESHOLD = 1.f - 0.05f;
 
 constexpr unsigned char MINIMUM_VULKAN_MINOR_VERSION = 3u;
-constexpr unsigned char DESIRED_VULKAN_MINOR_VERSION = 3u;
+constexpr unsigned char DESIRED_VULKAN_MINOR_VERSION = 4u;
 
 /// Application desired framerate for physics and input simulations
 constexpr U16 TARGET_FRAME_RATE = 60;

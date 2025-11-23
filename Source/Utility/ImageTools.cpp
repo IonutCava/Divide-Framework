@@ -233,10 +233,20 @@ bool UseUpperLeftOrigin() noexcept
     return s_useUpperLeftOrigin;
 }
 
-bool ImageData::loadFromMemory(const Byte* data, const size_t size, const U16 width, const U16 height, const U16 depth, const U8 numComponents)
+bool ImageData::loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, const U16 layerCount, const U8 numComponents)
 {
-    ImageLayer& layer = _layers.emplace_back();
-    return layer.allocateMip(data, size, width, height, depth, numComponents);
+    _hasDummyData = data.empty();
+
+    for ( U16 i = 0u; i < layerCount; ++i )
+    {
+        ImageLayer& layer = _layers.emplace_back();
+        if ( layer.allocateMip( data.data(), data.size(), dimensions.x, dimensions.y, dimensions.z, numComponents ) == nullptr )
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)

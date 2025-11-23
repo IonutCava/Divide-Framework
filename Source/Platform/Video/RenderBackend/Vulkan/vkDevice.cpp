@@ -8,136 +8,184 @@ namespace Divide
 {
     VKDevice::VKDevice( vkb::Instance& instance, VkSurfaceKHR targetSurface )
     {
-        VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
-        meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
-        meshShaderFeatures.meshShader = true;
-        meshShaderFeatures.taskShader = true;
-        meshShaderFeatures.multiviewMeshShader = false;
-        meshShaderFeatures.primitiveFragmentShadingRateMeshShader = false;
-        meshShaderFeatures.meshShaderQueries = true;
+        supportsDescriptorBuffers(true);
 
-        VkPhysicalDeviceExtendedDynamicState3FeaturesEXT vk13EXTfeatures{};
-        vk13EXTfeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
-        vk13EXTfeatures.extendedDynamicState3ColorBlendEnable = true;
-        vk13EXTfeatures.extendedDynamicState3ColorBlendEquation = true;
-        vk13EXTfeatures.extendedDynamicState3ColorWriteMask = true;
-        vk13EXTfeatures.pNext = &meshShaderFeatures;
+        VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptorBufferFeatures{};
+        descriptorBufferFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+        descriptorBufferFeatures.descriptorBuffer = VK_TRUE;
+        descriptorBufferFeatures.descriptorBufferPushDescriptors = VK_TRUE;
+        // descriptorBufferFeatures.descriptorBufferCaptureReplay = VK_TRUE;
+
+        VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{};
+        bufferDeviceAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+        bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
+        bufferDeviceAddressFeatures.pNext = &descriptorBufferFeatures;
+
+        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties{};
+        pushDescriptorProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES;
+        pushDescriptorProperties.maxPushDescriptors = 32u;
+        pushDescriptorProperties.pNext = &bufferDeviceAddressFeatures;
+
+        VkPhysicalDeviceVulkan14Features vk14features{};
+        vk14features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+        vk14features.maintenance5 = VK_TRUE;
+        vk14features.maintenance6 = VK_TRUE;
+        vk14features.pushDescriptor = VK_TRUE;
 
         VkPhysicalDeviceVulkan13Features vk13features{};
         vk13features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-        vk13features.pNext = &vk13EXTfeatures;
-
-        vk13features.synchronization2 = true;
-        vk13features.dynamicRendering = true;
-        vk13features.maintenance4 = true;
+        vk13features.synchronization2 = VK_TRUE;
+        vk13features.dynamicRendering = VK_TRUE;
+        vk13features.inlineUniformBlock = VK_TRUE;
+        vk13features.maintenance4 = VK_TRUE;
+        vk13features.pNext = &pushDescriptorProperties;
 
         VkPhysicalDeviceVulkan12Features vk12features{};
         vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-        vk12features.samplerMirrorClampToEdge = true;
-        vk12features.timelineSemaphore = true;
-        vk12features.descriptorBindingPartiallyBound = true;
-        vk12features.descriptorBindingUniformBufferUpdateAfterBind = true;
-        vk12features.descriptorBindingSampledImageUpdateAfterBind = true;
-        vk12features.descriptorBindingStorageImageUpdateAfterBind = true;
-        vk12features.descriptorBindingStorageBufferUpdateAfterBind = true;
-        vk12features.descriptorBindingUpdateUnusedWhilePending = true;
-        vk12features.shaderSampledImageArrayNonUniformIndexing = true;
-        vk12features.runtimeDescriptorArray = true;
-        vk12features.descriptorBindingVariableDescriptorCount = true;
+        vk12features.bufferDeviceAddress = VK_TRUE;
+        vk12features.samplerMirrorClampToEdge = VK_TRUE;
+        vk12features.timelineSemaphore = VK_TRUE;
+        vk12features.descriptorBindingPartiallyBound = VK_TRUE;
+        vk12features.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+        vk12features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+        vk12features.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+        vk12features.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+        vk12features.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
+        vk12features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+        vk12features.runtimeDescriptorArray = VK_TRUE;
+        vk12features.descriptorBindingVariableDescriptorCount = VK_TRUE;
 
         VkPhysicalDeviceVulkan11Features vk11features{};
         vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-        vk11features.shaderDrawParameters = true;
+        vk11features.shaderDrawParameters = VK_TRUE;
 
         VkPhysicalDeviceFeatures vk10features{};
-        vk10features.independentBlend = true;
-        vk10features.imageCubeArray = true;
-        vk10features.geometryShader = true;
-        vk10features.tessellationShader = true;
-        vk10features.multiDrawIndirect = true;
-        vk10features.drawIndirectFirstInstance = true; //???
-        vk10features.depthClamp = true;
-        vk10features.depthBiasClamp = true;
-        vk10features.fillModeNonSolid = true;
-        vk10features.depthBounds = true;
-        vk10features.samplerAnisotropy = true;
-        vk10features.sampleRateShading = true;
-        //vk10features.textureCompressionETC2 = true;
-        vk10features.textureCompressionBC = true;
-        vk10features.shaderClipDistance = true;
-        vk10features.shaderCullDistance = true;
+        vk10features.independentBlend = VK_TRUE;
+        vk10features.imageCubeArray = VK_TRUE;
+        vk10features.geometryShader = VK_TRUE;
+        vk10features.tessellationShader = VK_TRUE;
+        vk10features.multiDrawIndirect = VK_TRUE;
+        vk10features.drawIndirectFirstInstance = VK_TRUE; //???
+        vk10features.depthClamp = VK_TRUE;
+        vk10features.depthBiasClamp = VK_TRUE;
+        vk10features.fillModeNonSolid = VK_TRUE;
+        vk10features.depthBounds = VK_TRUE;
+        vk10features.samplerAnisotropy = VK_TRUE;
+        vk10features.sampleRateShading = VK_TRUE;
+        //vk10features.textureCompressionETC2 = VK_TRUE;
+        vk10features.textureCompressionBC = VK_TRUE;
+        vk10features.shaderClipDistance = VK_TRUE;
+        vk10features.shaderCullDistance = VK_TRUE;
 
-        vkb::PhysicalDeviceSelector selector{ instance };
-        auto physicalDeviceSelection = selector.set_minimum_version( 1, Config::MINIMUM_VULKAN_MINOR_VERSION )
-            //.set_desired_version(1, Config::DESIRED_VULKAN_MINOR_VERSION)
-            .set_surface( targetSurface )
-            .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
-            .add_required_extension(VK_EXT_MESH_SHADER_EXTENSION_NAME)
-            .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
-            .set_required_features( vk10features )
-            .set_required_features_11( vk11features )
-            .set_required_features_12( vk12features )
-            .set_required_features_13( vk13features )
-            .select();
+        const auto selectDevice = [&](const uint32_t minor)
+        {
+            auto selector = 
+                vkb::PhysicalDeviceSelector(instance)
+                        .set_minimum_version( 1, minor)
+                        .set_surface( targetSurface )
+                        .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
+                        .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
+                        .add_required_extension( VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME )
+                        .add_required_extension( VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME ) //< Core in VK 1.4 but throws validation errors if missing
+                        .set_required_features( vk10features )
+                        .set_required_features_11( vk11features )
+                        .set_required_features_12( vk12features )
+                        .set_required_features_13( vk13features );
+            if (minor >= 4)
+            {
+                selector.set_required_features_14( vk14features );
+            }
 
+            vulkanMinorVersion(minor);
+            return selector.select();
+        };
+
+        vkb::Result<vkb::PhysicalDevice> physicalDeviceSelection = selectDevice( Config::DESIRED_VULKAN_MINOR_VERSION );
         if ( !physicalDeviceSelection )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), physicalDeviceSelection.error().message().c_str() );
+            physicalDeviceSelection = selectDevice(Config::MINIMUM_VULKAN_MINOR_VERSION);
+            if (!physicalDeviceSelection)
+            {
+                Console::errorfn(LOCALE_STR("ERROR_VK_INIT"), physicalDeviceSelection.error().message().c_str());
+                return;
+            }
+        }
+
+        _physicalDevice = physicalDeviceSelection.value();
+        _physicalDevice.enable_extensions_if_present(
+            {
+                VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
+                VK_KHR_MAINTENANCE_7_EXTENSION_NAME,
+                VK_EXT_MESH_SHADER_EXTENSION_NAME,
+            }
+        );
+
+        //create the final Vulkan device
+        vkb::DeviceBuilder deviceBuilder{ _physicalDevice };
+
+        for ( const auto& extension : _physicalDevice.get_extensions() )
+        {
+            if ( extension == VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )
+            {
+                supportsDynamicExtension3(true);
+
+
+                VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features{};
+                extendedDynamicState3Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+                extendedDynamicState3Features.extendedDynamicState3ColorBlendEnable = VK_TRUE;
+                extendedDynamicState3Features.extendedDynamicState3ColorBlendEquation = VK_TRUE;
+                extendedDynamicState3Features.extendedDynamicState3ColorWriteMask = VK_TRUE;
+                deviceBuilder.add_pNext(&extendedDynamicState3Features);
+            }
+            else if ( extension == VK_KHR_MAINTENANCE_7_EXTENSION_NAME )
+            {
+                suppportesMaintenance7(true);
+
+                VkPhysicalDeviceMaintenance7FeaturesKHR maintenance7Features{};
+                maintenance7Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
+                maintenance7Features.maintenance7 = VK_TRUE;
+                deviceBuilder.add_pNext(&maintenance7Features);
+            }
+            else if ( extension == VK_EXT_MESH_SHADER_EXTENSION_NAME )
+            {
+                /*supportsMeshShaders(true);
+
+                VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures{};
+                meshShaderFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+                meshShaderFeatures.meshShader = VK_TRUE;
+                meshShaderFeatures.taskShader = VK_TRUE;
+                meshShaderFeatures.multiviewMeshShader = VK_FALSE;
+                meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
+                meshShaderFeatures.meshShaderQueries = VK_TRUE;
+
+                deviceBuilder.add_pNext(&meshShaderFeatures);*/
+            }
+        }
+
+        auto vkbDevice = deviceBuilder.build();
+        if (!vkbDevice)
+        {
+            Console::errorfn(LOCALE_STR("ERROR_VK_INIT"), vkbDevice.error().message().c_str());
+            return;
+        }
+
+        // Get the VkDevice handle used in the rest of a Vulkan application
+        _device = vkbDevice.value();
+
+        const auto presentIndex = _device.get_queue_index(vkb::QueueType::present);
+        if (presentIndex )
+        {
+            _presentQueueIndex = presentIndex.value();
+
+            for ( U8 t = 0u; t < to_base( QueueType::COUNT ); ++t )
+            {
+                _queues[t] = getQueueInternal( static_cast<QueueType>(t), true);
+            }
         }
         else
         {
-            _physicalDevice = physicalDeviceSelection.value();
-            _physicalDevice.enable_extensions_if_present(
-   {
-                 VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-                 VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-                 VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME
-            }
-            );
-
-            //create the final Vulkan device
-            vkb::DeviceBuilder deviceBuilder{ _physicalDevice };
-            auto vkbDevice = deviceBuilder.build();
-            if ( !vkbDevice )
-            {
-                Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), vkbDevice.error().message().c_str() );
-                return;
-            }
-
-            for ( const auto& extension : _physicalDevice.get_extensions() )
-            {
-                if ( extension == VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )
-                {
-                    supportsDynamicExtension3(true);
-                }
-                else if ( extension == VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME )
-                {
-                    supportsPushDescriptors(true);
-                }
-                else if ( extension == VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME )
-                {
-                    supportsDescriptorBuffers(true);
-                }
-            }
-
-            // Get the VkDevice handle used in the rest of a Vulkan application
-            _device = vkbDevice.value();
-
-            const auto presentIndex = _device.get_queue_index(vkb::QueueType::present);
-            if (presentIndex )
-            {
-                _presentQueueIndex = presentIndex.value();
-
-                for ( U8 t = 0u; t < to_base( QueueType::COUNT ); ++t )
-                {
-                    _queues[t] = getQueueInternal( static_cast<QueueType>(t), true);
-                }
-            }
-            else
-            {
-                Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), presentIndex.error().message().c_str() );
-            }
-
+            Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), presentIndex.error().message().c_str() );
         }
     }
 

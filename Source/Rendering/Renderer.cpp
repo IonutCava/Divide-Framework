@@ -178,19 +178,19 @@ void Renderer::prepareLighting(const RenderStage stage,
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 10u, ShaderStageVisibility::COMPUTE_AND_DRAW );
-                Set(binding._data, data._lightIndexBuffer.get(), { 0u, data._lightIndexBuffer->getPrimitiveCount() } );
+                Set(binding._data, data._lightIndexBuffer.get() );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 11u, ShaderStageVisibility::COMPUTE_AND_DRAW );
-                Set(binding._data, data._lightGridBuffer.get(), { 0u, data._lightGridBuffer->getPrimitiveCount() } );
+                Set(binding._data, data._lightGridBuffer.get() );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, data._lightClusterAABBsBuffer.get(), { 0u, data._lightClusterAABBsBuffer->getPrimitiveCount() } );
+                Set(binding._data, data._lightClusterAABBsBuffer.get() );
             }
             {
                 DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
-                Set(binding._data, data._globalIndexCountBuffer.get(), { 0u, data._globalIndexCountBuffer->getPrimitiveCount() } );
+                Set(binding._data, data._globalIndexCountBuffer.get() );
             }
         }
         {

@@ -82,6 +82,14 @@ inline bool SupportsZOffsetTexture( const TextureType texType ) noexcept
     return IsCubeTexture( texType ) || Is3DTexture( texType ) || IsArrayTexture( texType );
 }
 
+inline bool IsRenderTargetAttachment(const PropertyDescriptor<Texture>& descriptor) noexcept
+{
+    return HasUsageFlagSet(descriptor, ImageUsage::RT_COLOUR_ATTACHMENT) ||
+           HasUsageFlagSet(descriptor, ImageUsage::RT_DEPTH_ATTACHMENT) ||
+           HasUsageFlagSet(descriptor, ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT) ||
+           HasUsageFlagSet(descriptor, ImageUsage::RT_RESOLVE_TARGET);
+}
+
 inline U8 NumChannels(const GFXImageFormat format) noexcept 
 {
     switch (format)

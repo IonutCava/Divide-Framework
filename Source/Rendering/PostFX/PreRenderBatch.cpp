@@ -90,6 +90,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
     desc._resolution = _screenRTs._hdr._screenRef._rt->getResolution();
 
     TextureDescriptor outputDescriptor = Get(_screenRTs._hdr._screenRef._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture())->descriptor();
+    RemoveImageUsageFlag(outputDescriptor, ImageUsage::RT_RESOLVE_TARGET);
 
     outputDescriptor._mipMappingState = MipMappingState::OFF;
     {
@@ -145,7 +146,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         _currentLuminance = CreateResource(texture);
 
         F32 val = 1.f;
-        Get(_currentLuminance)->createWithData((Byte*)&val, 1u * sizeof(F32), vec2<U16>(1u), {});
+        Get(_currentLuminance)->createWithData( {(Byte*)&val, 1u * sizeof(F32)}, vec3<U16>(1u), {});
     }
     {
         const SamplerDescriptor defaultSampler
@@ -593,7 +594,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
-            Set(binding._data, _histogramBuffer.get(), {0u, _histogramBuffer->getPrimitiveCount()});
+            Set(binding._data, _histogramBuffer.get());
         }
 
         PushConstantsStruct& params = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
@@ -718,6 +719,19 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     RenderTarget* prevScreenRT = _context.renderTargetPool().getRenderTarget(RenderTargetNames::SCREEN_PREV);
     Handle<Texture> prevScreenTex = prevScreenRT->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO )->texture();
 
+    static bool firstPass = true;
+    if ( firstPass )
+    {
+        firstPass = false;
+
+        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        {
+            ._targetView = Get(prevScreenTex)->getView(),
+            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._targetLayout = ImageUsage::RT_COLOUR_ATTACHMENT
+        });
+
+    }
     // Copy our screen target PRE tonemap to feed back to PostFX operators in the next frame
     GFX::BlitRenderTargetCommand blitScreenColourCmd = {};
     blitScreenColourCmd._source = getInput(true)._targetID;

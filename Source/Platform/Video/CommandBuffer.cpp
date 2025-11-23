@@ -73,7 +73,7 @@ namespace
             }
         }
 
-        efficient_clear(queue._commandBuffers);
+        queue._commandBuffers.clear();
     }
 
     void AddCommandBufferToQueue( CommandBufferQueue& queue, const Handle<GFX::CommandBuffer>& commandBuffer )
@@ -111,7 +111,7 @@ namespace
             }
         }
 
-        efficient_clear( _commands );
+        _commands.clear();
 
         _batched = true;
     }
@@ -760,7 +760,7 @@ namespace
         commands.insert( cend( commands ),
                             eastl::make_move_iterator( begin( crtCommand->_drawCommands ) ),
                             eastl::make_move_iterator( end( crtCommand->_drawCommands ) ) );
-        efficient_clear( crtCommand->_drawCommands );
+        crtCommand->_drawCommands.clear();
 
         {
             PROFILE_SCOPE( "Merge by offset", Profiler::Category::Graphics );

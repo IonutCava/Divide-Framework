@@ -33,6 +33,7 @@
 #define DVD_AI_ENTITY_H_
 
 #include "AI/Sensors/Headers/VisualSensor.h"
+#include <any>
 
 struct dtCrowdAgent;
 
@@ -77,7 +78,7 @@ class AIEntity final : public GUIDWrapper {
     [[nodiscard]] bool addSensor(SensorType type);
     [[nodiscard]] bool setAndSurrenderAIProcessor(AIProcessor* processor);
 
-    void sendMessage(AIEntity& receiver, AIMsg msg, const std::any& msg_content);
+    void sendMessage(AIEntity& receiver,  AIMsg msg, const std::any& msg_content);
     void receiveMessage(AIEntity& sender, AIMsg msg, const std::any& msg_content);
     void processMessage(AIEntity& sender, AIMsg msg, const std::any& msg_content);
 

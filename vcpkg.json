@@ -30,7 +30,6 @@
     "imguizmo",
     "meshoptimizer",
     "spirv-reflect",
-    "sdl3",
     "chaiscript",
     "wavpack",
     "libvorbis",
@@ -39,6 +38,12 @@
     "mpg123",
     "opusfile",
     "fluidsynth",
+    {
+      "name": "sdl3",
+      "features": [
+        "vulkan"
+      ]
+    },
     {
       "name": "sdl3-image",
       "features": [

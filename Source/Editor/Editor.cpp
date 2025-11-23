@@ -250,7 +250,7 @@ namespace Divide
         io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
         io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
-        Get(_fontTexture)->createWithData( (Byte*)pPixels, iWidth * iHeight * 4u, vec2<U16>( iWidth, iHeight ), {});
+        Get(_fontTexture)->createWithData( { reinterpret_cast<Byte*>(pPixels), iWidth * iHeight * 4u}, vec3<U16>( iWidth, iHeight, 1u ), {});
         // Store our identifier as reloading data may change the handle!
         io.Fonts->SetTexID( to_TexID(_fontTexture) );
     }
@@ -1400,7 +1400,7 @@ namespace Divide
         GPUVertexBuffer& newBuffer = _imguiBuffers.emplace_back(std::make_pair(bufferGUID, GPUVertexBuffer{})).second;
 
         newBuffer._vertexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_VB_{}", bufferGUID).c_str() );
-        newBuffer._indexBuffer = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_IB_{}", bufferGUID).c_str() );
+        newBuffer._indexBuffer  = _context.gfx().newGPUBuffer( Config::MAX_FRAMES_IN_FLIGHT + 1u, Util::StringFormat("IMGUI_IB_{}", bufferGUID).c_str() );
         newBuffer._handles[0] = newBuffer._vertexBuffer->_handle;
         newBuffer._handles[1] = newBuffer._indexBuffer->_handle;
 
@@ -1472,7 +1472,7 @@ namespace Divide
         }
 
         GPUVertexBuffer* buffer = getOrCreateIMGUIBuffer( bufferGUID, MaxVertices, MaxIndices, memCmdInOut);
-        DIVIDE_ASSERT( buffer != nullptr );
+        DIVIDE_ASSERT( buffer != nullptr && pDrawData->TotalIdxCount < MaxIndices);
 
         memCmdInOut._bufferLocks.emplace_back(buffer->_vertexBuffer->updateBuffer( 0u, numVertices, vertices ));
         memCmdInOut._bufferLocks.emplace_back(buffer->_indexBuffer->updateBuffer( 0u, numIndices, indices ));
@@ -1614,7 +1614,6 @@ namespace Divide
                     drawCmd->_cmd.indexCount = pcmd.ElemCount;
                     drawCmd->_cmd.firstIndex = indexOffset + pcmd.IdxOffset;
                     drawCmd->_cmd.baseVertex = baseVertex + pcmd.VtxOffset;
-                    
                 }
             }
 
