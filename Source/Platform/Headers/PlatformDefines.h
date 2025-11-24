@@ -377,6 +377,40 @@ constexpr eastl::array<T, N> create_eastl_array(const T& value) {
 
 #define NOP() static_assert(true, "")
 
+
+template <typename T>
+struct Handle
+{
+    U32 _generation: 8;
+    U32 _index : 24;
+
+    bool operator==(const Handle<T>& other) const noexcept = default;
+};
+
+static_assert(sizeof(Handle<void>) == sizeof(U32), "Handle size is incorrect");
+
+template<typename T> inline constexpr Handle<T> INVALID_HANDLE
+{
+    ._generation = 0xFFu,
+    ._index = 0x00FFFFFFu
+};
+
+template<typename T>
+FORCE_INLINE U32 to_U32(const Handle<T> handle) noexcept
+{
+    return  (to_U32(handle._generation) << 24) | (to_U32(handle._index) & 0x00FF'FFFFu);
+}
+
+template<typename T>
+FORCE_INLINE Handle<T> from_U32(const U32 handle) noexcept
+{
+    return Handle<T> h
+    {
+        ._generation = to_U32((packed >> 24) & 0xFFu);
+        ._index      = to_U32(packed & 0x00FF'FFFFu);
+    };
+}
+
 //Andrei Alexandrescu's ScopeGuard macros from "Declarative Control Flow" (CppCon 2015)
 //ref: https://gist.github.com/mmha/6bee3983caf2eab04d80af8e0eaddfbe
 namespace detail
@@ -462,30 +496,6 @@ namespace detail
     }
 } //namespace detail
 
-
-template <typename T>
-struct Handle
-{
-    union
-    {
-        struct
-        {
-            U32 _generation: 8;
-            U32 _index : 24;
-        };
-
-        U32 _data;
-    };
-
-    FORCE_INLINE bool operator==( const Handle& rhs ) const
-    {
-        return _data == rhs._data;
-    }
-};
-
-template<typename T>
-inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
-                          
 #define SCOPE_FAIL          auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
 #define SCOPE_SUCCESS       auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnSuccess() + [&]()
 #define SCOPE_EXIT          auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept

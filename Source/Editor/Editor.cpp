@@ -116,14 +116,13 @@ namespace Divide
 
     ImGui::ImTextureID to_TexID( Handle<Texture> handle )
     {
-        const U32 texData = handle._data;
-        return ImGui::ImTextureID(intptr_t(texData));
+        return ImGui::ImTextureID(intptr_t(to_U32(handle)));
     }
 
     Handle<Texture> from_TexID( ImTextureID texID )
     {
         const intptr_t texData = intptr_t(texID);
-        return Handle<Texture>{ ._data = to_U32(texData) };
+        return from_U32<Texture>(to_U32(texData));
     }
 
     namespace
@@ -1472,7 +1471,7 @@ namespace Divide
         }
 
         GPUVertexBuffer* buffer = getOrCreateIMGUIBuffer( bufferGUID, MaxVertices, MaxIndices, memCmdInOut);
-        DIVIDE_ASSERT( buffer != nullptr && pDrawData->TotalIdxCount < MaxIndices);
+        DIVIDE_ASSERT( buffer != nullptr && to_U32(pDrawData->TotalIdxCount) < MaxIndices);
 
         memCmdInOut._bufferLocks.emplace_back(buffer->_vertexBuffer->updateBuffer( 0u, numVertices, vertices ));
         memCmdInOut._bufferLocks.emplace_back(buffer->_indexBuffer->updateBuffer( 0u, numIndices, indices ));
