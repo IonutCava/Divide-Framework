@@ -404,10 +404,10 @@ FORCE_INLINE U32 to_U32(const Handle<T> handle) noexcept
 template<typename T>
 FORCE_INLINE Handle<T> from_U32(const U32 handle) noexcept
 {
-    return Handle<T> h
+    return Handle<T>
     {
-        ._generation = to_U32((packed >> 24) & 0xFFu);
-        ._index      = to_U32(packed & 0x00FF'FFFFu);
+        ._generation = to_U32((handle >> 24) & 0xFFu),
+        ._index      = to_U32(handle & 0x00FF'FFFFu)
     };
 }
 

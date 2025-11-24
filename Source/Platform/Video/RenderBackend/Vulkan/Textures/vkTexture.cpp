@@ -514,8 +514,8 @@ namespace Divide
         // Ensure _mipData is per-layer vector of per-mip entries
         _mipData.resize(numLayers);
 
-        // perMipLayerSize[layer][mip] = full bytes for that layer+mip (rowBytes * height * depth)
-        vector<vector<size_t>> perMipLayerSize(numLayers, vector<size_t>(numMips));
+        // perLayerMipSize[layer][mip] = full bytes for that layer+mip (rowBytes * height * depth)
+        vector<vector<size_t>> perLayerMipSize(numLayers, vector<size_t>(numMips));
 
         // Compute per-mip sizes including alignment
         size_t totalSizeAll = 0u;
@@ -523,7 +523,7 @@ namespace Divide
         for ( size_t layer = 0u; layer < numLayers; ++layer )
         {
             auto& mips = _mipData[layer];
-            auto& mipSizes = perMipLayerSize[layer];
+            auto& mipSizes = perLayerMipSize[layer];
             mips.resize(numMips);
 
             for ( U8 m = 0u; m < numMips; ++m )
@@ -708,7 +708,7 @@ namespace Divide
                 range.baseArrayLayer = to_I32(layer);
 
                 // Precompute per-layer totals for source offsets (layer-major: selected mips per layer)
-                const auto& perLayerMipSize = perMipLayerSize[layer];
+                const auto& layerMipSize = perLayerMipSize[layer];
                 const size_t totalBytesPerLayerSelected = perLayerTargetSize[layer];
                 const size_t layerDataBase = haveFullMipData ? (layer * totalBytesPerLayerSelected) : 0u;
 
@@ -716,12 +716,12 @@ namespace Divide
                 {
                     range.baseMipLevel = m;
 
-                    const size_t mipLayerSize = perLayerMipSize[m];
+                    const size_t mipLayerSize = layerMipSize[m];
                     const Byte* srcPtr = nullptr;
                     if ( haveFullMipData )
                     {
                         // offset within the selected-mip block for this layer
-                        const size_t offsetWithinSelected = std::accumulate(perLayerMipSize.begin() + mipStart, perLayerMipSize.begin() + m, to_size(0));
+                        const size_t offsetWithinSelected = std::accumulate(layerMipSize.begin() + mipStart, layerMipSize.begin() + m, to_size(0));
                         srcPtr = data + layerDataBase + offsetWithinSelected;
                     }
 
