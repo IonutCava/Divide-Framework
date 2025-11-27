@@ -402,7 +402,7 @@ namespace Divide
                            offset.height + range.height <= _height &&
                            offset.depth  + range.depth  <= _depth);
 
-            loadDataInternal( data, 0u, offset, range, pixelUnpackAlignment );
+            loadDataInternal( data, ALL_MIPS, offset, range, pixelUnpackAlignment );
         }
     }
 

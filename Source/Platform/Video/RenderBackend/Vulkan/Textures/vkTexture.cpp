@@ -463,20 +463,20 @@ namespace Divide
         if ( !makeImmutable && _descriptor._msaaSamples == 0u )
         {
             const PixelAlignment alignment{ ._alignment = 1u };
-            loadDataInternal( nullptr, _image->_allocInfo.size, 0u, {0u}, {_width, _height, _depth}, alignment );
+            loadDataInternal( nullptr, _image->_allocInfo.size, ALL_MIPS, {0u}, {_width, _height, _depth}, alignment );
             ret = ImageUsage::SHADER_READ;
         }
 
         return ret;
     }
 
-    void vkTexture::loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    void vkTexture::loadDataInternal( const std::span<const Byte> data, const U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         DIVIDE_GPU_ASSERT(_descriptor._allowRegionUpdates);
         loadDataInternal(data.data(), data.size(), targetMip, offset, dimensions, pixelUnpackAlignment);
     }
 
-    void vkTexture::loadDataInternal( const Byte* data, const size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    void vkTexture::loadDataInternal( const Byte* data, const size_t size, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -489,6 +489,8 @@ namespace Divide
         {
             Console::d_errorfn("vkTexture::loadDataInternal: [ {} ]!", resourceName().c_str());
         }
+
+        DIVIDE_ASSERT(targetMip == ALL_MIPS || targetMip < mipCount());
 
         const U16 topLeftX = offset.x;
         const U16 topLeftY = offset.y;
@@ -504,12 +506,11 @@ namespace Divide
         const bool isCubeMap = IsCubeTexture(_descriptor._texType);
         // number of layers that we actually upload (array layers / cube faces)
         const size_t numLayers = to_size(_layerCount) * (isCubeMap ? 6u : 1u);
-        const U16 numMips = mipCount();
+        const U16 numMips = targetMip == ALL_MIPS ? mipCount() : 1u;
 
         // If targetMip specified and valid, only upload that single mip level.
-        const U8 mipStart = (targetMip > 0 && targetMip < numMips) ? targetMip : 0u;
-        const U8 mipEnd = (mipStart > 0u) ? static_cast<U8>(mipStart + 1u) : static_cast<U8>(numMips);
-        //const U8 targetMipCount = static_cast<U8>(mipEnd - mipStart);
+        const U16 mipStart = targetMip == ALL_MIPS ? 0u : targetMip;
+        const U16 mipEnd   = targetMip == ALL_MIPS ? numMips : (mipStart + numMips);
 
         // Ensure _mipData is per-layer vector of per-mip entries
         _mipData.resize(numLayers);
@@ -526,7 +527,7 @@ namespace Divide
             auto& mipSizes = perlayerMipSize[layer];
             mips.resize(numMips);
 
-            for ( U8 m = 0u; m < numMips; ++m )
+            for ( U16 m = 0u; m < numMips; ++m )
             {
                 auto& mip = mips[m];
 
@@ -557,7 +558,7 @@ namespace Divide
         for ( size_t layer = 0u; layer < numLayers; ++layer )
         {
             size_t sum = 0u;
-            for ( U8 m = mipStart; m < mipEnd; ++m )
+            for ( U16 m = mipStart; m < mipEnd; ++m )
             {
                 sum += perlayerMipSize[layer][m];
             }
@@ -636,7 +637,7 @@ namespace Divide
                     range.baseArrayLayer = to_I32(layer);
 
                     const auto& mips = _mipData[layer];
-                    for ( U8 m = mipStart; m < mipEnd; ++m )
+                    for ( U16 m = mipStart; m < mipEnd; ++m )
                     {
                         range.baseMipLevel = m;
 
@@ -712,7 +713,7 @@ namespace Divide
                 const size_t totalBytesPerLayerSelected = perLayerTargetSize[layer];
                 const size_t layerDataBase = haveFullMipData ? (layer * totalBytesPerLayerSelected) : 0u;
 
-                for ( U8 m = mipStart; m < mipEnd; ++m )
+                for ( U16 m = mipStart; m < mipEnd; ++m )
                 {
                     range.baseMipLevel = m;
 
@@ -803,7 +804,7 @@ namespace Divide
         }
 
         const U16 numLayers = imageData.layerCount();
-        const U8 numMips = imageData.mipCount();
+        const U16 numMips = imageData.mipCount();
         _mipData.resize(numLayers, vector<Mip>(numMips));
 
         U16 maxDepth = 0u;
@@ -812,7 +813,7 @@ namespace Divide
         {
             auto& mips = _mipData[l];
             const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for (U8 m = 0u; m < numMips; ++m)
+            for (U16 m = 0u; m < numMips; ++m)
             {
                 const ImageTools::LayerData* mip = layer.getMip(m);
                 totalSize += mip->_size;
@@ -834,7 +835,7 @@ namespace Divide
         for (U32 l = 0u; l < numLayers; ++l)
         {
             const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for (U8 m = 0u; m < numMips; ++m)
+            for (U16 m = 0u; m < numMips; ++m)
             {
                 const ImageTools::LayerData* mip = layer.getMip(m);
                 memcpy(&target[dataOffset], mip->data(), mip->_size);
@@ -871,7 +872,7 @@ namespace Divide
             {
                 const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
 
-                for (U8 m = 0u; m < numMips; ++m)
+                for (U16 m = 0u; m < numMips; ++m)
                 {
                     const ImageTools::LayerData* mip = layer.getMip(m);
 
@@ -1000,7 +1001,7 @@ namespace Divide
         Texture::submitTextureData(crtUsageInOut);
     }
 
-    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept
+    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, const U16 mipLevel ) const noexcept
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
@@ -1011,18 +1012,12 @@ namespace Divide
 
         const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), HasUsageFlagSet(descriptor(), ImageUsage::RT_RESOLVE_TARGET) };
 
-        if ( mipLevel == U8_MAX )
-        {
-            assert( mipCount() > 0u );
-            mipLevel = to_U8( mipCount() - 1u );
-        }
-
         VkImageSubresourceRange range;
         range.aspectMask = GetAspectFlags( _descriptor );
         range.baseArrayLayer = layerRange._offset;
         range.layerCount = layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : layerRange._count;
-        range.baseMipLevel = mipLevel;
-        range.levelCount = 1u;
+        range.baseMipLevel = mipLevel == ALL_MIPS ? 0u : mipLevel;
+        range.levelCount = mipLevel == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : 1u;
 
         FlushPipelineBarrier(cmdBuffer, TransitionType::SHADER_READ_TO_BLIT_WRITE, range, namedImage );
 
@@ -1048,9 +1043,11 @@ namespace Divide
         FlushPipelineBarrier(cmdBuffer, TransitionType::BLIT_WRITE_TO_SHADER_READ, range, namedImage );
     }
 
-    ImageReadbackData vkTexture::readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment ) const noexcept
+    ImageReadbackData vkTexture::readData( const U16 mipLevel, const PixelAlignment& pixelPackAlignment ) const noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        DIVIDE_ASSERT(mipLevel < mipCount());
 
         ImageReadbackData ret{};
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
@@ -1062,7 +1059,7 @@ namespace Divide
         return ret;
     }
 
-    ImageReadbackData vkTexture::readData( VkCommandBuffer cmdBuffer, U8 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept
+    ImageReadbackData vkTexture::readData( VkCommandBuffer cmdBuffer, const U16 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
