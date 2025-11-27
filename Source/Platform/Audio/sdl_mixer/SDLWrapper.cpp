@@ -144,11 +144,11 @@ void SDL_API::playMusic(const Handle<AudioDescriptor> music)
     const string musicPath = (musicPtr->assetLocation() / musicPtr->assetName()).string();
 
     MIX_Audio* mixMusicPtr = nullptr;
-    const MusicMap::iterator it = _musicMap.find(music._data);
+    const MusicMap::iterator it = _musicMap.find(to_U32(music));
     if (it == std::cend(_musicMap))
     {
         mixMusicPtr = load_audio(_musicMixer, musicPath.c_str(), false);
-        insert(_musicMap, music._data, mixMusicPtr);
+        insert(_musicMap, to_U32(music), mixMusicPtr);
     }
     else
     {
@@ -169,7 +169,7 @@ void SDL_API::playMusic(const Handle<AudioDescriptor> music)
         stopMusic();
         const F32 pan = CLAMPED(musicPtr->stereoGain(), -1.f, 1.f);
         auto [left, right] = panToStereoEqualPower(pan);
-        _activeSongDetails._trackID = music._data;
+        _activeSongDetails._trackID = to_U32(music);
 
         AudioPlaybackProperties playbackProps
         {
@@ -227,19 +227,19 @@ void SDL_API::playSound(const Handle<AudioDescriptor> sound)
     const string soundPath = (soundPtr->assetLocation() / soundPtr->assetName()).string();
 
     SoundEntry soundEntry;
-    const SoundMap::iterator it = _soundMap.find(sound._data);
+    const SoundMap::iterator it = _soundMap.find(to_U32(sound));
     if (it == std::cend(_soundMap))
     {
         soundEntry._audio = load_audio(_soundMixer, soundPath.c_str(), true);
         soundEntry._details._sfx = &_context.sfx();
-        soundEntry._details._trackID = sound._data;
+        soundEntry._details._trackID = to_U32(sound);
         soundEntry._properties = SDL_CreateProperties();
         if (soundEntry._properties == 0)
         {
             Console::errorfn("{}", SDL_GetError());
         }
 
-        insert(_soundMap, sound._data, soundEntry);
+        insert(_soundMap, to_U32(sound), soundEntry);
     }
     else
     {

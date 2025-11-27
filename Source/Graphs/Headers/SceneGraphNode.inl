@@ -110,7 +110,7 @@ namespace Divide
     {
         static_assert(GetSceneNodeType<T>() != SceneNodeType::COUNT);
         DIVIDE_ASSERT(handle._type != SceneNodeType::COUNT);
-        return Handle<T>{ ._data = handle._handle._data };
+        return handle._handle;
     }
 
     template<typename T> requires std::is_base_of_v<SceneNode, T>
@@ -119,7 +119,8 @@ namespace Divide
         static_assert(GetSceneNodeType<T>() != SceneNodeType::COUNT);
 
         SceneNodeHandle ret { ._type = GetSceneNodeType<T>() };
-        ret._handle._data = handle._data;
+        ret._handle._generation = handle._generation;
+        ret._handle._index = handle._index;
         ret._nodePtr = Get( handle );
         ret._deleter = [handle]() { Handle<T> handleCpy = handle; DestroyResource( handleCpy ); };
 

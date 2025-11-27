@@ -200,12 +200,12 @@ void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
 void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )
 {
     const U32 numLayers = imageData.layerCount();
-    const U8 numMips = imageData.mipCount();
+    const U16 numMips = imageData.mipCount();
 
     for ( U32 l = 0u; l < numLayers; ++l )
     {
         const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-        for ( U8 m = 0u; m < numMips; ++m )
+        for ( U16 m = 0u; m < numMips; ++m )
         {
             const ImageTools::LayerData* mip = layer.getMip( m );
             assert( mip->_size > 0u );
@@ -215,8 +215,10 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const v
     }
 }
 
-void glTexture::loadDataInternal( const std::span<const Byte> data, const U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
 {
+    DIVIDE_ASSERT(targetMip != ALL_MIPS && targetMip < mipCount());
+
     const bool isCompressed = IsCompressed( _descriptor._baseFormat );
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
@@ -282,7 +284,7 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U8 tar
     GL_API::GetStateTracker().setPixelUnpackAlignment({});
 }
 
-void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const
+void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, const U16 mipLevel ) const
 {
     FColour4 floatData;
     vec4<U16> shortData;
@@ -328,22 +330,20 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
         return (bufferPtr)nullptr;
     };
 
-    if ( mipLevel== U8_MAX )
-    {
-        assert(mipCount() > 0u);
-        mipLevel = to_U8(mipCount() - 1u);
-    }
-
     DIVIDE_GPU_ASSERT(!IsCompressed( _descriptor._baseFormat ), "glTexture::clearData: compressed textures are not supported!");
 
     const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
+    DIVIDE_ASSERT(mipLevel == ALL_MIPS || mipLevel < mipCount());
+
     if ( layerRange._offset == 0u && (layerRange._count == ALL_LAYERS || layerRange._count == _layerCount ))
     {
-        gl46core::glClearTexImage( _textureHandle, mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor._dataType ) );
+        gl46core::glClearTexImage( _textureHandle, mipLevel == ALL_MIPS ? 0u : mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor._dataType ) );
     }
     else
     {
+        const U16 targetMip = mipLevel == ALL_MIPS ? 0u : mipLevel;
+
         if ( layerRange._count >= _layerCount )
         {
             layerRange._count = _layerCount;
@@ -351,11 +351,11 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
 
         const bool isCubeMap = IsCubeTexture( _descriptor._texType );
         const U32 layerOffset = isCubeMap ? layerRange._offset * 6 : layerRange._offset;
-        const U16 mipWidth = _width >> mipLevel;
-        const U16 mipHeight = _height >> mipLevel;
+        const U16 mipWidth = _width >> targetMip;
+        const U16 mipHeight = _height >> targetMip;
 
         gl46core::glClearTexSubImage( _textureHandle,
-                                      mipLevel,
+                                      targetMip,
                                       0,
                                       _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? layerRange._offset : 0,
                                       layerOffset,
@@ -413,7 +413,7 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, U8 
     }
 }
 
-ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const
+ImageReadbackData glTexture::readData(const U16 mipLevel, const PixelAlignment& pixelPackAlignment) const
 {
     ImageReadbackData grabData{};
 
@@ -421,16 +421,18 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
     grabData._numComponents = numChannels();
     grabData._sourceIsBGR = IsBGRTexture( _descriptor._baseFormat );
 
-    mipLevel = std::min(mipLevel, to_U8(mipCount() - 1u));
+    const U16 targetMipLevel = mipLevel == ALL_MIPS ? 0u : mipLevel;
+    DIVIDE_ASSERT(targetMipLevel < mipCount());
+
     if ( IsCompressed( _descriptor._baseFormat ) )
     {
         gl46core::GLint compressedSize = 0;
-        gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel) , gl46core::GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
+        gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel) , gl46core::GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
         if ( compressedSize > 0 )
         {
             grabData._data.resize(compressedSize);
             grabData._sourceIsCompressed = true;
-            gl46core::glGetCompressedTextureImage( _textureHandle, mipLevel, compressedSize, (bufferPtr)grabData._data.data() );
+            gl46core::glGetCompressedTextureImage( _textureHandle, targetMipLevel, compressedSize, (bufferPtr)grabData._data.data() );
         }
     }
     else
@@ -439,9 +441,9 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
         grabData._numComponents = 4; //glGetTextureImage pads the data to RGBA
         {
             gl46core::GLint width = _width, height = _height, depth = _depth;
-            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_WIDTH,  &width );
-            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_HEIGHT, &height );
-            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_DEPTH,  &depth );
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel), gl46core::GL_TEXTURE_WIDTH,  &width );
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel), gl46core::GL_TEXTURE_HEIGHT, &height );
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel), gl46core::GL_TEXTURE_DEPTH,  &depth );
             grabData._width  = to_U16(width);
             grabData._height = to_U16(height);
             grabData._depth  = to_U16(depth);
@@ -455,7 +457,7 @@ ImageReadbackData glTexture::readData(U8 mipLevel, const PixelAlignment& pixelPa
         const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
         gl46core::glGetTextureImage( _textureHandle,
-                                     mipLevel,
+                                     targetMipLevel,
                                      formatAndType._internalFormat,
                                      formatAndType._dataType,
                                      (gl46core::GLsizei)grabData._data.size(),

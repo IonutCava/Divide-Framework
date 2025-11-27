@@ -77,7 +77,7 @@ namespace Divide {
     {
         Str<256> _name;
         ModuleDefines _globalDefines;
-        vector<ShaderModuleDescriptor> _modules;
+        fixed_vector<ShaderModuleDescriptor, to_base(ShaderType::COUNT), false> _modules;
         bool _useShaderCache{true};
     };
 
