@@ -181,7 +181,7 @@ FetchContent_MakeAvailable(JoltPhysics)
 
 include_directories(${JoltPhysics_SOURCE_DIR}/..)
 
-#----------------------------------------------------------------------------- NRI Physics ------------------------------------------------------------------
+#----------------------------------------------------------------------------- NRI ------------------------------------------------------------------
 
 if (NOT MSVC_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-unused-parameter -Wno-array-bounds")
@@ -213,7 +213,7 @@ endif()
 FetchContent_Declare(
     nri
     GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
-    GIT_TAG        v176
+    GIT_TAG        main
     #GIT_PROGRESS   TRUE
     SYSTEM
 )
