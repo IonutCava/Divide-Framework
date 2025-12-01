@@ -166,7 +166,7 @@ namespace Divide
 
         bool unload() override;
 
-        void clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept;
+        void clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U16 mipLevel ) const noexcept;
         void generateMipmaps( VkCommandBuffer cmdBuffer, U16 baseLevel, U16 baseLayer, U16 layerCount, ImageUsage crtUsage );
 
         PROPERTY_R( AllocatedImage_uptr, image, nullptr );
@@ -174,8 +174,8 @@ namespace Divide
         PROPERTY_R_IW( VkFormat, vkFormat, VK_FORMAT_MAX_ENUM );
         PROPERTY_R_IW( VkSampleCountFlagBits, sampleFlagBits, VK_SAMPLE_COUNT_1_BIT );
 
-        [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
-        [[nodiscard]] ImageReadbackData readData( VkCommandBuffer cmdBuffer, U8 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
+        [[nodiscard]] ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept override;
+        [[nodiscard]] ImageReadbackData readData( VkCommandBuffer cmdBuffer, U16 mipLevel, const PixelAlignment& pixelPackAlignment) const noexcept;
         [[nodiscard]] VkImageView getImageView( const CachedImageView::Descriptor& descriptor ) const;
 
         [[nodiscard]] static VkImageAspectFlags GetAspectFlags( const TextureDescriptor& descriptor ) noexcept;
@@ -195,13 +195,13 @@ namespace Divide
 
     private:
         void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
-        void loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
+        void loadDataInternal( const std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
         ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable ) override;
-        void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const int4& rectToClear, int2 depthRange ) const;
+        void clearDataInternal( const UColour4& clearColour, U16 level, bool clearRect, const int4& rectToClear, int2 depthRange ) const;
         void clearImageViewCache();
         void submitTextureData(ImageUsage& crtUsageInOut) override;
 
-        void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
+        void loadDataInternal( const Byte* data, size_t size, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
     private:
         struct Mip
         {

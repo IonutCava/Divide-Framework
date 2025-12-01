@@ -48,9 +48,9 @@ class glTexture final : public Texture {
 
     bool unload() override;
 
-    void clearData( const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const;
+    void clearData( const UColour4& clearColour, SubRange layerRange, U16 mipLevel ) const;
 
-    [[nodiscard]] ImageReadbackData readData(U8 mipLevel, const PixelAlignment& pixelPackAlignment) const override;
+    [[nodiscard]] ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const override;
 
     PROPERTY_R_IW( gl46core::GLuint, textureHandle, GL_NULL_HANDLE);
 
@@ -60,7 +60,7 @@ class glTexture final : public Texture {
     bool postLoad() override;
     void reserveStorage(bool makeImmutable);
     void loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
-    void loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
+    void loadDataInternal( const std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
     ImageUsage prepareTextureData(const vec3<U16>& dimensions, U16 layers, bool makeImmutable) override;
     void submitTextureData(ImageUsage& crtUsageInOut) override;
 
