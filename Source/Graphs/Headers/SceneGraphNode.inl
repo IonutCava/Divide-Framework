@@ -105,14 +105,6 @@ namespace Divide
         return Hacks._renderingComponent;
     }
 
-    template<typename T> requires std::is_base_of_v<SceneNode, T> 
-    Handle<T> ToHandle( const SceneNodeHandle handle )
-    {
-        static_assert(GetSceneNodeType<T>() != SceneNodeType::COUNT);
-        DIVIDE_ASSERT(handle._type != SceneNodeType::COUNT);
-        return handle._handle;
-    }
-
     template<typename T> requires std::is_base_of_v<SceneNode, T>
     SceneNodeHandle FromHandle( const Handle<T> handle )
     {
