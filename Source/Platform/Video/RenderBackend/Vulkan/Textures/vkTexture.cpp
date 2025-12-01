@@ -506,7 +506,8 @@ namespace Divide
         const bool isCubeMap = IsCubeTexture(_descriptor._texType);
         // number of layers that we actually upload (array layers / cube faces)
         const size_t numLayers = to_size(_layerCount) * (isCubeMap ? 6u : 1u);
-        const U16 numMips = targetMip == ALL_MIPS ? mipCount() : 1u;
+        const U16 totalMips = mipCount();
+        const U16 numMips = targetMip == ALL_MIPS ? totalMips : 1u;
 
         // If targetMip specified and valid, only upload that single mip level.
         const U16 mipStart = targetMip == ALL_MIPS ? 0u : targetMip;
@@ -516,7 +517,7 @@ namespace Divide
         _mipData.resize(numLayers);
 
         // perlayerMipSize[layer][mip] = full bytes for that layer+mip (rowBytes * height * depth)
-        vector<vector<size_t>> perlayerMipSize(numLayers, vector<size_t>(numMips));
+        vector<vector<size_t>> perlayerMipSize(numLayers, vector<size_t>(totalMips));
 
         // Compute per-mip sizes including alignment
         size_t totalSizeAll = 0u;
@@ -525,9 +526,9 @@ namespace Divide
         {
             auto& mips = _mipData[layer];
             auto& mipSizes = perlayerMipSize[layer];
-            mips.resize(numMips);
+            mips.resize(totalMips);
 
-            for ( U16 m = 0u; m < numMips; ++m )
+            for ( U16 m = 0u; m < totalMips; ++m )
             {
                 auto& mip = mips[m];
 
