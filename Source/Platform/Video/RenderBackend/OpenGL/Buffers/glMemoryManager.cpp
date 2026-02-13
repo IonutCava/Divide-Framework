@@ -28,7 +28,7 @@ U32 TotalBufferCount()
 Chunk::Chunk(const std::string_view chunkName,
              const size_t alignedSize,
              const gl46core::BufferStorageMask storageMask,
-             const gl46core::BufferAccessMask accessMask,
+             const gl46core::MapBufferAccessMask accessMask,
              const U32 flags)
     : _storageMask(storageMask),
       _accessMask(accessMask),
@@ -140,7 +140,7 @@ ChunkAllocator::ChunkAllocator(const size_t size) noexcept
 
 std::unique_ptr<Chunk> ChunkAllocator::allocate(const size_t alignedSize,
                                                 const gl46core::BufferStorageMask storageMask,
-                                                const gl46core::BufferAccessMask accessMask,
+                                                const gl46core::MapBufferAccessMask accessMask,
                                                 const U32 flags) const
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
@@ -166,7 +166,7 @@ void DeviceAllocator::init(const size_t size)
 Block DeviceAllocator::allocate(const bool poolAllocations,
                                 const size_t alignedSize,
                                 const gl46core::BufferStorageMask storageMask,
-                                const gl46core::BufferAccessMask accessMask,
+                                const gl46core::MapBufferAccessMask accessMask,
                                 const U32 flags,
                                 const std::pair<bufferPtr, size_t> initialData,
                                 const bool zeroRemainingData)
@@ -328,7 +328,7 @@ Byte* createAndAllocateMappedBuffer( gl46core::GLuint& bufferIdOut,
                                      const gl46core::BufferStorageMask storageMask,
                                      const size_t alignedSize,
                                      const std::pair<bufferPtr, size_t> initialData,
-                                     const gl46core::BufferAccessMask accessMask,
+                                     const gl46core::MapBufferAccessMask accessMask,
                                      const bool zeroRemainingData )
 {
     PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);

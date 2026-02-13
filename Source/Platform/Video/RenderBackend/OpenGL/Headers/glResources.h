@@ -34,6 +34,7 @@
 #define DVD_GL_RESOURCES_H_
 
 #include <glbinding/gl46core/gl.h>
+#include <glbinding/gl46ext/gl.h>
 
 struct SDL_Window;
 typedef struct SDL_GLContextState* SDL_GLContext;

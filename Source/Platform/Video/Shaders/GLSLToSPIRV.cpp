@@ -17,15 +17,15 @@ namespace
     {
         switch ( shader_type )
         {
-            case Divide::ShaderType::VERTEX: return EShLangVertex;
+            case Divide::ShaderType::VERTEX:            return EShLangVertex;
             case Divide::ShaderType::TESSELLATION_CTRL: return EShLangTessControl;
             case Divide::ShaderType::TESSELLATION_EVAL: return EShLangTessEvaluation;
-            case Divide::ShaderType::GEOMETRY: return EShLangGeometry;
-            case Divide::ShaderType::FRAGMENT: return EShLangFragment;
-            case Divide::ShaderType::COMPUTE: return EShLangCompute;
-            case Divide::ShaderType::MESH_NV: return EShLangMesh;
-            case Divide::ShaderType::TASK_NV: return EShLangTask;
-            default: DIVIDE_UNEXPECTED_CALL(); break;
+            case Divide::ShaderType::GEOMETRY:          return EShLangGeometry;
+            case Divide::ShaderType::FRAGMENT:          return EShLangFragment;
+            case Divide::ShaderType::COMPUTE:           return EShLangCompute;
+            case Divide::ShaderType::MESH:              return EShLangMesh;
+            case Divide::ShaderType::TASK:              return EShLangTask;
+            default: DIVIDE_UNEXPECTED_CALL();          break;
         }
 
         return EShLangVertex;
@@ -145,6 +145,15 @@ void SpirvHelper::InitResources( TBuiltInResource& Resources )
     Resources.maxTaskWorkGroupSizeY_NV = 1;
     Resources.maxTaskWorkGroupSizeZ_NV = 1;
     Resources.maxMeshViewCountNV = 4;
+    Resources.maxMeshOutputVerticesEXT = 256;
+    Resources.maxMeshOutputPrimitivesEXT = 512;
+    Resources.maxMeshWorkGroupSizeX_EXT = 32;
+    Resources.maxMeshWorkGroupSizeY_EXT = 1;
+    Resources.maxMeshWorkGroupSizeZ_EXT = 1;
+    Resources.maxTaskWorkGroupSizeX_EXT = 32;
+    Resources.maxTaskWorkGroupSizeY_EXT = 1;
+    Resources.maxTaskWorkGroupSizeZ_EXT = 1;
+    Resources.maxMeshViewCountEXT = 4;
     Resources.limits.nonInductiveForLoops = 1;
     Resources.limits.whileLoops = 1;
     Resources.limits.doWhileLoops = 1;
@@ -255,14 +264,14 @@ namespace
     {
         switch ( type )
         {
-            case ShaderType::FRAGMENT: return ShaderStageVisibility::FRAGMENT;
-            case ShaderType::VERTEX: return ShaderStageVisibility::VERTEX;
-            case ShaderType::GEOMETRY: return ShaderStageVisibility::GEOMETRY;
+            case ShaderType::FRAGMENT:          return ShaderStageVisibility::FRAGMENT;
+            case ShaderType::VERTEX:            return ShaderStageVisibility::VERTEX;
+            case ShaderType::GEOMETRY:          return ShaderStageVisibility::GEOMETRY;
             case ShaderType::TESSELLATION_CTRL: return ShaderStageVisibility::TESS_CONTROL;
             case ShaderType::TESSELLATION_EVAL: return ShaderStageVisibility::TESS_EVAL;
-            case ShaderType::COMPUTE: return ShaderStageVisibility::COMPUTE;
-            case ShaderType::MESH_NV: return ShaderStageVisibility::MESH_NV;
-            case ShaderType::TASK_NV: return ShaderStageVisibility::TASK_NV;
+            case ShaderType::COMPUTE:           return ShaderStageVisibility::COMPUTE;
+            case ShaderType::MESH:              return ShaderStageVisibility::MESH;
+            case ShaderType::TASK:              return ShaderStageVisibility::TASK;
 
             default:
             case ShaderType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;

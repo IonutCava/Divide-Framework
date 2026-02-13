@@ -30,8 +30,8 @@ namespace
             case ShaderType::GEOMETRY:          return gl46core::UseProgramStageMask::GL_GEOMETRY_SHADER_BIT;
             case ShaderType::FRAGMENT:          return gl46core::UseProgramStageMask::GL_FRAGMENT_SHADER_BIT;
             case ShaderType::COMPUTE:           return gl46core::UseProgramStageMask::GL_COMPUTE_SHADER_BIT;
-            case ShaderType::MESH_NV:           return gl46core::UseProgramStageMask::GL_MESH_SHADER_BIT_NV;
-            case ShaderType::TASK_NV:           return gl46core::UseProgramStageMask::GL_TASK_SHADER_BIT_NV;
+            case ShaderType::MESH:              return gl46core::UseProgramStageMask::GL_MESH_SHADER_BIT_EXT;
+            case ShaderType::TASK:              return gl46core::UseProgramStageMask::GL_TASK_SHADER_BIT_EXT;
             default:
             case ShaderType::COUNT:             break;
         }
@@ -124,7 +124,7 @@ ShaderResult glShader::uploadToGPU()
             if constexpr(g_useSPIRVBinaryCode)
             {
                 shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-                gl46core::glShaderBinary(1, &shader, gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V_ARB, data._sourceCodeSpirV.data(), (gl46core::GLsizei)(data._sourceCodeSpirV.size() * sizeof(SpvWord)));
+                gl46core::glShaderBinary(1, &shader, gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V, data._sourceCodeSpirV.data(), (gl46core::GLsizei)(data._sourceCodeSpirV.size() * sizeof(SpvWord)));
                 gl46core::glSpecializeShader(shader, "main", 0, nullptr, nullptr);
             }
             else

@@ -43,7 +43,7 @@ namespace Divide
         _allocator = &GL_API::GetMemoryAllocator(GL_API::GetMemoryTypeForUsage(_params._target));
 
         gl46core::BufferStorageMask storageMask = gl46core::GL_MAP_PERSISTENT_BIT | gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_COHERENT_BIT;
-        gl46core::BufferAccessMask  accessMask  = gl46core::GL_MAP_PERSISTENT_BIT | gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_COHERENT_BIT;
+        gl46core::MapBufferAccessMask  accessMask  = gl46core::GL_MAP_PERSISTENT_BIT | gl46core::GL_MAP_WRITE_BIT | gl46core::GL_MAP_COHERENT_BIT;
 
         switch ( _params._updateFrequency )
         {
@@ -178,7 +178,7 @@ namespace Divide
 
             gl46core::glCopyNamedBufferSubData( _memoryBlock._bufferHandle, _copyBufferTarget, _memoryBlock._offset + offsetInBytes, 0u, rangeInBytes );
 
-            const Byte* bufferData = (Byte*)gl46core::glMapNamedBufferRange( _copyBufferTarget, 0u, rangeInBytes, gl46core::BufferAccessMask::GL_MAP_READ_BIT );
+            const Byte* bufferData = (Byte*)gl46core::glMapNamedBufferRange( _copyBufferTarget, 0u, rangeInBytes, gl46core::MapBufferAccessMask::GL_MAP_READ_BIT );
             assert( bufferData != nullptr );
             memcpy( outData.first, bufferData, rangeInBytes );
             gl46core::glUnmapNamedBuffer( _copyBufferTarget );

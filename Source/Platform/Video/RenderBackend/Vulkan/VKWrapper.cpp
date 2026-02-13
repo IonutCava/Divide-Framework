@@ -1186,26 +1186,29 @@ namespace Divide
         config.rendering.shadowMapping.spot.MSAASamples = std::min( config.rendering.shadowMapping.spot.MSAASamples, maxMSAASamples );
         Attorney::DisplayManagerRenderingAPI::MaxMSAASamples( maxMSAASamples );
 
-        deviceInformation._meshShadingSupported = _device->supportsMeshShaders();
+        deviceInformation._meshShading._supported = _device->supportsMeshShaders();
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3; ++i )
         {
             deviceInformation._maxWorkgroupCount[i] = deviceProperties.limits.maxComputeWorkGroupCount[i];
-            deviceInformation._maxWorkgroupSize[i] = deviceProperties.limits.maxComputeWorkGroupSize[i];
+            deviceInformation._maxWorkgroupSize[i]  = deviceProperties.limits.maxComputeWorkGroupSize[i];
 
-            deviceInformation._maxMeshWorkgroupCount[i] = meshProperties.maxMeshWorkGroupCount[i];
-            deviceInformation._maxMeshWorkgroupSize[i] = meshProperties.maxMeshWorkGroupSize[i];
+            if ( deviceInformation._meshShading._supported )
+            {
+                deviceInformation._meshShading._mesh._maxWorkgroupCount[i] = meshProperties.maxMeshWorkGroupCount[i];
+                deviceInformation._meshShading._mesh._maxWorkgroupSize[i]  = meshProperties.maxMeshWorkGroupSize[i];
 
-            deviceInformation._maxTaskWorkgroupCount[i] = meshProperties.maxTaskWorkGroupCount[i];
-            deviceInformation._maxTaskWorkgroupSize[i] = meshProperties.maxTaskWorkGroupSize[i];
+                deviceInformation._meshShading._task._maxWorkgroupCount[i] = meshProperties.maxTaskWorkGroupCount[i];
+                deviceInformation._meshShading._task._maxWorkgroupSize[i]  = meshProperties.maxTaskWorkGroupSize[i];
+            }
         }
 
         deviceInformation._maxWorkgroupInvocations = deviceProperties.limits.maxComputeWorkGroupInvocations;
         deviceInformation._maxComputeSharedMemoryBytes = deviceProperties.limits.maxComputeSharedMemorySize;
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_WORK_GROUP_INFO" ),
                           deviceInformation._maxWorkgroupCount[0], deviceInformation._maxWorkgroupCount[1], deviceInformation._maxWorkgroupCount[2],
-                          deviceInformation._maxWorkgroupSize[0], deviceInformation._maxWorkgroupSize[1], deviceInformation._maxWorkgroupSize[2],
+                          deviceInformation._maxWorkgroupSize[0],  deviceInformation._maxWorkgroupSize[1], deviceInformation._maxWorkgroupSize[2],
                           deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
@@ -1213,23 +1216,26 @@ namespace Divide
         deviceInformation._maxVertOutputComponents = deviceProperties.limits.maxVertexOutputComponents;
         Console::printfn( LOCALE_STR( "MAX_VERTEX_OUTPUT_COMPONENTS" ), deviceInformation._maxVertOutputComponents );
 
-        deviceInformation._maxMeshShaderOutputVertices = meshProperties.maxMeshOutputVertices;
-        deviceInformation._maxMeshShaderOutputPrimitives = meshProperties.maxMeshOutputPrimitives;
-        deviceInformation._maxMeshWorkgroupInvocations = meshProperties.maxMeshWorkGroupInvocations;
-        deviceInformation._maxTaskWorkgroupInvocations = meshProperties.maxTaskWorkGroupInvocations;
+        if (deviceInformation._meshShading._supported)
+        {
+            deviceInformation._meshShading._mesh._maxOutputVertices   = meshProperties.maxMeshOutputVertices;
+            deviceInformation._meshShading._mesh._maxOutputPrimitives = meshProperties.maxMeshOutputPrimitives;
+            deviceInformation._meshShading._mesh._maxWorkgroupInvocations   = meshProperties.maxMeshWorkGroupInvocations;
+            deviceInformation._meshShading._task._maxWorkgroupInvocations   = meshProperties.maxTaskWorkGroupInvocations;
 
-        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
-        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
+            Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"),   deviceInformation._meshShading._mesh._maxOutputVertices);
+            Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._meshShading._mesh._maxOutputPrimitives);
         
-        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
-                                    deviceInformation._maxMeshWorkgroupCount[0], deviceInformation._maxMeshWorkgroupCount[1], deviceInformation._maxMeshWorkgroupCount[2],
-                                    deviceInformation._maxMeshWorkgroupSize[0], deviceInformation._maxMeshWorkgroupSize[1], deviceInformation._maxMeshWorkgroupSize[2],
-                                    deviceInformation._maxMeshWorkgroupInvocations);
+            Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
+                                        deviceInformation._meshShading._mesh._maxWorkgroupCount[0], deviceInformation._meshShading._mesh._maxWorkgroupCount[1], deviceInformation._meshShading._mesh._maxWorkgroupCount[2],
+                                        deviceInformation._meshShading._mesh._maxWorkgroupSize[0],  deviceInformation._meshShading._mesh._maxWorkgroupSize[1],  deviceInformation._meshShading._mesh._maxWorkgroupSize[2],
+                                        deviceInformation._meshShading._mesh._maxWorkgroupInvocations);
                                     
-        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
-                                    deviceInformation._maxTaskWorkgroupCount[0], deviceInformation._maxTaskWorkgroupCount[1], deviceInformation._maxTaskWorkgroupCount[2],
-                                    deviceInformation._maxTaskWorkgroupSize[0], deviceInformation._maxTaskWorkgroupSize[1], deviceInformation._maxTaskWorkgroupSize[2],
-                                    deviceInformation._maxTaskWorkgroupInvocations);
+            Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
+                                        deviceInformation._meshShading._task._maxWorkgroupCount[0], deviceInformation._meshShading._task._maxWorkgroupCount[1], deviceInformation._meshShading._task._maxWorkgroupCount[2],
+                                        deviceInformation._meshShading._task._maxWorkgroupSize[0],  deviceInformation._meshShading._task._maxWorkgroupSize[1],  deviceInformation._meshShading._task._maxWorkgroupSize[2],
+                                        deviceInformation._meshShading._task._maxWorkgroupInvocations);
+        }
 
         deviceInformation._offsetAlignmentBytesUBO = deviceProperties.limits.minUniformBufferOffsetAlignment;
         deviceInformation._maxSizeBytesUBO = deviceProperties.limits.maxUniformBufferRange;
@@ -3307,7 +3313,7 @@ namespace Divide
 
     VkPipelineStageFlagBits2 VK_API::AllShaderStages() noexcept
     {
-        static bool meshShadersSupported = GFXDevice::GetDeviceInformation()._meshShadingSupported;
+        static bool meshShadersSupported = GFXDevice::GetDeviceInformation()._meshShading._supported;
         return meshShadersSupported ? VK_API::ALL_SHADER_STAGES_WITH_MESH : VK_API::ALL_SHADER_STAGES_NO_MESH;
     }
 

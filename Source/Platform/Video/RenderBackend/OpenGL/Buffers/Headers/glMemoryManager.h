@@ -68,7 +68,7 @@ namespace GLMemory{
         explicit Chunk(std::string_view chunkName,
                        size_t alignedSize,
                        gl46core::BufferStorageMask storageMask,
-                       gl46core::BufferAccessMask accessMask,
+                       gl46core::MapBufferAccessMask accessMask,
                        U32 flags);
         ~Chunk();
                       void deallocate(const Block& block);
@@ -76,7 +76,7 @@ namespace GLMemory{
         [[nodiscard]] bool containsBlock(const Block &block) const;
 
         PROPERTY_R_IW( gl46core::BufferStorageMask, storageMask, gl46core::BufferStorageMask::GL_NONE_BIT);
-        PROPERTY_R_IW( gl46core::BufferAccessMask, accessMask, gl46core::BufferAccessMask::GL_NONE_BIT);
+        PROPERTY_R_IW( gl46core::MapBufferAccessMask, accessMask, gl46core::MapBufferAccessMask::GL_NONE_BIT);
         PROPERTY_R_IW( U32, flags, 0u);
     protected:
         eastl::list<Block> _blocks;
@@ -91,7 +91,7 @@ namespace GLMemory{
         // if size > mSize, allocate to the next power of 2
         [[nodiscard]] std::unique_ptr<Chunk> allocate(size_t alignedSize,
                                                       gl46core::BufferStorageMask storageMask,
-                                                      gl46core::BufferAccessMask accessMask,
+                                                      gl46core::MapBufferAccessMask accessMask,
                                                       U32 flags) const;
 
     private:
@@ -109,7 +109,7 @@ namespace GLMemory{
         [[nodiscard]] Block allocate(bool poolAllocations,
                                      size_t alignedSize,
                                      gl46core::BufferStorageMask storageMask,
-                                     gl46core::BufferAccessMask accessMask,
+                                     gl46core::MapBufferAccessMask accessMask,
                                      U32 flags,
                                      std::pair<bufferPtr, size_t> initialData,
                                      bool zeroRemainingData);
@@ -147,7 +147,7 @@ void createAndAllocateBuffer( gl46core::GLuint& bufferIdOut,
                                                    gl46core::BufferStorageMask storageMask,
                                                    size_t alignedSize,
                                                    std::pair<bufferPtr, size_t> initialData,
-                                                   gl46core::BufferAccessMask accessMask,
+                                                   gl46core::MapBufferAccessMask accessMask,
                                                    bool zeroRemainingData );
 
 

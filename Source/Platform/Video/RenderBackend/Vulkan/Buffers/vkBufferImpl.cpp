@@ -113,7 +113,7 @@ namespace Divide
                 dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
                 dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 
-                if (GFXDevice::GetDeviceInformation()._meshShadingSupported)
+                if (GFXDevice::GetDeviceInformation()._meshShading._supported)
                 {
                     dstStageMask |= VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT;
                 }
@@ -123,7 +123,7 @@ namespace Divide
                 usageFlags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
                 dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
                 dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-                if (GFXDevice::GetDeviceInformation()._meshShadingSupported)
+                if (GFXDevice::GetDeviceInformation()._meshShading._supported)
                 {
                     dstStageMask |= VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT;
                 }

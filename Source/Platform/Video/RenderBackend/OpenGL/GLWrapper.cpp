@@ -341,7 +341,8 @@ namespace Divide
         gl46core::glEnable( gl46core::GL_LINE_SMOOTH );
 
         // GL_FALSE causes a conflict here. Thanks glbinding ...
-        gl46core::glClampColor( gl46core::GL_CLAMP_READ_COLOR, gl46core::GL_FALSE );
+        //gl46core::glClampColor( gl46core::GL_CLAMP_READ_COLOR, gl46core::GL_FALSE );
+        gl46core::glClampColor( gl46core::GL_CLAMP_READ_COLOR, gl46core::GL_NONE );
 
         // Match Vulkan's depth range
         gl46core::glClipControl( gl46core::GL_LOWER_LEFT, gl46core::GL_ZERO_TO_ONE );
@@ -373,30 +374,11 @@ namespace Divide
         deviceInformation._maxVertAttributes = GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIBS );
         Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
-        deviceInformation._meshShadingSupported = false;//SDL_GL_ExtensionSupported( "GL_EXT_mesh_shader" );
-        constexpr gl46core::GLuint ignoredErrors[] = { 1002 };
-        gl46core::glDebugMessageControl(gl46core::GL_DEBUG_SOURCE_API, gl46core::GL_DEBUG_TYPE_ERROR, gl46core::GL_DONT_CARE, std::size(ignoredErrors), &ignoredErrors[0], gl46core::GL_FALSE);
-
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3u; ++i )
         {
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_COUNT, deviceInformation._maxWorkgroupCount[i], i );
             GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_SIZE, deviceInformation._maxWorkgroupSize[i], i );
-
-            if ( deviceInformation._meshShadingSupported )
-            {
-                GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_SIZE_NV, deviceInformation._maxMeshWorkgroupSize[i], i);
-                GLUtil::getGLValue(gl::GL_MAX_TASK_WORK_GROUP_SIZE_NV, deviceInformation._maxTaskWorkgroupSize[i], i);
-
-                // ToDo: This is wrong so needs fixing once mesh shaders in GL reach EXT status! -Ionut
-                deviceInformation._maxMeshWorkgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
-                deviceInformation._maxTaskWorkgroupCount[i] = GLUtil::getGLValue(gl::GL_MAX_DRAW_MESH_TASKS_COUNT_NV);
-            }
-            else
-            {
-                deviceInformation._maxMeshWorkgroupSize[i] = deviceInformation._maxTaskWorkgroupSize[i] =
-                deviceInformation._maxMeshWorkgroupCount[i] =  deviceInformation._maxTaskWorkgroupCount[i] = 0u;
-            }
         }
 
         deviceInformation._maxWorkgroupInvocations = GLUtil::getGLValue( gl46core::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS );
@@ -408,34 +390,75 @@ namespace Divide
                           deviceInformation._maxWorkgroupInvocations );
         Console::printfn( LOCALE_STR( "MAX_COMPUTE_SHARED_MEMORY_SIZE" ), deviceInformation._maxComputeSharedMemoryBytes / 1024 );
 
-        if ( deviceInformation._meshShadingSupported )
+        deviceInformation._meshShading._supported = SDL_GL_ExtensionSupported("GL_EXT_mesh_shader");
+        if (deviceInformation._meshShading._supported)
         {
-            deviceInformation._maxMeshShaderOutputVertices = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_VERTICES_NV);
-            deviceInformation._maxMeshShaderOutputPrimitives = GLUtil::getGLValue(gl::GL_MAX_MESH_OUTPUT_PRIMITIVES_NV);
-            deviceInformation._maxMeshWorkgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_MESH_WORK_GROUP_INVOCATIONS_NV);
-        }
-        else
-        {
-            deviceInformation._maxMeshShaderOutputVertices = 0u;
-            deviceInformation._maxMeshShaderOutputPrimitives = 0u;
-            deviceInformation._maxMeshWorkgroupInvocations = 0u;
-        }
-        gl46core::glDebugMessageControl(gl46core::GL_DEBUG_SOURCE_API, gl46core::GL_DEBUG_TYPE_ERROR, gl46core::GL_DONT_CARE, std::size(ignoredErrors), &ignoredErrors[0], gl46core::GL_TRUE);
+            constexpr gl46core::GLuint ignoredErrors[] = { 1002 };
+            gl46core::glDebugMessageControl(gl46core::GL_DEBUG_SOURCE_API, gl46core::GL_DEBUG_TYPE_ERROR, gl46core::GL_DONT_CARE, std::size(ignoredErrors), &ignoredErrors[0], gl46core::GL_FALSE);
 
-        deviceInformation._maxTaskWorkgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
+            for (U8 i = 0u; i < 3u; ++i)
+            {
+                GLUtil::getGLValue(gl46ext::GL_MAX_MESH_WORK_GROUP_SIZE_EXT,  deviceInformation._meshShading._mesh._maxWorkgroupSize[i], i);
+                GLUtil::getGLValue(gl46ext::GL_MAX_MESH_WORK_GROUP_COUNT_EXT, deviceInformation._meshShading._mesh._maxWorkgroupCount[i], i);
 
-        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
-        Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._maxMeshShaderOutputPrimitives);
+                GLUtil::getGLValue(gl46ext::GL_MAX_TASK_WORK_GROUP_SIZE_EXT,  deviceInformation._meshShading._task._maxWorkgroupSize[i], i);
+                GLUtil::getGLValue(gl46ext::GL_MAX_TASK_WORK_GROUP_COUNT_EXT, deviceInformation._meshShading._task._maxWorkgroupCount[i], i);
+            }
 
-        Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
-                                    deviceInformation._maxMeshWorkgroupCount[0], deviceInformation._maxMeshWorkgroupCount[1], deviceInformation._maxMeshWorkgroupCount[2],
-                                    deviceInformation._maxMeshWorkgroupSize[0], deviceInformation._maxMeshWorkgroupSize[1], deviceInformation._maxMeshWorkgroupSize[2],
-                                    deviceInformation._maxMeshWorkgroupInvocations);
+            deviceInformation._meshShading._task._maxWorkgroupInvocations = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_WORK_GROUP_INVOCATIONS_EXT);
+            deviceInformation._meshShading._task._maxUniformBlocks = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_UNIFORM_BLOCKS_EXT);
+            deviceInformation._meshShading._task._maxTextureImageUnits = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_TEXTURE_IMAGE_UNITS_EXT);
+            deviceInformation._meshShading._task._maxAtomicCounterBuffers = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_ATOMIC_COUNTER_BUFFERS_EXT);
+            deviceInformation._meshShading._task._maxAtomicCounters = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_ATOMIC_COUNTERS_EXT);
+            deviceInformation._meshShading._task._maxImageUniforms = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_IMAGE_UNIFORMS_EXT);
+            deviceInformation._meshShading._task._maxShaderStorageBlocks = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_SHADER_STORAGE_BLOCKS_EXT);
+            deviceInformation._meshShading._task._maxUniformComponents = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_UNIFORM_COMPONENTS_EXT);
+            deviceInformation._meshShading._task._maxCombinedUniformComponents = GLUtil::getGLValue(gl46ext::GL_MAX_COMBINED_TASK_UNIFORM_COMPONENTS_EXT);
+            deviceInformation._meshShading._task._maxPayloadSizeBytes = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_PAYLOAD_SIZE_EXT);
+            deviceInformation._meshShading._task._maxSharedMemorySizeBytes = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_SHARED_MEMORY_SIZE_EXT);
+            deviceInformation._meshShading._task._maxPayloadAndSharedMemorySizeBytes = GLUtil::getGLValue(gl46ext::GL_MAX_TASK_PAYLOAD_AND_SHARED_MEMORY_SIZE_EXT);
+
+            deviceInformation._meshShading._mesh._maxWorkgroupInvocations = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_WORK_GROUP_INVOCATIONS_EXT);
+            deviceInformation._meshShading._mesh._maxUniformBlocks = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_UNIFORM_BLOCKS_EXT);
+            deviceInformation._meshShading._mesh._maxTextureImageUnits = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_TEXTURE_IMAGE_UNITS_EXT);
+            deviceInformation._meshShading._mesh._maxAtomicCounterBuffers = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_ATOMIC_COUNTER_BUFFERS_EXT);
+            deviceInformation._meshShading._mesh._maxAtomicCounters = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_ATOMIC_COUNTERS_EXT);
+            deviceInformation._meshShading._mesh._maxImageUniforms = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_IMAGE_UNIFORMS_EXT);
+            deviceInformation._meshShading._mesh._maxShaderStorageBlocks = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_SHADER_STORAGE_BLOCKS_EXT);
+            deviceInformation._meshShading._mesh._maxUniformComponents = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_UNIFORM_COMPONENTS_EXT);
+            deviceInformation._meshShading._mesh._maxCombinedUniformComponents = GLUtil::getGLValue(gl46ext::GL_MAX_COMBINED_MESH_UNIFORM_COMPONENTS_EXT);
+            deviceInformation._meshShading._mesh._maxSharedMemorySizeBytes = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_SHARED_MEMORY_SIZE_EXT);
+            deviceInformation._meshShading._mesh._maxPayloadAndSharedMemorySizeBytes = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_PAYLOAD_AND_SHARED_MEMORY_SIZE_EXT);
+            deviceInformation._meshShading._mesh._maxOutputMemorySizeBytes = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_OUTPUT_MEMORY_SIZE_EXT);
+            deviceInformation._meshShading._mesh._maxPayloadAndOutputMemorySizeBytes = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_PAYLOAD_AND_OUTPUT_MEMORY_SIZE_EXT);
+            deviceInformation._meshShading._mesh._maxOutputPrimitives = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_OUTPUT_PRIMITIVES_EXT);
+            deviceInformation._meshShading._mesh._maxOutputVertices = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_OUTPUT_VERTICES_EXT);
+            deviceInformation._meshShading._mesh._maxOutputComponents = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_OUTPUT_COMPONENTS_EXT);
+            deviceInformation._meshShading._mesh._maxOutputLayers = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_OUTPUT_LAYERS_EXT);
+            deviceInformation._meshShading._mesh._maxMultiviewViewCount = GLUtil::getGLValue(gl46ext::GL_MAX_MESH_MULTIVIEW_VIEW_COUNT_EXT);
+            deviceInformation._meshShading._mesh._perVertexOutputGranularity = GLUtil::getGLValue(gl46ext::GL_MESH_OUTPUT_PER_VERTEX_GRANULARITY_EXT);
+            deviceInformation._meshShading._mesh._perPrimitiveOutputGranularity = GLUtil::getGLValue(gl46ext::GL_MESH_OUTPUT_PER_PRIMITIVE_GRANULARITY_EXT);
+            GLUtil::getGLValue(gl46ext::GL_MESH_PREFERS_LOCAL_INVOCATION_VERTEX_OUTPUT_EXT, deviceInformation._meshShading._mesh._prefersLocalInvocationVertexOutput);
+            GLUtil::getGLValue(gl46ext::GL_MESH_PREFERS_LOCAL_INVOCATION_PRIMITIVE_OUTPUT_EXT, deviceInformation._meshShading._mesh._prefersLocalInvocationPrimitiveOutput);
+            GLUtil::getGLValue(gl46ext::GL_MESH_PREFERS_COMPACT_VERTEX_OUTPUT_EXT, deviceInformation._meshShading._mesh._prefersCompactVertexOutput);
+            GLUtil::getGLValue(gl46ext::GL_MESH_PREFERS_COMPACT_PRIMITIVE_OUTPUT_EXT, deviceInformation._meshShading._mesh._prefersCompactPrimitiveOutput);
+
+            gl46core::glDebugMessageControl(gl46core::GL_DEBUG_SOURCE_API, gl46core::GL_DEBUG_TYPE_ERROR, gl46core::GL_DONT_CARE, std::size(ignoredErrors), &ignoredErrors[0], gl46core::GL_TRUE);
+
+
+            Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"),   deviceInformation._meshShading._mesh._maxOutputVertices);
+            Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_PRIMITIVES"), deviceInformation._meshShading._mesh._maxOutputPrimitives);
+
+            Console::printfn(LOCALE_STR("MAX_MESH_SHADER_WORKGROUP_INFO"),
+                                        deviceInformation._meshShading._mesh._maxWorkgroupCount[0], deviceInformation._meshShading._mesh._maxWorkgroupCount[1], deviceInformation._meshShading._mesh._maxWorkgroupCount[2],
+                                        deviceInformation._meshShading._mesh._maxWorkgroupSize[0],  deviceInformation._meshShading._mesh._maxWorkgroupSize[1],  deviceInformation._meshShading._mesh._maxWorkgroupSize[2],
+                                        deviceInformation._meshShading._mesh._maxWorkgroupInvocations);
                                     
-        Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
-                                    deviceInformation._maxTaskWorkgroupCount[0], deviceInformation._maxTaskWorkgroupCount[1], deviceInformation._maxTaskWorkgroupCount[2],
-                                    deviceInformation._maxTaskWorkgroupSize[0], deviceInformation._maxTaskWorkgroupSize[1], deviceInformation._maxTaskWorkgroupSize[2],
-                                    deviceInformation._maxTaskWorkgroupInvocations);
+            Console::printfn(LOCALE_STR("MAX_TASK_SHADER_WORKGROUP_INFO"),
+                                        deviceInformation._meshShading._task._maxWorkgroupCount[0], deviceInformation._meshShading._task._maxWorkgroupCount[1], deviceInformation._meshShading._task._maxWorkgroupCount[2],
+                                        deviceInformation._meshShading._task._maxWorkgroupSize[0],  deviceInformation._meshShading._task._maxWorkgroupSize[1],  deviceInformation._meshShading._task._maxWorkgroupSize[2],
+                                        deviceInformation._meshShading._task._maxWorkgroupInvocations);
+        }
 
         // Maximum number of texture units we can address in shaders
         Console::printfn( LOCALE_STR( "GL_MAX_TEX_UNITS" ),
@@ -1397,7 +1420,7 @@ namespace Divide
 
                 const GFX::MemoryBarrierCommand* crtCmd = cmd->As<GFX::MemoryBarrierCommand>();
 
-                gl46core::MemoryBarrierMask mask = gl46core::GL_NONE_BIT;
+                gl46core::MemoryBarrierMask mask = gl46core::MemoryBarrierMask::GL_NONE_BIT;
 
                 SyncObjectHandle handle{};
                 for ( const BufferLock& lock : crtCmd->_bufferLocks )
@@ -2125,7 +2148,7 @@ namespace Divide
         DIVIDE_GPU_ASSERT( s_fenceSyncCounter[s_LockFrameLifetime - 1u] < U32_MAX );
 
         ++s_fenceSyncCounter[s_LockFrameLifetime - 1u];
-        return gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, gl46core::UnusedMask::GL_UNUSED_BIT );
+        return gl46core::glFenceSync( gl46core::GL_SYNC_GPU_COMMANDS_COMPLETE, static_cast<gl46core::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT) );
     }
 
     void GL_API::DestroyFenceSync( gl46core::GLsync& sync )
