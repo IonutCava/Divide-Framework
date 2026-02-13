@@ -373,7 +373,9 @@ namespace Divide
         deviceInformation._maxVertAttributes = GLUtil::getGLValue( gl46core::GL_MAX_VERTEX_ATTRIBS );
         Console::printfn( LOCALE_STR( "GL_MAX_VERT_ATTRIB" ), deviceInformation._maxVertAttributes );
 
-        deviceInformation._meshShadingSupported = SDL_GL_ExtensionSupported( "GL_NV_mesh_shader" );
+        deviceInformation._meshShadingSupported = false;//SDL_GL_ExtensionSupported( "GL_EXT_mesh_shader" );
+        constexpr gl46core::GLuint ignoredErrors[] = { 1002 };
+        gl46core::glDebugMessageControl(gl46core::GL_DEBUG_SOURCE_API, gl46core::GL_DEBUG_TYPE_ERROR, gl46core::GL_DONT_CARE, std::size(ignoredErrors), &ignoredErrors[0], gl46core::GL_FALSE);
 
         // How many workgroups can we have per compute dispatch
         for ( U8 i = 0u; i < 3u; ++i )
@@ -418,7 +420,8 @@ namespace Divide
             deviceInformation._maxMeshShaderOutputPrimitives = 0u;
             deviceInformation._maxMeshWorkgroupInvocations = 0u;
         }
-        
+        gl46core::glDebugMessageControl(gl46core::GL_DEBUG_SOURCE_API, gl46core::GL_DEBUG_TYPE_ERROR, gl46core::GL_DONT_CARE, std::size(ignoredErrors), &ignoredErrors[0], gl46core::GL_TRUE);
+
         deviceInformation._maxTaskWorkgroupInvocations = GLUtil::getGLValue(gl::GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS);
 
         Console::printfn(LOCALE_STR("MAX_MESH_OUTPUT_VERTICES"), deviceInformation._maxMeshShaderOutputVertices);
@@ -990,7 +993,13 @@ namespace Divide
 
             const bool isCube = IsCubeTexture(srcTexture->descriptor()._texType);
             const U16 texLayers = isCube ? srcTexture->depth() * 6u : srcTexture->depth();
-            const U16 layerCount = srcView._subRange._layerRange._count;
+            const U16 viewLayerCount = srcView._subRange._layerRange._count;
+            const U16 viewLayerOffset = srcView._subRange._layerRange._offset;
+
+            const gl46core::GLuint glMinLayer = static_cast<gl46core::GLuint>(viewLayerOffset * (isCube ? 6u : 1u));
+            const gl46core::GLuint glLayerCount = (viewLayerCount == ALL_LAYERS)
+                                                          ? static_cast<gl46core::GLuint>(texLayers - glMinLayer)
+                                                          : static_cast<gl46core::GLuint>(viewLayerCount * (isCube ? 6u : 1u));
 
             PROFILE_SCOPE( "GL: cache miss  - Image", Profiler::Category::Graphics );
             gl46core::glTextureView( handle,
@@ -999,8 +1008,8 @@ namespace Divide
                                      glInternalFormat,
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._offset),
                                      static_cast<gl46core::GLuint>(srcView._subRange._mipLevels._count),
-                                     srcView._subRange._layerRange._offset * (isCube ? 6 : 1),
-                                     layerCount == ALL_LAYERS ? ALL_LAYERS : layerCount * (isCube ? 6 : 1));
+                                     glMinLayer,
+                                     glLayerCount);
         }
 
         s_textureViewCache.deallocate( handle, lifetimeInFrames );

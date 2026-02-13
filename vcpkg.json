@@ -3,6 +3,7 @@
     "version-string": "latest",
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "dependencies": [
+    "graphviz",
     "pkgconf",
     "boost-property-tree",
     "boost-asio",
@@ -78,10 +79,6 @@
     {
       "name": "sse2neon",
       "platform": "osx"
-    },
-    {
-      "name": "physx",
-      "platform": "!osx & !linux"
     },
     {
       "name": "wayland",

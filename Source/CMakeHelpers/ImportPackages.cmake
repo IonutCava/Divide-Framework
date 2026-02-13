@@ -62,11 +62,6 @@ find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 set(NVTT_LIBRARIES "")
 
 if(NOT MAC_OS_BUILD)
-    if(NOT LINUX_OS_BUILD)
-        find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
-        include_directories( SYSTEM ${OMNIVERSE-PHYSX-SDK_INCLUDE_DIRS} )
-    endif()
-
     find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
     find_library(NVTT_LIBRARY_RELEASE NAMES nvtt PATH_SUFFIXES nvtt static shared)
@@ -182,13 +177,10 @@ set(EXTERNAL_LIBS
     SDL3_image::SDL3_image
     glslang::glslang
     glslang::glslang-default-resource-limits
-    glslang::SPIRV glslang::SPVRemapper
+    glslang::SPIRV
+    #glslang::SPVRemapper
 )
 
-if(WINDOWS_OS_BUILD)
-  set(EXTERNAL_LIBS ${EXTERNAL_LIBS}
-                    unofficial::omniverse-physx-sdk::sdk)
-endif()
 if(MAC_OS_BUILD)
     set(EXTERNAL_LIBS ${EXTERNAL_LIBS} date::date date::date-tz)
     add_compile_definitions(USE_HINNANT_DATE)

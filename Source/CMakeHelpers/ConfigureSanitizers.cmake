@@ -19,10 +19,10 @@ if( RUN_ASAN OR RUN_UBSAN )
     set(CLANG_ASAN_THUNK "")
     set(FOUND_UBSAN_LIB "")
 
-    list(APPEND EXTRA_DEFINITIONS DIVIDE_ENABLE_CONVERSION_CHECKS=1)
+    add_compile_definitions( DIVIDE_ENABLE_CONVERSION_CHECKS=1 )
 
     if( RUN_ASAN )
-        list(APPEND EXTRA_DEFINITIONS DIVIDE_ASAN_REQUESTED)
+        add_compile_definitions( DIVIDE_ASAN_REQUESTED )
 
         if( MSVC_COMPILER )
             list(APPEND SAN_COMPILE_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:/fsanitize=address>")
@@ -91,7 +91,7 @@ if( RUN_ASAN OR RUN_UBSAN )
         if( MSVC_COMPILER )
             message("UBSAN is requested but not supported with the MSVC compiler. Please use clang-cl or a Clang toolchain on Windows.")
         else() #MSVC_COMPILER
-            list(APPEND EXTRA_DEFINITIONS DIVIDE_UBSAN_REQUESTED)
+            add_compile_definitions( DIVIDE_UBSAN_REQUESTED )
 
             check_cxx_compiler_flag("-fsanitize=undefined" HAVE_FSAN_UB)
             if (HAVE_FSAN_UB)
@@ -153,7 +153,7 @@ if( RUN_ASAN OR RUN_UBSAN )
     endif() #RUN_UBSAN
 
     list(APPEND EXTRA_COMPILE_FLAGS ${SAN_COMPILE_FLAGS})
-    list(APPEND EXTRA_LINK_FLAGS    ${SAN_LINK_FLAGS})
+    list(APPEND EXTRA_LINK_FLAGS ${SAN_LINK_FLAGS})
 
     if( WINDOWS_OS_BUILD )
         include(CMakeHelpers/PlatformHelpers/FindASANDLLs.cmake)
@@ -164,7 +164,5 @@ if( RUN_ASAN OR RUN_UBSAN )
     set(EXTRA_LINK_FLAGS "${EXTRA_LINK_FLAGS}" PARENT_SCOPE)
 
 else() #RUN_ASAN OR RUN_UBSAN
-    list(APPEND EXTRA_DEFINITIONS DIVIDE_ENABLE_CONVERSION_CHECKS=0)
+    add_compile_definitions( DIVIDE_ENABLE_CONVERSION_CHECKS=0 )
 endif()
-
-set(EXTRA_DEFINITIONS "${EXTRA_DEFINITIONS}" PARENT_SCOPE)

@@ -2,10 +2,6 @@
 
 #include "Headers/PXDevice.h"
 
-#if defined(IS_WINDOWS_BUILD)
-#include "Physics/PhysX/Headers/PhysX.h"
-#endif //IS_WINDOWS_BUILD
-
 #include "Physics/Jolt/Headers/Jolt.h"
 #include "Physics/None/Headers/None.h"
 #include "Utility/Headers/Localization.h"
@@ -40,16 +36,6 @@ namespace Divide
         DIVIDE_ASSERT( _api == nullptr, "PXDevice error: initPhysicsAPI called twice!" );
         switch ( _apiID )
         {
-            case PhysicsAPI::PhysX:
-            {
-#           if defined(IS_WINDOWS_BUILD)
-                    _api = std::make_unique<PhysX>( _context );
-#           else //IS_WINDOWS_BUILD
-                    Console::errorfn(LOCALE_STR("ERROR_PFX_DEVICE_API"));
-                    return ErrorCode::PFX_NON_SPECIFIED;
-#           endif //IS_WINDOWS_BUILD
-            } break;
-
             case PhysicsAPI::Jolt:
             {
                 _api = std::make_unique<PhysicsJolt>(_context);
