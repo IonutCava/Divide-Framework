@@ -76,7 +76,7 @@ namespace ECS { namespace Memory {
 		/// Date:	24/09/2017
 		///-------------------------------------------------------------------------------------------------
 
-		class iterator : public eastl::iterator<eastl::forward_iterator_tag, OBJECT_TYPE>
+		class iterator : public std::iterator<eastl::forward_iterator_tag, OBJECT_TYPE>
 		{
 			typename MemoryChunks::iterator	m_CurrentChunk;
 			typename MemoryChunks::iterator	m_End;

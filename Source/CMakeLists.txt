@@ -1,23 +1,7 @@
-﻿set(APP_LIB_DIVIDE "Divide-Framework-Lib")
-set(APP_EXE_DIVIDE "Divide-Framework")
-set(APP_EXE_PROJECT_MANAGER "Divide-Project-Manager")
-
-set(APP_BUILD_EXES ${APP_EXE_DIVIDE} ${APP_EXE_PROJECT_MANAGER} )
-set(APP_TEST_EXES "")
-
+﻿
 set(DIVIDE_COMPILE_OPTIONS "")
 set(PCH_COMPILE_OPTIONS "")
 set(THIRD_PARTY_COMPILE_OPTIONS "")
-
-if( BUILD_TESTING_INTERNAL )
-    set(APP_EXE_TEST_PLATFORM "Divide-Test-Platform")
-    set(APP_EXE_TEST_ENGINE "Divide-Test-Engine")
-
-    list(APPEND APP_TEST_EXES ${APP_EXE_TEST_PLATFORM} ${APP_EXE_TEST_ENGINE} )
-    list(APPEND APP_BUILD_EXES ${APP_TEST_EXES} )
-endif() #BUILD_TESTING_INTERNAL
-
-set(APP_BUILD_TARGETS ${APP_LIB_DIVIDE} ${APP_BUILD_EXES} )
  
 include_directories( "${CMAKE_SOURCE_DIR}/Source" )
 include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
@@ -56,14 +40,6 @@ include(CMakeHelpers/GlobSources.cmake)
 
 if( MSVC_COMPILER )
 
-   list(APPEND EXTRA_DEFINITIONS "$<$<COMPILE_LANGUAGE:C,CXX>:_CRT_SECURE_NO_WARNINGS>")
-   list(APPEND EXTRA_LINK_FLAGS "$<$<CONFIG:Debug>:/OPT:NOREF>")
-   list(APPEND EXTRA_LINK_FLAGS "$<IF:$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>,/INCREMENTAL,/INCREMENTAL:NO>")
-
-   if( ENABLE_FUNCTION_PROFILING )
-       list(APPEND EXTRA_LINK_FLAGS "$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:RelWithDebInfo>>:/PROFILE>")
-   endif()
-
    # Bit of a long one, but this is what happens when projects don't get built with /Wall.
    list(APPEND DIVIDE_COMPILE_OPTIONS /Wall
                                       /wd4355 #'this' used in base member initializer list. Yup, I know ...
@@ -71,13 +47,7 @@ if( MSVC_COMPILER )
                                       /wd4605 #some defines don't really need to be in the PCH and command line at the same time. Some due, sure, but this causes more problems than it solves
                                       /wd4668 #sometimes we don't actually define preoprocessor macros and want them to be interpreted as 0
                                       $<$<CONFIG:Release>:/wd4711> # automatic inline expansion warning
-                                      $<$<COMPILE_LANGUAGE:C,CXX>:/Zm256>
-                                      $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>
-                                      $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
-                                      $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Debug>>:/d2Obforceinline>
    )                                  
-
-   list(APPEND DIVIDE_COMPILE_OPTIONS "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
 
    list(APPEND PCH_COMPILE_OPTIONS /bigobj
                                    /wd4005 #_WIN32_WINNT redefinition
@@ -165,7 +135,7 @@ else() #MSVC_COMPILER
     endif()
 endif() #MSVC_COMPILER
 
-list(APPEND DIVIDE_COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CXX,C>:${EXTRA_COMPILE_FLAGS}>")
+list(APPEND DIVIDE_COMPILE_OPTIONS ${EXTRA_COMPILE_FLAGS})
 
 add_library(${APP_LIB_DIVIDE} STATIC "EngineMain.cpp" 
                                      ${ENGINE_SOURCE_CODE}
@@ -185,12 +155,11 @@ target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS}
                                                 ${THIRD_PARTY_COMPILE_OPTIONS})
 
 target_link_options(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_LINK_FLAGS})
-target_compile_definitions(${APP_LIB_DIVIDE} PRIVATE ${EXTRA_DEFINITIONS})
 
 set(CMAKE_PCH_INSTANTIATE_TEMPLATES ON)
 
 target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:EngineIncludes_pch.h>"
-                                                    "$<$<COMPILE_LANGUAGE:CXX>:CEGUIIncludes_pch.h>"
+                                                   "$<$<COMPILE_LANGUAGE:CXX>:CEGUIIncludes_pch.h>"
 )
 
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
@@ -234,25 +203,6 @@ if( WINDOWS_OS_BUILD )
             message(WARNING "Sanitizer runtimes not found — executables built with ASAN/UBSAN may fail to start.")
         endif() #SANITIZER_DLLS
     endif() #RUN_ASAN || RUN_UBSAN
-
-    if( TARGET unofficial::omniverse-physx-sdk::gpu-library )
-        if( WINDOWS_OS_BUILD )
-         add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                                                                                            $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-device-library>
-                                                                                            $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
-            )
-        else() #WINDOWS_OS_BUILD
-            # Add rpath setting to find .so libraries on unix based systems
-            set_target_properties( ${APP_EXE_DIVIDE} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN" )
-        endif()
-
-        add_custom_command(TARGET ${APP_EXE_DIVIDE} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                                                                                          $<TARGET_FILE:unofficial::omniverse-physx-sdk::gpu-library>
-                                                                                          $<TARGET_FILE_DIR:${APP_EXE_DIVIDE}>
-        )
-    else()
-        message(WARNING "GPU acceleration library target not defined - GPU acceleration will NOT be available!")
-    endif()
 endif() #WINDOWS_OS_BUILD
 
 add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
@@ -325,11 +275,9 @@ add_dependencies(${APP_EXE_PROJECT_MANAGER} ${APP_EXE_DIVIDE}BinGenerated)
 
 target_precompile_headers(${APP_EXE_PROJECT_MANAGER} REUSE_FROM ${APP_LIB_DIVIDE})
 
-
 foreach( APP_EXE ${APP_BUILD_EXES} )
     target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS})
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
-    target_compile_definitions(${APP_EXE} PRIVATE ${EXTRA_DEFINITIONS})
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()

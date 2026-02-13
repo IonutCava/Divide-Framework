@@ -702,12 +702,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 
     g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
 
-#   if defined(WINDOWS_OS_BUILD)
-        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::PhysX);
-#   else //WINDOWS_OS_BUILD
-        _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
-#   endif //WINDOWS_OS_BUILD
-
+    _platformContext.pfx().apiID(PXDevice::PhysicsAPI::Jolt);
     _platformContext.sfx().apiID(SFXDevice::AudioAPI::SDL);
 
     Console::printfn( LOCALE_STR( "START_APPLICATION_WORKING_DIRECTORY" ) , systemInfo._workingDirectory.string() );

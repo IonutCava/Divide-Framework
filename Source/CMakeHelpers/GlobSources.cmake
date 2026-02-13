@@ -483,33 +483,14 @@ set ( JOLT_SOURCE Physics/Jolt/Jolt.cpp
 set ( JOLT_SOURCE_HEADERS Physics/Jolt/Headers/Jolt.h
 )
 
-set( PHYSX_SOURCE "")
-set( PHYSX_SOURCE_HEADERS "")
-
-if(WINDOWS_OS_BUILD)
-    set( PHYSX_SOURCE Physics/PhysX/PhysX.cpp
-                      Physics/PhysX/PhysXActor.cpp
-                      Physics/PhysX/PhysXSceneInterface.cpp
-                      Physics/PhysX/pxShapeScaling.cpp
-    )
-
-    set( PHYSX_SOURCE_HEADERS Physics/PhysX/Headers/PhysX.h
-                              Physics/PhysX/Headers/PhysXActor.h
-                              Physics/PhysX/Headers/PhysXSceneInterface.h
-                              Physics/PhysX/Headers/pxShapeScaling.h
-    )
-endif()
-
 set( PHYSICS_SOURCE ${PHYSICS_SOURCE}
                     ${PHYSICS_NONE_SOURCE}
                     ${JOLT_SOURCE}
-                    ${PHYSX_SOURCE}
 )
 
 set( PHYSICS_SOURCE_HEADERS ${PHYSICS_SOURCE_HEADERS}
                             ${PHYSICS_NONE_SOURCE_HEADERS}
                             ${JOLT_SOURCE_HEADERS}
-                            ${PHYSX_SOURCE_HEADERS}
 )
 
 set( PLATFORM_SOURCE_HEADERS Platform/Audio/fmod/Headers/FmodWrapper.h
