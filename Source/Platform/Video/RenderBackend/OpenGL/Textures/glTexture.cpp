@@ -40,7 +40,7 @@ bool glTexture::postLoad()
 
     if (_loadSync != nullptr)
     {
-        gl46core::glWaitSync(_loadSync, gl46core::UnusedMask::GL_UNUSED_BIT, gl46core::GL_TIMEOUT_IGNORED);
+        gl46core::glWaitSync(_loadSync, static_cast<gl::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT), gl46core::GL_TIMEOUT_IGNORED);
         GL_API::DestroyFenceSync(_loadSync);
     }
 

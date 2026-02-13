@@ -117,15 +117,6 @@ struct DeviceInformation
     U32 _maxWorkgroupCount[3] = {65535u, 65535u, 65535u};
     U32 _maxWorkgroupSize[3] = {1024u, 1024u, 64u};
     U32 _maxWorkgroupInvocations = 1024u;
-
-    U32 _maxMeshWorkgroupCount[3] = { 65535u, 65535u, 65535u };
-    U32 _maxMeshWorkgroupSize[3] = { 1024u, 1024u, 64u };
-    U32 _maxMeshWorkgroupInvocations = 1024u;
-
-    U32 _maxTaskWorkgroupCount[3] = { 65535u, 65535u, 65535u };
-    U32 _maxTaskWorkgroupSize[3] = { 1024u, 1024u, 64u };
-    U32 _maxTaskWorkgroupInvocations = 1024u;
-
     size_t _maxBufferSizeBytes = 0u;
     size_t _maxSizeBytesUBO = 64 * 1024;
     size_t _maxSizeBytesSSBO = 1024 * 1024 * 1024u;
@@ -134,8 +125,6 @@ struct DeviceInformation
     size_t _offsetAlignmentBytesIBO = sizeof(U32);
     size_t _offsetAlignmentBytesUBO = 256u;
     size_t _offsetAlignmentBytesSSBO = 16u;
-    U32 _maxMeshShaderOutputVertices = 256u;
-    U32 _maxMeshShaderOutputPrimitives = 512u;
     U32 _maxVertAttributeBindings = 16u;
     U32 _maxVertAttributes = 16u;
     U32 _maxVertOutputComponents = 16u;
@@ -153,8 +142,55 @@ struct DeviceInformation
     VersionInformation _versionInfo = { 4u, 6u };
     GPUVendor _vendor = GPUVendor::COUNT;
     GPURenderer _renderer = GPURenderer::COUNT;
-    bool _meshShadingSupported = false;
+
+    struct
+    {
+        bool _supported = false;
+
+        struct CommonParams
+        {
+            U32  _maxWorkgroupCount[3] = { 65535u, 65535u, 65535u };
+            U32  _maxWorkgroupSize[3] = { 128u, 128u, 128u };
+            U32  _maxWorkgroupInvocations = 128u;
+            U32  _maxUniformBlocks = 12u;
+            U32  _maxTextureImageUnits = 16u;
+            U32  _maxAtomicCounterBuffers = 8u;
+            U32  _maxAtomicCounters = 8u;
+            U32  _maxImageUniforms = 8u;
+            U32  _maxShaderStorageBlocks = 12u;
+            U32  _maxUniformComponents = 512u;
+            U32  _maxCombinedUniformComponents = U32_MAX;
+        };
+
+        struct : public CommonParams
+        {
+            U32  _maxOutputMemorySizeBytes = 32768u;
+            U32  _maxPayloadAndOutputMemorySizeBytes = 48128u;
+            U32  _maxOutputPrimitives = 256u;
+            U32  _maxOutputVertices = 256u;
+            U32  _maxOutputComponents = 128u;
+            U32  _maxOutputLayers = 1u;
+            U32  _maxMultiviewViewCount = 1u;
+            U32  _perVertexOutputGranularity = U32_MAX;
+            U32  _perPrimitiveOutputGranularity = U32_MAX;
+            U32  _maxSharedMemorySizeBytes = 28672u;
+            U32  _maxPayloadAndSharedMemorySizeBytes = 28672u;
+            bool _prefersLocalInvocationVertexOutput = false;
+            bool _prefersLocalInvocationPrimitiveOutput = false;
+            bool _prefersCompactVertexOutput = false;
+            bool _prefersCompactPrimitiveOutput = false;
+        } _mesh;
+
+        struct : public CommonParams
+        {
+           U32 _maxPayloadSizeBytes = 16384u;
+           U32 _maxSharedMemorySizeBytes = 32768u;
+           U32 _maxPayloadAndSharedMemorySizeBytes = 32768u;
+        } _task;
+
+    } _meshShading;
 };
+
 
 struct DebugScope
 {

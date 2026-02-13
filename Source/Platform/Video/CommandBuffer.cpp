@@ -582,14 +582,14 @@ namespace
                         bool hasMeshTaskShader = false;
                         for ( const auto& shaderModule : shaderDescriptor._modules)
                         {
-                            if (shaderModule._moduleType == ShaderType::TASK_NV)
+                            if (shaderModule._moduleType == ShaderType::TASK)
                             {
                                 hasMeshTaskShader = true;
                                 break;
                             }
                         }
 
-                        const U32* const limits = hasMeshTaskShader ? GFXDevice::GetDeviceInformation()._maxTaskWorkgroupCount : GFXDevice::GetDeviceInformation()._maxMeshWorkgroupCount;
+                        const U32* const limits = hasMeshTaskShader ? GFXDevice::GetDeviceInformation()._meshShading._task._maxWorkgroupCount : GFXDevice::GetDeviceInformation()._meshShading._mesh._maxWorkgroupCount;
 
                         if (workGroupCount.x > limits[0] || workGroupCount.y > limits[1] || workGroupCount.z > limits[2])
                         {

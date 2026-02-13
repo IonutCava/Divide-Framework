@@ -437,14 +437,14 @@ enum class ShaderType : U8 {
     TESSELLATION_CTRL,
     TESSELLATION_EVAL,
     COMPUTE,
-    MESH_NV,
-    TASK_NV,
+    MESH,
+    TASK,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* shaderTypes[] = {
-        "Fragment", "Vertex", "Geometry", "TessellationC", "TessellationE", "Compute", "Mesh_NV", "Task_NV", "ERROR!"
+        "Fragment", "Vertex", "Geometry", "TessellationC", "TessellationE", "Compute", "Mesh", "Task", "ERROR!"
     };
 };
 
@@ -458,10 +458,10 @@ enum class ShaderStageVisibility : U16 {
     TESS_EVAL = toBit(4),
     FRAGMENT = toBit(5),
     COMPUTE = toBit(6),
-    MESH_NV = toBit(7),
-    TASK_NV = toBit(8),
+    MESH = toBit(7),
+    TASK = toBit(8),
     COUNT = 9,
-    ALL_GEOMETRY = MESH_NV | TASK_NV | VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
+    ALL_GEOMETRY = MESH | TASK | VERTEX | GEOMETRY | TESS_CONTROL | TESS_EVAL,
     ALL_DRAW = ALL_GEOMETRY | FRAGMENT,
     COMPUTE_AND_DRAW = FRAGMENT | COMPUTE,
     COMPUTE_AND_GEOMETRY = ALL_GEOMETRY | COMPUTE,
