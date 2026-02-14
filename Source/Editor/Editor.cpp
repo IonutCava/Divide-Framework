@@ -1472,7 +1472,7 @@ namespace Divide
         }
 
         GPUVertexBuffer* buffer = getOrCreateIMGUIBuffer( bufferGUID, MaxVertices, MaxIndices, memCmdInOut);
-        DIVIDE_ASSERT( buffer != nullptr && pDrawData->TotalIdxCount < MaxIndices);
+        DIVIDE_ASSERT( buffer != nullptr && pDrawData->TotalIdxCount >= 0 && to_U32(pDrawData->TotalIdxCount) < MaxIndices);
 
         memCmdInOut._bufferLocks.emplace_back(buffer->_vertexBuffer->updateBuffer( 0u, numVertices, vertices ));
         memCmdInOut._bufferLocks.emplace_back(buffer->_indexBuffer->updateBuffer( 0u, numIndices, indices ));

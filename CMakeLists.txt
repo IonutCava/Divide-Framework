@@ -164,17 +164,30 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
         $<$<COMPILE_LANGUAGE:C,CXX>:/Zm256>
         $<$<COMPILE_LANGUAGE:C,CXX>:/utf-8>
         $<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
-        $<$<CONFIG:Debug>:/d2Obforceinline>
     )
+
     set(MSVC_DEBUG_COMPILE_OPTIONS
         $<$<CONFIG:Debug>:/Od>
         $<$<CONFIG:Debug>:/Zi>
     )
+
     set(MSVC_DEBUG_LINK_OPTIONS
         $<$<CONFIG:Debug>:/DEBUG>
         $<$<CONFIG:Debug>:/INCREMENTAL:YES>
         $<$<CONFIG:Debug>:/OPT:NOREF>
     )
+
+    set(MSVC_RELWITHDEBINFO_COMPILE_OPTIONS
+        $<$<CONFIG:RelWithDebInfo>:/Ox>
+        $<$<CONFIG:RelWithDebInfo>:/Zi>
+    )
+
+    set(MSVC_RELWITHDEBINFO_LINK_OPTIONS
+        $<$<CONFIG:RelWithDebInfo>:/OPT:REF>
+        $<$<CONFIG:RelWithDebInfo>:/DEBUG>
+        $<$<CONFIG:RelWithDebInfo>:/INCREMENTAL:NO>
+    )
+
     set(MSVC_RELEASE_COMPILE_OPTIONS
         $<$<CONFIG:Release>:/Ox>
         $<$<CONFIG:Release>:/Ob2>
@@ -183,52 +196,50 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
         $<$<CONFIG:Release>:/Oy>
         $<$<CONFIG:Release>:/GL>
     )
+
     set(MSVC_RELEASE_LINK_OPTIONS
         $<$<CONFIG:Release>:/LTCG>
         $<$<CONFIG:Release>:/OPT:REF>
         $<$<CONFIG:Release>:/OPT:ICF>
         $<$<CONFIG:Release>:/INCREMENTAL:NO>
     )
-    # RelWithDebInfo: either dynamic-deopt mode or LTCG mode
-    if(MSVC_COMPILER AND ENABLE_DYNAMIC_DEOPTIMISATION AND NOT RUN_ASAN AND NOT RUN_UBSAN AND NOT IS_GITHUB_ACTIONS)
-        set(MSVC_REL_COMPILE_OPTIONS
-            $<$<CONFIG:RelWithDebInfo>:/GL->
-            $<$<CONFIG:RelWithDebInfo>:/Ox>
-            $<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>
-            $<$<CONFIG:RelWithDebInfo>:/Zi>
+
+    if(MSVC_COMPILER)
+        add_compile_options(
+            $<$<CONFIG:Debug>:/d2Obforceinline>
         )
-        set(MSVC_REL_LINK_OPTIONS
-            $<$<CONFIG:RelWithDebInfo>:/OPT:NOICF>
-            $<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>
-            $<$<CONFIG:RelWithDebInfo>:/DEBUG>
-            $<$<CONFIG:RelWithDebInfo>:/INCREMENTAL:NO>
-            $<$<CONFIG:RelWithDebInfo>:/OPT:REF>
-        )
-    else()
-        set(MSVC_REL_COMPILE_OPTIONS
-            $<$<CONFIG:RelWithDebInfo>:/GL>
-            $<$<CONFIG:RelWithDebInfo>:/Ox>
-            $<$<CONFIG:RelWithDebInfo>:/Zi>
-        )
-        set(MSVC_REL_LINK_OPTIONS
-            $<$<CONFIG:RelWithDebInfo>:/OPT:REF>
-            $<$<CONFIG:RelWithDebInfo>:/LTCG>
-            $<$<CONFIG:RelWithDebInfo>:/DEBUG>
-            $<$<CONFIG:RelWithDebInfo>:/INCREMENTAL:NO>
-            $<$<CONFIG:RelWithDebInfo>:/OPT:ICF>
-        )
+
+        # RelWithDebInfo: either dynamic-deopt mode or LTCG mode
+        if (ENABLE_DYNAMIC_DEOPTIMISATION AND NOT RUN_ASAN AND NOT RUN_UBSAN AND NOT IS_GITHUB_ACTIONS)
+            list(APPEND MSVC_RELWITHDEBINFO_COMPILE_OPTIONS
+                $<$<CONFIG:RelWithDebInfo>:/GL->
+                $<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>
+            )
+            list(APPEND MSVC_RELWITHDEBINFO_LINK_OPTIONS
+                $<$<CONFIG:RelWithDebInfo>:/dynamicdeopt>
+                $<$<CONFIG:RelWithDebInfo>:/OPT:NOICF>
+            )
+        else()
+            list(APPEND MSVC_RELWITHDEBINFO_COMPILE_OPTIONS
+                $<$<CONFIG:RelWithDebInfo>:/GL>
+            )
+            list(APPEND MSVC_RELWITHDEBINFO_LINK_OPTIONS
+                $<$<CONFIG:RelWithDebInfo>:/LTCG>
+                $<$<CONFIG:RelWithDebInfo>:/OPT:ICF>
+            )
+        endif()
     endif()
 
     # Append function-profiling flag if requested
     if( ENABLE_FUNCTION_PROFILING )
-        list(APPEND MSVC_REL_LINK_OPTIONS $<$<CONFIG:RelWithDebInfo>:/PROFILE>)
+        list(APPEND MSVC_RELWITHDEBINFO_LINK_OPTIONS $<$<CONFIG:RelWithDebInfo>:/PROFILE>)
     endif()
 
     # Apply options only to application targets defined in APP_BUILD_TARGETS
     foreach(_t IN LISTS APP_BUILD_TARGETS)
         if(TARGET ${_t})
-            target_compile_options(${_t} PRIVATE ${MSVC_DEBUG_COMPILE_OPTIONS} ${MSVC_RELEASE_COMPILE_OPTIONS} ${MSVC_REL_COMPILE_OPTIONS})
-            target_link_options(${_t} PRIVATE ${MSVC_DEBUG_LINK_OPTIONS} ${MSVC_RELEASE_LINK_OPTIONS} ${MSVC_REL_LINK_OPTIONS})
+            target_compile_options(${_t} PRIVATE ${MSVC_DEBUG_COMPILE_OPTIONS} ${MSVC_RELEASE_COMPILE_OPTIONS} ${MSVC_RELWITHDEBINFO_COMPILE_OPTIONS})
+            target_link_options(${_t} PRIVATE ${MSVC_DEBUG_LINK_OPTIONS} ${MSVC_RELEASE_LINK_OPTIONS} ${MSVC_RELWITHDEBINFO_LINK_OPTIONS})
         endif()
     endforeach()
 
