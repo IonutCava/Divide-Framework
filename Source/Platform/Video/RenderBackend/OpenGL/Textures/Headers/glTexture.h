@@ -59,8 +59,9 @@ class glTexture final : public Texture {
    protected:
     bool postLoad() override;
     void reserveStorage(bool makeImmutable);
-    void loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
-    void loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
+    void loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) override;
+    void loadDataInternal( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
+    void loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
     ImageUsage prepareTextureData(const vec3<U16>& dimensions, U16 layers, bool makeImmutable) override;
     void submitTextureData(ImageUsage& crtUsageInOut) override;
 

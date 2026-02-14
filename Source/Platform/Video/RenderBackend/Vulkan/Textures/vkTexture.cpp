@@ -463,20 +463,20 @@ namespace Divide
         if ( !makeImmutable && _descriptor._msaaSamples == 0u )
         {
             const PixelAlignment alignment{ ._alignment = 1u };
-            loadDataInternal( nullptr, _image->_allocInfo.size, 0u, {0u}, {_width, _height, _depth}, alignment );
+            loadDataInternal( nullptr, _image->_allocInfo.size, {0u}, {_width, _height, _depth}, alignment );
             ret = ImageUsage::SHADER_READ;
         }
 
         return ret;
     }
 
-    void vkTexture::loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    void vkTexture::loadDataInternal( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         DIVIDE_GPU_ASSERT(_descriptor._allowRegionUpdates);
-        loadDataInternal(data.data(), data.size(), targetMip, offset, dimensions, pixelUnpackAlignment);
+        loadDataInternal(data.data(), data.size(), offset, dimensions, pixelUnpackAlignment);
     }
 
-    void vkTexture::loadDataInternal( const Byte* data, const size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    void vkTexture::loadDataInternal( const Byte* data, const size_t size, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -772,7 +772,7 @@ namespace Divide
         }, "vkTexture::loadDataInternal" );
     }
 
-    void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment)
+    void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment)
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
@@ -862,9 +862,9 @@ namespace Divide
                     copyRegion.imageSubresource.mipLevel = m;
                     copyRegion.imageSubresource.baseArrayLayer = l;
                     copyRegion.imageSubresource.layerCount = 1;
-                    copyRegion.imageOffset.x = offset.x;
-                    copyRegion.imageOffset.y = offset.y;
-                    copyRegion.imageOffset.z = offset.z;
+                    copyRegion.imageOffset.x = 0u;
+                    copyRegion.imageOffset.y = 0u;
+                    copyRegion.imageOffset.z = 0u;
                     copyRegion.imageExtent.width = mip->_dimensions.width;
                     copyRegion.imageExtent.height = mip->_dimensions.height;
                     copyRegion.imageExtent.depth = mip->_dimensions.depth;
