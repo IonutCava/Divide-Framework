@@ -197,7 +197,7 @@ void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
     Texture::submitTextureData(crtUsageInOut);
 }
 
-void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )
+void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment )
 {
     const U32 numLayers = imageData.layerCount();
     const U8 numMips = imageData.mipCount();
@@ -210,9 +210,14 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const v
             const ImageTools::LayerData* mip = layer.getMip( m );
             assert( mip->_size > 0u );
 
-            loadDataInternal( {(const Byte*)mip->data(), mip->_size}, m, vec3<U16>{offset.x, offset.y, offset.z + l}, mip->_dimensions, pixelUnpackAlignment);
+            loadDataInternal( {(const Byte*)mip->data(), mip->_size}, m, vec3<U16>{0u, 0u, l}, mip->_dimensions, pixelUnpackAlignment);
         }
     }
+}
+
+void glTexture::loadDataInternal( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+{
+    loadDataInternal(data, 0u, offset, dimensions, pixelUnpackAlignment);
 }
 
 void glTexture::loadDataInternal( const std::span<const Byte> data, const U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )

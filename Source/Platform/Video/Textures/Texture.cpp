@@ -349,7 +349,7 @@ namespace Divide
                 _descriptor._mipMappingState = MipMappingState::MANUAL;
             }
 
-            loadDataInternal(imageData, vec3<U16>(0u), pixelUnpackAlignment);
+            loadDataInternal(imageData, pixelUnpackAlignment);
 
             ret = ImageUsage::SHADER_READ;
         }
@@ -402,7 +402,7 @@ namespace Divide
                            offset.height + range.height <= _height &&
                            offset.depth  + range.depth  <= _depth);
 
-            loadDataInternal( data, 0u, offset, range, pixelUnpackAlignment );
+            loadDataInternal( data, offset, range, pixelUnpackAlignment );
         }
     }
 

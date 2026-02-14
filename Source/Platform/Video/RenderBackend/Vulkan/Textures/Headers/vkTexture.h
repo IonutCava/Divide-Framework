@@ -194,14 +194,14 @@ namespace Divide
         static void FlushPipelineBarriers(VkCommandBuffer cmdBuffer, VkDependencyInfo& pDependencyInfo);
 
     private:
-        void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
-        void loadDataInternal( const std::span<const Byte> data, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
+        void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) override;
+        void loadDataInternal( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
         ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable ) override;
         void clearDataInternal( const UColour4& clearColour, U8 level, bool clearRect, const int4& rectToClear, int2 depthRange ) const;
         void clearImageViewCache();
         void submitTextureData(ImageUsage& crtUsageInOut) override;
 
-        void loadDataInternal( const Byte* data, size_t size, U8 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
+        void loadDataInternal( const Byte* data, size_t size, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment );
     private:
         struct Mip
         {
