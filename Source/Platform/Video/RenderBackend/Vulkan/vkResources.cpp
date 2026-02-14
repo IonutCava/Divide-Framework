@@ -204,8 +204,8 @@ namespace Divide
             vkShaderStageTable[to_base( ShaderType::TESSELLATION_CTRL )] = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
             vkShaderStageTable[to_base( ShaderType::TESSELLATION_EVAL )] = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
             vkShaderStageTable[to_base( ShaderType::COMPUTE )] = VK_SHADER_STAGE_COMPUTE_BIT;
-            vkShaderStageTable[to_base( ShaderType::MESH_NV )] = VK_SHADER_STAGE_MESH_BIT_NV;
-            vkShaderStageTable[to_base( ShaderType::TASK_NV )] = VK_SHADER_STAGE_TASK_BIT_NV;
+            vkShaderStageTable[to_base( ShaderType::MESH )] = VK_SHADER_STAGE_MESH_BIT_EXT;
+            vkShaderStageTable[to_base( ShaderType::TASK )] = VK_SHADER_STAGE_TASK_BIT_EXT;
 
 
             vkQueryTypeTable[to_U8(log2( to_base( QueryType::VERTICES_SUBMITTED ) ) ) - 1]._statistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT;

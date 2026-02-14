@@ -45,8 +45,7 @@ class PXDevice final : public PhysicsAPIWrapper, public FrameListener
 public:
     enum class PhysicsAPI : U8
     {
-        PhysX = 0,
-        Jolt,
+        Jolt = 0,
         None,
         COUNT
     };

@@ -32,7 +32,6 @@ Keep this short and actionable. Focus on immediate, verifiable information an AI
 
 5) Integration points and external dependencies
    - Many third-party libraries managed through vcpkg and submodules (see README third-party list and `vcpkg.json`).
-   - PhysX / GPU acceleration targets may be copied post-build (see `add_custom_command` in `Source/CMakeLists.txt`). When changing native library handling, check Windows/Unix copy/post-build logic.
 
 6) Quick tips for code changes
    - Small, local changes: run the matching CMake preset and build only the target (`cmake --build --preset <buildPreset> --target <target>`).

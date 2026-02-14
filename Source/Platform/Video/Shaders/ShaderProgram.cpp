@@ -539,8 +539,8 @@ namespace Divide
             AppendToShaderHeader( ShaderType::COUNT, "#define DVD_GL_DRAW_ID gl_DrawIDARB" );
         }
 
-        AppendToShaderHeader( ShaderType::MESH_NV, "#extension GL_NV_mesh_shader : require");
-        AppendToShaderHeader( ShaderType::TASK_NV, "#extension GL_NV_mesh_shader : require");
+        AppendToShaderHeader( ShaderType::MESH, "#extension GL_EXT_mesh_shader : require");
+        AppendToShaderHeader( ShaderType::TASK, "#extension GL_EXT_mesh_shader : require");
 
         AppendToShaderHeader( ShaderType::COUNT, crossTypeGLSLHLSL );
 
@@ -1077,8 +1077,8 @@ namespace Divide
         shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_CTRL )] = Paths::Shaders::GLSL::g_tescAtomLoc;
         shaderAtomLocationPrefix[to_base( ShaderType::TESSELLATION_EVAL )] = Paths::Shaders::GLSL::g_teseAtomLoc;
         shaderAtomLocationPrefix[to_base( ShaderType::COMPUTE )]           = Paths::Shaders::GLSL::g_compAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::MESH_NV )]           = Paths::Shaders::GLSL::g_meshAtomLoc;
-        shaderAtomLocationPrefix[to_base( ShaderType::TASK_NV )]           = Paths::Shaders::GLSL::g_taskAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::MESH )]              = Paths::Shaders::GLSL::g_meshAtomLoc;
+        shaderAtomLocationPrefix[to_base( ShaderType::TASK )]              = Paths::Shaders::GLSL::g_taskAtomLoc;
         shaderAtomLocationPrefix[to_base( ShaderType::COUNT )]             = Paths::Shaders::GLSL::g_comnAtomLoc;
 
         shaderAtomExtensionName[to_base( ShaderType::FRAGMENT )]          = Paths::Shaders::GLSL::g_fragAtomExt;
@@ -1087,9 +1087,9 @@ namespace Divide
         shaderAtomExtensionName[to_base( ShaderType::TESSELLATION_CTRL )] = Paths::Shaders::GLSL::g_tescAtomExt;
         shaderAtomExtensionName[to_base( ShaderType::TESSELLATION_EVAL )] = Paths::Shaders::GLSL::g_teseAtomExt;
         shaderAtomExtensionName[to_base( ShaderType::COMPUTE )]           = Paths::Shaders::GLSL::g_compAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::MESH_NV )]           = Paths::Shaders::GLSL::g_meshAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::TASK_NV )]           = Paths::Shaders::GLSL::g_taskAtomExt;
-        shaderAtomExtensionName[to_base( ShaderType::COUNT )]       = "." + Paths::Shaders::GLSL::g_comnAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::MESH )]              = Paths::Shaders::GLSL::g_meshAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::TASK )]              = Paths::Shaders::GLSL::g_taskAtomExt;
+        shaderAtomExtensionName[to_base( ShaderType::COUNT )]             = "." + Paths::Shaders::GLSL::g_comnAtomExt;
 
         for ( U8 i = 0u; i < to_base( ShaderType::COUNT ) + 1; ++i )
         {
@@ -1162,19 +1162,46 @@ namespace Divide
     }
 
 
+    U8 ShaderProgram::GetGLBindingForDescriptorSlot( const U8 usageIndex, const U8 slot ) noexcept
+    {
+        return s_bindingsPerSet[usageIndex][slot]._glBinding;
+    }
+
     U8 ShaderProgram::GetGLBindingForDescriptorSlot( const DescriptorSetUsage usage, const U8 slot ) noexcept
     {
-        return s_bindingsPerSet[to_base( usage )][slot]._glBinding;
+        return GetGLBindingForDescriptorSlot(to_base(usage), slot);
     }
 
     std::pair<DescriptorSetUsage, U8> ShaderProgram::GetDescriptorSlotForGLBinding( const U8 binding, const DescriptorSetBindingType type ) noexcept
     {
+        //Note(Ionut): Dynamic and static buffer types are identical for binding purposes, so we can treat them as the same when searching for a match
+        const auto isCompatible = [](const DescriptorSetBindingType typeA, const DescriptorSetBindingType typeB) noexcept -> bool
+        {
+            switch (typeA)
+            {
+                case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
+                case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
+                    return typeB == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
+                           typeB == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC;
+
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+                    return typeB == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC ||
+                           typeB == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+
+                case DescriptorSetBindingType::COUNT: DIVIDE_UNEXPECTED_CALL(); break;
+                default: break;
+            };
+
+            return typeA == typeB;
+        };
+
         for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
         {
             const BindingsPerSetArray& bindings = s_bindingsPerSet[i];
             for ( U8 j = 0u; j < bindings.size(); ++j )
             {
-                if ( bindings[j]._glBinding == binding && bindings[j]._type == type )
+                if ( bindings[j]._glBinding == binding && isCompatible(bindings[j]._type, type) )
                 {
                     return { static_cast<DescriptorSetUsage>(i), j };
                 }
@@ -1738,6 +1765,7 @@ namespace Divide
 
                 BindingsPerSet& binding = _perDrawDescriptorSetLayout[image._bindingSlot];
                 SetVisibility( binding, image );
+                binding._glBinding = GetGLBindingForDescriptorSlot(image._bindingSet, image._bindingSlot);
 
                 if ( image._combinedImageSampler )
                 {
@@ -1762,6 +1790,7 @@ namespace Divide
 
                 BindingsPerSet& binding = _perDrawDescriptorSetLayout[buffer._bindingSlot];
                 SetVisibility( binding, buffer );
+                binding._glBinding = GetGLBindingForDescriptorSlot(buffer._bindingSet, buffer._bindingSlot);
 
                 const DescriptorSetBindingType target = buffer._uniformBuffer
                                                                 ? (buffer._dynamic ? DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC : DescriptorSetBindingType::UNIFORM_BUFFER_STATIC)

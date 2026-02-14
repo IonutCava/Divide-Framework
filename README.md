@@ -102,7 +102,7 @@ I did try to comply with all of them, but I may have missed something.
 * SDL: https://github.com/libsdl-org
 * {fmt}: https://github.com/fmtlib/fmt
 * ECS: https://github.com/tobias-stein/EntityComponentSystem
-* PhysX: https://github.com/NVIDIAGameWorks/PhysX
+* JoltPhysics: https://github.com/jrouwe/JoltPhysics
 * ChaiScript: https://chaiscript.com
 * Optick: https://github.com/bombomby/optick
 * ReCast: https://github.com/recastnavigation/recastnavigation

@@ -182,8 +182,8 @@ namespace Divide
             glShaderStageTable[to_base( ShaderType::TESSELLATION_CTRL )] = gl46core::GL_TESS_CONTROL_SHADER;
             glShaderStageTable[to_base( ShaderType::TESSELLATION_EVAL )] = gl46core::GL_TESS_EVALUATION_SHADER;
             glShaderStageTable[to_base( ShaderType::COMPUTE )] = gl46core::GL_COMPUTE_SHADER;
-            glShaderStageTable[to_base( ShaderType::MESH_NV )] = gl::GL_MESH_SHADER_NV;
-            glShaderStageTable[to_base( ShaderType::TASK_NV )] = gl::GL_TASK_SHADER_NV;
+            glShaderStageTable[to_base( ShaderType::MESH )] = gl46ext::GL_MESH_SHADER_EXT;
+            glShaderStageTable[to_base( ShaderType::TASK )] = gl46ext::GL_TASK_SHADER_EXT;
 
             glQueryTypeTable[to_U8(log2(to_base(QueryType::VERTICES_SUBMITTED))) - 1] = gl46core::GL_VERTICES_SUBMITTED;
             glQueryTypeTable[to_U8(log2(to_base(QueryType::PRIMITIVES_GENERATED))) - 1] = gl46core::GL_PRIMITIVES_GENERATED;

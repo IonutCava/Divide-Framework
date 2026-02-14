@@ -131,6 +131,14 @@
       }
     },
     {
+      "name": "dynamic-deopt",
+      "hidden": true,
+      "description": "Enable MSVC dynamic deoptimisation for RelWithDebInfo builds",
+      "cacheVariables": {
+        "ENABLE_DYNAMIC_DEOPTIMISATION": true
+      }
+    },
+    {
       "name": "windows-msvc",
       "displayName": "Windows Build (MSVC)",
       "description": "Target Windows with the msvc compiler.",
@@ -202,6 +210,12 @@
       "displayName": "Windows Build (MSVC) + Instrumentation",
       "description": "Target Windows with the msvc compiler. Instrumentation enabled.",
       "inherits": [ "windows-msvc", "optick-build", "function-profiling-build" ]
+    },
+    {
+      "name": "windows-msvc-dynamicdeopt-instrumentation-editor",
+      "displayName": "Windows Build (MSVC) + DynamicDeopt + Instrumentation + Editor",
+      "description": "Windows MSVC configuration with dynamic deoptimisation enabled",
+      "inherits": [ "windows-msvc-instrumentation", "dynamic-deopt", "editor-build" ]
     },
     {
       "name": "windows-msvc-editor",
@@ -431,6 +445,11 @@
       "name": "windows-msvc-release-instrumentation",
       "configurePreset": "windows-msvc-instrumentation",
       "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-profile-dynamicdeopt-editor-instrumentation",
+      "configurePreset": "windows-msvc-dynamicdeopt-instrumentation-editor",
+      "configuration": "RelWithDebInfo"
     },
     {
       "name": "windows-clang-debug-editor",
