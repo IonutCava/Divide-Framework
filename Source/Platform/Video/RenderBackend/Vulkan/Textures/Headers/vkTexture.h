@@ -194,7 +194,7 @@ namespace Divide
         static void FlushPipelineBarriers(VkCommandBuffer cmdBuffer, VkDependencyInfo& pDependencyInfo);
 
     private:
-        void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) override;
+        void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) override;
         void loadDataInternal( const std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
         ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable ) override;
         void clearDataInternal( const UColour4& clearColour, U16 level, bool clearRect, const int4& rectToClear, int2 depthRange ) const;

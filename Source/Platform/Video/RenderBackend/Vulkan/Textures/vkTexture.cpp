@@ -795,7 +795,7 @@ namespace Divide
         }, "vkTexture::loadDataInternal" );
     }
 
-    void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment)
+    void vkTexture::loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment)
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
@@ -885,9 +885,9 @@ namespace Divide
                     copyRegion.imageSubresource.mipLevel = m;
                     copyRegion.imageSubresource.baseArrayLayer = l;
                     copyRegion.imageSubresource.layerCount = 1;
-                    copyRegion.imageOffset.x = offset.x;
-                    copyRegion.imageOffset.y = offset.y;
-                    copyRegion.imageOffset.z = offset.z;
+                    copyRegion.imageOffset.x = 0u;
+                    copyRegion.imageOffset.y = 0u;
+                    copyRegion.imageOffset.z = 0u;
                     copyRegion.imageExtent.width = mip->_dimensions.width;
                     copyRegion.imageExtent.height = mip->_dimensions.height;
                     copyRegion.imageExtent.depth = mip->_dimensions.depth;

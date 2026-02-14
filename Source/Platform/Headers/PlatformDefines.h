@@ -406,8 +406,8 @@ FORCE_INLINE Handle<T> from_U32(const U32 handle) noexcept
 {
     return Handle<T>
     {
-        ._generation = to_U32((handle >> 24) & 0xFFu),
-        ._index      = to_U32(handle & 0x00FF'FFFFu)
+        ._generation = (handle >> 24) & 0xFFu,
+        ._index      = handle & 0x00FF'FFFFu
     };
 }
 

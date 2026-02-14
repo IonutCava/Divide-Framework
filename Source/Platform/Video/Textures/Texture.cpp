@@ -349,7 +349,7 @@ namespace Divide
                 _descriptor._mipMappingState = MipMappingState::MANUAL;
             }
 
-            loadDataInternal(imageData, vec3<U16>(0u), pixelUnpackAlignment);
+            loadDataInternal(imageData, pixelUnpackAlignment);
 
             ret = ImageUsage::SHADER_READ;
         }

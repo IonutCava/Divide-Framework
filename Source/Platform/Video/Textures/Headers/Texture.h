@@ -147,7 +147,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
         void validateDescriptor(bool makeImmutable);
 
-        virtual void loadDataInternal( const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment ) = 0;
+        virtual void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void loadDataInternal( std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable );
         virtual void submitTextureData(ImageUsage& crtUsageInOut);

@@ -40,7 +40,7 @@ bool glTexture::postLoad()
 
     if (_loadSync != nullptr)
     {
-        gl46core::glWaitSync(_loadSync, gl46core::UnusedMask::GL_UNUSED_BIT, gl46core::GL_TIMEOUT_IGNORED);
+        gl46core::glWaitSync(_loadSync, static_cast<gl46core::GLbitfield>(gl46core::UnusedMask::GL_UNUSED_BIT), gl46core::GL_TIMEOUT_IGNORED);
         GL_API::DestroyFenceSync(_loadSync);
     }
 
@@ -197,7 +197,7 @@ void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
     Texture::submitTextureData(crtUsageInOut);
 }
 
-void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const vec3<U16>& offset, const PixelAlignment& pixelUnpackAlignment )
+void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment )
 {
     const U32 numLayers = imageData.layerCount();
     const U16 numMips = imageData.mipCount();
@@ -210,7 +210,7 @@ void glTexture::loadDataInternal(const ImageTools::ImageData& imageData, const v
             const ImageTools::LayerData* mip = layer.getMip( m );
             assert( mip->_size > 0u );
 
-            loadDataInternal( {(const Byte*)mip->data(), mip->_size}, m, vec3<U16>{offset.x, offset.y, offset.z + l}, mip->_dimensions, pixelUnpackAlignment);
+            loadDataInternal( {(const Byte*)mip->data(), mip->_size}, m, vec3<U16>{0u, 0u, l}, mip->_dimensions, pixelUnpackAlignment);
         }
     }
 }
