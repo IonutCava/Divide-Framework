@@ -1002,7 +1002,7 @@ namespace Divide
         Texture::submitTextureData(crtUsageInOut);
     }
 
-    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, const U16 mipLevel ) const noexcept
+    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U16 mipLevel ) const noexcept
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
@@ -1017,8 +1017,18 @@ namespace Divide
         range.aspectMask = GetAspectFlags( _descriptor );
         range.baseArrayLayer = layerRange._offset;
         range.layerCount = layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : layerRange._count;
-        range.baseMipLevel = mipLevel == ALL_MIPS ? 0u : mipLevel;
-        range.levelCount = mipLevel == ALL_MIPS ? VK_REMAINING_MIP_LEVELS : 1u;
+
+        if (mipLevel == ALL_MIPS)
+        {
+            range.baseMipLevel = 0u;
+            range.levelCount = VK_REMAINING_MIP_LEVELS;
+        }
+        else
+        {
+            DIVIDE_ASSERT(mipLevel < mipCount());
+            range.baseMipLevel = mipLevel;
+            range.levelCount = 1u;
+        }
 
         FlushPipelineBarrier(cmdBuffer, TransitionType::SHADER_READ_TO_BLIT_WRITE, range, namedImage );
 
