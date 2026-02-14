@@ -116,6 +116,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange ) const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange, SubRange layerRange/*offset, count*/ ) const noexcept;
 
+        ///Requires an exact mip level. ALL_MIPS will not work here! It will return an empty result if ALL_MIPS is used.
         [[nodiscard]] virtual ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
 
         PROPERTY_R( TextureDescriptor, descriptor );

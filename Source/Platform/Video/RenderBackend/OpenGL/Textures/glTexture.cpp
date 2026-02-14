@@ -286,86 +286,101 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
 
 void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, const U16 mipLevel ) const
 {
-    FColour4 floatData;
-    vec4<U16> shortData;
-    uint4 intData;
+    DIVIDE_ASSERT(_layerCount >= 1u && layerRange._offset < _layerCount - 1);
+    DIVIDE_GPU_ASSERT(!IsCompressed(_descriptor._baseFormat), "glTexture::clearData: compressed textures are not supported!");
 
-    const auto GetClearData = [clearColour, &floatData, &shortData, &intData](const GFXDataFormat format)
+    if (layerRange._count == ALL_LAYERS || layerRange._count + layerRange._offset >= _layerCount)
     {
-        switch (format)
+        layerRange._count = _layerCount - layerRange._offset;
+    }
+
+    const auto clearMip = [this, &clearColour, &layerRange](const U16 mipLevel) {
+
+        DIVIDE_ASSERT(mipLevel < mipCount());
+        DIVIDE_ASSERT(layerRange._offset + layerRange._count <= _layerCount);
+
+        FColour4 floatData;
+        vec4<U16> shortData;
+        uint4 intData;
+
+        const auto GetClearData = [&clearColour, &floatData, &shortData, &intData](const GFXDataFormat format)
         {
-            case GFXDataFormat::UNSIGNED_BYTE:
-            case GFXDataFormat::SIGNED_BYTE:
+            switch (format)
             {
-                return (bufferPtr)clearColour._v;
-            }
-            case GFXDataFormat::UNSIGNED_SHORT:
-            case GFXDataFormat::SIGNED_SHORT:
-            {
-                shortData = { clearColour.r, clearColour.g, clearColour.b, clearColour.a };
-                return (bufferPtr)shortData._v;
+                case GFXDataFormat::UNSIGNED_BYTE:
+                case GFXDataFormat::SIGNED_BYTE:
+                {
+                    return (bufferPtr)clearColour._v;
+                }
+                case GFXDataFormat::UNSIGNED_SHORT:
+                case GFXDataFormat::SIGNED_SHORT:
+                {
+                    shortData = { clearColour.r, clearColour.g, clearColour.b, clearColour.a };
+                    return (bufferPtr)shortData._v;
+                }
+
+                case GFXDataFormat::UNSIGNED_INT:
+                case GFXDataFormat::SIGNED_INT:
+                {
+                    intData = { clearColour.r, clearColour.g, clearColour.b, clearColour.a };
+                    return (bufferPtr)intData._v;
+                }
+
+                case GFXDataFormat::FLOAT_16:
+                case GFXDataFormat::FLOAT_32:
+                {
+                    floatData = Util::ToFloatColour(clearColour);
+                    return (bufferPtr)floatData._v;
+                }
+
+                default:
+                case GFXDataFormat::COUNT:
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                } break;
             }
 
-            case GFXDataFormat::UNSIGNED_INT:
-            case GFXDataFormat::SIGNED_INT:
-            {
-                intData = { clearColour.r, clearColour.g, clearColour.b, clearColour.a };
-                return (bufferPtr)intData._v;
-            }
+            return (bufferPtr)nullptr;
+        };
 
-            case GFXDataFormat::FLOAT_16:
-            case GFXDataFormat::FLOAT_32:
-            {
-                floatData = Util::ToFloatColour(clearColour);
-                return (bufferPtr)floatData._v;
-            }
+        const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
-            default:
-            case GFXDataFormat::COUNT:
-            {
-                DIVIDE_UNEXPECTED_CALL();
-            } break;
+        if ( layerRange._offset == 0u && (layerRange._count == ALL_LAYERS || layerRange._count == _layerCount ))
+        {
+            gl46core::glClearTexImage( _textureHandle, mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor._dataType ) );
         }
+        else
+        {
+            const bool isCubeMap = IsCubeTexture( _descriptor._texType );
+            const U32 layerOffset = isCubeMap ? layerRange._offset * 6 : layerRange._offset;
+            const U16 mipWidth = _width >> mipLevel;
+            const U16 mipHeight = _height >> mipLevel;
 
-        return (bufferPtr)nullptr;
+            gl46core::glClearTexSubImage( _textureHandle,
+                                          mipLevel,
+                                          0,
+                                          _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? layerRange._offset : 0,
+                                          layerOffset,
+                                          mipWidth,
+                                          _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? layerRange._count : mipHeight,
+                                          isCubeMap ? layerRange._count * 6 : layerRange._count,
+                                          formatAndType._internalFormat,
+                                          formatAndType._dataType,
+                                          GetClearData( _descriptor._dataType) );
+ 
+        }
     };
 
-    DIVIDE_GPU_ASSERT(!IsCompressed( _descriptor._baseFormat ), "glTexture::clearData: compressed textures are not supported!");
-
-    const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
-
-    DIVIDE_ASSERT(mipLevel == ALL_MIPS || mipLevel < mipCount());
-
-    if ( layerRange._offset == 0u && (layerRange._count == ALL_LAYERS || layerRange._count == _layerCount ))
+    if (mipLevel == ALL_MIPS)
     {
-        gl46core::glClearTexImage( _textureHandle, mipLevel == ALL_MIPS ? 0u : mipLevel, formatAndType._internalFormat, formatAndType._dataType, GetClearData( _descriptor._dataType ) );
+        for (U16 m = 0u; m < mipCount(); ++m)
+        {
+            clearMip(m);
+        }
     }
     else
     {
-        const U16 targetMip = mipLevel == ALL_MIPS ? 0u : mipLevel;
-
-        if ( layerRange._count >= _layerCount )
-        {
-            layerRange._count = _layerCount;
-        }
-
-        const bool isCubeMap = IsCubeTexture( _descriptor._texType );
-        const U32 layerOffset = isCubeMap ? layerRange._offset * 6 : layerRange._offset;
-        const U16 mipWidth = _width >> targetMip;
-        const U16 mipHeight = _height >> targetMip;
-
-        gl46core::glClearTexSubImage( _textureHandle,
-                                      targetMip,
-                                      0,
-                                      _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? layerRange._offset : 0,
-                                      layerOffset,
-                                      mipWidth,
-                                      _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? layerRange._count : mipHeight,
-                                      isCubeMap ? layerRange._count * 6 : layerRange._count,
-                                      formatAndType._internalFormat,
-                                      formatAndType._dataType,
-                                      GetClearData( _descriptor._dataType) );
- 
+        clearMip(mipLevel);
     }
 }
 
@@ -415,6 +430,12 @@ void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, con
 
 ImageReadbackData glTexture::readData(const U16 mipLevel, const PixelAlignment& pixelPackAlignment) const
 {
+    if (mipLevel == ALL_MIPS)
+    {
+        Console::errorfn("vkTexture::readData: ALL_MIPS not a valid mipLevel target!");
+        return {};
+    }
+
     ImageReadbackData grabData{};
 
     grabData._bpp = Texture::GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing );

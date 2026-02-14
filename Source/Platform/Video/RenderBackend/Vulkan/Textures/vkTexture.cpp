@@ -1048,6 +1048,12 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        if (mipLevel == ALL_MIPS )
+        {
+            Console::errorfn("vkTexture::readData: ALL_MIPS not a valid mipLevel target!");
+            return {};
+        }
+
         DIVIDE_ASSERT(mipLevel < mipCount());
 
         ImageReadbackData ret{};
