@@ -394,7 +394,7 @@ namespace Divide
         if ( offset.x == 0u && offset.y == 0u && offset.z == 0u && (range.x > _width || range.y > _height || range.z > _depth) )
         {
             _descriptor._layerCount = range.z;
-            createWithData(data, range, pixelUnpackAlignment);
+            createWithData( data, range, pixelUnpackAlignment );
         }
         else
         {
