@@ -33,6 +33,13 @@ runs:
       shell: bash
       run: echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
 
+    - name: Install system dependencies required by vcpkg
+      shell: bash
+      run: |
+        # Ensure Homebrew is up to date and install tools required by some vcpkg ports (e.g. gperf)
+        brew update
+        brew install autoconf autoconf-archive automake libtool
+
     - name: Configure (preset override)
       if: ${{ inputs.configure-preset != '' }}
       uses: lukka/run-cmake@v10
