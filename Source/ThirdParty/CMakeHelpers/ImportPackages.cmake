@@ -6,6 +6,10 @@ add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
 add_compile_definitions(IMGUI_DISABLE_OBSOLETE_KEYIO)
 add_compile_definitions(IMGUI_USE_STB_SPRINTF)
 
+if( MAC_OS_BUILD )
+find_package(Iconv REQUIRED)
+endif()
+
 #Optick
 message("Fetching Optick Lib")
 set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE)
