@@ -392,13 +392,13 @@ static_assert(sizeof(Handle<void>) == sizeof(U32), "Handle size is incorrect");
 template<typename T> inline constexpr Handle<T> INVALID_HANDLE
 {
     ._generation = 0xFFu,
-    ._index = 0x00FFFFFFu
+    ._index = 0xFFFFFFu
 };
 
 template<typename T>
 FORCE_INLINE U32 to_U32(const Handle<T> handle) noexcept
 {
-    return  (to_U32(handle._generation) << 24) | (to_U32(handle._index) & 0x00FF'FFFFu);
+    return  (to_U32(handle._generation) << 24) | (to_U32(handle._index) & 0xFFFFFFu);
 }
 
 template<typename T>
@@ -407,7 +407,7 @@ FORCE_INLINE Handle<T> from_U32(const U32 handle) noexcept
     return Handle<T>
     {
         ._generation = (handle >> 24) & 0xFFu,
-        ._index      = handle & 0x00FF'FFFFu
+        ._index      = handle & 0xFFFFFFu
     };
 }
 
