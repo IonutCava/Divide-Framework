@@ -286,7 +286,7 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
 
 void glTexture::clearData( const UColour4& clearColour, SubRange layerRange, const U16 mipLevel ) const
 {
-    DIVIDE_ASSERT(_layerCount >= 1u && layerRange._offset < _layerCount - 1);
+    DIVIDE_ASSERT(_layerCount >= 1u && layerRange._offset < _layerCount);
     DIVIDE_GPU_ASSERT(!IsCompressed(_descriptor._baseFormat), "glTexture::clearData: compressed textures are not supported!");
 
     if (layerRange._count == ALL_LAYERS || layerRange._count + layerRange._offset >= _layerCount)
@@ -432,7 +432,7 @@ ImageReadbackData glTexture::readData(const U16 mipLevel, const PixelAlignment& 
 {
     if (mipLevel == ALL_MIPS)
     {
-        Console::errorfn("vkTexture::readData: ALL_MIPS not a valid mipLevel target!");
+        Console::errorfn("glTexture::readData: ALL_MIPS not a valid mipLevel target!");
         return {};
     }
 
@@ -442,18 +442,17 @@ ImageReadbackData glTexture::readData(const U16 mipLevel, const PixelAlignment& 
     grabData._numComponents = numChannels();
     grabData._sourceIsBGR = IsBGRTexture( _descriptor._baseFormat );
 
-    const U16 targetMipLevel = mipLevel == ALL_MIPS ? 0u : mipLevel;
-    DIVIDE_ASSERT(targetMipLevel < mipCount());
+    DIVIDE_ASSERT(mipLevel < mipCount());
 
     if ( IsCompressed( _descriptor._baseFormat ) )
     {
         gl46core::GLint compressedSize = 0;
-        gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel) , gl46core::GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
+        gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel) , gl46core::GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &compressedSize);
         if ( compressedSize > 0 )
         {
             grabData._data.resize(compressedSize);
             grabData._sourceIsCompressed = true;
-            gl46core::glGetCompressedTextureImage( _textureHandle, targetMipLevel, compressedSize, (bufferPtr)grabData._data.data() );
+            gl46core::glGetCompressedTextureImage( _textureHandle, mipLevel, compressedSize, (bufferPtr)grabData._data.data() );
         }
     }
     else
@@ -462,9 +461,9 @@ ImageReadbackData glTexture::readData(const U16 mipLevel, const PixelAlignment& 
         grabData._numComponents = 4; //glGetTextureImage pads the data to RGBA
         {
             gl46core::GLint width = _width, height = _height, depth = _depth;
-            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel), gl46core::GL_TEXTURE_WIDTH,  &width );
-            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel), gl46core::GL_TEXTURE_HEIGHT, &height );
-            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(targetMipLevel), gl46core::GL_TEXTURE_DEPTH,  &depth );
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_WIDTH,  &width );
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_HEIGHT, &height );
+            gl46core::glGetTextureLevelParameteriv(_textureHandle, static_cast<gl46core::GLint>(mipLevel), gl46core::GL_TEXTURE_DEPTH,  &depth );
             grabData._width  = to_U16(width);
             grabData._height = to_U16(height);
             grabData._depth  = to_U16(depth);
@@ -478,7 +477,7 @@ ImageReadbackData glTexture::readData(const U16 mipLevel, const PixelAlignment& 
         const GLUtil::FormatAndDataType formatAndType = GLUtil::InternalFormatAndDataType( _descriptor._baseFormat, _descriptor._dataType, _descriptor._packing );
 
         gl46core::glGetTextureImage( _textureHandle,
-                                     targetMipLevel,
+                                     mipLevel,
                                      formatAndType._internalFormat,
                                      formatAndType._dataType,
                                      (gl46core::GLsizei)grabData._data.size(),

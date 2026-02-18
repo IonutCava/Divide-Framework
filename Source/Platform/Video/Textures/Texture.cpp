@@ -382,7 +382,7 @@ namespace Divide
         return ImageUsage::UNDEFINED;
     }
 
-    void Texture::replaceData( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment )
+    void Texture::replaceData( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const U16 targetMipLevel, const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -393,6 +393,7 @@ namespace Divide
 
         if ( offset.x == 0u && offset.y == 0u && offset.z == 0u && (range.x > _width || range.y > _height || range.z > _depth) )
         {
+            DIVIDE_ASSERT(targetMipLevel == ALL_MIPS, "Texture::replaceData: ALL_MIPS must be used when replacing the entire texture data!");
             _descriptor._layerCount = range.z;
             createWithData(data, range, pixelUnpackAlignment);
         }
@@ -402,7 +403,9 @@ namespace Divide
                            offset.height + range.height <= _height &&
                            offset.depth  + range.depth  <= _depth);
 
-            loadDataInternal( data, 0u, offset, range, pixelUnpackAlignment );
+            DIVIDE_ASSERT(targetMipLevel != ALL_MIPS, "Texture::replaceData: ALL_MIPS is not a valid target mip level for partial texture updates!");
+
+            loadDataInternal( data, targetMipLevel, offset, range, pixelUnpackAlignment );
         }
     }
 

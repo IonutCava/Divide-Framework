@@ -104,7 +104,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
         ImageUsage createWithData( std::span<const Byte> data, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment);
 
-        void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment );
+        void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const U16 targetMipLevel, const PixelAlignment& pixelUnpackAlignment );
 
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );
