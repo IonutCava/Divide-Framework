@@ -38,8 +38,7 @@ runs:
       run: |
         # Ensure Homebrew is up to date and install tools required by some vcpkg ports (e.g. gperf)
         brew update
-        brew install autoconf autoconf-archive automake libtool bison
-        brew link --force bison
+        brew install autoconf autoconf-archive automake libtool
 
     - name: Configure (preset override)
       if: ${{ inputs.configure-preset != '' }}
