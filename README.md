@@ -8,7 +8,7 @@ Website: [divide-studio.com](http://www.divide-studio.com)
 
 ToDo List: [Trello.com/divide-todo](https://trello.com/b/mujYqtxR/divide-todo)
 
-Twitter: [Twitter.com/KIonutzR](https://twitter.com/KIonutzR)
+Twitter: [x.com/ionutcava](https://x.com/ionutcava)
 
 ## The How and the Why
 Yup, YAGE. Yet Another Game Engine. A toy engine, mind you, never intended for general release or something people will ever require support with.
