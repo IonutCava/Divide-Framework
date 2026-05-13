@@ -44,7 +44,12 @@ namespace Divide
         quatf _orientation;
         std::array<Plane<F32>, 6> _frustumPlanes;
         float3 _eye;
-        float2 _zPlanes;
+        /// Near clip/render distance (always finite, used as the actual projection near plane)
+        F32 _nearDistance{ 0.1f };
+        /// Finite cull/visibility distance used by culling, lighting and post-processing systems.
+        /// For perspective cameras the projection matrix uses an infinite far plane, so this does
+        /// NOT equal the projection far plane – it is purely a logical bound.
+        F32 _cullDistance{ 1000.0f };
         Angle::DEGREES_F _fov{ 0.f};
         F32 _aspectRatio{ 0.f };
         bool _isOrthoCamera{false};

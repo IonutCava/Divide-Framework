@@ -113,7 +113,8 @@ namespace Divide
                 }
 
                 //Not everything gets drawn during the depth PrePass (E.g. sky)
-                params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+                // Use reversed-Z depth clear (0.0) as perspective cameras use reversed-Z infinite projection.
+                params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
                 params._clearDescriptorPrePass[to_base( GFXDevice::ScreenTargets::VELOCITY )] = { VECTOR4_ZERO, true };
                 params._clearDescriptorPrePass[to_base( GFXDevice::ScreenTargets::NORMALS )] = { VECTOR4_ZERO, true };
                 params._targetOIT = RenderTargetNames::OIT;
@@ -164,7 +165,7 @@ namespace Divide
                         params._stagePass = { _stageFlag, RenderPassType::COUNT };
                         params._target = editor.getNodePreviewTarget()._targetID;
                         params._passName = "Node Preview";
-                        params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+                        params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
                         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = {editor.nodePreviewBGColour(), true};
                         params._targetDescriptorPrePass._keepMSAADataAfterResolve = true;
                         params._targetDescriptorMainPass._autoResolveMSAA = false; ///< We use a custom GBuffer resolve for this

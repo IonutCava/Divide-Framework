@@ -277,7 +277,7 @@ void Frustum::getCornersWorldSpace(std::array<float3, to_base(FrustumPoints::COU
     cornersWS[to_base(FrustumPoints::FAR_RIGHT_BOTTOM)]  = GetIntersection(farPlane,  rightPlane, bottomPlane);
 }
 
-const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& Frustum::computePlanes(const mat4<F32>& viewProjMatrix)
+const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& Frustum::computePlanes(const mat4<F32>& viewProjMatrix, bool infiniteProjection)
 {
     F32* leftPlane   = _frustumPlanes[to_base(FrustumPlane::PLANE_LEFT)]._equation._v;
     F32* rightPlane  = _frustumPlanes[to_base(FrustumPlane::PLANE_RIGHT)]._equation._v;
@@ -298,6 +298,17 @@ const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& Frustum::computePlan
     for (Plane<F32>& plane : _frustumPlanes)
     {
         plane.normalize();
+    }
+
+    if ( infiniteProjection )
+    {
+        // With an infinite reversed-Z projection the extracted far plane is degenerate
+        // (or represents an incorrect plane). Replace it with a pass-all plane so that
+        // no geometry is incorrectly culled at the "far" side.
+        farPlane[0] = 0.f;
+        farPlane[1] = 0.f;
+        farPlane[2] = 0.f;
+        farPlane[3] = 1.f; // dot(pos, {0,0,0}) + 1 = 1 > 0 for every point → always inside
     }
 
     return _frustumPlanes;

@@ -227,6 +227,10 @@ protected:
     virtual bool setViewportInternal(const Rect<I32>& newViewport) = 0;
     virtual bool setScissorInternal(const Rect<I32>& newScissor) = 0;
 
+    /// Called before rendering a new camera to switch between reversed-Z (perspective)
+    /// and forward-Z (orthographic) depth modes. Default no-op; backends override.
+    virtual void setReverseDepthActive( bool active ) noexcept {}
+
     virtual void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) = 0;
 
     virtual bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) = 0;

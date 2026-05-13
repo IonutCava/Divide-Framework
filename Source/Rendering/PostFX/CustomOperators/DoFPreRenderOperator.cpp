@@ -128,7 +128,7 @@ void DoFPreRenderOperator::reshape(const U16 width, const U16 height)
 
 bool DoFPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, const RenderTargetHandle& input, const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
-    _constants.data[0]._vec[1].xy = cameraSnapshot._zPlanes;
+    _constants.data[0]._vec[1].xy.set( cameraSnapshot._nearDistance, cameraSnapshot._cullDistance );
 
     const auto& screenAtt = input._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
     const auto& extraAtt = _parent.getLinearDepthRT()._rt->getAttachment(RTAttachmentType::COLOUR);

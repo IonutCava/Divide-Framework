@@ -1249,7 +1249,7 @@ namespace Divide
             cullParams._ignoredGUIDS = { &ignoreGUID, 1 };
             cullParams._cameraEyePos = camSnapshot._eye;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = std::min( cullParams._cullMaxDistance, camSnapshot._zPlanes.y );
+            cullParams._cullMaxDistance = std::min( cullParams._cullMaxDistance, camSnapshot._cullDistance );
             cullParams._maxLoD = params._maxLoD;
 
             U16 cullFlags = to_base( CullOptions::DEFAULT_CULL_OPTIONS );

@@ -62,6 +62,7 @@ namespace Divide
         _activeShaderProgramHandle = 0u;
         _activeShaderPipelineHandle = 0u;
         _alphaToCoverageEnabled = false;
+        _reverseDepthMode = false;
         _blendPropertiesGlobal = {};
         _blendEnabledGlobal = gl46core::GL_FALSE;
         _currentBindConfig = {};
@@ -962,6 +963,23 @@ namespace Divide
         return false;
     }
 
+    namespace
+    {
+        /// Flip a depth comparison function for reversed-Z rendering.
+        FORCE_INLINE ComparisonFunction FlipDepthFunc( ComparisonFunction func ) noexcept
+        {
+            switch ( func )
+            {
+                case ComparisonFunction::LESS:    return ComparisonFunction::GREATER;
+                case ComparisonFunction::LEQUAL:  return ComparisonFunction::GEQUAL;
+                case ComparisonFunction::GREATER: return ComparisonFunction::LESS;
+                case ComparisonFunction::GEQUAL:  return ComparisonFunction::LEQUAL;
+                default: break;
+            }
+            return func;
+        }
+    } //namespace
+
     /// A state block should contain all rendering state changes needed for the next draw call.
     /// Some may be redundant, so we check each one individually
     bool GLStateTracker::activateStateBlock( const RenderStateBlock& newBlock )
@@ -1048,7 +1066,8 @@ namespace Divide
         // Check the depth function
         if ( _activeState._zFunc != newBlock._zFunc )
         {
-            gl46core::glDepthFunc( GLUtil::glCompareFuncTable[to_U32( newBlock._zFunc )] );
+            const ComparisonFunction effectiveFunc = _reverseDepthMode ? FlipDepthFunc( newBlock._zFunc ) : newBlock._zFunc;
+            gl46core::glDepthFunc( GLUtil::glCompareFuncTable[to_U32( effectiveFunc )] );
             ret = true;
         }
 

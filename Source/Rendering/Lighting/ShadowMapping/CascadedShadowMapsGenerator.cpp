@@ -241,9 +241,14 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
-        const SplitDepths splitDepths = calculateSplitDepths( light, shadowCamera.snapshot()._zPlanes );
+        const SplitDepths splitDepths = calculateSplitDepths( light, { shadowCamera.snapshot()._nearDistance, shadowCamera.snapshot()._cullDistance } );
 
         const mat4<F32> invViewProj = GetInverse( shadowCamera.viewProjectionMatrix() );
+
+        // For [0,1] reversed-Z perspective: near = NDC z 1.0, far = NDC z 0.0 (infinity).
+        // Use a finite synthetic far z based on cullDistance to get valid world-space corners.
+        const F32 nearNDC = 1.0f;  // reversed-Z: near clips at z=1
+        const F32 farNDC  = shadowCamera.snapshot()._nearDistance / shadowCamera.snapshot()._cullDistance;  // = near/cull
 
         F32 appliedDiff = 0.0f;
         for ( U8 cascadeIterator = 0; cascadeIterator < numSplits; ++cascadeIterator )
@@ -253,16 +258,17 @@ namespace Divide
             const F32 prevSplitDistance = cascadeIterator == 0 ? 0.0f : splitDepths[cascadeIterator - 1];
             const F32 splitDistance = splitDepths[cascadeIterator];
 
+            // NDC corners: first 4 at near (z=nearNDC), last 4 at synthetic cull far (z=farNDC)
             float3 frustumCornersWS[8]
             {
-                {-1.0f,  1.0f, -1.0f},
-                { 1.0f,  1.0f, -1.0f},
-                { 1.0f, -1.0f, -1.0f},
-                {-1.0f, -1.0f, -1.0f},
-                {-1.0f,  1.0f,  1.0f},
-                { 1.0f,  1.0f,  1.0f},
-                { 1.0f, -1.0f,  1.0f},
-                {-1.0f, -1.0f,  1.0f},
+                {-1.0f,  1.0f, nearNDC},
+                { 1.0f,  1.0f, nearNDC},
+                { 1.0f, -1.0f, nearNDC},
+                {-1.0f, -1.0f, nearNDC},
+                {-1.0f,  1.0f, farNDC},
+                { 1.0f,  1.0f, farNDC},
+                { 1.0f, -1.0f, farNDC},
+                {-1.0f, -1.0f, farNDC},
             };
 
             for ( float3& corner : frustumCornersWS )
