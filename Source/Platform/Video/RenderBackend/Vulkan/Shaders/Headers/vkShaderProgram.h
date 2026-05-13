@@ -81,7 +81,6 @@ namespace Divide {
 
         [[nodiscard]] const vkShaders& shaderStages() const noexcept;
         [[nodiscard]] VkShaderStageFlags stageMask() const noexcept;
-        [[nodiscard]] ShaderResult validatePreBind( const bool rebind ) override;
 
         PROPERTY_RW( VkDescriptorSetLayout, descriptorSetLayout, VK_NULL_HANDLE);
         PROPERTY_RW( DynamicBindings, dynamicBindings);

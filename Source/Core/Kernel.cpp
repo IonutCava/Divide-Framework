@@ -685,6 +685,10 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         config.debug.renderer.assertOnRenderAPIError = false;
     }
+    if (Util::FindCommandLineArgument(_argc, _argv, "disableSPIRVForOpenGL"))
+    {
+        config.debug.renderer.useSPIRVForOpenGL = false;
+    }
     if (Util::FindCommandLineArgument(_argc, _argv, "disableEditor"))
     {
         config.runtime.enableEditor = false;
