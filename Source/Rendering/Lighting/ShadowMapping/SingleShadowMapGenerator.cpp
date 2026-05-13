@@ -184,7 +184,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     mat4<F32> lightVP = light.getShadowVPMatrix(0);
     mat4<F32>::Multiply(projectionMatrix, viewMatrix, lightVP);
     light.setShadowLightPos(0, lightPos);
-    light.setShadowFloatValue(0, shadowCameras[0]->snapshot()._zPlanes.max);
+    light.setShadowFloatValue(0, shadowCameras[0]->snapshot()._cullDistance);
     light.setShadowVPMatrix(0, mat4<F32>::Multiply( MAT4_BIAS_ZERO_ONE_Z, lightVP ));
 
     RenderPassParams params = {};
@@ -195,7 +195,7 @@ void SingleShadowMapGenerator::render([[maybe_unused]] const Camera& playerCamer
     params._maxLoD = -1;
     params._refreshLightData = false;
     params._useMSAA = _context.context().config().rendering.shadowMapping.spot.MSAASamples;
-    params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+    params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 

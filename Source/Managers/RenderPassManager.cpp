@@ -29,7 +29,8 @@ namespace Divide {
 
 void SetDefaultDrawDescriptor( RenderPassParams& params )
 {
-    params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+    // Perspective cameras use reversed-Z infinite projection: clear depth to 0.0
+    params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::WHITE, true };
 }

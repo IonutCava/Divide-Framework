@@ -742,7 +742,7 @@ namespace Divide
         //skyDescriptor.ID(2);
 
         //ToDo: Double check that this diameter is correct, otherwise fall back to default of "2"
-        skyDescriptor.ID( to_U32( std::floor( Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->snapshot()._zPlanes.max * 2 ) ) );
+        skyDescriptor.ID( to_U32( std::floor( Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT )->snapshot()._cullDistance * 2 ) ) );
 
         const Handle<Sky> handle = CreateResource( skyDescriptor, _loadingTasks );
         ResourcePtr<Sky> skyItem = Get(handle);
@@ -794,7 +794,7 @@ namespace Divide
 
         const Camera* baseCamera = Camera::GetUtilityCamera( Camera::UtilityCamera::DEFAULT );
 
-        const U32 cameraFarPlane = to_U32( baseCamera->snapshot()._zPlanes.max );
+        const U32 cameraFarPlane = to_U32( baseCamera->snapshot()._cullDistance );
         planeDescriptor.data().set( cameraFarPlane, cameraFarPlane, 0u );
         Handle<InfinitePlane> planeItem = CreateResource( planeDescriptor, _loadingTasks );
         Get(planeItem)->loadFromXML( pt );
@@ -1915,7 +1915,7 @@ namespace Divide
 
         SGNIntersectionParams intersectionParams = {};
         intersectionParams._ray = { crtCamera->snapshot()._eye, direction };
-        intersectionParams._range = crtCamera->snapshot()._zPlanes;
+        intersectionParams._range = { crtCamera->snapshot()._nearDistance, crtCamera->snapshot()._cullDistance };
         intersectionParams._includeTransformNodes = true;
         intersectionParams._ignoredTypes = &s_ignoredNodes[0];
         intersectionParams._ignoredTypesCount = std::size(s_ignoredNodes);

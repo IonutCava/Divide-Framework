@@ -67,7 +67,7 @@ class Frustum {
     // Get the frustum corners in WorldSpace. cornerWS must be a vector with at least 8 allocated slots
     void getCornersWorldSpace(std::array<float3, to_base(FrustumPoints::COUNT)>& cornersWS) const noexcept;
 
-    const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& computePlanes(const mat4<F32>& viewProjMatrix);
+    const std::array<Plane<F32>, to_base(FrustumPlane::COUNT)>& computePlanes(const mat4<F32>& viewProjMatrix, bool infiniteProjection = false);
 
 
     [[nodiscard]] FrustumCollision PlaneBoundingBoxIntersect(FrustumPlane frustumPlane, const BoundingBox& bbox) const noexcept;

@@ -1998,14 +1998,17 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
+        // Switch depth mode before any state blocks are applied for this camera.
+        _api->setReverseDepthActive( !cameraSnapshot._isOrthoCamera );
+
         GFXShaderData::CamData& data = _gpuBlock._camData;
 
         bool projectionDirty = false, viewDirty = false;
 
         if ( cameraSnapshot._projectionMatrix != data.dvd_ProjectionMatrix)
         {
-            const F32 zNear = cameraSnapshot._zPlanes.min;
-            const F32 zFar = cameraSnapshot._zPlanes.max;
+            const F32 zNear = cameraSnapshot._nearDistance;
+            const F32 zFar  = cameraSnapshot._cullDistance;
 
             data.dvd_ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
             data.dvd_camProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );

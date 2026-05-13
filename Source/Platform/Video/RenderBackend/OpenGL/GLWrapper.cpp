@@ -1830,6 +1830,19 @@ namespace Divide
         return s_stateTracker.setScissor( scissor );
     }
 
+    void GL_API::setReverseDepthActive( bool active ) noexcept
+    {
+        if ( s_stateTracker._reverseDepthMode == active )
+        {
+            return;
+        }
+        s_stateTracker._reverseDepthMode = active;
+        s_stateTracker._clearDepthValue = active ? 0.f : 1.f;
+        // Invalidate the cached depth function so the next activateStateBlock re-applies it
+        // with the correct reversed/forward polarity.
+        s_stateTracker._activeState._zFunc = ComparisonFunction::COUNT;
+    }
+
     ShaderResult GL_API::BindPipeline(GFXDevice& context, const Pipeline& pipeline )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );

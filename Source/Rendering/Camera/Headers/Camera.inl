@@ -259,6 +259,24 @@ namespace Divide
         return ret;
     }
 
+    inline mat4<F32> Camera::InfiniteReversedZPerspective( const Angle::DEGREES_F fovy, const F32 aspect, const F32 zNear ) noexcept
+    {
+        mat4<F32> ret{ MAT4_ZERO };
+
+        assert( !IS_ZERO( aspect ) );
+        assert( zNear > 0.f );
+
+        const Angle::RADIANS_F tanHalfFovy = std::tan( Angle::to_RADIANS( fovy ) * 0.5f );
+
+        ret.m[0][0] = 1.f / (aspect * tanHalfFovy);
+        ret.m[1][1] = 1.f / tanHalfFovy;
+        ret.m[2][2] = 0.f;          // limit of zFar/(zNear-zFar) as zFar→∞
+        ret.m[2][3] = -1.f;
+        ret.m[3][2] = zNear;        // limit of -(zFar*zNear)/(zFar-zNear) as zFar→∞
+
+        return ret;
+    }
+
     template<bool zeroToOneDepth>
     mat4<F32> Camera::FrustumMatrix( const F32 left, const F32 right, const F32 bottom, const F32 top, const F32 nearVal, const F32 farVal) noexcept
     {
