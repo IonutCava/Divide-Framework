@@ -188,7 +188,7 @@ FetchContent_MakeAvailable(JoltPhysics)
 
 include_directories(${JoltPhysics_SOURCE_DIR}/..)
 
-#----------------------------------------------------------------------------- NRI Physics ------------------------------------------------------------------
+#----------------------------------------------------------------------------- NRI ------------------------------------------------------------------
 
 if (NOT MSVC_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-unused-parameter -Wno-array-bounds")

@@ -2206,7 +2206,7 @@ namespace Divide
         const U8 stageIdx = to_base( DescriptorSetUsage::PER_DRAW );
         _descriptorSetLayouts[stageIdx] = compiledPipeline._program->descriptorSetLayout();
 
-        return compiledPipeline._program->validatePreBind(false);
+        return compiledPipeline._program->validatePreBind(_context.context().config(), false);
     }
 
     void VK_API::flushPushConstantsLocks()

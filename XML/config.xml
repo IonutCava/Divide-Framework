@@ -5,14 +5,15 @@
 		<renderer>
 			<enableRenderAPIDebugging>true</enableRenderAPIDebugging>
 			<enableRenderAPIBestPractices>true</enableRenderAPIBestPractices>
-			<enableRenderAPIDebugGrouping>false</enableRenderAPIDebugGrouping>
+			<enableRenderAPIDebugGrouping>true</enableRenderAPIDebugGrouping>
 			<assertOnRenderAPIError>false</assertOnRenderAPIError>
+			<useSPIRVForOpenGL>true</useSPIRVForOpenGL>
 		</renderer>
 		<cache>
 			<enabled>true</enabled>
 			<geometry>true</geometry>
 			<vegetation>true</vegetation>
-			<shaders>true</shaders>
+			<shaders>false</shaders>
 			<textureDDS>true</textureDDS>
 		</cache>
 		<renderFilter>
