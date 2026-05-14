@@ -146,6 +146,8 @@ float LargerNeighbourAdjacencyFix(in int idx0, in int idx1, in int patchIdx, in 
 
 bool SphereInFrustum(in vec3 pos, in float radius, in mat4 worldMat)
 {
+    // Keep edge patches alive a little longer to avoid visible popping when a tessellated patch
+    // straddles the frustum boundary at steep view angles.
     const float minCmp = -0.5f;
 
     const vec4 posW = worldMat * vec4(pos, 1.f);
@@ -255,23 +257,31 @@ void main(void)
     tcs_tileSize[gl_InvocationID] = vtx_tileSize[gl_InvocationID];
     tcs_ringID[gl_InvocationID] = vtx_ringID[gl_InvocationID];
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
-    // Output tessellation level (used for wireframe coloring)
-    // These are one colour for each tessellation level and linear graduations between.
-    const vec3 DEBUG_COLOURS[6] =
-    {
-        vec3(0,0,1), //  2 - blue
-        vec3(0,1,1), //  4 - cyan
-        vec3(0,1,0), //  8 - green
-        vec3(1,1,0), // 16 - yellow
-        vec3(1,0,1), // 32 - purple
-        vec3(1,0,0), // 64 - red
-    };
+    if (gl_TessLevelOuter[0] < 0.f) {
+        tcs_debugColour[gl_InvocationID][0] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][1] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][2] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][3] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][4] = vec3(0.f);
+    } else {
+        // Output tessellation level (used for wireframe coloring)
+        // These are one colour for each tessellation level and linear graduations between.
+        const vec3 DEBUG_COLOURS[6] =
+        {
+            vec3(0,0,1), //  2 - blue
+            vec3(0,1,1), //  4 - cyan
+            vec3(0,1,0), //  8 - green
+            vec3(1,1,0), // 16 - yellow
+            vec3(1,0,1), // 32 - purple
+            vec3(1,0,0), // 64 - red
+        };
 
-    tcs_debugColour[gl_InvocationID][0] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[0], 1.f))), 0, 5)];
-    tcs_debugColour[gl_InvocationID][1] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[1], 1.f))), 0, 5)];
-    tcs_debugColour[gl_InvocationID][2] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[2], 1.f))), 0, 5)];
-    tcs_debugColour[gl_InvocationID][3] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[3], 1.f))), 0, 5)];
-    tcs_debugColour[gl_InvocationID][4] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelInner[0], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][0] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[0], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][1] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[1], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][2] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[2], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][3] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[3], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][4] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelInner[0], 1.f))), 0, 5)];
+    }
 #endif //TOGGLE_DEBUG
 }
 
