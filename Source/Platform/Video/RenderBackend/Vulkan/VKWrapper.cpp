@@ -2357,21 +2357,23 @@ namespace Divide
                 VkRenderingInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_RENDERING_INFO };
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
+                    const RTClearEntry& colourClearEntry = crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )];
+
                     VkRenderingAttachmentInfo attachmentInfo
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
                         .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                        .loadOp = colourClearEntry._enabled ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
                         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
                         .clearValue =
                         {
                             .color =
                             {
-                                DefaultColours::DIVIDE_BLUE.r,
-                                DefaultColours::DIVIDE_BLUE.g,
-                                DefaultColours::DIVIDE_BLUE.b,
-                                DefaultColours::DIVIDE_BLUE.a
+                                colourClearEntry._colour.r,
+                                colourClearEntry._colour.g,
+                                colourClearEntry._colour.b,
+                                colourClearEntry._colour.a
                             }
                         }
                     };
@@ -3076,17 +3078,11 @@ namespace Divide
 
         VkViewport targetViewport{};
         targetViewport.width = to_F32( newViewport.sizeX );
-        targetViewport.height = -to_F32( newViewport.sizeY );
-        targetViewport.x = to_F32(newViewport.offsetX);
-        if ( newViewport.offsetY == 0 )
-        {
-            targetViewport.y = to_F32(newViewport.sizeY);
-        }
-        else
-        {
-            targetViewport.y = to_F32(/*newViewport.sizeY - */newViewport.offsetY);
-            targetViewport.y = GetStateTracker()._activeRenderTargetDimensions.height + targetViewport.y;
-        }
+        targetViewport.height = to_F32( newViewport.sizeY );
+        targetViewport.x = to_F32( newViewport.offsetX );
+
+        const I32 targetHeight = to_I32( GetStateTracker()._activeRenderTargetDimensions.height );
+        targetViewport.y = to_F32( targetHeight - newViewport.offsetY - newViewport.sizeY );
         targetViewport.minDepth = 0.f;
         targetViewport.maxDepth = 1.f;
 
@@ -3103,9 +3099,30 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        const VkOffset2D offset{ std::max( 0, newScissor.offsetX ), std::max( 0, newScissor.offsetY ) };
-        const VkExtent2D extent{ to_U32( newScissor.sizeX ),to_U32( newScissor.sizeY ) };
-        const VkRect2D targetScissor{ offset, extent };
+        const bool scissorEnabled = GetStateTracker()._activeWindow->_activeState._isSet &&
+                                    GetStateTracker()._activeWindow->_activeState._block._scissorTestEnabled;
+        const vec2<U16> rtDimensions = GetStateTracker()._activeRenderTargetDimensions;
+
+        const I32 maxWidth = to_I32( rtDimensions.width );
+        const I32 maxHeight = to_I32( rtDimensions.height );
+        const VkRect2D targetScissor = [scissorEnabled, newScissor, maxWidth, maxHeight, rtDimensions]()
+        {
+            if ( !scissorEnabled )
+            {
+                return VkRect2D{ VkOffset2D{0, 0}, VkExtent2D{ rtDimensions.width, rtDimensions.height } };
+            }
+
+            const I32 x0 = std::max( 0, std::min( newScissor.offsetX, maxWidth ) );
+            const I32 y0 = std::max( 0, std::min( newScissor.offsetY, maxHeight ) );
+            const I32 x1 = std::max( 0, std::min( newScissor.offsetX + std::max( 0, newScissor.sizeX ), maxWidth ) );
+            const I32 y1 = std::max( 0, std::min( newScissor.offsetY + std::max( 0, newScissor.sizeY ), maxHeight ) );
+
+            return VkRect2D{
+                VkOffset2D{ x0, maxHeight - y1 },
+                VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
+            };
+        }();
+
         vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
         return true;
     }
