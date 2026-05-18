@@ -100,6 +100,16 @@ namespace Divide
             return (threadCount + localSize - 1u) / localSize;
         }
 
+        mat4<F32> ApplyAPIProjectionConventions( const mat4<F32>& projection, const RenderAPI api )
+        {
+            mat4<F32> ret = projection;
+            if ( api == RenderAPI::Vulkan )
+            {
+                ret.m[1][1] = -ret.m[1][1];
+            }
+            return ret;
+        }
+
         template<typename Data, size_t N>
         inline void DecrementPrimitiveLifetime( DebugPrimitiveHandler<Data, N>& container )
         {
@@ -1999,15 +2009,16 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         GFXShaderData::CamData& data = _gpuBlock._camData;
+        const mat4<F32> projectionMatrix = ApplyAPIProjectionConventions( cameraSnapshot._projectionMatrix, renderAPI() );
 
         bool projectionDirty = false, viewDirty = false;
 
-        if ( cameraSnapshot._projectionMatrix != data.dvd_ProjectionMatrix)
+        if ( projectionMatrix != data.dvd_ProjectionMatrix)
         {
             const F32 zNear = cameraSnapshot._zPlanes.min;
             const F32 zFar = cameraSnapshot._zPlanes.max;
 
-            data.dvd_ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
+            data.dvd_ProjectionMatrix.set( projectionMatrix );
             data.dvd_camProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
 
             if ( cameraSnapshot._isOrthoCamera )
@@ -2076,6 +2087,7 @@ namespace Divide
 
 
         bool projectionDirty = false, viewDirty = false;
+        const mat4<F32> projectionMatrix = ApplyAPIProjectionConventions( prevProjectionMatrix, renderAPI() );
 
         GFXShaderData::PrevFrameData& frameData = _gpuBlock._prevFrameData[index];
 
@@ -2084,9 +2096,9 @@ namespace Divide
             frameData._previousViewMatrix = prevViewMatrix;
             viewDirty = true;
         }
-        if ( frameData._previousProjectionMatrix != prevProjectionMatrix )
+        if ( frameData._previousProjectionMatrix != projectionMatrix )
         {
-            frameData._previousProjectionMatrix = prevProjectionMatrix;
+            frameData._previousProjectionMatrix = projectionMatrix;
             projectionDirty = true;
         }
 
