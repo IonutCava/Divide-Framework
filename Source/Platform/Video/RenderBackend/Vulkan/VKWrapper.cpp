@@ -3105,19 +3105,24 @@ namespace Divide
 
         const I32 maxWidth = to_I32( rtDimensions.width );
         const I32 maxHeight = to_I32( rtDimensions.height );
-        const VkOffset2D offset = scissorEnabled
-                                ? VkOffset2D{
-                                    std::max( 0, std::min( newScissor.offsetX, maxWidth ) ),
-                                    std::max( 0, std::min( maxHeight - newScissor.offsetY - newScissor.sizeY, maxHeight ) ) }
-                                : VkOffset2D{ 0, 0 };
+        const VkRect2D targetScissor = [scissorEnabled, newScissor, maxWidth, maxHeight, rtDimensions]()
+        {
+            if ( !scissorEnabled )
+            {
+                return VkRect2D{ VkOffset2D{0, 0}, VkExtent2D{ rtDimensions.width, rtDimensions.height } };
+            }
 
-        const VkExtent2D extent = scissorEnabled
-                                ? VkExtent2D{
-                                    to_U32( std::max( 0, std::min( newScissor.sizeX, maxWidth - offset.x ) ) ),
-                                    to_U32( std::max( 0, std::min( newScissor.sizeY, maxHeight - offset.y ) ) ) }
-                                : VkExtent2D{ rtDimensions.width, rtDimensions.height };
+            const I32 x0 = std::max( 0, std::min( newScissor.offsetX, maxWidth ) );
+            const I32 y0 = std::max( 0, std::min( newScissor.offsetY, maxHeight ) );
+            const I32 x1 = std::max( 0, std::min( newScissor.offsetX + std::max( 0, newScissor.sizeX ), maxWidth ) );
+            const I32 y1 = std::max( 0, std::min( newScissor.offsetY + std::max( 0, newScissor.sizeY ), maxHeight ) );
 
-        const VkRect2D targetScissor{ offset, extent };
+            return VkRect2D{
+                VkOffset2D{ x0, maxHeight - y1 },
+                VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
+            };
+        }();
+
         vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
         return true;
     }

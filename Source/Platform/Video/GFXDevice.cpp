@@ -100,7 +100,7 @@ namespace Divide
             return (threadCount + localSize - 1u) / localSize;
         }
 
-        mat4<F32> ApplyAPIProjectionConventions( const mat4<F32>& projection, const RenderAPI api )
+        mat4<F32> ApplyAPICoordinateTransform( const mat4<F32>& projection, const RenderAPI api )
         {
             mat4<F32> ret = projection;
             if ( api == RenderAPI::Vulkan )
@@ -2009,7 +2009,7 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        const mat4<F32> projectionMatrix = ApplyAPIProjectionConventions( cameraSnapshot._projectionMatrix, renderAPI() );
+        const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( cameraSnapshot._projectionMatrix, renderAPI() );
 
         bool projectionDirty = false, viewDirty = false;
 
@@ -2087,7 +2087,7 @@ namespace Divide
 
 
         bool projectionDirty = false, viewDirty = false;
-        const mat4<F32> projectionMatrix = ApplyAPIProjectionConventions( prevProjectionMatrix, renderAPI() );
+        const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( prevProjectionMatrix, renderAPI() );
 
         GFXShaderData::PrevFrameData& frameData = _gpuBlock._prevFrameData[index];
 
