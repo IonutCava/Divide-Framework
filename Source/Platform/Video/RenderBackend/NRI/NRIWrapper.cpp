@@ -657,7 +657,11 @@ void NVIDIA_RENDER_INTERFACE_API::flushCommand( GFX::CommandBase* cmd ) noexcept
         }
         case GFX::CommandType::DISPATCH_SHADER_TASK:
         {
-            // TODO: _nri.core.CmdDispatch
+            const auto* dispatchCmd = cmd->As<GFX::DispatchShaderTaskCommand>();
+            _nri.core.CmdDispatch( *nriCmd,
+                                   dispatchCmd->_workGroupSize.x,
+                                   dispatchCmd->_workGroupSize.y,
+                                   dispatchCmd->_workGroupSize.z );
             break;
         }
         case GFX::CommandType::BLIT_RT:
@@ -711,10 +715,35 @@ void NVIDIA_RENDER_INTERFACE_API::flushCommand( GFX::CommandBase* cmd ) noexcept
             break;
         }
         case GFX::CommandType::READ_TEXTURE:
+        {
+            const auto* readCmd = cmd->As<GFX::ReadTextureCommand>();
+            if ( readCmd->_callback && readCmd->_texture != INVALID_HANDLE<Texture> )
+            {
+                const ImageReadbackData readData = Get( readCmd->_texture )->readData( readCmd->_mipLevel,
+                                                                                        readCmd->_pixelPackAlignment );
+                readCmd->_callback( readData );
+            }
+            break;
+        }
         case GFX::CommandType::READ_BUFFER_DATA:
+        {
+            const auto* readCmd = cmd->As<GFX::ReadBufferDataCommand>();
+            if ( readCmd->_buffer != nullptr &&
+                 readCmd->_target.first != nullptr &&
+                 readCmd->_target.second > 0u &&
+                 readCmd->_elementCount > 0u )
+            {
+                readCmd->_buffer->readData( { readCmd->_offsetElementCount, readCmd->_elementCount }, readCmd->_target );
+            }
+            break;
+        }
         case GFX::CommandType::CLEAR_BUFFER_DATA:
         {
-            // TODO
+            const auto* clearCmd = cmd->As<GFX::ClearBufferDataCommand>();
+            if ( clearCmd->_buffer != nullptr && clearCmd->_elementCount > 0u )
+            {
+                clearCmd->_buffer->clearData( { clearCmd->_offsetElementCount, clearCmd->_elementCount } );
+            }
             break;
         }
         case GFX::CommandType::SET_CAMERA:
@@ -911,4 +940,3 @@ void NVIDIA_RENDER_INTERFACE_API::advanceFrame() noexcept
 }
 
 } // namespace Divide
-
