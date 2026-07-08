@@ -18,15 +18,18 @@ include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/ToggleVec
 set(vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
-    if(CMAKE_TOOLCHAIN_FILE AND NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
-        message(FATAL_ERROR "CMAKE_TOOLCHAIN_FILE was set to '${CMAKE_TOOLCHAIN_FILE}' but does not exist. Fix the path or unset it to use the bundled vcpkg submodule.")
-    endif()
+    if(CMAKE_TOOLCHAIN_FILE AND NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
+
+        message(FATAL_ERROR "CMAKE_TOOLCHAIN_FILE was set to '${CMAKE_TOOLCHAIN_FILE}' but does not exist. Fix the path or unset it to use the bundled vcpkg submodule.")
+
+    endif()
+
     if(NOT EXISTS "${vcpkg}")
         # Auto-bootstrap: try to initialize the vcpkg git submodule, then fall
         # back to a shallow clone so that configure works without any manual
         # setup step (e.g. when a CI agent or Copilot agent clones the repo
         # without --recurse-submodules).
-        find_package(Git QUIET)
+                message(STATUS "vcpkg submodule not initialized - running git submodule update --init ...")
         if(GIT_FOUND)
             if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
                 message(STATUS "vcpkg submodule not initialized – running git submodule update --init ...")
