@@ -17,11 +17,55 @@ include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/ToggleVec
 
 set(vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
-if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
-    if ( EXISTS "${vcpkg}")
+if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
+    if(NOT EXISTS "${vcpkg}")
+        # Auto-bootstrap: try to initialise the vcpkg git submodule, then fall
+        # back to a shallow clone so that configure works without any manual
+        # setup step (e.g. when a CI agent or Copilot agent clones the repo
+        # without --recurse-submodules).
+        find_package(Git QUIET)
+        if(GIT_FOUND)
+            if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
+                message(STATUS "vcpkg submodule not initialised – running git submodule update --init ...")
+                execute_process(
+                    COMMAND "${GIT_EXECUTABLE}" submodule update --init -- vcpkg
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+                    RESULT_VARIABLE _vcpkg_submodule_result
+                    OUTPUT_QUIET
+                    ERROR_QUIET
+                )
+                if(NOT _vcpkg_submodule_result EQUAL 0)
+                    message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}), will try cloning vcpkg directly...")
+                endif()
+            endif()
+            if(NOT EXISTS "${vcpkg}")
+                message(STATUS "Cloning vcpkg from GitHub (this may take a moment)...")
+                execute_process(
+                    COMMAND "${GIT_EXECUTABLE}" clone
+                        --depth 1
+                        "https://github.com/microsoft/vcpkg.git"
+                        "${CMAKE_CURRENT_LIST_DIR}/vcpkg"
+                    RESULT_VARIABLE _vcpkg_clone_result
+                    OUTPUT_QUIET
+                    ERROR_QUIET
+                )
+                if(NOT _vcpkg_clone_result EQUAL 0)
+                    message(STATUS "git clone of vcpkg failed (exit ${_vcpkg_clone_result}).")
+                endif()
+            endif()
+        else()
+            message(STATUS "Git executable not found; cannot auto-initialise vcpkg.")
+        endif()
+    endif()
+
+    if(EXISTS "${vcpkg}")
         set(CMAKE_TOOLCHAIN_FILE "${vcpkg}" CACHE FILEPATH "CMake toolchain file")
     else()
-        message( FATAL_ERROR "Missing VCPKG CMake toolchain file" )
+        message(FATAL_ERROR
+            "Missing VCPKG CMake toolchain file.\n"
+            "Please initialise the vcpkg submodule manually:\n"
+            "  git submodule update --init vcpkg\n"
+            "Or set CMAKE_TOOLCHAIN_FILE to an existing vcpkg toolchain path.")
     endif()
 endif()
   
