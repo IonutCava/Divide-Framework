@@ -99,7 +99,7 @@ namespace Divide
         };
 
         struct Names {
-            inline static const char* transitionType[] = {
+            static constexpr const char* transitionType[] = {
                 "UNDEFINED_TO_COLOUR_ATTACHMENT",
                 "UNDEFINED_TO_DEPTH_ATTACHMENT",
                 "SHADER_READ_TO_COLOUR_ATTACHMENT",

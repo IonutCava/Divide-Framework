@@ -95,7 +95,7 @@ set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 if (MSVC_COMPILER)
     add_compile_options("/wd5045") 
 elseif(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-padded  -Wno-nrvo")
 elseif(GNU_COMPILER)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-array-bounds")
 else()
@@ -208,6 +208,7 @@ if(WINDOWS_OS_BUILD)
     option(NRI_ENABLE_D3D12_SUPPORT "" ON)
     option(NRI_ENABLE_D3D11_SUPPORT "" ON)
     option(NRI_ENABLE_NVTX_SUPPORT "" ON)
+    option(NRI_ENABLE_AGILITY_SDK_SUPPORT "" ON)
 elseif(MAC_OS_BUILD)
     option(NRI_ENABLE_METAL_SUPPORT "" ON)
 else()
@@ -220,7 +221,7 @@ endif()
 FetchContent_Declare(
     nri
     GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
-    GIT_TAG        v177
+    GIT_TAG        v180
     #GIT_PROGRESS   TRUE
     SYSTEM
 )
@@ -236,10 +237,15 @@ set(NRI_TARGETS
     NRI_Validation
 )
 
-target_compile_options(NRI_Shared PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>: -Wno-missing-field-initializers -Wno-error=missing-field-initializers >)
 foreach(nri_target IN LISTS NRI_TARGETS)
     if(TARGET ${nri_target})
         set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        target_compile_options(${nri_target} PRIVATE
+            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-missing-field-initializers>
+            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=missing-field-initializers>
+            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-unused-parameter>
+            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-array-bounds>
+        )
     endif()
 endforeach()
 

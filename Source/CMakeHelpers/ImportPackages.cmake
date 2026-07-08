@@ -42,6 +42,7 @@ find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+find_package(SimpleIni CONFIG REQUIRED)
 
 if(MAC_OS_BUILD)
     find_package(date CONFIG REQUIRED)
@@ -55,7 +56,7 @@ if(LINUX_OS_BUILD)
     include(CMakeHelpers/PlatformHelpers/FindWayland.cmake)
 endif()
 
-find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+
 find_path(expat_INCLUDE_DIR "expat.h")
 find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 
@@ -127,7 +128,6 @@ include_directories(
     ${Stb_INCLUDE_DIR}
     ${IL_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}
-    ${SIMPLEINI_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     ${expat_INCLUDE_DIR}
@@ -179,6 +179,7 @@ set(EXTERNAL_LIBS
     glslang::glslang-default-resource-limits
     glslang::SPIRV
     #glslang::SPVRemapper
+    SimpleIni::SimpleIni
 )
 
 if(MAC_OS_BUILD)
