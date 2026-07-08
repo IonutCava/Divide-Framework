@@ -148,7 +148,7 @@ bool FrameListenerManager::frameEnded(const FrameEvent& evt, const FrameExecutio
 
     const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (shouldDispatch(*listener, domain) && !listener->frameEnded(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->frameEnded(evt)) {
             return false;
         }
     }

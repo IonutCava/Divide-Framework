@@ -701,8 +701,8 @@ void Kernel::startRenderThread()
         return;
     }
 
-    Configuration& config = _platformContext.config();
-    _renderThreadState._queueDepth = CLAMPED<U8>(config.runtime.asyncRenderQueueDepth, 2u, 3u);
+    const Configuration& config = _platformContext.config();
+    _renderThreadState._queueDepth = config.runtime.asyncRenderQueueDepth;
     _renderThreadState._stopRequested = false;
     _renderThreadState._renderFailed = false;
     _renderThreadState._running = true;
