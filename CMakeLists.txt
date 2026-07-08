@@ -37,12 +37,15 @@ if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
                 execute_process(
                     COMMAND "${GIT_EXECUTABLE}" submodule update --init -- vcpkg
                     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
-                    ERROR_VARIABLE _vcpkg_submodule_err
-                    ERROR_STRIP_TRAILING_WHITESPACE
+                    ERROR_VARIABLE _vcpkg_submodule_err
+
+                    ERROR_STRIP_TRAILING_WHITESPACE
+
                     RESULT_VARIABLE _vcpkg_submodule_result
                     ERROR_QUIET
                 )
-                    message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}): ${_vcpkg_submodule_err}; will try cloning vcpkg directly...")
+                    message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}): ${_vcpkg_submodule_err}; will try cloning vcpkg directly...")
+
                     message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}), will try cloning vcpkg directly...")
                 endif()
             endif()
@@ -51,11 +54,12 @@ if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
                 execute_process(
                     COMMAND "${GIT_EXECUTABLE}" clone
                         --depth 1
+                    ERROR_VARIABLE _vcpkg_clone_err
+                    ERROR_STRIP_TRAILING_WHITESPACE
                         "https://github.com/microsoft/vcpkg.git"
-                        "${CMAKE_CURRENT_LIST_DIR}/vcpkg"
                     RESULT_VARIABLE _vcpkg_clone_result
                     OUTPUT_QUIET
-                    ERROR_QUIET
+                    message(STATUS "git clone of vcpkg failed (exit ${_vcpkg_clone_result}): ${_vcpkg_clone_err}.")
                 )
                 if(NOT _vcpkg_clone_result EQUAL 0)
                     message(STATUS "git clone of vcpkg failed (exit ${_vcpkg_clone_result}).")
