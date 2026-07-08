@@ -19,14 +19,14 @@ set(vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
 if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
     if(NOT EXISTS "${vcpkg}")
-        # Auto-bootstrap: try to initialise the vcpkg git submodule, then fall
+        # Auto-bootstrap: try to initialize the vcpkg git submodule, then fall
         # back to a shallow clone so that configure works without any manual
         # setup step (e.g. when a CI agent or Copilot agent clones the repo
         # without --recurse-submodules).
         find_package(Git QUIET)
         if(GIT_FOUND)
             if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
-                message(STATUS "vcpkg submodule not initialised – running git submodule update --init ...")
+                message(STATUS "vcpkg submodule not initialized – running git submodule update --init ...")
                 execute_process(
                     COMMAND "${GIT_EXECUTABLE}" submodule update --init -- vcpkg
                     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
@@ -54,7 +54,7 @@ if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
                 endif()
             endif()
         else()
-            message(STATUS "Git executable not found; cannot auto-initialise vcpkg.")
+            message(STATUS "Git executable not found; cannot auto-initialize vcpkg.")
         endif()
     endif()
 
@@ -63,7 +63,7 @@ if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
     else()
         message(FATAL_ERROR
             "Missing VCPKG CMake toolchain file.\n"
-            "Please initialise the vcpkg submodule manually:\n"
+            "Please initialize the vcpkg submodule manually:\n"
             "  git submodule update --init vcpkg\n"
             "Or set CMAKE_TOOLCHAIN_FILE to an existing vcpkg toolchain path.")
     endif()
