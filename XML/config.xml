@@ -54,8 +54,12 @@
 		<enableVSync>false</enableVSync>
 		<!-- try to enable late v-swap. Only works with VSync. May fallback to regular vsync-->
 		<adaptiveSync>false</adaptiveSync>
+		<!-- experimental: run render/present callbacks on a dedicated thread (OpenGL-only) -->
+		<asyncOpenGLRenderThread>false</asyncOpenGLRenderThread>
 		<!-- use a pipeline cache if available to avoid shader compilation stutters on subsequent runs of the program -->
 		<usePipelineCache>true</usePipelineCache>
+		<!-- queue depth used by async render thread mode. Clamped to [2,3] -->
+		<asyncRenderQueueDepth>2</asyncRenderQueueDepth>
 		<!-- splash screen dimensions -->
 		<splashScreenSize width="400" height="300"/>
 		<!-- window size. Only for windowed mode! -->
