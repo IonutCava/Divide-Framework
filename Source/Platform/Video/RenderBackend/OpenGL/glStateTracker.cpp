@@ -44,6 +44,11 @@ namespace Divide
 
     }; //namespace 
 
+    void GLStateTracker::onFrameEnd()
+    {
+        NOP();
+    }
+
     void GLStateTracker::setDefaultState()
     {
         _activeState = {};
@@ -369,7 +374,7 @@ namespace Divide
     }
 
     GLStateTracker::BindResult GLStateTracker::bindTextures( const gl46core::GLubyte unitOffset,
-                                                             const gl46core::GLuint textureCount,
+                                                             const gl46core::GLuint  textureCount,
                                                              const gl46core::GLuint* const textureHandles,
                                                              const gl46core::GLuint* const samplerHandles )
     {
@@ -377,10 +382,10 @@ namespace Divide
 
         if ( textureCount == 1 )
         {
-            return bindTexture( unitOffset,
-                                textureHandles == nullptr ? 0u : textureHandles[0],
-                                samplerHandles == nullptr ? 0u : samplerHandles[0] );
+            assert(textureHandles != nullptr && samplerHandles != nullptr);
+            return bindTexture( unitOffset, textureHandles[0], samplerHandles[0]);
         }
+
         BindResult result = BindResult::FAILED;
 
         if ( textureCount > 0u && unitOffset + textureCount < GFXDevice::GetDeviceInformation()._maxTextureUnits )

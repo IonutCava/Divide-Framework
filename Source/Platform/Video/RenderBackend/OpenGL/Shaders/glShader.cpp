@@ -8,6 +8,7 @@
 #include "Platform/Video/RenderBackend/OpenGL/Headers/glResources.h"
 #include "Platform/Video/RenderBackend/OpenGL/Headers/GLWrapper.h"
 
+#include "Core/Headers/Configuration.h"
 #include "Core/Time/Headers/ProfileTimer.h"
 
 #include "Utility/Headers/Localization.h"
@@ -16,8 +17,6 @@ namespace Divide {
 
 namespace
 {
-    constexpr bool g_useSPIRVBinaryCode = false;
-
     size_t g_validationBufferMaxSize = 4096 * 16;
 
     FORCE_INLINE gl46core::UseProgramStageMask GetStageMask(const ShaderType type) noexcept
@@ -63,7 +62,7 @@ glShader::~glShader()
     }
 }
 
-ShaderResult glShader::uploadToGPU()
+ShaderResult glShader::uploadToGPU(const Configuration& config)
 {
     if (!_valid)
     {
@@ -119,20 +118,38 @@ ShaderResult glShader::uploadToGPU()
             }
 
             gl46core::GLuint shader = GL_NULL_HANDLE;
-            DIVIDE_GPU_ASSERT(shader != 0u && !data._sourceCodeSpirV.empty() && !data._sourceCodeGLSL.empty());
+            DIVIDE_GPU_ASSERT(shader != 0u && !data._sourceCodeGLSL.empty());
 
-            if constexpr(g_useSPIRVBinaryCode)
+            shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
+            if (config.debug.renderer.useSPIRVForOpenGL && !data._sourceCodeSpirV.empty())
             {
-                shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-                gl46core::glShaderBinary(1, &shader, gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V, data._sourceCodeSpirV.data(), (gl46core::GLsizei)(data._sourceCodeSpirV.size() * sizeof(SpvWord)));
-                gl46core::glSpecializeShader(shader, "main", 0, nullptr, nullptr);
+                gl46core::glShaderBinary(
+                    1,
+                    &shader,
+                    gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V,
+                    data._sourceCodeSpirV.data(),
+                    (gl46core::GLsizei)(data._sourceCodeSpirV.size() * sizeof(SpvWord))
+                );
+                gl46core::glSpecializeShader(
+                    shader,
+                    "main",
+                    0,
+                    nullptr,
+                    nullptr
+                );
             }
             else
             {
-                shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
                 const char* src = data._sourceCodeGLSL.c_str();
-                gl46core::glShaderSource(shader, 1u, &src, nullptr);
-                gl46core::glCompileShader(shader);
+                gl46core::glShaderSource(
+                    shader,
+                    1u,
+                    &src,
+                    nullptr
+                );
+                gl46core::glCompileShader(
+                    shader
+                );
             }
 
             if constexpr(Config::ENABLE_GPU_VALIDATION)

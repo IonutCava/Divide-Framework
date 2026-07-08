@@ -104,7 +104,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
         ImageUsage createWithData( std::span<const Byte> data, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment);
 
-        void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment );
+        void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const U16 targetMipLevel, const PixelAlignment& pixelUnpackAlignment );
 
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );
@@ -116,7 +116,8 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange ) const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange, SubRange layerRange/*offset, count*/ ) const noexcept;
 
-        [[nodiscard]] virtual ImageReadbackData readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
+        ///Requires an exact mip level. ALL_MIPS will not work here! It will return an empty result if ALL_MIPS is used.
+        [[nodiscard]] virtual ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
 
         PROPERTY_R( TextureDescriptor, descriptor );
         /// Get the number of mips
@@ -148,7 +149,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         void validateDescriptor(bool makeImmutable);
 
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) = 0;
-        virtual void loadDataInternal( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
+        virtual void loadDataInternal( std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable );
         virtual void submitTextureData(ImageUsage& crtUsageInOut);
 

@@ -47,6 +47,7 @@ struct Configuration final : XML::IXMLSerializable {
             bool enableRenderAPIBestPractices = false;
             bool enableRenderAPIDebugGrouping = false;
             bool assertOnRenderAPIError = false;
+            bool useSPIRVForOpenGL = true;
         } renderer = {};
         struct Cache
         {

@@ -257,7 +257,7 @@ namespace Divide
     {
         U64 s_newestShaderAtomWriteTime = 0u; ///< Used to detect modified shader atoms to validate/invalidate shader cache
         bool s_useShaderCache = true;
-        bool s_targetOpenGL = false;
+        RenderAPI s_renderAPI = RenderAPI::COUNT;
 
         U8 s_textureSlot = 0u;
         U8 s_imageSlot   = 0u;
@@ -276,7 +276,7 @@ namespace Divide
 
         [[nodiscard]] ResourcePath ShaderAPILocation()
         {
-            return (s_targetOpenGL ? Paths::Shaders::g_cacheLocationGL : Paths::Shaders::g_cacheLocationVK);
+            return (s_renderAPI == RenderAPI::OpenGL ? Paths::Shaders::g_cacheLocationGL : Paths::Shaders::g_cacheLocationVK);
         }
 
         [[nodiscard]] ResourcePath ShaderBuildCacheLocation()
@@ -513,14 +513,13 @@ namespace Divide
 
         // Add our engine specific defines and various code pieces to every GLSL shader
         // Add version as the first shader statement, followed by copyright notice
-        AppendToShaderHeader( ShaderType::COUNT, renderingAPI == RenderAPI::OpenGL ? "#version 460 core" : "#version 450" );
+        AppendToShaderHeader( ShaderType::COUNT, "#version 460" );
         AppendToShaderHeader( ShaderType::COUNT, "//_PROGRAM_NAME_\\" );
         AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2018 DIVIDE-Studio*/" );
         AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2009 Ionut Cava*/" );
 
         if ( renderingAPI == RenderAPI::OpenGL )
         {
-            //AppendToShaderHeader(ShaderType::COUNT, "#extension GL_ARB_gpu_shader5 : require");
             AppendToShaderHeader( ShaderType::COUNT, "#define TARGET_OPENGL" );
             AppendToShaderHeader( ShaderType::COUNT, "#define dvd_VertexIndex gl_VertexID" );
             AppendToShaderHeader( ShaderType::COUNT, "#define dvd_InstanceIndex gl_InstanceID" );
@@ -944,7 +943,7 @@ namespace Divide
         skipped = true;
         if ( getState() == ResourceState::RES_LOADED )
         {
-            if ( validatePreBind( false ) != ShaderResult::OK )
+            if ( validatePreBind(_context.context().config(), false ) != ShaderResult::OK )
             {
                 return false;
             }
@@ -957,7 +956,7 @@ namespace Divide
         return false;
     }
 
-    ShaderResult ShaderProgram::validatePreBind( [[maybe_unused]] const bool rebind)
+    ShaderResult ShaderProgram::validatePreBind( [[maybe_unused]] const Configuration& config, [[maybe_unused]] const bool rebind)
     {
         return ShaderResult::OK;
     }
@@ -1098,7 +1097,7 @@ namespace Divide
 
         const Configuration& config = context.config();
         s_useShaderCache = config.debug.cache.enabled && config.debug.cache.shaders;
-        s_targetOpenGL = context.gfx().renderAPI() == RenderAPI::OpenGL;
+        s_renderAPI = context.gfx().renderAPI();
 
         FileList list{};
         if ( s_useShaderCache )
@@ -1866,7 +1865,7 @@ namespace Divide
 
         eastl::set<U64> atomIDs;
 
-        bool needGLSL = s_targetOpenGL;
+        bool needGLSL = s_renderAPI == RenderAPI::OpenGL;
         if ( reloadExisting )
         {
             // Hot reloading will always reparse GLSL source files so the best way to achieve that is to delete cache files
@@ -1907,7 +1906,7 @@ namespace Divide
             {
                 // We are in situation B: we need SPIRV code, so convert our GLSL code over
                 DIVIDE_GPU_ASSERT( !loadDataInOut._sourceCodeGLSL.empty() );
-                if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_targetOpenGL ) )
+                if ( !SpirvHelper::GLSLtoSPV( loadDataInOut._type, loadDataInOut._sourceCodeGLSL.c_str(), loadDataInOut._sourceCodeSpirV, s_renderAPI ) )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_SHADER_CONVERSION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
                     // We may fail here for WHATEVER reason so bail
@@ -1931,7 +1930,7 @@ namespace Divide
         if ( reloadExisting || !useShaderCache() || !LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
         {
             // Well, we failed. Time to build our reflection data again
-            if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_targetOpenGL, loadDataInOut._reflectionData ) )
+            if ( !SpirvHelper::BuildReflectionData( loadDataInOut._type, loadDataInOut._sourceCodeSpirV, s_renderAPI, loadDataInOut._reflectionData ) )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_SHADER_REFLECTION_SPIRV_FAILED" ), loadDataInOut._shaderName.c_str() );
                 return false;

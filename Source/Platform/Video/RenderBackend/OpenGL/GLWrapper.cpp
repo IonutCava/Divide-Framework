@@ -733,6 +733,7 @@ namespace Divide
         PROFILE_SCOPE( "GL_API: Post-Swap cleanup", Profiler::Category::Graphics );
         s_textureViewCache.onFrameEnd();
         s_glFlushQueued.store( false );
+        s_stateTracker.onFrameEnd();
 
         if ( _runQueries )
         {
