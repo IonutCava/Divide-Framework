@@ -78,7 +78,7 @@ struct RTUsageTracker
         COUNT
     };
     struct Names {
-        inline static const char* layout[] = {
+        static constexpr const char* layout[] = {
             "ATTACHMENT",
             "SHADER_READ",
             "COPY_READ",
