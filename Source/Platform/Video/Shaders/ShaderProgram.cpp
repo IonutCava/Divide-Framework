@@ -2026,7 +2026,7 @@ namespace Divide
 
             string& uniformBlock = loadDataInOut._uniformBlock;
             uniformBlock = "layout( ";
-            if ( _context.renderAPI() == RenderAPI::Vulkan )
+            if ( IsSPIRVBackend( _context.renderAPI() ) )
             {
                 uniformBlock.append( Util::StringFormat( "set = {}, ", to_base( DescriptorSetUsage::PER_DRAW ) ) );
             }
@@ -2045,7 +2045,7 @@ namespace Divide
                 uniformBlock.append( Util::StringFormat( "\n#define {} {}.{}", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str() ) );
             }
 
-            const U8 layoutIndex = _context.renderAPI() == RenderAPI::Vulkan
+            const U8 layoutIndex = IsSPIRVBackend( _context.renderAPI() )
                 ? loadDataInOut._reflectionData._uniformBlockBindingIndex
                 : ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_DRAW,
                                                                 loadDataInOut._reflectionData._uniformBlockBindingIndex );
@@ -2056,7 +2056,7 @@ namespace Divide
         }
 
         string pushConstantCodeBlock{};
-        if ( _context.renderAPI() == RenderAPI::Vulkan )
+        if ( IsSPIRVBackend( _context.renderAPI() ) )
         {
             pushConstantCodeBlock =
                 "layout( push_constant ) uniform constants\n"
