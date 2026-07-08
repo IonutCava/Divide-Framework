@@ -48,20 +48,24 @@ if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
             endif()
 
             if(NOT EXISTS "${vcpkg}")
-                message(STATUS "Cloning vcpkg from GitHub (this may take a moment)...")
-                execute_process(
-                    COMMAND "${GIT_EXECUTABLE}" clone
-                        --depth 1
-                        "https://github.com/microsoft/vcpkg.git"
-                        "${CMAKE_CURRENT_LIST_DIR}/vcpkg"
-                    RESULT_VARIABLE _vcpkg_clone_result
-                    ERROR_VARIABLE _vcpkg_clone_err
-                    ERROR_STRIP_TRAILING_WHITESPACE
-                    OUTPUT_QUIET
-                    TIMEOUT 180
-                )
-                if(NOT "${_vcpkg_clone_result}" STREQUAL "0")
-                    message(WARNING "git clone of vcpkg failed or timed out (result ${_vcpkg_clone_result}): ${_vcpkg_clone_err}.")
+                if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
+                    message(STATUS "Cloning vcpkg from GitHub (this may take a moment)...")
+                    execute_process(
+                        COMMAND "${GIT_EXECUTABLE}" clone
+                            --depth 1
+                            "https://github.com/microsoft/vcpkg.git"
+                            "${CMAKE_CURRENT_LIST_DIR}/vcpkg"
+                        RESULT_VARIABLE _vcpkg_clone_result
+                        ERROR_VARIABLE _vcpkg_clone_err
+                        ERROR_STRIP_TRAILING_WHITESPACE
+                        OUTPUT_QUIET
+                        TIMEOUT 180
+                    )
+                    if(NOT "${_vcpkg_clone_result}" STREQUAL "0")
+                        message(WARNING "git clone of vcpkg failed or timed out (result ${_vcpkg_clone_result}): ${_vcpkg_clone_err}.")
+                    endif()
+                else()
+                    message(WARNING "vcpkg submodule update failed; refusing to auto-clone an unpinned vcpkg in a git checkout. Please run: git submodule update --init -- vcpkg")
                 endif()
             endif()
         else()
