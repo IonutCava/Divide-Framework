@@ -57,6 +57,8 @@ public:
 
     // NRI colour attachment textures and their descriptor (view) handles.
     // Populated by the backend when creating attachment resources.
+    // This upper bound matches the minimum guaranteed by NRI (D3D11 max, 8 colour attachments).
+    // At runtime the real device limit is stored in DeviceInformation::_maxRTColourAttachments.
     static constexpr U8 MAX_COLOUR_ATTACHMENTS = 8u;
     std::array<nri::Texture*, MAX_COLOUR_ATTACHMENTS>    _colourTextures{};
     std::array<nri::Descriptor*, MAX_COLOUR_ATTACHMENTS> _colourViews{};

@@ -22,13 +22,7 @@
 #   include <Extensions/NRIWrapperD3D12.h>
 #endif
 
-#if defined(WINDOWS_OS_BUILD)
-#   include <SDL3/SDL_properties.h>
-#elif defined(LINUX_OS_BUILD)
-#   include <SDL3/SDL_properties.h>
-#endif
-
-// Platform-specific window handle extraction requires SDL properties
+// SDL3 window handle extraction (all platforms)
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_properties.h>
 
@@ -58,7 +52,8 @@ namespace
             {
                 if ( normalized )
                 {
-                    if ( dataType == GFXDataFormat::UNSIGNED_BYTE  )  return sRGB ? nri::Format::UNKNOWN       : nri::Format::R8_UNORM;
+                    // sRGB has no meaning for single-channel formats; NRI has no R8_SRGB
+                    if ( dataType == GFXDataFormat::UNSIGNED_BYTE  )  return nri::Format::R8_UNORM;
                     if ( dataType == GFXDataFormat::SIGNED_BYTE    )  return nri::Format::R8_SNORM;
                     if ( dataType == GFXDataFormat::UNSIGNED_SHORT )  return nri::Format::R16_UNORM;
                     if ( dataType == GFXDataFormat::SIGNED_SHORT   )  return nri::Format::R16_SNORM;
@@ -757,7 +752,12 @@ bool NVIDIA_RENDER_INTERFACE_API::setViewportInternal( const Rect<I32>& newViewp
     vp.height         = to_F32( newViewport.w );
     vp.depthMin       = 0.f;
     vp.depthMax       = 1.f;
-    vp.originBottomLeft = false; // NRI default is top-left (D3D convention)
+    // NRI default is top-left origin (D3D convention).
+    // For NRI_Vulkan, NRI internally flips the viewport so SPIRV shaders do not need to
+    // compensate.  For NRI_D3D12/D3D11 the convention is naturally top-left.
+    // All shader code in Divide already assumes a top-left origin via the Y-flip that
+    // the Vulkan backend applies at the swapchain level, so this setting is consistent.
+    vp.originBottomLeft = false;
 
     _nri.core.CmdSetViewports( *cmd, &vp, 1u );
     return true;
