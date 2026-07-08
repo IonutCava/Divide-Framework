@@ -720,7 +720,7 @@ void NVIDIA_RENDER_INTERFACE_API::flushCommand( GFX::CommandBase* cmd ) noexcept
             if ( readCmd->_callback && readCmd->_texture != INVALID_HANDLE<Texture> )
             {
                 const ImageReadbackData readData = Get( readCmd->_texture )->readData( readCmd->_mipLevel,
-                                                                                        readCmd->_pixelPackAlignment );
+                                                                                         readCmd->_pixelPackAlignment );
                 readCmd->_callback( readData );
             }
             break;
