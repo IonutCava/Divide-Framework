@@ -29,40 +29,39 @@ if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
         # back to a shallow clone so that configure works without any manual
         # setup step (e.g. when a CI agent or Copilot agent clones the repo
         # without --recurse-submodules).
-                message(STATUS "vcpkg submodule not initialized - running git submodule update --init ...")
-
+        find_package(Git QUIET)
         if(GIT_FOUND)
             if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
-                message(STATUS "vcpkg submodule not initialized – running git submodule update --init ...")
+                message(STATUS "vcpkg submodule not initialized - running git submodule update --init ...")
                 execute_process(
                     COMMAND "${GIT_EXECUTABLE}" submodule update --init -- vcpkg
                     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
-                    ERROR_VARIABLE _vcpkg_submodule_err
-
-                    ERROR_STRIP_TRAILING_WHITESPACE
-
                     RESULT_VARIABLE _vcpkg_submodule_result
-                    ERROR_QUIET
+                    ERROR_VARIABLE _vcpkg_submodule_err
+                    ERROR_STRIP_TRAILING_WHITESPACE
+                    OUTPUT_QUIET
+                    TIMEOUT 60
                 )
-                    message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}): ${_vcpkg_submodule_err}; will try cloning vcpkg directly...")
-
-                    message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}), will try cloning vcpkg directly...")
+                if(NOT "${_vcpkg_submodule_result}" STREQUAL "0")
+                    message(WARNING "git submodule update failed or timed out (result ${_vcpkg_submodule_result}): ${_vcpkg_submodule_err}; will try cloning vcpkg directly...")
                 endif()
             endif()
+
             if(NOT EXISTS "${vcpkg}")
                 message(STATUS "Cloning vcpkg from GitHub (this may take a moment)...")
                 execute_process(
                     COMMAND "${GIT_EXECUTABLE}" clone
                         --depth 1
-                    ERROR_VARIABLE _vcpkg_clone_err
-                    ERROR_STRIP_TRAILING_WHITESPACE
                         "https://github.com/microsoft/vcpkg.git"
+                        "${CMAKE_CURRENT_LIST_DIR}/vcpkg"
                     RESULT_VARIABLE _vcpkg_clone_result
+                    ERROR_VARIABLE _vcpkg_clone_err
+                    ERROR_STRIP_TRAILING_WHITESPACE
                     OUTPUT_QUIET
-                    message(STATUS "git clone of vcpkg failed (exit ${_vcpkg_clone_result}): ${_vcpkg_clone_err}.")
+                    TIMEOUT 180
                 )
-                if(NOT _vcpkg_clone_result EQUAL 0)
-                    message(STATUS "git clone of vcpkg failed (exit ${_vcpkg_clone_result}).")
+                if(NOT "${_vcpkg_clone_result}" STREQUAL "0")
+                    message(WARNING "git clone of vcpkg failed or timed out (result ${_vcpkg_clone_result}): ${_vcpkg_clone_err}.")
                 endif()
             endif()
         else()
@@ -350,4 +349,3 @@ if(_DIR_DEFS)
     message(STATUS "  ${_d}")
   endforeach()
 endif()
-
