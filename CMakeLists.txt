@@ -29,18 +29,20 @@ if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
         # back to a shallow clone so that configure works without any manual
         # setup step (e.g. when a CI agent or Copilot agent clones the repo
         # without --recurse-submodules).
-                message(STATUS "vcpkg submodule not initialized - running git submodule update --init ...")
+                message(STATUS "vcpkg submodule not initialized - running git submodule update --init ...")
+
         if(GIT_FOUND)
             if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
                 message(STATUS "vcpkg submodule not initialized – running git submodule update --init ...")
                 execute_process(
                     COMMAND "${GIT_EXECUTABLE}" submodule update --init -- vcpkg
                     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+                    ERROR_VARIABLE _vcpkg_submodule_err
+                    ERROR_STRIP_TRAILING_WHITESPACE
                     RESULT_VARIABLE _vcpkg_submodule_result
-                    OUTPUT_QUIET
                     ERROR_QUIET
                 )
-                if(NOT _vcpkg_submodule_result EQUAL 0)
+                    message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}): ${_vcpkg_submodule_err}; will try cloning vcpkg directly...")
                     message(STATUS "git submodule update failed (exit ${_vcpkg_submodule_result}), will try cloning vcpkg directly...")
                 endif()
             endif()
