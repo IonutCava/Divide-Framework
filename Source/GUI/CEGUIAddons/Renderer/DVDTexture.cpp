@@ -219,7 +219,7 @@ void DVDTexture::blitFromMemory(const void* sourceData, const Rectf& area)
     dimensions.width = to_U16(area.getWidth());
     dimensions.height = to_U16(area.getHeight());
     dimensions.depth = 1u;
-    Get(_texture)->replaceData( {(const Byte*)sourceData, image_size}, offset, dimensions, pixelUnpackAlignment );
+    Get(_texture)->replaceData( {(const Byte*)sourceData, image_size}, offset, dimensions, 0u, pixelUnpackAlignment );
 }
 
 void DVDTexture::blitToMemory(void* targetData) {
