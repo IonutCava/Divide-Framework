@@ -34,52 +34,79 @@
 #define DVD_NRI_WRAPPER_H_
 
 #include "NRIPlaceholderObjects.h"
+#include "nriResources.h"
 
 #include "Platform/Video/Headers/RenderAPIWrapper.h"
 
-#include <NRI.h>
-
 namespace Divide {
 
-class NVIDIA_RENDER_INTERFACE_API final : public RenderAPIWrapper {
-  public:
-      NVIDIA_RENDER_INTERFACE_API(GFXDevice& context, RenderAPI API) noexcept;
+class NVIDIA_RENDER_INTERFACE_API final : public RenderAPIWrapper
+{
+public:
+    NVIDIA_RENDER_INTERFACE_API( GFXDevice& context, RenderAPI API ) noexcept;
 
-  protected:
-      void idle(bool fast) noexcept override;
+protected:
+    void idle( bool fast ) noexcept override;
 
-      [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
-                    void onRenderThreadLoopStart() override;
-                    void onRenderThreadLoopEnd() override;
-                    void prepareFlushWindow( DisplayWindow& window ) override;
-                    void flushWindow( DisplayWindow& window ) override;
-      [[nodiscard]] bool frameStarted() override;
-      [[nodiscard]] bool frameEnded() override;
+    [[nodiscard]] bool drawToWindow( DisplayWindow& window ) override;
+                  void onRenderThreadLoopStart() override;
+                  void onRenderThreadLoopEnd() override;
+                  void prepareFlushWindow( DisplayWindow& window ) override;
+                  void flushWindow( DisplayWindow& window ) override;
+    [[nodiscard]] bool frameStarted() override;
+    [[nodiscard]] bool frameEnded() override;
 
-      ErrorCode initRenderingAPI(I32 argc, char** argv, Configuration& config) noexcept override;
-      void closeRenderingAPI() noexcept override;
-      void preFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer) override;
-      void flushCommand( GFX::CommandBase* cmd ) noexcept override;
-      void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
-      bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
-      bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
-      void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
-      void initDescriptorSets() override;
+    ErrorCode initRenderingAPI( I32 argc, char** argv, Configuration& config ) noexcept override;
+    void closeRenderingAPI() noexcept override;
+    void preFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) override;
+    void flushCommand( GFX::CommandBase* cmd ) noexcept override;
+    void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
+    bool setViewportInternal( const Rect<I32>& newViewport ) noexcept override;
+    bool setScissorInternal( const Rect<I32>& newScissor ) noexcept override;
+    void onThreadCreated( size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
+    void initDescriptorSets() override;
 
-      [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
+    [[nodiscard]] bool bindShaderResources( const DescriptorSetEntries& descriptorSetEntries ) override;
 
-      [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
-      [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, std::string_view name ) const override;
-      [[nodiscard]] ShaderBuffer_uptr  newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
+    [[nodiscard]] RenderTarget_uptr  newRenderTarget( const RenderTargetDescriptor& descriptor ) const override;
+    [[nodiscard]] GPUBuffer_uptr     newGPUBuffer( U32 ringBufferLength, std::string_view name ) const override;
+    [[nodiscard]] ShaderBuffer_uptr  newShaderBuffer( const ShaderBufferDescriptor& descriptor ) const override;
 
 private:
-    GFXDevice& _context;
-    nri::GraphicsAPI _nriAPI{ nri::GraphicsAPI::NONE };
-    SDL_Renderer* _renderer{ nullptr };
-    SDL_Surface* _background{ nullptr };
-    SDL_Texture* _texture{ nullptr };
+    // Helpers
+    void initStatePerWindow( NRIPerWindowState& state );
+    void destroyStatePerWindow( NRIPerWindowState& state ) noexcept;
+    void recreateSwapChain( NRIPerWindowState& state );
+
+    [[nodiscard]] NRIFrameResources& currentFrame() noexcept;
+    [[nodiscard]] nri::CommandBuffer* currentCommandBuffer() noexcept;
+
+    void advanceFrame() noexcept;
+
+private:
+    GFXDevice&     _context;
+
+    // NRI logical device (owned; destroyed via nriDestroyDevice)
+    nri::Device*   _device     { nullptr };
+    nri::Queue*    _graphicsQueue { nullptr };
+
+    // Cached interface tables retrieved from the device
+    NRIInterfaces  _nri{};
+
+    // Per-window state (keyed by window GUID)
+    hashMap<I64, NRIPerWindowState> _perWindowState;
+
+    // Buffered frame resources
+    std::array<NRIFrameResources, NRI_BUFFERED_FRAME_COUNT> _frameData{};
+    U32  _frameIndex { 0u };
+
+    // Descriptor pools / sets (populated in initDescriptorSets)
+    std::array<nri::DescriptorPool*, to_base( DescriptorSetUsage::COUNT )> _descriptorPools{};
+
+    // Requested NRI graphics API
+    nri::GraphicsAPI _nriAPI { nri::GraphicsAPI::NONE };
 };
 
-};  // namespace Divide
+} // namespace Divide
 
-#endif //DVD_NRI_WRAPPER_H_
+#endif // DVD_NRI_WRAPPER_H_

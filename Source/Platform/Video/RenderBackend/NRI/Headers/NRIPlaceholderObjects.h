@@ -41,56 +41,128 @@
 #include "Platform/Video/Shaders/Headers/ShaderProgram.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
 
+#include <NRI.h>
+
 namespace Divide {
-    class nriRenderTarget final : public RenderTarget {
-      public:
-        nriRenderTarget(GFXDevice& context, const RenderTargetDescriptor& descriptor) : RenderTarget(context, descriptor){}
+
+// -----------------------------------------------------------------
+// nriRenderTarget
+// -----------------------------------------------------------------
+class nriRenderTarget final : public RenderTarget
+{
+public:
+    nriRenderTarget( GFXDevice& context, const RenderTargetDescriptor& descriptor )
+        : RenderTarget( context, descriptor )
+    {}
+
+    // NRI colour attachment textures and their descriptor (view) handles.
+    // Populated by the backend when creating attachment resources.
+    static constexpr U8 MAX_COLOUR_ATTACHMENTS = 8u;
+    std::array<nri::Texture*, MAX_COLOUR_ATTACHMENTS>    _colourTextures{};
+    std::array<nri::Descriptor*, MAX_COLOUR_ATTACHMENTS> _colourViews{};
+
+    nri::Texture*    _depthTexture { nullptr };
+    nri::Descriptor* _depthView    { nullptr };
+
+    // NRI memory backing the attachment textures
+    std::array<nri::Memory*, MAX_COLOUR_ATTACHMENTS> _colourMemory{};
+    nri::Memory*                                     _depthMemory { nullptr };
+};
+
+// -----------------------------------------------------------------
+// nriGPUBuffer
+// -----------------------------------------------------------------
+class nriGPUBuffer final : public GPUBuffer
+{
+public:
+    nriGPUBuffer( GFXDevice& context, const U16 ringBufferLength, const std::string_view name )
+        : GPUBuffer( context, ringBufferLength, name )
+    {}
+
+    [[nodiscard]] BufferLock updateBuffer( [[maybe_unused]] U32 elementCountOffset,
+                                           [[maybe_unused]] U32 elementCountRange,
+                                           [[maybe_unused]] bufferPtr data ) noexcept override
+    {
+        return {};
+    }
+
+    // Underlying NRI buffer object and its device-memory allocation
+    nri::Buffer* _buffer { nullptr };
+    nri::Memory* _memory { nullptr };
+};
+
+// -----------------------------------------------------------------
+// nriTexture
+// -----------------------------------------------------------------
+class nriTexture final : public Texture
+{
+public:
+    nriTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor )
+        : Texture( context, descriptor )
+    {}
+
+    [[nodiscard]] ImageReadbackData readData( [[maybe_unused]] const U8 mipLevel,
+                                              [[maybe_unused]] const PixelAlignment& pixelPackAlignment ) const noexcept override
+    { return {}; }
+
+    void loadDataInternal( [[maybe_unused]] const ImageTools::ImageData& imageData,
+                           [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override {}
+    void loadDataInternal( [[maybe_unused]] const std::span<const Byte> data,
+                           [[maybe_unused]] const vec3<U16>& offset,
+                           [[maybe_unused]] const vec3<U16>& dimensions,
+                           [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override {}
+
+    // NRI backing objects
+    nri::Texture*    _texture { nullptr };
+    nri::Memory*     _memory  { nullptr };
+
+    // Cached views (SRV, UAV, RTV / DSV depending on usage)
+    nri::Descriptor* _shaderResourceView { nullptr };
+    nri::Descriptor* _unorderedAccessView{ nullptr };
+};
+
+// -----------------------------------------------------------------
+// nriShaderProgram
+// -----------------------------------------------------------------
+class nriShaderProgram final : public ShaderProgram
+{
+public:
+    nriShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor )
+        : ShaderProgram( context, descriptor )
+    {}
+
+    // SPIRV bytecode blobs per stage (populated during compile).
+    // The NRI pipeline creation step will consume these.
+    struct StageData
+    {
+        vector<uint32_t> spirv;
     };
+    std::array<StageData, to_base( ShaderType::COUNT )> _stageData{};
+};
 
-    class nriGPUBuffer final : public GPUBuffer {
-     public:
-         nriGPUBuffer(GFXDevice& context, const U16 ringBufferLength, const std::string_view name)
-            : GPUBuffer(context, ringBufferLength, name)
-        {}
+// -----------------------------------------------------------------
+// nriUniformBuffer  (ShaderBuffer backed by an NRI buffer)
+// -----------------------------------------------------------------
+class nriUniformBuffer final : public ShaderBuffer
+{
+public:
+    nriUniformBuffer( GFXDevice& context, const ShaderBufferDescriptor& descriptor )
+        : ShaderBuffer( context, descriptor )
+    {}
 
-        [[nodiscard]] BufferLock updateBuffer([[maybe_unused]] U32 elementCountOffset,
-                                              [[maybe_unused]] U32 elementCountRange,
-                                              [[maybe_unused]] bufferPtr data) noexcept override{ return {}; }
-    };
+    BufferLock writeBytesInternal( [[maybe_unused]] BufferRange<> range,
+                                   [[maybe_unused]] const bufferPtr data ) noexcept override { return {}; }
+    void readBytesInternal( [[maybe_unused]] BufferRange<> range,
+                            [[maybe_unused]] std::pair<bufferPtr, size_t> outData ) noexcept override {}
 
-    class nriTexture final : public Texture {
-    public:
-        nriTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor )
-            : Texture(context, descriptor)
-        {
-        }
+    [[nodiscard]] LockableBuffer* getBufferImpl() override { return nullptr; }
 
-        [[nodiscard]] ImageReadbackData readData([[maybe_unused]] const U8 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept override { return {}; }
+    // Underlying NRI constant buffer
+    nri::Buffer* _buffer { nullptr };
+    nri::Memory* _memory { nullptr };
+};
 
-        void loadDataInternal([[maybe_unused]] const ImageTools::ImageData& imageData, [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override { }
-        void loadDataInternal([[maybe_unused]] const std::span<const Byte> data, [[maybe_unused]] const vec3<U16>& offset, [[maybe_unused]] const vec3<U16>& dimensions, [[maybe_unused]] const PixelAlignment& pixelUnpackAlignment ) override {}
-    };
+} // namespace Divide
 
-    class nriShaderProgram final : public ShaderProgram {
-    public:
-        nriShaderProgram( PlatformContext& context, const ResourceDescriptor<ShaderProgram>& descriptor )
-            : ShaderProgram(context, descriptor)
-        {
-        }
-    };
+#endif // DVD_NRI_PLACEHOLDER_OBJECTS_H_
 
-    class nriUniformBuffer final : public ShaderBuffer {
-    public:
-        nriUniformBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor)
-            : ShaderBuffer(context, descriptor)
-        {}
-
-        BufferLock writeBytesInternal([[maybe_unused]] BufferRange<> range, [[maybe_unused]] const bufferPtr data) noexcept override { return {}; }
-        void readBytesInternal([[maybe_unused]] BufferRange<> range, [[maybe_unused]] std::pair<bufferPtr, size_t> outData) noexcept override {}
-
-        [[nodiscard]] LockableBuffer* getBufferImpl() override { return nullptr; }
-    };
-
-};  // namespace Divide
-
-#endif //DVD_NRI_PLACEHOLDER_OBJECTS_H_

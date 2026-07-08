@@ -53,11 +53,11 @@ enum class RTColourAttachmentSlot : U8
 enum class RenderAPI : U8 {
     None,       ///< No rendering. Used for testing or server code
     OpenGL,     ///< 4.x+
-    Vulkan,     ///< not supported yet
-    NRI_Vulkan, ///< not supported yet
-    NRI_D3D12,  ///< not supported yet
-    NRI_D3D11,  ///< not supported yet
-    NRI_None,   ///< not supported yet
+    Vulkan,     ///< Vulkan 1.2+
+    NRI_Vulkan, ///< NRI abstraction over Vulkan (experimental)
+    NRI_D3D12,  ///< NRI abstraction over D3D12 (not supported yet)
+    NRI_D3D11,  ///< NRI abstraction over D3D11 (not supported yet)
+    NRI_None,   ///< NRI passthrough (no-op / testing)
     COUNT
 };
 
@@ -68,6 +68,22 @@ namespace Names {
 };
 
 static_assert(std::size(Names::renderAPI) == to_base(RenderAPI::COUNT) + 1);
+
+/// Returns true for backends whose shader language is SPIRV (Vulkan-style layout qualifiers).
+[[nodiscard]] constexpr bool IsSPIRVBackend( const RenderAPI api ) noexcept
+{
+    return api == RenderAPI::Vulkan || api == RenderAPI::NRI_Vulkan;
+}
+
+/// Returns true for any NRI-hosted backend.
+[[nodiscard]] constexpr bool IsNRIBackend( const RenderAPI api ) noexcept
+{
+    return api == RenderAPI::NRI_Vulkan ||
+           api == RenderAPI::NRI_D3D12  ||
+           api == RenderAPI::NRI_D3D11  ||
+           api == RenderAPI::NRI_None;
+}
+
 
 enum class DescriptorSetUsage : U8 {
     PER_DRAW = 0,
