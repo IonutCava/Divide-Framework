@@ -38,7 +38,9 @@
     "libxmp",
     "mpg123",
     "opusfile",
+    "joltphysics",
     "fluidsynth",
+    "sdl3-mixer",
     {
       "name": "sdl3",
       "features": [

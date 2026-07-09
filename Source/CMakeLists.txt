@@ -144,7 +144,6 @@ add_library(${APP_LIB_DIVIDE} STATIC "EngineMain.cpp"
                                      ${THIRD_PARTY_FETCH_SRC_FILES}
 )
 
-target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Jolt)
 target_link_libraries(${APP_LIB_DIVIDE} PUBLIC NRI)
 
 if( WINDOWS_OS_BUILD )

@@ -332,13 +332,13 @@ void SDL_API::stopAllSounds() noexcept
 void SDL_API::setMusicVolume(const I8 gain) noexcept
 {
     _musicGain = CLAMPED<F32>(gain / 100.f, 0.f, 2.f);
-    MIX_SetMasterGain(_musicMixer, _musicGain);
+    MIX_SetMixerGain(_musicMixer, _musicGain);
 }
 
 void SDL_API::setSoundVolume(const I8 gain) noexcept
 {
     _soundGain = CLAMPED<F32>(gain / 100.f, 0.f, 2.f);
-    MIX_SetMasterGain(_soundMixer, _soundGain);
+    MIX_SetMixerGain(_soundMixer, _soundGain);
 }
 
 void SDL_API::trackFinished( [[maybe_unused]] const TrackDetails& details) noexcept
