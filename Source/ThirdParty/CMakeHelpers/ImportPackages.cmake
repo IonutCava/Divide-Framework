@@ -128,36 +128,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable( icon_font_cpp_headers )
 
-
-#SDL3_mixer
-message("Fetching SDL3_Mixer Lib")
-set(SDLMIXER_VENDORED OFF)
-set(SDLMIXER_GME OFF)
-set(SDLMIXER_FLAC_DRFLAC OFF)
-set(SDLMIXER_INSTALL OFF)
-set(SDLMIXER_SAMPLES OFF)
-set(SDLMIXER_STRICT ON)
-
-if(WINDOWS_OS_BUILD)
-    set(SDLMIXER_DEPS_SHARED OFF)
-else()
-    set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
-    set(BUILD_SHARED_LIBS OFF)
-    set(SDLMIXER_DEPS_SHARED OFF)
-endif()
-
-FetchContent_Declare(
-    SDL3_mixer
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-    GIT_TAG        86c6b096f864b8eaed8ba1c58eab1ce716df934f
-    #GIT_PROGRESS   TRUE
-    #SYSTEM
-    EXCLUDE_FROM_ALL
-)
-
-message("Making SDL3_Mixer Lib Available")
-FetchContent_MakeAvailable( SDL3_mixer )
-
 if(NOT WINDOWS_OS_BUILD)
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
 endif()
@@ -181,7 +151,7 @@ include_directories(
     ${fcpp_SOURCE_DIR}
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
-    ${SDL3_mixer_SOURCE_DIR}/include
+    #${SDL3_mixer_SOURCE_DIR}/include
     ${nri_SOURCE_DIR}/include
 )
 

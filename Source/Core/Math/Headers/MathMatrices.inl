@@ -52,7 +52,7 @@ namespace Divide
 #define VecShuffle_2323(vec1, vec2)     _mm_movehl_ps(vec2, vec1)
 
 
-#if defined(HAS_AVX)
+#if defined(__AVX__)
     namespace AVX
     {
         // another linear combination, using AVX instructions on XMM regs
@@ -66,7 +66,7 @@ namespace Divide
             return result;
         }
     } //namespace AVX
-#endif //HAS_AVX
+#endif //__AVX__
 
 namespace SSE
 {
@@ -2858,7 +2858,7 @@ namespace SSE
     template<>
     inline void mat4<F32>::Multiply( const mat4<F32>& matrixA, const mat4<F32>& matrixB, mat4<F32>& ret ) noexcept
     {
-#if defined(HAS_AVX) 
+#if defined(__AVX__) 
         // using AVX instructions, 4-wide
         // this can be better if A is in memory.
         _mm256_zeroupper();
@@ -2866,12 +2866,12 @@ namespace SSE
         ret._reg[1]._reg = AVX::lincomb( matrixB.m[1], matrixA );
         ret._reg[2]._reg = AVX::lincomb( matrixB.m[2], matrixA );
         ret._reg[3]._reg = AVX::lincomb( matrixB.m[3], matrixA );
-#else  //HAS_AVIX
+#else  //__AVX__
         ret._reg[0]._reg = SSE::lincomb( matrixB._reg[0]._reg, matrixA);
         ret._reg[1]._reg = SSE::lincomb( matrixB._reg[1]._reg, matrixA );
         ret._reg[2]._reg = SSE::lincomb( matrixB._reg[2]._reg, matrixA );
         ret._reg[3]._reg = SSE::lincomb( matrixB._reg[3]._reg, matrixA );
-#endif //HAS_AVX
+#endif //__AVX__
     }
 
     // Copyright 2011 The Closure Library Authors. All Rights Reserved.

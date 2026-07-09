@@ -2,30 +2,34 @@ include(FetchContent)
 
 set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 
+# Define suppression flags for third-party libs
+set(THIRD_PARTY_SUPPRESS_FLAGS "")
 if (MSVC_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4312 /wd4477 /wd4996")
+    set(THIRD_PARTY_SUPPRESS_FLAGS "${THIRD_PARTY_SUPPRESS_FLAGS} /wd4312 /wd4477 /wd4996")
 elseif(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int -Wno-nullability-completeness")
+    set(THIRD_PARTY_SUPPRESS_FLAGS "${THIRD_PARTY_SUPPRESS_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-deprecated-declarations -Wno-return-type-c-linkage -Wno-int-to-pointer-cast -Wno-string-plus-int -Wno-nullability-completeness")
     if(APPLE)
-         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla-extension")
+         set(THIRD_PARTY_SUPPRESS_FLAGS "${THIRD_PARTY_SUPPRESS_FLAGS} -Wno-vla-extension")
     else()
-         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla-cxx-extension")
+         set(THIRD_PARTY_SUPPRESS_FLAGS "${THIRD_PARTY_SUPPRESS_FLAGS} -Wno-vla-cxx-extension")
     endif()
 elseif(GNU_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-deprecated-copy -Wno-misleading-indentation -Wno-unused-but-set-variable")
+    set(THIRD_PARTY_SUPPRESS_FLAGS "${THIRD_PARTY_SUPPRESS_FLAGS} -Wno-deprecated-declarations -Wno-deprecated-copy -Wno-misleading-indentation -Wno-unused-but-set-variable")
 else()
     message(FATAL_ERROR "Unknown compiler type")
 endif()
 
-#----------------------------------------------------------------------------- CEGUI ------------------------------------------------------------------
+#------------- CEGUI ------------------------------------------------------------------
 message("Fetching CEGUI Lib")
+
+# Apply suppression flags only for CEGUI
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}${THIRD_PARTY_SUPPRESS_FLAGS}")
 
 FetchContent_Declare(
   Cegui
   GIT_REPOSITORY https://github.com/IonutCava/cegui.git
   GIT_TAG origin/v0-8
-  #GIT_PROGRESS   TRUE
-  #SYSTEM
+  SYSTEM
   EXCLUDE_FROM_ALL
 )
 
@@ -80,121 +84,21 @@ foreach(TARGET_LIB ${CEGUI_LIBRARY_NAMES})
     list(APPEND CEGUI_LIBRARIES ${TARGET_LIB})
 endforeach()
 
+# Restore original flags for main project
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
+
 include_directories(
     "${cegui_SOURCE_DIR}/cegui/include"
     "${cegui_BINARY_DIR}/cegui/include"
 )
 link_directories("${cegui_BINARY_DIR}/lib" )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
-
-#----------------------------------------------------------------------------- JOLT Physics ------------------------------------------------------------------
-
-set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
-
-if (MSVC_COMPILER)
-    add_compile_options("/wd5045") 
-elseif(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-padded  -Wno-nrvo")
-elseif(GNU_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter -Wno-array-bounds")
-else()
-    message(FATAL_ERROR "Unknown compiler type")
-endif()
-
-message("Fetching Jolt Physics Lib")
-
-message("BEGIN: Configuring JoltPhysics library")
-
-option(OVERRIDE_CXX_FLAGS "" OFF)
-option(INTERPROCEDURAL_OPTIMIZATION "" OFF)
-option(ENABLE_INSTALL "" OFF)
-option(PROFILER_IN_DEBUG_AND_RELEASE "" OFF)
-option(PROFILER_IN_DISTRIBUTION "" OFF)
-
-if ( RUN_ASAN OR RUN_UBSAN )
-    option(CPP_RTTI_ENABLED "" ON)
-endif()
-
-option(GENERATE_DEBUG_SYMBOLS "" $<IF:$<CONFIG:Release>:OFF,ON>)
-
-add_compile_definitions( JPH_OBJECT_STREAM )
-
-option(DEBUG_RENDERER_IN_DISTRIBUTION "" ON)
-add_compile_definitions( JPH_DEBUG_RENDERER )
-
-option(USE_ASSERTS "" ON)
-add_compile_definitions( JPH_ENABLE_ASSERTS )
-
-option(DISABLE_CUSTOM_ALLOCATOR "" ON)
-add_compile_definitions( JPH_DISABLE_CUSTOM_ALLOCATOR )
-
-option(CROSS_PLATFORM_DETERMINISTIC "" OFF)
-
-if ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" )
-    message("Toggling floating point exceptions support ON")
-    option(FLOATING_POINT_EXCEPTIONS_ENABLED "" ON)
-    add_compile_definitions( "$<$<CONFIG:Debug,Release>:JPH_FLOATING_POINT_EXCEPTIONS_ENABLED>" )
-else()
-    message("Toggling floating point exceptions support OFF")
-    option(FLOATING_POINT_EXCEPTIONS_ENABLED "" OFF)
-endif()
-
-message("Toggling SSE4.1 support:" ${SSE41_OPT})
-set(USE_SSE4_1 ${SSE41_OPT})
-
-message("Toggling SSE4.2 support:" ${SSE42_OPT})
-set(USE_SSE4_2 ${SSE42_OPT})
-
-message("Toggling AVX support:" ${AVX_OPT})
-set(USE_AVX ${AVX_OPT})
-
-message("Toggling AVX2 support:" ${AVX2_OPT})
-set(USE_AVX2 ${AVX2_OPT})
-
-message("Toggling LZCNT support:" ${LZCNT_OPT})
-set(USE_LZCNT ${LZCNT_OPT})
-
-message("Toggling TZCNT support:" ${BMI1_OPT})
-set(USE_TZCNT ${BMI1_OPT})
-
-message("Toggling F16C support:" ${F16C_OPT})
-set(USE_F16C ${F16C_OPT})
-
-message("Toggling FMADD support:" ${FMA_OPT})
-set(USE_FMADD ${FMA_OPT})
-
-if ( AVX512F_OPT AND AVX512VL_OPT AND AVX512DQ_OPT )
-    message("Toggling AVX512 support: ON")
-    set(USE_AVX512 ON)
-else()
-    message("Toggling AVX512 support: OFF")
-    set(USE_AVX512 OFF)
-endif()
-
-message("END: Configuring JoltPhysics library")
-
-FetchContent_Declare(
-    JoltPhysics
-    GIT_REPOSITORY  https://github.com/jrouwe/JoltPhysics.git
-    GIT_TAG         v5.5.0
-    GIT_SHALLOW     TRUE
-    #GIT_PROGRESS    TRUE
-    SOURCE_SUBDIR   "Build"
-    EXCLUDE_FROM_ALL
-)
-
-FetchContent_MakeAvailable(JoltPhysics)
-
-include_directories(${JoltPhysics_SOURCE_DIR}/..)
-
-#----------------------------------------------------------------------------- NRI ------------------------------------------------------------------
-
-if (NOT MSVC_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-field-initializers -Wno-error=missing-field-initializers -Wno-unused-parameter -Wno-array-bounds")
-endif()
-
+#------------- NRI ------------------------------------------------------------------
 message("Fetching NVIDIA NRI Lib")
+
+# Apply suppression flags only for NRI
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}${THIRD_PARTY_SUPPRESS_FLAGS}")
+
 option(NRI_STATIC_LIBRARY "" ON)
 option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON)
 option(NRI_ENABLE_VK_SUPPORT "" ON)
@@ -222,31 +126,34 @@ FetchContent_Declare(
     nri
     GIT_REPOSITORY https://github.com/NVIDIA-RTX/NRI.git
     GIT_TAG        v180
-    #GIT_PROGRESS   TRUE
     SYSTEM
 )
 
-FetchContent_MakeAvailable( nri )
+FetchContent_MakeAvailable(nri)
 
 set(NRI_TARGETS
     NRI
+    NRI_Shared
     NRI_NONE
     NRI_D3D11
     NRI_D3D12
     NRI_VK
     NRI_Validation
+    NRI_Shaders
 )
 
 foreach(nri_target IN LISTS NRI_TARGETS)
     if(TARGET ${nri_target})
         set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-        target_compile_options(${nri_target} PRIVATE
-            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-missing-field-initializers>
-            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=missing-field-initializers>
-            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-unused-parameter>
-            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-array-bounds>
-        )
+
+        if(CLANG_COMPILER)
+            target_compile_options(${nri_target} PRIVATE
+                -Wno-missing-field-initializers
+                -Wno-nullability-completeness
+            )
+        endif()
     endif()
 endforeach()
 
+# Restore original flags for main project
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")

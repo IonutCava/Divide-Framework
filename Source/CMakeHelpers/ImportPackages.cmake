@@ -38,15 +38,17 @@ find_package(Catch2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
+find_package(SDL3_mixer CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(SimpleIni CONFIG REQUIRED)
+find_package(Jolt CONFIG REQUIRED)
 
 if(MAC_OS_BUILD)
     find_package(date CONFIG REQUIRED)
-    if (HAS_NEON)
+    if (NEON_OPT)
         find_path(SSE2NEON_INCLUDE_DIRS "sse2neon/sse2neon.h")
         include_directories( SYSTEM ${SSE2NEON_INCLUDE_DIRS})
     endif()
@@ -154,7 +156,6 @@ set(EXTERNAL_LIBS
     fmt::fmt
     OptickCore
     EASTL
-    Jolt
     OpenAL::OpenAL
     expat::expat
     imgui::imgui
@@ -173,13 +174,14 @@ set(EXTERNAL_LIBS
     RecastNavigation::DebugUtils
     RecastNavigation::DetourCrowd
     SDL3::SDL3
-    SDL3_mixer::SDL3_mixer
     SDL3_image::SDL3_image
+    $<IF:$<TARGET_EXISTS:SDL3_mixer::SDL3_mixer>,SDL3_mixer::SDL3_mixer,SDL3_mixer::SDL3_mixer-static>
     glslang::glslang
     glslang::glslang-default-resource-limits
     glslang::SPIRV
     #glslang::SPVRemapper
     SimpleIni::SimpleIni
+    Jolt::Jolt
 )
 
 if(MAC_OS_BUILD)
