@@ -139,9 +139,8 @@ FetchContent_MakeAvailable(nri)
 
 set(NRI_TARGETS
     NRI
-    NRI_Shared
-    #NRI_NONE
-    #NRI_D3D11
+    NRI_NONE
+    NRI_D3D11
     NRI_D3D12
     NRI_VK
     NRI_Validation
