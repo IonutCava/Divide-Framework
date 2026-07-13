@@ -85,10 +85,6 @@
     {
       "name": "wayland",
       "platform": "linux"
-    },
-    {
-      "name": "directx12-agility",
-      "platform": "windows"
     }
   ]
 }

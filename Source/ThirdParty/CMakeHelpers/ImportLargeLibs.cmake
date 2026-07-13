@@ -100,25 +100,31 @@ message("Fetching NVIDIA NRI Lib")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}${THIRD_PARTY_SUPPRESS_FLAGS}")
 
 option(NRI_STATIC_LIBRARY "" ON)
-option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON)
-option(NRI_ENABLE_VK_SUPPORT "" ON)
-option(NRI_ENABLE_NONE_SUPPORT "" ON)
-option(NRI_ENABLE_VALIDATION_SUPPORT "" ON)
-option(NRI_ENABLE_IMGUI_EXTENSION "" ON)
-option(NRI_ENABLE_FFX_SDK "" ON)
-option(NRI_ENABLE_XESS_SDK "" ON)
+option(NRI_ENABLE_DEBUG_NAMES_AND_ANNOTATIONS "" ON) #Enable debug names, host and device annotations
+option(NRI_ENABLE_VALIDATION_SUPPORT "" ON) #Enable Validation backend (otherwise enableNRIValidation is ignored)
+option(NRI_ENABLE_IMGUI_EXTENSION "" OFF) #Enable NRIImgui extension
+option(NRI_ENABLE_FFX_SDK "" OFF) #Enable AMD FidelityFX SDK
+option(NRI_ENABLE_XESS_SDK "" OFF) # Enable INTEL XeSS SDK
+option(NRI_ENABLE_NGX_SDK "" OFF) #Enable NVIDIA NGX (DLSS) SDK
+option(NRI_ENABLE_AMDAGS "" OFF) #Enable AMD AGS library for D3D
+option(NRI_ENABLE_NVTX_SUPPORT "" ON) #Annotations for NVIDIA Nsight Systems
+option(NRI_ENABLE_NIS_SDK "" OFF) #Enable NVIDIA Image Sharpening SDK
+option(NRI_STREAMER_THREAD_SAFE "" OFF) #NRIStreamer thread safety (OFF is faster)
 
+option(NRI_ENABLE_VK_SUPPORT "" ON)
+option(NRI_ENABLE_NONE_SUPPORT "" OFF)
 if(WINDOWS_OS_BUILD)
     option(NRI_ENABLE_D3D12_SUPPORT "" ON)
-    option(NRI_ENABLE_D3D11_SUPPORT "" ON)
-    option(NRI_ENABLE_NVTX_SUPPORT "" ON)
-    option(NRI_ENABLE_AGILITY_SDK_SUPPORT "" ON)
+    option(NRI_ENABLE_D3D11_SUPPORT "" OFF)
+    option(NRI_ENABLE_AGILITY_SDK_SUPPORT "" ON) # Enable Agility SDK support to unlock access to latest D3D12 features
+    option(NRI_ENABLE_NVAPI  "" ON) #Enable NVAPI library for D3D
 elseif(MAC_OS_BUILD)
     option(NRI_ENABLE_METAL_SUPPORT "" ON)
 else()
-    option(NRI_ENABLE_XLIB_SUPPORT "" ON)
     if(WAYLAND_FOUND)
         option(NRI_ENABLE_WAYLAND_SUPPORT "" ON)
+    else()
+        option(NRI_ENABLE_XLIB_SUPPORT "" ON)
     endif()
 endif()
 
@@ -134,8 +140,8 @@ FetchContent_MakeAvailable(nri)
 set(NRI_TARGETS
     NRI
     NRI_Shared
-    NRI_NONE
-    NRI_D3D11
+    #NRI_NONE
+    #NRI_D3D11
     NRI_D3D12
     NRI_VK
     NRI_Validation
