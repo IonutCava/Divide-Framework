@@ -148,18 +148,6 @@ target_link_libraries(${APP_LIB_DIVIDE} PUBLIC NRI)
 
 if( WINDOWS_OS_BUILD )
     target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Shcore.lib Winmm.lib)
-
-    find_package(directx-headers CONFIG REQUIRED)
-    find_package(directx12-agility CONFIG REQUIRED)
-    target_link_libraries(${APP_LIB_DIVIDE} PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
-    if(TARGET Microsoft::DirectX12-Agility)
-        file(MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/D3D12")
-        add_custom_command(TARGET ${APP_LIB_DIVIDE} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:Microsoft::DirectX12-Core,IMPORTED_LOCATION_RELEASE> $<TARGET_FILE_DIR:${APP_LIB_DIVIDE}>/D3D12
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:Microsoft::DirectX12-Layers,IMPORTED_LOCATION_DEBUG> $<TARGET_FILE_DIR:${APP_LIB_DIVIDE}>/D3D12
-           COMMAND_EXPAND_LISTS
-        )
-    endif()
 endif()
 
 target_compile_options(${APP_LIB_DIVIDE} PUBLIC ${DIVIDE_COMPILE_OPTIONS}
