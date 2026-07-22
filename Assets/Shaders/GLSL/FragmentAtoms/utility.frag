@@ -46,9 +46,11 @@ vec3 ToSRGBAccurate(in vec3 linearCol) {
                 (linearCol.b <= 0.0031308f) ? sRGBLo.b : sRGBHi.b);
 }
 
+// For [0,1] depth range (glClipControl ZERO_TO_ONE) the NDC z is already in [0,1].
+// Just return the perspective-divided z.
 float computeDepth(in vec4 posWV, in mat4 projMatrix, in vec2 zPlanes) {
     const vec4 clip_space_pos = projMatrix * posWV;
-    return (((zPlanes.y - zPlanes.x) * (clip_space_pos.z / clip_space_pos.w)) + zPlanes.x + zPlanes.y) * 0.5f;
+    return clip_space_pos.z / clip_space_pos.w;
 }
 
 #define IsInScreenRect(COORDS) all(bvec4(COORDS.x >= 0.f, COORDS.x <= 1.f, COORDS.y >= 0.f, COORDS.y <= 1.f))

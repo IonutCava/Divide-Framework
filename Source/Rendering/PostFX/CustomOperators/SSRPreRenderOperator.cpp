@@ -164,7 +164,7 @@ bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot&
     _uniforms.set( _ID( "previousViewProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewProjectionMatrix );
     _uniforms.set( _ID( "screenDimensions" ), PushConstantType::VEC2, float2( Get( screenTex )->width(), Get( screenTex )->height() ) );
     _uniforms.set( _ID( "maxScreenMips" ), PushConstantType::UINT, screenMipCount );
-    _uniforms.set( _ID( "_zPlanes" ), PushConstantType::VEC2, cameraSnapshot._zPlanes );
+    _uniforms.set( _ID( "_zPlanes" ), PushConstantType::VEC2, float2( cameraSnapshot._nearDistance, cameraSnapshot._cullDistance ) );
 
     auto sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
     sendPushConstantsCmd->_uniformData = &_uniforms;

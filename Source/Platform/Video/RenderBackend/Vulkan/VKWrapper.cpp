@@ -1886,7 +1886,20 @@ namespace Divide
 
         if ( !activeState._isSet || activeState._block._zFunc != currentState._zFunc )
         {
-            vkCmdSetDepthCompareOp( cmdBuffer, vkCompareFuncTable[to_base( currentState._zFunc )] );
+            const auto FlipDepthFunc = []( const ComparisonFunction func ) noexcept
+            {
+                switch ( func )
+                {
+                    case ComparisonFunction::LESS:    return ComparisonFunction::GREATER;
+                    case ComparisonFunction::LEQUAL:  return ComparisonFunction::GEQUAL;
+                    case ComparisonFunction::GREATER: return ComparisonFunction::LESS;
+                    case ComparisonFunction::GEQUAL:  return ComparisonFunction::LEQUAL;
+                    default: break;
+                }
+                return func;
+            };
+            const ComparisonFunction effectiveFunc = s_stateTracker._reverseDepthMode ? FlipDepthFunc( currentState._zFunc ) : currentState._zFunc;
+            vkCmdSetDepthCompareOp( cmdBuffer, vkCompareFuncTable[to_base( effectiveFunc )] );
             ret = true;
         }
 
@@ -3108,6 +3121,18 @@ namespace Divide
         const VkRect2D targetScissor{ offset, extent };
         vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
         return true;
+    }
+
+    void VK_API::setReverseDepthActive( bool active ) noexcept
+    {
+        if ( s_stateTracker._reverseDepthMode == active )
+        {
+            return;
+        }
+        s_stateTracker._reverseDepthMode = active;
+        // Invalidate the cached depth function so the next bindDynamicState re-applies it
+        // with the correct reversed/forward polarity.
+        s_stateTracker._pipeline._activeState._isSet = false;
     }
 
     VkDescriptorSetLayout VK_API::createLayoutFromBindings(const DescriptorSetUsage usage, const ShaderProgram::BindingsPerSetArray& bindings, DynamicBindings& dynamicBindings )

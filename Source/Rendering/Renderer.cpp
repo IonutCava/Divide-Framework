@@ -225,7 +225,8 @@ void Renderer::prepareLighting(const RenderStage stage,
             PerRenderStageData::GridBuildData tempData;
             tempData._invProjectionMatrix = cameraSnapshot._invProjectionMatrix;
             tempData._viewport = viewport;
-            tempData._zPlanes = cameraSnapshot._zPlanes;
+            tempData._nearDistance = cameraSnapshot._nearDistance;
+            tempData._cullDistance = cameraSnapshot._cullDistance;
 
              needRebuild = data._gridData != tempData;
              if (needRebuild)
@@ -251,7 +252,7 @@ void Renderer::prepareLighting(const RenderStage stage,
             PushConstantsStruct& pushConstants = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
             pushConstants.data[0] = data._gridData._invProjectionMatrix;
             pushConstants.data[1]._vec[0] = data._gridData._viewport;
-            pushConstants.data[1]._vec[1].xy = data._gridData._zPlanes;
+            pushConstants.data[1]._vec[1].xy.set( data._gridData._nearDistance, data._gridData._cullDistance );
             GFX::EnqueueCommand<GFX::DispatchShaderTaskCommand>(bufferInOut)->_workGroupSize =
             { 
                 Config::Lighting::ClusteredForward::CLUSTERS_X,
@@ -324,7 +325,8 @@ void Renderer::updateResolution(const U16 newWidth, const U16 newHeight) const {
 
 [[nodiscard]] bool Renderer::PerRenderStageData::GridBuildData::operator!=( const Renderer::PerRenderStageData::GridBuildData& other ) const noexcept
 {
-    return _zPlanes != other._zPlanes ||
+    return !COMPARE( _nearDistance, other._nearDistance ) ||
+           !COMPARE( _cullDistance, other._cullDistance ) ||
            _viewport != other._viewport ||
            _invProjectionMatrix != other._invProjectionMatrix;
 }

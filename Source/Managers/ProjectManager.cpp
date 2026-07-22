@@ -612,7 +612,7 @@ namespace Divide
 
         const auto& sceneGraph = activeProject()->getActiveScene()->sceneGraph();
         const float3& eye = camera.snapshot()._eye;
-        const float2  zPlanes = camera.snapshot()._zPlanes;
+        const F32 cullDistance = camera.snapshot()._cullDistance;
 
         SGNIntersectionParams intersectionParams = {};
         intersectionParams._includeTransformNodes = false;
@@ -624,7 +624,7 @@ namespace Divide
         const auto CheckPointLoS = [&]( const float3& point, const I64 nodeGUID, const I64 parentNodeGUID ) -> bool
         {
             intersectionParams._ray = { point, point.direction( eye ) };
-            intersectionParams._range = { 0.f, zPlanes.y };
+            intersectionParams._range = { 0.f, cullDistance };
 
             const F32 distanceToPoint = eye.distance( point );
 
@@ -997,7 +997,7 @@ namespace Divide
             cullParams._stage = stage;
             cullParams._cameraEyePos = camera->snapshot()._eye;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = camera->snapshot()._cullDistance;
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }
@@ -1027,7 +1027,7 @@ namespace Divide
             cullParams._stage = stage;
             cullParams._cameraEyePos = camera->snapshot()._eye;
             cullParams._frustum = &camera->getFrustum();
-            cullParams._cullMaxDistance = camera->snapshot()._zPlanes.max;
+            cullParams._cullMaxDistance = camera->snapshot()._cullDistance;
 
             RenderPassCuller::FrustumCull( parent().platformContext(), cullParams, to_base( CullOptions::DEFAULT_CULL_OPTIONS ), allNodes, nodesOut );
         }

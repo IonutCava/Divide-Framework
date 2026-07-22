@@ -428,7 +428,7 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, refractionPlane );
         params._passName = "Refraction";
-        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
         params._clearDescriptorMainPass[to_base(RTColourAttachmentSlot::SLOT_0)] = { DefaultColours::BLUE, true };
 
         if ( !underwater )
@@ -522,7 +522,7 @@ namespace Divide
         params._target = renderParams._renderTarget;
         params._clippingPlanes.set( 0, reflectionPlane );
         params._passName = "Reflection";
-        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        params._clearDescriptorMainPass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
 
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_DYNAMIC_NODES));

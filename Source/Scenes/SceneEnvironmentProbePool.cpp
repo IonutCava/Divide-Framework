@@ -305,7 +305,7 @@ void SceneEnvironmentProbePool::Prepare(GFX::CommandBuffer& bufferInOut) {
         GFX::BeginRenderPassCommand* renderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>(bufferInOut);
         renderPassCmd->_name = "DO_REFLECTION_PROBE_CLEAR";
         renderPassCmd->_target = s_reflection._targetID;
-        renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        renderPassCmd->_clearDescriptor[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
         renderPassCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )] = DEFAULT_CLEAR_ENTRY;
         renderPassCmd->_descriptor._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
 
@@ -388,7 +388,7 @@ void SceneEnvironmentProbePool::UpdateSkyLight(GFXDevice& context, GFX::CommandB
         params._drawMask &= ~(1u << to_base(RenderPassParams::Flags::DRAW_TRANSLUCENT_NODES));
 
         params._targetDescriptorPrePass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = false;
-        params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+        params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
 
         params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
         params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };

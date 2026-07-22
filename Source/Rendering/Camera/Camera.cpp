@@ -268,7 +268,8 @@ namespace Divide
         _data._invViewMatrix.identity();
         _data._projectionMatrix.identity();
         _data._invProjectionMatrix.identity();
-        _data._zPlanes.set( 0.1f, 1000.0f );
+        _data._nearDistance = 0.1f;
+        _data._cullDistance = 1000.0f;
         _data._orientation.identity();
 
         _translationAccumulator.set( eye );
@@ -322,11 +323,11 @@ namespace Divide
         setVerticalFoV( snapshot._fov );
         if ( _data._isOrthoCamera )
         {
-            setProjection( _orthoRect, snapshot._zPlanes );
+            setProjection( _orthoRect, { snapshot._nearDistance, snapshot._cullDistance } );
         }
         else
         {
-            setProjection( snapshot._aspectRatio, snapshot._fov, snapshot._zPlanes );
+            setProjection( snapshot._aspectRatio, snapshot._fov, { snapshot._nearDistance, snapshot._cullDistance } );
         }
         updateLookAt();
     }
@@ -476,15 +477,14 @@ namespace Divide
                                                  _orthoRect.right,
                                                  _orthoRect.bottom,
                                                  _orthoRect.top,
-                                                 _data._zPlanes.x,
-                                                 _data._zPlanes.y );
+                                                 _data._nearDistance,
+                                                 _data._cullDistance );
             }
             else
             {
-                _data._projectionMatrix = Perspective( _data._fov,
-                                                       _data._aspectRatio,
-                                                       _data._zPlanes.x,
-                                                       _data._zPlanes.y );
+                _data._projectionMatrix = InfiniteReversedZPerspective( _data._fov,
+                                                                         _data._aspectRatio,
+                                                                         _data._nearDistance );
             }
             _data._projectionMatrix.getInverse( _data._invProjectionMatrix );
             _frustumDirty = true;
@@ -512,7 +512,8 @@ namespace Divide
         setAspectRatio( aspectRatio );
         setVerticalFoV( verticalFoV );
 
-        _data._zPlanes = zPlanes;
+        _data._nearDistance = zPlanes.min;
+        _data._cullDistance = zPlanes.max;
         _data._isOrthoCamera = false;
         _projectionDirty = true;
         updateProjection();
@@ -524,7 +525,8 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
-        _data._zPlanes = zPlanes;
+        _data._nearDistance = zPlanes.min;
+        _data._cullDistance = zPlanes.max;
         _orthoRect = rect;
         _data._isOrthoCamera = true;
         _projectionDirty = true;
@@ -539,7 +541,8 @@ namespace Divide
 
         _data._projectionMatrix.set( projection );
         _data._projectionMatrix.getInverse( _data._invProjectionMatrix );
-        _data._zPlanes = zPlanes;
+        _data._nearDistance = zPlanes.min;
+        _data._cullDistance = zPlanes.max;
         _projectionDirty = false;
         _frustumDirty = true;
         _data._isOrthoCamera = isOrtho;
@@ -808,7 +811,7 @@ namespace Divide
         updateLookAt();
         _frustumLocked = false;
 
-        _data._frustumPlanes = _frustum.computePlanes( _viewProjectionMatrix );
+        _data._frustumPlanes = _frustum.computePlanes( _viewProjectionMatrix, !_data._isOrthoCamera );
         _frustumDirty = false;
 
         return true;
@@ -943,8 +946,8 @@ namespace Divide
         pt.put( savePath + ".orientation.<xmlattr>.z", _data._orientation._elements.z );
         pt.put( savePath + ".orientation.<xmlattr>.w", _data._orientation._elements.w );
         pt.put( savePath + ".aspectRatio", _data._aspectRatio );
-        pt.put( savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min );
-        pt.put( savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max );
+        pt.put( savePath + ".zPlanes.<xmlattr>.min", _data._nearDistance );
+        pt.put( savePath + ".zPlanes.<xmlattr>.max", _data._cullDistance );
         pt.put( savePath + ".FoV", _data._fov );
         pt.put( savePath + ".speedFactor.<xmlattr>.turn", _speedFactor.turn );
         pt.put( savePath + ".speedFactor.<xmlattr>.move", _speedFactor.move );
@@ -1021,10 +1024,8 @@ namespace Divide
             pt.get( savePath + ".orientation.<xmlattr>.z", _data._orientation._elements.z ),
             pt.get( savePath + ".orientation.<xmlattr>.w", _data._orientation._elements.w )
         );
-        _data._zPlanes.set(
-            pt.get( savePath + ".zPlanes.<xmlattr>.min", _data._zPlanes.min ),
-            pt.get( savePath + ".zPlanes.<xmlattr>.max", _data._zPlanes.max )
-        );
+        _data._nearDistance = pt.get( savePath + ".zPlanes.<xmlattr>.min", _data._nearDistance );
+        _data._cullDistance = pt.get( savePath + ".zPlanes.<xmlattr>.max", _data._cullDistance );
         _data._aspectRatio = pt.get( savePath + ".aspectRatio", _data._aspectRatio );
         _data._fov = pt.get( savePath + ".FoV", _data._fov );
 

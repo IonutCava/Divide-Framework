@@ -249,6 +249,9 @@ namespace Divide
         [[nodiscard]] static mat4<F32> Ortho( F32 left, F32 right, F32 bottom, F32 top, F32 zNear, F32 zFar ) noexcept;
         template<bool zeroToOneDepth = true>
         [[nodiscard]] static mat4<F32> Perspective( Angle::DEGREES_F fovy, F32 aspect, F32 zNear, F32 zFar ) noexcept;
+        /// Reversed-Z infinite-far perspective (zeroToOneDepth only).
+        /// Maps near plane → NDC z = 1, infinite far → NDC z = 0.
+        [[nodiscard]] static mat4<F32> InfiniteReversedZPerspective( Angle::DEGREES_F fovy, F32 aspect, F32 zNear ) noexcept;
         template<bool zeroToOneDepth = true>
         [[nodiscard]] static mat4<F32> FrustumMatrix( F32 left, F32 right, F32 bottom, F32 top, F32 nearVal, F32 farVal ) noexcept;
 

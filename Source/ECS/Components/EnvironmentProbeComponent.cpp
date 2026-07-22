@@ -211,7 +211,7 @@ bool EnvironmentProbeComponent::refresh(GFX::CommandBuffer& bufferInOut, GFX::Me
     };
 
     params._targetDescriptorPrePass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = false;
-    params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = DEFAULT_CLEAR_ENTRY;
+    params._clearDescriptorPrePass[RT_DEPTH_ATTACHMENT_IDX] = REVERSED_Z_DEPTH_CLEAR_ENTRY;
     params._targetDescriptorMainPass._drawMask[to_base( RTColourAttachmentSlot::SLOT_0 )] = true;
     params._clearDescriptorMainPass[to_base( RTColourAttachmentSlot::SLOT_0 )] = { DefaultColours::BLUE, true };
     params._drawMask &= ~(1u << to_base( RenderPassParams::Flags::DRAW_DYNAMIC_NODES ));
