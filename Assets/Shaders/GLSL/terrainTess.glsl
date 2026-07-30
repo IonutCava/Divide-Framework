@@ -62,6 +62,18 @@ layout(location = ATTRIB_FREE_START + 4) out vec3[5] tcs_debugColour[];
 #define MAX_TESS_LEVEL 64
 #endif //MAX_TESS_LEVEL
 
+int NextPowerOfTwo(in int value)
+{
+    value = max(value, 1);
+    value -= 1;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+    return value + 1;
+}
+
 float SphereToScreenSpaceTessellation(in vec3 w0, in vec3 w1, in float diameter, in mat4 worldViewMat)
 {
     const vec4 view0 = worldViewMat * vec4((w0 + w1) * 0.5f, 1.f);
@@ -82,12 +94,18 @@ float SphereToScreenSpaceTessellation(in vec3 w0, in vec3 w1, in float diameter,
 // However, only power of two sizes *seem* to get correctly tessellated with no cracks.
 // Clamp to the nearest larger power of two.  Any power of two works; larger means that we don't lose detail.
 // Output is [4, MAX_TESS_LEVEL]. Our smaller neighbour's min tessellation is pow(2,1) = 2.  As we are twice its size, we can't go below 4.
-#define SmallerNeighbourAdjacencyClamp(TESS) max(4, pow(2, ceil(log2(TESS))))
+float SmallerNeighbourAdjacencyClamp(in float tess)
+{
+    return float(max(4, NextPowerOfTwo(int(ceil(tess)))));
+}
 
 // Clamp to the nearest larger power of two.  Any power of two works; larger means that we don't lose detail.
 // Our larger neighbour's max tessellation is MAX_TESS_LEVEL; as we are half its size, our tessellation must max out
 // at MAX_TESS_LEVEL / 2, otherwise we could be over-tessellated relative to the neighbour.  Output is [2,MAX_TESS_LEVEL].
-#define LargerNeighbourAdjacencyClamp(TESS) clamp(pow(2, ceil(log2(TESS))), 2.f, MAX_TESS_LEVEL * 0.5f)
+float LargerNeighbourAdjacencyClamp(in float tess)
+{
+    return clamp(float(NextPowerOfTwo(int(ceil(tess)))), 2.f, MAX_TESS_LEVEL * 0.5f);
+}
 
 float SmallerNeighbourAdjacencyFix(in int idx0, in int idx1, in float diameter, in mat4 worldViewMat) {
     vec3 p0 = gl_in[idx0].gl_Position.xyz;
@@ -128,7 +146,9 @@ float LargerNeighbourAdjacencyFix(in int idx0, in int idx1, in int patchIdx, in 
 
 bool SphereInFrustum(in vec3 pos, in float radius, in mat4 worldMat)
 {
-    const float minCmp = -0.15f;
+    // Keep edge patches alive a little longer to avoid visible popping when a tessellated patch
+    // straddles the frustum boundary at steep view angles.
+    const float minCmp = -0.5f;
 
     const vec4 posW = worldMat * vec4(pos, 1.f);
     for (int i = 0; i < 6; ++i)
@@ -146,115 +166,123 @@ void main(void)
 {
     PassData(0);
 
-    const vec3 centre = 0.25f * (gl_in[0].gl_Position.xyz +
-                                 gl_in[1].gl_Position.xyz +
-                                 gl_in[2].gl_Position.xyz +
-                                 gl_in[3].gl_Position.xyz);
-
-    const mat4 worldMat = Transform(dvd_terrainWorld, dvd_Transforms[TRANSFORM_IDX]._transform);
-
-    const vec4 pos0 = worldMat * gl_in[0].gl_Position;
-    const vec4 pos1 = worldMat * gl_in[2].gl_Position;
-    const float radius = length(pos0.xyz - pos1.xyz) * 0.5f;
-
-    if ( !SphereInFrustum(centre, radius, worldMat) )
+    if (gl_InvocationID == 0)
     {
-          gl_TessLevelInner[0] = gl_TessLevelInner[1] = -1;
-          gl_TessLevelOuter[0] = gl_TessLevelOuter[1] = -1;
-          gl_TessLevelOuter[2] = gl_TessLevelOuter[3] = -1;
-    }
-    else
-    {
+        const vec3 centre = 0.25f * (gl_in[0].gl_Position.xyz +
+                                     gl_in[1].gl_Position.xyz +
+                                     gl_in[2].gl_Position.xyz +
+                                     gl_in[3].gl_Position.xyz);
+        const mat4 worldMat = Transform(dvd_terrainWorld, dvd_Transforms[TRANSFORM_IDX]._transform);
+        const vec4 pos0 = worldMat * gl_in[0].gl_Position;
+        const vec4 pos1 = worldMat * gl_in[2].gl_Position;
+        const float radius = length(pos0.xyz - pos1.xyz) * 0.5f;
+
+        if ( !SphereInFrustum(centre, radius, worldMat) )
+        {
+            gl_TessLevelInner[0] = gl_TessLevelInner[1] = -1.f;
+            gl_TessLevelOuter[0] = gl_TessLevelOuter[1] = -1.f;
+            gl_TessLevelOuter[2] = gl_TessLevelOuter[3] = -1.f;
+        }
+        else
+        {
 #if MAX_TESS_LEVEL > 1
-        const mat4 worldViewMat = dvd_ViewMatrix * worldMat;
-        const float sideLen = max(abs(gl_in[1].gl_Position.x - gl_in[0].gl_Position.x), abs(gl_in[1].gl_Position.x - gl_in[2].gl_Position.x));
-        // Outer tessellation level
-        gl_TessLevelOuter[0] = SphereToScreenSpaceTessellation(gl_in[0].gl_Position.xyz, gl_in[1].gl_Position.xyz, sideLen, worldViewMat);
-        gl_TessLevelOuter[1] = SphereToScreenSpaceTessellation(gl_in[3].gl_Position.xyz, gl_in[0].gl_Position.xyz, sideLen, worldViewMat);
-        gl_TessLevelOuter[2] = SphereToScreenSpaceTessellation(gl_in[2].gl_Position.xyz, gl_in[3].gl_Position.xyz, sideLen, worldViewMat);
-        gl_TessLevelOuter[3] = SphereToScreenSpaceTessellation(gl_in[1].gl_Position.xyz, gl_in[2].gl_Position.xyz, sideLen, worldViewMat);
+            const mat4 worldViewMat = dvd_ViewMatrix * worldMat;
+            const float sideLen = max(abs(gl_in[1].gl_Position.x - gl_in[0].gl_Position.x), abs(gl_in[1].gl_Position.x - gl_in[2].gl_Position.x));
+            // Outer tessellation level
+            gl_TessLevelOuter[0] = SphereToScreenSpaceTessellation(gl_in[0].gl_Position.xyz, gl_in[1].gl_Position.xyz, sideLen, worldViewMat);
+            gl_TessLevelOuter[1] = SphereToScreenSpaceTessellation(gl_in[3].gl_Position.xyz, gl_in[0].gl_Position.xyz, sideLen, worldViewMat);
+            gl_TessLevelOuter[2] = SphereToScreenSpaceTessellation(gl_in[2].gl_Position.xyz, gl_in[3].gl_Position.xyz, sideLen, worldViewMat);
+            gl_TessLevelOuter[3] = SphereToScreenSpaceTessellation(gl_in[1].gl_Position.xyz, gl_in[2].gl_Position.xyz, sideLen, worldViewMat);
 
-//#if !defined(LOW_QUALITY)
-        // Sadly can't disable this for reflection/refraction cases as the cracks get really obvious at certain angles
-        // Edges that need adjacency adjustment are identified by the per-instance ip[0].adjacency 
-        // scalars, in *conjunction* with a patch ID that puts them on the edge of a tile.
-        const int PatchID = gl_PrimitiveID;
-        ivec2 patchXY;
-        patchXY.y = PatchID / PATCHES_PER_TILE_EDGE;
-        patchXY.x = PatchID - patchXY.y * PATCHES_PER_TILE_EDGE;
+            // Sadly can't disable this for reflection/refraction cases as the cracks get really obvious at certain angles
+            // Edges that need adjacency adjustment are identified by the per-instance ip[0].adjacency
+            // scalars, in *conjunction* with a patch ID that puts them on the edge of a tile.
+            const int PatchID = gl_PrimitiveID;
+            ivec2 patchXY;
+            patchXY.y = PatchID / PATCHES_PER_TILE_EDGE;
+            patchXY.x = PatchID - patchXY.y * PATCHES_PER_TILE_EDGE;
 
-        // Identify patch edges that are adjacent to a patch of a different size.  The size difference
-        // is encoded in _in[n].adjacency, either 0.5, 1.0 or 2.0.
-        // neighbourMinusX refers to our adjacent neighbour in the direction of -ve x.  The value
-        // is the neighbour's size relative to ours.  Similarly for plus and Y, etc.  You really
-        // need a diagram to make sense of the adjacency conditions in the if statements. :-(
-        if (patchXY.x == 0) {
-            if (vtx_adjacency[0].x < 0.55f) {
-                // Deal with neighbours that are smaller.
-                gl_TessLevelOuter[0] = SmallerNeighbourAdjacencyFix(0, 1, sideLen, worldViewMat);
-            } else if (vtx_adjacency[0].x > 1.1f) {
-                // Deal with neighbours that are larger than us.
-                gl_TessLevelOuter[0] = LargerNeighbourAdjacencyFix(0, 1, patchXY.y, sideLen, worldViewMat);
+            // Identify patch edges that are adjacent to a patch of a different size.  The size difference
+            // is encoded in _in[n].adjacency, either 0.5, 1.0 or 2.0.
+            // neighbourMinusX refers to our adjacent neighbour in the direction of -ve x.  The value
+            // is the neighbour's size relative to ours.  Similarly for plus and Y, etc.  You really
+            // need a diagram to make sense of the adjacency conditions in the if statements. :-(
+            if (patchXY.x == 0) {
+                if (vtx_adjacency[0].x < 0.55f) {
+                    // Deal with neighbours that are smaller.
+                    gl_TessLevelOuter[0] = SmallerNeighbourAdjacencyFix(0, 1, sideLen, worldViewMat);
+                } else if (vtx_adjacency[0].x > 1.1f) {
+                    // Deal with neighbours that are larger than us.
+                    gl_TessLevelOuter[0] = LargerNeighbourAdjacencyFix(0, 1, patchXY.y, sideLen, worldViewMat);
+                }
+            } else if (patchXY.x == PATCHES_PER_TILE_EDGE - 1) {
+                if (vtx_adjacency[0].z < 0.55f) {
+                    gl_TessLevelOuter[2] = SmallerNeighbourAdjacencyFix(2, 3, sideLen, worldViewMat);
+                } else if (vtx_adjacency[0].z > 1.1f) {
+                    gl_TessLevelOuter[2] = LargerNeighbourAdjacencyFix(3, 2, patchXY.y, sideLen, worldViewMat);
+                }
             }
-        } else if (patchXY.x == PATCHES_PER_TILE_EDGE - 1) {
-            if (vtx_adjacency[0].z < 0.55f) {
-                gl_TessLevelOuter[2] = SmallerNeighbourAdjacencyFix(2, 3, sideLen, worldViewMat);
-            } else if (vtx_adjacency[0].z > 1.1f) {
-                gl_TessLevelOuter[2] = LargerNeighbourAdjacencyFix(3, 2, patchXY.y, sideLen, worldViewMat);
-            }
-        }
 
-        if (patchXY.y == 0) {
-            if (vtx_adjacency[0].y < 0.55f) {
-                gl_TessLevelOuter[1] = SmallerNeighbourAdjacencyFix(3, 0, sideLen, worldViewMat);
-            } else if (vtx_adjacency[0].y > 1.1f) {
-                gl_TessLevelOuter[1] = LargerNeighbourAdjacencyFix(0, 3, patchXY.x, sideLen, worldViewMat);	// NB: irregular index pattern - it's correct.
+            if (patchXY.y == 0) {
+                if (vtx_adjacency[0].y < 0.55f) {
+                    gl_TessLevelOuter[1] = SmallerNeighbourAdjacencyFix(3, 0, sideLen, worldViewMat);
+                } else if (vtx_adjacency[0].y > 1.1f) {
+                    gl_TessLevelOuter[1] = LargerNeighbourAdjacencyFix(0, 3, patchXY.x, sideLen, worldViewMat); // NB: irregular index pattern - it's correct.
+                }
+            } else if (patchXY.y == PATCHES_PER_TILE_EDGE - 1) {
+                if (vtx_adjacency[0].w < 0.55f) {
+                    gl_TessLevelOuter[3] = SmallerNeighbourAdjacencyFix(1, 2, sideLen, worldViewMat);
+                } else if (vtx_adjacency[0].w > 1.1f) {
+                    gl_TessLevelOuter[3] = LargerNeighbourAdjacencyFix(1, 2, patchXY.x, sideLen, worldViewMat); // NB: irregular index pattern - it's correct.
+                }
             }
-        } else if (patchXY.y == PATCHES_PER_TILE_EDGE - 1) {
-            if (vtx_adjacency[0].w < 0.55f) {
-                gl_TessLevelOuter[3] = SmallerNeighbourAdjacencyFix(1, 2, sideLen, worldViewMat);
-            } else if (vtx_adjacency[0].w > 1.1f) {
-                gl_TessLevelOuter[3] = LargerNeighbourAdjacencyFix(1, 2, patchXY.x, sideLen, worldViewMat);	// NB: irregular index pattern - it's correct.
-            }
-        }
-//#endif //LOW_QUALITY
-
 #else //MAX_TESS_LEVEL > 1
-        // Outer tessellation level
-        gl_TessLevelOuter[0] = gl_TessLevelOuter[1] = gl_TessLevelOuter[2] = gl_TessLevelOuter[3] = 1.0f;
+            // Outer tessellation level
+            gl_TessLevelOuter[0] = gl_TessLevelOuter[1] = gl_TessLevelOuter[2] = gl_TessLevelOuter[3] = 1.0f;
 #endif //MAX_TESS_LEVEL > 1
 
-        // Inner tessellation level
-        gl_TessLevelInner[0] = 0.5f * (gl_TessLevelOuter[0] + gl_TessLevelOuter[3]);
-        gl_TessLevelInner[1] = 0.5f * (gl_TessLevelOuter[2] + gl_TessLevelOuter[1]);
+            // Inner tessellation level
+            gl_TessLevelInner[0] = 0.5f * (gl_TessLevelOuter[0] + gl_TessLevelOuter[3]);
+            gl_TessLevelInner[1] = 0.5f * (gl_TessLevelOuter[2] + gl_TessLevelOuter[1]);
+        }
+    }
 
-        // Pass the patch verts along
-        gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-        // The VS displaces y for LOD calculations.  We drop it here so as not to displace twice in the DS.
-        gl_out[gl_InvocationID].gl_Position.y = 0.0f;
+    barrier();
 
-        tcs_tileSize[gl_InvocationID] = vtx_tileSize[gl_InvocationID];
-        tcs_ringID[gl_InvocationID] = vtx_ringID[gl_InvocationID];
+    // Pass the patch verts along
+    gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+    // The VS displaces y for LOD calculations.  We drop it here so as not to displace twice in the DS.
+    gl_out[gl_InvocationID].gl_Position.y = 0.0f;
+
+    tcs_tileSize[gl_InvocationID] = vtx_tileSize[gl_InvocationID];
+    tcs_ringID[gl_InvocationID] = vtx_ringID[gl_InvocationID];
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
+    if (gl_TessLevelOuter[0] < 0.f) {
+        tcs_debugColour[gl_InvocationID][0] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][1] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][2] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][3] = vec3(0.f);
+        tcs_debugColour[gl_InvocationID][4] = vec3(0.f);
+    } else {
         // Output tessellation level (used for wireframe coloring)
         // These are one colour for each tessellation level and linear graduations between.
         const vec3 DEBUG_COLOURS[6] =
         {
-            vec3(0,0,1), //  2 - blue   
-            vec3(0,1,1), //  4 - cyan   
-            vec3(0,1,0), //  8 - green  
-            vec3(1,1,0), // 16 - yellow 
+            vec3(0,0,1), //  2 - blue
+            vec3(0,1,1), //  4 - cyan
+            vec3(0,1,0), //  8 - green
+            vec3(1,1,0), // 16 - yellow
             vec3(1,0,1), // 32 - purple
             vec3(1,0,0), // 64 - red
         };
 
-        tcs_debugColour[gl_InvocationID][0] = DEBUG_COLOURS[clamp(int(log2(gl_TessLevelOuter[0])), 0, 5)];
-        tcs_debugColour[gl_InvocationID][1] = DEBUG_COLOURS[clamp(int(log2(gl_TessLevelOuter[1])), 0, 5)];
-        tcs_debugColour[gl_InvocationID][2] = DEBUG_COLOURS[clamp(int(log2(gl_TessLevelOuter[2])), 0, 5)];
-        tcs_debugColour[gl_InvocationID][3] = DEBUG_COLOURS[clamp(int(log2(gl_TessLevelOuter[3])), 0, 5)];
-        tcs_debugColour[gl_InvocationID][4] = DEBUG_COLOURS[clamp(int(log2(gl_TessLevelInner[0])), 0, 5)];
-#endif //TOGGLE_DEBUG
+        tcs_debugColour[gl_InvocationID][0] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[0], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][1] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[1], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][2] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[2], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][3] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelOuter[3], 1.f))), 0, 5)];
+        tcs_debugColour[gl_InvocationID][4] = DEBUG_COLOURS[clamp(int(log2(max(gl_TessLevelInner[0], 1.f))), 0, 5)];
     }
+#endif //TOGGLE_DEBUG
 }
 
 --TessellationE
@@ -268,7 +296,6 @@ layout(quads, fractional_even_spacing, cw) in;
 
 #include "terrainUtils.cmn"
 #include "sceneData.cmn"
-#include "waterData.cmn"
 
 layout(location = ATTRIB_FREE_START + 1) in float tcs_tileSize[];
 layout(location = ATTRIB_FREE_START + 2) in flat uint tcs_ringID[];
@@ -304,20 +331,6 @@ vec3 LerpDebugColours(in vec3 cIn[5], vec2 uv) {
 }
 #endif //TOGGLE_DEBUG || TOGGLE_TESS_LEVEL
 
-mat3 getTBNW(in vec3 normalW)
-{
-    // We need to compute tangent and bitengent vectors with 
-    // as cotangent_frame's results do not apply for what we need them to do
-    const vec3 N = normalize(normalW);
-    const vec3 T1 = cross(N, WORLD_Z_AXIS);
-    const vec3 T2 = cross(N, WORLD_Y_AXIS);
-    const vec3 T = normalize(length(T1) > length(T2) ? T1 : T2);
-    const vec3 B = normalize(-cross(N, T));
-    // Orthogonal matrix(each axis is a perpendicular unit vector)
-    // The transpose of an orthogonal matrix equals its inverse
-    return  mat3(T, B, N);
-}
-
 void main()
 {
     // Calculate the vertex position using the four original points and interpolate depending on the tessellation coordinates.
@@ -333,11 +346,10 @@ void main()
     setClipPlanes(); //Only need world vertex position for clipping
 #endif //!NO_CLIP_CULL_OUT
 
-    _out._normalW = QuaternionRotate(dvd_Transforms[TRANSFORM_IDX]._transform._rotation, getNormal(_out._texCoord));
-    _out._tbnWV = mat3(dvd_ViewMatrix) * getTBNW(_out._normalW);
+    _out._normalW = WORLD_Y_AXIS;
+    _out._tbnWV = mat3(1.f);
     _out._indirectionIDs = _in[0]._indirectionIDs;
-
-    tes_waterData = GetWaterDetails(_out._vertexW.xyz, TERRAIN_HEIGHT_OFFSET);
+    tes_waterData = vec2(0.f);
 
 #if defined(TOGGLE_DEBUG) || defined(TOGGLE_TESS_LEVEL)
     tes_debugColour = LerpDebugColours(tcs_debugColour[0], gl_TessCoord.xy);
