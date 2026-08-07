@@ -51,6 +51,13 @@ enum class FrameEventType : U8 {
     FRAME_EVENT_ENDED,
 };
 
+enum class FrameExecutionDomain : U8
+{
+    LOGIC = 0,
+    RENDER,
+    BOTH
+};
+
 struct FrameEvent {
     struct Time {
         struct Impl {
@@ -70,7 +77,7 @@ class FrameListenerManager;
 class FrameListener : public GUIDWrapper {
    public:
     /// Either give it a name
-    explicit FrameListener(const Str<64>& name, FrameListenerManager& parent, U32 callOrder);
+    explicit FrameListener(const Str<64>& name, FrameListenerManager& parent, U32 callOrder, FrameExecutionDomain domain = FrameExecutionDomain::LOGIC);
     virtual ~FrameListener() override;
 
     bool operator<(FrameListener& that) const noexcept {
@@ -103,6 +110,7 @@ class FrameListener : public GUIDWrapper {
 
     PROPERTY_R_IW(bool, enabled, false);
     PROPERTY_RW(Str<64>, name);
+    PROPERTY_R_IW(FrameExecutionDomain, executionDomain, FrameExecutionDomain::LOGIC);
 
    private:
     FrameListenerManager& _mgr;

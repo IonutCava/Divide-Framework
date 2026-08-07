@@ -5,9 +5,10 @@
 
 namespace Divide {
     /// Either give it a name
-    FrameListener::FrameListener(const Str<64>& name, FrameListenerManager& parent, const U32 callOrder)
+    FrameListener::FrameListener(const Str<64>& name, FrameListenerManager& parent, const U32 callOrder, const FrameExecutionDomain domain)
         : GUIDWrapper()
         , _name(name)
+        , _executionDomain(domain)
         , _mgr(parent)
         , _callOrder(callOrder)
     {

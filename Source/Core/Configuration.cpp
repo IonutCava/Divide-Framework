@@ -44,7 +44,9 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(runtime.frameRateLimit);
         GET_PARAM(runtime.enableVSync);
         GET_PARAM(runtime.adaptiveSync);
+        GET_PARAM(runtime.asyncOpenGLRenderThread);
         GET_PARAM(runtime.usePipelineCache);
+        GET_PARAM(runtime.asyncRenderQueueDepth);
         GET_PARAM_ATTRIB(runtime.splashScreenSize, width);
         GET_PARAM_ATTRIB(runtime.splashScreenSize, height);
         GET_PARAM_ATTRIB(runtime.windowSize, width);
@@ -211,7 +213,9 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(runtime.frameRateLimit);
     PUT_PARAM(runtime.enableVSync);
     PUT_PARAM(runtime.adaptiveSync);
+    PUT_PARAM(runtime.asyncOpenGLRenderThread);
     PUT_PARAM(runtime.usePipelineCache);
+    PUT_PARAM(runtime.asyncRenderQueueDepth);
     PUT_PARAM_ATTRIB(runtime.splashScreenSize, width);
     PUT_PARAM_ATTRIB(runtime.splashScreenSize, height);
     PUT_PARAM_ATTRIB(runtime.windowSize, width);
