@@ -473,7 +473,7 @@ Gaps to remember:
 
 - the current shared shader system assumes raster + compute + mesh/task only
 - the current descriptor model is built around buffers, sampled images, and storage images
-- the current documentable upload paths are buffer/image centric, not AS centric
+- the current documented upload paths are buffer/image centric, not AS centric
 
 For future agents, that means RT work is not “add one more Vulkan file”; it is a cross-cutting extension of the rendering model.
 
