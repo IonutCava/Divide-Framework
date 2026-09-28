@@ -86,7 +86,7 @@ namespace Divide {
 
         std::vector<VkImage> _swapchainImages;
         std::vector<VkImageView> _swapchainImageViews;
-        vector<bool> _swapchainImagePresented;
+        vector<U8> _swapchainImagePresented;
         vector<VkSemaphore> _renderSemaphores;
         U32 _swapchainImageIndex{ 0u };
     };

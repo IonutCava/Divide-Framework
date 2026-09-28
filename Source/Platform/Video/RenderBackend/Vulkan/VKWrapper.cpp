@@ -3109,26 +3109,35 @@ namespace Divide
         const bool scissorEnabled = GetStateTracker()._activeWindow->_activeState._isSet &&
                                     GetStateTracker()._activeWindow->_activeState._block._scissorTestEnabled;
         const vec2<U16> rtDimensions = GetStateTracker()._activeRenderTargetDimensions;
+        const VkRect2D fullScissor{ VkOffset2D{ 0, 0 }, VkExtent2D{ rtDimensions.width, rtDimensions.height } };
+
+        if ( !scissorEnabled )
+        {
+            vkCmdSetScissor( cmdBuffer, 0, 1, &fullScissor );
+            return true;
+        }
 
         const I32 maxWidth = to_I32( rtDimensions.width );
         const I32 maxHeight = to_I32( rtDimensions.height );
-        const VkRect2D targetScissor = [scissorEnabled, newScissor, maxWidth, maxHeight, rtDimensions]()
+        const I32 requestX0 = newScissor.offsetX;
+        const I32 requestY0 = newScissor.offsetY;
+        const I32 requestX1 = newScissor.offsetX + std::max( 0, newScissor.sizeX );
+        const I32 requestY1 = newScissor.offsetY + std::max( 0, newScissor.sizeY );
+
+        if ( requestX0 <= 0 && requestY0 <= 0 && requestX1 >= maxWidth && requestY1 >= maxHeight )
         {
-            if ( !scissorEnabled )
-            {
-                return VkRect2D{ VkOffset2D{0, 0}, VkExtent2D{ rtDimensions.width, rtDimensions.height } };
-            }
+            vkCmdSetScissor( cmdBuffer, 0, 1, &fullScissor );
+            return true;
+        }
 
-            const I32 x0 = std::max( 0, std::min( newScissor.offsetX, maxWidth ) );
-            const I32 y0 = std::max( 0, std::min( newScissor.offsetY, maxHeight ) );
-            const I32 x1 = std::max( 0, std::min( newScissor.offsetX + std::max( 0, newScissor.sizeX ), maxWidth ) );
-            const I32 y1 = std::max( 0, std::min( newScissor.offsetY + std::max( 0, newScissor.sizeY ), maxHeight ) );
-
-            return VkRect2D{
-                VkOffset2D{ x0, maxHeight - y1 },
-                VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
-            };
-        }();
+        const I32 x0 = std::max( 0, std::min( requestX0, maxWidth ) );
+        const I32 y0 = std::max( 0, std::min( requestY0, maxHeight ) );
+        const I32 x1 = std::max( 0, std::min( requestX1, maxWidth ) );
+        const I32 y1 = std::max( 0, std::min( requestY1, maxHeight ) );
+        const VkRect2D targetScissor{
+            VkOffset2D{ x0, maxHeight - y1 },
+            VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
+        };
 
         vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
         return true;
