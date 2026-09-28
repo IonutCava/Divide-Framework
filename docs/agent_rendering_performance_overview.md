@@ -262,7 +262,7 @@ Key behavior:
 - STB decodes standard image formats
 - DevIL handles DDS loading compatibility
 - NVTT can create DDS cache files for later fast loads
-- DDS conversion can be scheduled on the `HIGH_PRIORITY` task pool
+- DDS conversion can be scheduled on the `HIGH_PRIORITY` task pool when the NVTT cache-generation path is available
 
 Platform note:
 
