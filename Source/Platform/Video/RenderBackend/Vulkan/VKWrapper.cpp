@@ -2357,15 +2357,18 @@ namespace Divide
                 VkRenderingInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_RENDERING_INFO };
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
+                    VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
                     const RTClearEntry& colourClearEntry = crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )];
                     const bool shouldClear = colourClearEntry._enabled;
+                    const bool canLoadPreviousContents = !shouldClear && swapChain->currentImageWasPresented();
 
                     VkRenderingAttachmentInfo attachmentInfo
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
                         .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                        .loadOp = shouldClear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+                        .loadOp = shouldClear ? VK_ATTACHMENT_LOAD_OP_CLEAR
+                                              : (canLoadPreviousContents ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_DONT_CARE),
                         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
                         .clearValue =
                         {
@@ -2380,8 +2383,6 @@ namespace Divide
                     };
 
                     PROFILE_SCOPE( "Draw to screen", Profiler::Category::Graphics);
-
-                    VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
                     attachmentInfo.imageView = swapChain->getCurrentImageView();
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = 1u;
@@ -2411,10 +2412,12 @@ namespace Divide
                     imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
                     imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                    imageBarrier.srcStageMask = shouldClear
+                    imageBarrier.srcStageMask = (shouldClear || !canLoadPreviousContents)
                                                ? VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
                                                : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-                    imageBarrier.oldLayout = shouldClear ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    imageBarrier.oldLayout = (shouldClear || !canLoadPreviousContents)
+                                           ? VK_IMAGE_LAYOUT_UNDEFINED
+                                           : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                     dependencyInfo.imageMemoryBarrierCount = 1u;
@@ -2488,6 +2491,7 @@ namespace Divide
                     dependencyInfo.pImageMemoryBarriers = &imageBarrier;
                     
                     VK_PROFILE( vkCmdPipelineBarrier2,cmdBuffer, &dependencyInfo );
+                    stateTracker._activeWindow->_swapChain->markCurrentImagePresented();
                 }
                 else
                 {

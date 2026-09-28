@@ -31,6 +31,7 @@ namespace Divide {
         _swapChain.destroy_image_views(_swapchainImageViews);
         _swapchainImages.clear();
         _swapchainImageViews.clear();
+        _swapchainImagePresented.clear();
 
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
@@ -93,6 +94,7 @@ namespace Divide {
         _swapChain = vkbSwapchain.value();
         _swapchainImages = _swapChain.get_images().value();
         _swapchainImageViews = _swapChain.get_image_views().value();
+        _swapchainImagePresented.assign(_swapchainImages.size(), false);
         _frames.resize(_swapchainImages.size());
         _renderSemaphores.resize(_swapchainImages.size());
 
@@ -228,6 +230,16 @@ namespace Divide {
     VkImageView VKSwapChain::getCurrentImageView() const noexcept
     {
         return _swapchainImageViews[_swapchainImageIndex];
+    }
+
+    bool VKSwapChain::currentImageWasPresented() const noexcept
+    {
+        return _swapchainImagePresented[_swapchainImageIndex];
+    }
+
+    void VKSwapChain::markCurrentImagePresented() noexcept
+    {
+        _swapchainImagePresented[_swapchainImageIndex] = true;
     }
 
     bool VKSwapChain::getFrameData(FrameData*& dataOut) const noexcept
