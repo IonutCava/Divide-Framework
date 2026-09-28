@@ -408,7 +408,7 @@ Already present:
 
 - `ShaderType` already includes `MESH` and `TASK`
 - SPIR-V compilation already maps those shader types through glslang
-- shared shader headers already inject `GL_EXT_mesh_shader`
+- shared shader headers already enable `GL_EXT_mesh_shader` for mesh/task stages
 - OpenGL and Vulkan shader-stage lookup tables already contain mesh/task stages
 - `PrimitiveTopology::MESHLET` already exists
 - command validation already treats mesh shading dispatches differently from classic draw calls
@@ -544,7 +544,7 @@ Useful current hooks:
 
 ### Async compute / queue usage
 
-Vulkan already exposes queue types:
+Vulkan already exposes queue types in `vkResources.h`, while queue selection and immediate-command usage live in `vkDevice.cpp` and `VKWrapper.cpp`:
 
 - `GRAPHICS`
 - `COMPUTE`
