@@ -237,7 +237,7 @@ Upload behavior:
 - `commitData()` compacts the CPU vertex layout to only the attributes actually present
 - full layout changes call `setBuffer(...)`
 - incremental updates call `updateBuffer(...)`
-- indices may be packed to 16-bit when `_smallIndices` is valid
+- indices may be packed to 16-bit when the mesh vertex count allows it
 - CPU copies can be discarded after upload when dynamic updates are not needed
 
 This makes geometry import sensitive to:
@@ -263,6 +263,10 @@ Key behavior:
 - DevIL handles DDS loading compatibility
 - NVTT can create DDS cache files for later fast loads
 - DDS conversion can be scheduled on the `HIGH_PRIORITY` task pool
+
+Platform note:
+
+- DDS cache creation through NVTT is compiled out on macOS, so that cache-generation path is not universally available even though DDS loading still exists through the shared image stack
 
 Shared texture creation path:
 
