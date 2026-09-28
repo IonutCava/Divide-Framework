@@ -398,7 +398,161 @@ When touching thread-sensitive code, watch for:
 - command-buffer queue locks
 - background asset processing that races resource finalization on the render thread/main thread
 
-## 16. What to inspect before changing major systems
+## 16. Feature-readiness snapshot
+
+Use this as the short “what already exists vs. what is still missing” section.
+
+### Mesh shaders / meshlets
+
+Already present:
+
+- `ShaderType` already includes `MESH` and `TASK`
+- SPIR-V compilation already maps those shader types through glslang
+- shared shader headers already inject `GL_EXT_mesh_shader`
+- OpenGL and Vulkan shader-stage lookup tables already contain mesh/task stages
+- `PrimitiveTopology::MESHLET` already exists
+- command validation already treats mesh shading dispatches differently from classic draw calls
+
+Still missing or incomplete:
+
+- Vulkan device creation detects `VK_EXT_mesh_shader`, but the actual feature-enabling block is currently commented out
+- there is no mature end-to-end runtime path demonstrating mesh/task pipelines as a first-class feature
+- any new mesh-shader path must verify pipeline creation, command encoding, descriptor expectations, and backend capability fallback rules
+
+### Hardware ray tracing
+
+Already present:
+
+- Vulkan helper initializers exist for acceleration-structure and ray-tracing pipeline structs in `vkInitializers.h`
+
+Still missing or incomplete:
+
+- no Vulkan device feature/extension enablement for acceleration structures or ray-tracing pipelines
+- no shared shader-stage enums for raygen / miss / closest-hit / any-hit / intersection / callable
+- no descriptor binding type for acceleration structures in the backend-neutral descriptor model
+- no BLAS/TLAS resource abstraction, build path, or lifetime management layer
+- no command-buffer or pipeline integration for ray-tracing dispatch
+
+Practical conclusion: mesh shaders have partial scaffolding; hardware ray tracing is mostly at “helper types exist, integration does not”.
+
+## 17. Mesh-shader and meshlet integration details
+
+If you implement mesh shading, the existing engine abstractions already point to the intended path:
+
+- mesh/task shaders are real shader-module types, not placeholders
+- `PrimitiveTopology::MESHLET` is the topology used to represent a mesh-shader pipeline
+- both backends treat mesh shading more like dispatch than classic indexed drawing
+- classic indirect draw submission explicitly rejects the `MESHLET` topology, so mesh shading needs its own command path assumptions
+
+Important implications:
+
+- do not try to shoehorn mesh shading through the normal indexed draw path
+- inspect command validation and backend submit paths first
+- audit all pipeline code that branches on primitive topology
+- verify workgroup-limit validation, because mesh/task dispatch uses mesh-shading limits instead of compute limits
+
+For the Vulkan path specifically:
+
+- enabling `VK_EXT_mesh_shader` in device selection is not enough; the commented feature block in `vkDevice.cpp` must become a real capability path
+- you will likely need an explicit capability/fallback layer so unsupported devices fall back to vertex/geometry pipelines cleanly
+
+## 18. Ray-tracing integration details
+
+If you implement HW ray tracing, expect to touch more layers than any other planned feature.
+
+Minimum affected areas:
+
+- Vulkan device creation (`vkDevice.cpp`) for extension/feature enablement
+- backend-neutral shader/pipeline enums
+- descriptor binding model
+- shader reflection / stage visibility logic
+- Vulkan resource abstractions for BLAS/TLAS and scratch/update buffers
+- command-buffer encoding for AS build, compaction, barriers, and ray dispatch
+
+Gaps to remember:
+
+- the current shared shader system assumes raster + compute + mesh/task only
+- the current descriptor model is built around buffers, sampled images, and storage images
+- the current documentable upload paths are buffer/image centric, not AS centric
+
+For future agents, that means RT work is not “add one more Vulkan file”; it is a cross-cutting extension of the rendering model.
+
+## 19. Render targets, pass insertion points, and where new features should hook in
+
+Most full-screen or multi-pass features plug into one of two places:
+
+- core render-target creation in `GFXDevice.cpp`
+- post-processing or pre-render operators under `Source/Rendering/PostFX`
+
+Current globally important targets include:
+
+- `SCREEN`
+- `SCREEN_PREV`
+- `NORMALS_RESOLVED`
+- `SSAO_RESULT`
+- `SSR_RESULT`
+- `BLOOM_RESULT`
+- `OIT`
+- utility targets such as Hi-Z and blur buffers
+
+Patterns to follow:
+
+- permanent/shared targets are typically allocated in `GFXDevice.cpp`
+- feature-local scratch targets are often allocated by `PreRenderBatch` or a specific post-FX operator
+- passes are driven by `BeginRenderPassCommand` plus normal pipeline/resource binding commands
+
+Use this rule of thumb:
+
+- screen-space effect with existing scene inputs: likely belongs in PostFX / pre-render operators
+- stage-specific lighting or visibility data: likely belongs in renderer or render-pass code
+- new persistent scene outputs used by multiple stages: likely need a named render target in `GFXDevice.cpp`
+
+## 20. Clustered geometry / volumetrics / async compute notes
+
+### Clustered geometry
+
+The current clustered system is lighting-centric, but it already provides useful patterns for geometry clustering work:
+
+- stage-scoped GPU buffers
+- compute-driven precomputation
+- descriptor registration through `PER_PASS`
+- indirect draw command infrastructure already exists in `RenderPassExecutor`
+
+If you add clustered geometry, inspect:
+
+- `NodeTransformData`, `NodeMaterialData`, and `NodeIndirectionData`
+- indirect command generation in `RenderPassExecutor`
+- backend indirect draw submission
+- whether a geometry-cluster data structure belongs in `PER_BATCH`, `PER_PASS`, or a new shared buffer
+
+### Volumetrics
+
+Current fog is scene-state/config driven, not a real volumetric pipeline.
+
+Implication:
+
+- volumetrics will need a deliberate choice between:
+  - a screen-space post process
+  - a clustered/froxel compute pipeline
+  - a stage-integrated lighting pass
+
+Useful current hooks:
+
+- `PostFX` and `PreRenderBatch` for screen-space integration
+- `Renderer` for compute-heavy per-stage lighting-style preparation
+- named render targets in `GFXDevice.cpp` for persistent volumetric history, scattering, or froxel textures
+
+### Async compute / queue usage
+
+Vulkan already exposes queue types:
+
+- `GRAPHICS`
+- `COMPUTE`
+- `TRANSFER`
+
+However, several current upload paths still use the graphics immediate-command context. Do not assume async compute is already wired just because queue enums exist. Any real async-compute feature needs a queue-ownership, synchronization, and pass-dependency audit.
+
+## 21. What to inspect before changing major systems
 
 ### If changing render-stage ordering
 
@@ -434,7 +588,7 @@ When touching thread-sensitive code, watch for:
 - GL: `glMemoryManager`, `glBufferImpl`
 - VK: `VKWrapper`, `vkBufferImpl`, `vkTexture`
 
-## 17. Practical debugging heuristics
+## 22. Practical debugging heuristics
 
 - If both GL and VK break, start in shared code:
   - `GFXDevice`
@@ -456,7 +610,7 @@ When touching thread-sensitive code, watch for:
   - LoD/index partitioning
   - array/cubemap texture face ordering
 
-## 18. Suggested first reads for a new agent
+## 23. Suggested first reads for a new agent
 
 Read in this order if you need fast situational awareness:
 
@@ -479,3 +633,24 @@ That sequence gives the best payoff for understanding:
 - Vulkan-specific constraints
 - memory/upload behavior
 - asset ingestion
+
+### Feature-specific fast paths
+
+- mesh shaders:
+  1. `Source/Platform/Video/Headers/RenderAPIEnums.h`
+  2. `Source/Platform/Video/Shaders/ShaderProgram.cpp`
+  3. `Source/Platform/Video/Shaders/GLSLToSPIRV.cpp`
+  4. `Source/Platform/Video/CommandBuffer.cpp`
+  5. `Source/Platform/Video/RenderBackend/Vulkan/vkDevice.cpp`
+- ray tracing:
+  1. `Source/Platform/Video/RenderBackend/Vulkan/vkDevice.cpp`
+  2. `Source/Platform/Video/RenderBackend/Vulkan/Headers/vkInitializers.h`
+  3. `Source/Platform/Video/Headers/RenderAPIEnums.h`
+  4. `Source/Platform/Video/Shaders/ShaderProgram.cpp`
+  5. `Source/Platform/Video/Headers/RenderAPIWrapper.h`
+- volumetrics:
+  1. `Source/Platform/Video/GFXDevice.cpp`
+  2. `Source/Rendering/PostFX/PreRenderBatch.cpp`
+  3. `Source/Rendering/PostFX/PostFX.cpp`
+  4. `Source/Rendering/Renderer.cpp`
+  5. `Source/Rendering/RenderPass/RenderPassExecutor.cpp`
