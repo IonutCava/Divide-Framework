@@ -2366,7 +2366,8 @@ namespace Divide
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
-.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
                         .loadOp = shouldClear ? VK_ATTACHMENT_LOAD_OP_CLEAR
                                               : (canLoadPreviousContents ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_DONT_CARE),
                         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
