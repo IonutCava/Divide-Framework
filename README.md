@@ -52,6 +52,45 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 ### MacOS: 
 - ToDo
 
+## Technical overview for contributors
+
+### Geometry loading and GPU upload
+- Mesh assets are loaded through `MeshImporter`, which first tries the engine cache (`.DVDGeom` / `.DVDAnim`) and falls back to Assimp-based conversion when the cache is missing or disabled.
+- The Assimp conversion path lives in `Source/Geometry/Importer/DVDConverter.cpp` and applies a fairly aggressive post-process stack: tangent generation, identical-vertex merging, cache-locality improvements, normal generation, triangulation, invalid-data cleanup, mesh optimization, and bounding-box generation.
+- Imported meshes are normalized into `Import::SubMeshData` records containing packed vertex attributes, material metadata, triangle/index lists, and optional skinning data.
+- The importer then runs meshoptimizer on the data:
+  - LoD 0 is remapped and optimized for vertex cache, overdraw, and vertex fetch.
+  - Additional LoDs are generated with `meshopt_simplify` when the source mesh is large enough.
+- All submeshes for a model share one `VertexBuffer`. `DVDConverter` precomputes the total vertex/index count, allocates a single engine-side vertex/index buffer pair, appends each submesh's indices as partitions, and writes vertex attributes into the shared buffer.
+- `VertexBuffer::commitData()` trims the CPU vertex layout down to only the attributes actually used by the mesh before upload. On first upload or layout changes it recreates the GPU buffers with the final compact stride; later dynamic updates only rewrite the affected ranges.
+- `Mesh` owns the shared geometry buffer, while `SubMesh` resources only reference partitions inside that buffer plus per-submesh material and bounding information. This keeps imported models from duplicating GPU geometry storage.
+
+### Texture loading and GPU upload
+- Textures are loaded through `Texture::loadInternal()`, which splits comma-separated asset lists into array layers or cubemap faces and accumulates them into `ImageTools::ImageData`.
+- `ImageTools` uses STB for regular image decoding, DevIL for DDS handling, and NVTT to build DDS cache files for eligible textures. The DDS conversion step can run asynchronously on the high-priority task pool and is stored under the texture metadata/cache path for future loads.
+- Import options on each texture control whether DDS caching is used, whether a texture should be treated as a normal map, and whether alpha should be analyzed for transparency/translucency.
+- After CPU-side decode, `Texture::createWithData()` calls the backend-specific texture implementation:
+  - The generic layer determines dimensions, layer count, mip policy, and base format.
+  - The backend reserves storage, uploads each mip/layer payload, and finalizes the resource into a shader-readable state.
+- The engine also caches alpha-analysis metadata separately so future loads can skip expensive transparency scans.
+
+### OpenGL backend memory model
+- OpenGL buffer memory is managed by a custom allocator in `glMemoryManager`. It creates persistently mapped buffer chunks, suballocates `Block`s from those chunks, and merges free ranges on deallocation.
+- `glBufferImpl` requests aligned suballocations from the allocator based on buffer type (vertex/index/uniform/storage), so many logical engine buffers can share larger GL allocations instead of creating one GL buffer object per upload.
+- Frequently updated GL buffers stay persistently mapped and are protected with `glLockManager` sync objects to avoid CPU writes racing GPU reads.
+- One-shot buffers still use the same allocator path but are treated as static data after upload.
+- OpenGL textures are simpler: they rely on driver-owned texture objects created with immutable storage (`glTextureStorage*` / multisample variants). The engine does not pool texture memory on the GL path; it manages texture object lifetime and data upload, while the driver manages the actual residency.
+
+### Vulkan backend memory model
+- Vulkan uses AMD's Vulkan Memory Allocator (VMA). A global allocator is created during backend initialization and is then used for both buffers and images.
+- `vkBufferImpl` prefers device-local memory for GPU buffers. If a buffer is frequently updated or explicitly host-visible, it requests mapped host access from VMA; otherwise it allocates device memory and uses staging buffers plus transfer commands for uploads.
+- Non-mappable Vulkan buffers keep an internal staging buffer and enqueue copy requests into the transfer/graphics submission path. Mappable buffers write directly into the VMA-mapped allocation.
+- `vkTexture` allocates images through VMA as dedicated device-preferred allocations, uses staging buffers for texture payload uploads, and performs explicit image layout transitions before and after copies.
+- Vulkan texture uploads also generate mipmaps on the GPU when needed, and read/write capable textures opt into the image usage flags required by the requested engine-side `ImageUsage` bits.
+- In short:
+  - OpenGL uses a custom persistent-mapped suballocator for buffers and raw driver texture objects for images.
+  - Vulkan uses VMA-backed allocations, explicit staging copies, and explicit image/buffer synchronization.
+
 ## Features:
 
 * OpenGL 4.6 (AZDO) renderer
