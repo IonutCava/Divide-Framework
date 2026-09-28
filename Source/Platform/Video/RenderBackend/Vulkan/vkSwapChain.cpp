@@ -214,7 +214,13 @@ namespace Divide {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
-        return _device.queuePresent( QueueType::GRAPHICS, presentInfo);
+        const VkResult presentResult = _device.queuePresent( QueueType::GRAPHICS, presentInfo );
+        if ( presentResult == VK_SUCCESS || presentResult == VK_SUBOPTIMAL_KHR )
+        {
+            markCurrentImagePresented();
+        }
+
+        return presentResult;
     }
 
     vkb::Swapchain& VKSwapChain::getSwapChain() noexcept

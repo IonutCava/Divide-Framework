@@ -2492,7 +2492,6 @@ namespace Divide
                     dependencyInfo.pImageMemoryBarriers = &imageBarrier;
                     
                     VK_PROFILE( vkCmdPipelineBarrier2,cmdBuffer, &dependencyInfo );
-                    stateTracker._activeWindow->_swapChain->markCurrentImagePresented();
                 }
                 else
                 {
