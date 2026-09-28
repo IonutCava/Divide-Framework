@@ -140,12 +140,6 @@ namespace Divide {
         return ret;
     }
 
-    ShaderResult vkShaderProgram::validatePreBind( const bool rebind )
-    {
-        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-        return ShaderProgram::validatePreBind( rebind );
-    }
-
     bool vkShaderProgram::loadInternal(hashMap<U64, PerFileShaderData>& fileData, bool overwrite)
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );

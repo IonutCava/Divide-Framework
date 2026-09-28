@@ -196,7 +196,7 @@ namespace Divide
 
         bool recompile( bool& skipped );
 
-        virtual ShaderResult validatePreBind( bool rebind = true );
+        virtual ShaderResult validatePreBind( const Configuration& config, bool rebind = true );
 
         [[nodiscard]] bool uploadUniformData( const UniformData& data, DescriptorSet& set, GFX::MemoryBarrierCommand& memCmdInOut );
 

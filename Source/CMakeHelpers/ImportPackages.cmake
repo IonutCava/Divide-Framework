@@ -38,14 +38,17 @@ find_package(Catch2 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
+find_package(SDL3_mixer CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+find_package(SimpleIni CONFIG REQUIRED)
+find_package(Jolt CONFIG REQUIRED)
 
 if(MAC_OS_BUILD)
     find_package(date CONFIG REQUIRED)
-    if (HAS_NEON)
+    if (NEON_OPT)
         find_path(SSE2NEON_INCLUDE_DIRS "sse2neon/sse2neon.h")
         include_directories( SYSTEM ${SSE2NEON_INCLUDE_DIRS})
     endif()
@@ -55,7 +58,7 @@ if(LINUX_OS_BUILD)
     include(CMakeHelpers/PlatformHelpers/FindWayland.cmake)
 endif()
 
-find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+
 find_path(expat_INCLUDE_DIR "expat.h")
 find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 
@@ -127,7 +130,6 @@ include_directories(
     ${Stb_INCLUDE_DIR}
     ${IL_INCLUDE_DIR}
     ${Vulkan_INCLUDE_DIR}
-    ${SIMPLEINI_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIR}
     ${Boost_INCLUDE_DIR}
     ${expat_INCLUDE_DIR}
@@ -154,7 +156,6 @@ set(EXTERNAL_LIBS
     fmt::fmt
     OptickCore
     EASTL
-    Jolt
     OpenAL::OpenAL
     expat::expat
     imgui::imgui
@@ -173,12 +174,14 @@ set(EXTERNAL_LIBS
     RecastNavigation::DebugUtils
     RecastNavigation::DetourCrowd
     SDL3::SDL3
-    SDL3_mixer::SDL3_mixer
     SDL3_image::SDL3_image
+    $<IF:$<TARGET_EXISTS:SDL3_mixer::SDL3_mixer>,SDL3_mixer::SDL3_mixer,SDL3_mixer::SDL3_mixer-static>
     glslang::glslang
     glslang::glslang-default-resource-limits
     glslang::SPIRV
     #glslang::SPVRemapper
+    SimpleIni::SimpleIni
+    Jolt::Jolt
 )
 
 if(MAC_OS_BUILD)

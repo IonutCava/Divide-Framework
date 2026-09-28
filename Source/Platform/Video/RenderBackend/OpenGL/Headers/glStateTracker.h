@@ -57,6 +57,7 @@ namespace Divide {
             COUNT
         };
 
+        void onFrameEnd();
         void setDefaultState();
 
         void setBlending(const BlendingSettings& blendingProperties);
@@ -97,7 +98,7 @@ namespace Divide {
         [[nodiscard]] bool      unbindTextures();
         /// Bind a texture specified by a GL handle and GL type to the specified unit
         /// using the sampler object defined by handle value
-        [[nodiscard]] BindResult bindTexture( gl46core::GLubyte unit, gl46core::GLuint handle, gl46core::GLuint samplerHandle = 0u);
+        [[nodiscard]] BindResult bindTexture( gl46core::GLubyte unit, gl46core::GLuint handle, gl46core::GLuint samplerHandle);
         [[nodiscard]] BindResult bindTextureImage( gl46core::GLubyte unit, gl46core::GLuint handle, gl46core::GLint level, bool layered, gl46core::GLint layer, gl46core::GLenum access, gl46core::GLenum format);
         /// Bind multiple textures specified by an array of handles and an offset unit
         [[nodiscard]] BindResult bindTextures( gl46core::GLubyte unitOffset, gl46core::GLuint textureCount, const gl46core::GLuint* textureHandles, const gl46core::GLuint* samplerHandles);
@@ -149,7 +150,6 @@ namespace Divide {
         RenderStateBlock _activeState{};
 
         AttributeSettings _currentAttributes;
-
 
         Pipeline const* _activePipeline{ nullptr };
         glShaderProgram* _activeShaderProgram{ nullptr };

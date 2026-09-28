@@ -77,7 +77,7 @@ class glShader final : public ShaderModule
 
    private:
     friend class glShaderProgram;
-    [[nodiscard]] ShaderResult uploadToGPU();
+    [[nodiscard]] ShaderResult uploadToGPU(const Configuration& config);
 
     void onParentValidation();
 

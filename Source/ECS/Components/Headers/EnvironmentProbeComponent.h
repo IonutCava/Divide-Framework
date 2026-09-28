@@ -69,7 +69,7 @@ public:
     };
 
     struct Names {
-        inline static const char* updateType[] = {
+        static constexpr const char* updateType[] = {
             "Always", "On Dirty", "On Rate", "Once", "ERROR!"
         };
     };

@@ -120,6 +120,7 @@ else() #MSVC_COMPILER
                                                 -Wno-implicit-fallthrough              -Wno-inconsistent-missing-override            -Wno-inconsistent-missing-destructor-override
                                                 -Wno-deprecated-declarations           -Wno-deprecated-copy-with-dtor                -Wno-deprecated-copy-with-user-provided-dtor
                                                 -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
+                                                -Wno-padded
         )
 
     elseif( GNU_COMPILER )
@@ -143,7 +144,6 @@ add_library(${APP_LIB_DIVIDE} STATIC "EngineMain.cpp"
                                      ${THIRD_PARTY_FETCH_SRC_FILES}
 )
 
-target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Jolt)
 target_link_libraries(${APP_LIB_DIVIDE} PUBLIC NRI)
 
 if( WINDOWS_OS_BUILD )

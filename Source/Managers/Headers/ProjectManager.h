@@ -215,22 +215,9 @@ namespace Divide
         [[nodiscard]] ErrorCode loadProject( const ProjectID& targetProject, bool deferToStartOfFrame );
 
         // returns selection callback id
-        size_t addSelectionCallback( const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback )
-        {
-            static std::atomic_size_t index = 0u;
+        size_t addSelectionCallback( const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback );
 
-            const size_t idx = index.fetch_add( 1u );
-            _selectionChangeCallbacks.push_back( std::make_pair( idx, selectionCallback ) );
-            return idx;
-        }
-
-        bool removeSelectionCallback( const size_t idx )
-        {
-            return dvd_erase_if( _selectionChangeCallbacks, [idx]( const auto& entry ) noexcept
-            {
-                return entry.first == idx;
-            } );
-        }
+        bool removeSelectionCallback( const size_t idx );
 
         [[nodiscard]] bool resetSelection( PlayerIndex idx, const bool resetIfLocked );
         void setSelected( PlayerIndex idx, const vector<SceneGraphNode*>& SGNs, bool recursive );

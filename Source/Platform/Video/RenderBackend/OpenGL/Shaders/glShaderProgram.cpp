@@ -151,10 +151,10 @@ void glShaderProgram::processValidation()
     }
 }
 
-ShaderResult glShaderProgram::validatePreBind(const bool rebind)
+ShaderResult glShaderProgram::validatePreBind(const Configuration& config, const bool rebind)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-    ShaderResult ret = ShaderProgram::validatePreBind(rebind);
+    ShaderResult ret = ShaderProgram::validatePreBind(config, rebind);
     if ( ret == ShaderResult::OK)
     {
         if (!_stagesBound && rebind)
@@ -181,7 +181,7 @@ ShaderResult glShaderProgram::validatePreBind(const bool rebind)
 
                 for ( glShaderEntry& shader : _shaderStage)
                 {
-                    ret = shader._shader->uploadToGPU();
+                    ret = shader._shader->uploadToGPU(config);
                     if (ret != ShaderResult::OK) {
                         _stagesBound = true;
                         break;
@@ -245,7 +245,7 @@ ShaderResult glShaderProgram::bind()
     PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
     // If the shader isn't ready or failed to link, stop here
-    const ShaderResult ret = validatePreBind(true);
+    const ShaderResult ret = validatePreBind(_context.context().config(), true);
     if (ret != ShaderResult::OK)
     {
         return ret;
