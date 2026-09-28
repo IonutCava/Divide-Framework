@@ -118,10 +118,56 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
             }
 
             gl46core::GLuint shader = GL_NULL_HANDLE;
-            DIVIDE_GPU_ASSERT(shader != 0u && !data._sourceCodeGLSL.empty());
+            DIVIDE_GPU_ASSERT( !data._sourceCodeGLSL.empty() || !data._sourceCodeSpirV.empty() );
 
             shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-            if (config.debug.renderer.useSPIRVForOpenGL && !data._sourceCodeSpirV.empty())
+            DIVIDE_GPU_ASSERT( shader != 0u && shader != GL_NULL_HANDLE );
+
+            static I8 s_spirvSupportState = -1;
+            const auto SupportsSPIRVForGL = [&]()
+            {
+                if ( s_spirvSupportState >= 0 )
+                {
+                    return s_spirvSupportState == 1;
+                }
+
+                gl46core::GLint formatCount = 0;
+                gl46core::glGetIntegerv( gl46core::GL_NUM_SHADER_BINARY_FORMATS, &formatCount );
+                bool supported = false;
+                if ( formatCount > 0 )
+                {
+                    vector<gl46core::GLint> formats( formatCount, 0 );
+                    gl46core::glGetIntegerv( gl46core::GL_SHADER_BINARY_FORMATS, formats.data() );
+                    for ( const gl46core::GLint format : formats )
+                    {
+                        if ( format == to_I32( gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V ) )
+                        {
+                            supported = true;
+                            break;
+                        }
+                    }
+                }
+
+                s_spirvSupportState = supported ? 1 : 0;
+                return supported;
+            };
+
+            const bool useOpenGLSPIRVPath = config.debug.renderer.useSPIRVForOpenGL &&
+                                            !data._sourceCodeSpirV.empty() &&
+                                            SupportsSPIRVForGL();
+            if ( config.debug.renderer.useSPIRVForOpenGL &&
+                 !data._sourceCodeSpirV.empty() &&
+                 !useOpenGLSPIRVPath )
+            {
+                static bool s_reportedSPIRVFallback = false;
+                if ( !s_reportedSPIRVFallback )
+                {
+                    s_reportedSPIRVFallback = true;
+                    Console::warnfn( "OpenGL SPIR-V path requested for shader [{}] but GL_ARB_gl_spirv is not available. Falling back to GLSL source compilation.", _name.c_str() );
+                }
+            }
+
+            if (useOpenGLSPIRVPath)
             {
                 gl46core::glShaderBinary(
                     1,

@@ -180,9 +180,18 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
 
     shaderStrings[0] = pshader;
     shader.setStrings( shaderStrings, 1 );
-    shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientOpenGL, 100 );
-    shader.setEnvClient( glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450 );
-    shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_6);
+    if ( renderAPI == Divide::RenderAPI::Vulkan )
+    {
+        shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100 );
+        shader.setEnvClient( glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2 );
+        shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_6 );
+    }
+    else
+    {
+        shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientOpenGL, 100 );
+        shader.setEnvClient( glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450 );
+        shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_0 );
+    }
 
     const auto PrintError = [&shader, &pshader]()
     {

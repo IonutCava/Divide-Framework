@@ -1055,11 +1055,13 @@ namespace Divide
     {
         GetStateTracker()._activeRenderTargetID = SCREEN_TARGET_ID;
         GetStateTracker()._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
+        GetStateTracker()._pushConstantsValid = false;
     }
 
     void GL_API::flushCommand( GFX::CommandBase* cmd )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+        static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
 
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
@@ -1282,6 +1284,7 @@ namespace Divide
                     }
                 }
                 Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstantsCmd->_fastData );
+                s_stateTracker._pushConstantsValid = pushConstantsCmd->_fastData.set();
 
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
@@ -1365,6 +1368,15 @@ namespace Divide
 
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
+                    if ( !s_stateTracker._pushConstantsValid && s_stateTracker._activeShaderProgram != nullptr )
+                    {
+                        PushConstantsStruct defaultConstants{};
+                        defaultConstants.data[0] = s_defaultPushConstants[0];
+                        defaultConstants.data[1] = s_defaultPushConstants[1];
+                        Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, defaultConstants );
+                        s_stateTracker._pushConstantsValid = true;
+                    }
+
                     U32 drawCount = 0u;
                     const auto& drawCommands = cmd->As<GFX::DrawCommand>()->_drawCommands;
 
@@ -1395,6 +1407,15 @@ namespace Divide
 
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
+                    if ( !s_stateTracker._pushConstantsValid && s_stateTracker._activeShaderProgram != nullptr )
+                    {
+                        PushConstantsStruct defaultConstants{};
+                        defaultConstants.data[0] = s_defaultPushConstants[0];
+                        defaultConstants.data[1] = s_defaultPushConstants[1];
+                        Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, defaultConstants );
+                        s_stateTracker._pushConstantsValid = true;
+                    }
+
                     const GFX::DispatchShaderTaskCommand* crtCmd = cmd->As<GFX::DispatchShaderTaskCommand>();
 
                     switch (s_stateTracker._activeTopology)
@@ -1885,6 +1906,7 @@ namespace Divide
             else
             {
                 s_stateTracker._activeShaderProgram = glProgram;
+                s_stateTracker._pushConstantsValid = false;
             }
             context.descriptorSet( DescriptorSetUsage::PER_DRAW ).dirty(true);
         }
