@@ -188,6 +188,15 @@ Allocator setup:
 - `VKWrapper.cpp` creates a global VMA allocator once the device is ready
 - that allocator is then reused for both buffer and image allocations
 
+Y-direction convention (shared by all backends, OpenGL is the reference):
+
+- client code never branches on the render API for Y: projection matrices, clip space (Y up), NDC-to-UV math, texture origin (bottom-left, loaders flip on import), viewport and scissor rects (bottom-left origin) are identical for OpenGL and Vulkan
+- Vulkan offscreen render targets use exactly OpenGL's row layout (no viewport/scissor conversion), so render targets, compute images, readbacks, and CPU-side projection consumers (light clusters, occlusion culling) agree across APIs
+- the only Vulkan-specific handling lives in `VKWrapper.cpp`:
+  - the swapchain (`SCREEN_TARGET_ID`) uses a negative-height viewport and converted scissor rect, so the presented image matches OpenGL
+  - offscreen targets invert the dynamic front face (Vulkan's facing formula is mirrored relative to OpenGL's for the same row layout); the swapchain does not
+- new backends (Metal, WebGPU, etc.) should follow the same pattern: flip only at presentation and adjust winding internally
+
 ## 9. OpenGL backend: overall shape
 
 The OpenGL path is optimized around AZDO-style persistent mapping and driver-managed texture residency.

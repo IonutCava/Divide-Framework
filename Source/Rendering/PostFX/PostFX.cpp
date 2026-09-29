@@ -21,30 +21,6 @@
 
 namespace Divide
 {
-    namespace
-    {
-        [[nodiscard]] mat4<F32> ApplyAPICoordinateTransform( const mat4<F32>& projection, const RenderAPI api )
-        {
-            mat4<F32> ret = projection;
-            if ( api == RenderAPI::Vulkan )
-            {
-                ret.m[0][1] = -ret.m[0][1];
-                ret.m[1][1] = -ret.m[1][1];
-                ret.m[2][1] = -ret.m[2][1];
-                ret.m[3][1] = -ret.m[3][1];
-            }
-            return ret;
-        }
-
-        [[nodiscard]] mat4<F32> ComputeAPIInverseProjectionMatrix( const CameraSnapshot& cameraSnapshot, const RenderAPI api )
-        {
-            const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( cameraSnapshot._projectionMatrix, api );
-            mat4<F32> inverseProjectionMatrix = MAT4_ZERO;
-            projectionMatrix.getInverse( inverseProjectionMatrix );
-            return inverseProjectionMatrix;
-        }
-    } //namespace
-
 
     const char* PostFX::FilterName( const FilterType filter ) noexcept
     {
@@ -194,9 +170,7 @@ namespace Divide
         };
 
         _uniformData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, cameraSnapshot._zPlanes );
-        _uniformData.set( _ID( "_invProjectionMatrix" ),
-                          PushConstantType::MAT4,
-                          ComputeAPIInverseProjectionMatrix( cameraSnapshot, context().renderAPI() ) );
+        _uniformData.set( _ID( "_invProjectionMatrix" ), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix );
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_uniformData = &_uniformData;
         const auto& rtPool = context().gfx().renderTargetPool();

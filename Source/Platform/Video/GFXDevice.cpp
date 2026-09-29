@@ -100,19 +100,6 @@ namespace Divide
             return (threadCount + localSize - 1u) / localSize;
         }
 
-        mat4<F32> ApplyAPICoordinateTransform( const mat4<F32>& projection, const RenderAPI api )
-        {
-            mat4<F32> ret = projection;
-            if ( api == RenderAPI::Vulkan )
-            {
-                ret.m[0][1] = -ret.m[0][1];
-                ret.m[1][1] = -ret.m[1][1];
-                ret.m[2][1] = -ret.m[2][1];
-                ret.m[3][1] = -ret.m[3][1];
-            }
-            return ret;
-        }
-
         template<typename Data, size_t N>
         inline void DecrementPrimitiveLifetime( DebugPrimitiveHandler<Data, N>& container )
         {
@@ -2012,16 +1999,15 @@ namespace Divide
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
         GFXShaderData::CamData& data = _gpuBlock._camData;
-        const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( cameraSnapshot._projectionMatrix, renderAPI() );
 
         bool projectionDirty = false, viewDirty = false;
 
-        if ( projectionMatrix != data.dvd_ProjectionMatrix)
+        if ( cameraSnapshot._projectionMatrix != data.dvd_ProjectionMatrix)
         {
             const F32 zNear = cameraSnapshot._zPlanes.min;
             const F32 zFar = cameraSnapshot._zPlanes.max;
 
-            data.dvd_ProjectionMatrix.set( projectionMatrix );
+            data.dvd_ProjectionMatrix.set( cameraSnapshot._projectionMatrix );
             data.dvd_camProperties.xyz.set( zNear, zFar, cameraSnapshot._fov );
 
             if ( cameraSnapshot._isOrthoCamera )
@@ -2090,7 +2076,6 @@ namespace Divide
 
 
         bool projectionDirty = false, viewDirty = false;
-        const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( prevProjectionMatrix, renderAPI() );
 
         GFXShaderData::PrevFrameData& frameData = _gpuBlock._prevFrameData[index];
 
@@ -2099,9 +2084,9 @@ namespace Divide
             frameData._previousViewMatrix = prevViewMatrix;
             viewDirty = true;
         }
-        if ( frameData._previousProjectionMatrix != projectionMatrix )
+        if ( frameData._previousProjectionMatrix != prevProjectionMatrix )
         {
-            frameData._previousProjectionMatrix = projectionMatrix;
+            frameData._previousProjectionMatrix = prevProjectionMatrix;
             projectionDirty = true;
         }
 

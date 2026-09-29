@@ -15,29 +15,6 @@
 #include "Rendering/PostFX/Headers/PreRenderBatch.h"
 
 namespace Divide {
-namespace
-{
-    [[nodiscard]] mat4<F32> ApplyAPICoordinateTransform( const mat4<F32>& projection, const RenderAPI api )
-    {
-        mat4<F32> ret = projection;
-        if ( api == RenderAPI::Vulkan )
-        {
-            ret.m[0][1] = -ret.m[0][1];
-            ret.m[1][1] = -ret.m[1][1];
-            ret.m[2][1] = -ret.m[2][1];
-            ret.m[3][1] = -ret.m[3][1];
-        }
-        return ret;
-    }
-
-    [[nodiscard]] mat4<F32> ComputeAPIInverseProjectionMatrix( const CameraSnapshot& cameraSnapshot, const RenderAPI api )
-    {
-        const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( cameraSnapshot._projectionMatrix, api );
-        mat4<F32> inverseProjectionMatrix = MAT4_ZERO;
-        projectionMatrix.getInverse( inverseProjectionMatrix );
-        return inverseProjectionMatrix;
-    }
-}
 
 SSRPreRenderOperator::SSRPreRenderOperator(GFXDevice& context, PreRenderBatch& parent, std::atomic_uint& taskCounter)
     : PreRenderOperator(context, parent, FilterType::FILTER_SS_REFLECTIONS, taskCounter)
@@ -156,8 +133,6 @@ bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot&
     }
 
     const GFXShaderData::PrevFrameData& prevFrameData = _context.previousFrameData( idx );
-    const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( cameraSnapshot._projectionMatrix, _context.renderAPI() );
-    const mat4<F32> inverseProjectionMatrix = ComputeAPIInverseProjectionMatrix( cameraSnapshot, _context.renderAPI() );
 
     auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
     cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -182,7 +157,7 @@ bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot&
 
     GFX::EnqueueCommand(bufferInOut, _pipelineCmd);
 
-    _uniforms.set( _ID( "invProjectionMatrix" ), PushConstantType::MAT4, inverseProjectionMatrix );
+    _uniforms.set( _ID( "invProjectionMatrix" ), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix );
     _uniforms.set( _ID( "invViewMatrix" ), PushConstantType::MAT4, cameraSnapshot._invViewMatrix );
     _uniforms.set( _ID( "previousViewMatrix" ), PushConstantType::MAT4, prevFrameData._previousViewMatrix );
     _uniforms.set( _ID( "previousProjectionMatrix" ), PushConstantType::MAT4, prevFrameData._previousProjectionMatrix );
@@ -193,8 +168,8 @@ bool SSRPreRenderOperator::execute( const PlayerIndex idx, const CameraSnapshot&
 
     auto sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
     sendPushConstantsCmd->_uniformData = &_uniforms;
-    sendPushConstantsCmd->_fastData.data[0] = (projectionMatrix * _projToPixelBasis);
-    sendPushConstantsCmd->_fastData.data[1] = projectionMatrix;
+    sendPushConstantsCmd->_fastData.data[0] = (cameraSnapshot._projectionMatrix * _projToPixelBasis);
+    sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._projectionMatrix;
     GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
     GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
 

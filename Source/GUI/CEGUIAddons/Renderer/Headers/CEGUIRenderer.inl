@@ -42,11 +42,6 @@ inline Divide::GFXDevice& CEGUIRenderer::context()
     return _context;
 }
 
-inline bool CEGUIRenderer::flipClippingHeight() const noexcept
-{
-    return _flipClippingHeight;
-}
-
 inline Divide::GFX::CommandBuffer* CEGUIRenderer::cmdBuffer() const
 {
     return _bufferInOut;

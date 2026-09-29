@@ -44,27 +44,6 @@ namespace
 
         return g_kernels;
     }
-
-    [[nodiscard]] mat4<F32> ApplyAPICoordinateTransform( const mat4<F32>& projection, const RenderAPI api )
-    {
-        mat4<F32> ret = projection;
-        if ( api == RenderAPI::Vulkan )
-        {
-            ret.m[0][1] = -ret.m[0][1];
-            ret.m[1][1] = -ret.m[1][1];
-            ret.m[2][1] = -ret.m[2][1];
-            ret.m[3][1] = -ret.m[3][1];
-        }
-        return ret;
-    }
-
-    [[nodiscard]] mat4<F32> ComputeAPIInverseProjectionMatrix( const CameraSnapshot& cameraSnapshot, const RenderAPI api )
-    {
-        const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( cameraSnapshot._projectionMatrix, api );
-        mat4<F32> inverseProjectionMatrix = MAT4_ZERO;
-        projectionMatrix.getInverse( inverseProjectionMatrix );
-        return inverseProjectionMatrix;
-    }
 }
 
 //ref: http://john-chapman-graphics.blogspot.co.uk/2013/01/ssao-tutorial.html
@@ -581,8 +560,6 @@ void SSAOPreRenderOperator::prepare([[maybe_unused]] const PlayerIndex idx, GFX:
 bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, const CameraSnapshot& cameraSnapshot, [[maybe_unused]] const RenderTargetHandle& input, [[maybe_unused]] const RenderTargetHandle& output, GFX::CommandBuffer& bufferInOut)
 {
     assert(_enabled);
-    const mat4<F32> projectionMatrix = ApplyAPICoordinateTransform( cameraSnapshot._projectionMatrix, _context.renderAPI() );
-    const mat4<F32> inverseProjectionMatrix = ComputeAPIInverseProjectionMatrix( cameraSnapshot, _context.renderAPI() );
 
     _ssaoGenerateConstants.set(_ID("_zPlanes"),            PushConstantType::VEC2, cameraSnapshot._zPlanes);
 
@@ -625,8 +602,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
             GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
             sendPushConstantsCmd->_uniformData = &_ssaoGenerateConstants;
-            sendPushConstantsCmd->_fastData.data[0] = projectionMatrix;
-            sendPushConstantsCmd->_fastData.data[1] = inverseProjectionMatrix;
+            sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._projectionMatrix;
+            sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._invProjectionMatrix;
 
             const auto& halfDepthAtt  = _halfDepthAndNormals._rt->getAttachment(RTAttachmentType::COLOUR);
 
@@ -713,8 +690,8 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
             GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
             sendPushConstantsCmd->_uniformData = &_ssaoGenerateConstants;
-            sendPushConstantsCmd->_fastData.data[0] = projectionMatrix;
-            sendPushConstantsCmd->_fastData.data[1] = inverseProjectionMatrix;
+            sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._projectionMatrix;
+            sendPushConstantsCmd->_fastData.data[1] = cameraSnapshot._invProjectionMatrix;
 
             GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);
@@ -740,7 +717,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
                 GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
                 sendPushConstantsCmd->_uniformData = &_ssaoBlurConstants;
-                sendPushConstantsCmd->_fastData.data[0] = inverseProjectionMatrix;
+                sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._invProjectionMatrix;
 
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
                 cmd->_usage = DescriptorSetUsage::PER_DRAW;
@@ -771,7 +748,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
                 GFX::SendPushConstantsCommand* sendPushConstantsCmd = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut );
                 sendPushConstantsCmd->_uniformData = &_ssaoBlurConstants;
-                sendPushConstantsCmd->_fastData.data[0] = inverseProjectionMatrix;
+                sendPushConstantsCmd->_fastData.data[0] = cameraSnapshot._invProjectionMatrix;
 
                 const auto& horizBlur = _ssaoBlurBuffer._rt->getAttachment(RTAttachmentType::COLOUR);
                 auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
