@@ -391,13 +391,10 @@ bool Terrain::load( PlatformContext& context )
     terrainMaterial->addShaderDefine(Util::StringFormat("CONTROL_VTX_PER_TILE_EDGE {}", TessellationParams::VTX_PER_TILE_EDGE));
     terrainMaterial->addShaderDefine(Util::StringFormat("PATCHES_PER_TILE_EDGE {}", TessellationParams::PATCHES_PER_TILE_EDGE));
     terrainMaterial->addShaderDefine(Util::StringFormat("MAX_TEXTURE_LAYERS {}", layerCount));
+    terrainMaterial->addShaderDefine("STATIC_TERRAIN");
     if (terrainConfig.detailLevel > 1)
     {
         terrainMaterial->addShaderDefine("REDUCE_TEXTURE_TILE_ARTIFACT");
-        if (terrainConfig.detailLevel > 2)
-        {
-            terrainMaterial->addShaderDefine("REDUCE_TEXTURE_TILE_ARTIFACT_ALL_LODS");
-        }
     }
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, Util::StringFormat("UNDERWATER_TILE_SCALE {}", to_I32(underwaterTileScale)));
     terrainMaterial->addShaderDefine(ShaderType::FRAGMENT, tileFactorStr, false);
@@ -490,20 +487,10 @@ bool Terrain::load( PlatformContext& context )
                 if (shaderModule._moduleType == ShaderType::FRAGMENT) {
                     shaderModule._variant = "Shadow.VSM";
                 }
-                shaderModule._defines.emplace_back("MAX_TESS_LEVEL 32");
+                shaderModule._defines.emplace_back("MAX_TESS_LEVEL 16");
             }
             shaderDescriptor._name = ("Terrain_ShadowVSM-" + name + propName).c_str();
         } else if (stagePass._stage == RenderStage::DISPLAY) {
-            //ToDo: Implement this! -Ionut
-            constexpr bool hasParallax = false;
-            if (hasParallax) {
-                for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
-                    if (shaderModule._moduleType == ShaderType::FRAGMENT) {
-                        shaderModule._defines.emplace_back("HAS_PARALLAX");
-                        break;
-                    }
-                }
-            }
             if (stagePass._passType == RenderPassType::PRE_PASS) {
                 for (ShaderModuleDescriptor& shaderModule : shaderDescriptor._modules) {
                     if (shaderModule._moduleType == ShaderType::FRAGMENT) {
@@ -511,9 +498,9 @@ bool Terrain::load( PlatformContext& context )
                     }
                     shaderModule._defines.emplace_back("PRE_PASS");
                 }
-                shaderDescriptor._name = ("Terrain_PrePass-" + name + propName + (hasParallax ? ".Parallax" : "")).c_str();
+                shaderDescriptor._name = ("Terrain_PrePass-" + name + propName).c_str();
             } else {
-                shaderDescriptor._name = ("Terrain_Colour-" + name + propName + (hasParallax ? ".Parallax" : "")).c_str();
+                shaderDescriptor._name = ("Terrain_Colour-" + name + propName).c_str();
             }
         } else { // Not RenderStage::DISPLAY
             if (IsDepthPass(stagePass)) {
