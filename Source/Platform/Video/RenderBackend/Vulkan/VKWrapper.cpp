@@ -2324,8 +2324,6 @@ namespace Divide
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
-        static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
-
         VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmdBuffer);
 
@@ -2584,12 +2582,14 @@ namespace Divide
                     }
                     if ( pushConstantsCmd->_fastData.set() )
                     {
+                        _lastPushConstants = pushConstantsCmd->_fastData;
+                        _hasLastPushConstants = true;
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
                                                         to_U32( PushConstantsStruct::Size() ),
-                                                        pushConstantsCmd->_fastData.dataPtr() );
+                                                        _lastPushConstants.dataPtr() );
 
                         stateTracker._pushConstantsValid = true;
                     }
@@ -2631,14 +2631,14 @@ namespace Divide
 
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
-                    if ( !stateTracker._pushConstantsValid )
+                    if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
                                                         to_U32( PushConstantsStruct::Size() ),
-                                                        &s_defaultPushConstants[0].mat );
+                                                        _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }
 
@@ -2674,14 +2674,14 @@ namespace Divide
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
                 if (stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE)
                 {
-                    if ( !stateTracker._pushConstantsValid )
+                    if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
                                                         to_U32( PushConstantsStruct::Size() ),
-                                                        &s_defaultPushConstants[0].mat );
+                                                        _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }
 

@@ -1061,7 +1061,6 @@ namespace Divide
     void GL_API::flushCommand( GFX::CommandBase* cmd )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
-        static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
 
         if ( GFXDevice::IsSubmitCommand( cmd->type() ) )
         {
@@ -1283,8 +1282,13 @@ namespace Divide
                         _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
                     }
                 }
-                Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstantsCmd->_fastData );
-                s_stateTracker._pushConstantsValid = pushConstantsCmd->_fastData.set();
+                if ( pushConstantsCmd->_fastData.set() )
+                {
+                    _lastPushConstants = pushConstantsCmd->_fastData;
+                    _hasLastPushConstants = true;
+                    Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, _lastPushConstants );
+                    s_stateTracker._pushConstantsValid = true;
+                }
 
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
@@ -1368,12 +1372,9 @@ namespace Divide
 
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
-                    if ( !s_stateTracker._pushConstantsValid && s_stateTracker._activeShaderProgram != nullptr )
+                    if ( !s_stateTracker._pushConstantsValid && s_stateTracker._activeShaderProgram != nullptr && _hasLastPushConstants )
                     {
-                        PushConstantsStruct defaultConstants{};
-                        defaultConstants.data[0] = s_defaultPushConstants[0];
-                        defaultConstants.data[1] = s_defaultPushConstants[1];
-                        Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, defaultConstants );
+                        Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, _lastPushConstants );
                         s_stateTracker._pushConstantsValid = true;
                     }
 
@@ -1407,12 +1408,9 @@ namespace Divide
 
                 if ( s_stateTracker._activePipeline != nullptr )
                 {
-                    if ( !s_stateTracker._pushConstantsValid && s_stateTracker._activeShaderProgram != nullptr )
+                    if ( !s_stateTracker._pushConstantsValid && s_stateTracker._activeShaderProgram != nullptr && _hasLastPushConstants )
                     {
-                        PushConstantsStruct defaultConstants{};
-                        defaultConstants.data[0] = s_defaultPushConstants[0];
-                        defaultConstants.data[1] = s_defaultPushConstants[1];
-                        Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, defaultConstants );
+                        Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, _lastPushConstants );
                         s_stateTracker._pushConstantsValid = true;
                     }
 

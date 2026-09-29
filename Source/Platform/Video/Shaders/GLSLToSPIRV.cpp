@@ -183,7 +183,7 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     if ( renderAPI == Divide::RenderAPI::Vulkan )
     {
         shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100 );
-        shader.setEnvClient( glslang::EShClientVulkan, glslang::EShTargetVulkan_1_2 );
+        shader.setEnvClient( glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3 );
         shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_6 );
     }
     else

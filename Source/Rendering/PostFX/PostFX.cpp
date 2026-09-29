@@ -28,7 +28,10 @@ namespace Divide
             mat4<F32> ret = projection;
             if ( api == RenderAPI::Vulkan )
             {
+                ret.m[0][1] = -ret.m[0][1];
                 ret.m[1][1] = -ret.m[1][1];
+                ret.m[2][1] = -ret.m[2][1];
+                ret.m[3][1] = -ret.m[3][1];
             }
             return ret;
         }
