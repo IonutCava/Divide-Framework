@@ -233,6 +233,7 @@ struct VKStateTracker
 
     U8 _activeMSAASamples{ 1u };
     bool _pushConstantsValid{ false };
+    bool _reverseDepthMode{ false };  ///< True while a reversed-Z perspective camera is active
 
     bool* _enabledAPIDebugging;
     bool* _assertOnAPIError;

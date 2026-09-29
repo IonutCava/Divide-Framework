@@ -101,6 +101,7 @@ protected:
     void postFlushCommandBuffer( Handle<GFX::CommandBuffer> commandBuffer ) noexcept override;
     bool setViewportInternal(const Rect<I32>& newViewport) noexcept override;
     bool setScissorInternal(const Rect<I32>& newScissor) noexcept override;
+    void setReverseDepthActive( bool active ) noexcept override;
 
     void onThreadCreated( const size_t threadIndex, const std::thread::id& threadID, bool isMainRenderThread ) noexcept override;
     void initDescriptorSets() override;

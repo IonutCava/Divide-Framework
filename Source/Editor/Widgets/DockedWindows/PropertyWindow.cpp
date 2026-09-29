@@ -283,7 +283,7 @@ namespace Divide
                 sceneChanged = processField( camField ) || sceneChanged;
             }
             {
-                float2 zPlanes = cam->snapshot()._zPlanes;
+                float2 zPlanes( cam->snapshot()._nearDistance, cam->snapshot()._cullDistance );
                 EditorComponentField camField = {};
                 camField._name = "zPlanes";
                 camField._basicType = PushConstantType::VEC2;
@@ -314,7 +314,7 @@ namespace Divide
                 camField._data = orthoRect._v;
                 camField._dataSetter = [cam]( const void* rect, [[maybe_unused]] void* user_data)
                 {
-                    cam->setProjection( *static_cast<const float4*>(rect), cam->snapshot()._zPlanes );
+                    cam->setProjection( *static_cast<const float4*>(rect), { cam->snapshot()._nearDistance, cam->snapshot()._cullDistance } );
                 };
                 sceneChanged = processField( camField ) || sceneChanged;
             }

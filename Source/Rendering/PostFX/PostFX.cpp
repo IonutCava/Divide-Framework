@@ -169,7 +169,7 @@ namespace Divide
             _filtersDirty = false;
         };
 
-        _uniformData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, cameraSnapshot._zPlanes );
+        _uniformData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, float2( cameraSnapshot._nearDistance, cameraSnapshot._cullDistance ) );
         _uniformData.set( _ID( "_invProjectionMatrix" ), PushConstantType::VEC2, cameraSnapshot._invProjectionMatrix );
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_uniformData = &_uniformData;

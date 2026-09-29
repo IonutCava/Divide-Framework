@@ -173,6 +173,7 @@ namespace Divide {
         gl46core::GLuint _activeShaderProgramHandle{ 0u }; //GLUtil::_invalidObjectID;
         gl46core::GLuint _activeShaderPipelineHandle{ 0u };//GLUtil::_invalidObjectID;
         bool _alphaToCoverageEnabled{ false };
+        bool _reverseDepthMode{ false };  ///< True while a reversed-Z perspective camera is active
         BlendingSettings _blendPropertiesGlobal;
         gl46core::GLboolean _blendEnabledGlobal{ gl46core::GL_FALSE };
 

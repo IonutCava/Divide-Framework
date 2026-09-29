@@ -52,7 +52,9 @@ vec3 Homogenize( in vec4 v ) { return v.xyz / v.w; }
 
 #define ViewSpaceZ(DEPTH, INV_PROJ_MAT) (-1.f / (INV_PROJ_MAT[2][3] * DEPTH + INV_PROJ_MAT[3][3]))
 #define ViewSpacePos(TEX_COORD, DEPTH, INV_PROJ_MAT) Homogenize( INV_PROJ_MAT * vec4( 2.f * TEX_COORD - 1.f, DEPTH, 1.f ) )
-#define ToLinearDepth(DEPTH, ZPLANES) (2.f * (ZPLANES).x * (ZPLANES).y / ((ZPLANES).y + (ZPLANES).x - DEPTH * ((ZPLANES).y - (ZPLANES).x)))
+// Reversed-Z infinite perspective: depth = near / (-view_z).
+// ToLinearDepth returns positive view-space distance from camera.
+#define ToLinearDepth(DEPTH, ZPLANES) ((ZPLANES).x / max(DEPTH, 1e-6f))
 
 #define QuaternionRotate(Q, V) (V + 2.f * cross(Q.xyz, cross(Q.xyz, V) + Q.w * V))
 
