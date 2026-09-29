@@ -119,6 +119,7 @@ namespace Divide
     {
     public:
         static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
+        static constexpr I32 GL_PUSH_CONSTANTS_LOCATION = 18;
 
         static U8 k_commandBufferID;
 

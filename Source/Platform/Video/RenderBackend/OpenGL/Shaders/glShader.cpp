@@ -425,7 +425,25 @@ void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
     if (_pushConstantsLocation == -2)
     {
-        _pushConstantsLocation = gl46core::glGetUniformLocation( _handle, "PushConstantData" );
+        // Name based lookups (glGetUniformLocation) are not reliable for programs built from SPIR-V binaries
+        // (ARB_gl_spirv makes names optional and some drivers, e.g. AMD, return -1).
+        // Scan the active uniforms' explicit locations instead, as that works for both GLSL and SPIR-V.
+        _pushConstantsLocation = -1;
+
+        gl46core::GLint activeUniformCount = 0;
+        gl46core::glGetProgramInterfaceiv( _handle, gl46core::GL_UNIFORM, gl46core::GL_ACTIVE_RESOURCES, &activeUniformCount );
+
+        constexpr gl46core::GLenum locationProperty = gl46core::GL_LOCATION;
+        for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
+        {
+            gl46core::GLint location = -1;
+            gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), 1, &locationProperty, 1, nullptr, &location );
+            if ( location == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
+            {
+                _pushConstantsLocation = location;
+                break;
+            }
+        }
     }
 
     if ( _pushConstantsLocation > -1 )

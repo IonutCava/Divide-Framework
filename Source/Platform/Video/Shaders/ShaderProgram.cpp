@@ -2068,10 +2068,10 @@ namespace Divide
         }
         else
         {
-            pushConstantCodeBlock =
-                "layout(location = 18) uniform mat4 PushConstantData[2];\n"
+            pushConstantCodeBlock = Util::StringFormat(
+                "layout(location = {}) uniform mat4 PushConstantData[2];\n"
                 "#define PushData0 PushConstantData[0]\n"
-                "#define PushData1 PushConstantData[1]";
+                "#define PushData1 PushConstantData[1]", GL_PUSH_CONSTANTS_LOCATION );
         }
 
         Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PROGRAM_NAME_\\", Util::StringFormat("/*[ {} ]*/", loadDataInOut._shaderName.c_str()));
