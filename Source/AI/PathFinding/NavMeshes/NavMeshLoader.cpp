@@ -266,7 +266,7 @@ NavModelData MergeModels(NavModelData& a,
     }
 
     mergedData.name(Util::StringFormat("{}+{}", a.name(), b.name() ).c_str());
-    return mergedData;
+    return MOV(mergedData);
 }
 
 void AddVertex(NavModelData* modelData, const float3& vertex) {
