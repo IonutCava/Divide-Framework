@@ -915,6 +915,18 @@ namespace Assert
 #define DIVIDE_EXPECTED_CALL( X ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG("Expected call failed: " #X); }
 #define DIVIDE_EXPECTED_CALL_MSG( X, MSG ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG( MSG ); }
 
+#define DIVIDE_EXPECTED_GPU_CALL_MSG( X, MSG )                                     \
+    do {                                                                           \
+        const bool result = static_cast<bool>(X);                                  \
+        if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) {                     \
+            if ( !result ) [[unlikely]] {                                          \
+                DIVIDE_UNEXPECTED_CALL_MSG(MSG);                                   \
+            }                                                                      \
+        }                                                                          \
+    } while(0)
+
+#define DIVIDE_EXPECTED_GPU_CALL( X ) DIVIDE_EXPECTED_GPU_CALL_MSG( X, "Expected GPU call failed: " #X )
+
 #define DIVIDE_GPU_ASSERT(...) do { if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) { DIVIDE_ASSERT(__VA_ARGS__); } } while(0)
 
 template <typename Ret, typename... Args >
