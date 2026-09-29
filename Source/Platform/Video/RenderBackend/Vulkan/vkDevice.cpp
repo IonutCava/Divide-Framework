@@ -222,12 +222,10 @@ namespace Divide
         constexpr const char* QueueName[] = { "Graphics", "Compute", "Transfer" };
         constexpr vkb::QueueType VKBQueueType[] = {vkb::QueueType::graphics, vkb::QueueType::compute, vkb::QueueType::transfer};
 
-        VKQueue ret{};
-
         if ( getDevice() == nullptr )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), "VKDevice::getQueueInternal error: no valid device found!");
-            return ret;
+            return {};
         }
 
         if ( type != QueueType::COMPUTE && type != QueueType::TRANSFER )
@@ -244,19 +242,22 @@ namespace Divide
             if ( dedicated )
             {
                 Console::warnfn( LOCALE_STR( "WARN_VK_DEDICATED_QUEUE" ), QueueName[to_base(type)], index.error().message().c_str() );
+                return getQueueInternal(type, false);
             }
-            else
-            {
-                Console::errorfn( LOCALE_STR( "ERROR_VK_DEDICATED_QUEUE" ), QueueName[to_base( type )], index.error().message().c_str() );
-            }
-
-            return dedicated ? getQueueInternal(type, false) : ret;
+            
+            Console::errorfn( LOCALE_STR( "ERROR_VK_DEDICATED_QUEUE" ), QueueName[to_base( type )], index.error().message().c_str() );
+            return {};
         }
 
-        ret._index = index.value();
-        ret._type = type;
-        ret._pool = createCommandPool( ret._index, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT );
-        vkGetDeviceQueue( _device.device, ret._index, 0u, &ret._queue );
+        const auto indexVal = index.value();
+        VKQueue ret
+        {
+            ._pool = createCommandPool(indexVal, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT),
+            ._index = indexVal,
+            ._type = type
+        };
+        
+        vkGetDeviceQueue( _device.device, indexVal, 0u, &ret._queue );
 
         return ret;
     }

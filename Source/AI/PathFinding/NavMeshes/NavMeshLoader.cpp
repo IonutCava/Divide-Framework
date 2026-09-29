@@ -208,7 +208,8 @@ NavModelData MergeModels(NavModelData& a,
                          NavModelData& b,
                          const bool delOriginals /* = false*/) {
     NavModelData mergedData;
-    if (a.getVerts() || b.getVerts()) {
+    if (a.getVerts() || b.getVerts())
+    {
         if (!a.getVerts()) {
             return b;
         }
