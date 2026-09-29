@@ -198,6 +198,16 @@ void Kernel::onLoop()
             return;
         }
 
+        if (shouldUseAsyncRenderThread())
+        {
+            const LockGuard<Mutex> lock(_renderThreadState._lock);
+            if (_renderThreadState._renderFailed)
+            {
+                keepAlive(false);
+                return;
+            }
+        }
+
         if constexpr(!Config::Build::IS_SHIPPING_BUILD)
         {
             // Check for any file changes (shaders, scripts, etc)
@@ -224,26 +234,32 @@ void Kernel::onLoop()
             {
                 Time::ScopedTimer timer3(_frameTimer);
 
-                // Launch the FRAME_STARTED event
-                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_STARTED, evt))
+                // Launch logic-thread FRAME_STARTED callbacks
+                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_STARTED, evt, FrameExecutionDomain::LOGIC))
                 {
                     keepAlive(false);
                 }
 
+                RenderFrameSnapshot snapshot{};
                 // Process the current frame
-                if (!mainLoopScene(evt))
+                if (!mainLoopScene(evt, snapshot))
                 {
                     keepAlive(false);
                 }
 
                 // Launch the FRAME_PROCESS event (a.k.a. the frame processing has ended event)
-                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_PROCESS, evt))
+                if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_PROCESS, evt, FrameExecutionDomain::LOGIC))
+                {
+                    keepAlive(false);
+                }
+
+                if (keepAlive() && !dispatchRenderFrame(MOV(snapshot)))
                 {
                     keepAlive(false);
                 }
             }
 
-            if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt))
+            if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt, FrameExecutionDomain::LOGIC))
             {
                 keepAlive(false);
             }
@@ -344,7 +360,7 @@ void Kernel::onLoop()
     }
 }
 
-bool Kernel::mainLoopScene(FrameEvent& evt)
+bool Kernel::mainLoopScene(FrameEvent& evt, RenderFrameSnapshot& snapshotOut)
 {
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
@@ -356,10 +372,14 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         Camera::Update( evt._time._app._deltaTimeUS );
     }
 
+    snapshotOut._evt = evt;
+    snapshotOut._playerCount = _projectManager->activePlayerCount();
+
     if (_platformContext.mainWindow().minimized())
     {
         idle(false, 0u, evt._time._app._deltaTimeUS );
         SDLEventManager::pollEvents();
+        snapshotOut._playerCount = 0u;
         return true;
     }
 
@@ -458,7 +478,10 @@ bool Kernel::mainLoopScene(FrameEvent& evt)
         _platformContext.editor().update( evt._time._app._deltaTimeUS );
     }
 
-    return presentToScreen(evt);
+    const auto& backBufferRT = _platformContext.gfx().renderTargetPool().getRenderTarget(RenderTargetNames::BACK_BUFFER);
+    const Rect<I32> mainViewport{0, 0, to_I32(backBufferRT->getWidth()), to_I32(backBufferRT->getHeight())};
+    ComputeViewports(mainViewport, snapshotOut._targetViewports, snapshotOut._playerCount);
+    return true;
 }
 
 static void ComputeViewports(const Rect<I32>& mainViewport, vector<Rect<I32>>& targetViewports, const U8 count) {
@@ -572,28 +595,26 @@ static Time::ProfileTimer& GetTimer(Time::ProfileTimer& parentTimer, vector<Time
     return *timers[index];
 }
 
-bool Kernel::presentToScreen(FrameEvent& evt) {
+bool Kernel::presentToScreen(const RenderFrameSnapshot& snapshot) {
     PROFILE_SCOPE_AUTO( Profiler::Category::IO );
 
     Time::ScopedTimer time(_flushToScreenTimer);
 
+    FrameEvent evt = snapshot._evt;
+
+    if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_STARTED, evt, FrameExecutionDomain::RENDER))
+    {
+        return false;
+    }
+
     {
         Time::ScopedTimer time1(_preRenderTimer);
-        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_PRERENDER, evt)) {
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_PRERENDER, evt, FrameExecutionDomain::RENDER)) {
             return false;
         }
     }
 
-    const U8 playerCount = _projectManager->activePlayerCount();
-
-    const auto& backBufferRT = _platformContext.gfx().renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER );
-    const Rect<I32> mainViewport{0, 0, to_I32(backBufferRT->getWidth()), to_I32(backBufferRT->getHeight())};
-    
-    if (_prevViewport != mainViewport || _prevPlayerCount != playerCount) {
-        ComputeViewports(mainViewport, _targetViewports, playerCount);
-        _prevViewport.set(mainViewport);
-        _prevPlayerCount = playerCount;
-    }
+    const U8 playerCount = snapshot._playerCount;
 
 
     RenderPassManager::RenderParams renderParams{};
@@ -604,12 +625,12 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         Attorney::ProjectManagerKernel::currentPlayerPass(_projectManager.get(), i);
         renderParams._playerPass = i;
 
-        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_START, evt))
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_START, evt, FrameExecutionDomain::RENDER))
         {
             return false;
         }
 
-        renderParams._targetViewport = _targetViewports[i];
+        renderParams._targetViewport = snapshot._targetViewports[i];
 
         {
             Time::ProfileTimer& timer = GetTimer(_flushToScreenTimer, _renderTimer, i, "Render Timer");
@@ -618,7 +639,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
             _renderPassManager->render(renderParams);
         }
 
-        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_END, evt))
+        if (!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_SCENERENDER_END, evt, FrameExecutionDomain::RENDER))
         {
             return false;
         }
@@ -626,7 +647,7 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
 
     {
         Time::ScopedTimer time4(_postRenderTimer);
-        if(!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_POSTRENDER, evt))
+        if(!frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_POSTRENDER, evt, FrameExecutionDomain::RENDER))
         {
             return false;
         }
@@ -638,7 +659,120 @@ bool Kernel::presentToScreen(FrameEvent& evt) {
         _renderTimer.erase(begin(_renderTimer) + i);
     }
 
+    return frameListenerMgr().createAndProcessEvent(FrameEventType::FRAME_EVENT_ENDED, evt, FrameExecutionDomain::RENDER);
+}
+
+bool Kernel::shouldUseAsyncRenderThread() const noexcept
+{
+    const Configuration& config = _platformContext.config();
+    return config.runtime.asyncOpenGLRenderThread && _platformContext.gfx().renderAPI() == RenderAPI::OpenGL;
+}
+
+bool Kernel::dispatchRenderFrame(RenderFrameSnapshot&& snapshot)
+{
+    if (!shouldUseAsyncRenderThread())
+    {
+        return presentToScreen(snapshot);
+    }
+
+    UniqueLock<Mutex> lock(_renderThreadState._lock);
+    _renderThreadState._queueCV.wait(lock, [this]()
+    {
+        return _renderThreadState._queue.size() < _renderThreadState._queueDepth ||
+               _renderThreadState._renderFailed ||
+               !_renderThreadState._running;
+    });
+
+    if (_renderThreadState._renderFailed || !_renderThreadState._running)
+    {
+        return false;
+    }
+
+    _renderThreadState._queue.emplace_back(MOV(snapshot));
+    lock.unlock();
+    _renderThreadState._workCV.notify_one();
     return true;
+}
+
+void Kernel::startRenderThread()
+{
+    if (_renderThreadState._running || !shouldUseAsyncRenderThread())
+    {
+        return;
+    }
+
+    const Configuration& config = _platformContext.config();
+    _renderThreadState._queueDepth = config.runtime.asyncRenderQueueDepth;
+    _renderThreadState._stopRequested = false;
+    _renderThreadState._renderFailed = false;
+    _renderThreadState._running = true;
+    _renderThreadState._thread = std::thread(&Kernel::renderThreadLoop, this);
+}
+
+void Kernel::stopRenderThread()
+{
+    if (!_renderThreadState._running)
+    {
+        return;
+    }
+
+    {
+        LockGuard<Mutex> lock(_renderThreadState._lock);
+        _renderThreadState._stopRequested = true;
+    }
+    _renderThreadState._workCV.notify_all();
+    _renderThreadState._queueCV.notify_all();
+    _renderThreadState._thread.join();
+    _renderThreadState._running = false;
+}
+
+void Kernel::waitForQueuedFrames()
+{
+    if (!_renderThreadState._running)
+    {
+        return;
+    }
+
+    UniqueLock<Mutex> lock(_renderThreadState._lock);
+    _renderThreadState._queueCV.wait(lock, [this]()
+    {
+        return _renderThreadState._queue.empty() || _renderThreadState._renderFailed;
+    });
+}
+
+void Kernel::renderThreadLoop()
+{
+    SetThreadName("Kernel Render Thread");
+
+    for (;;)
+    {
+        RenderFrameSnapshot snapshot{};
+        {
+            UniqueLock<Mutex> lock(_renderThreadState._lock);
+            _renderThreadState._workCV.wait(lock, [this]()
+            {
+                return _renderThreadState._stopRequested || !_renderThreadState._queue.empty();
+            });
+
+            if (_renderThreadState._stopRequested && _renderThreadState._queue.empty())
+            {
+                break;
+            }
+
+            snapshot = MOV(_renderThreadState._queue.front());
+            _renderThreadState._queue.pop_front();
+            _renderThreadState._queueCV.notify_all();
+        }
+
+        if (!presentToScreen(snapshot))
+        {
+            LockGuard<Mutex> lock(_renderThreadState._lock);
+            _renderThreadState._renderFailed = true;
+            _renderThreadState._queue.clear();
+            _renderThreadState._queueCV.notify_all();
+            break;
+        }
+    }
 }
 
 // The first loops compiles all the visible data, so do not render the first couple of frames
@@ -652,6 +786,7 @@ void Kernel::warmup()
     {
         onLoop();
     }
+    waitForQueuedFrames();
     _timingData.freezeGameTime(false);
 
     _timingData.update(Time::App::ElapsedMicroseconds(), FIXED_UPDATE_RATE_US );
@@ -703,6 +838,8 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         config.runtime.targetRenderingAPI = to_U8(RenderAPI::OpenGL);
     }
+
+    config.runtime.asyncRenderQueueDepth = CLAMPED<U8>(config.runtime.asyncRenderQueueDepth, 2u, 3u);
 
     g_totalWorkerCount = std::max( config.runtime.maxWorkerThreads > 0 ? config.runtime.maxWorkerThreads : std::thread::hardware_concurrency(), g_mininumTotalWorkerCount);
 
@@ -772,6 +909,14 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     {
         return initError;
     }
+
+    if (config.runtime.asyncOpenGLRenderThread && renderingAPI != RenderAPI::OpenGL)
+    {
+        Console::warnfn("Async render thread mode is currently supported only for OpenGL. Falling back to synchronous rendering.");
+        config.runtime.asyncOpenGLRenderThread = false;
+    }
+
+    startRenderThread();
 
     SceneEnvironmentProbePool::OnStartup(_platformContext.gfx());
 
@@ -944,6 +1089,9 @@ ErrorCode Kernel::initialize(const string& entryPoint)
 void Kernel::shutdown()
 {
     Console::printfn(LOCALE_STR("STOP_KERNEL"));
+
+    waitForQueuedFrames();
+    stopRenderThread();
 
     _platformContext.config().save();
 
@@ -1186,4 +1334,3 @@ void Kernel::unlockInputFromConsumer(const InputConsumerType type)
 
 #pragma endregion
 };
-

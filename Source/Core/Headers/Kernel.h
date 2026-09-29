@@ -37,6 +37,9 @@
 #include "LoopTimingData.h"
 #include "Managers/Headers/FrameListenerManager.h"
 #include "Platform/Input/Headers/InputAggregatorInterface.h"
+#include <condition_variable>
+#include <deque>
+#include <thread>
 
 namespace Divide {
 
@@ -138,13 +141,27 @@ class Kernel final : public Input::InputAggregatorInterface,
         [[nodiscard]] bool onDeviceAddOrRemoveInternal(Input::InputEvent& argInOut) override;
 
      private:
+        struct RenderFrameSnapshot
+        {
+            FrameEvent _evt{};
+            vector<Rect<I32>> _targetViewports{};
+            U8 _playerCount = 0u;
+        };
+
         ErrorCode initialize(const string& entryPoint);
         void warmup();
         void shutdown();
         void startSplashScreen();
         void stopSplashScreen();
-        bool mainLoopScene(FrameEvent& evt);
-        bool presentToScreen(FrameEvent& evt);
+        bool mainLoopScene(FrameEvent& evt, RenderFrameSnapshot& snapshotOut);
+        bool presentToScreen(const RenderFrameSnapshot& snapshot);
+
+        bool shouldUseAsyncRenderThread() const noexcept;
+        bool dispatchRenderFrame(RenderFrameSnapshot&& snapshot);
+        void startRenderThread();
+        void stopRenderThread();
+        void waitForQueuedFrames();
+        void renderThreadLoop();
 
         bool onWindowSizeChange(const SizeChangeParams& params);
         bool onResolutionChange(const SizeChangeParams& params);
@@ -164,8 +181,6 @@ class Kernel final : public Input::InputAggregatorInterface,
         };
 
         fixed_vector<InputInterfacePair, to_base(InputConsumerType::COUNT), true> _inputConsumers{};
-
-        vector<Rect<I32>> _targetViewports{};
 
         Time::ProfileTimer& _appLoopTimerMain;
         Time::ProfileTimer& _appLoopTimerInternal;
@@ -187,8 +202,18 @@ class Kernel final : public Input::InputAggregatorInterface,
         I32 _argc;
         char** _argv;
 
-        Rect<I32> _prevViewport = { -1, -1, -1, -1 };
-        U8 _prevPlayerCount = 0u;
+        struct RenderThreadState
+        {
+            std::thread _thread{};
+            Mutex _lock{};
+            std::condition_variable _workCV{};
+            std::condition_variable _queueCV{};
+            std::deque<RenderFrameSnapshot> _queue{};
+            bool _running = false;
+            bool _stopRequested = false;
+            bool _renderFailed = false;
+            U8 _queueDepth = 2u;
+        } _renderThreadState{};
 };
 
 namespace Attorney

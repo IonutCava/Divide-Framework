@@ -14,6 +14,7 @@ void FrameListenerManager::registerFrameListener(FrameListener* listener, const 
     assert(Runtime::isMainThread());
     assert(listener != nullptr);
 
+    LockGuard<SharedMutex> w_lock(_listenerLock);
     listener->setCallOrder(callOrder);
     if (listener->name().empty())
     {
@@ -30,6 +31,7 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
 
     assert(Runtime::isMainThread());
 
+    LockGuard<SharedMutex> w_lock(_listenerLock);
     assert(listener != nullptr);
     listener->enabled(false);
     if (!dvd_erase_if(_listeners,
@@ -45,15 +47,19 @@ void FrameListenerManager::removeFrameListener(FrameListener* const listener) {
 /// If any Listener returns false, the whole manager returns false for this specific step
 /// If the manager returns false at any step, the application exists
 bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
+    return frameEvent(evt, FrameExecutionDomain::LOGIC);
+}
+
+bool FrameListenerManager::frameEvent(const FrameEvent& evt, const FrameExecutionDomain domain) {
     switch (evt._type)
     {
-        case FrameEventType::FRAME_EVENT_STARTED     : return frameStarted(evt);
-        case FrameEventType::FRAME_PRERENDER         : return framePreRender(evt);
-        case FrameEventType::FRAME_SCENERENDER_START : return frameSceneRenderStarted(evt);
-        case FrameEventType::FRAME_SCENERENDER_END   : return frameSceneRenderEnded(evt);
-        case FrameEventType::FRAME_POSTRENDER        : return framePostRender(evt);
-        case FrameEventType::FRAME_EVENT_PROCESS     : return frameRenderingQueued(evt);
-        case FrameEventType::FRAME_EVENT_ENDED       : return frameEnded(evt);
+        case FrameEventType::FRAME_EVENT_STARTED     : return frameStarted(evt, domain);
+        case FrameEventType::FRAME_PRERENDER         : return framePreRender(evt, domain);
+        case FrameEventType::FRAME_SCENERENDER_START : return frameSceneRenderStarted(evt, domain);
+        case FrameEventType::FRAME_SCENERENDER_END   : return frameSceneRenderEnded(evt, domain);
+        case FrameEventType::FRAME_POSTRENDER        : return framePostRender(evt, domain);
+        case FrameEventType::FRAME_EVENT_PROCESS     : return frameRenderingQueued(evt, domain);
+        case FrameEventType::FRAME_EVENT_ENDED       : return frameEnded(evt, domain);
         case FrameEventType::FRAME_EVENT_ANY         : return true;
         default: break;
     };
@@ -61,77 +67,88 @@ bool FrameListenerManager::frameEvent(const FrameEvent& evt) {
     return false;
 }
 
-bool FrameListenerManager::frameStarted(const FrameEvent& evt) {
+bool FrameListenerManager::shouldDispatch(const FrameListener& listener, const FrameExecutionDomain domain) const noexcept {
+    return listener.executionDomain() == FrameExecutionDomain::BOTH || listener.executionDomain() == domain;
+}
+
+bool FrameListenerManager::frameStarted(const FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
+    const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->frameStarted(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->frameStarted(evt)) {
             return false;
         }
     }
     return true;
 }
 
-bool FrameListenerManager::framePreRender(const FrameEvent& evt) {
+bool FrameListenerManager::framePreRender(const FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
+    const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->framePreRender(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->framePreRender(evt)) {
             return false;
         }
     }
     return true;
 }
 
-bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt) {
+bool FrameListenerManager::frameSceneRenderStarted(const FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
+    const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->frameSceneRenderStarted(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->frameSceneRenderStarted(evt)) {
             return false;
         }
     }
     return true;
 }
 
-bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt) {
+bool FrameListenerManager::frameSceneRenderEnded(const FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
+    const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->frameSceneRenderEnded(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->frameSceneRenderEnded(evt)) {
             return false;
         }
     }
     return true;
 }
 
-bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt) {
+bool FrameListenerManager::frameRenderingQueued(const FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
+    const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->frameRenderingQueued(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->frameRenderingQueued(evt)) {
             return false;
         }
     }
     return true;
 }
 
-bool FrameListenerManager::framePostRender(const FrameEvent& evt) {
+bool FrameListenerManager::framePostRender(const FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
+    const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (listener->enabled() && !listener->framePostRender(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->framePostRender(evt)) {
             return false;
         }
     }
     return true;
 }
 
-bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
+bool FrameListenerManager::frameEnded(const FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
+    const SharedLock<SharedMutex> r_lock(_listenerLock);
     for (FrameListener* listener : _listeners) {
-        if (!listener->frameEnded(evt)) {
+        if (listener->enabled() && shouldDispatch(*listener, domain) && !listener->frameEnded(evt)) {
             return false;
         }
     }
@@ -140,10 +157,14 @@ bool FrameListenerManager::frameEnded(const FrameEvent& evt) {
 }
 
 bool FrameListenerManager::createAndProcessEvent(const FrameEventType type, FrameEvent& evt) {
+    return createAndProcessEvent(type, evt, FrameExecutionDomain::LOGIC);
+}
+
+bool FrameListenerManager::createAndProcessEvent(const FrameEventType type, FrameEvent& evt, const FrameExecutionDomain domain) {
     PROFILE_SCOPE_AUTO( Profiler::Category::GameLogic );
 
     evt._type = type;
-    return frameEvent(evt);
+    return frameEvent(evt, domain);
 }
 
 };
