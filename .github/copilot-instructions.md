@@ -239,8 +239,15 @@ Allocator setup:
 Y-direction convention (shared by all backends, OpenGL is the reference):
 
 - client code never branches on the render API for Y: projection matrices, clip space (Y up), NDC-to-UV math, texture origin (bottom-left, loaders flip on import), viewport and scissor rects (bottom-left origin) are identical for OpenGL and Vulkan
-- Vulkan's `VKWrapper.cpp` maps bottom-left viewport/scissor coordinates for every render target using a negative-height viewport and top-left scissor conversion.
-- Offscreen targets invert the dynamic front face; the swapchain does not.
+- Vulkan offscreen render targets use an unflipped viewport and pass-through scissor rects, so texel row 0 is clip-space bottom exactly like OpenGL (sampling, `texelFetch(gl_FragCoord)`, copies and readbacks match). The dynamic front face is inverted to compensate.
+- Only the Vulkan swapchain uses a negative-height viewport and top-left scissor conversion (`IsSwapChainTargetActive()` in `VKWrapper.cpp`); its front face is not inverted. Shaders drawing to the screen must not rely on `gl_FragCoord.y`.
+
+Colour space convention (shared by all backends):
+
+- scene lighting is linear HDR in `RGBA16F` (`SCREEN`, reflection/refraction targets, probes); bloom uses `R11G11B10F`. Tonemapping outputs linear LDR.
+- `BACK_BUFFER` is `RGBA8` sRGB storage (hardware encode on write, decode on read) to reduce banding; UI overlays blend into it in linear space.
+- `DeviceInformation::_screenSRGB` reports whether the default framebuffer (GL: queried colour encoding, `GL_FRAMEBUFFER_SRGB` disabled for the screen if not) or swapchain (VK: `*_SRGB` format) encodes on write. If false, the final screen blit, editor ImGui and splash encode/skip linearisation in shaders.
+- `IMGUI.glsl` linearises ImGui vertex colours and only plain UNORM, non-render-target textures (`lineariseTexture` push constant, set per texture bind in `Editor::renderDrawList`); render targets, sRGB and float textures are sampled as linear.
 - new backends (Metal, WebGPU, etc.) should follow the same pattern: flip only at presentation and adjust winding internally
 
 ### 9. OpenGL backend: overall shape

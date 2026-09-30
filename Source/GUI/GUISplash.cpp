@@ -43,6 +43,7 @@ GUISplash::GUISplash(const std::string_view splashImageName, vec2<U16> dimension
     _uniformData.set( _ID( "channelCount" ), PushConstantType::UINT, 4u );
     _uniformData.set( _ID( "startChannel" ), PushConstantType::UINT, 0u );
     _uniformData.set( _ID( "multiplier" ), PushConstantType::FLOAT, 1.f );
+    _uniformData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 0u );
 }
 
 GUISplash::~GUISplash()
@@ -81,6 +82,8 @@ void GUISplash::render(GFXDevice& context)
     pipelineCmd._pipeline = context.newPipeline(pipelineDescriptor);
     GFX::EnqueueCommand( buffer, pipelineCmd);
 
+    // The splash is drawn straight to the screen. If the screen doesn't encode to sRGB, output the (sRGB) image as-is.
+    _uniformData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, GFXDevice::GetDeviceInformation()._screenSRGB ? 0u : 1u );
     GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( buffer )->_uniformData = &_uniformData;
 
     GFX::SetViewportCommand viewportCommand;

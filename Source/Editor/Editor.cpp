@@ -55,6 +55,32 @@ namespace Divide
 
         IMGUICallbackData g_modalTextureData;
 
+        /// True while recording ImGui draw lists that go straight to a screen that doesn't perform sRGB encoding on write.
+        /// In that case, ImGui's sRGB authored colours must be written out as-is instead of being linearised.
+        bool g_imguiTargetIsLinearScreen = false;
+
+        /// Last push constants sent to the IMGUI shader. Lets us update the per-texture linearisation flag without overriding callback provided state.
+        PushConstantsStruct g_lastImguiPushConstants{};
+
+        /// Textures that are sampled as linear values (render targets, sRGB formats with hardware decode, float and depth formats) must not be linearised again.
+        /// Only plain UNORM images (e.g. icons, fonts, non-sRGB assets) hold sRGB authored data that needs to be converted in the shader.
+        [[nodiscard]] bool ImguiTextureNeedsLinearisation( const Handle<Texture> texture )
+        {
+            const Texture* tex = texture != INVALID_HANDLE<Texture> ? Get( texture ) : nullptr;
+            if ( tex == nullptr )
+            {
+                return true;
+            }
+
+            const TextureDescriptor& descriptor = tex->descriptor();
+            return descriptor._packing == GFXImagePacking::NORMALIZED && !IsRenderTargetAttachment( descriptor );
+        }
+
+        [[nodiscard]] F32 SRGBToLinear( const F32 value ) noexcept
+        {
+            return value <= 0.04045f ? value / 12.92f : std::pow( (value + 0.055f) / 1.055f, 2.4f );
+        }
+
         inline void Reset( Editor::FocusedWindowState& state ) noexcept
         {
             state = {};
@@ -151,7 +177,12 @@ namespace Divide
         pushConstants.data[0]._vec[2].x  = isArrayTexture ? 1.f : 0.f;
         pushConstants.data[0]._vec[2].y  = data._isDepthTexture ? 1.f : 0.f;
         pushConstants.data[0]._vec[2].z  = data._flip ? 1.f : 0.f;
-        pushConstants.data[0]._vec[2].w  = data._srgb ? 1.f : 0.f;
+        pushConstants.data[0]._vec[2].w  = g_imguiTargetIsLinearScreen ? 1.f : 0.f;
+        // If the callback doesn't specify a texture, keep the flag of the currently bound one. The draw loop updates it on texture changes.
+        pushConstants.data[0]._vec[3].x  = data._texture != INVALID_HANDLE<Texture>
+                                                          ? (ImguiTextureNeedsLinearisation( data._texture ) ? 1.f : 0.f)
+                                                          : g_lastImguiPushConstants.data[0]._vec[3].x;
+        g_lastImguiPushConstants = pushConstants;
         return pushConstants;
     }
 
@@ -304,6 +335,7 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back("depthTexture uint(PushData0[2].y)");
             shaderDescriptor._globalDefines.emplace_back("flip uint(PushData0[2].z)");
             shaderDescriptor._globalDefines.emplace_back("convertToSRGB (uint(PushData0[2].w) == 1)");
+            shaderDescriptor._globalDefines.emplace_back("lineariseTexture (uint(PushData0[3].x) == 1)");
 
             _imguiProgram = CreateResource( shaderResDescriptor );
         }
@@ -1434,6 +1466,11 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
+        // editorPass renders directly to the screen, otherwise we render into the (sRGB) back buffer
+        g_imguiTargetIsLinearScreen = editorPass && !GFXDevice::GetDeviceInformation()._screenSRGB;
+        g_lastImguiPushConstants = {};
+        g_lastImguiPushConstants.data[0]._vec[3].x = 1.f;
+
         constexpr U32 MaxVertices = (1 << 16);
         constexpr U32 MaxIndices = MaxVertices * 3u;
         static ImDrawVert vertices[MaxVertices];
@@ -1478,7 +1515,14 @@ namespace Divide
 
         if ( editorPass )
         {
-            const ImVec4 windowBGColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+            ImVec4 windowBGColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+            if ( !g_imguiTargetIsLinearScreen )
+            {
+                // ImGui colours are sRGB authored, but clear values get encoded to sRGB by the screen (same as our shader outputs)
+                windowBGColour.x = SRGBToLinear( windowBGColour.x );
+                windowBGColour.y = SRGBToLinear( windowBGColour.y );
+                windowBGColour.z = SRGBToLinear( windowBGColour.z );
+            }
 
             auto beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             beginRenderPassCmd->_target = SCREEN_TARGET_ID;
@@ -1596,6 +1640,13 @@ namespace Divide
                         }
                         crtImguiTexID = imguiTexID;
                         newCommand = true;
+
+                        const F32 linearise = ImguiTextureNeedsLinearisation( tex ) ? 1.f : 0.f;
+                        if ( g_lastImguiPushConstants.data[0]._vec[3].x != linearise )
+                        {
+                            g_lastImguiPushConstants.data[0]._vec[3].x = linearise;
+                            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = g_lastImguiPushConstants;
+                        }
                     }
 
                     if ( newCommand )

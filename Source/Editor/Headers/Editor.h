@@ -132,7 +132,6 @@ namespace Divide
         U32 _mip = 0u;
         bool _isDepthTexture = false;
         bool _flip = true;
-        bool _srgb = false;
     };
 
     struct GPUVertexBuffer

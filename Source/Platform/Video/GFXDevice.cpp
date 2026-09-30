@@ -684,9 +684,11 @@ namespace Divide
             samplerBackBuffer._anisotropyLevel = 0u;
 
             // This could've been RGB, but Vulkan doesn't seem to support VK_FORMAT_R8G8B8_UNORM in this situation, so ... well ... whatever.
-            // This will contained the final tonemaped image, so unless we desire HDR output, RGBA8 here is fine as anything else will require
-            // changes to the swapchain images!
+            // This will contain the final tonemapped (linear) image plus UI overlays. Storing it as sRGB spends the 8 bits perceptually
+            // (hardware encodes on write and decodes on read) which avoids banding in dark gradients. Blending still happens in linear space.
+            // Unless we desire HDR output, RGBA8 here is fine as anything else will require changes to the swapchain images!
             TextureDescriptor backBufferDescriptor{};
+            backBufferDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
             backBufferDescriptor._mipMappingState = MipMappingState::OFF;
             AddImageUsageFlag( backBufferDescriptor, ImageUsage::SHADER_READ );
             InternalRTAttachmentDescriptors attachments
@@ -814,7 +816,11 @@ namespace Divide
         reflectionSampler._magFilter = TextureFilter::LINEAR;
         reflectionSampler._mipSampling = TextureMipSampling::NONE;
         {
+            // Reflections/refractions hold lit (HDR, linear) scene colour that gets composited back into the HDR scene, so use a float format
+            // to avoid clamping highlights to 1.0 and banding in dark areas.
             TextureDescriptor environmentDescriptorPlanar{};
+            environmentDescriptorPlanar._dataType = GFXDataFormat::FLOAT_16;
+            environmentDescriptorPlanar._packing = GFXImagePacking::UNNORMALIZED;
             environmentDescriptorPlanar._mipMappingState = MipMappingState::MANUAL;
 
             TextureDescriptor depthDescriptorPlanar{};
@@ -863,6 +869,8 @@ namespace Divide
         {
             TextureDescriptor environmentDescriptorCube{};
             environmentDescriptorCube._texType = TextureType::TEXTURE_CUBE_ARRAY;
+            environmentDescriptorCube._dataType = GFXDataFormat::FLOAT_16;
+            environmentDescriptorCube._packing = GFXImagePacking::UNNORMALIZED;
             environmentDescriptorCube._mipMappingState = MipMappingState::OFF;
 
             TextureDescriptor depthDescriptorCube{};
@@ -1451,7 +1459,8 @@ namespace Divide
             const auto& screenAtt = renderTargetPool().getRenderTarget( RenderTargetNames::BACK_BUFFER )->getAttachment( RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO );
             const auto& texData = Get(screenAtt->texture())->getView();
 
-            drawTextureInViewport( texData, screenAtt->_descriptor._sampler, context().mainWindow().renderingViewport(), false, false, false, *buffer );
+            // The back buffer holds linear values (sRGB storage is decoded on read). If the screen can't encode to sRGB, do it in the shader.
+            drawTextureInViewport( texData, screenAtt->_descriptor._sampler, context().mainWindow().renderingViewport(), !GetDeviceInformation()._screenSRGB, false, false, *buffer );
 
             GFX::EnqueueCommand<GFX::EndRenderPassCommand>( *buffer );
             flushCommandBuffer( MOV(bufferHandle) );
