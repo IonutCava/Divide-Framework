@@ -868,7 +868,7 @@ namespace Divide
 
             if ( !screenSRGB )
             {
-                Console::warnfn( "Vulkan swapchain format [ {} ] is not sRGB. Final screen output will be sRGB encoded in shaders.", to_base( windowState._swapChain->getSwapChain().image_format ) );
+                Console::warnfn( LOCALE_STR("WARN_VK_NO_SRGB_SWAPCHAIN"), to_base( windowState._swapChain->getSwapChain().image_format ) );
             }
         }
 

@@ -84,10 +84,18 @@ class glShader final : public ShaderModule
     void uploadPushConstants(const PushConstantsStruct& pushConstants);
 
   private:
+    enum class PushConstantsState : U8
+    {
+        NOT_CHECKED = 0,
+        NOT_USED,
+        USED,
+        COUNT
+    };
+
     ShaderProgram::ShaderLoadData _loadData;
     vector<gl46core::GLuint> _shaderIDs;
     bool _linked = false;
-    gl46core::GLint _pushConstantsLocation{-2};
+    PushConstantsState _pushConstantsState{ PushConstantsState::NOT_CHECKED };
 };
 
 };  // namespace Divide

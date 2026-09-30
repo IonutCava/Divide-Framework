@@ -524,7 +524,7 @@ namespace Divide
             deviceInformation._screenSRGB = colourEncoding == static_cast<gl46core::GLint>(gl46core::GL_SRGB);
             if ( !deviceInformation._screenSRGB )
             {
-                Console::warnfn( "OpenGL default framebuffer is not sRGB capable. Final screen output will be sRGB encoded in shaders." );
+                Console::warnfn( LOCALE_STR("WARN_GL_NO_SRGB_FRAMEBUFFER") );
             }
         }
 

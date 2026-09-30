@@ -423,32 +423,58 @@ void glShader::onParentValidation()
 
 void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
-    if (_pushConstantsLocation == -2)
+    if (_pushConstantsState == PushConstantsState::NOT_CHECKED)
     {
-        // Name based lookups (glGetUniformLocation) are not reliable for programs built from SPIR-V binaries
-        // (ARB_gl_spirv makes names optional and some drivers, e.g. AMD, return -1).
-        // Scan the active uniforms' explicit locations instead, as that works for both GLSL and SPIR-V.
-        _pushConstantsLocation = -1;
+        _pushConstantsState = PushConstantsState::NOT_USED;
 
-        gl46core::GLint activeUniformCount = 0;
-        gl46core::glGetProgramInterfaceiv( _handle, gl46core::GL_UNIFORM, gl46core::GL_ACTIVE_RESOURCES, &activeUniformCount );
+        gl46core::GLint count = 0;
+        gl46core::glGetProgramiv(_handle, gl46core::GL_ACTIVE_UNIFORMS, &count);
 
-        constexpr gl46core::GLenum locationProperty = gl46core::GL_LOCATION;
-        for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
+        for (gl46core::GLint i = 0; i < count; ++i)
         {
-            gl46core::GLint location = -1;
-            gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), 1, &locationProperty, 1, nullptr, &location );
-            if ( location == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
+            char name[256];
+            gl46core::GLsizei length;
+            gl46core::GLint size;
+            gl46core::GLenum type;
+            gl46core::glGetActiveUniform(_handle, i, sizeof(name), &length, &size, &type, name);
+
+            if ( 2 == size && gl46core::GL_FLOAT_MAT4 == type) 
             {
-                _pushConstantsLocation = location;
+                _pushConstantsState = PushConstantsState::USED;
                 break;
             }
         }
     }
 
-    if ( _pushConstantsLocation > -1 )
+    if ( _pushConstantsState == PushConstantsState::NOT_USED )
     {
-        gl46core::glProgramUniformMatrix4fv(_handle, _pushConstantsLocation, 2, gl46core::GL_FALSE, pushConstants.dataPtr());
+        struct VariableInfo
+        {
+            gl46core::GLenum type;
+            gl46core::GLint  loc;
+            gl46core::GLint  num;
+        };
+        VariableInfo vi = { gl46core::GL_INVALID_ENUM, 0, 0};
+        gl46core::GLenum props[] = { gl46core::GL_TYPE, gl46core::GL_LOCATION, gl46core::GL_ARRAY_SIZE };
+
+        gl46core::GLint activeUniformCount = 0;
+        gl46core::glGetProgramInterfaceiv( _handle, gl46core::GL_UNIFORM, gl46core::GL_ACTIVE_RESOURCES, &activeUniformCount );
+
+        for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
+        {
+            //Crashes on AMD drivers for whatever reason when using Spir-V blobs
+            //gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), std::size(props), props, std::size(props), nullptr, (gl46core::GLint*)&vi );
+            if ( vi.loc == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
+            {
+                _pushConstantsState = PushConstantsState::USED;
+                break;
+            }
+        }
+    }
+
+    if ( _pushConstantsState == PushConstantsState::USED )
+    {
+        gl46core::glProgramUniformMatrix4fv(_handle, ShaderProgram::GL_PUSH_CONSTANTS_LOCATION, 2, gl46core::GL_FALSE, pushConstants.dataPtr());
     }
 }
 } // namespace Divide
