@@ -9,7 +9,8 @@
 // u_params.y = inverse of the log_2 luminance range
 
 // Our two inputs, the read-only HDR color image, and the histogramBuffer
-DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rgba16f) uniform ACCESS_R image2D s_texColor;
+//DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rgba16f) uniform ACCESS_R image2D s_texColor;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 12) uniform sampler2D s_texColor;
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent ACCESS_W buffer histogramBuffer
 {
     uint histogram[];
@@ -45,7 +46,8 @@ void main() {
     uvec2 dim = uvec2(u_params.zw);
     // Ignore threads that map to areas beyond the bounds of our HDR image
     if (gl_GlobalInvocationID.x < dim.x && gl_GlobalInvocationID.y < dim.y) {
-        vec3 hdrColor = imageLoad(s_texColor, ivec2(gl_GlobalInvocationID.xy)).rgb;
+        //vec3 hdrColor = imageLoad(s_texColor, ivec2(gl_GlobalInvocationID.xy)).rgb;
+        vec3 hdrColor = texelFetch(s_texColor, ivec2(gl_GlobalInvocationID.xy), 0).rgb;
         uint binIndex = colorToBin(hdrColor, u_params.x, u_params.y);
 
         // We use an atomic add to ensure we don't write to the same bin in our

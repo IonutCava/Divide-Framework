@@ -95,6 +95,7 @@ class glShader final : public ShaderModule
     ShaderProgram::ShaderLoadData _loadData;
     vector<gl46core::GLuint> _shaderIDs;
     bool _linked = false;
+    bool _usingSPIRV = false;
     PushConstantsState _pushConstantsState{ PushConstantsState::NOT_CHECKED };
 };
 

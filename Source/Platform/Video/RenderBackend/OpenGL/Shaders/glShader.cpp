@@ -64,6 +64,7 @@ glShader::~glShader()
 
 ShaderResult glShader::uploadToGPU(const Configuration& config)
 {
+    _pushConstantsState = PushConstantsState::NOT_CHECKED;
     if (!_valid)
     {
         const auto getTimerAndReset = [](Time::ProfileTimer& timer)
@@ -152,12 +153,12 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
                 return supported;
             };
 
-            const bool useOpenGLSPIRVPath = config.debug.renderer.useSPIRVForOpenGL &&
+            _usingSPIRV = config.debug.renderer.useSPIRVForOpenGL &&
                                             !data._sourceCodeSpirV.empty() &&
                                             SupportsSPIRVForGL();
             if ( config.debug.renderer.useSPIRVForOpenGL &&
                  !data._sourceCodeSpirV.empty() &&
-                 !useOpenGLSPIRVPath )
+                 !_usingSPIRV)
             {
                 static bool s_reportedSPIRVFallback = false;
                 if ( !s_reportedSPIRVFallback )
@@ -167,7 +168,7 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
                 }
             }
 
-            if (useOpenGLSPIRVPath)
+            if (_usingSPIRV)
             {
                 gl46core::glShaderBinary(
                     1,
@@ -427,47 +428,27 @@ void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
     {
         _pushConstantsState = PushConstantsState::NOT_USED;
 
-        gl46core::GLint count = 0;
-        gl46core::glGetProgramiv(_handle, gl46core::GL_ACTIVE_UNIFORMS, &count);
-
-        for (gl46core::GLint i = 0; i < count; ++i)
-        {
-            char name[256];
-            gl46core::GLsizei length;
-            gl46core::GLint size;
-            gl46core::GLenum type;
-            gl46core::glGetActiveUniform(_handle, i, sizeof(name), &length, &size, &type, name);
-
-            if ( 2 == size && gl46core::GL_FLOAT_MAT4 == type) 
-            {
-                _pushConstantsState = PushConstantsState::USED;
-                break;
-            }
-        }
-    }
-
-    if ( _pushConstantsState == PushConstantsState::NOT_USED )
-    {
-        struct VariableInfo
-        {
-            gl46core::GLenum type;
-            gl46core::GLint  loc;
-            gl46core::GLint  num;
-        };
-        VariableInfo vi = { gl46core::GL_INVALID_ENUM, 0, 0};
-        gl46core::GLenum props[] = { gl46core::GL_TYPE, gl46core::GL_LOCATION, gl46core::GL_ARRAY_SIZE };
-
         gl46core::GLint activeUniformCount = 0;
         gl46core::glGetProgramInterfaceiv( _handle, gl46core::GL_UNIFORM, gl46core::GL_ACTIVE_RESOURCES, &activeUniformCount );
 
-        for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
+        if (_usingSPIRV && activeUniformCount > 0 )
         {
-            //Crashes on AMD drivers for whatever reason when using Spir-V blobs
-            //gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), std::size(props), props, std::size(props), nullptr, (gl46core::GLint*)&vi );
-            if ( vi.loc == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
+            // glGetProgramResourceiv crashes on AMD drivers for whatever reason when using Spir-V blobs. Something to do with uniform name stripping
+            _pushConstantsState = PushConstantsState::USED;
+        }
+        else
+        {
+            gl46core::GLint  location = -1;
+            constexpr gl46core::GLenum property = gl46core::GL_LOCATION;
+
+            for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
             {
-                _pushConstantsState = PushConstantsState::USED;
-                break;
+                gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), 1, &property, 1, nullptr, &location );
+                if ( location == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
+                {
+                    _pushConstantsState = PushConstantsState::USED;
+                    break;
+                }
             }
         }
     }
