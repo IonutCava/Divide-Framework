@@ -306,7 +306,16 @@ namespace Divide
 
         [[nodiscard]] const char* ShaderBinaryCacheTag()
         {
-            return s_renderAPI == RenderAPI::OpenGL ? "GL450-SPV1.0" : "VK1.3-SPV1.6";
+            static constexpr std::array<const char*, to_base(RenderAPI::COUNT)> s_renderAPICacheTags = {
+                "None-GL450-SPV1.0",
+                "GL450-SPV1.0",
+                "VK1.3-SPV1.6",
+                "NRI_Vulkan-GL450-SPV1.0",
+                "NRI_D3D12-GL450-SPV1.0",
+                "NRI_D3D11-GL450-SPV1.0",
+                "NRI_None-GL450-SPV1.0"
+            };
+            return s_renderAPICacheTags[to_base(s_renderAPI)];
         }
 
         [[nodiscard]] ResourcePath SpvTargetName( const Str<256>& fileName )
