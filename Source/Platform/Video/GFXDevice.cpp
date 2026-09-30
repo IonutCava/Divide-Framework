@@ -3130,7 +3130,12 @@ namespace Divide
     {
         RenderTarget_uptr ret = _api->newRenderTarget(descriptor);
         DIVIDE_EXPECTED_CALL( ret != nullptr );
-        DIVIDE_EXPECTED_GPU_CALL(ret->create());
+        const bool created = ret->create();
+        DIVIDE_EXPECTED_GPU_CALL(created);
+        if ( !created )
+        {
+            return nullptr;
+        }
 
         return ret;
     }

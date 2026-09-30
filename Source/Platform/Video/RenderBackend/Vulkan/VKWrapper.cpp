@@ -1916,10 +1916,13 @@ namespace Divide
             ret = true;
         }
 
-        if ( !activeState._isSet || activeState._block._frontFaceCCW != currentState._frontFaceCCW || activeState._frontFaceInverted )
+        const bool invertFrontFace = GetStateTracker()._activeRenderTargetID != SCREEN_TARGET_ID;
+        if ( !activeState._isSet ||
+             activeState._block._frontFaceCCW != currentState._frontFaceCCW ||
+             activeState._frontFaceInverted != invertFrontFace )
         {
-            vkCmdSetFrontFace( cmdBuffer, currentState._frontFaceCCW ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
-            activeState._frontFaceInverted = false;
+            vkCmdSetFrontFace( cmdBuffer, (currentState._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+            activeState._frontFaceInverted = invertFrontFace;
             ret = true;
         }
 
@@ -2368,8 +2371,10 @@ namespace Divide
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
                     const RTClearEntry& colourClearEntry = crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )];
                     const bool shouldClear = colourClearEntry._enabled;
+                    const bool imageWasPresented = swapChain->currentImageWasPresented();
+                    const bool imageWasRenderedThisFrame = swapChain->currentImageWasRenderedThisFrame();
                     const bool canLoadPreviousContents = !shouldClear &&
-                                                         (swapChain->currentImageWasPresented() || swapChain->currentImageWasRenderedThisFrame());
+                                                         (imageWasPresented || imageWasRenderedThisFrame);
 
                     VkRenderingAttachmentInfo attachmentInfo
                     {
@@ -2417,14 +2422,15 @@ namespace Divide
                         .layerCount = 1,
                     };
 
-                    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+                                                 (canLoadPreviousContents ? VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT : VK_ACCESS_2_NONE);
                     imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                     imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-                    imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                    imageBarrier.srcStageMask = (shouldClear || !canLoadPreviousContents)
-                                               ? VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT
-                                               : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    imageBarrier.srcAccessMask = imageWasRenderedThisFrame ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_NONE;
+                    imageBarrier.srcStageMask = imageWasRenderedThisFrame
+                                              ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+                                              : VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
                     imageBarrier.oldLayout = (shouldClear || !canLoadPreviousContents)
                                            ? VK_IMAGE_LAYOUT_UNDEFINED
                                            : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;

@@ -252,6 +252,7 @@ namespace Divide
         const auto indexVal = index.value();
         VKQueue ret
         {
+            ._queue = VK_NULL_HANDLE,
             ._pool = createCommandPool(indexVal, VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT),
             ._index = indexVal,
             ._type = type
