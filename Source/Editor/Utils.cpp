@@ -427,17 +427,16 @@ namespace Divide
             ImGui::PopStyleColor();
         }
 
-        ImGuiInputTextFlags GetDefaultFlagsForSettings( const bool readOnly, const bool hex )
+        ImGuiInputTextFlags GetDefaultFlagsForSettings( const bool readOnly, const bool hex, [[maybe_unused]] const bool isSlider )
         {
-            return ImGuiInputTextFlags_EnterReturnsTrue |
-                   ImGuiInputTextFlags_CharsNoBlank |
+            return ImGuiInputTextFlags_CharsNoBlank |
                    (hex ? ImGuiInputTextFlags_CharsHexadecimal : ImGuiInputTextFlags_CharsDecimal) |
                    (readOnly ? ImGuiInputTextFlags_ReadOnly : 0u);
         }
 
         ImGuiInputTextFlags GetDefaultFlagsForField( const EditorComponentField& field )
         {
-            return GetDefaultFlagsForSettings( field._readOnly, field._hexadecimal);
+            return GetDefaultFlagsForSettings( field._readOnly, field._hexadecimal, field._type == EditorComponentFieldType::SLIDER_TYPE );
         }
     } //namespace Util
 } //namespace Divide
