@@ -343,7 +343,7 @@ function (Toggle_Available_Vector_Extensions)
         endif()
 
         if ( F16C_OPT )
-            list(APPEND EXTRA_COMPILE_FLAGS "-f16c")
+            list(APPEND EXTRA_COMPILE_FLAGS "-mf16c")
         else()
             list(APPEND EXTRA_COMPILE_FLAGS "-mno-f16c")
         endif()
