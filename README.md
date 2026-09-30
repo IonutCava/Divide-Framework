@@ -31,6 +31,10 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 * Please let me know as I'm curious to see where and why and also, I'd highly appreciate it.
   
 ## How to build & run
+### Minimum CPU requirements:
+- x86: SSE4.1
+- ARM: NEON
+
 ### All:
 - Clone with recursive submodules (e.g. git clone --recurse-submodules). Needed for vcpkg.
 ### Visual Studio Code:

@@ -11,7 +11,7 @@ option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their val
 option(SHOW_CONSOLE_WINDOW "Show the console window and Win32 builds and direct all log output to it" OFF)
 option(ENABLE_MIMALLOC "Use mimalloc to override malloc/free calls" OFF)
 option(ENABLE_DYNAMIC_DEOPTIMISATION "Enable Dynamic Deoptimisation" OFF)
-set(DIVIDE_VECTOR_EXTENSION_SET "AVX2" CACHE STRING "Preferred SIMD extension set (AUTO, SSE41, SSE42, AVX, AVX2, AVX512, NEON). Higher levels imply lower ones when available.")
+set(DIVIDE_VECTOR_EXTENSION_SET "SSE41" CACHE STRING "Preferred SIMD extension set (AUTO, SSE41, SSE42, AVX, AVX2, AVX512, NEON). Higher levels imply lower ones when available.")
 set_property(CACHE DIVIDE_VECTOR_EXTENSION_SET PROPERTY STRINGS "AUTO" "SSE41" "SSE42" "AVX" "AVX2" "AVX512" "NEON")
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")

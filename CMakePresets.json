@@ -13,7 +13,8 @@
         "MIMALLOC_DISABLE_REDIRECT": "1"
       },
             "cacheVariables" : {
-                "CMAKE_POLICY_VERSION_MINIMUM" : "3.5"
+                "CMAKE_POLICY_VERSION_MINIMUM" : "3.5",
+                "DIVIDE_VECTOR_EXTENSION_SET" : "SSE41"
       }
     },
     {
