@@ -449,7 +449,7 @@ namespace Divide
         vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
         vmaallocinfo.priority = 1.f;
-
+        _createdImageUsageMask = imageInfo.usage;
         {
             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
             VK_CHECK( vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
@@ -1262,10 +1262,15 @@ namespace Divide
             imageInfo.subresourceRange = range;
 
             VkImageViewUsageCreateInfo viewCreateInfo = vk::imageViewUsageCreateInfo();
-            if ( !viewDescriptor._resolveTarget )
+            if (!viewDescriptor._resolveTarget)
             {
-                viewCreateInfo.usage = GetFlagForUsage( newView._descriptor._usage, _descriptor);
-                imageInfo.pNext = &viewCreateInfo;
+                const VkImageUsageFlags requestedUsage = static_cast<VkImageUsageFlags>(GetFlagForUsage(newView._descriptor._usage, _descriptor));
+
+                viewCreateInfo.usage = requestedUsage & _createdImageUsageMask;
+                if (viewCreateInfo.usage != 0u)
+                {
+                    imageInfo.pNext = &viewCreateInfo;
+                }
             }
 
             VK_CHECK( vkCreateImageView( VK_API::GetStateTracker()._device->getVKDevice(), &imageInfo, nullptr, &newView._view ) );
