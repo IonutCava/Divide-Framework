@@ -864,7 +864,7 @@ namespace
         UniformData* rhsUniforms = static_cast<SendPushConstantsCommand*>(rhs)->_uniformData;
         if ( lhsUniforms == nullptr )
         {
-            lhsUniforms = rhsUniforms;
+            lhs->_uniformData = rhsUniforms;
             return true;
         }
         else if ( rhsUniforms == nullptr )

@@ -118,10 +118,56 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
             }
 
             gl46core::GLuint shader = GL_NULL_HANDLE;
-            DIVIDE_GPU_ASSERT(shader != 0u && !data._sourceCodeGLSL.empty());
+            DIVIDE_GPU_ASSERT( !data._sourceCodeGLSL.empty() || !data._sourceCodeSpirV.empty() );
 
             shader = gl46core::glCreateShader(GLUtil::glShaderStageTable[to_base(data._type)]);
-            if (config.debug.renderer.useSPIRVForOpenGL && !data._sourceCodeSpirV.empty())
+            DIVIDE_GPU_ASSERT( shader != 0u && shader != GL_NULL_HANDLE );
+
+            static I8 s_spirvSupportState = -1;
+            const auto SupportsSPIRVForGL = [&]()
+            {
+                if ( s_spirvSupportState >= 0 )
+                {
+                    return s_spirvSupportState == 1;
+                }
+
+                gl46core::GLint formatCount = 0;
+                gl46core::glGetIntegerv( gl46core::GL_NUM_SHADER_BINARY_FORMATS, &formatCount );
+                bool supported = false;
+                if ( formatCount > 0 )
+                {
+                    vector<gl46core::GLint> formats( formatCount, 0 );
+                    gl46core::glGetIntegerv( gl46core::GL_SHADER_BINARY_FORMATS, formats.data() );
+                    for ( const gl46core::GLint format : formats )
+                    {
+                        if ( format == to_I32( gl46core::GL_SHADER_BINARY_FORMAT_SPIR_V ) )
+                        {
+                            supported = true;
+                            break;
+                        }
+                    }
+                }
+
+                s_spirvSupportState = supported ? 1 : 0;
+                return supported;
+            };
+
+            const bool useOpenGLSPIRVPath = config.debug.renderer.useSPIRVForOpenGL &&
+                                            !data._sourceCodeSpirV.empty() &&
+                                            SupportsSPIRVForGL();
+            if ( config.debug.renderer.useSPIRVForOpenGL &&
+                 !data._sourceCodeSpirV.empty() &&
+                 !useOpenGLSPIRVPath )
+            {
+                static bool s_reportedSPIRVFallback = false;
+                if ( !s_reportedSPIRVFallback )
+                {
+                    s_reportedSPIRVFallback = true;
+                    Console::warnfn( "OpenGL SPIR-V path requested for shader [{}] but GL_ARB_gl_spirv is not available. Falling back to GLSL source compilation.", _name.c_str() );
+                }
+            }
+
+            if (useOpenGLSPIRVPath)
             {
                 gl46core::glShaderBinary(
                     1,
@@ -379,7 +425,25 @@ void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
     if (_pushConstantsLocation == -2)
     {
-        _pushConstantsLocation = gl46core::glGetUniformLocation( _handle, "PushConstantData" );
+        // Name based lookups (glGetUniformLocation) are not reliable for programs built from SPIR-V binaries
+        // (ARB_gl_spirv makes names optional and some drivers, e.g. AMD, return -1).
+        // Scan the active uniforms' explicit locations instead, as that works for both GLSL and SPIR-V.
+        _pushConstantsLocation = -1;
+
+        gl46core::GLint activeUniformCount = 0;
+        gl46core::glGetProgramInterfaceiv( _handle, gl46core::GL_UNIFORM, gl46core::GL_ACTIVE_RESOURCES, &activeUniformCount );
+
+        constexpr gl46core::GLenum locationProperty = gl46core::GL_LOCATION;
+        for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
+        {
+            gl46core::GLint location = -1;
+            gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), 1, &locationProperty, 1, nullptr, &location );
+            if ( location == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
+            {
+                _pushConstantsLocation = location;
+                break;
+            }
+        }
     }
 
     if ( _pushConstantsLocation > -1 )

@@ -31,6 +31,7 @@ namespace Divide {
         _swapChain.destroy_image_views(_swapchainImageViews);
         _swapchainImages.clear();
         _swapchainImageViews.clear();
+        _swapchainImagePresented.clear();
 
         if ( _swapChain.swapchain != VK_NULL_HANDLE )
         {
@@ -72,10 +73,10 @@ namespace Divide {
         // adaptiveSync not supported yet
         DIVIDE_UNUSED(adaptiveSync);
 
-        auto vkbSwapchain = swapchainBuilder.set_desired_format( { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .set_desired_format( { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .set_desired_format( { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .add_fallback_format( { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+        auto vkbSwapchain = swapchainBuilder.set_desired_format( { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .set_desired_format( { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .add_fallback_format( { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .add_fallback_format( { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
                                             .set_desired_present_mode( vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR )
                                             .add_fallback_present_mode( VK_PRESENT_MODE_FIFO_KHR )
                                             .set_desired_extent( surfaceExtent().width, surfaceExtent().height )
@@ -93,6 +94,7 @@ namespace Divide {
         _swapChain = vkbSwapchain.value();
         _swapchainImages = _swapChain.get_images().value();
         _swapchainImageViews = _swapChain.get_image_views().value();
+        _swapchainImagePresented.assign(_swapchainImages.size(), 0u);
         _frames.resize(_swapchainImages.size());
         _renderSemaphores.resize(_swapchainImages.size());
 
@@ -150,6 +152,7 @@ namespace Divide {
 
         if ( ret == VK_SUCCESS )
         {
+            _currentImageRenderedThisFrame = false;
             PROFILE_SCOPE( "Begin Command Buffer", Profiler::Category::Graphics );
             //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
             VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
@@ -212,7 +215,13 @@ namespace Divide {
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pImageIndices = &_swapchainImageIndex;
 
-        return _device.queuePresent( QueueType::GRAPHICS, presentInfo);
+        const VkResult presentResult = _device.queuePresent( QueueType::GRAPHICS, presentInfo );
+        if ( presentResult == VK_SUCCESS || presentResult == VK_SUBOPTIMAL_KHR )
+        {
+            markCurrentImagePresented();
+        }
+
+        return presentResult;
     }
 
     vkb::Swapchain& VKSwapChain::getSwapChain() noexcept
@@ -228,6 +237,26 @@ namespace Divide {
     VkImageView VKSwapChain::getCurrentImageView() const noexcept
     {
         return _swapchainImageViews[_swapchainImageIndex];
+    }
+
+    bool VKSwapChain::currentImageWasPresented() const noexcept
+    {
+        return _swapchainImagePresented[_swapchainImageIndex] != 0u;
+    }
+
+    bool VKSwapChain::currentImageWasRenderedThisFrame() const noexcept
+    {
+        return _currentImageRenderedThisFrame;
+    }
+
+    void VKSwapChain::markCurrentImagePresented() noexcept
+    {
+        _swapchainImagePresented[_swapchainImageIndex] = 1u;
+    }
+
+    void VKSwapChain::markCurrentImageRenderedThisFrame() noexcept
+    {
+        _currentImageRenderedThisFrame = true;
     }
 
     bool VKSwapChain::getFrameData(FrameData*& dataOut) const noexcept

@@ -304,14 +304,19 @@ namespace Divide
             return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationText;
         }
 
+        [[nodiscard]] const char* ShaderBinaryCacheTag()
+        {
+            return s_renderAPI == RenderAPI::OpenGL ? "GL450-SPV1.0" : "VK1.3-SPV1.6";
+        }
+
         [[nodiscard]] ResourcePath SpvTargetName( const Str<256>& fileName )
         {
-            return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt.c_str() };
+            return ResourcePath{ fileName + "." + ShaderBinaryCacheTag() + "." + Paths::Shaders::g_SPIRVExt.c_str() };
         }
 
         [[nodiscard]] ResourcePath ReflTargetName( const Str<256>& fileName )
         {
-            return ResourcePath { fileName + "." + Paths::Shaders::g_ReflectionExt.c_str() };
+            return ResourcePath { fileName + "." + ShaderBinaryCacheTag() + "." + Paths::Shaders::g_ReflectionExt.c_str() };
         }
 
         [[nodiscard]] bool ValidateCacheLocked( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& sourceFileName, const Str<256>& fileName )
@@ -2068,10 +2073,10 @@ namespace Divide
         }
         else
         {
-            pushConstantCodeBlock =
-                "layout(location = 18) uniform mat4 PushConstantData[2];\n"
+            pushConstantCodeBlock = Util::StringFormat(
+                "layout(location = {}) uniform mat4 PushConstantData[2];\n"
                 "#define PushData0 PushConstantData[0]\n"
-                "#define PushData1 PushConstantData[1]";
+                "#define PushData1 PushConstantData[1]", GL_PUSH_CONSTANTS_LOCATION );
         }
 
         Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PROGRAM_NAME_\\", Util::StringFormat("/*[ {} ]*/", loadDataInOut._shaderName.c_str()));

@@ -231,6 +231,8 @@ private:
     bool _uniformsNeedLock{false};
     bool _supportsParallelShaderCompilation{false};
     bool _meshShadersSupported{false};
+    PushConstantsStruct _lastPushConstants{};
+    bool _hasLastPushConstants{ false };
     GFX::MemoryBarrierCommand _uniformsMemCommand{};
     gl46core::GLuint _dummyVAO{ GL_NULL_HANDLE };
 

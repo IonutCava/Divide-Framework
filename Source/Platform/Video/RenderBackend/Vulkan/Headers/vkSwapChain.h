@@ -68,6 +68,10 @@ namespace Divide {
         [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
         [[nodiscard]] VkImage         getCurrentImage() const noexcept;
         [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;
+        [[nodiscard]] bool            currentImageWasPresented() const noexcept;
+        [[nodiscard]] bool            currentImageWasRenderedThisFrame() const noexcept;
+        void                          markCurrentImagePresented() noexcept;
+        void                          markCurrentImageRenderedThisFrame() noexcept;
         [[nodiscard]] bool            getFrameData(FrameData*& dataOut) const noexcept;
 
         PROPERTY_R_IW(VkExtent2D, surfaceExtent);
@@ -84,6 +88,8 @@ namespace Divide {
 
         std::vector<VkImage> _swapchainImages;
         std::vector<VkImageView> _swapchainImageViews;
+        vector<U8> _swapchainImagePresented;
+        bool _currentImageRenderedThisFrame{ false };
         vector<VkSemaphore> _renderSemaphores;
         U32 _swapchainImageIndex{ 0u };
     };

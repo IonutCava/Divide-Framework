@@ -1916,11 +1916,19 @@ namespace Divide
             ret = true;
         }
 
-        if ( !activeState._isSet || activeState._block._frontFaceCCW != currentState._frontFaceCCW )
+        const bool invertFrontFace = GetStateTracker()._activeRenderTargetID != SCREEN_TARGET_ID;
+        if ( !activeState._isSet ||
+             activeState._block._frontFaceCCW != currentState._frontFaceCCW ||
+             activeState._frontFaceInverted != invertFrontFace )
         {
-            vkCmdSetFrontFace( cmdBuffer, currentState._frontFaceCCW ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+            vkCmdSetFrontFace( cmdBuffer, (currentState._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+            activeState._frontFaceInverted = invertFrontFace;
             ret = true;
         }
+
+        // Scissor rects and the scissor test flag are independent state (as in OpenGL), so re-apply the last requested rect whenever the test toggles
+        const bool scissorTestChanged = !activeState._isSet || activeState._block._scissorTestEnabled != currentState._scissorTestEnabled;
+        ret = ret || scissorTestChanged;
 
         if ( !activeState._isSet || activeState._block._depthTestEnabled != currentState._depthTestEnabled )
         {
@@ -1996,6 +2004,11 @@ namespace Divide
         {
             activeState._block = currentState;
             activeState._isSet = true;
+        }
+
+        if ( scissorTestChanged )
+        {
+            setScissorInternal( _context.activeScissor(), cmdBuffer );
         }
     }
 
@@ -2324,8 +2337,6 @@ namespace Divide
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
-        static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
-
         VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmdBuffer);
 
@@ -2357,28 +2368,36 @@ namespace Divide
                 VkRenderingInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_RENDERING_INFO };
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
+                    VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
+                    const RTClearEntry& colourClearEntry = crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )];
+                    const bool shouldClear = colourClearEntry._enabled;
+                    const bool imageWasPresented = swapChain->currentImageWasPresented();
+                    const bool imageWasRenderedThisFrame = swapChain->currentImageWasRenderedThisFrame();
+                    const bool canLoadPreviousContents = !shouldClear &&
+                                                         (imageWasPresented || imageWasRenderedThisFrame);
+
                     VkRenderingAttachmentInfo attachmentInfo
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
-                        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
+                        .loadOp = shouldClear ? VK_ATTACHMENT_LOAD_OP_CLEAR
+                                              : (canLoadPreviousContents ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_DONT_CARE),
                         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
                         .clearValue =
                         {
                             .color =
                             {
-                                DefaultColours::DIVIDE_BLUE.r,
-                                DefaultColours::DIVIDE_BLUE.g,
-                                DefaultColours::DIVIDE_BLUE.b,
-                                DefaultColours::DIVIDE_BLUE.a
+                                colourClearEntry._colour.r,
+                                colourClearEntry._colour.g,
+                                colourClearEntry._colour.b,
+                                colourClearEntry._colour.a
                             }
                         }
                     };
 
                     PROFILE_SCOPE( "Draw to screen", Profiler::Category::Graphics);
-
-                    VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
                     attachmentInfo.imageView = swapChain->getCurrentImageView();
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = 1u;
@@ -2403,19 +2422,26 @@ namespace Divide
                         .layerCount = 1,
                     };
 
-                    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+                                                 (canLoadPreviousContents ? VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT : VK_ACCESS_2_NONE);
                     imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                     imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-                    imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    imageBarrier.srcAccessMask = imageWasRenderedThisFrame ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_NONE;
+                    imageBarrier.srcStageMask = imageWasRenderedThisFrame
+                                              ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+                                              : VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                    imageBarrier.oldLayout = (shouldClear || !canLoadPreviousContents)
+                                           ? VK_IMAGE_LAYOUT_UNDEFINED
+                                           : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                     dependencyInfo.imageMemoryBarrierCount = 1u;
                     dependencyInfo.pImageMemoryBarriers = &imageBarrier;
                     
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+
+                    swapChain->markCurrentImageRenderedThisFrame();
 
                     stateTracker._activeMSAASamples = 1u;
                 }
@@ -2450,6 +2476,16 @@ namespace Divide
 
                     _context.setViewport( renderArea );
                     _context.setScissor( renderArea );
+
+                    // A pipeline bound before this pass may have set its front face for the other target type
+                    auto& activeState = stateTracker._activeWindow->_activeState;
+                    const bool invertFrontFace = crtCmd->_target != SCREEN_TARGET_ID;
+                    if ( activeState._isSet && activeState._frontFaceInverted != invertFrontFace )
+                    {
+                        vkCmdSetFrontFace( cmdBuffer, (activeState._block._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+                        activeState._frontFaceInverted = invertFrontFace;
+                    }
+
                     VK_PROFILE( vkCmdBeginRendering, cmdBuffer, &renderingInfo);
                 }
             } break;
@@ -2575,12 +2611,14 @@ namespace Divide
                     }
                     if ( pushConstantsCmd->_fastData.set() )
                     {
+                        _lastPushConstants = pushConstantsCmd->_fastData;
+                        _hasLastPushConstants = true;
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
                                                         to_U32( PushConstantsStruct::Size() ),
-                                                        pushConstantsCmd->_fastData.dataPtr() );
+                                                        _lastPushConstants.dataPtr() );
 
                         stateTracker._pushConstantsValid = true;
                     }
@@ -2622,14 +2660,14 @@ namespace Divide
 
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
-                    if ( !stateTracker._pushConstantsValid )
+                    if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
                                                         to_U32( PushConstantsStruct::Size() ),
-                                                        &s_defaultPushConstants[0].mat );
+                                                        _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }
 
@@ -2665,14 +2703,14 @@ namespace Divide
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
                 if (stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE)
                 {
-                    if ( !stateTracker._pushConstantsValid )
+                    if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
                                                         to_U32( PushConstantsStruct::Size() ),
-                                                        &s_defaultPushConstants[0].mat );
+                                                        _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }
 
@@ -3074,19 +3112,15 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
+        // Engine convention (shared with OpenGL): clip-space Y points up and viewport/scissor origins are bottom-left.
+        // Convert to Vulkan's top-left framebuffer coordinates here, without changing client-side projection matrices.
         VkViewport targetViewport{};
         targetViewport.width = to_F32( newViewport.sizeX );
+        targetViewport.x = to_F32( newViewport.offsetX );
+
+        const I32 targetHeight = to_I32( GetStateTracker()._activeRenderTargetDimensions.height );
+        targetViewport.y = to_F32( targetHeight - newViewport.offsetY );
         targetViewport.height = -to_F32( newViewport.sizeY );
-        targetViewport.x = to_F32(newViewport.offsetX);
-        if ( newViewport.offsetY == 0 )
-        {
-            targetViewport.y = to_F32(newViewport.sizeY);
-        }
-        else
-        {
-            targetViewport.y = to_F32(/*newViewport.sizeY - */newViewport.offsetY);
-            targetViewport.y = GetStateTracker()._activeRenderTargetDimensions.height + targetViewport.y;
-        }
         targetViewport.minDepth = 0.f;
         targetViewport.maxDepth = 1.f;
 
@@ -3103,9 +3137,39 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        const VkOffset2D offset{ std::max( 0, newScissor.offsetX ), std::max( 0, newScissor.offsetY ) };
-        const VkExtent2D extent{ to_U32( newScissor.sizeX ),to_U32( newScissor.sizeY ) };
-        const VkRect2D targetScissor{ offset, extent };
+        const bool scissorEnabled = GetStateTracker()._activeWindow->_activeState._isSet &&
+                                    GetStateTracker()._activeWindow->_activeState._block._scissorTestEnabled;
+        const vec2<U16> rtDimensions = GetStateTracker()._activeRenderTargetDimensions;
+        const VkRect2D fullScissor{ VkOffset2D{ 0, 0 }, VkExtent2D{ rtDimensions.width, rtDimensions.height } };
+
+        if ( !scissorEnabled )
+        {
+            vkCmdSetScissor( cmdBuffer, 0, 1, &fullScissor );
+            return true;
+        }
+
+        const I32 maxWidth = to_I32( rtDimensions.width );
+        const I32 maxHeight = to_I32( rtDimensions.height );
+        const I32 requestX0 = newScissor.offsetX;
+        const I32 requestY0 = newScissor.offsetY;
+        const I32 requestX1 = newScissor.offsetX + std::max( 0, newScissor.sizeX );
+        const I32 requestY1 = newScissor.offsetY + std::max( 0, newScissor.sizeY );
+
+        if ( requestX0 <= 0 && requestY0 <= 0 && requestX1 >= maxWidth && requestY1 >= maxHeight )
+        {
+            vkCmdSetScissor( cmdBuffer, 0, 1, &fullScissor );
+            return true;
+        }
+
+        const I32 x0 = std::max( 0, std::min( requestX0, maxWidth ) );
+        const I32 y0 = std::max( 0, std::min( requestY0, maxHeight ) );
+        const I32 x1 = std::max( 0, std::min( requestX1, maxWidth ) );
+        const I32 y1 = std::max( 0, std::min( requestY1, maxHeight ) );
+        const VkRect2D targetScissor{
+            VkOffset2D{ x0, maxHeight - y1 },
+            VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
+        };
+
         vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
         return true;
     }

@@ -35,7 +35,6 @@ namespace Divide
 
     BoundingSphere SceneGraph::GetBounds( const SceneGraphNode* sgn )
     {
-        BoundingSphere ret{ VECTOR3_ZERO , EPSILON_F32 };
         if ( sgn != nullptr )
         {
             const BoundsComponent* bComp = sgn->get<BoundsComponent>();
@@ -47,12 +46,11 @@ namespace Divide
             const TransformComponent* tComp = sgn->get<TransformComponent>();
             if ( tComp != nullptr )
             {
-                ret.setCenter( tComp->getWorldPosition() );
-                ret.setRadius( std::max( tComp->getLocalScale().maxComponent() * 2.f, 1.f ) );
+                return BoundingSphere{ tComp->getWorldPosition() , std::max(tComp->getLocalScale().maxComponent() * 2.f, 1.f) };
             }
         }
 
-        return ret;
+        return BoundingSphere{ VECTOR3_ZERO , EPSILON_F32 };;
     }
 
     SceneGraph::SceneGraph( Scene& parentScene )

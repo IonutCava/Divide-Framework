@@ -208,7 +208,8 @@ NavModelData MergeModels(NavModelData& a,
                          NavModelData& b,
                          const bool delOriginals /* = false*/) {
     NavModelData mergedData;
-    if (a.getVerts() || b.getVerts()) {
+    if (a.getVerts() || b.getVerts())
+    {
         if (!a.getVerts()) {
             return b;
         }
@@ -265,7 +266,7 @@ NavModelData MergeModels(NavModelData& a,
     }
 
     mergedData.name(Util::StringFormat("{}+{}", a.name(), b.name() ).c_str());
-    return mergedData;
+    return MOV(mergedData);
 }
 
 void AddVertex(NavModelData* modelData, const float3& vertex) {

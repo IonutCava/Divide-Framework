@@ -1525,8 +1525,6 @@ namespace Divide
         const ImVec2 clip_off = pDrawData->DisplayPos;         // (0,0) unless using multi-viewports
         const ImVec2 clip_scale = pDrawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
 
-        const bool flipClipY = _context.gfx().renderAPI() == RenderAPI::OpenGL;
-
         ImTextureID crtImguiTexID = 0u;
 
         U32 baseVertex = 0u;
@@ -1566,7 +1564,7 @@ namespace Divide
                     clipRect.sizeX = to_I32( clip_max.x - clip_min.x );
                     clipRect.sizeY = to_I32( clip_max.y - clip_min.y );
                     clipRect.offsetX = to_I32( clip_min.x );
-                    clipRect.offsetY = flipClipY ? to_I32( fb_height - clip_max.y ) : to_I32( clip_min.y );
+                    clipRect.offsetY = to_I32( fb_height - clip_max.y );
 
                     if ( prevClipRect != clipRect )
                     {
