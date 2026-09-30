@@ -1916,13 +1916,10 @@ namespace Divide
             ret = true;
         }
 
-        // Offscreen targets share OpenGL's row layout, which mirrors Vulkan's facing determination, so invert the winding there.
-        // The swapchain uses a Y-flipped viewport and therefore matches OpenGL's winding as-is.
-        const bool invertFrontFace = GetStateTracker()._activeRenderTargetID != SCREEN_TARGET_ID;
-        if ( !activeState._isSet || activeState._block._frontFaceCCW != currentState._frontFaceCCW || activeState._frontFaceInverted != invertFrontFace )
+        if ( !activeState._isSet || activeState._block._frontFaceCCW != currentState._frontFaceCCW || activeState._frontFaceInverted )
         {
-            vkCmdSetFrontFace( cmdBuffer, (currentState._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
-            activeState._frontFaceInverted = invertFrontFace;
+            vkCmdSetFrontFace( cmdBuffer, currentState._frontFaceCCW ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+            activeState._frontFaceInverted = false;
             ret = true;
         }
 
@@ -3107,23 +3104,14 @@ namespace Divide
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         // Engine convention (shared with OpenGL): clip-space Y points up and viewport/scissor origins are bottom-left.
-        // Offscreen targets keep OpenGL's row layout (row 0 == GL window y 0), so no conversion is needed there.
-        // Only the swapchain is Y-flipped (negative height viewport) so the presented image matches OpenGL.
+        // Convert to Vulkan's top-left framebuffer coordinates here, without changing client-side projection matrices.
         VkViewport targetViewport{};
         targetViewport.width = to_F32( newViewport.sizeX );
         targetViewport.x = to_F32( newViewport.offsetX );
 
-        if ( GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID )
-        {
-            const I32 targetHeight = to_I32( GetStateTracker()._activeRenderTargetDimensions.height );
-            targetViewport.y = to_F32( targetHeight - newViewport.offsetY );
-            targetViewport.height = -to_F32( newViewport.sizeY );
-        }
-        else
-        {
-            targetViewport.y = to_F32( newViewport.offsetY );
-            targetViewport.height = to_F32( newViewport.sizeY );
-        }
+        const I32 targetHeight = to_I32( GetStateTracker()._activeRenderTargetDimensions.height );
+        targetViewport.y = to_F32( targetHeight - newViewport.offsetY );
+        targetViewport.height = -to_F32( newViewport.sizeY );
         targetViewport.minDepth = 0.f;
         targetViewport.maxDepth = 1.f;
 
@@ -3168,9 +3156,8 @@ namespace Divide
         const I32 y0 = std::max( 0, std::min( requestY0, maxHeight ) );
         const I32 x1 = std::max( 0, std::min( requestX1, maxWidth ) );
         const I32 y1 = std::max( 0, std::min( requestY1, maxHeight ) );
-        const bool flipY = GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID;
         const VkRect2D targetScissor{
-            VkOffset2D{ x0, flipY ? maxHeight - y1 : y0 },
+            VkOffset2D{ x0, maxHeight - y1 },
             VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
         };
 
