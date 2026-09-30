@@ -181,7 +181,7 @@ namespace Divide {
         s_waitStages.reserve(semaphores.size() + 1u);
 
         s_waitSempahores.push_back( _activeFrame->_presentSemaphore );
-        s_waitStages.push_back( VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT );
+        s_waitStages.push_back( VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT );
 
         for ( VkSemaphore s : semaphores )
         {
