@@ -2368,7 +2368,8 @@ namespace Divide
                     VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
                     const RTClearEntry& colourClearEntry = crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )];
                     const bool shouldClear = colourClearEntry._enabled;
-                    const bool canLoadPreviousContents = !shouldClear && swapChain->currentImageWasPresented();
+                    const bool canLoadPreviousContents = !shouldClear &&
+                                                         (swapChain->currentImageWasPresented() || swapChain->currentImageWasRenderedThisFrame());
 
                     VkRenderingAttachmentInfo attachmentInfo
                     {
@@ -2433,6 +2434,11 @@ namespace Divide
                     dependencyInfo.pImageMemoryBarriers = &imageBarrier;
                     
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
+
+                    if ( shouldClear || canLoadPreviousContents )
+                    {
+                        swapChain->markCurrentImageRenderedThisFrame();
+                    }
 
                     stateTracker._activeMSAASamples = 1u;
                 }

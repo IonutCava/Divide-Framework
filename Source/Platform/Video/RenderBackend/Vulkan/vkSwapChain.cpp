@@ -152,6 +152,7 @@ namespace Divide {
 
         if ( ret == VK_SUCCESS )
         {
+            _currentImageRenderedThisFrame = false;
             PROFILE_SCOPE( "Begin Command Buffer", Profiler::Category::Graphics );
             //begin the command buffer recording. We will use this command buffer exactly once, so we want to let Vulkan know that
             VkCommandBufferBeginInfo cmdBeginInfo = vk::commandBufferBeginInfo( VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT );
@@ -243,9 +244,19 @@ namespace Divide {
         return _swapchainImagePresented[_swapchainImageIndex] != 0u;
     }
 
+    bool VKSwapChain::currentImageWasRenderedThisFrame() const noexcept
+    {
+        return _currentImageRenderedThisFrame;
+    }
+
     void VKSwapChain::markCurrentImagePresented() noexcept
     {
         _swapchainImagePresented[_swapchainImageIndex] = 1u;
+    }
+
+    void VKSwapChain::markCurrentImageRenderedThisFrame() noexcept
+    {
+        _currentImageRenderedThisFrame = true;
     }
 
     bool VKSwapChain::getFrameData(FrameData*& dataOut) const noexcept
