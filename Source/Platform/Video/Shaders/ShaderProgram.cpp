@@ -304,14 +304,19 @@ namespace Divide
             return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationText;
         }
 
+        [[nodiscard]] const char* ShaderBinaryCacheTag()
+        {
+            return s_renderAPI == RenderAPI::OpenGL ? "GL450-SPV1.0" : "VK1.3-SPV1.6";
+        }
+
         [[nodiscard]] ResourcePath SpvTargetName( const Str<256>& fileName )
         {
-            return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt.c_str() };
+            return ResourcePath{ fileName + "." + ShaderBinaryCacheTag() + "." + Paths::Shaders::g_SPIRVExt.c_str() };
         }
 
         [[nodiscard]] ResourcePath ReflTargetName( const Str<256>& fileName )
         {
-            return ResourcePath { fileName + "." + Paths::Shaders::g_ReflectionExt.c_str() };
+            return ResourcePath { fileName + "." + ShaderBinaryCacheTag() + "." + Paths::Shaders::g_ReflectionExt.c_str() };
         }
 
         [[nodiscard]] bool ValidateCacheLocked( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& sourceFileName, const Str<256>& fileName )
