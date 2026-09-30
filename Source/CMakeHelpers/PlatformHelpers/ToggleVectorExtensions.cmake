@@ -244,8 +244,8 @@ function (Toggle_Available_Vector_Extensions)
         _enable_requested_extension(POPCNT_OPT "AVX512")
     endif()
 
-    if (NOT SSE41_OPT AND NOT NEON_OPT)
-        message(FATAL_ERROR "SSE4.1 or NEON was not detected. SSE4.1 or NEON is a minimum requirement in order for the build to proceed!")
+    if (NOT AVX2_OPT AND NOT NEON_OPT)
+        message(FATAL_ERROR "AVX2 or NEON was not enabled. AVX2 on x86 or NEON on ARM is a minimum requirement in order for the build to proceed!")
     endif()
 
     if ( WINDOWS_OS_BUILD )
