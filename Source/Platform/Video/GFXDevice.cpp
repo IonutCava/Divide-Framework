@@ -3129,15 +3129,13 @@ namespace Divide
     RenderTarget_uptr GFXDevice::newRenderTarget( const RenderTargetDescriptor& descriptor )
     {
         RenderTarget_uptr ret = _api->newRenderTarget(descriptor);
-        DIVIDE_EXPECTED_CALL( ret != nullptr );
-        const bool created = ret->create();
-        DIVIDE_EXPECTED_GPU_CALL(created);
-        if ( !created )
+        if ( nullptr != ret && ret->create() )
         {
-            return nullptr;
+            return ret;
         }
 
-        return ret;
+        DIVIDE_UNEXPECTED_GPU_CALL_MSG("Failed to create render target!");
+        return nullptr;
     }
 
     IMPrimitive* GFXDevice::newIMP( const std::string_view name )

@@ -21,6 +21,7 @@ vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
         profiler                    PROFILER_IN_DEBUG_AND_RELEASE
         rtti                        CPP_RTTI_ENABLED
         std-vector                  USE_STD_VECTOR
+        floating-point-exceptions   FLOATING_POINT_EXCEPTIONS_ENABLED
 )
 
 vcpkg_cmake_configure(

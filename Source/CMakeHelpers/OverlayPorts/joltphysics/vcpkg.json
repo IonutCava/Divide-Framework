@@ -43,6 +43,9 @@
     "rtti": {
       "description": "Enable C++ RTTI"
     },
+    "floating-point-exceptions": {
+      "description": "Turns on division by zero and invalid floating point exception support"
+    },
     "std-vector": {
       "description": "Use std::vector instead of Jolt's own Array class"
     }
