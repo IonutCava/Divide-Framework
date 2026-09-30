@@ -14,7 +14,7 @@
       },
             "cacheVariables" : {
                 "CMAKE_POLICY_VERSION_MINIMUM" : "3.5",
-                "DIVIDE_VECTOR_EXTENSION_SET" : "SSE41"
+                "DIVIDE_VECTOR_EXTENSION_SET" : "AVX2"
       }
     },
     {

@@ -2441,10 +2441,7 @@ namespace Divide
                     
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
 
-                    if ( shouldClear || canLoadPreviousContents )
-                    {
-                        swapChain->markCurrentImageRenderedThisFrame();
-                    }
+                    swapChain->markCurrentImageRenderedThisFrame();
 
                     stateTracker._activeMSAASamples = 1u;
                 }
