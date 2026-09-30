@@ -388,11 +388,22 @@ function (Toggle_Available_Vector_Extensions)
     set(_feature_available_vars "AVAILABLE_NEON_OPT;AVAILABLE_AVX512F_OPT;AVAILABLE_AVX512VL_OPT;AVAILABLE_AVX512DQ_OPT;AVAILABLE_AVX2_OPT;AVAILABLE_AVX_OPT;AVAILABLE_SSE42_OPT;AVAILABLE_SSE4A_OPT;AVAILABLE_SSE41_OPT;AVAILABLE_FMA_OPT;AVAILABLE_FMA4_OPT;AVAILABLE_BMI1_OPT;AVAILABLE_BMI2_OPT;AVAILABLE_LZCNT_OPT;AVAILABLE_POPCNT_OPT;AVAILABLE_F16C_OPT")
     set(_feature_enabled_vars "NEON_OPT;AVX512F_OPT;AVX512VL_OPT;AVX512DQ_OPT;AVX2_OPT;AVX_OPT;SSE42_OPT;SSE4A_OPT;SSE41_OPT;FMA_OPT;FMA4_OPT;BMI1_OPT;BMI2_OPT;LZCNT_OPT;POPCNT_OPT;F16C_OPT")
 
+    math(EXPR _feature_last_idx "16 - 1")
+    foreach(_i RANGE 0 ${_feature_last_idx})
+        list(GET _feature_labels ${_i} _feature_label)
+        list(GET _feature_enabled_vars ${_i} _feature_enabled_var)
+
+        if(NOT ${_feature_enabled_var})
+            string(TOUPPER "${_feature_label}" _feature_define)
+            string(REPLACE "." "_" _feature_define "${_feature_define}")
+            remove_definitions("-D__${_feature_define}__")
+        endif()
+    endforeach()
+
     set(_available_extensions "")
     set(_enabled_extensions "")
     set(_supported_but_disabled_extensions "")
 
-    math(EXPR _feature_last_idx "16 - 1")
     foreach(_i RANGE 0 ${_feature_last_idx})
         list(GET _feature_labels ${_i} _feature_label)
         list(GET _feature_available_vars ${_i} _feature_available_var)
