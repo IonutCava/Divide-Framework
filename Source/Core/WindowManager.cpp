@@ -560,44 +560,46 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
             SDL_GLContext context = SDL_GL_CreateContext(testWindow);
             if (context == nullptr)
             {
+                Console::errorfn(LOCALE_STR("INVALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext, _apiSettings._requestSRGBFramebuffer);
                 return ErrorCode::GL_OLD_HARDWARE;
             }
             SDL_GL_DestroyContext(context);
             return ErrorCode::NO_ERR;
         };
 
-        ErrorCode err = applyCurrentSettings();
-        if (err == ErrorCode::GL_OLD_HARDWARE && _apiSettings._requestSRGBFramebuffer)
+        ErrorCode err = ErrorCode::GL_OLD_HARDWARE;
+        bool errorEncountered = false;
+        do
         {
-            Console::warnfn("Failed to create an OpenGL context with an sRGB capable default framebuffer. Retrying without it (final output will be sRGB encoded in shaders).");
-            _apiSettings._requestSRGBFramebuffer = false;
             err = applyCurrentSettings();
-        }
-
-        const bool errorEncountered = err == ErrorCode::GL_OLD_HARDWARE;
-        if (errorEncountered)
-        {
-            Console::errorfn(LOCALE_STR("INVALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
-            _apiSettings._isolateGraphicsContext = false;
-            err = applyCurrentSettings();
-
-            if (err == ErrorCode::GL_OLD_HARDWARE)
+            if ( ErrorCode::GL_OLD_HARDWARE == err )
             {
-                Console::errorfn(LOCALE_STR("INVALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
-                _apiSettings._requestRobustContext = false;
-                _apiSettings._createDebugContext = false;
-                _apiSettings._enableCompatibilityLayer = true;
+                errorEncountered = true;
+
+                _apiSettings._isolateGraphicsContext = false;
                 err = applyCurrentSettings();
-                if (err == ErrorCode::GL_OLD_HARDWARE)
+
+                if ( ErrorCode::GL_OLD_HARDWARE == err )
                 {
-                    Console::errorfn(LOCALE_STR("INVALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
+                    _apiSettings._requestRobustContext = false;
+                    _apiSettings._createDebugContext = false;
+                    _apiSettings._enableCompatibilityLayer = true;
+                    err = applyCurrentSettings();
                 }
             }
-        }
 
-        if (err == ErrorCode::NO_ERR)
+            if ( ErrorCode::GL_OLD_HARDWARE == err && _apiSettings._requestSRGBFramebuffer )
+            {
+                _apiSettings = {};
+                _apiSettings._requestSRGBFramebuffer = false;
+            }
+            else
+                break;
+        } while(true);
+
+        if ( ErrorCode::NO_ERR == err )
         {
-            const auto contextString = Util::StringFormat<string>(LOCALE_STR("VALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext);
+            const auto contextString = Util::StringFormat<string>(LOCALE_STR("VALID_OPENGL_CONTEXT_SETTINGS"), _apiSettings._isolateGraphicsContext, _apiSettings._createDebugContext, _apiSettings._enableCompatibilityLayer, _apiSettings._requestRobustContext, _apiSettings._requestSRGBFramebuffer);
             Console::printfn(contextString);
             if (errorEncountered)
             {
