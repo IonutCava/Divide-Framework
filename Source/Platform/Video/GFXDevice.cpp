@@ -3129,10 +3129,8 @@ namespace Divide
     RenderTarget_uptr GFXDevice::newRenderTarget( const RenderTargetDescriptor& descriptor )
     {
         RenderTarget_uptr ret = _api->newRenderTarget(descriptor);
-        if ( ret != nullptr )
-        {
-            DIVIDE_EXPECTED_GPU_CALL(ret->create());
-        }
+        DIVIDE_EXPECTED_CALL( ret != nullptr );
+        DIVIDE_EXPECTED_GPU_CALL(ret->create());
 
         return ret;
     }
