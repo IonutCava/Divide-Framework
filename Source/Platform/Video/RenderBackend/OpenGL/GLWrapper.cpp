@@ -517,9 +517,21 @@ namespace Divide
 
         Console::printfn( LOCALE_STR( "GL_VK_BUFFER_MAX_SIZE" ), deviceInformation._maxBufferSizeBytes / 1024 / 1024);
 
+        {
+            // Query the actual encoding of the default framebuffer. We request an sRGB capable one, but the driver/pixel format may not honour it.
+            gl46core::GLint colourEncoding = static_cast<gl46core::GLint>(gl46core::GL_LINEAR);
+            gl46core::glGetNamedFramebufferAttachmentParameteriv( 0u, gl46core::GL_BACK_LEFT, gl46core::GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, &colourEncoding );
+            deviceInformation._screenSRGB = colourEncoding == static_cast<gl46core::GLint>(gl46core::GL_SRGB);
+            if ( !deviceInformation._screenSRGB )
+            {
+                Console::warnfn( "OpenGL default framebuffer is not sRGB capable. Final screen output will be sRGB encoded in shaders." );
+            }
+        }
+
         GFXDevice::OverrideDeviceInformation( deviceInformation );
         // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
         gl46core::glEnable( gl46core::GL_TEXTURE_CUBE_MAP_SEAMLESS  );
+        // Always on for render targets (sRGB attachments encode on write). Toggled off for the default framebuffer if it isn't sRGB capable (see BEGIN_RENDER_PASS)
         gl46core::glEnable( gl46core::GL_FRAMEBUFFER_SRGB );
         // Culling is enabled by default, but RenderStateBlocks can toggle it on a per-draw call basis
         gl46core::glEnable( gl46core::GL_CULL_FACE );
@@ -1087,6 +1099,11 @@ namespace Divide
                     PROFILE_SCOPE( "Begin Screen Target", Profiler::Category::Graphics );
 
                     DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) != GLStateTracker::BindResult::FAILED );
+                    if ( !GFXDevice::GetDeviceInformation()._screenSRGB )
+                    {
+                        // Some drivers encode anyway if this is enabled, so make sure shader-side encoding isn't applied twice
+                        gl46core::glDisable( gl46core::GL_FRAMEBUFFER_SRGB );
+                    }
 
                     s_stateTracker._activeRenderTarget = nullptr;
                     s_stateTracker._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
@@ -1134,6 +1151,10 @@ namespace Divide
                 if ( GL_API::s_stateTracker._activeRenderTarget == nullptr )
                 {
                     assert( GL_API::s_stateTracker._activeRenderTargetID == SCREEN_TARGET_ID );
+                    if ( !GFXDevice::GetDeviceInformation()._screenSRGB )
+                    {
+                        gl46core::glEnable( gl46core::GL_FRAMEBUFFER_SRGB );
+                    }
                 }
                 else
                 {

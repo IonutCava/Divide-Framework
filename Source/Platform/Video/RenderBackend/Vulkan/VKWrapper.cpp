@@ -179,6 +179,12 @@ namespace Divide
             return Paths::Shaders::g_cacheLocation / Paths::g_buildTypeLocation / Paths::Shaders::g_cacheLocationVK;
         }
 
+        /// The swapchain is the only target rendered with a flipped (negative height) viewport. Everything else uses OpenGL's memory layout.
+        [[nodiscard]] FORCE_INLINE bool IsSwapChainTargetActive() noexcept
+        {
+            return VK_API::GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID;
+        }
+
         [[nodiscard]] FORCE_INLINE bool IsTriangles( const PrimitiveTopology topology )
         {
             return topology == PrimitiveTopology::TRIANGLES ||
@@ -849,6 +855,23 @@ namespace Divide
                                                               windowState._surface );
 
         DIVIDE_GPU_ASSERT( err == ErrorCode::NO_ERR );
+
+        if ( err == ErrorCode::NO_ERR && windowState._window->getGUID() == _context.context().mainWindow().getGUID() )
+        {
+            const bool screenSRGB = windowState._swapChain->isSRGB();
+            if ( GFXDevice::GetDeviceInformation()._screenSRGB != screenSRGB )
+            {
+                DeviceInformation deviceInformation = GFXDevice::GetDeviceInformation();
+                deviceInformation._screenSRGB = screenSRGB;
+                GFXDevice::OverrideDeviceInformation( deviceInformation );
+            }
+
+            if ( !screenSRGB )
+            {
+                Console::warnfn( "Vulkan swapchain format [ {} ] is not sRGB. Final screen output will be sRGB encoded in shaders.", to_base( windowState._swapChain->getSwapChain().image_format ) );
+            }
+        }
+
         // Clear ALL sync objects as they are all invalid after recreating the swapchain. vkDeviceWaitIdle should resolve potential sync issues.
         LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, U64_MAX);
     }
@@ -1916,7 +1939,8 @@ namespace Divide
             ret = true;
         }
 
-        const bool invertFrontFace = GetStateTracker()._activeRenderTargetID != SCREEN_TARGET_ID;
+        // Offscreen targets use an unflipped viewport (see setViewportInternal), which mirrors triangles in framebuffer space, so winding must be inverted to match OpenGL
+        const bool invertFrontFace = !IsSwapChainTargetActive();
         if ( !activeState._isSet ||
              activeState._block._frontFaceCCW != currentState._frontFaceCCW ||
              activeState._frontFaceInverted != invertFrontFace )
@@ -2478,7 +2502,7 @@ namespace Divide
 
                     // A pipeline bound before this pass may have set its front face for the other target type
                     auto& activeState = stateTracker._activeWindow->_activeState;
-                    const bool invertFrontFace = crtCmd->_target != SCREEN_TARGET_ID;
+                    const bool invertFrontFace = !IsSwapChainTargetActive();
                     if ( activeState._isSet && activeState._frontFaceInverted != invertFrontFace )
                     {
                         vkCmdSetFrontFace( cmdBuffer, (activeState._block._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
@@ -3112,14 +3136,25 @@ namespace Divide
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
         // Engine convention (shared with OpenGL): clip-space Y points up and viewport/scissor origins are bottom-left.
-        // Convert to Vulkan's top-left framebuffer coordinates here, without changing client-side projection matrices.
+        // Offscreen targets: an unflipped viewport maps clip-space -Y to texel row 0, which is exactly OpenGL's memory layout
+        //                    (sampling, texelFetch(gl_FragCoord), copies and readbacks all match). Winding is compensated in bindDynamicState.
+        // Swapchain:         a negative-height viewport keeps the presented image upright. Nothing samples the swapchain, so only the
+        //                    on-screen orientation matters there.
         VkViewport targetViewport{};
-        targetViewport.width = to_F32( newViewport.sizeX );
         targetViewport.x = to_F32( newViewport.offsetX );
+        targetViewport.width = to_F32( newViewport.sizeX );
 
-        const I32 targetHeight = to_I32( GetStateTracker()._activeRenderTargetDimensions.height );
-        targetViewport.y = to_F32( targetHeight - newViewport.offsetY );
-        targetViewport.height = -to_F32( newViewport.sizeY );
+        if ( IsSwapChainTargetActive() )
+        {
+            const I32 targetHeight = to_I32( GetStateTracker()._activeRenderTargetDimensions.height );
+            targetViewport.y = to_F32( targetHeight - newViewport.offsetY );
+            targetViewport.height = -to_F32( newViewport.sizeY );
+        }
+        else
+        {
+            targetViewport.y = to_F32( newViewport.offsetY );
+            targetViewport.height = to_F32( newViewport.sizeY );
+        }
         targetViewport.minDepth = 0.f;
         targetViewport.maxDepth = 1.f;
 
@@ -3164,8 +3199,9 @@ namespace Divide
         const I32 y0 = std::max( 0, std::min( requestY0, maxHeight ) );
         const I32 x1 = std::max( 0, std::min( requestX1, maxWidth ) );
         const I32 y1 = std::max( 0, std::min( requestY1, maxHeight ) );
+        // Bottom-left origin rects only need converting where the viewport is flipped (swapchain). Offscreen targets share OpenGL's row order.
         const VkRect2D targetScissor{
-            VkOffset2D{ x0, maxHeight - y1 },
+            VkOffset2D{ x0, IsSwapChainTargetActive() ? maxHeight - y1 : y0 },
             VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
         };
 

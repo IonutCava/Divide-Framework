@@ -68,6 +68,8 @@ namespace Divide {
         [[nodiscard]] vkb::Swapchain& getSwapChain() noexcept;
         [[nodiscard]] VkImage         getCurrentImage() const noexcept;
         [[nodiscard]] VkImageView     getCurrentImageView() const noexcept;
+        /// True if the swapchain images use an sRGB format (hardware linear -> sRGB encoding on write)
+        [[nodiscard]] bool            isSRGB() const noexcept;
         [[nodiscard]] bool            currentImageWasPresented() const noexcept;
         [[nodiscard]] bool            currentImageWasRenderedThisFrame() const noexcept;
         void                          markCurrentImagePresented() noexcept;

@@ -510,6 +510,7 @@ ErrorCode WindowManager::applyAPISettingsPreCreate(const PlatformContext& contex
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8));
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8));
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24));
+    ValidateAssert(SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, _apiSettings._requestSRGBFramebuffer ? 1 : 0));
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, _apiSettings._enableCompatibilityLayer ? SDL_GL_CONTEXT_PROFILE_COMPATIBILITY : SDL_GL_CONTEXT_PROFILE_CORE));
 
     ValidateAssert(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4));
@@ -566,6 +567,13 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
         };
 
         ErrorCode err = applyCurrentSettings();
+        if (err == ErrorCode::GL_OLD_HARDWARE && _apiSettings._requestSRGBFramebuffer)
+        {
+            Console::warnfn("Failed to create an OpenGL context with an sRGB capable default framebuffer. Retrying without it (final output will be sRGB encoded in shaders).");
+            _apiSettings._requestSRGBFramebuffer = false;
+            err = applyCurrentSettings();
+        }
+
         const bool errorEncountered = err == ErrorCode::GL_OLD_HARDWARE;
         if (errorEncountered)
         {

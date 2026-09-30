@@ -73,10 +73,15 @@ namespace Divide {
         // adaptiveSync not supported yet
         DIVIDE_UNUSED(adaptiveSync);
 
-        auto vkbSwapchain = swapchainBuilder.set_desired_format( { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .set_desired_format( { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
-                                            .add_fallback_format( { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+        // Prefer sRGB formats so the hardware encodes our linear output on write (same as OpenGL's GL_FRAMEBUFFER_SRGB).
+        // Note: vk-bootstrap's set_desired_format() inserts at the front of the list, so add everything as ordered fallbacks instead.
+        // If only UNORM formats are available, isSRGB() reports false and the final screen pass encodes to sRGB in the shader.
+        auto vkbSwapchain = swapchainBuilder.add_fallback_format( { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .add_fallback_format( { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
                                             .add_fallback_format( { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .add_fallback_format( { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .add_fallback_format( { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
+                                            .add_fallback_format( { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR } )
                                             .set_desired_present_mode( vSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR )
                                             .add_fallback_present_mode( VK_PRESENT_MODE_FIFO_KHR )
                                             .set_desired_extent( surfaceExtent().width, surfaceExtent().height )
@@ -237,6 +242,23 @@ namespace Divide {
     VkImageView VKSwapChain::getCurrentImageView() const noexcept
     {
         return _swapchainImageViews[_swapchainImageIndex];
+    }
+
+    bool VKSwapChain::isSRGB() const noexcept
+    {
+        switch ( _swapChain.image_format )
+        {
+            case VK_FORMAT_B8G8R8A8_SRGB:
+            case VK_FORMAT_R8G8B8A8_SRGB:
+            case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+            case VK_FORMAT_B8G8R8_SRGB:
+            case VK_FORMAT_R8G8B8_SRGB:
+                return true;
+            default:
+                break;
+        }
+
+        return false;
     }
 
     bool VKSwapChain::currentImageWasPresented() const noexcept

@@ -55,6 +55,10 @@ namespace Divide
 
         IMGUICallbackData g_modalTextureData;
 
+        /// True while recording ImGui draw lists that go straight to a screen that doesn't perform sRGB encoding on write.
+        /// In that case, ImGui's sRGB authored colours must be written out as-is instead of being linearised.
+        bool g_imguiTargetIsLinearScreen = false;
+
         inline void Reset( Editor::FocusedWindowState& state ) noexcept
         {
             state = {};
@@ -151,7 +155,7 @@ namespace Divide
         pushConstants.data[0]._vec[2].x  = isArrayTexture ? 1.f : 0.f;
         pushConstants.data[0]._vec[2].y  = data._isDepthTexture ? 1.f : 0.f;
         pushConstants.data[0]._vec[2].z  = data._flip ? 1.f : 0.f;
-        pushConstants.data[0]._vec[2].w  = data._srgb ? 1.f : 0.f;
+        pushConstants.data[0]._vec[2].w  = (data._srgb || g_imguiTargetIsLinearScreen) ? 1.f : 0.f;
         return pushConstants;
     }
 
@@ -1433,6 +1437,9 @@ namespace Divide
                                  GFX::MemoryBarrierCommand& memCmdInOut )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
+
+        // editorPass renders directly to the screen, otherwise we render into the (sRGB) back buffer
+        g_imguiTargetIsLinearScreen = editorPass && !GFXDevice::GetDeviceInformation()._screenSRGB;
 
         constexpr U32 MaxVertices = (1 << 16);
         constexpr U32 MaxIndices = MaxVertices * 3u;
