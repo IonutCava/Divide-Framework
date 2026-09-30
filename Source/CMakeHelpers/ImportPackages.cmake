@@ -10,7 +10,6 @@ add_compile_definitions(HAVE_M_PI)
 add_compile_definitions(JPH_OBJECT_STREAM)
 add_compile_definitions(JPH_PROFILE_ENABLED)
 add_compile_definitions(JPH_DEBUG_RENDERER)
-add_compile_definitions(JPH_FLOATING_POINT_EXCEPTIONS_ENABLED)
 add_compile_definitions(EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED=1)
 add_compile_definitions(IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
 
