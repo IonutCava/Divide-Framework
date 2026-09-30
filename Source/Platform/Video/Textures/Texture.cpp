@@ -38,9 +38,8 @@ namespace Divide
     Handle<Texture> Texture::s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
     bool Texture::s_useDDSCache = true;
 
-    void Texture::OnStartup( [[maybe_unused]] GFXDevice& gfx )
+    void Texture::OnStartup()
     {
-        // All backends share OpenGL's bottom-left texture origin. Vulkan only flips Y when presenting to the swapchain.
         ImageTools::OnStartup( false );
 
         TextureDescriptor textureDescriptor{};

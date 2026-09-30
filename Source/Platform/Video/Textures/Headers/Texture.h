@@ -92,7 +92,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
         virtual ~Texture() override;
 
-        static void OnStartup( GFXDevice& gfx );
+        static void OnStartup();
         static void OnShutdown() noexcept;
         [[nodiscard]] static bool UseTextureDDSCache() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2D() noexcept;

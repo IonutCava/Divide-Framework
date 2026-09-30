@@ -566,7 +566,7 @@ namespace Divide
 
         IMPrimitive::InitStaticData();
         ShaderProgram::InitStaticData();
-        Texture::OnStartup( *this );
+        Texture::OnStartup();
         RenderPassExecutor::OnStartup( *this );
 
         resizeGPUBlocks( TargetBufferSizeCam, Config::MAX_FRAMES_IN_FLIGHT + 1u );
@@ -3131,7 +3131,7 @@ namespace Divide
         RenderTarget_uptr ret = _api->newRenderTarget(descriptor);
         if ( nullptr != ret && ret->create() )
         {
-            return ret;
+            return MOV(ret);
         }
 
         DIVIDE_UNEXPECTED_GPU_CALL_MSG("Failed to create render target!");
