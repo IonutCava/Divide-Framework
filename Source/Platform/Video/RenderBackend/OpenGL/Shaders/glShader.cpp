@@ -19,6 +19,74 @@ namespace
 {
     size_t g_validationBufferMaxSize = 4096 * 16;
 
+    bool HasPushConstantReference( const std::string_view source ) noexcept
+    {
+        bool inBlockComment = false;
+        size_t lineStart = 0u;
+        while ( lineStart < source.size() )
+        {
+            const size_t lineEnd = source.find( '\n', lineStart );
+            const std::string_view line = source.substr( lineStart, lineEnd == std::string_view::npos ? lineEnd : lineEnd - lineStart );
+            const size_t firstChar = line.find_first_not_of( " \t\r" );
+            const bool pushConstantDefinition = firstChar != std::string_view::npos &&
+                                                (line.substr( firstChar ).starts_with( "#define PushData0 " ) ||
+                                                 line.substr( firstChar ).starts_with( "#define PushData1 " ));
+
+            if ( !pushConstantDefinition )
+            {
+                for ( size_t i = 0u; i < line.size(); )
+                {
+                    if ( inBlockComment )
+                    {
+                        const size_t commentEnd = line.find( "*/", i );
+                        if ( commentEnd == std::string_view::npos )
+                        {
+                            break;
+                        }
+                        i = commentEnd + 2u;
+                        inBlockComment = false;
+                    }
+                    else if ( line[i] == '/' && i + 1u < line.size() && line[i + 1u] == '/' )
+                    {
+                        break;
+                    }
+                    else if ( line[i] == '/' && i + 1u < line.size() && line[i + 1u] == '*' )
+                    {
+                        inBlockComment = true;
+                        i += 2u;
+                    }
+                    else if ( (line[i] >= 'A' && line[i] <= 'Z') || (line[i] >= 'a' && line[i] <= 'z') || line[i] == '_' )
+                    {
+                        const size_t tokenStart = i++;
+                        while ( i < line.size() &&
+                                ((line[i] >= 'A' && line[i] <= 'Z') || (line[i] >= 'a' && line[i] <= 'z') ||
+                                 (line[i] >= '0' && line[i] <= '9') || line[i] == '_') )
+                        {
+                            ++i;
+                        }
+                        const std::string_view token = line.substr( tokenStart, i - tokenStart );
+                        if ( token == "PushData0" || token == "PushData1" )
+                        {
+                            return true;
+                        }
+                    }
+                    else
+                    {
+                        ++i;
+                    }
+                }
+            }
+
+            if ( lineEnd == std::string_view::npos )
+            {
+                break;
+            }
+            lineStart = lineEnd + 1u;
+        }
+
+        return false;
+    }
+
     FORCE_INLINE gl46core::UseProgramStageMask GetStageMask(const ShaderType type) noexcept
     {
         switch (type)
@@ -427,29 +495,9 @@ void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
     if (_pushConstantsState == PushConstantsState::NOT_CHECKED)
     {
         _pushConstantsState = PushConstantsState::NOT_USED;
-
-        gl46core::GLint activeUniformCount = 0;
-        gl46core::glGetProgramInterfaceiv( _handle, gl46core::GL_UNIFORM, gl46core::GL_ACTIVE_RESOURCES, &activeUniformCount );
-
-        if (_usingSPIRV && activeUniformCount > 0 )
+        if ( HasPushConstantReference( _loadData._sourceCodeGLSL ) )
         {
-            // glGetProgramResourceiv crashes on AMD drivers for whatever reason when using Spir-V blobs. Something to do with uniform name stripping
             _pushConstantsState = PushConstantsState::USED;
-        }
-        else
-        {
-            gl46core::GLint  location = -1;
-            constexpr gl46core::GLenum property = gl46core::GL_LOCATION;
-
-            for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
-            {
-                gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), 1, &property, 1, nullptr, &location );
-                if ( location == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
-                {
-                    _pushConstantsState = PushConstantsState::USED;
-                    break;
-                }
-            }
         }
     }
 

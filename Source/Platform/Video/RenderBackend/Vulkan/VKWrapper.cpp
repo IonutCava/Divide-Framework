@@ -1940,8 +1940,8 @@ namespace Divide
             ret = true;
         }
 
-        // Offscreen targets use an unflipped viewport (see setViewportInternal), which mirrors triangles in framebuffer space, so winding must be inverted to match OpenGL
-        const bool invertFrontFace = !IsSwapChainTargetActive();
+        // Only the swapchain viewport is flipped (see setViewportInternal), so only it requires front-face inversion.
+        const bool invertFrontFace = IsSwapChainTargetActive();
         if ( !activeState._isSet ||
              activeState._block._frontFaceCCW != currentState._frontFaceCCW ||
              activeState._frontFaceInverted != invertFrontFace )
@@ -2503,7 +2503,7 @@ namespace Divide
 
                     // A pipeline bound before this pass may have set its front face for the other target type
                     auto& activeState = stateTracker._activeWindow->_activeState;
-                    const bool invertFrontFace = !IsSwapChainTargetActive();
+                    const bool invertFrontFace = IsSwapChainTargetActive();
                     if ( activeState._isSet && activeState._frontFaceInverted != invertFrontFace )
                     {
                         vkCmdSetFrontFace( cmdBuffer, (activeState._block._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
