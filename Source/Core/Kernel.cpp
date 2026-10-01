@@ -303,7 +303,7 @@ void Kernel::onLoop()
                 _platformContext.app().timer().getFrameRateAndTime(fps, frameTime);
                 const Str<256>& activeSceneName = _projectManager->activeProject()->getActiveScene()->resourceName();
                 constexpr const char* buildType = Config::Build::IS_DEBUG_BUILD ? "DEBUG" : Config::Build::IS_PROFILE_BUILD ? "PROFILE" : "RELEASE";
-                constexpr const char* titleString = "[{} - {}] - {} - {} - {:5.2f} FPS - {:3.2f} ms - FrameIndex: {} - Update Calls : {} - Alpha : {:1.2f} - Runime (sec): {}";
+                constexpr const char* titleString = "[{} - {}] - {} - {} - {:5.2f} FPS - {:3.2f} ms - FrameIndex: {} - Update Calls : {} - Alpha : {:1.2f} - Runtime (sec): {}";
                 window.title(titleString,
                              buildType,
                              Names::renderAPI[to_base(_platformContext.gfx().renderAPI())],
