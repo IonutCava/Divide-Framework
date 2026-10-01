@@ -539,23 +539,27 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
     }
     else if (api == RenderAPI::OpenGL)
     {
-        SDL_Window* testWindow = SDL_CreateWindow("OpenGL Settings Window", 320, 240, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
-        if (!testWindow)
-        {
-            return ErrorCode::SDL_WINDOW_INIT_ERROR;
-        }
-        SCOPE_EXIT
-        {
-            SDL_DestroyWindow(testWindow);
-        };
-
+        bool windowCreationFailed = false;
         const auto applyCurrentSettings = [&]()
         {
+            windowCreationFailed = false;
             ErrorCode err = applyAPISettingsPreCreate(context, descriptor.targetAPI);
             if ( err != ErrorCode::NO_ERR )
             {
                 return err;
             }
+
+            SDL_Window* testWindow = SDL_CreateWindow("OpenGL Context Window", 320, 240, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+            if (!testWindow)
+            {
+                windowCreationFailed = true;
+                return ErrorCode::SDL_WINDOW_INIT_ERROR;
+            }
+
+            SCOPE_EXIT
+            {
+                SDL_DestroyWindow(testWindow);
+            };
 
             SDL_GLContext context = SDL_GL_CreateContext(testWindow);
             if (context == nullptr)
@@ -596,6 +600,11 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
             else
                 break;
         } while(true);
+
+        if (windowCreationFailed)
+        {
+            return ErrorCode::SDL_WINDOW_INIT_ERROR;
+        }
 
         if ( ErrorCode::NO_ERR == err )
         {
