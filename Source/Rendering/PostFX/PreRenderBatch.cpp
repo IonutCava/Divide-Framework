@@ -590,8 +590,9 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
+            //DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
             //Set(binding._data, screenImage, ImageUsage::SHADER_READ_WRITE);
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
             Set(binding._data, screenImage, screenAtt->_descriptor._sampler);
         }
         {

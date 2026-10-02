@@ -10,7 +10,7 @@
 
 // Our two inputs, the read-only HDR color image, and the histogramBuffer
 //DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 12, rgba16f) uniform ACCESS_R image2D s_texColor;
-DESCRIPTOR_SET_RESOURCE(PER_DRAW, 12) uniform sampler2D s_texColor;
+DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D s_texColor;
 DESCRIPTOR_SET_RESOURCE_LAYOUT(PER_DRAW, 13, std430) coherent ACCESS_W buffer histogramBuffer
 {
     uint histogram[];
