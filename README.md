@@ -32,7 +32,7 @@ If you plan to use any parts of this code in a commercial product, a couple of t
   
 ## How to build & run
 ### Minimum CPU requirements:
-- x86: SSE4.1
+- x86: SSE4.2
 - ARM: NEON
 
 ### All:
