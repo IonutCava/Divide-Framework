@@ -35,21 +35,15 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Platform/Headers/PlatformDefines.h"
 
-#define USE_OPTICK ENABLE_OPTICK_PROFILER
-
-#if ENABLE_OPTICK_PROFILER
-#define OPTICK_ENABLE_GPU 1
-#endif
-
 DISABLE_NON_MSVC_WARNING_PUSH("ignored-attributes")
 #include <optick.h>
 DISABLE_NON_MSVC_WARNING_POP()
 
-#if ENABLE_OPTICK_PROFILER
+#if USE_OPTICK
 
 #define NO_DESTROY_OPTICK NO_DESTROY
 
-#else //ENABLE_OPTICK_PROFILER
+#else //USE_OPTICK
 
 #define NO_DESTROY_OPTICK
 
@@ -61,7 +55,7 @@ namespace Optick
     };
 };
 
-#endif //ENABLE_OPTICK_PROFILER
+#endif //USE_OPTICK
 
 namespace Divide
 {
@@ -79,7 +73,7 @@ void OnThreadStop();
 
 namespace Category
 {
-#if ENABLE_OPTICK_PROFILER
+#if USE_OPTICK
     constexpr Optick::Category::Type Graphics  = Optick::Category::Rendering;
     constexpr Optick::Category::Type Sound     = Optick::Category::Audio;
     constexpr Optick::Category::Type Physics   = Optick::Category::Physics;
@@ -89,7 +83,7 @@ namespace Category
     constexpr Optick::Category::Type Scene     = Optick::Category::Scene;
     constexpr Optick::Category::Type Threading = Optick::Category::Wait;
     constexpr Optick::Category::Type IO        = Optick::Category::IO;
-#else //ENABLE_OPTICK_PROFILER
+#else //USE_OPTICK
     constexpr Optick::Category::Type Graphics  =  0u;
     constexpr Optick::Category::Type Sound     =  1u;
     constexpr Optick::Category::Type Physics   =  2u;
@@ -99,7 +93,7 @@ namespace Category
     constexpr Optick::Category::Type Scene     =  6u;
     constexpr Optick::Category::Type Threading =  7u;
     constexpr Optick::Category::Type IO        =  8u;
-#endif
+#endif //USE_OPTICK
 };
 
 enum class State : U8
