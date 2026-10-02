@@ -983,7 +983,7 @@ namespace Divide
                     memBarrier);
             }
         }
-        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ))
+        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ) || HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ_WRITE))
         {
             targetUsage = ImageUsage::SHADER_READ;
 

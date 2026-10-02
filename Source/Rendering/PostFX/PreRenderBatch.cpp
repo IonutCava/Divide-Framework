@@ -141,7 +141,6 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         lumaDescriptor._baseFormat = GFXImageFormat::RED;
         lumaDescriptor._packing = GFXImagePacking::UNNORMALIZED;
         lumaDescriptor._mipMappingState = MipMappingState::OFF;
-        //AddImageUsageFlag( lumaDescriptor, ImageUsage::SHADER_READ);
         AddImageUsageFlag( lumaDescriptor, ImageUsage::SHADER_READ_WRITE);
 
         _currentLuminance = CreateResource(texture);
