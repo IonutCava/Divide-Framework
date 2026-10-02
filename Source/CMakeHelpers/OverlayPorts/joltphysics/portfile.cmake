@@ -1,5 +1,3 @@
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO jrouwe/JoltPhysics
@@ -41,7 +39,7 @@ vcpkg_cmake_configure(
         -DJPH_USE_VK=OFF
         -DJPH_USE_MTL=OFF
         ${FEATURE_OPTIONS}
-        OPTIONS_RELEASE
+    OPTIONS_RELEASE
         -DGENERATE_DEBUG_SYMBOLS=OFF
 )
 
@@ -72,4 +70,5 @@ if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
 #endif]=]
     )
 endif()
+
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
