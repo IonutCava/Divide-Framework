@@ -320,6 +320,11 @@ namespace Divide
             return s_renderAPICacheTags[to_base(s_renderAPI)];
         }
 
+        [[nodiscard]] ResourcePath TxtTargetName( const Str<256>& fileName )
+        {
+            return ResourcePath{ Util::StringFormat("{}.{}", ShaderBinaryCacheTag(), fileName.c_str())  };
+        }
+
         [[nodiscard]] ResourcePath SpvTargetName( const Str<256>& fileName )
         {
             return ResourcePath{ fileName + "." + ShaderBinaryCacheTag() + "." + Paths::Shaders::g_SPIRVExt.c_str() };
@@ -352,7 +357,7 @@ namespace Divide
             switch ( type )
             {
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: filePath = ReflCacheLocation() / ReflTargetName( fileName ); break;
-                case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() / fileName; break;
+                case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() / TxtTargetName( fileName ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: filePath = SpvCacheLocation() / SpvTargetName( fileName ); break;
 
                 default:
@@ -375,7 +380,7 @@ namespace Divide
             switch ( type )
             {
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: err = deleteFile( ReflCacheLocation(), ReflTargetName( fileName ).string() ); break;
-                case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), fileName.c_str() ); break;
+                case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), TxtTargetName( fileName ).string() ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: err = deleteFile( SpvCacheLocation(), SpvTargetName( fileName ).string() ); break;
 
                 default:
@@ -1541,7 +1546,7 @@ namespace Divide
                 {
                     {
                         err = writeFile( TxtCacheLocation(),
-                                         dataIn._shaderName.c_str(),
+                                         TxtTargetName( dataIn._shaderName ).string(),
                                          dataIn._sourceCodeGLSL.c_str(),
                                          dataIn._sourceCodeGLSL.length(),
                                          FileType::TEXT );
@@ -1624,7 +1629,7 @@ namespace Divide
             case LoadData::ShaderCacheType::GLSL:
             {
                 err = readFile( TxtCacheLocation(),
-                                dataInOut._shaderName.c_str(),
+                                TxtTargetName( dataInOut._shaderName ).string(),
                                 FileType::TEXT,
                                 dataInOut._sourceCodeGLSL );
                 return err == FileError::NONE;
