@@ -232,21 +232,6 @@ namespace Divide
         constexpr F32 fontSize = 13.f;
         constexpr F32 fontSizeBold = 16.f;
         constexpr F32 iconSize = 16.f;
-
-        if ( _fontTexture == INVALID_HANDLE<Texture> )
-        {
-
-            ResourceDescriptor<Texture> resDescriptor( "IMGUI_font_texture" );
-            TextureDescriptor& texDescriptor = resDescriptor._propertyDescriptor;
-            texDescriptor._mipMappingState = MipMappingState::OFF;
-
-            _fontTexture = CreateResource( resDescriptor );
-        }
-        DIVIDE_ASSERT( _fontTexture != INVALID_HANDLE<Texture> );
-
-        U8* pPixels = nullptr;
-        I32 iWidth = 0;
-        I32 iHeight = 0;
         const string textFontPath = ( Paths::g_fontsPath / g_editorFontFile ).string();
         const string textFontBoldPath = ( Paths::g_fontsPath / g_editorFontFileBold ).string();
         const string iconFontPath = ( Paths::g_fontsPath / g_editorIconFile ).string();
@@ -279,10 +264,60 @@ namespace Divide
         // offset per fontSize units
         io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
-        io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
-        Get(_fontTexture)->createWithData( { reinterpret_cast<Byte*>(pPixels), iWidth * iHeight * 4u}, vec3<U16>( iWidth, iHeight, 1u ), {});
-        // Store our identifier as reloading data may change the handle!
-        io.Fonts->SetTexID( to_TexID(_fontTexture) );
+        io.Fonts->TexDesiredFormat = ImTextureFormat_RGBA32;
+    }
+
+    void Editor::updateFontTextures( ImDrawData* drawData )
+    {
+        if ( drawData == nullptr || drawData->Textures == nullptr )
+        {
+            return;
+        }
+
+        for ( ImTextureData* textureData : *drawData->Textures )
+        {
+            auto it = std::find_if( _fontTextures.begin(), _fontTextures.end(),
+                                    [textureData]( const auto& entry ) { return entry.first == textureData; } );
+
+            if ( textureData->Status == ImTextureStatus_WantDestroy )
+            {
+                if ( it != _fontTextures.end() )
+                {
+                    DestroyResource( it->second );
+                    _fontTextures.erase( it );
+                }
+                textureData->SetStatus( ImTextureStatus_Destroyed );
+            }
+            else if ( textureData->Status == ImTextureStatus_WantCreate )
+            {
+                ResourceDescriptor<Texture> resDescriptor( Util::StringFormat( "IMGUI_font_texture_{}", textureData->UniqueID ).c_str() );
+                resDescriptor._propertyDescriptor._mipMappingState = MipMappingState::OFF;
+
+                const Handle<Texture> texture = CreateResource( resDescriptor );
+                DIVIDE_ASSERT( texture != INVALID_HANDLE<Texture> && textureData->Format == ImTextureFormat_RGBA32 );
+                Get( texture )->createWithData( { reinterpret_cast<const Byte*>( textureData->GetPixels() ), to_size( textureData->GetSizeInBytes() ) },
+                                               vec3<U16>( to_U16( textureData->Width ), to_U16( textureData->Height ), 1u ), {} );
+                _fontTextures.emplace_back( textureData, texture );
+                textureData->SetTexID( to_TexID( texture ) );
+                textureData->SetStatus( ImTextureStatus_OK );
+            }
+            else if ( textureData->Status == ImTextureStatus_WantUpdates )
+            {
+                DIVIDE_ASSERT( it != _fontTextures.end() && textureData->Format == ImTextureFormat_RGBA32 );
+                Texture* texture = Get( it->second );
+                for ( const ImTextureRect& rect : textureData->Updates )
+                {
+                    const size_t rowBytes = size_t( rect.w ) * 4u;
+                    vector<Byte> pixels( rowBytes * rect.h );
+                    for ( U16 y = 0u; y < rect.h; ++y )
+                    {
+                        memcpy( pixels.data() + y * rowBytes, textureData->GetPixelsAt( rect.x, rect.y + y ), rowBytes );
+                    }
+                    texture->replaceData( pixels, vec3<U16>( rect.x, rect.y, 0u ), vec3<U16>( rect.w, rect.h, 1u ), 0u, {} );
+                }
+                textureData->SetStatus( ImTextureStatus_OK );
+            }
+        }
     }
 
     bool Editor::init( const vec2<U16> renderResolution )
@@ -828,7 +863,11 @@ namespace Divide
             DebugBreak();
         }
         DestroyResource(_infiniteGridProgram);
-        DestroyResource(_fontTexture);
+        for ( auto& entry : _fontTextures )
+        {
+            DestroyResource( entry.second );
+        }
+        _fontTextures.clear();
         DestroyResource(_imguiProgram);
 
         _gizmo.reset();
@@ -1466,6 +1505,8 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
+        updateFontTextures( pDrawData );
+
         // editorPass renders directly to the screen, otherwise we render into the (sRGB) back buffer
         g_imguiTargetIsLinearScreen = editorPass && !GFXDevice::GetDeviceInformation()._screenSRGB;
         g_lastImguiPushConstants = {};
@@ -1482,14 +1523,14 @@ namespace Divide
         const I32 fb_height = targetViewport.sizeY;
 
         // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-        if ( pDrawData->CmdListsCount == 0  || fb_width <= 0 || fb_height <= 0 )
+        if ( pDrawData->CmdLists.Size == 0  || fb_width <= 0 || fb_height <= 0 )
         {
             return;
         }
 
         // ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
         U32 numVertices = 0, numIndices = 0;
-        for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
+        for ( I32 n = 0; n < pDrawData->CmdLists.Size; ++n )
         {
             const ImDrawList* cl = pDrawData->CmdLists[n];
             const U32 clNumVertices = to_U32(cl->VtxBuffer.size());
@@ -1578,7 +1619,7 @@ namespace Divide
         Rect<I32> prevClipRect{-1};
 
         bool newCommand = true;
-        for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
+        for ( I32 n = 0; n < pDrawData->CmdLists.Size; ++n )
         {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
             for ( const ImDrawCmd& pcmd : cmd_list->CmdBuffer )
@@ -2972,6 +3013,7 @@ namespace Divide
 
         io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos; // We can honor io.WantSetMousePos requests (optional, rarely used)
 
         io.BackendPlatformName = Config::ENGINE_NAME;

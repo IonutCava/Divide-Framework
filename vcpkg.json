@@ -6,6 +6,7 @@
     "graphviz",
     "pkgconf",
     "boost-property-tree",
+    "boost-functional",
     "boost-asio",
     "stb",
     "freetype",

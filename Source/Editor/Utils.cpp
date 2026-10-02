@@ -224,7 +224,7 @@ namespace Divide
     {
         F32 GetLineHeight() noexcept
         {
-            return GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.f;
+            return GImGui->FontSize + GImGui->Style.FramePadding.y * 2.f;
         }
 
         void AddUnderLine()
@@ -242,7 +242,7 @@ namespace Divide
             ImGui::PushID( label );
             ImGui::Columns( 2 );
             ImGui::SetColumnWidth( 0, g_isNarrowLabelWidthPushed ? LabelColumnWidthNarrow : LabelColumnWidth );
-            ImGui::PushFont( boldFont );
+            ImGui::PushFont( boldFont, 0.f );
             ImGui::Text( label );
             if ( ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )
             {
@@ -284,7 +284,7 @@ namespace Divide
         {
             if ( !g_isBoldButtonPushed )
             {
-                ImGui::PushFont( ImGui::GetIO().Fonts->Fonts[1] );
+                ImGui::PushFont( ImGui::GetIO().Fonts->Fonts[1], 0.f );
                 g_isBoldButtonPushed = true;
             }
         }

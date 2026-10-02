@@ -109,9 +109,11 @@ Kernel::~Kernel()
     DIVIDE_ASSERT(projectManager() == nullptr && renderPassManager() == nullptr, "Kernel destructor: not all resources have been released properly!");
 }
 
-void Kernel::startSplashScreen() {
+void Kernel::startSplashScreen()
+{
     bool expected = false;
-    if (!_splashScreenUpdating.compare_exchange_strong(expected, true)) {
+    if (!_splashScreenUpdating.compare_exchange_strong(expected, true))
+    {
         return;
     }
 
