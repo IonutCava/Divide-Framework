@@ -1176,7 +1176,7 @@ namespace Divide
                to_U8( deviceProperties.limits.maxSamplerAnisotropy ) );
         deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
 
-        DIVIDE_GPU_ASSERT( PushConstantsStruct::Size() <= deviceProperties.limits.maxPushConstantsSize );
+        DIVIDE_GPU_ASSERT( PushConstantsStruct::MaxSize() <= deviceProperties.limits.maxPushConstantsSize );
 
         const VkSampleCountFlags counts = deviceProperties.limits.framebufferColorSampleCounts & deviceProperties.limits.framebufferDepthSampleCounts;
         U8 maxMSAASamples = 0u;
@@ -2081,7 +2081,7 @@ namespace Divide
 
             VkPushConstantRange push_constant;
             push_constant.offset = 0u;
-            push_constant.size = to_U32( PushConstantsStruct::Size() );
+            push_constant.size = to_U32( PushConstantsStruct::MaxSize() );
             push_constant.stageFlags = compiledPipeline._program->stageMask();
             compiledPipeline._stageFlags = push_constant.stageFlags;
 
@@ -2633,7 +2633,7 @@ namespace Divide
                             _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
                         }
                     }
-                    if ( pushConstantsCmd->_fastData.set() )
+                    if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
                     {
                         _lastPushConstants = pushConstantsCmd->_fastData;
                         _hasLastPushConstants = true;
@@ -2641,7 +2641,7 @@ namespace Divide
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
-                                                        to_U32( PushConstantsStruct::Size() ),
+                                                        to_U32( PushConstantsStruct::MaxSize() ),
                                                         _lastPushConstants.dataPtr() );
 
                         stateTracker._pushConstantsValid = true;
@@ -2690,7 +2690,7 @@ namespace Divide
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
-                                                        to_U32( PushConstantsStruct::Size() ),
+                                                        to_U32( PushConstantsStruct::MaxSize() ),
                                                         _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }
@@ -2733,7 +2733,7 @@ namespace Divide
                                                         stateTracker._pipeline._vkPipelineLayout,
                                                         stateTracker._pipeline._program->stageMask(),
                                                         0,
-                                                        to_U32( PushConstantsStruct::Size() ),
+                                                        to_U32( PushConstantsStruct::MaxSize() ),
                                                         _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }

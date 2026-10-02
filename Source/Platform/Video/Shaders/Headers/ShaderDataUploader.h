@@ -49,6 +49,16 @@ namespace Divide
     {
         static constexpr U8 INVALID_BINDING_INDEX = U8_MAX;
 
+        enum class PushConstantsState : U8
+        {
+            NOT_CHECKED = 0,
+            NOT_USED,
+            USED_SLOT_1,
+            USED_SLOT_2,
+            USED_BOTH,
+            COUNT
+        };
+
         struct DataEntry
         {
             string _name;
@@ -102,6 +112,7 @@ namespace Divide
 
             U8 _uniformBlockBindingSet{ to_base( DescriptorSetUsage::PER_DRAW ) };
             U8 _uniformBlockBindingIndex{ INVALID_BINDING_INDEX };
+            PushConstantsState _pushConstantsState{ PushConstantsState::NOT_CHECKED };
         };
 
 

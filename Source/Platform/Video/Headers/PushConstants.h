@@ -39,19 +39,40 @@ namespace Divide
 {
 struct PushConstantsStruct
 {
-    mat4<F32> data[2]{ MAT4_NEGATIVE_ONE, MAT4_NEGATIVE_ONE };
+    enum DataFlags : U8
+    {
+        NONE = 0u,
+        FIRST = toBit(1),
+        SECOND = toBit(2),
+        BOTH = FIRST | SECOND,
+        COUNT
+    };
 
-    [[nodiscard]] inline bool set() const noexcept
-    { 
-        return data[0] != MAT4_NEGATIVE_ONE ||
-               data[1] != MAT4_NEGATIVE_ONE;
+    mat4<F32> data[2]{ MAT4_NEGATIVE_ONE, MAT4_NEGATIVE_ONE };
+    PROPERTY_R(DataFlags, dataFlags, DataFlags::NONE);
+
+    [[nodiscard]] static constexpr size_t MaxSize() noexcept { return 2 * sizeof(mat4<F32>); }
+    [[nodiscard]] inline const F32* dataPtr(const bool first = true) const { return data[first ? 0 : 1].mat; }
+
+    inline DataFlags computeFlags()
+    {
+        U8 flags = to_base(PushConstantsStruct::DataFlags::NONE);
+
+        if (data[0] != MAT4_NEGATIVE_ONE)
+        {
+            flags |= to_base(PushConstantsStruct::DataFlags::FIRST);
+        }
+        if (data[1] != MAT4_NEGATIVE_ONE)
+        {
+            flags |= to_base(PushConstantsStruct::DataFlags::SECOND);
+        }
+
+        _dataFlags = static_cast<PushConstantsStruct::DataFlags>(flags);
+        return _dataFlags;
     }
 
-    [[nodiscard]] static constexpr size_t Size() noexcept { return 2 * sizeof(mat4<F32>); }
-    [[nodiscard]] inline const F32* dataPtr() const { return data[0].mat; }
-
-    
     bool operator==(const PushConstantsStruct& rhs) const = default;
+
 };
 
 struct UniformData
@@ -85,7 +106,7 @@ struct UniformData
     [[nodiscard]] const Byte* data( size_t offset ) const noexcept;
 
 private:
-    friend bool Merge( UniformData& lhs, UniformData& rhs, bool& partial );
+    friend bool Merge( UniformData& lhs, UniformData& rhs );
 
     UniformDataContainer _data;
     fixed_vector<Byte, 32, true> _buffer;

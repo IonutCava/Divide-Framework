@@ -2280,6 +2280,12 @@ namespace Divide
 
                     setClipPlanes( cmd->As<GFX::SetClipPlanesCommand>()->_clippingPlanes );
                 } break;
+                case GFX::CommandType::SEND_PUSH_CONSTANTS:
+                {
+                    PROFILE_SCOPE("SEND_PUSH_CONSTANTS", Profiler::Category::Graphics);
+
+                    cmd->As<GFX::SendPushConstantsCommand>()->_fastData.computeFlags();
+                } break;
                 case GFX::CommandType::BIND_SHADER_RESOURCES:
                 {
                     PROFILE_SCOPE( "BIND_SHADER_RESOURCES", Profiler::Category::Graphics );

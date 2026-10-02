@@ -62,9 +62,13 @@ glShader::~glShader()
     }
 }
 
+namespace
+{
+   
+}
+
 ShaderResult glShader::uploadToGPU(const Configuration& config)
 {
-    _pushConstantsState = PushConstantsState::NOT_CHECKED;
     if (!_valid)
     {
         const auto getTimerAndReset = [](Time::ProfileTimer& timer)
@@ -343,6 +347,33 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
 
 bool glShader::load(const ShaderProgram::ShaderLoadData& data)
 {
+    using namespace Reflection;
+
+    const auto mergePushConstantsState = [](const PushConstantsState a, const PushConstantsState b) noexcept
+    {
+        if (a == PushConstantsState::USED_BOTH || b == PushConstantsState::USED_BOTH)
+        {
+            return PushConstantsState::USED_BOTH;
+        }
+
+        const bool aSlot1 = a == PushConstantsState::USED_SLOT_1;
+        const bool aSlot2 = a == PushConstantsState::USED_SLOT_2;
+        const bool bSlot1 = b == PushConstantsState::USED_SLOT_1;
+        const bool bSlot2 = b == PushConstantsState::USED_SLOT_2;
+
+        if ((aSlot1 && bSlot2) || (aSlot2 && bSlot1))
+        {
+            return PushConstantsState::USED_BOTH;
+        }
+
+        if (a == PushConstantsState::NOT_CHECKED) return b;
+        if (b == PushConstantsState::NOT_CHECKED) return a;
+        if (a == PushConstantsState::NOT_USED)    return b;
+        if (b == PushConstantsState::NOT_USED)    return a;
+
+        return a;
+    };
+
     _loadData = data;
 
     _valid = false; _linked = false; 
@@ -353,6 +384,7 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data)
     }
 
     _stageMask = gl46core::UseProgramStageMask::GL_NONE_BIT;
+    _pushConstantsState = PushConstantsState::NOT_CHECKED;
     for (const ShaderProgram::LoadData& it : _loadData)
     {
         if (it._type == ShaderType::COUNT)
@@ -362,6 +394,9 @@ bool glShader::load(const ShaderProgram::ShaderLoadData& data)
 
         assert(!it._sourceCodeGLSL.empty() || !it._sourceCodeSpirV.empty());
         _stageMask |= GetStageMask(it._type);
+
+        _pushConstantsState = mergePushConstantsState(_pushConstantsState, it._reflectionData._pushConstantsState);
+
     }
 
     if (_stageMask == gl46core::UseProgramStageMask::GL_NONE_BIT)
@@ -386,7 +421,7 @@ glShaderEntry glShader::LoadShader(GFXDevice& context,
         ._generation = targetGeneration
     };
     {
-        // If we loaded the source code successfully,  register it
+        // If we loaded the source code successfully, register it
         LockGuard<SharedMutex> w_lock(ShaderModule::s_shaderNameLock);
         auto& shader_ptr = s_shaderNameMap[ret._fileHash];
         if (shader_ptr == nullptr || shader_ptr->generation() < ret._generation )
@@ -424,38 +459,19 @@ void glShader::onParentValidation()
 
 void glShader::uploadPushConstants(const PushConstantsStruct& pushConstants)
 {
-    if (_pushConstantsState == PushConstantsState::NOT_CHECKED)
+    using namespace Reflection;
+    DIVIDE_GPU_ASSERT (_pushConstantsState != PushConstantsState::NOT_CHECKED);
+    if ( _pushConstantsState != PushConstantsState::NOT_USED)
     {
-        _pushConstantsState = PushConstantsState::NOT_USED;
-
-        gl46core::GLint activeUniformCount = 0;
-        gl46core::glGetProgramInterfaceiv( _handle, gl46core::GL_UNIFORM, gl46core::GL_ACTIVE_RESOURCES, &activeUniformCount );
-
-        if (_usingSPIRV && activeUniformCount > 0 )
+        const auto flags = pushConstants.dataFlags();
+        if (flags & to_base(PushConstantsStruct::DataFlags::FIRST) && (_pushConstantsState == PushConstantsState::USED_SLOT_1 || _pushConstantsState == PushConstantsState::USED_BOTH))
         {
-            // glGetProgramResourceiv crashes on AMD drivers for whatever reason when using Spir-V blobs. Something to do with uniform name stripping
-            _pushConstantsState = PushConstantsState::USED;
+            gl46core::glProgramUniformMatrix4fv(_handle, ShaderProgram::GL_PUSH_CONSTANTS_LOCATION, 1, gl46core::GL_FALSE, pushConstants.data[0].mat);
         }
-        else
+        if (flags & to_base(PushConstantsStruct::DataFlags::SECOND) && (_pushConstantsState == PushConstantsState::USED_SLOT_2 || _pushConstantsState == PushConstantsState::USED_BOTH))
         {
-            gl46core::GLint  location = -1;
-            constexpr gl46core::GLenum property = gl46core::GL_LOCATION;
-
-            for ( gl46core::GLint i = 0; i < activeUniformCount; ++i )
-            {
-                gl46core::glGetProgramResourceiv( _handle, gl46core::GL_UNIFORM, to_U32( i ), 1, &property, 1, nullptr, &location );
-                if ( location == ShaderProgram::GL_PUSH_CONSTANTS_LOCATION )
-                {
-                    _pushConstantsState = PushConstantsState::USED;
-                    break;
-                }
-            }
+            gl46core::glProgramUniformMatrix4fv(_handle, ShaderProgram::GL_PUSH_CONSTANTS_LOCATION + 1, 1, gl46core::GL_FALSE, pushConstants.data[1].mat);
         }
-    }
-
-    if ( _pushConstantsState == PushConstantsState::USED )
-    {
-        gl46core::glProgramUniformMatrix4fv(_handle, ShaderProgram::GL_PUSH_CONSTANTS_LOCATION, 2, gl46core::GL_FALSE, pushConstants.dataPtr());
     }
 }
 } // namespace Divide
