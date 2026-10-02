@@ -598,7 +598,13 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
                 _apiSettings._requestSRGBFramebuffer = false;
             }
             else
+            {
+                if (err != ErrorCode::NO_ERR)
+                {
+                    return err;
+                }
                 break;
+            }
         } while(true);
 
         if (windowCreationFailed)
