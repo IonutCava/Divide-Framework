@@ -592,7 +592,7 @@ ErrorCode WindowManager::findAndApplyAPISettings(const PlatformContext& context,
                 }
             }
 
-            if ( ErrorCode::GL_OLD_HARDWARE == err && _apiSettings._requestSRGBFramebuffer )
+            if ((ErrorCode::GL_OLD_HARDWARE == err || (windowCreationFailed && ErrorCode::SDL_WINDOW_INIT_ERROR == err)) && _apiSettings._requestSRGBFramebuffer)
             {
                 _apiSettings = {};
                 _apiSettings._requestSRGBFramebuffer = false;
