@@ -159,7 +159,7 @@ static string ToString(const SendPushConstantsCommand& cmd, U16 indent)
         for (U8 d = 0u; d < 2u; ++d )
         {
             ret.append( "    " );
-            if (dataFlags & (1u << d))
+            if (dataFlags & (d == 0u ? PushConstantsStruct::DataFlags::FIRST : PushConstantsStruct::DataFlags::SECOND)) != 0u))
             {
                 ret.append(Util::StringFormat("Data {} is specified\n", d));
             }
