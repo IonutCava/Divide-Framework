@@ -9,6 +9,7 @@
 
 #include <numeric>
 #include <vector>
+#include <glm/gtc/packing.hpp>
 
 namespace Divide
 {
@@ -505,9 +506,9 @@ namespace Divide
                     {
                         U16 components[3];
                         memcpy( components, source + pixel * sizeof( components ), sizeof( components ) );
-                        const U32 packed = Util::PACK_11_11_10( Util::UNPACK_HALF1x16( components[0] ),
-                                                              Util::UNPACK_HALF1x16( components[1] ),
-                                                              Util::UNPACK_HALF1x16( components[2] ) );
+                        const U32 packed = glm::packF2x11_1x10( glm::vec3( glm::unpackHalf1x16( components[0] ),
+                                                                         glm::unpackHalf1x16( components[1] ),
+                                                                         glm::unpackHalf1x16( components[2] ) ) );
                         memcpy( target, &packed, sizeof( packed ) );
                         target += sizeof( packed );
                     }
