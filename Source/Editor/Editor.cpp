@@ -305,16 +305,8 @@ namespace Divide
             {
                 DIVIDE_ASSERT( it != _fontTextures.end() && textureData->Format == ImTextureFormat_RGBA32 );
                 Texture* texture = Get( it->second );
-                for ( const ImTextureRect& rect : textureData->Updates )
-                {
-                    const size_t rowBytes = size_t( rect.w ) * 4u;
-                    vector<Byte> pixels( rowBytes * rect.h );
-                    for ( U16 y = 0u; y < rect.h; ++y )
-                    {
-                        memcpy( pixels.data() + y * rowBytes, textureData->GetPixelsAt( rect.x, rect.y + y ), rowBytes );
-                    }
-                    texture->replaceData( pixels, vec3<U16>( rect.x, rect.y, 0u ), vec3<U16>( rect.w, rect.h, 1u ), 0u, {} );
-                }
+                texture->replaceData( { reinterpret_cast<const Byte*>( textureData->GetPixels() ), to_size( textureData->GetSizeInBytes() ) },
+                                       vec3<U16>( 0u ), vec3<U16>( to_U16( textureData->Width ), to_U16( textureData->Height ), 1u ), 0u, {} );
                 textureData->SetStatus( ImTextureStatus_OK );
             }
         }
