@@ -292,6 +292,7 @@ namespace Divide
             {
                 ResourceDescriptor<Texture> resDescriptor( Util::StringFormat( "IMGUI_font_texture_{}", textureData->UniqueID ).c_str() );
                 resDescriptor._propertyDescriptor._mipMappingState = MipMappingState::OFF;
+                resDescriptor._propertyDescriptor._allowRegionUpdates = true;
 
                 const Handle<Texture> texture = CreateResource( resDescriptor );
                 DIVIDE_ASSERT( texture != INVALID_HANDLE<Texture> && textureData->Format == ImTextureFormat_RGBA32 );
@@ -305,7 +306,6 @@ namespace Divide
             {
                 DIVIDE_ASSERT( it != _fontTextures.end() && textureData->Format == ImTextureFormat_RGBA32 );
                 Texture* texture = Get( it->second );
-#if defined(PARTIAL_IMGUI_TEX_UPDATES)
                 for ( const ImTextureRect& rect : textureData->Updates )
                 {
                     const size_t rowBytes = size_t( rect.w ) * 4u;
@@ -314,17 +314,8 @@ namespace Divide
                     {
                         memcpy( pixels.data() + y * rowBytes, textureData->GetPixelsAt( rect.x, rect.y + y ), rowBytes );
                     }
-                    texture->replaceData( pixels, vec3<U16>( rect.x, rect.y, 0u ), vec3<U16>( rect.w, rect.h, 1u ), 0u, {} );
+                    texture->replaceData( pixels, vec3<U16>( rect.x, rect.y, 0u ), vec3<U16>( rect.w, rect.h, 1u ), 0u, { ._alignment = 1u } );
                 }
-#else // !PARTIAL_IMGUI_TEX_UPDATES
-                texture->replaceData(
-                    { reinterpret_cast<const Byte*>(textureData->GetPixels()), to_size(textureData->GetSizeInBytes()) },
-                    vec3<U16>(0u),
-                    vec3<U16>(to_U16(textureData->Width), to_U16(textureData->Height), 1u),
-                    0u,
-                    {}
-                );
-#endif// !PARTIAL_IMGUI_TEX_UPDATES
                 textureData->SetStatus( ImTextureStatus_OK );
             }
         }

@@ -128,6 +128,11 @@ namespace Divide
        , GraphicsResource( context.gfx(), Type::TEXTURE, getGUID(), _ID( resourceName() ) )
        , _descriptor( descriptor._propertyDescriptor )
     {
+        if ( HasUsageFlagSet(_descriptor, ImageUsage::SHADER_READ_WRITE) )
+        {
+            AddImageUsageFlag(_descriptor, ImageUsage::SHADER_READ);
+        }
+
         DIVIDE_ASSERT( descriptor.enumValue() < to_base( TextureType::COUNT ) );
         DIVIDE_ASSERT(_descriptor._packing != GFXImagePacking::COUNT &&
                       _descriptor._baseFormat != GFXImageFormat::COUNT &&

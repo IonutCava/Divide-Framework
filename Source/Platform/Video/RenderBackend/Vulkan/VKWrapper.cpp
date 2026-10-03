@@ -1037,7 +1037,7 @@ namespace Divide
         // Depth/stencil resolve support struct — query and store supported depth resolve modes
         VkPhysicalDeviceDepthStencilResolveProperties depthResolve{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES, .pNext = nullptr };
 
-        if ( _device->suppportesMaintenance7() )
+        if ( _device->supportsMaintenance7() )
         {
             maintenance7Properties.pNext = properties2.pNext;
             properties2.pNext = &maintenance7Properties;
@@ -1079,7 +1079,7 @@ namespace Divide
         VkPhysicalDeviceProperties deviceProperties{};
         vkGetPhysicalDeviceProperties( physicalDevice, &deviceProperties );
 
-        if (_device->suppportesMaintenance7())
+        if (_device->supportsMaintenance7())
         {
             // maintenance7.maxDescriptorSetStorageBuffersDynamic and maxDescriptorSetUniformBuffersDynamic are the modern limits
             VK_API::s_maxDescriptorSetStorageBuffersDynamic = maintenance7Properties.maxDescriptorSetTotalStorageBuffersDynamic;
@@ -1570,6 +1570,34 @@ namespace Divide
         auto& drawDescriptor = program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
         const auto& setUsageData = program->setUsage();
+        const auto& sharedBindingData = ShaderProgram::GetBindingSetData();
+
+        const auto getLayoutBindingType = [&](const DescriptorSetUsage usage, const U8 slot) noexcept
+        {
+            return usage == DescriptorSetUsage::PER_DRAW
+                ? drawDescriptor[slot]._type
+                : sharedBindingData[to_base(usage)][slot]._type;
+        };
+
+        const auto areCompatibleBindingTypes = [](const DescriptorSetBindingType layoutType,
+                                              const DescriptorSetBindingType runtimeType) noexcept
+        {
+            switch ( layoutType )
+            {
+                case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
+                case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
+                    return runtimeType == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
+                           runtimeType == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC;
+
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+                    return runtimeType == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC ||
+                           runtimeType == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+
+                default:
+                    return layoutType == runtimeType;
+            }
+        };
 
         thread_local VkDescriptorImageInfo imageInfoArray[MAX_BINDINGS_PER_DESCRIPTOR_SET];
         thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
@@ -1593,12 +1621,14 @@ namespace Divide
             for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
             {
                 const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
+                const DescriptorSetBindingType layoutBindingType = getLayoutBindingType(entry._usage, srcBinding._slot);
 
-                if ( entry._usage == DescriptorSetUsage::PER_DRAW &&
-                     drawDescriptor[srcBinding._slot]._type == DescriptorSetBindingType::COUNT )
+                if ( layoutBindingType == DescriptorSetBindingType::COUNT )
                 {
                     continue;
                 }
+
+                DIVIDE_GPU_ASSERT(areCompatibleBindingTypes(layoutBindingType, srcBinding._data._type));
 
                 const VkShaderStageFlags stageFlags = GetFlagsForStageVisibility( srcBinding._shaderStageVisibility );
 
@@ -1612,18 +1642,14 @@ namespace Divide
                         PROFILE_SCOPE( "Bind buffer", Profiler::Category::Graphics);
 
                         const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
-
                         DIVIDE_GPU_ASSERT( bufferEntry._buffer != nullptr );
 
                         VkBuffer buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
-
                         const size_t readOffset = bufferEntry._queueReadIndex * bufferEntry._buffer->alignedBufferSize();
-
-                        const bool isDynamicBuffer = IsDescriptorSetBindingTypeDynamic(srcBinding._data._type);
+                        const bool isDynamicBuffer = IsDescriptorSetBindingTypeDynamic(layoutBindingType);
 
                         if ( entry._usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0 )
                         {
-                            // Draw indirect buffer!
                             DIVIDE_GPU_ASSERT( bufferEntry._buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
                             GetStateTracker()._drawIndirectBuffer = buffer;
                             GetStateTracker()._drawIndirectBufferOffset = readOffset;
@@ -1632,12 +1658,10 @@ namespace Divide
                         {
                             const VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize() + readOffset;
                             DIVIDE_GPU_ASSERT( bufferEntry._range._length > 0u );
-                            const size_t boundRange = bufferEntry._range._length* bufferEntry._buffer->getPrimitiveSize();
-
-                            DIVIDE_GPU_ASSERT( isDynamicBuffer || 0u == offset );
+                            const size_t boundRange = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
 
                             DynamicEntry& crtBufferInfo = s_dynamicBindings[usageIdx][srcBinding._slot];
-                            if ( crtBufferInfo._info.buffer != buffer || crtBufferInfo._info.range > boundRange || (crtBufferInfo._stageFlags & stageFlags) != stageFlags)
+                            /*if ( crtBufferInfo._info.buffer != buffer || crtBufferInfo._info.range > boundRange || (crtBufferInfo._stageFlags & stageFlags) != stageFlags)
                             {
                                 crtBufferInfo._info.buffer = buffer;
                                 crtBufferInfo._info.offset = isDynamicBuffer ? 0u : offset;
@@ -1646,29 +1670,56 @@ namespace Divide
 
                                 VkDescriptorSetLayoutBinding newBinding{};
                                 newBinding.descriptorCount = 1u;
-                                newBinding.descriptorType = VKUtil::vkDescriptorType( srcBinding._data._type );
+                                newBinding.descriptorType = VKUtil::vkDescriptorType(layoutBindingType);
                                 newBinding.stageFlags = crtBufferInfo._stageFlags;
                                 newBinding.binding = srcBinding._slot;
                                 newBinding.pImmutableSamplers = nullptr;
 
                                 descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &crtBufferInfo._info, 1u ) );
-                            }
+                            }*/
+                            const VkDeviceSize descriptorOffset = isDynamicBuffer ? 0u : offset;
 
+                            if (crtBufferInfo._info.buffer != buffer ||
+                                crtBufferInfo._info.offset != descriptorOffset ||
+                                crtBufferInfo._info.range != boundRange ||
+                                (crtBufferInfo._stageFlags & stageFlags) != stageFlags)
+                            {
+                                crtBufferInfo._info.buffer = buffer;
+                                crtBufferInfo._info.offset = descriptorOffset;
+                                crtBufferInfo._info.range = boundRange;
+                                crtBufferInfo._stageFlags |= stageFlags;
+
+                                VkDescriptorSetLayoutBinding newBinding{};
+                                newBinding.descriptorCount = 1u;
+                                newBinding.descriptorType = VKUtil::vkDescriptorType(layoutBindingType);
+                                newBinding.stageFlags = crtBufferInfo._stageFlags;
+                                newBinding.binding = srcBinding._slot;
+                                newBinding.pImmutableSamplers = nullptr;
+
+                                descriptorWrites.push_back(
+                                    vk::writeDescriptorSet(newBinding.descriptorType,
+                                        newBinding.binding,
+                                        &crtBufferInfo._info,
+                                        1u));
+                            }
                             if ( isDynamicBuffer )
                             {
+                                bool foundDynamicBinding = false;
                                 for ( auto& dynamicBinding : _descriptorDynamicBindings[usageIdx] )
                                 {
                                     if ( dynamicBinding._slot == srcBinding._slot )
                                     {
                                         dynamicBinding._offset = to_U32(offset);
                                         needsBind = true;
+                                        foundDynamicBinding = true;
                                         break;
                                     }
                                 }
-                                DIVIDE_GPU_ASSERT( needsBind );
+                                DIVIDE_GPU_ASSERT( foundDynamicBinding );
                             }
                         }
                     } break;
+
                     case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
                     {
                         PROFILE_SCOPE( "Bind image sampler", Profiler::Category::Graphics );

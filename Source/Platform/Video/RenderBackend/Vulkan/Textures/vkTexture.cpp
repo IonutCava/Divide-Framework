@@ -1073,15 +1073,6 @@ namespace Divide
                 vkTexture::TransitionTexture(vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ, fullRange, namedImage, memBarrier);
             }
         }
-        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ_WRITE))
-        {
-            targetUsage = ImageUsage::SHADER_READ_WRITE;
-
-            if (crtUsageInOut != targetUsage)
-            {
-                vkTexture::TransitionTexture(vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_WRITE, fullRange, namedImage, memBarrier);
-            }
-        }
         else
         {
             DIVIDE_UNEXPECTED_CALL();

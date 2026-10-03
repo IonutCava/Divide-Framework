@@ -144,7 +144,7 @@ namespace Divide
             }
             else if ( extension == VK_KHR_MAINTENANCE_7_EXTENSION_NAME )
             {
-                suppportesMaintenance7(true);
+                supportsMaintenance7(true);
                 deviceBuilder.add_pNext(&maintenance7Features);
             }
             else if ( extension == VK_EXT_MESH_SHADER_EXTENSION_NAME )
