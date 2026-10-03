@@ -244,15 +244,15 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
         {
-            assert( offset.y == 0u && dimensions.height == 1u );
+            assert(offset.y == 0u && dimensions.height == 1u);
 
-            if ( isCompressed )
+            if (isCompressed)
             {
-                gl46core::glCompressedTextureSubImage2D( _loadingHandle, targetMip, offset.x, offset.z, dimensions.width, dimensions.depth, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(data.size()), data.data() );
+                gl46core::glCompressedTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.z, dimensions.width, dimensions.depth, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(data.size()), data.data());
             }
             else
             {
-                gl46core::glTextureSubImage2D( _loadingHandle, targetMip, offset.x, offset.z, dimensions.width, dimensions.depth, formatAndType._internalFormat, formatAndType._dataType, data.data() );
+                gl46core::glTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.z, dimensions.width, dimensions.depth, formatAndType._internalFormat, formatAndType._dataType, data.data());
             }
         } break;
         case TextureType::TEXTURE_2D:

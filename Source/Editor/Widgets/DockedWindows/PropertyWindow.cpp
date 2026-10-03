@@ -2552,7 +2552,7 @@ namespace Divide
                     ret = ImGui::Checkbox( "", &val );
                 }
                 ImGui::SameLine();
-                ImGui::PushFont( boldFont );
+                ImGui::PushFont( boldFont, 0.f );
                 ImGui::Text( name );
                 ImGui::PopFont();
                 if ( ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )

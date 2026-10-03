@@ -24,23 +24,27 @@ namespace Divide
             const bool multisampled = descriptor._msaaSamples > 0u;
             const bool compressed = IsCompressed( descriptor._baseFormat );
             const bool isDepthTexture = IsDepthTexture( descriptor._packing );
-            bool supportsStorageBit = !multisampled && !compressed && !isDepthTexture;
+            const bool canUseStorage = !multisampled && !compressed && !isDepthTexture;
 
-            
             VkFlags ret = (usage != ImageUsage::SHADER_WRITE ? VK_IMAGE_USAGE_SAMPLED_BIT : VK_FLAGS_NONE);
 
             switch ( usage )
             {
                 case ImageUsage::SHADER_READ_WRITE:
-                case ImageUsage::SHADER_WRITE: DIVIDE_GPU_ASSERT( supportsStorageBit );  break;
+                case ImageUsage::SHADER_WRITE: 
+                {
+                    DIVIDE_GPU_ASSERT(canUseStorage);
+                    ret |= VK_IMAGE_USAGE_STORAGE_BIT;
+                } break;
 
                 case ImageUsage::RT_COLOUR_ATTACHMENT: 
                 case ImageUsage::RT_DEPTH_ATTACHMENT:
                 case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
                 {
-                    supportsStorageBit = false;
                     ret |=  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-                    ret |= ( usage == ImageUsage::RT_COLOUR_ATTACHMENT ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+                    ret |= ( usage == ImageUsage::RT_COLOUR_ATTACHMENT 
+                                    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                                    : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
                     
                 } break;
 
@@ -58,7 +62,7 @@ namespace Divide
                 ret |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
             }
 
-            return (supportsStorageBit ? (ret | VK_IMAGE_USAGE_STORAGE_BIT) : ret);
+            return ret;
         }
 
         enum class CopyTextureType : U8
@@ -446,7 +450,7 @@ namespace Divide
         vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
         vmaallocinfo.priority = 1.f;
-
+        _createdImageUsageMask = imageInfo.usage;
         {
             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
             VK_CHECK( vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
@@ -1060,13 +1064,22 @@ namespace Divide
                     memBarrier);
             }
         }
-        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ))
+        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ) )
         {
             targetUsage = ImageUsage::SHADER_READ;
 
             if (crtUsageInOut != targetUsage)
             {
                 vkTexture::TransitionTexture(vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ, fullRange, namedImage, memBarrier);
+            }
+        }
+        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ_WRITE))
+        {
+            targetUsage = ImageUsage::SHADER_READ_WRITE;
+
+            if (crtUsageInOut != targetUsage)
+            {
+                vkTexture::TransitionTexture(vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_WRITE, fullRange, namedImage, memBarrier);
             }
         }
         else
@@ -1339,10 +1352,15 @@ namespace Divide
             imageInfo.subresourceRange = range;
 
             VkImageViewUsageCreateInfo viewCreateInfo = vk::imageViewUsageCreateInfo();
-            if ( !viewDescriptor._resolveTarget )
+            if (!viewDescriptor._resolveTarget)
             {
-                viewCreateInfo.usage = GetFlagForUsage( newView._descriptor._usage, _descriptor);
-                imageInfo.pNext = &viewCreateInfo;
+                const VkImageUsageFlags requestedUsage = static_cast<VkImageUsageFlags>(GetFlagForUsage(newView._descriptor._usage, _descriptor));
+
+                viewCreateInfo.usage = requestedUsage & _createdImageUsageMask;
+                if (viewCreateInfo.usage != 0u)
+                {
+                    imageInfo.pNext = &viewCreateInfo;
+                }
             }
 
             VK_CHECK( vkCreateImageView( VK_API::GetStateTracker()._device->getVKDevice(), &imageInfo, nullptr, &newView._view ) );

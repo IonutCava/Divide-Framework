@@ -38,9 +38,9 @@ namespace Divide
     Handle<Texture> Texture::s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
     bool Texture::s_useDDSCache = true;
 
-    void Texture::OnStartup( GFXDevice& gfx )
+    void Texture::OnStartup()
     {
-        ImageTools::OnStartup( gfx.renderAPI() != RenderAPI::OpenGL );
+        ImageTools::OnStartup( false );
 
         TextureDescriptor textureDescriptor{};
         textureDescriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;

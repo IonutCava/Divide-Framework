@@ -55,6 +55,32 @@ namespace Divide
 
         IMGUICallbackData g_modalTextureData;
 
+        /// True while recording ImGui draw lists that go straight to a screen that doesn't perform sRGB encoding on write.
+        /// In that case, ImGui's sRGB authored colours must be written out as-is instead of being linearised.
+        bool g_imguiTargetIsLinearScreen = false;
+
+        /// Last push constants sent to the IMGUI shader. Lets us update the per-texture linearisation flag without overriding callback provided state.
+        PushConstantsStruct g_lastImguiPushConstants{};
+
+        /// Textures that are sampled as linear values (render targets, sRGB formats with hardware decode, float and depth formats) must not be linearised again.
+        /// Only plain UNORM images (e.g. icons, fonts, non-sRGB assets) hold sRGB authored data that needs to be converted in the shader.
+        [[nodiscard]] bool ImguiTextureNeedsLinearisation( const Handle<Texture> texture )
+        {
+            const Texture* tex = texture != INVALID_HANDLE<Texture> ? Get( texture ) : nullptr;
+            if ( tex == nullptr )
+            {
+                return true;
+            }
+
+            const TextureDescriptor& descriptor = tex->descriptor();
+            return descriptor._packing == GFXImagePacking::NORMALIZED && !IsRenderTargetAttachment( descriptor );
+        }
+
+        [[nodiscard]] F32 SRGBToLinear( const F32 value ) noexcept
+        {
+            return value <= 0.04045f ? value / 12.92f : std::pow( (value + 0.055f) / 1.055f, 2.4f );
+        }
+
         inline void Reset( Editor::FocusedWindowState& state ) noexcept
         {
             state = {};
@@ -151,7 +177,12 @@ namespace Divide
         pushConstants.data[0]._vec[2].x  = isArrayTexture ? 1.f : 0.f;
         pushConstants.data[0]._vec[2].y  = data._isDepthTexture ? 1.f : 0.f;
         pushConstants.data[0]._vec[2].z  = data._flip ? 1.f : 0.f;
-        pushConstants.data[0]._vec[2].w  = data._srgb ? 1.f : 0.f;
+        pushConstants.data[0]._vec[2].w  = g_imguiTargetIsLinearScreen ? 1.f : 0.f;
+        // If the callback doesn't specify a texture, keep the flag of the currently bound one. The draw loop updates it on texture changes.
+        pushConstants.data[0]._vec[3].x  = data._texture != INVALID_HANDLE<Texture>
+                                                          ? (ImguiTextureNeedsLinearisation( data._texture ) ? 1.f : 0.f)
+                                                          : g_lastImguiPushConstants.data[0]._vec[3].x;
+        g_lastImguiPushConstants = pushConstants;
         return pushConstants;
     }
 
@@ -201,21 +232,6 @@ namespace Divide
         constexpr F32 fontSize = 13.f;
         constexpr F32 fontSizeBold = 16.f;
         constexpr F32 iconSize = 16.f;
-
-        if ( _fontTexture == INVALID_HANDLE<Texture> )
-        {
-
-            ResourceDescriptor<Texture> resDescriptor( "IMGUI_font_texture" );
-            TextureDescriptor& texDescriptor = resDescriptor._propertyDescriptor;
-            texDescriptor._mipMappingState = MipMappingState::OFF;
-
-            _fontTexture = CreateResource( resDescriptor );
-        }
-        DIVIDE_ASSERT( _fontTexture != INVALID_HANDLE<Texture> );
-
-        U8* pPixels = nullptr;
-        I32 iWidth = 0;
-        I32 iHeight = 0;
         const string textFontPath = ( Paths::g_fontsPath / g_editorFontFile ).string();
         const string textFontBoldPath = ( Paths::g_fontsPath / g_editorFontFileBold ).string();
         const string iconFontPath = ( Paths::g_fontsPath / g_editorIconFile ).string();
@@ -248,10 +264,70 @@ namespace Divide
         // offset per fontSize units
         io.Fonts->AddFontFromFileTTF( textFontBoldPath.c_str(), fontSizeBold * DPIScaleFactor, &font_cfg );
 
-        io.Fonts->GetTexDataAsRGBA32( &pPixels, &iWidth, &iHeight );
-        Get(_fontTexture)->createWithData( { reinterpret_cast<Byte*>(pPixels), iWidth * iHeight * 4u}, vec3<U16>( iWidth, iHeight, 1u ), {});
-        // Store our identifier as reloading data may change the handle!
-        io.Fonts->SetTexID( to_TexID(_fontTexture) );
+        io.Fonts->TexDesiredFormat = ImTextureFormat_RGBA32;
+    }
+
+    void Editor::updateFontTextures( ImDrawData* drawData )
+    {
+        if ( drawData == nullptr || drawData->Textures == nullptr )
+        {
+            return;
+        }
+
+        for ( ImTextureData* textureData : *drawData->Textures )
+        {
+            auto it = std::find_if( _fontTextures.begin(), _fontTextures.end(),
+                                    [textureData]( const auto& entry ) { return entry.first == textureData; } );
+
+            if ( textureData->Status == ImTextureStatus_WantDestroy )
+            {
+                if ( it != _fontTextures.end() )
+                {
+                    DestroyResource( it->second );
+                    _fontTextures.erase( it );
+                }
+                textureData->SetStatus( ImTextureStatus_Destroyed );
+            }
+            else if ( textureData->Status == ImTextureStatus_WantCreate )
+            {
+                ResourceDescriptor<Texture> resDescriptor( Util::StringFormat( "IMGUI_font_texture_{}", textureData->UniqueID ).c_str() );
+                resDescriptor._propertyDescriptor._mipMappingState = MipMappingState::OFF;
+
+                const Handle<Texture> texture = CreateResource( resDescriptor );
+                DIVIDE_ASSERT( texture != INVALID_HANDLE<Texture> && textureData->Format == ImTextureFormat_RGBA32 );
+                Get( texture )->createWithData( { reinterpret_cast<const Byte*>( textureData->GetPixels() ), to_size( textureData->GetSizeInBytes() ) },
+                                               vec3<U16>( to_U16( textureData->Width ), to_U16( textureData->Height ), 1u ), {} );
+                _fontTextures.emplace_back( textureData, texture );
+                textureData->SetTexID( to_TexID( texture ) );
+                textureData->SetStatus( ImTextureStatus_OK );
+            }
+            else if ( textureData->Status == ImTextureStatus_WantUpdates )
+            {
+                DIVIDE_ASSERT( it != _fontTextures.end() && textureData->Format == ImTextureFormat_RGBA32 );
+                Texture* texture = Get( it->second );
+#if defined(PARTIAL_IMGUI_TEX_UPDATES)
+                for ( const ImTextureRect& rect : textureData->Updates )
+                {
+                    const size_t rowBytes = size_t( rect.w ) * 4u;
+                    vector<Byte> pixels( rowBytes * rect.h );
+                    for ( U16 y = 0u; y < rect.h; ++y )
+                    {
+                        memcpy( pixels.data() + y * rowBytes, textureData->GetPixelsAt( rect.x, rect.y + y ), rowBytes );
+                    }
+                    texture->replaceData( pixels, vec3<U16>( rect.x, rect.y, 0u ), vec3<U16>( rect.w, rect.h, 1u ), 0u, {} );
+                }
+#else // !PARTIAL_IMGUI_TEX_UPDATES
+                texture->replaceData(
+                    { reinterpret_cast<const Byte*>(textureData->GetPixels()), to_size(textureData->GetSizeInBytes()) },
+                    vec3<U16>(0u),
+                    vec3<U16>(to_U16(textureData->Width), to_U16(textureData->Height), 1u),
+                    0u,
+                    {}
+                );
+#endif// !PARTIAL_IMGUI_TEX_UPDATES
+                textureData->SetStatus( ImTextureStatus_OK );
+            }
+        }
     }
 
     bool Editor::init( const vec2<U16> renderResolution )
@@ -304,6 +380,7 @@ namespace Divide
             shaderDescriptor._globalDefines.emplace_back("depthTexture uint(PushData0[2].y)");
             shaderDescriptor._globalDefines.emplace_back("flip uint(PushData0[2].z)");
             shaderDescriptor._globalDefines.emplace_back("convertToSRGB (uint(PushData0[2].w) == 1)");
+            shaderDescriptor._globalDefines.emplace_back("lineariseTexture (uint(PushData0[3].x) == 1)");
 
             _imguiProgram = CreateResource( shaderResDescriptor );
         }
@@ -796,7 +873,11 @@ namespace Divide
             DebugBreak();
         }
         DestroyResource(_infiniteGridProgram);
-        DestroyResource(_fontTexture);
+        for ( auto& entry : _fontTextures )
+        {
+            DestroyResource( entry.second );
+        }
+        _fontTextures.clear();
         DestroyResource(_imguiProgram);
 
         _gizmo.reset();
@@ -1434,6 +1515,13 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::GUI );
 
+        updateFontTextures( pDrawData );
+
+        // editorPass renders directly to the screen, otherwise we render into the (sRGB) back buffer
+        g_imguiTargetIsLinearScreen = editorPass && !GFXDevice::GetDeviceInformation()._screenSRGB;
+        g_lastImguiPushConstants = {};
+        g_lastImguiPushConstants.data[0]._vec[3].x = 1.f;
+
         constexpr U32 MaxVertices = (1 << 16);
         constexpr U32 MaxIndices = MaxVertices * 3u;
         static ImDrawVert vertices[MaxVertices];
@@ -1445,14 +1533,14 @@ namespace Divide
         const I32 fb_height = targetViewport.sizeY;
 
         // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-        if ( pDrawData->CmdListsCount == 0  || fb_width <= 0 || fb_height <= 0 )
+        if ( pDrawData->CmdLists.Size == 0  || fb_width <= 0 || fb_height <= 0 )
         {
             return;
         }
 
         // ref: https://gist.github.com/floooh/10388a0afbe08fce9e617d8aefa7d302
         U32 numVertices = 0, numIndices = 0;
-        for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
+        for ( I32 n = 0; n < pDrawData->CmdLists.Size; ++n )
         {
             const ImDrawList* cl = pDrawData->CmdLists[n];
             const U32 clNumVertices = to_U32(cl->VtxBuffer.size());
@@ -1478,7 +1566,14 @@ namespace Divide
 
         if ( editorPass )
         {
-            const ImVec4 windowBGColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+            ImVec4 windowBGColour = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+            if ( !g_imguiTargetIsLinearScreen )
+            {
+                // ImGui colours are sRGB authored, but clear values get encoded to sRGB by the screen (same as our shader outputs)
+                windowBGColour.x = SRGBToLinear( windowBGColour.x );
+                windowBGColour.y = SRGBToLinear( windowBGColour.y );
+                windowBGColour.z = SRGBToLinear( windowBGColour.z );
+            }
 
             auto beginRenderPassCmd = GFX::EnqueueCommand<GFX::BeginRenderPassCommand>( bufferInOut );
             beginRenderPassCmd->_target = SCREEN_TARGET_ID;
@@ -1525,8 +1620,6 @@ namespace Divide
         const ImVec2 clip_off = pDrawData->DisplayPos;         // (0,0) unless using multi-viewports
         const ImVec2 clip_scale = pDrawData->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
 
-        const bool flipClipY = _context.gfx().renderAPI() == RenderAPI::OpenGL;
-
         ImTextureID crtImguiTexID = 0u;
 
         U32 baseVertex = 0u;
@@ -1536,7 +1629,7 @@ namespace Divide
         Rect<I32> prevClipRect{-1};
 
         bool newCommand = true;
-        for ( I32 n = 0; n < pDrawData->CmdListsCount; ++n )
+        for ( I32 n = 0; n < pDrawData->CmdLists.Size; ++n )
         {
             const ImDrawList* cmd_list = pDrawData->CmdLists[n];
             for ( const ImDrawCmd& pcmd : cmd_list->CmdBuffer )
@@ -1566,7 +1659,7 @@ namespace Divide
                     clipRect.sizeX = to_I32( clip_max.x - clip_min.x );
                     clipRect.sizeY = to_I32( clip_max.y - clip_min.y );
                     clipRect.offsetX = to_I32( clip_min.x );
-                    clipRect.offsetY = flipClipY ? to_I32( fb_height - clip_max.y ) : to_I32( clip_min.y );
+                    clipRect.offsetY = to_I32( fb_height - clip_max.y );
 
                     if ( prevClipRect != clipRect )
                     {
@@ -1598,6 +1691,13 @@ namespace Divide
                         }
                         crtImguiTexID = imguiTexID;
                         newCommand = true;
+
+                        const F32 linearise = ImguiTextureNeedsLinearisation( tex ) ? 1.f : 0.f;
+                        if ( g_lastImguiPushConstants.data[0]._vec[3].x != linearise )
+                        {
+                            g_lastImguiPushConstants.data[0]._vec[3].x = linearise;
+                            GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData = g_lastImguiPushConstants;
+                        }
                     }
 
                     if ( newCommand )
@@ -2923,6 +3023,7 @@ namespace Divide
 
         io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos; // We can honor io.WantSetMousePos requests (optional, rarely used)
 
         io.BackendPlatformName = Config::ENGINE_NAME;

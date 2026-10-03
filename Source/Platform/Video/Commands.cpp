@@ -151,12 +151,23 @@ static string ToString(const SendPushConstantsCommand& cmd, U16 indent)
     for (U16 j = 0; j < indent; ++j) {
         ret.append("    ");
     }
-    ret.append(cmd._fastData.set() ? "Has push constants specified: \n" : "No push constant data specified");
+    const auto dataFlags = cmd._fastData.dataFlags();
+    ret.append(dataFlags != PushConstantsStruct::DataFlags::NONE ? "Has push constants specified: \n" : "No push constant data specified");
 
-    if ( cmd._fastData.set() )
+    if ( dataFlags != PushConstantsStruct::DataFlags::NONE )
     {
-        for (U8 d = 0u; d < 2u; ++d ) {
+        for (U8 d = 0u; d < 2u; ++d )
+        {
             ret.append( "    " );
+            if ( (dataFlags & (d == 0u ? PushConstantsStruct::DataFlags::FIRST : PushConstantsStruct::DataFlags::SECOND)) != 0u)
+            {
+                ret.append(Util::StringFormat("Data {} is specified\n", d));
+            }
+            else
+            {
+                ret.append(Util::StringFormat("Data {} is NOT specified\n", d));
+                continue;
+            }
             for ( U16 j = 0; j < indent; ++j )
             {
                 ret.append( "    " );

@@ -31,7 +31,7 @@ bool UniformData::remove( const U64 bindingHash )
     return false;
 }
 
-bool Merge( UniformData& lhs, UniformData& rhs, bool& partial)
+bool Merge( UniformData& lhs, UniformData& rhs)
 {
     for (const UniformData::Entry& ourUniform : lhs._data)
     {
@@ -50,8 +50,6 @@ bool Merge( UniformData& lhs, UniformData& rhs, bool& partial)
 
             lhs.set(otherUniform._bindingHash, otherUniform._type, &rhs._buffer[otherUniform._range._startOffset], otherUniform._range._length);
             DIVIDE_EXPECTED_CALL( rhs.remove(otherUniform._bindingHash) );
-
-            partial = true;
         }
     }
 

@@ -55,6 +55,7 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <ImGuiMisc/imguistyleserializer/imguistyleserializer.h>
 
 struct ImDrawData;
+struct ImTextureData;
 
 #ifndef ImTextureID
 namespace ImGui
@@ -132,7 +133,6 @@ namespace Divide
         U32 _mip = 0u;
         bool _isDepthTexture = false;
         bool _flip = true;
-        bool _srgb = false;
     };
 
     struct GPUVertexBuffer
@@ -284,8 +284,9 @@ namespace Divide
         void queueRemoveNode( I64 nodeGUID );
         void updateEditorFocus();
         void updateFocusState( ImVec2 mousePos );
-        /// Destroys the old font, if any, before loading the new one
+        /// Configures the font atlas for the current DPI scale
         void createFontTexture( ImGuiIO& io, F32 DPIScaleFactor );
+        void updateFontTextures( ImDrawData* drawData );
         [[nodiscard]] static ImGuiViewport* FindViewportByPlatformHandle( ImGuiContext* context, const DisplayWindow* window );
 
         [[nodiscard]] U32 saveItemCount() const noexcept;
@@ -364,7 +365,7 @@ namespace Divide
         Gizmo_uptr               _gizmo ;
 
         DisplayWindow* _mainWindow = nullptr;
-        Handle<Texture>       _fontTexture = INVALID_HANDLE<Texture>;
+        vector<std::pair<ImTextureData*, Handle<Texture>>> _fontTextures;
         Handle<ShaderProgram> _imguiProgram = INVALID_HANDLE<ShaderProgram>;
         Handle<ShaderProgram> _infiniteGridProgram = INVALID_HANDLE<ShaderProgram>;
 

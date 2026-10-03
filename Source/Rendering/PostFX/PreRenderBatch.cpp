@@ -141,7 +141,7 @@ PreRenderBatch::PreRenderBatch(GFXDevice& context, PostFX& parent)
         lumaDescriptor._baseFormat = GFXImageFormat::RED;
         lumaDescriptor._packing = GFXImagePacking::UNNORMALIZED;
         lumaDescriptor._mipMappingState = MipMappingState::OFF;
-        AddImageUsageFlag( lumaDescriptor, ImageUsage::SHADER_READ);
+        AddImageUsageFlag( lumaDescriptor, ImageUsage::SHADER_READ_WRITE);
 
         _currentLuminance = CreateResource(texture);
 
@@ -568,29 +568,31 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
     _toneMapParams._width = screenRT()._rt->getWidth();
     _toneMapParams._height = screenRT()._rt->getHeight();
     const F32 logLumRange = _toneMapParams._maxLogLuminance - _toneMapParams._minLogLuminance;
-    const Handle<Texture> screenColour = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO)->texture();
+    RTAttachment* screenAtt = screenRT()._rt->getAttachment(RTAttachmentType::COLOUR, GFXDevice::ScreenTargets::ALBEDO);
 
     GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Compute Adaptive Exposure";
     { // Histogram Pass
         GFX::EnqueueCommand<GFX::BeginDebugScopeCommand>(bufferInOut)->_scopeName = "Create Luminance Histogram";
 
-        const ImageView screenImage = Get(screenColour)->getView();
+        const ImageView screenImage = Get(screenAtt->texture())->getView();
 
         // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
-        GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        /*GFX::EnqueueCommand<GFX::MemoryBarrierCommand>( bufferInOut )->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
             ._targetView = screenImage,
             ._sourceLayout = ImageUsage::SHADER_READ,
             ._targetLayout = ImageUsage::SHADER_READ_WRITE
-        });
+        });*/
 
         GFX::EnqueueCommand<GFX::BindPipelineCommand>(bufferInOut)->_pipeline = _pipelineLumCalcHistogram;
 
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
-            Set(binding._data, screenImage, ImageUsage::SHADER_READ_WRITE);
+            //DescriptorSetBinding& binding = AddBinding( cmd->_set, 12u, ShaderStageVisibility::COMPUTE );
+            //Set(binding._data, screenImage, ImageUsage::SHADER_READ_WRITE);
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 0u, ShaderStageVisibility::COMPUTE );
+            Set(binding._data, screenImage, screenAtt->_descriptor._sampler);
         }
         {
             DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
@@ -616,12 +618,12 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         });
 
         // ToDo: This can be changed to a simple sampler instead, thus avoiding this layout change
-        memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
+        /*memCmd->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
             ._targetView = screenImage,
             ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
             ._targetLayout = ImageUsage::SHADER_READ
-        });
+        });*/
 
         GFX::EnqueueCommand<GFX::EndDebugScopeCommand>(bufferInOut);
     }
@@ -635,7 +637,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
             ._targetView   = luminanceView,
-            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
             ._targetLayout = ImageUsage::SHADER_WRITE,
         });
 
@@ -644,7 +646,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         auto cmd = GFX::EnqueueCommand<GFX::BindShaderResourcesCommand>(bufferInOut);
         cmd->_usage = DescriptorSetUsage::PER_DRAW;
         {
-            DescriptorSetBinding& binding = AddBinding( cmd->_set, 1u, ShaderStageVisibility::COMPUTE );
+            DescriptorSetBinding& binding = AddBinding( cmd->_set, 13u, ShaderStageVisibility::COMPUTE );
             Set(binding._data, _histogramBuffer.get(), { 0u, _histogramBuffer->getPrimitiveCount() });
         }
         {
