@@ -108,19 +108,18 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
 
         bool shouldLink = false;
 
-        std::array<bool, to_base(ShaderType::COUNT)> stageUsed;
+        std::array<bool, to_base(ShaderType::COUNT)> stageUsed = {};
         for (ShaderProgram::LoadData& data : _loadData)
         {
-            bool& used = stageUsed[to_base(data._type)];
             if (data._type == ShaderType::COUNT)
             {
-                used = false;
                 // stage not specified from the current file. Skip.
                 continue;
             }
-            used = true;
+
             assert(!data._compiled);
 
+            stageUsed[to_base(data._type)] = true;
             if constexpr(Config::ENABLE_GPU_VALIDATION)
             {
                 timers[1].start();

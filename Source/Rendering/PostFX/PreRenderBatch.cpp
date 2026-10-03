@@ -637,7 +637,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
             ._targetView   = luminanceView,
-            ._sourceLayout = ImageUsage::SHADER_READ,
+            ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
             ._targetLayout = ImageUsage::SHADER_WRITE,
         });
 
