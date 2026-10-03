@@ -394,7 +394,7 @@ namespace Divide
         }
 
         VkImageCreateInfo imageInfo = vk::imageCreateInfo();
-        imageInfo.tiling = _descriptor._allowRegionUpdates ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.samples = sampleFlagBits();
@@ -411,7 +411,7 @@ namespace Divide
            imageInfo.arrayLayers *= (isCubeMap ? 6u : 1u);
         }
 
-        if ( makeImmutable || imageInfo.mipLevels > 1u)
+        if ( makeImmutable || _descriptor._allowRegionUpdates || imageInfo.mipLevels > 1u)
         {
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }

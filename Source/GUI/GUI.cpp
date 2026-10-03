@@ -446,16 +446,16 @@ namespace Divide
 
             const I32 w = rect[2] - rect[0];
             const I32 h = rect[3] - rect[1];
-
+            Texture* texture = Get(dvd->_fontRenderingTexture);
             const PixelAlignment pixelUnpackAlignment =
             {
                 ._alignment = 1u,
-                ._rowLength = to_size( dvd->_width ),
+                ._rowLength = to_size( texture->width() ),
                 ._skipPixels = to_size( rect[0] ),
                 ._skipRows = to_size( rect[1] )
             };
 
-            Get(dvd->_fontRenderingTexture)->replaceData( {reinterpret_cast<const Divide::Byte*>(data), sizeof( U8 ) * w * h}, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, 0u, pixelUnpackAlignment );
+            texture->replaceData( {reinterpret_cast<const Divide::Byte*>(data), to_size( texture->width() ) * to_size( texture->height() ) }, vec3<U16>{rect[0], rect[1], 0}, vec3<U16>{w, h, 1u}, 0u, pixelUnpackAlignment );
         };
         params.renderDraw = []( void* userPtr, const FONSvert* verts, int nverts )
         {

@@ -2,6 +2,7 @@
 
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 
 namespace Divide
 {
