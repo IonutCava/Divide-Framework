@@ -225,15 +225,7 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
 
     DIVIDE_GPU_ASSERT( _descriptor._msaaSamples == 0u || data.empty() );
 
-    if ( _descriptor._packing == GFXImagePacking::RGBA_4444 )
-    {
-        constexpr PixelAlignment customAlignment{ ._alignment = 2u };
-        GL_API::GetStateTracker().setPixelUnpackAlignment( customAlignment );
-    }
-    else
-    {
-        GL_API::GetStateTracker().setPixelUnpackAlignment( pixelUnpackAlignment );
-    }
+    GL_API::GetStateTracker().setPixelUnpackAlignment( pixelUnpackAlignment );
 
     switch ( _descriptor._texType )
     {
@@ -251,6 +243,18 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
             }
         } break;
         case TextureType::TEXTURE_1D_ARRAY:
+        {
+            assert( offset.y == 0u && dimensions.height == 1u );
+
+            if ( isCompressed )
+            {
+                gl46core::glCompressedTextureSubImage2D( _loadingHandle, targetMip, offset.x, offset.z, dimensions.width, dimensions.depth, formatAndType._internalFormat, static_cast<gl46core::GLsizei>(data.size()), data.data() );
+            }
+            else
+            {
+                gl46core::glTextureSubImage2D( _loadingHandle, targetMip, offset.x, offset.z, dimensions.width, dimensions.depth, formatAndType._internalFormat, formatAndType._dataType, data.data() );
+            }
+        } break;
         case TextureType::TEXTURE_2D:
         {
             assert( offset.z == 0u );
@@ -261,7 +265,7 @@ void glTexture::loadDataInternal( const std::span<const Byte> data, const U16 ta
             }
             else
             {
-                gl46core::glTextureSubImage2D(_loadingHandle, targetMip, offset.x, _descriptor._texType == TextureType::TEXTURE_1D_ARRAY ? offset.z : offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, formatAndType._dataType, data.data());
+                gl46core::glTextureSubImage2D(_loadingHandle, targetMip, offset.x, offset.y, dimensions.width, dimensions.height, formatAndType._internalFormat, formatAndType._dataType, data.data());
             }
         } break;
         case TextureType::TEXTURE_3D:

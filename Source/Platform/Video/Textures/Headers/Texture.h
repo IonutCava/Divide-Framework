@@ -78,6 +78,17 @@ using TextureLayoutChanges = fixed_vector<TextureLayoutChange, 6, true>;
 
 [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
 
+struct TextureUpdateLayout
+{
+    size_t _rowBytes{ 0u };
+    size_t _rowStride{ 0u };
+    size_t _sliceStride{ 0u };
+    size_t _sourceOffset{ 0u };
+    size_t _rowCount{ 0u };
+    size_t _stagingSize{ 0u };
+    size_t _requiredSize{ 0u };
+};
+
 /// An API-independent representation of a texture
 NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 {
@@ -104,7 +115,21 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
         ImageUsage createWithData( std::span<const Byte> data, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment);
 
+        /// Update one mip of an initialized, shader-readable texture with _allowRegionUpdates enabled.
+        /// Coordinates are local to targetMipLevel; z selects slices (3D) or layers/faces (arrays/cubes).
+        /// 1D textures use y = 0 and range.y = 1, including arrays whose layers are selected with z.
+        /// PixelAlignment describes the source buffer, not the destination: rowLength/skipPixels are in
+        /// texels, skipRows is in rows. The span must include all addressed bytes, including skips/padding.
+        /// BC updates require block-aligned offsets/extents (except at mip edges) and tightly packed blocks.
+        /// Vulkan CPU uploads support colour textures, not multisampled or depth/stencil images.
+        /// Other mips/layers and pixels outside the region are preserved; mipmaps are not regenerated.
+        /// Call before recording draws that sample the texture; empty data or zero extents are no-ops.
         void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const U16 targetMipLevel, const PixelAlignment& pixelUnpackAlignment );
+
+        [[nodiscard]] static bool IsValidUpdateRegion( TextureType type, const vec3<U16>& dimensions, U16 layers, U16 mipCount, U16 targetMip,
+                                                      const vec3<U16>& offset, const vec3<U16>& range ) noexcept;
+        [[nodiscard]] static bool GetUpdateLayout( const TextureDescriptor& descriptor, const vec3<U16>& range,
+                                                  const PixelAlignment& alignment, TextureUpdateLayout& layout ) noexcept;
 
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );

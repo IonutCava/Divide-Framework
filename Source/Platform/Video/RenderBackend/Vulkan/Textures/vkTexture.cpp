@@ -390,7 +390,7 @@ namespace Divide
         }
 
         VkImageCreateInfo imageInfo = vk::imageCreateInfo();
-        imageInfo.tiling = _descriptor._allowRegionUpdates ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.samples = sampleFlagBits();
@@ -407,7 +407,7 @@ namespace Divide
            imageInfo.arrayLayers *= (isCubeMap ? 6u : 1u);
         }
 
-        if ( makeImmutable || imageInfo.mipLevels > 1u)
+        if ( makeImmutable || _descriptor._allowRegionUpdates || imageInfo.mipLevels > 1u)
         {
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
@@ -472,8 +472,88 @@ namespace Divide
 
     void vkTexture::loadDataInternal( const std::span<const Byte> data, const U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
-        DIVIDE_GPU_ASSERT(_descriptor._allowRegionUpdates);
-        loadDataInternal(data.data(), data.size(), targetMip, offset, dimensions, pixelUnpackAlignment);
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        TextureUpdateLayout layout;
+        const bool valid = _image != nullptr && _descriptor._allowRegionUpdates && _descriptor._msaaSamples == 0u &&
+                           GetAspectFlags( _descriptor ) == VK_IMAGE_ASPECT_COLOR_BIT &&
+                           IsValidUpdateRegion( _descriptor._texType, {_width, _height, _depth}, _layerCount, _mipCount, targetMip, offset, dimensions ) &&
+                           GetUpdateLayout( _descriptor, dimensions, pixelUnpackAlignment, layout ) &&
+                           data.size() >= layout._requiredSize && layout._stagingSize <= GFXDevice::GetDeviceInformation()._maxBufferSizeBytes;
+        DIVIDE_GPU_ASSERT( valid, "vkTexture::loadDataInternal: unsupported region update or invalid pixel data!" );
+        if ( !valid )
+        {
+            return;
+        }
+
+        // A separate staging allocation per update avoids overwriting data from an in-flight atlas update.
+        // VMABuffer destruction retires the allocation through the existing deferred deletion queue.
+        const bool packFloatPixels = vkFormat() == VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+        const size_t stagingSize = packFloatPixels ? layout._stagingSize / 6u * sizeof( U32 ) : layout._stagingSize;
+        const auto stagingBuffer = VKUtil::createStagingBuffer( stagingSize, resourceName().c_str(), false );
+        Byte* target = reinterpret_cast<Byte*>( stagingBuffer->_allocInfo.pMappedData );
+        for ( size_t slice = 0u; slice < dimensions.z; ++slice )
+        {
+            for ( size_t row = 0u; row < layout._rowCount; ++row )
+            {
+                const size_t sourceOffset = layout._sourceOffset + slice * layout._sliceStride + row * layout._rowStride;
+                const Byte* source = data.data() + sourceOffset;
+                if ( packFloatPixels )
+                {
+                    // The shared/GL source is RGB half-float; Vulkan's R11G11B10 image needs packed texels.
+                    for ( size_t pixel = 0u; pixel < dimensions.x; ++pixel )
+                    {
+                        U16 components[3];
+                        memcpy( components, source + pixel * sizeof( components ), sizeof( components ) );
+                        const U32 packed = Util::PACK_11_11_10( Util::UNPACK_HALF1x16( components[0] ),
+                                                              Util::UNPACK_HALF1x16( components[1] ),
+                                                              Util::UNPACK_HALF1x16( components[2] ) );
+                        memcpy( target, &packed, sizeof( packed ) );
+                        target += sizeof( packed );
+                    }
+                }
+                else
+                {
+                    memcpy( target, source, layout._rowBytes );
+                    target += layout._rowBytes;
+                }
+            }
+        }
+        {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            VK_CHECK( vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                         stagingBuffer->_allocation, 0u, stagingSize ) );
+        }
+
+        VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer(
+            [&]( VkCommandBuffer cmdBuffer, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const U32 queueIndex )
+        {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
+
+            const bool is3D = Is3DTexture( _descriptor._texType );
+            const VkImageSubresourceRange region
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = targetMip,
+                .levelCount = 1u,
+                .baseArrayLayer = is3D ? 0u : U32( offset.z ),
+                .layerCount = is3D ? 1u : U32( dimensions.z )
+            };
+            const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), false };
+            FlushPipelineBarrier( cmdBuffer, TransitionType::SHADER_READ_TO_COPY_WRITE, region, namedImage );
+
+            VkBufferImageCopy copyRegion{};
+            copyRegion.imageSubresource.aspectMask = region.aspectMask;
+            copyRegion.imageSubresource.mipLevel = targetMip;
+            copyRegion.imageSubresource.baseArrayLayer = region.baseArrayLayer;
+            copyRegion.imageSubresource.layerCount = region.layerCount;
+            copyRegion.imageOffset = { I32( offset.x ), I32( offset.y ), is3D ? I32( offset.z ) : 0 };
+            copyRegion.imageExtent = { U32( dimensions.x ), U32( dimensions.y ), is3D ? U32( dimensions.z ) : 1u };
+            VK_PROFILE( vkCmdCopyBufferToImage, cmdBuffer, stagingBuffer->_buffer, _image->_image,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copyRegion );
+
+            FlushPipelineBarrier( cmdBuffer, TransitionType::COPY_WRITE_TO_SHADER_READ, region, namedImage );
+        }, "vkTexture::replaceData" );
     }
 
     void vkTexture::loadDataInternal( const Byte* data, const size_t size, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
