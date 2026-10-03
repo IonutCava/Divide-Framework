@@ -107,14 +107,18 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
         }
 
         bool shouldLink = false;
+
+        std::array<bool, to_base(ShaderType::COUNT)> stageUsed;
         for (ShaderProgram::LoadData& data : _loadData)
         {
+            bool& used = stageUsed[to_base(data._type)];
             if (data._type == ShaderType::COUNT)
             {
+                used = false;
                 // stage not specified from the current file. Skip.
                 continue;
             }
-
+            used = true;
             assert(!data._compiled);
 
             if constexpr(Config::ENABLE_GPU_VALIDATION)
@@ -315,6 +319,11 @@ ShaderResult glShader::uploadToGPU(const Configuration& config)
         string perStageTiming = "";
         for (U8 i = 0u; i < to_base(ShaderType::COUNT); ++i)
         {
+            if (!stageUsed[i])
+            {
+                continue;
+            }
+
             perStageTiming.append(Util::StringFormat("---- [ {} ] - [{:5.5f} ms] - [{:5.5f}  ms]\n",
                                                      Names::shaderTypes[i],
                                                      Time::MicrosecondsToMilliseconds<F32>(timingData._stageCompileTime[i]),
