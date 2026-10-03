@@ -11,8 +11,8 @@
 namespace Divide {
 
 namespace {
-    UpdateListener s_fileWatcherListener([](const std::string_view atomName, FileUpdateEvent evt) {
-        Script::onScriptModify(atomName, evt);
+    UpdateListener s_fileWatcherListener([](const std::string_view dir, const std::string_view atomName, FileUpdateEvent evt) {
+        Script::onScriptModify(dir, atomName, evt);
     });
 }
 
@@ -187,7 +187,7 @@ void Script::handleOutput(const std::string_view msg)
     Console::printfn(LOCALE_STR("SCRIPT_CONSOLE_OUTPUT"), msg);
 }
 
-void Script::onScriptModify(const std::string_view script, FileUpdateEvent& /*evt*/)
+void Script::onScriptModify([[maybe_unused]] const std::string_view dir, const std::string_view script, FileUpdateEvent& /*evt*/)
 {
     vector<Script*> scriptsToReload;
 

@@ -166,6 +166,8 @@ private:
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
     bool _uniformsNeedLock{ false };
+    PushConstantsStruct _lastPushConstants{};
+    bool _hasLastPushConstants{ false };
 
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;

@@ -78,9 +78,9 @@ namespace Divide
     ShaderProgram::BindingSetData ShaderProgram::s_bindingsPerSet;
 
     NO_DESTROY static UpdateListener g_sFileWatcherListener(
-        []( const std::string_view atomName, const FileUpdateEvent evt )
+        []( const std::string_view dir, const std::string_view atomName, const FileUpdateEvent evt )
         {
-            ShaderProgram::OnAtomChange( atomName, evt );
+            ShaderProgram::OnAtomChange( dir, atomName, evt );
         }
     );
 
@@ -193,7 +193,7 @@ namespace Divide
                 ++g_tagHead;
             };
 
-            setFlag( FPPTAG_KEEPCOMMENTS, true );
+            setFlag( FPPTAG_KEEPCOMMENTS, false );
             setFlag( FPPTAG_IGNORE_NONFATAL, false );
             setFlag( FPPTAG_IGNORE_CPLUSPLUS, false );
             setFlag( FPPTAG_LINE, false );
@@ -304,14 +304,35 @@ namespace Divide
             return ShaderParentCacheLocation() / Paths::Shaders::g_cacheLocationText;
         }
 
+        [[nodiscard]] const char* ShaderBinaryCacheTag()
+        {
+            static constexpr auto s_renderAPICacheTags = std::to_array<const char*>({
+                "None-GL450-SPV1.0",
+                "GL450-SPV1.0",
+                "VK1.3-SPV1.6",
+                "NRI_Vulkan-GL450-SPV1.0",
+                "NRI_D3D12-GL450-SPV1.0",
+                "NRI_D3D11-GL450-SPV1.0",
+                "NRI_None-GL450-SPV1.0"
+            });
+            static_assert(s_renderAPICacheTags.size() == to_base(RenderAPI::COUNT), "Missing cache tag for a RenderAPI entry");
+
+            return s_renderAPICacheTags[to_base(s_renderAPI)];
+        }
+
+        [[nodiscard]] ResourcePath TxtTargetName( const Str<256>& fileName )
+        {
+            return ResourcePath{ Util::StringFormat("{}.{}", ShaderBinaryCacheTag(), fileName.c_str())  };
+        }
+
         [[nodiscard]] ResourcePath SpvTargetName( const Str<256>& fileName )
         {
-            return ResourcePath{ fileName + "." + Paths::Shaders::g_SPIRVExt.c_str() };
+            return ResourcePath{ fileName + "." + ShaderBinaryCacheTag() + "." + Paths::Shaders::g_SPIRVExt.c_str() };
         }
 
         [[nodiscard]] ResourcePath ReflTargetName( const Str<256>& fileName )
         {
-            return ResourcePath { fileName + "." + Paths::Shaders::g_ReflectionExt.c_str() };
+            return ResourcePath { fileName + "." + ShaderBinaryCacheTag() + "." + Paths::Shaders::g_ReflectionExt.c_str() };
         }
 
         [[nodiscard]] bool ValidateCacheLocked( const ShaderProgram::LoadData::ShaderCacheType type, const Str<256>& sourceFileName, const Str<256>& fileName )
@@ -336,7 +357,7 @@ namespace Divide
             switch ( type )
             {
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: filePath = ReflCacheLocation() / ReflTargetName( fileName ); break;
-                case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() / fileName; break;
+                case ShaderProgram::LoadData::ShaderCacheType::GLSL: filePath = TxtCacheLocation() / TxtTargetName( fileName ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: filePath = SpvCacheLocation() / SpvTargetName( fileName ); break;
 
                 default:
@@ -359,7 +380,7 @@ namespace Divide
             switch ( type )
             {
                 case ShaderProgram::LoadData::ShaderCacheType::REFLECTION: err = deleteFile( ReflCacheLocation(), ReflTargetName( fileName ).string() ); break;
-                case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), fileName.c_str() ); break;
+                case ShaderProgram::LoadData::ShaderCacheType::GLSL: err = deleteFile( TxtCacheLocation(), TxtTargetName( fileName ).string() ); break;
                 case ShaderProgram::LoadData::ShaderCacheType::SPIRV: err = deleteFile( SpvCacheLocation(), SpvTargetName( fileName ).string() ); break;
 
                 default:
@@ -514,7 +535,7 @@ namespace Divide
         // Add our engine specific defines and various code pieces to every GLSL shader
         // Add version as the first shader statement, followed by copyright notice
         AppendToShaderHeader( ShaderType::COUNT, "#version 460" );
-        AppendToShaderHeader( ShaderType::COUNT, "//_PROGRAM_NAME_\\" );
+        AppendToShaderHeader( ShaderType::COUNT, "___PROGRAM_NAME___" );
         AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2018 DIVIDE-Studio*/" );
         AppendToShaderHeader( ShaderType::COUNT, "/*Copyright (c) 2009 Ionut Cava*/" );
 
@@ -568,7 +589,8 @@ namespace Divide
         AppendToShaderHeader( ShaderType::TESSELLATION_CTRL, "#define TESS_CTRL_SHADER" );
 
         // This line gets replaced in every shader at load with the custom list of defines specified by the material
-        AppendToShaderHeader( ShaderType::COUNT, "_CUSTOM_DEFINES__" );
+        AppendToShaderHeader( ShaderType::COUNT, "___CUSTOM_DEFINES___" );
+        AppendToShaderHeader(ShaderType::COUNT, "___ENGINE_DEFINE_LIST___");
 
         constexpr float Z_TEST_SIGMA = 0.00001f;// 1.f / U8_MAX;
         // ToDo: Automate adding of buffer bindings by using, for example, a TypeUtil::bufferBindingToString -Ionut
@@ -756,8 +778,8 @@ namespace Divide
         AppendToShaderHeader( ShaderType::GEOMETRY, "#define VAR _in" );
         AppendToShaderHeader( ShaderType::FRAGMENT, "#define VAR _in" );
 
-        AppendToShaderHeader( ShaderType::COUNT, "//_CUSTOM_UNIFORMS_\\" );
-        AppendToShaderHeader( ShaderType::COUNT, "//_PUSH_CONSTANTS_DEFINE_\\" );
+        AppendToShaderHeader( ShaderType::COUNT, "___CUSTOM_UNIFORMS___" );
+        AppendToShaderHeader( ShaderType::COUNT, "___PUSH_CONSTANTS_DEFINE___" );
 
         // Check initialization status for GLSL and glsl-optimizer
         return glswState == 1;
@@ -1524,7 +1546,7 @@ namespace Divide
                 {
                     {
                         err = writeFile( TxtCacheLocation(),
-                                         dataIn._shaderName.c_str(),
+                                         TxtTargetName( dataIn._shaderName ).string(),
                                          dataIn._sourceCodeGLSL.c_str(),
                                          dataIn._sourceCodeGLSL.length(),
                                          FileType::TEXT );
@@ -1607,7 +1629,7 @@ namespace Divide
             case LoadData::ShaderCacheType::GLSL:
             {
                 err = readFile( TxtCacheLocation(),
-                                dataInOut._shaderName.c_str(),
+                                TxtTargetName( dataInOut._shaderName ).string(),
                                 FileType::TEXT,
                                 dataInOut._sourceCodeGLSL );
                 return err == FileError::NONE;
@@ -1857,6 +1879,55 @@ namespace Divide
         return ret;
     }
 
+    namespace
+    {
+        [[nodiscard]] static Reflection::PushConstantsState DetectPushConstantsUsage(const string& source) noexcept
+        {
+            bool use0 = false;
+            bool use1 = false;
+
+            string line;
+            istringstream input(source);
+            while (Util::GetLine(input, line))
+            {
+                // ignore engine defines (all other comments should be stripped at this point)
+                if (line.starts_with("/*Engine define:"))
+                {
+                    continue;
+                }
+                // ignore uniform declarations
+                if (s_renderAPI == RenderAPI::OpenGL)
+                {
+                    if (ctre::match<R"(^\s*layout\s*\([^)]*\)\s*uniform\s+\w+\s+PushData[01]\s*;\s*$)">(line))
+                    {
+                        continue;
+                    }
+                }
+                else //(Vulkan)
+                {
+                    if (ctre::match<R"(^\s*\w+\s+PushData[01]\s*;\s*$)">(line))
+                    {
+                        continue;
+                    }
+                }
+
+                use0 = use0 || ctre::search<R"((^|[^A-Za-z0-9_])PushData0([^A-Za-z0-9_]|$))">(line);
+                use1 = use1 || ctre::search<R"((^|[^A-Za-z0-9_])PushData1([^A-Za-z0-9_]|$))">(line);
+
+                if (use0 && use1)
+                {
+                    return Reflection::PushConstantsState::USED_BOTH;
+                }
+            }
+
+            if (use0)
+                return Reflection::PushConstantsState::USED_SLOT_1;
+            if (use1)
+                return Reflection::PushConstantsState::USED_SLOT_2;
+            return Reflection::PushConstantsState::NOT_USED;
+        }
+    }
+
     bool ShaderProgram::loadSourceCode( const ModuleDefines& defines, bool reloadExisting, LoadData& loadDataInOut, Reflection::UniformsSet& previousUniformsInOut, U8& blockIndexInOut )
     {
         // Clear existing code
@@ -1926,6 +1997,7 @@ namespace Divide
 
         // Whatever the process to get here was, we need SPIRV to proceed
         DIVIDE_GPU_ASSERT( !loadDataInOut._sourceCodeSpirV.empty() );
+
         // Time to see if we have any cached reflection data, and, if not, build it
         if ( reloadExisting || !useShaderCache() || !LoadFromCache( LoadData::ShaderCacheType::REFLECTION, loadDataInOut, atomIDs ) )
         {
@@ -1941,6 +2013,11 @@ namespace Divide
         else if ( loadDataInOut._reflectionData._uniformBlockBindingIndex != Reflection::INVALID_BINDING_INDEX )
         {
             blockIndexInOut = loadDataInOut._reflectionData._uniformBlockBindingIndex - s_uniformsStartOffset;
+        }
+
+        if (!loadDataInOut._sourceCodeGLSL.empty())
+        {
+            loadDataInOut._reflectionData._pushConstantsState = DetectPushConstantsUsage(loadDataInOut._sourceCodeGLSL);
         }
 
         if ( !loadDataInOut._sourceCodeGLSL.empty() || !loadDataInOut._sourceCodeSpirV.empty() )
@@ -1969,6 +2046,7 @@ namespace Divide
             glslCodeOut.append( sourceCodeStr );
         }
 
+        string headerDescription;
         // GLSW may fail for various reasons (not a valid effect stage, invalid name, etc)
         if ( !glslCodeOut.empty() )
         {
@@ -1996,10 +2074,10 @@ namespace Divide
 
                 // We also add a comment so that we can check what defines we have set because
                 // the shader preprocessor strips defines before sending the code to the GPU
-                header.append( "/*Engine define: [ " + defineString + " ]*/\n" );
+                headerDescription.append( "/*Engine define: [ " + defineString + " ]*/\n" );
             }
             // And replace in place with our program's headers created earlier
-            Util::ReplaceStringInPlace( glslCodeOut, "_CUSTOM_DEFINES__", header );
+            Util::ReplaceStringInPlace( glslCodeOut, "___CUSTOM_DEFINES___", header );
             
             PreprocessIncludes( resourceName(), glslCodeOut, 0, atomIDsInOut, true );
 
@@ -2025,7 +2103,7 @@ namespace Divide
 
             string& uniformBlock = loadDataInOut._uniformBlock;
             uniformBlock = "layout( ";
-            if ( _context.renderAPI() == RenderAPI::Vulkan )
+            if ( s_renderAPI == RenderAPI::Vulkan )
             {
                 uniformBlock.append( Util::StringFormat( "set = {}, ", to_base( DescriptorSetUsage::PER_DRAW ) ) );
             }
@@ -2044,7 +2122,7 @@ namespace Divide
                 uniformBlock.append( Util::StringFormat( "\n#define {} {}.{}", rawName.c_str(), UNIFORM_BLOCK_NAME, rawName.c_str() ) );
             }
 
-            const U8 layoutIndex = _context.renderAPI() == RenderAPI::Vulkan
+            const U8 layoutIndex = s_renderAPI == RenderAPI::Vulkan
                 ? loadDataInOut._reflectionData._uniformBlockBindingIndex
                 : ShaderProgram::GetGLBindingForDescriptorSlot( DescriptorSetUsage::PER_DRAW,
                                                                 loadDataInOut._reflectionData._uniformBlockBindingIndex );
@@ -2055,28 +2133,27 @@ namespace Divide
         }
 
         string pushConstantCodeBlock{};
-        if ( _context.renderAPI() == RenderAPI::Vulkan )
+        if ( s_renderAPI == RenderAPI::Vulkan )
         {
             pushConstantCodeBlock =
                 "layout( push_constant ) uniform constants\n"
                 "{\n"
-                "   mat4 data0;\n"
-                "   mat4 data1;\n"
-                "} PushConstants;\n"
-                "#define PushData0 PushConstants.data0\n"
-                "#define PushData1 PushConstants.data1";
+                "   mat4 PushData0;\n"
+                "   mat4 PushData1;\n"
+                "};";
         }
         else
         {
-            pushConstantCodeBlock =
-                "layout(location = 18) uniform mat4 PushConstantData[2];\n"
-                "#define PushData0 PushConstantData[0]\n"
-                "#define PushData1 PushConstantData[1]";
+            pushConstantCodeBlock = Util::StringFormat(
+                "layout(location = {}) uniform mat4 PushData0;\n"
+                "layout(location = {}) uniform mat4 PushData1;",
+                GL_PUSH_CONSTANTS_LOCATION, GL_PUSH_CONSTANTS_LOCATION + 1);
         }
 
-        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PROGRAM_NAME_\\", Util::StringFormat("/*[ {} ]*/", loadDataInOut._shaderName.c_str()));
-        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_CUSTOM_UNIFORMS_\\", loadDataInOut._uniformBlock );
-        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "//_PUSH_CONSTANTS_DEFINE_\\", pushConstantCodeBlock );
+        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "___PROGRAM_NAME___", Util::StringFormat("/*[ {} ]*/", loadDataInOut._shaderName.c_str()));
+        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "___CUSTOM_UNIFORMS___", loadDataInOut._uniformBlock );
+        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "___PUSH_CONSTANTS_DEFINE___", pushConstantCodeBlock );
+        Util::ReplaceStringInPlace( loadDataInOut._sourceCodeGLSL, "___ENGINE_DEFINE_LIST___", headerDescription);
     }
 
     void ShaderProgram::EraseAtom( const U64 atomHash )
@@ -2114,7 +2191,7 @@ namespace Divide
         }
     }
 
-    void ShaderProgram::OnAtomChange( const std::string_view atomName, const FileUpdateEvent evt )
+    void ShaderProgram::OnAtomChange( const std::string_view dir, const std::string_view atomName, const FileUpdateEvent evt )
     {
         DIVIDE_GPU_ASSERT( evt != FileUpdateEvent::COUNT );
 
@@ -2126,7 +2203,13 @@ namespace Divide
         }
 
         const U64 atomNameHash = _ID( string{ atomName }.c_str() );
-        EraseAtomLocked(atomNameHash);
+        EraseAtom(atomNameHash);
+
+        U64 writeTime = 0u;
+        if (fileLastWriteTime(ResourcePath{dir}, atomName, writeTime) == FileError::NONE)
+        {
+            s_newestShaderAtomWriteTime = std::max(s_newestShaderAtomWriteTime, writeTime);
+        }
 
         //Get list of shader programs that use the atom and rebuild all shaders in list;
         SharedLock<SharedMutex> lock( s_programLock );

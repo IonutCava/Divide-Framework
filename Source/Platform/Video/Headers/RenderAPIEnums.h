@@ -123,7 +123,7 @@ enum class ImageUsage : U8
     UNDEFINED = 0,
     SHADER_READ, // Image read or sampled read
     SHADER_WRITE,
-    SHADER_READ_WRITE, //General usage
+    SHADER_READ_WRITE, //General usage. Initial state is READ! Transition to write first if needed
     CPU_READ,
     RT_COLOUR_ATTACHMENT,
     RT_DEPTH_ATTACHMENT,

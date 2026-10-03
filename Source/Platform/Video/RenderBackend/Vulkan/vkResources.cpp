@@ -415,7 +415,7 @@ namespace Divide
                 case GFXImageFormat::DXT1_RGB:       return isSRGB ? VK_FORMAT_BC1_RGB_SRGB_BLOCK  : VK_FORMAT_BC1_RGB_UNORM_BLOCK;
                 case GFXImageFormat::DXT1_RGBA:      return isSRGB ? VK_FORMAT_BC1_RGBA_SRGB_BLOCK : VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
                 case GFXImageFormat::DXT3_RGBA:      return isSRGB ? VK_FORMAT_BC2_SRGB_BLOCK      : VK_FORMAT_BC2_UNORM_BLOCK;
-                case GFXImageFormat::DXT5_RGBA:      return isSRGB ? VK_FORMAT_BC3_UNORM_BLOCK     : VK_FORMAT_BC3_UNORM_BLOCK;
+                case GFXImageFormat::DXT5_RGBA:      return isSRGB ? VK_FORMAT_BC3_SRGB_BLOCK      : VK_FORMAT_BC3_UNORM_BLOCK;
                 case GFXImageFormat::BC7:            return isSRGB ? VK_FORMAT_BC7_SRGB_BLOCK      : VK_FORMAT_BC7_UNORM_BLOCK;
                 case GFXImageFormat::BC3n:           return VK_FORMAT_BC3_UNORM_BLOCK;
                 case GFXImageFormat::BC4s:           return VK_FORMAT_BC4_SNORM_BLOCK;
