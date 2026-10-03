@@ -232,7 +232,7 @@ namespace Divide
             return _descriptor;
         }
 
-        static void OnAtomChange( std::string_view atomName, FileUpdateEvent evt );
+        static void OnAtomChange( std::string_view dir, std::string_view atomName, FileUpdateEvent evt );
 
         [[nodiscard]] static U8 GetGLBindingForDescriptorSlot( U8 usageIndex, U8 slot ) noexcept;
         [[nodiscard]] static U8 GetGLBindingForDescriptorSlot( DescriptorSetUsage usage, U8 slot ) noexcept;

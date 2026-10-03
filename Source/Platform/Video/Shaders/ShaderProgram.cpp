@@ -78,9 +78,9 @@ namespace Divide
     ShaderProgram::BindingSetData ShaderProgram::s_bindingsPerSet;
 
     NO_DESTROY static UpdateListener g_sFileWatcherListener(
-        []( const std::string_view atomName, const FileUpdateEvent evt )
+        []( const std::string_view dir, const std::string_view atomName, const FileUpdateEvent evt )
         {
-            ShaderProgram::OnAtomChange( atomName, evt );
+            ShaderProgram::OnAtomChange( dir, atomName, evt );
         }
     );
 
@@ -2191,7 +2191,7 @@ namespace Divide
         }
     }
 
-    void ShaderProgram::OnAtomChange( const std::string_view atomName, const FileUpdateEvent evt )
+    void ShaderProgram::OnAtomChange( const std::string_view dir, const std::string_view atomName, const FileUpdateEvent evt )
     {
         DIVIDE_GPU_ASSERT( evt != FileUpdateEvent::COUNT );
 
@@ -2203,7 +2203,13 @@ namespace Divide
         }
 
         const U64 atomNameHash = _ID( string{ atomName }.c_str() );
-        EraseAtomLocked(atomNameHash);
+        EraseAtom(atomNameHash);
+
+        U64 writeTime = 0u;
+        if (fileLastWriteTime(ResourcePath{dir}, atomName, writeTime) == FileError::NONE)
+        {
+            s_newestShaderAtomWriteTime = std::max(s_newestShaderAtomWriteTime, writeTime);
+        }
 
         //Get list of shader programs that use the atom and rebuild all shaders in list;
         SharedLock<SharedMutex> lock( s_programLock );
