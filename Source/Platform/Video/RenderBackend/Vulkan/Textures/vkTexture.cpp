@@ -983,13 +983,22 @@ namespace Divide
                     memBarrier);
             }
         }
-        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ) || HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ_WRITE))
+        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ) )
         {
             targetUsage = ImageUsage::SHADER_READ;
 
             if (crtUsageInOut != targetUsage)
             {
                 vkTexture::TransitionTexture(vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ, fullRange, namedImage, memBarrier);
+            }
+        }
+        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ_WRITE))
+        {
+            targetUsage = ImageUsage::SHADER_READ_WRITE;
+
+            if (crtUsageInOut != targetUsage)
+            {
+                vkTexture::TransitionTexture(vkTexture::TransitionType::UNDEFINED_TO_SHADER_READ_WRITE, fullRange, namedImage, memBarrier);
             }
         }
         else
