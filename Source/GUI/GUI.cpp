@@ -446,7 +446,8 @@ namespace Divide
 
             const I32 w = rect[2] - rect[0];
             const I32 h = rect[3] - rect[1];
-            Texture* texture = Get(dvd->_fontRenderingTexture);
+            Texture* texture = Get( dvd->_fontRenderingTexture );
+
             const PixelAlignment pixelUnpackAlignment =
             {
                 ._alignment = 1u,
