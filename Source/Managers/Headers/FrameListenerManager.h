@@ -49,22 +49,26 @@ class FrameListenerManager {
     void removeFrameListener(FrameListener* listener);
 
     [[nodiscard]] bool frameEvent(const FrameEvent& evt);
+    [[nodiscard]] bool frameEvent(const FrameEvent& evt, FrameExecutionDomain domain);
 
     /// Calls createEvent and frameEvent
     [[nodiscard]] bool createAndProcessEvent(FrameEventType type, FrameEvent& evt);
+    [[nodiscard]] bool createAndProcessEvent(FrameEventType type, FrameEvent& evt, FrameExecutionDomain domain);
 
   private:
 
-    bool frameStarted(const FrameEvent& evt);
-    bool framePreRender(const FrameEvent& evt);
-    bool frameSceneRenderStarted(const FrameEvent& evt);
-    bool frameSceneRenderEnded(const FrameEvent& evt);
-    bool frameRenderingQueued(const FrameEvent& evt);
-    bool framePostRender(const FrameEvent& evt);
-    bool frameEnded(const FrameEvent& evt);
+    bool frameStarted(const FrameEvent& evt, FrameExecutionDomain domain);
+    bool framePreRender(const FrameEvent& evt, FrameExecutionDomain domain);
+    bool frameSceneRenderStarted(const FrameEvent& evt, FrameExecutionDomain domain);
+    bool frameSceneRenderEnded(const FrameEvent& evt, FrameExecutionDomain domain);
+    bool frameRenderingQueued(const FrameEvent& evt, FrameExecutionDomain domain);
+    bool framePostRender(const FrameEvent& evt, FrameExecutionDomain domain);
+    bool frameEnded(const FrameEvent& evt, FrameExecutionDomain domain);
+    bool shouldDispatch(const FrameListener& listener, FrameExecutionDomain domain) const noexcept;
 
    private:
     vector<FrameListener*> _listeners;
+    mutable SharedMutex _listenerLock;
 
 };
 

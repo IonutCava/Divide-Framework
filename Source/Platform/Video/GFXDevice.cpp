@@ -326,7 +326,7 @@ namespace Divide
 
     GFXDevice::GFXDevice( PlatformContext& context )
         : PlatformContextComponent( context )
-        , FrameListener( "GFXDevice", context.kernel().frameListenerMgr(), 1u)
+        , FrameListener( "GFXDevice", context.kernel().frameListenerMgr(), 1u, FrameExecutionDomain::RENDER )
     {
         _queuedShadowSampleChange.fill( s_invalidQueueSampleCount );
     }
