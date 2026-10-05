@@ -30,6 +30,11 @@ runs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgJsonGlob: 'vcpkg.json'
+      env:
+        # Ensure Objective-C compiler is available for Meson when building dependencies
+        # This is critical for cross-compilation scenarios (e.g., ARM64 host → x86_64 target)
+        OBJC: clang
+        OBJCFLAGS: -fPIC -g
 
     - name: List workspace
       shell: bash

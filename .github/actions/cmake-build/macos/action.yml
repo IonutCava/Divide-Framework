@@ -46,12 +46,22 @@ runs:
       uses: lukka/run-cmake@v10
       with:
         configurePreset: ${{ inputs.configure-preset }}
+      env:
+        # Ensure Objective-C compiler is available for Meson when building dependencies
+        # This is critical for cross-compilation scenarios (e.g., ARM64 host → x86_64 target)
+        OBJC: clang
+        OBJCFLAGS: -fPIC -g
 
     - name: Configure (default)
       if: ${{ inputs.configure-preset == '' }}
       uses: lukka/run-cmake@v10
       with:
         configurePreset: macos-clang-${{ inputs.architecture }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+      env:
+        # Ensure Objective-C compiler is available for Meson when building dependencies
+        # This is critical for cross-compilation scenarios (e.g., ARM64 host → x86_64 target)
+        OBJC: clang
+        OBJCFLAGS: -fPIC -g
 
     - name: Build (preset override)
       if: ${{ inputs.build-preset != '' }}
