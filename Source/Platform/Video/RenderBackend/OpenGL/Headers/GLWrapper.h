@@ -116,6 +116,7 @@ private:
 
     bool setViewportInternal(const Rect<I32>& viewport) override;
     bool setScissorInternal( const Rect<I32>& scissor ) override;
+    void setReverseDepthActive( bool active ) noexcept override;
 
 
     void flushTextureBindQueue();

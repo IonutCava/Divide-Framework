@@ -561,7 +561,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 {
     assert(_enabled);
 
-    _ssaoGenerateConstants.set(_ID("_zPlanes"),            PushConstantType::VEC2, cameraSnapshot._zPlanes);
+    _ssaoGenerateConstants.set(_ID("_zPlanes"),            PushConstantType::VEC2, float2( cameraSnapshot._nearDistance, cameraSnapshot._cullDistance ) );
 
     const auto& depthAtt   = _parent.screenRT()._rt->getAttachment(RTAttachmentType::DEPTH);
     const auto& normalsAtt = _context.renderTargetPool().getRenderTarget( RenderTargetNames::NORMALS_RESOLVED )->getAttachment(RTAttachmentType::COLOUR);
@@ -702,7 +702,7 @@ bool SSAOPreRenderOperator::execute([[maybe_unused]] const PlayerIndex idx, cons
 
         if (blurResults() && blurKernelSize() > 0)
         {
-            _ssaoBlurConstants.set(_ID("_zPlanes"), PushConstantType::VEC2, cameraSnapshot._zPlanes);
+            _ssaoBlurConstants.set(_ID("_zPlanes"), PushConstantType::VEC2, float2( cameraSnapshot._nearDistance, cameraSnapshot._cullDistance ) );
             _ssaoBlurConstants.set(_ID("texelSize"), PushConstantType::VEC2, float2{ 1.f / Get(ssaoAtt->texture())->width(), 1.f / Get(ssaoAtt->texture())->height() });
 
             // Blur AO

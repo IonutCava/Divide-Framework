@@ -515,7 +515,7 @@ void PreRenderBatch::prePass(const PlayerIndex idx, const CameraSnapshot& camera
         Set( binding._data, depthAtt->texture(), depthAtt->_descriptor._sampler );
 
         PushConstantsStruct& pushData = GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_fastData;
-        pushData.data[0]._vec[0].xy = cameraSnapshot._zPlanes;
+        pushData.data[0]._vec[0].xy.set( cameraSnapshot._nearDistance, cameraSnapshot._cullDistance );
 
         GFX::EnqueueCommand<GFX::DrawCommand>(bufferInOut)->_drawCommands.emplace_back();
         GFX::EnqueueCommand<GFX::EndRenderPassCommand>(bufferInOut);

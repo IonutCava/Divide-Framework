@@ -91,6 +91,9 @@ struct RTDrawDescriptor
 
 extern BlitEntry INVALID_BLIT_ENTRY;
 extern RTClearEntry DEFAULT_CLEAR_ENTRY;
+/// Depth-clear entry for reversed-Z rendering (perspective cameras).
+/// Clears the depth buffer to 0.0 (the "infinite far" value in reversed-Z).
+extern RTClearEntry REVERSED_Z_DEPTH_CLEAR_ENTRY;
 
 bool IsValid( const RTBlitParams& params) noexcept;
 
