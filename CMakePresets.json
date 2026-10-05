@@ -171,7 +171,7 @@
       "displayName": "Linux Build (GCC)",
       "description": "Target Linux OS with the gcc compiler.",
       "inherits": "conf-linux-common",
-      "cacheVariables": {
+      "cacheVariables": {6
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++"
       }
@@ -193,7 +193,8 @@
       "inherits": "conf-macos-x86_64",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++"
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_OBJC_COMPILER": "clang"
       }
     },
     {
@@ -203,7 +204,8 @@
       "inherits": "conf-macos-arm64",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++"
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_OBJC_COMPILER": "clang"
       }
     },
     {
