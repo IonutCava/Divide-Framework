@@ -290,7 +290,10 @@
       "name": "linux-gcc-editor-asan-ubsan",
       "displayName": "Linux Editor Build (GCC) + ASAN + UBSAN",
       "description": "Target Linux OS with the gcc compiler. Editor build.",
-      "inherits": [ "linux-gcc", "editor-build", "asan-build", "ubsan-build" ]
+      "inherits": [ "linux-gcc", "editor-build", "asan-build", "ubsan-build" ],
+      "cacheVariables": {
+        "VCPKG_BUILD_TYPE": "debug"
+      }
     },
     {
       "name": "linux-gcc-instrumentation",
@@ -323,7 +326,10 @@
       "name": "linux-clang-editor-asan-ubsan",
       "displayName": "Linux Editor Build (CLANG) + ASAN + UBSAN",
       "description": "Target Linux OS with the clang compiler. Editor build.",
-      "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ]
+      "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ],
+      "cacheVariables": {
+        "VCPKG_BUILD_TYPE": "debug"
+      }
     },
     {
       "name": "linux-clang-instrumentation",
