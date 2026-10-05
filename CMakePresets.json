@@ -171,7 +171,7 @@
       "displayName": "Linux Build (GCC)",
       "description": "Target Linux OS with the gcc compiler.",
       "inherits": "conf-linux-common",
-      "cacheVariables": {6
+      "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++"
       }
