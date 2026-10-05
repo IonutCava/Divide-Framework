@@ -289,6 +289,8 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
             $<$<CONFIG:Debug>:/d2Obforceinline>
         )
 
+        add_compile_options( /EHsc )
+
         # RelWithDebInfo: either dynamic-deopt mode or LTCG mode
         if (ENABLE_DYNAMIC_DEOPTIMISATION AND NOT RUN_ASAN AND NOT RUN_UBSAN AND NOT IS_GITHUB_ACTIONS)
             list(APPEND MSVC_RELWITHDEBINFO_COMPILE_OPTIONS

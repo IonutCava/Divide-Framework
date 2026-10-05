@@ -144,18 +144,15 @@ set(NRI_TARGETS
     NRI_D3D12
     NRI_VK
     NRI_Validation
+    NRI_Shared
     NRI_Shaders
 )
 
 foreach(nri_target IN LISTS NRI_TARGETS)
     if(TARGET ${nri_target})
         set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
         if(CLANG_COMPILER)
-            target_compile_options(${nri_target} PRIVATE
-                -Wno-missing-field-initializers
-                -Wno-nullability-completeness
-            )
+            target_compile_options(${nri_target} PRIVATE -Wno-missing-field-initializers -Wno-nullability-completeness )
         endif()
     endif()
 endforeach()
