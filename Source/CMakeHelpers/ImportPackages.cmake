@@ -175,6 +175,7 @@ set(EXTERNAL_LIBS
     meshoptimizer::meshoptimizer
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
+    Vulkan::Vulkan
     concurrentqueue::concurrentqueue
     GPUOpen::VulkanMemoryAllocator
     RecastNavigation::Detour
