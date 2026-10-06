@@ -167,7 +167,6 @@ set(EXTERNAL_LIBS
     OptickCore
     EASTL
     OpenAL::OpenAL
-    expat::expat
     imgui::imgui
     imguizmo::imguizmo
     assimp::assimp
@@ -176,15 +175,13 @@ set(EXTERNAL_LIBS
     meshoptimizer::meshoptimizer
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
-    Freetype::Freetype
     concurrentqueue::concurrentqueue
-    Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
+    GPUOpen::VulkanMemoryAllocator
     RecastNavigation::Detour
     RecastNavigation::Recast
     RecastNavigation::DebugUtils
     RecastNavigation::DetourCrowd
     SDL3::SDL3
-    SDL3_image::SDL3_image
     $<IF:$<TARGET_EXISTS:SDL3_mixer::SDL3_mixer>,SDL3_mixer::SDL3_mixer,SDL3_mixer::SDL3_mixer-static>
     glslang::glslang
     glslang::glslang-default-resource-limits

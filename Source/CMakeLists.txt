@@ -176,7 +176,6 @@ if( ENABLE_MIMALLOC )
 endif()
 
 target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
-                                         PRIVATE ZLIB::ZLIB
                                          PRIVATE glm::glm
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
@@ -285,5 +284,8 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS})
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
+    if(MAC_OS_BUILD)
+        target_link_options(${APP_EXE} PRIVATE "-Wl,-no_warn_duplicate_libraries")
+    endif()
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()
