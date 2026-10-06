@@ -71,7 +71,8 @@ runs:
           bison \
           autoconf-archive \
           flex \
-          python3.13-venv \
+          python3-venv \
+          m4 \
           lld
 
     - name: Setup vcpkg
