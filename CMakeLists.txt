@@ -238,6 +238,7 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
 
     add_compile_definitions( _DISABLE_STRING_ANNOTATION )
     add_compile_definitions( _DISABLE_VECTOR_ANNOTATION )
+    add_compile_definitions( _DISABLE_OPTIONAL_ANNOTATION )
     add_compile_definitions( _CRT_SECURE_NO_WARNINGS )
 
     add_compile_options(
