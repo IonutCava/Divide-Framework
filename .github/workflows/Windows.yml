@@ -118,7 +118,7 @@ jobs:
           configuration: ${{ matrix.configuration }}
 
   build_msvc_asan_ubsan:
-    needs: info_job
+    needs: [info_job, build_msvc, build_clang]
     name: Windows - msvc ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
     timeout-minutes: 90
@@ -140,7 +140,7 @@ jobs:
           test-preset: test-windows-msvc-debug-editor-asan-ubsan
 
   build_clang_asan_ubsan:
-    needs: info_job
+    needs: [info_job, build_msvc, build_clang]
     name: Windows - clang ASAN+UBSAN (profile/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
     timeout-minutes: 90
