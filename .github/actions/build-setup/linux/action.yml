@@ -73,6 +73,7 @@ runs:
           flex \
           python3-venv \
           m4 \
+          nasm \
           lld
 
     - name: Setup vcpkg
