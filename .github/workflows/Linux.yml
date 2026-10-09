@@ -118,7 +118,7 @@ jobs:
           configuration: ${{ matrix.configuration }}
 
   build_clang_asan_ubsan:
-    needs: info_job
+    needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - clang ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
     timeout-minutes: 90
@@ -150,7 +150,7 @@ jobs:
           test-preset: test-linux-clang-debug-editor-asan-ubsan
 
   build_gcc_asan_ubsan:
-    needs: info_job
+    needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - gcc ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
     timeout-minutes: 90

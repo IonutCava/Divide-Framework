@@ -1,4 +1,4 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+N+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: macOS Builds
 
@@ -85,7 +85,7 @@ jobs:
   output_job:
     needs: [info_job, build_job_x86_64, build_job_arm64]
     if: always()
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Retrieve results
         id: results
