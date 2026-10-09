@@ -43,7 +43,7 @@ jobs:
   build_job_x86_64:
     needs: info_job
     name: macOS x86_64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: macos-latest
+    runs-on: macos-13
     strategy:
       fail-fast: true
       matrix:
@@ -64,7 +64,7 @@ jobs:
   build_job_arm64:
     needs: info_job
     name: macOS arm64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: macos-latest
+    runs-on: macos-15
     strategy:
       fail-fast: true
       matrix:
