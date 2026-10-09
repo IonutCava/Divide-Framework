@@ -54,7 +54,7 @@
       },
       "cacheVariables": {
         "LINUX_OS_BUILD": true,
-        "CMAKE_MAKE_PROGRAM": "/usr/bin/ninja"
+        "CMAKE_MAKE_PROGRAM": "ninja"
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
