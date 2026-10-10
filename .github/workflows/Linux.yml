@@ -121,7 +121,7 @@ jobs:
     needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - clang ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -153,7 +153,7 @@ jobs:
     needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - gcc ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -204,3 +204,9 @@ jobs:
 
       - name: Report Status
         run: echo "${{ steps.results.outputs.status }}"
+
+      - name: Fail workflow on cancelled/failed dependency jobs
+        if: ${{ steps.results.outputs.status != 'Success' }}
+        run: |
+          echo "One or more required jobs did not complete successfully: ${{ steps.results.outputs.status }}"
+          exit 1

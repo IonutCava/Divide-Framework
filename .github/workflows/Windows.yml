@@ -121,7 +121,7 @@ jobs:
     needs: [info_job, build_msvc, build_clang]
     name: Windows - msvc ASAN+UBSAN (debug/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -143,7 +143,7 @@ jobs:
     needs: [info_job, build_msvc, build_clang]
     name: Windows - clang ASAN+UBSAN (profile/editor)
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -193,3 +193,10 @@ jobs:
           echo "Status: ${{ steps.results.outputs.status }}" >> $env:GITHUB_STEP_SUMMARY
           echo "MSVC Version: ${{ needs.info_job.outputs.msvc_version }}" >> $env:GITHUB_STEP_SUMMARY
           echo "Clang Version: ${{ needs.info_job.outputs.clang_version }}" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Fail workflow on cancelled/failed dependency jobs
+        if: ${{ steps.results.outputs.status != 'Success' }}
+        shell: pwsh
+        run: |
+          Write-Error "One or more required jobs did not complete successfully: ${{ steps.results.outputs.status }}"
+          exit 1
