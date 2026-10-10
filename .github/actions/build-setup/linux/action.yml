@@ -70,7 +70,10 @@ runs:
           libibus-1.0-dev \
           bison \
           autoconf-archive \
-          libltdl-dev \
+          flex \
+          python3-venv \
+          m4 \
+          nasm \
           lld
 
     - name: Setup vcpkg

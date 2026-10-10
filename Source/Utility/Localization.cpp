@@ -26,7 +26,7 @@ namespace detail
     static std::unique_ptr<FW::FileWatcher> g_LanguageFileWatcher = nullptr;
 
     /// Callback for external file changes. 
-    static UpdateListener g_fileWatcherListener([](const std::string_view languageFile, const FileUpdateEvent evt)
+    static UpdateListener g_fileWatcherListener([]([[maybe_unused]] const std::string_view dir, const std::string_view languageFile, const FileUpdateEvent evt)
     {
         if (evt == FileUpdateEvent::DELETED)
         {

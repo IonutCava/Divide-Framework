@@ -6,6 +6,7 @@
     "graphviz",
     "pkgconf",
     "boost-property-tree",
+    "boost-functional",
     "boost-asio",
     "stb",
     "freetype",
@@ -38,9 +39,16 @@
     "libxmp",
     "mpg123",
     "opusfile",
-    "joltphysics",
     "fluidsynth",
     "sdl3-mixer",
+    {
+      "name": "joltphysics",
+      "features": [
+        "debugrenderer",
+        "profiler",
+        "rtti"
+      ]
+    },
     {
       "name": "sdl3",
       "features": [

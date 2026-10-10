@@ -176,14 +176,19 @@ if( ENABLE_MIMALLOC )
 endif()
 
 target_link_libraries( ${APP_EXE_DIVIDE} PUBLIC ${COMMON_LIBS}
-                                         PRIVATE ZLIB::ZLIB
                                          PRIVATE glm::glm
                                          PRIVATE unofficial::imgui-node-editor::imgui-node-editor
 )
 
 
-if( WINDOWS_OS_BUILD )
-    if ( RUN_ASAN OR RUN_UBSAN )
+if ( RUN_ASAN OR RUN_UBSAN )
+    # Force re-evaluation of imported targets to use sanitizer flags
+    # This is necessary because vcpkg-built libraries may have been built without sanitizers
+    if( TARGET Jolt::Jolt )
+        set_property(TARGET Jolt::Jolt PROPERTY IMPORTED_LINK_INTERFACE_LANGUAGES CXX)
+    endif()
+
+    if( WINDOWS_OS_BUILD )
         include(CMakeHelpers/PlatformHelpers/FindASANDLLs.cmake)
         if( SANITIZER_DLLS )
             message(STATUS "Sanitizer DLLs found and will be copied to executables: ${SANITIZER_DLLS}")
@@ -202,8 +207,8 @@ if( WINDOWS_OS_BUILD )
         else() #SANITIZER_DLLS
             message(WARNING "Sanitizer runtimes not found — executables built with ASAN/UBSAN may fail to start.")
         endif() #SANITIZER_DLLS
-    endif() #RUN_ASAN || RUN_UBSAN
-endif() #WINDOWS_OS_BUILD
+    endif() #WINDOWS_OS_BUILD
+endif() #RUN_ASAN || RUN_UBSAN
 
 add_custom_target(${APP_EXE_DIVIDE}BinGenerated DEPENDS ${APP_EXE_DIVIDE})
 
@@ -279,5 +284,8 @@ foreach( APP_EXE ${APP_BUILD_EXES} )
     target_compile_options(${APP_EXE} PRIVATE ${DIVIDE_COMPILE_OPTIONS})
     target_link_directories( ${APP_EXE} PRIVATE "${cegui_BINARY_DIR}/lib" )
     target_link_options(${APP_EXE} PRIVATE ${EXTRA_LINK_FLAGS})
+    if(MAC_OS_BUILD)
+        target_link_options(${APP_EXE} PRIVATE "-Wl,-no_warn_duplicate_libraries")
+    endif()
     set_target_properties(${APP_EXE} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
 endforeach()

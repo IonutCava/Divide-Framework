@@ -10,7 +10,7 @@ namespace Divide
 
     namespace Reflection
     {
-        constexpr U16 BYTE_BUFFER_VERSION = 2u;
+        constexpr U16 BYTE_BUFFER_VERSION = 3u;
 
         bool UniformCompare::operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const
         {
@@ -127,6 +127,7 @@ namespace Divide
             ByteBuffer buffer;
             buffer << BYTE_BUFFER_VERSION;
             buffer << reflectionDataIn._uniformBlockBindingIndex;
+            buffer << to_base(reflectionDataIn._pushConstantsState);
             buffer << reflectionDataIn._fragmentOutputs;
             buffer << reflectionDataIn._images.size();
             for ( const auto& image : reflectionDataIn._images )
@@ -218,6 +219,7 @@ namespace Divide
                 if ( tempVer == BYTE_BUFFER_VERSION )
                 {
                     buffer >> reflectionDataOut._uniformBlockBindingIndex;
+                    buffer >> reflectionDataOut._pushConstantsState;
                     buffer >> reflectionDataOut._fragmentOutputs;
                     buffer >> sizeTemp;
                     reflectionDataOut._images.resize( sizeTemp );

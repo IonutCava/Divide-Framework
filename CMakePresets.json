@@ -13,7 +13,8 @@
         "MIMALLOC_DISABLE_REDIRECT": "1"
       },
             "cacheVariables" : {
-                "CMAKE_POLICY_VERSION_MINIMUM" : "3.5"
+                "CMAKE_POLICY_VERSION_MINIMUM" : "3.5",
+                "DIVIDE_VECTOR_EXTENSION_SET" : "AVX2"
       }
     },
     {
@@ -52,7 +53,8 @@
         "rhs": "Linux"
       },
       "cacheVariables": {
-        "LINUX_OS_BUILD": true
+        "LINUX_OS_BUILD": true,
+        "CMAKE_MAKE_PROGRAM": "ninja"
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -180,6 +182,10 @@
       "displayName": "Linux Build (CLANG)",
       "description": "Target Linux OS with the clang compiler",
       "inherits": "conf-linux-common",
+      "environment": {
+        "CC": "/usr/bin/clang",
+        "CXX": "/usr/bin/clang++"
+      },
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++"
@@ -192,7 +198,8 @@
       "inherits": "conf-macos-x86_64",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++"
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_OBJC_COMPILER": "clang"
       }
     },
     {
@@ -202,7 +209,8 @@
       "inherits": "conf-macos-arm64",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++"
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_OBJC_COMPILER": "clang"
       }
     },
     {
@@ -287,7 +295,10 @@
       "name": "linux-gcc-editor-asan-ubsan",
       "displayName": "Linux Editor Build (GCC) + ASAN + UBSAN",
       "description": "Target Linux OS with the gcc compiler. Editor build.",
-      "inherits": [ "linux-gcc", "editor-build", "asan-build", "ubsan-build" ]
+      "inherits": [ "linux-gcc", "editor-build", "asan-build", "ubsan-build" ],
+      "cacheVariables": {
+        "VCPKG_BUILD_TYPE": "debug"
+      }
     },
     {
       "name": "linux-gcc-instrumentation",
@@ -320,7 +331,10 @@
       "name": "linux-clang-editor-asan-ubsan",
       "displayName": "Linux Editor Build (CLANG) + ASAN + UBSAN",
       "description": "Target Linux OS with the clang compiler. Editor build.",
-      "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ]
+      "inherits": [ "linux-clang", "editor-build", "asan-build", "ubsan-build" ],
+      "cacheVariables": {
+        "VCPKG_BUILD_TYPE": "debug"
+      }
     },
     {
       "name": "linux-clang-instrumentation",

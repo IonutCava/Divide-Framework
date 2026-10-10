@@ -1,5 +1,3 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
 name: macOS Builds
 
 on:
@@ -43,7 +41,7 @@ jobs:
   build_job_x86_64:
     needs: info_job
     name: macOS x86_64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: macos-latest
+    runs-on: macos-15-intel
     strategy:
       fail-fast: true
       matrix:
@@ -64,7 +62,7 @@ jobs:
   build_job_arm64:
     needs: info_job
     name: macOS arm64 - Clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: macos-latest
+    runs-on: macos-15
     strategy:
       fail-fast: true
       matrix:
@@ -85,7 +83,7 @@ jobs:
   output_job:
     needs: [info_job, build_job_x86_64, build_job_arm64]
     if: always()
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Retrieve results
         id: results

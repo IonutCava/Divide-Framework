@@ -10,6 +10,19 @@ add_compile_definitions(HAVE_M_PI)
 add_compile_definitions(EASTL_CUSTOM_FLOAT_CONSTANTS_REQUIRED=1)
 add_compile_definitions(IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
 
+add_compile_definitions(JPH_OBJECT_STREAM)
+add_compile_definitions(JPH_PROFILE_ENABLED)
+add_compile_definitions(JPH_DEBUG_RENDERER)
+if( AVX2_OPT )
+    add_compile_definitions( JPH_USE_AVX2 )
+endif()
+if( AVX_OPT )
+    add_compile_definitions( JPH_USE_AVX )
+endif()
+if ( NEON_OPT )
+    add_compile_definitions( JPH_USE_NEON )
+endif()
+
 if (ENABLE_MIMALLOC)
     find_package(mimalloc CONFIG REQUIRED)
     add_compile_definitions(EASTL_USER_DEFINED_ALLOCATOR)
@@ -157,7 +170,6 @@ set(EXTERNAL_LIBS
     OptickCore
     EASTL
     OpenAL::OpenAL
-    expat::expat
     imgui::imgui
     imguizmo::imguizmo
     assimp::assimp
@@ -166,15 +178,15 @@ set(EXTERNAL_LIBS
     meshoptimizer::meshoptimizer
     glbinding::glbinding glbinding::glbinding-aux
     vk-bootstrap::vk-bootstrap
-    Freetype::Freetype
+    expat::expat
+    Vulkan::Vulkan
     concurrentqueue::concurrentqueue
-    Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator
+    GPUOpen::VulkanMemoryAllocator
     RecastNavigation::Detour
     RecastNavigation::Recast
     RecastNavigation::DebugUtils
     RecastNavigation::DetourCrowd
     SDL3::SDL3
-    SDL3_image::SDL3_image
     $<IF:$<TARGET_EXISTS:SDL3_mixer::SDL3_mixer>,SDL3_mixer::SDL3_mixer,SDL3_mixer::SDL3_mixer-static>
     glslang::glslang
     glslang::glslang-default-resource-limits

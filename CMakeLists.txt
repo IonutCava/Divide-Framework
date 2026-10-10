@@ -11,6 +11,8 @@ option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their val
 option(SHOW_CONSOLE_WINDOW "Show the console window and Win32 builds and direct all log output to it" OFF)
 option(ENABLE_MIMALLOC "Use mimalloc to override malloc/free calls" OFF)
 option(ENABLE_DYNAMIC_DEOPTIMISATION "Enable Dynamic Deoptimisation" OFF)
+set(DIVIDE_VECTOR_EXTENSION_SET "AVX2" CACHE STRING "Preferred SIMD extension set (AUTO, SSE42, AVX, AVX2, AVX512, NEON). Higher levels imply lower ones when available.")
+set_property(CACHE DIVIDE_VECTOR_EXTENSION_SET PROPERTY STRINGS "AUTO" "SSE42" "AVX" "AVX2" "AVX512" "NEON")
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/ToggleVectorExtensions.cmake")
@@ -203,7 +205,8 @@ else()
 endif()
 
 if( ENABLE_OPTICK_PROFILER )
-    add_compile_definitions( ENABLE_OPTICK_PROFILER )
+    add_compile_definitions( USE_OPTICK=1 )
+    add_compile_definitions( OPTICK_ENABLE_GPU_VULKAN=1 )
     message("Enabling Optick sampling!")
 else()
     message("Optick sampling disabled!")
@@ -235,6 +238,7 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
 
     add_compile_definitions( _DISABLE_STRING_ANNOTATION )
     add_compile_definitions( _DISABLE_VECTOR_ANNOTATION )
+    add_compile_definitions( _DISABLE_OPTIONAL_ANNOTATION )
     add_compile_definitions( _CRT_SECURE_NO_WARNINGS )
 
     add_compile_options(
@@ -285,6 +289,8 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
         add_compile_options(
             $<$<CONFIG:Debug>:/d2Obforceinline>
         )
+
+        add_compile_options( /EHsc )
 
         # RelWithDebInfo: either dynamic-deopt mode or LTCG mode
         if (ENABLE_DYNAMIC_DEOPTIMISATION AND NOT RUN_ASAN AND NOT RUN_UBSAN AND NOT IS_GITHUB_ACTIONS)

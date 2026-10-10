@@ -55,7 +55,6 @@ namespace Divide::Networking
     void Server::stop()
     {
         // Request the context to close
-        _deqConnections.clear();
         _asioContext.stop();
 
         // Tidy up the context thread
@@ -63,6 +62,9 @@ namespace Divide::Networking
         {
             _threadContext.join();
         }
+
+        _messagesIn.clear();
+        _deqConnections.clear();
 
         Console::printfn(LOCALE_STR("SERVER_STOPPED"));
     }
