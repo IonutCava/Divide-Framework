@@ -27,6 +27,7 @@ runs:
         echo "PATH=$(dirname ${NINJA_PATH}):$PATH" >> $GITHUB_ENV
 
     - name: Install extra required packages
+      shell: bash
       run: |
         if ! command -v nasm >/dev/null 2>&1; then
           brew install nasm
