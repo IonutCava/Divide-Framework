@@ -20,11 +20,11 @@ run-name: Windows Build - ${{ github.ref_name }} - ${{ github.event.inputs.runne
 
 jobs:
   check_date:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
-      - uses: actions/checkout@v4 
+      - uses: actions/checkout@v5
         with:
          fetch-depth: 1
          submodules: false
@@ -80,8 +80,8 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - uses: actions/checkout@v4
- 
+      - uses: actions/checkout@v5
+
       - uses: ./.github/actions/build-setup/windows
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
@@ -105,8 +105,8 @@ jobs:
     timeout-minutes: 180
 
     steps:
-      - uses: actions/checkout@v4
- 
+      - uses: actions/checkout@v5
+
       - uses: ./.github/actions/build-setup/windows
         with:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
@@ -123,7 +123,7 @@ jobs:
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/windows
         with:
@@ -145,7 +145,7 @@ jobs:
     runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Windows"]') || 'windows-latest' }}
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/windows
         with:

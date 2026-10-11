@@ -20,11 +20,11 @@ run-name: Linux Build - ${{ github.ref_name }} - ${{ github.event.inputs.runner_
 
 jobs:
   check_date:
-   runs-on: ubuntu-latest
+   runs-on: ubuntu-24.04
    outputs:
       should_run: ${{ steps.check.outputs.should_run }}
    steps:
-      - uses: actions/checkout@v4 
+      - uses: actions/checkout@v5
         with:
          fetch-depth: 1
          submodules: false
@@ -35,7 +35,7 @@ jobs:
     needs: check_date
     if: ${{ needs.check_date.outputs.should_run != 'false' }}
     name: Ubuntu latest - Print Info
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
 
     steps:
     - name: Print GCC version
@@ -47,13 +47,13 @@ jobs:
   build_gcc:
     needs: info_job
     name: Ubuntu latest - gcc ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
     strategy:
       fail-fast: true
       matrix:
         build-type: [editor, game]
         configuration: [debug, release, profile]
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -71,7 +71,7 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/linux
         with:
@@ -86,13 +86,13 @@ jobs:
   build_clang:
     needs: info_job
     name: Ubuntu latest - clang ${{ matrix.build-type }} ${{ matrix.configuration }}
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
     strategy:
       fail-fast: true
       matrix:
         build-type: [editor, game]
         configuration: [debug, release]
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -105,7 +105,7 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/linux
         with:
@@ -120,8 +120,8 @@ jobs:
   build_clang_asan_ubsan:
     needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - clang ASAN+UBSAN (debug/editor)
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
-    timeout-minutes: 180
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -134,7 +134,7 @@ jobs:
           docker-images: true
           swap-storage: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/linux
         with:
@@ -152,8 +152,8 @@ jobs:
   build_gcc_asan_ubsan:
     needs: [info_job, build_gcc, build_clang]
     name: Ubuntu - gcc ASAN+UBSAN (debug/editor)
-    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-latest' }}
-    timeout-minutes: 180
+    runs-on: ${{ github.event.inputs.runner_type == 'self-hosted' && fromJson('["self-hosted","Linux"]') || 'ubuntu-24.04' }}
+    timeout-minutes: 240
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -161,7 +161,7 @@ jobs:
           # this might remove tools that are actually needed,
           # if set to "true" but frees about 6 GB
           tool-cache: false
-          
+
           # all of these default to true, but feel free to set to
           # "false" if necessary for your workflow
           android: true
@@ -170,8 +170,8 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: true
-        
-      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-setup/linux
         with:
@@ -189,7 +189,7 @@ jobs:
   output_job:
     needs: [build_gcc, build_clang, build_clang_asan_ubsan, build_gcc_asan_ubsan]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Retrieve results
         id: results
