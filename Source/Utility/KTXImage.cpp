@@ -1,14 +1,19 @@
 #include "Headers/KTXImage.h"
+#include "EngineConfig.h"
 
 #include <ktx.h>
+#include <glm/gtc/packing.hpp>
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <limits>
 #include <set>
 #include <type_traits>
+#include <tuple>
 
 namespace Divide::ImageTools
 {
@@ -118,6 +123,119 @@ namespace Divide::ImageTools
             return false;
         }
 
+        U8 FullMipCount(const KTXImage& image)
+        {
+            U32 size = std::max(U32(image._width), std::max(U32(image._height), U32(image._depth)));
+            U8 count = 1u;
+            while (size > 1u) { size >>= 1u; ++count; }
+            return count;
+        }
+
+        bool ValidateTyped(const KTXImage& image, U32& vkFormat, U64& bytes, std::string* error)
+        {
+            if (image._width == 0u || image._height == 0u || image._depth == 0u ||
+                image._layers == 0u || image._dimensions < 1u || image._dimensions > 3u ||
+                (image._dimensions == 1u && image._height != 1u) ||
+                (image._dimensions != 3u && image._depth != 1u) ||
+                (image._dimensions == 3u && (image._isArray || image._layers != 1u || image._faces != 1u)) ||
+                (!image._isArray && image._layers != 1u) ||
+                (image._faces != 1u && image._faces != 6u) ||
+                (image._faces == 6u && (image._dimensions != 2u || image._width != image._height)) ||
+                image._mips == 0u || image._mips > FullMipCount(image) || image._compressed)
+            {
+                return Fail(error, "Invalid typed KTX topology");
+            }
+            const U32 index = image._components == 1u ? 0u : image._components == 2u ? 1u :
+                              image._components == 4u ? 2u : 3u;
+            if (index == 3u || (image._srgb && (image._componentType != KTXComponentType::UNORM_8 || index != 2u)))
+            {
+                return Fail(error, "Unsupported typed KTX format");
+            }
+            constexpr U32 formats[][3] = {{9, 16, 37}, {70, 77, 91}, {76, 83, 97}, {100, 103, 109}};
+            const U32 type = static_cast<U32>(image._componentType);
+            if (type >= 4u) { return Fail(error, "Invalid typed KTX component type"); }
+            vkFormat = image._srgb ? 43u : formats[type][index];
+            const U32 componentBytes = type == 0u ? 1u : type == 3u ? 4u : 2u;
+            bytes = 0u;
+            size_t expected = 0u;
+            for (U32 mip = 0u; mip < image._mips; ++mip)
+            {
+                U64 level = std::max(1u, U32(image._width) >> mip);
+                const U32 slices = std::max(1u, U32(image._depth) >> mip);
+                if (!Multiply(level, std::max(1u, U32(image._height) >> mip)) ||
+                    !Multiply(level, slices) || !Multiply(level, image._layers) ||
+                    !Multiply(level, image._faces) || !Multiply(level, image._components) ||
+                    !Multiply(level, componentBytes) || level > KTX_IMAGE_BYTE_LIMIT - bytes)
+                {
+                    return Fail(error, "Oversized typed KTX payload");
+                }
+                bytes += level;
+                expected += size_t(image._layers) * image._faces * slices;
+            }
+            // Covers input, working copy, libktx storage, encoded storage and output,
+            // as well as subresource bookkeeping and metadata.
+            if (bytes * 5u + U64(expected) * (sizeof(KTXSubresource) * 3u + 64u) + 4096u >= KTX_IMAGE_BYTE_LIMIT ||
+                image._subresources.size() != expected)
+            {
+                return Fail(error, "Missing slices or excessive KTX working memory");
+            }
+            std::set<std::tuple<U32, U32, U32, U32>> unique;
+            for (const KTXSubresource& resource : image._subresources)
+            {
+                if (resource._mip >= image._mips || resource._layer >= image._layers || resource._face >= image._faces ||
+                    resource._depthSlice >= std::max(1u, U32(image._depth) >> resource._mip) ||
+                    resource._width != std::max(1u, U32(image._width) >> resource._mip) ||
+                    resource._height != std::max(1u, U32(image._height) >> resource._mip) ||
+                    !unique.emplace(resource._mip, resource._layer, resource._face, resource._depthSlice).second)
+                {
+                    return Fail(error, "Invalid or duplicate typed KTX slice");
+                }
+                const size_t samples = size_t(resource._width) * resource._height * image._components;
+                const bool valid = std::visit([&](const auto& pixels)
+                {
+                    using T = typename std::decay_t<decltype(pixels)>::value_type;
+                    return pixels.size() == samples &&
+                        ((std::is_same_v<T, U8> && type == 0u) ||
+                         (std::is_same_v<T, U16> && (type == 1u || type == 2u)) ||
+                         (std::is_same_v<T, F32> && type == 3u));
+                }, resource._pixels);
+                if (!valid) { return Fail(error, "Typed KTX slice payload mismatch"); }
+            }
+            return true;
+        }
+
+        double ReadSample(const KTXSubresource& resource, const size_t sample, const KTXComponentType type)
+        {
+            if (type == KTXComponentType::UNORM_8) { return double(std::get<std::vector<U8>>(resource._pixels)[sample]) / 255.0; }
+            if (type == KTXComponentType::UNORM_16) { return double(std::get<std::vector<U16>>(resource._pixels)[sample]) / 65535.0; }
+            if (type == KTXComponentType::FLOAT_16) { return glm::unpackHalf1x16(std::get<std::vector<U16>>(resource._pixels)[sample]); }
+            return std::get<std::vector<F32>>(resource._pixels)[sample];
+        }
+
+        void WriteSample(KTXSubresource& resource, const size_t sample, const KTXComponentType type, const double value)
+        {
+            if (type == KTXComponentType::UNORM_8)
+            {
+                std::get<std::vector<U8>>(resource._pixels)[sample] = static_cast<U8>(std::round(std::clamp(value, 0.0, 1.0) * 255.0));
+            }
+            else if (type == KTXComponentType::UNORM_16)
+            {
+                std::get<std::vector<U16>>(resource._pixels)[sample] = static_cast<U16>(std::round(std::clamp(value, 0.0, 1.0) * 65535.0));
+            }
+            else if (type == KTXComponentType::FLOAT_16)
+            {
+                std::get<std::vector<U16>>(resource._pixels)[sample] = glm::packHalf1x16(static_cast<F32>(value));
+            }
+            else { std::get<std::vector<F32>>(resource._pixels)[sample] = static_cast<F32>(value); }
+        }
+
+        KTXAlphaInterpretation ResolvedAlpha(const KTXImage& image)
+        {
+            return image._alphaInterpretation == KTXAlphaInterpretation::UNKNOWN ?
+                (image._components == 4u ? KTXAlphaInterpretation::OPACITY : KTXAlphaInterpretation::SYNTHETIC) :
+                image._alphaInterpretation;
+        }
+
         bool ParseAlpha(const std::string_view text, KTXImage& image)
         {
             // Versioned, deliberately closed vocabulary: unknown interpretation
@@ -168,10 +286,10 @@ namespace Divide::ImageTools
         }
 
         bool Validate(std::span<const Byte> input, KTXImage& image, Format& format,
-                      U64& decodedBytes, std::string* error)
+                      U64& decodedBytes, std::string* error, const size_t byteLimit)
         {
             constexpr U8 identifier[] = {0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A};
-            if (input.size() < 80u || input.size() > KTX_IMAGE_BYTE_LIMIT ||
+            if (input.size() < 80u || input.size() > byteLimit ||
                 std::memcmp(input.data(), identifier, sizeof(identifier)) != 0)
             {
                 return Fail(error, "Invalid or oversized KTX2 header");
@@ -243,7 +361,9 @@ namespace Divide::ImageTools
             };
             const U64 dfdOffset = ReadLE(input, 48, 4), dfdSize = ReadLE(input, 52, 4);
             const U64 kvdOffset = ReadLE(input, 56, 4), kvdSize = ReadLE(input, 60, 4);
-            if (dfdOffset % 4u != 0u || dfdSize != 28u + 16u * format._components ||
+            // libktx 4.4.2 reads the DFD immediately after the index, without
+            // seeking to dfdOffset. Validate exactly the bytes it will consume.
+            if (dfdOffset != indexEnd || dfdSize != 28u + 16u * format._components ||
                 !addRange(dfdOffset, dfdSize) ||
                 ReadLE(input, static_cast<size_t>(dfdOffset), 4) != dfdSize ||
                 ReadLE(input, static_cast<size_t>(dfdOffset + 4), 4) != 0u ||
@@ -363,14 +483,14 @@ namespace Divide::ImageTools
                 U64 resources = std::max(U64{1}, depth >> mip);
                 if (!Multiply(resources, image._layers) || !Multiply(resources, faces) ||
                     !Multiply(resources, sizeof(KTXSubresource)) ||
-                    resources > KTX_IMAGE_BYTE_LIMIT - resourceBytes)
+                    resources > byteLimit - resourceBytes)
                 {
                     return Fail(error, "KTX2 subresource count exceeds budget");
                 }
                 resourceBytes += resources;
                 if (length != expected || ReadLE(input, index + 16, 8) != expected ||
                     offset % alignment != 0u || !addRange(offset, length) ||
-                    paddedLength > KTX_IMAGE_BYTE_LIMIT - input.size() - decodedBytes)
+                    paddedLength > byteLimit - input.size() - decodedBytes)
                 {
                     return Fail(error, "Invalid KTX2 level range or decoded budget");
                 }
@@ -388,9 +508,9 @@ namespace Divide::ImageTools
                 }
             }
             const U64 metadataAllowance = 2u * kvdSize + 65536u;
-            if (metadataAllowance > KTX_IMAGE_BYTE_LIMIT - input.size() ||
-                decodedBytes > (KTX_IMAGE_BYTE_LIMIT - input.size() - metadataAllowance) / 2u ||
-                resourceBytes > KTX_IMAGE_BYTE_LIMIT - input.size() - metadataAllowance - 2u * decodedBytes)
+            if (metadataAllowance > byteLimit - input.size() ||
+                decodedBytes > (byteLimit - input.size() - metadataAllowance) / 2u ||
+                resourceBytes > byteLimit - input.size() - metadataAllowance - 2u * decodedBytes)
             {
                 return Fail(error, "KTX2 owned payload exceeds memory budget");
             }
@@ -477,13 +597,7 @@ namespace Divide::ImageTools
                         }
                         else if (image._componentType == KTXComponentType::FLOAT_16)
                         {
-                            const U16 bits = pixels[component];
-                            const U16 exponent = (bits >> 10u) & 31u;
-                            const U16 mantissa = bits & 1023u;
-                            if (exponent == 31u) { return false; }
-                            alpha = exponent == 0u ? std::ldexp(double(mantissa), -24) :
-                                std::ldexp(double(1024u + mantissa), int(exponent) - 25);
-                            if ((bits & 0x8000u) != 0u) { alpha = -alpha; }
+                            alpha = glm::unpackHalf1x16(pixels[component]);
                         }
                         else { return false; }
                     }
@@ -529,12 +643,17 @@ namespace Divide::ImageTools
         return true;
     }
 
-    bool LoadKTXImage(const std::span<const Byte> input, KTXImage& output, std::string* error)
+    bool LoadKTXImage(const std::span<const Byte> input, KTXImage& output, std::string* error,
+                      const size_t decodedByteLimit)
     {
         KTXImage image;
         Format format{};
         U64 decodedBytes = 0u;
-        if (!Validate(input, image, format, decodedBytes, error)) { return false; }
+        if (!Validate(input, image, format, decodedBytes, error, KTX_IMAGE_BYTE_LIMIT)) { return false; }
+        if (decodedBytes > std::min(decodedByteLimit, KTX_IMAGE_BYTE_LIMIT))
+        {
+            return Fail(error, "KTX2 decoded payload exceeds requested budget");
+        }
         ktxTexture2* raw = nullptr;
         const KTX_error_code status = ktxTexture2_CreateFromMemory(
             reinterpret_cast<const ktx_uint8_t*>(input.data()), input.size(),
@@ -592,6 +711,286 @@ namespace Divide::ImageTools
             Console::errorfn("KTX2 metadata records all-zero opacity alpha; classifying as transparent");
         }
         output = std::move(image);
+        if (error != nullptr) { error->clear(); }
+        return true;
+    }
+
+    bool EncodeKTXImage(const KTXImage& input, std::vector<Byte>& output, std::string* error)
+    {
+        U32 format = 0u;
+        U64 bytes = 0u;
+        if (!ValidateTyped(input, format, bytes, error) ||
+            bytes * 5u + output.size() + U64(input._subresources.size()) *
+                (sizeof(KTXSubresource) * 3u + 64u) + 4096u >= KTX_IMAGE_BYTE_LIMIT)
+        {
+            return Fail(error, "Invalid typed KTX input or excessive output memory");
+        }
+        KTXImage classified = input;
+        if (!ClassifyKTXImageAlpha(classified, ResolvedAlpha(input)))
+        {
+            return Fail(error, "Invalid typed KTX alpha interpretation");
+        }
+        ktxTextureCreateInfo info{};
+        info.vkFormat = format;
+        info.baseWidth = input._width; info.baseHeight = input._height; info.baseDepth = input._depth;
+        info.numDimensions = input._dimensions; info.numLevels = input._mips;
+        info.numLayers = input._layers; info.numFaces = input._faces;
+        info.isArray = input._isArray ? KTX_TRUE : KTX_FALSE;
+        ktxTexture2* raw = nullptr;
+        const KTX_error_code status = ktxTexture2_Create(&info, KTX_TEXTURE_CREATE_ALLOC_STORAGE, &raw);
+        const TextureOwner texture(raw);
+        if (status != KTX_SUCCESS || !texture) { return Fail(error, "libktx allocation failed"); }
+        const auto addMetadata = [&](const char* key, const std::string& value)
+        {
+            return ktxHashList_AddKVPair(&raw->kvDataHead, key, static_cast<unsigned int>(value.size() + 1u),
+                                         value.c_str()) == KTX_SUCCESS;
+        };
+        std::string metadata = "v=1;threshold=4;transparent=0-1;translucent=2-250;opaque=251-255;";
+        const auto interpretation = classified._alphaInterpretation;
+        if (interpretation == KTXAlphaInterpretation::OPACITY)
+        {
+            metadata += "interpretation=opacity;skip=0;transparent=" + std::to_string(classified._alpha._transparent) +
+                ";translucent=" + std::to_string(classified._alpha._translucent) +
+                ";allzero=" + std::to_string(classified._alpha._allZero);
+        }
+        else
+        {
+            metadata += interpretation == KTXAlphaInterpretation::DATA ? "interpretation=data;" : "interpretation=synthetic;";
+            metadata += "skip=1;transparent=0;translucent=0;allzero=0";
+        }
+        if (!addMetadata("KTXorientation", input._dimensions == 1u ? "r" : input._dimensions == 3u ? "rui" : "ru") ||
+            !addMetadata("DivideAlpha", metadata))
+        {
+            return Fail(error, "libktx metadata failed");
+        }
+        for (const KTXSubresource& resource : input._subresources)
+        {
+            const bool written = std::visit([&](const auto& pixels)
+            {
+                return ktxTexture_SetImageFromMemory(ktxTexture(raw), resource._mip, resource._layer,
+                    input._dimensions == 3u ? resource._depthSlice : resource._face,
+                    reinterpret_cast<const ktx_uint8_t*>(pixels.data()), pixels.size() * sizeof(pixels.front())) == KTX_SUCCESS;
+            }, resource._pixels);
+            if (!written) { return Fail(error, "libktx slice upload failed"); }
+        }
+        ktx_uint8_t* encoded = nullptr;
+        ktx_size_t encodedSize = 0u;
+        const KTX_error_code written = ktxTexture2_WriteToMemory(raw, &encoded, &encodedSize);
+        const std::unique_ptr<ktx_uint8_t, decltype(&std::free)> encodedOwner(encoded, &std::free);
+        if (written != KTX_SUCCESS || encoded == nullptr ||
+            bytes * 3u + output.size() + U64(encodedSize) * 2u +
+                U64(input._subresources.size()) * sizeof(KTXSubresource) * 2u >= KTX_IMAGE_BYTE_LIMIT)
+        {
+            return Fail(error, "libktx encoding failed or exceeded memory bound");
+        }
+        std::vector<Byte> result(reinterpret_cast<const Byte*>(encoded), reinterpret_cast<const Byte*>(encoded) + encodedSize);
+        output = std::move(result);
+        if (error != nullptr) { error->clear(); }
+        return true;
+    }
+
+    bool GenerateKTXMipmaps(KTXImage& image, const KTXMipOptions& options, std::string* error)
+    {
+        U32 format = 0u;
+        U64 bytes = 0u;
+        if (!ValidateTyped(image, format, bytes, error)) { return false; }
+        const auto interpretation = options._semantic == KTXMipSemantic::DATA ?
+            KTXAlphaInterpretation::DATA : ResolvedAlpha(image);
+        const bool preserveCoverage = options._preserveAlphaCoverage &&
+            interpretation == KTXAlphaInterpretation::OPACITY;
+        if ((options._semantic != KTXMipSemantic::COLOR && options._semantic != KTXMipSemantic::NORMAL &&
+             options._semantic != KTXMipSemantic::DATA) ||
+            (options._semantic == KTXMipSemantic::NORMAL && (image._srgb || image._components != 4u)) ||
+            (options._semantic == KTXMipSemantic::DATA && image._srgb) ||
+            (options._preserveAlphaCoverage && (options._semantic == KTXMipSemantic::DATA ||
+             interpretation == KTXAlphaInterpretation::DATA)) ||
+            (preserveCoverage && image._components != 4u))
+        {
+            return Fail(error, "Unsupported KTX mip semantics");
+        }
+        for (const auto& resource : image._subresources)
+        {
+            const size_t samples = size_t(resource._width) * resource._height * image._components;
+            for (size_t sample = 0u; sample < samples; ++sample)
+            {
+                const double value = ReadSample(resource, sample, image._componentType);
+                if (!std::isfinite(value) || (options._semantic == KTXMipSemantic::NORMAL &&
+                    sample % image._components < 3u && (value < 0.0 || value > 1.0)) ||
+                    (preserveCoverage && sample % 4u == 3u && (value < 0.0 || value > 1.0)))
+                {
+                    return Fail(error, "Nonfinite or invalid semantic KTX sample");
+                }
+            }
+        }
+        const U8 fullMips = FullMipCount(image);
+        U64 projected = 0u;
+        size_t resourceCount = 0u;
+        for (U32 mip = 0u; mip < fullMips; ++mip)
+        {
+            const U64 slices = U64(image._layers) * image._faces * std::max(1u, U32(image._depth) >> mip);
+            projected += slices * std::max(1u, U32(image._width) >> mip) *
+                std::max(1u, U32(image._height) >> mip) * image._components *
+                (image._componentType == KTXComponentType::UNORM_8 ? 1u : image._componentType == KTXComponentType::FLOAT_32 ? 4u : 2u);
+            resourceCount += static_cast<size_t>(slices);
+        }
+        if (bytes + projected * 4u + U64(resourceCount) * (sizeof(KTXSubresource) * 3u + 64u) + 4096u >= KTX_IMAGE_BYTE_LIMIT)
+        {
+            return Fail(error, "KTX mip output exceeds working memory bound");
+        }
+        KTXImage result = image;
+        if (!ClassifyKTXImageAlpha(result, interpretation)) { return Fail(error, "Invalid KTX base alpha"); }
+        if (image._mips > 1u && !options._regenerate)
+        {
+            image = std::move(result);
+            if (error != nullptr) { error->clear(); }
+            return true;
+        }
+        std::erase_if(result._subresources, [](const KTXSubresource& resource) { return resource._mip != 0u; });
+        std::sort(result._subresources.begin(), result._subresources.end(), [](const auto& a, const auto& b)
+        {
+            return std::tie(a._layer, a._face, a._depthSlice) < std::tie(b._layer, b._face, b._depthSlice);
+        });
+        result._subresources.reserve(resourceCount);
+        size_t previousStart = 0u;
+        const auto linear = [](const double value)
+        {
+            return value <= 0.04045 ? value / 12.92 : std::pow((value + 0.055) / 1.055, 2.4);
+        };
+        const auto srgb = [](const double value)
+        {
+            return value <= 0.0031308 ? value * 12.92 : 1.055 * std::pow(value, 1.0 / 2.4) - 0.055;
+        };
+        for (U32 mip = 1u; mip < fullMips; ++mip)
+        {
+            const U32 sw = std::max(1u, U32(image._width) >> (mip - 1u));
+            const U32 sh = std::max(1u, U32(image._height) >> (mip - 1u));
+            const U32 sd = std::max(1u, U32(image._depth) >> (mip - 1u));
+            const U32 dw = std::max(1u, U32(image._width) >> mip);
+            const U32 dh = std::max(1u, U32(image._height) >> mip);
+            const U32 dd = std::max(1u, U32(image._depth) >> mip);
+            const size_t levelStart = result._subresources.size();
+            for (U32 layer = 0u; layer < image._layers; ++layer)
+            {
+                for (U32 face = 0u; face < image._faces; ++face)
+                {
+                    const size_t groupStart = result._subresources.size();
+                    for (U32 z = 0u; z < dd; ++z)
+                    {
+                        KTXSubresource resource;
+                        resource._mip = mip; resource._layer = layer; resource._face = face;
+                        resource._depthSlice = z; resource._width = static_cast<U16>(dw); resource._height = static_cast<U16>(dh);
+                        const size_t samples = size_t(dw) * dh * image._components;
+                        if (image._componentType == KTXComponentType::UNORM_8) { resource._pixels = std::vector<U8>(samples); }
+                        else if (image._componentType == KTXComponentType::FLOAT_32) { resource._pixels = std::vector<F32>(samples); }
+                        else { resource._pixels = std::vector<U16>(samples); }
+                        for (U32 y = 0u; y < dh; ++y)
+                        {
+                            for (U32 x = 0u; x < dw; ++x)
+                            {
+                                const double lo[] = {double(x) * sw / dw, double(y) * sh / dh, double(z) * sd / dd};
+                                const double hi[] = {double(x + 1u) * sw / dw, double(y + 1u) * sh / dh, double(z + 1u) * sd / dd};
+                                const double volume = (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+                                std::array<double, 4> average{};
+                                for (U32 iz = static_cast<U32>(lo[2]); iz < static_cast<U32>(std::ceil(hi[2])); ++iz)
+                                {
+                                    const auto& source = result._subresources[previousStart + (size_t(layer) * image._faces + face) * sd + iz];
+                                    for (U32 iy = static_cast<U32>(lo[1]); iy < static_cast<U32>(std::ceil(hi[1])); ++iy)
+                                    {
+                                        for (U32 ix = static_cast<U32>(lo[0]); ix < static_cast<U32>(std::ceil(hi[0])); ++ix)
+                                        {
+                                            const double weight = (std::min(hi[0], double(ix + 1u)) - std::max(lo[0], double(ix))) *
+                                                (std::min(hi[1], double(iy + 1u)) - std::max(lo[1], double(iy))) *
+                                                (std::min(hi[2], double(iz + 1u)) - std::max(lo[2], double(iz))) / volume;
+                                            for (U32 c = 0u; c < image._components; ++c)
+                                            {
+                                                double value = ReadSample(source, (size_t(iy) * sw + ix) * image._components + c, image._componentType);
+                                                if (options._semantic == KTXMipSemantic::NORMAL && c < 3u) { value = value * 2.0 - 1.0; }
+                                                else if (options._semantic == KTXMipSemantic::COLOR && image._srgb && c < 3u) { value = linear(value); }
+                                                average[c] += value * weight;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (options._semantic == KTXMipSemantic::NORMAL)
+                                {
+                                    const double length = std::hypot(average[0], average[1], average[2]);
+                                    for (U32 c = 0u; c < 3u; ++c)
+                                    {
+                                        average[c] = ((length > 0.0 ? average[c] / length : c == 2u ? 1.0 : 0.0) + 1.0) * 0.5;
+                                    }
+                                }
+                                for (U32 c = 0u; c < image._components; ++c)
+                                {
+                                    double value = average[c];
+                                    if (options._semantic == KTXMipSemantic::COLOR && image._srgb && c < 3u) { value = srgb(value); }
+                                    // Convex HDR filtering must not overflow at representable maxima.
+                                    if (image._componentType == KTXComponentType::FLOAT_16) { value = std::clamp(value, -65504.0, 65504.0); }
+                                    if (image._componentType == KTXComponentType::FLOAT_32)
+                                    {
+                                        value = std::clamp(value, -double(std::numeric_limits<F32>::max()), double(std::numeric_limits<F32>::max()));
+                                    }
+                                    WriteSample(resource, (size_t(y) * dw + x) * image._components + c, image._componentType, value);
+                                }
+                            }
+                        }
+                        result._subresources.push_back(std::move(resource));
+                    }
+                    if (preserveCoverage)
+                    {
+                        size_t covered = 0u, baseCount = 0u;
+                        for (U32 z = 0u; z < image._depth; ++z)
+                        {
+                            const auto& base = result._subresources[(size_t(layer) * image._faces + face) * image._depth + z];
+                            for (size_t a = 3u; a < size_t(base._width) * base._height * 4u; a += 4u)
+                            {
+                                ++baseCount;
+                                covered += ReadSample(base, a, image._componentType) >= double(Config::ALPHA_DISCARD_THRESHOLD);
+                            }
+                        }
+                        std::vector<double> alpha;
+                        for (size_t i = groupStart; i < result._subresources.size(); ++i)
+                        {
+                            const auto& resource = result._subresources[i];
+                            for (size_t a = 3u; a < size_t(dw) * dh * 4u; a += 4u)
+                            {
+                                alpha.push_back(ReadSample(resource, a, image._componentType));
+                            }
+                        }
+                        std::sort(alpha.begin(), alpha.end());
+                        const size_t target = static_cast<size_t>(std::round(double(covered) / double(baseCount) * double(alpha.size())));
+                        const size_t current = static_cast<size_t>(std::count_if(alpha.begin(), alpha.end(), [](const double value)
+                        {
+                            return value >= double(Config::ALPHA_DISCARD_THRESHOLD);
+                        }));
+                        double scale = current == target ? 1.0 : 0.0;
+                        if (current != target && target > 0u && alpha[alpha.size() - target] > 0.0)
+                        {
+                            double threshold = Config::ALPHA_DISCARD_THRESHOLD;
+                            if (image._componentType == KTXComponentType::UNORM_8) { threshold = std::ceil(threshold * 255.0) / 255.0; }
+                            else if (image._componentType == KTXComponentType::UNORM_16) { threshold = std::ceil(threshold * 65535.0) / 65535.0; }
+                            else if (image._componentType == KTXComponentType::FLOAT_16)
+                            {
+                                U16 bits = glm::packHalf1x16(static_cast<F32>(threshold));
+                                if (glm::unpackHalf1x16(bits) < threshold) { ++bits; }
+                                threshold = glm::unpackHalf1x16(bits);
+                            }
+                            scale = std::nextafter(threshold / alpha[alpha.size() - target], std::numeric_limits<double>::infinity());
+                        }
+                        for (size_t i = groupStart; i < result._subresources.size(); ++i)
+                        {
+                            auto& resource = result._subresources[i];
+                            for (size_t a = 3u; a < size_t(dw) * dh * 4u; a += 4u)
+                            {
+                                WriteSample(resource, a, image._componentType, std::clamp(ReadSample(resource, a, image._componentType) * scale, 0.0, 1.0));
+                            }
+                        }
+                    }
+                }
+            }
+            previousStart = levelStart;
+        }
+        result._mips = fullMips;
+        image = std::move(result);
         if (error != nullptr) { error->clear(); }
         return true;
     }

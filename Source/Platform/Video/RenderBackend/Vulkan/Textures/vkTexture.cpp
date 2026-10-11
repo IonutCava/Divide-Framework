@@ -446,6 +446,21 @@ namespace Divide
             imageInfo.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
             imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
         }
+        if (_sourceMipCount != 0u)
+        {
+            VkImageFormatProperties limits{};
+            const VkResult result = vkGetPhysicalDeviceImageFormatProperties(
+                VK_API::GetStateTracker()._device->getVKPhysicalDevice(), imageInfo.format,
+                imageInfo.imageType, imageInfo.tiling, imageInfo.usage, imageInfo.flags, &limits);
+            if (result != VK_SUCCESS || imageInfo.extent.width > limits.maxExtent.width ||
+                imageInfo.extent.height > limits.maxExtent.height || imageInfo.extent.depth > limits.maxExtent.depth ||
+                imageInfo.arrayLayers > limits.maxArrayLayers || imageInfo.mipLevels > limits.maxMipLevels)
+            {
+                Console::errorfn("KTX2 texture exceeds Vulkan format/device limits: {}", resourceName());
+                _nativeAllocationFailed = true;
+                return ImageUsage::UNDEFINED;
+            }
+        }
         VmaAllocationCreateInfo vmaallocinfo = {};
         vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
@@ -892,11 +907,11 @@ namespace Divide
         const U16 numLayers = imageData.layerCount();
         const U16 numMips = imageData.mipCount();
         const size_t copyAlignment = imageData.isKTXImage()
-            ? std::max<size_t>(4u, GetBytesPerPixel(_descriptor._dataType, _descriptor._baseFormat, _descriptor._packing))
+            ? std::lcm<size_t>(4u, GetBytesPerPixel(_descriptor._dataType, _descriptor._baseFormat, _descriptor._packing))
             : 1u;
         const auto alignCopyOffset = [copyAlignment](const size_t offset)
         {
-            return (offset + copyAlignment - 1u) & ~(copyAlignment - 1u);
+            return ((offset + copyAlignment - 1u) / copyAlignment) * copyAlignment;
         };
         _mipData.resize(numLayers, vector<Mip>(numMips));
 
@@ -917,6 +932,10 @@ namespace Divide
         }
         DIVIDE_GPU_ASSERT(_depth >= maxDepth);
 
+        if (imageData.isKTXImage() && _stagingBuffer != nullptr && _stagingBuffer->_allocInfo.size < totalSize)
+        {
+            _stagingBuffer.reset();
+        }
         if (_stagingBuffer == nullptr)
         {
             _stagingBuffer = VKUtil::createStagingBuffer(totalSize, resourceName().c_str(), false);
@@ -977,7 +996,7 @@ namespace Divide
                     copyRegion.bufferImageHeight = 0;
                     copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
                     copyRegion.imageSubresource.mipLevel = m;
-                    copyRegion.imageSubresource.baseArrayLayer = l;
+                    copyRegion.imageSubresource.baseArrayLayer = _descriptor._texType == TextureType::TEXTURE_3D ? 0u : l;
                     copyRegion.imageSubresource.layerCount = 1;
                     copyRegion.imageOffset.x = 0u;
                     copyRegion.imageOffset.y = 0u;

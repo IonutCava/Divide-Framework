@@ -170,6 +170,8 @@ struct ImageData final : NonCopyable
     FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
 
     [[nodiscard]] bool loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, U16 layerCount, U8 numComponents);
+    [[nodiscard]] bool loadFromKTXMemory(std::span<const Byte> data);
+    [[nodiscard]] bool loadFromKTXImage(const KTXImage& image);
     /// creates this image instance from the specified data
     [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
@@ -178,6 +180,7 @@ struct ImageData final : NonCopyable
 
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
+    PROPERTY_RW(bool, allowKTXSourceImport, true);
     /// If true, then the source image was probably RGB and we loaded it as RGBA
     PROPERTY_R(bool, hasDummyAlphaChannel, false);
     /// If true, the initial passed in data was either null or the size was 0
@@ -185,10 +188,13 @@ struct ImageData final : NonCopyable
     PROPERTY_R(bool, isKTXImage, false);
     PROPERTY_R(bool, ktxSRGB, false);
     PROPERTY_R(AlphaClassification, ktxAlpha);
+    PROPERTY_R(TextureType, ktxTextureType, TextureType::TEXTURE_2D);
+    PROPERTY_R(U16, ktxLayerCount, 1u);
 
   protected:
     friend class ImageDataInterface;
     [[nodiscard]] bool loadKTX(const ResourcePath& path, std::string_view name);
+    [[nodiscard]] bool convertKTXImage(KTXImage& image, size_t retainedBytes, bool classifyAlpha);
     [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
 

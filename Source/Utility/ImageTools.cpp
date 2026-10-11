@@ -1,4 +1,5 @@
 #include "Headers/ImageTools.h"
+#include "Headers/KTXImageCache.h"
 
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -544,6 +545,36 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
     if (hasExtension(_name, "ktx2"))
     {
         return loadKTX(_path, _name);
+    }
+
+    const bool isPNG = hasExtension(_name, "png");
+    const bool isJPEG = hasExtension(_name, "jpg") || hasExtension(_name, "jpeg");
+    const bool isBMP = hasExtension(_name, "bmp");
+    if (options._useKTXPipeline && allowKTXSourceImport() && (isPNG || isJPEG || isBMP))
+    {
+        KTXSourceSettings settings;
+        settings._format = isPNG ? KTXSourceFormat::PNG : isJPEG ? KTXSourceFormat::JPEG : KTXSourceFormat::BMP;
+        settings._srgb = srgb;
+        settings._alphaInterpretation = options._alphaChannelTransparency
+            ? KTXAlphaInterpretation::OPACITY : KTXAlphaInterpretation::DATA;
+        settings._semantic = options._isNormalMap ? KTXMipSemantic::NORMAL
+            : srgb || options._alphaChannelTransparency ? KTXMipSemantic::COLOR : KTXMipSemantic::DATA;
+        settings._generateMipmaps = !options._skipMipMaps;
+        settings._preserveAlphaCoverage = settings._generateMipmaps && options._alphaChannelTransparency && !options._isNormalMap;
+        settings._diskCache = Texture::UseTextureDDSCache() && options._useDDSCache;
+        KTXImage image;
+        std::string error;
+        if (!LoadCachedKTXSource(_path / _name, Paths::Textures::g_metadataLocation / "KTX2",
+                                 settings, image, &error))
+        {
+            Console::errorfn("Unable to import image through KTX2 {}: {}", _path / _name, error);
+            return false;
+        }
+        if (!loadFromKTXImage(image))
+        {
+            return false;
+        }
+        return true;
     }
 
     // We can handle DDS files directly in a very FATAL way
@@ -1106,28 +1137,191 @@ bool ImageData::loadKTX(const ResourcePath& path, const std::string_view name)
     {
         return false;
     }
+    return loadFromKTXMemory(bytes);
+}
+
+bool ImageData::loadFromKTXMemory(const std::span<const Byte> bytes)
+{
+    if (!_layers.empty() || bytes.size() > KTX_IMAGE_BYTE_LIMIT)
+    {
+        return false;
+    }
     KTXImage image;
     std::string error;
     if (!LoadKTXImage(bytes, image, &error))
     {
-        Console::errorfn("Unable to load KTX2 image {}: {}", name, error);
+        Console::errorfn("Unable to load KTX2 image {}: {}", _name, error);
         return false;
     }
-    // Array/cube/volume upload integration follows separately from the native payload reader.
-    if (image._dimensions != 2u || image._isArray || image._layers != 1u || image._faces != 1u || image._depth != 1u)
+    return convertKTXImage(image, bytes.size(), false);
+}
+
+bool ImageData::loadFromKTXImage(const KTXImage& image)
+{
+    if (!_layers.empty())
     {
-        Console::errorfn("KTX2 rendering currently requires a single 2D image: {}", name);
         return false;
     }
-    if (image._alphaInterpretation == KTXAlphaInterpretation::UNKNOWN)
+    size_t payloadBytes = 0u;
+    for (const auto& resource : image._subresources)
     {
-        const auto interpretation = image._components != 4u ? KTXAlphaInterpretation::SYNTHETIC
+        const size_t size = std::visit([](const auto& pixels)
+        {
+            return pixels.size() * sizeof(typename std::decay_t<decltype(pixels)>::value_type);
+        }, resource._pixels);
+        if (size > KTX_IMAGE_BYTE_LIMIT - payloadBytes)
+        {
+            return false;
+        }
+        payloadBytes += size;
+    }
+    // Caller-owned pixels, the classification copy and destination coexist.
+    if (payloadBytes > KTX_IMAGE_BYTE_LIMIT / 3u)
+    {
+        return false;
+    }
+    KTXImage copy = image;
+    return convertKTXImage(copy, payloadBytes, true);
+}
+
+bool ImageData::convertKTXImage(KTXImage& image, const size_t retainedBytes, const bool classifyAlpha)
+{
+    if (!_layers.empty() || image._width == 0u || image._height == 0u || image._depth == 0u ||
+        image._layers == 0u || image._dimensions < 1u || image._dimensions > 3u ||
+        to_base(image._componentType) > to_base(KTXComponentType::FLOAT_32) ||
+        (image._faces != 1u && image._faces != 6u) ||
+        (image._components != 1u && image._components != 2u && image._components != 4u) ||
+        (image._dimensions == 1u && image._height != 1u) ||
+        (image._dimensions != 3u && image._depth != 1u) ||
+        (image._dimensions == 3u && (image._isArray || image._layers != 1u || image._faces != 1u)) ||
+        (image._faces == 6u && (image._dimensions != 2u || image._width != image._height)) ||
+        (!image._isArray && image._layers != 1u) ||
+        image._mips == 0u || image._mips > 16u ||
+        (image._srgb && (image._componentType != KTXComponentType::UNORM_8 || image._components != 4u)))
+    {
+        return false;
+    }
+    U16 largestDimension = std::max({image._width, image._height, image._depth});
+    U8 maxMips = 1u;
+    while (largestDimension > 1u)
+    {
+        largestDimension >>= 1u;
+        ++maxMips;
+    }
+    if (image._mips > maxMips)
+    {
+        return false;
+    }
+    const TextureType textureType = image._faces == 6u
+        ? image._isArray ? TextureType::TEXTURE_CUBE_ARRAY : TextureType::TEXTURE_CUBE_MAP
+        : image._dimensions == 3u ? TextureType::TEXTURE_3D
+        : image._dimensions == 1u ? image._isArray ? TextureType::TEXTURE_1D_ARRAY : TextureType::TEXTURE_1D
+        : image._isArray ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
+    const size_t flattenedLayers = size_t{image._layers} * image._faces;
+    size_t payloadBytes = 0u;
+    for (const auto& resource : image._subresources)
+    {
+        const size_t size = std::visit([](const auto& pixels)
+        {
+            return pixels.size() * sizeof(typename std::decay_t<decltype(pixels)>::value_type);
+        }, resource._pixels);
+        if (size > KTX_IMAGE_BYTE_LIMIT - payloadBytes)
+        {
+            return false;
+        }
+        payloadBytes += size;
+    }
+    // The native payload and the ImageData copy coexist with the caller's input.
+    if (image._compressed || flattenedLayers > U16_MAX ||
+        retainedBytes > KTX_IMAGE_BYTE_LIMIT ||
+        payloadBytes > (KTX_IMAGE_BYTE_LIMIT - retainedBytes) / 2u)
+    {
+        Console::errorfn("KTX2 image exceeds the native allocation budget: {}", _name);
+        return false;
+    }
+    if (classifyAlpha || image._alphaInterpretation == KTXAlphaInterpretation::UNKNOWN)
+    {
+        const auto interpretation = image._alphaInterpretation != KTXAlphaInterpretation::UNKNOWN ? image._alphaInterpretation
+            : image._components != 4u ? KTXAlphaInterpretation::SYNTHETIC
             : ignoreAlphaChannelTransparency() ? KTXAlphaInterpretation::DATA : KTXAlphaInterpretation::OPACITY;
         if (!ClassifyKTXImageAlpha(image, interpretation))
         {
-            Console::errorfn("KTX2 image requires explicit alpha import metadata: {}", name);
+            Console::errorfn("KTX2 image requires explicit alpha import metadata: {}", _name);
             return false;
         }
+        if (interpretation == KTXAlphaInterpretation::OPACITY && image._alpha._allZero)
+        {
+            Console::errorfn("KTX2 image has all-zero opacity alpha; classifying as transparent: {}", _name);
+        }
+    }
+    vector<ImageLayer> layers(flattenedLayers);
+    size_t resourceIndex = 0u;
+    // The reader guarantees mip/layer/face/slice order. Join volume slices
+    // directly into the destination so no additional full-volume copy is needed.
+    for (U8 mip = 0u; mip < image._mips; ++mip)
+    {
+        const U16 depth = std::max<U16>(1u, image._depth >> mip);
+        for (size_t l = 0u; l < flattenedLayers; ++l)
+        {
+            if (resourceIndex + depth > image._subresources.size())
+            {
+                return false;
+            }
+            const auto& first = image._subresources[resourceIndex];
+            if (first._width != std::max<U16>(1u, image._width >> mip) ||
+                first._height != std::max<U16>(1u, image._height >> mip) ||
+                (image._componentType == KTXComponentType::UNORM_8 && !std::holds_alternative<std::vector<U8>>(first._pixels)) ||
+                ((image._componentType == KTXComponentType::UNORM_16 || image._componentType == KTXComponentType::FLOAT_16) &&
+                 !std::holds_alternative<std::vector<U16>>(first._pixels)) ||
+                (image._componentType == KTXComponentType::FLOAT_32 && !std::holds_alternative<std::vector<F32>>(first._pixels)))
+            {
+                return false;
+            }
+            const size_t expectedSliceElements = size_t{first._width} * first._height * image._components;
+            for (U16 z = 0u; z < depth; ++z)
+            {
+                const auto& resource = image._subresources[resourceIndex + z];
+                if (resource._mip != mip || resource._layer != l / image._faces ||
+                    resource._face != l % image._faces || resource._depthSlice != z ||
+                    resource._width != first._width || resource._height != first._height ||
+                    resource._pixels.index() != first._pixels.index() ||
+                    !std::visit([expectedSliceElements](const auto& pixels) { return pixels.size() == expectedSliceElements; }, resource._pixels))
+                {
+                    return false;
+                }
+            }
+            bool valid = true;
+            std::visit([&](const auto& pixels)
+            {
+                using T = typename std::decay_t<decltype(pixels)>::value_type;
+                const size_t sliceElements = size_t{first._width} * first._height * image._components;
+                T* target = layers[l].allocateMip<T>(sliceElements * depth, first._width, first._height, depth, image._components);
+                for (U16 z = 0u; z < depth; ++z)
+                {
+                    const auto& resource = image._subresources[resourceIndex + z];
+                    const auto* slice = std::get_if<std::vector<T>>(&resource._pixels);
+                    if (resource._mip != mip || resource._layer != l / image._faces ||
+                        resource._face != l % image._faces || resource._depthSlice != z ||
+                        resource._width != first._width || resource._height != first._height ||
+                        slice == nullptr || slice->size() != sliceElements)
+                    {
+                        valid = false;
+                        return;
+                    }
+                    std::memcpy(target + z * sliceElements, slice->data(), sliceElements * sizeof(T));
+                }
+                layers[l].getMip(mip)->_size = sliceElements * depth * sizeof(T);
+            }, first._pixels);
+            if (!valid)
+            {
+                return false;
+            }
+            resourceIndex += depth;
+        }
+    }
+    if (resourceIndex != image._subresources.size())
+    {
+        return false;
     }
     _format = image._components == 1u ? GFXImageFormat::RED
             : image._components == 2u ? GFXImageFormat::RG : GFXImageFormat::RGBA;
@@ -1139,26 +1333,12 @@ bool ImageData::loadKTX(const ResourcePath& path, const std::string_view name)
                     : image._componentType == KTXComponentType::FLOAT_16 ? SourceDataType::HALF : SourceDataType::FLOAT;
     _bpp = image._components * (image._componentType == KTXComponentType::UNORM_8 ? 8u
                             : image._componentType == KTXComponentType::FLOAT_32 ? 32u : 16u);
-    ImageLayer& layer = _layers.emplace_back();
-    for (U32 mip = 0u; mip < image._mips; ++mip)
-    {
-        const auto it = std::find_if(image._subresources.begin(), image._subresources.end(),
-                                    [mip](const KTXSubresource& resource) { return resource._mip == mip; });
-        if (it == image._subresources.end())
-        {
-            _layers.clear();
-            return false;
-        }
-        std::visit([&](const auto& pixels)
-        {
-            using T = typename std::decay_t<decltype(pixels)>::value_type;
-            DIVIDE_UNUSED(layer.allocateMip<T>(pixels.data(), pixels.size(), it->_width, it->_height, 1u, image._components));
-            layer.getMip(to_U8(mip))->_size = pixels.size() * sizeof(T);
-        }, it->_pixels);
-    }
+    _layers = std::move(layers);
     _isKTXImage = true;
     _ktxSRGB = image._srgb;
     _ktxAlpha = image._alpha;
+    _ktxTextureType = textureType;
+    _ktxLayerCount = image._layers;
     _hasDummyAlphaChannel = image._alphaInterpretation == KTXAlphaInterpretation::SYNTHETIC;
     return true;
 }

@@ -77,9 +77,27 @@ namespace Divide::ImageTools
 
     // Native, uncompressed KTX2 only. Explicit bottom-left orientation required;
     // absent or different orientation/swizzle/alpha conventions are rejected.
+    // decodedByteLimit additionally caps decoded storage before allocation.
     // Failure leaves output untouched.
     [[nodiscard]] bool LoadKTXImage(std::span<const Byte> input, KTXImage& output,
-                                    std::string* error = nullptr);
+                                    std::string* error = nullptr,
+                                    size_t decodedByteLimit = KTX_IMAGE_BYTE_LIMIT);
+    enum class KTXMipSemantic : U8 { COLOR, NORMAL, DATA };
+    struct KTXMipOptions
+    {
+        KTXMipSemantic _semantic = KTXMipSemantic::COLOR;
+        // Supplied mip chains are retained unless regeneration is explicit.
+        bool _regenerate = false;
+        bool _preserveAlphaCoverage = false;
+    };
+    // Area-weighted filtering of each layer/face independently (no cube seams).
+    // Classification uses original base samples; failure leaves image unchanged.
+    [[nodiscard]] bool GenerateKTXMipmaps(KTXImage& image, const KTXMipOptions& options = {},
+                                         std::string* error = nullptr);
+    // Complete typed slices only; samples are copied without conversion.
+    // Classification is recomputed, not taken from caller-provided flags.
+    [[nodiscard]] bool EncodeKTXImage(const KTXImage& input, std::vector<Byte>& output,
+                                      std::string* error = nullptr);
     [[nodiscard]] bool EncodeKTXImage(std::span<const Byte> input, U16 width, U16 height,
                                       U8 components, U8 bytesPerPixel, bool sourceIsBGR,
                                       bool srgb, std::vector<Byte>& output);

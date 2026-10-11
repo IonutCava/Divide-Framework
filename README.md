@@ -70,7 +70,7 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 
 - KTX-Software is pinned to **4.4.2**. Screenshots are lossless, uncompressed
   sRGB KTX2 files with bottom-left orientation, not PNG files.
-- Native rendering currently accepts single-image 2D KTX2 files: R/RG/RGBA
+- Native rendering accepts 1D/2D/3D, array and cubemap KTX2 files: R/RG/RGBA
   UNORM8, UNORM16, half-float and float, with their supplied mip counts.
   Explicit bottom-left orientation and identity swizzle are required; unsupported
   encodings fail rather than falling back to an ordinary-image backend path.
@@ -79,20 +79,37 @@ If you plan to use any parts of this code in a commercial product, a couple of t
   categories each tolerate four pixels independently. All-zero opacity logs an
   error and is transparent only. Missing classification is unknown until decoded
   base-level pixels are classified; synthetic and data alpha are excluded.
-- The payload reader supports arrays, cubes and volumes, but rendering upload
-  integration for those topologies is not yet enabled.
-- **Still pending:** automatic source import, semantic mip generation,
-  content-addressed caching, capability-aware compression/transcoding,
+- Single-file PNG/JPEG and uncompressed 24-bit BMP inputs automatically use precision-preserving source
+  decoding, semantic mip generation and a lossless KTX2 master representation.
+  Colour mips filter sRGB in linear space; normal mips renormalize; data channels
+  filter independently. Alpha coverage uses the engine discard threshold, not
+  the opacity classifier. Supplied mip chains remain intact unless regeneration
+  is requested. Cube faces filter independently, without seam-aware filtering.
+- The source cache stores exact source bytes and settings alongside its KTX2
+  payload in one atomically published entry. Warm hits still read source bytes,
+  but avoid image decoding and encoding. Identical concurrent requests coalesce;
+  conversion concurrency is limited to two. Input/base-plus-mips are limited to
+  32 MiB each; encoded payloads to 64 MiB. Disk failure falls back to the unified
+  in-memory representation, never ordinary-image backend loading.
+- **Still pending:** ordered multi-source array/cube importing,
+  capability-aware compression/transcoding,
   consumer/DDS migration and removal of legacy image libraries.
 
-Import-codec selection for subsequent migration phases: LodePNG
-(`e584a8490db1b76b81bf298c11c09d3b55d9c270`) for 8/16-bit PNG,
+Import-codec selection: libpng **1.6.59** for 8/16-bit PNG
+(reuses the existing dependency; the pinned registry's LodePNG port is obsolete),
 libjpeg-turbo 3.2.0 for JPEG, existing SDL's native BMP decoder, and DirectXTex
 (`1acf4ebe6330e06b7eb52e8db63d4f824ad77427`) for TGA/DDS/Radiance HDR.
 DirectXTex is the non-header-only exception needed for maintained, complete DDS
 precision/BC support; it belongs to import tooling, not backend texture loading.
-These additional codecs have not yet been integrated. KTX2 writing does not
-require an additional screenshot codec.
+libpng, libjpeg-turbo and native SDL BMP decoding are integrated for single-source
+imports. BMP alpha/bitfield/other pixel encodings require explicit conversion;
+TGA/DDS/HDR remain on legacy paths until their codecs are integrated. Comma-separated source
+lists likewise remain on the legacy path; native KTX2 files cannot be mixed with
+such lists. Legacy DDS/cache flags currently govern KTX2 disk caching for
+compatibility. Lossless master encoding uses the area-box mip filter; explicit
+legacy BC output-format and compression-quality requests are not yet implemented
+for KTX2. `_useKTXPipeline=false` is a temporary explicit migration opt-out.
+KTX2 writing does not require an additional screenshot codec.
 
 ## Screenshots
 Framework Screenshot

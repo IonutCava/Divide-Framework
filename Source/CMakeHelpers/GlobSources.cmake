@@ -818,6 +818,8 @@ set ( UTILITY_SOURCE_HEADERS Utility/Headers/Colours.h
                              Utility/Headers/ImageTools.h
                              Utility/Headers/ImageToolsFwd.h
                              Utility/Headers/KTXImage.h
+                             Utility/Headers/KTXImporter.h
+                             Utility/Headers/KTXImageCache.h
                              Utility/Headers/Localization.h
                              Utility/Headers/StateTracker.h
                              Utility/Headers/TextLabel.h
@@ -830,6 +832,8 @@ set( UTILITY_SOURCE Utility/Colours.cpp
                     Utility/EASTLImport.cpp
                     Utility/ImageTools.cpp
                     Utility/KTXImage.cpp
+                    Utility/KTXImporter.cpp
+                    Utility/KTXImageCache.cpp
                     Utility/Localization.cpp
                     Utility/TextLabel.cpp
                     Utility/XMLParser.cpp

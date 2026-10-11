@@ -138,6 +138,7 @@ namespace Divide
                       _descriptor._baseFormat != GFXImageFormat::COUNT &&
                       _descriptor._dataType != GFXDataFormat::COUNT);
 
+        _requestedLayerCount = _descriptor._layerCount;
         _loadedFromFile = !descriptor.assetName().empty();
 
         if ( _loadedFromFile )
@@ -152,7 +153,14 @@ namespace Divide
             const bool isCubeMap = IsCubeTexture( _descriptor._texType );
 
             const U16 numCommas = to_U16( std::count( std::cbegin( descriptor.assetName() ), std::cend( descriptor.assetName() ), ',' ) );
-            if ( numCommas > 0u )
+            bool containsKTX = false;
+            istringstream inputs(descriptor.assetName().c_str());
+            string input;
+            while (Util::GetLine(inputs, input, ','))
+            {
+                containsKTX |= hasExtension(ResourcePath{Util::Trim(input)}, "ktx2");
+            }
+            if ( numCommas > 0u && !containsKTX )
             {
                 const U16 targetLayers = numCommas + 1u;
 
@@ -232,9 +240,24 @@ namespace Divide
 
             // Each texture face/layer must be in a comma separated list
             istringstream textureFileList( assetName().c_str() );
+            if (assetName().find(',') != string::npos)
+            {
+                istringstream inputs(assetName().c_str());
+                string input;
+                while (Util::GetLine(inputs, input, ','))
+                {
+                    if (hasExtension(ResourcePath{Util::Trim(input)}, "ktx2"))
+                    {
+                        Console::errorfn("KTX2 assets cannot be combined with comma-separated image inputs: {}", assetName());
+                        return false;
+                    }
+                }
+            }
 
             ImageTools::ImageData dataStorage = {};
             dataStorage.requestedFormat( requestedFormat );
+            // Ordered legacy source lists remain a single coherent import path.
+            dataStorage.allowKTXSourceImport(assetName().find(',') == string::npos);
 
             bool hasValidEntries = false;
             // We loop over every texture in the above list and store it in this temporary string
@@ -270,18 +293,6 @@ namespace Divide
                 _descriptor._dataType = dataStorage.dataType();
                 if (dataStorage.isKTXImage())
                 {
-                    if (_descriptor._texType != TextureType::TEXTURE_2D || _descriptor._msaaSamples != 0u)
-                    {
-                        Console::errorfn("Native KTX2 rendering currently requires a non-MSAA 2D texture: {}", assetName());
-                        return false;
-                    }
-                    const auto& dimensions = dataStorage.dimensions(0u);
-                    const auto maxSize = GFXDevice::GetDeviceInformation()._maxTextureSize;
-                    if (dimensions.width > maxSize || dimensions.height > maxSize)
-                    {
-                        Console::errorfn("KTX2 texture exceeds device dimensions: {}", assetName());
-                        return false;
-                    }
                     _descriptor._packing = dataStorage.ktxSRGB() ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED;
                     _descriptor._mipMappingState = MipMappingState::MANUAL;
                 }
@@ -289,13 +300,14 @@ namespace Divide
                 if (createWithData( dataStorage, dataStorage.isKTXImage() ? PixelAlignment{._alignment = 1u} : PixelAlignment{}) != ImageUsage::SHADER_READ )
                 {
                     DIVIDE_UNEXPECTED_CALL();
+                    return false;
                 }
 
                 if ( IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() % 6 != 0  )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ), resourceName().c_str() );
                 }
-                else if ( IsArrayTexture( _descriptor._texType ) && !IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() != depth() )
+                else if ( !dataStorage.isKTXImage() && IsArrayTexture( _descriptor._texType ) && !IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() != depth() )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ), resourceName().c_str() );
                 }
@@ -325,7 +337,10 @@ namespace Divide
 
         if ( !fileExists( path / name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor._textureOptions ) )
         {
-            if (hasExtension(ResourcePath{name}, "ktx2") || fileData.isKTXImage())
+            const bool unifiedSource = _descriptor._textureOptions._useKTXPipeline && fileData.allowKTXSourceImport() &&
+                (hasExtension(ResourcePath{name}, "png") || hasExtension(ResourcePath{name}, "jpg") ||
+                 hasExtension(ResourcePath{name}, "jpeg") || hasExtension(ResourcePath{name}, "bmp"));
+            if (unifiedSource || hasExtension(ResourcePath{name}, "ktx2") || fileData.isKTXImage())
             {
                 Console::errorfn("Unable to load native KTX2 texture: {}", path / name);
                 return false;
@@ -377,7 +392,34 @@ namespace Divide
 
         _sourceMipCount = imageData.isKTXImage() ? imageData.mipCount() : 0u;
         SCOPE_EXIT { _sourceMipCount = 0u; };
-        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u), imageData.layerCount(), true);
+        if (imageData.isKTXImage())
+        {
+            const bool cubeCompatibility = imageData.ktxTextureType() == TextureType::TEXTURE_CUBE_MAP &&
+                                           _descriptor._texType == TextureType::TEXTURE_CUBE_ARRAY;
+            const bool importedArrayCompatibility = imageData.ktxTextureType() == TextureType::TEXTURE_2D &&
+                _descriptor._texType == TextureType::TEXTURE_2D_ARRAY && imageData.ktxLayerCount() == 1u &&
+                !hasExtension(ResourcePath{assetName()}, "ktx2");
+            if ((_descriptor._texType != imageData.ktxTextureType() && !cubeCompatibility && !importedArrayCompatibility) ||
+                _descriptor._msaaSamples != 0u || imageData.mipCount() == 0u ||
+                (_requestedLayerCount != 0u && _requestedLayerCount != imageData.ktxLayerCount()))
+            {
+                Console::errorfn("KTX2 topology does not match the requested non-MSAA texture: {}", assetName());
+                return ImageUsage::UNDEFINED;
+            }
+            _descriptor._baseFormat = imageData.format();
+            _descriptor._dataType = imageData.dataType();
+            _descriptor._packing = imageData.ktxSRGB() ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED;
+            _descriptor._layerCount = imageData.ktxLayerCount();
+            _descriptor._mipMappingState = MipMappingState::MANUAL;
+        }
+        _nativeKTX = imageData.isKTXImage();
+        _nativeAllocationFailed = false;
+        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u),
+                                           imageData.isKTXImage() ? imageData.ktxLayerCount() : imageData.layerCount(), true);
+        if (_nativeAllocationFailed)
+        {
+            return ImageUsage::UNDEFINED;
+        }
         DIVIDE_UNUSED(ret);
 
         if ( !IsRenderTargetAttachment(descriptor()) )
@@ -387,7 +429,7 @@ namespace Divide
                 _descriptor._mipMappingState = MipMappingState::MANUAL;
             }
 
-            loadDataInternal(imageData, pixelUnpackAlignment);
+            loadDataInternal(imageData, imageData.isKTXImage() ? PixelAlignment{._alignment = 1u} : pixelUnpackAlignment);
 
             ret = ImageUsage::SHADER_READ;
         }
@@ -745,7 +787,8 @@ namespace Divide
 
     ImageView Texture::getView() const noexcept
     {
-        const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u : _depth;
+        const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u
+                            : _nativeKTX ? _layerCount : _depth;
 
         return ImageView
         {

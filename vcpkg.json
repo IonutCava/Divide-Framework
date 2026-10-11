@@ -9,6 +9,8 @@
     "boost-functional",
     "boost-asio",
     "stb",
+    "libpng",
+    "libjpeg-turbo",
     {
       "name": "ktx",
       "version>=": "4.4.2",
@@ -101,6 +103,15 @@
     }
   ],
   "overrides": [
+    {
+      "name": "libpng",
+      "version": "1.6.59"
+    },
+    {
+      "name": "libjpeg-turbo",
+      "version": "3.2.0",
+      "port-version": 1
+    },
     {
       "name": "ktx",
       "version": "4.4.2"

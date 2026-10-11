@@ -31,6 +31,8 @@ endif()
 find_package(PkgConfig REQUIRED)
 find_package(Stb REQUIRED)
 find_package(Ktx 4.4.2 EXACT CONFIG REQUIRED)
+find_package(PNG 1.6.59 EXACT REQUIRED)
+find_package(libjpeg-turbo 3.2.0 EXACT CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(concurrentqueue CONFIG REQUIRED)
@@ -174,6 +176,8 @@ set(EXTERNAL_LIBS
     ${CEGUI_LIBRARIES}
     fmt::fmt
     KTX::ktx
+    PNG::PNG
+    $<IF:$<TARGET_EXISTS:libjpeg-turbo::turbojpeg>,libjpeg-turbo::turbojpeg,libjpeg-turbo::turbojpeg-static>
     OptickCore
     EASTL
     OpenAL::OpenAL
