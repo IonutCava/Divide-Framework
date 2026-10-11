@@ -129,14 +129,19 @@ endif()
 
 find_library(JASPER_LIBRARY NAMES jasper)
 find_library(JPEG_LIBRARY NAMES jpeg)
+find_library(JPEG12_LIBRARY NAMES jpeg12)
 find_library(TIFF_LIBRARY NAMES tiff)
 find_library(LZMA_LIBRARY NAMES lzma)
 
 set(IMAGE_LIBRARIES
     ${JASPER_LIBRARY}
-    ${JPEG_LIBRARY}
     ${TIFF_LIBRARY}
+    ${JPEG_LIBRARY}
 )
+
+if(JPEG12_LIBRARY)
+    list(APPEND IMAGE_LIBRARIES ${JPEG12_LIBRARY})
+endif()
 
 include_directories(
     SYSTEM

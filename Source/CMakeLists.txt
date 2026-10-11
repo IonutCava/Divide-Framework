@@ -136,7 +136,8 @@ else() #MSVC_COMPILER
     endif()
 endif() #MSVC_COMPILER
 
-list(APPEND DIVIDE_COMPILE_OPTIONS ${EXTRA_COMPILE_FLAGS})
+set(DIVIDE_VECTOR_EXTENSION_COMPILE_OPTIONS ${EXTRA_COMPILE_FLAGS})
+list(APPEND DIVIDE_COMPILE_OPTIONS ${DIVIDE_VECTOR_EXTENSION_COMPILE_OPTIONS})
 
 add_library(${APP_LIB_DIVIDE} STATIC "EngineMain.cpp" 
                                      ${ENGINE_SOURCE_CODE}
@@ -144,7 +145,8 @@ add_library(${APP_LIB_DIVIDE} STATIC "EngineMain.cpp"
                                      ${THIRD_PARTY_FETCH_SRC_FILES}
 )
 
-target_link_libraries(${APP_LIB_DIVIDE} PUBLIC NRI)
+target_link_libraries(${APP_LIB_DIVIDE} PUBLIC NRI
+                                        PRIVATE ${EXTERNAL_LIBS})
 
 if( WINDOWS_OS_BUILD )
     target_link_libraries(${APP_LIB_DIVIDE} PUBLIC Shcore.lib Winmm.lib)
@@ -163,6 +165,7 @@ target_precompile_headers(${APP_LIB_DIVIDE} PUBLIC "$<$<COMPILE_LANGUAGE:CXX>:En
 )
 
 add_executable( ${APP_EXE_DIVIDE} "Executable/main.cpp" )
+target_compile_options(${APP_EXE_DIVIDE} PRIVATE ${DIVIDE_VECTOR_EXTENSION_COMPILE_OPTIONS})
 target_precompile_headers(${APP_EXE_DIVIDE} REUSE_FROM ${APP_LIB_DIVIDE})
 
 if( ENABLE_MIMALLOC )
@@ -236,6 +239,7 @@ if( BUILD_TESTING_INTERNAL )
     foreach( APP_TEST_EXE ${APP_TEST_EXES} )
         add_dependencies(${APP_TEST_EXE} ${APP_EXE_DIVIDE}BinGenerated)
         target_link_libraries( ${APP_TEST_EXE} PRIVATE ${COMMON_LIBS} Catch2::Catch2 )
+        target_compile_options(${APP_TEST_EXE} PRIVATE ${DIVIDE_VECTOR_EXTENSION_COMPILE_OPTIONS})
         target_precompile_headers(${APP_TEST_EXE} REUSE_FROM ${APP_LIB_DIVIDE})
         if (MSVC_COMPILER)
             target_compile_options(${APP_TEST_EXE} PRIVATE /wd4866 /wd4868)
@@ -278,6 +282,7 @@ target_link_libraries(${APP_EXE_PROJECT_MANAGER} PRIVATE ${COMMON_LIBS}
 
 add_dependencies(${APP_EXE_PROJECT_MANAGER} ${APP_EXE_DIVIDE}BinGenerated)
 
+target_compile_options(${APP_EXE_PROJECT_MANAGER} PRIVATE ${DIVIDE_VECTOR_EXTENSION_COMPILE_OPTIONS})
 target_precompile_headers(${APP_EXE_PROJECT_MANAGER} REUSE_FROM ${APP_LIB_DIVIDE})
 
 foreach( APP_EXE ${APP_BUILD_EXES} )
