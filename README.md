@@ -66,6 +66,34 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 
 * Windows only (but with functional Linux platform code).
 
+## KTX2 migration (initial implementation)
+
+- KTX-Software is pinned to **4.4.2**. Screenshots are lossless, uncompressed
+  sRGB KTX2 files with bottom-left orientation, not PNG files.
+- Native rendering currently accepts single-image 2D KTX2 files: R/RG/RGBA
+  UNORM8, UNORM16, half-float and float, with their supplied mip counts.
+  Explicit bottom-left orientation and identity swizzle are required; unsupported
+  encodings fail rather than falling back to an ordinary-image backend path.
+- `DivideAlpha` metadata records the classifier version, alpha interpretation,
+  thresholds and classification. Transparent (0–1) and translucent (2–250)
+  categories each tolerate four pixels independently. All-zero opacity logs an
+  error and is transparent only. Missing classification is unknown until decoded
+  base-level pixels are classified; synthetic and data alpha are excluded.
+- The payload reader supports arrays, cubes and volumes, but rendering upload
+  integration for those topologies is not yet enabled.
+- **Still pending:** automatic source import, semantic mip generation,
+  content-addressed caching, capability-aware compression/transcoding,
+  consumer/DDS migration and removal of legacy image libraries.
+
+Import-codec selection for subsequent migration phases: LodePNG
+(`e584a8490db1b76b81bf298c11c09d3b55d9c270`) for 8/16-bit PNG,
+libjpeg-turbo 3.2.0 for JPEG, existing SDL's native BMP decoder, and DirectXTex
+(`1acf4ebe6330e06b7eb52e8db63d4f824ad77427`) for TGA/DDS/Radiance HDR.
+DirectXTex is the non-header-only exception needed for maintained, complete DDS
+precision/BC support; it belongs to import tooling, not backend texture loading.
+These additional codecs have not yet been integrated. KTX2 writing does not
+require an additional screenshot codec.
+
 ## Screenshots
 Framework Screenshot
 ![Framework Screenshot](http://divide-studio.co.uk/Editor.png)

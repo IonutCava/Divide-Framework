@@ -34,6 +34,7 @@
 #define DVD_UTILITY_IMAGETOOLS_H
 
 #include "ImageToolsFwd.h"
+#include "KTXImage.h"
 
 namespace Divide {
 namespace ImageTools {
@@ -181,9 +182,13 @@ struct ImageData final : NonCopyable
     PROPERTY_R(bool, hasDummyAlphaChannel, false);
     /// If true, the initial passed in data was either null or the size was 0
     PROPERTY_R(bool, hasDummyData, false);
+    PROPERTY_R(bool, isKTXImage, false);
+    PROPERTY_R(bool, ktxSRGB, false);
+    PROPERTY_R(AlphaClassification, ktxAlpha);
 
   protected:
     friend class ImageDataInterface;
+    [[nodiscard]] bool loadKTX(const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
 
@@ -226,4 +231,3 @@ struct ImageData final : NonCopyable
 }  // namespace Divide
 
 #endif //DVD_UTILITY_IMAGETOOLS_H
-

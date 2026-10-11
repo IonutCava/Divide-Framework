@@ -252,6 +252,10 @@ namespace Divide
                 // Attempt to load the current entry
                 if ( !loadFile( currentTextureFullPath, Util::Trim(currentTextureFile), dataStorage ) )
                 {
+                    if (dataStorage.isKTXImage() || hasExtension(ResourcePath{Util::Trim(currentTextureFile)}, "ktx2"))
+                    {
+                        return false;
+                    }
                     // Invalid texture files are not handled yet, so stop loading
                     continue;
                 }
@@ -264,8 +268,25 @@ namespace Divide
                 // Create a new Rendering API-dependent texture object
                 _descriptor._baseFormat = dataStorage.format();
                 _descriptor._dataType = dataStorage.dataType();
+                if (dataStorage.isKTXImage())
+                {
+                    if (_descriptor._texType != TextureType::TEXTURE_2D || _descriptor._msaaSamples != 0u)
+                    {
+                        Console::errorfn("Native KTX2 rendering currently requires a non-MSAA 2D texture: {}", assetName());
+                        return false;
+                    }
+                    const auto& dimensions = dataStorage.dimensions(0u);
+                    const auto maxSize = GFXDevice::GetDeviceInformation()._maxTextureSize;
+                    if (dimensions.width > maxSize || dimensions.height > maxSize)
+                    {
+                        Console::errorfn("KTX2 texture exceeds device dimensions: {}", assetName());
+                        return false;
+                    }
+                    _descriptor._packing = dataStorage.ktxSRGB() ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED;
+                    _descriptor._mipMappingState = MipMappingState::MANUAL;
+                }
                 // Uploading to the GPU dependents on the rendering API
-                if (createWithData( dataStorage, {}) != ImageUsage::SHADER_READ )
+                if (createWithData( dataStorage, dataStorage.isKTXImage() ? PixelAlignment{._alignment = 1u} : PixelAlignment{}) != ImageUsage::SHADER_READ )
                 {
                     DIVIDE_UNEXPECTED_CALL();
                 }
@@ -304,6 +325,11 @@ namespace Divide
 
         if ( !fileExists( path / name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor._textureOptions ) )
         {
+            if (hasExtension(ResourcePath{name}, "ktx2") || fileData.isKTXImage())
+            {
+                Console::errorfn("Unable to load native KTX2 texture: {}", path / name);
+                return false;
+            }
             if ( fileData.layerCount() > 0 )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LAYER_LOAD" ), name );
@@ -313,6 +339,11 @@ namespace Divide
             Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOAD" ), name );
             // missing_texture.jpg must be something that really stands out
             DIVIDE_EXPECTED_CALL( fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_texturesLocation, s_missingTextureFileName ) );
+        }
+        else if (fileData.isKTXImage())
+        {
+            _hasTransparency = !fileData.ignoreAlphaChannelTransparency() && fileData.ktxAlpha()._transparent;
+            _hasTranslucency = !fileData.ignoreAlphaChannelTransparency() && fileData.ktxAlpha()._translucent;
         }
         else if ( !fileData.hasDummyAlphaChannel() )
         {
@@ -344,6 +375,8 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
+        _sourceMipCount = imageData.isKTXImage() ? imageData.mipCount() : 0u;
+        SCOPE_EXIT { _sourceMipCount = 0u; };
         ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u), imageData.layerCount(), true);
         DIVIDE_UNUSED(ret);
 
@@ -695,7 +728,11 @@ namespace Divide
         DIVIDE_ASSERT( _width > 0u && _height > 0u );
         {
             //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
-            if ( _descriptor._mipMappingState != MipMappingState::OFF )
+            if (_sourceMipCount != 0u)
+            {
+                _mipCount = _sourceMipCount;
+            }
+            else if ( _descriptor._mipMappingState != MipMappingState::OFF )
             {
                 _mipCount = MipCount(_width, _height);
             }

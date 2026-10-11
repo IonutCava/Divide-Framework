@@ -891,6 +891,13 @@ namespace Divide
 
         const U16 numLayers = imageData.layerCount();
         const U16 numMips = imageData.mipCount();
+        const size_t copyAlignment = imageData.isKTXImage()
+            ? std::max<size_t>(4u, GetBytesPerPixel(_descriptor._dataType, _descriptor._baseFormat, _descriptor._packing))
+            : 1u;
+        const auto alignCopyOffset = [copyAlignment](const size_t offset)
+        {
+            return (offset + copyAlignment - 1u) & ~(copyAlignment - 1u);
+        };
         _mipData.resize(numLayers, vector<Mip>(numMips));
 
         U16 maxDepth = 0u;
@@ -902,7 +909,7 @@ namespace Divide
             for (U16 m = 0u; m < numMips; ++m)
             {
                 const ImageTools::LayerData* mip = layer.getMip(m);
-                totalSize += mip->_size;
+                totalSize = alignCopyOffset(totalSize) + mip->_size;
                 mips[m]._size = mip->_size;
                 mips[m]._dimensions = mip->_dimensions;
                 maxDepth = std::max(maxDepth, mip->_dimensions.depth);
@@ -924,6 +931,7 @@ namespace Divide
             for (U16 m = 0u; m < numMips; ++m)
             {
                 const ImageTools::LayerData* mip = layer.getMip(m);
+                dataOffset = alignCopyOffset(dataOffset);
                 memcpy(&target[dataOffset], mip->data(), mip->_size);
                 dataOffset += mip->_size;
             }
@@ -961,6 +969,7 @@ namespace Divide
                 for (U16 m = 0u; m < numMips; ++m)
                 {
                     const ImageTools::LayerData* mip = layer.getMip(m);
+                    dataOffset = alignCopyOffset(dataOffset);
 
                     VkBufferImageCopy copyRegion = {};
                     copyRegion.bufferOffset = dataOffset;

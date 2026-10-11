@@ -9,6 +9,11 @@
     "boost-functional",
     "boost-asio",
     "stb",
+    {
+      "name": "ktx",
+      "version>=": "4.4.2",
+      "default-features": false
+    },
     "freetype",
     "fmt",
     "concurrentqueue",
@@ -93,6 +98,12 @@
     {
       "name": "wayland",
       "platform": "linux"
+    }
+  ],
+  "overrides": [
+    {
+      "name": "ktx",
+      "version": "4.4.2"
     }
   ]
 }

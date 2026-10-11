@@ -25,6 +25,7 @@ DISABLE_NON_MSVC_WARNING_POP()
 //#include <IL/ilut.h>
 
 #include <glm/detail/type_half.hpp>
+#include <fstream>
 
 #if !defined(IS_MACOS_BUILD)
 #include <nvtt/nvtt.h>
@@ -533,6 +534,17 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
     _name = name;
 
     ignoreAlphaChannelTransparency(!options._alphaChannelTransparency);
+
+    if (_isKTXImage)
+    {
+        Console::errorfn("KTX2 assets cannot be combined with comma-separated image inputs: {}", name);
+        return false;
+    }
+
+    if (hasExtension(_name, "ktx2"))
+    {
+        return loadKTX(_path, _name);
+    }
 
     // We can handle DDS files directly in a very FATAL way
     if (hasExtension(_name, Paths::Textures::g_ddsExtension))
@@ -1069,6 +1081,88 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
     return ret;
 }
 
+bool ImageData::loadKTX(const ResourcePath& path, const std::string_view name)
+{
+    // Cooked KTX2 assets are self-contained; no source image or authoring tool is required.
+    if (!_layers.empty())
+    {
+        Console::errorfn("KTX2 assets cannot be combined with comma-separated image inputs: {}", name);
+        return false;
+    }
+    std::ifstream stream;
+    if (readFile(path, name, FileType::BINARY, stream) != FileError::NONE)
+    {
+        return false;
+    }
+    stream.seekg(0, std::ios::end);
+    const auto length = stream.tellg();
+    if (length <= 0 || length > static_cast<std::streamoff>(KTX_IMAGE_BYTE_LIMIT))
+    {
+        return false;
+    }
+    stream.seekg(0, std::ios::beg);
+    std::vector<Byte> bytes(static_cast<size_t>(length));
+    if (!stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size())))
+    {
+        return false;
+    }
+    KTXImage image;
+    std::string error;
+    if (!LoadKTXImage(bytes, image, &error))
+    {
+        Console::errorfn("Unable to load KTX2 image {}: {}", name, error);
+        return false;
+    }
+    // Array/cube/volume upload integration follows separately from the native payload reader.
+    if (image._dimensions != 2u || image._isArray || image._layers != 1u || image._faces != 1u || image._depth != 1u)
+    {
+        Console::errorfn("KTX2 rendering currently requires a single 2D image: {}", name);
+        return false;
+    }
+    if (image._alphaInterpretation == KTXAlphaInterpretation::UNKNOWN)
+    {
+        const auto interpretation = image._components != 4u ? KTXAlphaInterpretation::SYNTHETIC
+            : ignoreAlphaChannelTransparency() ? KTXAlphaInterpretation::DATA : KTXAlphaInterpretation::OPACITY;
+        if (!ClassifyKTXImageAlpha(image, interpretation))
+        {
+            Console::errorfn("KTX2 image requires explicit alpha import metadata: {}", name);
+            return false;
+        }
+    }
+    _format = image._components == 1u ? GFXImageFormat::RED
+            : image._components == 2u ? GFXImageFormat::RG : GFXImageFormat::RGBA;
+    _dataType = image._componentType == KTXComponentType::UNORM_8 ? GFXDataFormat::UNSIGNED_BYTE
+              : image._componentType == KTXComponentType::UNORM_16 ? GFXDataFormat::UNSIGNED_SHORT
+              : image._componentType == KTXComponentType::FLOAT_16 ? GFXDataFormat::FLOAT_16 : GFXDataFormat::FLOAT_32;
+    _sourceDataType = image._componentType == KTXComponentType::UNORM_8 ? SourceDataType::BYTE
+                    : image._componentType == KTXComponentType::UNORM_16 ? SourceDataType::SHORT
+                    : image._componentType == KTXComponentType::FLOAT_16 ? SourceDataType::HALF : SourceDataType::FLOAT;
+    _bpp = image._components * (image._componentType == KTXComponentType::UNORM_8 ? 8u
+                            : image._componentType == KTXComponentType::FLOAT_32 ? 32u : 16u);
+    ImageLayer& layer = _layers.emplace_back();
+    for (U32 mip = 0u; mip < image._mips; ++mip)
+    {
+        const auto it = std::find_if(image._subresources.begin(), image._subresources.end(),
+                                    [mip](const KTXSubresource& resource) { return resource._mip == mip; });
+        if (it == image._subresources.end())
+        {
+            _layers.clear();
+            return false;
+        }
+        std::visit([&](const auto& pixels)
+        {
+            using T = typename std::decay_t<decltype(pixels)>::value_type;
+            DIVIDE_UNUSED(layer.allocateMip<T>(pixels.data(), pixels.size(), it->_width, it->_height, 1u, image._components));
+            layer.getMip(to_U8(mip))->_size = pixels.size() * sizeof(T);
+        }, it->_pixels);
+    }
+    _isKTXImage = true;
+    _ktxSRGB = image._srgb;
+    _ktxAlpha = image._alpha;
+    _hasDummyAlphaChannel = image._alphaInterpretation == KTXAlphaInterpretation::SYNTHETIC;
+    return true;
+}
+
 bool ImageData::loadDDS_NVTT([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
 {
     //ToDo: Use a better DDS loader
@@ -1391,11 +1485,16 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
         c = U8_MAX;
         return;
     }
+    if (_isKTXImage && comp >= NumChannels(_format))
+    {
+        c = 0u;
+        return;
+    }
 
     const LayerData* mip = _layers[layer].getMip(mipLevel);
 
     // Decompressed data is always UByte-RGBA
-    const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
+    const U32 pixelStride = IsCompressed(_format) ? 4 : _isKTXImage ? NumChannels(_format) : _bpp / 8;
     const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride) + comp;
     if (IsCompressed(_format))
     {
@@ -1416,11 +1515,16 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
             } break;
             case SourceDataType::HALF:
             {
-                c = HalfToU8Colour( static_cast<const glm::detail::hdata*>(mip->data())[idx] );
+                const auto value = static_cast<const glm::detail::hdata*>(mip->data())[idx];
+                const F32 normalized = glm::detail::toFloat32(value);
+                c = _isKTXImage ? to_U8(std::isfinite(normalized) ? std::clamp(normalized, 0.f, 1.f) * 255.f : 0.f)
+                               : HalfToU8Colour(value);
             } break;
             case SourceDataType::FLOAT:
             {
-                c = F32ToU8Colour( static_cast<const F32*>(mip->data())[idx] );
+                const F32 value = static_cast<const F32*>(mip->data())[idx];
+                c = _isKTXImage ? to_U8(std::isfinite(value) ? std::clamp(value, 0.f, 1.f) * 255.f : 0.f)
+                               : F32ToU8Colour(value);
             } break;
             case SourceDataType::UINT:
             {
@@ -1433,6 +1537,14 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
 
 void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, const U32 layer, const U8 mipLevel) const
 {
+    if (_isKTXImage)
+    {
+        getColourComponent(x, y, 0u, r, layer, mipLevel);
+        getColourComponent(x, y, 1u, g, layer, mipLevel);
+        getColourComponent(x, y, 2u, b, layer, mipLevel);
+        getColourComponent(x, y, 3u, a, layer, mipLevel);
+        return;
+    }
     assert(!IsCompressed(_format) || mipLevel == 0);
     assert(_layers.size() > layer);
 
@@ -1572,4 +1684,3 @@ bool SaveImageHDR(const ResourcePath& filename, const U16 width, const U16 heigh
     return stbi_write_hdr(filename.string().c_str(), width, height, numberOfComponents, imageData) == 1;
 }
 }  // namespace Divide::ImageTools
-

@@ -30,7 +30,7 @@ namespace Divide {
         };
 
         constexpr const char* g_imageExtensions[] = {
-            "png", "jpg", "jpeg", "tga", "raw", "dds"
+            "png", "jpg", "jpeg", "tga", "raw", "dds", "ktx2"
         };
 
         constexpr const char* g_soundExtensions[] = {

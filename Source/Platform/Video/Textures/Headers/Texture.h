@@ -165,6 +165,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         bool load( PlatformContext& context ) override;
         bool postLoad() override;
      protected:
+        U8 _sourceMipCount = 0u;
         /// Use STB to load a file into a Texture Object
         bool loadFile( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
         bool checkTransparency( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );

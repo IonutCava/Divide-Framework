@@ -24,6 +24,7 @@
 #include "Geometry/Material/Headers/ShaderComputeQueue.h"
 
 #include "Platform/File/Headers/FileManagement.h"
+#include "Utility/Headers/KTXImage.h"
 
 #include "Platform/Headers/PlatformRuntime.h"
 #include "Platform/Video/Headers/IMPrimitive.h"
@@ -3217,14 +3218,14 @@ namespace Divide
         return *_shaderComputeQueue;
     }
 
-    /// Extract the pixel data from the main render target's first colour attachment and save it as a TGA image
+    /// Save the main render target's first colour attachment as a lossless KTX2 image.
     void GFXDevice::screenshot( const std::string_view fileName, GFX::CommandBuffer& bufferInOut ) const
     {
         const RenderTarget* screenRT = _rtPool->getRenderTarget( RenderTargetNames::BACK_BUFFER );
         auto readTextureCmd = GFX::EnqueueCommand<GFX::ReadTextureCommand>( bufferInOut );
         readTextureCmd->_texture = screenRT->getAttachment(RTAttachmentType::COLOUR, ScreenTargets::ALBEDO )->texture();
         readTextureCmd->_pixelPackAlignment._alignment = 1u;
-        readTextureCmd->_callback = [fileName]( const ImageReadbackData& data )
+        readTextureCmd->_callback = [fileName = string(fileName)]( const ImageReadbackData& data )
         {
             if ( !data._data.empty() )
             {
@@ -3232,21 +3233,22 @@ namespace Divide
                 // Make sure we have a valid target directory
                 if ( createDirectory( Paths::g_screenshotPath ) != FileError::NONE )
                 {
-                    NOP();
+                    Console::errorfn( "Unable to create screenshot directory: {}", Paths::g_screenshotPath );
+                    return;
                 }
 
                 // Save to file
-                DIVIDE_EXPECTED_CALL
-                (
-                    ImageTools::SaveImage( ResourcePath( Util::StringFormat( "{}/{}_Date_{}.png", Paths::g_screenshotPath, fileName, CurrentDateTimeString().c_str() )),
+                if (!ImageTools::SaveKTXImage( ResourcePath( Util::StringFormat( "{}/{}_Date_{}.ktx2", Paths::g_screenshotPath, fileName, CurrentDateTimeString().c_str() )),
+                                           data._data,
                                            data._width,
                                            data._height,
                                            data._numComponents,
                                            data._bpp,
                                            data._sourceIsBGR,
-                                           data._data.data(),
-                                           ImageTools::SaveImageFormat::PNG )
-                );
+                                           true ))
+                {
+                    Console::errorfn("Unable to save KTX2 screenshot: {}", fileName);
+                }
             }
         };
     }

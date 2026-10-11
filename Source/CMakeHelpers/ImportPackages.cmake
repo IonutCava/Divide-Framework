@@ -30,6 +30,7 @@ endif()
 
 find_package(PkgConfig REQUIRED)
 find_package(Stb REQUIRED)
+find_package(Ktx 4.4.2 EXACT CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(concurrentqueue CONFIG REQUIRED)
@@ -172,6 +173,7 @@ set(EXTERNAL_LIBS
     ${LZMA_LIBRARY}
     ${CEGUI_LIBRARIES}
     fmt::fmt
+    KTX::ktx
     OptickCore
     EASTL
     OpenAL::OpenAL
@@ -211,4 +213,3 @@ if(WAYLAND_FOUND)
     add_compile_definitions(HAS_WAYLAND_LIB)
 endif()
 add_compile_definitions(CEGUI_STATIC)
-
