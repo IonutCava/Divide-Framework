@@ -2,7 +2,13 @@
 set(DIVIDE_COMPILE_OPTIONS "")
 set(PCH_COMPILE_OPTIONS "")
 set(THIRD_PARTY_COMPILE_OPTIONS "")
- 
+set(COMMON_NON_MSVC_DIVIDE_COMPILE_OPTIONS "")
+set(COMMON_NON_MSVC_THIRD_PARTY_COMPILE_OPTIONS "")
+set(CLANG_DIVIDE_COMPILE_OPTIONS "")
+set(CLANG_THIRD_PARTY_COMPILE_OPTIONS "")
+set(GNU_DIVIDE_COMPILE_OPTIONS "")
+set(GNU_THIRD_PARTY_COMPILE_OPTIONS "")
+
 include_directories( "${CMAKE_SOURCE_DIR}/Source" )
 include_directories( "${CMAKE_SOURCE_DIR}/Source/ThirdParty" )
 
@@ -38,7 +44,56 @@ include(CMakeHelpers/ConfigureSanitizers.cmake)
 include(CMakeHelpers/ImportPackages.cmake)
 include(CMakeHelpers/GlobSources.cmake)
 
-if( MSVC_COMPILER )
+list(APPEND COMMON_NON_MSVC_DIVIDE_COMPILE_OPTIONS -Wall
+                                                   -pedantic
+                                                   $<$<COMPILE_LANGUAGE:C,CXX>:-pthread>
+                                                   $<$<COMPILE_LANGUAGE:CXX>:-Wno-c++17-extensions>)
+
+list(APPEND COMMON_NON_MSVC_THIRD_PARTY_COMPILE_OPTIONS -Wno-parentheses
+                                                        -Wno-misleading-indentation
+                                                        -Wno-unused-variable
+                                                        -Wno-char-subscripts
+                                                        $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>)
+
+list(APPEND CLANG_DIVIDE_COMPILE_OPTIONS -Wno-macro-redefined         -Wno-clang-cl-pch
+                                         -Wno-old-style-cast          -Wno-format-nonliteral
+                                         -Wno-c++98-compat            -Wno-c++98-compat-pedantic
+                                         -Wno-global-constructors #Really now?
+                                         $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wno-cast-function-type-strict>
+                                         $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unknown-argument>
+                                         $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-undefined-func-template>
+                                         $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unused-command-line-argument>
+                                         $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-nullability-completeness>)
+
+list(APPEND CLANG_THIRD_PARTY_COMPILE_OPTIONS -Wno-reserved-macro-identifier         -Wno-documentation                            -Wno-nonportable-system-include-path
+                                              -Wno-documentation-unknown-command     -Wno-ignored-attributes                       -Wno-undef
+                                              -Wno-cast-qual                         -Wno-cast-align                               -Wno-cast-function-type
+                                              -Wno-sign-conversion                   -Wno-float-conversion                         -Wno-string-conversion
+                                              -Wno-string-plus-int                   -Wno-double-promotion                         -Wno-unused-member-function
+                                              -Wno-conditional-uninitialized         -Wno-implicit-int-conversion                  -Wno-implicit-float-conversion
+                                              -Wno-unsafe-buffer-usage               -Wno-covered-switch-default                   -Wno-unused-private-field
+                                              -Wno-missing-braces                    -Wno-gnu-zero-variadic-macro-arguments        -Wno-float-equal
+                                              -Wno-extra-semi                        -Wno-switch-enum -Wno-shadow-uncaptured-local -Wno-disabled-macro-expansion
+                                              -Wno-nullability-extension             -Wno-zero-as-null-pointer-constant            -Wno-suggest-override
+                                              -Wno-suggest-destructor-override       -Wno-reserved-identifier                      -Wno-implicit-int-float-conversion
+                                              -Wno-unknown-pragmas                   -Wno-strict-prototypes                        -Wno-unused-template
+                                              -Wno-unused-macros                     -Wno-shorten-64-to-32                         -Wno-missing-prototypes
+                                              -Wno-newline-eof                       -Wno-extra-semi-stmt                          -Wno-comma
+                                              -Wno-shadow                            -Wno-microsoft-enum-value                     -Wno-language-extension-token
+                                              -Wno-deprecated-dynamic-exception-spec -Wno-exit-time-destructors                    -Wno-shadow-field-in-constructor
+                                              -Wno-implicit-fallthrough              -Wno-inconsistent-missing-override            -Wno-inconsistent-missing-destructor-override
+                                              -Wno-deprecated-declarations           -Wno-deprecated-copy-with-dtor                -Wno-deprecated-copy-with-user-provided-dtor
+                                              -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
+                                              -Wno-padded                            -Wno-unused-but-set-variable
+                                              -Wno-unused-function )
+
+list(APPEND GNU_DIVIDE_COMPILE_OPTIONS -Warray-bounds=0)
+
+list(APPEND GNU_THIRD_PARTY_COMPILE_OPTIONS -Wno-format-overflow
+                                            -Wno-unused-result
+                                            -Wno-stringop-truncation)
+
+if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
 
    # Bit of a long one, but this is what happens when projects don't get built with /Wall.
    list(APPEND DIVIDE_COMPILE_OPTIONS /Wall
@@ -47,7 +102,13 @@ if( MSVC_COMPILER )
                                       /wd4605 #some defines don't really need to be in the PCH and command line at the same time. Some due, sure, but this causes more problems than it solves
                                       /wd4668 #sometimes we don't actually define preoprocessor macros and want them to be interpreted as 0
                                       $<$<CONFIG:Release>:/wd4711> # automatic inline expansion warning
-   )                                  
+   )
+
+   if( CLANG_MSVC_FRONTEND )
+       list(APPEND DIVIDE_COMPILE_OPTIONS ${CLANG_DIVIDE_COMPILE_OPTIONS})
+       list(APPEND THIRD_PARTY_COMPILE_OPTIONS ${CLANG_THIRD_PARTY_COMPILE_OPTIONS})
+       list(APPEND THIRD_PARTY_COMPILE_OPTIONS ${COMMON_NON_MSVC_THIRD_PARTY_COMPILE_OPTIONS})
+   endif()
 
    list(APPEND PCH_COMPILE_OPTIONS /bigobj
                                    /wd4005 #_WIN32_WINNT redefinition
@@ -71,29 +132,12 @@ if( MSVC_COMPILER )
 
 else() #MSVC_COMPILER
 
-    list(APPEND DIVIDE_COMPILE_OPTIONS -Wall
-                                       -pedantic
-                                       $<$<COMPILE_LANGUAGE:C,CXX>:-pthread>
-                                       $<$<COMPILE_LANGUAGE:CXX>:-Wno-c++17-extensions>
-    )
-
-    list(APPEND THIRD_PARTY_COMPILE_OPTIONS -Wno-unused-but-set-variable -Wno-parentheses
-                                            -Wno-misleading-indentation  -Wno-unused-variable
-                                            -Wno-unused-function         -Wno-char-subscripts
-                                            $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-copy>
-    )
+    list(APPEND DIVIDE_COMPILE_OPTIONS ${COMMON_NON_MSVC_DIVIDE_COMPILE_OPTIONS})
+    list(APPEND THIRD_PARTY_COMPILE_OPTIONS ${COMMON_NON_MSVC_THIRD_PARTY_COMPILE_OPTIONS})
 
     if( CLANG_COMPILER )
 
-        list(APPEND DIVIDE_COMPILE_OPTIONS -Wno-macro-redefined       -Wno-clang-cl-pch
-                                           -Wno-old-style-cast        -Wno-format-nonliteral
-                                           -Wno-c++98-compat          -Wno-c++98-compat-pedantic
-                                           -Wno-global-constructors #Really now?
-                                           $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wno-cast-function-type-strict>
-                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unknown-argument>
-                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-undefined-func-template>
-                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-unused-command-line-argument>
-                                           $<$<COMPILE_LANGUAGE:C,CXX>:-Wno-nullability-completeness>
+        list(APPEND DIVIDE_COMPILE_OPTIONS ${CLANG_DIVIDE_COMPILE_OPTIONS}
                                            $<$<COMPILE_LANGUAGE:C,CXX>:-fdeclspec>
         )
 
@@ -101,36 +145,13 @@ else() #MSVC_COMPILER
             list(APPEND EXTRA_LINK_FLAGS "$<$<COMPILE_LANGUAGE:C,CXX>:-fuse-ld=lld>")
         endif()
 
-        list(APPEND THIRD_PARTY_COMPILE_OPTIONS -Wno-reserved-macro-identifier         -Wno-documentation                            -Wno-nonportable-system-include-path
-                                                -Wno-documentation-unknown-command     -Wno-ignored-attributes                       -Wno-undef
-                                                -Wno-cast-qual                         -Wno-cast-align                               -Wno-cast-function-type
-                                                -Wno-sign-conversion                   -Wno-float-conversion                         -Wno-string-conversion
-                                                -Wno-string-plus-int                   -Wno-double-promotion                         -Wno-unused-member-function
-                                                -Wno-conditional-uninitialized         -Wno-implicit-int-conversion                  -Wno-implicit-float-conversion
-                                                -Wno-unsafe-buffer-usage               -Wno-covered-switch-default                   -Wno-unused-private-field
-                                                -Wno-missing-braces                    -Wno-gnu-zero-variadic-macro-arguments        -Wno-float-equal
-                                                -Wno-extra-semi                        -Wno-switch-enum -Wno-shadow-uncaptured-local -Wno-disabled-macro-expansion
-                                                -Wno-nullability-extension             -Wno-zero-as-null-pointer-constant            -Wno-suggest-override
-                                                -Wno-suggest-destructor-override       -Wno-reserved-identifier                      -Wno-implicit-int-float-conversion
-                                                -Wno-unknown-pragmas                   -Wno-strict-prototypes                        -Wno-unused-template
-                                                -Wno-unused-macros                     -Wno-shorten-64-to-32                         -Wno-missing-prototypes
-                                                -Wno-newline-eof                       -Wno-extra-semi-stmt                          -Wno-comma
-                                                -Wno-shadow                            -Wno-microsoft-enum-value                     -Wno-language-extension-token
-                                                -Wno-deprecated-dynamic-exception-spec -Wno-exit-time-destructors                    -Wno-shadow-field-in-constructor
-                                                -Wno-implicit-fallthrough              -Wno-inconsistent-missing-override            -Wno-inconsistent-missing-destructor-override
-                                                -Wno-deprecated-declarations           -Wno-deprecated-copy-with-dtor                -Wno-deprecated-copy-with-user-provided-dtor
-                                                -Wno-parentheses-equality              -Wno-return-type-c-linkage                    -Wno-missing-field-initializers
-                                                -Wno-padded
-        )
+        list(APPEND THIRD_PARTY_COMPILE_OPTIONS ${CLANG_THIRD_PARTY_COMPILE_OPTIONS})
 
     elseif( GNU_COMPILER )
-        list(APPEND THIRD_PARTY_COMPILE_OPTIONS -Wno-format-overflow
-                                                -Wno-unused-result
-                                                -Wno-stringop-truncation
-        )
+        list(APPEND THIRD_PARTY_COMPILE_OPTIONS ${GNU_THIRD_PARTY_COMPILE_OPTIONS})
 
         #Sadly, with array-bounds set to default, anything that uses EASTL will spam the build log
-        list(APPEND DIVIDE_COMPILE_OPTIONS -Warray-bounds=0)
+        list(APPEND DIVIDE_COMPILE_OPTIONS ${GNU_DIVIDE_COMPILE_OPTIONS})
     else()
         message( FATAL_ERROR "Unknow compiler type")
     endif()

@@ -1390,7 +1390,6 @@ namespace Divide
 
         if ( srcType != TextureType::COUNT && dstType != TextureType::COUNT )
         {
-
             U16 depth = 1u;
             if ( source->_descriptor._texType == TextureType::TEXTURE_3D )
             {
