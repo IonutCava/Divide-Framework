@@ -78,58 +78,6 @@ endif()
 find_path(expat_INCLUDE_DIR "expat.h")
 find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 
-set(NVTT_LIBRARIES "")
-
-if(NOT MAC_OS_BUILD)
-    find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
-
-    find_library(NVTT_LIBRARY_RELEASE NAMES nvtt PATH_SUFFIXES nvtt static shared)
-    find_library(NVTT_LIBRARY_DEBUG NAMES nvtt_d PATH_SUFFIXES nvtt static shared)
-
-    find_library(NVIMAGE_LIBRARY_RELEASE NAMES nvimage PATH_SUFFIXES nvtt static shared)
-    find_library(NVIMAGE_LIBRARY_DEBUG NAMES nvimage_d PATH_SUFFIXES nvtt static shared)
-
-    find_library(NVMATH_LIBRARY_RELEASE NAMES nvmath PATH_SUFFIXES nvtt static shared)
-    find_library(NVMATH_LIBRARY_DEBUG NAMES nvmath_d PATH_SUFFIXES nvtt static shared)
-
-    find_library(NVCORE_LIBRARY_RELEASE NAMES nvcore PATH_SUFFIXES nvtt static shared)
-    find_library(NVCORE_LIBRARY_DEBUG NAMES nvcore_d PATH_SUFFIXES nvtt static shared)
-
-    find_library(NVTHREAD_LIBRARY_RELEASE NAMES nvthread PATH_SUFFIXES nvtt static shared)
-    find_library(NVTHREAD_LIBRARY_DEBUG NAMES nvthread_d PATH_SUFFIXES nvtt static shared)
-
-    find_library(NVSQUISH_LIBRARY_RELEASE NAMES nvsquish squish PATH_SUFFIXES nvtt static shared)
-    find_library(NVSQUISH_LIBRARY_DEBUG NAMES nvsquish_d squish_d PATH_SUFFIXES nvtt static shared)
-
-    find_library(NVBC6H_LIBRARY_RELEASE NAMES bc6h PATH_SUFFIXES nvtt static shared)
-    find_library(NVBC6H_LIBRARY_DEBUG NAMES bc6h_d PATH_SUFFIXES nvtt static shared)
-
-    find_library(NVBC7_LIBRARY_RELEASE NAMES bc7 PATH_SUFFIXES nvtt static shared)
-    find_library(NVBC7_LIBRARY_DEBUG NAMES bc7_d PATH_SUFFIXES nvtt static shared)
-
-    set(LIBS_TO_SETUP "NVTT" "NVIMAGE" "NVCORE" "NVTHREAD" "NVBC7" "NVBC6H" "NVSQUISH" "NVMATH")
-
-    foreach(LIB ${LIBS_TO_SETUP})
-        if(${LIB}_LIBRARY_DEBUG)
-           set(${LIB}_LIBRARIES  optimized ${${LIB}_LIBRARY_RELEASE} debug ${${LIB}_LIBRARY_DEBUG})
-        else(${LIB}_LIBRARY_DEBUG)
-           set(${LIB}_LIBRARY_DEBUG ${${LIB}_LIBRARY_RELEASE})
-           set(${LIB}_LIBRARIES  optimized  ${${LIB}_LIBRARY_RELEASE} debug ${${LIB}_LIBRARY_DEBUG}) 
-        endif(${LIB}_LIBRARY_DEBUG)
-    endforeach(LIB ${LIBS_TO_SETUP})
-
-    set(NVTT_LIBRARIES
-        ${NVTT_LIBRARIES}
-        ${NVIMAGE_LIBRARIES}
-        ${NVCORE_LIBRARIES}
-        ${NVTHREAD_LIBRARIES}
-        ${NVBC7_LIBRARIES}
-        ${NVBC6H_LIBRARIES}
-        ${NVSQUISH_LIBRARIES}
-        ${NVMATH_LIBRARIES}
-    )
-endif()
-
 find_library(JASPER_LIBRARY NAMES jasper)
 find_library(JPEG_LIBRARY NAMES jpeg)
 find_library(JPEG12_LIBRARY NAMES jpeg12)
@@ -166,7 +114,6 @@ include_directories(
 include(ThirdParty/CMakeHelpers/ImportPackages.cmake)
 
 set(EXTERNAL_LIBS
-    ${NVTT_LIBRARIES}
     ${IL_LIBRARIES}
     ${ILU_LIBRARIES}
     ${ILUT_LIBRARIES}

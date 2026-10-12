@@ -57,8 +57,7 @@ namespace Divide
 
         TextureDescriptor texDescriptor{};
         texDescriptor._textureOptions._isNormalMap = true;
-        texDescriptor._textureOptions._useDDSCache = true;
-        texDescriptor._textureOptions._outputSRGB = false;
+        texDescriptor._textureOptions._useKTXCache = true;
         texDescriptor._textureOptions._alphaChannelTransparency = false;
 
         ResourceDescriptor<Texture> textureWaterCaustics( "Underwater Normal Map", texDescriptor );

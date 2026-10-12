@@ -342,11 +342,10 @@ bool Sky::load( PlatformContext& context )
     noiseSamplerMipMap._mipSampling = TextureMipSampling::LINEAR;
     noiseSamplerMipMap._anisotropyLevel = 8u;
     {
-        STUBBED("ToDo: Investigate why weather textures don't work well with DDS conversion using NVTT + STB -Ionut");
         TextureDescriptor textureDescriptor{};
         textureDescriptor._texType = TextureType::TEXTURE_3D;
         textureDescriptor._textureOptions._alphaChannelTransparency = false;
-        textureDescriptor._textureOptions._useDDSCache = false;
+        textureDescriptor._textureOptions._useKTXCache = false;
         textureDescriptor._mipMappingState = MipMappingState::AUTO;
 
         ResourceDescriptor<Texture> perlWorlDescriptor( "perlWorl", textureDescriptor );

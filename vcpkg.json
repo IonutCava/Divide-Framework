@@ -86,10 +86,6 @@
       ]
     },
     {
-      "name": "nvtt",
-      "platform": "!osx"
-    },
-    {
       "name": "date",
       "platform": "osx"
     },

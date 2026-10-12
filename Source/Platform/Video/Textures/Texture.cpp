@@ -36,7 +36,7 @@ namespace Divide
     SamplerDescriptor Texture::s_defaultSampler;
     Handle<Texture> Texture::s_defaultTexture2D = INVALID_HANDLE<Texture>;
     Handle<Texture> Texture::s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
-    bool Texture::s_useDDSCache = true;
+    bool Texture::s_useKTXCache = true;
 
     void Texture::OnStartup()
     {
@@ -80,9 +80,9 @@ namespace Divide
         ImageTools::OnShutdown();
     }
 
-    bool Texture::UseTextureDDSCache() noexcept
+    bool Texture::UseTextureKTXCache() noexcept
     {
-        return s_useDDSCache;
+        return s_useKTXCache;
     }
 
     Handle<Texture> Texture::DefaultTexture2D() noexcept
@@ -275,7 +275,8 @@ namespace Divide
                 // Attempt to load the current entry
                 if ( !loadFile( currentTextureFullPath, Util::Trim(currentTextureFile), dataStorage ) )
                 {
-                    if (dataStorage.isKTXImage() || hasExtension(ResourcePath{Util::Trim(currentTextureFile)}, "ktx2"))
+                    if (dataStorage.sourceListLayoutMismatch() || dataStorage.isKTXImage() ||
+                        hasExtension(ResourcePath{Util::Trim(currentTextureFile)}, "ktx2"))
                     {
                         return false;
                     }
@@ -426,7 +427,7 @@ namespace Divide
             if (target != GFXImageFormat::COUNT && supportsKTXGPUFormat(target, imageData))
             {
                 ImageTools::KTXGPUCacheOptions cache;
-                if (UseTextureDDSCache() && _descriptor._textureOptions._useDDSCache)
+                if (UseTextureKTXCache() && _descriptor._textureOptions._useKTXCache)
                 {
                     cache._directory = (Paths::Textures::g_metadataLocation / "KTX2" / "GPU").fileSystemPath();
                 }

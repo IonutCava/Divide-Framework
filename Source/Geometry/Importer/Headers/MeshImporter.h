@@ -77,7 +77,7 @@ namespace Divide {
             // Only Albedo/Diffuse should be sRGB
             // Normals, specular, etc should be in linear space
             PROPERTY_RW(bool, srgb, false);
-            PROPERTY_RW(bool, useDDSCache, false);
+            PROPERTY_RW(bool, useKTXCache, false);
             PROPERTY_RW(bool, isNormalMap, false);
             PROPERTY_RW(bool, alphaForTransparency, false);
             PROPERTY_RW(TextureWrap, wrapU, TextureWrap::REPEAT);

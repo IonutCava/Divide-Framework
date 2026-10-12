@@ -30,8 +30,8 @@ namespace Divide::ImageTools
     // FNV filenames are not security hashes: exact settings/source verify identity.
     // Each disk entry stores an extra exact copy of the source bytes to detect
     // key collisions, alongside canonical settings and the native KTX2 payload.
-    // Caller supplies a separate TextureData/KTX2 directory and maps legacy
-    // useDDSCache to _diskCache. Only single-file PNG/JPEG/24-bit BMP 2D sources
+    // Caller supplies a separate TextureData/KTX2 directory and maps
+    // useKTXCache to _diskCache. Only single-file PNG/JPEG/24-bit BMP 2D sources
     // accepted by KTXImporter are supported.
     // Precision and channel preservation policies are fixed and versioned in
     // the key; packed grayscale should request DATA alpha interpretation.

@@ -127,7 +127,7 @@ bool Terrain::load( PlatformContext& context )
 
     TextureDescriptor& noiseMediumDescriptor = textureNoiseMedium._propertyDescriptor;
     noiseMediumDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
-    noiseMediumDescriptor._textureOptions._useDDSCache = true;
+    noiseMediumDescriptor._textureOptions._useKTXCache = true;
     noiseMediumDescriptor._textureOptions._alphaChannelTransparency = false;
     noiseMediumDescriptor._textureOptions._isNormalMap = false;
 
@@ -269,28 +269,28 @@ bool Terrain::load( PlatformContext& context )
     albedoDescriptor._layerCount = to_U16(textures[to_base( TextureUsageType::ALBEDO_ROUGHNESS)].size());
     albedoDescriptor._textureOptions._alphaChannelTransparency = false; //roughness
     albedoDescriptor._textureOptions._isNormalMap = false;
-    albedoDescriptor._textureOptions._useDDSCache = true;
+    albedoDescriptor._textureOptions._useKTXCache = true;
 
     TextureDescriptor& blendMapDescriptor = textureBlendMap._propertyDescriptor;
     blendMapDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
     blendMapDescriptor._layerCount = to_U16(splatTextures.size());
     blendMapDescriptor._textureOptions._alphaChannelTransparency = false; //splat lookup
     blendMapDescriptor._textureOptions._isNormalMap = false;
-    blendMapDescriptor._textureOptions._useDDSCache = true;
+    blendMapDescriptor._textureOptions._useKTXCache = true;
 
     TextureDescriptor& normalDescriptor = textureNormalMaps._propertyDescriptor;
     normalDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
     normalDescriptor._layerCount = to_U16(textures[to_base( TextureUsageType::NORMAL)].size());
     normalDescriptor._textureOptions._alphaChannelTransparency = false; //not really needed
     normalDescriptor._textureOptions._isNormalMap = true;
-    normalDescriptor._textureOptions._useDDSCache = false;
+    normalDescriptor._textureOptions._useKTXCache = false;
 
     TextureDescriptor& extraDescriptor = textureExtraMaps._propertyDescriptor;
     extraDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
     extraDescriptor._layerCount = extraMapCount;
     extraDescriptor._textureOptions._alphaChannelTransparency = false; //who knows what we pack here?
     extraDescriptor._textureOptions._isNormalMap = false;
-    extraDescriptor._textureOptions._useDDSCache = true;
+    extraDescriptor._textureOptions._useKTXCache = true;
 
     ResourceDescriptor<Material> terrainMaterialDescriptor("terrainMaterial_" + name);
     Handle<Material> terrainMaterialHandle = CreateResource(terrainMaterialDescriptor);
@@ -359,7 +359,7 @@ bool Terrain::load( PlatformContext& context )
     heightMapDescriptor._packing = GFXImagePacking::UNNORMALIZED;
     heightMapDescriptor._mipMappingState = MipMappingState::OFF;
     heightMapDescriptor._textureOptions._alphaChannelTransparency = false;
-    heightMapDescriptor._textureOptions._useDDSCache = false;
+    heightMapDescriptor._textureOptions._useKTXCache = false;
 
     terrainMaterial->properties().isStatic(true);
     terrainMaterial->properties().isInstanced(true);

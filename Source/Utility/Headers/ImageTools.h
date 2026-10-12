@@ -172,17 +172,23 @@ struct ImageData final : NonCopyable
     [[nodiscard]] bool loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, U16 layerCount, U8 numComponents);
     [[nodiscard]] bool loadFromKTXMemory(std::span<const Byte> data);
     [[nodiscard]] bool loadFromKTXImage(const KTXImage& image);
+    // Lossless cooked KTX2 export of native typed single-2D imports only.
+    // Includes retained input/output and encoder copies in the shared budget.
+    // Compressed GPU copies and legacy direct DDS topologies are rejected;
+    // failure leaves output unchanged.
+    [[nodiscard]] bool encodeKTX(std::vector<Byte>& output, std::string* error = nullptr) const;
     [[nodiscard]] GFXImageFormat ktxGPUFormat(const KTXGPUCompressionOptions& options) const noexcept;
     [[nodiscard]] bool compressedKTXCopy(GFXImageFormat target, ImageData& output, const KTXGPUCacheOptions& cache = {}) const;
     /// creates this image instance from the specified data
     [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
-    [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
+    [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options);
 
     [[nodiscard]] FORCE_INLINE ResourcePath fullPath() const noexcept { return _path / _name; }
 
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
     PROPERTY_RW(bool, allowKTXSourceImport, true);
+    PROPERTY_R(bool, sourceListLayoutMismatch, false);
     /// If true, then the source image was probably RGB and we loaded it as RGBA
     PROPERTY_R(bool, hasDummyAlphaChannel, false);
     /// If true, the initial passed in data was either null or the size was 0
@@ -198,21 +204,13 @@ struct ImageData final : NonCopyable
     friend class ImageDataInterface;
     [[nodiscard]] bool loadKTX(const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool convertKTXImage(KTXImage& image, size_t retainedBytes, bool classifyAlpha);
-    [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
-    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
+    // Temporary DDS asset import codec, never an engine cache reader/writer.
+    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, bool typedImport, const ImportOptions& options);
 
    private:
-    struct LoadingData
-    {
-        U16 _fileIndex = 0u;
-        bool _loadedDDSData = false;
-        bool _createdDDSData = false;
-    };
-
     //Each entry is a separate mip map.
     vector<ImageLayer> _layers{};
     vector<U8> _decompressedData{};
-    LoadingData _loadingData{};
     /// the image path
     ResourcePath _path{};
     /// the actual image filename

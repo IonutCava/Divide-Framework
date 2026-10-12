@@ -889,7 +889,7 @@ void LoadSubMeshMaterial(Import::MaterialData& material,
             texture.texturePath(filePath);
             texture.operation(texOp);
             texture.srgb(srgb);
-            texture.useDDSCache(true);
+            texture.useKTXCache(true);
             texture.isNormalMap(usage == TextureSlot::NORMALMAP);
             texture.alphaForTransparency(usage == TextureSlot::UNIT0 ||
                                          usage == TextureSlot::UNIT1 ||

@@ -105,7 +105,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
         static void OnStartup();
         static void OnShutdown() noexcept;
-        [[nodiscard]] static bool UseTextureDDSCache() noexcept;
+        [[nodiscard]] static bool UseTextureKTXCache() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2D() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2DArray() noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
@@ -188,7 +188,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         virtual void submitTextureData(ImageUsage& crtUsageInOut);
 
     protected:
-        static bool s_useDDSCache;
+        static bool s_useKTXCache;
         static SamplerDescriptor s_defaultSampler;
         static Handle<Texture> s_defaultTexture2D;
         static Handle<Texture> s_defaultTexture2DArray;
@@ -200,9 +200,9 @@ namespace Attorney
     class TextureKernel
     {
         protected:
-        static void UseTextureDDSCache( const bool state ) noexcept
+        static void UseTextureKTXCache( const bool state ) noexcept
         {
-            Texture::s_useDDSCache = state;
+            Texture::s_useKTXCache = state;
         }
 
         friend class Divide::Kernel;

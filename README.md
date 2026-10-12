@@ -112,8 +112,18 @@ If you plan to use any parts of this code in a commercial product, a couple of t
   HDR/16-bit inputs are not quantized to feed the 8-bit Basis encoder.
   External Basis/supercompressed KTX2 inputs still require an explicit import
   step; this GPU-compression path consumes the existing lossless native masters.
+- DDS is an import format, not a cache format. Source and GPU-target caching
+  use KTX2 representations; the engine no longer generates DDS cache files.
+  Existing DDS assets remain readable through the temporary DevIL importer.
+  Supported single 2D DDS images enter the typed KTX pipeline after decoding;
+  other DDS formats/topologies retain their legacy import path until the
+  replacement codec is integrated.
+  `ImageData::encodeKTX` exports supported native single-2D images as lossless
+  KTX2 bytes, retaining precision, mip levels and alpha metadata. Legacy direct
+  DDS imports and GPU-compressed upload copies cannot be exported through it.
+  Typed DDS import and generated mip chains are limited to 32 MiB each.
 - **Still pending:** ordered multi-source array/cube importing,
-  consumer/DDS migration and removal of legacy image libraries.
+  remaining codec/consumer migration and removal of legacy image libraries.
 
 Import-codec selection: libpng **1.6.59** for 8/16-bit PNG
 (reuses the existing dependency; the pinned registry's LodePNG port is obsolete),
@@ -123,11 +133,14 @@ DirectXTex is the non-header-only exception needed for maintained, complete DDS
 precision/BC support; it belongs to import tooling, not backend texture loading.
 libpng, libjpeg-turbo and native SDL BMP decoding are integrated for single-source
 imports. BMP alpha/bitfield/other pixel encodings require explicit conversion;
-TGA/DDS/HDR remain on legacy paths until their codecs are integrated. Comma-separated source
+TGA/HDR and unsupported DDS layouts remain on legacy paths until their codecs are integrated. Comma-separated source
 lists likewise remain on the legacy path; native KTX2 files cannot be mixed with
-such lists. Legacy DDS/cache flags currently govern KTX2 disk caching for
-compatibility. Lossless master encoding uses the area-box mip filter; explicit
-legacy BC output-format requests do not override the capability/precision policy.
+such lists. Legacy lists must have matching formats, dimensions and mip layouts;
+incompatible mixed DDS/source-image lists require offline normalization.
+KTX cache controls replace DDS cache controls; old configuration
+keys remain readable for compatibility. Lossless master encoding uses the
+area-box mip filter. Obsolete DDS output-format, filter and asynchronous
+conversion options have been removed; KTX GPU compression uses the policy above.
 `_compressKTXForGPU=false` disables lossy GPU compression;
 `_preserveKTXCPUData=true` explicitly preserves exact GPU samples;
 `_allowLossyKTXData=true` permits compression of otherwise protected data channels.
@@ -193,7 +206,6 @@ I did try to comply with all of them, but I may have missed something.
     * Open-Asset-Importer-Library: https://github.com/assimp/assimp
     * STB: https://github.com/nothings/stb
     * meshoptimizer: https://github.com/zeux/meshoptimizer
-    * nvtt: https://github.com/castano/nvidia-texture-tool
     * Frexx CPP (C Preprocessor): https://github.com/bagder/fcpp
     * DevIL: https://openil.sourceforge.net
 * OpenAL-soft: https://github.com/kcat/openal-soft

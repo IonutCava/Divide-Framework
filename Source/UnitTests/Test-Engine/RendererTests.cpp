@@ -1,5 +1,8 @@
 #include "UnitTests/unitTestCommon.h"
 
+#include "Core/Headers/ByteBuffer.h"
+#include "Core/Headers/Configuration.h"
+#include "Geometry/Importer/Headers/MeshImporter.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
@@ -19,6 +22,120 @@
 
 namespace Divide
 {
+    TEST_CASE("Imported texture KTX cache policy preserves serialized material fields", "[ktx2][retire-dds][mesh-import]")
+    {
+        bool legacyLayout = false;
+        SECTION("Current serializer round trip") {}
+        SECTION("Legacy mesh texture binary layout remains readable")
+        {
+            legacyLayout = true;
+        }
+        for (U8 flags = 0u; flags < 16u; ++flags)
+        {
+            CAPTURE(flags);
+            Import::TextureEntry input;
+            input.textureName(Str<256>{"material-normal.ktx2"});
+            input.texturePath(ResourcePath{"Assets/Textures/retire-dds/"});
+            input.srgb((flags & 1u) != 0u);
+            input.useKTXCache((flags & 2u) != 0u);
+            input.isNormalMap((flags & 4u) != 0u);
+            input.alphaForTransparency((flags & 8u) != 0u);
+            input.wrapU(TextureWrap::CLAMP_TO_EDGE);
+            input.wrapV(TextureWrap::MIRROR_REPEAT);
+            input.wrapW(TextureWrap::CLAMP_TO_BORDER);
+            input.operation(TextureOperation::SIGNED_ADD);
+
+            ByteBuffer data;
+            if (!legacyLayout)
+            {
+                REQUIRE(input.serialize(data));
+            }
+            else
+            {
+                // The renamed cache flag must keep its slot between sRGB and normal-map flags.
+                data << input.textureName() << input.texturePath() << input.srgb() << input.useKTXCache();
+                data << input.isNormalMap() << input.alphaForTransparency();
+                data << to_U32(input.wrapU()) << to_U32(input.wrapV()) << to_U32(input.wrapW());
+                data << to_U32(input.operation());
+            }
+            constexpr U32 followingField = 0xA1B2C3D4u;
+            data << followingField;
+
+            Import::TextureEntry output;
+            output.srgb(!input.srgb());
+            output.useKTXCache(!input.useKTXCache());
+            output.isNormalMap(!input.isNormalMap());
+            output.alphaForTransparency(!input.alphaForTransparency());
+            REQUIRE(output.deserialize(data));
+            CHECK(output.textureName() == input.textureName());
+            CHECK(output.texturePath() == input.texturePath());
+            CHECK(output.srgb() == input.srgb());
+            CHECK(output.useKTXCache() == input.useKTXCache());
+            CHECK(output.isNormalMap() == input.isNormalMap());
+            CHECK(output.alphaForTransparency() == input.alphaForTransparency());
+            CHECK(output.wrapU() == input.wrapU());
+            CHECK(output.wrapV() == input.wrapV());
+            CHECK(output.wrapW() == input.wrapW());
+            CHECK(output.operation() == input.operation());
+            U32 trailer = 0u;
+            data >> trailer;
+            CHECK(trailer == followingField);
+            CHECK(data.bufferEmpty());
+        }
+    }
+
+    TEST_CASE("Texture cache configuration accepts legacy XML with KTX key precedence", "[ktx2][retire-dds][configuration]")
+    {
+        platformInitRunListener::PlatformInit();
+        const auto directory = std::filesystem::path("Cache") / ("KTX-config-test-" +
+            std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::create_directories(directory.parent_path());
+        REQUIRE(std::filesystem::create_directory(directory));
+        struct Cleanup
+        {
+            std::filesystem::path _path;
+            ~Cleanup() { std::error_code ec; std::filesystem::remove_all(_path, ec); }
+        } cleanup{directory};
+
+        struct Input
+        {
+            const char* _keys;
+            bool _initial;
+            bool _expected;
+        };
+        const Input cases[] =
+        {
+            {"<textureDDS>false</textureDDS>", true, false},
+            {"<textureDDS>true</textureDDS>", false, true},
+            {"<textureKTX>false</textureKTX>", true, false},
+            {"<textureKTX>true</textureKTX>", false, true},
+            {"<textureDDS>true</textureDDS><textureKTX>false</textureKTX>", true, false},
+            {"<textureDDS>false</textureDDS><textureKTX>true</textureKTX>", false, true},
+            {"", false, false},
+            {"", true, true}
+        };
+        for (const auto& input : cases)
+        {
+            CAPTURE(input._keys, input._initial);
+            {
+                std::ofstream file(directory / "config.xml");
+                REQUIRE(file.is_open());
+                file << "<config><debug><cache>" << input._keys << "</cache></debug></config>";
+                file.close();
+                REQUIRE(file.good());
+            }
+            Configuration config;
+            config.debug.cache.textureKTX = input._initial;
+            REQUIRE(XML::loadFromXML(config, ResourcePath{directory.string().c_str()}, "config.xml"));
+            CHECK(config.debug.cache.textureKTX == input._expected);
+            REQUIRE(XML::saveToXML(config, ResourcePath{directory.string().c_str()}, "export.xml"));
+            boost::property_tree::ptree exported;
+            XML::readXML(ResourcePath{(directory / "export.xml").string().c_str()}, exported);
+            CHECK(exported.get<bool>("config.debug.cache.textureKTX") == input._expected);
+            CHECK_FALSE(exported.get_child_optional("config.debug.cache.textureDDS"));
+        }
+    }
+
     TEST_CASE("KTX2 GPU format selection preserves precision and semantics", "[ktx2][gpu-compression]")
     {
         using namespace ImageTools;
@@ -901,6 +1018,96 @@ namespace Divide
                 }
             }
         }
+    }
+
+    TEST_CASE("ImageData KTX export retains typed precision supplied mips and opacity", "[ktx2][retire-dds][export]")
+    {
+        using namespace ImageTools;
+        for (const auto type : {KTXComponentType::UNORM_8, KTXComponentType::UNORM_16, KTXComponentType::FLOAT_32})
+        {
+            CAPTURE(type);
+            KTXImage source;
+            source._width = source._height = 4u;
+            source._components = 4u;
+            source._mips = 3u;
+            source._componentType = type;
+            source._srgb = type == KTXComponentType::UNORM_8;
+            source._alphaInterpretation = KTXAlphaInterpretation::OPACITY;
+            for (U32 mip = 0u; mip < source._mips; ++mip)
+            {
+                const U16 size = static_cast<U16>(4u >> mip);
+                KTXSubresource resource;
+                resource._mip = mip;
+                resource._width = resource._height = size;
+                const auto makePixels = [&]<typename T>(const T opaque, const T translucent)
+                {
+                    std::vector<T> pixels;
+                    for (U32 texel = 0u; texel < U32(size) * size; ++texel)
+                    {
+                        if constexpr (std::is_same_v<T, F32>)
+                        {
+                            pixels.insert(pixels.end(), {-1.25f + F32(texel), 4.125f + F32(mip), 0.1234567f});
+                        }
+                        else
+                        {
+                            const U32 scale = sizeof(T) == 1u ? 1u : 257u;
+                            pixels.insert(pixels.end(), {T((texel + 1u) * scale), T((mip + 3u) * scale), T(7u * scale + 1u)});
+                        }
+                        pixels.push_back(mip == 0u ? (texel < 6u ? T{0} : texel < 12u ? translucent : opaque)
+                                                   : mip == 1u ? opaque : translucent);
+                    }
+                    resource._pixels = std::move(pixels);
+                };
+                if (type == KTXComponentType::UNORM_8) { makePixels.operator()<U8>(255u, 127u); }
+                else if (type == KTXComponentType::UNORM_16) { makePixels.operator()<U16>(65535u, 32767u); }
+                else { makePixels.operator()<F32>(1.f, 0.375f); }
+                source._subresources.push_back(std::move(resource));
+            }
+            REQUIRE(ClassifyKTXImageAlpha(source, KTXAlphaInterpretation::OPACITY));
+            ImageData imported;
+            REQUIRE(imported.loadFromKTXImage(source));
+            const void* originalData = imported.data(0u, 0u);
+            std::vector<Byte> encoded{Byte{0x42}};
+            std::string error;
+            REQUIRE(imported.encodeKTX(encoded, &error));
+            CHECK(error.empty());
+            KTXImage decoded;
+            REQUIRE(LoadKTXImage(encoded, decoded, &error));
+            CHECK(decoded._componentType == type);
+            CHECK(decoded._srgb == source._srgb);
+            CHECK(decoded._width == source._width);
+            CHECK(decoded._height == source._height);
+            CHECK(decoded._mips == source._mips);
+            CHECK(decoded._components == source._components);
+            CHECK(decoded._alphaInterpretation == KTXAlphaInterpretation::OPACITY);
+            CHECK(decoded._alpha._transparentCount == source._alpha._transparentCount);
+            CHECK(decoded._alpha._translucentCount == source._alpha._translucentCount);
+            CHECK(decoded._alpha._opaqueCount == source._alpha._opaqueCount);
+            REQUIRE(decoded._subresources.size() == source._subresources.size());
+            for (size_t mip = 0u; mip < source._subresources.size(); ++mip)
+            {
+                CAPTURE(mip);
+                CHECK(decoded._subresources[mip]._mip == source._subresources[mip]._mip);
+                CHECK(decoded._subresources[mip]._width == source._subresources[mip]._width);
+                CHECK(decoded._subresources[mip]._height == source._subresources[mip]._height);
+                CHECK(decoded._subresources[mip]._pixels == source._subresources[mip]._pixels);
+            }
+            CHECK(imported.data(0u, 0u) == originalData);
+            CHECK(imported.mipCount() == source._mips);
+        }
+    }
+
+    TEST_CASE("ImageData KTX export failure preserves caller output", "[ktx2][retire-dds][export]")
+    {
+        ImageTools::ImageData empty;
+        std::vector<Byte> output{Byte{0x11}, Byte{0x22}, Byte{0x33}};
+        const auto original = output;
+        std::string error;
+        CHECK_FALSE(empty.encodeKTX(output, &error));
+        CHECK_FALSE(error.empty());
+        CHECK(output == original);
+        CHECK_FALSE(empty.encodeKTX(output));
+        CHECK(output == original);
     }
 
     TEST_CASE( "ImageData KTX memory helper preserves typed topology and fails transactionally", "[ktx2]" )

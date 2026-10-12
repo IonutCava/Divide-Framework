@@ -274,7 +274,8 @@ namespace Import
         dataOut << _textureName;
         dataOut << _texturePath;
         dataOut << _srgb;
-        dataOut << _useDDSCache;
+        // Same boolean slot as version 1's DDS cache preference; no layout change.
+        dataOut << _useKTXCache;
         dataOut << _isNormalMap;
         dataOut << _alphaForTransparency;
         dataOut << to_U32(_wrapU);
@@ -290,7 +291,7 @@ namespace Import
         dataIn >> _textureName;
         dataIn >> _texturePath;
         dataIn >> _srgb;
-        dataIn >> _useDDSCache;
+        dataIn >> _useKTXCache;
         dataIn >> _isNormalMap;
         dataIn >> _alphaForTransparency;
         dataIn >> data; _wrapU = static_cast<TextureWrap>(data);
@@ -512,7 +513,7 @@ namespace Import
                     textureDescriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
                 }
 
-                textureDescriptor._textureOptions._useDDSCache = tex.useDDSCache();
+                textureDescriptor._textureOptions._useKTXCache = tex.useKTXCache();
                 textureDescriptor._textureOptions._isNormalMap = tex.isNormalMap();
                 textureDescriptor._textureOptions._alphaChannelTransparency = tex.alphaForTransparency();
 

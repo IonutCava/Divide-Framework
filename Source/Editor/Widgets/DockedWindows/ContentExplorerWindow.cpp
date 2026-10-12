@@ -423,7 +423,7 @@ namespace Divide {
         textureResource.assetLocation(texturePath);
 
         TextureDescriptor& descriptor = textureResource._propertyDescriptor;
-        descriptor._textureOptions._useDDSCache = false;
+        descriptor._textureOptions._useKTXCache = false;
 
         return CreateResource(textureResource);
     }

@@ -43,29 +43,6 @@ namespace Divide
 
         [[nodiscard]] bool UseUpperLeftOrigin() noexcept;
 
-        enum class MipMapFilter : U8
-        {
-            BOX,
-            TRIANGLE,
-            KAISER,
-            COUNT
-        };
-
-        enum class ImageOutputFormat : U8 
-        {
-            BC1, //Will be BC1n for normal maps
-            BC1a,
-            BC2,
-            BC3,//Will be BC3n for normal maps
-            BC4,
-            BC5,
-            BC6,
-            BC7,
-            BC3_RGBM, //Not supported
-            AUTO,  // BC7 for textures, BC5 for normal maps, BC4 single channel images
-            COUNT
-        };
-
         struct ImportOptions
         {
             bool _useKTXPipeline{true};
@@ -73,15 +50,10 @@ namespace Divide
             // Packed data/scalar/RG textures are lossless unless opted in.
             bool _allowLossyKTXData{false};
             bool _preserveKTXCPUData{false};
-            bool _useDDSCache{true};
-            bool _waitForDDSConversion{false}; ///<If false, we will load the src image and convert to DDS in the background. If true, we will wait for the conversion first and load that instead
+            bool _useKTXCache{true}; ///< Persistent CPU/GPU KTX caches; conversion is synchronous.
             bool _skipMipMaps{false};
             bool _isNormalMap{false};
-            bool _fastCompression{false};
-            bool _outputSRGB{false};
             bool _alphaChannelTransparency{true}; ///< If false, the alpha channel represents arbitrary data (e.g. in splatmaps)
-            MipMapFilter _mipFilter{MipMapFilter::KAISER};
-            ImageOutputFormat _outputFormat{ImageOutputFormat::AUTO};
         };
 
         FWD_DECLARE_MANAGED_STRUCT(LayerData);
