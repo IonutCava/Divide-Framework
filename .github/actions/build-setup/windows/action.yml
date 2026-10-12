@@ -24,9 +24,14 @@ runs:
         ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
         
     - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64
+      shell: cmd
+      run: |
+        for /f "usebackq delims=" %%I in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSINSTALLDIR=%%I"
+        if not defined VSINSTALLDIR exit /b 1
+        call "%VSINSTALLDIR%\Common7\Tools\VsDevCmd.bat" -arch=amd64
+        for /f "delims=" %%V in ('set') do (
+          echo(%%V | findstr /b "=" >nul || >> "%GITHUB_ENV%" echo %%V
+        )
 
     - name: Clean workspace (self-hosted only)
       if: runner.self-hosted

@@ -44,17 +44,15 @@ jobs:
 
     steps:
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
-      
-    - name: Print dev cmd info
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-          arch: amd64
-      
+      uses: microsoft/setup-msbuild@v3
+
     - name: Print MSVC version
       id: msvc
       shell: cmd
       run: |
+        for /f "usebackq delims=" %%I in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSINSTALLDIR=%%I"
+        if not defined VSINSTALLDIR exit /b 1
+        call "%VSINSTALLDIR%\Common7\Tools\VsDevCmd.bat" -arch=amd64
         cl 2>&1 | findstr "Version" > msvc_version.txt
         set /p MSVC_VERSION=<msvc_version.txt
         echo "msvc_version=%MSVC_VERSION%" >> %GITHUB_OUTPUT%
@@ -63,6 +61,9 @@ jobs:
       id: clang
       shell: cmd
       run: |
+        for /f "usebackq delims=" %%I in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSINSTALLDIR=%%I"
+        if not defined VSINSTALLDIR exit /b 1
+        call "%VSINSTALLDIR%\Common7\Tools\VsDevCmd.bat" -arch=amd64
         clang --version > clang_version.txt
         set /p CLANG_VERSION=<clang_version.txt
         echo "clang_version=%CLANG_VERSION%" >> %GITHUB_OUTPUT%
