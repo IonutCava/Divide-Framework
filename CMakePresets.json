@@ -159,7 +159,8 @@
         "CMAKE_C_COMPILER": "clang-cl",
         "CMAKE_CXX_COMPILER": "clang-cl",
         "CMAKE_RC_COMPILER": "llvm-rc",
-        "CMAKE_RC_FLAGS": ""
+        "CMAKE_RC_FLAGS": "",
+        "CMAKE_NINJA_FORCE_RESPONSE_FILE": true
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
