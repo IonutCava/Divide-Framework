@@ -44,28 +44,28 @@ jobs:
 
     steps:
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
-      
-    - name: Print dev cmd info
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-          arch: amd64
-      
+      uses: microsoft/setup-msbuild@v3
+
     - name: Print MSVC version
       id: msvc
-      shell: cmd
+      shell: pwsh
       run: |
-        cl 2>&1 | findstr "Version" > msvc_version.txt
-        set /p MSVC_VERSION=<msvc_version.txt
-        echo "msvc_version=%MSVC_VERSION%" >> %GITHUB_OUTPUT%
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+        $msvcVersion = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion
+        if ([string]::IsNullOrWhiteSpace($msvcVersion)) { throw 'Unable to determine MSVC installation version from vswhere.' }
+        "msvc_version=$msvcVersion" >> $env:GITHUB_OUTPUT
 
     - name: Print CLANG version
       id: clang
-      shell: cmd
+      shell: pwsh
       run: |
-        clang --version > clang_version.txt
-        set /p CLANG_VERSION=<clang_version.txt
-        echo "clang_version=%CLANG_VERSION%" >> %GITHUB_OUTPUT%
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+        $vsInstallDir = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if ([string]::IsNullOrWhiteSpace($vsInstallDir)) { throw 'Unable to determine Visual Studio installation path from vswhere.' }
+        $clangPath = Join-Path $vsInstallDir 'VC\Tools\Llvm\x64\bin\clang.exe'
+        if (-not (Test-Path $clangPath)) { throw "clang.exe not found at '$clangPath'." }
+        $clangVersion = (& $clangPath --version | Select-Object -First 1)
+        "clang_version=$clangVersion" >> $env:GITHUB_OUTPUT
 
   build_msvc:
     needs: info_job
