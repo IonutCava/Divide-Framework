@@ -194,6 +194,7 @@ namespace Divide
         static void FlushPipelineBarriers(VkCommandBuffer cmdBuffer, VkDependencyInfo& pDependencyInfo);
 
     private:
+        [[nodiscard]] bool supportsKTXGPUFormat(GFXImageFormat format, const ImageTools::ImageData& image) const override;
         void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) override;
         void loadDataInternal( const std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) override;
         ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable ) override;

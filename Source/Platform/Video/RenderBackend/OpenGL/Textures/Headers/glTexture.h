@@ -57,6 +57,7 @@ class glTexture final : public Texture {
     static void Copy(const glTexture* source, U8 sourceSamples, const glTexture* destination, U8 destinationSamples, const CopyTexParams& params);
 
    protected:
+    [[nodiscard]] bool supportsKTXGPUFormat(GFXImageFormat format, const ImageTools::ImageData& image) const override;
     bool postLoad() override;
     void reserveStorage(bool makeImmutable);
     void loadDataInternal(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) override;

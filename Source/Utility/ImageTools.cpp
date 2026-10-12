@@ -27,6 +27,7 @@ DISABLE_NON_MSVC_WARNING_POP()
 
 #include <glm/detail/type_half.hpp>
 #include <fstream>
+#include <mutex>
 
 #if !defined(IS_MACOS_BUILD)
 #include <nvtt/nvtt.h>
@@ -1156,6 +1157,95 @@ bool ImageData::loadFromKTXMemory(const std::span<const Byte> bytes)
     return convertKTXImage(image, bytes.size(), false);
 }
 
+GFXImageFormat ImageData::ktxGPUFormat(const KTXGPUCompressionOptions& options) const noexcept
+{
+    if (!_isKTXImage || _dataType != GFXDataFormat::UNSIGNED_BYTE || _layers.empty())
+    {
+        return GFXImageFormat::COUNT;
+    }
+    KTXImage image;
+    image._compressed = IsCompressed(_format);
+    image._components = _format == GFXImageFormat::RED ? 1u : _format == GFXImageFormat::RG ? 2u : 4u;
+    image._dimensions = _ktxTextureType == TextureType::TEXTURE_3D ? 3u
+                      : (_ktxTextureType == TextureType::TEXTURE_1D || _ktxTextureType == TextureType::TEXTURE_1D_ARRAY) ? 1u : 2u;
+    image._depth = dimensions(0u).z;
+    image._srgb = _ktxSRGB;
+    image._alphaInterpretation = _ktxAlphaInterpretation;
+    return SelectKTXGPUFormat(image, options);
+}
+
+bool ImageData::compressedKTXCopy(const GFXImageFormat target, ImageData& output, const KTXGPUCacheOptions& cache) const
+{
+    if (!output._layers.empty() || !_isKTXImage || IsCompressed(_format) ||
+        _dataType != GFXDataFormat::UNSIGNED_BYTE || _layers.empty() ||
+        (_ktxTextureType != TextureType::TEXTURE_2D && _ktxTextureType != TextureType::TEXTURE_2D_ARRAY &&
+         _ktxTextureType != TextureType::TEXTURE_CUBE_MAP && _ktxTextureType != TextureType::TEXTURE_CUBE_ARRAY))
+    {
+        return false;
+    }
+    // Include upload preparation in serialization: otherwise many asset jobs
+    // could retain full native-input copies while waiting for the encoder.
+    static std::mutex preparationMutex;
+    const std::lock_guard preparationLock(preparationMutex);
+    KTXImage image;
+    image._width = dimensions(0u).x; image._height = dimensions(0u).y;
+    image._layers = _ktxLayerCount;
+    image._faces = IsCubeTexture(_ktxTextureType) ? 6u : 1u;
+    image._isArray = IsArrayTexture(_ktxTextureType);
+    image._mips = mipCount(); image._srgb = _ktxSRGB;
+    image._components = _format == GFXImageFormat::RED ? 1u : _format == GFXImageFormat::RG ? 2u : 4u;
+    image._alphaInterpretation = _ktxAlphaInterpretation; image._alpha = _ktxAlpha;
+    image._textureType = _ktxTextureType;
+    size_t bytes = 0u;
+    // Account for caller-owned native pixels, input copy, blocks and scratch
+    // before allocating. Encoder work itself is tiled and serialized.
+    U64 paddedTexels = 0u;
+    for (const auto& layer : _layers)
+    {
+        for (U8 mip = 0u; mip < mipCount(); ++mip)
+        {
+            const auto* data = layer.getMip(mip);
+            if (data->_dimensions.z != 1u || data->_size > KTX_IMAGE_BYTE_LIMIT - bytes) { return false; }
+            bytes += data->_size;
+            paddedTexels += U64((U32(data->_dimensions.x) + 3u) & ~3u) * ((U32(data->_dimensions.y) + 3u) & ~3u);
+        }
+    }
+    const U64 blocks = paddedTexels / 16u * (target == GFXImageFormat::BC4u ? 8u : 16u);
+    const U64 bookkeeping = U64(_layers.size()) * mipCount() * (sizeof(KTXSubresource) * 3u + 128u);
+    if (bytes * 3u + blocks * 2u + 48u * 1024u * 1024u + bookkeeping > KTX_IMAGE_BYTE_LIMIT) { return false; }
+    for (U8 mip = 0u; mip < mipCount(); ++mip)
+    {
+        for (U32 layer = 0u; layer < _layers.size(); ++layer)
+        {
+            const auto* data = _layers[layer].getMip(mip);
+            KTXSubresource resource;
+            resource._mip = mip; resource._layer = layer / image._faces; resource._face = layer % image._faces;
+            resource._width = data->_dimensions.x; resource._height = data->_dimensions.y;
+            const auto* pixels = static_cast<const U8*>(data->data());
+            resource._pixels = std::vector<U8>(pixels, pixels + data->_size);
+            image._subresources.push_back(std::move(resource));
+        }
+    }
+    KTXImage compressed;
+    if (!CompressKTXImageForGPU(image, target, compressed, nullptr, cache)) { return false; }
+    vector<ImageLayer> layers(_layers.size());
+    for (const auto& resource : compressed._subresources)
+    {
+        const auto& pixels = std::get<std::vector<U8>>(resource._pixels);
+        auto& layer = layers[resource._layer * image._faces + resource._face];
+        // Block payloads are bytes, not width*height*components texels.
+        DIVIDE_UNUSED(layer.allocateMip<U8>(pixels.data(), pixels.size(), resource._width, resource._height, 1u, 0u));
+    }
+    output._layers = std::move(layers);
+    output._format = target; output._dataType = _dataType; output._sourceDataType = _sourceDataType;
+    output._bpp = _bpp; output._isKTXImage = true; output._ktxSRGB = _ktxSRGB;
+    output._ktxAlpha = _ktxAlpha; output._ktxAlphaInterpretation = _ktxAlphaInterpretation;
+    output._ktxTextureType = _ktxTextureType; output._ktxLayerCount = _ktxLayerCount;
+    output._hasDummyAlphaChannel = _hasDummyAlphaChannel;
+    output._ignoreAlphaChannelTransparency = _ignoreAlphaChannelTransparency;
+    return true;
+}
+
 bool ImageData::loadFromKTXImage(const KTXImage& image)
 {
     if (!_layers.empty())
@@ -1337,6 +1427,7 @@ bool ImageData::convertKTXImage(KTXImage& image, const size_t retainedBytes, con
     _isKTXImage = true;
     _ktxSRGB = image._srgb;
     _ktxAlpha = image._alpha;
+    _ktxAlphaInterpretation = image._alphaInterpretation;
     _ktxTextureType = textureType;
     _ktxLayerCount = image._layers;
     _hasDummyAlphaChannel = image._alphaInterpretation == KTXAlphaInterpretation::SYNTHETIC;

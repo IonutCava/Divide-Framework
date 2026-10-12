@@ -167,7 +167,10 @@ inline size_t GetHash( const PropertyDescriptor<Texture>& descriptor ) noexcept
                         descriptor._textureOptions._skipMipMaps,
                         descriptor._textureOptions._outputFormat,
                         descriptor._textureOptions._outputSRGB,
-                        descriptor._textureOptions._useDDSCache
+                        descriptor._textureOptions._useDDSCache,
+                        descriptor._textureOptions._compressKTXForGPU,
+                        descriptor._textureOptions._allowLossyKTXData,
+                        descriptor._textureOptions._preserveKTXCPUData
                       );
 
     return hash;

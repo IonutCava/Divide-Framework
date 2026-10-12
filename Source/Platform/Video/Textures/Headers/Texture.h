@@ -110,6 +110,10 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] static Handle<Texture> DefaultTexture2DArray() noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
+        // Failed optional BC allocation restores native descriptor/mip state.
+        [[nodiscard]] static ImageUsage TryKTXCompressedUpload(TextureDescriptor& descriptor, U16& mipCount,
+                                                              U8& sourceMipCount, bool& allocationFailed,
+                                                              const std::function<ImageUsage()>& upload);
 
         /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
         ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
@@ -180,6 +184,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void loadDataInternal( std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable );
+        [[nodiscard]] virtual bool supportsKTXGPUFormat(GFXImageFormat, const ImageTools::ImageData&) const { return false; }
         virtual void submitTextureData(ImageUsage& crtUsageInOut);
 
     protected:

@@ -172,6 +172,8 @@ struct ImageData final : NonCopyable
     [[nodiscard]] bool loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, U16 layerCount, U8 numComponents);
     [[nodiscard]] bool loadFromKTXMemory(std::span<const Byte> data);
     [[nodiscard]] bool loadFromKTXImage(const KTXImage& image);
+    [[nodiscard]] GFXImageFormat ktxGPUFormat(const KTXGPUCompressionOptions& options) const noexcept;
+    [[nodiscard]] bool compressedKTXCopy(GFXImageFormat target, ImageData& output, const KTXGPUCacheOptions& cache = {}) const;
     /// creates this image instance from the specified data
     [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
     [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
@@ -188,6 +190,7 @@ struct ImageData final : NonCopyable
     PROPERTY_R(bool, isKTXImage, false);
     PROPERTY_R(bool, ktxSRGB, false);
     PROPERTY_R(AlphaClassification, ktxAlpha);
+    PROPERTY_R(KTXAlphaInterpretation, ktxAlphaInterpretation, KTXAlphaInterpretation::UNKNOWN);
     PROPERTY_R(TextureType, ktxTextureType, TextureType::TEXTURE_2D);
     PROPERTY_R(U16, ktxLayerCount, 1u);
 

@@ -15,6 +15,38 @@ namespace Divide
 {
     constexpr bool ENABLED_DEBUG_PRINTING = false;
 
+    bool vkTexture::supportsKTXGPUFormat(const GFXImageFormat format, const ImageTools::ImageData& image) const
+    {
+        const auto& state = VK_API::GetStateTracker();
+        if (state._device == nullptr || _descriptor._msaaSamples != 0u ||
+            (_descriptor._texType != TextureType::TEXTURE_2D && _descriptor._texType != TextureType::TEXTURE_2D_ARRAY &&
+             _descriptor._texType != TextureType::TEXTURE_CUBE_MAP && _descriptor._texType != TextureType::TEXTURE_CUBE_ARRAY))
+        {
+            return false;
+        }
+        const VkPhysicalDevice device = state._device->getVKPhysicalDevice();
+        const VkFormat vkFormat = VKUtil::InternalFormat(format, GFXDataFormat::UNSIGNED_BYTE,
+            image.ktxSRGB() ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED);
+        VkFormatProperties properties{};
+        vkGetPhysicalDeviceFormatProperties(device, vkFormat, &properties);
+        constexpr VkFormatFeatureFlags required = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+                                                  VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT |
+                                                  VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+        if ((properties.optimalTilingFeatures & required) != required) { return false; }
+        const bool cube = IsCubeTexture(_descriptor._texType);
+        VkImageFormatProperties limits{};
+        if (vkGetPhysicalDeviceImageFormatProperties(device, vkFormat, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            cube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0u, &limits) != VK_SUCCESS)
+        {
+            return false;
+        }
+        const auto& size = image.dimensions(0u);
+        return size.x <= limits.maxExtent.width && size.y <= limits.maxExtent.height &&
+               U32(image.ktxLayerCount()) * (cube ? 6u : 1u) <= limits.maxArrayLayers &&
+               image.mipCount() <= limits.maxMipLevels && (limits.sampleCounts & VK_SAMPLE_COUNT_1_BIT) != 0u;
+    }
+
     namespace
     {
         VkFlags GetFlagForUsage( const ImageUsage usage , const TextureDescriptor& descriptor) noexcept
@@ -468,12 +500,18 @@ namespace Divide
         _createdImageUsageMask = imageInfo.usage;
         {
             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
-            VK_CHECK( vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+            const VkResult allocationResult = vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
                                       &imageInfo,
                                       &vmaallocinfo,
                                       &_image->_image,
                                       &_image->_allocation,
-                                      &_image->_allocInfo ) );
+                                      &_image->_allocInfo );
+            if (allocationResult != VK_SUCCESS && _nativeKTX && IsCompressed(_descriptor._baseFormat))
+            {
+                _nativeAllocationFailed = true;
+                return ImageUsage::UNDEFINED;
+            }
+            VK_CHECK(allocationResult);
 
             auto imageName = Util::StringFormat( "{}_{}", resourceName().c_str(), _testRefreshCounter );
             vmaSetAllocationName( *VK_API::GetStateTracker()._allocatorInstance._allocator, _image->_allocation, imageName.c_str() );
@@ -906,7 +944,9 @@ namespace Divide
 
         const U16 numLayers = imageData.layerCount();
         const U16 numMips = imageData.mipCount();
-        const size_t copyAlignment = imageData.isKTXImage()
+        const size_t copyAlignment = IsCompressed(_descriptor._baseFormat)
+            ? (_descriptor._baseFormat == GFXImageFormat::BC4u ? 8u : 16u)
+            : imageData.isKTXImage()
             ? std::lcm<size_t>(4u, GetBytesPerPixel(_descriptor._dataType, _descriptor._baseFormat, _descriptor._packing))
             : 1u;
         const auto alignCopyOffset = [copyAlignment](const size_t offset)

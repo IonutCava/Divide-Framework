@@ -386,10 +386,67 @@ namespace Divide
         DIVIDE_ASSERT(crtUsageInOut != ImageUsage::UNDEFINED);
     }
 
+    ImageUsage Texture::TryKTXCompressedUpload(TextureDescriptor& descriptor, U16& mipCount,
+                                              U8& sourceMipCount, bool& allocationFailed,
+                                              const std::function<ImageUsage()>& upload)
+    {
+        const auto originalDescriptor = descriptor;
+        const U16 originalMips = mipCount;
+        const U8 originalSourceMips = sourceMipCount;
+        const ImageUsage result = upload();
+        if (result == ImageUsage::UNDEFINED)
+        {
+            descriptor = originalDescriptor;
+            mipCount = originalMips;
+            sourceMipCount = originalSourceMips;
+            allocationFailed = false;
+        }
+        return result;
+    }
+
     ImageUsage Texture::createWithData(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment)
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
+        if (imageData.isKTXImage() && _descriptor._textureOptions._compressKTXForGPU &&
+            !IsCompressed(imageData.format()))
+        {
+            ImageTools::KTXGPUCompressionOptions options;
+            options._semantic = _descriptor._textureOptions._isNormalMap ? ImageTools::KTXMipSemantic::NORMAL
+                              : (!_descriptor._textureOptions._alphaChannelTransparency ||
+                                 imageData.ktxAlphaInterpretation() == ImageTools::KTXAlphaInterpretation::DATA)
+                                ? ImageTools::KTXMipSemantic::DATA : ImageTools::KTXMipSemantic::COLOR;
+            options._allowLossyData = _descriptor._textureOptions._allowLossyKTXData;
+            options._preserveCPUData = _descriptor._textureOptions._preserveKTXCPUData;
+            options._sampledOnly = _descriptor._usageMask == (1u << to_base(ImageUsage::SHADER_READ)) &&
+                                   !_descriptor._allowRegionUpdates && _descriptor._msaaSamples == 0u;
+            options._bc4 = options._bc5 = options._bc7 = true;
+            const auto target = imageData.ktxGPUFormat(options);
+            ImageTools::ImageData compressed;
+            if (target != GFXImageFormat::COUNT && supportsKTXGPUFormat(target, imageData))
+            {
+                ImageTools::KTXGPUCacheOptions cache;
+                if (UseTextureDDSCache() && _descriptor._textureOptions._useDDSCache)
+                {
+                    cache._directory = (Paths::Textures::g_metadataLocation / "KTX2" / "GPU").fileSystemPath();
+                }
+                cache._semantic = options._semantic;
+                cache._allowLossyData = options._allowLossyData;
+                if (imageData.compressedKTXCopy(target, compressed, cache))
+                {
+                    const ImageUsage compressedUsage = TryKTXCompressedUpload(_descriptor, _mipCount, _sourceMipCount,
+                        _nativeAllocationFailed, [&] { return createWithData(compressed, PixelAlignment{._alignment = 1u}); });
+                    if (compressedUsage != ImageUsage::UNDEFINED) { return compressedUsage; }
+                    // Fall through to the native source exactly once: do not
+                    // recursively re-enter the compression selection path.
+                    Console::warnfn("KTX2 compressed allocation failed; retrying native upload: {}", assetName());
+                }
+                else
+                {
+                    Console::warnfn("KTX2 GPU compression failed or exceeded its budget; using native upload: {}", assetName());
+                }
+            }
+        }
         _sourceMipCount = imageData.isKTXImage() ? imageData.mipCount() : 0u;
         SCOPE_EXIT { _sourceMipCount = 0u; };
         if (imageData.isKTXImage())

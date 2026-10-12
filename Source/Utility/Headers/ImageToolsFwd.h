@@ -69,6 +69,10 @@ namespace Divide
         struct ImportOptions
         {
             bool _useKTXPipeline{true};
+            bool _compressKTXForGPU{true};
+            // Packed data/scalar/RG textures are lossless unless opted in.
+            bool _allowLossyKTXData{false};
+            bool _preserveKTXCPUData{false};
             bool _useDDSCache{true};
             bool _waitForDDSConversion{false}; ///<If false, we will load the src image and convert to DDS in the background. If true, we will wait for the conversion first and load that instead
             bool _skipMipMaps{false};

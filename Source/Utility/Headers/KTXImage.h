@@ -3,6 +3,7 @@
 #include "Platform/Video/Headers/RenderAPIEnums.h"
 
 #include <functional>
+#include <filesystem>
 #include <span>
 #include <string>
 #include <string_view>
@@ -83,6 +84,38 @@ namespace Divide::ImageTools
                                     std::string* error = nullptr,
                                     size_t decodedByteLimit = KTX_IMAGE_BYTE_LIMIT);
     enum class KTXMipSemantic : U8 { COLOR, NORMAL, DATA };
+    struct KTXGPUCompressionOptions
+    {
+        KTXMipSemantic _semantic = KTXMipSemantic::COLOR;
+        bool _allowLossyData = false;
+        bool _preserveCPUData = false;
+        bool _sampledOnly = true;
+        bool _bc4 = false;
+        bool _bc5 = false;
+        bool _bc7 = false;
+    };
+    struct KTXGPUCacheOptions
+    {
+        // Empty disables disk caching. Internal entries contain exact lossless
+        // identity and validated block payloads, not externally imported KTX2.
+        std::filesystem::path _directory;
+        // Hard-capped at 1 GiB; only this helper's versioned entries are evicted.
+        U64 _quotaBytes = 1024ull * 1024ull * 1024ull;
+        KTXMipSemantic _semantic = KTXMipSemantic::COLOR;
+        bool _allowLossyData = false;
+        bool _memoryCache = true;
+    };
+    // COUNT means retain the exact native format. No HDR encoder is used.
+    [[nodiscard]] GFXImageFormat SelectKTXGPUFormat(const KTXImage& image,
+                                                   const KTXGPUCompressionOptions& options) noexcept;
+    // Public libktx UASTC -> native BC blocks. Single encoder, one worker,
+    // bounded tile working budget, one <=16 MiB process-local target cache,
+    // optional atomic/quota-bounded persistent cache; failure leaves output
+    // unchanged. cacheHit reports reuse without invoking the encoder.
+    // Native authoring/cache data must never be replaced with this lossy result.
+    [[nodiscard]] bool CompressKTXImageForGPU(const KTXImage& input, GFXImageFormat target,
+                                             KTXImage& output, std::string* error = nullptr,
+                                             const KTXGPUCacheOptions& cache = {}, bool* cacheHit = nullptr);
     struct KTXMipOptions
     {
         KTXMipSemantic _semantic = KTXMipSemantic::COLOR;

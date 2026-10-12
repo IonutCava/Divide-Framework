@@ -19,6 +19,385 @@
 
 namespace Divide
 {
+    TEST_CASE("KTX2 GPU format selection preserves precision and semantics", "[ktx2][gpu-compression]")
+    {
+        using namespace ImageTools;
+        KTXImage image;
+        image._components = 4u;
+        image._alphaInterpretation = KTXAlphaInterpretation::OPACITY;
+        KTXGPUCompressionOptions options;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        options._bc4 = options._bc5 = options._bc7 = true;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::BC7);
+        image._srgb = true;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::BC7);
+        for (const auto type : {KTXComponentType::UNORM_16, KTXComponentType::FLOAT_16, KTXComponentType::FLOAT_32})
+        {
+            image._componentType = type;
+            CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        }
+        image._componentType = KTXComponentType::UNORM_8;
+        options._preserveCPUData = true;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        options._preserveCPUData = false;
+        options._sampledOnly = false;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        options._sampledOnly = true;
+        for (const U8 dimensions : {1u, 3u})
+        {
+            image._dimensions = dimensions;
+            CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        }
+        image._dimensions = 2u;
+        image._alphaInterpretation = KTXAlphaInterpretation::DATA;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        options._allowLossyData = true;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::BC7);
+        image._alphaInterpretation = KTXAlphaInterpretation::SYNTHETIC;
+        options._semantic = KTXMipSemantic::NORMAL;
+        options._allowLossyData = false;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::BC7);
+        options._semantic = KTXMipSemantic::DATA;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        options._semantic = KTXMipSemantic::NORMAL;
+        options._allowLossyData = true;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::BC7); // retain Z, not assumed reconstructed
+        image._srgb = false;
+        image._components = 2u;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT); // no verified RG normal reconstruction
+        options._semantic = KTXMipSemantic::DATA;
+        image._components = 1u;
+        options._allowLossyData = false;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        options._allowLossyData = true;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::BC4u);
+        image._components = 2u;
+        options._allowLossyData = false;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+        options._allowLossyData = true;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::BC5u);
+        options._bc5 = false;
+        CHECK(SelectKTXGPUFormat(image, options) == GFXImageFormat::COUNT);
+    }
+
+    TEST_CASE("KTX2 public encoder emits native GPU blocks for every cube array mip", "[ktx2][gpu-compression]")
+    {
+        using namespace ImageTools;
+        KTXImage input;
+        input._width = input._height = 5u;
+        input._components = 4u; input._layers = 2u; input._faces = 6u; input._isArray = true;
+        input._srgb = true; input._textureType = TextureType::TEXTURE_CUBE_ARRAY;
+        for (U32 layer = 0u; layer < input._layers; ++layer)
+        {
+            for (U32 face = 0u; face < input._faces; ++face)
+            {
+                KTXSubresource resource;
+                resource._layer = layer; resource._face = face; resource._width = resource._height = 5u;
+                std::vector<U8> pixels(5u * 5u * 4u, U8(20u + layer * 60u + face * 10u));
+                for (size_t alpha = 3u; alpha < pixels.size(); alpha += 4u) { pixels[alpha] = alpha < 24u ? 0u : 255u; }
+                resource._pixels = std::move(pixels);
+                input._subresources.push_back(std::move(resource));
+            }
+        }
+        REQUIRE(ClassifyKTXImageAlpha(input, KTXAlphaInterpretation::OPACITY));
+        REQUIRE(GenerateKTXMipmaps(input));
+        const auto masterPixels = std::get<std::vector<U8>>(input._subresources[0]._pixels);
+        KTXImage output;
+        std::string error;
+        REQUIRE(CompressKTXImageForGPU(input, GFXImageFormat::BC7, output, &error));
+        CHECK(error.empty());
+        CHECK(output._compressed);
+        CHECK(output._srgb);
+        CHECK(output._format == GFXImageFormat::BC7);
+        CHECK(output._textureType == TextureType::TEXTURE_CUBE_ARRAY);
+        CHECK(output._packing == GFXImagePacking::NORMALIZED_SRGB);
+        CHECK(output._mips == input._mips);
+        CHECK(output._alpha._transparentCount == input._alpha._transparentCount);
+        CHECK(output._alpha._opaqueCount == input._alpha._opaqueCount);
+        REQUIRE(output._subresources.size() == input._subresources.size());
+        for (size_t i = 0u; i < output._subresources.size(); ++i)
+        {
+            const auto& slice = output._subresources[i];
+            CHECK(slice._layer == input._subresources[i]._layer);
+            CHECK(slice._face == input._subresources[i]._face);
+            CHECK(slice._mip == input._subresources[i]._mip);
+            CHECK(std::get<std::vector<U8>>(slice._pixels).size() ==
+                size_t((slice._width + 3u) / 4u) * ((slice._height + 3u) / 4u) * 16u);
+        }
+        CHECK(std::get<std::vector<U8>>(input._subresources[0]._pixels) == masterPixels);
+        ImageData native, compressed;
+        REQUIRE(native.loadFromKTXImage(input));
+        REQUIRE(native.compressedKTXCopy(GFXImageFormat::BC7, compressed));
+        CHECK(compressed.layerCount() == 12u);
+        CHECK(compressed.ktxLayerCount() == 2u);
+        CHECK(compressed.mipCount() == input._mips);
+        CHECK(compressed.imageLayers()[0].getMip(0u)->_size == 64u);
+        CHECK(compressed.imageLayers()[0].getMip(2u)->_size == 16u);
+        CHECK(native.format() == GFXImageFormat::RGBA);
+        CHECK_FALSE(CompressKTXImageForGPU(input, GFXImageFormat::BC5u, output));
+        CHECK(output._format == GFXImageFormat::BC7);
+    }
+
+    TEST_CASE("KTX2 scalar and RG compression retain channel mapping", "[ktx2][gpu-compression]")
+    {
+        using namespace ImageTools;
+        // Decode native blocks, rather than merely checking a format label.
+        const auto constantBC4 = [](const std::vector<U8>& bytes, const size_t offset, const U8 expected)
+        {
+            std::array<U32, 8> palette{bytes[offset], bytes[offset + 1u]};
+            if (palette[0] > palette[1])
+            {
+                for (U32 i = 1u; i <= 6u; ++i) { palette[i + 1u] = ((7u - i) * palette[0] + i * palette[1]) / 7u; }
+            }
+            else
+            {
+                for (U32 i = 1u; i <= 4u; ++i) { palette[i + 1u] = ((5u - i) * palette[0] + i * palette[1]) / 5u; }
+                palette[6] = 0u; palette[7] = 255u;
+            }
+            U64 indices = 0u;
+            for (U32 i = 0u; i < 6u; ++i) { indices |= U64(bytes[offset + 2u + i]) << (8u * i); }
+            for (U32 i = 0u; i < 16u; ++i)
+            {
+                if (std::abs(I32(palette[(indices >> (3u * i)) & 7u]) - expected) > 2) { return false; }
+            }
+            return true;
+        };
+        for (const U8 components : {1u, 2u})
+        {
+            KTXImage image;
+            image._width = image._height = 4u; image._components = components;
+            KTXSubresource resource;
+            resource._width = resource._height = 4u;
+            std::vector<U8> pixels;
+            for (U32 texel = 0u; texel < 16u; ++texel)
+            {
+                pixels.push_back(63u);
+                if (components == 2u) { pixels.push_back(191u); }
+            }
+            resource._pixels = pixels;
+            image._subresources.push_back(std::move(resource));
+            REQUIRE(ClassifyKTXImageAlpha(image, KTXAlphaInterpretation::SYNTHETIC));
+            KTXImage compressed;
+            const auto format = components == 1u ? GFXImageFormat::BC4u : GFXImageFormat::BC5u;
+            REQUIRE(CompressKTXImageForGPU(image, format, compressed));
+            const auto& blocks = std::get<std::vector<U8>>(compressed._subresources[0]._pixels);
+            REQUIRE(blocks.size() == (components == 1u ? 8u : 16u));
+            CHECK(constantBC4(blocks, 0u, 63u));
+            if (components == 2u) { CHECK(constantBC4(blocks, 8u, 191u)); }
+            KTXImage warm;
+            REQUIRE(CompressKTXImageForGPU(image, format, warm));
+            CHECK(std::get<std::vector<U8>>(warm._subresources[0]._pixels) == blocks);
+            auto& changed = std::get<std::vector<U8>>(image._subresources[0]._pixels);
+            for (size_t i = 0u; i < changed.size(); i += components) { changed[i] = 127u; }
+            REQUIRE(CompressKTXImageForGPU(image, format, warm));
+            CHECK(constantBC4(std::get<std::vector<U8>>(warm._subresources[0]._pixels), 0u, 127u));
+        }
+        KTXImage tiled;
+        tiled._width = 517u; tiled._height = 517u; tiled._components = 2u;
+        KTXSubresource resource;
+        resource._width = 517u; resource._height = 517u;
+        std::vector<U8> pixels(517u * 517u * 2u);
+        for (U32 y = 0u; y < 517u; ++y)
+        {
+            for (U32 x = 0u; x < 517u; ++x)
+            {
+                pixels[(y * 517u + x) * 2u] = x < 512u ? 63u : 127u;
+                pixels[(y * 517u + x) * 2u + 1u] = y < 512u ? 191u : 63u;
+            }
+        }
+        resource._pixels = std::move(pixels);
+        tiled._subresources.push_back(std::move(resource));
+        KTXImage output;
+        REQUIRE(CompressKTXImageForGPU(tiled, GFXImageFormat::BC5u, output));
+        const auto& blocks = std::get<std::vector<U8>>(output._subresources[0]._pixels);
+        REQUIRE(blocks.size() == 130u * 130u * 16u);
+        CHECK(constantBC4(blocks, 0u, 63u));
+        CHECK(constantBC4(blocks, 128u * 16u, 127u));
+        CHECK(constantBC4(blocks, (130u + 128u) * 16u, 127u));
+        CHECK(constantBC4(blocks, (128u * 130u + 129u) * 16u + 8u, 63u));
+    }
+
+    TEST_CASE("KTX2 GPU compression rejects precision and budget loss transactionally", "[ktx2][gpu-compression]")
+    {
+        using namespace ImageTools;
+        KTXImage precise;
+        precise._width = precise._height = 1u; precise._components = 4u;
+        precise._componentType = KTXComponentType::FLOAT_16;
+        KTXSubresource resource;
+        resource._width = resource._height = 1u;
+        resource._pixels = std::vector<U16>{0x4000u, 0xBC00u, 0x3C00u, 0x3C00u};
+        precise._subresources.push_back(std::move(resource));
+        KTXImage output;
+        output._width = 17u;
+        CHECK_FALSE(CompressKTXImageForGPU(precise, GFXImageFormat::BC7, output));
+        CHECK(output._width == 17u);
+        KTXImage oversized;
+        oversized._width = oversized._height = 8192u; oversized._components = 4u;
+        KTXSubresource large;
+        large._width = large._height = 8192u;
+        // Reject declared working size before demanding a giant pixel buffer.
+        large._pixels = std::vector<U8>(4u, 255u);
+        oversized._subresources.push_back(std::move(large));
+        CHECK_FALSE(CompressKTXImageForGPU(oversized, GFXImageFormat::BC7, output));
+        CHECK(output._width == 17u);
+    }
+
+    TEST_CASE("KTX2 tiled encoding accepts a 2048 base without aggregate texel rejection", "[ktx2][gpu-compression]")
+    {
+        using namespace ImageTools;
+        KTXImage source;
+        source._width = source._height = 2048u; source._components = 1u;
+        source._subresources.push_back({0u, 0u, 0u, 0u, 2048u, 2048u, std::vector<U8>(2048u * 2048u, 127u)});
+        REQUIRE(ClassifyKTXImageAlpha(source, KTXAlphaInterpretation::SYNTHETIC));
+        KTXGPUCacheOptions cache;
+        cache._memoryCache = false;
+        cache._semantic = KTXMipSemantic::DATA;
+        cache._allowLossyData = true;
+        KTXImage compressed;
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC4u, compressed, nullptr, cache));
+        CHECK(compressed._format == GFXImageFormat::BC4u);
+        CHECK(compressed._alpha._skipped);
+        REQUIRE(compressed._subresources.size() == 1u);
+        CHECK(std::get<std::vector<U8>>(compressed._subresources[0]._pixels).size() == 512u * 512u * 8u);
+        CHECK(std::get<std::vector<U8>>(source._subresources[0]._pixels).back() == 127u);
+    }
+
+    TEST_CASE("KTX2 GPU disk target cache validates exact identity blocks and quota", "[ktx2][gpu-compression]")
+    {
+        using namespace ImageTools;
+        const auto directory = std::filesystem::path("Cache") / ("KTXGPU-test-" +
+            std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::create_directories(directory.parent_path());
+        REQUIRE(std::filesystem::create_directory(directory));
+        struct Cleanup
+        {
+            std::filesystem::path _path;
+            ~Cleanup() { std::error_code ec; std::filesystem::remove_all(_path, ec); }
+        } cleanup{directory};
+        KTXImage source;
+        source._width = source._height = 2u; source._components = 4u; source._srgb = true;
+        source._subresources.push_back({0u, 0u, 0u, 0u, 2u, 2u,
+            std::vector<U8>{32,64,128,1, 128,64,32,32, 64,128,32,255, 32,128,64,255}});
+        REQUIRE(ClassifyKTXImageAlpha(source, KTXAlphaInterpretation::OPACITY));
+        REQUIRE(GenerateKTXMipmaps(source));
+        const auto original = source._subresources[0]._pixels;
+        KTXGPUCacheOptions cache;
+        cache._directory = directory;
+        cache._memoryCache = false; // Prove persistent hits, not the process-local slot.
+        KTXImage first, warm;
+        bool hit = true;
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, first, nullptr, cache, &hit));
+        CHECK_FALSE(hit);
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK(hit);
+        CHECK(warm._srgb);
+        CHECK(warm._alpha._transparentCount == source._alpha._transparentCount);
+        CHECK(warm._alpha._translucentCount == source._alpha._translucentCount);
+        CHECK(warm._alphaInterpretation == KTXAlphaInterpretation::OPACITY);
+        REQUIRE(warm._subresources.size() == 2u);
+        for (size_t i = 0u; i < 2u; ++i)
+        {
+            CHECK(std::get<std::vector<U8>>(warm._subresources[i]._pixels).size() == 16u);
+            CHECK(warm._subresources[i]._pixels == first._subresources[i]._pixels);
+        }
+        CHECK(source._subresources[0]._pixels == original);
+        const auto entry = std::filesystem::directory_iterator(directory)->path();
+        const auto entrySize = std::filesystem::file_size(entry);
+        {
+            std::fstream corrupt(entry, std::ios::binary | std::ios::in | std::ios::out);
+            corrupt.seekg(-1, std::ios::end);
+            char byte = 0;
+            corrupt.read(&byte, 1u);
+            byte ^= 0x7F;
+            corrupt.seekp(-1, std::ios::end);
+            corrupt.write(&byte, 1u);
+            REQUIRE(corrupt.good());
+        }
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK_FALSE(hit);
+        CHECK(warm._subresources[0]._pixels == first._subresources[0]._pixels);
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK(hit);
+        // Corrupt exact source identity while leaving payload/header intact.
+        {
+            std::fstream corrupt(entry, std::ios::binary | std::ios::in | std::ios::out);
+            corrupt.seekp(32, std::ios::beg);
+            const char zero = 0;
+            corrupt.write(&zero, 1u);
+        }
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK_FALSE(hit);
+        cache._semantic = KTXMipSemantic::NORMAL;
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK_FALSE(hit);
+        cache._allowLossyData = true;
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK_FALSE(hit);
+        const auto unrelated = directory / "unrelated.entry";
+        { std::ofstream stream(unrelated); stream << "leave this file alone"; }
+        cache._quotaBytes = entrySize;
+        std::get<std::vector<U8>>(source._subresources[0]._pixels)[0] = 200u;
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK_FALSE(hit);
+        U64 ownedBytes = 0u;
+        size_t entries = 0u;
+        for (const auto& file : std::filesystem::directory_iterator(directory))
+        {
+            if (file.path().filename().string().starts_with("divide-ktx-gpu-v1-"))
+            {
+                ownedBytes += file.file_size(); ++entries;
+            }
+        }
+        CHECK(ownedBytes <= cache._quotaBytes);
+        CHECK(entries == 1u);
+        CHECK(std::filesystem::exists(unrelated));
+        cache._directory = unrelated; // Unwritable/non-directory cache is nonfatal.
+        REQUIRE(CompressKTXImageForGPU(source, GFXImageFormat::BC7, warm, nullptr, cache, &hit));
+        CHECK_FALSE(hit);
+        CHECK(warm._compressed);
+    }
+
+    TEST_CASE("KTX2 failed compressed allocation restores native upload state", "[ktx2][gpu-compression]")
+    {
+        TextureDescriptor descriptor;
+        descriptor._baseFormat = GFXImageFormat::RGBA;
+        descriptor._packing = GFXImagePacking::NORMALIZED_SRGB;
+        descriptor._mipMappingState = MipMappingState::AUTO;
+        descriptor._textureOptions._allowLossyKTXData = false;
+        U16 mips = 4u;
+        U8 sourceMips = 3u;
+        bool failed = false;
+        U32 attempts = 0u;
+        const auto result = Texture::TryKTXCompressedUpload(descriptor, mips, sourceMips, failed, [&]
+        {
+            ++attempts;
+            descriptor._baseFormat = GFXImageFormat::BC7;
+            descriptor._mipMappingState = MipMappingState::MANUAL;
+            descriptor._textureOptions._allowLossyKTXData = true;
+            mips = 1u; sourceMips = 0u; failed = true;
+            return ImageUsage::UNDEFINED;
+        });
+        CHECK(result == ImageUsage::UNDEFINED);
+        CHECK(attempts == 1u);
+        CHECK(descriptor._baseFormat == GFXImageFormat::RGBA);
+        CHECK(descriptor._packing == GFXImagePacking::NORMALIZED_SRGB);
+        CHECK(descriptor._mipMappingState == MipMappingState::AUTO);
+        CHECK_FALSE(descriptor._textureOptions._allowLossyKTXData);
+        CHECK(mips == 4u);
+        CHECK(sourceMips == 3u);
+        CHECK_FALSE(failed);
+        CHECK(Texture::TryKTXCompressedUpload(descriptor, mips, sourceMips, failed, [&]
+        {
+            ++attempts;
+            descriptor._baseFormat = GFXImageFormat::BC7;
+            descriptor._mipMappingState = MipMappingState::MANUAL;
+            return ImageUsage::SHADER_READ;
+        }) == ImageUsage::SHADER_READ);
+        CHECK(attempts == 2u);
+        CHECK(descriptor._baseFormat == GFXImageFormat::BC7);
+        CHECK(descriptor._mipMappingState == MipMappingState::MANUAL);
+    }
+
     TEST_CASE( "KTX2 independent alpha classification", "[ktx2]" )
     {
         using namespace ImageTools;

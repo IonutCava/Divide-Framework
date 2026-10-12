@@ -91,8 +91,28 @@ If you plan to use any parts of this code in a commercial product, a couple of t
   conversion concurrency is limited to two. Input/base-plus-mips are limited to
   32 MiB each; encoded payloads to 64 MiB. Disk failure falls back to the unified
   in-memory representation, never ordinary-image backend loading.
+- GPU uploads select a format supported by the active OpenGL/Vulkan device.
+  Eligible sampled 8-bit colour and XYZ normal textures use BC7 through
+  KTX-Software's public UASTC encoder/transcoder. BC4 (R) and BC5 (RG) require
+  explicit lossy-data permission; packed data remains lossless by default.
+  Original alpha classification, sRGB interpretation and supplied mip levels
+  are retained independently of compression.
+  BC7 uses 16 bytes per 4x4 block (versus 64 bytes for RGBA8); BC4/BC5 use
+  8/16 bytes per block. Tiny mip tails still occupy a complete block.
+  Block-aligned tile encoding bounds scratch memory for large textures.
+  GPU-target entries cache the native blocks separately from lossless masters,
+  keyed by exact source pixels, topology, target format and encoder policy.
+  Warm disk hits avoid encoding/transcoding; corrupt or unavailable entries
+  are rebuilt in memory. Cache publication is atomic and quota-limited.
+- CPU-readable, precision-sensitive 16-bit/float, writable, render-target and
+  region-update textures retain their native representation. Unsupported
+  compression targets fall back to that representation. There is no universal
+  fastest format: BC7 prioritizes channel/alpha fidelity and reduced bandwidth,
+  not maximum compression ratio or a guaranteed frame-rate improvement.
+  HDR/16-bit inputs are not quantized to feed the 8-bit Basis encoder.
+  External Basis/supercompressed KTX2 inputs still require an explicit import
+  step; this GPU-compression path consumes the existing lossless native masters.
 - **Still pending:** ordered multi-source array/cube importing,
-  capability-aware compression/transcoding,
   consumer/DDS migration and removal of legacy image libraries.
 
 Import-codec selection: libpng **1.6.59** for 8/16-bit PNG
@@ -107,8 +127,11 @@ TGA/DDS/HDR remain on legacy paths until their codecs are integrated. Comma-sepa
 lists likewise remain on the legacy path; native KTX2 files cannot be mixed with
 such lists. Legacy DDS/cache flags currently govern KTX2 disk caching for
 compatibility. Lossless master encoding uses the area-box mip filter; explicit
-legacy BC output-format and compression-quality requests are not yet implemented
-for KTX2. `_useKTXPipeline=false` is a temporary explicit migration opt-out.
+legacy BC output-format requests do not override the capability/precision policy.
+`_compressKTXForGPU=false` disables lossy GPU compression;
+`_preserveKTXCPUData=true` explicitly preserves exact GPU samples;
+`_allowLossyKTXData=true` permits compression of otherwise protected data channels.
+`_useKTXPipeline=false` is a temporary explicit migration opt-out.
 KTX2 writing does not require an additional screenshot codec.
 
 ## Screenshots

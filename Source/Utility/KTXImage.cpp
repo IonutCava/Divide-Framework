@@ -14,9 +14,31 @@
 #include <set>
 #include <type_traits>
 #include <tuple>
+#include <mutex>
+#include <fstream>
+#include <random>
 
 namespace Divide::ImageTools
 {
+    GFXImageFormat SelectKTXGPUFormat(const KTXImage& image, const KTXGPUCompressionOptions& options) noexcept
+    {
+        if (image._compressed || image._componentType != KTXComponentType::UNORM_8 ||
+            image._dimensions != 2u || image._depth != 1u || !options._sampledOnly ||
+            options._preserveCPUData || (image._components != 1u && image._components != 2u && image._components != 4u) ||
+            (options._semantic == KTXMipSemantic::NORMAL && image._components != 4u))
+        {
+            return GFXImageFormat::COUNT;
+        }
+        const bool data = options._semantic == KTXMipSemantic::DATA ||
+                          image._alphaInterpretation == KTXAlphaInterpretation::DATA || image._components != 4u;
+        if (data && !options._allowLossyData) { return GFXImageFormat::COUNT; }
+        if (!image._srgb && image._components == 1u && options._bc4) { return GFXImageFormat::BC4u; }
+        if (!image._srgb && image._components == 2u && options._bc5) { return GFXImageFormat::BC5u; }
+        // RGBA normal maps retain Z and genuine alpha: no implicit reconstruction.
+        if (image._components == 4u && options._bc7) { return GFXImageFormat::BC7; }
+        return GFXImageFormat::COUNT;
+    }
+
     namespace
     {
         struct TextureDeleter
@@ -121,6 +143,234 @@ namespace Divide::ImageTools
                 *error = message;
             }
             return false;
+        }
+
+        constexpr std::string_view GPU_CACHE_PREFIX = "divide-ktx-gpu-v1-";
+        constexpr std::array<char, 8> GPU_CACHE_MAGIC{'D','V','K','T','G','P','U','1'};
+        constexpr U64 GPU_HASH_SEED = 14695981039346656037ull;
+
+        U64 GPUHash(const std::span<const Byte> bytes, U64 hash = GPU_HASH_SEED)
+        {
+            for (const Byte byte : bytes) { hash = (hash ^ std::to_integer<U8>(byte)) * 1099511628211ull; }
+            return hash;
+        }
+
+        std::vector<Byte> GPUIdentity(const KTXImage& input, const GFXImageFormat target, const KTXGPUCacheOptions& options)
+        {
+            std::vector<Byte> identity;
+            size_t bytes = 160u + input._subresources.size() * 56u;
+            for (const auto& resource : input._subresources) { bytes += std::get<std::vector<U8>>(resource._pixels).size(); }
+            identity.reserve(bytes);
+            const auto append = [&](const U64 value)
+            {
+                for (U32 i = 0u; i < 8u; ++i) { identity.push_back(Byte((value >> (i * 8u)) & 255u)); }
+            };
+            // Schema, libktx version, channel policy, tile size, quality and
+            // semantics are part of identity, not merely the filename digest.
+            for (const U64 value : std::array<U64, 20>{1u, 40402u, 1u, 512u, to_base(target),
+                target == GFXImageFormat::BC7 ? U64(KTX_PACK_UASTC_LEVEL_SLOWER | KTX_PACK_UASTC_FAVOR_BC7_ERROR)
+                                             : U64(KTX_PACK_UASTC_LEVEL_DEFAULT),
+                to_base(options._semantic), options._allowLossyData, input._width, input._height, input._depth,
+                input._layers, input._faces, input._mips, input._components, input._dimensions,
+                input._isArray, input._srgb, to_base(input._alphaInterpretation), to_base(input._textureType)})
+            {
+                append(value);
+            }
+            for (const auto& resource : input._subresources)
+            {
+                for (const U64 value : {U64(resource._mip), U64(resource._layer), U64(resource._face),
+                                       U64(resource._depthSlice), U64(resource._width), U64(resource._height)})
+                {
+                    append(value);
+                }
+                const auto& pixels = std::get<std::vector<U8>>(resource._pixels);
+                append(pixels.size());
+                const auto* data = reinterpret_cast<const Byte*>(pixels.data());
+                identity.insert(identity.end(), data, data + pixels.size());
+            }
+            return identity;
+        }
+
+        KTXImage GPUImageHeader(const KTXImage& input, const GFXImageFormat target)
+        {
+            KTXImage result;
+            result._width = input._width; result._height = input._height;
+            result._layers = input._layers; result._faces = input._faces; result._mips = input._mips;
+            result._components = input._components; result._isArray = input._isArray;
+            result._srgb = input._srgb; result._native = true; result._compressed = true;
+            result._format = target; result._dataType = GFXDataFormat::UNSIGNED_BYTE;
+            result._packing = input._srgb ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED;
+            result._textureType = input._faces == 6u
+                ? input._isArray ? TextureType::TEXTURE_CUBE_ARRAY : TextureType::TEXTURE_CUBE_MAP
+                : input._isArray ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
+            result._alphaInterpretation = input._alphaInterpretation; result._alpha = input._alpha;
+            return result;
+        }
+
+        bool ReadGPUEntry(const std::filesystem::path& path, const std::span<const Byte> identity,
+                          const KTXImage& input, const GFXImageFormat target, const U64 payloadSize, KTXImage& output)
+        {
+            std::error_code ec;
+            if (std::filesystem::symlink_status(path, ec).type() != std::filesystem::file_type::regular || ec ||
+                std::filesystem::file_size(path, ec) != GPU_CACHE_MAGIC.size() + 24u + identity.size() + payloadSize || ec)
+            {
+                return false;
+            }
+            std::ifstream stream(path, std::ios::binary);
+            std::array<char, 8> magic{};
+            stream.read(magic.data(), magic.size());
+            const auto number = [&]()
+            {
+                std::array<Byte, 8> bytes{};
+                stream.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
+                return ReadLE(bytes, 0u, 8u);
+            };
+            const U64 identitySize = number(), storedSize = number(), storedHash = number();
+            if (!stream || magic != GPU_CACHE_MAGIC || identitySize != identity.size() || storedSize != payloadSize) { return false; }
+            std::array<Byte, 8192> compare{};
+            for (size_t offset = 0u; offset < identity.size();)
+            {
+                const size_t count = std::min(compare.size(), identity.size() - offset);
+                stream.read(reinterpret_cast<char*>(compare.data()), static_cast<std::streamsize>(count));
+                if (!stream || !std::equal(compare.begin(), compare.begin() + count, identity.begin() + offset)) { return false; }
+                offset += count;
+            }
+            KTXImage result = GPUImageHeader(input, target);
+            U64 hash = GPU_HASH_SEED;
+            const size_t blockBytes = target == GFXImageFormat::BC4u ? 8u : 16u;
+            for (const auto& resource : input._subresources)
+            {
+                KTXSubresource blocks;
+                blocks._mip = resource._mip; blocks._layer = resource._layer; blocks._face = resource._face;
+                blocks._width = resource._width; blocks._height = resource._height;
+                const size_t size = size_t((resource._width + 3u) / 4u) * ((resource._height + 3u) / 4u) * blockBytes;
+                blocks._pixels = std::vector<U8>(size);
+                auto& bytes = std::get<std::vector<U8>>(blocks._pixels);
+                stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(size));
+                if (!stream) { return false; }
+                hash = GPUHash({reinterpret_cast<const Byte*>(bytes.data()), bytes.size()}, hash);
+                result._subresources.push_back(std::move(blocks));
+            }
+            if (hash != storedHash || stream.peek() != std::char_traits<char>::eof()) { return false; }
+            output = std::move(result);
+            return true;
+        }
+
+        bool OwnedGPUEntry(const std::filesystem::path& path)
+        {
+            const std::string name = path.filename().string();
+            if (!name.starts_with(GPU_CACHE_PREFIX) || !name.ends_with(".entry")) { return false; }
+            const auto key = std::string_view(name).substr(GPU_CACHE_PREFIX.size(), name.size() - GPU_CACHE_PREFIX.size() - 6u);
+            return !key.empty() && key.size() <= 20u &&
+                   std::all_of(key.begin(), key.end(), [](char c) { return c >= '0' && c <= '9'; });
+        }
+
+        bool EvictGPUEntries(const std::filesystem::path& directory, const U64 quota, const U64 incoming)
+        {
+            struct Entry { std::filesystem::path _path; std::filesystem::file_time_type _time; U64 _bytes; };
+            std::vector<Entry> entries;
+            U64 total = incoming;
+            std::error_code ec;
+            for (std::filesystem::directory_iterator it(directory, ec), end; !ec && it != end; it.increment(ec))
+            {
+                if (!OwnedGPUEntry(it->path()) || it->symlink_status(ec).type() != std::filesystem::file_type::regular || ec)
+                {
+                    ec.clear(); continue;
+                }
+                if (entries.size() >= 4096u) { return false; }
+                const auto size = it->file_size(ec);
+                if (ec) { ec.clear(); continue; }
+                const auto time = it->last_write_time(ec);
+                if (ec) { ec.clear(); continue; }
+                total = size > U64_MAX - total ? U64_MAX : total + size;
+                entries.push_back({it->path(), time, size});
+            }
+            if (ec) { return false; }
+            std::sort(entries.begin(), entries.end(), [](const Entry& a, const Entry& b) { return a._time < b._time; });
+            for (const auto& entry : entries)
+            {
+                if (total <= quota) { break; }
+                if (std::filesystem::remove(entry._path, ec)) { total -= entry._bytes; }
+                ec.clear();
+            }
+            return total <= quota;
+        }
+
+        void PublishGPUEntry(const std::filesystem::path& path, const std::span<const Byte> identity,
+                             const KTXImage& image, const U64 payloadSize, const U64 requestedQuota)
+        {
+            const U64 quota = std::min<U64>(requestedQuota, 1024ull * 1024ull * 1024ull);
+            const U64 size = GPU_CACHE_MAGIC.size() + 24u + identity.size() + payloadSize;
+            if (size > quota || size > KTX_IMAGE_BYTE_LIMIT) { return; }
+            std::error_code ec;
+            const auto directory = path.parent_path();
+            std::filesystem::create_directories(directory, ec);
+            if (ec) { return; }
+            const U64 nonce = (U64(std::random_device{}()) << 32u) ^ std::random_device{}();
+            auto partial = path;
+            partial += "." + std::to_string(nonce) + ".part";
+            // Exclusive reservation, then same-directory rename: readers see
+            // either a complete validated entry or a miss, never partial bytes.
+            if (!std::filesystem::create_directory(partial, ec)) { return; }
+            struct Cleanup
+            {
+                std::filesystem::path _directory;
+                ~Cleanup()
+                {
+                    std::error_code ignored;
+                    std::filesystem::remove(_directory / "entry", ignored);
+                    std::filesystem::remove(_directory, ignored);
+                }
+            } cleanup{partial};
+            const auto pending = partial / "entry";
+            std::ofstream stream(pending, std::ios::binary | std::ios::trunc);
+            if (!stream) { return; }
+            const auto number = [&](const U64 value)
+            {
+                std::array<unsigned char, 8> bytes{};
+                for (U32 i = 0u; i < 8u; ++i) { bytes[i] = static_cast<unsigned char>(value >> (i * 8u)); }
+                stream.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+            };
+            U64 hash = GPU_HASH_SEED;
+            for (const auto& resource : image._subresources)
+            {
+                const auto& bytes = std::get<std::vector<U8>>(resource._pixels);
+                hash = GPUHash({reinterpret_cast<const Byte*>(bytes.data()), bytes.size()}, hash);
+            }
+            stream.write(GPU_CACHE_MAGIC.data(), GPU_CACHE_MAGIC.size());
+            number(identity.size()); number(payloadSize); number(hash);
+            stream.write(reinterpret_cast<const char*>(identity.data()), static_cast<std::streamsize>(identity.size()));
+            for (const auto& resource : image._subresources)
+            {
+                const auto& bytes = std::get<std::vector<U8>>(resource._pixels);
+                stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+            }
+            stream.flush();
+            if (!stream) { return; }
+            stream.close();
+            if (!stream) { return; }
+            // Serialize quota accounting and publication across engine processes.
+            // A busy/stale lock only disables this optional disk publication.
+            const auto publicationLock = directory / "divide-ktx-gpu-publication.lock";
+            if (!std::filesystem::create_directory(publicationLock, ec)) { return; }
+            struct UnlockPublication
+            {
+                std::filesystem::path _path;
+                ~UnlockPublication()
+                {
+                    std::error_code ignored;
+                    std::filesystem::remove(_path, ignored);
+                }
+            } unlockPublication{publicationLock};
+            if (!EvictGPUEntries(directory, quota, size)) { return; }
+            std::filesystem::rename(pending, path, ec);
+#if defined(_WIN32)
+            if (ec)
+            {
+                std::filesystem::remove(path, ec);
+                if (!ec) { std::filesystem::rename(pending, path, ec); }
+            }
+#endif
         }
 
         U8 FullMipCount(const KTXImage& image)
@@ -712,6 +962,188 @@ namespace Divide::ImageTools
         }
         output = std::move(image);
         if (error != nullptr) { error->clear(); }
+        return true;
+    }
+
+    bool CompressKTXImageForGPU(const KTXImage& input, const GFXImageFormat target,
+                               KTXImage& output, std::string* error, const KTXGPUCacheOptions& cache, bool* cacheHit)
+    {
+        if (cacheHit != nullptr) { *cacheHit = false; }
+        static std::mutex encoderMutex;
+        const std::lock_guard lock(encoderMutex);
+        // One process-local target entry, keyed by exact lossless pixels and
+        // topology (not a collision-prone filename hash). Encoder settings are
+        // fixed below and libktx is pinned; native disk masters stay lossless.
+        static KTXImage cachedInput, cachedOutput;
+        static KTXMipSemantic cachedSemantic = KTXMipSemantic::COLOR;
+        static bool cachedLossyData = false;
+        constexpr U64 cacheBudget = 16u * 1024u * 1024u;
+        U32 format = 0u;
+        U64 bytes = 0u;
+        if (!ValidateTyped(input, format, bytes, error)) { return false; }
+        if (input._componentType != KTXComponentType::UNORM_8 || input._dimensions != 2u ||
+            !((target == GFXImageFormat::BC7 && input._components == 4u) ||
+              (target == GFXImageFormat::BC4u && input._components == 1u && !input._srgb) ||
+              (target == GFXImageFormat::BC5u && input._components == 2u && !input._srgb)))
+        {
+            return Fail(error, "Incompatible KTX GPU compression target");
+        }
+        // UASTC is encoded in independent, block-aligned 512x512 tiles, so
+        // encoder scratch is bounded even for large mip chains/cube arrays.
+        constexpr U32 tileExtent = 512u;
+        constexpr U64 encoderBudget = 32u * 1024u * 1024u;
+        const size_t blockBytes = target == GFXImageFormat::BC4u ? 8u : 16u;
+        U64 texels = 0u;
+        for (const auto& resource : input._subresources)
+        {
+            texels += U64((U32(resource._width) + 3u) & ~3u) * ((U32(resource._height) + 3u) & ~3u);
+        }
+        const U64 blockBytesTotal = texels / 16u * blockBytes;
+        const U64 bookkeeping = U64(input._subresources.size()) * (sizeof(KTXSubresource) * 3u + 128u);
+        if (bytes * 3u + blockBytesTotal * 2u + cacheBudget + encoderBudget + bookkeeping > KTX_IMAGE_BYTE_LIMIT)
+        {
+            return Fail(error, "KTX GPU encoder working budget exceeded");
+        }
+        bool cacheMatch = cache._memoryCache && cachedSemantic == cache._semantic && cachedLossyData == cache._allowLossyData &&
+            cachedOutput._format == target && cachedOutput._compressed &&
+            cachedInput._width == input._width && cachedInput._height == input._height &&
+            cachedInput._layers == input._layers && cachedInput._faces == input._faces &&
+            cachedInput._mips == input._mips && cachedInput._components == input._components &&
+            cachedInput._isArray == input._isArray && cachedInput._srgb == input._srgb &&
+            cachedInput._alphaInterpretation == input._alphaInterpretation &&
+            cachedInput._subresources.size() == input._subresources.size();
+        if (cacheMatch)
+        {
+            for (size_t i = 0u; i < input._subresources.size(); ++i)
+            {
+                const auto& a = input._subresources[i];
+                const auto& b = cachedInput._subresources[i];
+                if (a._mip != b._mip || a._layer != b._layer || a._face != b._face ||
+                    a._width != b._width || a._height != b._height || a._pixels != b._pixels)
+                {
+                    cacheMatch = false;
+                    break;
+                }
+            }
+        }
+        if (cacheMatch)
+        {
+            KTXImage result = cachedOutput;
+            result._alphaInterpretation = input._alphaInterpretation;
+            result._alpha = input._alpha;
+            output = std::move(result);
+            if (cacheHit != nullptr) { *cacheHit = true; }
+            return true;
+        }
+        const auto remember = [&](const KTXImage& image)
+        {
+            if (cache._memoryCache &&
+                bytes + blockBytesTotal + U64(input._subresources.size()) * sizeof(KTXSubresource) * 2u <= cacheBudget)
+            {
+                cachedInput = KTXImage{};
+                cachedOutput = KTXImage{};
+                cachedInput = input; cachedOutput = image;
+                cachedSemantic = cache._semantic; cachedLossyData = cache._allowLossyData;
+            }
+        };
+        std::vector<Byte> identity;
+        std::filesystem::path cachePath;
+        if (!cache._directory.empty())
+        {
+            identity = GPUIdentity(input, target, cache);
+            cachePath = cache._directory / (std::string(GPU_CACHE_PREFIX) + std::to_string(GPUHash(identity)) + ".entry");
+            KTXImage hit;
+            if (ReadGPUEntry(cachePath, identity, input, target, blockBytesTotal, hit))
+            {
+                remember(hit);
+                output = std::move(hit);
+                if (cacheHit != nullptr) { *cacheHit = true; }
+                return true;
+            }
+        }
+        ktxBasisParams params{};
+        params.structSize = sizeof(params);
+        params.uastc = KTX_TRUE;
+        params.threadCount = 1u;
+        params.compressionLevel = KTX_ETC1S_DEFAULT_COMPRESSION_LEVEL;
+        // libktx 4.4.2's UASTC BC5 transcoder reads R and A, whereas its
+        // default two-component encoder places G in G. Explicitly preserve G
+        // in alpha; this is channel packing, not normal-map renormalization.
+        if (input._components == 2u) { std::memcpy(params.inputSwizzle, "rrrg", 4u); }
+        // Optimize BC7 reconstruction rather than an intermediate that is
+        // never sampled. Keep rate-distortion optimization disabled.
+        params.uastcFlags = target == GFXImageFormat::BC7
+            ? KTX_PACK_UASTC_LEVEL_SLOWER | KTX_PACK_UASTC_FAVOR_BC7_ERROR
+            : KTX_PACK_UASTC_LEVEL_DEFAULT;
+        const auto transcode = target == GFXImageFormat::BC7 ? KTX_TTF_BC7_RGBA
+                             : target == GFXImageFormat::BC4u ? KTX_TTF_BC4_R : KTX_TTF_BC5_RG;
+        KTXImage result = GPUImageHeader(input, target);
+        for (const auto& resource : input._subresources)
+        {
+            KTXSubresource compressed;
+            compressed._mip = resource._mip; compressed._layer = resource._layer; compressed._face = resource._face;
+            compressed._width = resource._width; compressed._height = resource._height;
+            const size_t blockWidth = (resource._width + 3u) / 4u;
+            compressed._pixels = std::vector<U8>(blockWidth * ((resource._height + 3u) / 4u) * blockBytes);
+            auto& blocks = std::get<std::vector<U8>>(compressed._pixels);
+            const auto& pixels = std::get<std::vector<U8>>(resource._pixels);
+            for (U32 y = 0u; y < resource._height; y += tileExtent)
+            {
+                for (U32 x = 0u; x < resource._width; x += tileExtent)
+                {
+                    const U32 width = std::min(tileExtent, U32(resource._width) - x);
+                    const U32 height = std::min(tileExtent, U32(resource._height) - y);
+                    std::vector<U8> tile(size_t(width) * height * input._components);
+                    for (U32 row = 0u; row < height; ++row)
+                    {
+                        std::memcpy(tile.data() + size_t(row) * width * input._components,
+                            pixels.data() + (size_t(y + row) * resource._width + x) * input._components,
+                            size_t(width) * input._components);
+                    }
+                    ktxTextureCreateInfo info{};
+                    info.vkFormat = format;
+                    info.baseWidth = width; info.baseHeight = height; info.baseDepth = 1u;
+                    info.numDimensions = 2u; info.numLevels = info.numLayers = info.numFaces = 1u;
+                    ktxTexture2* raw = nullptr;
+                    const auto status = ktxTexture2_Create(&info, KTX_TEXTURE_CREATE_ALLOC_STORAGE, &raw);
+                    const TextureOwner texture(raw);
+                    if (status != KTX_SUCCESS || !texture) { return Fail(error, "libktx GPU tile allocation failed"); }
+                    if (ktxTexture_SetImageFromMemory(ktxTexture(raw), 0u, 0u, 0u, tile.data(), tile.size()) != KTX_SUCCESS)
+                    {
+                        return Fail(error, "libktx GPU tile upload failed");
+                    }
+                    if (ktxTexture2_CompressBasisEx(raw, &params) != KTX_SUCCESS)
+                    {
+                        return Fail(error, "libktx UASTC tile encoding failed");
+                    }
+                    if (ktxTexture2_TranscodeBasis(raw, transcode, 0u) != KTX_SUCCESS)
+                    {
+                        return Fail(error, "libktx native BC tile transcoding failed");
+                    }
+                    ktx_size_t offset = 0u;
+                    const size_t rowBytes = size_t((width + 3u) / 4u) * blockBytes;
+                    const U32 rows = (height + 3u) / 4u;
+                    if (ktxTexture_GetImageOffset(ktxTexture(raw), 0u, 0u, 0u, &offset) != KTX_SUCCESS ||
+                        offset > raw->dataSize || rowBytes * rows > raw->dataSize - offset)
+                    {
+                        return Fail(error, "Invalid libktx native BC tile");
+                    }
+                    for (U32 row = 0u; row < rows; ++row)
+                    {
+                        std::memcpy(blocks.data() + ((size_t(y / 4u) + row) * blockWidth + x / 4u) * blockBytes,
+                            raw->pData + offset + row * rowBytes, rowBytes);
+                    }
+                }
+            }
+            result._subresources.push_back(std::move(compressed));
+        }
+        if (!cachePath.empty())
+        {
+            try { PublishGPUEntry(cachePath, identity, result, blockBytesTotal, cache._quotaBytes); }
+            catch (const std::exception&) { /* Disk failure never invalidates encoded GPU data. */ }
+        }
+        remember(result);
+        output = std::move(result);
         return true;
     }
 
