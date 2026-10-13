@@ -413,10 +413,10 @@ namespace Divide
             glswAddDirectiveToken( type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "", entry.c_str() );
         };
 
-        const auto AppendResourceBindingSlots = [&AppendToShaderHeader]( const RenderAPI targetAPI )
+        const auto AppendResourceBindingSlots = [&AppendToShaderHeader]( const bool targetOpenGL )
         {
 
-            if ( targetAPI == RenderAPI::OpenGL )
+            if ( targetOpenGL )
             {
                 const auto ApplyDescriptorSetDefines = [&AppendToShaderHeader]( const DescriptorSetUsage setUsage )
                 {
@@ -443,10 +443,7 @@ namespace Divide
             {
                 for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
                 {
-                    const DescriptorSetUsage usage = static_cast<DescriptorSetUsage>(i);
-                    // Vulkan orders sets by update frequency (see VKDescriptorSetIndex). Shaders keep using the usage names.
-                    const U8 setIndex = targetAPI == RenderAPI::Vulkan ? VKDescriptorSetIndex( usage ) : i;
-                    AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define {} {}", TypeUtil::DescriptorSetUsageToString( usage ), setIndex ).c_str() );
+                    AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define {} {}", TypeUtil::DescriptorSetUsageToString( static_cast<DescriptorSetUsage>(i) ), i ).c_str() );
                 }
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(set = SET, binding = BINDING)" );
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(set = SET, binding = BINDING, offset = OFFSET)" );
@@ -627,7 +624,7 @@ namespace Divide
         AppendToShaderHeader( ShaderType::COUNT, "#define REFLECTION_PROBE_RESOLUTION " + Util::to_string( reflectionProbeRes ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define REFLECTION_PROBE_MIP_COUNT " + Util::to_string( to_U32( std::log2( reflectionProbeRes ) ) ) );
 
-        AppendResourceBindingSlots( renderingAPI );
+        AppendResourceBindingSlots( renderingAPI == RenderAPI::OpenGL );
 
         for ( U8 i = 0u; i < to_base( TextureOperation::COUNT ); ++i )
         {
@@ -2103,7 +2100,7 @@ namespace Divide
             uniformBlock = "layout( ";
             if ( s_renderAPI == RenderAPI::Vulkan )
             {
-                uniformBlock.append( Util::StringFormat( "set = {}, ", VKDescriptorSetIndex( DescriptorSetUsage::PER_DRAW ) ) );
+                uniformBlock.append( Util::StringFormat( "set = {}, ", to_base( DescriptorSetUsage::PER_DRAW ) ) );
             }
             uniformBlock.append( "binding = {}, std140 ) uniform {} {{" );
 

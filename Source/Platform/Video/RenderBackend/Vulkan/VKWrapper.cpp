@@ -292,7 +292,7 @@ namespace Divide
         };
 
         // What is currently bound on the active command buffer for a given bind point (graphics/compute).
-        // Indexed by Vulkan set index (see VKDescriptorSetIndex), NOT by DescriptorSetUsage.
+        // Indexed by DescriptorSetUsage (which is also the Vulkan set index).
         struct BoundDescriptorState
         {
             std::array<VkDescriptorSet, to_base( DescriptorSetUsage::COUNT )> _sets{};
@@ -1828,7 +1828,7 @@ namespace Divide
                     VK_PROFILE( vkCmdPushDescriptorSetKHR, cmdBuffer,
                                                            pipeline._bindPoint,
                                                            pipeline._vkPipelineLayout,
-                                                           VKDescriptorSetIndex( DescriptorSetUsage::PER_DRAW ),
+                                                           to_base( DescriptorSetUsage::PER_DRAW ),
                                                            to_U32( descriptorWrites.size() ),
                                                            descriptorWrites.data() );
                     descriptorWrites.reset_lose_memory();
@@ -1947,8 +1947,8 @@ namespace Divide
 
             for ( U8 vkSet = 0u; vkSet < to_base( DescriptorSetUsage::COUNT ); ++vkSet )
             {
-                const DescriptorSetUsage usage = VKDescriptorSetUsage( vkSet );
-                const U8 usageIdx = to_base( usage );
+                const DescriptorSetUsage usage = static_cast<DescriptorSetUsage>( vkSet );
+                const U8 usageIdx = vkSet;
 
                 bool needsBind = false;
                 if ( usage != DescriptorSetUsage::PER_DRAW && setUsageData[usageIdx] )
@@ -2225,13 +2225,7 @@ namespace Divide
             
             // Sets are ordered by update frequency (PER_FRAME = 0 ... PER_DRAW = last). Shared sets always use their real layouts
             // (even if unused by this program) so that every pipeline layout is compatible for them and bound sets survive pipeline changes.
-            VkDescriptorSetLayout tempLayouts[to_base( DescriptorSetUsage::COUNT )];
-
-            for ( U8 vkSet = 0u; vkSet < to_base( DescriptorSetUsage::COUNT ); ++vkSet )
-            {
-                tempLayouts[vkSet] = _descriptorSetLayouts[to_base( VKDescriptorSetUsage( vkSet ) )];
-            }
-            pipeline_layout_info.pSetLayouts = tempLayouts;
+            pipeline_layout_info.pSetLayouts = _descriptorSetLayouts.data();
             pipeline_layout_info.setLayoutCount = to_base( DescriptorSetUsage::COUNT );
 
             VK_CHECK( vkCreatePipelineLayout( _device->getVKDevice(), &pipeline_layout_info, nullptr, &compiledPipeline._vkPipelineLayout ) );

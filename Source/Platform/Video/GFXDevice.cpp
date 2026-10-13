@@ -2155,16 +2155,10 @@ namespace Divide
 
         thread_local DescriptorSetEntries setEntries{};
 
-        constexpr DescriptorSetUsage prioritySorted[to_base( DescriptorSetUsage::COUNT )]
+        // DescriptorSetUsage is already sorted by update frequency (PER_FRAME first, PER_DRAW last)
+        for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
         {
-            DescriptorSetUsage::PER_FRAME,
-            DescriptorSetUsage::PER_PASS,
-            DescriptorSetUsage::PER_BATCH,
-            DescriptorSetUsage::PER_DRAW
-        };
-
-        for ( const DescriptorSetUsage usage : prioritySorted )
-        {
+            const DescriptorSetUsage usage = static_cast<DescriptorSetUsage>(i);
             GFXDescriptorSet& set = _descriptorSets[to_base( usage )];
             DescriptorSetEntry& entry = setEntries[to_base(usage)];
             entry._set = &set.impl();

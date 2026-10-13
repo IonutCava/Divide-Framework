@@ -69,39 +69,26 @@ namespace Names {
 
 static_assert(std::size(Names::renderAPI) == to_base(RenderAPI::COUNT) + 1);
 
+// Ordered by update frequency (least frequent first). The value is also the descriptor set index used by
+// set-based APIs (e.g. Vulkan): pipeline layouts are compatible for all sets up to the first differing one, so
+// keeping the per-program PER_DRAW set last means pipeline changes never disturb the shared PER_FRAME/PER_PASS/PER_BATCH bindings.
 enum class DescriptorSetUsage : U8 {
-    PER_DRAW = 0,
-    PER_BATCH,
+    PER_FRAME = 0,
     PER_PASS,
-    PER_FRAME,
+    PER_BATCH,
+    PER_DRAW,
     COUNT
 };
 
 namespace Names {
     static constexpr const char* descriptorSetUsage[] = {
-         "PER_DRAW", "PER_BATCH", "PER_PASS", "PER_FRAME", "NONE"
+         "PER_FRAME", "PER_PASS", "PER_BATCH", "PER_DRAW", "NONE"
     };
 };
 
 static_assert(std::size(Names::descriptorSetUsage) == to_base(DescriptorSetUsage::COUNT) + 1);
 
-static_assert(to_base(DescriptorSetUsage::PER_DRAW) == 0u, "PER_DRAW must be set to 0 to provide compatibility with the OpenGL renderer!");
-
-// Vulkan orders descriptor sets by update frequency (least frequent first: PER_FRAME = 0 ... PER_DRAW = 3).
-// Pipeline layouts are compatible for all sets up to the first differing one, so keeping the per-program PER_DRAW
-// set last means pipeline changes never disturb the shared PER_FRAME/PER_PASS/PER_BATCH bindings.
-[[nodiscard]] constexpr U8 VKDescriptorSetIndex( const DescriptorSetUsage usage ) noexcept
-{
-    return to_base( DescriptorSetUsage::COUNT ) - 1u - to_base( usage );
-}
-
-[[nodiscard]] constexpr DescriptorSetUsage VKDescriptorSetUsage( const U8 setIndex ) noexcept
-{
-    return static_cast<DescriptorSetUsage>(to_base( DescriptorSetUsage::COUNT ) - 1u - setIndex);
-}
-
-static_assert(VKDescriptorSetIndex( DescriptorSetUsage::PER_FRAME ) == 0u && VKDescriptorSetIndex( DescriptorSetUsage::PER_DRAW ) == 3u);
-static_assert(VKDescriptorSetUsage( VKDescriptorSetIndex( DescriptorSetUsage::PER_PASS ) ) == DescriptorSetUsage::PER_PASS);
+static_assert(to_base(DescriptorSetUsage::PER_DRAW) == to_base(DescriptorSetUsage::COUNT) - 1u, "PER_DRAW must be the last (most frequently updated) descriptor set!");
 
 enum class ReflectorType : U8
 {
