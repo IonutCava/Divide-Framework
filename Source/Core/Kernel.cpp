@@ -736,7 +736,7 @@ ErrorCode Kernel::initialize(const string& entryPoint)
     }
 
     ResourceCache::Init(renderingAPI, _platformContext);
-    Attorney::TextureKernel::UseTextureDDSCache( config.debug.cache.enabled && config.debug.cache.textureDDS );
+    Attorney::TextureKernel::UseTextureKTXCache( config.debug.cache.enabled && config.debug.cache.textureKTX );
 
     Camera::InitPool();
     initError = _platformContext.gfx().initRenderingAPI(_argc, _argv, renderingAPI);
@@ -1188,4 +1188,3 @@ void Kernel::unlockInputFromConsumer(const InputConsumerType type)
 
 #pragma endregion
 };
-

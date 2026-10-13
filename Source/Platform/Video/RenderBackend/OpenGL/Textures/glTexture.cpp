@@ -6,6 +6,26 @@
 
 namespace Divide {
 
+bool glTexture::supportsKTXGPUFormat(const GFXImageFormat format, const ImageTools::ImageData& image) const
+{
+    // Asset uploads run on GL workers with their own current shared context.
+    // Never query GL from a contextless authoring/cache thread.
+    if (SDL_GL_GetCurrentContext() == nullptr || _descriptor._msaaSamples != 0u ||
+        (_descriptor._texType != TextureType::TEXTURE_2D && _descriptor._texType != TextureType::TEXTURE_2D_ARRAY &&
+         _descriptor._texType != TextureType::TEXTURE_CUBE_MAP && _descriptor._texType != TextureType::TEXTURE_CUBE_ARRAY))
+    {
+        return false;
+    }
+    const auto target = GLUtil::internalTextureType(_descriptor._texType, 0u);
+    const auto internal = GLUtil::InternalFormatAndDataType(format, GFXDataFormat::UNSIGNED_BYTE,
+        image.ktxSRGB() ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED)._format;
+    gl46core::GLint supported = 0, filter = 0;
+    gl46core::glGetInternalformativ(target, internal, gl46core::GL_INTERNALFORMAT_SUPPORTED, 1, &supported);
+    if (supported != gl46core::GL_TRUE) { return false; }
+    gl46core::glGetInternalformativ(target, internal, gl46core::GL_FILTER, 1, &filter);
+    return filter == to_base(gl46core::GL_FULL_SUPPORT) || filter == to_base(gl46core::GL_CAVEAT_SUPPORT);
+}
+
 glTexture::glTexture( PlatformContext& context, const ResourceDescriptor<Texture>& descriptor )
 
     : Texture(context, descriptor)
@@ -148,6 +168,22 @@ void glTexture::reserveStorage( const bool makeImmutable )
 
 ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 layers, bool makeImmutable)
 {
+    if (_sourceMipCount != 0u)
+    {
+        gl46core::GLint maxSize = 0, maxLayers = 0;
+        const bool volume = _descriptor._texType == TextureType::TEXTURE_3D;
+        const bool cube = IsCubeTexture(_descriptor._texType);
+        gl46core::glGetIntegerv(volume ? gl46core::GL_MAX_3D_TEXTURE_SIZE
+                                    : cube ? gl46core::GL_MAX_CUBE_MAP_TEXTURE_SIZE : gl46core::GL_MAX_TEXTURE_SIZE, &maxSize);
+        gl46core::glGetIntegerv(gl46core::GL_MAX_ARRAY_TEXTURE_LAYERS, &maxLayers);
+        if (dimensions.x > maxSize || dimensions.y > maxSize || (volume && dimensions.z > maxSize) ||
+            (IsArrayTexture(_descriptor._texType) && U32{layers} * (cube ? 6u : 1u) > to_U32(maxLayers)))
+        {
+            Console::errorfn("KTX2 texture exceeds OpenGL device limits: {}", resourceName());
+            _nativeAllocationFailed = true;
+            return ImageUsage::UNDEFINED;
+        }
+    }
     const ImageUsage ret = Texture::prepareTextureData(dimensions, layers, makeImmutable);
     DIVIDE_UNUSED(ret);
 
@@ -163,6 +199,19 @@ ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 
     }
 
     reserveStorage(makeImmutable);
+    if (_nativeKTX && IsCompressed(_descriptor._baseFormat))
+    {
+        gl46core::GLint immutable = 0;
+        gl46core::glGetTextureParameteriv(_loadingHandle, gl46core::GL_TEXTURE_IMMUTABLE_FORMAT, &immutable);
+        if (immutable == 0)
+        {
+            gl46core::glDeleteTextures(1, &_loadingHandle);
+            _loadingHandle = GL_NULL_HANDLE;
+            _hasStorage = false;
+            _nativeAllocationFailed = true;
+            return ImageUsage::UNDEFINED;
+        }
+    }
 
     return ImageUsage::SHADER_READ;
 }
@@ -170,7 +219,7 @@ ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 
 void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
 {
     gl46core::glTextureParameteri(_loadingHandle, gl46core::GL_TEXTURE_BASE_LEVEL, _descriptor._mipBaseLevel );
-    gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, mipCount());
+    gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, mipCount() - 1u);
 
     if ( _descriptor._mipMappingState == MipMappingState::AUTO)
     {

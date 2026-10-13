@@ -20,7 +20,13 @@ bool Configuration::fromXML(const ResourcePath& xmlFilePath, const char* fileNam
         GET_PARAM(debug.cache.geometry);
         GET_PARAM(debug.cache.vegetation);
         GET_PARAM(debug.cache.shaders);
-        GET_PARAM(debug.cache.textureDDS);
+        // Old configuration files may still spell the cache toggle textureDDS.
+        // The KTX key always wins; DDS remains an import format, not a cache.
+        if (!LoadSave.XmlTree.get_child_optional(LoadSave._rootNodePath + "debug.cache.textureKTX"))
+        {
+            GET_TEMP_PARAM(debug.cache.textureDDS, debug.cache.textureKTX);
+        }
+        GET_PARAM(debug.cache.textureKTX);
         GET_PARAM(debug.renderFilter.primitives);
         GET_PARAM(debug.renderFilter.meshes);
         GET_PARAM(debug.renderFilter.terrain);
@@ -187,7 +193,11 @@ bool Configuration::toXML(const ResourcePath& xmlFilePath, const char* fileName 
     PUT_PARAM(debug.cache.geometry);
     PUT_PARAM(debug.cache.vegetation);
     PUT_PARAM(debug.cache.shaders);
-    PUT_PARAM(debug.cache.textureDDS);
+    if (auto cache = LoadSave.XmlTree.get_child_optional(LoadSave._rootNodePath + "debug.cache"))
+    {
+        cache->erase("textureDDS");
+    }
+    PUT_PARAM(debug.cache.textureKTX);
     PUT_PARAM(debug.renderFilter.primitives);
     PUT_PARAM(debug.renderFilter.meshes);
     PUT_PARAM(debug.renderFilter.terrain);

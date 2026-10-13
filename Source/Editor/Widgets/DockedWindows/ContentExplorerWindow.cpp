@@ -30,7 +30,7 @@ namespace Divide {
         };
 
         constexpr const char* g_imageExtensions[] = {
-            "png", "jpg", "jpeg", "tga", "raw", "dds"
+            "png", "jpg", "jpeg", "tga", "raw", "dds", "ktx2"
         };
 
         constexpr const char* g_soundExtensions[] = {
@@ -423,7 +423,7 @@ namespace Divide {
         textureResource.assetLocation(texturePath);
 
         TextureDescriptor& descriptor = textureResource._propertyDescriptor;
-        descriptor._textureOptions._useDDSCache = false;
+        descriptor._textureOptions._useKTXCache = false;
 
         return CreateResource(textureResource);
     }

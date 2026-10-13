@@ -105,11 +105,15 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
         static void OnStartup();
         static void OnShutdown() noexcept;
-        [[nodiscard]] static bool UseTextureDDSCache() noexcept;
+        [[nodiscard]] static bool UseTextureKTXCache() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2D() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2DArray() noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
+        // Failed optional BC allocation restores native descriptor/mip state.
+        [[nodiscard]] static ImageUsage TryKTXCompressedUpload(TextureDescriptor& descriptor, U16& mipCount,
+                                                              U8& sourceMipCount, bool& allocationFailed,
+                                                              const std::function<ImageUsage()>& upload);
 
         /// API-dependent loading function that uploads ptr data to the GPU using the specified parameters
         ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
@@ -146,6 +150,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
         PROPERTY_R( TextureDescriptor, descriptor );
         /// Get the number of mips
+        /// Total number of mip levels, including the base level (level 0).
         PROPERTY_R( U16, mipCount, 1u );
         /// Texture width as returned by STB/DDS loader
         PROPERTY_R( U16, width, 0u );
@@ -165,6 +170,10 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         bool load( PlatformContext& context ) override;
         bool postLoad() override;
      protected:
+        U8 _sourceMipCount = 0u;
+        bool _nativeKTX = false;
+        bool _nativeAllocationFailed = false;
+        U16 _requestedLayerCount = 0u;
         /// Use STB to load a file into a Texture Object
         bool loadFile( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
         bool checkTransparency( const ResourcePath& path, std::string_view name, ImageTools::ImageData& fileData );
@@ -176,10 +185,11 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual void loadDataInternal( std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable );
+        [[nodiscard]] virtual bool supportsKTXGPUFormat(GFXImageFormat, const ImageTools::ImageData&) const { return false; }
         virtual void submitTextureData(ImageUsage& crtUsageInOut);
 
     protected:
-        static bool s_useDDSCache;
+        static bool s_useKTXCache;
         static SamplerDescriptor s_defaultSampler;
         static Handle<Texture> s_defaultTexture2D;
         static Handle<Texture> s_defaultTexture2DArray;
@@ -191,9 +201,9 @@ namespace Attorney
     class TextureKernel
     {
         protected:
-        static void UseTextureDDSCache( const bool state ) noexcept
+        static void UseTextureKTXCache( const bool state ) noexcept
         {
-            Texture::s_useDDSCache = state;
+            Texture::s_useKTXCache = state;
         }
 
         friend class Divide::Kernel;

@@ -34,6 +34,7 @@
 #define DVD_UTILITY_IMAGETOOLS_H
 
 #include "ImageToolsFwd.h"
+#include "KTXImage.h"
 
 namespace Divide {
 namespace ImageTools {
@@ -146,7 +147,7 @@ struct ImageData final : NonCopyable
         return _layers[layer].getMip(mipLevel)->_dimensions;
     }
 
-    /// get the number of pre-loaded mip maps (same number for each layer)
+    /// get the number of pre-loaded mip levels including the base (same number for each layer)
     [[nodiscard]] U8 mipCount() const { return _layers.empty() ? 0u : _layers.front().mipCount(); }
     /// get the total number of image layers
     [[nodiscard]] U16 layerCount() const noexcept { return to_U16(_layers.size()); }
@@ -169,36 +170,47 @@ struct ImageData final : NonCopyable
     FORCE_INLINE void getAlpha(const I32 x, const I32 y, U8& a, const U32 layer, const U8 mipLevel = 0) const { getColourComponent(x, y, 3, a, layer, mipLevel); }
 
     [[nodiscard]] bool loadFromMemory( std::span<const Byte> data, const vec3<U16>& dimensions, U16 layerCount, U8 numComponents);
+    [[nodiscard]] bool loadFromKTXMemory(std::span<const Byte> data);
+    [[nodiscard]] bool loadFromKTXImage(const KTXImage& image);
+    // Lossless cooked KTX2 export of native typed single-2D imports only.
+    // Includes retained input/output and encoder copies in the shared budget.
+    // Compressed GPU copies and legacy direct DDS topologies are rejected;
+    // failure leaves output unchanged.
+    [[nodiscard]] bool encodeKTX(std::vector<Byte>& output, std::string* error = nullptr) const;
+    [[nodiscard]] GFXImageFormat ktxGPUFormat(const KTXGPUCompressionOptions& options) const noexcept;
+    [[nodiscard]] bool compressedKTXCopy(GFXImageFormat target, ImageData& output, const KTXGPUCacheOptions& cache = {}) const;
     /// creates this image instance from the specified data
     [[nodiscard]] bool loadFromFile(PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
-    [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options, bool isRetry = false);
+    [[nodiscard]] bool loadFromFile( PlatformContext& context, bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, ImportOptions& options);
 
     [[nodiscard]] FORCE_INLINE ResourcePath fullPath() const noexcept { return _path / _name; }
 
     /// If true, then the source image's alpha channel is used for data and not opacity (so skip mip-filtering for example)
     PROPERTY_RW(bool, ignoreAlphaChannelTransparency, false);
+    PROPERTY_RW(bool, allowKTXSourceImport, true);
+    PROPERTY_R(bool, sourceListLayoutMismatch, false);
     /// If true, then the source image was probably RGB and we loaded it as RGBA
     PROPERTY_R(bool, hasDummyAlphaChannel, false);
     /// If true, the initial passed in data was either null or the size was 0
     PROPERTY_R(bool, hasDummyData, false);
+    PROPERTY_R(bool, isKTXImage, false);
+    PROPERTY_R(bool, ktxSRGB, false);
+    PROPERTY_R(AlphaClassification, ktxAlpha);
+    PROPERTY_R(KTXAlphaInterpretation, ktxAlphaInterpretation, KTXAlphaInterpretation::UNKNOWN);
+    PROPERTY_R(TextureType, ktxTextureType, TextureType::TEXTURE_2D);
+    PROPERTY_R(U16, ktxLayerCount, 1u);
 
   protected:
     friend class ImageDataInterface;
-    [[nodiscard]] bool loadDDS_NVTT(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
-    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name);
+    [[nodiscard]] bool loadKTX(const ResourcePath& path, std::string_view name);
+    [[nodiscard]] bool convertKTXImage(KTXImage& image, size_t retainedBytes, bool classifyAlpha);
+    // Temporary DDS asset import codec, never an engine cache reader/writer.
+    [[nodiscard]] bool loadDDS_IL(bool srgb, U16 refWidth, U16 refHeight, const ResourcePath& path, std::string_view name, bool typedImport, const ImportOptions& options);
 
    private:
-    struct LoadingData
-    {
-        U16 _fileIndex = 0u;
-        bool _loadedDDSData = false;
-        bool _createdDDSData = false;
-    };
-
     //Each entry is a separate mip map.
     vector<ImageLayer> _layers{};
     vector<U8> _decompressedData{};
-    LoadingData _loadingData{};
     /// the image path
     ResourcePath _path{};
     /// the actual image filename
@@ -226,4 +238,3 @@ struct ImageData final : NonCopyable
 }  // namespace Divide
 
 #endif //DVD_UTILITY_IMAGETOOLS_H
-

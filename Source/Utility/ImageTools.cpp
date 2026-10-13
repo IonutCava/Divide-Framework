@@ -1,4 +1,5 @@
 #include "Headers/ImageTools.h"
+#include "Headers/KTXImageCache.h"
 
 #include "Utility/Headers/Localization.h"
 #include "Platform/File/Headers/FileManagement.h"
@@ -25,147 +26,17 @@ DISABLE_NON_MSVC_WARNING_POP()
 //#include <IL/ilut.h>
 
 #include <glm/detail/type_half.hpp>
-
-#if !defined(IS_MACOS_BUILD)
-#include <nvtt/nvtt.h>
-#endif //!IS_MACOS_BUILD
+#include <fstream>
+#include <limits>
+#include <mutex>
+#include <type_traits>
 
 namespace Divide::ImageTools
 {
-    constexpr bool g_KeepDevILDDSCompatibility = true;
-
-#if !defined(IS_MACOS_BUILD)
-
-namespace nvttHelpers
-{
-    struct ErrorHandler : public nvtt::ErrorHandler
-    {
-        void error(nvtt::Error e) override
-        {
-            constexpr std::array<const char*, static_cast<size_t>(nvtt::Error::Error_Count)> nvttErrors
-            {{
-                "UNKNOWN",
-                "INVALID_INPUT",
-                "UNSUPPORTED_FEATURE",
-                "CUDA_ERROR",
-                "FILE_OPEN",
-                "FILE_WRITE",
-                "UNSUPPORTED_OUTPUT_FORMAT",
-            }};
-
-            Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_ERROR"), nvttErrors[to_size(e)]);
-        }
-    };
-
-    struct OutputHandler : public nvtt::OutputHandler
-    {
-        struct MipMapData
-        {
-            vector<U8> _pixelData;
-            I32 _width{0};
-            I32 _height{0};
-            I32 _depth{0};
-        };
-
-        vector<MipMapData> _mipmaps;
-        I32 _currentMipLevel{0};
-        U8 _numComponents{0u};
-        nvtt::Format _format{nvtt::Format::Format_BC1};
-        bool _discardAlpha{false};
-
-        OutputHandler(nvtt::Format format, bool discardAlpha, const U8 numComponents)
-            : _numComponents(numComponents)
-            , _format(format)
-            , _discardAlpha( discardAlpha )
-        {
-        }
-
-        /// Indicate the start of a new compressed image that's part of the final texture.
-        virtual void beginImage(int size, int width, int height, int depth, [[maybe_unused]] int face, int miplevel) override
-        {
-            MipMapData& data = _mipmaps.push_back();
-            data._width = width;
-            data._height = height;
-            data._depth = depth;
-            data._pixelData.resize(size);
-            _currentMipLevel = miplevel;
-        }
-
-        virtual void endImage() override
-        {
-        }
-
-        /// Output data. Compressed data is output as soon as it's generated to minimize memory allocations.
-        virtual bool writeData(const void* data, int size) override
-        {
-            // Copy mipmap data
-            memcpy(_mipmaps[_currentMipLevel]._pixelData.data(), data, size);
-            return true;
-        }
-    };
-
-    [[nodiscard]] static bool isBC1n(const nvtt::Format format, const bool isNormalMap) noexcept
-    {
-        return isNormalMap && format == nvtt::Format_BC1;
-    }
-
-    [[nodiscard]] static nvtt::Format getNVTTFormat(const ImageOutputFormat outputFormat, const bool isNormalMap, const bool hasAlpha, const bool isGreyscale) noexcept
-    {
-        assert(outputFormat != ImageOutputFormat::COUNT);
-
-        if constexpr(g_KeepDevILDDSCompatibility)
-        {
-            return isNormalMap ? nvtt::Format::Format_BC3n : hasAlpha ? nvtt::Format::Format_BC3 : nvtt::Format::Format_BC1;
-        }
-        else
-        {
-            if (outputFormat != ImageOutputFormat::AUTO)
-            {
-                switch (outputFormat)
-                {
-                    case ImageOutputFormat::BC1:      return nvtt::Format::Format_BC1;
-                    case ImageOutputFormat::BC1a:     return nvtt::Format::Format_BC1a;
-                    case ImageOutputFormat::BC2:      return nvtt::Format::Format_BC2;
-                    case ImageOutputFormat::BC3:      return isNormalMap ? nvtt::Format::Format_BC3n : nvtt::Format::Format_BC3;
-                    case ImageOutputFormat::BC4:      return nvtt::Format::Format_BC4;
-                    case ImageOutputFormat::BC5:      return nvtt::Format::Format_BC5;
-                    case ImageOutputFormat::BC6:      return nvtt::Format::Format_BC6;
-                    case ImageOutputFormat::BC7:      return nvtt::Format::Format_BC7;
-
-                    case ImageOutputFormat::BC3_RGBM: 
-                        /*return nvtt::Format::Format_BC3_RGBM;*/ //Not supported
-                        Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_NVT_ERROR"), "BC3_RGBM");
-                    default: break;
-                };
-            }
-
-            return isNormalMap ? nvtt::Format::Format_BC5 : isGreyscale ? nvtt::Format::Format_BC4 : nvtt::Format::Format_BC7;
-        }
-    }
-
-    [[nodiscard]] static nvtt::MipmapFilter getNVTTMipFilter(const MipMapFilter filter) noexcept
-    {
-        switch (filter)
-        {
-            case MipMapFilter::BOX     : return nvtt::MipmapFilter_Box;
-            case MipMapFilter::TRIANGLE: return nvtt::MipmapFilter_Triangle;
-            case MipMapFilter::KAISER  : return nvtt::MipmapFilter_Kaiser;
-            default: break;
-        }
-
-        return nvtt::MipmapFilter_Box;
-    }
-}; // namespace nvttHelpers
-
-#endif //!IS_MACOS_BUILD
-
 namespace
 {
-    Mutex s_imageCompressionMutex;
     SharedMutex s_imageLoadingMutex;
     bool s_useUpperLeftOrigin = false;
-
-    static eastl::set<U64> s_fileLoadingHashes;
 
     //ref: https://github.com/nvpro-pipeline/pipeline/blob/master/dp/sg/io/IL/Loader/ILTexLoader.cpp
     FORCE_INLINE I32 determineFace(const I32 i, const bool isDDS, const bool isCube) noexcept
@@ -252,7 +123,7 @@ bool ImageData::loadFromMemory( std::span<const Byte> data, const vec3<U16>& dim
 bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
 {
     ImportOptions options{};
-    options._useDDSCache = false;
+    options._useKTXCache = false;
     return loadFromFile(context, srgb, refWidth, refHeight, path, name, options);
 }
 
@@ -527,21 +398,103 @@ namespace
     }
 }
 
-bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name, ImportOptions& options, const bool isRetry)
+bool ImageData::loadFromFile([[maybe_unused]] PlatformContext& context, const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name, ImportOptions& options)
 {
     _path = path;
     _name = name;
 
     ignoreAlphaChannelTransparency(!options._alphaChannelTransparency);
 
-    // We can handle DDS files directly in a very FATAL way
+    if (_isKTXImage)
+    {
+        Console::errorfn("KTX2 assets cannot be combined with comma-separated image inputs: {}", name);
+        return false;
+    }
+
+    if (!_layers.empty())
+    {
+        // Decode subsequent legacy inputs separately. A DDS block payload must
+        // never be appended to STB texels (or vice versa) with last-format-wins.
+        ImageData incoming;
+        incoming.requestedFormat(_requestedDataFormat);
+        incoming.allowKTXSourceImport(false);
+        if (!incoming.loadFromFile(context, srgb, refWidth, refHeight, path, name, options))
+        {
+            return false;
+        }
+        bool compatible = !incoming._isKTXImage && !incoming._layers.empty() &&
+                          _format == incoming._format && _dataType == incoming._dataType &&
+                          _sourceDataType == incoming._sourceDataType && _bpp == incoming._bpp;
+        for (const auto& layer : incoming._layers)
+        {
+            compatible = compatible && layer.mipCount() == mipCount();
+            if (!compatible) { break; }
+            for (U8 mip = 0u; mip < mipCount(); ++mip)
+            {
+                const auto* source = layer.getMip(mip);
+                const auto* reference = _layers.front().getMip(mip);
+                compatible = source->_dimensions == reference->_dimensions && source->_size == reference->_size;
+                if (!compatible) { break; }
+            }
+            if (!compatible) { break; }
+        }
+        if (!compatible)
+        {
+            _sourceListLayoutMismatch = true;
+            Console::errorfn("Incompatible texture source list entry {}: format, type, dimensions and mip layout must match", path / name);
+            return false;
+        }
+        for (auto& layer : incoming._layers)
+        {
+            _layers.push_back(std::move(layer));
+        }
+        _hasDummyAlphaChannel = _hasDummyAlphaChannel && incoming._hasDummyAlphaChannel;
+        _ignoreAlphaChannelTransparency = !options._alphaChannelTransparency || _hasDummyAlphaChannel;
+        _decompressedData = std::move(incoming._decompressedData);
+        return true;
+    }
+
+    if (hasExtension(_name, "ktx2"))
+    {
+        return loadKTX(_path, _name);
+    }
+
+    const bool isPNG = hasExtension(_name, "png");
+    const bool isJPEG = hasExtension(_name, "jpg") || hasExtension(_name, "jpeg");
+    const bool isBMP = hasExtension(_name, "bmp");
+    if (options._useKTXPipeline && allowKTXSourceImport() && (isPNG || isJPEG || isBMP))
+    {
+        KTXSourceSettings settings;
+        settings._format = isPNG ? KTXSourceFormat::PNG : isJPEG ? KTXSourceFormat::JPEG : KTXSourceFormat::BMP;
+        settings._srgb = srgb;
+        settings._alphaInterpretation = options._alphaChannelTransparency
+            ? KTXAlphaInterpretation::OPACITY : KTXAlphaInterpretation::DATA;
+        settings._semantic = options._isNormalMap ? KTXMipSemantic::NORMAL
+            : srgb || options._alphaChannelTransparency ? KTXMipSemantic::COLOR : KTXMipSemantic::DATA;
+        settings._generateMipmaps = !options._skipMipMaps;
+        settings._preserveAlphaCoverage = settings._generateMipmaps && options._alphaChannelTransparency && !options._isNormalMap;
+        settings._diskCache = Texture::UseTextureKTXCache() && options._useKTXCache;
+        KTXImage image;
+        std::string error;
+        if (!LoadCachedKTXSource(_path / _name, Paths::Textures::g_metadataLocation / "KTX2",
+                                 settings, image, &error))
+        {
+            Console::errorfn("Unable to import image through KTX2 {}: {}", _path / _name, error);
+            return false;
+        }
+        if (!loadFromKTXImage(image))
+        {
+            return false;
+        }
+        return true;
+    }
+
+    // DDS is an asset import format only. Never probe legacy DDS cache files.
     if (hasExtension(_name, Paths::Textures::g_ddsExtension))
     {
-        _loadingData._loadedDDSData = loadDDS_NVTT(srgb, refWidth, refHeight, _path, _name);
-        if ( _loadingData._loadedDDSData ) [[likely]]
+        if (loadDDS_IL(srgb, refWidth, refHeight, _path, _name,
+                      options._useKTXPipeline && allowKTXSourceImport(), options)) [[likely]]
         {
-            ++_loadingData._fileIndex;
-
             return true;
         }
 
@@ -579,225 +532,6 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         _sourceDataType = SourceDataType::SHORT;
     }
 
-    bool useCache = Texture::UseTextureDDSCache() && options._useDDSCache;
-
-    if ( _loadingData._fileIndex == 0u && _sourceDataType != SourceDataType::BYTE)
-    {
-        options._useDDSCache = false;
-        useCache = false;
-    }
-
-#if defined(IS_MACOS_BUILD)
-    const bool createDDS = false;
-#else
-    const bool createDDS = useCache || _loadingData._createdDDSData;
-#endif
-
-    // We either want to convert or we already have DDS faces/layers
-    if ( _loadingData._fileIndex > 0u)
-    {
-        useCache = _loadingData._loadedDDSData;
-        options._useDDSCache = useCache;
-        options._waitForDDSConversion = useCache;
-    }
-
-    if ( createDDS )
-    {
-#if defined(IS_MACOS_BUILD)
-        _loadingData._createdDDSData = false;
-#else //IS_MACOS_BUILD
-        _loadingData._createdDDSData = true;
-
-        const ResourcePath cachePath = Paths::Textures::g_metadataLocation / _path;
-
-        // Try and save regular images to DDS for better compression next time
-        DIVIDE_EXPECTED_CALL( createDirectory(cachePath) == FileError::NONE );
-
-        const string cacheFileName = Util::StringFormat("{}.{}", _name, Paths::Textures::g_ddsExtension);
-
-        const ResourcePath cacheFilePath = cachePath / cacheFileName;
-
-        Task* ddsConversionTask = nullptr;
-        if ( !fileExists(ResourcePath{ cacheFilePath }) )
-        {
-            ddsConversionTask = CreateTask( [fullPath, cacheFilePath, cachePath, cacheFileName, options]( const Task& )
-            {
-                const size_t cacheFilePathHash = _ID(cacheFilePath.string());
-                do
-                {
-                    {
-                        UniqueLock<Mutex> lock(s_imageCompressionMutex);
-
-                        if (s_fileLoadingHashes.insert(cacheFilePathHash).second)
-                        {
-                            break;
-                        }
-                    }
-                    std::this_thread::yield();
-                } while (true);
-
-                bool success = false;
-
-                const string cacheFileNameTemp = cacheFileName + ".tmp";
-
-                SCOPE_EXIT
-                {
-                    DIVIDE_EXPECTED_CALL(success && moveFile(cachePath, cacheFileNameTemp, cachePath, cacheFileName) == FileError::NONE);
-
-                    UniqueLock<Mutex> lock(s_imageCompressionMutex);
-                    DIVIDE_EXPECTED_CALL(s_fileLoadingHashes.erase(cacheFilePathHash) > 0u);
-                };
-
-                {
-                    // Check if the file was created between the check and the task actually starting
-                    if (fileExists(ResourcePath{ cacheFilePath }))
-                    {
-                        return;
-                    }
-                }
-
-                nvtt::Context context;
-                context.enableCudaAcceleration(true);
-
-                nvtt::Surface image;
-                bool hasAlpha = false;
-                if (image.load(fullPath.c_str(), &hasAlpha))
-                {
-                    image.setNormalMap(options._isNormalMap);
-
-                    constexpr bool isGreyScale = false;
-                    const nvtt::Format outputFormat = nvttHelpers::getNVTTFormat(options._outputFormat, options._isNormalMap, hasAlpha, isGreyScale);
-
-                    // Setup compression options.
-                    nvtt::CompressionOptions compressionOptions;
-                    compressionOptions.setFormat(outputFormat);
-                    compressionOptions.setQuality(options._fastCompression ? nvtt::Quality::Quality_Fastest : nvtt::Quality::Quality_Normal);
-                    if (nvttHelpers::isBC1n(outputFormat, options._isNormalMap))
-                    {
-                        compressionOptions.setColorWeights(1, 1, 0);
-                    }
-
-                    const ResourcePath cacheFilePathTemp = cachePath / cacheFileNameTemp;
-
-                    nvttHelpers::ErrorHandler errorHandler;
-                    nvtt::OutputOptions outputOptions;
-                    outputOptions.setFileName(cacheFilePathTemp.string().c_str());
-                    outputOptions.setErrorHandler(&errorHandler);
-                    outputOptions.setContainer(nvtt::Container_DDS);
-                    outputOptions.setSrgbFlag(options._outputSRGB);
-
-                    switch (outputFormat)
-                    {
-                        case nvtt::Format_BC6:
-                            compressionOptions.setPixelType(nvtt::PixelType_UnsignedFloat);
-                            outputOptions.setContainer(nvtt::Container_DDS10);
-                            break;
-                        case nvtt::Format_BC7:
-                            outputOptions.setContainer(nvtt::Container_DDS10);
-                            break;
-                        case nvtt::Format_BC2:
-                            compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/false); // Dither alpha when using BC2.
-                            break;
-                        case nvtt::Format_BC1a:
-                            compressionOptions.setQuantization(/*color dithering*/false, /*alpha dithering*/true, /*binary alpha*/true, 127); // Binary alpha when using BC1a.
-                            break;
-                        default:
-                            break;
-                    }
-
-                    DIVIDE_EXPECTED_CALL( context.outputHeader(image, image.countMipmaps(), compressionOptions, outputOptions) );
-                    
-                    F32 coverage = 0.f;
-                    if (options._isNormalMap)
-                    {
-                        image.normalizeNormalMap();
-                    }
-                    else if (hasAlpha && options._alphaChannelTransparency)
-                    {
-                        coverage = image.alphaTestCoverage(Config::ALPHA_DISCARD_THRESHOLD);
-                        image.setAlphaMode(nvtt::AlphaMode::AlphaMode_Transparency);
-                    }
-
-                    DIVIDE_EXPECTED_CALL( context.compress(image, 0, 0, compressionOptions, outputOptions) );
-
-                    // Build and output mipmaps.
-                    if (!options._skipMipMaps)
-                    {
-                        I32 m = 1;
-                        while (image.buildNextMipmap(nvttHelpers::getNVTTMipFilter(options._mipFilter)))
-                        {
-                            if (options._isNormalMap)
-                            {
-                                image.normalizeNormalMap();
-                            }
-                            else if (hasAlpha && options._alphaChannelTransparency)
-                            {
-                                image.scaleAlphaToCoverage(coverage, Config::ALPHA_DISCARD_THRESHOLD);
-                            }
-
-                            DIVIDE_EXPECTED_CALL( context.compress(image, 0, m, compressionOptions, outputOptions) );
-
-                            m++;
-                        }
-                    }
-                    success = true;
-                }
-            });
-
-            context.taskPool(TaskPoolType::HIGH_PRIORITY).enqueue
-            (
-                *ddsConversionTask,
-                options._waitForDDSConversion ? TaskPriority::REALTIME
-                                              : TaskPriority::DONT_CARE 
-            );
-        }
-
-        // We want to load a DDS cached file if available
-        if ( useCache )
-        {
-            // We are either creating it now ...
-            if ( ddsConversionTask != nullptr )
-            {
-                // ... in which case, see if we need to wait for it
-                if (options._waitForDDSConversion || _loadingData._loadedDDSData) 
-                {
-                    context.taskPool(TaskPoolType::HIGH_PRIORITY).wait( *ddsConversionTask );
-                    ddsConversionTask = nullptr;
-                }
-            }
-            // Or we assume it's already created, so just check that it exists
-            else if ( fileExists( cacheFilePath ) )
-            {
-                // Try and load it normally...
-                if (loadDDS_NVTT( srgb, refWidth, refHeight, cachePath, cacheFileName ))
-                {
-                    _loadingData._loadedDDSData = true;
-                    ++_loadingData._fileIndex;
-                    return true;
-                }
-                // But if we fail, maybe the file is corrupt since it passed the existence check?
-                else
-                {
-                    // Warn about it and retry only once
-                    Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_DDS_LOAD_ERROR"), cachePath / cacheFileName );
-                    if (!isRetry)
-                    {
-                        // Delete whatever we tried to load and fail
-                        if (deleteFile( cachePath, cacheFileName ) != FileError::NONE)
-                        {
-                            Console::errorfn(LOCALE_STR("ERROR_IMAGE_TOOLS_DDS_DELETE_ERROR"), cachePath / cacheFileName );
-                        }
-
-                        // And try again
-                        return loadFromFile( context, srgb, refWidth, refHeight, path, name, options, true );
-                    }
-                }
-            }
-        }
-#       endif //!IS_MACOS_BUILD
-    }
-
-    // At this point, we either don't care about DDS versions, or we utterly failed to create a DDS cached file, so just load the original image
     stbi_set_flip_vertically_on_load_thread(UseUpperLeftOrigin() ? 0 : 1); //< If TRUE: flip the image vertically, so the first pixel in the output array is the bottom left
 
     _hasDummyAlphaChannel = false;
@@ -1065,17 +799,397 @@ bool ImageData::loadFromFile(PlatformContext& context, const bool srgb, const U1
         DIVIDE_UNEXPECTED_CALL();
     }
 
-    ++_loadingData._fileIndex;
     return ret;
 }
 
-bool ImageData::loadDDS_NVTT([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
+bool ImageData::loadKTX(const ResourcePath& path, const std::string_view name)
 {
-    //ToDo: Use a better DDS loader
-    return loadDDS_IL(srgb, refWidth, refHeight, path, name);
+    // Cooked KTX2 assets are self-contained; no source image or authoring tool is required.
+    if (!_layers.empty())
+    {
+        Console::errorfn("KTX2 assets cannot be combined with comma-separated image inputs: {}", name);
+        return false;
+    }
+    std::ifstream stream;
+    if (readFile(path, name, FileType::BINARY, stream) != FileError::NONE)
+    {
+        return false;
+    }
+    stream.seekg(0, std::ios::end);
+    const auto length = stream.tellg();
+    if (length <= 0 || length > static_cast<std::streamoff>(KTX_IMAGE_BYTE_LIMIT))
+    {
+        return false;
+    }
+    stream.seekg(0, std::ios::beg);
+    std::vector<Byte> bytes(static_cast<size_t>(length));
+    if (!stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size())))
+    {
+        return false;
+    }
+    return loadFromKTXMemory(bytes);
 }
 
-bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name)
+bool ImageData::loadFromKTXMemory(const std::span<const Byte> bytes)
+{
+    if (!_layers.empty() || bytes.size() > KTX_IMAGE_BYTE_LIMIT)
+    {
+        return false;
+    }
+    KTXImage image;
+    std::string error;
+    if (!LoadKTXImage(bytes, image, &error))
+    {
+        Console::errorfn("Unable to load KTX2 image {}: {}", _name, error);
+        return false;
+    }
+    return convertKTXImage(image, bytes.size(), false);
+}
+
+bool ImageData::encodeKTX(std::vector<Byte>& output, std::string* error) const
+{
+    const auto fail = [&](const char* message)
+    {
+        if (error != nullptr) { *error = message; }
+        return false;
+    };
+    if (!_isKTXImage || IsCompressed(_format) || _layers.size() != 1u ||
+        _ktxTextureType != TextureType::TEXTURE_2D || mipCount() == 0u ||
+        (_dataType != GFXDataFormat::UNSIGNED_BYTE && _dataType != GFXDataFormat::UNSIGNED_SHORT &&
+         _dataType != GFXDataFormat::FLOAT_16 && _dataType != GFXDataFormat::FLOAT_32))
+    {
+        return fail("KTX2 export requires a native typed single-2D image");
+    }
+    KTXImage image;
+    image._width = dimensions(0u).x;
+    image._height = dimensions(0u).y;
+    image._mips = mipCount();
+    image._components = to_U8(NumChannels(_format));
+    image._srgb = _ktxSRGB;
+    image._alphaInterpretation = _ktxAlphaInterpretation;
+    image._componentType = _dataType == GFXDataFormat::FLOAT_32 ? KTXComponentType::FLOAT_32
+                         : _dataType == GFXDataFormat::FLOAT_16 ? KTXComponentType::FLOAT_16
+                         : _dataType == GFXDataFormat::UNSIGNED_SHORT ? KTXComponentType::UNORM_16
+                         : KTXComponentType::UNORM_8;
+    const size_t componentBytes = _dataType == GFXDataFormat::FLOAT_32 ? sizeof(F32)
+                                : _dataType == GFXDataFormat::UNSIGNED_BYTE ? sizeof(U8) : sizeof(U16);
+    size_t bytes = 0u;
+    for (U8 mip = 0u; mip < image._mips; ++mip)
+    {
+        const LayerData* source = _layers.front().getMip(mip);
+        const size_t samples = to_size(source->_dimensions.x) * source->_dimensions.y * image._components;
+        if (source->_dimensions.z != 1u || source->_size != samples * componentBytes ||
+            samples > (KTX_IMAGE_BYTE_LIMIT - bytes) / componentBytes)
+        {
+            return fail("Invalid native KTX2 export mip storage");
+        }
+        bytes += samples * componentBytes;
+    }
+    // EncodeKTXImage budgets five payloads. Also retain this ImageData and the
+    // caller's previous output while reconstructing exact typed slices.
+    const U64 bookkeeping = U64(image._mips) * (sizeof(KTXSubresource) * 3u + 64u) + 4096u;
+    if (U64(bytes) * 6u + output.capacity() + bookkeeping >= KTX_IMAGE_BYTE_LIMIT)
+    {
+        return fail("KTX2 export exceeds the aggregate memory budget");
+    }
+    for (U8 mip = 0u; mip < image._mips; ++mip)
+    {
+        const LayerData* source = _layers.front().getMip(mip);
+        KTXSubresource resource;
+        resource._mip = mip;
+        resource._width = source->_dimensions.x;
+        resource._height = source->_dimensions.y;
+        const auto copyPixels = [&]<typename T>()
+        {
+            const auto* pixels = static_cast<const T*>(source->data());
+            resource._pixels = std::vector<T>(pixels, pixels + source->_size / sizeof(T));
+        };
+        if (_dataType == GFXDataFormat::FLOAT_32) { copyPixels.operator()<F32>(); }
+        else if (_dataType == GFXDataFormat::UNSIGNED_BYTE) { copyPixels.operator()<U8>(); }
+        else { copyPixels.operator()<U16>(); }
+        image._subresources.push_back(std::move(resource));
+    }
+    return EncodeKTXImage(image, output, error);
+}
+
+GFXImageFormat ImageData::ktxGPUFormat(const KTXGPUCompressionOptions& options) const noexcept
+{
+    if (!_isKTXImage || _dataType != GFXDataFormat::UNSIGNED_BYTE || _layers.empty())
+    {
+        return GFXImageFormat::COUNT;
+    }
+    KTXImage image;
+    image._compressed = IsCompressed(_format);
+    image._components = _format == GFXImageFormat::RED ? 1u : _format == GFXImageFormat::RG ? 2u : 4u;
+    image._dimensions = _ktxTextureType == TextureType::TEXTURE_3D ? 3u
+                      : (_ktxTextureType == TextureType::TEXTURE_1D || _ktxTextureType == TextureType::TEXTURE_1D_ARRAY) ? 1u : 2u;
+    image._depth = dimensions(0u).z;
+    image._srgb = _ktxSRGB;
+    image._alphaInterpretation = _ktxAlphaInterpretation;
+    return SelectKTXGPUFormat(image, options);
+}
+
+bool ImageData::compressedKTXCopy(const GFXImageFormat target, ImageData& output, const KTXGPUCacheOptions& cache) const
+{
+    if (!output._layers.empty() || !_isKTXImage || IsCompressed(_format) ||
+        _dataType != GFXDataFormat::UNSIGNED_BYTE || _layers.empty() ||
+        (_ktxTextureType != TextureType::TEXTURE_2D && _ktxTextureType != TextureType::TEXTURE_2D_ARRAY &&
+         _ktxTextureType != TextureType::TEXTURE_CUBE_MAP && _ktxTextureType != TextureType::TEXTURE_CUBE_ARRAY))
+    {
+        return false;
+    }
+    // Include upload preparation in serialization: otherwise many asset jobs
+    // could retain full native-input copies while waiting for the encoder.
+    static std::mutex preparationMutex;
+    const std::lock_guard preparationLock(preparationMutex);
+    KTXImage image;
+    image._width = dimensions(0u).x; image._height = dimensions(0u).y;
+    image._layers = _ktxLayerCount;
+    image._faces = IsCubeTexture(_ktxTextureType) ? 6u : 1u;
+    image._isArray = IsArrayTexture(_ktxTextureType);
+    image._mips = mipCount(); image._srgb = _ktxSRGB;
+    image._components = _format == GFXImageFormat::RED ? 1u : _format == GFXImageFormat::RG ? 2u : 4u;
+    image._alphaInterpretation = _ktxAlphaInterpretation; image._alpha = _ktxAlpha;
+    image._textureType = _ktxTextureType;
+    size_t bytes = 0u;
+    // Account for caller-owned native pixels, input copy, blocks and scratch
+    // before allocating. Encoder work itself is tiled and serialized.
+    U64 paddedTexels = 0u;
+    for (const auto& layer : _layers)
+    {
+        for (U8 mip = 0u; mip < mipCount(); ++mip)
+        {
+            const auto* data = layer.getMip(mip);
+            if (data->_dimensions.z != 1u || data->_size > KTX_IMAGE_BYTE_LIMIT - bytes) { return false; }
+            bytes += data->_size;
+            paddedTexels += U64((U32(data->_dimensions.x) + 3u) & ~3u) * ((U32(data->_dimensions.y) + 3u) & ~3u);
+        }
+    }
+    const U64 blocks = paddedTexels / 16u * (target == GFXImageFormat::BC4u ? 8u : 16u);
+    const U64 bookkeeping = U64(_layers.size()) * mipCount() * (sizeof(KTXSubresource) * 3u + 128u);
+    if (bytes * 3u + blocks * 2u + 48u * 1024u * 1024u + bookkeeping > KTX_IMAGE_BYTE_LIMIT) { return false; }
+    for (U8 mip = 0u; mip < mipCount(); ++mip)
+    {
+        for (U32 layer = 0u; layer < _layers.size(); ++layer)
+        {
+            const auto* data = _layers[layer].getMip(mip);
+            KTXSubresource resource;
+            resource._mip = mip; resource._layer = layer / image._faces; resource._face = layer % image._faces;
+            resource._width = data->_dimensions.x; resource._height = data->_dimensions.y;
+            const auto* pixels = static_cast<const U8*>(data->data());
+            resource._pixels = std::vector<U8>(pixels, pixels + data->_size);
+            image._subresources.push_back(std::move(resource));
+        }
+    }
+    KTXImage compressed;
+    if (!CompressKTXImageForGPU(image, target, compressed, nullptr, cache)) { return false; }
+    vector<ImageLayer> layers(_layers.size());
+    for (const auto& resource : compressed._subresources)
+    {
+        const auto& pixels = std::get<std::vector<U8>>(resource._pixels);
+        auto& layer = layers[resource._layer * image._faces + resource._face];
+        // Block payloads are bytes, not width*height*components texels.
+        DIVIDE_UNUSED(layer.allocateMip<U8>(pixels.data(), pixels.size(), resource._width, resource._height, 1u, 0u));
+    }
+    output._layers = std::move(layers);
+    output._format = target; output._dataType = _dataType; output._sourceDataType = _sourceDataType;
+    output._bpp = _bpp; output._isKTXImage = true; output._ktxSRGB = _ktxSRGB;
+    output._ktxAlpha = _ktxAlpha; output._ktxAlphaInterpretation = _ktxAlphaInterpretation;
+    output._ktxTextureType = _ktxTextureType; output._ktxLayerCount = _ktxLayerCount;
+    output._hasDummyAlphaChannel = _hasDummyAlphaChannel;
+    output._ignoreAlphaChannelTransparency = _ignoreAlphaChannelTransparency;
+    return true;
+}
+
+bool ImageData::loadFromKTXImage(const KTXImage& image)
+{
+    if (!_layers.empty())
+    {
+        return false;
+    }
+    size_t payloadBytes = 0u;
+    for (const auto& resource : image._subresources)
+    {
+        const size_t size = std::visit([](const auto& pixels)
+        {
+            return pixels.size() * sizeof(typename std::decay_t<decltype(pixels)>::value_type);
+        }, resource._pixels);
+        if (size > KTX_IMAGE_BYTE_LIMIT - payloadBytes)
+        {
+            return false;
+        }
+        payloadBytes += size;
+    }
+    // Caller-owned pixels, the classification copy and destination coexist.
+    if (payloadBytes > KTX_IMAGE_BYTE_LIMIT / 3u)
+    {
+        return false;
+    }
+    KTXImage copy = image;
+    return convertKTXImage(copy, payloadBytes, true);
+}
+
+bool ImageData::convertKTXImage(KTXImage& image, const size_t retainedBytes, const bool classifyAlpha)
+{
+    if (!_layers.empty() || image._width == 0u || image._height == 0u || image._depth == 0u ||
+        image._layers == 0u || image._dimensions < 1u || image._dimensions > 3u ||
+        to_base(image._componentType) > to_base(KTXComponentType::FLOAT_32) ||
+        (image._faces != 1u && image._faces != 6u) ||
+        (image._components != 1u && image._components != 2u && image._components != 4u) ||
+        (image._dimensions == 1u && image._height != 1u) ||
+        (image._dimensions != 3u && image._depth != 1u) ||
+        (image._dimensions == 3u && (image._isArray || image._layers != 1u || image._faces != 1u)) ||
+        (image._faces == 6u && (image._dimensions != 2u || image._width != image._height)) ||
+        (!image._isArray && image._layers != 1u) ||
+        image._mips == 0u || image._mips > 16u ||
+        (image._srgb && (image._componentType != KTXComponentType::UNORM_8 || image._components != 4u)))
+    {
+        return false;
+    }
+    U16 largestDimension = std::max({image._width, image._height, image._depth});
+    U8 maxMips = 1u;
+    while (largestDimension > 1u)
+    {
+        largestDimension >>= 1u;
+        ++maxMips;
+    }
+    if (image._mips > maxMips)
+    {
+        return false;
+    }
+    const TextureType textureType = image._faces == 6u
+        ? image._isArray ? TextureType::TEXTURE_CUBE_ARRAY : TextureType::TEXTURE_CUBE_MAP
+        : image._dimensions == 3u ? TextureType::TEXTURE_3D
+        : image._dimensions == 1u ? image._isArray ? TextureType::TEXTURE_1D_ARRAY : TextureType::TEXTURE_1D
+        : image._isArray ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D;
+    const size_t flattenedLayers = size_t{image._layers} * image._faces;
+    size_t payloadBytes = 0u;
+    for (const auto& resource : image._subresources)
+    {
+        const size_t size = std::visit([](const auto& pixels)
+        {
+            return pixels.size() * sizeof(typename std::decay_t<decltype(pixels)>::value_type);
+        }, resource._pixels);
+        if (size > KTX_IMAGE_BYTE_LIMIT - payloadBytes)
+        {
+            return false;
+        }
+        payloadBytes += size;
+    }
+    // The native payload and the ImageData copy coexist with the caller's input.
+    if (image._compressed || flattenedLayers > U16_MAX ||
+        retainedBytes > KTX_IMAGE_BYTE_LIMIT ||
+        payloadBytes > (KTX_IMAGE_BYTE_LIMIT - retainedBytes) / 2u)
+    {
+        Console::errorfn("KTX2 image exceeds the native allocation budget: {}", _name);
+        return false;
+    }
+    if (classifyAlpha || image._alphaInterpretation == KTXAlphaInterpretation::UNKNOWN)
+    {
+        const auto interpretation = image._alphaInterpretation != KTXAlphaInterpretation::UNKNOWN ? image._alphaInterpretation
+            : image._components != 4u ? KTXAlphaInterpretation::SYNTHETIC
+            : ignoreAlphaChannelTransparency() ? KTXAlphaInterpretation::DATA : KTXAlphaInterpretation::OPACITY;
+        if (!ClassifyKTXImageAlpha(image, interpretation))
+        {
+            Console::errorfn("KTX2 image requires explicit alpha import metadata: {}", _name);
+            return false;
+        }
+        if (interpretation == KTXAlphaInterpretation::OPACITY && image._alpha._allZero)
+        {
+            Console::errorfn("KTX2 image has all-zero opacity alpha; classifying as transparent: {}", _name);
+        }
+    }
+    vector<ImageLayer> layers(flattenedLayers);
+    size_t resourceIndex = 0u;
+    // The reader guarantees mip/layer/face/slice order. Join volume slices
+    // directly into the destination so no additional full-volume copy is needed.
+    for (U8 mip = 0u; mip < image._mips; ++mip)
+    {
+        const U16 depth = std::max<U16>(1u, image._depth >> mip);
+        for (size_t l = 0u; l < flattenedLayers; ++l)
+        {
+            if (resourceIndex + depth > image._subresources.size())
+            {
+                return false;
+            }
+            const auto& first = image._subresources[resourceIndex];
+            if (first._width != std::max<U16>(1u, image._width >> mip) ||
+                first._height != std::max<U16>(1u, image._height >> mip) ||
+                (image._componentType == KTXComponentType::UNORM_8 && !std::holds_alternative<std::vector<U8>>(first._pixels)) ||
+                ((image._componentType == KTXComponentType::UNORM_16 || image._componentType == KTXComponentType::FLOAT_16) &&
+                 !std::holds_alternative<std::vector<U16>>(first._pixels)) ||
+                (image._componentType == KTXComponentType::FLOAT_32 && !std::holds_alternative<std::vector<F32>>(first._pixels)))
+            {
+                return false;
+            }
+            const size_t expectedSliceElements = size_t{first._width} * first._height * image._components;
+            for (U16 z = 0u; z < depth; ++z)
+            {
+                const auto& resource = image._subresources[resourceIndex + z];
+                if (resource._mip != mip || resource._layer != l / image._faces ||
+                    resource._face != l % image._faces || resource._depthSlice != z ||
+                    resource._width != first._width || resource._height != first._height ||
+                    resource._pixels.index() != first._pixels.index() ||
+                    !std::visit([expectedSliceElements](const auto& pixels) { return pixels.size() == expectedSliceElements; }, resource._pixels))
+                {
+                    return false;
+                }
+            }
+            bool valid = true;
+            std::visit([&](const auto& pixels)
+            {
+                using T = typename std::decay_t<decltype(pixels)>::value_type;
+                const size_t sliceElements = size_t{first._width} * first._height * image._components;
+                T* target = layers[l].allocateMip<T>(sliceElements * depth, first._width, first._height, depth, image._components);
+                for (U16 z = 0u; z < depth; ++z)
+                {
+                    const auto& resource = image._subresources[resourceIndex + z];
+                    const auto* slice = std::get_if<std::vector<T>>(&resource._pixels);
+                    if (resource._mip != mip || resource._layer != l / image._faces ||
+                        resource._face != l % image._faces || resource._depthSlice != z ||
+                        resource._width != first._width || resource._height != first._height ||
+                        slice == nullptr || slice->size() != sliceElements)
+                    {
+                        valid = false;
+                        return;
+                    }
+                    std::memcpy(target + z * sliceElements, slice->data(), sliceElements * sizeof(T));
+                }
+                layers[l].getMip(mip)->_size = sliceElements * depth * sizeof(T);
+            }, first._pixels);
+            if (!valid)
+            {
+                return false;
+            }
+            resourceIndex += depth;
+        }
+    }
+    if (resourceIndex != image._subresources.size())
+    {
+        return false;
+    }
+    _format = image._components == 1u ? GFXImageFormat::RED
+            : image._components == 2u ? GFXImageFormat::RG : GFXImageFormat::RGBA;
+    _dataType = image._componentType == KTXComponentType::UNORM_8 ? GFXDataFormat::UNSIGNED_BYTE
+              : image._componentType == KTXComponentType::UNORM_16 ? GFXDataFormat::UNSIGNED_SHORT
+              : image._componentType == KTXComponentType::FLOAT_16 ? GFXDataFormat::FLOAT_16 : GFXDataFormat::FLOAT_32;
+    _sourceDataType = image._componentType == KTXComponentType::UNORM_8 ? SourceDataType::BYTE
+                    : image._componentType == KTXComponentType::UNORM_16 ? SourceDataType::SHORT
+                    : image._componentType == KTXComponentType::FLOAT_16 ? SourceDataType::HALF : SourceDataType::FLOAT;
+    _bpp = image._components * (image._componentType == KTXComponentType::UNORM_8 ? 8u
+                            : image._componentType == KTXComponentType::FLOAT_32 ? 32u : 16u);
+    _layers = std::move(layers);
+    _isKTXImage = true;
+    _ktxSRGB = image._srgb;
+    _ktxAlpha = image._alpha;
+    _ktxAlphaInterpretation = image._alphaInterpretation;
+    _ktxTextureType = textureType;
+    _ktxLayerCount = image._layers;
+    _hasDummyAlphaChannel = image._alphaInterpretation == KTXAlphaInterpretation::SYNTHETIC;
+    return true;
+}
+
+bool ImageData::loadDDS_IL(const bool srgb, const U16 refWidth, const U16 refHeight, const ResourcePath& path, const std::string_view name, const bool typedImport, const ImportOptions& options)
 {
 
     LockGuard<SharedMutex> lock(s_imageLoadingMutex);
@@ -1110,6 +1224,193 @@ bool ImageData::loadDDS_IL([[maybe_unused]] const bool srgb, const U16 refWidth,
         return false;
     }
     
+    // DevIL is a temporary DDS source codec. Its legacy topology heuristics
+    // cannot safely identify arrays/cubes/volumes, so only an unambiguous 2D
+    // source enters typed KTX here. Lists and other topologies retain the direct
+    // import path below; neither path reads or writes DDS engine caches.
+    ILinfo sourceInfo;
+    iluGetImageInfo(&sourceInfo);
+    std::array<U8, 128u> header{};
+    std::ifstream sourceStream(fullPath.c_str(), std::ios::binary);
+    const bool hasHeader = bool(sourceStream.read(reinterpret_cast<char*>(header.data()), header.size()));
+    const auto headerWord = [&](const size_t offset)
+    {
+        return U32(header[offset]) | (U32(header[offset + 1u]) << 8u) |
+               (U32(header[offset + 2u]) << 16u) | (U32(header[offset + 3u]) << 24u);
+    };
+    // DX10 topology is not reliably represented by DevIL; do not flatten it.
+    const bool legacy2D = hasHeader && headerWord(0u) == 0x20534444u &&
+                          headerWord(4u) == 124u && headerWord(76u) == 32u &&
+                          headerWord(84u) != 0x30315844u &&
+                          (headerWord(112u) & 0x20FE00u) == 0u && headerWord(24u) <= 1u;
+    const ILint sourceChannels = ilGetInteger(IL_IMAGE_CHANNELS);
+    const bool supportedType = sourceInfo.Type == IL_UNSIGNED_BYTE ||
+                               sourceInfo.Type == IL_UNSIGNED_SHORT || sourceInfo.Type == IL_FLOAT;
+    const bool supportedFormat = sourceInfo.Format == IL_LUMINANCE ||
+                                 sourceInfo.Format == IL_LUMINANCE_ALPHA ||
+                                 sourceInfo.Format == IL_RGB || sourceInfo.Format == IL_BGR ||
+                                 sourceInfo.Format == IL_RGBA || sourceInfo.Format == IL_BGRA;
+    const bool grayOpacity = sourceInfo.Format == IL_LUMINANCE_ALPHA && !ignoreAlphaChannelTransparency();
+    // KTX's native sRGB contract is RGBA8. Never silently reinterpret a
+    // higher-precision or packed-data sRGB request as linear.
+    const bool supportedSRGB = !srgb || (sourceInfo.Type == IL_UNSIGNED_BYTE &&
+                                       (sourceChannels >= 3 || grayOpacity));
+    if (typedImport && legacy2D && _layers.empty() && supportedType && supportedFormat &&
+        supportedSRGB && sourceChannels >= 1 && sourceChannels <= 4 &&
+        ilGetInteger(IL_NUM_IMAGES) == 0 && ilGetInteger(IL_NUM_FACES) == 0 &&
+        ilGetInteger(IL_IMAGE_CUBEFLAGS) == 0 && sourceInfo.Depth == 1 &&
+        sourceInfo.Width > 0 && sourceInfo.Width <= U16_MAX &&
+        sourceInfo.Height > 0 && sourceInfo.Height <= U16_MAX &&
+        (refWidth == 0 || refHeight == 0 ||
+         (sourceInfo.Width == refWidth && sourceInfo.Height == refHeight)))
+    {
+        KTXImage image;
+        image._width = to_U16(sourceInfo.Width);
+        image._height = to_U16(sourceInfo.Height);
+        image._mips = to_U8(sourceInfo.NumMips + 1u);
+        image._components = sourceChannels == 3 || grayOpacity ? 4u : to_U8(sourceChannels);
+        image._componentType = sourceInfo.Type == IL_FLOAT ? KTXComponentType::FLOAT_32
+                             : sourceInfo.Type == IL_UNSIGNED_SHORT ? KTXComponentType::UNORM_16
+                             : KTXComponentType::UNORM_8;
+        image._srgb = srgb && image._components == 4u && sourceInfo.Type == IL_UNSIGNED_BYTE;
+        image._alphaInterpretation = sourceChannels == 3 ? KTXAlphaInterpretation::SYNTHETIC
+            : ignoreAlphaChannelTransparency() ? KTXAlphaInterpretation::DATA
+            : image._components != 4u ? KTXAlphaInterpretation::SYNTHETIC
+            : KTXAlphaInterpretation::OPACITY;
+        const ILenum format = sourceChannels == 4 ? IL_RGBA : sourceChannels == 3 ? IL_RGB
+                            : sourceChannels == 2 ? IL_LUMINANCE_ALPHA : IL_LUMINANCE;
+        if (sourceInfo.NumMips >= 16u || checkError(devilErrors))
+        {
+            return false;
+        }
+        constexpr size_t DDS_TYPED_BYTE_LIMIT = 32u * 1024u * 1024u;
+        size_t bytes = 0u;
+        for (U8 mip = 0u; mip < image._mips; ++mip)
+        {
+            ilBindImage(imageID);
+            if (!ilActiveMipmap(mip))
+            {
+                return false;
+            }
+            const ILint width = ilGetInteger(IL_IMAGE_WIDTH);
+            const ILint height = ilGetInteger(IL_IMAGE_HEIGHT);
+            if (width != std::max(1, to_I32(image._width) >> mip) ||
+                height != std::max(1, to_I32(image._height) >> mip) ||
+                ilGetInteger(IL_IMAGE_DEPTH) != 1)
+            {
+                return false;
+            }
+            const size_t samples = to_size(width) * height * image._components;
+            const size_t sampleBytes = sourceInfo.Type == IL_FLOAT ? sizeof(F32)
+                                     : sourceInfo.Type == IL_UNSIGNED_SHORT ? sizeof(U16) : sizeof(U8);
+            const size_t mipBytes = samples * sampleBytes;
+            // Decoder storage, typed slices and loadFromKTXImage copies coexist.
+            if (mipBytes > DDS_TYPED_BYTE_LIMIT - bytes)
+            {
+                return false;
+            }
+            bytes += mipBytes;
+            KTXSubresource resource;
+            resource._mip = mip;
+            resource._width = to_U16(width);
+            resource._height = to_U16(height);
+            const auto copyPixels = [&]<typename T>()
+            {
+                std::vector<T> pixels(samples);
+                // Same component type, only channel order / synthetic alpha
+                // changes. No 8-bit staging for UNORM16 or floating-point DDS.
+                const size_t sourceSamples = to_size(width) * height * sourceChannels;
+                if (ilCopyPixels(0, 0, 0, width, height, 1, format, sourceInfo.Type, pixels.data()) !=
+                    sourceSamples * sizeof(T))
+                {
+                    return false;
+                }
+                // Expand backwards in the final allocation: genuine gray alpha
+                // is preserved, while RGB gets an explicit exact opaque alpha.
+                if (grayOpacity || sourceChannels == 3)
+                {
+                    const T opaque = []()
+                    {
+                        if constexpr (std::is_floating_point_v<T>) { return T{1}; }
+                        else { return std::numeric_limits<T>::max(); }
+                    }();
+                    for (size_t texel = to_size(width) * height; texel-- > 0u;)
+                    {
+                        const size_t source = texel * sourceChannels;
+                        const T r = pixels[source];
+                        const T g = grayOpacity ? r : pixels[source + 1u];
+                        const T b = grayOpacity ? r : pixels[source + 2u];
+                        const T a = grayOpacity ? pixels[source + 1u] : opaque;
+                        pixels[texel * 4u] = r;
+                        pixels[texel * 4u + 1u] = g;
+                        pixels[texel * 4u + 2u] = b;
+                        pixels[texel * 4u + 3u] = a;
+                    }
+                }
+                const bool upperLeft = ilGetInteger(IL_IMAGE_ORIGIN) == IL_ORIGIN_UPPER_LEFT;
+                if (upperLeft)
+                {
+                    const size_t rowSamples = to_size(width) * image._components;
+                    for (size_t row = 0u; row < to_size(height) / 2u; ++row)
+                    {
+                        std::swap_ranges(pixels.begin() + row * rowSamples,
+                                         pixels.begin() + (row + 1u) * rowSamples,
+                                         pixels.begin() + (to_size(height) - 1u - row) * rowSamples);
+                    }
+                }
+                resource._pixels = std::move(pixels);
+                return true;
+            };
+            const bool copied = sourceInfo.Type == IL_FLOAT ? copyPixels.operator()<F32>()
+                              : sourceInfo.Type == IL_UNSIGNED_SHORT ? copyPixels.operator()<U16>()
+                              : copyPixels.operator()<U8>();
+            if (!copied || checkError(devilErrors))
+            {
+                return false;
+            }
+            image._subresources.push_back(std::move(resource));
+        }
+        if (!options._skipMipMaps && image._mips == 1u)
+        {
+            // Native KTX uploads use explicit mip levels. Generate the chain
+            // here rather than losing the legacy AUTO-mipmap behavior.
+            U64 projectedBytes = 0u;
+            U16 width = image._width;
+            U16 height = image._height;
+            U8 mipCount = 0u;
+            do
+            {
+                projectedBytes += U64(width) * height * image._components *
+                    (sourceInfo.Type == IL_FLOAT ? sizeof(F32)
+                     : sourceInfo.Type == IL_UNSIGNED_SHORT ? sizeof(U16) : sizeof(U8));
+                ++mipCount;
+                if (width == 1u && height == 1u) { break; }
+                width = std::max<U16>(1u, width >> 1u);
+                height = std::max<U16>(1u, height >> 1u);
+            } while (true);
+            const U64 bookkeeping = U64(mipCount) * (sizeof(KTXSubresource) * 3u + 64u) + 4096u;
+            // Include retained decoder/source pixels beyond the mip helper's
+            // own budget, before it allocates any enlarged native chain.
+            if (projectedBytes > DDS_TYPED_BYTE_LIMIT ||
+                U64(bytes) * 2u + projectedBytes * 4u + bookkeeping >= KTX_IMAGE_BYTE_LIMIT)
+            {
+                return false;
+            }
+            KTXMipOptions mipOptions;
+            mipOptions._semantic = options._isNormalMap && image._components == 4u ? KTXMipSemantic::NORMAL
+                : image._srgb ? KTXMipSemantic::COLOR
+                : image._components != 4u || !options._alphaChannelTransparency ? KTXMipSemantic::DATA
+                : KTXMipSemantic::COLOR;
+            mipOptions._preserveAlphaCoverage = image._alphaInterpretation == KTXAlphaInterpretation::OPACITY &&
+                                                options._alphaChannelTransparency && !options._isNormalMap;
+            if (!GenerateKTXMipmaps(image, mipOptions))
+            {
+                return false;
+            }
+        }
+        return loadFromKTXImage(image);
+    }
+
     const ILint dxtFormat = ilGetInteger(IL_DXTC_DATA_FORMAT);
     const bool compressed = dxtFormat == IL_DXT1 ||
                             dxtFormat == IL_DXT1A||
@@ -1391,11 +1692,16 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
         c = U8_MAX;
         return;
     }
+    if (_isKTXImage && comp >= NumChannels(_format))
+    {
+        c = 0u;
+        return;
+    }
 
     const LayerData* mip = _layers[layer].getMip(mipLevel);
 
     // Decompressed data is always UByte-RGBA
-    const U32 pixelStride = IsCompressed(_format) ? 4 : _bpp / 8;
+    const U32 pixelStride = IsCompressed(_format) ? 4 : _isKTXImage ? NumChannels(_format) : _bpp / 8;
     const I32 idx = ((y * mip->_dimensions.width + x) * pixelStride) + comp;
     if (IsCompressed(_format))
     {
@@ -1416,11 +1722,16 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
             } break;
             case SourceDataType::HALF:
             {
-                c = HalfToU8Colour( static_cast<const glm::detail::hdata*>(mip->data())[idx] );
+                const auto value = static_cast<const glm::detail::hdata*>(mip->data())[idx];
+                const F32 normalized = glm::detail::toFloat32(value);
+                c = _isKTXImage ? to_U8(std::isfinite(normalized) ? std::clamp(normalized, 0.f, 1.f) * 255.f : 0.f)
+                               : HalfToU8Colour(value);
             } break;
             case SourceDataType::FLOAT:
             {
-                c = F32ToU8Colour( static_cast<const F32*>(mip->data())[idx] );
+                const F32 value = static_cast<const F32*>(mip->data())[idx];
+                c = _isKTXImage ? to_U8(std::isfinite(value) ? std::clamp(value, 0.f, 1.f) * 255.f : 0.f)
+                               : F32ToU8Colour(value);
             } break;
             case SourceDataType::UINT:
             {
@@ -1433,6 +1744,14 @@ void ImageData::getColourComponent(const I32 x, const I32 y, const U8 comp, U8& 
 
 void ImageData::getColour(const I32 x, const I32 y, U8& r, U8& g, U8& b, U8& a, const U32 layer, const U8 mipLevel) const
 {
+    if (_isKTXImage)
+    {
+        getColourComponent(x, y, 0u, r, layer, mipLevel);
+        getColourComponent(x, y, 1u, g, layer, mipLevel);
+        getColourComponent(x, y, 2u, b, layer, mipLevel);
+        getColourComponent(x, y, 3u, a, layer, mipLevel);
+        return;
+    }
     assert(!IsCompressed(_format) || mipLevel == 0);
     assert(_layers.size() > layer);
 
@@ -1572,4 +1891,3 @@ bool SaveImageHDR(const ResourcePath& filename, const U16 width, const U16 heigh
     return stbi_write_hdr(filename.string().c_str(), width, height, numberOfComponents, imageData) == 1;
 }
 }  // namespace Divide::ImageTools
-

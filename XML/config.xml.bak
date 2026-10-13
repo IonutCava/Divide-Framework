@@ -13,7 +13,7 @@
 			<geometry>true</geometry>
 			<vegetation>true</vegetation>
 			<shaders>true</shaders>
-			<textureDDS>true</textureDDS>
+			<textureKTX>true</textureKTX>
 		</cache>
 		<renderFilter>
 			<primitives>true</primitives>

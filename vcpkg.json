@@ -9,6 +9,13 @@
     "boost-functional",
     "boost-asio",
     "stb",
+    "libpng",
+    "libjpeg-turbo",
+    {
+      "name": "ktx",
+      "version>=": "4.4.2",
+      "default-features": false
+    },
     "freetype",
     "fmt",
     "concurrentqueue",
@@ -79,10 +86,6 @@
       ]
     },
     {
-      "name": "nvtt",
-      "platform": "!osx"
-    },
-    {
       "name": "date",
       "platform": "osx"
     },
@@ -93,6 +96,21 @@
     {
       "name": "wayland",
       "platform": "linux"
+    }
+  ],
+  "overrides": [
+    {
+      "name": "libpng",
+      "version": "1.6.59"
+    },
+    {
+      "name": "libjpeg-turbo",
+      "version": "3.2.0",
+      "port-version": 1
+    },
+    {
+      "name": "ktx",
+      "version": "4.4.2"
     }
   ]
 }

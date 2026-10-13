@@ -66,6 +66,87 @@ If you plan to use any parts of this code in a commercial product, a couple of t
 
 * Windows only (but with functional Linux platform code).
 
+## KTX2 migration (initial implementation)
+
+- KTX-Software is pinned to **4.4.2**. Screenshots are lossless, uncompressed
+  sRGB KTX2 files with bottom-left orientation, not PNG files.
+- Native rendering accepts 1D/2D/3D, array and cubemap KTX2 files: R/RG/RGBA
+  UNORM8, UNORM16, half-float and float, with their supplied mip counts.
+  Explicit bottom-left orientation and identity swizzle are required; unsupported
+  encodings fail rather than falling back to an ordinary-image backend path.
+- `DivideAlpha` metadata records the classifier version, alpha interpretation,
+  thresholds and classification. Transparent (0–1) and translucent (2–250)
+  categories each tolerate four pixels independently. All-zero opacity logs an
+  error and is transparent only. Missing classification is unknown until decoded
+  base-level pixels are classified; synthetic and data alpha are excluded.
+- Single-file PNG/JPEG and uncompressed 24-bit BMP inputs automatically use precision-preserving source
+  decoding, semantic mip generation and a lossless KTX2 master representation.
+  Colour mips filter sRGB in linear space; normal mips renormalize; data channels
+  filter independently. Alpha coverage uses the engine discard threshold, not
+  the opacity classifier. Supplied mip chains remain intact unless regeneration
+  is requested. Cube faces filter independently, without seam-aware filtering.
+- The source cache stores exact source bytes and settings alongside its KTX2
+  payload in one atomically published entry. Warm hits still read source bytes,
+  but avoid image decoding and encoding. Identical concurrent requests coalesce;
+  conversion concurrency is limited to two. Input/base-plus-mips are limited to
+  32 MiB each; encoded payloads to 64 MiB. Disk failure falls back to the unified
+  in-memory representation, never ordinary-image backend loading.
+- GPU uploads select a format supported by the active OpenGL/Vulkan device.
+  Eligible sampled 8-bit colour and XYZ normal textures use BC7 through
+  KTX-Software's public UASTC encoder/transcoder. BC4 (R) and BC5 (RG) require
+  explicit lossy-data permission; packed data remains lossless by default.
+  Original alpha classification, sRGB interpretation and supplied mip levels
+  are retained independently of compression.
+  BC7 uses 16 bytes per 4x4 block (versus 64 bytes for RGBA8); BC4/BC5 use
+  8/16 bytes per block. Tiny mip tails still occupy a complete block.
+  Block-aligned tile encoding bounds scratch memory for large textures.
+  GPU-target entries cache the native blocks separately from lossless masters,
+  keyed by exact source pixels, topology, target format and encoder policy.
+  Warm disk hits avoid encoding/transcoding; corrupt or unavailable entries
+  are rebuilt in memory. Cache publication is atomic and quota-limited.
+- CPU-readable, precision-sensitive 16-bit/float, writable, render-target and
+  region-update textures retain their native representation. Unsupported
+  compression targets fall back to that representation. There is no universal
+  fastest format: BC7 prioritizes channel/alpha fidelity and reduced bandwidth,
+  not maximum compression ratio or a guaranteed frame-rate improvement.
+  HDR/16-bit inputs are not quantized to feed the 8-bit Basis encoder.
+  External Basis/supercompressed KTX2 inputs still require an explicit import
+  step; this GPU-compression path consumes the existing lossless native masters.
+- DDS is an import format, not a cache format. Source and GPU-target caching
+  use KTX2 representations; the engine no longer generates DDS cache files.
+  Existing DDS assets remain readable through the temporary DevIL importer.
+  Supported single 2D DDS images enter the typed KTX pipeline after decoding;
+  other DDS formats/topologies retain their legacy import path until the
+  replacement codec is integrated.
+  `ImageData::encodeKTX` exports supported native single-2D images as lossless
+  KTX2 bytes, retaining precision, mip levels and alpha metadata. Legacy direct
+  DDS imports and GPU-compressed upload copies cannot be exported through it.
+  Typed DDS import and generated mip chains are limited to 32 MiB each.
+- **Still pending:** ordered multi-source array/cube importing,
+  remaining codec/consumer migration and removal of legacy image libraries.
+
+Import-codec selection: libpng **1.6.59** for 8/16-bit PNG
+(reuses the existing dependency; the pinned registry's LodePNG port is obsolete),
+libjpeg-turbo 3.2.0 for JPEG, existing SDL's native BMP decoder, and DirectXTex
+(`1acf4ebe6330e06b7eb52e8db63d4f824ad77427`) for TGA/DDS/Radiance HDR.
+DirectXTex is the non-header-only exception needed for maintained, complete DDS
+precision/BC support; it belongs to import tooling, not backend texture loading.
+libpng, libjpeg-turbo and native SDL BMP decoding are integrated for single-source
+imports. BMP alpha/bitfield/other pixel encodings require explicit conversion;
+TGA/HDR and unsupported DDS layouts remain on legacy paths until their codecs are integrated. Comma-separated source
+lists likewise remain on the legacy path; native KTX2 files cannot be mixed with
+such lists. Legacy lists must have matching formats, dimensions and mip layouts;
+incompatible mixed DDS/source-image lists require offline normalization.
+KTX cache controls replace DDS cache controls; old configuration
+keys remain readable for compatibility. Lossless master encoding uses the
+area-box mip filter. Obsolete DDS output-format, filter and asynchronous
+conversion options have been removed; KTX GPU compression uses the policy above.
+`_compressKTXForGPU=false` disables lossy GPU compression;
+`_preserveKTXCPUData=true` explicitly preserves exact GPU samples;
+`_allowLossyKTXData=true` permits compression of otherwise protected data channels.
+`_useKTXPipeline=false` is a temporary explicit migration opt-out.
+KTX2 writing does not require an additional screenshot codec.
+
 ## Screenshots
 Framework Screenshot
 ![Framework Screenshot](http://divide-studio.co.uk/Editor.png)
@@ -125,7 +206,6 @@ I did try to comply with all of them, but I may have missed something.
     * Open-Asset-Importer-Library: https://github.com/assimp/assimp
     * STB: https://github.com/nothings/stb
     * meshoptimizer: https://github.com/zeux/meshoptimizer
-    * nvtt: https://github.com/castano/nvidia-texture-tool
     * Frexx CPP (C Preprocessor): https://github.com/bagder/fcpp
     * DevIL: https://openil.sourceforge.net
 * OpenAL-soft: https://github.com/kcat/openal-soft

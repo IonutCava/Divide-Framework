@@ -36,7 +36,7 @@ namespace Divide
     SamplerDescriptor Texture::s_defaultSampler;
     Handle<Texture> Texture::s_defaultTexture2D = INVALID_HANDLE<Texture>;
     Handle<Texture> Texture::s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
-    bool Texture::s_useDDSCache = true;
+    bool Texture::s_useKTXCache = true;
 
     void Texture::OnStartup()
     {
@@ -80,9 +80,9 @@ namespace Divide
         ImageTools::OnShutdown();
     }
 
-    bool Texture::UseTextureDDSCache() noexcept
+    bool Texture::UseTextureKTXCache() noexcept
     {
-        return s_useDDSCache;
+        return s_useKTXCache;
     }
 
     Handle<Texture> Texture::DefaultTexture2D() noexcept
@@ -138,6 +138,7 @@ namespace Divide
                       _descriptor._baseFormat != GFXImageFormat::COUNT &&
                       _descriptor._dataType != GFXDataFormat::COUNT);
 
+        _requestedLayerCount = _descriptor._layerCount;
         _loadedFromFile = !descriptor.assetName().empty();
 
         if ( _loadedFromFile )
@@ -152,7 +153,14 @@ namespace Divide
             const bool isCubeMap = IsCubeTexture( _descriptor._texType );
 
             const U16 numCommas = to_U16( std::count( std::cbegin( descriptor.assetName() ), std::cend( descriptor.assetName() ), ',' ) );
-            if ( numCommas > 0u )
+            bool containsKTX = false;
+            istringstream inputs(descriptor.assetName().c_str());
+            string input;
+            while (Util::GetLine(inputs, input, ','))
+            {
+                containsKTX |= hasExtension(ResourcePath{Util::Trim(input)}, "ktx2");
+            }
+            if ( numCommas > 0u && !containsKTX )
             {
                 const U16 targetLayers = numCommas + 1u;
 
@@ -232,9 +240,24 @@ namespace Divide
 
             // Each texture face/layer must be in a comma separated list
             istringstream textureFileList( assetName().c_str() );
+            if (assetName().find(',') != string::npos)
+            {
+                istringstream inputs(assetName().c_str());
+                string input;
+                while (Util::GetLine(inputs, input, ','))
+                {
+                    if (hasExtension(ResourcePath{Util::Trim(input)}, "ktx2"))
+                    {
+                        Console::errorfn("KTX2 assets cannot be combined with comma-separated image inputs: {}", assetName());
+                        return false;
+                    }
+                }
+            }
 
             ImageTools::ImageData dataStorage = {};
             dataStorage.requestedFormat( requestedFormat );
+            // Ordered legacy source lists remain a single coherent import path.
+            dataStorage.allowKTXSourceImport(assetName().find(',') == string::npos);
 
             bool hasValidEntries = false;
             // We loop over every texture in the above list and store it in this temporary string
@@ -252,6 +275,11 @@ namespace Divide
                 // Attempt to load the current entry
                 if ( !loadFile( currentTextureFullPath, Util::Trim(currentTextureFile), dataStorage ) )
                 {
+                    if (dataStorage.sourceListLayoutMismatch() || dataStorage.isKTXImage() ||
+                        hasExtension(ResourcePath{Util::Trim(currentTextureFile)}, "ktx2"))
+                    {
+                        return false;
+                    }
                     // Invalid texture files are not handled yet, so stop loading
                     continue;
                 }
@@ -264,17 +292,23 @@ namespace Divide
                 // Create a new Rendering API-dependent texture object
                 _descriptor._baseFormat = dataStorage.format();
                 _descriptor._dataType = dataStorage.dataType();
+                if (dataStorage.isKTXImage())
+                {
+                    _descriptor._packing = dataStorage.ktxSRGB() ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED;
+                    _descriptor._mipMappingState = MipMappingState::MANUAL;
+                }
                 // Uploading to the GPU dependents on the rendering API
-                if (createWithData( dataStorage, {}) != ImageUsage::SHADER_READ )
+                if (createWithData( dataStorage, dataStorage.isKTXImage() ? PixelAlignment{._alignment = 1u} : PixelAlignment{}) != ImageUsage::SHADER_READ )
                 {
                     DIVIDE_UNEXPECTED_CALL();
+                    return false;
                 }
 
                 if ( IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() % 6 != 0  )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_CUBMAP_INIT_COUNT" ), resourceName().c_str() );
                 }
-                else if ( IsArrayTexture( _descriptor._texType ) && !IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() != depth() )
+                else if ( !dataStorage.isKTXImage() && IsArrayTexture( _descriptor._texType ) && !IsCubeTexture( _descriptor._texType ) && dataStorage.layerCount() != depth() )
                 {
                     Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOADER_ARRAY_INIT_COUNT" ), resourceName().c_str() );
                 }
@@ -304,6 +338,14 @@ namespace Divide
 
         if ( !fileExists( path / name ) || !fileData.loadFromFile( _context.context(), srgb, _width, _height, path, name, _descriptor._textureOptions ) )
         {
+            const bool unifiedSource = _descriptor._textureOptions._useKTXPipeline && fileData.allowKTXSourceImport() &&
+                (hasExtension(ResourcePath{name}, "png") || hasExtension(ResourcePath{name}, "jpg") ||
+                 hasExtension(ResourcePath{name}, "jpeg") || hasExtension(ResourcePath{name}, "bmp"));
+            if (unifiedSource || hasExtension(ResourcePath{name}, "ktx2") || fileData.isKTXImage())
+            {
+                Console::errorfn("Unable to load native KTX2 texture: {}", path / name);
+                return false;
+            }
             if ( fileData.layerCount() > 0 )
             {
                 Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LAYER_LOAD" ), name );
@@ -313,6 +355,11 @@ namespace Divide
             Console::errorfn( LOCALE_STR( "ERROR_TEXTURE_LOAD" ), name );
             // missing_texture.jpg must be something that really stands out
             DIVIDE_EXPECTED_CALL( fileData.loadFromFile( _context.context(), srgb, _width, _height, Paths::g_texturesLocation, s_missingTextureFileName ) );
+        }
+        else if (fileData.isKTXImage())
+        {
+            _hasTransparency = !fileData.ignoreAlphaChannelTransparency() && fileData.ktxAlpha()._transparent;
+            _hasTranslucency = !fileData.ignoreAlphaChannelTransparency() && fileData.ktxAlpha()._translucent;
         }
         else if ( !fileData.hasDummyAlphaChannel() )
         {
@@ -340,11 +387,97 @@ namespace Divide
         DIVIDE_ASSERT(crtUsageInOut != ImageUsage::UNDEFINED);
     }
 
+    ImageUsage Texture::TryKTXCompressedUpload(TextureDescriptor& descriptor, U16& mipCount,
+                                              U8& sourceMipCount, bool& allocationFailed,
+                                              const std::function<ImageUsage()>& upload)
+    {
+        const auto originalDescriptor = descriptor;
+        const U16 originalMips = mipCount;
+        const U8 originalSourceMips = sourceMipCount;
+        const ImageUsage result = upload();
+        if (result == ImageUsage::UNDEFINED)
+        {
+            descriptor = originalDescriptor;
+            mipCount = originalMips;
+            sourceMipCount = originalSourceMips;
+            allocationFailed = false;
+        }
+        return result;
+    }
+
     ImageUsage Texture::createWithData(const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment)
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics);
 
-        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u), imageData.layerCount(), true);
+        if (imageData.isKTXImage() && _descriptor._textureOptions._compressKTXForGPU &&
+            !IsCompressed(imageData.format()))
+        {
+            ImageTools::KTXGPUCompressionOptions options;
+            options._semantic = _descriptor._textureOptions._isNormalMap ? ImageTools::KTXMipSemantic::NORMAL
+                              : (!_descriptor._textureOptions._alphaChannelTransparency ||
+                                 imageData.ktxAlphaInterpretation() == ImageTools::KTXAlphaInterpretation::DATA)
+                                ? ImageTools::KTXMipSemantic::DATA : ImageTools::KTXMipSemantic::COLOR;
+            options._allowLossyData = _descriptor._textureOptions._allowLossyKTXData;
+            options._preserveCPUData = _descriptor._textureOptions._preserveKTXCPUData;
+            options._sampledOnly = _descriptor._usageMask == (1u << to_base(ImageUsage::SHADER_READ)) &&
+                                   !_descriptor._allowRegionUpdates && _descriptor._msaaSamples == 0u;
+            options._bc4 = options._bc5 = options._bc7 = true;
+            const auto target = imageData.ktxGPUFormat(options);
+            ImageTools::ImageData compressed;
+            if (target != GFXImageFormat::COUNT && supportsKTXGPUFormat(target, imageData))
+            {
+                ImageTools::KTXGPUCacheOptions cache;
+                if (UseTextureKTXCache() && _descriptor._textureOptions._useKTXCache)
+                {
+                    cache._directory = (Paths::Textures::g_metadataLocation / "KTX2" / "GPU").fileSystemPath();
+                }
+                cache._semantic = options._semantic;
+                cache._allowLossyData = options._allowLossyData;
+                if (imageData.compressedKTXCopy(target, compressed, cache))
+                {
+                    const ImageUsage compressedUsage = TryKTXCompressedUpload(_descriptor, _mipCount, _sourceMipCount,
+                        _nativeAllocationFailed, [&] { return createWithData(compressed, PixelAlignment{._alignment = 1u}); });
+                    if (compressedUsage != ImageUsage::UNDEFINED) { return compressedUsage; }
+                    // Fall through to the native source exactly once: do not
+                    // recursively re-enter the compression selection path.
+                    Console::warnfn("KTX2 compressed allocation failed; retrying native upload: {}", assetName());
+                }
+                else
+                {
+                    Console::warnfn("KTX2 GPU compression failed or exceeded its budget; using native upload: {}", assetName());
+                }
+            }
+        }
+        _sourceMipCount = imageData.isKTXImage() ? imageData.mipCount() : 0u;
+        SCOPE_EXIT { _sourceMipCount = 0u; };
+        if (imageData.isKTXImage())
+        {
+            const bool cubeCompatibility = imageData.ktxTextureType() == TextureType::TEXTURE_CUBE_MAP &&
+                                           _descriptor._texType == TextureType::TEXTURE_CUBE_ARRAY;
+            const bool importedArrayCompatibility = imageData.ktxTextureType() == TextureType::TEXTURE_2D &&
+                _descriptor._texType == TextureType::TEXTURE_2D_ARRAY && imageData.ktxLayerCount() == 1u &&
+                !hasExtension(ResourcePath{assetName()}, "ktx2");
+            if ((_descriptor._texType != imageData.ktxTextureType() && !cubeCompatibility && !importedArrayCompatibility) ||
+                _descriptor._msaaSamples != 0u || imageData.mipCount() == 0u ||
+                (_requestedLayerCount != 0u && _requestedLayerCount != imageData.ktxLayerCount()))
+            {
+                Console::errorfn("KTX2 topology does not match the requested non-MSAA texture: {}", assetName());
+                return ImageUsage::UNDEFINED;
+            }
+            _descriptor._baseFormat = imageData.format();
+            _descriptor._dataType = imageData.dataType();
+            _descriptor._packing = imageData.ktxSRGB() ? GFXImagePacking::NORMALIZED_SRGB : GFXImagePacking::NORMALIZED;
+            _descriptor._layerCount = imageData.ktxLayerCount();
+            _descriptor._mipMappingState = MipMappingState::MANUAL;
+        }
+        _nativeKTX = imageData.isKTXImage();
+        _nativeAllocationFailed = false;
+        ImageUsage ret = prepareTextureData(imageData.dimensions(0u, 0u),
+                                           imageData.isKTXImage() ? imageData.ktxLayerCount() : imageData.layerCount(), true);
+        if (_nativeAllocationFailed)
+        {
+            return ImageUsage::UNDEFINED;
+        }
         DIVIDE_UNUSED(ret);
 
         if ( !IsRenderTargetAttachment(descriptor()) )
@@ -354,7 +487,7 @@ namespace Divide
                 _descriptor._mipMappingState = MipMappingState::MANUAL;
             }
 
-            loadDataInternal(imageData, pixelUnpackAlignment);
+            loadDataInternal(imageData, imageData.isKTXImage() ? PixelAlignment{._alignment = 1u} : pixelUnpackAlignment);
 
             ret = ImageUsage::SHADER_READ;
         }
@@ -695,7 +828,11 @@ namespace Divide
         DIVIDE_ASSERT( _width > 0u && _height > 0u );
         {
             //http://www.opengl.org/registry/specs/ARB/texture_non_power_of_two.txt
-            if ( _descriptor._mipMappingState != MipMappingState::OFF )
+            if (_sourceMipCount != 0u)
+            {
+                _mipCount = _sourceMipCount;
+            }
+            else if ( _descriptor._mipMappingState != MipMappingState::OFF )
             {
                 _mipCount = MipCount(_width, _height);
             }
@@ -708,7 +845,8 @@ namespace Divide
 
     ImageView Texture::getView() const noexcept
     {
-        const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u : _depth;
+        const U16 layerCount = _descriptor._texType == TextureType::TEXTURE_3D ? 1u
+                            : _nativeKTX ? _layerCount : _depth;
 
         return ImageView
         {

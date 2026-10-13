@@ -55,7 +55,7 @@ struct Configuration final : XML::IXMLSerializable {
             bool geometry = true;
             bool vegetation = true;
             bool shaders = true;
-            bool textureDDS = true;
+            bool textureKTX = true;
         } cache = {};
         struct RenderFilter
         {
