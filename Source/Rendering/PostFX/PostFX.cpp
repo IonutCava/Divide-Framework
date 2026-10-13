@@ -170,7 +170,7 @@ namespace Divide
         };
 
         _uniformData.set( _ID( "_zPlanes" ), PushConstantType::VEC2, cameraSnapshot._zPlanes );
-        _uniformData.set( _ID( "_invProjectionMatrix" ), PushConstantType::VEC2, cameraSnapshot._invProjectionMatrix );
+        _uniformData.set( _ID( "_invProjectionMatrix" ), PushConstantType::MAT4, cameraSnapshot._invProjectionMatrix );
 
         GFX::EnqueueCommand<GFX::SendPushConstantsCommand>( bufferInOut )->_uniformData = &_uniformData;
         const auto& rtPool = context().gfx().renderTargetPool();

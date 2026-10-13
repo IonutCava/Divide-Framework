@@ -2441,7 +2441,7 @@ namespace Divide
                             reflectUndo._name = "Reflect Type";
                             reflectUndo._oldVal = to_I32(reflectorType);
                             reflectUndo._newVal = to_I32(mode);
-                            const RenderStagePass tempPass = currentStagePass;
+                            //const RenderStagePass tempPass = currentStagePass;
                             reflectUndo._dataSetter = [material](const I32& data)
                             {
                                 material->properties().reflectorType(static_cast<ReflectorType>(data));
@@ -2480,7 +2480,7 @@ namespace Divide
                             refractUndo._name = "Refract Type";
                             refractUndo._oldVal = to_I32(refractorType);
                             refractUndo._newVal = to_I32(mode);
-                            const RenderStagePass tempPass = currentStagePass;
+                            //const RenderStagePass tempPass = currentStagePass;
                             refractUndo._dataSetter = [material](const I32& data)
                             {
                                 material->properties().refractorType(static_cast<RefractorType>(data));
@@ -2552,7 +2552,7 @@ namespace Divide
                     ret = ImGui::Checkbox( "", &val );
                 }
                 ImGui::SameLine();
-                ImGui::PushFont( boldFont );
+                ImGui::PushFont( boldFont, 0.f );
                 ImGui::Text( name );
                 ImGui::PopFont();
                 if ( ImGui::IsItemHovered( ImGuiHoveredFlags_AllowWhenDisabled ) )

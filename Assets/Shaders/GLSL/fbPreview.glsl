@@ -11,6 +11,7 @@ uniform float multiplier;
 uniform uint channelsArePacked;
 uniform uint scaleAndBias;
 uniform uint normalizeOutput;
+uniform uint skipLinearisation;
 
 DESCRIPTOR_SET_RESOURCE(PER_DRAW, 0) uniform sampler2D texDiffuse0;
 
@@ -51,7 +52,10 @@ void main()
         }
     }
 
-    _colourOut.rgb = ToLinear( _colourOut.rgb );
+    // Writing directly to a non-sRGB screen: keep sRGB encoded content as-is
+    if (skipLinearisation == 0u) {
+        _colourOut.rgb = ToLinear( _colourOut.rgb );
+    }
 
     if (normalizeOutput != 0u) {
         _colourOut.rgb = normalize(_colourOut.rgb);

@@ -179,6 +179,12 @@ namespace Divide
             return Paths::Shaders::g_cacheLocation / Paths::g_buildTypeLocation / Paths::Shaders::g_cacheLocationVK;
         }
 
+        /// The swapchain is the only target rendered with a flipped (negative height) viewport. Everything else uses OpenGL's memory layout.
+        [[nodiscard]] FORCE_INLINE bool IsSwapChainTargetActive() noexcept
+        {
+            return VK_API::GetStateTracker()._activeRenderTargetID == SCREEN_TARGET_ID;
+        }
+
         [[nodiscard]] FORCE_INLINE bool IsTriangles( const PrimitiveTopology topology )
         {
             return topology == PrimitiveTopology::TRIANGLES ||
@@ -238,24 +244,78 @@ namespace Divide
             return ret;
         }
 
-        struct DynamicEntry
+        // Resolved contents of a single descriptor slot. Used to detect if a shared (non PER_DRAW) set actually changed
+        // so that we only allocate + write a new VkDescriptorSet when the bound resources differ.
+        struct DescriptorSlotState
         {
-            VkDescriptorBufferInfo _info{};
-            VkShaderStageFlags _stageFlags{};
+            VkDescriptorBufferInfo _bufferInfo{};
+            VkDescriptorImageInfo _imageInfo{};
+            VkDescriptorType _type{ VK_DESCRIPTOR_TYPE_MAX_ENUM };
+
+            [[nodiscard]] bool isImage() const noexcept
+            {
+                return _type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER || _type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            }
+
+            [[nodiscard]] bool operator==( const DescriptorSlotState& other ) const noexcept
+            {
+                if ( _type != other._type )
+                {
+                    return false;
+                }
+                if ( _type == VK_DESCRIPTOR_TYPE_MAX_ENUM )
+                {
+                    return true;
+                }
+                if ( isImage() )
+                {
+                    return _imageInfo.sampler == other._imageInfo.sampler &&
+                           _imageInfo.imageView == other._imageInfo.imageView &&
+                           _imageInfo.imageLayout == other._imageInfo.imageLayout;
+                }
+
+                return _bufferInfo.buffer == other._bufferInfo.buffer &&
+                       _bufferInfo.offset == other._bufferInfo.offset &&
+                       _bufferInfo.range == other._bufferInfo.range;
+            }
         };
 
-        using DynamicBufferEntry = std::array<DynamicEntry, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
-        thread_local std::array<DynamicBufferEntry, to_base(DescriptorSetUsage::COUNT)> s_dynamicBindings;
-        thread_local fixed_vector<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET * to_base(DescriptorSetUsage::COUNT)> s_dynamicOffsets;
-        thread_local bool s_pipelineReset = true;
+        using DescriptorSlotStates = std::array<DescriptorSlotState, MAX_BINDINGS_PER_DESCRIPTOR_SET>;
 
-        void ResetDescriptorDynamicOffsets()
+        // One entry per shared DescriptorSetUsage (PER_FRAME/PER_PASS/PER_BATCH). PER_DRAW uses push descriptors instead.
+        // Sets are allocated from per-frame pools, so the cache is invalidated every frame (see VK_API::frameStarted).
+        struct SharedDescriptorSetCache
         {
-            for ( auto& bindings : s_dynamicBindings )
-            {
-                bindings.fill( {} );
-            }
-            s_pipelineReset = true;
+            DescriptorSlotStates _slots{};
+            VkDescriptorSet _set{ VK_NULL_HANDLE };
+            bool _pendingUpdate{ true };
+        };
+
+        // What is currently bound on the active command buffer for a given bind point (graphics/compute).
+        // Indexed by DescriptorSetUsage (which is also the Vulkan set index).
+        struct BoundDescriptorState
+        {
+            std::array<VkDescriptorSet, to_base( DescriptorSetUsage::COUNT )> _sets{};
+            std::array<std::array<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET>, to_base( DescriptorSetUsage::COUNT )> _dynamicOffsets{};
+            VkPipelineLayout _perDrawLayout{ VK_NULL_HANDLE };
+            U64 _perDrawVersion{ U64_MAX };
+        };
+
+        std::array<SharedDescriptorSetCache, to_base( DescriptorSetUsage::COUNT )> s_sharedDescriptorSets{};
+        std::array<BoundDescriptorState, 2u> s_boundDescriptorState{}; // 0 = graphics, 1 = compute
+        VkCommandBuffer s_boundDescriptorCmdBuffer{ VK_NULL_HANDLE };
+        U64 s_perDrawDescriptorVersion{ 0u };
+
+        void ResetBoundDescriptorState() noexcept
+        {
+            s_boundDescriptorState = {};
+            s_boundDescriptorCmdBuffer = VK_NULL_HANDLE;
+        }
+
+        void InvalidateSharedDescriptorSets() noexcept
+        {
+            s_sharedDescriptorSets = {};
+            ResetBoundDescriptorState();
         }
     }
 
@@ -586,6 +646,7 @@ namespace Divide
         _pipelineStageMask = VK_FLAGS_NONE;
         _pushConstantsValid = false;
         _pipelineRenderInfo = {};
+        ResetBoundDescriptorState();
         _pipelineRenderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
     }
 
@@ -739,7 +800,6 @@ namespace Divide
         FlushBufferTransferRequests( GetCurrentCommandBuffer() );
 
         windowState._activeState = {};
-        s_dynamicOffsets.reset_lose_memory();
 
         thread_local VKSubmitSempahore::Container s_localPendingSems;
         {
@@ -788,7 +848,8 @@ namespace Divide
                 pool._handle = pool._allocatorPool->GetAllocator();
             }
         }
-        _dummyDescriptorSet = VK_NULL_HANDLE;
+        // Pools were flipped (and potentially reset), so any cached shared set from a previous frame may be recycled
+        InvalidateSharedDescriptorSets();
         LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, GFXDevice::FrameCount() );
 
         return true;
@@ -849,6 +910,23 @@ namespace Divide
                                                               windowState._surface );
 
         DIVIDE_GPU_ASSERT( err == ErrorCode::NO_ERR );
+
+        if ( err == ErrorCode::NO_ERR && windowState._window->getGUID() == _context.context().mainWindow().getGUID() )
+        {
+            const bool screenSRGB = windowState._swapChain->isSRGB();
+            if ( GFXDevice::GetDeviceInformation()._screenSRGB != screenSRGB )
+            {
+                DeviceInformation deviceInformation = GFXDevice::GetDeviceInformation();
+                deviceInformation._screenSRGB = screenSRGB;
+                GFXDevice::OverrideDeviceInformation( deviceInformation );
+            }
+
+            if ( !screenSRGB )
+            {
+                Console::warnfn( LOCALE_STR("WARN_VK_NO_SRGB_SWAPCHAIN"), to_base( windowState._swapChain->getSwapChain().image_format ) );
+            }
+        }
+
         // Clear ALL sync objects as they are all invalid after recreating the swapchain. vkDeviceWaitIdle should resolve potential sync issues.
         LockManager::CleanExpiredSyncObjects( RenderAPI::Vulkan, U64_MAX);
     }
@@ -880,8 +958,7 @@ namespace Divide
 
     ErrorCode VK_API::initRenderingAPI( [[maybe_unused]] I32 argc, [[maybe_unused]] char** argv, Configuration& config ) noexcept
     {
-        _descriptorSets.fill( VK_NULL_HANDLE );
-        _dummyDescriptorSet = VK_NULL_HANDLE ;
+        InvalidateSharedDescriptorSets();
 
         s_transientDeleteQueue.flags( s_transientDeleteQueue.flags() | to_base( VKDeletionQueue::Flags::TREAT_AS_TRANSIENT ) );
 
@@ -1003,7 +1080,7 @@ namespace Divide
         VKUtil::OnStartup( vkDevice );
 
         VkFormatProperties2 properties{.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-        VkPhysicalDeviceMaintenance4Properties maintenance4{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES };
+        VkPhysicalDeviceMaintenance4Properties maintenance4{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES, .pNext = nullptr };
         VkPhysicalDeviceProperties2 properties2 { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,.pNext = &maintenance4 };
 
         VkPhysicalDeviceMeshShaderPropertiesEXT meshProperties { .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT };
@@ -1014,8 +1091,9 @@ namespace Divide
         // Depth/stencil resolve support struct — query and store supported depth resolve modes
         VkPhysicalDeviceDepthStencilResolveProperties depthResolve{ .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES, .pNext = nullptr };
 
-        if ( _device->suppportesMaintenance7() )
+        if ( _device->supportsMaintenance7() )
         {
+            maintenance7Properties.pNext = properties2.pNext;
             properties2.pNext = &maintenance7Properties;
         }
 
@@ -1055,7 +1133,7 @@ namespace Divide
         VkPhysicalDeviceProperties deviceProperties{};
         vkGetPhysicalDeviceProperties( physicalDevice, &deviceProperties );
 
-        if (_device->suppportesMaintenance7())
+        if (_device->supportsMaintenance7())
         {
             // maintenance7.maxDescriptorSetStorageBuffersDynamic and maxDescriptorSetUniformBuffersDynamic are the modern limits
             VK_API::s_maxDescriptorSetStorageBuffersDynamic = maintenance7Properties.maxDescriptorSetTotalStorageBuffersDynamic;
@@ -1152,7 +1230,7 @@ namespace Divide
                to_U8( deviceProperties.limits.maxSamplerAnisotropy ) );
         deviceInformation._maxAnisotropy = config.rendering.maxAnisotropicFilteringLevel;
 
-        DIVIDE_GPU_ASSERT( PushConstantsStruct::Size() <= deviceProperties.limits.maxPushConstantsSize );
+        DIVIDE_GPU_ASSERT( PushConstantsStruct::MaxSize() <= deviceProperties.limits.maxPushConstantsSize );
 
         const VkSampleCountFlags counts = deviceProperties.limits.framebufferColorSampleCounts & deviceProperties.limits.framebufferDepthSampleCounts;
         U8 maxMSAASamples = 0u;
@@ -1398,8 +1476,7 @@ namespace Divide
                 }
                 _descriptorLayoutCache.reset();
                 _descriptorSetLayouts.fill( VK_NULL_HANDLE );
-                _descriptorSets.fill( VK_NULL_HANDLE );
-                _dummyDescriptorSet = VK_NULL_HANDLE;
+                InvalidateSharedDescriptorSets();
 
                 destroyPipelineCache();
             }
@@ -1539,296 +1616,380 @@ namespace Divide
 
     bool VK_API::bindShaderResources( const DescriptorSetEntries& descriptorSetEntries )
     {
-        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( GetCurrentCommandBuffer() );
+        VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
+        PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        auto& program = GetStateTracker()._pipeline._program;
+        const auto& pipeline = GetStateTracker()._pipeline;
+        auto& program = pipeline._program;
         DIVIDE_GPU_ASSERT( program != nullptr );
         auto& drawDescriptor = program->perDrawDescriptorSetLayout();
         const bool targetDescriptorEmpty = IsEmpty( drawDescriptor );
         const auto& setUsageData = program->setUsage();
+        const auto& sharedBindingData = ShaderProgram::GetBindingSetData();
 
-        thread_local VkDescriptorImageInfo imageInfoArray[MAX_BINDINGS_PER_DESCRIPTOR_SET];
+        if ( s_boundDescriptorCmdBuffer != cmdBuffer )
+        {
+            ResetBoundDescriptorState();
+            s_boundDescriptorCmdBuffer = cmdBuffer;
+        }
+
+        BoundDescriptorState& boundState = s_boundDescriptorState[pipeline._bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE ? 1u : 0u];
+
+        const auto getLayoutBindingType = [&](const DescriptorSetUsage usage, const U8 slot) noexcept
+        {
+            return usage == DescriptorSetUsage::PER_DRAW
+                ? drawDescriptor[slot]._type
+                : sharedBindingData[to_base(usage)][slot]._type;
+        };
+
+        const auto areCompatibleBindingTypes = [](const DescriptorSetBindingType layoutType,
+                                              const DescriptorSetBindingType runtimeType) noexcept
+        {
+            switch ( layoutType )
+            {
+                case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
+                case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
+                    return runtimeType == DescriptorSetBindingType::UNIFORM_BUFFER_STATIC ||
+                           runtimeType == DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC;
+
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+                    return runtimeType == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC ||
+                           runtimeType == DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC;
+
+                default:
+                    return layoutType == runtimeType;
+            }
+        };
+
+        // Resolves a single binding into a VK descriptor. Returns false if nothing should be written for this slot.
+        const auto resolveSlot = [&]( const DescriptorSetBinding& srcBinding, const DescriptorSetBindingType layoutBindingType, DescriptorSlotState& slotOut, U32& dynamicOffsetOut ) -> bool
+        {
+            switch ( srcBinding._data._type )
+            {
+                case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
+                case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+                {
+                    const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
+                    DIVIDE_GPU_ASSERT( bufferEntry._buffer != nullptr && bufferEntry._range._length > 0u );
+
+                    const size_t readOffset = bufferEntry._queueReadIndex * bufferEntry._buffer->alignedBufferSize();
+                    const VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize() + readOffset;
+                    const bool isDynamicBuffer = IsDescriptorSetBindingTypeDynamic( layoutBindingType );
+
+                    slotOut._type = VKUtil::vkDescriptorType( layoutBindingType );
+                    slotOut._bufferInfo.buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
+                    slotOut._bufferInfo.offset = isDynamicBuffer ? 0u : offset;
+                    slotOut._bufferInfo.range = bufferEntry._range._length * bufferEntry._buffer->getPrimitiveSize();
+                    dynamicOffsetOut = to_U32( offset );
+                    return true;
+                }
+                case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
+                {
+                    if ( srcBinding._slot == INVALID_TEXTURE_BINDING )
+                    {
+                        return false;
+                    }
+
+                    const DescriptorCombinedImageSampler& imageSampler = srcBinding._data._sampledImage;
+                    if ( imageSampler._image._srcTexture == nullptr ) [[unlikely]]
+                    {
+                        return false; //unbind request;
+                    }
+
+                    DIVIDE_GPU_ASSERT( TargetType( imageSampler._image ) != TextureType::COUNT );
+
+                    const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
+
+                    vkTexture::CachedImageView::Descriptor descriptor{};
+                    descriptor._usage = ImageUsage::SHADER_READ;
+                    descriptor._format = vkTex->vkFormat();
+                    descriptor._type = TargetType( imageSampler._image );
+                    descriptor._subRange = imageSampler._image._subRange;
+
+                    size_t samplerHash = imageSampler._samplerHash;
+                    slotOut._type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                    slotOut._imageInfo = vk::descriptorImageInfo( GetSamplerHandle( imageSampler._sampler, samplerHash ),
+                                                                  vkTex->getImageView( descriptor ),
+                                                                  VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL );
+                    return true;
+                }
+                case DescriptorSetBindingType::IMAGE:
+                {
+                    const DescriptorImageView& imageView = srcBinding._data._imageView;
+                    if ( imageView._image._srcTexture == nullptr )
+                    {
+                        return false;
+                    }
+
+                    DIVIDE_GPU_ASSERT( imageView._image._subRange._mipLevels._count == 1u );
+
+                    const vkTexture* vkTex = static_cast<const vkTexture*>(imageView._image._srcTexture);
+
+                    DIVIDE_GPU_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
+
+                    vkTexture::CachedImageView::Descriptor descriptor{};
+                    descriptor._usage = imageView._usage;
+                    descriptor._format = vkTex->vkFormat();
+                    descriptor._type = TargetType( imageView._image );
+                    descriptor._subRange = imageView._image._subRange;
+
+                    // Should use TextureType::TEXTURE_CUBE_ARRAY
+                    DIVIDE_GPU_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange._count == 1u );
+
+                    slotOut._type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+                    slotOut._imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE,
+                                                                  vkTex->getImageView( descriptor ),
+                                                                  descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL );
+                    return true;
+                }
+                case DescriptorSetBindingType::INDIRECT_BUFFER: // Not a descriptor. Handled separately
+                    return false;
+                default:
+                case DescriptorSetBindingType::COUNT:
+                {
+                    DIVIDE_UNEXPECTED_CALL();
+                } break;
+            };
+
+            return false;
+        };
+
         thread_local fixed_vector<VkWriteDescriptorSet, MAX_BINDINGS_PER_DESCRIPTOR_SET> descriptorWrites;
-        U8 imageInfoIndex = 0u;
+        thread_local DescriptorSlotStates perDrawSlots;
 
-        bool needsBind = false;
         for ( const DescriptorSetEntry& entry : descriptorSetEntries )
         {
             const BaseType<DescriptorSetUsage> usageIdx = to_base( entry._usage );
 
-            if ( !setUsageData[usageIdx] )
+            // Indirect command buffers are not descriptors (vkCmdDraw*Indirect source), but are specified in the same way as any other
+            // resource. The same buffer may still be bound as a regular (writable) SSBO in another slot (e.g. for GPU culling).
+            if ( entry._isDirty || GetStateTracker()._drawIndirectBuffer == VK_NULL_HANDLE )
             {
-                continue;
+                for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
+                {
+                    const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
+                    if ( srcBinding._data._type == DescriptorSetBindingType::INDIRECT_BUFFER )
+                    {
+                        const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
+                        DIVIDE_GPU_ASSERT( bufferEntry._buffer != nullptr && bufferEntry._buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
+
+                        GetStateTracker()._drawIndirectBuffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
+                        GetStateTracker()._drawIndirectBufferOffset = bufferEntry._queueReadIndex * bufferEntry._buffer->alignedBufferSize();
+                    }
+                }
             }
 
-            if ( entry._usage == DescriptorSetUsage::PER_DRAW && targetDescriptorEmpty )
+            if ( entry._usage == DescriptorSetUsage::PER_DRAW )
             {
-                continue;
-            }
+                if ( entry._isDirty )
+                {
+                    ++s_perDrawDescriptorVersion;
+                }
 
-            for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
-            {
-                const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
-
-                if ( entry._usage == DescriptorSetUsage::PER_DRAW &&
-                     drawDescriptor[srcBinding._slot]._type == DescriptorSetBindingType::COUNT )
+                if ( !setUsageData[usageIdx] || targetDescriptorEmpty )
                 {
                     continue;
                 }
 
-                const VkShaderStageFlags stageFlags = GetFlagsForStageVisibility( srcBinding._shaderStageVisibility );
-
-                switch ( srcBinding._data._type )
+                if ( boundState._perDrawLayout == pipeline._vkPipelineLayout && boundState._perDrawVersion == s_perDrawDescriptorVersion )
                 {
-                    case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
-                    case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
-                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC:
-                    case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+                    continue;
+                }
+
+                PROFILE_SCOPE( "Push per draw descriptors", Profiler::Category::Graphics );
+
+                for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
+                {
+                    const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
+                    const DescriptorSetBindingType layoutBindingType = getLayoutBindingType( entry._usage, srcBinding._slot );
+                    if ( layoutBindingType == DescriptorSetBindingType::COUNT )
                     {
-                        PROFILE_SCOPE( "Bind buffer", Profiler::Category::Graphics);
+                        continue;
+                    }
 
-                        const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
+                    DIVIDE_GPU_ASSERT( areCompatibleBindingTypes( layoutBindingType, srcBinding._data._type ) );
 
-                        DIVIDE_GPU_ASSERT( bufferEntry._buffer != nullptr );
-
-                        VkBuffer buffer = static_cast<vkBufferImpl*>(bufferEntry._buffer->getBufferImpl())->_buffer;
-
-                        const size_t readOffset = bufferEntry._queueReadIndex * bufferEntry._buffer->alignedBufferSize();
-
-                        const bool isDynamicBuffer = IsDescriptorSetBindingTypeDynamic(srcBinding._data._type);
-
-                        if ( entry._usage == DescriptorSetUsage::PER_BATCH && srcBinding._slot == 0 )
-                        {
-                            // Draw indirect buffer!
-                            DIVIDE_GPU_ASSERT( bufferEntry._buffer->getUsage() == BufferUsageType::COMMAND_BUFFER );
-                            GetStateTracker()._drawIndirectBuffer = buffer;
-                            GetStateTracker()._drawIndirectBufferOffset = readOffset;
-                        }
-                        else
-                        {
-                            const VkDeviceSize offset = bufferEntry._range._startOffset * bufferEntry._buffer->getPrimitiveSize() + readOffset;
-                            DIVIDE_GPU_ASSERT( bufferEntry._range._length > 0u );
-                            const size_t boundRange = bufferEntry._range._length* bufferEntry._buffer->getPrimitiveSize();
-
-                            DIVIDE_GPU_ASSERT( isDynamicBuffer || 0u == offset );
-
-                            DynamicEntry& crtBufferInfo = s_dynamicBindings[usageIdx][srcBinding._slot];
-                            if ( crtBufferInfo._info.buffer != buffer || crtBufferInfo._info.range > boundRange || (crtBufferInfo._stageFlags & stageFlags) != stageFlags)
-                            {
-                                crtBufferInfo._info.buffer = buffer;
-                                crtBufferInfo._info.offset = isDynamicBuffer ? 0u : offset;
-                                crtBufferInfo._info.range = boundRange;
-                                crtBufferInfo._stageFlags |= stageFlags;
-
-                                VkDescriptorSetLayoutBinding newBinding{};
-                                newBinding.descriptorCount = 1u;
-                                newBinding.descriptorType = VKUtil::vkDescriptorType( srcBinding._data._type );
-                                newBinding.stageFlags = crtBufferInfo._stageFlags;
-                                newBinding.binding = srcBinding._slot;
-                                newBinding.pImmutableSamplers = nullptr;
-
-                                descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &crtBufferInfo._info, 1u ) );
-                            }
-
-                            if ( isDynamicBuffer )
-                            {
-                                for ( auto& dynamicBinding : _descriptorDynamicBindings[usageIdx] )
-                                {
-                                    if ( dynamicBinding._slot == srcBinding._slot )
-                                    {
-                                        dynamicBinding._offset = to_U32(offset);
-                                        needsBind = true;
-                                        break;
-                                    }
-                                }
-                                DIVIDE_GPU_ASSERT( needsBind );
-                            }
-                        }
-                    } break;
-                    case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
+                    DescriptorSlotState& slot = perDrawSlots[srcBinding._slot];
+                    U32 dynamicOffset = 0u;
+                    if ( resolveSlot( srcBinding, layoutBindingType, slot, dynamicOffset ) )
                     {
-                        PROFILE_SCOPE( "Bind image sampler", Profiler::Category::Graphics );
+                        DIVIDE_GPU_ASSERT( !IsDescriptorSetBindingTypeDynamic( layoutBindingType ) );
+                        descriptorWrites.push_back( slot.isImage()
+                                                        ? vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._imageInfo, 1u )
+                                                        : vk::writeDescriptorSet( slot._type, srcBinding._slot, &slot._bufferInfo, 1u ) );
+                    }
+                }
 
-                        if ( srcBinding._slot == INVALID_TEXTURE_BINDING )
-                        {
-                            continue;
-                        }
+                if ( !descriptorWrites.empty() )
+                {
+                    VK_PROFILE( vkCmdPushDescriptorSetKHR, cmdBuffer,
+                                                           pipeline._bindPoint,
+                                                           pipeline._vkPipelineLayout,
+                                                           to_base( DescriptorSetUsage::PER_DRAW ),
+                                                           to_U32( descriptorWrites.size() ),
+                                                           descriptorWrites.data() );
+                    descriptorWrites.reset_lose_memory();
+                }
 
-                        const DescriptorCombinedImageSampler& imageSampler = srcBinding._data._sampledImage;
-                        if ( imageSampler._image._srcTexture == nullptr ) [[unlikely]]
-                        {
-                            NOP(); //unbind request;
-                        }
-                        else
-                        {
-                            DIVIDE_GPU_ASSERT( TargetType( imageSampler._image ) != TextureType::COUNT );
+                boundState._perDrawLayout = pipeline._vkPipelineLayout;
+                boundState._perDrawVersion = s_perDrawDescriptorVersion;
+                continue;
+            }
 
-                            const vkTexture* vkTex = static_cast<const vkTexture*>(imageSampler._image._srcTexture);
+            SharedDescriptorSetCache& cache = s_sharedDescriptorSets[usageIdx];
+            cache._pendingUpdate = cache._pendingUpdate || entry._isDirty;
 
-                            vkTexture::CachedImageView::Descriptor descriptor{};
-                            descriptor._usage = ImageUsage::SHADER_READ;
-                            descriptor._format = vkTex->vkFormat();
-                            descriptor._type = TargetType( imageSampler._image );
-                            descriptor._subRange = imageSampler._image._subRange;
+            // Keep the pending flag if the current program doesn't use this set. We'll process it when a program needs it.
+            if ( !setUsageData[usageIdx] || (!cache._pendingUpdate && cache._set != VK_NULL_HANDLE) )
+            {
+                continue;
+            }
 
-                            const VkImageLayout targetLayout = VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+            PROFILE_SCOPE( "Update shared descriptor set", Profiler::Category::Graphics );
+            PROFILE_TAG( "Usage IDX", usageIdx );
 
-                            size_t samplerHash = imageSampler._samplerHash;
-                            const VkSampler samplerHandle = GetSamplerHandle( imageSampler._sampler, samplerHash );
-                            const VkImageView imageView = vkTex->getImageView( descriptor );
+            DescriptorSlotStates desiredSlots{};
+            for ( U8 i = 0u; i < entry._set->_bindingCount; ++i )
+            {
+                const DescriptorSetBinding& srcBinding = entry._set->_bindings[i];
+                const DescriptorSetBindingType layoutBindingType = getLayoutBindingType( entry._usage, srcBinding._slot );
 
-                            VkDescriptorImageInfo& imageInfo = imageInfoArray[imageInfoIndex++];
-                            imageInfo = vk::descriptorImageInfo( samplerHandle, imageView, targetLayout );
-                            
-                            VkDescriptorSetLayoutBinding newBinding{};
+                if ( layoutBindingType == DescriptorSetBindingType::COUNT || layoutBindingType == DescriptorSetBindingType::INDIRECT_BUFFER )
+                {
+                    continue;
+                }
 
-                            newBinding.descriptorCount = 1;
-                            newBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                            newBinding.stageFlags = stageFlags;
-                            newBinding.binding = srcBinding._slot;
+                DIVIDE_GPU_ASSERT( areCompatibleBindingTypes( layoutBindingType, srcBinding._data._type ) );
 
-                            descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &imageInfo, 1u ) );
-                        }
-                    } break;
-                    case DescriptorSetBindingType::IMAGE:
+                U32 dynamicOffset = 0u;
+                if ( resolveSlot( srcBinding, layoutBindingType, desiredSlots[srcBinding._slot], dynamicOffset ) &&
+                     IsDescriptorSetBindingTypeDynamic( layoutBindingType ) )
+                {
+                    bool foundDynamicBinding = false;
+                    for ( DynamicBinding& dynamicBinding : _descriptorDynamicBindings[usageIdx] )
                     {
-                        PROFILE_SCOPE( "Bind image", Profiler::Category::Graphics );
-
-                        const DescriptorImageView& imageView = srcBinding._data._imageView;
-                        if ( imageView._image._srcTexture == nullptr )
+                        if ( dynamicBinding._slot == srcBinding._slot )
                         {
-                            continue;
+                            dynamicBinding._offset = dynamicOffset;
+                            foundDynamicBinding = true;
+                            break;
                         }
+                    }
+                    DIVIDE_GPU_ASSERT( foundDynamicBinding );
+                }
+            }
+            cache._pendingUpdate = false;
 
-                        DIVIDE_GPU_ASSERT( imageView._image._srcTexture != nullptr && imageView._image._subRange._mipLevels._count == 1u );
+            if ( cache._set != VK_NULL_HANDLE && cache._slots == desiredSlots )
+            {
+                // Same resources. Only (potentially) different dynamic offsets which are handled at bind time
+                continue;
+            }
 
-                        const vkTexture* vkTex = static_cast<const vkTexture*>(imageView._image._srcTexture);
+            PROFILE_SCOPE( "Build and update set", Profiler::Category::Graphics );
 
-                        DIVIDE_GPU_ASSERT(imageView._usage == ImageUsage::SHADER_READ || imageView._usage == ImageUsage::SHADER_WRITE || imageView._usage == ImageUsage::SHADER_READ_WRITE);
+            cache._slots = desiredSlots;
+            DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &s_stateTracker._descriptorAllocators[usageIdx]._handle );
+            builder.buildSetFromLayout( cache._set, _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
 
-                        vkTexture::CachedImageView::Descriptor descriptor{};
-                        descriptor._usage = imageView._usage;
-                        descriptor._format = vkTex->vkFormat();
-                        descriptor._type = TargetType( imageView._image );
-                        descriptor._subRange = imageView._image._subRange;
+            for ( U8 slotIdx = 0u; slotIdx < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slotIdx )
+            {
+                const DescriptorSlotState& slot = cache._slots[slotIdx];
+                if ( slot._type == VK_DESCRIPTOR_TYPE_MAX_ENUM )
+                {
+                    continue;
+                }
 
-                        // Should use TextureType::TEXTURE_CUBE_ARRAY
-                        DIVIDE_GPU_ASSERT( descriptor._type != TextureType::TEXTURE_CUBE_MAP || descriptor._subRange._layerRange._count == 1u );
-
-                        const VkImageLayout targetLayout = descriptor._usage == ImageUsage::SHADER_READ ? VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-                        VkDescriptorImageInfo& imageInfo = imageInfoArray[imageInfoIndex++];
-                        imageInfo = vk::descriptorImageInfo( VK_NULL_HANDLE, vkTex->getImageView( descriptor ), targetLayout );
-
-
-                        VkDescriptorSetLayoutBinding newBinding{};
-
-                        newBinding.descriptorCount = 1;
-                        newBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                        newBinding.stageFlags = stageFlags;
-                        newBinding.binding = srcBinding._slot;
-
-                        descriptorWrites.push_back( vk::writeDescriptorSet( newBinding.descriptorType, newBinding.binding, &imageInfo, 1u ) );
-                    } break;
-                    default:
-                    case DescriptorSetBindingType::COUNT:
-                    {
-                        DIVIDE_UNEXPECTED_CALL();
-                    } break;
-                };
+                VkWriteDescriptorSet& write = descriptorWrites.emplace_back( slot.isImage()
+                                                                                ? vk::writeDescriptorSet( slot._type, slotIdx, &slot._imageInfo, 1u )
+                                                                                : vk::writeDescriptorSet( slot._type, slotIdx, &slot._bufferInfo, 1u ) );
+                write.dstSet = cache._set;
             }
 
             if ( !descriptorWrites.empty() )
             {
-                if ( DescriptorSetUsage::PER_DRAW != entry._usage )
-                {
-                    PROFILE_SCOPE( "Build and update sets", Profiler::Category::Graphics );
-                    PROFILE_TAG("Usage IDX", usageIdx);
-
-                    {
-                        PROFILE_SCOPE( "Build", Profiler::Category::Graphics);
-                        DescriptorBuilder builder = DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &s_stateTracker._descriptorAllocators[usageIdx]._handle );
-                        builder.buildSetFromLayout( _descriptorSets[usageIdx], _descriptorSetLayouts[usageIdx], _device->getVKDevice() );
-                    }
-                    {
-                        for ( VkWriteDescriptorSet& w : descriptorWrites )
-                        {
-                            w.dstSet = _descriptorSets[usageIdx];
-                        }
-                        VK_PROFILE( vkUpdateDescriptorSets, _device->getVKDevice(), to_U32( descriptorWrites.size() ), descriptorWrites.data(), 0, nullptr );
-                    }
-                    needsBind = true;
-                }
-                else
-                {
-                    const auto& pipeline = GetStateTracker()._pipeline;
-                    VK_PROFILE( vkCmdPushDescriptorSetKHR, GetCurrentCommandBuffer(),
-                                                           pipeline._bindPoint,
-                                                           pipeline._vkPipelineLayout,
-                                                           0,
-                                                           to_U32(descriptorWrites.size()),
-                        descriptorWrites.data());
-                }
-
+                VK_PROFILE( vkUpdateDescriptorSets, _device->getVKDevice(), to_U32( descriptorWrites.size() ), descriptorWrites.data(), 0, nullptr );
                 descriptorWrites.reset_lose_memory();
             }
-
-            s_dynamicBindings[usageIdx] = {};
         }
 
-        if ( needsBind )
         {
-            PROFILE_SCOPE( "Bind descriptor sets", Profiler::Category::Graphics );
+            // Bind every shared set the program uses whose handle or dynamic offsets differ from what is already bound on this bind point.
+            // Shared set layouts (and the push constant range) are identical in every pipeline layout and occupy the lowest set indices,
+            // so these bindings stay valid across pipeline changes. Contiguous runs are batched in a single call.
+            thread_local VkDescriptorSet runSets[to_base( DescriptorSetUsage::COUNT )];
+            thread_local fixed_vector<U32, MAX_BINDINGS_PER_DESCRIPTOR_SET * to_base( DescriptorSetUsage::COUNT )> runOffsets;
 
-            thread_local VkDescriptorSetLayout tempLayout{ VK_NULL_HANDLE };
+            U8 runStart = U8_MAX;
+            U8 runCount = 0u;
 
-            if ( _dummyDescriptorSet == VK_NULL_HANDLE )
+            const auto flushRun = [&]()
             {
-                if ( tempLayout == VK_NULL_HANDLE )
+                if ( runCount > 0u )
                 {
-                    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo
-                    {
-                        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                        .bindingCount = 0u
-                    };
-                    tempLayout = _descriptorLayoutCache->createDescriptorLayout( &descriptorSetLayoutCreateInfo );
+                    PROFILE_SCOPE( "Bind descriptor sets", Profiler::Category::Graphics );
+                    VK_PROFILE( vkCmdBindDescriptorSets, cmdBuffer,
+                                                         pipeline._bindPoint,
+                                                         pipeline._vkPipelineLayout,
+                                                         runStart,
+                                                         runCount,
+                                                         runSets,
+                                                         to_U32( runOffsets.size() ),
+                                                         runOffsets.data() );
                 }
+                runStart = U8_MAX;
+                runCount = 0u;
+                runOffsets.reset_lose_memory();
+            };
 
-                DescriptorAllocator& pool = s_stateTracker._descriptorAllocators[to_base( DescriptorSetUsage::PER_FRAME )];
-                DescriptorBuilder::Begin( _descriptorLayoutCache.get(), &pool._handle ).buildSetFromLayout( _dummyDescriptorSet, tempLayout, _device->getVKDevice() );
-            }
-
-            VkDescriptorSet tempSets[to_base(DescriptorSetUsage::COUNT)];
-            s_dynamicOffsets.reset_lose_memory();
-
-            const U8 offset = 1u;
-            U8 setCount = 0u;
-            for ( U8 i = 0; i < to_base( DescriptorSetUsage::COUNT ) - offset; ++i )
+            for ( U8 vkSet = 0u; vkSet < to_base( DescriptorSetUsage::COUNT ); ++vkSet )
             {
-                const bool setUsed = setUsageData[i + offset];
-                tempSets[setCount++] = setUsed ? _descriptorSets[i + offset] : _dummyDescriptorSet;
-                if ( setUsed )
+                const DescriptorSetUsage usage = static_cast<DescriptorSetUsage>( vkSet );
+                const U8 usageIdx = vkSet;
+
+                bool needsBind = false;
+                if ( usage != DescriptorSetUsage::PER_DRAW && setUsageData[usageIdx] )
                 {
-                    for ( const DynamicBinding& binding : _descriptorDynamicBindings[i + offset] )
+                    const SharedDescriptorSetCache& cache = s_sharedDescriptorSets[usageIdx];
+                    DIVIDE_GPU_ASSERT( cache._set != VK_NULL_HANDLE );
+
+                    needsBind = boundState._sets[vkSet] != cache._set;
+
+                    const DynamicBindings& dynamicBindings = _descriptorDynamicBindings[usageIdx];
+                    for ( size_t d = 0u; d < dynamicBindings.size(); ++d )
                     {
-                        if ( binding._slot != U8_MAX )
+                        if ( boundState._dynamicOffsets[vkSet][d] != dynamicBindings[d]._offset )
                         {
-                            s_dynamicOffsets.push_back( binding._offset );
+                            needsBind = true;
+                            boundState._dynamicOffsets[vkSet][d] = dynamicBindings[d]._offset;
+                        }
+                    }
+
+                    if ( needsBind )
+                    {
+                        boundState._sets[vkSet] = cache._set;
+                        if ( runCount == 0u )
+                        {
+                            runStart = vkSet;
+                        }
+                        runSets[runCount++] = cache._set;
+                        for ( const DynamicBinding& binding : dynamicBindings )
+                        {
+                            runOffsets.push_back( binding._offset );
                         }
                     }
                 }
+
+                if ( !needsBind )
+                {
+                    flushRun();
+                }
             }
-
-            const auto& pipeline = GetStateTracker()._pipeline;
-            VK_PROFILE( vkCmdBindDescriptorSets, GetCurrentCommandBuffer(),
-                                                 pipeline._bindPoint,
-                                                 pipeline._vkPipelineLayout,
-                                                 offset,
-                                                 setCount,
-                                                 tempSets,
-                                                 to_U32( s_dynamicOffsets.size() ),
-                                                 s_dynamicOffsets.data() );
+            flushRun();
         }
-
 
         return true;
     }
@@ -1916,11 +2077,20 @@ namespace Divide
             ret = true;
         }
 
-        if ( !activeState._isSet || activeState._block._frontFaceCCW != currentState._frontFaceCCW )
+        // Offscreen targets use an unflipped viewport (see setViewportInternal), which mirrors triangles in framebuffer space, so winding must be inverted to match OpenGL
+        const bool invertFrontFace = !IsSwapChainTargetActive();
+        if ( !activeState._isSet ||
+             activeState._block._frontFaceCCW != currentState._frontFaceCCW ||
+             activeState._frontFaceInverted != invertFrontFace )
         {
-            vkCmdSetFrontFace( cmdBuffer, currentState._frontFaceCCW ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+            vkCmdSetFrontFace( cmdBuffer, (currentState._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+            activeState._frontFaceInverted = invertFrontFace;
             ret = true;
         }
+
+        // Scissor rects and the scissor test flag are independent state (as in OpenGL), so re-apply the last requested rect whenever the test toggles
+        const bool scissorTestChanged = !activeState._isSet || activeState._block._scissorTestEnabled != currentState._scissorTestEnabled;
+        ret = ret || scissorTestChanged;
 
         if ( !activeState._isSet || activeState._block._depthTestEnabled != currentState._depthTestEnabled )
         {
@@ -1997,6 +2167,11 @@ namespace Divide
             activeState._block = currentState;
             activeState._isSet = true;
         }
+
+        if ( scissorTestChanged )
+        {
+            setScissorInternal( _context.activeScissor(), cmdBuffer );
+        }
     }
 
     ShaderResult VK_API::bindPipeline( const Pipeline& pipeline, VkCommandBuffer cmdBuffer )
@@ -2016,17 +2191,6 @@ namespace Divide
             PROFILE_SCOPE( "Compile PSO", Profiler::Category::Graphics);
 
             thread_local RenderStateBlock defaultState{};
-            thread_local VkDescriptorSetLayout dummyLayout = VK_NULL_HANDLE;
-
-            if ( dummyLayout == VK_NULL_HANDLE )
-            {
-                VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo
-                {
-                    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                    .bindingCount = 0u
-                };
-                dummyLayout = _descriptorLayoutCache->createDescriptorLayout( &descriptorSetLayoutCreateInfo );
-            }
 
             const PipelineDescriptor& pipelineDescriptor = pipeline.descriptor();
             ShaderProgram* program = Get( pipelineDescriptor._shaderProgramHandle );
@@ -2043,8 +2207,9 @@ namespace Divide
 
             VkPushConstantRange push_constant;
             push_constant.offset = 0u;
-            push_constant.size = to_U32( PushConstantsStruct::Size() );
-            push_constant.stageFlags = compiledPipeline._program->stageMask();
+            push_constant.size = to_U32( PushConstantsStruct::MaxSize() );
+            // Identical push constant range in every pipeline layout keeps all layouts compatible for push constants and shared sets
+            push_constant.stageFlags = VK_SHADER_STAGE_ALL;
             compiledPipeline._stageFlags = push_constant.stageFlags;
 
             VkPipelineLayoutCreateInfo pipeline_layout_info = vk::pipelineLayoutCreateInfo( 0u );
@@ -2058,15 +2223,9 @@ namespace Divide
             compiledPipeline._program->dynamicBindings(dynamicBindings);
             compiledPipeline._program->descriptorSetLayout( _descriptorSetLayouts[to_base( DescriptorSetUsage::PER_DRAW )] );
             
-            const auto& setUsageData = compiledPipeline._program->setUsage();
-
-            VkDescriptorSetLayout tempLayouts[to_base( DescriptorSetUsage::COUNT )];
-
-            for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
-            {
-                tempLayouts[i] = setUsageData[i] ? _descriptorSetLayouts[i] : dummyLayout;
-            }
-            pipeline_layout_info.pSetLayouts = tempLayouts;
+            // Sets are ordered by update frequency (PER_FRAME = 0 ... PER_DRAW = last). Shared sets always use their real layouts
+            // (even if unused by this program) so that every pipeline layout is compatible for them and bound sets survive pipeline changes.
+            pipeline_layout_info.pSetLayouts = _descriptorSetLayouts.data();
             pipeline_layout_info.setLayoutCount = to_base( DescriptorSetUsage::COUNT );
 
             VK_CHECK( vkCreatePipelineLayout( _device->getVKDevice(), &pipeline_layout_info, nullptr, &compiledPipeline._vkPipelineLayout ) );
@@ -2201,7 +2360,6 @@ namespace Divide
         }
 
         bindDynamicState( pipeline.descriptor()._stateBlock, pipeline.descriptor()._blendStates, cmdBuffer );
-        ResetDescriptorDynamicOffsets();
 
         const U8 stageIdx = to_base( DescriptorSetUsage::PER_DRAW );
         _descriptorSetLayouts[stageIdx] = compiledPipeline._program->descriptorSetLayout();
@@ -2324,8 +2482,6 @@ namespace Divide
 
     void VK_API::flushCommand( GFX::CommandBase* cmd ) noexcept
     {
-        static mat4<F32> s_defaultPushConstants[2] = { MAT4_ZERO, MAT4_ZERO };
-
         VkCommandBuffer cmdBuffer = GetCurrentCommandBuffer();
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmdBuffer);
 
@@ -2357,28 +2513,36 @@ namespace Divide
                 VkRenderingInfo renderingInfo{ .sType = VK_STRUCTURE_TYPE_RENDERING_INFO };
                 if ( crtCmd->_target == SCREEN_TARGET_ID )
                 {
+                    VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
+                    const RTClearEntry& colourClearEntry = crtCmd->_clearDescriptor[to_base( RTColourAttachmentSlot::SLOT_0 )];
+                    const bool shouldClear = colourClearEntry._enabled;
+                    const bool imageWasPresented = swapChain->currentImageWasPresented();
+                    const bool imageWasRenderedThisFrame = swapChain->currentImageWasRenderedThisFrame();
+                    const bool canLoadPreviousContents = !shouldClear &&
+                                                         (imageWasPresented || imageWasRenderedThisFrame);
+
                     VkRenderingAttachmentInfo attachmentInfo
                     {
                         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
                         .imageView = VK_NULL_HANDLE,
-                        .imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
-                        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+
+                        .loadOp = shouldClear ? VK_ATTACHMENT_LOAD_OP_CLEAR
+                                              : (canLoadPreviousContents ? VK_ATTACHMENT_LOAD_OP_LOAD : VK_ATTACHMENT_LOAD_OP_DONT_CARE),
                         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
                         .clearValue =
                         {
                             .color =
                             {
-                                DefaultColours::DIVIDE_BLUE.r,
-                                DefaultColours::DIVIDE_BLUE.g,
-                                DefaultColours::DIVIDE_BLUE.b,
-                                DefaultColours::DIVIDE_BLUE.a
+                                colourClearEntry._colour.r,
+                                colourClearEntry._colour.g,
+                                colourClearEntry._colour.b,
+                                colourClearEntry._colour.a
                             }
                         }
                     };
 
                     PROFILE_SCOPE( "Draw to screen", Profiler::Category::Graphics);
-
-                    VKSwapChain* swapChain = stateTracker._activeWindow->_swapChain.get();
 
                     attachmentInfo.imageView = swapChain->getCurrentImageView();
                     stateTracker._pipelineRenderInfo.colorAttachmentCount = 1u;
@@ -2403,13 +2567,18 @@ namespace Divide
                         .layerCount = 1,
                     };
 
-                    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                    imageBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+                                                 (canLoadPreviousContents ? VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT : VK_ACCESS_2_NONE);
                     imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                     imageBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-                    imageBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-                    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-                    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    imageBarrier.srcAccessMask = imageWasRenderedThisFrame ? VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_2_NONE;
+                    imageBarrier.srcStageMask = imageWasRenderedThisFrame
+                                              ? VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+                                              : VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                    imageBarrier.oldLayout = (shouldClear || !canLoadPreviousContents)
+                                           ? VK_IMAGE_LAYOUT_UNDEFINED
+                                           : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
                     VkDependencyInfo dependencyInfo = vk::dependencyInfo();
                     dependencyInfo.imageMemoryBarrierCount = 1u;
@@ -2417,6 +2586,7 @@ namespace Divide
                     
                     VK_PROFILE( vkCmdPipelineBarrier2, cmdBuffer, &dependencyInfo);
 
+                    swapChain->markCurrentImageRenderedThisFrame();
                     stateTracker._activeMSAASamples = 1u;
                 }
                 else
@@ -2450,6 +2620,16 @@ namespace Divide
 
                     _context.setViewport( renderArea );
                     _context.setScissor( renderArea );
+
+                    // A pipeline bound before this pass may have set its front face for the other target type
+                    auto& activeState = stateTracker._activeWindow->_activeState;
+                    const bool invertFrontFace = !IsSwapChainTargetActive();
+                    if ( activeState._isSet && activeState._frontFaceInverted != invertFrontFace )
+                    {
+                        vkCmdSetFrontFace( cmdBuffer, (activeState._block._frontFaceCCW != invertFrontFace) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE );
+                        activeState._frontFaceInverted = invertFrontFace;
+                    }
+
                     VK_PROFILE( vkCmdBeginRendering, cmdBuffer, &renderingInfo);
                 }
             } break;
@@ -2573,14 +2753,16 @@ namespace Divide
                             _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
                         }
                     }
-                    if ( pushConstantsCmd->_fastData.set() )
+                    if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
                     {
+                        _lastPushConstants = pushConstantsCmd->_fastData;
+                        _hasLastPushConstants = true;
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
-                                                        stateTracker._pipeline._program->stageMask(),
+                                                        VK_SHADER_STAGE_ALL,
                                                         0,
-                                                        to_U32( PushConstantsStruct::Size() ),
-                                                        pushConstantsCmd->_fastData.dataPtr() );
+                                                        to_U32( PushConstantsStruct::MaxSize() ),
+                                                        _lastPushConstants.dataPtr() );
 
                         stateTracker._pushConstantsValid = true;
                     }
@@ -2622,14 +2804,14 @@ namespace Divide
 
                 if ( stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE )
                 {
-                    if ( !stateTracker._pushConstantsValid )
+                    if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
-                                                        stateTracker._pipeline._program->stageMask(),
+                                                        VK_SHADER_STAGE_ALL,
                                                         0,
-                                                        to_U32( PushConstantsStruct::Size() ),
-                                                        &s_defaultPushConstants[0].mat );
+                                                        to_U32( PushConstantsStruct::MaxSize() ),
+                                                        _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }
 
@@ -2665,14 +2847,14 @@ namespace Divide
                 PROFILE_SCOPE( "DISPATCH_SHADER_TASK", Profiler::Category::Graphics );
                 if (stateTracker._pipeline._vkPipeline != VK_NULL_HANDLE)
                 {
-                    if ( !stateTracker._pushConstantsValid )
+                    if ( !stateTracker._pushConstantsValid && _hasLastPushConstants )
                     {
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,
-                                                        stateTracker._pipeline._program->stageMask(),
+                                                        VK_SHADER_STAGE_ALL,
                                                         0,
-                                                        to_U32( PushConstantsStruct::Size() ),
-                                                        &s_defaultPushConstants[0].mat );
+                                                        to_U32( PushConstantsStruct::MaxSize() ),
+                                                        _lastPushConstants.dataPtr() );
                         stateTracker._pushConstantsValid = true;
                     }
 
@@ -3036,6 +3218,7 @@ namespace Divide
         // We don't really know what happened before this state and at worst this is going to end up into an 
         // extra vkCmdPushConstants call with default data, so better safe.
         GetStateTracker()._pushConstantsValid = false;
+        ResetBoundDescriptorState();
         FlushBufferTransferRequests( cmdBuffer );
 
         if ( !s_imageBarrierQueue._imageBarriers.empty() )
@@ -3074,18 +3257,25 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
+        // Engine convention (shared with OpenGL): clip-space Y points up and viewport/scissor origins are bottom-left.
+        // Offscreen targets: an unflipped viewport maps clip-space -Y to texel row 0, which is exactly OpenGL's memory layout
+        //                    (sampling, texelFetch(gl_FragCoord), copies and readbacks all match). Winding is compensated in bindDynamicState.
+        // Swapchain:         a negative-height viewport keeps the presented image upright. Nothing samples the swapchain, so only the
+        //                    on-screen orientation matters there.
         VkViewport targetViewport{};
+        targetViewport.x = to_F32( newViewport.offsetX );
         targetViewport.width = to_F32( newViewport.sizeX );
-        targetViewport.height = -to_F32( newViewport.sizeY );
-        targetViewport.x = to_F32(newViewport.offsetX);
-        if ( newViewport.offsetY == 0 )
+
+        if ( IsSwapChainTargetActive() )
         {
-            targetViewport.y = to_F32(newViewport.sizeY);
+            const I32 targetHeight = to_I32( GetStateTracker()._activeRenderTargetDimensions.height );
+            targetViewport.y = to_F32( targetHeight - newViewport.offsetY );
+            targetViewport.height = -to_F32( newViewport.sizeY );
         }
         else
         {
-            targetViewport.y = to_F32(/*newViewport.sizeY - */newViewport.offsetY);
-            targetViewport.y = GetStateTracker()._activeRenderTargetDimensions.height + targetViewport.y;
+            targetViewport.y = to_F32( newViewport.offsetY );
+            targetViewport.height = to_F32( newViewport.sizeY );
         }
         targetViewport.minDepth = 0.f;
         targetViewport.maxDepth = 1.f;
@@ -3103,9 +3293,40 @@ namespace Divide
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
-        const VkOffset2D offset{ std::max( 0, newScissor.offsetX ), std::max( 0, newScissor.offsetY ) };
-        const VkExtent2D extent{ to_U32( newScissor.sizeX ),to_U32( newScissor.sizeY ) };
-        const VkRect2D targetScissor{ offset, extent };
+        const bool scissorEnabled = GetStateTracker()._activeWindow->_activeState._isSet &&
+                                    GetStateTracker()._activeWindow->_activeState._block._scissorTestEnabled;
+        const vec2<U16> rtDimensions = GetStateTracker()._activeRenderTargetDimensions;
+        const VkRect2D fullScissor{ VkOffset2D{ 0, 0 }, VkExtent2D{ rtDimensions.width, rtDimensions.height } };
+
+        if ( !scissorEnabled )
+        {
+            vkCmdSetScissor( cmdBuffer, 0, 1, &fullScissor );
+            return true;
+        }
+
+        const I32 maxWidth = to_I32( rtDimensions.width );
+        const I32 maxHeight = to_I32( rtDimensions.height );
+        const I32 requestX0 = newScissor.offsetX;
+        const I32 requestY0 = newScissor.offsetY;
+        const I32 requestX1 = newScissor.offsetX + std::max( 0, newScissor.sizeX );
+        const I32 requestY1 = newScissor.offsetY + std::max( 0, newScissor.sizeY );
+
+        if ( requestX0 <= 0 && requestY0 <= 0 && requestX1 >= maxWidth && requestY1 >= maxHeight )
+        {
+            vkCmdSetScissor( cmdBuffer, 0, 1, &fullScissor );
+            return true;
+        }
+
+        const I32 x0 = std::max( 0, std::min( requestX0, maxWidth ) );
+        const I32 y0 = std::max( 0, std::min( requestY0, maxHeight ) );
+        const I32 x1 = std::max( 0, std::min( requestX1, maxWidth ) );
+        const I32 y1 = std::max( 0, std::min( requestY1, maxHeight ) );
+        // Bottom-left origin rects only need converting where the viewport is flipped (swapchain). Offscreen targets share OpenGL's row order.
+        const VkRect2D targetScissor{
+            VkOffset2D{ x0, IsSwapChainTargetActive() ? maxHeight - y1 : y0 },
+            VkExtent2D{ to_U32( std::max( 0, x1 - x0 ) ), to_U32( std::max( 0, y1 - y0 ) ) }
+        };
+
         vkCmdSetScissor( cmdBuffer, 0, 1, &targetScissor );
         return true;
     }
@@ -3121,7 +3342,7 @@ namespace Divide
 
         for ( U8 slot = 0u; slot < MAX_BINDINGS_PER_DESCRIPTOR_SET; ++slot )
         {
-            if ( bindings[slot]._type == DescriptorSetBindingType::COUNT || (slot == 0 && usage == DescriptorSetUsage::PER_BATCH ))
+            if ( bindings[slot]._type == DescriptorSetBindingType::COUNT || bindings[slot]._type == DescriptorSetBindingType::INDIRECT_BUFFER )
             {
                 continue;
             }

@@ -26,10 +26,22 @@ runs:
         echo "NINJA_PATH=${NINJA_PATH}" >> $GITHUB_ENV
         echo "PATH=$(dirname ${NINJA_PATH}):$PATH" >> $GITHUB_ENV
 
+    - name: Install extra required packages
+      shell: bash
+      run: |
+        if ! command -v nasm >/dev/null 2>&1; then
+          brew install nasm
+        fi
+
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgJsonGlob: 'vcpkg.json'
+      env:
+        # Ensure Objective-C compiler is available for Meson when building dependencies
+        # This is critical for cross-compilation scenarios (e.g., ARM64 host → x86_64 target)
+        OBJC: clang
+        OBJCFLAGS: -fPIC -g
 
     - name: List workspace
       shell: bash

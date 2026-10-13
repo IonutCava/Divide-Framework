@@ -30,7 +30,8 @@ layout(location = 0) out vec4 Out_Color;
 
 void main()
 {
-    Out_Color = Frag_Color;
+    // ImGui colours are sRGB authored. Do all maths in linear space.
+    Out_Color = vec4(ToLinearAccurate(Frag_Color.rgb), Frag_Color.a);
     vec2 uv = Frag_UV.st;
     if (flip != 0u) {
         uv.t = 1.f - uv.t;
@@ -48,6 +49,10 @@ void main()
     if (depthTexture != 0u) {
         texColor.rgb = vec3((ToLinearDepth(texColor.r, zPlanes) / zPlanes.y) * toggleChannel[0]);
     } else {
+        // Render targets, sRGB (hardware decoded) and float textures are already linear
+        if (lineariseTexture) {
+            texColor.rgb = ToLinearAccurate(texColor.rgb);
+        }
         Out_Color.rgb *= toggleChannel.rgb;
         if (toggleChannel.w == 0)
         {
@@ -57,8 +62,9 @@ void main()
     }
 
     Out_Color *= texColor;
-    if ( !convertToSRGB )
+    // Screen doesn't encode on write: do it here
+    if ( convertToSRGB )
     {
-        Out_Color.rgb = ToLinearAccurate( Out_Color.rgb );
+        Out_Color.rgb = ToSRGBAccurate( Out_Color.rgb );
     }
 }

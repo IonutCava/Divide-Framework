@@ -119,8 +119,7 @@ namespace Divide
     {
     public:
         static constexpr const char* UNIFORM_BLOCK_NAME = "dvd_uniforms";
-
-        static U8 k_commandBufferID;
+        static constexpr I32 GL_PUSH_CONSTANTS_LOCATION = 18;
 
         // one per shader type!
         struct LoadData
@@ -231,7 +230,7 @@ namespace Divide
             return _descriptor;
         }
 
-        static void OnAtomChange( std::string_view atomName, FileUpdateEvent evt );
+        static void OnAtomChange( std::string_view dir, std::string_view atomName, FileUpdateEvent evt );
 
         [[nodiscard]] static U8 GetGLBindingForDescriptorSlot( U8 usageIndex, U8 slot ) noexcept;
         [[nodiscard]] static U8 GetGLBindingForDescriptorSlot( DescriptorSetUsage usage, U8 slot ) noexcept;

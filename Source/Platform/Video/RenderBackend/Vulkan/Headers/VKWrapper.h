@@ -153,7 +153,6 @@ private:
     VKDevice_uptr _device{ nullptr };
     VmaAllocator _allocator{VK_NULL_HANDLE};
     VkPipelineCache _pipelineCache{ VK_NULL_HANDLE };
-    VkDescriptorSet _dummyDescriptorSet{VK_NULL_HANDLE};
 
     GFX::MemoryBarrierCommand _uniformsMemCommand{};
     DescriptorLayoutCache_uptr _descriptorLayoutCache{nullptr};
@@ -161,11 +160,12 @@ private:
     hashMap<I64, VKPerWindowState> _perWindowState;
     hashMap<size_t, CompiledPipeline> _compiledPipelines;
 
-    std::array<VkDescriptorSet, to_base( DescriptorSetUsage::COUNT )> _descriptorSets;
     std::array<DynamicBindings, to_base( DescriptorSetUsage::COUNT )> _descriptorDynamicBindings;
     std::array<VkDescriptorSetLayout, to_base( DescriptorSetUsage::COUNT )> _descriptorSetLayouts;
 
     bool _uniformsNeedLock{ false };
+    PushConstantsStruct _lastPushConstants{};
+    bool _hasLastPushConstants{ false };
 
 private:
     using SamplerObjectMap = hashMap<size_t, VkSampler, NoHash<size_t>>;

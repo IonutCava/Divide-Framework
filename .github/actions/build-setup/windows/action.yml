@@ -13,7 +13,7 @@ runs:
     - uses: ./.github/actions/common-config
       id: common-config
       
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: true
         fetch-depth: 0
@@ -24,9 +24,25 @@ runs:
         ninjaVersion: ${{ steps.common-config.outputs.ninja-version }}
         
     - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64
+      shell: pwsh
+      run: |
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+        if (-not (Test-Path $vswhere)) { throw "vswhere.exe not found at '$vswhere'." }
+
+        $vsInstallDir = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if ([string]::IsNullOrWhiteSpace($vsInstallDir)) { throw 'Unable to determine Visual Studio installation path from vswhere.' }
+
+        $vsDevCmd = Join-Path $vsInstallDir 'Common7\Tools\VsDevCmd.bat'
+        if (-not (Test-Path $vsDevCmd)) { throw "VsDevCmd.bat not found at '$vsDevCmd'." }
+
+        $envDump = cmd /s /c "`"$vsDevCmd`" -arch=amd64 >nul && set"
+        if ($LASTEXITCODE -ne 0) { throw "VsDevCmd initialization failed with exit code $LASTEXITCODE." }
+
+        $envDump | ForEach-Object {
+          if (-not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith('=')) {
+            $_ >> $env:GITHUB_ENV
+          }
+        }
 
     - name: Clean workspace (self-hosted only)
       if: runner.self-hosted

@@ -156,7 +156,7 @@ namespace Util {
     void OpenCenteredPopup(const char* name, ImGui::ImGuiPopupFlags popup_flags = 0);
     void PrintColouredText(const std::string_view text, const ImVec4& colour);
 
-    [[nodiscard]] ImGuiInputTextFlags GetDefaultFlagsForSettings(bool readOnly, bool hex);
+    [[nodiscard]] ImGuiInputTextFlags GetDefaultFlagsForSettings(bool readOnly, bool hex, bool isSlider);
     [[nodiscard]] ImGuiInputTextFlags GetDefaultFlagsForField(const EditorComponentField& field);
 
 } //namespace Util

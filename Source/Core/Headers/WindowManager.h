@@ -144,6 +144,7 @@ protected:
         bool _createDebugContext{ !Config::Build::IS_RELEASE_BUILD && Config::ENABLE_GPU_VALIDATION };
         bool _enableCompatibilityLayer{ false };
         bool _requestRobustContext{ true };
+        bool _requestSRGBFramebuffer{ true }; //< If true, we request an sRGB capable default framebuffer. The actual capability is queried by the GL backend after context creation.
     };
     friend class DisplayWindow;
     [[nodiscard]] ErrorCode findAndApplyAPISettings(const PlatformContext& context, const WindowDescriptor& descriptor);

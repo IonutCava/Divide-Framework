@@ -12,12 +12,12 @@ endif()
 
 #Optick
 message("Fetching Optick Lib")
-set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE)
-set(OPTICK_BUILD_GUI_APP FALSE)
-set(OPTICK_ENABLED TRUE)
-set(OPTICK_INSTALL_TARGETS FALSE)
-set(OPTICK_USE_D3D12 FALSE)
-set(OPTICK_USE_VULKAN TRUE)
+set(OPTICK_ENABLED TRUE CACHE BOOL "Enable profiling with Optick" FORCE)
+set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE CACHE BOOL "Build Optick console sample app" FORCE)
+set(OPTICK_BUILD_GUI_APP FALSE CACHE BOOL "Build Optick gui viewer app" FORCE)
+set(OPTICK_INSTALL_TARGETS FALSE CACHE BOOL "Install Optick targets" FORCE)
+set(OPTICK_USE_D3D12 FALSE CACHE BOOL "Built-in support for DirectX 12" FORCE)
+set(OPTICK_USE_VULKAN TRUE CACHE BOOL "Built-in support for Vulkan" FORCE)
 
 FetchContent_Declare(
   optick
@@ -181,7 +181,7 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
 )
 
 if (NOT MSVC_COMPILER)
-    set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic -Wno-format" )
+    set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic -Wno-format -Wno-implicit-void-ptr-cast -Wno-c++-keyword" )
 endif()
 
 set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}

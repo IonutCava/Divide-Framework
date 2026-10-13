@@ -48,7 +48,7 @@ namespace Divide {
         if (params._usageType == BufferUsageType::INDEX_BUFFER &&
             params._elementCount == 0u)
         {
-            return ret;
+            return MOV(ret);
         }
 
         const size_t ringSizeFactor = queueLength();
@@ -86,7 +86,7 @@ namespace Divide {
         ret._range = {0u, bufferSizeInBytes * ringSizeFactor};
         ret._type = BufferSyncUsage::CPU_WRITE_TO_GPU_READ;
         ret._buffer = _internalBuffer.get();
-        return ret;
+        return MOV(ret);
     }
 
     BufferLock vkGPUBuffer::updateBuffer( const U32 elementCountOffset,

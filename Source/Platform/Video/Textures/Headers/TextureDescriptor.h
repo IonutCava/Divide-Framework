@@ -43,7 +43,9 @@ class Texture;
 
 struct PixelAlignment
 {
+    /// Row pitch is rounded up to this byte alignment (1, 2, 4 or 8).
     size_t _alignment{ 4u };
+    /// Source row width in texels; zero uses the upload width.
     size_t _rowLength{ 0u };
     size_t _skipPixels{ 0u };
     size_t _skipRows{ 0u };

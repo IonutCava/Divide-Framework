@@ -335,8 +335,10 @@ namespace
                     PROFILE_SCOPE( "Clean Push Constants", Profiler::Category::Graphics );
 
                     SendPushConstantsCommand* sendPushConstantsCommand = cmd->As<SendPushConstantsCommand>();
-                    if ( !sendPushConstantsCommand->_fastData.set() &&
-                         (sendPushConstantsCommand->_uniformData == nullptr || sendPushConstantsCommand->_uniformData->entries().empty()))
+                    const auto flags = sendPushConstantsCommand->_fastData.computeFlags();
+                    DIVIDE_GPU_ASSERT(flags != PushConstantsStruct::DataFlags::COUNT);
+                    if (flags == to_base(PushConstantsStruct::DataFlags::NONE) &&
+                       (sendPushConstantsCommand->_uniformData == nullptr || sendPushConstantsCommand->_uniformData->entries().empty()))
                     {
                         erase = true;
                     }
@@ -846,33 +848,76 @@ namespace
 
     bool Merge(SendPushConstantsCommand* lhs, SendPushConstantsCommand* rhs)
     {
-        if ( lhs->_fastData.set() )
+        using Flags = PushConstantsStruct::DataFlags;
+        PushConstantsStruct mergedFast = lhs->_fastData;
         {
-            if ( rhs->_fastData.set() && lhs->_fastData != rhs->_fastData)
+            const Flags lFlags = lhs->_fastData.dataFlags();
+            const Flags rFlags = rhs->_fastData.dataFlags();
+
+            if (rFlags != Flags::NONE)
+            {
+                if (lFlags == Flags::NONE)
+                {
+                    mergedFast = rhs->_fastData;
+                }
+                else
+                {
+                    const bool rFirst  = (rFlags & Flags::FIRST) != 0;
+                    const bool rSecond = (rFlags & Flags::SECOND) != 0;
+                    const bool lFirst  = (lFlags & Flags::FIRST) != 0;
+                    const bool lSecond = (lFlags & Flags::SECOND) != 0;
+
+                    if ((rFirst && lFirst && lhs->_fastData.data[0] != rhs->_fastData.data[0]) ||
+                        (rSecond && lSecond && lhs->_fastData.data[1] != rhs->_fastData.data[1]))
+                    {
+                        return false;
+                    }
+
+                    if (rFirst)
+                    {
+                        mergedFast.data[0] = rhs->_fastData.data[0];
+                    }
+
+                    if (rSecond)
+                    {
+                        mergedFast.data[1] = rhs->_fastData.data[1];
+                    }
+                    mergedFast.computeFlags();
+                }
+            }
+        }
+
+        if ( lhs->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
+        {
+            if ( rhs->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE && 
+                 lhs->_fastData != rhs->_fastData)
             {
                 return false;
             }
         }
-        else if ( rhs->_fastData.set() )
+        else if ( rhs->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
         {
             lhs->_fastData = rhs->_fastData;
         }
 
-        bool partial = false;
+        UniformData* lhsUniforms = lhs->_uniformData;
+        UniformData* rhsUniforms = rhs->_uniformData;
 
-        UniformData* lhsUniforms = static_cast<SendPushConstantsCommand*>(lhs)->_uniformData;
-        UniformData* rhsUniforms = static_cast<SendPushConstantsCommand*>(rhs)->_uniformData;
-        if ( lhsUniforms == nullptr )
+        if (lhsUniforms != nullptr && rhsUniforms != nullptr)
         {
-            lhsUniforms = rhsUniforms;
-            return true;
-        }
-        else if ( rhsUniforms == nullptr )
-        {
-            return true;
+            if (!Merge(*lhsUniforms, *rhsUniforms))
+            {
+                return false;
+            }
         }
 
-        return Merge(*lhsUniforms, *rhsUniforms, partial);
+        lhs->_fastData = mergedFast;
+        if (lhsUniforms == nullptr)
+        {
+            lhs->_uniformData = rhsUniforms;
+        }
+
+        return true;
     }
 
 }; //namespace Divide::GFX
