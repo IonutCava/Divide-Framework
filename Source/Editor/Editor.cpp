@@ -798,7 +798,7 @@ namespace Divide
         descriptor.flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
         _dockedWindows[to_base( WindowType::NodePreview )] = std::make_unique<NodePreviewWindow>( *this, descriptor );
 
-        descriptor.name = "Scene View ###AnimatedTitlePlayState";
+        descriptor.name = "Scene View ##AnimatedTitlePlayState";
         _dockedWindows[to_base( WindowType::SceneView )] = std::make_unique<SceneViewWindow>( *this, descriptor );
 
         _editorSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;

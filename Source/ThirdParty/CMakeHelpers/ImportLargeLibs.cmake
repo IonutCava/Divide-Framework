@@ -151,8 +151,13 @@ set(NRI_TARGETS
 foreach(nri_target IN LISTS NRI_TARGETS)
     if(TARGET ${nri_target})
         set_target_properties(${nri_target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-        if(CLANG_COMPILER)
-            target_compile_options(${nri_target} PRIVATE -Wno-missing-field-initializers -Wno-nullability-completeness )
+        if(CLANG_COMPILER OR CLANG_MSVC_FRONTEND)
+            target_compile_options(${nri_target} PRIVATE
+                $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:/clang:-Wno-missing-field-initializers>
+                $<$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>:/clang:-Wno-nullability-completeness>
+                $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:-Wno-missing-field-initializers>
+                $<$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:-Wno-nullability-completeness>
+            )
         endif()
     endif()
 endforeach()
