@@ -347,6 +347,11 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
             bindingSet = to_base( set );
             bindingSlot = slot;
         }
+        else if ( renderAPI == Divide::RenderAPI::Vulkan )
+        {
+            // Vulkan set indices are frequency ordered. Reflection data always stores the DescriptorSetUsage value.
+            bindingSet = to_base( Divide::VKDescriptorSetUsage( bindingSet ) );
+        }
 
         entry._bindingSet = bindingSet;
         entry._bindingSlot = bindingSlot;
@@ -487,7 +492,8 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         for ( uint32_t i_binding = 0u; i_binding < refl_set.binding_count; ++i_binding )
         {
             const SpvReflectDescriptorBinding& refl_binding = *(refl_set.bindings[i_binding]);
-            if ( refl_binding.set == Divide::to_base(Divide::DescriptorSetUsage::PER_DRAW) && refl_binding.accessed == 0u )
+            const Divide::U8 perDrawSetIndex = renderAPI == Divide::RenderAPI::Vulkan ? Divide::VKDescriptorSetIndex( Divide::DescriptorSetUsage::PER_DRAW ) : Divide::to_base( Divide::DescriptorSetUsage::PER_DRAW );
+            if ( refl_binding.set == perDrawSetIndex && refl_binding.accessed == 0u )
             {
                 STUBBED("ToDo: Figure out why refl_binding::accessed reports 0 in certain cases even though the binding is used (e.g. texScreen in FXAA.glsl). -Ionut");
                 //continue;

@@ -114,6 +114,25 @@ namespace Divide
         }
 
         _physicalDevice = physicalDeviceSelection.value();
+
+        {
+            // VK_EXT_descriptor_heap is not enabled/used yet (planned future descriptor model). Only log availability.
+            U32 extensionCount = 0u;
+            vkEnumerateDeviceExtensionProperties( _physicalDevice.physical_device, nullptr, &extensionCount, nullptr );
+            vector<VkExtensionProperties> availableExtensions( extensionCount );
+            vkEnumerateDeviceExtensionProperties( _physicalDevice.physical_device, nullptr, &extensionCount, availableExtensions.data() );
+
+            bool descriptorHeapSupported = false;
+            for ( const VkExtensionProperties& extension : availableExtensions )
+            {
+                if ( strcmp( extension.extensionName, "VK_EXT_descriptor_heap" ) == 0 )
+                {
+                    descriptorHeapSupported = true;
+                    break;
+                }
+            }
+            Console::printfn( LOCALE_STR( "VK_DESCRIPTOR_HEAP_INFO" ), descriptorHeapSupported ? "YES" : "NO" );
+        }
         _physicalDevice.enable_extensions_if_present(
             {
                 VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,

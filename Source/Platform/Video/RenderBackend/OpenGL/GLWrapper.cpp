@@ -1735,6 +1735,19 @@ namespace Divide
                             DIVIDE_UNEXPECTED_CALL();
                         }
                     } break;
+                    case DescriptorSetBindingType::INDIRECT_BUFFER:
+                    {
+                        const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
+                        if ( bufferEntry._buffer == nullptr ) [[unlikely]]
+                        {
+                            continue;
+                        }
+
+                        if ( !static_cast<glShaderBuffer*>(bufferEntry._buffer)->bindAsIndirectBuffer( bufferEntry._queueReadIndex ) )
+                        {
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                    } break;
                     case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER:
                     {
                         if ( srcBinding._slot == INVALID_TEXTURE_BINDING ) [[unlikely]]

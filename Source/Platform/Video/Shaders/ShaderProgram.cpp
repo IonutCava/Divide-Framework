@@ -70,7 +70,6 @@ namespace Divide
     ShaderProgram::ShaderProgramMap ShaderProgram::s_shaderPrograms;
     fixed_vector<ShaderProgram*, U16_MAX> ShaderProgram::s_usedShaderPrograms;
     ShaderProgram::LastRequestedShader ShaderProgram::s_lastRequestedShaderProgram = {};
-    U8 ShaderProgram::k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
 
     SharedMutex ShaderProgram::s_programLock;
     std::atomic_int ShaderProgram::s_shaderCount;
@@ -309,7 +308,7 @@ namespace Divide
             static constexpr auto s_renderAPICacheTags = std::to_array<const char*>({
                 "None-GL450-SPV1.0",
                 "GL450-SPV1.0",
-                "VK1.3-SPV1.6",
+                "VK1.3-SPV1.6-FreqOrderedSets",
                 "NRI_Vulkan-GL450-SPV1.0",
                 "NRI_D3D12-GL450-SPV1.0",
                 "NRI_D3D11-GL450-SPV1.0",
@@ -414,10 +413,10 @@ namespace Divide
             glswAddDirectiveToken( type != ShaderType::COUNT ? Names::shaderTypes[to_U8( type )] : "", entry.c_str() );
         };
 
-        const auto AppendResourceBindingSlots = [&AppendToShaderHeader]( const bool targetOpenGL )
+        const auto AppendResourceBindingSlots = [&AppendToShaderHeader]( const RenderAPI targetAPI )
         {
 
-            if ( targetOpenGL )
+            if ( targetAPI == RenderAPI::OpenGL )
             {
                 const auto ApplyDescriptorSetDefines = [&AppendToShaderHeader]( const DescriptorSetUsage setUsage )
                 {
@@ -444,7 +443,10 @@ namespace Divide
             {
                 for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
                 {
-                    AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define {} {}", TypeUtil::DescriptorSetUsageToString( static_cast<DescriptorSetUsage>(i) ), i ).c_str() );
+                    const DescriptorSetUsage usage = static_cast<DescriptorSetUsage>(i);
+                    // Vulkan orders sets by update frequency (see VKDescriptorSetIndex). Shaders keep using the usage names.
+                    const U8 setIndex = targetAPI == RenderAPI::Vulkan ? VKDescriptorSetIndex( usage ) : i;
+                    AppendToShaderHeader( ShaderType::COUNT, Util::StringFormat( "#define {} {}", TypeUtil::DescriptorSetUsageToString( usage ), setIndex ).c_str() );
                 }
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE(SET, BINDING) layout(set = SET, binding = BINDING)" );
                 AppendToShaderHeader( ShaderType::COUNT, "#define DESCRIPTOR_SET_RESOURCE_OFFSET(SET, BINDING, OFFSET) layout(set = SET, binding = BINDING, offset = OFFSET)" );
@@ -625,7 +627,7 @@ namespace Divide
         AppendToShaderHeader( ShaderType::COUNT, "#define REFLECTION_PROBE_RESOLUTION " + Util::to_string( reflectionProbeRes ) );
         AppendToShaderHeader( ShaderType::COUNT, "#define REFLECTION_PROBE_MIP_COUNT " + Util::to_string( to_U32( std::log2( reflectionProbeRes ) ) ) );
 
-        AppendResourceBindingSlots( renderingAPI == RenderAPI::OpenGL );
+        AppendResourceBindingSlots( renderingAPI );
 
         for ( U8 i = 0u; i < to_base( TextureOperation::COUNT ); ++i )
         {
@@ -1172,8 +1174,6 @@ namespace Divide
         s_atoms.clear();
         s_atomIncludes.clear();
 
-        k_commandBufferID = U8_MAX - MAX_BINDINGS_PER_DESCRIPTOR_SET;
-
         for ( auto& bindings : s_bindingsPerSet )
         {
             bindings.fill( {} );
@@ -1258,15 +1258,13 @@ namespace Divide
             case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
             case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC:
             case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC:
-                if ( usage == DescriptorSetUsage::PER_BATCH && slot == 0 )
-                {
-                    bindingData._glBinding = k_commandBufferID;
-                }
-                else
-                {
-                    bindingData._glBinding = visibility == ShaderStageVisibility::COMPUTE ? s_computeBufferSlot++ : s_bufferSlot++;
-                    DIVIDE_GPU_ASSERT(bindingData._glBinding < GFXDevice::GetDeviceInformation()._maxSSBOBufferBindings, "Exceeded maximum number of buffer bindings available in the min spec!" );
-                }
+                bindingData._glBinding = visibility == ShaderStageVisibility::COMPUTE ? s_computeBufferSlot++ : s_bufferSlot++;
+                DIVIDE_GPU_ASSERT(bindingData._glBinding < GFXDevice::GetDeviceInformation()._maxSSBOBufferBindings, "Exceeded maximum number of buffer bindings available in the min spec!" );
+                break;
+            case DescriptorSetBindingType::INDIRECT_BUFFER:
+                // Not a shader resource: bound to the API's indirect argument binding point instead
+                DIVIDE_GPU_ASSERT( visibility == ShaderStageVisibility::NONE );
+                bindingData._glBinding = INVALID_TEXTURE_BINDING;
                 break;
 
             default:
@@ -2105,7 +2103,7 @@ namespace Divide
             uniformBlock = "layout( ";
             if ( s_renderAPI == RenderAPI::Vulkan )
             {
-                uniformBlock.append( Util::StringFormat( "set = {}, ", to_base( DescriptorSetUsage::PER_DRAW ) ) );
+                uniformBlock.append( Util::StringFormat( "set = {}, ", VKDescriptorSetIndex( DescriptorSetUsage::PER_DRAW ) ) );
             }
             uniformBlock.append( "binding = {}, std140 ) uniform {} {{" );
 

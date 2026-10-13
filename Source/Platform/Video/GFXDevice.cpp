@@ -245,7 +245,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 14,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 15,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
 
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::NONE );                  // CMD_BUFFER
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::INDIRECT_BUFFER,               ShaderStageVisibility::NONE );                  // CMD_BUFFER (indirect draw arguments)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 1,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                   // CAM_BLOCK;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 2,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE );               // GPU_COMMANDS;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 3,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::ALL );                   // NODE_TRANSFORM_DATA;
