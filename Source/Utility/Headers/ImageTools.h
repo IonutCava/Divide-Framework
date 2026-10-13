@@ -147,7 +147,7 @@ struct ImageData final : NonCopyable
         return _layers[layer].getMip(mipLevel)->_dimensions;
     }
 
-    /// get the number of pre-loaded mip maps (same number for each layer)
+    /// get the number of pre-loaded mip levels including the base (same number for each layer)
     [[nodiscard]] U8 mipCount() const { return _layers.empty() ? 0u : _layers.front().mipCount(); }
     /// get the total number of image layers
     [[nodiscard]] U16 layerCount() const noexcept { return to_U16(_layers.size()); }

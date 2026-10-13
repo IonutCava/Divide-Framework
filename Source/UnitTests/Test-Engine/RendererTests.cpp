@@ -1185,6 +1185,71 @@ namespace Divide
         }
     }
 
+    TEST_CASE( "KTX mip counts include the base level for native and generated images", "[ktx2][mip-count]" )
+    {
+        using namespace ImageTools;
+        bool generateMips = false;
+        SECTION("Native base-only images retain one level") {}
+        SECTION("Generated chains match the shared total-level helper")
+        {
+            generateMips = true;
+        }
+        struct Input
+        {
+            U16 _width;
+            U16 _height;
+            U16 _mips;
+        };
+        const Input cases[] =
+        {
+            {1u, 1u, 1u},
+            {1u, 8u, 4u},
+            {8u, 4u, 4u},
+            {7u, 5u, 3u},
+            {3u, 9u, 4u}
+        };
+        for (const auto& input : cases)
+        {
+            CAPTURE(input._width, input._height);
+            REQUIRE(MipCount(input._width, input._height) == input._mips);
+            KTXImage source;
+            source._width = input._width; source._height = input._height;
+            source._components = 1u; source._native = true;
+            source._subresources.push_back({0u, 0u, 0u, 0u, input._width, input._height,
+                std::vector<U8>(size_t(input._width) * input._height, 77u)});
+            U16 expectedCount = 1u;
+            if (generateMips)
+            {
+                REQUIRE(GenerateKTXMipmaps(source));
+                expectedCount = MipCount(input._width, input._height);
+            }
+            REQUIRE(source._mips == expectedCount);
+            REQUIRE(source._subresources.size() == expectedCount);
+            ImageData image;
+            REQUIRE(image.loadFromKTXImage(source));
+            REQUIRE(image.mipCount() == expectedCount);
+            REQUIRE(image.layerCount() == 1u);
+            CHECK(image.imageLayers()[0].mipCount() == expectedCount);
+            for (U8 mip = 0u; mip < expectedCount; ++mip)
+            {
+                CAPTURE(mip);
+                const U16 width = static_cast<U16>(std::max(1u, U32(input._width) >> mip));
+                const U16 height = static_cast<U16>(std::max(1u, U32(input._height) >> mip));
+                CHECK(source._subresources[mip]._mip == mip);
+                CHECK(source._subresources[mip]._width == width);
+                CHECK(source._subresources[mip]._height == height);
+                CHECK(image.dimensions(0u, mip).x == width);
+                CHECK(image.dimensions(0u, mip).y == height);
+                CHECK(image.dimensions(0u, mip).z == 1u);
+                REQUIRE(image.imageLayers()[0].getMip(mip) != nullptr);
+                CHECK(image.imageLayers()[0].getMip(mip)->_size == size_t(width) * height);
+                CHECK(image.data(0u, mip) != nullptr);
+            }
+            CHECK(image.data(0u, image.mipCount()) == nullptr);
+            CHECK(image.imageLayers()[0].getMip(image.mipCount()) == nullptr);
+        }
+    }
+
     TEST_CASE( "KTX2 authoring validates slices and recomputes base alpha", "[ktx2]" )
     {
         using namespace ImageTools;
@@ -1345,7 +1410,28 @@ namespace Divide
         const auto supplied = image._subresources[1]._pixels;
         REQUIRE(GenerateKTXMipmaps(image));
         CHECK(image._mips == 2u);
+        REQUIRE(image._subresources.size() == 2u);
         CHECK(image._subresources[1]._pixels == supplied);
+        CHECK(MipCount(image._width, image._height) == 3u);
+        ImageData partial;
+        REQUIRE(partial.loadFromKTXImage(image));
+        REQUIRE(partial.mipCount() == 2u);
+        REQUIRE(partial.layerCount() == 1u);
+        for (U8 mip = 0u; mip < partial.mipCount(); ++mip)
+        {
+            CAPTURE(mip);
+            CHECK(partial.dimensions(0u, mip).x == std::max(1u, U32(image._width) >> mip));
+            CHECK(partial.dimensions(0u, mip).y == 1u);
+            CHECK(partial.dimensions(0u, mip).z == 1u);
+            REQUIRE(partial.imageLayers()[0].getMip(mip) != nullptr);
+            CHECK(partial.imageLayers()[0].getMip(mip)->_size == size_t(4u >> mip) * 4u);
+            REQUIRE(partial.data(0u, mip) != nullptr);
+            CHECK(std::memcmp(partial.data(0u, mip),
+                              std::get<std::vector<U8>>(image._subresources[mip]._pixels).data(),
+                              size_t(4u >> mip) * 4u) == 0);
+        }
+        CHECK(partial.data(0u, partial.mipCount()) == nullptr);
+        CHECK(partial.imageLayers()[0].getMip(partial.mipCount()) == nullptr);
         const auto reject = [&](KTXMipOptions options)
         {
             const auto original = image;
