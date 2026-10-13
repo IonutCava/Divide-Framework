@@ -46,6 +46,7 @@ class glShaderBuffer final : public ShaderBuffer {
         glShaderBuffer(GFXDevice& context, const ShaderBufferDescriptor& descriptor);
 
         [[nodiscard]] bool bindByteRange(U8 bindIndex, BufferRange<> range, U16 readIndex);
+        [[nodiscard]] bool bindAsIndirectBuffer(U16 readIndex);
         [[nodiscard]] inline const glBufferImpl_uptr& bufferImpl() const noexcept { return _bufferImpl; }
 
         [[nodiscard]] LockableBuffer* getBufferImpl() override final;

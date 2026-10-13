@@ -133,6 +133,8 @@ namespace Divide
 
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange<> range ) noexcept;
+    /// Binds the specified buffer range as the source of indirect draw/dispatch arguments (not visible to shaders)
+    void SetIndirectBuffer( DescriptorSetBindingData& dataInOut, ShaderBuffer* buffer, BufferRange<> range ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const DescriptorImageView& view ) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, ImageUsage usage) noexcept;
     void Set( DescriptorSetBindingData& dataInOut, const ImageView& view, SamplerDescriptor sampler ) noexcept;
