@@ -245,7 +245,7 @@ namespace Divide
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 14,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_DRAW, 15,  DescriptorSetBindingType::UNIFORM_BUFFER_STATIC,        ShaderStageVisibility::ALL );                  // Generic UBO (for uniforms)
 
-        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::NONE );                  // CMD_BUFFER
+        ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 0,  DescriptorSetBindingType::INDIRECT_BUFFER,               ShaderStageVisibility::NONE );                  // CMD_BUFFER (indirect draw arguments)
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 1,  DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC,        ShaderStageVisibility::ALL );                   // CAM_BLOCK;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 2,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::COMPUTE );               // GPU_COMMANDS;
         ShaderProgram::RegisterSetLayoutBinding( DescriptorSetUsage::PER_BATCH, 3,  DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC, ShaderStageVisibility::ALL );                   // NODE_TRANSFORM_DATA;
@@ -2155,16 +2155,10 @@ namespace Divide
 
         thread_local DescriptorSetEntries setEntries{};
 
-        constexpr DescriptorSetUsage prioritySorted[to_base( DescriptorSetUsage::COUNT )]
+        // DescriptorSetUsage is already sorted by update frequency (PER_FRAME first, PER_DRAW last)
+        for ( U8 i = 0u; i < to_base( DescriptorSetUsage::COUNT ); ++i )
         {
-            DescriptorSetUsage::PER_FRAME,
-            DescriptorSetUsage::PER_PASS,
-            DescriptorSetUsage::PER_BATCH,
-            DescriptorSetUsage::PER_DRAW
-        };
-
-        for ( const DescriptorSetUsage usage : prioritySorted )
-        {
+            const DescriptorSetUsage usage = static_cast<DescriptorSetUsage>(i);
             GFXDescriptorSet& set = _descriptorSets[to_base( usage )];
             DescriptorSetEntry& entry = setEntries[to_base(usage)];
             entry._set = &set.impl();

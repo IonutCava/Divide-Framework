@@ -544,6 +544,7 @@ namespace Divide
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 
+                case DescriptorSetBindingType::INDIRECT_BUFFER: // Not a descriptor
                 case DescriptorSetBindingType::COUNT:
                 default:
                     DIVIDE_UNEXPECTED_CALL();

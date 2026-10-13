@@ -10,7 +10,7 @@ namespace Divide
 
     namespace Reflection
     {
-        constexpr U16 BYTE_BUFFER_VERSION = 3u;
+        constexpr U16 BYTE_BUFFER_VERSION = 4u; // v4: DescriptorSetUsage reordered by update frequency (PER_FRAME = 0 ... PER_DRAW = 3)
 
         bool UniformCompare::operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const
         {

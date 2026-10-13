@@ -143,7 +143,7 @@ The engine uses a backend-neutral descriptor-set model defined by `DescriptorSet
 
 `GFXDevice::initDescriptorSets()` registers the canonical layout shared by the engine:
 - `PER_DRAW` is mostly material textures, optional image bindings, and per-draw buffers
-- `PER_BATCH` contains command, camera, transform, indirection, and material batch buffers
+- `PER_BATCH` contains the indirect command buffer, camera, transform, indirection, and material batch buffers
 - `PER_PASS` contains pass inputs such as scene textures and clustered-lighting buffers
 - `PER_FRAME` contains global environment, shadow, probe, and scene data
 
@@ -152,6 +152,13 @@ This shared layout is one of the main compatibility layers between OpenGL and Vu
 - shader source declarations
 - OpenGL binding code
 - Vulkan descriptor/push-descriptor/descriptor-buffer code paths
+
+Binding conventions:
+- shaders always use the usage names (`DESCRIPTOR_SET_RESOURCE(PER_BATCH, 2)`), never raw set numbers. The generated header maps them per API.
+- `DescriptorSetUsage` (`RenderAPIEnums.h`) is ordered by update frequency: `PER_FRAME`=0, `PER_PASS`=1, `PER_BATCH`=2, `PER_DRAW`=3 (`PER_DRAW` must stay last). The enum value is also the Vulkan set index, so no remapping exists anywhere. OpenGL has no sets and maps (usage, slot) to flat GL bindings. Changing the enum order requires bumping `BYTE_BUFFER_VERSION` in `ShaderDataUploader.cpp`, because cached reflection stores usage indices.
+- Every Vulkan pipeline layout contains the real shared layouts for sets 0-2 (no dummy layouts) and a `VK_SHADER_STAGE_ALL` 128-byte push-constant range. That makes all layouts compatible for the shared sets and push constants, so they stay bound across pipeline changes. `PER_DRAW` (set 3) is a per-program push-descriptor layout.
+- `VK_API::bindShaderResources` caches the resolved contents of each shared set. It only allocates and writes a new `VkDescriptorSet` when the resources change (otherwise only dynamic offsets change). It also tracks the sets and offsets bound per bind point (graphics/compute) and command buffer. `PER_DRAW` is only re-pushed when its contents or the pipeline layout change. Cached sets are invalidated in `frameStarted` (descriptor pools flip there).
+- `DescriptorSetBindingType::INDIRECT_BUFFER` (set via `SetIndirectBuffer`, `PER_BATCH` slot 0) is not a shader resource. It selects the buffer used by indirect draws (`GL_DRAW_INDIRECT_BUFFER` / `vkCmdDraw*Indirect`) and is skipped in VK layouts and GL binding tables. The same command buffer is still bound as a regular writable SSBO (`PER_BATCH` slot 2, `dvd_GPUCmds`) for HiZ occlusion culling in compute shaders. Sync is driven by `BufferUsageType::COMMAND_BUFFER` (storage + indirect usage/barriers), not by the binding type.
 
 ### 7. Shared Shader System Between OpenGL and Vulkan
 `ShaderProgram` is the shared shader pipeline.
@@ -195,6 +202,9 @@ Extensions enabled when present:
 - `VK_EXT_extended_dynamic_state_3`
 - `VK_KHR_maintenance7`
 - `VK_EXT_mesh_shader` (currently detected but mesh-shader feature hookup is effectively disabled/commented)
+
+Detected and logged only (not enabled yet):
+- `VK_EXT_descriptor_heap` (planned future descriptor model; availability is logged at device selection in `vkDevice.cpp`)
 
 Important implications:
 - the Vulkan path depends on descriptor-buffer and push-descriptor support assumptions
