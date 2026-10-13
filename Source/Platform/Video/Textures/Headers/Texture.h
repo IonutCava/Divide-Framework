@@ -150,6 +150,7 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
         PROPERTY_R( TextureDescriptor, descriptor );
         /// Get the number of mips
+        /// Total number of mip levels, including the base level (level 0).
         PROPERTY_R( U16, mipCount, 1u );
         /// Texture width as returned by STB/DDS loader
         PROPERTY_R( U16, width, 0u );

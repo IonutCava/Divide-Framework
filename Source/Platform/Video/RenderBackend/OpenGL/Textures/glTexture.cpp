@@ -219,7 +219,7 @@ ImageUsage glTexture::prepareTextureData(const vec3<U16>& dimensions, const U16 
 void glTexture::submitTextureData(ImageUsage& crtUsageInOut)
 {
     gl46core::glTextureParameteri(_loadingHandle, gl46core::GL_TEXTURE_BASE_LEVEL, _descriptor._mipBaseLevel );
-    gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, _nativeKTX ? mipCount() - 1u : mipCount());
+    gl46core::glTextureParameteri( _loadingHandle, gl46core::GL_TEXTURE_MAX_LEVEL, mipCount() - 1u);
 
     if ( _descriptor._mipMappingState == MipMappingState::AUTO)
     {
