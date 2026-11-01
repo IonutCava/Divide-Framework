@@ -50,6 +50,7 @@ namespace Divide::Networking
 
             vector<OPCodes> receivedOpcodes()
             {
+                _peer.non_blocking(true);
                 vector<OPCodes> codes;
                 while (_peer.available() >= NetworkPacket::HEADER_SIZE)
                 {

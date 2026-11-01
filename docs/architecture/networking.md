@@ -22,6 +22,8 @@ console and application-time services. CTest runs discovered cases in separate
 processes: initialization in another test does not carry over. Keep loopback
 fixtures independent of external servers and exercise cancellation and
 per-client startup when changing heartbeat behavior.
+The fixture drains its peer in nonblocking mode: an incomplete packet raises an
+Asio error instead of hanging the test while waiting for a missing body.
 
 ## Known limitations
 
