@@ -104,6 +104,7 @@ private:
 
 /// Invalid object value. Used to compare handles and determine if they were properly created
 constexpr gl46core::GLuint GL_NULL_HANDLE = gl46core::GL_INVALID_INDEX;
+constexpr gl46core::GLuint64 GL_NULL_HANDLE_64 = U64_MAX;
 
 namespace GLUtil {
 

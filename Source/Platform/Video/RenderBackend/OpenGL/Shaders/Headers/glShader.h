@@ -77,17 +77,20 @@ class glShader final : public ShaderModule
 
    private:
     friend class glShaderProgram;
-    [[nodiscard]] ShaderResult uploadToGPU();
+    [[nodiscard]] ShaderResult uploadToGPU(const Configuration& config);
 
     void onParentValidation();
 
     void uploadPushConstants(const PushConstantsStruct& pushConstants);
 
   private:
+
+
     ShaderProgram::ShaderLoadData _loadData;
     vector<gl46core::GLuint> _shaderIDs;
     bool _linked = false;
-    gl46core::GLint _pushConstantsLocation{-2};
+    bool _usingSPIRV = false;
+    Reflection::PushConstantsState _pushConstantsState{ Reflection::PushConstantsState::NOT_CHECKED };
 };
 
 };  // namespace Divide

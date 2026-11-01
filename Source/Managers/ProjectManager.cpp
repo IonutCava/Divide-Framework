@@ -1131,6 +1131,24 @@ namespace Divide
         activeProject()->getActiveScene()->onChangeFocus( hasFocus );
     }
 
+    // returns selection callback id
+    size_t ProjectManager::addSelectionCallback(const DELEGATE<void, U8, const vector<SceneGraphNode*>&>& selectionCallback)
+    {
+        static std::atomic_size_t index = 0u;
+
+        const size_t idx = index.fetch_add(1u);
+        _selectionChangeCallbacks.push_back(std::make_pair(idx, selectionCallback));
+        return idx;
+    }
+
+    bool ProjectManager::removeSelectionCallback(const size_t idx)
+    {
+        return dvd_erase_if(_selectionChangeCallbacks, [idx](const auto& entry) noexcept
+            {
+                return entry.first == idx;
+            });
+    }
+
     bool ProjectManager::resetSelection( const PlayerIndex idx, const bool resetIfLocked )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Scene );

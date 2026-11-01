@@ -370,7 +370,7 @@ namespace Divide {
         inline VkWriteDescriptorSet writeDescriptorSet(
             VkDescriptorType type,
             uint32_t binding,
-            VkDescriptorBufferInfo* bufferInfo,
+            const VkDescriptorBufferInfo* bufferInfo,
             uint32_t descriptorCount = 1)
         {
             VkWriteDescriptorSet writeDescriptorSet{};
@@ -386,7 +386,7 @@ namespace Divide {
             VkDescriptorSet dstSet,
             VkDescriptorType type,
             uint32_t binding,
-            VkDescriptorBufferInfo* bufferInfo,
+            const VkDescriptorBufferInfo* bufferInfo,
             uint32_t descriptorCount = 1)
         {
             VkWriteDescriptorSet writeDescriptorSet{};
@@ -402,7 +402,7 @@ namespace Divide {
         inline VkWriteDescriptorSet writeDescriptorSet(
             VkDescriptorType type,
             uint32_t binding,
-            VkDescriptorImageInfo* imageInfo,
+            const VkDescriptorImageInfo* imageInfo,
             uint32_t descriptorCount = 1)
         {
             VkWriteDescriptorSet writeDescriptorSet{};
@@ -413,12 +413,12 @@ namespace Divide {
             writeDescriptorSet.descriptorCount = descriptorCount;
             return writeDescriptorSet;
         }  
-        
+
         inline VkWriteDescriptorSet writeDescriptorSet(
             VkDescriptorSet dstSet,
             VkDescriptorType type,
             uint32_t binding,
-            VkDescriptorImageInfo* imageInfo,
+            const VkDescriptorImageInfo* imageInfo,
             uint32_t descriptorCount = 1)
         {
             VkWriteDescriptorSet writeDescriptorSet{};

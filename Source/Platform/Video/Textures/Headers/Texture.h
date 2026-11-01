@@ -78,6 +78,17 @@ using TextureLayoutChanges = fixed_vector<TextureLayoutChange, 6, true>;
 
 [[nodiscard]] bool IsEmpty( const TextureLayoutChanges& changes ) noexcept;
 
+struct TextureUpdateLayout
+{
+    size_t _rowBytes{ 0u };
+    size_t _rowStride{ 0u };
+    size_t _sliceStride{ 0u };
+    size_t _sourceOffset{ 0u };
+    size_t _rowCount{ 0u };
+    size_t _stagingSize{ 0u };
+    size_t _requiredSize{ 0u };
+};
+
 /// An API-independent representation of a texture
 NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 {
@@ -92,11 +103,13 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
 
         virtual ~Texture() override;
 
-        static void OnStartup( GFXDevice& gfx );
+        static void OnStartup();
         static void OnShutdown() noexcept;
         [[nodiscard]] static bool UseTextureDDSCache() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2D() noexcept;
         [[nodiscard]] static Handle<Texture> DefaultTexture2DArray() noexcept;
+        [[nodiscard]] static Handle<Texture> DefaultTexture( TextureType type, GFXDataFormat sampledDataType, bool depth ) noexcept;
+        [[nodiscard]] static TextureDescriptor DefaultTextureDescriptor( TextureType type, GFXDataFormat sampledDataType, bool depth ) noexcept;
         [[nodiscard]] static const SamplerDescriptor DefaultSampler() noexcept;
         [[nodiscard]] static U8 GetBytesPerPixel( GFXDataFormat format, GFXImageFormat baseFormat, GFXImagePacking packing ) noexcept;
 
@@ -104,7 +117,21 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         ImageUsage createWithData( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment );
         ImageUsage createWithData( std::span<const Byte> data, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment);
 
-        void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const PixelAlignment& pixelUnpackAlignment );
+        /// Update one mip of an initialized, shader-readable texture with _allowRegionUpdates enabled.
+        /// Coordinates are local to targetMipLevel; z selects slices (3D) or layers/faces (arrays/cubes).
+        /// 1D textures use y = 0 and range.y = 1, including arrays whose layers are selected with z.
+        /// PixelAlignment describes the source buffer, not the destination: rowLength/skipPixels are in
+        /// texels, skipRows is in rows. The span must include all addressed bytes, including skips/padding.
+        /// BC updates require block-aligned offsets/extents (except at mip edges) and tightly packed blocks.
+        /// Vulkan CPU uploads support colour textures, not multisampled or depth/stencil images.
+        /// Other mips/layers and pixels outside the region are preserved; mipmaps are not regenerated.
+        /// Call before recording draws that sample the texture; empty data or zero extents are no-ops.
+        void replaceData( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& range, const U16 targetMipLevel, const PixelAlignment& pixelUnpackAlignment );
+
+        [[nodiscard]] static bool IsValidUpdateRegion( TextureType type, const vec3<U16>& dimensions, U16 layers, U16 mipCount, U16 targetMip,
+                                                      const vec3<U16>& offset, const vec3<U16>& range ) noexcept;
+        [[nodiscard]] static bool GetUpdateLayout( const TextureDescriptor& descriptor, const vec3<U16>& range,
+                                                  const PixelAlignment& alignment, TextureUpdateLayout& layout ) noexcept;
 
         /// Change the number of MSAA samples for this current texture
         void setSampleCount( U8 newSampleCount );
@@ -116,7 +143,8 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange ) const noexcept;
         [[nodiscard]] ImageView getView( TextureType targetType, SubRange mipRange, SubRange layerRange/*offset, count*/ ) const noexcept;
 
-        [[nodiscard]] virtual ImageReadbackData readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
+        ///Requires an exact mip level. ALL_MIPS will not work here! It will return an empty result if ALL_MIPS is used.
+        [[nodiscard]] virtual ImageReadbackData readData(U16 mipLevel, const PixelAlignment& pixelPackAlignment) const = 0;
 
         PROPERTY_R( TextureDescriptor, descriptor );
         /// Get the number of mips
@@ -148,15 +176,17 @@ NOINITVTABLE_CLASS(Texture) : public CachedResource, public GraphicsResource
         void validateDescriptor(bool makeImmutable);
 
         virtual void loadDataInternal( const ImageTools::ImageData& imageData, const PixelAlignment& pixelUnpackAlignment ) = 0;
-        virtual void loadDataInternal( std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
+        virtual void loadDataInternal( std::span<const Byte> data, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment ) = 0;
         virtual ImageUsage prepareTextureData( const vec3<U16>& dimensions, U16 layers, bool makeImmutable );
         virtual void submitTextureData(ImageUsage& crtUsageInOut);
 
     protected:
+        void createDefaultData();
         static bool s_useDDSCache;
         static SamplerDescriptor s_defaultSampler;
         static Handle<Texture> s_defaultTexture2D;
         static Handle<Texture> s_defaultTexture2DArray;
+        static std::array<Handle<Texture>, to_base( TextureType::COUNT ) * 4u> s_defaultTextures;
         static Str<64> s_missingTextureFileName;
 };
 

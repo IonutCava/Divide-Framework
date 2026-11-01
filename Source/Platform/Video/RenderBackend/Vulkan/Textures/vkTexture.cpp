@@ -9,6 +9,7 @@
 
 #include <numeric>
 #include <vector>
+#include <glm/gtc/packing.hpp>
 
 namespace Divide
 {
@@ -23,23 +24,27 @@ namespace Divide
             const bool multisampled = descriptor._msaaSamples > 0u;
             const bool compressed = IsCompressed( descriptor._baseFormat );
             const bool isDepthTexture = IsDepthTexture( descriptor._packing );
-            bool supportsStorageBit = !multisampled && !compressed && !isDepthTexture;
+            const bool canUseStorage = !multisampled && !compressed && !isDepthTexture;
 
-            
             VkFlags ret = (usage != ImageUsage::SHADER_WRITE ? VK_IMAGE_USAGE_SAMPLED_BIT : VK_FLAGS_NONE);
 
             switch ( usage )
             {
                 case ImageUsage::SHADER_READ_WRITE:
-                case ImageUsage::SHADER_WRITE: DIVIDE_GPU_ASSERT( supportsStorageBit );  break;
+                case ImageUsage::SHADER_WRITE: 
+                {
+                    DIVIDE_GPU_ASSERT(canUseStorage);
+                    ret |= VK_IMAGE_USAGE_STORAGE_BIT;
+                } break;
 
                 case ImageUsage::RT_COLOUR_ATTACHMENT: 
                 case ImageUsage::RT_DEPTH_ATTACHMENT:
                 case ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT:
                 {
-                    supportsStorageBit = false;
                     ret |=  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-                    ret |= ( usage == ImageUsage::RT_COLOUR_ATTACHMENT ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+                    ret |= ( usage == ImageUsage::RT_COLOUR_ATTACHMENT 
+                                    ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                                    : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
                     
                 } break;
 
@@ -57,7 +62,7 @@ namespace Divide
                 ret |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
             }
 
-            return (supportsStorageBit ? (ret | VK_IMAGE_USAGE_STORAGE_BIT) : ret);
+            return ret;
         }
 
         enum class CopyTextureType : U8
@@ -390,7 +395,7 @@ namespace Divide
         }
 
         VkImageCreateInfo imageInfo = vk::imageCreateInfo();
-        imageInfo.tiling = _descriptor._allowRegionUpdates ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.samples = sampleFlagBits();
@@ -407,7 +412,7 @@ namespace Divide
            imageInfo.arrayLayers *= (isCubeMap ? 6u : 1u);
         }
 
-        if ( makeImmutable || imageInfo.mipLevels > 1u)
+        if ( makeImmutable || _descriptor._allowRegionUpdates || imageInfo.mipLevels > 1u)
         {
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
@@ -445,7 +450,7 @@ namespace Divide
         vmaallocinfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         vmaallocinfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
         vmaallocinfo.priority = 1.f;
-
+        _createdImageUsageMask = imageInfo.usage;
         {
             LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
             VK_CHECK( vmaCreateImage( *VK_API::GetStateTracker()._allocatorInstance._allocator,
@@ -463,20 +468,100 @@ namespace Divide
         if ( !makeImmutable && _descriptor._msaaSamples == 0u )
         {
             const PixelAlignment alignment{ ._alignment = 1u };
-            loadDataInternal( nullptr, _image->_allocInfo.size, {0u}, {_width, _height, _depth}, alignment );
+            loadDataInternal( nullptr, _image->_allocInfo.size, ALL_MIPS, {0u}, {_width, _height, _depth}, alignment );
             ret = ImageUsage::SHADER_READ;
         }
 
         return ret;
     }
 
-    void vkTexture::loadDataInternal( const std::span<const Byte> data, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    void vkTexture::loadDataInternal( const std::span<const Byte> data, const U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
-        DIVIDE_GPU_ASSERT(_descriptor._allowRegionUpdates);
-        loadDataInternal(data.data(), data.size(), offset, dimensions, pixelUnpackAlignment);
+        PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        TextureUpdateLayout layout;
+        const bool valid = _image != nullptr && _descriptor._allowRegionUpdates && _descriptor._msaaSamples == 0u &&
+                           GetAspectFlags( _descriptor ) == VK_IMAGE_ASPECT_COLOR_BIT &&
+                           IsValidUpdateRegion( _descriptor._texType, {_width, _height, _depth}, _layerCount, _mipCount, targetMip, offset, dimensions ) &&
+                           GetUpdateLayout( _descriptor, dimensions, pixelUnpackAlignment, layout ) &&
+                           data.size() >= layout._requiredSize && layout._stagingSize <= GFXDevice::GetDeviceInformation()._maxBufferSizeBytes;
+        DIVIDE_GPU_ASSERT( valid, "vkTexture::loadDataInternal: unsupported region update or invalid pixel data!" );
+        if ( !valid )
+        {
+            return;
+        }
+
+        // A separate staging allocation per update avoids overwriting data from an in-flight atlas update.
+        // VMABuffer destruction retires the allocation through the existing deferred deletion queue.
+        const bool packFloatPixels = vkFormat() == VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+        const size_t stagingSize = packFloatPixels ? layout._stagingSize / 6u * sizeof( U32 ) : layout._stagingSize;
+        const auto stagingBuffer = VKUtil::createStagingBuffer( stagingSize, resourceName().c_str(), false );
+        Byte* target = reinterpret_cast<Byte*>( stagingBuffer->_allocInfo.pMappedData );
+        for ( size_t slice = 0u; slice < dimensions.z; ++slice )
+        {
+            for ( size_t row = 0u; row < layout._rowCount; ++row )
+            {
+                const size_t sourceOffset = layout._sourceOffset + slice * layout._sliceStride + row * layout._rowStride;
+                const Byte* source = data.data() + sourceOffset;
+                if ( packFloatPixels )
+                {
+                    // The shared/GL source is RGB half-float; Vulkan's R11G11B10 image needs packed texels.
+                    for ( size_t pixel = 0u; pixel < dimensions.x; ++pixel )
+                    {
+                        U16 components[3];
+                        memcpy( components, source + pixel * sizeof( components ), sizeof( components ) );
+                        const U32 packed = glm::packF2x11_1x10( glm::vec3( glm::unpackHalf1x16( components[0] ),
+                                                                         glm::unpackHalf1x16( components[1] ),
+                                                                         glm::unpackHalf1x16( components[2] ) ) );
+                        memcpy( target, &packed, sizeof( packed ) );
+                        target += sizeof( packed );
+                    }
+                }
+                else
+                {
+                    memcpy( target, source, layout._rowBytes );
+                    target += layout._rowBytes;
+                }
+            }
+        }
+        {
+            LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
+            VK_CHECK( vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator,
+                                         stagingBuffer->_allocation, 0u, stagingSize ) );
+        }
+
+        VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer(
+            [&]( VkCommandBuffer cmdBuffer, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const U32 queueIndex )
+        {
+            PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
+
+            const bool is3D = Is3DTexture( _descriptor._texType );
+            const VkImageSubresourceRange region
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = targetMip,
+                .levelCount = 1u,
+                .baseArrayLayer = is3D ? 0u : U32( offset.z ),
+                .layerCount = is3D ? 1u : U32( dimensions.z )
+            };
+            const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), false };
+            FlushPipelineBarrier( cmdBuffer, TransitionType::SHADER_READ_TO_COPY_WRITE, region, namedImage );
+
+            VkBufferImageCopy copyRegion{};
+            copyRegion.imageSubresource.aspectMask = region.aspectMask;
+            copyRegion.imageSubresource.mipLevel = targetMip;
+            copyRegion.imageSubresource.baseArrayLayer = region.baseArrayLayer;
+            copyRegion.imageSubresource.layerCount = region.layerCount;
+            copyRegion.imageOffset = { I32( offset.x ), I32( offset.y ), is3D ? I32( offset.z ) : 0 };
+            copyRegion.imageExtent = { U32( dimensions.x ), U32( dimensions.y ), is3D ? U32( dimensions.z ) : 1u };
+            VK_PROFILE( vkCmdCopyBufferToImage, cmdBuffer, stagingBuffer->_buffer, _image->_image,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1u, &copyRegion );
+
+            FlushPipelineBarrier( cmdBuffer, TransitionType::COPY_WRITE_TO_SHADER_READ, region, namedImage );
+        }, "vkTexture::replaceData" );
     }
 
-    void vkTexture::loadDataInternal( const Byte* data, const size_t size, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
+    void vkTexture::loadDataInternal( const Byte* data, const size_t size, U16 targetMip, const vec3<U16>& offset, const vec3<U16>& dimensions, const PixelAlignment& pixelUnpackAlignment )
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
 
@@ -489,6 +574,8 @@ namespace Divide
         {
             Console::d_errorfn("vkTexture::loadDataInternal: [ {} ]!", resourceName().c_str());
         }
+
+        DIVIDE_ASSERT(targetMip == ALL_MIPS || targetMip < mipCount());
 
         const U16 topLeftX = offset.x;
         const U16 topLeftY = offset.y;
@@ -504,24 +591,29 @@ namespace Divide
         const bool isCubeMap = IsCubeTexture(_descriptor._texType);
         // number of layers that we actually upload (array layers / cube faces)
         const size_t numLayers = to_size(_layerCount) * (isCubeMap ? 6u : 1u);
-        const U16 numMips = mipCount();
+        const U16 totalMips = mipCount();
+        const U16 numMips = targetMip == ALL_MIPS ? totalMips : 1u;
+
+        // If targetMip specified and valid, only upload that single mip level.
+        const U16 mipStart = targetMip == ALL_MIPS ? 0u : targetMip;
+        const U16 mipEnd   = targetMip == ALL_MIPS ? numMips : (mipStart + numMips);
 
         // Ensure _mipData is per-layer vector of per-mip entries
         _mipData.resize(numLayers);
 
-        // perMipLayerSize[layer][mip] = full bytes for that layer+mip (rowBytes * height * depth)
-        vector<vector<size_t>> perMipLayerSize(numLayers, vector<size_t>(numMips));
+        // perlayerMipSize[layer][mip] = full bytes for that layer+mip (rowBytes * height * depth)
+        vector<vector<size_t>> perlayerMipSize(numLayers, vector<size_t>(totalMips));
 
         // Compute per-mip sizes including alignment
-        size_t totalSize = 0u;
+        size_t totalSizeAll = 0u;
         size_t maxMipLayerSize = 0u;
         for ( size_t layer = 0u; layer < numLayers; ++layer )
         {
             auto& mips = _mipData[layer];
-            auto& mipSizes = perMipLayerSize[layer];
-            mips.resize(numMips);
+            auto& mipSizes = perlayerMipSize[layer];
+            mips.resize(totalMips);
 
-            for ( U8 m = 0u; m < numMips; ++m )
+            for ( U16 m = 0u; m < totalMips; ++m )
             {
                 auto& mip = mips[m];
 
@@ -541,50 +633,64 @@ namespace Divide
                 mip._dimensions = { mipW, mipH, _depth };
                 mip._size = mipLayerSize;
 
-                totalSize += mip._size;
+                totalSizeAll += mip._size;
                 maxMipLayerSize = std::max(maxMipLayerSize, mipLayerSize);
             }
         }
 
+        // Compute per-layer + total size for the target mip range only
+        vector<size_t> perLayerTargetSize(numLayers, 0u);
+        size_t totalSizeTarget = 0u;
+        for ( size_t layer = 0u; layer < numLayers; ++layer )
+        {
+            size_t sum = 0u;
+            for ( U16 m = mipStart; m < mipEnd; ++m )
+            {
+                sum += perlayerMipSize[layer][m];
+            }
+            perLayerTargetSize[layer] = sum;
+            totalSizeTarget += sum;
+        }
+
         if (data != nullptr)
         {
-            if (size < totalSize)
+            if ( size < totalSizeTarget )
             {
-                DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is smaller than expected totalSize (%zu) for '%s' - treating as partial data", size, totalSize, resourceName().c_str()));
+                DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is smaller than expected totalSizeTarget (%zu) for '%s' - treating as partial data", size, totalSizeTarget, resourceName().c_str()));
             }
-            else if (size > totalSize)
+            else if ( size > totalSizeTarget )
             {
-                DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is larger than expected totalSize (%zu) for '%s' - extra bytes will be ignored", size, totalSize, resourceName().c_str()));
+                DIVIDE_UNEXPECTED_CALL_MSG(Util::StringFormat("vkTexture::loadDataInternal: provided data size (%zu) is larger than expected totalSizeTarget (%zu) for '%s' - extra bytes will be ignored", size, totalSizeTarget, resourceName().c_str()));
             }
         }
 
         const size_t deviceMaxBufferSize = GFXDevice::GetDeviceInformation()._maxBufferSizeBytes;
-        const bool haveFullMipData = (data != nullptr && size >= totalSize);
+        const bool haveFullMipData = (data != nullptr && size >= totalSizeTarget);
 
-        DIVIDE_GPU_ASSERT( !haveFullMipData || size == totalSize);
+        DIVIDE_GPU_ASSERT( !haveFullMipData || size == totalSizeTarget);
 
-        // If we have full data and it fits the device, use contiguous path
-        if ( haveFullMipData && totalSize <= deviceMaxBufferSize )
+        // If we have full data for the selected mip(s) and it fits the device, use contiguous path
+        if ( haveFullMipData && totalSizeTarget <= deviceMaxBufferSize )
         {
-            if ( _stagingBuffer == nullptr || _stagingBuffer->_allocInfo.size < totalSize )
+            if ( _stagingBuffer == nullptr || _stagingBuffer->_allocInfo.size < totalSizeTarget )
             {
-                _stagingBuffer = VKUtil::createStagingBuffer( totalSize, resourceName().c_str(), false );
+                _stagingBuffer = VKUtil::createStagingBuffer( totalSizeTarget, resourceName().c_str(), false );
             }
 
-            // Copy full source into staging buffer (assume layer-major ordering)
+            // Copy full source into staging buffer (assume layer-major ordering for the selected mip range)
             Byte* mappedData = reinterpret_cast<Byte*>( _stagingBuffer->_allocInfo.pMappedData );
-            memcpy( mappedData, data, totalSize );
+            memcpy( mappedData, data, totalSizeTarget );
 
             // Flush mapped memory
             {
                 LockGuard<Mutex> w_lock( VK_API::GetStateTracker()._allocatorInstance._allocatorLock );
                 if ( VK_API::GetStateTracker()._allocatorInstance._allocator != nullptr )
                 {
-                    vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator, _stagingBuffer->_allocation, 0u, totalSize );
+                    vmaFlushAllocation( *VK_API::GetStateTracker()._allocatorInstance._allocator, _stagingBuffer->_allocation, 0u, totalSizeTarget );
                 }
             }
 
-            // Upload all mips/layers from staging buffer
+            // Upload selected mips/layers from staging buffer
             VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmdBuffer, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
             {
                 PROFILE_VK_EVENT_AUTO_AND_CONTEXT(cmdBuffer);
@@ -617,7 +723,7 @@ namespace Divide
                     range.baseArrayLayer = to_I32(layer);
 
                     const auto& mips = _mipData[layer];
-                    for ( U8 m = 0u; m < numMips; ++m )
+                    for ( U16 m = mipStart; m < mipEnd; ++m )
                     {
                         range.baseMipLevel = m;
 
@@ -688,20 +794,22 @@ namespace Divide
 
                 range.baseArrayLayer = to_I32(layer);
 
-                // Precompute per-layer totals for source offsets (layer-major: mips per layer)
-                const auto& perLayerMipSize = perMipLayerSize[layer];
-                const size_t totalBytesPerLayer = std::accumulate(perLayerMipSize.begin(), perLayerMipSize.end(), to_size(0));
-                const size_t layerDataBase = haveFullMipData ? (layer * totalBytesPerLayer) : 0u;
+                // Precompute per-layer totals for source offsets (layer-major: selected mips per layer)
+                const auto& layerMipSize = perlayerMipSize[layer];
+                const size_t totalBytesPerLayerSelected = perLayerTargetSize[layer];
+                const size_t layerDataBase = haveFullMipData ? (layer * totalBytesPerLayerSelected) : 0u;
 
-                for ( U8 m = 0u; m < numMips; ++m )
+                for ( U16 m = mipStart; m < mipEnd; ++m )
                 {
                     range.baseMipLevel = m;
 
-                    const size_t mipLayerSize = perLayerMipSize[m];
+                    const size_t mipLayerSize = layerMipSize[m];
                     const Byte* srcPtr = nullptr;
                     if ( haveFullMipData )
                     {
-                        srcPtr = data + layerDataBase + std::accumulate(perLayerMipSize.begin(), perLayerMipSize.begin() + m, to_size(0));
+                        // offset within the selected-mip block for this layer
+                        const size_t offsetWithinSelected = std::accumulate(layerMipSize.begin() + mipStart, layerMipSize.begin() + m, to_size(0));
+                        srcPtr = data + layerDataBase + offsetWithinSelected;
                     }
 
                     if ( srcPtr != nullptr )
@@ -782,7 +890,7 @@ namespace Divide
         }
 
         const U16 numLayers = imageData.layerCount();
-        const U8 numMips = imageData.mipCount();
+        const U16 numMips = imageData.mipCount();
         _mipData.resize(numLayers, vector<Mip>(numMips));
 
         U16 maxDepth = 0u;
@@ -791,7 +899,7 @@ namespace Divide
         {
             auto& mips = _mipData[l];
             const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for (U8 m = 0u; m < numMips; ++m)
+            for (U16 m = 0u; m < numMips; ++m)
             {
                 const ImageTools::LayerData* mip = layer.getMip(m);
                 totalSize += mip->_size;
@@ -813,7 +921,7 @@ namespace Divide
         for (U32 l = 0u; l < numLayers; ++l)
         {
             const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
-            for (U8 m = 0u; m < numMips; ++m)
+            for (U16 m = 0u; m < numMips; ++m)
             {
                 const ImageTools::LayerData* mip = layer.getMip(m);
                 memcpy(&target[dataOffset], mip->data(), mip->_size);
@@ -850,7 +958,7 @@ namespace Divide
             {
                 const ImageTools::ImageLayer& layer = imageData.imageLayers()[l];
 
-                for (U8 m = 0u; m < numMips; ++m)
+                for (U16 m = 0u; m < numMips; ++m)
                 {
                     const ImageTools::LayerData* mip = layer.getMip(m);
 
@@ -858,7 +966,7 @@ namespace Divide
                     copyRegion.bufferOffset = dataOffset;
                     copyRegion.bufferRowLength = to_U32(pixelUnpackAlignment._rowLength);
                     copyRegion.bufferImageHeight = 0;
-                    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                    copyRegion.imageSubresource.aspectMask = GetAspectFlags(_descriptor);
                     copyRegion.imageSubresource.mipLevel = m;
                     copyRegion.imageSubresource.baseArrayLayer = l;
                     copyRegion.imageSubresource.layerCount = 1;
@@ -956,7 +1064,7 @@ namespace Divide
                     memBarrier);
             }
         }
-        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ))
+        else if (HasUsageFlagSet(descriptor(), ImageUsage::SHADER_READ) )
         {
             targetUsage = ImageUsage::SHADER_READ;
 
@@ -979,7 +1087,7 @@ namespace Divide
         Texture::submitTextureData(crtUsageInOut);
     }
 
-    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U8 mipLevel ) const noexcept
+    void vkTexture::clearData( VkCommandBuffer cmdBuffer, const UColour4& clearColour, SubRange layerRange, U16 mipLevel ) const noexcept
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
@@ -990,18 +1098,22 @@ namespace Divide
 
         const NamedVKImage namedImage{ image()->_image, resourceName().c_str(), HasUsageFlagSet(descriptor(), ImageUsage::RT_RESOLVE_TARGET) };
 
-        if ( mipLevel == U8_MAX )
-        {
-            assert( mipCount() > 0u );
-            mipLevel = to_U8( mipCount() - 1u );
-        }
-
         VkImageSubresourceRange range;
         range.aspectMask = GetAspectFlags( _descriptor );
         range.baseArrayLayer = layerRange._offset;
         range.layerCount = layerRange._count == ALL_LAYERS ? VK_REMAINING_ARRAY_LAYERS : layerRange._count;
-        range.baseMipLevel = mipLevel;
-        range.levelCount = 1u;
+
+        if (mipLevel == ALL_MIPS)
+        {
+            range.baseMipLevel = 0u;
+            range.levelCount = VK_REMAINING_MIP_LEVELS;
+        }
+        else
+        {
+            DIVIDE_ASSERT(mipLevel < mipCount());
+            range.baseMipLevel = mipLevel;
+            range.levelCount = 1u;
+        }
 
         FlushPipelineBarrier(cmdBuffer, TransitionType::SHADER_READ_TO_BLIT_WRITE, range, namedImage );
 
@@ -1027,9 +1139,17 @@ namespace Divide
         FlushPipelineBarrier(cmdBuffer, TransitionType::BLIT_WRITE_TO_SHADER_READ, range, namedImage );
     }
 
-    ImageReadbackData vkTexture::readData( U8 mipLevel, const PixelAlignment& pixelPackAlignment ) const noexcept
+    ImageReadbackData vkTexture::readData( const U16 mipLevel, const PixelAlignment& pixelPackAlignment ) const noexcept
     {
         PROFILE_SCOPE_AUTO( Profiler::Category::Graphics );
+
+        if (mipLevel == ALL_MIPS )
+        {
+            Console::errorfn("vkTexture::readData: ALL_MIPS not a valid mipLevel target!");
+            return {};
+        }
+
+        DIVIDE_ASSERT(mipLevel < mipCount());
 
         ImageReadbackData ret{};
         VK_API::GetStateTracker().IMCmdContext( QueueType::GRAPHICS )->flushCommandBuffer( [&]( VkCommandBuffer cmd, [[maybe_unused]] const QueueType queue, [[maybe_unused]] const bool isDedicatedQueue )
@@ -1041,7 +1161,7 @@ namespace Divide
         return ret;
     }
 
-    ImageReadbackData vkTexture::readData( VkCommandBuffer cmdBuffer, U8 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept
+    ImageReadbackData vkTexture::readData( VkCommandBuffer cmdBuffer, const U16 mipLevel, [[maybe_unused]] const PixelAlignment& pixelPackAlignment) const noexcept
     {
         PROFILE_VK_EVENT_AUTO_AND_CONTEXT( cmdBuffer );
 
@@ -1223,10 +1343,15 @@ namespace Divide
             imageInfo.subresourceRange = range;
 
             VkImageViewUsageCreateInfo viewCreateInfo = vk::imageViewUsageCreateInfo();
-            if ( !viewDescriptor._resolveTarget )
+            if (!viewDescriptor._resolveTarget)
             {
-                viewCreateInfo.usage = GetFlagForUsage( newView._descriptor._usage, _descriptor);
-                imageInfo.pNext = &viewCreateInfo;
+                const VkImageUsageFlags requestedUsage = static_cast<VkImageUsageFlags>(GetFlagForUsage(newView._descriptor._usage, _descriptor));
+
+                viewCreateInfo.usage = requestedUsage & _createdImageUsageMask;
+                if (viewCreateInfo.usage != 0u)
+                {
+                    imageInfo.pNext = &viewCreateInfo;
+                }
             }
 
             VK_CHECK( vkCreateImageView( VK_API::GetStateTracker()._device->getVKDevice(), &imageInfo, nullptr, &newView._view ) );
@@ -1265,7 +1390,6 @@ namespace Divide
 
         if ( srcType != TextureType::COUNT && dstType != TextureType::COUNT )
         {
-
             U16 depth = 1u;
             if ( source->_descriptor._texType == TextureType::TEXTURE_3D )
             {

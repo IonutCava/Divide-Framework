@@ -75,9 +75,6 @@ namespace Divide
     };
 
     template<typename T> requires std::is_base_of_v<SceneNode, T>
-    Handle<T> ToHandle( const SceneNodeHandle handle );
-
-    template<typename T> requires std::is_base_of_v<SceneNode, T>
     SceneNodeHandle FromHandle( const Handle<T> handle);
 
     struct SceneGraphNodeDescriptor

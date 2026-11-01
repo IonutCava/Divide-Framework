@@ -64,7 +64,8 @@ namespace Divide
             case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC : 
             case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC : 
             case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC :
-            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC : return _buffer == other._buffer;
+            case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC :
+            case DescriptorSetBindingType::INDIRECT_BUFFER : return _buffer == other._buffer;
             case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage == other._sampledImage;
             case DescriptorSetBindingType::IMAGE : return _imageView == other._imageView;
 
@@ -84,7 +85,8 @@ namespace Divide
                 case DescriptorSetBindingType::UNIFORM_BUFFER_STATIC : 
                 case DescriptorSetBindingType::UNIFORM_BUFFER_DYNAMIC : 
                 case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_STATIC :
-                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC: return _buffer != other._buffer;
+                case DescriptorSetBindingType::SHADER_STORAGE_BUFFER_DYNAMIC:
+                case DescriptorSetBindingType::INDIRECT_BUFFER: return _buffer != other._buffer;
                 case DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER: return _sampledImage != other._sampledImage;
                 case DescriptorSetBindingType::IMAGE: return _imageView != other._imageView;
 

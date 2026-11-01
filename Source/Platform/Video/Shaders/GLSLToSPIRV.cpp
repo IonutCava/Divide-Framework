@@ -165,7 +165,7 @@ void SpirvHelper::InitResources( TBuiltInResource& Resources )
     Resources.limits.generalConstantMatrixVectorIndexing = 1;
 }
 
-bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* pshader, std::vector<unsigned int>& spirv, const bool targetOpenGL )
+bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* pshader, std::vector<unsigned int>& spirv, const Divide::RenderAPI renderAPI )
 {
     const EShLanguage stage = FindLanguage( shader_type );
     glslang::TShader shader( stage );
@@ -176,13 +176,22 @@ bool SpirvHelper::GLSLtoSPV( const Divide::ShaderType shader_type, const char* p
     InitResources( Resources );
 
     // Enable SPIR-V and Vulkan rules when parsing GLSL
-    const EShMessages messages = (EShMessages)(EShMsgSpvRules | (targetOpenGL ? 0 : EShMsgVulkanRules));
+    const EShMessages messages = (EShMessages)(EShMsgSpvRules | (renderAPI == Divide::RenderAPI::Vulkan ? EShMsgVulkanRules : 0u));
 
     shaderStrings[0] = pshader;
     shader.setStrings( shaderStrings, 1 );
-    shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientOpenGL, 100 );
-    shader.setEnvClient( glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450 );
-    shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_6);
+    if ( renderAPI == Divide::RenderAPI::Vulkan )
+    {
+        shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100 );
+        shader.setEnvClient( glslang::EShClientVulkan, glslang::EShTargetVulkan_1_3 );
+        shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_6 );
+    }
+    else
+    {
+        shader.setEnvInput( glslang::EShSourceGlsl, stage, glslang::EShClientOpenGL, 100 );
+        shader.setEnvClient( glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450 );
+        shader.setEnvTarget( glslang::EShTargetSpv, glslang::EShTargetSpv_1_0 );
+    }
 
     const auto PrintError = [&shader, &pshader]()
     {
@@ -281,7 +290,7 @@ namespace
     }
 }
 
-bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, const std::vector<unsigned int>& spirv, const bool targetOpenGL, Divide::Reflection::Data& reflectionDataInOut )
+bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, const std::vector<unsigned int>& spirv, const Divide::RenderAPI renderAPI, Divide::Reflection::Data& reflectionDataInOut )
 {
     SpvReflectShaderModule module;
     SpvReflectResult result = spvReflectCreateShaderModule( spirv.size() * sizeof( unsigned int ), spirv.data(), &module );
@@ -328,9 +337,9 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         return false;
     }
 
-    const auto setResourceBinding = [targetOpenGL, shader_type]( Divide::Reflection::DataEntry& entry, Divide::U8 bindingSet, Divide::U8 bindingSlot, const Divide::DescriptorSetBindingType type )
+    const auto setResourceBinding = [renderAPI, shader_type]( Divide::Reflection::DataEntry& entry, Divide::U8 bindingSet, Divide::U8 bindingSlot, const DescriptorSetBindingType type)
     {
-        if ( targetOpenGL )
+        if ( renderAPI == Divide::RenderAPI::OpenGL )
         {
             assert( bindingSet == 0u );
 
@@ -349,6 +358,22 @@ bool SpirvHelper::BuildReflectionData( const Divide::ShaderType shader_type, con
         const auto& traits = binding.image;
         target._isMultiSampled = traits.ms > 0u;
         target._isArray = traits.arrayed > 0u;
+        target._isDepth = traits.depth == 1u;
+        const auto* imageType = binding.type_description;
+        DIVIDE_GPU_ASSERT( imageType != nullptr );
+        if ( (imageType->type_flags & SPV_REFLECT_TYPE_FLAG_INT) != 0u )
+        {
+            target._sampledDataType = imageType->traits.numeric.scalar.signedness != 0u
+                ? GFXDataFormat::SIGNED_INT : GFXDataFormat::UNSIGNED_INT;
+        }
+        switch ( traits.dim )
+        {
+            case SpvDim1D: target._textureType = target._isArray ? TextureType::TEXTURE_1D_ARRAY : TextureType::TEXTURE_1D; break;
+            case SpvDim2D: target._textureType = target._isArray ? TextureType::TEXTURE_2D_ARRAY : TextureType::TEXTURE_2D; break;
+            case SpvDim3D: target._textureType = TextureType::TEXTURE_3D; break;
+            case SpvDimCube: target._textureType = target._isArray ? TextureType::TEXTURE_CUBE_ARRAY : TextureType::TEXTURE_CUBE_MAP; break;
+            default: DIVIDE_UNEXPECTED_CALL(); break;
+        }
         if ( binding.name != nullptr && strlen( binding.name ) > 0 )
         {
             target._name = binding.name;

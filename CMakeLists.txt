@@ -11,17 +11,96 @@ option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their val
 option(SHOW_CONSOLE_WINDOW "Show the console window and Win32 builds and direct all log output to it" OFF)
 option(ENABLE_MIMALLOC "Use mimalloc to override malloc/free calls" OFF)
 option(ENABLE_DYNAMIC_DEOPTIMISATION "Enable Dynamic Deoptimisation" OFF)
+set(DIVIDE_VECTOR_EXTENSION_SET "AVX2" CACHE STRING "Preferred SIMD extension set (AUTO, SSE42, AVX, AVX2, AVX512, NEON). Higher levels imply lower ones when available.")
+set_property(CACHE DIVIDE_VECTOR_EXTENSION_SET PROPERTY STRINGS "AUTO" "SSE42" "AVX" "AVX2" "AVX512" "NEON")
 
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/OptimizeForArchitecture.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/PlatformHelpers/ToggleVectorExtensions.cmake")
 
 set(vcpkg ${CMAKE_CURRENT_LIST_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 
-if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
-    if ( EXISTS "${vcpkg}")
+if(NOT CMAKE_TOOLCHAIN_FILE OR NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
+    if(CMAKE_TOOLCHAIN_FILE AND NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
+
+        message(FATAL_ERROR "CMAKE_TOOLCHAIN_FILE was set to '${CMAKE_TOOLCHAIN_FILE}' but does not exist. Fix the path or unset it to use the bundled vcpkg submodule.")
+
+    endif()
+
+    if(NOT EXISTS "${vcpkg}")
+        # Auto-bootstrap: try to initialize the vcpkg git submodule, then fall
+        # back to a shallow clone so that configure works without any manual
+        # setup step (e.g. when a CI agent or Copilot agent clones the repo
+        # without --recurse-submodules).
+        find_package(Git QUIET)
+        if(GIT_FOUND)
+            if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
+                message(STATUS "vcpkg submodule not initialized - running git submodule update --init ...")
+                execute_process(
+                    COMMAND "${GIT_EXECUTABLE}" submodule update --init -- vcpkg
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+                    RESULT_VARIABLE _vcpkg_submodule_result
+                    ERROR_VARIABLE _vcpkg_submodule_err
+                    ERROR_STRIP_TRAILING_WHITESPACE
+                    OUTPUT_QUIET
+                    TIMEOUT 60
+                )
+                if(NOT "${_vcpkg_submodule_result}" STREQUAL "0")
+                    message(WARNING "git submodule update failed or timed out (result ${_vcpkg_submodule_result}): ${_vcpkg_submodule_err}; will try cloning vcpkg directly...")
+                endif()
+            endif()
+
+            if(NOT EXISTS "${vcpkg}")
+                if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/.git")
+
+                    message(STATUS "Cloning vcpkg from GitHub (this may take a moment)...")
+
+                    execute_process(
+
+                        COMMAND "${GIT_EXECUTABLE}" clone
+
+                            --depth 1
+
+                            "https://github.com/microsoft/vcpkg.git"
+
+                            "${CMAKE_CURRENT_LIST_DIR}/vcpkg"
+
+                        RESULT_VARIABLE _vcpkg_clone_result
+
+                        ERROR_VARIABLE _vcpkg_clone_err
+
+                        ERROR_STRIP_TRAILING_WHITESPACE
+
+                        OUTPUT_QUIET
+
+                        TIMEOUT 180
+
+                    )
+
+                    if(NOT "${_vcpkg_clone_result}" STREQUAL "0")
+
+                        message(WARNING "git clone of vcpkg failed or timed out (result ${_vcpkg_clone_result}): ${_vcpkg_clone_err}.")
+
+                    endif()
+
+                else()
+
+                    message(WARNING "vcpkg submodule update failed; refusing to auto-clone an unpinned vcpkg in a git checkout. Please run: git submodule update --init -- vcpkg")
+
+                endif()
+            endif()
+        else()
+            message(STATUS "Git executable not found; cannot auto-initialize vcpkg.")
+        endif()
+    endif()
+
+    if(EXISTS "${vcpkg}")
         set(CMAKE_TOOLCHAIN_FILE "${vcpkg}" CACHE FILEPATH "CMake toolchain file")
     else()
-        message( FATAL_ERROR "Missing VCPKG CMake toolchain file" )
+        message(FATAL_ERROR
+            "Missing VCPKG CMake toolchain file.\n"
+            "Please initialize the vcpkg submodule manually:\n"
+            "  git submodule update --init vcpkg\n"
+            "Or set CMAKE_TOOLCHAIN_FILE to an existing vcpkg toolchain path.")
     endif()
 endif()
   
@@ -35,7 +114,7 @@ cmake_policy(SET CMP0141 NEW)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CXX_SCAN_FOR_MODULES OFF)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(FETCHCONTENT_QUIET TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 
@@ -126,7 +205,8 @@ else()
 endif()
 
 if( ENABLE_OPTICK_PROFILER )
-    add_compile_definitions( ENABLE_OPTICK_PROFILER )
+    add_compile_definitions( USE_OPTICK=1 )
+    add_compile_definitions( OPTICK_ENABLE_GPU_VULKAN=1 )
     message("Enabling Optick sampling!")
 else()
     message("Optick sampling disabled!")
@@ -158,6 +238,7 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
 
     add_compile_definitions( _DISABLE_STRING_ANNOTATION )
     add_compile_definitions( _DISABLE_VECTOR_ANNOTATION )
+    add_compile_definitions( _DISABLE_OPTIONAL_ANNOTATION )
     add_compile_definitions( _CRT_SECURE_NO_WARNINGS )
 
     add_compile_options(
@@ -208,6 +289,8 @@ if( MSVC_COMPILER OR CLANG_MSVC_FRONTEND )
         add_compile_options(
             $<$<CONFIG:Debug>:/d2Obforceinline>
         )
+
+        add_compile_options( /EHsc )
 
         # RelWithDebInfo: either dynamic-deopt mode or LTCG mode
         if (ENABLE_DYNAMIC_DEOPTIMISATION AND NOT RUN_ASAN AND NOT RUN_UBSAN AND NOT IS_GITHUB_ACTIONS)
@@ -294,4 +377,3 @@ if(_DIR_DEFS)
     message(STATUS "  ${_d}")
   endforeach()
 endif()
-

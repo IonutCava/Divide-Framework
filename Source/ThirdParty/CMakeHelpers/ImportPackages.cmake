@@ -6,14 +6,18 @@ add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS)
 add_compile_definitions(IMGUI_DISABLE_OBSOLETE_KEYIO)
 add_compile_definitions(IMGUI_USE_STB_SPRINTF)
 
+if( MAC_OS_BUILD )
+find_package(Iconv REQUIRED)
+endif()
+
 #Optick
 message("Fetching Optick Lib")
-set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE)
-set(OPTICK_BUILD_GUI_APP FALSE)
-set(OPTICK_ENABLED TRUE)
-set(OPTICK_INSTALL_TARGETS FALSE)
-set(OPTICK_USE_D3D12 FALSE)
-set(OPTICK_USE_VULKAN TRUE)
+set(OPTICK_ENABLED TRUE CACHE BOOL "Enable profiling with Optick" FORCE)
+set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE CACHE BOOL "Build Optick console sample app" FORCE)
+set(OPTICK_BUILD_GUI_APP FALSE CACHE BOOL "Build Optick gui viewer app" FORCE)
+set(OPTICK_INSTALL_TARGETS FALSE CACHE BOOL "Install Optick targets" FORCE)
+set(OPTICK_USE_D3D12 FALSE CACHE BOOL "Built-in support for DirectX 12" FORCE)
+set(OPTICK_USE_VULKAN TRUE CACHE BOOL "Built-in support for Vulkan" FORCE)
 
 FetchContent_Declare(
   optick
@@ -124,36 +128,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable( icon_font_cpp_headers )
 
-
-#SDL3_mixer
-message("Fetching SDL3_Mixer Lib")
-set(SDLMIXER_VENDORED OFF)
-set(SDLMIXER_GME OFF)
-set(SDLMIXER_FLAC_DRFLAC OFF)
-set(SDLMIXER_INSTALL OFF)
-set(SDLMIXER_SAMPLES OFF)
-set(SDLMIXER_STRICT ON)
-
-if(WINDOWS_OS_BUILD)
-    set(SDLMIXER_DEPS_SHARED OFF)
-else()
-    set(BUILD_SHARED_LIBS_OLD ${BUILD_SHARED_LIBS})
-    set(BUILD_SHARED_LIBS OFF)
-    set(SDLMIXER_DEPS_SHARED OFF)
-endif()
-
-FetchContent_Declare(
-    SDL3_mixer
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
-    GIT_TAG        86c6b096f864b8eaed8ba1c58eab1ce716df934f
-    #GIT_PROGRESS   TRUE
-    #SYSTEM
-    EXCLUDE_FROM_ALL
-)
-
-message("Making SDL3_Mixer Lib Available")
-FetchContent_MakeAvailable( SDL3_mixer )
-
 if(NOT WINDOWS_OS_BUILD)
     set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_OLD})
 endif()
@@ -177,7 +151,7 @@ include_directories(
     ${fcpp_SOURCE_DIR}
     ${imgui_club_SOURCE_DIR}
     ${icon_font_cpp_headers_SOURCE_DIR}
-    ${SDL3_mixer_SOURCE_DIR}/include
+    #${SDL3_mixer_SOURCE_DIR}/include
     ${nri_SOURCE_DIR}/include
 )
 
@@ -207,7 +181,7 @@ set( FCPP_SRC_FILES ${fcpp_SOURCE_DIR}/cpp1.c
 )
 
 if (NOT MSVC_COMPILER)
-    set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic -Wno-format" )
+    set_source_files_properties( ${FCPP_SRC_FILES} PROPERTIES COMPILE_FLAGS "-Wno-switch-default -Wno-date-time -Wno-pedantic -Wno-format -Wno-implicit-void-ptr-cast -Wno-c++-keyword" )
 endif()
 
 set( THIRD_PARTY_FETCH_SRC_FILES ${TILEABLE_VOLUME_NOISE_SRC_FILES}

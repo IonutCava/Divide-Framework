@@ -40,9 +40,13 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Divide Framework requires C++23 support as a minimum!"
 #endif 
 
-#if !defined(HAS_SSE41) && !defined(HAS_NEON)
-#   error "Divide Framework requires SSE4.1 or Neon at a minimum! (e.g. for _mm_dp_ps)"
-#endif //HAS_SSE41
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#define HAS_NEON 1
+#endif //__ARM_NEON || __ARM_NEON__
+
+#if !defined(__SSE4_2__) && !defined(HAS_NEON)
+#   error "Divide Framework requires SSE4.2 or Neon at a minimum! (e.g. for _mm_dp_ps)"
+#endif //__SSE4_2__
 
 #if defined(IS_WINDOWS_BUILD) && defined(HAS_NEON)
 #define _DISABLE_SOFTINTRIN_ 1

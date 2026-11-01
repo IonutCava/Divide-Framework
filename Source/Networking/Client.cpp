@@ -75,7 +75,7 @@ namespace Divide::Networking
         }
 
         // Destroy the connection object
-        _connection.release();
+        _connection.reset();
     }
 
 

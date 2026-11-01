@@ -171,7 +171,7 @@ struct FileEntry
     ResourcePath _name{};
     U64 _lastWriteTime{0u};
 };
-using FileList = vector<FileEntry>;
+using FileList = fixed_vector<FileEntry, 64, true>;
 
 [[nodiscard]] ResourcePath getWorkingDirectory();
 

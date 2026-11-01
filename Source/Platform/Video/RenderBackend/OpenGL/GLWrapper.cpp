@@ -517,9 +517,21 @@ namespace Divide
 
         Console::printfn( LOCALE_STR( "GL_VK_BUFFER_MAX_SIZE" ), deviceInformation._maxBufferSizeBytes / 1024 / 1024);
 
+        {
+            // Query the actual encoding of the default framebuffer. We request an sRGB capable one, but the driver/pixel format may not honour it.
+            gl46core::GLint colourEncoding = static_cast<gl46core::GLint>(gl46core::GL_LINEAR);
+            gl46core::glGetNamedFramebufferAttachmentParameteriv( 0u, gl46core::GL_BACK_LEFT, gl46core::GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, &colourEncoding );
+            deviceInformation._screenSRGB = colourEncoding == static_cast<gl46core::GLint>(gl46core::GL_SRGB);
+            if ( !deviceInformation._screenSRGB )
+            {
+                Console::warnfn( LOCALE_STR("WARN_GL_NO_SRGB_FRAMEBUFFER") );
+            }
+        }
+
         GFXDevice::OverrideDeviceInformation( deviceInformation );
         // Seamless cubemaps are a nice feature to have enabled (core since 3.2)
         gl46core::glEnable( gl46core::GL_TEXTURE_CUBE_MAP_SEAMLESS  );
+        // Always on for render targets (sRGB attachments encode on write). Toggled off for the default framebuffer if it isn't sRGB capable (see BEGIN_RENDER_PASS)
         gl46core::glEnable( gl46core::GL_FRAMEBUFFER_SRGB );
         // Culling is enabled by default, but RenderStateBlocks can toggle it on a per-draw call basis
         gl46core::glEnable( gl46core::GL_CULL_FACE );
@@ -733,6 +745,7 @@ namespace Divide
         PROFILE_SCOPE( "GL_API: Post-Swap cleanup", Profiler::Category::Graphics );
         s_textureViewCache.onFrameEnd();
         s_glFlushQueued.store( false );
+        s_stateTracker.onFrameEnd();
 
         if ( _runQueries )
         {
@@ -1085,6 +1098,11 @@ namespace Divide
                     PROFILE_SCOPE( "Begin Screen Target", Profiler::Category::Graphics );
 
                     DIVIDE_EXPECTED_CALL( s_stateTracker.setActiveFB( RenderTarget::Usage::RT_WRITE_ONLY, 0u ) != GLStateTracker::BindResult::FAILED );
+                    if ( !GFXDevice::GetDeviceInformation()._screenSRGB )
+                    {
+                        // Some drivers encode anyway if this is enabled, so make sure shader-side encoding isn't applied twice
+                        gl46core::glDisable( gl46core::GL_FRAMEBUFFER_SRGB );
+                    }
 
                     s_stateTracker._activeRenderTarget = nullptr;
                     s_stateTracker._activeRenderTargetDimensions = _context.context().mainWindow().getDrawableSize();
@@ -1132,6 +1150,10 @@ namespace Divide
                 if ( GL_API::s_stateTracker._activeRenderTarget == nullptr )
                 {
                     assert( GL_API::s_stateTracker._activeRenderTargetID == SCREEN_TARGET_ID );
+                    if ( !GFXDevice::GetDeviceInformation()._screenSRGB )
+                    {
+                        gl46core::glEnable( gl46core::GL_FRAMEBUFFER_SRGB );
+                    }
                 }
                 else
                 {
@@ -1280,7 +1302,10 @@ namespace Divide
                         _uniformsNeedLock = _uniformsNeedLock || _uniformsMemCommand._bufferLocks.empty();
                     }
                 }
-                Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstantsCmd->_fastData );
+                if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
+                {
+                    Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstantsCmd->_fastData );
+                }
 
             } break;
             case GFX::CommandType::BEGIN_DEBUG_SCOPE:
@@ -1666,8 +1691,16 @@ namespace Divide
     {
         PROFILE_SCOPE_AUTO(Profiler::Category::Graphics );
 
-        for ( const DescriptorSetEntry& entry : descriptorSetEntries )
+        DIVIDE_GPU_ASSERT( s_stateTracker._activeShaderProgram != nullptr );
+        thread_local std::array<DescriptorSet, to_base(DescriptorSetUsage::COUNT)> resolvedSets;
+        for ( DescriptorSetEntry entry : descriptorSetEntries )
         {
+            DescriptorSet resolvedSet{};
+            const bool hasFallback = s_stateTracker._activeShaderProgram->resolveSampledImages( entry, resolvedSet );
+            DescriptorSet& previousSet = resolvedSets[to_base(entry._usage)];
+            entry._isDirty = entry._isDirty || (hasFallback && previousSet != resolvedSet);
+            previousSet = resolvedSet;
+            entry._set = &resolvedSet;
             if ( !entry._isDirty )
             {
                 // We don't need to keep track of descriptor set to layout compatibility in OpenGL
@@ -1707,6 +1740,19 @@ namespace Divide
                             ) )
                         {
                             //ToDo: maybe warn and skip the next draw instead? -Ionut
+                            DIVIDE_UNEXPECTED_CALL();
+                        }
+                    } break;
+                    case DescriptorSetBindingType::INDIRECT_BUFFER:
+                    {
+                        const ShaderBufferEntry& bufferEntry = srcBinding._data._buffer;
+                        if ( bufferEntry._buffer == nullptr ) [[unlikely]]
+                        {
+                            continue;
+                        }
+
+                        if ( !static_cast<glShaderBuffer*>(bufferEntry._buffer)->bindAsIndirectBuffer( bufferEntry._queueReadIndex ) )
+                        {
                             DIVIDE_UNEXPECTED_CALL();
                         }
                     } break;

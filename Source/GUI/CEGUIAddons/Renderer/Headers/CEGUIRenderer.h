@@ -129,7 +129,6 @@ public:
     [[nodiscard]] const Rectf& getActiveViewPort() const;
     [[nodiscard]] Divide::Handle<Divide::Texture> getTextureTarget() const;
     [[nodiscard]] Divide::GFXDevice& context();
-    [[nodiscard]] bool flipClippingHeight() const noexcept;
     [[nodiscard]] Divide::GFX::CommandBuffer* cmdBuffer() const;
     [[nodiscard]] Divide::GFX::MemoryBarrierCommand* memCmd() const;
     [[nodiscard]] const glm::mat4& getViewProjectionMatrix() const noexcept;
@@ -144,8 +143,6 @@ private:
     static void LogTextureDestruction(const String& name);
 
 private:
-    //! Clipping direction is the only thing we need to manually adjust between rendering APIs. (e.g. true for Vulkan, false for OpenGL)
-    const bool _flipClippingHeight;
     //! Parent app's graphics context
     Divide::GFXDevice& _context;
     //! Command buffer from the parent app used to queue up rendering commands

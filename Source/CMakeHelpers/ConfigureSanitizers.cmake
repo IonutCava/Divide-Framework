@@ -13,6 +13,14 @@ endif()
 if( RUN_ASAN OR RUN_UBSAN )
     include(CheckCXXCompilerFlag)
 
+    # When building with sanitizers, we need dependencies to be built with the same flags
+    # to avoid RTTI/ABI mismatches. This ensures vcpkg rebuilds packages with sanitizer flags.
+    message(STATUS "Sanitizers enabled - vcpkg should rebuild dependencies with matching compiler flags")
+    # Set VCPKG_BUILD_TYPE to debug to ensure proper symbol information with sanitizers
+    if(NOT VCPKG_BUILD_TYPE)
+        set(VCPKG_BUILD_TYPE "debug" CACHE STRING "Force debug build type for vcpkg with sanitizers")
+    endif()
+
     set(SAN_COMPILE_FLAGS "")
     set(SAN_LINK_FLAGS "")
     set(CLANG_ASAN_LIB "")

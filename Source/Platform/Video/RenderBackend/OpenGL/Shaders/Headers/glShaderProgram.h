@@ -71,7 +71,7 @@ class glShaderProgram final : public ShaderProgram {
     bool unload() override;
 
   protected:
-    [[nodiscard]] ShaderResult validatePreBind(bool rebind = true) override;
+    [[nodiscard]] ShaderResult validatePreBind(const Configuration& config, bool rebind = true) override;
     void processValidation();
 
     /// Returns true if at least one shader linked successfully

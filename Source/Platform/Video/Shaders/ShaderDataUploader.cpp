@@ -10,7 +10,7 @@ namespace Divide
 
     namespace Reflection
     {
-        constexpr U16 BYTE_BUFFER_VERSION = 2u;
+        constexpr U16 BYTE_BUFFER_VERSION = 5u; // v5: reflected sampler texture types and formats
 
         bool UniformCompare::operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const
         {
@@ -84,6 +84,9 @@ namespace Divide
                 buffer << entry._isWriteTarget;
                 buffer << entry._isMultiSampled;
                 buffer << entry._isArray;
+                buffer << to_base( entry._textureType );
+                buffer << to_base( entry._sampledDataType );
+                buffer << entry._isDepth;
             };
 
             std::function<void( ByteBuffer&, const BufferMember& )> saveBufferMember;
@@ -127,6 +130,7 @@ namespace Divide
             ByteBuffer buffer;
             buffer << BYTE_BUFFER_VERSION;
             buffer << reflectionDataIn._uniformBlockBindingIndex;
+            buffer << to_base(reflectionDataIn._pushConstantsState);
             buffer << reflectionDataIn._fragmentOutputs;
             buffer << reflectionDataIn._images.size();
             for ( const auto& image : reflectionDataIn._images )
@@ -166,6 +170,13 @@ namespace Divide
                 buffer >> entry._isWriteTarget;
                 buffer >> entry._isMultiSampled;
                 buffer >> entry._isArray;
+                BaseType<TextureType> textureType{};
+                BaseType<GFXDataFormat> dataType{};
+                buffer >> textureType;
+                buffer >> dataType;
+                entry._textureType = static_cast<TextureType>(textureType);
+                entry._sampledDataType = static_cast<GFXDataFormat>(dataType);
+                buffer >> entry._isDepth;
             };
 
             std::function<void( ByteBuffer&, BufferMember& )> loadBufferMember;
@@ -218,6 +229,7 @@ namespace Divide
                 if ( tempVer == BYTE_BUFFER_VERSION )
                 {
                     buffer >> reflectionDataOut._uniformBlockBindingIndex;
+                    buffer >> reflectionDataOut._pushConstantsState;
                     buffer >> reflectionDataOut._fragmentOutputs;
                     buffer >> sizeTemp;
                     reflectionDataOut._images.resize( sizeTemp );

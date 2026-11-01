@@ -92,11 +92,7 @@
 
 #define CONCATENATE_IMPL(s1, s2) s1##s2
 #define CONCATENATE(s1, s2) CONCATENATE_IMPL(s1, s2)
-#ifdef __COUNTER__
-#define ANONYMOUS_VARIABLE(str) CONCATENATE(str, __COUNTER__)
-#else
-#define ANONYMOUSE_VARIABLE(str) CONCATENATE(str, __LINE__)
-#endif
+#define ANONYMOUS_VARIABLE(str) CONCATENATE(str, __LINE__)
 
  // Multumesc Andrei A.!
 #if defined(_MSC_VER)
@@ -377,6 +373,40 @@ constexpr eastl::array<T, N> create_eastl_array(const T& value) {
 
 #define NOP() static_assert(true, "")
 
+
+template <typename T>
+struct Handle
+{
+    U32 _generation: 8;
+    U32 _index : 24;
+
+    bool operator==(const Handle<T>& other) const noexcept = default;
+};
+
+static_assert(sizeof(Handle<void>) == sizeof(U32), "Handle size is incorrect");
+
+template<typename T> inline constexpr Handle<T> INVALID_HANDLE
+{
+    ._generation = 0xFFu,
+    ._index = 0xFFFFFFu
+};
+
+template<typename T>
+FORCE_INLINE U32 to_U32(const Handle<T> handle) noexcept
+{
+    return  (to_U32(handle._generation) << 24) | (to_U32(handle._index) & 0xFFFFFFu);
+}
+
+template<typename T>
+FORCE_INLINE Handle<T> from_U32(const U32 handle) noexcept
+{
+    return Handle<T>
+    {
+        ._generation = (handle >> 24) & 0xFFu,
+        ._index      = handle & 0xFFFFFFu
+    };
+}
+
 //Andrei Alexandrescu's ScopeGuard macros from "Declarative Control Flow" (CppCon 2015)
 //ref: https://gist.github.com/mmha/6bee3983caf2eab04d80af8e0eaddfbe
 namespace detail
@@ -462,30 +492,6 @@ namespace detail
     }
 } //namespace detail
 
-
-template <typename T>
-struct Handle
-{
-    union
-    {
-        struct
-        {
-            U32 _generation: 8;
-            U32 _index : 24;
-        };
-
-        U32 _data;
-    };
-
-    FORCE_INLINE bool operator==( const Handle& rhs ) const
-    {
-        return _data == rhs._data;
-    }
-};
-
-template<typename T>
-inline constexpr Handle<T> INVALID_HANDLE{ {._data = U32_MAX} };
-                          
 #define SCOPE_FAIL          auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnFail() + [&]() noexcept
 #define SCOPE_SUCCESS       auto ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) = detail::ScopeGuardOnSuccess() + [&]()
 #define SCOPE_EXIT          auto ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) = detail::ScopeGuardOnExit() + [&]() noexcept
@@ -903,11 +909,27 @@ namespace Assert
 #define ___DETAIL_DIVIDE_ASSERT(...) EXP(GET_3RD_ARG(__VA_ARGS__, DIVIDE_ASSERT_2_ARGS, DIVIDE_ASSERT_1_ARGS, ))
 #define DIVIDE_ASSERT(...) EXP(___DETAIL_DIVIDE_ASSERT(__VA_ARGS__)(__VA_ARGS__))
 
-#define DIVIDE_UNEXPECTED_CALL_MSG(X) DIVIDE_ASSERT(false, X)
+#define DIVIDE_UNEXPECTED_CALL_MSG(MSG) DIVIDE_ASSERT(false, MSG)
 #define DIVIDE_UNEXPECTED_CALL() DIVIDE_UNEXPECTED_CALL_MSG("UNEXPECTED CALL")
 
 #define DIVIDE_EXPECTED_CALL( X ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG("Expected call failed: " #X); }
 #define DIVIDE_EXPECTED_CALL_MSG( X, MSG ) if ( !(X) ) [[unlikely]] { DIVIDE_UNEXPECTED_CALL_MSG( MSG ); }
+
+#define DIVIDE_EXPECTED_GPU_CALL_MSG( X, MSG )                                     \
+    do {                                                                           \
+        const bool result = static_cast<bool>(X);                                  \
+        if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) {                     \
+            if ( !result ) [[unlikely]] {                                          \
+                DIVIDE_UNEXPECTED_CALL_MSG(MSG);                                   \
+            }                                                                      \
+        }                                                                          \
+    } while(0)
+
+#define DIVIDE_EXPECTED_GPU_CALL( X ) DIVIDE_EXPECTED_GPU_CALL_MSG( X, "Expected GPU call failed: " #X )
+
+#define DIVIDE_UNEXPECTED_GPU_CALL_MSG( MSG ) DIVIDE_EXPECTED_GPU_CALL_MSG( false, MSG )
+
+#define DIVIDE_UNEXPECTED_GPU_CALL( ) DIVIDE_UNEXPECTED_GPU_CALL_MSG( "UNEXPECTED GPU CALL" )
 
 #define DIVIDE_GPU_ASSERT(...) do { if constexpr (Divide::Config::ENABLE_GPU_VALIDATION) { DIVIDE_ASSERT(__VA_ARGS__); } } while(0)
 

@@ -36,9 +36,7 @@ namespace Divide::Runtime
 {
     inline bool isMainThread() noexcept
     {
-        thread_local std::thread::id thisThreadID = std::this_thread::get_id();
-
-        return mainThreadID() == thisThreadID;
+        return mainThreadID() == std::this_thread::get_id();
     }
 
 }; //namespace Divide::Runtime
