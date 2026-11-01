@@ -209,6 +209,7 @@ if( ENABLE_OPTICK_PROFILER )
     add_compile_definitions( OPTICK_ENABLE_GPU_VULKAN=1 )
     message("Enabling Optick sampling!")
 else()
+    add_compile_definitions( USE_OPTICK=0 )
     message("Optick sampling disabled!")
 endif()
 
