@@ -148,8 +148,10 @@ FMA, LZCNT and TZCNT; AVX does not enable AVX2-era instructions.
 ARM targets disable all x86 options. macOS x86_64 dependencies remain
 SSE42-compatible for Rosetta. Manual installs for AVX/AVX2/AVX512 builds must
 also select the corresponding `--x-feature=jolt-avx`, `jolt-avx2` or `jolt-avx512`.
-The macOS x86_64 presets intentionally retain AVX2 defaults. Rosetta users must
-pass `-DDIVIDE_VECTOR_EXTENSION_SET=SSE42`; do not silently downgrade requests.
+The macOS x86_64 presets retain AVX2 defaults on Intel hosts. On Apple Silicon,
+`Toggle_Available_Vector_Extensions()` explicitly overrides Rosetta requests
+with SSE42 in both preflight and engine configuration. This logged portability
+override is the exception to strict rejection of unsupported x86 requests.
 
 ### Dependency validation and timing
 

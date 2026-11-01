@@ -46,7 +46,7 @@ function (Toggle_Available_Vector_Extensions)
 
     # If targeting Rosetta 2, override with safe extensions
     if(ROSETTA2_TARGET)
-        message(STATUS "Rosetta 2 target detected - using SSE4.2/POPCNT/LZCNT, disabling AVX/NEON")
+        message(STATUS "Rosetta 2 target detected - using an SSE4.2/POPCNT baseline, disabling AVX/NEON")
         set(SSE41_OPT ON)
         set(SSE42_OPT ON)
         set(POPCNT_OPT ON)
@@ -170,6 +170,11 @@ function (Toggle_Available_Vector_Extensions)
     list(FIND _valid_extension_sets "${_requested_extension_set}" _set_index)
     if(_set_index EQUAL -1)
         message(FATAL_ERROR "Unknown DIVIDE_VECTOR_EXTENSION_SET='${DIVIDE_VECTOR_EXTENSION_SET}'.")
+    endif()
+
+    if(ROSETTA2_TARGET AND NOT _requested_extension_set STREQUAL "SSE42")
+        message(STATUS "Rosetta 2 overrides SIMD request '${_requested_extension_set}' with SSE42.")
+        set(_requested_extension_set "SSE42")
     endif()
 
     if(_requested_extension_set STREQUAL "AUTO")
