@@ -10,7 +10,7 @@ namespace Divide
 
     namespace Reflection
     {
-        constexpr U16 BYTE_BUFFER_VERSION = 4u; // v4: DescriptorSetUsage reordered by update frequency (PER_FRAME = 0 ... PER_DRAW = 3)
+        constexpr U16 BYTE_BUFFER_VERSION = 5u; // v5: reflected sampler texture types and formats
 
         bool UniformCompare::operator()( const UniformDeclaration& lhs, const UniformDeclaration& rhs ) const
         {
@@ -84,6 +84,9 @@ namespace Divide
                 buffer << entry._isWriteTarget;
                 buffer << entry._isMultiSampled;
                 buffer << entry._isArray;
+                buffer << to_base( entry._textureType );
+                buffer << to_base( entry._sampledDataType );
+                buffer << entry._isDepth;
             };
 
             std::function<void( ByteBuffer&, const BufferMember& )> saveBufferMember;
@@ -167,6 +170,13 @@ namespace Divide
                 buffer >> entry._isWriteTarget;
                 buffer >> entry._isMultiSampled;
                 buffer >> entry._isArray;
+                BaseType<TextureType> textureType{};
+                BaseType<GFXDataFormat> dataType{};
+                buffer >> textureType;
+                buffer >> dataType;
+                entry._textureType = static_cast<TextureType>(textureType);
+                entry._sampledDataType = static_cast<GFXDataFormat>(dataType);
+                buffer >> entry._isDepth;
             };
 
             std::function<void( ByteBuffer&, BufferMember& )> loadBufferMember;

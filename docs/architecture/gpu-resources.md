@@ -15,6 +15,8 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 Device extension/feature notes below were checked in `vkDevice.cpp` at commit `1508b95`; recheck on later branches.
 
+Commit `7b09ed5` raises the minimum supported version to Vulkan 1.4: device selection unconditionally requires `maintenance5`, `maintenance6`, and `pushDescriptor`, with no 1.3 retry. VMA also uses Vulkan API version 1.4.
+
 - Required: `VK_EXT_custom_border_color`, `VK_EXT_descriptor_buffer`, `VK_KHR_push_descriptor`.
 - Enabled when present: `VK_EXT_extended_dynamic_state_3`, `VK_KHR_maintenance7`, and `VK_EXT_mesh_shader`.
 - Mesh/task feature hookup remains commented out despite extension detection; see [rendering readiness](rendering.md).
