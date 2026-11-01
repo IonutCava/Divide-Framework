@@ -153,11 +153,10 @@ I did try to comply with all of them, but I may have missed something.
 * simpleini: https://github.com/brofield/simpleini
 * GLM: https://github.com/g-truc/glm
 * skarupke hash maps: https://github.com/skarupke
-* Catch2: https://github.com/catchorg/Catch2
+* Catch2 (internal test builds only): https://github.com/catchorg/Catch2
 * various 3rd party parser libs:
     * freetype: https://freetype.org
     * freeimage: https://freeimage.sourceforge.io
     * libjpeg: https://libjpeg.sourceforge.net
     * libpng:http://www.libpng.org
-    * libtiff: http://www.libtiff.org
     * zlib: https://zlib.net

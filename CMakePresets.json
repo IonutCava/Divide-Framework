@@ -305,7 +305,7 @@
       "name": "linux-gcc-instrumentation",
       "displayName": "Linux Game Build (GCC) + Instrumentation",
       "description": "Target Linux OS with the gcc compiler. Instrumentation enabled.",
-      "inherits": [ "linux-gcc", "function-profiling-build" ]
+      "inherits": [ "linux-gcc", "optick-build", "function-profiling-build" ]
     },
     {
       "name": "linux-gcc-editor-instrumentation",
@@ -341,7 +341,7 @@
       "name": "linux-clang-instrumentation",
       "displayName": "Linux Game Build (CLANG) + Instrumentation",
       "description": "Target Linux OS with the clang compiler. Instrumentation enabled.",
-      "inherits": [ "linux-clang", "function-profiling-build" ]
+      "inherits": [ "linux-clang", "optick-build", "function-profiling-build" ]
     },
     {
       "name": "linux-clang-editor-instrumentation",

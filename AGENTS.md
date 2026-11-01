@@ -101,6 +101,43 @@ sessions, provision equivalent tools/dependencies; configure with
 if needed. Upstream downloads and redirect mirrors (including SourceForge) may
 require firewall access; prefer preloading dependencies over disabling the firewall.
 
+### Dependency configuration
+
+Optick is fetched and linked only when `ENABLE_OPTICK_PROFILER` is enabled;
+the Windows and Linux instrumentation presets enable it. Catch2 is installed
+and discovered only with `BUILD_TESTING_INTERNAL=ON` (the vcpkg `tests`
+feature). mimalloc remains installed and discoverable in every build;
+`ENABLE_MIMALLOC` still controls the existing allocator integration.
+OpenAL, NRI and imgui-node-editor remain available.
+
+SDL_mixer is built for WAV, OGG/Vorbis, FLAC and MIDI/FluidSynth, without the
+other optional audio codecs. For `.mid` and `.midi` playback, set
+`DIVIDE_MIDI_SOUNDFONT` to a readable SoundFont file; missing or unreadable
+fonts are reported as load errors. SoundFonts are not bundled: choose one
+whose license permits your intended use and distribution.
+
+The Assimp overlay builds only the engine's supported 3DS, ASE, FBX, MD2,
+MD5, OBJ, X, COLLADA and GLTF importers. All exporters are disabled; the
+unused IFC/Blender triangulation and 3MF export dependencies are removed.
+DevIL remains the DDS loader, with optional image-codec features disabled.
+NVTT remains available for DDS cache compression until a replacement
+covers that functionality as well.
+
+Boost.Asio uses monotonic `steady_timer` deadlines, without its optional
+deadline-timer and coroutine/spawn features. Scene registration uses a local
+forwarding shared-pointer factory instead of Boost.Functional.
+
+### Dependency validation and timing
+
+- Gate checks: `cmake -P Source/CMakeHelpers/tests/DependencyConfigurationTests.cmake`.
+- Timing-tool tests: `python -m unittest discover -s Source/CMakeHelpers/tests`.
+- The vcpkg `tests` feature is synchronized with `BUILD_TESTING_INTERNAL` before `project()`. For manual dependency installation in a test build, add `--x-feature=tests`.
+- Resolve plans with `./vcpkg/vcpkg install --dry-run --triplet <triplet> --overlay-ports=Source/CMakeHelpers/OverlayPorts`; compare tests-off and tests-on plans separately.
+- Record timings with `python Source/CMakeHelpers/measure_build.py --scenario cold --output <session-dir>/cold.json --install "<vcpkg install command>" --configure "<cmake configure command>" --build "<cmake build command>"`.
+- Repeat with `warm` and `incremental`, keeping triplet, configuration, build parallelism and tool versions identical. For incremental measurements, edit a representative source file before running.
+- Scenario labels do not reset caches. Use isolated build/install/download directories and explicitly set `VCPKG_BINARY_SOURCES=clear` for a genuine cold run. Reuse the same install directory in the install and configure commands; otherwise configure will perform an additional installation.
+- The tool records each stage's duration, exit status and log, and stops on failure. Do not report a failed download/configure as a successful build-time baseline or claim engine speedups from dependency counts alone.
+
 ## Subsystem routing
 
 | Task | Read |

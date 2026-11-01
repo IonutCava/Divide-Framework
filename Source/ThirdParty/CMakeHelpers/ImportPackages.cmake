@@ -10,32 +10,33 @@ if( MAC_OS_BUILD )
 find_package(Iconv REQUIRED)
 endif()
 
-#Optick
-message("Fetching Optick Lib")
-set(OPTICK_ENABLED TRUE CACHE BOOL "Enable profiling with Optick" FORCE)
-set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE CACHE BOOL "Build Optick console sample app" FORCE)
-set(OPTICK_BUILD_GUI_APP FALSE CACHE BOOL "Build Optick gui viewer app" FORCE)
-set(OPTICK_INSTALL_TARGETS FALSE CACHE BOOL "Install Optick targets" FORCE)
-set(OPTICK_USE_D3D12 FALSE CACHE BOOL "Built-in support for DirectX 12" FORCE)
-set(OPTICK_USE_VULKAN TRUE CACHE BOOL "Built-in support for Vulkan" FORCE)
+if(ENABLE_OPTICK_PROFILER)
+    message("Fetching Optick Lib")
+    set(OPTICK_ENABLED TRUE CACHE BOOL "Enable profiling with Optick" FORCE)
+    set(OPTICK_BUILD_CONSOLE_SAMPLE FALSE CACHE BOOL "Build Optick console sample app" FORCE)
+    set(OPTICK_BUILD_GUI_APP FALSE CACHE BOOL "Build Optick gui viewer app" FORCE)
+    set(OPTICK_INSTALL_TARGETS FALSE CACHE BOOL "Install Optick targets" FORCE)
+    set(OPTICK_USE_D3D12 FALSE CACHE BOOL "Built-in support for DirectX 12" FORCE)
+    set(OPTICK_USE_VULKAN TRUE CACHE BOOL "Built-in support for Vulkan" FORCE)
 
-FetchContent_Declare(
-  optick
-  GIT_REPOSITORY https://github.com/bombomby/optick.git
-  GIT_TAG        8abd28dee1a4034c973a3d32cd1777118e72df7e
-  #GIT_PROGRESS   TRUE
-  EXCLUDE_FROM_ALL
-)
+    FetchContent_Declare(
+        optick
+        GIT_REPOSITORY https://github.com/bombomby/optick.git
+        GIT_TAG        8abd28dee1a4034c973a3d32cd1777118e72df7e
+        EXCLUDE_FROM_ALL
+    )
 
-if(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes -Wno-unsafe-buffer-usage -Wno-missing-field-initializers -Wno-static-in-inline")
-endif()
+    if(CLANG_COMPILER)
+        set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes -Wno-unsafe-buffer-usage -Wno-missing-field-initializers -Wno-static-in-inline")
+    endif()
 
-FetchContent_MakeAvailable( optick )
+    FetchContent_MakeAvailable(optick)
 
-if(CLANG_COMPILER)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
+    if(CLANG_COMPILER)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
+    endif()
+    include_directories(SYSTEM ${optick_SOURCE_DIR}/src)
 endif()
 
 #Skarupke hash maps
@@ -141,7 +142,6 @@ endif()
 include_directories(
     SYSTEM
     ${spirv-reflect_SOURCE_DIR}
-    ${optick_SOURCE_DIR}/src
     ${vk_bootstrap_SOURCE_DIR}/src
     ${skarupke_SOURCE_DIR}
     ${memory_pool_SOURCE_DIR}

@@ -23,8 +23,8 @@ if ( NEON_OPT )
     add_compile_definitions( JPH_USE_NEON )
 endif()
 
+find_package(mimalloc CONFIG REQUIRED)
 if (ENABLE_MIMALLOC)
-    find_package(mimalloc CONFIG REQUIRED)
     add_compile_definitions(EASTL_USER_DEFINED_ALLOCATOR)
 endif()
 
@@ -47,7 +47,9 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(ctre CONFIG REQUIRED)
-find_package(Catch2 CONFIG REQUIRED)
+if(BUILD_TESTING_INTERNAL)
+    find_package(Catch2 CONFIG REQUIRED)
+endif()
 find_package(imgui CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
@@ -78,6 +80,11 @@ find_path(CHAISCRIPT_INCLUDE_DIRS "chaiscript/chaiscript.hpp")
 set(NVTT_LIBRARIES "")
 
 if(NOT MAC_OS_BUILD)
+    # NVTT loads source PNG/JPEG files before compression; its raw static
+    # libraries do not carry their codec dependencies into this link list.
+    find_package(JPEG REQUIRED)
+    find_package(PNG REQUIRED)
+
     find_path(NVTT_INCLUDE_DIRS NAMES nvtt.h PATH_SUFFIXES nvtt)
 
     find_library(NVTT_LIBRARY_RELEASE NAMES nvtt PATH_SUFFIXES nvtt static shared)
@@ -124,23 +131,9 @@ if(NOT MAC_OS_BUILD)
         ${NVBC6H_LIBRARIES}
         ${NVSQUISH_LIBRARIES}
         ${NVMATH_LIBRARIES}
+        JPEG::JPEG
+        PNG::PNG
     )
-endif()
-
-find_library(JASPER_LIBRARY NAMES jasper)
-find_library(JPEG_LIBRARY NAMES jpeg)
-find_library(JPEG12_LIBRARY NAMES jpeg12)
-find_library(TIFF_LIBRARY NAMES tiff)
-find_library(LZMA_LIBRARY NAMES lzma)
-
-set(IMAGE_LIBRARIES
-    ${JASPER_LIBRARY}
-    ${TIFF_LIBRARY}
-    ${JPEG_LIBRARY}
-)
-
-if(JPEG12_LIBRARY)
-    list(APPEND IMAGE_LIBRARIES ${JPEG12_LIBRARY})
 endif()
 
 include_directories(
@@ -168,11 +161,8 @@ set(EXTERNAL_LIBS
     ${ILU_LIBRARIES}
     ${ILUT_LIBRARIES}
     ${PYTHON_LIBRARIES}
-    ${IMAGE_LIBRARIES}
-    ${LZMA_LIBRARY}
     ${CEGUI_LIBRARIES}
     fmt::fmt
-    OptickCore
     EASTL
     OpenAL::OpenAL
     imgui::imgui
@@ -201,6 +191,10 @@ set(EXTERNAL_LIBS
     Jolt::Jolt
 )
 
+if(ENABLE_OPTICK_PROFILER)
+    list(APPEND EXTERNAL_LIBS OptickCore)
+endif()
+
 if(MAC_OS_BUILD)
     set(EXTERNAL_LIBS ${EXTERNAL_LIBS} date::date date::date-tz)
     add_compile_definitions(USE_HINNANT_DATE)
@@ -211,4 +205,3 @@ if(WAYLAND_FOUND)
     add_compile_definitions(HAS_WAYLAND_LIB)
 endif()
 add_compile_definitions(CEGUI_STATIC)
-

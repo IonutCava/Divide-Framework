@@ -30,7 +30,56 @@ FORCE_INLINE void SDL_CHECKED(Func&& func, Args&&... args)
 
 MIX_Audio* load_audio(MIX_Mixer* mixer, const char* path, const bool predecode)
 {
-    MIX_Audio* m = MIX_LoadAudio(mixer, path, predecode);
+    MIX_Audio* m = nullptr;
+    const char* extension = SDL_strrchr(path, '.');
+    if (extension != nullptr && (SDL_strcasecmp(extension, ".mid") == 0 || SDL_strcasecmp(extension, ".midi") == 0))
+    {
+        const char* soundFontPath = SDL_getenv("DIVIDE_MIDI_SOUNDFONT");
+        if (soundFontPath == nullptr || soundFontPath[0] == '\0')
+        {
+            Console::errorfn("MIDI playback requires DIVIDE_MIDI_SOUNDFONT to name a readable SoundFont: {}", path);
+            return nullptr;
+        }
+
+        SDL_IOStream* soundFont = SDL_IOFromFile(soundFontPath, "rb");
+        if (soundFont == nullptr)
+        {
+            Console::errorfn(LOCALE_STR("ERROR_SDL_LOAD_SOUND"), soundFontPath, SDL_GetError());
+            return nullptr;
+        }
+        SCOPE_EXIT { SDL_CloseIO(soundFont); };
+
+        SDL_IOStream* audio = SDL_IOFromFile(path, "rb");
+        if (audio == nullptr)
+        {
+            Console::errorfn(LOCALE_STR("ERROR_SDL_LOAD_SOUND"), path, SDL_GetError());
+            return nullptr;
+        }
+        SCOPE_EXIT { SDL_CloseIO(audio); };
+
+        const SDL_PropertiesID properties = SDL_CreateProperties();
+        if (properties == 0)
+        {
+            Console::errorfn(LOCALE_STR("ERROR_SDL_LOAD_SOUND"), path, SDL_GetError());
+            return nullptr;
+        }
+        SCOPE_EXIT { SDL_DestroyProperties(properties); };
+
+        // SDL_mixer 3.2 exposes decoder-specific properties by string, not public macros.
+        if (!SDL_SetPointerProperty(properties, "SDL_mixer.decoder.fluidsynth.soundfont_iostream", soundFont) ||
+            !SDL_SetPointerProperty(properties, MIX_PROP_AUDIO_LOAD_IOSTREAM_POINTER, audio) ||
+            !SDL_SetPointerProperty(properties, MIX_PROP_AUDIO_LOAD_PREFERRED_MIXER_POINTER, mixer) ||
+            !SDL_SetBooleanProperty(properties, MIX_PROP_AUDIO_LOAD_PREDECODE_BOOLEAN, predecode))
+        {
+            Console::errorfn(LOCALE_STR("ERROR_SDL_LOAD_SOUND"), path, SDL_GetError());
+            return nullptr;
+        }
+        m = MIX_LoadAudioWithProperties(properties);
+    }
+    else
+    {
+        m = MIX_LoadAudio(mixer, path, predecode);
+    }
     if (m == nullptr)
     {
         Console::errorfn(LOCALE_STR("ERROR_SDL_LOAD_SOUND"), path, SDL_GetError());

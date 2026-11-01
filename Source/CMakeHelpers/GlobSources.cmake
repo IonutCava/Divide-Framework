@@ -108,6 +108,7 @@ set( CORE_SOURCE_HEADERS Core/Debugging/Headers/DebugInterface.h
                          Core/TemplateLibraries/Headers/HashMap.h
                          Core/TemplateLibraries/Headers/STLString.h
                          Core/TemplateLibraries/Headers/String.h
+                         Core/TemplateLibraries/Headers/SharedPtrFactory.h
                          Core/TemplateLibraries/Headers/TemplateAllocator.h
                          Core/TemplateLibraries/Headers/Vector.h
                          Core/Time/Headers/ApplicationTimer.h
@@ -845,6 +846,9 @@ set( TEST_ENGINE_SOURCE UnitTests/unitTestCommon.h
 set( TEST_PLATFORM_SOURCE UnitTests/unitTestCommon.h
                           UnitTests/unitTestCommon.cpp
                           UnitTests/Test-Platform/FileManagement.cpp
+                          UnitTests/Test-Platform/FactoryTests.cpp
+                          UnitTests/Test-Platform/NetworkingTests.cpp
+                          UnitTests/Test-Platform/ProfilerTests.cpp
                           UnitTests/Test-Platform/ConversionTests.cpp
                           UnitTests/Test-Platform/DataTypeTests.cpp
                           UnitTests/Test-Platform/HashTests.cpp

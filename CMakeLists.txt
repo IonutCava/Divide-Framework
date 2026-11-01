@@ -10,6 +10,7 @@ option(ENABLE_JUST_MY_CODE "Enable just my code debugging in MSVC in debug build
 option(PRINT_ALL_CMAKE_VARIABLES "Print all of the CMake variables and their values at the end of the configure step. Mostly for debugging." OFF)
 option(SHOW_CONSOLE_WINDOW "Show the console window and Win32 builds and direct all log output to it" OFF)
 option(ENABLE_MIMALLOC "Use mimalloc to override malloc/free calls" OFF)
+option(ENABLE_OPTICK_PROFILER "Enable Optick instrumentation" OFF)
 option(ENABLE_DYNAMIC_DEOPTIMISATION "Enable Dynamic Deoptimisation" OFF)
 set(DIVIDE_VECTOR_EXTENSION_SET "AVX2" CACHE STRING "Preferred SIMD extension set (AUTO, SSE42, AVX, AVX2, AVX512, NEON). Higher levels imply lower ones when available.")
 set_property(CACHE DIVIDE_VECTOR_EXTENSION_SET PROPERTY STRINGS "AUTO" "SSE42" "AVX" "AVX2" "AVX512" "NEON")
@@ -121,6 +122,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/OverlayPorts")
+
+include("${CMAKE_CURRENT_LIST_DIR}/Source/CMakeHelpers/ConfigureDependencies.cmake")
 
 project(
     Divide-Framework

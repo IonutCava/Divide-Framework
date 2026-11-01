@@ -1,0 +1,21 @@
+set(VCPKG_MANIFEST_FEATURES custom tests)
+set(BUILD_TESTING_INTERNAL OFF)
+include("${CMAKE_CURRENT_LIST_DIR}/../ConfigureDependencies.cmake")
+if(NOT VCPKG_MANIFEST_FEATURES STREQUAL "custom")
+    message(FATAL_ERROR "Tests-off must remove tests without removing user features")
+endif()
+
+set(BUILD_TESTING_INTERNAL ON)
+include("${CMAKE_CURRENT_LIST_DIR}/../ConfigureDependencies.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/../ConfigureDependencies.cmake")
+if(NOT VCPKG_MANIFEST_FEATURES STREQUAL "custom;tests")
+    message(FATAL_ERROR "Tests-on must select the tests feature exactly once")
+endif()
+
+set(BUILD_TESTING_INTERNAL OFF)
+include("${CMAKE_CURRENT_LIST_DIR}/../ConfigureDependencies.cmake")
+if(NOT VCPKG_MANIFEST_FEATURES STREQUAL "custom")
+    message(FATAL_ERROR "Switching tests off must remove a stale tests selection")
+endif()
+
+message(STATUS "Dependency feature configuration tests passed")

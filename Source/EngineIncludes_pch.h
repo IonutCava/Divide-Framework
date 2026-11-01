@@ -96,7 +96,6 @@ DISABLE_GCC_WARNING_POP()
 #include "Core/TemplateLibraries/Headers/String.h"
 
 #include <boost/property_tree/ptree.hpp>
-#include <boost/functional/factory.hpp>
 
 #include <SDL3/SDL.h>
 
