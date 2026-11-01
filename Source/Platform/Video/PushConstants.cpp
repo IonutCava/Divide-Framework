@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/PushConstants.h"
 
@@ -33,25 +33,41 @@ bool UniformData::remove( const U64 bindingHash )
 
 bool Merge( UniformData& lhs, UniformData& rhs)
 {
-    for (const UniformData::Entry& ourUniform : lhs._data)
+    if ( &lhs == &rhs )
     {
-        for (const UniformData::Entry& otherUniform : rhs._data)
+        return true;
+    }
+
+    for ( const UniformData::Entry& otherUniform : rhs._data )
+    {
+        if ( otherUniform._type == PushConstantType::COUNT )
         {
-            // If we have the same binding check data on each side to see if it matches
-            if ( ourUniform._bindingHash == otherUniform._bindingHash)
+            continue;
+        }
+        for ( const UniformData::Entry& ourUniform : lhs._data )
+        {
+            if ( ourUniform._type != PushConstantType::COUNT &&
+                 ourUniform._bindingHash == otherUniform._bindingHash )
             {
-                // If we have different types or ranges for the same binding, something is probably wrong, but for our specific case, we just fail to merge.
-                if ( ourUniform._type != otherUniform._type || ourUniform._range != otherUniform._range)
+                if ( ourUniform._type != otherUniform._type ||
+                     ourUniform._range._length != otherUniform._range._length )
                 {
                     return false;
                 }
-                // If we got here, everything apart from the data (maybe) matches, so we can just overwrite it.
             }
-
-            lhs.set(otherUniform._bindingHash, otherUniform._type, &rhs._buffer[otherUniform._range._startOffset], otherUniform._range._length);
-            DIVIDE_EXPECTED_CALL( rhs.remove(otherUniform._bindingHash) );
         }
     }
+
+    for ( const UniformData::Entry& otherUniform : rhs._data )
+    {
+        if ( otherUniform._type != PushConstantType::COUNT )
+        {
+            lhs.set( otherUniform._bindingHash, otherUniform._type,
+                     &rhs._buffer[otherUniform._range._startOffset], otherUniform._range._length );
+        }
+    }
+    rhs._data.clear();
+    rhs._buffer.clear();
 
     return true;
 }

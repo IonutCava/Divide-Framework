@@ -12,6 +12,57 @@
 
 namespace Divide
 {
+    TEST_CASE( "Push command merging preserves shared uniform storage", "[push_constants]" )
+    {
+        UniformData uniforms;
+        const F32 value = 3.f;
+        uniforms.set( 1u, PushConstantType::FLOAT, value );
+        GFX::SendPushConstantsCommand lhs, rhs;
+        lhs._uniformData = rhs._uniformData = &uniforms;
+        lhs._fastData.data[0] = MAT4_IDENTITY;
+        lhs._fastData.computeFlags();
+        rhs._fastData.data[1] = MAT4_ZERO;
+        rhs._fastData.computeFlags();
+        REQUIRE( GFX::Merge( &lhs, &rhs ) );
+        REQUIRE( uniforms.entries().size() == 1u );
+        F32 stored = 0.f;
+        std::memcpy( &stored, uniforms.data( uniforms.entries()[0]._range._startOffset ), sizeof(stored) );
+        CHECK( stored == value );
+    }
+
+    TEST_CASE( "Uniform merges are transactional and later values win", "[push_constants]" )
+    {
+        UniformData lhs, rhs;
+        const F32 oldValue = 1.f, newValue = 2.f;
+        lhs.set( 1u, PushConstantType::FLOAT, oldValue );
+        rhs.set( 2u, PushConstantType::FLOAT, newValue );
+        rhs.set( 1u, PushConstantType::FLOAT, newValue );
+        REQUIRE( Merge( lhs, rhs ) );
+        CHECK( rhs.entries().empty() );
+        REQUIRE( lhs.entries().size() == 2u );
+        for ( const auto& entry : lhs.entries() )
+        {
+            F32 stored = 0.f;
+            std::memcpy( &stored, lhs.data( entry._range._startOffset ), sizeof(stored) );
+            CHECK( stored == newValue );
+        }
+
+        rhs.set( 3u, PushConstantType::FLOAT, oldValue );
+        const std::array<F32, 2> incompatible{oldValue, newValue};
+        rhs.set( 1u, PushConstantType::FLOAT, incompatible.data(), incompatible.size() );
+        CHECK_FALSE( Merge( lhs, rhs ) );
+        CHECK( lhs.entries().size() == 2u );
+        CHECK( rhs.entries().size() == 2u );
+        F32 stored = 0.f;
+        std::memcpy( &stored, lhs.data( lhs.entries()[0]._range._startOffset ), sizeof(stored) );
+        CHECK( stored == newValue );
+
+        UniformData empty;
+        REQUIRE( Merge( empty, rhs ) );
+        CHECK( empty.entries().size() == 2u );
+        CHECK( rhs.entries().empty() );
+    }
+
     TEST_CASE( "Push cache replays all known slots after shader changes", "[push_constants]" )
     {
         PushConstantsStruct cache, firstShader, secondShader, update;

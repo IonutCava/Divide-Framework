@@ -45,6 +45,10 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   the Vulkan replay cache; omitted slots retain their last explicit values.
 - Command coalescing accepts complementary or equal overlapping push slots,
   rejecting conflicting overlapping values without mutating the earlier command.
+- Uniform-data coalescing treats shared storage as a no-op. Distinct sources
+  transfer their live bindings only after all overlapping types and sizes pass
+  validation; later values overwrite earlier ones, and successful transfers empty
+  the source. Rejected transfers leave both sides unchanged.
 - OpenGL retains the same flagged-slot cache and replays known slots on pipeline
   binds, including when no new push command follows a shader change. Partial
   uploads use the merged cache rather than shader-local stale uniform values.
