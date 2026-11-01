@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Windows Build Setup'
 description: 'Common build setup steps for Windows builds'
 
@@ -20,6 +21,7 @@ runs:
     - uses: actions/checkout@v5
       with:
         ref: ${{ github.event.inputs.ci_sha || github.sha }}
+        path: ci-source
         persist-credentials: false
         submodules: true
         fetch-depth: 0
@@ -54,11 +56,12 @@ runs:
       if: runner.self-hosted
       shell: pwsh
       run: |
-        if (Test-Path "${{ github.workspace }}\vcpkg\downloads\tools") {
-          Remove-Item -Recurse -Force "${{ github.workspace }}\vcpkg\downloads\tools"
+        if (Test-Path "${{ github.workspace }}\ci-source\vcpkg\downloads\tools") {
+          Remove-Item -Recurse -Force "${{ github.workspace }}\ci-source\vcpkg\downloads\tools"
         }
 
     - name: Setup cached vcpkg
       uses: ./.github/actions/vcpkg-setup
       with:
         compiler: ${{ inputs.compiler }}
+        source-directory: ci-source

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2018-2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -42,6 +42,13 @@ class VKDevice final : NonCopyable, NonMovable
     public:
         VKDevice( vkb::Instance& instance, VkSurfaceKHR targetSurface);
         ~VKDevice();
+
+        [[nodiscard]] static constexpr bool HasRequiredDynamicState3Features( const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT& features ) noexcept
+        {
+            return features.extendedDynamicState3ColorBlendEnable &&
+                   features.extendedDynamicState3ColorBlendEquation &&
+                   features.extendedDynamicState3ColorWriteMask;
+        }
 
         [[nodiscard]] VkDevice getVKDevice() const noexcept;
         [[nodiscard]] VkPhysicalDevice getVKPhysicalDevice() const noexcept;

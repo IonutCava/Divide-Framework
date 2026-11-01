@@ -1,4 +1,4 @@
-﻿
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/VKWrapper.h"
 
@@ -2776,7 +2776,7 @@ namespace Divide
                     }
                     if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
                     {
-                        _lastPushConstants = pushConstantsCmd->_fastData;
+                        _lastPushConstants.merge( pushConstantsCmd->_fastData );
                         _hasLastPushConstants = true;
                         VK_PROFILE( vkCmdPushConstants, cmdBuffer,
                                                         stateTracker._pipeline._vkPipelineLayout,

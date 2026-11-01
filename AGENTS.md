@@ -1,5 +1,7 @@
 # Agent Instructions for Divide-Framework
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 ## General guidelines
 
 - Keep agent notes short and actionable. Focus on immediate, verifiable information needed to work in this repository.
@@ -127,6 +129,14 @@ Boost.Asio uses monotonic `steady_timer` deadlines, without its optional
 deadline-timer and coroutine/spawn features. Scene registration uses a local
 forwarding shared-pointer factory instead of Boost.Functional.
 
+Jolt's SIMD flags are explicit, selected before vcpkg's manifest installation
+through `ConfigureDependencies.cmake` and the overlay's SIMD features.
+SSE42 (and AUTO's conservative dependency baseline) disable AVX, AVX2, F16C,
+FMA, LZCNT and TZCNT; AVX does not enable AVX2-era instructions.
+ARM targets disable all x86 options. macOS x86_64 dependencies remain
+SSE42-compatible for Rosetta. Manual installs for AVX/AVX2/AVX512 builds must
+also select the corresponding `--x-feature=jolt-avx`, `jolt-avx2` or `jolt-avx512`.
+
 ### Dependency validation and timing
 
 - Gate checks: `cmake -P Source/CMakeHelpers/tests/DependencyConfigurationTests.cmake`.
@@ -157,3 +167,8 @@ not rebuilt, even after a failed build. Failed dispatches are retried at the nex
 The first check builds every current target. PRs are built at their head commit, not a test merge.
 The platform workflows use `workflow_dispatch` for the scheduler, not push or PR triggers.
 These workflows must be present on the repository's default branch before scheduling takes effect.
+
+Platform workflows keep trusted local actions at `github.sha` in the workspace
+root. Target sources (`ci_sha`, including fork heads) go in `ci-source`; trusted
+vcpkg and CMake steps explicitly consume that directory. Do not check target
+sources over the root: subsequent local actions would then come from the PR.

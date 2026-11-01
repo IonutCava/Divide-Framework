@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "Headers/vkTexture.h"
 
 #include "Utility/Headers/Localization.h"
@@ -196,8 +197,8 @@ namespace Divide
 
     VkImageAspectFlags vkTexture::GetAspectFlags( const TextureDescriptor& descriptor ) noexcept
     {
-        const bool hasDepthStencil = HasUsageFlagSet( descriptor, ImageUsage::RT_DEPTH_STENCIL_ATTACHMENT );
-        const bool hasDepth = HasUsageFlagSet( descriptor, ImageUsage::RT_DEPTH_ATTACHMENT ) || hasDepthStencil;
+        const bool hasDepthStencil = descriptor._packing == GFXImagePacking::DEPTH_STENCIL;
+        const bool hasDepth = IsDepthTexture( descriptor._packing );
 
         return hasDepth ? VK_IMAGE_ASPECT_DEPTH_BIT | (hasDepthStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0u)
                         : VK_IMAGE_ASPECT_COLOR_BIT;

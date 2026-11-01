@@ -1,5 +1,7 @@
 # GPU resources and backend conventions
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points
@@ -18,7 +20,10 @@ Device extension/feature notes below were checked in `vkDevice.cpp` at commit `1
 Commit `7b09ed5` raises the minimum supported version to Vulkan 1.4: device selection unconditionally requires `maintenance5`, `maintenance6`, and `pushDescriptor`, with no 1.3 retry. VMA also uses Vulkan API version 1.4.
 
 - Required: `VK_EXT_custom_border_color`, `VK_EXT_descriptor_buffer`, `VK_KHR_push_descriptor`.
-- Enabled when present: `VK_EXT_extended_dynamic_state_3`, `VK_KHR_maintenance7`, and `VK_EXT_mesh_shader`.
+- Extended dynamic state 3 is used only when the queried blend-enable,
+  blend-equation and colour-write-mask bits are all supported. Maintenance 7
+  similarly requires its queried feature bit; extension presence alone is not enough.
+- `VK_EXT_mesh_shader` is enabled when present, but its feature path is still incomplete.
 - Mesh/task feature hookup remains commented out despite extension detection; see [rendering readiness](rendering.md).
 - `VK_EXT_descriptor_heap` is logged when available but not enabled/used; it is a planned descriptor model.
 
@@ -44,6 +49,8 @@ Textures use immutable `glTextureStorage*` storage and DSA mip/layer uploads; th
 - `vkTexture` derives image usage flags from engine `ImageUsage`, usually uses dedicated device-preferred VMA allocations, uploads through staging, explicitly transitions layouts, and can generate mipmaps on the GPU.
 
 Changes to writable/readable images must audit usage flags, transitions, staging lifetime, and consumers together.
+`vkTexture::GetAspectFlags` follows depth/stencil packing, not attachment usage:
+sampled-only depth fallbacks must upload and create views with a depth aspect.
 For arrays, cubemaps, mip generation, and partial updates, inspect backend `loadDataInternal(...)` overloads; shared decode/import is in [asset pipeline](asset-pipeline.md).
 Queue ownership is covered in [threading](threading.md).
 
@@ -63,5 +70,8 @@ OpenGL is the reference. Client code does not branch on the API for Y: projectio
 - `DeviceInformation::_screenSRGB` reports default framebuffer/swapchain encoding. GL queries colour encoding and disables screen `GL_FRAMEBUFFER_SRGB` if unsupported; Vulkan uses `*_SRGB` format detection.
 - Without screen encoding, final screen blit, editor ImGui, and splash shaders encode/skip linearisation appropriately.
 - `Assets/Shaders/GLSL/IMGUI.glsl` linearises vertex colours and only plain UNORM non-render-target textures. `lineariseTexture` is set per texture bind by `Editor::renderDrawList`; render targets, sRGB, and float textures are sampled as linear.
+
+ImGui atlas textures honour deferred destruction: `Editor::updateFontTextures`
+destroys `WantDestroy` textures only after `UnusedFrames > 0`, then clears TexID.
 
 Keep these conventions shared across backends; do not add compensating flips or gamma transforms in individual client systems.

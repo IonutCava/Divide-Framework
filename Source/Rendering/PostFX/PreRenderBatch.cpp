@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/PostFX.h"
 #include "Headers/PreRenderBatch.h"
@@ -637,7 +637,7 @@ void PreRenderBatch::execute(const PlayerIndex idx, const CameraSnapshot& camera
         GFX::EnqueueCommand<GFX::MemoryBarrierCommand>(bufferInOut)->_textureLayoutChanges.emplace_back(TextureLayoutChange
         {
             ._targetView   = luminanceView,
-            ._sourceLayout = ImageUsage::SHADER_READ_WRITE,
+            ._sourceLayout = ImageUsage::SHADER_READ,
             ._targetLayout = ImageUsage::SHADER_WRITE,
         });
 

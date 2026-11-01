@@ -1,5 +1,7 @@
 # Shaders and descriptors
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points
@@ -21,6 +23,8 @@ See the [index](index.md) for debugging routes and note-maintenance guidance.
 `ShaderProgram` loads/reparses GLSL, loads/builds GLSL cache, loads/builds SPIR-V, loads/builds reflection, and hands shared results to the backend.
 OpenGL still consumes GLSL; Vulkan consumes SPIR-V. Reflection is shared, not duplicated per backend.
 Hot reload deliberately invalidates caches and reparses source. Clustered-lighting constants are injected into the generated shader header.
+The newest shader-atom timestamp is read and updated under `g_cacheLock`,
+including file-watcher updates racing asset-loader cache reads.
 
 Changes must cover source parsing, generated declarations, cache invalidation, SPIR-V generation, reflection compatibility, and both backend consumers.
 
@@ -37,6 +41,8 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
 - `DescriptorSetUsage` is ordered by update frequency; `PER_DRAW` must remain last. Vulkan uses the enum value directly; OpenGL maps `(usage, slot)` to flat bindings.
 - Changing enum order requires bumping `BYTE_BUFFER_VERSION`: cached reflection stores usage indices.
 - Every Vulkan pipeline layout uses real shared layouts for sets 0-2, even if unused by a program, and an identical `VK_SHADER_STAGE_ALL` 128-byte push-constant range. This preserves shared-set/push-constant compatibility across pipeline changes.
+- Partial push-constant commands merge only `dataFlags()`-selected slots into
+  the Vulkan replay cache; omitted slots retain their last explicit values.
 - `PER_DRAW` is per-program and uses push descriptors. Pipeline creation assembles a local layout array; never overwrite the global shared-layout array with a program-specific layout.
 - Descriptor layout-cache identity must include creation flags, so push-descriptor layouts cannot alias ordinary layouts with the same bindings.
 - Push-descriptor validation uses queried `VkPhysicalDevicePushDescriptorProperties::maxPushDescriptors`, not dynamic-buffer limits.

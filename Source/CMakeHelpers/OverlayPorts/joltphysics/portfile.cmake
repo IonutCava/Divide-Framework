@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO jrouwe/JoltPhysics
@@ -22,6 +23,9 @@ vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
         floating-point-exceptions   FLOATING_POINT_EXCEPTIONS_ENABLED
 )
 
+include("${CMAKE_CURRENT_LIST_DIR}/simd-options.cmake")
+divide_jolt_simd_options("${FEATURES}" "${VCPKG_TARGET_ARCHITECTURE}" SIMD_OPTIONS)
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}/Build"
     OPTIONS
@@ -38,6 +42,7 @@ vcpkg_cmake_configure(
         -DJPH_USE_DX12=OFF
         -DJPH_USE_VK=OFF
         -DJPH_USE_MTL=OFF
+        ${SIMD_OPTIONS}
         ${FEATURE_OPTIONS}
     OPTIONS_RELEASE
         -DGENERATE_DEBUG_SYMBOLS=OFF

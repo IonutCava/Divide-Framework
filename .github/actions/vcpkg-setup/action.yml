@@ -1,7 +1,12 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Cached vcpkg Setup'
 description: 'Bootstrap pinned vcpkg and restore ABI-checked dependency binaries'
 
 inputs:
+  source-directory:
+    description: 'Source checkout relative to the trusted workspace'
+    required: false
+    default: '.'
   compiler:
     description: 'Compiler family (gcc, clang, or msvc)'
     required: true
@@ -15,6 +20,7 @@ runs:
   steps:
     - name: Initialize pinned vcpkg
       shell: bash
+      working-directory: ${{ inputs.source-directory }}
       run: git submodule update --init -- vcpkg
 
     - name: Identify toolchain and cache directory
@@ -22,6 +28,7 @@ runs:
       shell: python
       env:
         COMPILER: ${{ inputs.compiler }}
+        SOURCE_DIRECTORY: ${{ inputs.source-directory }}
       run: |
         import hashlib
         import os
@@ -52,7 +59,8 @@ runs:
         for tool in ("cmake", "ninja"):
             identity.append(subprocess.check_output([tool, "--version"], text=True))
         digest = hashlib.sha256("\n".join(identity).encode()).hexdigest()
-        revision = subprocess.check_output(["git", "-C", "vcpkg", "rev-parse", "HEAD"], text=True).strip()
+        source = Path(os.environ["GITHUB_WORKSPACE"]) / os.environ["SOURCE_DIRECTORY"]
+        revision = subprocess.check_output(["git", "-C", str(source / "vcpkg"), "rev-parse", "HEAD"], text=True).strip()
         cache = (Path(os.environ["RUNNER_TEMP"]) / "divide-vcpkg-binaries").as_posix()
         Path(cache).mkdir(parents=True, exist_ok=True)
         print(f"Compiler: {compiler_path}\nvcpkg revision: {revision}\nBinary cache: {cache}")
@@ -66,18 +74,20 @@ runs:
       uses: actions/cache/restore@v4
       with:
         path: ${{ steps.identity.outputs.path }}
-        key: vcpkg-files-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target-architecture }}-${{ inputs.compiler }}-${{ steps.identity.outputs.toolchain }}-${{ steps.identity.outputs.revision }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'Source/CMakeHelpers/OverlayPorts/**', '.github/actions/vcpkg-setup/action.yml') }}-${{ github.run_id }}-${{ github.run_attempt }}
+        key: vcpkg-files-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target-architecture }}-${{ inputs.compiler }}-${{ steps.identity.outputs.toolchain }}-${{ steps.identity.outputs.revision }}-${{ hashFiles(format('{0}/vcpkg.json', inputs.source-directory), format('{0}/vcpkg-configuration.json', inputs.source-directory), format('{0}/Source/CMakeHelpers/OverlayPorts/**', inputs.source-directory), '.github/actions/vcpkg-setup/action.yml') }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: |
-          vcpkg-files-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target-architecture }}-${{ inputs.compiler }}-${{ steps.identity.outputs.toolchain }}-${{ steps.identity.outputs.revision }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'Source/CMakeHelpers/OverlayPorts/**', '.github/actions/vcpkg-setup/action.yml') }}-
+          vcpkg-files-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target-architecture }}-${{ inputs.compiler }}-${{ steps.identity.outputs.toolchain }}-${{ steps.identity.outputs.revision }}-${{ hashFiles(format('{0}/vcpkg.json', inputs.source-directory), format('{0}/vcpkg-configuration.json', inputs.source-directory), format('{0}/Source/CMakeHelpers/OverlayPorts/**', inputs.source-directory), '.github/actions/vcpkg-setup/action.yml') }}-
 
     - name: Bootstrap vcpkg (Unix)
       if: runner.os != 'Windows'
       shell: bash
+      working-directory: ${{ inputs.source-directory }}
       run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
     - name: Bootstrap vcpkg (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
+      working-directory: ${{ inputs.source-directory }}
       run: |
         & .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
         if ($LASTEXITCODE -ne 0) { throw "vcpkg bootstrap failed: $LASTEXITCODE" }

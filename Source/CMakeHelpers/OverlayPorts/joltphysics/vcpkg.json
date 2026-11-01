@@ -1,7 +1,7 @@
 {
   "name": "joltphysics",
   "version": "5.6.0",
-  "port-version": 1,
+  "port-version": 2,
   "description": "A multi core friendly rigid body physics and collision detection library suitable for games and VR applications",
   "homepage": "https://github.com/jrouwe/JoltPhysics",
   "license": "MIT",
@@ -19,6 +19,15 @@
     "object-stream"
   ],
   "features": {
+    "avx": {
+      "description": "Enable AVX (baseline is SSE4.2 on x86, NEON on ARM)"
+    },
+    "avx2": {
+      "description": "Enable AVX2, AVX, LZCNT, TZCNT, F16C and FMA"
+    },
+    "avx512": {
+      "description": "Enable AVX512 and the AVX2 feature set"
+    },
     "asserts": {
       "description": "Enable asserts"
     },

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 DIVIDE-Studio
+Copyright (c) 2018-2026 DIVIDE-Studio
 Copyright (c) 2009 Ionut Cava
 
 This file is part of DIVIDE Framework.
@@ -69,6 +69,19 @@ struct PushConstantsStruct
 
         _dataFlags = static_cast<PushConstantsStruct::DataFlags>(flags);
         return _dataFlags;
+    }
+
+    inline void merge( const PushConstantsStruct& rhs )
+    {
+        if ( rhs.dataFlags() & DataFlags::FIRST )
+        {
+            data[0] = rhs.data[0];
+        }
+        if ( rhs.dataFlags() & DataFlags::SECOND )
+        {
+            data[1] = rhs.data[1];
+        }
+        _dataFlags = static_cast<DataFlags>( _dataFlags | rhs.dataFlags() );
     }
 
     bool operator==(const PushConstantsStruct& rhs) const = default;

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: Windows Builds
 
 on:
@@ -192,6 +193,7 @@ jobs:
           runner_type: ${{ github.event.inputs.runner_type || 'GitHub' }}
       - name: Configure instrumented validation
         shell: pwsh
+        working-directory: ci-source
         run: |
           cmake --preset windows-msvc-editor-instrumentation -DBUILD_TESTING_INTERNAL=ON -DRUN_TESTING_INTERNAL=OFF
           if ($LASTEXITCODE -ne 0) { throw "Validation configure failed: $LASTEXITCODE" }
@@ -202,11 +204,13 @@ jobs:
           key: ${{ env.DIVIDE_VCPKG_CACHE_KEY }}
       - name: Build instrumented validation
         shell: pwsh
+        working-directory: ci-source
         run: |
           cmake --build --preset windows-msvc-debug-editor-instrumentation --parallel 2
           if ($LASTEXITCODE -ne 0) { throw "Validation build failed: $LASTEXITCODE" }
       - name: Run instrumented unit tests
         shell: pwsh
+        working-directory: ci-source
         run: |
           ctest --preset test-windows-msvc-debug-editor-instrumentation
           if ($LASTEXITCODE -ne 0) { throw "Validation tests failed: $LASTEXITCODE" }

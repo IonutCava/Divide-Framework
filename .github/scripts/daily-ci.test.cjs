@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const schedule = require('./daily-ci.cjs');
@@ -133,7 +134,7 @@ test('status API errors fail the scheduler rather than dispatching duplicate bui
     assert.equal(f.dispatched.length, 0);
 });
 
-test('build setup pins target code after loading trusted local actions', () => {
+test('build setup isolates target sources from trusted local actions', () => {
     for (const [file, platform] of [
         ['Linux.yml', 'linux'], ['Windows.yml', 'windows'], ['MacOS.yml', 'macos']
     ]) {
@@ -145,9 +146,24 @@ test('build setup pins target code after loading trusted local actions', () => {
         const setup = readFileSync(path.join(__dirname, '../actions/build-setup', platform, 'action.yml'), 'utf8');
         assert.match(setup, /ref: \$\{\{ github.event.inputs.ci_sha \|\| github.sha \}\}/);
         assert.match(setup, /persist-credentials: false/);
+        assert.match(setup, /path: ci-source/);
+        assert.match(setup, /source-directory: ci-source/);
+        assert.doesNotMatch(setup, /git clean|git reset/);
+        const build = readFileSync(path.join(__dirname, '../actions/cmake-build', platform, 'action.yml'), 'utf8');
+        const presets = [...build.matchAll(/(?:configure|build|test)Preset:/g)];
+        const sources = [...build.matchAll(/cmakeListsTxtPath: \$\{\{ github.workspace \}\}\/ci-source\/CMakeLists.txt/g)];
+        assert.equal(sources.length, presets.length);
         assert.match(workflow, /permissions:\s+contents: read/);
         assert.match(workflow, /output_job:[\s\S]+permissions:\s+statuses: write/);
     }
+});
+
+test('vcpkg setup bootstraps and hashes the selected source checkout', () => {
+    const setup = readFileSync(path.join(__dirname, '../actions/vcpkg-setup/action.yml'), 'utf8');
+    assert.equal([...setup.matchAll(/working-directory: \$\{\{ inputs.source-directory \}\}/g)].length, 3);
+    assert.match(setup, /SOURCE_DIRECTORY: \$\{\{ inputs.source-directory \}\}/);
+    assert.match(setup, /str\(source \/ "vcpkg"\)/);
+    assert.equal([...setup.matchAll(/format\('\{0\}\/vcpkg.json', inputs.source-directory\)/g)].length, 2);
 });
 
 test('targeted Windows validation does not overwrite full daily-matrix status', () => {
@@ -156,6 +172,7 @@ test('targeted Windows validation does not overwrite full daily-matrix status', 
     assert.match(workflow, /Report commit status\s+if: \$\{\{ !inputs.validation_only && inputs.ci_sha != '' && inputs.ci_target != '' \}\}/);
     assert.doesNotMatch(workflow, /needs\.check_date/);
     assert.match(workflow, /ctest --preset test-windows-msvc-debug-editor-instrumentation/);
+    assert.equal([...workflow.matchAll(/working-directory: ci-source/g)].length, 3);
 });
 
 test('trusted reporting jobs attach success and failure to the target SHA', async () => {

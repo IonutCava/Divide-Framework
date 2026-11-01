@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Linux CMake Build'
 description: 'Run CMake build and test steps'
 
@@ -38,12 +39,14 @@ runs:
       uses: lukka/run-cmake@v10
       with:
         configurePreset: ${{ inputs.configure-preset }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Configure (default)
       if: ${{ inputs.configure-preset == '' }}
       uses: lukka/run-cmake@v10
       with:
         configurePreset: linux-${{ inputs.compiler }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Save dependency binaries before compiling the engine
       uses: actions/cache/save@v4
@@ -56,24 +59,28 @@ runs:
       uses: lukka/run-cmake@v10
       with:
         buildPreset: ${{ inputs.build-preset }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Build ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       if: ${{ inputs.build-preset == '' }}
       uses: lukka/run-cmake@v10
       with:
         buildPreset: linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Test (preset override)
       if: ${{ inputs.test-preset != '' && inputs.run-tests != 'false' }}
       uses: lukka/run-cmake@v10
       with:
         testPreset: ${{ inputs.test-preset }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Test ${{ inputs.build-type }} in ${{ inputs.configuration }} mode
       if: ${{ inputs.test-preset == '' && inputs.run-tests != 'false' }}
       uses: lukka/run-cmake@v10
       with:
         testPreset: test-linux-${{ inputs.compiler }}-${{ inputs.configuration }}${{ inputs.build-type == 'editor' && '-editor' || '' }}
+        cmakeListsTxtPath: ${{ github.workspace }}/ci-source/CMakeLists.txt
 
     - name: Record build end time and metrics
       shell: bash

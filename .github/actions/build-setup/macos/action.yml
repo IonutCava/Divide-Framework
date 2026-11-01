@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'macOS Build Setup'
 description: 'Common build setup steps for macOS builds'
 
@@ -15,6 +16,7 @@ runs:
     - uses: actions/checkout@v4
       with:
         ref: ${{ github.event.inputs.ci_sha || github.sha }}
+        path: ci-source
         persist-credentials: false
         submodules: true
         fetch-depth: 0
@@ -44,6 +46,7 @@ runs:
       uses: ./.github/actions/vcpkg-setup
       with:
         compiler: clang
+        source-directory: ci-source
         target-architecture: ${{ inputs.architecture }}
       env:
         # Ensure Objective-C compiler is available for Meson when building dependencies

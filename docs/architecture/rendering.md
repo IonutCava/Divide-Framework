@@ -1,5 +1,7 @@
 # Rendering
 
+<!-- Copyright (c) 2026 DIVIDE-Studio -->
+
 See the [index](index.md) for debugging routes and note-maintenance guidance.
 
 ## Entry points and ownership
@@ -49,6 +51,9 @@ For stage-specific lighting failures, check stage buffer allocation, bindings, d
 
 Shared targets are created in `GFXDevice.cpp`: `SCREEN`, `SCREEN_PREV`, `NORMALS_RESOLVED`, `SSAO_RESULT`, `SSR_RESULT`, `BLOOM_RESULT`, `OIT`, and utilities such as Hi-Z/blur targets.
 Feature-local scratch targets often belong to `PreRenderBatch` or individual PostFX operators.
+The averaging luminance image retains sampled and storage creation capabilities.
+Each averaging pass transitions it from `SHADER_READ` to `SHADER_WRITE` and back;
+creation usage flags must not be confused with the current image layout.
 Passes use `BeginRenderPassCommand` with ordinary pipeline/resource binding commands.
 
 - Screen-space effects using existing inputs generally belong in PostFX/pre-render operators.

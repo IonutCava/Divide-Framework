@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
@@ -5,9 +6,61 @@
 #include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
 #include "Platform/Video/Shaders/Headers/ShaderDataUploader.h"
+#include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
+#include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
 
 namespace Divide
 {
+    TEST_CASE( "Optional Vulkan dynamic state requires every consumed feature", "[vulkan_features]" )
+    {
+        for ( U8 mask = 0; mask < 8; ++mask )
+        {
+            VkPhysicalDeviceExtendedDynamicState3FeaturesEXT features{};
+            features.extendedDynamicState3ColorBlendEnable = (mask & 1u) != 0u;
+            features.extendedDynamicState3ColorBlendEquation = (mask & 2u) != 0u;
+            features.extendedDynamicState3ColorWriteMask = (mask & 4u) != 0u;
+            CHECK( VKDevice::HasRequiredDynamicState3Features( features ) == (mask == 7u) );
+        }
+    }
+
+    TEST_CASE( "Partial push constants preserve previously supplied slots", "[push_constants]" )
+    {
+        PushConstantsStruct cached, update;
+        update.data[0] = MAT4_IDENTITY;
+        REQUIRE( update.computeFlags() == PushConstantsStruct::FIRST );
+        cached.merge( update );
+        CHECK( cached.data[0] == MAT4_IDENTITY );
+        CHECK( cached.data[1] == MAT4_NEGATIVE_ONE );
+
+        update = {};
+        update.data[1] = MAT4_ZERO;
+        REQUIRE( update.computeFlags() == PushConstantsStruct::SECOND );
+        cached.merge( update );
+        CHECK( cached.data[0] == MAT4_IDENTITY );
+        CHECK( cached.data[1] == MAT4_ZERO );
+        CHECK( cached.dataFlags() == PushConstantsStruct::BOTH );
+
+        update = {};
+        cached.merge( update );
+        CHECK( cached.data[0] == MAT4_IDENTITY );
+        CHECK( cached.data[1] == MAT4_ZERO );
+        update.data[0] = MAT4_ZERO;
+        update.computeFlags();
+        cached.merge( update );
+        CHECK( cached.data[1] == MAT4_ZERO );
+        CHECK( cached.data[0] == MAT4_ZERO );
+    }
+
+    TEST_CASE( "Vulkan texture aspects follow packing, not attachment usage", "[texture_fallbacks]" )
+    {
+        TextureDescriptor descriptor;
+        CHECK( vkTexture::GetAspectFlags( descriptor ) == VK_IMAGE_ASPECT_COLOR_BIT );
+        descriptor._packing = GFXImagePacking::DEPTH;
+        CHECK( vkTexture::GetAspectFlags( descriptor ) == VK_IMAGE_ASPECT_DEPTH_BIT );
+        descriptor._packing = GFXImagePacking::DEPTH_STENCIL;
+        CHECK( vkTexture::GetAspectFlags( descriptor ) == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) );
+    }
+
     TEST_CASE( "Sampler reflection retains fallback compatibility traits", "[texture_fallbacks]" )
     {
         struct CompilerScope

@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 name: 'Linux Build Setup'
 description: 'Common build setup steps for Linux builds'
 
@@ -14,16 +15,10 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Clean workspace (self-hosted only)
-      if: runner.self-hosted
-      shell: bash
-      run: |
-        sudo git clean -xdf
-        sudo git reset --hard
-
     - uses: actions/checkout@v4
       with:
         ref: ${{ github.event.inputs.ci_sha || github.sha }}
+        path: ci-source
         persist-credentials: false
         submodules: true
         fetch-depth: 0
@@ -45,3 +40,4 @@ runs:
       uses: ./.github/actions/vcpkg-setup
       with:
         compiler: ${{ inputs.compiler }}
+        source-directory: ci-source

@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/Editor.h"
 
@@ -279,13 +279,14 @@ namespace Divide
             auto it = std::find_if( _fontTextures.begin(), _fontTextures.end(),
                                     [textureData]( const auto& entry ) { return entry.first == textureData; } );
 
-            if ( textureData->Status == ImTextureStatus_WantDestroy )
+            if ( textureData->Status == ImTextureStatus_WantDestroy && textureData->UnusedFrames > 0 )
             {
                 if ( it != _fontTextures.end() )
                 {
                     DestroyResource( it->second );
                     _fontTextures.erase( it );
                 }
+                textureData->SetTexID( ImTextureID_Invalid );
                 textureData->SetStatus( ImTextureStatus_Destroyed );
             }
             else if ( textureData->Status == ImTextureStatus_WantCreate )

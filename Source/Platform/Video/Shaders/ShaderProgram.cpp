@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/ShaderProgram.h"
 #include "Headers/GLSLToSPIRV.h"
@@ -2272,6 +2272,7 @@ namespace Divide
         U64 writeTime = 0u;
         if (fileLastWriteTime(ResourcePath{dir}, atomName, writeTime) == FileError::NONE)
         {
+            LockGuard<Mutex> cacheLock( g_cacheLock );
             s_newestShaderAtomWriteTime = std::max(s_newestShaderAtomWriteTime, writeTime);
         }
 

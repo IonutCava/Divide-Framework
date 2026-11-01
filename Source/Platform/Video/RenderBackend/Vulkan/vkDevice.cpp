@@ -1,4 +1,4 @@
-
+// Copyright (c) 2026 DIVIDE-Studio
 
 #include "Headers/vkDevice.h"
 
@@ -33,7 +33,6 @@ namespace Divide
         vk13features.dynamicRendering = VK_TRUE;
         vk13features.inlineUniformBlock = VK_TRUE;
         vk13features.maintenance4 = VK_TRUE;
-        vk13features.shaderDemoteToHelperInvocation = VK_TRUE;
         vk13features.pNext = &bufferDeviceAddressFeatures;
 
         VkPhysicalDeviceVulkan12Features vk12features{};
@@ -128,25 +127,40 @@ namespace Divide
 
         VkPhysicalDeviceExtendedDynamicState3FeaturesEXT extendedDynamicState3Features{};
         extendedDynamicState3Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
-        extendedDynamicState3Features.extendedDynamicState3ColorBlendEnable = VK_TRUE;
-        extendedDynamicState3Features.extendedDynamicState3ColorBlendEquation = VK_TRUE;
-        extendedDynamicState3Features.extendedDynamicState3ColorWriteMask = VK_TRUE;
 
         VkPhysicalDeviceMaintenance7FeaturesKHR maintenance7Features{};
         maintenance7Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
-        maintenance7Features.maintenance7 = VK_TRUE;
 
         for ( const auto& extension : _physicalDevice.get_extensions() )
         {
             if ( extension == VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )
             {
-                supportsDynamicExtension3(true);
-                deviceBuilder.add_pNext(&extendedDynamicState3Features);
+                VkPhysicalDeviceFeatures2 features{};
+                features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features.pNext = &extendedDynamicState3Features;
+                vkGetPhysicalDeviceFeatures2( _physicalDevice.physical_device, &features );
+                if ( HasRequiredDynamicState3Features( extendedDynamicState3Features ) )
+                {
+                    extendedDynamicState3Features = {};
+                    extendedDynamicState3Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+                    extendedDynamicState3Features.extendedDynamicState3ColorBlendEnable = VK_TRUE;
+                    extendedDynamicState3Features.extendedDynamicState3ColorBlendEquation = VK_TRUE;
+                    extendedDynamicState3Features.extendedDynamicState3ColorWriteMask = VK_TRUE;
+                    supportsDynamicExtension3(true);
+                    deviceBuilder.add_pNext(&extendedDynamicState3Features);
+                }
             }
             else if ( extension == VK_KHR_MAINTENANCE_7_EXTENSION_NAME )
             {
-                supportsMaintenance7(true);
-                deviceBuilder.add_pNext(&maintenance7Features);
+                VkPhysicalDeviceFeatures2 features{};
+                features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features.pNext = &maintenance7Features;
+                vkGetPhysicalDeviceFeatures2( _physicalDevice.physical_device, &features );
+                if ( maintenance7Features.maintenance7 )
+                {
+                    supportsMaintenance7(true);
+                    deviceBuilder.add_pNext(&maintenance7Features);
+                }
             }
             else if ( extension == VK_EXT_MESH_SHADER_EXTENSION_NAME )
             {

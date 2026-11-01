@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 set(SSE4A_OPT OFF) #We don't even bother with SSE4a
 set(BMI2_OPT OFF) #Zen1/Zen2 are reaaaally slow with PDEP/PEXT. Keeping this off for AVX2
 set(AVX512F_OPT OFF)
@@ -327,6 +328,10 @@ function (Toggle_Available_Vector_Extensions)
         endif()
 
     endif() #NOT MSVC_COMPILER
+
+    if (SSE42_OPT)
+        add_compile_definitions( HAS_SSE42 )
+    endif()
 
     if (AVX512F_OPT)
         add_compile_definitions( HAS_AVX512F )

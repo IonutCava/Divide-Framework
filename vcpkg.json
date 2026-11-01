@@ -99,6 +99,18 @@
     }
   ],
   "features": {
+    "jolt-avx": {
+      "description": "Use AVX, without AVX2 or additional AVX2-era instructions, in Jolt",
+      "dependencies": [{ "name": "joltphysics", "features": ["avx"] }]
+    },
+    "jolt-avx2": {
+      "description": "Use the AVX2 SIMD level in Jolt",
+      "dependencies": [{ "name": "joltphysics", "features": ["avx2"] }]
+    },
+    "jolt-avx512": {
+      "description": "Use the AVX512 SIMD level in Jolt",
+      "dependencies": [{ "name": "joltphysics", "features": ["avx512"] }]
+    },
     "tests": {
       "description": "Build the internal Catch2 test executables",
       "dependencies": [
