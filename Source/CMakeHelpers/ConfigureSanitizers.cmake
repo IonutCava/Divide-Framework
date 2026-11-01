@@ -1,3 +1,4 @@
+# Copyright (c) 2026 DIVIDE-Studio
 if( RUN_ASAN )
     message("ASAN enabled!")
 else()
@@ -13,10 +14,8 @@ endif()
 if( RUN_ASAN OR RUN_UBSAN )
     include(CheckCXXCompilerFlag)
 
-    # When building with sanitizers, we need dependencies to be built with the same flags
-    # to avoid RTTI/ABI mismatches. This ensures vcpkg rebuilds packages with sanitizer flags.
-    message(STATUS "Sanitizers enabled - vcpkg should rebuild dependencies with matching compiler flags")
-    # Set VCPKG_BUILD_TYPE to debug to ensure proper symbol information with sanitizers
+    message(STATUS "Sanitizers enabled for project targets; vcpkg dependencies are not sanitizer-instrumented by this configuration")
+    # Provisioning has already run; this cache value does not rebuild or instrument dependencies.
     if(NOT VCPKG_BUILD_TYPE)
         set(VCPKG_BUILD_TYPE "debug" CACHE STRING "Force debug build type for vcpkg with sanitizers")
     endif()

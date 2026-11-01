@@ -105,6 +105,11 @@ sessions, provision equivalent tools/dependencies; configure with
 if needed. Upstream downloads and redirect mirrors (including SourceForge) may
 require firewall access; prefer preloading dependencies over disabling the firewall.
 
+ASan/UBSan configuration applies to project targets, not preinstalled vcpkg
+dependencies. `ConfigureSanitizers.cmake` runs after manifest provisioning;
+its late `VCPKG_BUILD_TYPE` cache assignment does not rebuild or instrument
+dependencies. Do not report sanitizer runs as dependency instrumentation.
+
 ### Dependency configuration
 
 bzip2 and FreeType overlays preload byte-identical source archives from Debian
