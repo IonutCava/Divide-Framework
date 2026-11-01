@@ -15,6 +15,7 @@
 #include "Core/Resources/Headers/ResourceCache.h"
 
 #include "Platform/Video/Headers/GFXDevice.h"
+#include "Platform/Video/Textures/Headers/Texture.h"
 #include "Platform/Video/Shaders/glsw/Headers/glsw.h"
 
 #include "Platform/File/Headers/FileManagement.h"
@@ -1701,6 +1702,8 @@ namespace Divide
 
         _uniformBlockBuffers.clear();
         _setUsage.fill( false );
+        _sampledImages.clear();
+        _perDrawDescriptorSetLayout = {};
 
         for ( auto& [fileHash, loadDataPerFile] : fileData )
         {
@@ -1749,6 +1752,54 @@ namespace Divide
         return true;
     }
 
+    bool ShaderProgram::resolveSampledImages( const DescriptorSetEntry& entry, DescriptorSet& resolvedSet ) const
+    {
+        bool changed = false;
+        resolvedSet = *entry._set;
+        for ( const Reflection::ImageEntry& image : _sampledImages )
+        {
+            if ( image._bindingSet != to_base(entry._usage) )
+            {
+                continue;
+            }
+            DescriptorSetBinding* binding = nullptr;
+            for ( U8 i = 0u; i < resolvedSet._bindingCount; ++i )
+            {
+                if ( resolvedSet._bindings[i]._slot == image._bindingSlot )
+                {
+                    binding = &resolvedSet._bindings[i];
+                    break;
+                }
+            }
+            if ( binding != nullptr )
+            {
+                DIVIDE_GPU_ASSERT( binding->_data._type == DescriptorSetBindingType::COMBINED_IMAGE_SAMPLER );
+                if ( binding->_data._sampledImage._image._srcTexture != nullptr )
+                {
+                    continue;
+                }
+            }
+            DIVIDE_GPU_ASSERT( !image._isMultiSampled, "Missing active multisampled image binding!" );
+            if ( image._isMultiSampled )
+            {
+                continue;
+            }
+            if ( binding == nullptr )
+            {
+                DIVIDE_GPU_ASSERT( resolvedSet._bindingCount < MAX_BINDINGS_PER_DESCRIPTOR_SET );
+                binding = &AddBinding( resolvedSet, image._bindingSlot, image._stageVisibility );
+            }
+            SamplerDescriptor sampler = Texture::DefaultSampler();
+            if ( image._isDepth )
+            {
+                sampler._depthCompareFunc = ComparisonFunction::LEQUAL;
+            }
+            Set( binding->_data, Texture::DefaultTexture( image._textureType, image._sampledDataType, image._isDepth ), sampler );
+            changed = true;
+        }
+        return changed;
+    }
+
     void ShaderProgram::initDrawDescriptorSetLayout( const PerFileShaderData& loadData )
     {
         const ShaderLoadData& programLoadData = loadData._loadData;
@@ -1774,6 +1825,24 @@ namespace Divide
             for ( const Reflection::ImageEntry& image : data._images )
             {
                 _setUsage[image._bindingSet] = true;
+                if ( image._combinedImageSampler )
+                {
+                    const auto existing = std::find_if( _sampledImages.begin(), _sampledImages.end(), [&image]( const Reflection::ImageEntry& it )
+                    {
+                        return it._bindingSet == image._bindingSet && it._bindingSlot == image._bindingSlot;
+                    } );
+                    if ( existing == _sampledImages.end() )
+                    {
+                        _sampledImages.push_back(image);
+                    }
+                    else
+                    {
+                        DIVIDE_GPU_ASSERT( existing->_textureType == image._textureType &&
+                                           existing->_sampledDataType == image._sampledDataType &&
+                                           existing->_isDepth == image._isDepth &&
+                                           existing->_isMultiSampled == image._isMultiSampled );
+                    }
+                }
                 if ( image._bindingSet != to_base( DescriptorSetUsage::PER_DRAW ) )
                 {
                     continue;

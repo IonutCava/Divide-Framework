@@ -3,9 +3,93 @@
 #include "Platform/Video/RenderBackend/Vulkan/Headers/VKWrapper.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkResources.h"
 #include "Platform/Video/Textures/Headers/Texture.h"
+#include "Platform/Video/Shaders/Headers/GLSLToSPIRV.h"
+#include "Platform/Video/Shaders/Headers/ShaderDataUploader.h"
 
 namespace Divide
 {
+    TEST_CASE( "Sampler reflection retains fallback compatibility traits", "[texture_fallbacks]" )
+    {
+        struct CompilerScope
+        {
+            bool _owned{ !SpirvHelper::s_isInit };
+            CompilerScope() { if ( _owned ) SpirvHelper::Init(); }
+            ~CompilerScope() { if ( _owned ) SpirvHelper::Finalize(); }
+        } compiler;
+        const char* source = R"(#version 450
+layout(set = 3, binding = 0) uniform sampler2DArray sArray;
+layout(set = 3, binding = 1) uniform samplerCube sCube;
+layout(set = 3, binding = 2) uniform samplerCubeArray sCubeArray;
+layout(set = 3, binding = 3) uniform isampler3D sInteger;
+layout(set = 3, binding = 4) uniform usampler1D sUnsigned;
+layout(set = 3, binding = 5) uniform sampler2DShadow sDepth;
+layout(set = 3, binding = 6) uniform sampler2DMS sMSAA;
+layout(location = 0) out vec4 colour;
+void main() {
+    colour = texture(sArray, vec3(0.5, 0.5, 0.0))
+           + texture(sCube, vec3(1.0, 0.0, 0.0))
+           + texture(sCubeArray, vec4(1.0, 0.0, 0.0, 0.0))
+           + vec4(texture(sInteger, vec3(0.5)))
+           + vec4(texture(sUnsigned, 0.5))
+           + vec4(texture(sDepth, vec3(0.5)))
+           + texelFetch(sMSAA, ivec2(0), 0);
+}
+)";
+        std::vector<unsigned int> spirv;
+        REQUIRE( SpirvHelper::GLSLtoSPV( ShaderType::FRAGMENT, source, spirv, RenderAPI::Vulkan ) );
+        Reflection::Data data;
+        REQUIRE( SpirvHelper::BuildReflectionData( ShaderType::FRAGMENT, spirv, RenderAPI::Vulkan, data ) );
+        const std::array expectedTypes{
+            TextureType::TEXTURE_2D_ARRAY, TextureType::TEXTURE_CUBE_MAP, TextureType::TEXTURE_CUBE_ARRAY,
+            TextureType::TEXTURE_3D, TextureType::TEXTURE_1D, TextureType::TEXTURE_2D, TextureType::TEXTURE_2D
+        };
+        REQUIRE( data._images.size() == expectedTypes.size() );
+        for ( U8 slot = 0u; slot < expectedTypes.size(); ++slot )
+        {
+            const auto image = std::find_if( data._images.begin(), data._images.end(), [slot](const Reflection::ImageEntry& it)
+            {
+                return it._bindingSlot == slot;
+            } );
+            REQUIRE( image != data._images.end() );
+            CHECK( image->_textureType == expectedTypes[slot] );
+            CHECK( image->_combinedImageSampler );
+            CHECK( image->_isMultiSampled == (slot == 6u) );
+            CHECK( image->_isDepth == (slot == 5u) );
+            CHECK( image->_sampledDataType == (slot == 3u ? GFXDataFormat::SIGNED_INT :
+                                             slot == 4u ? GFXDataFormat::UNSIGNED_INT : GFXDataFormat::UNSIGNED_BYTE) );
+        }
+    }
+
+    TEST_CASE( "Default sampler textures preserve dimensionality and sample format", "[texture_fallbacks]" )
+    {
+        for ( U8 type = 0u; type < to_base(TextureType::COUNT); ++type )
+        {
+            const TextureType textureType = static_cast<TextureType>(type);
+            const TextureDescriptor colour = Texture::DefaultTextureDescriptor( textureType, GFXDataFormat::UNSIGNED_BYTE, false );
+            CHECK( colour._texType == textureType );
+            CHECK( colour._layerCount == 1u );
+            CHECK( colour._msaaSamples == 0u );
+            CHECK( colour._mipMappingState == MipMappingState::OFF );
+            CHECK( colour._baseFormat == GFXImageFormat::RGBA );
+            CHECK( colour._packing == GFXImagePacking::NORMALIZED );
+            for ( const GFXDataFormat dataType : {GFXDataFormat::SIGNED_INT, GFXDataFormat::UNSIGNED_INT} )
+            {
+                const TextureDescriptor integer = Texture::DefaultTextureDescriptor( textureType, dataType, false );
+                CHECK( integer._texType == textureType );
+                CHECK( integer._dataType == dataType );
+                CHECK( integer._packing == GFXImagePacking::UNNORMALIZED );
+            }
+            if ( textureType != TextureType::TEXTURE_3D )
+            {
+                const TextureDescriptor depth = Texture::DefaultTextureDescriptor( textureType, GFXDataFormat::UNSIGNED_BYTE, true );
+                CHECK( depth._texType == textureType );
+                CHECK( depth._baseFormat == GFXImageFormat::RED );
+                CHECK( depth._dataType == GFXDataFormat::FLOAT_32 );
+                CHECK( depth._packing == GFXImagePacking::DEPTH );
+            }
+        }
+    }
+
     TEST_CASE( "Texture update source layouts", "[texture_updates]" )
     {
         TextureDescriptor descriptor;

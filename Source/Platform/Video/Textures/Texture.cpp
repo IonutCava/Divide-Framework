@@ -36,33 +36,34 @@ namespace Divide
     SamplerDescriptor Texture::s_defaultSampler;
     Handle<Texture> Texture::s_defaultTexture2D = INVALID_HANDLE<Texture>;
     Handle<Texture> Texture::s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
+    std::array<Handle<Texture>, to_base( TextureType::COUNT ) * 4u> Texture::s_defaultTextures;
     bool Texture::s_useDDSCache = true;
 
     void Texture::OnStartup()
     {
         ImageTools::OnStartup( false );
 
-        TextureDescriptor textureDescriptor{};
-        textureDescriptor._dataType = GFXDataFormat::UNSIGNED_BYTE;
-        textureDescriptor._baseFormat = GFXImageFormat::RGBA;
-
+        s_defaultTextures.fill( INVALID_HANDLE<Texture> );
+        for ( U8 type = 0u; type < to_base( TextureType::COUNT ); ++type )
         {
-            s_defaultTexture2D = CreateResource( ResourceDescriptor<Texture>( "defaultEmptyTexture2D", textureDescriptor ) );
+            for ( U8 format = 0u; format < 4u; ++format )
+            {
+                if ( format == 3u && static_cast<TextureType>(type) == TextureType::TEXTURE_3D )
+                {
+                    // GLSL has no sampler3DShadow.
+                    continue;
+                }
+                const GFXDataFormat sampledDataType = format == 1u ? GFXDataFormat::SIGNED_INT
+                                                   : format == 2u ? GFXDataFormat::UNSIGNED_INT : GFXDataFormat::UNSIGNED_BYTE;
+                const TextureDescriptor descriptor = DefaultTextureDescriptor( static_cast<TextureType>(type), sampledDataType, format == 3u );
+                const size_t index = type * 4u + format;
+                s_defaultTextures[index] = CreateResource( ResourceDescriptor<Texture>(
+                    Util::StringFormat("defaultEmptyTexture_{}_{}", type, format).c_str(), descriptor ) );
+                Get(s_defaultTextures[index])->createDefaultData();
+            }
         }
-        {
-            textureDescriptor._texType = TextureType::TEXTURE_2D_ARRAY;
-            s_defaultTexture2DArray = CreateResource( ResourceDescriptor<Texture>( "defaultEmptyTexture2DArray", textureDescriptor ) );
-        }
-
-        Byte defaultTexData[1u * 1u * 4];
-        defaultTexData[0] = defaultTexData[1] = defaultTexData[2] = to_byte( 0u ); //RGB: black
-        defaultTexData[3] = to_byte( 1u ); //Alpha: 1
-
-        ImageTools::ImageData imgDataDefault = {};
-        DIVIDE_EXPECTED_CALL( imgDataDefault.loadFromMemory( {defaultTexData, 4}, vec3<U16>(1u), 1u, 4 ) );
-
-        Get(s_defaultTexture2D)->createWithData( imgDataDefault, {});
-        Get(s_defaultTexture2DArray)->createWithData( imgDataDefault, {});
+        s_defaultTexture2D = DefaultTexture( TextureType::TEXTURE_2D, GFXDataFormat::UNSIGNED_BYTE, false );
+        s_defaultTexture2DArray = DefaultTexture( TextureType::TEXTURE_2D_ARRAY, GFXDataFormat::UNSIGNED_BYTE, false );
 
         s_defaultSampler._wrapU = TextureWrap::CLAMP_TO_EDGE;
         s_defaultSampler._wrapV = TextureWrap::CLAMP_TO_EDGE;
@@ -75,8 +76,14 @@ namespace Divide
 
     void Texture::OnShutdown() noexcept
     {
-        DestroyResource(s_defaultTexture2D);
-        DestroyResource(s_defaultTexture2DArray);
+        for ( Handle<Texture>& texture : s_defaultTextures )
+        {
+            if ( texture != INVALID_HANDLE<Texture> )
+            {
+                DestroyResource(texture);
+            }
+        }
+        s_defaultTexture2D = s_defaultTexture2DArray = INVALID_HANDLE<Texture>;
         ImageTools::OnShutdown();
     }
 
@@ -93,6 +100,60 @@ namespace Divide
     Handle<Texture> Texture::DefaultTexture2DArray() noexcept
     {
         return s_defaultTexture2DArray;
+    }
+
+    Handle<Texture> Texture::DefaultTexture( const TextureType type, const GFXDataFormat sampledDataType, const bool depth ) noexcept
+    {
+        DIVIDE_ASSERT( type < TextureType::COUNT );
+        const U8 format = depth ? 3u : sampledDataType == GFXDataFormat::SIGNED_INT ? 1u
+                                    : sampledDataType == GFXDataFormat::UNSIGNED_INT ? 2u : 0u;
+        const Handle<Texture> texture = s_defaultTextures[to_base(type) * 4u + format];
+        DIVIDE_ASSERT( texture != INVALID_HANDLE<Texture> );
+        return texture;
+    }
+
+    TextureDescriptor Texture::DefaultTextureDescriptor( const TextureType type, const GFXDataFormat sampledDataType, const bool depth ) noexcept
+    {
+        DIVIDE_ASSERT( type < TextureType::COUNT );
+        DIVIDE_ASSERT( !depth || type != TextureType::TEXTURE_3D );
+        TextureDescriptor descriptor{};
+        descriptor._texType = type;
+        descriptor._layerCount = 1u;
+        descriptor._mipMappingState = MipMappingState::OFF;
+        if ( depth )
+        {
+            descriptor._dataType = GFXDataFormat::FLOAT_32;
+            descriptor._baseFormat = GFXImageFormat::RED;
+            descriptor._packing = GFXImagePacking::DEPTH;
+        }
+        else if ( sampledDataType == GFXDataFormat::SIGNED_INT || sampledDataType == GFXDataFormat::UNSIGNED_INT )
+        {
+            descriptor._dataType = sampledDataType;
+            descriptor._packing = GFXImagePacking::UNNORMALIZED;
+        }
+        return descriptor;
+    }
+
+    void Texture::createDefaultData()
+    {
+        const U16 faces = IsCubeTexture(_descriptor._texType) ? 6u : 1u;
+        const U8 bytesPerPixel = GetBytesPerPixel( _descriptor._dataType, _descriptor._baseFormat, _descriptor._packing );
+        vector<Byte> data(bytesPerPixel, to_byte(0u));
+        if ( _descriptor._packing == GFXImagePacking::NORMALIZED )
+        {
+            data[3u] = to_byte(1u);
+        }
+        else if ( _descriptor._packing == GFXImagePacking::UNNORMALIZED )
+        {
+            const U32 alpha = 1u;
+            std::memcpy( data.data() + 3u * sizeof(U32), &alpha, sizeof(alpha) );
+        }
+        ImageTools::ImageData image{};
+        DIVIDE_EXPECTED_CALL( image.loadFromMemory( data, vec3<U16>(1u), faces, numChannels() ) );
+        ImageUsage usage = prepareTextureData( vec3<U16>(1u), 1u, true );
+        loadDataInternal( image, {._alignment = 1u} );
+        usage = ImageUsage::SHADER_READ;
+        submitTextureData(usage);
     }
 
     const SamplerDescriptor Texture::DefaultSampler() noexcept

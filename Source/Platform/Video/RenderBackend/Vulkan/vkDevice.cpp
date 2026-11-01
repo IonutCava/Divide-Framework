@@ -73,11 +73,9 @@ namespace Divide
         vk10features.shaderClipDistance = VK_TRUE;
         vk10features.shaderCullDistance = VK_TRUE;
 
-        const auto selectDevice = [&](const uint32_t minor)
-        {
-            auto selector = 
+        auto selector =
                 vkb::PhysicalDeviceSelector(instance)
-                        .set_minimum_version( 1, minor)
+                        .set_minimum_version( 1, Config::MINIMUM_VULKAN_MINOR_VERSION )
                         .set_surface( targetSurface )
                         .prefer_gpu_device_type( vkb::PreferredDeviceType::discrete )
                         .add_required_extension( VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME )
@@ -86,26 +84,15 @@ namespace Divide
                         .set_required_features( vk10features )
                         .set_required_features_11( vk11features )
                         .set_required_features_12( vk12features )
-                        .set_required_features_13( vk13features );
-            if (minor >= 4)
-            {
-                selector.set_required_features_14( vk14features );
-            }
+                        .set_required_features_13( vk13features )
+                        .set_required_features_14( vk14features );
 
-            vulkanMinorVersion(minor);
-            return selector.select();
-        };
-
-        vkb::Result<vkb::PhysicalDevice> physicalDeviceSelection = selectDevice( Config::DESIRED_VULKAN_MINOR_VERSION );
+        vulkanMinorVersion( Config::MINIMUM_VULKAN_MINOR_VERSION );
+        vkb::Result<vkb::PhysicalDevice> physicalDeviceSelection = selector.select();
         if ( !physicalDeviceSelection )
         {
             Console::errorfn( LOCALE_STR( "ERROR_VK_INIT" ), physicalDeviceSelection.error().message().c_str() );
-            physicalDeviceSelection = selectDevice(Config::MINIMUM_VULKAN_MINOR_VERSION);
-            if (!physicalDeviceSelection)
-            {
-                Console::errorfn(LOCALE_STR("ERROR_VK_INIT"), physicalDeviceSelection.error().message().c_str());
-                return;
-            }
+            return;
         }
 
         _physicalDevice = physicalDeviceSelection.value();
