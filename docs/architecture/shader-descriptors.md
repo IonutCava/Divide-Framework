@@ -49,6 +49,8 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   transfer their live bindings only after all overlapping types and sizes pass
   validation; later values overwrite earlier ones, and successful transfers empty
   the source. Rejected transfers leave both sides unchanged.
+- `DebugView` explicitly initializes `skipLinearisation` to zero so shared
+  `fbPreview` programs do not inherit the splash screen's encoded-output mode.
 - OpenGL retains the same flagged-slot cache and replays known slots on pipeline
   binds, including when no new push command follows a shader change. Partial
   uploads use the merged cache rather than shader-local stale uniform values.

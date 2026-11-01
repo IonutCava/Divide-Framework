@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2018 DIVIDE-Studio
+   Copyright (c) 2026 DIVIDE-Studio
    Copyright (c) 2009 Ionut Cava
 
    This file is part of DIVIDE Framework.
@@ -122,15 +122,16 @@ namespace TypeUtil
 
 struct DebugView final : GUIDWrapper
 {
-    DebugView() noexcept
+    DebugView()
         : DebugView(-1)
     {
     }
 
-    explicit DebugView(const I16 sortIndex) noexcept 
+    explicit DebugView(const I16 sortIndex)
         : GUIDWrapper()
         , _sortIndex(to_I16(sortIndex))
     {
+        _shaderData.set( _ID( "skipLinearisation" ), PushConstantType::UINT, 0u );
     }
 
     UniformData _shaderData;

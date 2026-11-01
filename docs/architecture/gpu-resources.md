@@ -1,5 +1,9 @@
 # GPU resources and backend conventions
 
+Non-sRGB screen fallback paths can blend translucent UI in encoded space.
+Linear-space fallback compositing is deferred; do not claim identical alpha
+blending between sRGB and non-sRGB presentation paths. and backend conventions
+
 <!-- Copyright (c) 2026 DIVIDE-Studio -->
 
 See the [index](index.md) for debugging routes and note-maintenance guidance.

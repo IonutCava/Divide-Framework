@@ -9,9 +9,25 @@
 #include "Platform/Video/RenderBackend/Vulkan/Textures/Headers/vkTexture.h"
 #include "Platform/Video/RenderBackend/Vulkan/Headers/vkDevice.h"
 #include "Platform/Video/Headers/CommandBuffer.h"
+#include "Platform/Video/Headers/GFXDevice.h"
 
 namespace Divide
 {
+    TEST_CASE( "Debug previews explicitly reset splash linearisation state", "[texture_fallbacks]" )
+    {
+        DebugView view;
+        const auto& entries = view._shaderData.entries();
+        const auto entry = std::find_if( entries.begin(), entries.end(), [](const auto& value)
+        {
+            return value._bindingHash == _ID( "skipLinearisation" );
+        } );
+        REQUIRE( entry != entries.end() );
+        CHECK( entry->_type == PushConstantType::UINT );
+        U32 value = 1u;
+        std::memcpy( &value, view._shaderData.data( entry->_range._startOffset ), sizeof(value) );
+        CHECK( value == 0u );
+    }
+
     TEST_CASE( "Push command merging preserves shared uniform storage", "[push_constants]" )
     {
         UniformData uniforms;
