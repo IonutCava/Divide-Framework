@@ -26,7 +26,7 @@
 - Assets & config: `Assets/` and `config.xml` in the repo root are used at runtime.
 
 ## Project-Specific Conventions & Patterns
-- C++20 is used (some code reflects older style). Expect a mixture of DoD-friendly structs and OOP interfaces (NonCopyable, NonMovable, etc.).
+- C++23 is used (some code reflects older style). Expect a mixture of DoD-friendly structs and OOP interfaces (NonCopyable, NonMovable, etc.).
 - Target names are defined as variables in `Source/CMakeLists.txt` (e.g. `APP_LIB_DIVIDE`, `APP_EXE_DIVIDE`, `APP_EXE_PROJECT_MANAGER`) — prefer editing these variables rather than hardcoding target names elsewhere.
 - Compile flags and third-party flag lists are centralized in `Source/CMakeLists.txt` (search for `DIVIDE_COMPILE_OPTIONS` / `THIRD_PARTY_COMPILE_OPTIONS`). Avoid changing them lightly; tests and CI rely on many of these warnings being suppressed in third-party code. Avoid code repetition for compile options in this repository's CMake changes; prefer shared option lists over duplicating warning flags.
 - Tests are guarded by `BUILD_TESTING_INTERNAL` and `RUN_TESTING_INTERNAL` CMake variables and use Catch2.
