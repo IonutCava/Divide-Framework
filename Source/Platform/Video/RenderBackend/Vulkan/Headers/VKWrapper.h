@@ -195,6 +195,7 @@ public:
     static bool s_hasDynamicBlendStateSupport;
     static U32  s_maxDescriptorSetStorageBuffersDynamic;
     static U32  s_maxDescriptorSetUniformBuffersDynamic;
+    static U32  s_maxPushDescriptors;
     static DepthFormatInformation s_depthFormatInformation;
     static VkResolveModeFlags s_supportedDepthResolveModes;
 };

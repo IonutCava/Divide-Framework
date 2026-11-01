@@ -21,11 +21,6 @@ namespace Divide
         bufferDeviceAddressFeatures.bufferDeviceAddress = VK_TRUE;
         bufferDeviceAddressFeatures.pNext = &descriptorBufferFeatures;
 
-        VkPhysicalDevicePushDescriptorProperties pushDescriptorProperties{};
-        pushDescriptorProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES;
-        pushDescriptorProperties.maxPushDescriptors = 32u;
-        pushDescriptorProperties.pNext = &bufferDeviceAddressFeatures;
-
         VkPhysicalDeviceVulkan14Features vk14features{};
         vk14features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
         vk14features.maintenance5 = VK_TRUE;
@@ -39,7 +34,7 @@ namespace Divide
         vk13features.inlineUniformBlock = VK_TRUE;
         vk13features.maintenance4 = VK_TRUE;
         vk13features.shaderDemoteToHelperInvocation = VK_TRUE;
-        vk13features.pNext = &pushDescriptorProperties;
+        vk13features.pNext = &bufferDeviceAddressFeatures;
 
         VkPhysicalDeviceVulkan12Features vk12features{};
         vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
