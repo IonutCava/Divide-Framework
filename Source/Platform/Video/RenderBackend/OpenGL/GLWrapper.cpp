@@ -1263,6 +1263,10 @@ namespace Divide
                     const auto handle = pipeline->descriptor()._shaderProgramHandle;
                     Console::errorfn( LOCALE_STR( "ERROR_GLSL_INVALID_BIND" ), handle._index, handle._generation );
                 }
+                else if ( _lastPushConstants.dataFlags() != PushConstantsStruct::DataFlags::NONE )
+                {
+                    Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, _lastPushConstants );
+                }
             } break;
             case GFX::CommandType::SEND_PUSH_CONSTANTS:
             {
@@ -1304,7 +1308,8 @@ namespace Divide
                 }
                 if ( pushConstantsCmd->_fastData.dataFlags() != PushConstantsStruct::DataFlags::NONE )
                 {
-                    Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, pushConstantsCmd->_fastData );
+                    _lastPushConstants.merge( pushConstantsCmd->_fastData );
+                    Attorney::GLAPIShaderProgram::uploadPushConstants( *s_stateTracker._activeShaderProgram, _lastPushConstants );
                 }
 
             } break;

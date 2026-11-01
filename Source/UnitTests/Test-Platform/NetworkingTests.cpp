@@ -1,3 +1,4 @@
+// Copyright (c) 2026 DIVIDE-Studio
 #include "UnitTests/unitTestCommon.h"
 
 #include "Networking/Headers/Client.h"
@@ -17,6 +18,7 @@ namespace Divide::Networking
             HeartbeatClient()
                 : _peer(_context)
             {
+                platformInitRunListener::PlatformInit();
                 using boost::asio::ip::tcp;
                 tcp::acceptor acceptor(_context, tcp::endpoint(boost::asio::ip::address_v4::loopback(), 0));
                 tcp::socket socket(_context);

@@ -45,6 +45,9 @@ Changes must cover source parsing, generated declarations, cache invalidation, S
   the Vulkan replay cache; omitted slots retain their last explicit values.
 - Command coalescing accepts complementary or equal overlapping push slots,
   rejecting conflicting overlapping values without mutating the earlier command.
+- OpenGL retains the same flagged-slot cache and replays known slots on pipeline
+  binds, including when no new push command follows a shader change. Partial
+  uploads use the merged cache rather than shader-local stale uniform values.
 - `PER_DRAW` is per-program and uses push descriptors. Pipeline creation assembles a local layout array; never overwrite the global shared-layout array with a program-specific layout.
 - Descriptor layout-cache identity must include creation flags, so push-descriptor layouts cannot alias ordinary layouts with the same bindings.
 - Push-descriptor validation uses queried `VkPhysicalDevicePushDescriptorProperties::maxPushDescriptors`, not dynamic-buffer limits.

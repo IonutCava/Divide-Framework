@@ -170,6 +170,7 @@ also select the corresponding `--x-feature=jolt-avx`, `jolt-avx2` or `jolt-avx51
 | GL/Vulkan allocation, uploads, device capabilities, presentation conventions | [GPU resources](docs/architecture/gpu-resources.md) |
 | Mesh import, LoD, vertex layout, texture decode/cache | [Asset pipeline](docs/architecture/asset-pipeline.md) |
 | Task pools, dirty ranges, asynchronous work, queue synchronization | [Threading](docs/architecture/threading.md) |
+| Client connections, heartbeat timers, networking test fixtures | [Networking](docs/architecture/networking.md) |
 
 ## Continuous integration
 

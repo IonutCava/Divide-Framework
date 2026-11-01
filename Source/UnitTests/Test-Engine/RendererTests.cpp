@@ -12,6 +12,31 @@
 
 namespace Divide
 {
+    TEST_CASE( "Push cache replays all known slots after shader changes", "[push_constants]" )
+    {
+        PushConstantsStruct cache, firstShader, secondShader, update;
+        update.data[0] = MAT4_IDENTITY;
+        update.computeFlags();
+        cache.merge( update );
+        firstShader.merge( cache );
+
+        secondShader.merge( cache );
+        CHECK( secondShader.data[0] == MAT4_IDENTITY );
+        CHECK( secondShader.dataFlags() == PushConstantsStruct::FIRST );
+
+        update = {};
+        update.data[1] = MAT4_ZERO;
+        update.computeFlags();
+        cache.merge( update );
+        secondShader.merge( cache );
+        CHECK( secondShader.data[0] == MAT4_IDENTITY );
+        CHECK( secondShader.data[1] == MAT4_ZERO );
+
+        firstShader.merge( cache );
+        CHECK( firstShader == secondShader );
+        CHECK( firstShader.dataFlags() == PushConstantsStruct::BOTH );
+    }
+
     TEST_CASE( "Push commands coalesce compatible slots without changing conflicts", "[push_constants]" )
     {
         GFX::SendPushConstantsCommand lhs, rhs;
